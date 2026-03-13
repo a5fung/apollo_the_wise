@@ -283,22 +283,128 @@ class TelegramChannel:
         except Exception:
             pass
 
-    async def _handle_status(
+    async def _handle_help(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle /status command — show agent health."""
+        """Handle /help — full capabilities and command reference."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        assistant_name, _ = await self._load_persona(update.effective_user.id)
+
+        text = (
+            f"*{assistant_name} — Capabilities & Commands*\n"
+            "\n"
+            "*💬 Just talk to me naturally* — I'll figure out what you need and route it to the right agent.\n"
+            "\n"
+            "*📊 Finance*\n"
+            "• View your IBKR portfolio, positions, P&L\n"
+            "• Get stock quotes, fundamentals, chart data (via TradingView)\n"
+            "• Run stock screeners\n"
+            "• Receive real-time TradingView price alerts → pushed to this chat\n"
+            "_Example: 'Show me my portfolio' · 'What's AAPL trading at?'_\n"
+            "\n"
+            "*📅 Calendar*\n"
+            "• View upcoming events across Google Calendar & iCloud\n"
+            "• Create, reschedule, or cancel events (requires your confirmation)\n"
+            "• Get a morning briefing of today's schedule\n"
+            "_Example: 'What's on my calendar this week?' · 'Schedule dentist Thursday 2pm'_\n"
+            "\n"
+            "*🔍 Research*\n"
+            "• Web search with synthesized answers\n"
+            "• Summarise articles, news, or topics\n"
+            "_Example: 'Research the best S&P 500 ETFs' · 'Summarise the latest Fed meeting'_\n"
+            "\n"
+            "*✈️ Travel*\n"
+            "• Flight & hotel research\n"
+            "• Full trip itinerary planning\n"
+            "• Amex Platinum perks optimiser — FHR hotels, lounge access, which card to use\n"
+            "_Example: 'Plan 5 days in Tokyo in October' · 'Which lounge can I use at JFK?'_\n"
+            "\n"
+            "*🌐 Browser*\n"
+            "• Automate any website interaction\n"
+            "_Example: 'Extract the pricing table from [url]'_\n"
+            "\n"
+            "━━━━━━━━━━━━━━━━\n"
+            "*Commands*\n"
+            "/help — this message\n"
+            "/agents — live status of all sub-agents\n"
+            "/setup — change my name or personality\n"
+            "/memory — view what I remember about you\n"
+            "/audit — recent action log\n"
+            "/status — system health check\n"
+            "/start — restart"
+        )
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _handle_agents(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle /agents — show each agent's role and live health."""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
         from core.router import health_check_all_agents
         health = await health_check_all_agents()
 
-        lines = ["**Agent Status**\n"]
-        for agent_name, is_healthy in health.items():
-            icon = "✅" if is_healthy else "❌"
-            lines.append(f"{icon} {agent_name}")
+        agent_descriptions = {
+            "finance":  "📊 Portfolio, quotes, TradingView alerts",
+            "calendar": "📅 Google Calendar & iCloud events",
+            "research": "🔍 Web search & summarisation",
+            "browser":  "🌐 Playwright browser automation",
+            "travel":   "✈️ Flights, hotels, Amex Platinum perks",
+        }
 
-        await update.message.reply_text("\n".join(lines))
+        lines = ["*Sub-Agents*\n"]
+        for agent_name, description in agent_descriptions.items():
+            is_healthy = health.get(agent_name, False)
+            icon = "🟢" if is_healthy else "🔴"
+            lines.append(f"{icon} *{agent_name.title()}* — {description}")
+
+        lines.append("\n🟢 online  🔴 offline/unreachable")
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
+    async def _handle_status(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle /status — system-level health (DB, Redis, agents)."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        from core.router import health_check_all_agents
+        agent_health = await health_check_all_agents()
+
+        # Check DB + Redis
+        db_ok = await self._check_db()
+        redis_ok = await self._check_redis()
+
+        lines = ["*System Status*\n"]
+        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL")
+        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis")
+        lines.append("")
+        for agent_name, is_healthy in agent_health.items():
+            lines.append(f"{'🟢' if is_healthy else '🔴'} {agent_name}")
+
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+
+    async def _check_db(self) -> bool:
+        try:
+            from core.memory import get_pool
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            return True
+        except Exception:
+            return False
+
+    async def _check_redis(self) -> bool:
+        try:
+            from core.confirmations import get_redis
+            r = await get_redis()
+            await r.ping()
+            return True
+        except Exception:
+            return False
 
     async def _handle_memory(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -417,6 +523,8 @@ class TelegramChannel:
         )
 
         app.add_handler(CommandHandler("start", self._handle_start))
+        app.add_handler(CommandHandler("help", self._handle_help))
+        app.add_handler(CommandHandler("agents", self._handle_agents))
         app.add_handler(CommandHandler("setup", self._handle_setup))
         app.add_handler(CommandHandler("status", self._handle_status))
         app.add_handler(CommandHandler("memory", self._handle_memory))
@@ -429,11 +537,27 @@ class TelegramChannel:
         return app
 
     async def set_webhook(self, webhook_url: str) -> None:
-        """Register the webhook URL with Telegram."""
+        """Register the webhook URL with Telegram and set the bot command menu."""
         if self._app is None:
             raise RuntimeError("Application not built yet. Call build_application() first.")
         await self._app.bot.set_webhook(
             url=webhook_url,
             allowed_updates=["message"],
         )
+        await self._register_commands()
         logger.info(f"Telegram webhook set to: {webhook_url}")
+
+    async def _register_commands(self) -> None:
+        """Register bot commands with BotFather so they appear in the / menu."""
+        from telegram import BotCommand
+        commands = [
+            BotCommand("help",   "Capabilities & command reference"),
+            BotCommand("agents", "Live status of all sub-agents"),
+            BotCommand("status", "System health (DB, Redis, agents)"),
+            BotCommand("setup",  "Change assistant name or personality"),
+            BotCommand("memory", "View what I remember about you"),
+            BotCommand("audit",  "Recent action log"),
+            BotCommand("start",  "Restart / re-introduce"),
+        ]
+        await self._app.bot.set_my_commands(commands)
+        logger.info("Bot commands registered with Telegram")
