@@ -1,0 +1,105 @@
+"""
+Research Agent — web search and summarization using Tavily API.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import anthropic
+import httpx
+
+from agents.base import BaseAgent
+from shared.models import AgentName, AgentRequest, AgentResponse
+from shared.secrets import get_secrets
+
+logger = logging.getLogger(__name__)
+
+TAVILY_API_URL = "https://api.tavily.com/search"
+SUMMARIZE_MODEL = "claude-sonnet-4-6"
+
+
+class ResearchAgent(BaseAgent):
+    def __init__(self) -> None:
+        super().__init__(AgentName.RESEARCH)
+        self._anthropic = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
+
+    async def execute_task(self, request: AgentRequest) -> AgentResponse:
+        task = request.task
+        context = request.context
+
+        # Build a search query from the task
+        search_query = context.get("query") or task
+
+        # Perform web search
+        search_results = await self._search(search_query)
+        if not search_results:
+            return self._error(request, "No search results found for the query.")
+
+        # Summarize results with Claude
+        summary = await self._summarize(task, search_results)
+
+        return self._ok(
+            request,
+            result=summary,
+            data={"query": search_query, "result_count": len(search_results)},
+        )
+
+    async def _search(self, query: str) -> list[dict[str, Any]]:
+        """Call Tavily Search API."""
+        api_key = get_secrets().tavily_api_key
+        if not api_key:
+            logger.error("TAVILY_API_KEY not set")
+            return []
+
+        async with httpx.AsyncClient(timeout=30) as client:
+            try:
+                response = await client.post(
+                    TAVILY_API_URL,
+                    json={
+                        "api_key": api_key,
+                        "query": query,
+                        "search_depth": "advanced",
+                        "max_results": 8,
+                        "include_answer": True,
+                        "include_raw_content": False,
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("results", [])
+            except httpx.HTTPError as e:
+                logger.error(f"Tavily API error: {e}")
+                return []
+
+    async def _summarize(
+        self, original_task: str, results: list[dict[str, Any]]
+    ) -> str:
+        """Synthesize search results into a useful answer."""
+        results_text = "\n\n".join(
+            f"**{r.get('title', 'Untitled')}** ({r.get('url', '')})\n{r.get('content', '')}"
+            for r in results[:6]
+        )
+
+        response = self._anthropic.messages.create(
+            model=SUMMARIZE_MODEL,
+            max_tokens=2048,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Research task: {original_task}\n\n"
+                        f"Search results:\n{results_text}\n\n"
+                        "Synthesize a clear, accurate answer to the research task based on "
+                        "these results. Be concise but thorough. Cite sources where relevant. "
+                        "Use bullet points for lists. Format for Telegram (Markdown)."
+                    ),
+                }
+            ],
+        )
+        return response.content[0].text
+
+
+# FastAPI app entry point
+_agent = ResearchAgent()
+app = _agent.app

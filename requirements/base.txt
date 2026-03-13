@@ -1,0 +1,32 @@
+# All-in-one requirements for local development (installs everything)
+# Usage: pip install -r requirements/base.txt
+
+# Core
+anthropic>=0.40.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-dotenv>=1.0.0
+pydantic>=2.9.0
+pyyaml>=6.0.2
+httpx>=0.28.0
+
+# Telegram
+python-telegram-bot>=21.0
+
+# Database
+asyncpg>=0.30.0
+redis[hiredis]>=5.2.0
+
+# Browser automation
+playwright>=1.49.0
+
+# Calendar providers
+google-api-python-client>=2.160.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.0
+caldav>=1.4.0
+icalendar>=6.1.0
+
+# Dev/testing
+pytest>=8.0.0
+pytest-asyncio>=0.24.0

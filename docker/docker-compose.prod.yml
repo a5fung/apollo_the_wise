@@ -1,0 +1,189 @@
+version: "3.9"
+
+# Apollo Assistant — Production (VPS)
+# Usage: docker compose -f docker-compose.prod.yml up -d
+#
+# Differences from dev:
+# - No ports exposed externally (Tailscale handles access)
+# - Only Telegram webhook + TradingView webhook ports exposed via reverse proxy
+# - Restart policies: always
+# - Resource limits
+# - Production logging
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: apollo-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-apollo}
+      POSTGRES_USER: ${POSTGRES_USER:-apollo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # NOT exposed externally — only accessible within Docker network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apollo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  redis:
+    image: redis:7-alpine
+    container_name: apollo-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: apollo-orchestrator
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    ports:
+      # Only expose the webhook port — protected by Tailscale + Nginx
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - audit_log:/app/audit.log
+      - /etc/ssl/certs:/etc/ssl/certs:ro  # System CA certs
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  finance-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.finance
+    container_name: apollo-finance
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  calendar-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.calendar
+    container_name: apollo-calendar
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  research-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.research
+    container_name: apollo-research
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  browser-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.browser
+    container_name: apollo-browser
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    shm_size: '2gb'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  travel-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.travel
+    container_name: apollo-travel
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  postgres_data:
+  redis_data:
+  audit_log:
+
+networks:
+  default:
+    name: apollo-network
+    # In production, Tailscale handles inter-service networking
+    # Sub-agents are NOT accessible from outside the Docker network

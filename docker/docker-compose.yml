@@ -1,0 +1,152 @@
+version: "3.9"
+
+# Apollo Assistant — Local Development
+# Usage: docker compose up
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: apollo-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-apollo}
+      POSTGRES_USER: ${POSTGRES_USER:-apollo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apollo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: apollo-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Orchestrator ─────────────────────────────────────────────────────────────
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: apollo-orchestrator
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../audit.log:/app/audit.log  # Persist audit log
+    restart: unless-stopped
+
+  # ── Sub-agents ───────────────────────────────────────────────────────────────
+
+  finance-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.finance
+    container_name: apollo-finance
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  calendar-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.calendar
+    container_name: apollo-calendar
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  research-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.research
+    container_name: apollo-research
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  browser-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.browser
+    container_name: apollo-browser
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8004:8004"
+    # Browser agents need shared memory for Chromium
+    shm_size: '2gb'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  travel-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.travel
+    container_name: apollo-travel
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    ports:
+      - "8005:8005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: apollo-network

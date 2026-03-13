@@ -1,0 +1,35 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements/orchestrator.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY core/ core/
+COPY channels/ channels/
+COPY shared/ shared/
+COPY agents/base.py agents/base.py
+COPY integrations.yaml integrations.yaml
+COPY main.py main.py
+
+# Create audit log file
+RUN touch /app/audit.log
+
+# Non-root user for security
+RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
+USER apollo
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

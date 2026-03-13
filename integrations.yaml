@@ -1,0 +1,69 @@
+# ============================================================
+# Apollo Integration Registry
+# Define which accounts/providers are active.
+# Add blocks here + credentials in .env to enable new integrations.
+# Never put actual credentials here — use env var references only.
+# ============================================================
+
+calendar:
+  - provider: google
+    account: your.email@gmail.com
+    credentials_env: GOOGLE_CAL_TOKEN
+    label: "My Google Calendar"
+    enabled: true
+
+  # Uncomment and fill to add Apple iCloud calendar:
+  # - provider: apple_caldav
+  #   account: your.apple.id@icloud.com
+  #   credentials_env: APPLE_CALDAV_TOKEN
+  #   label: "My iCloud Calendar"
+  #   enabled: false
+
+  # Add more calendar accounts:
+  # - provider: google
+  #   account: work@company.com
+  #   credentials_env: GOOGLE_CAL_WORK_TOKEN
+  #   label: "Work Calendar"
+  #   enabled: false
+
+finance:
+  - provider: ibkr
+    mode: read_only     # NEVER set to read_write — trade execution is explicitly deferred
+    credentials_env: IBKR_ACCOUNT_ID
+    label: "IBKR Portfolio"
+    enabled: true
+
+research:
+  - provider: tavily
+    credentials_env: TAVILY_API_KEY
+    label: "Tavily Web Search"
+    enabled: true
+
+travel:
+  credit_cards:
+    - name: "Amex Platinum"
+      type: amex_platinum
+      annual_fee: 695
+      renewal_month: 1    # Month your card year resets (for credit tracking)
+    # - name: "Chase Sapphire Reserve"
+    #   type: chase_sapphire_reserve
+    #   annual_fee: 550
+
+# Sub-agent endpoints (populated at runtime from Docker service names or config)
+# Override here if running agents on non-default ports.
+agents:
+  finance:
+    url: http://finance-agent:8001
+    enabled: true
+  calendar:
+    url: http://calendar-agent:8002
+    enabled: true
+  research:
+    url: http://research-agent:8003
+    enabled: true
+  browser:
+    url: http://browser-agent:8004
+    enabled: true
+  travel:
+    url: http://travel-agent:8005
+    enabled: true
