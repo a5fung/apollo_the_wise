@@ -61,16 +61,15 @@ def _get_claude():
 
 
 def _get_gemini():
-    """Get Gemini model if API key is configured."""
+    """Get Gemini client if API key is configured."""
     try:
-        import google.generativeai as genai
+        from google import genai
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             return None
-        genai.configure(api_key=api_key)
-        return genai.GenerativeModel("gemini-1.5-flash")
+        return genai.Client(api_key=api_key)
     except ImportError:
-        logger.warning("google-generativeai not installed, skipping Gemini validation")
+        logger.warning("google-genai not installed, skipping Gemini validation")
         return None
 
 
@@ -84,27 +83,31 @@ async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict
     company_desc = profile.get("description", "")[:300]
 
     prompt = f"""You are analyzing a stock gap-up for EP (Episodic Pivot) trading.
+This stock is gapping up significantly in pre-market. Your job is to identify the catalyst.
 
 Stock: {ticker}
 Company: {profile.get('companyName', '')} — {profile.get('sector', '')}
 Description: {company_desc}
 
-Recent news:
-{news_text or "No news found."}
+Recent news (may include earnings announcements, guidance, contracts, upgrades):
+{news_text or "No news found — check if this is an after-hours earnings release."}
 
-Classify the catalyst quality as one of:
-- GAME_CHANGER: FDA approval, massive earnings beat + guidance raise (>20% above estimates),
-  transformative contract, major acquisition at premium, patent victory
+IMPORTANT: If the stock is gapping 8%+ on high volume, there is almost certainly a catalyst.
+Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
+An earnings beat with guidance raise on a neglected stock = GAME_CHANGER or STRONG.
+Only use ROUTINE if you've confirmed there is genuinely no company-specific catalyst.
+
+Classify the catalyst quality:
+- GAME_CHANGER: Massive earnings beat + guidance raise (>20% above estimates), FDA approval,
+  transformative contract, major acquisition at premium
 - STRONG: Solid earnings beat + guidance raise, analyst upgrade cluster (3+),
-  sector catalyst, significant partnership
-- ROUTINE: In-line results, minor guidance update, analyst initiation,
-  general market commentary
-
-Also write 2-3 sentences explaining why.
+  significant regulatory milestone, major partnership
+- ROUTINE: In-line results, minor guidance, analyst initiation, pure sector sympathy move
+  with NO company-specific catalyst
 
 Respond in this exact format:
 QUALITY: [GAME_CHANGER|STRONG|ROUTINE]
-ANALYSIS: [your 2-3 sentence analysis]"""
+ANALYSIS: [2-3 sentences on the specific catalyst and why you classified it this way]"""
 
     try:
         response = _get_claude().messages.create(
@@ -144,7 +147,7 @@ Respond with ONLY the classification word."""
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: gemini.generate_content(prompt)
+            lambda: gemini.models.generate_content(model="gemini-1.5-flash-8b", contents=prompt)
         )
         text = response.text.strip().upper()
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:

@@ -45,9 +45,17 @@ async def _polygon_get(path: str, params: dict | None = None) -> Any:
 
         all_params = {"apiKey": api_key, **(params or {})}
         async with httpx.AsyncClient(timeout=30) as client:
-            r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
-            _polygon_last_call = asyncio.get_event_loop().time()
-            r.raise_for_status()
+            for attempt in range(3):
+                r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
+                _polygon_last_call = asyncio.get_event_loop().time()
+                if r.status_code == 429:
+                    wait = 15 * (attempt + 1)  # 15s, 30s, 45s
+                    logger.warning(f"Polygon 429 — waiting {wait}s (attempt {attempt + 1}/3)")
+                    await asyncio.sleep(wait)
+                    continue
+                r.raise_for_status()
+                return r.json()
+            r.raise_for_status()  # raise on final attempt
             return r.json()
 
 
@@ -150,48 +158,81 @@ def trading_date_n_months_ago(months: int) -> str:
     return d.strftime("%Y-%m-%d")
 
 
-# ── FMP endpoints ──────────────────────────────────────────────────────────────
+# ── yfinance — company profile, analyst ratings (free, no API key) ────────────
 
 async def get_fmp_profile(ticker: str) -> dict:
     """
-    Company profile: sector, industry, market cap, float, description.
-    Returns first element of list or empty dict.
+    Company profile via yfinance: sector, float, market cap, 52W high, description.
+    Normalised to match the field names the EP scorer expects.
     """
     try:
-        data = await _fmp_get(f"/v3/profile/{ticker}")
-        return data[0] if data else {}
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+        info = await loop.run_in_executor(None, lambda: yf.Ticker(ticker).info)
+        return {
+            "companyName":   info.get("longName", ticker),
+            "sector":        info.get("sector", ""),
+            "industry":      info.get("industry", ""),
+            "description":   info.get("longBusinessSummary", "")[:500],
+            "floatShares":   info.get("floatShares"),
+            "marketCap":     info.get("marketCap"),
+            "52WeekHigh":    info.get("fiftyTwoWeekHigh"),
+            "price":         info.get("currentPrice") or info.get("regularMarketPrice"),
+        }
     except Exception as e:
-        logger.warning(f"FMP profile failed for {ticker}: {e}")
+        logger.warning(f"yfinance profile failed for {ticker}: {e}")
         return {}
 
 
 async def get_fmp_earnings(ticker: str) -> list[dict]:
-    """Recent earnings surprises."""
+    """Earnings history via yfinance."""
     try:
-        data = await _fmp_get(f"/v3/earnings-surprises/{ticker}")
-        return data[:4] if data else []  # last 4 quarters
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+        t = yf.Ticker(ticker)
+        hist = await loop.run_in_executor(None, lambda: t.earnings_history)
+        if hist is None or hist.empty:
+            return []
+        return hist.head(4).to_dict("records")
     except Exception as e:
-        logger.warning(f"FMP earnings failed for {ticker}: {e}")
+        logger.warning(f"yfinance earnings failed for {ticker}: {e}")
         return []
 
 
 async def get_fmp_analyst_ratings(ticker: str) -> list[dict]:
-    """Recent analyst rating changes."""
+    """Analyst upgrades/recommendations via yfinance."""
     try:
-        data = await _fmp_get(f"/v3/analyst-stock-recommendations/{ticker}")
-        return data[:10] if data else []
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+        t = yf.Ticker(ticker)
+        recs = await loop.run_in_executor(None, lambda: t.recommendations)
+        if recs is None or recs.empty:
+            return []
+        # Normalise to a list of dicts with analystRatingsStrongBuy for compatibility
+        recent = recs.tail(10).copy()
+        recent["analystRatingsStrongBuy"] = recent.get("To Grade", "").apply(
+            lambda g: 1 if str(g).lower() in ("strong buy", "buy", "outperform", "overweight") else 0
+        )
+        return recent.to_dict("records")
     except Exception as e:
-        logger.warning(f"FMP analyst ratings failed for {ticker}: {e}")
+        logger.warning(f"yfinance analyst ratings failed for {ticker}: {e}")
         return []
 
 
 async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
-    """Recent news for a ticker."""
+    """Recent news via yfinance."""
     try:
-        data = await _fmp_get("/v3/stock_news", {"tickers": ticker, "limit": limit})
-        return data if data else []
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+        t = yf.Ticker(ticker)
+        news = await loop.run_in_executor(None, lambda: t.news)
+        if not news:
+            return []
+        return [{"title": n.get("content", {}).get("title", ""),
+                 "text":  n.get("content", {}).get("summary", "")}
+                for n in news[:limit]]
     except Exception as e:
-        logger.warning(f"FMP news failed for {ticker}: {e}")
+        logger.warning(f"yfinance news failed for {ticker}: {e}")
         return []
 
 

@@ -186,7 +186,8 @@ async def calculate_breadth(today_str: str) -> tuple[Optional[float], Optional[f
             if len(bars) < 5:
                 continue
 
-            closes = {date.fromtimestamp(b["t"] / 1000).strftime("%Y-%m-%d"): b["c"]
+            from datetime import datetime, timezone
+            closes = {datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date().strftime("%Y-%m-%d"): b["c"]
                       for b in bars if "c" in b and "t" in b}
 
             current = closes.get(today_str) or (list(closes.values())[-1] if closes else None)

@@ -26,12 +26,12 @@ logger = logging.getLogger(__name__)
 
 async def _fetch_closes(ticker: str, from_date: str, to_date: str) -> dict[str, float]:
     """Fetch daily closes for a ticker. Returns {date_str: close}."""
+    from datetime import datetime, timezone
     bars = await get_index_history(ticker, from_date, to_date)
     result = {}
     for b in bars:
         if "c" in b and "t" in b:
-            # Polygon returns timestamp in ms
-            d = date.fromtimestamp(b["t"] / 1000)
+            d = datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date()
             result[d.strftime("%Y-%m-%d")] = b["c"]
     return result
 
