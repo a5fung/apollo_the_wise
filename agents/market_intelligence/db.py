@@ -57,12 +57,18 @@ async def initialize_schema() -> None:
                 sma_20 FLOAT,
                 sma_50 FLOAT,
                 close FLOAT,
+                raw_1m FLOAT,
+                raw_3m FLOAT,
+                raw_6m FLOAT,
                 PRIMARY KEY (ticker, score_date)
             );
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_10 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_20 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_50 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS close FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_1m FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_3m FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_6m FLOAT;
 
             CREATE TABLE IF NOT EXISTS mi_ep_alerts (
                 id SERIAL PRIMARY KEY,
@@ -124,20 +130,22 @@ async def upsert_stock_score(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_stock_scores
                 (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
-                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close,
+                 raw_1m, raw_3m, raw_6m)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
                 sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
                 sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_50=EXCLUDED.sma_50,
-                close=EXCLUDED.close
+                close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
+                raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
         """,
             record["ticker"], record["score_date"], record.get("rs_1m"), record.get("rs_3m"),
             record.get("rs_6m"), record.get("rs_composite"), record.get("rs_rank"),
             record.get("sector"), record.get("adv_20"), record.get("market_cap"),
             record.get("sma_10"), record.get("sma_20"), record.get("sma_50"),
-            record.get("close"),
+            record.get("close"), record.get("raw_1m"), record.get("raw_3m"), record.get("raw_6m"),
         )
 
 

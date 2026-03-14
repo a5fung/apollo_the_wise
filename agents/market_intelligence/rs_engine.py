@@ -23,6 +23,8 @@ from agents.market_intelligence.db import (
     get_active_tracked_stocks,
     upsert_tracked_stock,
     mark_tracked_stock_weak,
+    get_pool,
+    _to_date,
 )
 from agents.market_intelligence.universe import UNIVERSE
 
@@ -188,6 +190,9 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "sma_20": s.get("sma_20"),
             "sma_50": s.get("sma_50"),
             "close": s["current"],
+            "raw_1m": round(s["rs_1m_raw"], 2) if s.get("rs_1m_raw") is not None else None,
+            "raw_3m": round(s["rs_3m_raw"], 2) if s.get("rs_3m_raw") is not None else None,
+            "raw_6m": round(s["rs_6m_raw"], 2) if s.get("rs_6m_raw") is not None else None,
         }
         await upsert_stock_score(db_record)
 
@@ -214,6 +219,127 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         f"({added_to_tracking} tracked leaders)"
     )
     return {"stocks_scored": len(stock_data), "date": today_str}
+
+
+async def score_single_ticker(ticker: str, trade_date: date | None = None) -> dict:
+    """
+    Score one ticker on demand against today's existing RS distribution.
+    1 Polygon API call. Ranks the ticker's raw returns against stored raw returns
+    from today's full run. Requires at least one full RS run to have completed.
+    """
+    today = trade_date or date.today()
+    today_str = today.strftime("%Y-%m-%d")
+    from_date = (today - timedelta(days=200)).strftime("%Y-%m-%d")
+
+    date_1m = trading_date_n_months_ago(1)
+    date_3m = trading_date_n_months_ago(3)
+    date_6m = trading_date_n_months_ago(6)
+
+    ticker = ticker.upper()
+    logger.info(f"Single-ticker RS score: {ticker}")
+
+    closes = await _fetch_closes(ticker, from_date, today_str)
+    if not closes:
+        return {"error": f"No price data found for {ticker}"}
+
+    current = _closest_close(closes, today_str)
+    if not current:
+        return {"error": f"No recent close for {ticker}"}
+
+    raw_1m = _pct_return(current, _closest_close(closes, date_1m))
+    raw_3m = _pct_return(current, _closest_close(closes, date_3m))
+    raw_6m = _pct_return(current, _closest_close(closes, date_6m))
+
+    # Load today's raw return distribution for proper percentile ranking
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, raw_1m, raw_3m, raw_6m FROM mi_stock_scores WHERE score_date = $1 AND raw_1m IS NOT NULL",
+            _to_date(today_str),
+        )
+
+    existing = [dict(r) for r in rows]
+    if not existing:
+        return {"error": "No raw return data for today — run a full data refresh first, then retry"}
+
+    n = len(existing)
+    dist_1m = [r["raw_1m"] for r in existing if r["raw_1m"] is not None]
+    dist_3m = [r["raw_3m"] for r in existing if r["raw_3m"] is not None]
+    dist_6m = [r["raw_6m"] for r in existing if r["raw_6m"] is not None]
+
+    def _pct_rank(val: Optional[float], dist: list[float]) -> float:
+        if val is None or not dist:
+            return 50.0
+        return round(sum(1 for x in dist if x < val) / len(dist) * 100, 1)
+
+    r1 = raw_1m or 0.0
+    r3 = raw_3m or r1
+    r6 = raw_6m or r1
+
+    rank_1m = _pct_rank(r1, dist_1m)
+    rank_3m = _pct_rank(r3, dist_3m)
+    rank_6m = _pct_rank(r6, dist_6m)
+    composite = round(0.40 * rank_1m + 0.30 * rank_3m + 0.30 * rank_6m, 1)
+
+    # Rank position vs universe
+    async with pool.acquire() as conn:
+        existing_composites = [r["rs_composite"] async for r in await conn.cursor(
+            "SELECT rs_composite FROM mi_stock_scores WHERE score_date = $1 AND rs_composite IS NOT NULL",
+            _to_date(today_str),
+        )]
+    rank_pos = sum(1 for c in existing_composites if c > composite) + 1
+
+    sma_10 = _compute_sma(closes, 10)
+    sma_20 = _compute_sma(closes, 20)
+    sma_50 = _compute_sma(closes, 50)
+
+    db_record = {
+        "ticker": ticker,
+        "score_date": today,
+        "rs_1m": rank_1m,
+        "rs_3m": rank_3m,
+        "rs_6m": rank_6m,
+        "rs_composite": composite,
+        "rs_rank": rank_pos,
+        "sector": None,
+        "adv_20": None,
+        "market_cap": None,
+        "sma_10": sma_10,
+        "sma_20": sma_20,
+        "sma_50": sma_50,
+        "close": current,
+        "raw_1m": round(r1, 2),
+        "raw_3m": round(r3, 2),
+        "raw_6m": round(r6, 2),
+    }
+    await upsert_stock_score(db_record)
+    await upsert_tracked_stock(ticker, today, composite)
+
+    ma_lines = []
+    for sma, label in [(sma_10, "10MA"), (sma_20, "20MA"), (sma_50, "50MA")]:
+        if sma:
+            pct = (current / sma - 1) * 100
+            sign = "+" if pct >= 0 else ""
+            ma_lines.append(f"{label} {sign}{pct:.1f}%")
+
+    logger.info(f"Single-ticker score: {ticker} composite={composite} rank=#{rank_pos}/{n+1}")
+    return {
+        "ticker": ticker,
+        "rs_composite": composite,
+        "rs_rank": rank_pos,
+        "universe_size": n + 1,
+        "rs_1m": rank_1m,
+        "rs_3m": rank_3m,
+        "rs_6m": rank_6m,
+        "raw_1m": round(r1, 2),
+        "raw_3m": round(r3, 2),
+        "raw_6m": round(r6, 2),
+        "close": current,
+        "sma_10": sma_10,
+        "sma_20": sma_20,
+        "sma_50": sma_50,
+        "ma_context": ma_lines,
+    }
 
 
 async def get_top_rs_by_sector(score_date: str, top_n: int = 5) -> dict[str, list[dict]]:

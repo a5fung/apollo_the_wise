@@ -30,7 +30,7 @@ from agents.market_intelligence.db import (
 )
 from agents.market_intelligence.briefing import send_morning_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
-from agents.market_intelligence.rs_engine import run_rs_engine
+from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
 from agents.market_intelligence.theme_engine import run_theme_engine, get_today_themes
 from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler
@@ -135,6 +135,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
             return await self._handle_pullback_query(request)
 
+        if any(k in task for k in ["score ", "rs score", "rs for", "rank "]):
+            return await self._handle_single_score(request)
+
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
 
@@ -233,6 +236,39 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  {t['description'][:200]}")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
+
+    async def _handle_single_score(self, request: AgentRequest) -> AgentResponse:
+        """Score a single ticker on demand against today's distribution."""
+        import re
+        # Extract ticker from task — look for uppercase word 2-5 chars
+        tickers = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        # Filter out common non-ticker words
+        skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW"}
+        tickers = [t for t in tickers if t not in skip]
+
+        if not tickers:
+            return self._ok(request, result="Please specify a ticker — e.g. 'score AXTI'")
+
+        ticker = tickers[0]
+        result = await score_single_ticker(ticker)
+
+        if "error" in result:
+            return self._ok(request, result=f"Could not score `{ticker}`: {result['error']}")
+
+        rank = result["rs_rank"]
+        n = result["universe_size"]
+        composite = result["rs_composite"]
+        close = result["close"]
+        ma_str = "  ".join(result.get("ma_context", [])) or "No MA data"
+
+        text = (
+            f"`{ticker}` — RS Score\n"
+            f"  Composite: *{composite:.0f}*  (#{rank} of {n})\n"
+            f"  1M: {result['rs_1m']:.0f}  3M: {result['rs_3m']:.0f}  6M: {result['rs_6m']:.0f}\n"
+            f"  Raw: 1M {result['raw_1m']:+.1f}%  3M {result['raw_3m']:+.1f}%  6M {result['raw_6m']:+.1f}%\n"
+            f"  Close: {close:.2f}  |  {ma_str}"
+        )
+        return self._ok(request, result=text, data=result)
 
     async def _handle_pullback_query(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")
