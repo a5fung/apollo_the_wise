@@ -259,6 +259,13 @@ class Apollo:
             "call_market_agent": AgentName.MARKET_INTELLIGENCE,
         }
 
+        if tool_name == "teach_market_agent":
+            return await self._teach_market_agent(
+                user_id=user_id,
+                conversation_id=conversation_id,
+                tool_input=tool_input,
+            )
+
         if tool_name in agent_tool_map:
             agent_name = agent_tool_map[tool_name]
             return await self._call_sub_agent(
@@ -317,6 +324,59 @@ class Apollo:
             )
 
         return response.result or f"Task completed by {agent.value} agent."
+
+    async def _teach_market_agent(
+        self,
+        user_id: int,
+        conversation_id: str,
+        tool_input: dict[str, Any],
+    ) -> str:
+        """Call /teach on the market agent, then optionally store an observation as memory."""
+        from shared.registry import get_agent_url
+        import httpx
+
+        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
+        if not url:
+            return "Market Intelligence Agent is not running."
+
+        payload = {
+            "tickers": tool_input.get("tickers", []),
+            "theme_name": tool_input.get("theme_name", ""),
+            "theme_thesis": tool_input.get("theme_thesis", ""),
+            "observation": tool_input.get("observation", ""),
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(
+                    f"{url}/teach",
+                    json=payload,
+                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
+                )
+                r.raise_for_status()
+                data = r.json()
+        except Exception as e:
+            return f"Failed to reach market agent: {e}"
+
+        # Store observation as memory if provided
+        observation = tool_input.get("observation", "")
+        if observation:
+            entry = MemoryEntry(
+                user_id=user_id,
+                category="market_observation",
+                content=observation,
+            )
+            await save_memory(entry)
+
+        await log_action(
+            user_id=user_id,
+            agent=AgentName.ORCHESTRATOR,
+            action="teach_market_agent",
+            details={"tickers": payload["tickers"], "theme": payload["theme_name"]},
+        )
+
+        parts = [v for v in [data.get("tracked"), data.get("theme")] if v]
+        return "\n".join(parts) if parts else "Done."
 
     async def _store_memory(
         self,

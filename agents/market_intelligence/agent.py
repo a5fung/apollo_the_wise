@@ -16,6 +16,7 @@ from typing import Any
 
 import anthropic
 from fastapi import BackgroundTasks, Depends
+from pydantic import BaseModel
 
 from agents.base import BaseAgent, verify_internal_secret
 from agents.market_intelligence.db import (
@@ -23,6 +24,8 @@ from agents.market_intelligence.db import (
     get_today_ep_alerts,
     get_rs_leaders,
     get_latest_regime,
+    bulk_track_stocks,
+    seed_theme,
 )
 from agents.market_intelligence.briefing import send_morning_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
@@ -35,6 +38,13 @@ from shared.models import AgentName, AgentRequest, AgentResponse
 logger = logging.getLogger(__name__)
 
 MARKET_AGENT_MODEL = "claude-haiku-4-5-20251001"
+
+
+class TeachRequest(BaseModel):
+    tickers: list[str] = []
+    theme_name: str = ""
+    theme_thesis: str = ""
+    observation: str = ""
 
 
 class MarketIntelligenceAgent(BaseAgent):
@@ -65,6 +75,37 @@ class MarketIntelligenceAgent(BaseAgent):
                 await run_theme_engine()
             background.add_task(_refresh)
             return {"status": "data refresh queued"}
+
+        @self.app.post("/teach")
+        async def teach(
+            body: TeachRequest,
+            _: str = Depends(verify_internal_secret),
+        ):
+            today = date.today()
+            results: dict[str, str] = {}
+
+            if body.tickers:
+                tickers_upper = [t.upper() for t in body.tickers]
+                count = await bulk_track_stocks(tickers_upper, today)
+                results["tracked"] = (
+                    f"Added {count} ticker(s) to RS tracking: {', '.join(tickers_upper)}. "
+                    f"Scores will appear after next data refresh."
+                )
+                logger.info(f"Teach: tracked {tickers_upper}")
+
+            if body.theme_name:
+                tickers_for_theme = [t.upper() for t in body.tickers]
+                await seed_theme(body.theme_name, body.theme_thesis, tickers_for_theme, today)
+                results["theme"] = (
+                    f"Seeded theme '{body.theme_name}' with {len(tickers_for_theme)} stock(s). "
+                    f"Will be scored on next data refresh."
+                )
+                logger.info(f"Teach: seeded theme '{body.theme_name}' — {tickers_for_theme}")
+
+            if not results:
+                return {"status": "nothing to do — provide tickers or theme_name"}
+
+            return {"status": "ok", **results}
 
         @self.app.post("/ep/scan")
         async def manual_ep_scan(_: str = Depends(verify_internal_secret)):

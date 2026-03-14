@@ -258,6 +258,42 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "teach_market_agent",
+            "description": (
+                "Teach the Market Intelligence Agent about stocks or themes you've spotted. "
+                "Use this after gathering enough information from the user to: "
+                "(1) add specific tickers to RS tracking so they're scored nightly, "
+                "(2) seed a named theme with its constituent stocks and thesis. "
+                "Before calling this tool, ask the user: which stocks, is it a new theme or "
+                "extension of an existing one, and a brief thesis for why it's working. "
+                "After calling, tell the user their stocks are now tracked and offer to "
+                "trigger a data refresh to score them immediately."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "tickers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Ticker symbols to add to RS tracking (e.g. ['AXTI', 'AAOI', 'IIVI'])",
+                    },
+                    "theme_name": {
+                        "type": "string",
+                        "description": "Name for the theme to seed (e.g. 'Photonics & Laser Components'). Leave empty to just add tickers without a theme.",
+                    },
+                    "theme_thesis": {
+                        "type": "string",
+                        "description": "2-3 sentence thesis explaining what's driving this theme and why now.",
+                    },
+                    "observation": {
+                        "type": "string",
+                        "description": "Free-form observation from the user to store as a market memory.",
+                    },
+                },
+                "required": [],
+            },
+        },
+        {
             "name": "store_memory",
             "description": (
                 "Store an important fact or preference about the user for future reference. "

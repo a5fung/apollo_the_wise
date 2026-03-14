@@ -259,6 +259,50 @@ async def get_active_themes() -> list[dict]:
         return [dict(r) for r in rows]
 
 
+async def bulk_track_stocks(tickers: list[str], today: "date") -> int:
+    """Add tickers to tracked stocks immediately (bypasses universe cap). Returns count upserted."""
+    pool = await get_pool()
+    added = 0
+    async with pool.acquire() as conn:
+        for ticker in tickers:
+            await conn.execute("""
+                INSERT INTO mi_tracked_stocks (ticker, first_seen, last_seen, peak_rs_score, consecutive_weak_days, active)
+                VALUES ($1, $2, $2, 0, 0, TRUE)
+                ON CONFLICT (ticker) DO UPDATE SET
+                    last_seen = $2,
+                    consecutive_weak_days = 0,
+                    active = TRUE
+            """, ticker.upper(), today)
+            added += 1
+    return added
+
+
+async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") -> None:
+    """
+    Manually seed a theme into mi_themes.
+    Score starts at 0 — will be properly scored on next data refresh.
+    If theme already exists today, merges tickers.
+    """
+    pool = await get_pool()
+    tickers_upper = [t.upper() for t in tickers]
+    async with pool.acquire() as conn:
+        existing = await conn.fetchrow(
+            "SELECT id, tickers FROM mi_themes WHERE name = $1 AND theme_date = $2",
+            name, today,
+        )
+        if existing:
+            merged = list(set(list(existing["tickers"] or [])) | set(tickers_upper))
+            await conn.execute(
+                "UPDATE mi_themes SET tickers = $1, description = COALESCE(NULLIF($2,''), description) WHERE id = $3",
+                merged, thesis, existing["id"],
+            )
+        else:
+            await conn.execute("""
+                INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
+                VALUES ($1, $2, 'Nascent', 0, $3, $4)
+            """, today, name, thesis, tickers_upper)
+
+
 async def get_adv_map(d: "str | date") -> dict[str, float]:
     """Get stored ADV (avg daily volume) for all tickers as of a date."""
     pool = await get_pool()
