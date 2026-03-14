@@ -28,6 +28,7 @@ from agents.market_intelligence.briefing import send_morning_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
+from agents.market_intelligence.theme_engine import run_theme_engine, get_today_themes
 from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler
 from shared.models import AgentName, AgentRequest, AgentResponse
 
@@ -61,6 +62,7 @@ class MarketIntelligenceAgent(BaseAgent):
             async def _refresh():
                 await run_regime_engine()
                 await run_rs_engine()
+                await run_theme_engine()
             background.add_task(_refresh)
             return {"status": "data refresh queued"}
 
@@ -166,16 +168,26 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=briefing_text)
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:
-        return self._ok(
-            request,
-            result=(
-                "Theme clustering engine is in Phase 2 (not yet built).\n\n"
-                "For now, check RS leaders by sector above — sector groupings are a "
-                "proxy for theme strength. Strong sectors with multiple RS leaders = "
-                "an active theme.\n\n"
-                "Theme engine (Marios Stamatoudis methodology) is next milestone."
-            ),
-        )
+        today_str = date.today().strftime("%Y-%m-%d")
+        themes = await get_today_themes(today_str)
+
+        if not themes:
+            return self._ok(
+                request,
+                result="No theme data yet — themes are generated during the nightly data pull (6 AM ET) or via /data/refresh.",
+            )
+
+        lines = [f"Active themes ({today_str}):"]
+        stage_emoji = {"Nascent": "🌱", "Accelerating": "⚡", "Mainstream": "📊", "Fading": "🔻"}
+        for t in themes:
+            emoji = stage_emoji.get(t.get("stage", ""), "")
+            tickers = ", ".join(t.get("tickers") or [])
+            lines.append(f"\n{emoji} *{t['name']}* — {t.get('stage')} (score {t.get('score', 0):.0f})")
+            lines.append(f"  Stocks: {tickers}")
+            if t.get("description"):
+                lines.append(f"  {t['description'][:200]}")
+
+        return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")

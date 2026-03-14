@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 
 from agents.market_intelligence.db import get_today_ep_alerts, get_rs_leaders, get_latest_regime
+from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,13 @@ CATALYST_EMOJI = {
     "game_changer": "💎",
     "strong": "✅",
     "routine": "📋",
+}
+
+STAGE_EMOJI = {
+    "Nascent": "🌱",
+    "Accelerating": "⚡",
+    "Mainstream": "📊",
+    "Fading": "🔻",
 }
 
 
@@ -168,10 +176,36 @@ def _format_rs_section(rs_leaders: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _format_theme_section(themes: list[dict]) -> str:
+    if not themes:
+        return "*4. THEME HEALTH* — No theme data yet (run nightly engine first)"
+
+    active = [t for t in themes if t.get("stage") != "Fading"]
+    fading = [t for t in themes if t.get("stage") == "Fading"]
+
+    lines = [f"*4. THEME HEALTH* — {len(themes)} theme(s) tracked"]
+
+    for t in active[:5]:
+        stage = t.get("stage", "")
+        emoji = STAGE_EMOJI.get(stage, "")
+        tickers_str = ", ".join(t.get("tickers") or [])
+        score = t.get("score", 0)
+        lines.append(f"  {emoji} *{t['name']}* ({score:.0f}) — {tickers_str}")
+        if t.get("description"):
+            lines.append(f"    _{t['description'][:120]}_")
+
+    if fading:
+        fading_names = ", ".join(t["name"] for t in fading)
+        lines.append(f"  🔻 Fading: {fading_names}")
+
+    return "\n".join(lines)
+
+
 def _format_briefing(
     regime: dict,
     ep_alerts: list[dict],
     rs_leaders: list[dict],
+    themes: list[dict],
     briefing_date: str,
 ) -> str:
     sections = [
@@ -183,7 +217,7 @@ def _format_briefing(
         "",
         _format_rs_section(rs_leaders),
         "",
-        "*4. THEME HEALTH* — _Coming in Phase 2_",
+        _format_theme_section(themes),
         "",
         "_Pull up charts. Apply your judgment. Trade._",
     ]
@@ -233,11 +267,13 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
     ep_alerts = await get_today_ep_alerts(today_str)
     rs_leaders = await get_rs_leaders(today_str, limit=30)
+    themes = await get_today_themes(today_str)
 
     text = _format_briefing(
         regime=regime,
         ep_alerts=ep_alerts,
         rs_leaders=rs_leaders,
+        themes=themes,
         briefing_date=today_str,
     )
 

@@ -17,6 +17,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
+from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.briefing import send_morning_briefing, send_ep_alert
 
@@ -40,6 +41,12 @@ async def _nightly_data_pull():
         logger.info(f"RS engine: scored {rs_result.get('stocks_scored')} stocks")
     except Exception as e:
         logger.error(f"RS engine failed: {e}")
+
+    try:
+        themes = await run_theme_engine()
+        logger.info(f"Theme engine: {len(themes)} themes identified")
+    except Exception as e:
+        logger.error(f"Theme engine failed: {e}")
 
     logger.info("Nightly data pull complete")
 
