@@ -78,22 +78,29 @@ async def call_agent(
         )
 
 
-async def health_check_all_agents() -> dict[str, bool]:
-    """Ping all configured agents and return their health status."""
+async def health_check_all_agents() -> dict[str, tuple[bool, str]]:
+    """Ping all configured agents and return (is_healthy, reason) for each."""
     from shared.registry import get_active_agents
 
-    results: dict[str, bool] = {}
+    results: dict[str, tuple[bool, str]] = {}
     for agent_name in get_active_agents():
         url = get_agent_url(agent_name)
         if not url:
-            results[agent_name] = False
+            results[agent_name] = (False, "Not configured in integrations.yaml")
             continue
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 r = await client.get(f"{url}/health", headers=_auth_headers())
-                results[agent_name] = r.status_code == 200
-        except Exception:
-            results[agent_name] = False
+                if r.status_code == 200:
+                    results[agent_name] = (True, "")
+                else:
+                    results[agent_name] = (False, f"HTTP {r.status_code}")
+        except httpx.ConnectError:
+            results[agent_name] = (False, f"Not running (expected at {url})")
+        except httpx.TimeoutException:
+            results[agent_name] = (False, "Timed out")
+        except Exception as e:
+            results[agent_name] = (False, str(e))
     return results
 
 
@@ -217,6 +224,32 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
                     "context": {
                         "type": "object",
                         "description": "Trip details (dates, origin, destination, preferences, budget, etc.)",
+                    },
+                },
+                "required": ["task"],
+            },
+        },
+        {
+            "name": "call_market_agent",
+            "description": (
+                "Delegate a task to the Market Intelligence Agent. Use for: "
+                "EP (Episodic Pivot) alerts — gap-up stocks with game-changing catalysts, "
+                "market regime (bull/choppy/correcting/crisis), "
+                "relative strength leaders, top momentum stocks by sector, "
+                "morning market briefing, theme health. "
+                "Examples: 'any EPs today?', 'what's the market regime?', "
+                "'top RS stocks this week', 'send morning briefing'."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "Market intelligence query",
+                    },
+                    "context": {
+                        "type": "object",
+                        "description": "Optional context (ticker, date range, sector, etc.)",
                     },
                 },
                 "required": ["task"],

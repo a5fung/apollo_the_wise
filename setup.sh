@@ -108,11 +108,11 @@ log "Chromium installed"
 # ── Start infrastructure ───────────────────────────────────────────────────────
 
 header "Starting Postgres and Redis..."
-(cd docker && docker compose up -d postgres redis)
+(cd docker && docker compose --env-file ../.env up -d postgres redis)
 
 info "Waiting for containers to be healthy..."
 for i in {1..30}; do
-    STATUS=$(cd docker && docker compose ps --format json 2>/dev/null | python -c "
+    STATUS=$(cd docker && docker compose --env-file ../.env ps --format json 2>/dev/null | python -c "
 import sys, json
 lines = sys.stdin.read().strip().splitlines()
 statuses = [json.loads(l).get('Health','') for l in lines if l]

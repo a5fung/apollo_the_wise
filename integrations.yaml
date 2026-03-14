@@ -53,17 +53,20 @@ travel:
 # Override here if running agents on non-default ports.
 agents:
   finance:
-    url: http://finance-agent:8001
+    url: http://localhost:8001
     enabled: true
   calendar:
-    url: http://calendar-agent:8002
+    url: http://localhost:8002
     enabled: true
   research:
-    url: http://research-agent:8003
+    url: http://localhost:8003
     enabled: true
   browser:
-    url: http://browser-agent:8004
+    url: http://localhost:8004
     enabled: true
   travel:
-    url: http://travel-agent:8005
+    url: http://localhost:8005
+    enabled: true
+  market_intelligence:
+    url: http://localhost:8006
     enabled: true

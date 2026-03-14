@@ -20,6 +20,7 @@ class AgentName(str, Enum):
     RESEARCH = "research"
     BROWSER = "browser"
     TRAVEL = "travel"
+    MARKET_INTELLIGENCE = "market_intelligence"
 
 
 class ConfirmationStatus(str, Enum):

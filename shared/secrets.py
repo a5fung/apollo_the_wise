@@ -128,6 +128,19 @@ class Secrets:
     def tavily_api_key(self) -> Optional[str]:
         return _optional("TAVILY_API_KEY")
 
+    # Market Intelligence
+    @property
+    def polygon_api_key(self) -> Optional[str]:
+        return _optional("POLYGON_API_KEY")
+
+    @property
+    def fmp_api_key(self) -> Optional[str]:
+        return _optional("FMP_API_KEY")
+
+    @property
+    def gemini_api_key(self) -> Optional[str]:
+        return _optional("GEMINI_API_KEY")
+
     # Misc
     @property
     def log_level(self) -> str:

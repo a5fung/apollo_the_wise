@@ -171,7 +171,7 @@ async def _handle_tradingview_alert(alert: TradingViewAlert) -> None:
             await _telegram_app.bot.send_message(
                 chat_id=user_id,
                 text=notification,
-                parse_mode="MarkdownV2",
+                parse_mode="Markdown",
             )
         except Exception as e:
             logger.error(f"Failed to send TV alert to {user_id}: {e}")

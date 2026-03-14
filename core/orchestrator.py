@@ -256,6 +256,7 @@ class Apollo:
             "call_research_agent": AgentName.RESEARCH,
             "call_browser_agent": AgentName.BROWSER,
             "call_travel_agent": AgentName.TRAVEL,
+            "call_market_agent": AgentName.MARKET_INTELLIGENCE,
         }
 
         if tool_name in agent_tool_map:

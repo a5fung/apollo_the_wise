@@ -22,11 +22,11 @@ err()  { echo -e "${RED}✘ $*${NC}"; exit 1; }
 docker info >/dev/null 2>&1 || err "Docker is not running. Open Docker Desktop and try again."
 
 info "Starting Postgres and Redis..."
-(cd docker && docker compose up -d postgres redis)
+(cd docker && docker compose --env-file ../.env up -d postgres redis)
 
 info "Waiting for containers..."
 for i in {1..20}; do
-    STATUS=$(cd docker && docker compose ps --format json 2>/dev/null | python -c "
+    STATUS=$(cd docker && docker compose --env-file ../.env ps --format json 2>/dev/null | python -c "
 import sys, json
 lines = sys.stdin.read().strip().splitlines()
 statuses = [json.loads(l).get('Health','') for l in lines if l]
@@ -45,4 +45,4 @@ echo ""
 echo -e "${GREEN}${BOLD}Starting Apollo...${NC} (Ctrl+C to stop)"
 echo ""
 
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload

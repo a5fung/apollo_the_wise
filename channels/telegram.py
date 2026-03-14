@@ -374,37 +374,77 @@ class TelegramChannel:
         from core.router import health_check_all_agents
         agent_health = await health_check_all_agents()
 
-        # Check DB + Redis
-        db_ok = await self._check_db()
-        redis_ok = await self._check_redis()
+        # Check DB + Redis + Claude API
+        db_ok, db_err = await self._check_db()
+        redis_ok, redis_err = await self._check_redis()
+        claude_ok, claude_err = await self._check_claude()
 
         lines = ["*System Status*\n"]
-        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL")
-        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis")
-        lines.append("")
-        for agent_name, is_healthy in agent_health.items():
-            lines.append(f"{'🟢' if is_healthy else '🔴'} {agent_name}")
+
+        # Infrastructure
+        lines.append("*Infrastructure*")
+        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL — {'storing memories & audit log' if db_ok else f'down: {db_err} — is Docker running?'}")
+        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis — {'caching & confirmations' if redis_ok else f'down: {redis_err} — is Docker running?'}")
+        lines.append(f"{'🟢' if claude_ok else '🔴'} Claude API — {'responding' if claude_ok else f'{claude_err}'}")
+
+        # Agents
+        lines.append("\n*Agents*")
+        agent_hints = {
+            "finance": "start with: uvicorn agents.finance.agent:app --port 8001",
+            "calendar": "start with: uvicorn agents.calendar.agent:app --port 8002",
+            "research": "start with: uvicorn agents.research.agent:app --port 8003",
+            "browser": "start with: uvicorn agents.browser.agent:app --port 8004",
+            "travel": "start with: uvicorn agents.travel.agent:app --port 8005",
+        }
+        for agent_name, (is_healthy, reason) in agent_health.items():
+            if is_healthy:
+                lines.append(f"🟢 {agent_name.capitalize()} Agent — running")
+            else:
+                hint = agent_hints.get(agent_name, "")
+                lines.append(f"🔴 {agent_name.capitalize()} Agent — {reason}" + (f"\n    ↳ {hint}" if hint else ""))
 
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
-    async def _check_db(self) -> bool:
+    async def _check_db(self) -> tuple[bool, str]:
         try:
             from core.memory import get_pool
             pool = await get_pool()
             async with pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
-            return True
-        except Exception:
-            return False
+            return True, ""
+        except Exception as e:
+            return False, str(e)[:120]
 
-    async def _check_redis(self) -> bool:
+    async def _check_redis(self) -> tuple[bool, str]:
         try:
             from core.confirmations import get_redis
             r = await get_redis()
             await r.ping()
-            return True
-        except Exception:
-            return False
+            return True, ""
+        except Exception as e:
+            return False, str(e)[:120]
+
+    async def _check_claude(self) -> tuple[bool, str]:
+        try:
+            import anthropic
+            from shared.secrets import get_secrets
+            client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
+            client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=5,
+                messages=[{"role": "user", "content": "ping"}],
+            )
+            return True, ""
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529:
+                return False, "Overloaded — Anthropic is having an outage, check status.anthropic.com"
+            if e.status_code == 401:
+                return False, "Invalid API key — check ANTHROPIC_API_KEY in .env"
+            if e.status_code == 400 and "credit" in str(e).lower():
+                return False, "Out of credits — add credits at console.anthropic.com"
+            return False, f"API error {e.status_code}: {str(e)[:100]}"
+        except Exception as e:
+            return False, str(e)[:120]
 
     async def _handle_memory(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

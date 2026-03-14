@@ -71,7 +71,7 @@ class CalendarAgent(BaseAgent):
         task = request.task.lower()
         context = request.context
 
-        if any(k in task for k in ["list", "show", "what", "today", "tomorrow", "schedule", "upcoming"]):
+        if any(k in task for k in ["list", "show", "what", "today", "tomorrow", "schedule", "upcoming", "find", "search", "when", "next", "appointment", "meeting", "event"]):
             return await self._handle_list_events(request)
 
         if any(k in task for k in ["create", "add", "schedule", "book", "set up"]):
@@ -95,7 +95,7 @@ class CalendarAgent(BaseAgent):
 
         # Determine time range from context or natural language
         start = _parse_datetime(context.get("start")) or now
-        end = _parse_datetime(context.get("end")) or (now + timedelta(days=7))
+        end = _parse_datetime(context.get("end")) or (now + timedelta(days=90))
 
         if not self._providers:
             return self._error(request, "No calendar providers configured.")
