@@ -50,12 +50,35 @@ STAGE_EMOJI = {
 }
 
 
+def _fmt_sign(v: float) -> str:
+    return f"+{v:.1f}%" if v >= 0 else f"{v:.1f}%"
+
+
+def _vix_context(v: float) -> str:
+    if v >= 35:
+        return "crisis fear 🚨"
+    elif v >= 25:
+        return "elevated fear, risk-off"
+    elif v >= 20:
+        return "above-avg vol, caution"
+    else:
+        return "low fear, risk-on ✓"
+
+
+def _ep_threshold_context(thresh: int) -> str:
+    if thresh >= 90:
+        return f"≥{thresh} — crisis, very selective"
+    elif thresh >= 85:
+        return f"≥{thresh} — correcting, exceptional only"
+    elif thresh >= 80:
+        return f"≥{thresh} — choppy, raise your bar"
+    else:
+        return f"≥{thresh} — standard"
+
+
 def _format_regime_section(regime: dict) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
-    description = regime.get("description", "No data.")
-
-    lines = [f"*1. MARKET CONDITION* {emoji} {label.upper()}"]
 
     spy_vs_50 = regime.get("spy_vs_50ma")
     spy_vs_200 = regime.get("spy_vs_200ma")
@@ -65,45 +88,31 @@ def _format_regime_section(regime: dict) -> str:
     bo_bd = regime.get("bo_bd_ratio_5d")
     ep_thresh = regime.get("ep_threshold", 70)
 
-    def _vix_context(v: float) -> str:
-        if v >= 35:
-            return "crisis fear"
-        elif v >= 25:
-            return "elevated fear, risk-off"
-        elif v >= 20:
-            return "above-average vol, caution"
-        else:
-            return "low fear, risk-on"
+    lines = [f"*1. MARKET CONDITION* {emoji} *{label.upper()}*"]
 
-    def _ep_threshold_context(thresh: int) -> str:
-        if thresh >= 90:
-            return f"score ≥{thresh} — crisis mode, stay very selective"
-        elif thresh >= 85:
-            return f"score ≥{thresh} — correcting, exceptional setups only"
-        elif thresh >= 80:
-            return f"score ≥{thresh} — choppy, raise your bar"
-        else:
-            return f"score ≥{thresh} — standard criteria"
-
-    indicators = []
+    # MAs on one line
+    ma_parts = []
     if spy_vs_50 is not None:
-        sign = "+" if spy_vs_50 >= 0 else ""
-        indicators.append(f"SPY vs 50MA: {sign}{spy_vs_50:.1f}%")
+        ma_parts.append(f"SPY/50MA {_fmt_sign(spy_vs_50)}")
     if qqq_vs_50 is not None:
-        sign = "+" if qqq_vs_50 >= 0 else ""
-        indicators.append(f"QQQ vs 50MA: {sign}{qqq_vs_50:.1f}%")
+        ma_parts.append(f"QQQ/50MA {_fmt_sign(qqq_vs_50)}")
     if spy_vs_200 is not None:
-        sign = "+" if spy_vs_200 >= 0 else ""
-        indicators.append(f"SPY vs 200MA: {sign}{spy_vs_200:.1f}%")
-    if vix is not None:
-        indicators.append(f"VIX: {vix:.1f} ({_vix_context(vix)})")
-    if breadth is not None:
-        indicators.append(f"Breadth: {breadth:.0f}% above 40MA")
-    if bo_bd is not None:
-        indicators.append(f"B/O:B/D: {bo_bd:.1f}x")
+        ma_parts.append(f"SPY/200MA {_fmt_sign(spy_vs_200)}")
+    if ma_parts:
+        lines.append("  " + "  |  ".join(ma_parts))
 
-    if indicators:
-        lines.append("  " + " | ".join(indicators))
+    # VIX on its own line
+    if vix is not None:
+        lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
+
+    # Breadth + B/O:B/D on one line
+    mkt_parts = []
+    if breadth is not None:
+        mkt_parts.append(f"Breadth {breadth:.0f}% above 40MA")
+    if bo_bd is not None:
+        mkt_parts.append(f"B/O:B/D {bo_bd:.1f}x")
+    if mkt_parts:
+        lines.append("  " + "  |  ".join(mkt_parts))
 
     lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")
     return "\n".join(lines)
@@ -122,11 +131,11 @@ def _format_ep_section(ep_alerts: list[dict]) -> str:
         tier_e = TIER_EMOJI.get("HIGH", "")
         cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
         gem = " ✓Gemini" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
-        conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
+        conf = f" {ep['confidence_multiplier']:.1f}x conf" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
         lines.append(
-            f"  {tier_e} *{ep['ticker']}* gap {ep['gap_pct']:.1f}% "
+            f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
             f"rv {ep.get('rel_volume') or '?'}x "
-            f"score {ep['ep_score']:.0f} {cat_e}{gem}{conf}"
+            f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
         )
         if ep.get("claude_analysis"):
             lines.append(f"    _{ep['claude_analysis'][:120]}_")
@@ -134,8 +143,8 @@ def _format_ep_section(ep_alerts: list[dict]) -> str:
     for ep in moderate:
         tier_e = TIER_EMOJI.get("MODERATE", "")
         lines.append(
-            f"  {tier_e} {ep['ticker']} gap {ep['gap_pct']:.1f}% "
-            f"score {ep['ep_score']:.0f} (MODERATE — verify catalyst)"
+            f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
+            f"score {ep['ep_score']:.0f} — verify catalyst"
         )
 
     return "\n".join(lines)
@@ -160,18 +169,23 @@ def _format_rs_section(rs_leaders: list[dict]) -> str:
     if by_sector:
         for sector, stocks in list(by_sector.items())[:5]:
             top = stocks[:3]
-            tickers_str = ", ".join(
-                f"{s['ticker']} ({s.get('rs_composite', 0):.0f})"
+            tickers_str = "  ".join(
+                f"`{s['ticker']}` {s.get('rs_composite', 0):.0f}"
                 for s in top
             )
-            lines.append(f"  *{sector}*: {tickers_str}")
+            lines.append(f"  *{sector}*")
+            lines.append(f"  {tickers_str}")
     else:
-        # No sector data — just list top stocks
-        top = no_sector[:10]
+        # No sector data — 3 per row
+        top = no_sector[:15]
+        row = []
         for s in top:
-            rank = s.get("rs_rank", "?")
-            rs = s.get("rs_composite", 0)
-            lines.append(f"  #{rank} {s['ticker']} — RS {rs:.0f}")
+            row.append(f"`{s['ticker']}` {s.get('rs_composite', 0):.0f}")
+            if len(row) == 3:
+                lines.append("  " + "   ".join(row))
+                row = []
+        if row:
+            lines.append("  " + "   ".join(row))
 
     return "\n".join(lines)
 
@@ -188,15 +202,18 @@ def _format_theme_section(themes: list[dict]) -> str:
     for t in active[:5]:
         stage = t.get("stage", "")
         emoji = STAGE_EMOJI.get(stage, "")
-        tickers_str = ", ".join(t.get("tickers") or [])
         score = t.get("score", 0)
-        lines.append(f"  {emoji} *{t['name']}* ({score:.0f}) — {tickers_str}")
+        tickers_str = "  ".join(f"`{tk}`" for tk in (t.get("tickers") or []))
+        lines.append("")  # blank line between themes
+        lines.append(f"{emoji} *{t['name']}*  _{stage}_ · {score:.0f}")
+        lines.append(f"  {tickers_str}")
         if t.get("description"):
-            lines.append(f"    _{t['description'][:120]}_")
+            lines.append(f"  _{t['description'][:140]}_")
 
     if fading:
-        fading_names = ", ".join(t["name"] for t in fading)
-        lines.append(f"  🔻 Fading: {fading_names}")
+        lines.append("")
+        fading_str = "  ".join(f"`{t['name']}`" for t in fading)
+        lines.append(f"🔻 _Fading:_ {fading_str}")
 
     return "\n".join(lines)
 

@@ -2,22 +2,17 @@
 Theme Intelligence Engine — Marios Stamatoudis methodology.
 
 Key insight: themes emerge bottom-up from price action, not top-down from hypothesis.
-Apollo discovers themes by clustering top RS stocks, not by guessing in advance.
 
-Nightly process:
-1. Pull top 40 RS stocks from today's scores
-2. Enrich with sector/industry from yfinance (cached)
-3. Claude clusters into 3-6 named themes with thesis
-4. Tavily confirms/challenges each theme with news
-5. Score: momentum 40% + breadth 30% + news confirmation 30%
-6. Classify lifecycle: Nascent / Accelerating / Mainstream / Fading
-7. Store in mi_themes, surface in morning briefing
+Daily process:
+1. Load existing active themes from DB (re-scored, not re-clustered)
+2. Find top RS stocks NOT covered by active themes
+3. Claude discovers new themes from uncovered stocks (with existing themes as context)
+4. Merge: updated existing themes + new discoveries
+5. Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired
 
-Lifecycle detection:
-- Nascent:       new theme not seen in last 3 days
-- Accelerating:  score up vs yesterday, RS of constituents strengthening
-- Mainstream:    stable high score, 5+ days old, widely known
-- Fading:        score down vs yesterday, RS deteriorating
+Themes persist for weeks. They evolve as constituent stocks change.
+A Fading theme retires after 5 consecutive fading days.
+New sub-themes can always emerge from uncovered RS leaders.
 """
 from __future__ import annotations
 
@@ -31,96 +26,207 @@ from typing import Any
 import anthropic
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_tavily
-from agents.market_intelligence.db import get_pool, get_rs_leaders
+from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes
 
 logger = logging.getLogger(__name__)
 
 THEME_MODEL = "claude-sonnet-4-6"
 
-# Cache yfinance sector lookups to avoid repeated calls
+# Min RS composite for a stock to "count" as strong within a theme
+THEME_RS_MIN = 50.0
+# A theme is "well-covered" if >= this many of its stocks still show strong RS
+THEME_COVERAGE_MIN = 2
+# Retire a theme after this many consecutive fading days
+FADING_RETIRE_AFTER = 5
+# Min uncovered RS leaders needed to attempt new theme discovery
+NEW_THEME_MIN_STOCKS = 3
+
+# Cache yfinance sector lookups
 _sector_cache: dict[str, str] = {}
 
 
 async def _get_sector(ticker: str) -> str:
-    """Get sector for a ticker, cached."""
     if ticker in _sector_cache:
         return _sector_cache[ticker]
-    profile = await get_fmp_profile(ticker)  # uses yfinance under the hood
+    profile = await get_fmp_profile(ticker)
     sector = profile.get("sector") or profile.get("industry") or "Unknown"
     _sector_cache[ticker] = sector
     return sector
 
 
-async def _get_yesterday_themes(today: date) -> list[dict]:
-    """Get themes from yesterday for lifecycle comparison."""
-    yesterday = today - timedelta(days=1)
+async def _get_theme_history(name: str, days: int = 10) -> list[dict]:
+    """Get recent daily snapshots for a named theme."""
     pool = await get_pool()
+    cutoff = date.today() - timedelta(days=days)
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM mi_themes WHERE theme_date = $1",
-            yesterday,
+            "SELECT * FROM mi_themes WHERE name = $1 AND theme_date >= $2 ORDER BY theme_date DESC",
+            name, cutoff,
         )
         return [dict(r) for r in rows]
 
 
+async def _count_consecutive_fading(name: str) -> int:
+    """Count how many consecutive recent days this theme has been Fading."""
+    history = await _get_theme_history(name, days=10)
+    count = 0
+    for row in history:
+        if row["stage"] == "Fading":
+            count += 1
+        else:
+            break
+    return count
+
+
 async def _save_themes(themes: list[dict]) -> None:
+    if not themes:
+        return
+    today = themes[0]["theme_date"]
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Clear today's themes first (idempotent)
         await conn.execute(
-            "DELETE FROM mi_themes WHERE theme_date = $1",
-            themes[0]["theme_date"] if themes else date.today(),
+            "DELETE FROM mi_themes WHERE theme_date = $1", today
         )
         for t in themes:
             await conn.execute("""
                 INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
                 VALUES ($1, $2, $3, $4, $5, $6)
-            """,
-                t["theme_date"], t["name"], t["stage"],
-                t["score"], t["description"], t["tickers"],
-            )
+            """, t["theme_date"], t["name"], t["stage"],
+                t["score"], t["description"], t["tickers"])
 
 
-async def _cluster_themes_claude(stocks: list[dict]) -> list[dict]:
+async def _rescore_existing_theme(
+    theme: dict,
+    stocks_by_ticker: dict[str, dict],
+    today: date,
+) -> dict | None:
     """
-    Use Claude to cluster top RS stocks into named themes.
-    Returns list of {name, thesis, tickers, sectors}
+    Re-score an existing theme using today's RS data.
+    Returns None if the theme should be retired.
+    """
+    name = theme["name"]
+    tickers = list(theme.get("tickers") or [])
+
+    # Check how many constituent stocks still show strong RS today
+    strong_stocks = [t for t in tickers if t in stocks_by_ticker
+                     and stocks_by_ticker[t].get("rs_composite", 0) >= THEME_RS_MIN]
+
+    if len(strong_stocks) < THEME_COVERAGE_MIN:
+        # Theme is losing its RS base — mark Fading
+        fading_days = await _count_consecutive_fading(name)
+        if fading_days >= FADING_RETIRE_AFTER:
+            logger.info(f"Theme '{name}' retired after {fading_days} fading days")
+            return None  # retire it
+
+        return {
+            "theme_date": today,
+            "name": name,
+            "stage": "Fading",
+            "score": max(0.0, (theme.get("score") or 0) * 0.8),
+            "description": theme.get("description", ""),
+            "tickers": tickers,
+        }
+
+    # Momentum score (40%): avg RS composite of strong constituents
+    rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks]
+    momentum = sum(rs_scores) / len(rs_scores)
+    momentum_score = min(momentum / 100 * 40, 40)
+
+    # Breadth score (30%): distinct sectors
+    sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in strong_stocks if t in stocks_by_ticker)
+    breadth_score = min(len(sectors) * 10, 30)
+
+    # News confirmation (30%)
+    news_score = 0
+    try:
+        results = await search_news_tavily(f"{name} stocks sector momentum 2026")
+        if results:
+            news_score = min(len(results) * 6, 30)
+    except Exception:
+        pass
+
+    total_score = round(momentum_score + breadth_score + news_score, 1)
+    prev_score = theme.get("score") or 0
+
+    # Lifecycle
+    history = await _get_theme_history(name, days=7)
+    age_days = len(history)
+    delta = total_score - prev_score
+
+    if delta > 3:
+        stage = "Accelerating"
+    elif delta < -5:
+        stage = "Fading"
+    elif age_days >= 5 and total_score >= 50:
+        stage = "Mainstream"
+    else:
+        stage = theme.get("stage", "Nascent")
+        if stage == "Fading" and delta >= 0:
+            stage = "Accelerating"  # recovering
+
+    return {
+        "theme_date": today,
+        "name": name,
+        "stage": stage,
+        "score": total_score,
+        "description": theme.get("description", ""),
+        "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
+    }
+
+
+async def _discover_new_themes(
+    uncovered_stocks: list[dict],
+    existing_themes: list[dict],
+) -> list[dict]:
+    """
+    Ask Claude to identify new themes from uncovered RS leaders.
+    Claude is shown existing themes for context — it can also suggest
+    adding stocks to existing themes or splitting themes.
     """
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
     stock_lines = "\n".join(
         f"- {s['ticker']} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')})"
-        for s in stocks
+        for s in uncovered_stocks
     )
+
+    existing_block = ""
+    if existing_themes:
+        existing_lines = "\n".join(
+            f"- {t['name']} [{t.get('stage')}] (score {t.get('score', 0):.0f}): {', '.join(t.get('tickers') or [])}"
+            for t in existing_themes
+        )
+        existing_block = f"\nEXISTING ACTIVE THEMES (for context — do NOT re-create these):\n{existing_lines}\n"
 
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
-Below are today's top relative strength stocks, ranked by momentum (1M/3M/6M composite).
-Themes emerge BOTTOM-UP from price action — you're discovering what the market is rotating into,
-not imposing a top-down hypothesis.
-
-TOP RS STOCKS TODAY:
+Themes emerge BOTTOM-UP from price action. You're discovering what the market is rotating into.
+{existing_block}
+NEW RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
-Task: Identify 3-6 distinct investment themes from these stocks.
+Task: Identify NEW distinct investment themes from the uncovered stocks above.
+Do NOT recreate or rename existing themes — only identify genuinely new emerging groups.
 
 Rules:
-- A theme needs at least 2 stocks. Single-stock moves are not themes.
-- Name themes specifically (not "Technology" — instead "AI Inference Infrastructure" or "Edge CDN Acceleration")
-- Each stock should belong to at most one theme
-- Some stocks may not fit any theme — that's fine, leave them out
-- Focus on what the MARKET is pricing in, based on which stocks are moving together
+- A theme needs at least 2 stocks from the uncovered list
+- Name themes specifically ("Edge AI Inference" not "Technology")
+- Each stock should belong to at most one new theme
+- Some stocks may not fit any theme — leave them out
+- Focus on what the market is pricing in RIGHT NOW based on which stocks move together
 
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {{
   "themes": [
     {{
       "name": "Theme Name",
       "thesis": "2-3 sentence explanation of what's driving this theme and why now.",
-      "tickers": ["TICK1", "TICK2", "TICK3"]
+      "tickers": ["TICK1", "TICK2"]
     }}
   ]
-}}"""
+}}
+
+If no clear new themes emerge, return {{"themes": []}}"""
 
     try:
         response = client.messages.create(
@@ -136,34 +242,25 @@ Return ONLY valid JSON in this exact format:
         data = json.loads(text)
         return data.get("themes", [])
     except Exception as e:
-        logger.error(f"Claude theme clustering failed: {e}")
+        logger.error(f"Claude new theme discovery failed: {e}")
         return []
 
 
-async def _score_theme(
+async def _score_new_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
-    yesterday_themes: list[dict],
+    today: date,
 ) -> dict:
-    """
-    Score a theme and determine its lifecycle stage.
-
-    Score = 40% momentum + 30% breadth + 30% news confirmation
-    """
+    """Score a newly discovered theme."""
     tickers = theme.get("tickers", [])
-    if not tickers:
-        return {**theme, "score": 0.0, "stage": "Nascent"}
 
-    # Momentum score (40%): avg RS composite of constituents
     rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in tickers if t in stocks_by_ticker]
     momentum = (sum(rs_scores) / len(rs_scores)) if rs_scores else 0
     momentum_score = min(momentum / 100 * 40, 40)
 
-    # Breadth score (30%): number of distinct sectors represented
     sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in tickers if t in stocks_by_ticker)
     breadth_score = min(len(sectors) * 10, 30)
 
-    # News confirmation (30%): Tavily search for theme evidence
     news_score = 0
     try:
         results = await search_news_tavily(f"{theme['name']} stocks sector momentum 2026")
@@ -172,107 +269,89 @@ async def _score_theme(
     except Exception:
         pass
 
-    total_score = round(momentum_score + breadth_score + news_score, 1)
-
-    # Lifecycle stage
-    name = theme["name"]
-    prev = next((t for t in yesterday_themes if t["name"] == name), None)
-
-    if prev is None:
-        stage = "Nascent"
-    else:
-        prev_score = prev.get("score") or 0
-        delta = total_score - prev_score
-        # Also check how old this theme is
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM mi_themes WHERE name = $1", name
-            )
-        if delta > 3:
-            stage = "Accelerating"
-        elif delta < -5:
-            stage = "Fading"
-        elif count >= 5:
-            stage = "Mainstream"
-        else:
-            stage = "Accelerating"
-
     return {
-        "name": name,
-        "thesis": theme.get("thesis", ""),
+        "theme_date": today,
+        "name": theme["name"],
+        "stage": "Nascent",
+        "score": round(momentum_score + breadth_score + news_score, 1),
+        "description": theme.get("thesis", ""),
         "tickers": tickers,
-        "score": total_score,
-        "stage": stage,
-        "momentum_score": momentum_score,
-        "breadth_score": breadth_score,
-        "news_score": news_score,
     }
 
 
 async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     """
-    Run the full theme discovery process.
-    Returns list of scored themes, stored in DB.
+    Run the full theme update cycle:
+    1. Re-score existing active themes
+    2. Discover new themes from uncovered RS leaders
+    3. Persist results
     """
     today = trade_date or date.today()
     today_str = today.strftime("%Y-%m-%d")
 
     logger.info("Theme engine: fetching top RS stocks...")
-    leaders = await get_rs_leaders(today_str, limit=40)
+    leaders = await get_rs_leaders(today_str, limit=60)
 
     if not leaders:
         logger.warning("Theme engine: no RS data — run RS engine first")
         return []
 
-    # Enrich with sector data (sample to save API calls)
+    # Enrich with sector data
     logger.info(f"Theme engine: enriching {len(leaders)} stocks with sector data...")
     for stock in leaders:
         if not stock.get("sector"):
             stock["sector"] = await _get_sector(stock["ticker"])
-            await asyncio.sleep(0.2)  # avoid hammering yfinance
+            await asyncio.sleep(0.2)
 
     stocks_by_ticker = {s["ticker"]: s for s in leaders}
 
-    # Claude clusters into themes
-    logger.info("Theme engine: clustering themes with Claude...")
-    raw_themes = await _cluster_themes_claude(leaders)
-    logger.info(f"Theme engine: {len(raw_themes)} themes identified")
+    # --- Step 1: Re-score existing themes ---
+    existing = await get_active_themes()
+    logger.info(f"Theme engine: re-scoring {len(existing)} existing themes...")
 
-    if not raw_themes:
-        return []
+    updated_themes: list[dict] = []
+    covered_tickers: set[str] = set()
 
-    # Get yesterday's themes for lifecycle comparison
-    yesterday_themes = await _get_yesterday_themes(today)
+    for theme in existing:
+        result = await _rescore_existing_theme(theme, stocks_by_ticker, today)
+        if result is not None:
+            updated_themes.append(result)
+            if result["stage"] != "Fading":
+                covered_tickers.update(result.get("tickers") or [])
+        await asyncio.sleep(1)  # Tavily rate limit
 
-    # Score each theme
-    logger.info("Theme engine: scoring themes...")
-    scored_themes = []
-    for raw in raw_themes:
-        scored = await _score_theme(raw, stocks_by_ticker, yesterday_themes)
-        scored_themes.append(scored)
-        await asyncio.sleep(1)  # Tavily rate limiting
+    # --- Step 2: Find uncovered RS leaders ---
+    uncovered = [
+        s for s in leaders[:40]
+        if s["ticker"] not in covered_tickers
+        and s.get("rs_composite", 0) >= THEME_RS_MIN
+    ]
+    logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
 
-    # Sort by score descending
-    scored_themes.sort(key=lambda t: t["score"], reverse=True)
+    # --- Step 3: Discover new themes ---
+    new_raw: list[dict] = []
+    if len(uncovered) >= NEW_THEME_MIN_STOCKS:
+        new_raw = await _discover_new_themes(uncovered, updated_themes)
+        logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
-    # Persist to DB
-    db_records = []
-    for t in scored_themes:
-        db_records.append({
-            "theme_date": today,
-            "name": t["name"],
-            "stage": t["stage"],
-            "score": t["score"],
-            "description": t["thesis"],
-            "tickers": t["tickers"],
-        })
+    new_themes: list[dict] = []
+    for raw in new_raw:
+        scored = await _score_new_theme(raw, stocks_by_ticker, today)
+        new_themes.append(scored)
+        await asyncio.sleep(1)
 
-    if db_records:
-        await _save_themes(db_records)
+    # --- Step 4: Merge, sort, persist ---
+    all_themes = updated_themes + new_themes
+    all_themes.sort(key=lambda t: t["score"], reverse=True)
 
-    logger.info(f"Theme engine complete: {len(scored_themes)} themes for {today_str}")
-    return scored_themes
+    if all_themes:
+        await _save_themes(all_themes)
+
+    logger.info(
+        f"Theme engine complete: {len(updated_themes)} updated, {len(new_themes)} new, "
+        f"{len(existing) - len(updated_themes)} retired — {today_str}"
+    )
+    return all_themes
 
 
 async def get_today_themes(d: "str | date | None" = None) -> list[dict]:

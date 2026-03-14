@@ -18,8 +18,18 @@ from datetime import date, timedelta
 from typing import Optional
 
 from agents.market_intelligence.collector import get_index_history, trading_date_n_months_ago
-from agents.market_intelligence.db import upsert_stock_score
+from agents.market_intelligence.db import (
+    upsert_stock_score,
+    get_active_tracked_stocks,
+    upsert_tracked_stock,
+    mark_tracked_stock_weak,
+)
 from agents.market_intelligence.universe import UNIVERSE
+
+# RS composite threshold below which a stock is considered "weak" (bottom 40%)
+RS_WEAK_THRESHOLD = 40.0
+# Top N leaders to add/refresh in tracked stocks after each run
+RS_LEADER_CUTOFF = 50
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +91,18 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     date_3m = trading_date_n_months_ago(3)
     date_6m = trading_date_n_months_ago(6)
 
-    logger.info(f"RS Engine: fetching {len(UNIVERSE)} stocks from {from_date} to {today_str}")
+    # Expand universe with actively tracked stocks (RS leaders from prior days)
+    tracked = await get_active_tracked_stocks()
+    full_universe = list(dict.fromkeys(UNIVERSE + tracked))  # deduplicate, preserve order
+    if len(tracked) > 0:
+        logger.info(f"RS Engine: base universe {len(UNIVERSE)}, +{len(tracked)} tracked = {len(full_universe)} total")
+
+    logger.info(f"RS Engine: fetching {len(full_universe)} stocks from {from_date} to {today_str}")
     logger.info(f"Lookback dates: 1M={date_1m}, 3M={date_3m}, 6M={date_6m}")
 
     # Fetch price history for each stock (1 Polygon call per stock, rate-limited)
     stock_data: list[dict] = []
-    for i, ticker in enumerate(UNIVERSE):
+    for i, ticker in enumerate(full_universe):
         try:
             closes = await _fetch_closes(ticker, from_date, today_str)
             if not closes:
@@ -109,7 +125,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             })
 
             if (i + 1) % 10 == 0:
-                logger.info(f"RS Engine: {i + 1}/{len(UNIVERSE)} stocks fetched")
+                logger.info(f"RS Engine: {i + 1}/{len(full_universe)} stocks fetched")
 
         except Exception as e:
             logger.warning(f"RS fetch failed for {ticker}: {e}")
@@ -159,7 +175,28 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         }
         await upsert_stock_score(db_record)
 
-    logger.info(f"RS Engine complete: scored {len(stock_data)} stocks for {today_str}")
+    # Update tracked stocks: add leaders, mark weak stocks
+    scored_map = {
+        s["ticker"]: round(composite_ranks[i] or 0, 1)
+        for i, s in enumerate(stock_data)
+    }
+    tracked_set = set(tracked)
+    added_to_tracking = 0
+
+    for i, s in enumerate(stock_data):
+        rs = round(composite_ranks[i] or 0, 1)
+        rank = rank_position[i]
+        ticker = s["ticker"]
+        if rank <= RS_LEADER_CUTOFF:
+            await upsert_tracked_stock(ticker, today, rs)
+            added_to_tracking += 1
+        elif ticker in tracked_set and rs < RS_WEAK_THRESHOLD:
+            await mark_tracked_stock_weak(ticker, today)
+
+    logger.info(
+        f"RS Engine complete: scored {len(stock_data)} stocks for {today_str} "
+        f"({added_to_tracking} tracked leaders)"
+    )
     return {"stocks_scored": len(stock_data), "date": today_str}
 
 

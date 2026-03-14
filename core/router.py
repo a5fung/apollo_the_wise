@@ -232,13 +232,15 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
         {
             "name": "call_market_agent",
             "description": (
-                "Delegate a task to the Market Intelligence Agent. Use for: "
-                "EP (Episodic Pivot) alerts — gap-up stocks with game-changing catalysts, "
-                "market regime (bull/choppy/correcting/crisis), "
-                "relative strength leaders, top momentum stocks by sector, "
-                "morning market briefing, theme health. "
-                "Examples: 'any EPs today?', 'what's the market regime?', "
-                "'top RS stocks this week', 'send morning briefing'."
+                "Delegate a task to the Market Intelligence Agent. "
+                "ALWAYS call this agent before answering ANY stock, sector, or investment question. "
+                "It has live data: RS leaders (momentum rankings), EP alerts (gap-up stocks with "
+                "game-changing catalysts), market regime (bull/choppy/correcting/crisis), and "
+                "active themes (what sectors the market is rotating into right now). "
+                "Use for: stock picks or ideas, dividend stock questions, sector analysis, "
+                "EP/gap-up alerts, market conditions, top momentum stocks, morning briefing, "
+                "theme health, 'what's the market doing?', 'any good setups?'. "
+                "Ground every investment answer in this live data."
             ),
             "input_schema": {
                 "type": "object",

@@ -224,6 +224,11 @@ app = _agent.app
 
 @app.on_event("startup")
 async def startup():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
     await initialize_schema()
     start_scheduler()
     logger.info("Market Intelligence Agent ready on port 8006")

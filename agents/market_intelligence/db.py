@@ -97,6 +97,15 @@ async def initialize_schema() -> None:
                 tickers TEXT[],
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            CREATE TABLE IF NOT EXISTS mi_tracked_stocks (
+                ticker TEXT PRIMARY KEY,
+                first_seen DATE NOT NULL,
+                last_seen DATE NOT NULL,
+                peak_rs_score FLOAT DEFAULT 0,
+                consecutive_weak_days INT DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE
+            );
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -194,6 +203,59 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
             "SELECT * FROM mi_ep_alerts WHERE alert_date = $1 ORDER BY ep_score DESC",
             _to_date(d),
         )
+        return [dict(r) for r in rows]
+
+
+async def get_active_tracked_stocks() -> list[str]:
+    """Return tickers currently being tracked for RS."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE"
+        )
+        return [r["ticker"] for r in rows]
+
+
+async def upsert_tracked_stock(ticker: str, today: "date", rs_score: float) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_tracked_stocks (ticker, first_seen, last_seen, peak_rs_score, consecutive_weak_days, active)
+            VALUES ($1, $2, $2, $3, 0, TRUE)
+            ON CONFLICT (ticker) DO UPDATE SET
+                last_seen = $2,
+                peak_rs_score = GREATEST(mi_tracked_stocks.peak_rs_score, $3),
+                consecutive_weak_days = 0,
+                active = TRUE
+        """, ticker, today, rs_score)
+
+
+async def mark_tracked_stock_weak(ticker: str, today: "date", retire_after: int = 7) -> None:
+    """Increment weak day counter; deactivate if threshold exceeded."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_tracked_stocks
+            SET consecutive_weak_days = consecutive_weak_days + 1,
+                last_seen = $2,
+                active = CASE WHEN consecutive_weak_days + 1 >= $3 THEN FALSE ELSE active END
+            WHERE ticker = $1
+        """, ticker, today, retire_after)
+
+
+async def get_active_themes() -> list[dict]:
+    """
+    Get the most recent snapshot of each active theme (stage != 'Retired').
+    Used by the theme engine as the base for daily re-scoring.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) *
+            FROM mi_themes
+            WHERE stage != 'Retired'
+            ORDER BY name, theme_date DESC
+        """)
         return [dict(r) for r in rows]
 
 
