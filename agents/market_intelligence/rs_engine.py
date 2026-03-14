@@ -66,6 +66,15 @@ def _pct_return(current: float, past: Optional[float]) -> Optional[float]:
     return (current - past) / past * 100.0
 
 
+def _compute_sma(closes: dict[str, float], n: int) -> Optional[float]:
+    """Compute simple moving average of last N trading days."""
+    sorted_closes = sorted(closes.items())  # [(date_str, close), ...]
+    if len(sorted_closes) < n:
+        return None
+    last_n = [c for _, c in sorted_closes[-n:]]
+    return round(sum(last_n) / n, 4)
+
+
 def _percentile_ranks(values: list[Optional[float]]) -> list[Optional[float]]:
     """Convert raw values to percentile ranks (0-100). None stays None."""
     valid = [(i, v) for i, v in enumerate(values) if v is not None]
@@ -122,6 +131,9 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
                 "rs_1m_raw": _pct_return(current, price_1m),
                 "rs_3m_raw": _pct_return(current, price_3m),
                 "rs_6m_raw": _pct_return(current, price_6m),
+                "sma_10": _compute_sma(closes, 10),
+                "sma_20": _compute_sma(closes, 20),
+                "sma_50": _compute_sma(closes, 50),
             })
 
             if (i + 1) % 10 == 0:
@@ -172,6 +184,10 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "sector": None,
             "adv_20": None,
             "market_cap": None,
+            "sma_10": s.get("sma_10"),
+            "sma_20": s.get("sma_20"),
+            "sma_50": s.get("sma_50"),
+            "close": s["current"],
         }
         await upsert_stock_score(db_record)
 

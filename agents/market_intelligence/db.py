@@ -53,8 +53,16 @@ async def initialize_schema() -> None:
                 sector TEXT,
                 adv_20 FLOAT,
                 market_cap FLOAT,
+                sma_10 FLOAT,
+                sma_20 FLOAT,
+                sma_50 FLOAT,
+                close FLOAT,
                 PRIMARY KEY (ticker, score_date)
             );
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_10 FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_20 FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_50 FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS close FLOAT;
 
             CREATE TABLE IF NOT EXISTS mi_ep_alerts (
                 id SERIAL PRIMARY KEY,
@@ -115,16 +123,21 @@ async def upsert_stock_score(record: dict[str, Any]) -> None:
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_stock_scores
-                (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank, sector, adv_20, market_cap)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
+                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
-                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap
+                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
+                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_50=EXCLUDED.sma_50,
+                close=EXCLUDED.close
         """,
             record["ticker"], record["score_date"], record.get("rs_1m"), record.get("rs_3m"),
             record.get("rs_6m"), record.get("rs_composite"), record.get("rs_rank"),
             record.get("sector"), record.get("adv_20"), record.get("market_cap"),
+            record.get("sma_10"), record.get("sma_20"), record.get("sma_50"),
+            record.get("close"),
         )
 
 
@@ -301,6 +314,73 @@ async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") 
                 INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
                 VALUES ($1, $2, 'Nascent', 0, $3, $4)
             """, today, name, thesis, tickers_upper)
+
+
+async def get_ma_pullbacks(
+    d: "str | date",
+    tickers: list[str] | None = None,
+    rs_min: float = 50.0,
+    pct_tolerance: float = 4.0,
+) -> list[dict[str, Any]]:
+    """
+    Return stocks near their 10/20/50 SMAs (pulling back to key MAs).
+
+    A stock is "near" an MA if:
+      - It was above the MA (uptrend)
+      - Current price is within pct_tolerance% of the MA
+
+    Args:
+        d: Score date to query
+        tickers: Optional filter to specific tickers (e.g. a theme's stocks)
+        rs_min: Minimum RS composite to include (filters out weak stocks)
+        pct_tolerance: How close to the MA counts as a pullback (default ±4%)
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if tickers:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_stock_scores
+                WHERE score_date = $1 AND ticker = ANY($2)
+                AND rs_composite >= $3
+                AND close IS NOT NULL
+            """, _to_date(d), tickers, rs_min)
+        else:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_stock_scores
+                WHERE score_date = $1
+                AND rs_composite >= $2
+                AND close IS NOT NULL
+                ORDER BY rs_composite DESC
+            """, _to_date(d), rs_min)
+
+    results = []
+    tol = pct_tolerance / 100.0
+
+    for row in rows:
+        r = dict(row)
+        close = r.get("close")
+        if not close:
+            continue
+
+        near = []
+        for ma_col, label in [("sma_10", "10MA"), ("sma_20", "20MA"), ("sma_50", "50MA")]:
+            sma = r.get(ma_col)
+            if not sma:
+                continue
+            pct = (close / sma - 1.0)
+            # Near MA and not broken below it hard (within tolerance, and at most 2x tolerance below)
+            if -tol * 2 <= pct <= tol:
+                near.append({
+                    "ma": label,
+                    "ma_value": round(sma, 2),
+                    "pct_from_ma": round(pct * 100, 2),
+                })
+
+        if near:
+            r["near_mas"] = near
+            results.append(r)
+
+    return results
 
 
 async def get_adv_map(d: "str | date") -> dict[str, float]:

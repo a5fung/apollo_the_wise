@@ -24,6 +24,7 @@ from agents.market_intelligence.db import (
     get_today_ep_alerts,
     get_rs_leaders,
     get_latest_regime,
+    get_ma_pullbacks,
     bulk_track_stocks,
     seed_theme,
 )
@@ -131,6 +132,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["theme", "sector", "industry"]):
             return await self._handle_theme_query(request)
 
+        if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
+            return await self._handle_pullback_query(request)
+
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
 
@@ -229,6 +233,49 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  {t['description'][:200]}")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
+
+    async def _handle_pullback_query(self, request: AgentRequest) -> AgentResponse:
+        today_str = date.today().strftime("%Y-%m-%d")
+
+        # Check if filtering to a specific theme's tickers
+        tickers = None
+        task_lower = request.task.lower()
+        themes = await get_today_themes(today_str)
+        for t in themes:
+            theme_name_lower = t["name"].lower()
+            # Check if any word from the theme name appears in the task
+            words = [w for w in theme_name_lower.split() if len(w) > 4]
+            if any(w in task_lower for w in words):
+                tickers = t.get("tickers")
+                break
+
+        pullbacks = await get_ma_pullbacks(today_str, tickers=tickers)
+
+        if not pullbacks:
+            scope = f"stocks in {tickers}" if tickers else "RS leaders"
+            return self._ok(
+                request,
+                result=f"No MA pullbacks found among {scope} today. Either no data yet (run /data refresh) or all stocks are extended.",
+            )
+
+        lines = [f"*MA Pullbacks* ({today_str})"]
+        if tickers:
+            lines[0] += f" — filtered to theme"
+
+        for s in pullbacks[:15]:
+            ticker = s["ticker"]
+            close = s.get("close", 0)
+            rs = s.get("rs_composite", 0)
+            near = s.get("near_mas", [])
+            ma_parts = []
+            for m in near:
+                sign = "+" if m["pct_from_ma"] >= 0 else ""
+                ma_parts.append(f"{m['ma']} {sign}{m['pct_from_ma']:.1f}%")
+            lines.append(
+                f"  `{ticker}` RS {rs:.0f}  close {close:.2f}  —  {' | '.join(ma_parts)}"
+            )
+
+        return self._ok(request, result="\n".join(lines), data={"pullbacks": pullbacks})
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")
