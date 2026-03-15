@@ -362,6 +362,7 @@ class TelegramChannel:
         health = await health_check_all_agents()
 
         agent_descriptions = {
+            "market_intelligence": "📈 RS leaders, EP alerts, regime, themes",
             "finance":  "📊 Portfolio, quotes, TradingView alerts",
             "calendar": "📅 Google Calendar & iCloud events",
             "research": "🔍 Web search & summarisation",
@@ -370,10 +371,15 @@ class TelegramChannel:
         }
 
         lines = ["*Sub-Agents*\n"]
-        for agent_name, description in agent_descriptions.items():
-            is_healthy = health.get(agent_name, False)
+        # Only show agents that are enabled (present in health dict)
+        for agent_name, (is_healthy, _reason) in health.items():
+            description = agent_descriptions.get(agent_name, "")
+            display = agent_name.replace("_", " ").title()
             icon = "🟢" if is_healthy else "🔴"
-            lines.append(f"{icon} *{agent_name.title()}* — {description}")
+            lines.append(f"{icon} *{display}* — {description}")
+
+        if not health:
+            lines.append("_No agents enabled_")
 
         lines.append("\n🟢 online  🔴 offline/unreachable")
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
