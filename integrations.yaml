@@ -52,21 +52,22 @@ travel:
 # Sub-agent endpoints (populated at runtime from Docker service names or config)
 # Override here if running agents on non-default ports.
 agents:
-  finance:
-    url: http://localhost:8001
-    enabled: true
-  calendar:
-    url: http://localhost:8002
-    enabled: true
-  research:
-    url: http://localhost:8003
-    enabled: true
-  browser:
-    url: http://localhost:8004
-    enabled: true
-  travel:
-    url: http://localhost:8005
-    enabled: true
   market_intelligence:
     url: http://localhost:8006
     enabled: true
+  # Not yet implemented — enable when ready:
+  finance:
+    url: http://localhost:8001
+    enabled: false
+  calendar:
+    url: http://localhost:8002
+    enabled: false
+  research:
+    url: http://localhost:8003
+    enabled: false
+  browser:
+    url: http://localhost:8004
+    enabled: false
+  travel:
+    url: http://localhost:8005
+    enabled: false
