@@ -142,6 +142,7 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
 
     quarterly_eps: list[dict] = []
     quarterly_revenue: list[dict] = []
+    quarterly_gross_margin: list[dict] = []
     gross_margin_pct: float | None = None
 
     if q_income is not None:
@@ -203,26 +204,34 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
                             "yoy_pct": _yoy_pct(rev, prior_rev) if prior_rev is not None else None,
                         })
 
-            # Gross margin from latest quarter — sanity-clamped to 0–100%
-            if gross_row is not None and rev_row is not None and show_cols:
-                g = _safe_float(gross_row.get(show_cols[-1]))
-                r = _safe_float(rev_row.get(show_cols[-1]))
-                if g is not None and r is not None and r != 0:
-                    gm = g / r * 100
-                    if 0 <= gm <= 100:
-                        gross_margin_pct = round(gm, 1)
+                # Gross margin per quarter — sanity-clamped to 0–100%
+                if gross_row is not None and rev_row is not None:
+                    g = _safe_float(gross_row.get(col))
+                    r = _safe_float(rev_row.get(col))
+                    if g is not None and r is not None and r != 0:
+                        gm = g / r * 100
+                        if 0 <= gm <= 100:
+                            quarterly_gross_margin.append({
+                                "period": label,
+                                "gm_pct": round(gm, 1),
+                            })
+
+            # Latest quarter gross margin for header
+            if quarterly_gross_margin:
+                gross_margin_pct = quarterly_gross_margin[-1]["gm_pct"]
 
         except Exception:
             logger.warning(f"Quarterly income parsing failed for {ticker}", exc_info=True)
 
-    # Prefer info dict gross margins (more reliable than income stmt parsing)
-    if isinstance(info, dict):
+    # Fallback: info dict gross margin if income stmt parsing yielded nothing valid
+    if gross_margin_pct is None and isinstance(info, dict):
         gm = info.get("grossMargins")
         if gm and 0 < float(gm) <= 1.0:  # yfinance returns 0.0–1.0 fraction
             gross_margin_pct = round(float(gm) * 100, 1)
 
     result["quarterly_eps"] = quarterly_eps
     result["quarterly_revenue"] = quarterly_revenue
+    result["quarterly_gross_margin"] = quarterly_gross_margin
     result["gross_margin_pct"] = gross_margin_pct
 
     # ── Annual EPS & Revenue ─────────────────────────────────────────────────
@@ -338,39 +347,38 @@ def format_fundamentals(data: dict) -> str:
         return f"Fundamentals unavailable for `{data.get('ticker', '?')}`: {data['error']}"
 
     ticker = data["ticker"]
-    gm = data.get("gross_margin_pct")
     next_eps = data.get("next_earnings_date")
     flags = data.get("quality_flags", {})
     q_eps = data.get("quarterly_eps", [])
     q_rev = data.get("quarterly_revenue", [])
+    q_gm = data.get("quarterly_gross_margin", [])
     a_eps = data.get("annual_eps", [])
     a_rev = data.get("annual_revenue", [])
 
     lines = [f"*{ticker} — Fundamentals*"]
 
-    # Header: gross margin + next earnings
-    header_parts = []
-    if gm is not None:
-        header_parts.append(f"Gross Margin {gm:.1f}%")
+    # Header: next earnings only (gross margin shown per-quarter in table)
     if next_eps:
         try:
             d = date.fromisoformat(next_eps)
-            header_parts.append(f"Next EPS {d.strftime('%b %d, %Y')}")
+            lines.append(f"Next EPS {d.strftime('%b %d, %Y')}")
         except Exception:
-            header_parts.append(f"Next EPS {next_eps}")
-    if header_parts:
-        lines.append("  ".join(header_parts))
+            lines.append(f"Next EPS {next_eps}")
 
     # Quarterly table — last 6 quarters
+    # Align all rows to the same period set (use EPS periods as anchor)
     show_eps = q_eps[-6:]
     show_rev = q_rev[-6:]
+    periods = [q["period"] for q in show_eps] or [q["period"] for q in show_rev]
 
-    if show_eps or show_rev:
+    # Build a GM% lookup by period for the same set of quarters
+    gm_by_period = {q["period"]: q["gm_pct"] for q in q_gm}
+
+    if periods:
         lines.append("")
         lines.append("*Quarterly (last 6 qtrs, YoY %)*")
         lines.append("```")
         col_w = 8
-        periods = [q["period"] for q in show_eps] or [q["period"] for q in show_rev]
         lines.append("      " + "".join(p.rjust(col_w) for p in periods))
 
         if show_eps:
@@ -391,11 +399,19 @@ def format_fundamentals(data: dict) -> str:
             ]
             lines.append("  %   " + "".join(v.rjust(col_w) for v in pct_vals))
 
+        # Gross margin row — show actual % per quarter so trend is visible
+        gm_vals = [
+            f"{gm_by_period[p]:.0f}%" if p in gm_by_period else "n/a"
+            for p in periods
+        ]
+        if any(v != "n/a" for v in gm_vals):
+            lines.append("GM%   " + "".join(v.rjust(col_w) for v in gm_vals))
+
         lines.append("```")
 
-    # Annual table — last 5 years
+    # Annual table — last 5 filed fiscal years (current FY shown in quarterly)
     if a_eps or a_rev:
-        lines.append("*Annual*")
+        lines.append("*Annual (filed FY)*")
         lines.append("```")
         years = sorted({e["year"] for e in a_eps} | {r["year"] for r in a_rev})
         col_w = 8
@@ -419,7 +435,7 @@ def format_fundamentals(data: dict) -> str:
             )
         lines.append("```")
 
-    # Quality flags
+    # Quality flags — EPS and revenue only; margin is now visible in the table
     flag_lines = []
 
     acc = flags.get("eps_accelerating")
@@ -438,17 +454,9 @@ def format_fundamentals(data: dict) -> str:
 
     confirms = flags.get("sales_confirms")
     if confirms is True:
-        flag_lines.append("🟢 Revenue confirms earnings (≥15% growth)")
+        flag_lines.append("🟢 Revenue confirms (≥15% growth)")
     elif confirms is False:
-        flag_lines.append("🔴 Revenue weak — earnings may not be sustainable")
-
-    margin = flags.get("gross_margin_trend", "unknown")
-    if margin == "expanding":
-        flag_lines.append("🟢 Gross margin expanding")
-    elif margin == "contracting":
-        flag_lines.append("🔴 Gross margin contracting")
-    elif margin == "stable":
-        flag_lines.append("🟡 Gross margin stable")
+        flag_lines.append("🔴 Revenue weak (<15% growth)")
 
     if flag_lines:
         lines.append("")

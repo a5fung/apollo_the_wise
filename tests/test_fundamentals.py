@@ -339,10 +339,18 @@ class TestFormatFundamentals:
         text = format_fundamentals(self._sample_data())
         assert "AXTI" in text
 
-    def test_gross_margin_shown(self):
+    def test_gross_margin_shown_in_table(self):
+        """Gross margin shown per-quarter in GM% row, not just header."""
         from agents.market_intelligence.fundamentals import format_fundamentals
-        text = format_fundamentals(self._sample_data())
-        assert "58.2%" in text
+        data = self._sample_data()
+        # Add quarterly_gross_margin to sample data
+        data["quarterly_gross_margin"] = [
+            {"period": p, "gm_pct": 58.0 + i}
+            for i, p in enumerate(["Q1'24", "Q2'24", "Q3'24", "Q4'24", "Q1'25", "Q2'25"])
+        ]
+        text = format_fundamentals(data)
+        assert "GM%" in text
+        assert "58%" in text or "59%" in text
 
     def test_next_earnings_shown(self):
         from agents.market_intelligence.fundamentals import format_fundamentals
@@ -373,7 +381,7 @@ class TestFormatFundamentals:
         assert "🟢 EPS accelerating" in text
         assert "🟢" in text and "consecutive qtrs" in text
         assert "🟢 Revenue confirms" in text
-        assert "🟢 Gross margin expanding" in text
+        # Gross margin trend flag removed — now shown as GM% row in table
 
     def test_quality_flags_red_when_bad(self):
         from agents.market_intelligence.fundamentals import format_fundamentals
@@ -382,13 +390,11 @@ class TestFormatFundamentals:
             "eps_accelerating": False,
             "eps_streak_25pct": 0,
             "sales_confirms": False,
-            "gross_margin_trend": "contracting",
         }
         text = format_fundamentals(data)
         assert "🔴 EPS decelerating" in text
         assert "🔴 No recent" in text
         assert "🔴 Revenue weak" in text
-        assert "🔴 Gross margin contracting" in text
 
     def test_error_data_returns_graceful_message(self):
         from agents.market_intelligence.fundamentals import format_fundamentals
