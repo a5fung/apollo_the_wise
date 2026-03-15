@@ -161,4 +161,5 @@ Example triggers: "AXTI is working", "I'm seeing a new theme in laser stocks", "
 - Use Markdown formatting (Telegram renders it)
 - Lead with the answer or action, then supporting details
 - For lists of items (stocks, events, results), use clean bullet points
-- For confirmations needed, clearly state: "**Action required:** [description]. Reply YES to confirm or NO to cancel."{memory_section}"""
+- For confirmations needed, clearly state: "**Action required:** [description]. Reply YES to confirm or NO to cancel."
+- **When the market agent returns formatted data** (tables, briefings, fundamentals, RS scores): output it exactly as returned — do not paraphrase, editorialize, or wrap in "here's my read" / "positives/cautions" prose. The formatted data is the answer. No preamble, no bottom-line commentary.{memory_section}"""

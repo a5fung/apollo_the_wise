@@ -203,20 +203,22 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
                             "yoy_pct": _yoy_pct(rev, prior_rev) if prior_rev is not None else None,
                         })
 
-            # Gross margin from latest quarter
+            # Gross margin from latest quarter — sanity-clamped to 0–100%
             if gross_row is not None and rev_row is not None and show_cols:
                 g = _safe_float(gross_row.get(show_cols[-1]))
                 r = _safe_float(rev_row.get(show_cols[-1]))
                 if g is not None and r is not None and r != 0:
-                    gross_margin_pct = round(g / r * 100, 1)
+                    gm = g / r * 100
+                    if 0 <= gm <= 100:
+                        gross_margin_pct = round(gm, 1)
 
         except Exception:
             logger.warning(f"Quarterly income parsing failed for {ticker}", exc_info=True)
 
-    # Fallback gross margin from info dict
-    if gross_margin_pct is None and isinstance(info, dict):
+    # Prefer info dict gross margins (more reliable than income stmt parsing)
+    if isinstance(info, dict):
         gm = info.get("grossMargins")
-        if gm:
+        if gm and 0 < float(gm) <= 1.0:  # yfinance returns 0.0–1.0 fraction
             gross_margin_pct = round(float(gm) * 100, 1)
 
     result["quarterly_eps"] = quarterly_eps
