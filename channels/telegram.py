@@ -576,14 +576,18 @@ class TelegramChannel:
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
         """Periodically send 'typing...' indicator while processing."""
+        chat_id = update.effective_chat.id
         while True:
             try:
-                await update.message.chat.send_action("typing")
+                await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+            except asyncio.CancelledError:
+                return
+            except Exception:
+                pass  # Non-fatal — skip this tick, try again next interval
+            try:
                 await asyncio.sleep(TYPING_INTERVAL)
             except asyncio.CancelledError:
-                break
-            except Exception:
-                break
+                return
 
     # ── Application setup ─────────────────────────────────────────────────────
 
