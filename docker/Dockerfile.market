@@ -1,0 +1,28 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements/base.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY agents/base.py agents/base.py
+COPY agents/__init__.py agents/__init__.py
+COPY agents/market_intelligence/ agents/market_intelligence/
+COPY shared/ shared/
+COPY core/notifications.py core/notifications.py
+COPY integrations.yaml integrations.yaml
+
+RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
+USER apollo
+
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8006
+
+CMD ["uvicorn", "agents.market_intelligence.agent:app", "--host", "0.0.0.0", "--port", "8006", "--workers", "1"]

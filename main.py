@@ -26,7 +26,9 @@ load_dotenv()
 from channels.telegram import TelegramChannel
 from channels.webhooks import app as webhook_app, configure as configure_webhooks
 from core.memory import initialize_schema
+from core.notifications import notify_startup
 from core.orchestrator import Apollo
+from core.router import health_check_all_agents
 from shared.secrets import get_secrets
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -105,6 +107,15 @@ async def lifespan(app: FastAPI):
         )
 
     logger.info("Apollo ready")
+
+    # Send startup notification with agent health check
+    try:
+        import asyncio
+        await asyncio.sleep(2)  # brief pause so sub-agents finish starting
+        statuses = await health_check_all_agents()
+        await notify_startup(statuses)
+    except Exception as e:
+        logger.warning(f"Startup notification failed: {e}")
 
     yield  # Application is running
 

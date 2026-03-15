@@ -19,7 +19,8 @@ from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
-from agents.market_intelligence.briefing import send_morning_briefing, send_ep_alert
+from agents.market_intelligence.briefing import send_morning_briefing, send_ep_alert, send_telegram_message
+from core.notifications import notify_job_failure, notify_job_success
 
 logger = logging.getLogger(__name__)
 
@@ -30,23 +31,39 @@ _ep_scan_active = False
 async def _nightly_data_pull():
     """Run at 6:00 AM ET. Pull EOD data, calculate RS + regime."""
     logger.info("Nightly data pull starting...")
+    failures = []
+    summary_parts = []
+
     try:
         regime_result = await run_regime_engine()
-        logger.info(f"Regime: {regime_result.get('regime')}")
+        regime = regime_result.get("regime", "?")
+        logger.info(f"Regime: {regime}")
+        summary_parts.append(f"regime={regime}")
     except Exception as e:
         logger.error(f"Regime engine failed: {e}")
+        failures.append(f"Regime: {e}")
 
     try:
         rs_result = await run_rs_engine()
-        logger.info(f"RS engine: scored {rs_result.get('stocks_scored')} stocks")
+        scored = rs_result.get("stocks_scored", 0)
+        logger.info(f"RS engine: scored {scored} stocks")
+        summary_parts.append(f"{scored} stocks scored")
     except Exception as e:
         logger.error(f"RS engine failed: {e}")
+        failures.append(f"RS engine: {e}")
 
     try:
         themes = await run_theme_engine()
         logger.info(f"Theme engine: {len(themes)} themes identified")
+        summary_parts.append(f"{len(themes)} themes")
     except Exception as e:
         logger.error(f"Theme engine failed: {e}")
+        failures.append(f"Theme engine: {e}")
+
+    if failures:
+        await notify_job_failure("nightly_data_pull", " | ".join(failures))
+    else:
+        await notify_job_success("nightly_data_pull", ", ".join(summary_parts))
 
     logger.info("Nightly data pull complete")
 
@@ -58,6 +75,7 @@ async def _morning_briefing_job():
         await send_morning_briefing()
     except Exception as e:
         logger.error(f"Morning briefing failed: {e}")
+        await notify_job_failure("morning_briefing", str(e))
 
 
 async def _ep_scan_job():
