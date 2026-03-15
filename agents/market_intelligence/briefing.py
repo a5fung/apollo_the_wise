@@ -175,7 +175,7 @@ def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
         for sector, stocks in list(by_sector.items())[:5]:
             top = stocks[:3]
             tickers_str = "  ".join(
-                f"`{s['ticker']}` {s.get('rs_composite', 0):.0f}"
+                f"`{s['ticker']}` {(s.get('rs_composite') or 0):.0f}"
                 for s in top
             )
             lines.append(f"  *{sector}*")
@@ -184,7 +184,7 @@ def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
         top = no_sector[:15]
         row = []
         for s in top:
-            row.append(f"`{s['ticker']}` {s.get('rs_composite', 0):.0f}")
+            row.append(f"`{s['ticker']}` {(s.get('rs_composite') or 0):.0f}")
             if len(row) == 3:
                 lines.append("  " + "   ".join(row))
                 row = []
@@ -231,7 +231,7 @@ def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 4) -> st
     for s in pullbacks[:12]:
         ticker = s["ticker"]
         close = s.get("close", 0)
-        rs = s.get("rs_composite", 0)
+        rs = s.get("rs_composite") or 0
         near = s.get("near_mas", [])
         ma_parts = []
         for m in near:
@@ -352,11 +352,14 @@ def _format_morning_briefing(
         if parts:
             sections.append("Futures: " + "  |  ".join(parts))
 
-    # Build ticker → theme stage map for composite sort
+    # Build ticker → theme stage map for composite sort (keep strongest stage per ticker)
     theme_stage_by_ticker: dict[str, str] = {}
     for t in (themes or []):
+        stage = t.get("stage", "")
         for ticker in (t.get("tickers") or []):
-            theme_stage_by_ticker[ticker] = t.get("stage", "")
+            existing = theme_stage_by_ticker.get(ticker, "")
+            if _THEME_BONUS.get(stage, 0) > _THEME_BONUS.get(existing, 0):
+                theme_stage_by_ticker[ticker] = stage
 
     sorted_eps = sorted(
         ep_alerts,

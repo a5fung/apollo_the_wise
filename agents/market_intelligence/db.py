@@ -226,7 +226,20 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM mi_ep_alerts WHERE alert_date = $1 ORDER BY ep_score DESC",
+            """
+            SELECT a.*,
+                   s.rs_composite
+            FROM mi_ep_alerts a
+            LEFT JOIN LATERAL (
+                SELECT rs_composite
+                FROM mi_stock_scores
+                WHERE ticker = a.ticker
+                ORDER BY score_date DESC
+                LIMIT 1
+            ) s ON TRUE
+            WHERE a.alert_date = $1
+            ORDER BY a.ep_score DESC
+            """,
             _to_date(d),
         )
         return [dict(r) for r in rows]

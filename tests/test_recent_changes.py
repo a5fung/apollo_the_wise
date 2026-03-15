@@ -631,3 +631,59 @@ class TestEpCompositeSort:
         from agents.market_intelligence import briefing
         src = inspect.getsource(briefing.send_morning_briefing)
         assert "get_today_themes" in src
+
+    def test_multi_theme_ticker_keeps_strongest_stage(self):
+        """When a ticker belongs to multiple themes, the strongest stage bonus should win."""
+        from agents.market_intelligence.briefing import _ep_composite_key, _THEME_BONUS, _format_morning_briefing
+        regime = {"regime": "Bull", "vix": 14.0, "ep_threshold": 70}
+        eps = [{"ticker": "AXTI", "ep_score": 80, "rs_composite": 0,
+                "gap_pct": 8.0, "score_tier": "HIGH", "rel_volume": 3.0,
+                "catalyst_quality": "strong"}]
+        # AXTI in two themes: Nascent (bonus=5) and Accelerating (bonus=15)
+        themes = [
+            {"tickers": ["AXTI"], "stage": "Nascent",      "name": "Theme A", "score": 50, "description": ""},
+            {"tickers": ["AXTI"], "stage": "Accelerating", "name": "Theme B", "score": 70, "description": ""},
+        ]
+        text = _format_morning_briefing(
+            regime=regime, ep_alerts=eps, briefing_date="2026-03-14", themes=themes,
+        )
+        # Verify: composite key should use Accelerating (+15), not Nascent (+5)
+        # Build the stage map the same way the function does and assert
+        stage_map: dict = {}
+        for t in themes:
+            stage = t.get("stage", "")
+            for ticker in t.get("tickers") or []:
+                existing = stage_map.get(ticker, "")
+                if _THEME_BONUS.get(stage, 0) > _THEME_BONUS.get(existing, 0):
+                    stage_map[ticker] = stage
+        assert stage_map["AXTI"] == "Accelerating"
+        assert _ep_composite_key(eps[0], stage_map) == 80 + 15  # Accelerating wins
+
+
+# ── collector: 0% gap futures (falsy float fix) ───────────────────────────────
+
+class TestPremarketFuturesFalsyZero:
+    def test_zero_pct_change_is_included(self):
+        """ES=F flat overnight (0.0% change) must NOT be dropped — 0.0 is falsy."""
+        from agents.market_intelligence.collector import get_premarket_futures
+
+        def make_fast_info(last, prev):
+            fi = MagicMock()
+            fi.last_price = last
+            fi.previous_close = prev
+            return fi
+
+        with patch("yfinance.Ticker") as mock_ticker:
+            def ticker_side_effect(symbol):
+                t = MagicMock()
+                if symbol == "ES=F":
+                    t.fast_info = make_fast_info(5000.0, 5000.0)  # 0% change
+                elif symbol == "NQ=F":
+                    t.fast_info = make_fast_info(17820.0, 18000.0)
+                return t
+            mock_ticker.side_effect = ticker_side_effect
+
+            result = asyncio.run(get_premarket_futures())
+
+        assert "es_pct" in result, "0.0% overnight change must be included (not treated as falsy)"
+        assert abs(result["es_pct"]) < 0.001

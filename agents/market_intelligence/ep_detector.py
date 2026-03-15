@@ -280,8 +280,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # Get regime for threshold adjustment
     regime = await get_latest_regime()
-    regime_label = regime["regime"] if regime else "Unknown"
-    ep_threshold = regime["ep_threshold"] if regime else 70
+    regime_label = regime.get("regime", "Unknown") if regime else "Unknown"
+    ep_threshold = regime.get("ep_threshold", 70) if regime else 70
     regime_multiplier = 1.2 if regime_label == "Bull" else 1.0
 
     # Get stored ADV map (from last RS run)

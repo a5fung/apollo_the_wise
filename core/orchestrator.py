@@ -430,7 +430,7 @@ class Apollo:
         for e in extended:
             lines.append(
                 f"• `{e['ticker']}` is *{e['extension_pct']:+.1f}%* above its 20MA "
-                f"(close {e['close']:.2f}, 20MA {e['sma_20']:.2f})"
+                f"(close {e.get('close', 0):.2f}, 20MA {e.get('sma_20', 0):.2f})"
             )
 
         regime_note = (

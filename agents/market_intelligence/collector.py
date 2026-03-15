@@ -210,7 +210,8 @@ async def get_fmp_analyst_ratings(ticker: str) -> list[dict]:
             return []
         # Normalise to a list of dicts with analystRatingsStrongBuy for compatibility
         recent = recs.tail(10).copy()
-        recent["analystRatingsStrongBuy"] = recent.get("To Grade", "").apply(
+        col = recent["To Grade"] if "To Grade" in recent.columns else recent.get("To Grade", "")
+        recent["analystRatingsStrongBuy"] = col.apply(
             lambda g: 1 if str(g).lower() in ("strong buy", "buy", "outperform", "overweight") else 0
         )
         return recent.to_dict("records")
@@ -252,7 +253,7 @@ async def get_premarket_futures() -> dict[str, float]:
                 fi = yf.Ticker(symbol).fast_info
                 price = getattr(fi, "last_price", None)
                 prev = getattr(fi, "previous_close", None)
-                if price and prev:
+                if price is not None and prev is not None:
                     result[key] = (price - prev) / prev * 100
             return result
 

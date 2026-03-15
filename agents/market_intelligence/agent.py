@@ -237,11 +237,11 @@ class MarketIntelligenceAgent(BaseAgent):
         if by_sector:
             for sector, stocks in list(by_sector.items())[:8]:
                 top = stocks[:3]
-                tickers = ", ".join(f"{s['ticker']} ({s.get('rs_composite', 0):.0f})" for s in top)
+                tickers = ", ".join(f"{s['ticker']} ({(s.get('rs_composite') or 0):.0f})" for s in top)
                 lines.append(f"*{sector}*: {tickers}")
         else:
             for s in no_sector[:15]:
-                lines.append(f"#{s.get('rs_rank')} {s['ticker']} — RS {s.get('rs_composite', 0):.0f}")
+                lines.append(f"#{s.get('rs_rank')} {s['ticker']} — RS {(s.get('rs_composite') or 0):.0f}")
 
         return self._ok(request, result="\n".join(lines), data={"leaders": leaders})
 
