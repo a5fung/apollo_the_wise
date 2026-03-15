@@ -327,3 +327,81 @@ class TestPurgeOldData:
         src = inspect.getsource(sched_module.start_scheduler)
         assert "weekly_cleanup" in src
         assert "sun" in src
+
+
+# ── ep_detector: _volume_percentile ──────────────────────────────────────────
+
+class TestVolumePercentile:
+    def test_basic_percentile(self):
+        from agents.market_intelligence.ep_detector import _volume_percentile
+        history = [100_000, 200_000, 300_000, 400_000, 500_000]
+        # 350K exceeds 3 of 5 values → 60th percentile
+        assert _volume_percentile(350_000, history) == 60.0
+
+    def test_above_all_history(self):
+        from agents.market_intelligence.ep_detector import _volume_percentile
+        history = [100_000, 200_000, 300_000]
+        assert _volume_percentile(999_999, history) == 100.0
+
+    def test_below_all_history(self):
+        from agents.market_intelligence.ep_detector import _volume_percentile
+        history = [100_000, 200_000, 300_000]
+        assert _volume_percentile(50_000, history) == 0.0
+
+    def test_empty_history_returns_neutral(self):
+        from agents.market_intelligence.ep_detector import _volume_percentile
+        assert _volume_percentile(500_000, []) == 50.0
+
+    def test_zero_volume_returns_neutral(self):
+        from agents.market_intelligence.ep_detector import _volume_percentile
+        assert _volume_percentile(0, [100_000, 200_000]) == 50.0
+
+
+class TestScoreEpVolConviction:
+    def _base_profile(self):
+        return {"floatShares": 100_000_000, "price": 50.0, "52WeekHigh": 60.0}
+
+    def test_high_vol_percentile_adds_10pts(self):
+        from agents.market_intelligence.ep_detector import _score_ep
+        score_high, bd_high = _score_ep(
+            gap_pct=10, rel_volume=5, catalyst_quality="strong",
+            profile=self._base_profile(), analyst_upgrades=0,
+            regime_multiplier=1.0, vol_percentile=92.0,
+        )
+        score_low, bd_low = _score_ep(
+            gap_pct=10, rel_volume=5, catalyst_quality="strong",
+            profile=self._base_profile(), analyst_upgrades=0,
+            regime_multiplier=1.0, vol_percentile=50.0,
+        )
+        assert bd_high["vol_conviction"] == 10
+        assert bd_low["vol_conviction"] == 0
+        assert score_high > score_low
+
+    def test_mid_vol_percentile_adds_5pts(self):
+        from agents.market_intelligence.ep_detector import _score_ep
+        _, breakdown = _score_ep(
+            gap_pct=10, rel_volume=5, catalyst_quality="strong",
+            profile=self._base_profile(), analyst_upgrades=0,
+            regime_multiplier=1.0, vol_percentile=75.0,
+        )
+        assert breakdown["vol_conviction"] == 5
+
+    def test_low_vol_percentile_adds_0pts(self):
+        from agents.market_intelligence.ep_detector import _score_ep
+        _, breakdown = _score_ep(
+            gap_pct=10, rel_volume=5, catalyst_quality="strong",
+            profile=self._base_profile(), analyst_upgrades=0,
+            regime_multiplier=1.0, vol_percentile=40.0,
+        )
+        assert breakdown["vol_conviction"] == 0
+
+    def test_short_interest_slot_replaced(self):
+        """short_interest should no longer appear in score breakdown."""
+        from agents.market_intelligence.ep_detector import _score_ep
+        _, breakdown = _score_ep(
+            gap_pct=10, rel_volume=5, catalyst_quality="strong",
+            profile=self._base_profile(), analyst_upgrades=0,
+            regime_multiplier=1.0,
+        )
+        assert "short_interest" not in breakdown
+        assert "vol_conviction" in breakdown

@@ -84,8 +84,10 @@ async def initialize_schema() -> None:
                 claude_analysis TEXT,
                 gemini_validation TEXT,
                 confidence_multiplier FLOAT DEFAULT 1.0,
+                vol_percentile FLOAT,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
+            ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
 
             CREATE TABLE IF NOT EXISTS mi_market_regime (
                 regime_date DATE PRIMARY KEY,
@@ -156,14 +158,16 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
-                 catalyst, catalyst_quality, claude_analysis, gemini_validation, confidence_multiplier)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                 catalyst, catalyst_quality, claude_analysis, gemini_validation,
+                 confidence_multiplier, vol_percentile)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
             record.get("catalyst"), record.get("catalyst_quality"),
             record.get("claude_analysis"), record.get("gemini_validation"),
             record.get("confidence_multiplier", 1.0),
+            record.get("vol_percentile"),
         )
 
 
@@ -423,6 +427,29 @@ async def get_ticker_extension_data(tickers: list[str]) -> list[dict]:
             "extension_pct": round(ext, 1) if ext is not None else None,
             "score_date": str(row["score_date"]),
         })
+    return result
+
+
+async def get_volume_history(tickers: list[str], days: int = 60) -> dict[str, list[float]]:
+    """
+    Return historical adv_20 values per ticker for the last N days.
+    Used to compute pre-market volume percentile in EP scoring — one batch
+    query for all candidates rather than one query per ticker.
+    """
+    pool = await get_pool()
+    cutoff = date.today() - timedelta(days=days)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, adv_20
+            FROM mi_stock_scores
+            WHERE ticker = ANY($1)
+              AND score_date >= $2
+              AND adv_20 IS NOT NULL
+            ORDER BY ticker, score_date
+        """, tickers, cutoff)
+    result: dict[str, list[float]] = {}
+    for row in rows:
+        result.setdefault(row["ticker"], []).append(row["adv_20"])
     return result
 
 

@@ -13,7 +13,7 @@ MAGNA53 scoring (0-100):
 - Relative volume:   ADV in 15min = 20pts, 2-4x = 10pts
 - Catalyst quality:  game-changer = 20pts, strong = 10pts, routine = 0pts
 - Neglect period:    6mo+ base = 15pts, 3mo = 8pts
-- Short interest:    ≥5 days = 10pts
+- Volume conviction: pre-mkt vol ≥90th pct of hist ADV = 10pts, ≥70th = 5pts
 - Analyst upgrades:  3+ = 10pts
 - Low float:         <50M shares = 5pts
 - Market multiplier: Bull regime = 1.2x
@@ -38,13 +38,14 @@ from agents.market_intelligence.collector import (
     get_fmp_news,
     search_news_tavily,
 )
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history
 
 logger = logging.getLogger(__name__)
 
 # Hard filters
 MIN_GAP_PCT = 8.0
 MIN_REL_VOLUME = 2.0
+MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 
 # Auto-disqualifiers
 MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ before the gap
@@ -161,6 +162,21 @@ Respond with ONLY the classification word."""
         return None
 
 
+def _volume_percentile(today_volume: float, adv_history: list[float]) -> float:
+    """
+    Percentile rank of today's pre-market volume vs the stock's historical ADV values.
+    Returns 0-100.
+
+    Interpretation: a score of 80 means today's pre-market volume already
+    exceeds 80% of this stock's typical full-day average volumes — genuine
+    conviction, not thin-float RVOL inflation.
+    """
+    if not adv_history or today_volume <= 0:
+        return 50.0  # unknown — neutral
+    below = sum(1 for v in adv_history if today_volume > v)
+    return round(below / len(adv_history) * 100, 1)
+
+
 def _score_ep(
     gap_pct: float,
     rel_volume: float,
@@ -168,6 +184,7 @@ def _score_ep(
     profile: dict,
     analyst_upgrades: int,
     regime_multiplier: float,
+    vol_percentile: float = 50.0,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
@@ -224,8 +241,13 @@ def _score_ep(
     else:
         breakdown["neglect"] = 0
 
-    # Short interest (skip on FMP free tier — no short data)
-    breakdown["short_interest"] = 0  # Would be 10pts if ≥5 days to cover
+    # Volume conviction: pre-market volume vs stock's own historical ADV distribution (max 10)
+    if vol_percentile >= 90:
+        breakdown["vol_conviction"] = 10
+    elif vol_percentile >= 70:
+        breakdown["vol_conviction"] = 5
+    else:
+        breakdown["vol_conviction"] = 0
 
     raw_score = sum(breakdown.values())
     final_score = min(raw_score * regime_multiplier, 100)
@@ -295,6 +317,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     if not candidates:
         return []
 
+    # Batch-fetch volume history for all candidates (one DB query)
+    candidate_tickers = [c["ticker"] for c in candidates]
+    vol_history_map = await get_volume_history(candidate_tickers)
+
     # Score each candidate (rate-limited FMP calls)
     results = []
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
@@ -305,6 +331,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if c.get("adv") and rel_volume < MIN_REL_VOLUME:
             logger.debug(f"Skip {ticker}: rel_volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x")
             continue
+
+        # Hard filter: absolute pre-market volume (filters micro-float noise)
+        if c["today_volume"] < MIN_PREMARKET_SHARES:
+            logger.debug(f"Skip {ticker}: pre-market volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares")
+            continue
+
+        # Volume conviction percentile
+        vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
 
         # Fetch company profile (FMP)
         profile = await get_fmp_profile(ticker)
@@ -354,6 +388,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             profile=profile,
             analyst_upgrades=upgrades_30d,
             regime_multiplier=regime_multiplier * confidence_multiplier,
+            vol_percentile=vol_pct,
         )
 
         if ep_score < 50:
@@ -371,6 +406,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "claude_analysis": claude_analysis,
             "gemini_validation": gemini_quality,
             "confidence_multiplier": confidence_multiplier,
+            "vol_percentile": vol_pct,
             "score_breakdown": breakdown,
             "alert_date": today,
         }
@@ -389,6 +425,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "claude_analysis": claude_analysis,
             "gemini_validation": gemini_quality,
             "confidence_multiplier": confidence_multiplier,
+            "vol_percentile": vol_pct,
         })
 
         logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% score={ep_score} tier={tier}")
