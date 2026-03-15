@@ -22,6 +22,9 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "What themes are active?" | Persistent themes with lifecycle stage + constituent stocks |
 | "Optical stocks near 20MA?" | MA pullback scan filtered to a theme's tickers |
 | "Score AXTI" | On-demand RS rank for any ticker (1 API call, exact percentile) |
+| "Fundamentals on CIEN" | O'Neil-style EPS/revenue quarterly table + quality flags (yfinance) |
+| "Find top 20 stocks with RS > 70 and EPS growth > 25%" | Composite screener: RS + theme stage + fundamentals ranked by score |
+| "Best Accelerating theme stocks with fundamentals" | Screener filtered to Accelerating themes with EPS/revenue data |
 | "AXTI is working, track it" | Apollo asks questions, adds to tracking + seeds theme |
 | Any stock/investment question | Apollo consults market agent before answering |
 
@@ -117,6 +120,38 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 
 Signals: SPY/QQQ vs 50MA + 200MA, VIX, breadth (% stocks above 40MA), B/O:B/D ratio.
 
+### O'Neil Fundamentals
+
+On-demand earnings quality check via yfinance (no extra API key).
+
+- **Quarterly table:** Last 6 quarters of EPS (with YoY %), revenue (with YoY %), gross margin % — Caruso-style monospace layout
+- **Annual table:** Last 5 filed fiscal years of EPS + revenue
+- **Quality flags:** EPS accelerating, consecutive quarters ≥25% growth, revenue confirms (≥15% YoY)
+- **Gross margin:** Per-quarter actual % shown in table (sanity-clamped 0–100%)
+- **Next earnings date** shown in header
+
+Ask: "Fundamentals on AXTI" / "EPS growth for CIEN" / "quarterly revenue SMCI"
+
+### Composite Screener
+
+Finds the best setups by combining RS rank + active theme stage + O'Neil fundamentals into a single composite score.
+
+**Composite score formula:** `rs_composite + theme_bonus + eps_bonus + accel_bonus`
+
+| Bonus | Value |
+|---|---|
+| Accelerating theme | +15 |
+| Nascent theme | +8 |
+| Mainstream theme | +5 |
+| EPS YoY ≥ 50% | +10 |
+| EPS YoY ≥ 25% | +5 |
+| EPS YoY ≥ 0% | +2 |
+| EPS accelerating (latest > prior quarter) | +5 |
+
+**Filters available:** min RS, min EPS YoY %, min revenue YoY %, require acceleration, require sales confirms, theme stage filter.
+
+Ask: "Find top 20 fundamental stocks with RS" / "Best Accelerating theme stocks with EPS growth" / "Screen for RS > 70, EPS > 25%, revenue confirms"
+
 ### Teaching Apollo
 
 When you spot something the system isn't tracking:
@@ -179,6 +214,8 @@ Apollo_Assistant/
 │       ├── briefing.py              # Evening + morning briefing formatters
 │       ├── theme_engine.py          # Theme discovery + persistence + lifecycle
 │       ├── scheduler.py             # APScheduler jobs (4:30pm data, 8pm evening, 9am morning)
+│       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
+│       ├── screener.py              # Composite screener (RS + theme + fundamentals)
 │       ├── universe.py              # 148-stock curated universe
 │       └── backtest_ep.py           # EP backtest against historical dates
 ├── docker/
@@ -264,3 +301,6 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 - Economic calendar ("Fed decision 2 PM today", "CPI 8:30 AM")
 - Major pre-market news via Tavily
 - Earnings calendar for tracked stocks
+
+**Fundamentals:**
+- EPS estimates (next quarter consensus + surprise%) via Alpha Vantage free tier — see backlog
