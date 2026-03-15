@@ -40,6 +40,11 @@ FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
 NEW_THEME_MIN_STOCKS = 3
 
+# Semaphore: max concurrent Tavily calls (free tier rate limit)
+_TAVILY_SEM = asyncio.Semaphore(3)
+# Semaphore: max concurrent FMP sector lookups
+_SECTOR_SEM = asyncio.Semaphore(5)
+
 # Cache yfinance sector lookups
 _sector_cache: dict[str, str] = {}
 
@@ -138,7 +143,8 @@ async def _rescore_existing_theme(
     # News confirmation (30%)
     news_score = 0
     try:
-        results = await search_news_tavily(f"{name} stocks sector momentum 2026")
+        async with _TAVILY_SEM:
+            results = await search_news_tavily(f"{name} stocks sector momentum 2026")
         if results:
             news_score = min(len(results) * 6, 30)
     except Exception:
@@ -280,7 +286,8 @@ async def _score_new_theme(
 
     news_score = 0
     try:
-        results = await search_news_tavily(f"{theme['name']} stocks sector momentum 2026")
+        async with _TAVILY_SEM:
+            results = await search_news_tavily(f"{theme['name']} stocks sector momentum 2026")
         if results:
             news_score = min(len(results) * 6, 30)
     except Exception:
@@ -313,29 +320,34 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
         logger.warning("Theme engine: no RS data — run RS engine first")
         return []
 
-    # Enrich with sector data
+    # Enrich with sector data (concurrent, rate-limited by semaphore)
     logger.info(f"Theme engine: enriching {len(leaders)} stocks with sector data...")
-    for stock in leaders:
+
+    async def _enrich_sector(stock: dict) -> None:
         if not stock.get("sector"):
-            stock["sector"] = await _get_sector(stock["ticker"])
-            await asyncio.sleep(0.2)
+            async with _SECTOR_SEM:
+                stock["sector"] = await _get_sector(stock["ticker"])
+
+    await asyncio.gather(*[_enrich_sector(s) for s in leaders])
 
     stocks_by_ticker = {s["ticker"]: s for s in leaders}
 
-    # --- Step 1: Re-score existing themes ---
+    # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
     logger.info(f"Theme engine: re-scoring {len(existing)} existing themes...")
 
+    rescore_results = await asyncio.gather(*[
+        _rescore_existing_theme(theme, stocks_by_ticker, today)
+        for theme in existing
+    ])
+
     updated_themes: list[dict] = []
     covered_tickers: set[str] = set()
-
-    for theme in existing:
-        result = await _rescore_existing_theme(theme, stocks_by_ticker, today)
+    for result in rescore_results:
         if result is not None:
             updated_themes.append(result)
             if result["stage"] != "Fading":
                 covered_tickers.update(result.get("tickers") or [])
-        await asyncio.sleep(1)  # Tavily rate limit
 
     # --- Step 2: Find uncovered RS leaders ---
     uncovered = [
@@ -351,11 +363,10 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
         new_raw = await _discover_new_themes(uncovered, updated_themes)
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
-    new_themes: list[dict] = []
-    for raw in new_raw:
-        scored = await _score_new_theme(raw, stocks_by_ticker, today)
-        new_themes.append(scored)
-        await asyncio.sleep(1)
+    new_themes: list[dict] = await asyncio.gather(*[
+        _score_new_theme(raw, stocks_by_ticker, today)
+        for raw in new_raw
+    ])
 
     # --- Step 4: Merge, sort, persist ---
     all_themes = updated_themes + new_themes

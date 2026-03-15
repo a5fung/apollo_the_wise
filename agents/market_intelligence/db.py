@@ -123,6 +123,11 @@ async def initialize_schema() -> None:
                 consecutive_weak_days INT DEFAULT 0,
                 active BOOLEAN DEFAULT TRUE
             );
+
+            CREATE INDEX IF NOT EXISTS idx_stock_scores_score_date ON mi_stock_scores(score_date);
+            CREATE INDEX IF NOT EXISTS idx_stock_scores_ticker ON mi_stock_scores(ticker);
+            CREATE INDEX IF NOT EXISTS idx_ep_alerts_alert_date ON mi_ep_alerts(alert_date);
+            CREATE INDEX IF NOT EXISTS idx_themes_theme_date ON mi_themes(theme_date);
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -150,6 +155,73 @@ async def upsert_stock_score(record: dict[str, Any]) -> None:
             record.get("sma_10"), record.get("sma_20"), record.get("sma_50"),
             record.get("close"), record.get("raw_1m"), record.get("raw_3m"), record.get("raw_6m"),
         )
+
+
+async def upsert_stock_scores_batch(records: list[dict[str, Any]]) -> None:
+    """Batch upsert for RS stock scores — single round-trip instead of N."""
+    if not records:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_stock_scores
+                (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
+                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close,
+                 raw_1m, raw_3m, raw_6m)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+            ON CONFLICT (ticker, score_date) DO UPDATE SET
+                rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
+                rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
+                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
+                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_50=EXCLUDED.sma_50,
+                close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
+                raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
+        """, [
+            (r["ticker"], r["score_date"], r.get("rs_1m"), r.get("rs_3m"),
+             r.get("rs_6m"), r.get("rs_composite"), r.get("rs_rank"),
+             r.get("sector"), r.get("adv_20"), r.get("market_cap"),
+             r.get("sma_10"), r.get("sma_20"), r.get("sma_50"),
+             r.get("close"), r.get("raw_1m"), r.get("raw_3m"), r.get("raw_6m"))
+            for r in records
+        ])
+
+
+async def upsert_tracked_stocks_batch(
+    records: list[tuple[str, "date", float]],
+) -> None:
+    """Batch upsert leader stocks — single round-trip instead of N."""
+    if not records:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_tracked_stocks
+                (ticker, first_seen, last_seen, peak_rs_score, consecutive_weak_days, active)
+            VALUES ($1, $2, $2, $3, 0, TRUE)
+            ON CONFLICT (ticker) DO UPDATE SET
+                last_seen = $2,
+                peak_rs_score = GREATEST(mi_tracked_stocks.peak_rs_score, $3),
+                consecutive_weak_days = 0,
+                active = TRUE
+        """, records)
+
+
+async def mark_tracked_stocks_weak_batch(
+    records: list[tuple[str, "date"]],
+    retire_after: int = 7,
+) -> None:
+    """Batch mark-weak — single round-trip instead of N."""
+    if not records:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            UPDATE mi_tracked_stocks
+            SET consecutive_weak_days = consecutive_weak_days + 1,
+                last_seen = $2,
+                active = CASE WHEN consecutive_weak_days + 1 >= $3 THEN FALSE ELSE active END
+            WHERE ticker = $1
+        """, [(ticker, today, retire_after) for ticker, today in records])
 
 
 async def insert_ep_alert(record: dict[str, Any]) -> None:
@@ -316,20 +388,20 @@ async def get_active_themes() -> list[dict]:
 
 async def bulk_track_stocks(tickers: list[str], today: "date") -> int:
     """Add tickers to tracked stocks immediately (bypasses universe cap). Returns count upserted."""
+    if not tickers:
+        return 0
     pool = await get_pool()
-    added = 0
     async with pool.acquire() as conn:
-        for ticker in tickers:
-            await conn.execute("""
-                INSERT INTO mi_tracked_stocks (ticker, first_seen, last_seen, peak_rs_score, consecutive_weak_days, active)
-                VALUES ($1, $2, $2, 0, 0, TRUE)
-                ON CONFLICT (ticker) DO UPDATE SET
-                    last_seen = $2,
-                    consecutive_weak_days = 0,
-                    active = TRUE
-            """, ticker.upper(), today)
-            added += 1
-    return added
+        await conn.executemany("""
+            INSERT INTO mi_tracked_stocks
+                (ticker, first_seen, last_seen, peak_rs_score, consecutive_weak_days, active)
+            VALUES ($1, $2, $2, 0, 0, TRUE)
+            ON CONFLICT (ticker) DO UPDATE SET
+                last_seen = $2,
+                consecutive_weak_days = 0,
+                active = TRUE
+        """, [(t.upper(), today) for t in tickers])
+    return len(tickers)
 
 
 async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") -> None:

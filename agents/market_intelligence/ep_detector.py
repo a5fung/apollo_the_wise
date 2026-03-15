@@ -353,37 +353,34 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Volume conviction percentile
         vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
 
-        # Fetch company profile (FMP)
-        profile = await get_fmp_profile(ticker)
-        await asyncio.sleep(0.5)  # FMP rate limiting
-
-        # Fetch news
-        fmp_news = await get_fmp_news(ticker)
-        await asyncio.sleep(0.5)
-
-        # Fetch analyst ratings
-        ratings = await get_fmp_analyst_ratings(ticker)
-        await asyncio.sleep(0.5)
+        # Fetch all external data concurrently
+        profile, fmp_news, ratings, tavily_results = await asyncio.gather(
+            get_fmp_profile(ticker),
+            get_fmp_news(ticker),
+            get_fmp_analyst_ratings(ticker),
+            search_news_tavily(f"{ticker} stock news catalyst earnings"),
+        )
+        await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
         upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
-
-        # Supplement with Tavily news if available
-        tavily_results = await search_news_tavily(f"{ticker} stock news catalyst earnings")
 
         # Combine news sources
         all_news = fmp_news + [{"title": t.get("title", ""), "text": t.get("content", "")}
                                 for t in tavily_results]
+        news_summary = "\n".join([n.get("title", "") for n in all_news[:3]])
 
-        # Claude catalyst classification
-        catalyst_quality, claude_analysis = await _classify_catalyst_claude(ticker, all_news, profile)
+        # Claude + Gemini in parallel — cancel Gemini if catalyst is routine
+        claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))
+        gemini_task = asyncio.create_task(_validate_catalyst_gemini(ticker, news_summary))
+
+        catalyst_quality, claude_analysis = await claude_task
 
         # Skip routine catalysts outright
         if catalyst_quality == "routine" and c["gap_pct"] < 12:
+            gemini_task.cancel()
             logger.info(f"Skip {ticker}: routine catalyst, gap {c['gap_pct']:.1f}%")
             continue
 
-        # Gemini cross-validation
-        news_summary = "\n".join([n.get("title", "") for n in all_news[:3]])
-        gemini_quality = await _validate_catalyst_gemini(ticker, news_summary)
+        gemini_quality = await gemini_task
 
         # Agreement logic
         confidence_multiplier = 1.0

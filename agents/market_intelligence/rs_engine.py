@@ -20,9 +20,12 @@ from typing import Optional
 from agents.market_intelligence.collector import get_index_history, trading_date_n_months_ago
 from agents.market_intelligence.db import (
     upsert_stock_score,
+    upsert_stock_scores_batch,
     get_active_tracked_stocks,
     upsert_tracked_stock,
+    upsert_tracked_stocks_batch,
     mark_tracked_stock_weak,
+    mark_tracked_stocks_weak_batch,
     get_pool,
     _to_date,
 )
@@ -173,9 +176,9 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     indexed.sort(key=lambda x: x[1] or 0, reverse=True)
     rank_position = {orig_idx: pos + 1 for pos, (orig_idx, _) in enumerate(indexed)}
 
-    # Upsert to DB
-    for i, s in enumerate(stock_data):
-        db_record = {
+    # Batch upsert all scores — single round-trip
+    db_records = [
+        {
             "ticker": s["ticker"],
             "score_date": today,
             "rs_1m": round(rs_1m_ranks[i] or 0, 1),
@@ -194,25 +197,27 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "raw_3m": round(s["rs_3m_raw"], 2) if s.get("rs_3m_raw") is not None else None,
             "raw_6m": round(s["rs_6m_raw"], 2) if s.get("rs_6m_raw") is not None else None,
         }
-        await upsert_stock_score(db_record)
-
-    # Update tracked stocks: add leaders, mark weak stocks
-    scored_map = {
-        s["ticker"]: round(composite_ranks[i] or 0, 1)
         for i, s in enumerate(stock_data)
-    }
+    ]
+    await upsert_stock_scores_batch(db_records)
+
+    # Batch update tracked stocks: add leaders, mark weak stocks
     tracked_set = set(tracked)
-    added_to_tracking = 0
+    leader_records: list[tuple[str, date, float]] = []
+    weak_records: list[tuple[str, date]] = []
 
     for i, s in enumerate(stock_data):
         rs = round(composite_ranks[i] or 0, 1)
         rank = rank_position[i]
         ticker = s["ticker"]
         if rank <= RS_LEADER_CUTOFF:
-            await upsert_tracked_stock(ticker, today, rs)
-            added_to_tracking += 1
+            leader_records.append((ticker, today, rs))
         elif ticker in tracked_set and rs < RS_WEAK_THRESHOLD:
-            await mark_tracked_stock_weak(ticker, today)
+            weak_records.append((ticker, today))
+
+    await upsert_tracked_stocks_batch(leader_records)
+    await mark_tracked_stocks_weak_batch(weak_records)
+    added_to_tracking = len(leader_records)
 
     logger.info(
         f"RS Engine complete: scored {len(stock_data)} stocks for {today_str} "

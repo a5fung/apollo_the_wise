@@ -182,20 +182,18 @@ class Apollo:
                     "content": response.content,
                 })
 
-                # Process each tool call
-                tool_results = []
-                for block in response.content:
-                    if block.type != "tool_use":
-                        continue
-
-                    tool_result = await self._handle_tool_call(
+                # Process tool calls concurrently
+                tool_blocks = [b for b in response.content if b.type == "tool_use"]
+                tool_results = list(await asyncio.gather(*[
+                    self._handle_tool_call(
                         user_id=user_id,
                         conversation_id=conversation_id,
                         tool_name=block.name,
                         tool_input=block.input,
                         tool_use_id=block.id,
                     )
-                    tool_results.append(tool_result)
+                    for block in tool_blocks
+                ]))
 
                 # Add tool results to message history
                 current_messages.append({
