@@ -64,7 +64,7 @@ agents:
     enabled: false
   research:
     url: http://localhost:8003
-    enabled: false
+    enabled: true
   browser:
     url: http://localhost:8004
     enabled: false

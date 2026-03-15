@@ -55,6 +55,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+mkdir -p logs
+
 info "Starting Research agent (port 8003)..."
 python -m uvicorn agents.research.agent:app --host 0.0.0.0 --port 8003 \
     --log-level warning >> logs/research.log 2>&1 &
@@ -73,5 +75,4 @@ echo ""
 echo -e "${GREEN}${BOLD}Starting Apollo...${NC} (Ctrl+C to stop everything)"
 echo ""
 
-mkdir -p logs
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
