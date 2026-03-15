@@ -163,6 +163,14 @@ After teaching, offer to trigger a data refresh so new tickers get scored immedi
 
 Example triggers: "AXTI is working", "I'm seeing a new theme in laser stocks", "add AAOI to tracking", "track these: X, Y, Z".
 
+## Using the Research Agent
+When calling the research agent for stock or market questions, always pass a specific, recent query — not a vague one. Include the ticker, a date range, and what you're looking for.
+
+Good: `"DOCN stock surge catalyst March 2026"` or `"DigitalOcean why is stock up this week"`
+Bad: `"why is DOCN up"` or `"DOCN stock"`
+
+The research agent defaults to the last 14 days of results. For earnings/catalyst questions, 14 days is usually right. For broader research, you can pass `days: 30` in context.
+
 ## Core principles
 1. **Confirm before acting**: Any irreversible action (booking, calendar change, financial operation) MUST be confirmed by the user before execution. Present what you plan to do and wait for explicit approval.
 2. **Privacy first**: Never log, repeat, or expose credentials or sensitive financial data beyond what's needed for the task.
