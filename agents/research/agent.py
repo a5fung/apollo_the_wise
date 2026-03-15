@@ -35,16 +35,16 @@ class ResearchAgent(BaseAgent):
         search_query = context.get("query") or task
         days = int(context.get("days", DEFAULT_SEARCH_DAYS))
 
-        search_results = await self._search(search_query, days=days)
-        if not search_results:
+        search_data = await self._search(search_query, days=days)
+        if not search_data["results"]:
             return self._error(request, "No search results found for the query.")
 
-        summary = await self._summarize(task, search_results)
+        summary = await self._summarize(task, search_data)
 
         return self._ok(
             request,
             result=summary,
-            data={"query": search_query, "result_count": len(search_results)},
+            data={"query": search_query, "result_count": len(search_data["results"])},
         )
 
     async def _search(self, query: str, days: int = DEFAULT_SEARCH_DAYS) -> list[dict[str, Any]]:
@@ -70,19 +70,31 @@ class ResearchAgent(BaseAgent):
                 )
                 response.raise_for_status()
                 data = response.json()
-                return data.get("results", [])
+                return {
+                    "answer": data.get("answer", ""),
+                    "results": data.get("results", []),
+                }
             except httpx.HTTPError as e:
                 logger.error(f"Tavily API error: {e}")
-                return []
+                return {"answer": "", "results": []}
 
     async def _summarize(
-        self, original_task: str, results: list[dict[str, Any]]
+        self, original_task: str, search_data: dict[str, Any]
     ) -> str:
         """Synthesize search results into a useful answer."""
         today = date.today().strftime("%B %d, %Y")
+        tavily_answer = search_data.get("answer", "")
+        results = search_data.get("results", [])
+
         results_text = "\n\n".join(
             f"**{r.get('title', 'Untitled')}** ({r.get('url', '')})\n{r.get('content', '')}"
             for r in results[:6]
+        )
+
+        answer_section = (
+            f"Tavily pre-synthesized answer:\n{tavily_answer}\n\n"
+            if tavily_answer
+            else ""
         )
 
         response = self._anthropic.messages.create(
@@ -94,8 +106,9 @@ class ResearchAgent(BaseAgent):
                     "content": (
                         f"Today is {today}.\n\n"
                         f"Research task: {original_task}\n\n"
-                        f"Search results:\n{results_text}\n\n"
-                        "Synthesize a clear, accurate answer based ONLY on the search results above. "
+                        f"{answer_section}"
+                        f"Source articles:\n{results_text}\n\n"
+                        "Synthesize a clear, accurate answer based ONLY on the search data above. "
                         "Rules:\n"
                         "- Cite specific events, dates, and sources from the results\n"
                         "- Do NOT speculate or add general knowledge not supported by the results\n"
