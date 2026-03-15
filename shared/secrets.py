@@ -6,6 +6,10 @@ import os
 from functools import lru_cache
 from typing import Optional
 
+from dotenv import load_dotenv
+
+load_dotenv()  # Load .env for any process that imports this module
+
 
 def _require(key: str) -> str:
     """Get an env var or raise a clear error if missing."""
