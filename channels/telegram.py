@@ -63,13 +63,13 @@ class TelegramChannel:
             await self._app.bot.send_message(
                 chat_id=user_id,
                 text=text,
-                parse_mode=ParseMode.MARKDOWN_V2,
+                parse_mode=ParseMode.MARKDOWN,
             )
         except Exception as e:
             logger.error(f"Failed to send Telegram message to {user_id}: {e}")
             # Fallback: try without markdown
             try:
-                plain = re.sub(r"[*_`\[\]()~>#+\-=|{}.!\\]", "", text)
+                plain = re.sub(r"[*_`\[\]]", "", text)
                 await self._app.bot.send_message(chat_id=user_id, text=plain)
             except Exception as e2:
                 logger.error(f"Fallback send also failed: {e2}")
@@ -554,12 +554,12 @@ class TelegramChannel:
         try:
             await update.message.reply_text(
                 text,
-                parse_mode=ParseMode.MARKDOWN_V2,
+                parse_mode=ParseMode.MARKDOWN,
             )
         except Exception:
-            # Markdown parse error — strip formatting and retry
+            # Markdown parse error — strip v1 formatting chars and retry
             try:
-                plain = re.sub(r"[*_`\[\]()~>#+\-=|{}.!\\]", "", text)
+                plain = re.sub(r"[*_`\[\]]", "", text)
                 await update.message.reply_text(plain)
             except Exception as e:
                 logger.error(f"Failed to send reply: {e}")
