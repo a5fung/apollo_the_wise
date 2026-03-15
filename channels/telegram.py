@@ -415,11 +415,12 @@ class TelegramChannel:
             "travel": "start with: uvicorn agents.travel.agent:app --port 8005",
         }
         for agent_name, (is_healthy, reason) in agent_health.items():
+            display = agent_name.replace("_", " ").title()
             if is_healthy:
-                lines.append(f"🟢 {agent_name.capitalize()} Agent — running")
+                lines.append(f"🟢 {display} Agent — running")
             else:
                 hint = agent_hints.get(agent_name, "")
-                lines.append(f"🔴 {agent_name.capitalize()} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
+                lines.append(f"🔴 {display} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
 
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
