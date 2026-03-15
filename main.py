@@ -109,10 +109,16 @@ async def lifespan(app: FastAPI):
     logger.info("Apollo ready")
 
     # Send startup notification with agent health check
+    # Retry until all enabled agents are up (or give up after 30s)
     try:
         import asyncio
-        await asyncio.sleep(2)  # brief pause so sub-agents finish starting
-        statuses = await health_check_all_agents()
+        for attempt in range(6):
+            await asyncio.sleep(5)
+            statuses = await health_check_all_agents()
+            if all(ok for ok, _ in statuses.values()):
+                break  # All healthy — no need to wait longer
+            if attempt < 5:
+                logger.info(f"Startup check: some agents not ready yet, retrying ({attempt+1}/6)...")
         await notify_startup(statuses)
     except Exception as e:
         logger.warning(f"Startup notification failed: {e}")
