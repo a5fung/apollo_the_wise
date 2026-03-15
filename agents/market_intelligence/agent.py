@@ -28,7 +28,7 @@ from agents.market_intelligence.db import (
     bulk_track_stocks,
     seed_theme,
 )
-from agents.market_intelligence.briefing import send_morning_briefing
+from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
@@ -57,13 +57,29 @@ class MarketIntelligenceAgent(BaseAgent):
     def _register_extra_routes(self) -> None:
         """Register additional endpoints beyond the base /task and /health."""
 
-        @self.app.post("/briefing/trigger")
+        @self.app.post("/briefing/morning")
+        async def trigger_morning_briefing(
+            background: BackgroundTasks,
+            _: str = Depends(verify_internal_secret),
+        ):
+            background.add_task(send_morning_briefing)
+            return {"status": "morning briefing queued"}
+
+        @self.app.post("/briefing/trigger")  # legacy alias
         async def trigger_briefing(
             background: BackgroundTasks,
             _: str = Depends(verify_internal_secret),
         ):
             background.add_task(send_morning_briefing)
-            return {"status": "briefing queued"}
+            return {"status": "morning briefing queued"}
+
+        @self.app.post("/briefing/evening")
+        async def trigger_evening_briefing(
+            background: BackgroundTasks,
+            _: str = Depends(verify_internal_secret),
+        ):
+            background.add_task(send_evening_briefing)
+            return {"status": "evening briefing queued"}
 
         @self.app.post("/data/refresh")
         async def refresh_data(
@@ -126,7 +142,7 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["rs", "relative strength", "leader", "momentum", "top stock"]):
             return await self._handle_rs_query(request)
 
-        if any(k in task for k in ["brief", "morning", "summary", "overview"]):
+        if any(k in task for k in ["brief", "morning", "evening", "summary", "overview"]):
             return await self._handle_briefing_query(request)
 
         if any(k in task for k in ["theme", "sector", "industry"]):
@@ -212,7 +228,11 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines), data={"leaders": leaders})
 
     async def _handle_briefing_query(self, request: AgentRequest) -> AgentResponse:
-        briefing_text = await send_morning_briefing()
+        task_lower = request.task.lower()
+        if "evening" in task_lower or any(k in task_lower for k in ["eod", "end of day", "after close", "nightly"]):
+            briefing_text = await send_evening_briefing()
+        else:
+            briefing_text = await send_morning_briefing()
         return self._ok(request, result=briefing_text)
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:

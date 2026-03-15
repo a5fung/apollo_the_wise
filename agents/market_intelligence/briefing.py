@@ -1,13 +1,13 @@
 """
-Morning Briefing Formatter + Telegram Delivery.
+Briefing formatters + Telegram delivery.
 
-Briefing structure:
-1. MARKET CONDITION — regime, SPY/QQQ trend, breadth, risk-on/off
-2. EP ALERTS — time-sensitive, shown first if any
-3. RS LEADERS — top stocks by RS composite score (by sector when sector data available)
-4. THEME HEALTH — placeholder for Phase 2 theme engine
+Two daily briefings:
+- Evening briefing (8 PM ET / 5 PM PT): regime + RS leaders + themes + MA pullbacks
+  Delivered after market close for EOD stock review.
+- Morning briefing (9 AM ET / 6 AM PT): EP alerts + quick regime context
+  Delivered 30 min before open. Thin now, designed to grow.
 
-Sends directly to Telegram via Bot API (no dependency on Apollo orchestrator).
+Both send directly via Telegram Bot API (no dependency on Apollo orchestrator).
 """
 from __future__ import annotations
 
@@ -18,7 +18,12 @@ from typing import Any
 
 import httpx
 
-from agents.market_intelligence.db import get_today_ep_alerts, get_rs_leaders, get_latest_regime
+from agents.market_intelligence.db import (
+    get_today_ep_alerts,
+    get_rs_leaders,
+    get_latest_regime,
+    get_ma_pullbacks,
+)
 from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
@@ -76,7 +81,9 @@ def _ep_threshold_context(thresh: int) -> str:
         return f"≥{thresh} — standard"
 
 
-def _format_regime_section(regime: dict) -> str:
+# ── Section formatters ─────────────────────────────────────────────────────────
+
+def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
 
@@ -88,9 +95,8 @@ def _format_regime_section(regime: dict) -> str:
     bo_bd = regime.get("bo_bd_ratio_5d")
     ep_thresh = regime.get("ep_threshold", 70)
 
-    lines = [f"*1. MARKET CONDITION* {emoji} *{label.upper()}*"]
+    lines = [f"*{section_num}. MARKET CONDITION* {emoji} *{label.upper()}*"]
 
-    # MAs on one line
     ma_parts = []
     if spy_vs_50 is not None:
         ma_parts.append(f"SPY/50MA {_fmt_sign(spy_vs_50)}")
@@ -101,11 +107,9 @@ def _format_regime_section(regime: dict) -> str:
     if ma_parts:
         lines.append("  " + "  |  ".join(ma_parts))
 
-    # VIX on its own line
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
-    # Breadth + B/O:B/D on one line
     mkt_parts = []
     if breadth is not None:
         mkt_parts.append(f"Breadth {breadth:.0f}% above 40MA")
@@ -118,14 +122,14 @@ def _format_regime_section(regime: dict) -> str:
     return "\n".join(lines)
 
 
-def _format_ep_section(ep_alerts: list[dict]) -> str:
+def _format_ep_section(ep_alerts: list[dict], section_num: int = 1) -> str:
     if not ep_alerts:
-        return "*2. EP ALERTS* — None today"
+        return f"*{section_num}. EP ALERTS* — None this morning"
 
     high = [e for e in ep_alerts if e.get("score_tier") == "HIGH"]
     moderate = [e for e in ep_alerts if e.get("score_tier") == "MODERATE"]
 
-    lines = [f"*2. EP ALERTS* — {len(ep_alerts)} candidate(s)"]
+    lines = [f"*{section_num}. EP ALERTS* — {len(ep_alerts)} candidate(s)"]
 
     for ep in high:
         tier_e = TIER_EMOJI.get("HIGH", "")
@@ -150,13 +154,12 @@ def _format_ep_section(ep_alerts: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_rs_section(rs_leaders: list[dict]) -> str:
+def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
     if not rs_leaders:
-        return "*3. RS LEADERS* — No data yet (run nightly engine first)"
+        return f"*{section_num}. RS LEADERS* — No data yet (run data refresh first)"
 
-    lines = ["*3. RS LEADERS* — Top momentum stocks"]
+    lines = [f"*{section_num}. RS LEADERS* — Top momentum stocks"]
 
-    # Group by sector if available
     by_sector: dict[str, list] = {}
     no_sector = []
     for stock in rs_leaders[:30]:
@@ -176,7 +179,6 @@ def _format_rs_section(rs_leaders: list[dict]) -> str:
             lines.append(f"  *{sector}*")
             lines.append(f"  {tickers_str}")
     else:
-        # No sector data — 3 per row
         top = no_sector[:15]
         row = []
         for s in top:
@@ -190,21 +192,21 @@ def _format_rs_section(rs_leaders: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_theme_section(themes: list[dict]) -> str:
+def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
     if not themes:
-        return "*4. THEME HEALTH* — No theme data yet (run nightly engine first)"
+        return f"*{section_num}. THEME HEALTH* — No theme data yet (run data refresh first)"
 
     active = [t for t in themes if t.get("stage") != "Fading"]
     fading = [t for t in themes if t.get("stage") == "Fading"]
 
-    lines = [f"*4. THEME HEALTH* — {len(themes)} theme(s) tracked"]
+    lines = [f"*{section_num}. THEME HEALTH* — {len(themes)} theme(s) tracked"]
 
     for t in active[:5]:
         stage = t.get("stage", "")
         emoji = STAGE_EMOJI.get(stage, "")
         score = t.get("score", 0)
         tickers_str = "  ".join(f"`{tk}`" for tk in (t.get("tickers") or []))
-        lines.append("")  # blank line between themes
+        lines.append("")
         lines.append(f"{emoji} *{t['name']}*  _{stage}_ · {score:.0f}")
         lines.append(f"  {tickers_str}")
         if t.get("description"):
@@ -218,28 +220,137 @@ def _format_theme_section(themes: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_briefing(
+def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 4) -> str:
+    if not pullbacks:
+        return f"*{section_num}. MA PULLBACKS* — None in range today"
+
+    lines = [f"*{section_num}. MA PULLBACKS* — Stocks testing key MAs"]
+
+    for s in pullbacks[:12]:
+        ticker = s["ticker"]
+        close = s.get("close", 0)
+        rs = s.get("rs_composite", 0)
+        near = s.get("near_mas", [])
+        ma_parts = []
+        for m in near:
+            sign = "+" if m["pct_from_ma"] >= 0 else ""
+            ma_parts.append(f"{m['ma']} {sign}{m['pct_from_ma']:.1f}%")
+        lines.append(
+            f"  `{ticker}` RS {rs:.0f}  {close:.2f}  —  {' | '.join(ma_parts)}"
+        )
+
+    return "\n".join(lines)
+
+
+# ── Evening briefing ───────────────────────────────────────────────────────────
+
+def _format_evening_briefing(
     regime: dict,
-    ep_alerts: list[dict],
     rs_leaders: list[dict],
     themes: list[dict],
+    pullbacks: list[dict],
     briefing_date: str,
 ) -> str:
     sections = [
-        f"*Apollo Market Briefing — {briefing_date}*",
+        f"*Apollo Evening Briefing — {briefing_date}*",
         "",
-        _format_regime_section(regime),
+        _format_regime_section(regime, section_num=1),
         "",
-        _format_ep_section(ep_alerts),
+        _format_rs_section(rs_leaders, section_num=2),
         "",
-        _format_rs_section(rs_leaders),
+        _format_theme_section(themes, section_num=3),
         "",
-        _format_theme_section(themes),
+        _format_pullbacks_section(pullbacks, section_num=4),
         "",
-        "_Pull up charts. Apply your judgment. Trade._",
+        "_Do your review. Pull up charts. Apply your judgment._",
     ]
     return "\n".join(sections)
 
+
+async def send_evening_briefing(chat_id: int | None = None) -> str:
+    """
+    Assemble and send the evening briefing (regime + RS + themes + pullbacks).
+    Returns the briefing text.
+    """
+    today_str = date.today().strftime("%Y-%m-%d")
+
+    regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
+    rs_leaders = await get_rs_leaders(today_str, limit=30)
+    themes = await get_today_themes(today_str)
+    pullbacks = await get_ma_pullbacks(today_str)
+
+    text = _format_evening_briefing(
+        regime=regime,
+        rs_leaders=rs_leaders,
+        themes=themes,
+        pullbacks=pullbacks,
+        briefing_date=today_str,
+    )
+
+    success = await send_telegram_message(text, chat_id)
+    if success:
+        logger.info(f"Evening briefing sent for {today_str}")
+    else:
+        logger.error("Failed to send evening briefing")
+
+    return text
+
+
+# ── Morning briefing ───────────────────────────────────────────────────────────
+
+def _format_morning_briefing(
+    regime: dict,
+    ep_alerts: list[dict],
+    briefing_date: str,
+) -> str:
+    label = regime.get("regime", "Unknown")
+    emoji = REGIME_EMOJI.get(label, "⚫")
+    vix = regime.get("vix")
+    ep_thresh = regime.get("ep_threshold", 70)
+
+    vix_str = f"VIX {vix:.1f}" if vix is not None else ""
+    regime_line = f"Market: {emoji} *{label}*"
+    if vix_str:
+        regime_line += f"  |  {vix_str}"
+    regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
+
+    sections = [
+        f"*Apollo Morning Briefing — {briefing_date}*",
+        regime_line,
+        "",
+        _format_ep_section(ep_alerts, section_num=1),
+        "",
+        "_EP scan: 4–6:30 AM PT. HIGH alerts sent in real-time._",
+    ]
+    return "\n".join(sections)
+
+
+async def send_morning_briefing(chat_id: int | None = None) -> str:
+    """
+    Assemble and send the morning briefing (EP alerts + regime context).
+    Returns the briefing text.
+    """
+    today_str = date.today().strftime("%Y-%m-%d")
+
+    regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
+    ep_alerts = await get_today_ep_alerts(today_str)
+
+    text = _format_morning_briefing(
+        regime=regime,
+        ep_alerts=ep_alerts,
+        briefing_date=today_str,
+    )
+
+    success = await send_telegram_message(text, chat_id)
+    if success:
+        logger.info(f"Morning briefing sent for {today_str}")
+    else:
+        logger.error("Failed to send morning briefing")
+
+    return text
+
+
+# ── Telegram delivery ──────────────────────────────────────────────────────────
 
 async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
     """Send a message directly via Telegram Bot API."""
@@ -272,35 +383,6 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
     except Exception as e:
         logger.error(f"Telegram send failed: {e}")
         return False
-
-
-async def send_morning_briefing(chat_id: int | None = None) -> str:
-    """
-    Assemble and send the morning briefing.
-    Returns the briefing text.
-    """
-    today_str = date.today().strftime("%Y-%m-%d")
-
-    regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
-    ep_alerts = await get_today_ep_alerts(today_str)
-    rs_leaders = await get_rs_leaders(today_str, limit=30)
-    themes = await get_today_themes(today_str)
-
-    text = _format_briefing(
-        regime=regime,
-        ep_alerts=ep_alerts,
-        rs_leaders=rs_leaders,
-        themes=themes,
-        briefing_date=today_str,
-    )
-
-    success = await send_telegram_message(text, chat_id)
-    if success:
-        logger.info(f"Morning briefing sent for {today_str}")
-    else:
-        logger.error("Failed to send morning briefing")
-
-    return text
 
 
 async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:

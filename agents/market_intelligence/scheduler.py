@@ -1,11 +1,12 @@
 """
 APScheduler jobs for Market Intelligence Agent.
 
-Schedule (US Eastern Time):
-- 6:00 AM ET: Nightly data pull — RS engine + market regime
-- 7:00 AM ET: Morning briefing delivery
-- 7:00 AM – 9:30 AM ET: EP scan every 5 minutes
-- 9:35 AM ET: Stop EP scanning
+Schedule (US Eastern Time / Pacific Time):
+- 4:30 PM ET (1:30 PM PT): Nightly data pull — RS engine + market regime + themes
+- 8:00 PM ET (5:00 PM PT): Evening briefing — regime + RS leaders + themes + MA pullbacks
+- 7:00 AM – 9:30 AM ET (4:00 – 6:30 AM PT): EP scan every 5 minutes; HIGH alerts sent immediately
+- 9:00 AM ET (6:00 AM PT): Morning briefing — EP recap + regime context (30 min before open)
+- 9:35 AM ET (6:35 AM PT): Stop EP scanning
 """
 from __future__ import annotations
 
@@ -19,7 +20,12 @@ from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
-from agents.market_intelligence.briefing import send_morning_briefing, send_ep_alert, send_telegram_message
+from agents.market_intelligence.briefing import (
+    send_morning_briefing,
+    send_evening_briefing,
+    send_ep_alert,
+    send_telegram_message,
+)
 from core.notifications import notify_job_failure, notify_job_success
 
 logger = logging.getLogger(__name__)
@@ -29,7 +35,7 @@ _ep_scan_active = False
 
 
 async def _nightly_data_pull():
-    """Run at 6:00 AM ET. Pull EOD data, calculate RS + regime."""
+    """Run at 4:30 PM ET (right after market close). Pull EOD data, calculate RS + regime + themes."""
     logger.info("Nightly data pull starting...")
     failures = []
     summary_parts = []
@@ -68,8 +74,18 @@ async def _nightly_data_pull():
     logger.info("Nightly data pull complete")
 
 
+async def _evening_briefing_job():
+    """Run at 8:00 PM ET (5:00 PM PT). Send evening briefing — full EOD review package."""
+    logger.info("Sending evening briefing...")
+    try:
+        await send_evening_briefing()
+    except Exception as e:
+        logger.error(f"Evening briefing failed: {e}")
+        await notify_job_failure("evening_briefing", str(e))
+
+
 async def _morning_briefing_job():
-    """Run at 7:00 AM ET. Send morning briefing to Telegram."""
+    """Run at 9:00 AM ET (6:00 AM PT). Send morning briefing — EP recap + regime context."""
     logger.info("Sending morning briefing...")
     try:
         await send_morning_briefing()
@@ -79,7 +95,7 @@ async def _morning_briefing_job():
 
 
 async def _ep_scan_job():
-    """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps."""
+    """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps; HIGH alerts sent immediately."""
     if not _ep_scan_active:
         return
     try:
@@ -108,23 +124,23 @@ def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
 
-    # Nightly data pull: 6:00 AM ET (runs on last night's data, Mon-Fri)
+    # Data pull: 4:30 PM ET (right after market close), Mon-Fri
     _scheduler.add_job(
         _nightly_data_pull,
-        CronTrigger(hour=6, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=16, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
         id="nightly_data_pull",
         replace_existing=True,
     )
 
-    # Morning briefing: 7:00 AM ET
+    # Evening briefing: 8:00 PM ET (5:00 PM PT), Mon-Fri
     _scheduler.add_job(
-        _morning_briefing_job,
-        CronTrigger(hour=7, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
-        id="morning_briefing",
+        _evening_briefing_job,
+        CronTrigger(hour=20, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="evening_briefing",
         replace_existing=True,
     )
 
-    # Start EP scanning at 7:00 AM ET
+    # Start EP scanning at 7:00 AM ET (4:00 AM PT)
     _scheduler.add_job(
         _start_ep_scanning,
         CronTrigger(hour=7, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
@@ -145,7 +161,15 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Stop EP scanning at 9:35 AM ET
+    # Morning briefing: 9:00 AM ET (6:00 AM PT), 30 min before open
+    _scheduler.add_job(
+        _morning_briefing_job,
+        CronTrigger(hour=9, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="morning_briefing",
+        replace_existing=True,
+    )
+
+    # Stop EP scanning at 9:35 AM ET (6:35 AM PT)
     _scheduler.add_job(
         _stop_ep_scanning,
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
