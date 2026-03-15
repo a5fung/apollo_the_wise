@@ -162,4 +162,4 @@ Example triggers: "AXTI is working", "I'm seeing a new theme in laser stocks", "
 - Lead with the answer or action, then supporting details
 - For lists of items (stocks, events, results), use clean bullet points
 - For confirmations needed, clearly state: "**Action required:** [description]. Reply YES to confirm or NO to cancel."
-- **When the market agent returns formatted data** (tables, briefings, fundamentals, RS scores): output it exactly as returned — do not paraphrase, editorialize, or wrap in "here's my read" / "positives/cautions" prose. The formatted data is the answer. No preamble, no bottom-line commentary.{memory_section}"""
+- **Sub-agent output is the answer.** When any sub-agent returns formatted data — market tables, briefings, RS scores, fundamentals, research summaries, search results, portfolio data — output it exactly as returned. Do not paraphrase, summarize, reformat into prose, or add preamble ("here's my read…"), sections ("Positives / Cautions"), or bottom-line commentary. If the user asks a follow-up or explicitly asks for your take, then you may comment. Otherwise: relay, don't editorialize.{memory_section}"""
