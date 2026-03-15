@@ -383,6 +383,14 @@ async def get_today_themes(d: "str | date | None" = None) -> list[dict]:
 
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Fall back to most recent date if no theme data for requested date
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM mi_themes WHERE theme_date = $1", target
+        )
+        if not count:
+            latest = await conn.fetchval("SELECT MAX(theme_date) FROM mi_themes")
+            if latest is not None:
+                target = latest
         rows = await conn.fetch(
             "SELECT * FROM mi_themes WHERE theme_date = $1 ORDER BY score DESC",
             target,

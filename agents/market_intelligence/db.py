@@ -209,16 +209,32 @@ def _to_date(d: "str | date") -> "date":
     return date_type.fromisoformat(str(d))
 
 
+async def _resolve_score_date(conn: Any, requested: "date") -> "date":
+    """
+    Return requested date if mi_stock_scores has rows for it,
+    otherwise fall back to the most recent date that has data.
+    This ensures queries work before the nightly RS run has populated today.
+    """
+    count = await conn.fetchval(
+        "SELECT COUNT(*) FROM mi_stock_scores WHERE score_date = $1", requested
+    )
+    if count:
+        return requested
+    latest = await conn.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
+    return latest if latest is not None else requested
+
+
 async def get_rs_leaders(d: "str | date", limit: int = 30) -> list[dict[str, Any]]:
-    """Top RS stocks for a given date, optionally by sector."""
+    """Top RS stocks for a given date, falling back to most recent if no data for requested date."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
         rows = await conn.fetch("""
             SELECT * FROM mi_stock_scores
             WHERE score_date = $1
             ORDER BY rs_composite DESC NULLS LAST
             LIMIT $2
-        """, _to_date(d), limit)
+        """, score_date, limit)
         return [dict(r) for r in rows]
 
 
@@ -363,13 +379,14 @@ async def get_ma_pullbacks(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
         if tickers:
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1 AND ticker = ANY($2)
                 AND rs_composite >= $3
                 AND close IS NOT NULL
-            """, _to_date(d), tickers, rs_min)
+            """, score_date, tickers, rs_min)
         else:
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores
@@ -377,7 +394,7 @@ async def get_ma_pullbacks(
                 AND rs_composite >= $2
                 AND close IS NOT NULL
                 ORDER BY rs_composite DESC
-            """, _to_date(d), rs_min)
+            """, score_date, rs_min)
 
     results = []
     tol = pct_tolerance / 100.0
