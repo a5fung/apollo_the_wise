@@ -564,3 +564,70 @@ class TestThemeDiscoveryStructuredOutput:
             if isinstance(node, (ast.Import, ast.ImportFrom))
         ]
         assert "json" not in imports, "json import should have been removed"
+
+
+# ── briefing: EP alert prioritization composite ───────────────────────────────
+
+class TestEpCompositeSort:
+    def _ep(self, ticker, score, rs=0):
+        return {"ticker": ticker, "ep_score": score, "rs_composite": rs,
+                "gap_pct": 8.0, "score_tier": "HIGH", "rel_volume": 3.0,
+                "catalyst_quality": "strong"}
+
+    def _theme(self, tickers, stage):
+        return {"tickers": tickers, "stage": stage, "name": "Test Theme",
+                "score": 60, "description": ""}
+
+    def test_accelerating_theme_ep_sorts_first(self):
+        from agents.market_intelligence.briefing import _format_morning_briefing
+        regime = {"regime": "Bull", "vix": 14.0, "ep_threshold": 70}
+        eps = [
+            self._ep("PLAIN", score=85),                  # no theme
+            self._ep("THEMED", score=80),                 # Accelerating theme → +15
+        ]
+        themes = [self._theme(["THEMED"], "Accelerating")]
+        text = _format_morning_briefing(
+            regime=regime, ep_alerts=eps, briefing_date="2026-03-14",
+            themes=themes,
+        )
+        # THEMED (80+15=95) should appear before PLAIN (85+0=85)
+        assert text.index("THEMED") < text.index("PLAIN")
+
+    def test_no_themes_falls_back_to_ep_score_order(self):
+        from agents.market_intelligence.briefing import _format_morning_briefing
+        regime = {"regime": "Bull", "vix": 14.0, "ep_threshold": 70}
+        eps = [self._ep("LOW", score=72), self._ep("HIGH", score=88)]
+        text = _format_morning_briefing(
+            regime=regime, ep_alerts=eps, briefing_date="2026-03-14",
+            themes=[],
+        )
+        assert text.index("HIGH") < text.index("LOW")
+
+    def test_rs_bonus_breaks_tie(self):
+        from agents.market_intelligence.briefing import _ep_composite_key
+        ep_high_rs = {"ticker": "A", "ep_score": 80, "rs_composite": 95}
+        ep_low_rs  = {"ticker": "B", "ep_score": 80, "rs_composite": 40}
+        assert _ep_composite_key(ep_high_rs, {}) > _ep_composite_key(ep_low_rs, {})
+
+    def test_rs_bonus_capped_at_10(self):
+        from agents.market_intelligence.briefing import _ep_composite_key
+        ep = {"ticker": "A", "ep_score": 80, "rs_composite": 200}  # extreme RS
+        assert _ep_composite_key(ep, {}) == 90.0  # 80 + 10 (capped) + 0
+
+    def test_theme_bonus_values(self):
+        from agents.market_intelligence.briefing import _ep_composite_key, _THEME_BONUS
+        ep = {"ticker": "T", "ep_score": 80, "rs_composite": 0}
+        assert _ep_composite_key(ep, {"T": "Accelerating"}) == 80 + 15
+        assert _ep_composite_key(ep, {"T": "Mainstream"})   == 80 + 10
+        assert _ep_composite_key(ep, {"T": "Nascent"})      == 80 + 5
+        assert _ep_composite_key(ep, {})                    == 80
+
+    def test_fading_theme_gets_no_bonus(self):
+        from agents.market_intelligence.briefing import _ep_composite_key
+        ep = {"ticker": "T", "ep_score": 80, "rs_composite": 0}
+        assert _ep_composite_key(ep, {"T": "Fading"}) == 80
+
+    def test_morning_gather_includes_themes(self):
+        from agents.market_intelligence import briefing
+        src = inspect.getsource(briefing.send_morning_briefing)
+        assert "get_today_themes" in src

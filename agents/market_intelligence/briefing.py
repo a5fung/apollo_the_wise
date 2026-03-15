@@ -303,11 +303,32 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
 # ── Morning briefing ───────────────────────────────────────────────────────────
 
+# Theme bonus for EP composite sort (sort-only — displayed score unchanged)
+_THEME_BONUS = {"Accelerating": 15, "Mainstream": 10, "Nascent": 5}
+
+
+def _ep_composite_key(ep: dict, theme_stage_by_ticker: dict[str, str]) -> float:
+    """
+    Composite priority score for sorting EP alerts in the morning briefing.
+    = EP score + theme bonus + RS rank bonus (capped at 10).
+
+    Theme bonus: Accelerating=15, Mainstream=10, Nascent=5, none=0.
+    RS bonus: rs_composite / 10, capped at 10 (RS 100 → +10, RS 50 → +5).
+
+    The displayed ep_score is never modified — this is sort-order only.
+    """
+    theme_stage = theme_stage_by_ticker.get(ep["ticker"], "")
+    theme_bonus = _THEME_BONUS.get(theme_stage, 0)
+    rs_bonus = min((ep.get("rs_composite") or 0) / 10, 10)
+    return ep["ep_score"] + theme_bonus + rs_bonus
+
+
 def _format_morning_briefing(
     regime: dict,
     ep_alerts: list[dict],
     briefing_date: str,
     futures: dict[str, float] | None = None,
+    themes: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -331,9 +352,21 @@ def _format_morning_briefing(
         if parts:
             sections.append("Futures: " + "  |  ".join(parts))
 
+    # Build ticker → theme stage map for composite sort
+    theme_stage_by_ticker: dict[str, str] = {}
+    for t in (themes or []):
+        for ticker in (t.get("tickers") or []):
+            theme_stage_by_ticker[ticker] = t.get("stage", "")
+
+    sorted_eps = sorted(
+        ep_alerts,
+        key=lambda ep: _ep_composite_key(ep, theme_stage_by_ticker),
+        reverse=True,
+    )
+
     sections += [
         "",
-        _format_ep_section(ep_alerts, section_num=1),
+        _format_ep_section(sorted_eps, section_num=1),
         "",
         "_EP scan: 4–6:30 AM PT. HIGH alerts sent in real-time._",
     ]
@@ -347,10 +380,11 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, ep_alerts, futures = await asyncio.gather(
+    regime, ep_alerts, futures, themes = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
+        get_today_themes(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -359,6 +393,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         ep_alerts=ep_alerts,
         briefing_date=today_str,
         futures=futures,
+        themes=themes,
     )
 
     success = await send_telegram_message(text, chat_id)
