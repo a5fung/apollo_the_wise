@@ -60,7 +60,7 @@ class Apollo:
             send_message_fn: Async function (user_id, text) -> None
                              Used to send Telegram messages (confirmations, etc.)
         """
-        self._client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=get_secrets().anthropic_api_key)
         self._send_message = send_message_fn
         self._tools = get_orchestrator_tools()
 
@@ -166,13 +166,20 @@ class Apollo:
             iteration += 1
             logger.debug(f"Tool loop iteration {iteration} for user {user_id}")
 
-            response = self._client.messages.create(
-                model=ORCHESTRATOR_MODEL,
-                max_tokens=4096,
-                system=system_prompt,
-                tools=self._tools,
-                messages=current_messages,
-            )
+            try:
+                response = await asyncio.wait_for(
+                    self._client.messages.create(
+                        model=ORCHESTRATOR_MODEL,
+                        max_tokens=4096,
+                        system=system_prompt,
+                        tools=self._tools,
+                        messages=current_messages,
+                    ),
+                    timeout=60,
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Claude API timed out after 60s for user {user_id}")
+                return "Sorry, I timed out waiting for a response. Please try again."
 
             # If Claude wants to use tools
             if response.stop_reason == "tool_use":
