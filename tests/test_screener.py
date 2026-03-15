@@ -340,10 +340,10 @@ class TestFormatScreenerResults:
         text = format_screener_results([r], ScreenerFilters())
         assert "AXTI" in text
 
-    def test_composite_score_shown(self):
-        r = self._make_result(composite=115.0)
+    def test_rs_score_shown(self):
+        r = self._make_result(rs=85.0)
         text = format_screener_results([r], ScreenerFilters())
-        assert "115" in text
+        assert "85" in text
 
     def test_eps_yoy_shown(self):
         r = self._make_result(eps_yoy=55.0)

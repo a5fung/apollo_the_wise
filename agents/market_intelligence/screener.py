@@ -184,7 +184,12 @@ async def run_screener(filters: ScreenerFilters) -> list[ScreenerResult]:
 
 
 def format_screener_results(results: list[ScreenerResult], filters: ScreenerFilters) -> str:
-    """Format screener results as Telegram-ready Markdown."""
+    """
+    Format screener results as a Telegram-ready monospace table.
+
+    Uses a code block so Telegram renders fixed-width columns cleanly.
+    Columns: rank, ticker, RS, EPS YoY%, Rev YoY%, accel flag.
+    """
     if not results:
         return "No stocks matched the screener criteria."
 
@@ -194,25 +199,37 @@ def format_screener_results(results: list[ScreenerResult], filters: ScreenerFilt
     if filters.min_rev_yoy_pct is not None:
         filter_parts.append(f"Rev YoY ≥ {filters.min_rev_yoy_pct:.0f}%")
     if filters.require_acceleration:
-        filter_parts.append("EPS accel")
+        filter_parts.append("accel")
     if filters.require_sales_confirms:
-        filter_parts.append("Sales confirms")
+        filter_parts.append("sales confirms")
     if filters.theme_stage:
         filter_parts.append(f"{filters.theme_stage} themes")
 
-    lines = [f"*Screener — {', '.join(filter_parts)}*", f"_{len(results)} results_\n"]
+    header = f"*Screener — {', '.join(filter_parts)}*  _{len(results)} results_"
 
-    for i, r in enumerate(results, 1):
-        eps_str = f"{r.latest_eps_yoy:+.0f}%" if r.latest_eps_yoy is not None else "n/a"
-        rev_str = f"{r.latest_rev_yoy:+.0f}%" if r.latest_rev_yoy is not None else "n/a"
-        accel_str = " ⚡" if r.eps_accelerating else ""
+    # Fixed-width columns for monospace block
+    # Ticker(6) RS(4) EPS%(7) Rev%(6) Flag(2)
+    def _eps(v: float | None) -> str:
+        if v is None:
+            return "   n/a"
+        s = f"{v:+.0f}%"
+        return s.rjust(6)
 
-        theme_str = f" · {r.theme_stage} theme" if r.theme_stage else ""
-        sector_str = f" · {r.sector}" if r.sector else ""
+    def _rev(v: float | None) -> str:
+        if v is None:
+            return "  n/a"
+        s = f"{v:+.0f}%"
+        return s.rjust(5)
 
-        lines.append(
-            f"{i}. `{r.ticker}` — Score {r.composite_score:.0f} | RS {r.rs_composite:.0f} (#{r.rs_rank}){theme_str}{sector_str}"
+    col_header = f"{'Ticker':<6}  {'RS':>3}  {'EPS%':>6}  {'Rev%':>5}"
+    divider    = "-" * len(col_header)
+
+    rows = [col_header, divider]
+    for r in results:
+        flag = "⚡" if r.eps_accelerating else "  "
+        rows.append(
+            f"{r.ticker:<6}  {r.rs_composite:>3.0f}  {_eps(r.latest_eps_yoy)}  {_rev(r.latest_rev_yoy)} {flag}"
         )
-        lines.append(f"   EPS {eps_str}  Rev {rev_str}{accel_str}")
 
-    return "\n".join(lines)
+    table = "```\n" + "\n".join(rows) + "\n```"
+    return f"{header}\n{table}"
