@@ -331,16 +331,30 @@ class Apollo:
         conversation_id: str,
         tool_input: dict[str, Any],
     ) -> str:
-        """Call /teach on the market agent, then optionally store an observation as memory."""
-        from shared.registry import get_agent_url
+        """
+        Call /teach on the market agent, then optionally store an observation as memory.
+        Checks for extended stocks before teaching — warns if any ticker is >15% above
+        its 20MA in a non-Bull regime. The user can override by confirming.
+        """
         import httpx
+        from shared.registry import get_agent_url
 
         url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
         if not url:
             return "Market Intelligence Agent is not running."
 
+        tickers = tool_input.get("tickers", [])
+        override = tool_input.get("override", False)
+
+        # ── Anti-FOMO gatekeeper ──────────────────────────────────────────────
+        if tickers and not override:
+            warning = await self._check_extension_warning(tickers, url)
+            if warning:
+                return warning  # Returns to Claude, which presents it to the user
+        # ─────────────────────────────────────────────────────────────────────
+
         payload = {
-            "tickers": tool_input.get("tickers", []),
+            "tickers": tickers,
             "theme_name": tool_input.get("theme_name", ""),
             "theme_thesis": tool_input.get("theme_thesis", ""),
             "observation": tool_input.get("observation", ""),
@@ -358,7 +372,6 @@ class Apollo:
         except Exception as e:
             return f"Failed to reach market agent: {e}"
 
-        # Store observation as memory if provided
         observation = tool_input.get("observation", "")
         if observation:
             entry = MemoryEntry(
@@ -377,6 +390,62 @@ class Apollo:
 
         parts = [v for v in [data.get("tracked"), data.get("theme")] if v]
         return "\n".join(parts) if parts else "Done."
+
+    async def _check_extension_warning(self, tickers: list[str], market_url: str) -> str | None:
+        """
+        Check if any tickers are extended >15% above 20MA in a risky regime.
+        Returns a warning string if so, or None if all clear.
+        """
+        import httpx
+
+        EXTENSION_THRESHOLD = 15.0  # % above 20MA
+        RISKY_REGIMES = {"Choppy", "Correcting", "Crisis"}
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.post(
+                    f"{market_url}/stocks/extension",
+                    json={"tickers": tickers},
+                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
+                )
+                r.raise_for_status()
+                data = r.json()
+        except Exception as e:
+            logger.warning(f"Extension check failed (skipping gatekeeper): {e}")
+            return None  # Fail open — don't block the teach if check itself fails
+
+        regime = data.get("regime", "Unknown")
+        extensions = data.get("extensions", [])
+
+        extended = [
+            e for e in extensions
+            if e.get("extension_pct") is not None and e["extension_pct"] > EXTENSION_THRESHOLD
+        ]
+
+        if not extended:
+            return None  # All clear
+
+        # Format warning
+        lines = []
+        for e in extended:
+            lines.append(
+                f"• `{e['ticker']}` is *{e['extension_pct']:+.1f}%* above its 20MA "
+                f"(close {e['close']:.2f}, 20MA {e['sma_20']:.2f})"
+            )
+
+        regime_note = (
+            f"Current regime is *{regime}* — the bar for new entries is higher."
+            if regime in RISKY_REGIMES
+            else f"Current regime is *{regime}* — extended entries carry more pullback risk."
+        )
+
+        warning = (
+            f"⚠️ *Extension warning* before tracking:\n\n"
+            + "\n".join(lines)
+            + f"\n\n{regime_note}\n\n"
+            + "_Still want to add to tracking? Reply yes and I'll proceed._"
+        )
+        return warning
 
     async def _store_memory(
         self,

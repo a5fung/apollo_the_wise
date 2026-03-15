@@ -5,6 +5,7 @@ Uses the same Postgres instance as Apollo, separate tables prefixed with mi_.
 from __future__ import annotations
 
 import logging
+from datetime import date, timedelta
 from typing import Any, Optional
 
 import asyncpg
@@ -389,6 +390,40 @@ async def get_ma_pullbacks(
             results.append(r)
 
     return results
+
+
+async def get_ticker_extension_data(tickers: list[str]) -> list[dict]:
+    """
+    Return latest close, sma_20, and extension % from 20MA for specified tickers.
+    Looks back up to 7 days in case today's data isn't scored yet.
+    """
+    pool = await get_pool()
+    cutoff = date.today() - timedelta(days=7)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (ticker)
+                ticker, close, sma_20, score_date
+            FROM mi_stock_scores
+            WHERE ticker = ANY($1)
+              AND score_date >= $2
+              AND close IS NOT NULL
+              AND sma_20 IS NOT NULL
+            ORDER BY ticker, score_date DESC
+        """, tickers, cutoff)
+
+    result = []
+    for row in rows:
+        close = row["close"]
+        sma_20 = row["sma_20"]
+        ext = ((close - sma_20) / sma_20 * 100) if sma_20 else None
+        result.append({
+            "ticker": row["ticker"],
+            "close": close,
+            "sma_20": sma_20,
+            "extension_pct": round(ext, 1) if ext is not None else None,
+            "score_date": str(row["score_date"]),
+        })
+    return result
 
 
 async def get_adv_map(d: "str | date") -> dict[str, float]:

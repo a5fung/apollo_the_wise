@@ -289,6 +289,10 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
                         "type": "string",
                         "description": "Free-form observation from the user to store as a market memory.",
                     },
+                    "override": {
+                        "type": "boolean",
+                        "description": "Set to true if the user has explicitly confirmed they want to proceed despite an extension/risk warning. Never set this on the first call — only after the user says 'yes anyway' or similar.",
+                    },
                 },
                 "required": [],
             },

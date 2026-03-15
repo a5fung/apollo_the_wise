@@ -25,6 +25,7 @@ from agents.market_intelligence.db import (
     get_rs_leaders,
     get_latest_regime,
     get_ma_pullbacks,
+    get_ticker_extension_data,
     bulk_track_stocks,
     seed_theme,
 )
@@ -46,6 +47,10 @@ class TeachRequest(BaseModel):
     theme_name: str = ""
     theme_thesis: str = ""
     observation: str = ""
+
+
+class ExtensionRequest(BaseModel):
+    tickers: list[str]
 
 
 class MarketIntelligenceAgent(BaseAgent):
@@ -128,6 +133,19 @@ class MarketIntelligenceAgent(BaseAgent):
         async def manual_ep_scan(_: str = Depends(verify_internal_secret)):
             results = await run_ep_scan()
             return {"ep_count": len(results), "results": results}
+
+        @self.app.post("/stocks/extension")
+        async def check_extension(
+            body: ExtensionRequest,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Return 20MA extension % for each ticker + current regime."""
+            data = await get_ticker_extension_data(body.tickers)
+            regime = await get_latest_regime() or {}
+            return {
+                "extensions": data,
+                "regime": regime.get("regime", "Unknown"),
+            }
 
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
         task = request.task.lower()
