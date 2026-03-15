@@ -583,10 +583,14 @@ async def purge_old_data() -> dict[str, int]:
             "mi_stock_scores": "score_date",
             "mi_themes":       "theme_date",
         }
+        _valid_tables = frozenset(cutoffs.keys())
+        _valid_cols = frozenset(date_cols.values())
         for table, cutoff in cutoffs.items():
             col = date_cols[table]
+            if table not in _valid_tables or col not in _valid_cols:
+                raise ValueError(f"Unexpected table/col in purge: {table}/{col}")
             result = await conn.execute(
-                f"DELETE FROM {table} WHERE {col} < $1", cutoff
+                f"DELETE FROM {table} WHERE {col} < $1", cutoff  # noqa: S608 — identifiers validated above
             )
             # asyncpg returns "DELETE N" as a string
             count = int(result.split()[-1]) if result else 0

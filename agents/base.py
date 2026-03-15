@@ -58,7 +58,7 @@ class BaseAgent(ABC):
         """Register standard routes on the FastAPI app."""
 
         @self.app.get("/health")
-        async def health():
+        async def health(_: str = Depends(verify_internal_secret)):
             return {"status": "ok", "agent": self.agent_name.value}
 
         @self.app.post("/task", response_model=AgentResponse)
