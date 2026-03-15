@@ -1,0 +1,455 @@
+"""
+O'Neil-style fundamental analysis — earnings + sales growth quality filters.
+
+Fetches via yfinance (free, no API key). On-demand only — not in default briefing.
+
+Quality flags (CAN SLIM fundamentals layer):
+- EPS acceleration: latest quarter YoY growth rate > prior quarter
+- Consecutive quarters ≥25% YoY EPS growth
+- Revenue confirming earnings (rev growth ≥15%)
+- Gross margin trend: expanding / stable / contracting
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import date, datetime
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+def _quarter_label(dt: Any) -> str:
+    """Convert a datetime-like to a readable label like 'Q2'25'."""
+    try:
+        q = (dt.month - 1) // 3 + 1
+        return f"Q{q}'{str(dt.year)[2:]}"
+    except Exception:
+        return str(dt)[:7]
+
+
+def _safe_float(val: Any) -> float | None:
+    try:
+        f = float(val)
+        return None if (f != f) else f  # NaN check
+    except (TypeError, ValueError):
+        return None
+
+
+def _yoy_pct(new: float, old: float) -> float | None:
+    if old and old != 0:
+        return round((new - old) / abs(old) * 100, 1)
+    return None
+
+
+def _avg_gross_margin(gross_row: Any, rev_row: Any, cols: list) -> float | None:
+    margins = []
+    for c in cols:
+        g = _safe_float(gross_row.get(c))
+        r = _safe_float(rev_row.get(c))
+        if g is not None and r is not None and r != 0:
+            margins.append(g / r * 100)
+    return sum(margins) / len(margins) if margins else None
+
+
+def _gross_margin_trend(q_income: Any) -> str:
+    try:
+        if q_income is None or q_income.empty:
+            return "unknown"
+        gross_row = next((q_income.loc[k] for k in ["Gross Profit"] if k in q_income.index), None)
+        rev_row = next((q_income.loc[k] for k in ["Total Revenue", "Revenue"] if k in q_income.index), None)
+        if gross_row is None or rev_row is None:
+            return "unknown"
+        cols = sorted(list(q_income.columns))
+        if len(cols) < 4:
+            return "unknown"
+        recent = _avg_gross_margin(gross_row, rev_row, cols[-2:])
+        prior = _avg_gross_margin(gross_row, rev_row, cols[-4:-2])
+        if recent is None or prior is None:
+            return "unknown"
+        delta = recent - prior
+        if delta > 1.0:
+            return "expanding"
+        if delta < -1.0:
+            return "contracting"
+        return "stable"
+    except Exception:
+        return "unknown"
+
+
+async def get_fundamentals(ticker: str) -> dict[str, Any]:
+    """
+    Fetch O'Neil-style fundamentals for a ticker via yfinance.
+
+    Returns:
+        ticker, quarterly_eps, quarterly_revenue, annual_eps, annual_revenue,
+        gross_margin_pct, next_earnings_date, quality_flags.
+    Fails gracefully on any missing data — missing fields are None or empty lists.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        return {"ticker": ticker, "error": "yfinance not installed"}
+
+    try:
+        loop = asyncio.get_event_loop()
+        t = yf.Ticker(ticker.upper())
+    except Exception as e:
+        logger.warning(f"get_fundamentals: failed to init Ticker for {ticker}: {e}")
+        return {"ticker": ticker.upper(), "error": str(e)}
+
+    def _fetch_q_income():
+        result = getattr(t, "quarterly_income_stmt", None)
+        if result is None:
+            result = getattr(t, "quarterly_financials", None)
+        return result
+
+    def _fetch_a_income():
+        result = getattr(t, "income_stmt", None)
+        if result is None:
+            result = getattr(t, "financials", None)
+        return result
+
+    def _fetch_info():
+        try:
+            return t.info or {}
+        except Exception:
+            return {}
+
+    def _fetch_calendar():
+        try:
+            return t.calendar
+        except Exception:
+            return None
+
+    q_income, a_income, info, calendar = await asyncio.gather(
+        loop.run_in_executor(None, _fetch_q_income),
+        loop.run_in_executor(None, _fetch_a_income),
+        loop.run_in_executor(None, _fetch_info),
+        loop.run_in_executor(None, _fetch_calendar),
+        return_exceptions=True,
+    )
+
+    # Normalize exceptions to safe defaults
+    if isinstance(q_income, Exception): q_income = None
+    if isinstance(a_income, Exception): a_income = None
+    if isinstance(info, Exception):     info = {}
+    if isinstance(calendar, Exception): calendar = None
+
+    result: dict[str, Any] = {"ticker": ticker.upper()}
+
+    # ── Quarterly EPS & Revenue ───────────────────────────────────────────────
+
+    quarterly_eps: list[dict] = []
+    quarterly_revenue: list[dict] = []
+    gross_margin_pct: float | None = None
+
+    if q_income is not None:
+        try:
+            all_cols = sorted(list(q_income.columns))   # oldest first
+            show_cols = all_cols[-8:]                   # up to 8 quarters
+
+            # EPS rows to try (yfinance varies by version / ticker)
+            eps_row = next(
+                (q_income.loc[k] for k in
+                 ["Basic EPS", "Diluted EPS",
+                  "Basic Earnings Per Share", "Diluted Earnings Per Share"]
+                 if k in q_income.index),
+                None,
+            )
+            # Fallback: derive from Net Income / shares
+            if eps_row is None and "Net Income" in q_income.index:
+                ni_row = q_income.loc["Net Income"]
+                shares_row = next(
+                    (q_income.loc[k] for k in
+                     ["Diluted Average Shares", "Basic Average Shares",
+                      "Shares Outstanding"]
+                     if k in q_income.index),
+                    None,
+                )
+                if shares_row is not None:
+                    eps_row = ni_row / shares_row
+
+            rev_row = next(
+                (q_income.loc[k] for k in ["Total Revenue", "Revenue"]
+                 if k in q_income.index),
+                None,
+            )
+            gross_row = q_income.loc["Gross Profit"] if "Gross Profit" in q_income.index else None
+
+            for col in show_cols:
+                label = _quarter_label(col)
+                # Find same quarter 1 year prior for YoY
+                idx = all_cols.index(col)
+                prior_col = all_cols[idx - 4] if idx >= 4 else None
+
+                if eps_row is not None:
+                    eps = _safe_float(eps_row.get(col))
+                    if eps is not None:
+                        prior_eps = _safe_float(eps_row.get(prior_col)) if prior_col is not None else None
+                        quarterly_eps.append({
+                            "period": label,
+                            "eps": round(eps, 2),
+                            "yoy_pct": _yoy_pct(eps, prior_eps) if prior_eps is not None else None,
+                        })
+
+                if rev_row is not None:
+                    rev = _safe_float(rev_row.get(col))
+                    if rev is not None:
+                        prior_rev = _safe_float(rev_row.get(prior_col)) if prior_col is not None else None
+                        quarterly_revenue.append({
+                            "period": label,
+                            "revenue_m": round(rev / 1_000_000, 1),
+                            "yoy_pct": _yoy_pct(rev, prior_rev) if prior_rev is not None else None,
+                        })
+
+            # Gross margin from latest quarter
+            if gross_row is not None and rev_row is not None and show_cols:
+                g = _safe_float(gross_row.get(show_cols[-1]))
+                r = _safe_float(rev_row.get(show_cols[-1]))
+                if g is not None and r is not None and r != 0:
+                    gross_margin_pct = round(g / r * 100, 1)
+
+        except Exception:
+            logger.warning(f"Quarterly income parsing failed for {ticker}", exc_info=True)
+
+    # Fallback gross margin from info dict
+    if gross_margin_pct is None and isinstance(info, dict):
+        gm = info.get("grossMargins")
+        if gm:
+            gross_margin_pct = round(float(gm) * 100, 1)
+
+    result["quarterly_eps"] = quarterly_eps
+    result["quarterly_revenue"] = quarterly_revenue
+    result["gross_margin_pct"] = gross_margin_pct
+
+    # ── Annual EPS & Revenue ─────────────────────────────────────────────────
+
+    annual_eps: list[dict] = []
+    annual_revenue: list[dict] = []
+
+    if a_income is not None:
+        try:
+            a_cols = sorted(list(a_income.columns))[-5:]  # last 5 fiscal years
+
+            a_eps_row = next(
+                (a_income.loc[k] for k in
+                 ["Basic EPS", "Diluted EPS",
+                  "Basic Earnings Per Share", "Diluted Earnings Per Share"]
+                 if k in a_income.index),
+                None,
+            )
+            if a_eps_row is None and "Net Income" in a_income.index:
+                ni_row = a_income.loc["Net Income"]
+                shares_row = next(
+                    (a_income.loc[k] for k in
+                     ["Diluted Average Shares", "Basic Average Shares"]
+                     if k in a_income.index),
+                    None,
+                )
+                if shares_row is not None:
+                    a_eps_row = ni_row / shares_row
+
+            a_rev_row = next(
+                (a_income.loc[k] for k in ["Total Revenue", "Revenue"]
+                 if k in a_income.index),
+                None,
+            )
+
+            for col in a_cols:
+                year = col.year if hasattr(col, "year") else int(str(col)[:4])
+                if a_eps_row is not None:
+                    eps = _safe_float(a_eps_row.get(col))
+                    if eps is not None:
+                        annual_eps.append({"year": year, "eps": round(eps, 2)})
+                if a_rev_row is not None:
+                    rev = _safe_float(a_rev_row.get(col))
+                    if rev is not None:
+                        annual_revenue.append({"year": year, "revenue_m": round(rev / 1_000_000, 1)})
+
+        except Exception:
+            logger.warning(f"Annual income parsing failed for {ticker}", exc_info=True)
+
+    result["annual_eps"] = annual_eps
+    result["annual_revenue"] = annual_revenue
+
+    # ── Next earnings date ───────────────────────────────────────────────────
+
+    next_earnings: str | None = None
+    try:
+        if isinstance(calendar, dict):
+            ed = calendar.get("Earnings Date")
+            if ed:
+                val = ed[0] if hasattr(ed, "__getitem__") else ed
+                next_earnings = str(val.date() if hasattr(val, "date") else val)
+        elif calendar is not None and hasattr(calendar, "empty") and not calendar.empty:
+            if "Earnings Date" in calendar.index:
+                val = calendar.loc["Earnings Date"].iloc[0]
+                next_earnings = str(val.date() if hasattr(val, "date") else val)
+    except Exception:
+        pass
+
+    if next_earnings is None and isinstance(info, dict):
+        ts = info.get("nextEarningsDate") or info.get("earningsTimestamp")
+        if ts:
+            try:
+                next_earnings = datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
+    result["next_earnings_date"] = next_earnings
+
+    # ── Quality flags ────────────────────────────────────────────────────────
+
+    eps_yoy = [q["yoy_pct"] for q in quarterly_eps if q.get("yoy_pct") is not None]
+    rev_yoy = [q["yoy_pct"] for q in quarterly_revenue if q.get("yoy_pct") is not None]
+
+    flags: dict[str, Any] = {}
+
+    # EPS acceleration: latest qtr growth rate > prior qtr growth rate
+    flags["eps_accelerating"] = bool(eps_yoy[-1] > eps_yoy[-2]) if len(eps_yoy) >= 2 else None
+
+    # Consecutive quarters ≥25% EPS growth (counting from most recent)
+    streak = 0
+    for pct in reversed(eps_yoy):
+        if pct >= 25:
+            streak += 1
+        else:
+            break
+    flags["eps_streak_25pct"] = streak
+
+    # Revenue confirms earnings (latest rev YoY ≥15%)
+    flags["sales_confirms"] = bool(rev_yoy[-1] >= 15) if rev_yoy else None
+
+    # Gross margin trend
+    flags["gross_margin_trend"] = _gross_margin_trend(q_income)
+
+    result["quality_flags"] = flags
+    return result
+
+
+# ── Formatter ─────────────────────────────────────────────────────────────────
+
+def format_fundamentals(data: dict) -> str:
+    """Format fundamentals as a Telegram-ready text block (Caruso-style)."""
+    if "error" in data:
+        return f"Fundamentals unavailable for `{data.get('ticker', '?')}`: {data['error']}"
+
+    ticker = data["ticker"]
+    gm = data.get("gross_margin_pct")
+    next_eps = data.get("next_earnings_date")
+    flags = data.get("quality_flags", {})
+    q_eps = data.get("quarterly_eps", [])
+    q_rev = data.get("quarterly_revenue", [])
+    a_eps = data.get("annual_eps", [])
+    a_rev = data.get("annual_revenue", [])
+
+    lines = [f"*{ticker} — Fundamentals*"]
+
+    # Header: gross margin + next earnings
+    header_parts = []
+    if gm is not None:
+        header_parts.append(f"Gross Margin {gm:.1f}%")
+    if next_eps:
+        try:
+            d = date.fromisoformat(next_eps)
+            header_parts.append(f"Next EPS {d.strftime('%b %d, %Y')}")
+        except Exception:
+            header_parts.append(f"Next EPS {next_eps}")
+    if header_parts:
+        lines.append("  ".join(header_parts))
+
+    # Quarterly table — last 6 quarters
+    show_eps = q_eps[-6:]
+    show_rev = q_rev[-6:]
+
+    if show_eps or show_rev:
+        lines.append("")
+        lines.append("*Quarterly (last 6 qtrs, YoY %)*")
+        lines.append("```")
+        col_w = 8
+        periods = [q["period"] for q in show_eps] or [q["period"] for q in show_rev]
+        lines.append("      " + "".join(p.rjust(col_w) for p in periods))
+
+        if show_eps:
+            eps_vals = [f"{q['eps']:.2f}" for q in show_eps]
+            lines.append("EPS   " + "".join(v.rjust(col_w) for v in eps_vals))
+            pct_vals = [
+                f"{q['yoy_pct']:+.0f}%" if q.get("yoy_pct") is not None else "n/a"
+                for q in show_eps
+            ]
+            lines.append("  %   " + "".join(v.rjust(col_w) for v in pct_vals))
+
+        if show_rev:
+            rev_vals = [f"{q['revenue_m']:.0f}M" for q in show_rev]
+            lines.append("Rev   " + "".join(v.rjust(col_w) for v in rev_vals))
+            pct_vals = [
+                f"{q['yoy_pct']:+.0f}%" if q.get("yoy_pct") is not None else "n/a"
+                for q in show_rev
+            ]
+            lines.append("  %   " + "".join(v.rjust(col_w) for v in pct_vals))
+
+        lines.append("```")
+
+    # Annual table — last 5 years
+    if a_eps or a_rev:
+        lines.append("*Annual*")
+        lines.append("```")
+        years = sorted({e["year"] for e in a_eps} | {r["year"] for r in a_rev})
+        col_w = 8
+        lines.append("      " + "".join(str(y).rjust(col_w) for y in years))
+
+        if a_eps:
+            by_year = {e["year"]: e["eps"] for e in a_eps}
+            lines.append(
+                "EPS   " + "".join(
+                    f"{by_year[y]:.2f}".rjust(col_w) if y in by_year else "---".rjust(col_w)
+                    for y in years
+                )
+            )
+        if a_rev:
+            by_year = {r["year"]: r["revenue_m"] for r in a_rev}
+            lines.append(
+                "Rev   " + "".join(
+                    f"{by_year[y]:.0f}M".rjust(col_w) if y in by_year else "---".rjust(col_w)
+                    for y in years
+                )
+            )
+        lines.append("```")
+
+    # Quality flags
+    flag_lines = []
+
+    acc = flags.get("eps_accelerating")
+    if acc is True:
+        flag_lines.append("🟢 EPS accelerating")
+    elif acc is False:
+        flag_lines.append("🔴 EPS decelerating")
+
+    streak = flags.get("eps_streak_25pct", 0)
+    if streak >= 3:
+        flag_lines.append(f"🟢 {streak} consecutive qtrs ≥25% EPS growth")
+    elif streak >= 1:
+        flag_lines.append(f"🟡 {streak} qtr(s) ≥25% EPS growth")
+    else:
+        flag_lines.append("🔴 No recent qtrs with ≥25% EPS growth")
+
+    confirms = flags.get("sales_confirms")
+    if confirms is True:
+        flag_lines.append("🟢 Revenue confirms earnings (≥15% growth)")
+    elif confirms is False:
+        flag_lines.append("🔴 Revenue weak — earnings may not be sustainable")
+
+    margin = flags.get("gross_margin_trend", "unknown")
+    if margin == "expanding":
+        flag_lines.append("🟢 Gross margin expanding")
+    elif margin == "contracting":
+        flag_lines.append("🔴 Gross margin contracting")
+    elif margin == "stable":
+        flag_lines.append("🟡 Gross margin stable")
+
+    if flag_lines:
+        lines.append("")
+        lines += flag_lines
+
+    return "\n".join(lines)

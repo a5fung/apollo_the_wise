@@ -9,6 +9,7 @@ Handles:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import date
@@ -171,6 +172,13 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["score ", "rs score", "rs for", "rank "]):
             return await self._handle_single_score(request)
+
+        if any(k in task for k in [
+            "fundamental", "earnings growth", "eps growth", "sales growth",
+            "revenue growth", "canslim", "o'neil", "oneill", "quarterly eps",
+            "quarterly revenue", "gross margin", "income statement",
+        ]):
+            return await self._handle_fundamentals_query(request)
 
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
@@ -350,6 +358,35 @@ class MarketIntelligenceAgent(BaseAgent):
             )
 
         return self._ok(request, result="\n".join(lines), data={"pullbacks": pullbacks})
+
+    async def _handle_fundamentals_query(self, request: AgentRequest) -> AgentResponse:
+        import re
+        from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
+
+        # Extract tickers — uppercase words 2-5 chars, skip common non-tickers
+        skip = {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
+                "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI"}
+        found = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        tickers = [t for t in found if t not in skip]
+
+        # Prefer tickers from context if provided
+        ctx_tickers = (request.context or {}).get("tickers", [])
+        all_tickers = ctx_tickers or tickers
+
+        if not all_tickers:
+            return self._ok(request, result="Please specify a ticker — e.g. 'fundamentals AXTI'")
+
+        # Cap at 3 tickers to avoid runaway yfinance calls
+        targets = all_tickers[:3]
+
+        if len(targets) == 1:
+            data = await get_fundamentals(targets[0])
+            text = format_fundamentals(data)
+        else:
+            results = await asyncio.gather(*[get_fundamentals(t) for t in targets])
+            text = "\n\n---\n\n".join(format_fundamentals(r) for r in results)
+
+        return self._ok(request, result=text)
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")
