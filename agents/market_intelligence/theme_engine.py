@@ -17,7 +17,6 @@ New sub-themes can always emerge from uncovered RS leaders.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 from datetime import date, timedelta
@@ -174,14 +173,48 @@ async def _rescore_existing_theme(
     }
 
 
+_THEME_DISCOVERY_TOOL = {
+    "name": "report_themes",
+    "description": "Report newly discovered investment themes from RS leader stocks.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "themes": {
+                "type": "array",
+                "description": "List of newly discovered themes. Empty array if none found.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Specific theme name e.g. 'Edge AI Inference', not 'Technology'",
+                        },
+                        "thesis": {
+                            "type": "string",
+                            "description": "2-3 sentences on what's driving this theme and why now.",
+                        },
+                        "tickers": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Ticker symbols belonging to this theme (min 2).",
+                        },
+                    },
+                    "required": ["name", "thesis", "tickers"],
+                },
+            }
+        },
+        "required": ["themes"],
+    },
+}
+
+
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders.
-    Claude is shown existing themes for context — it can also suggest
-    adding stocks to existing themes or splitting themes.
+    Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
     client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
@@ -213,34 +246,18 @@ Rules:
 - Name themes specifically ("Edge AI Inference" not "Technology")
 - Each stock should belong to at most one new theme
 - Some stocks may not fit any theme — leave them out
-- Focus on what the market is pricing in RIGHT NOW based on which stocks move together
-
-Return ONLY valid JSON:
-{{
-  "themes": [
-    {{
-      "name": "Theme Name",
-      "thesis": "2-3 sentence explanation of what's driving this theme and why now.",
-      "tickers": ["TICK1", "TICK2"]
-    }}
-  ]
-}}
-
-If no clear new themes emerge, return {{"themes": []}}"""
+- Focus on what the market is pricing in RIGHT NOW based on which stocks move together"""
 
     try:
         response = client.messages.create(
             model=THEME_MODEL,
             max_tokens=1500,
+            tools=[_THEME_DISCOVERY_TOOL],
+            tool_choice={"type": "tool", "name": "report_themes"},
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text.strip()
-        if text.startswith("```"):
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-        data = json.loads(text)
-        return data.get("themes", [])
+        tool_block = next(b for b in response.content if b.type == "tool_use")
+        return tool_block.input.get("themes", [])
     except Exception as e:
         logger.error(f"Claude new theme discovery failed: {e}")
         return []

@@ -74,11 +74,40 @@ def _get_gemini():
         return None
 
 
+_CATALYST_TOOL = {
+    "name": "classify_catalyst",
+    "description": "Classify the quality of a stock EP catalyst and provide analysis.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "quality": {
+                "type": "string",
+                "enum": ["game_changer", "strong", "routine"],
+                "description": (
+                    "game_changer: massive earnings beat + guidance raise, FDA approval, "
+                    "transformative contract. strong: solid beat + guidance raise, analyst "
+                    "upgrade cluster, major partnership. routine: in-line results, no "
+                    "company-specific catalyst."
+                ),
+            },
+            "analysis": {
+                "type": "string",
+                "description": "2-3 sentences on the specific catalyst and classification rationale.",
+            },
+        },
+        "required": ["quality", "analysis"],
+    },
+}
+
+
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict) -> tuple[str, str]:
     """
-    Use Claude to classify catalyst quality.
+    Use Claude to classify catalyst quality via structured tool use.
     Returns: (quality, analysis_text)
     quality: "game_changer" | "strong" | "routine"
+
+    Uses tool_choice to guarantee schema-valid output — no string parsing,
+    no silent fallback to "routine" on format deviations.
     """
     news_text = "\n".join([f"- {n.get('title', '')} {n.get('text', '')[:200]}" for n in news[:5]])
     company_desc = profile.get("description", "")[:300]
@@ -95,36 +124,20 @@ Recent news (may include earnings announcements, guidance, contracts, upgrades):
 
 IMPORTANT: If the stock is gapping 8%+ on high volume, there is almost certainly a catalyst.
 Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
-An earnings beat with guidance raise on a neglected stock = GAME_CHANGER or STRONG.
-Only use ROUTINE if you've confirmed there is genuinely no company-specific catalyst.
-
-Classify the catalyst quality:
-- GAME_CHANGER: Massive earnings beat + guidance raise (>20% above estimates), FDA approval,
-  transformative contract, major acquisition at premium
-- STRONG: Solid earnings beat + guidance raise, analyst upgrade cluster (3+),
-  significant regulatory milestone, major partnership
-- ROUTINE: In-line results, minor guidance, analyst initiation, pure sector sympathy move
-  with NO company-specific catalyst
-
-Respond in this exact format:
-QUALITY: [GAME_CHANGER|STRONG|ROUTINE]
-ANALYSIS: [2-3 sentences on the specific catalyst and why you classified it this way]"""
+An earnings beat with guidance raise on a neglected stock = game_changer or strong.
+Only use routine if you've confirmed there is genuinely no company-specific catalyst."""
 
     try:
         response = _get_claude().messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=300,
+            tools=[_CATALYST_TOOL],
+            tool_choice={"type": "tool", "name": "classify_catalyst"},
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text.strip()
-        lines = text.split("\n")
-        quality_line = next((l for l in lines if l.startswith("QUALITY:")), "QUALITY: ROUTINE")
-        analysis_line = next((l for l in lines if l.startswith("ANALYSIS:")), "ANALYSIS: No analysis.")
-        quality = quality_line.split(":", 1)[1].strip().lower()
-        analysis = analysis_line.split(":", 1)[1].strip()
-        if quality not in ("game_changer", "strong", "routine"):
-            quality = "routine"
-        return quality, analysis
+        tool_block = next(b for b in response.content if b.type == "tool_use")
+        result = tool_block.input
+        return result["quality"], result["analysis"]
     except Exception as e:
         logger.error(f"Claude catalyst classification failed for {ticker}: {e}")
         return "routine", "Classification failed — treating as routine."

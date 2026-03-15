@@ -405,3 +405,162 @@ class TestScoreEpVolConviction:
         )
         assert "short_interest" not in breakdown
         assert "vol_conviction" in breakdown
+
+
+# ── structured outputs: catalyst classification ───────────────────────────────
+
+class TestCatalystStructuredOutput:
+    def _make_tool_response(self, quality: str, analysis: str):
+        """Build a mock Anthropic response with a tool_use block."""
+        block = MagicMock()
+        block.type = "tool_use"
+        block.input = {"quality": quality, "analysis": analysis}
+        response = MagicMock()
+        response.content = [block]
+        return response
+
+    def test_uses_tool_choice(self):
+        """Claude call must use tool_choice to force structured output."""
+        from agents.market_intelligence import ep_detector
+        calls = []
+
+        def mock_create(**kwargs):
+            calls.append(kwargs)
+            return self._make_tool_response("strong", "Solid beat.")
+
+        with patch.object(ep_detector._get_claude(), "messages") as mock_msgs:
+            mock_msgs.create = mock_create
+            asyncio.run(ep_detector._classify_catalyst_claude("AXTI", [], {}))
+
+        assert calls, "No API call made"
+        assert calls[0].get("tool_choice") == {"type": "tool", "name": "classify_catalyst"}
+        assert calls[0].get("tools")
+
+    def test_returns_structured_quality_and_analysis(self):
+        from agents.market_intelligence import ep_detector
+
+        def mock_create(**kwargs):
+            return self._make_tool_response("game_changer", "Massive earnings beat.")
+
+        with patch.object(ep_detector._get_claude(), "messages") as mock_msgs:
+            mock_msgs.create = mock_create
+            quality, analysis = asyncio.run(
+                ep_detector._classify_catalyst_claude("AXTI", [], {})
+            )
+
+        assert quality == "game_changer"
+        assert analysis == "Massive earnings beat."
+
+    def test_falls_back_to_routine_on_exception(self):
+        from agents.market_intelligence import ep_detector
+
+        def mock_create(**kwargs):
+            raise RuntimeError("API error")
+
+        with patch.object(ep_detector._get_claude(), "messages") as mock_msgs:
+            mock_msgs.create = mock_create
+            quality, analysis = asyncio.run(
+                ep_detector._classify_catalyst_claude("AXTI", [], {})
+            )
+
+        assert quality == "routine"
+        assert "failed" in analysis.lower()
+
+    def test_catalyst_tool_schema_has_enum(self):
+        """Schema must constrain quality to valid values — no free-form strings."""
+        from agents.market_intelligence.ep_detector import _CATALYST_TOOL
+        props = _CATALYST_TOOL["input_schema"]["properties"]
+        assert "enum" in props["quality"]
+        assert set(props["quality"]["enum"]) == {"game_changer", "strong", "routine"}
+
+
+# ── structured outputs: theme discovery ───────────────────────────────────────
+
+class TestThemeDiscoveryStructuredOutput:
+    def _make_tool_response(self, themes: list):
+        block = MagicMock()
+        block.type = "tool_use"
+        block.input = {"themes": themes}
+        response = MagicMock()
+        response.content = [block]
+        return response
+
+    def test_uses_tool_choice(self):
+        from agents.market_intelligence import theme_engine
+        calls = []
+
+        def mock_create(**kwargs):
+            calls.append(kwargs)
+            return self._make_tool_response([])
+
+        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+            asyncio.run(theme_engine._discover_new_themes(
+                uncovered_stocks=[
+                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
+                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
+                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
+                ],
+                existing_themes=[],
+            ))
+
+        assert calls
+        assert calls[0].get("tool_choice") == {"type": "tool", "name": "report_themes"}
+
+    def test_returns_themes_list(self):
+        from agents.market_intelligence import theme_engine
+        expected = [{"name": "Edge AI", "thesis": "AI chips.", "tickers": ["A", "B"]}]
+
+        def mock_create(**kwargs):
+            return self._make_tool_response(expected)
+
+        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+            result = asyncio.run(theme_engine._discover_new_themes(
+                uncovered_stocks=[
+                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
+                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
+                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
+                ],
+                existing_themes=[],
+            ))
+
+        assert result == expected
+
+    def test_returns_empty_list_on_exception(self):
+        from agents.market_intelligence import theme_engine
+
+        def mock_create(**kwargs):
+            raise RuntimeError("API error")
+
+        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+            result = asyncio.run(theme_engine._discover_new_themes(
+                uncovered_stocks=[
+                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
+                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
+                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
+                ],
+                existing_themes=[],
+            ))
+
+        assert result == []
+
+    def test_theme_tool_schema_requires_themes_array(self):
+        from agents.market_intelligence.theme_engine import _THEME_DISCOVERY_TOOL
+        schema = _THEME_DISCOVERY_TOOL["input_schema"]
+        assert "themes" in schema["required"]
+        assert schema["properties"]["themes"]["type"] == "array"
+        item_props = schema["properties"]["themes"]["items"]["properties"]
+        assert set(item_props.keys()) >= {"name", "thesis", "tickers"}
+
+    def test_no_json_import_in_theme_engine(self):
+        """json module should no longer be imported — structured output eliminated the need."""
+        import ast, pathlib
+        src = pathlib.Path(
+            "C:/Users/lasto/Documents/Apollo_Assistant/agents/market_intelligence/theme_engine.py"
+        ).read_text()
+        tree = ast.parse(src)
+        imports = [
+            node.names[0].name if isinstance(node, ast.Import) else node.module
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Import, ast.ImportFrom))
+        ]
+        assert "json" not in imports, "json import should have been removed"
