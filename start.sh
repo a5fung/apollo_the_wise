@@ -41,8 +41,37 @@ print('ok' if all_healthy and statuses else 'wait')
 done
 log "Postgres and Redis ready"
 
+# Track sub-agent PIDs for clean shutdown on Ctrl+C
+AGENT_PIDS=()
+
+cleanup() {
+    echo ""
+    info "Shutting down agents..."
+    for pid in "${AGENT_PIDS[@]}"; do
+        kill "$pid" 2>/dev/null || true
+    done
+    wait 2>/dev/null || true
+    info "Done."
+}
+trap cleanup EXIT INT TERM
+
+info "Starting Research agent (port 8003)..."
+python -m uvicorn agents.research.agent:app --host 0.0.0.0 --port 8003 \
+    --log-level warning >> logs/research.log 2>&1 &
+AGENT_PIDS+=($!)
+
+info "Starting Market Intelligence agent (port 8006)..."
+python -m uvicorn agents.market_intelligence.agent:app --host 0.0.0.0 --port 8006 \
+    --log-level warning >> logs/market.log 2>&1 &
+AGENT_PIDS+=($!)
+
+# Give agents a moment to bind their ports
+sleep 2
+log "Agents started (logs in logs/)"
+
 echo ""
-echo -e "${GREEN}${BOLD}Starting Apollo...${NC} (Ctrl+C to stop)"
+echo -e "${GREEN}${BOLD}Starting Apollo...${NC} (Ctrl+C to stop everything)"
 echo ""
 
+mkdir -p logs
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload

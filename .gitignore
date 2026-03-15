@@ -17,7 +17,8 @@ build/
 .mypy_cache/
 .ruff_cache/
 
-# Audit log (can contain sensitive data)
+# Logs
+logs/*.log
 audit.log
 
 # Docker
