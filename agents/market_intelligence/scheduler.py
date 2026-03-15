@@ -16,6 +16,7 @@ from datetime import date
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from agents.market_intelligence.db import purge_old_data
 from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
@@ -108,6 +109,18 @@ async def _ep_scan_job():
         logger.error(f"EP scan failed: {e}")
 
 
+async def _weekly_cleanup():
+    """Run Sunday 2:00 AM ET. Purge old rows per retention policy."""
+    logger.info("Weekly DB cleanup starting...")
+    try:
+        deleted = await purge_old_data()
+        summary = "  ".join(f"{t.split('_',1)[1]}: -{n}" for t, n in deleted.items())
+        await notify_job_success("weekly_cleanup", summary or "nothing to purge")
+    except Exception as e:
+        logger.error(f"Weekly cleanup failed: {e}")
+        await notify_job_failure("weekly_cleanup", str(e))
+
+
 async def _start_ep_scanning():
     global _ep_scan_active
     _ep_scan_active = True
@@ -174,6 +187,14 @@ def start_scheduler() -> AsyncIOScheduler:
         _stop_ep_scanning,
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_stop",
+        replace_existing=True,
+    )
+
+    # Weekly cleanup: Sunday 2:00 AM ET
+    _scheduler.add_job(
+        _weekly_cleanup,
+        CronTrigger(day_of_week="sun", hour=2, minute=0, timezone="America/New_York"),
+        id="weekly_cleanup",
         replace_existing=True,
     )
 

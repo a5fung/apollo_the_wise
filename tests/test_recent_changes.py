@@ -220,3 +220,110 @@ class TestBriefingUsesGather:
         from agents.market_intelligence import briefing
         src = inspect.getsource(briefing.send_morning_briefing)
         assert "get_premarket_futures" in src
+
+
+# ── db: purge_old_data ────────────────────────────────────────────────────────
+
+class TestPurgeOldData:
+    def test_purge_deletes_correct_tables(self):
+        """purge_old_data() should issue DELETEs against the three retention tables."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        import agents.market_intelligence.db as db_module
+
+        executed_sqls = []
+
+        async def fake_execute(sql, cutoff):
+            executed_sqls.append(sql.strip())
+            return "DELETE 5"
+
+        mock_conn = MagicMock()
+        mock_conn.execute = fake_execute
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = MagicMock()
+        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
+            result = asyncio.run(db_module.purge_old_data())
+
+        tables_deleted = {sql.split("FROM")[1].split("WHERE")[0].strip() for sql in executed_sqls if "DELETE" in sql}
+        assert "mi_ep_alerts" in tables_deleted
+        assert "mi_stock_scores" in tables_deleted
+        assert "mi_themes" in tables_deleted
+        assert "mi_market_regime" not in tables_deleted
+        assert "mi_tracked_stocks" not in tables_deleted
+
+    def test_purge_returns_row_counts(self):
+        """Return dict should map table names to deleted row counts."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        import agents.market_intelligence.db as db_module
+
+        call_order = []
+
+        async def fake_execute(sql, cutoff):
+            if "mi_ep_alerts" in sql:
+                call_order.append("ep_alerts")
+                return "DELETE 12"
+            elif "mi_stock_scores" in sql:
+                call_order.append("stock_scores")
+                return "DELETE 340"
+            elif "mi_themes" in sql:
+                call_order.append("themes")
+                return "DELETE 0"
+            return "DELETE 0"
+
+        mock_conn = MagicMock()
+        mock_conn.execute = fake_execute
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = MagicMock()
+        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
+            result = asyncio.run(db_module.purge_old_data())
+
+        assert result["mi_ep_alerts"] == 12
+        assert result["mi_stock_scores"] == 340
+        assert result["mi_themes"] == 0
+
+    def test_purge_cutoffs_are_correct(self):
+        """Verify each table uses the right retention window."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from datetime import date, timedelta
+        import agents.market_intelligence.db as db_module
+
+        captured = {}
+
+        async def fake_execute(sql, cutoff):
+            if "mi_ep_alerts" in sql:
+                captured["ep_alerts"] = cutoff
+            elif "mi_stock_scores" in sql:
+                captured["stock_scores"] = cutoff
+            elif "mi_themes" in sql:
+                captured["themes"] = cutoff
+            return "DELETE 0"
+
+        mock_conn = MagicMock()
+        mock_conn.execute = fake_execute
+
+        mock_pool = MagicMock()
+        mock_pool.acquire = MagicMock()
+        mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        today = date.today()
+        with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
+            asyncio.run(db_module.purge_old_data())
+
+        assert captured["ep_alerts"] == today - timedelta(days=30)
+        assert captured["stock_scores"] == today - timedelta(days=90)
+        assert captured["themes"] == today - timedelta(days=60)
+
+    def test_weekly_cleanup_job_registered(self):
+        """Scheduler should register a weekly_cleanup job."""
+        from agents.market_intelligence import scheduler as sched_module
+        src = inspect.getsource(sched_module.start_scheduler)
+        assert "weekly_cleanup" in src
+        assert "sun" in src

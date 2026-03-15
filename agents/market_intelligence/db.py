@@ -426,6 +426,48 @@ async def get_ticker_extension_data(tickers: list[str]) -> list[dict]:
     return result
 
 
+async def purge_old_data() -> dict[str, int]:
+    """
+    Delete rows older than retention limits to keep the DB lean.
+
+    Retention policy:
+    - mi_ep_alerts:    30 days  (daily scan history)
+    - mi_stock_scores: 90 days  (RS engine — needs 90d for trend context)
+    - mi_themes:       60 days  (daily theme snapshots)
+    - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
+    - mi_tracked_stocks: kept forever (state table, not time-series)
+
+    Returns dict with row counts deleted per table.
+    """
+    pool = await get_pool()
+    today = date.today()
+    deleted: dict[str, int] = {}
+
+    async with pool.acquire() as conn:
+        cutoffs = {
+            "mi_ep_alerts":    today - timedelta(days=30),
+            "mi_stock_scores": today - timedelta(days=90),
+            "mi_themes":       today - timedelta(days=60),
+        }
+        date_cols = {
+            "mi_ep_alerts":    "alert_date",
+            "mi_stock_scores": "score_date",
+            "mi_themes":       "theme_date",
+        }
+        for table, cutoff in cutoffs.items():
+            col = date_cols[table]
+            result = await conn.execute(
+                f"DELETE FROM {table} WHERE {col} < $1", cutoff
+            )
+            # asyncpg returns "DELETE N" as a string
+            count = int(result.split()[-1]) if result else 0
+            deleted[table] = count
+            if count:
+                logger.info(f"Purged {count} rows from {table} (older than {cutoff})")
+
+    return deleted
+
+
 async def get_adv_map(d: "str | date") -> dict[str, float]:
     """Get stored ADV (avg daily volume) for all tickers as of a date."""
     pool = await get_pool()
