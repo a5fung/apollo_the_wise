@@ -393,13 +393,17 @@ class TelegramChannel:
         redis_ok, redis_err = await self._check_redis()
         claude_ok, claude_err = await self._check_claude()
 
+        def _safe(s: str) -> str:
+            """Strip Markdown special chars from dynamic/error strings."""
+            return re.sub(r"[*_`\[\]]", "", s)
+
         lines = ["*System Status*\n"]
 
         # Infrastructure
         lines.append("*Infrastructure*")
-        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL — {'storing memories & audit log' if db_ok else f'down: {db_err} — is Docker running?'}")
-        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis — {'caching & confirmations' if redis_ok else f'down: {redis_err} — is Docker running?'}")
-        lines.append(f"{'🟢' if claude_ok else '🔴'} Claude API — {'responding' if claude_ok else f'{claude_err}'}")
+        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL — {'storing memories & audit log' if db_ok else f'down: {_safe(db_err)} — is Docker running?'}")
+        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis — {'caching & confirmations' if redis_ok else f'down: {_safe(redis_err)} — is Docker running?'}")
+        lines.append(f"{'🟢' if claude_ok else '🔴'} Claude API — {'responding' if claude_ok else _safe(claude_err)}")
 
         # Agents
         lines.append("\n*Agents*")
@@ -415,7 +419,7 @@ class TelegramChannel:
                 lines.append(f"🟢 {agent_name.capitalize()} Agent — running")
             else:
                 hint = agent_hints.get(agent_name, "")
-                lines.append(f"🔴 {agent_name.capitalize()} Agent — {reason}" + (f"\n    ↳ {hint}" if hint else ""))
+                lines.append(f"🔴 {agent_name.capitalize()} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
 
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
