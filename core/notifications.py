@@ -54,15 +54,13 @@ async def notify_startup(agent_statuses: dict[str, tuple[bool, str]]) -> None:
     """
     # Dedup: skip if we already sent a startup notification recently
     try:
-        import redis.asyncio as redis
-        r = redis.from_url(os.environ.get("REDIS_URL", "redis://localhost:6379"))
+        from core.confirmations import get_redis
+        r = await get_redis()
         key = "apollo:last_startup_notify"
         if await r.get(key):
             logger.info("Startup notification suppressed (sent within last 60s)")
-            await r.aclose()
             return
         await r.setex(key, 60, "1")
-        await r.aclose()
     except Exception as e:
         logger.warning(f"Redis dedup check failed (sending anyway): {e}")
 

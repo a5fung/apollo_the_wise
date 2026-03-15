@@ -236,6 +236,32 @@ async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
         return []
 
 
+async def get_premarket_futures() -> dict[str, float]:
+    """
+    Pre-market futures snapshot via yfinance.
+    Returns overnight % change for ES (S&P 500) and NQ (Nasdaq 100).
+    Fails gracefully — returns empty dict on any error.
+    """
+    try:
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+
+        def _fetch() -> dict:
+            result = {}
+            for symbol, key in (("ES=F", "es_pct"), ("NQ=F", "nq_pct")):
+                fi = yf.Ticker(symbol).fast_info
+                price = getattr(fi, "last_price", None)
+                prev = getattr(fi, "previous_close", None)
+                if price and prev:
+                    result[key] = (price - prev) / prev * 100
+            return result
+
+        return await loop.run_in_executor(None, _fetch)
+    except Exception as e:
+        logger.warning(f"Futures snapshot failed: {e}")
+        return {}
+
+
 async def search_news_tavily(query: str) -> list[dict]:
     """Use Tavily for news search when available."""
     api_key = os.environ.get("TAVILY_API_KEY")

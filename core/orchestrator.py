@@ -15,6 +15,7 @@ import uuid
 from typing import Any, Callable, Optional
 
 import anthropic
+import httpx
 
 from core.confirmations import request_confirmation
 from core.context import build_system_prompt, compress_history, messages_to_claude_format
@@ -39,6 +40,9 @@ logger = logging.getLogger(__name__)
 
 # Max Claude iterations per user message (prevents infinite loops)
 MAX_TOOL_ITERATIONS = 10
+
+# Regimes where extension risk is elevated (used by Anti-FOMO gatekeeper)
+RISKY_REGIMES = {"Choppy", "Correcting", "Crisis"}
 
 # Which model to use for the main orchestrator
 ORCHESTRATOR_MODEL = "claude-sonnet-4-6"
@@ -336,7 +340,6 @@ class Apollo:
         Checks for extended stocks before teaching — warns if any ticker is >15% above
         its 20MA in a non-Bull regime. The user can override by confirming.
         """
-        import httpx
         from shared.registry import get_agent_url
 
         url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
@@ -396,10 +399,7 @@ class Apollo:
         Check if any tickers are extended >15% above 20MA in a risky regime.
         Returns a warning string if so, or None if all clear.
         """
-        import httpx
-
         EXTENSION_THRESHOLD = 15.0  # % above 20MA
-        RISKY_REGIMES = {"Choppy", "Correcting", "Crisis"}
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:

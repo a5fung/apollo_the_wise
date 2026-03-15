@@ -11,6 +11,7 @@ Both send directly via Telegram Bot API (no dependency on Apollo orchestrator).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import date
@@ -18,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from agents.market_intelligence.collector import get_premarket_futures
 from agents.market_intelligence.db import (
     get_today_ep_alerts,
     get_rs_leaders,
@@ -274,10 +276,13 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
-    rs_leaders = await get_rs_leaders(today_str, limit=30)
-    themes = await get_today_themes(today_str)
-    pullbacks = await get_ma_pullbacks(today_str)
+    regime, rs_leaders, themes, pullbacks = await asyncio.gather(
+        get_latest_regime(),
+        get_rs_leaders(today_str, limit=30),
+        get_today_themes(today_str),
+        get_ma_pullbacks(today_str),
+    )
+    regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
     text = _format_evening_briefing(
         regime=regime,
@@ -302,6 +307,7 @@ def _format_morning_briefing(
     regime: dict,
     ep_alerts: list[dict],
     briefing_date: str,
+    futures: dict[str, float] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -314,9 +320,18 @@ def _format_morning_briefing(
         regime_line += f"  |  {vix_str}"
     regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
 
-    sections = [
-        f"*Apollo Morning Briefing — {briefing_date}*",
-        regime_line,
+    sections = [f"*Apollo Morning Briefing — {briefing_date}*", regime_line]
+
+    if futures:
+        parts = []
+        if "es_pct" in futures:
+            parts.append(f"ES *{_fmt_sign(futures['es_pct'])}*")
+        if "nq_pct" in futures:
+            parts.append(f"NQ *{_fmt_sign(futures['nq_pct'])}*")
+        if parts:
+            sections.append("Futures: " + "  |  ".join(parts))
+
+    sections += [
         "",
         _format_ep_section(ep_alerts, section_num=1),
         "",
@@ -332,13 +347,18 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime = await get_latest_regime() or {"regime": "Unknown", "ep_threshold": 70}
-    ep_alerts = await get_today_ep_alerts(today_str)
+    regime, ep_alerts, futures = await asyncio.gather(
+        get_latest_regime(),
+        get_today_ep_alerts(today_str),
+        get_premarket_futures(),
+    )
+    regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
     text = _format_morning_briefing(
         regime=regime,
         ep_alerts=ep_alerts,
         briefing_date=today_str,
+        futures=futures,
     )
 
     success = await send_telegram_message(text, chat_id)

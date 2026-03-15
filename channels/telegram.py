@@ -37,6 +37,11 @@ logger = logging.getLogger(__name__)
 TYPING_INTERVAL = 4
 
 
+def _safe(s: str) -> str:
+    """Strip Markdown special chars from dynamic/error strings."""
+    return re.sub(r"[*_`\[\]]", "", s)
+
+
 class TelegramChannel:
     """Telegram bot interface for Apollo."""
 
@@ -399,10 +404,6 @@ class TelegramChannel:
         redis_ok, redis_err = await self._check_redis()
         claude_ok, claude_err = await self._check_claude()
 
-        def _safe(s: str) -> str:
-            """Strip Markdown special chars from dynamic/error strings."""
-            return re.sub(r"[*_`\[\]]", "", s)
-
         lines = ["*System Status*\n"]
 
         # Infrastructure
@@ -414,6 +415,7 @@ class TelegramChannel:
         # Agents
         lines.append("\n*Agents*")
         agent_hints = {
+            "market_intelligence": "start with: uvicorn agents.market_intelligence.agent:app --port 8006",
             "finance": "start with: uvicorn agents.finance.agent:app --port 8001",
             "calendar": "start with: uvicorn agents.calendar.agent:app --port 8002",
             "research": "start with: uvicorn agents.research.agent:app --port 8003",
