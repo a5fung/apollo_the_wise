@@ -39,7 +39,7 @@ from shared.secrets import get_secrets
 logger = logging.getLogger(__name__)
 
 # Max Claude iterations per user message (prevents infinite loops)
-MAX_TOOL_ITERATIONS = 10
+MAX_TOOL_ITERATIONS = 20
 
 # Regimes where extension risk is elevated (used by Anti-FOMO gatekeeper)
 RISKY_REGIMES = {"Choppy", "Correcting", "Crisis"}
@@ -263,6 +263,9 @@ class Apollo:
             "call_market_agent": AgentName.MARKET_INTELLIGENCE,
         }
 
+        if tool_name == "run_stock_screener":
+            return await self._run_stock_screener(tool_input)
+
         if tool_name == "teach_market_agent":
             return await self._teach_market_agent(
                 user_id=user_id,
@@ -446,6 +449,38 @@ class Apollo:
             + "_Still want to add to tracking? Reply yes and I'll proceed._"
         )
         return warning
+
+    async def _run_stock_screener(self, tool_input: dict[str, Any]) -> str:
+        """Call /screener on the market agent with structured filter params."""
+        from shared.registry import get_agent_url
+
+        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
+        if not url:
+            return "Market Intelligence Agent is not running."
+
+        payload = {
+            "min_rs": tool_input.get("min_rs", 60.0),
+            "min_eps_yoy_pct": tool_input.get("min_eps_yoy_pct"),
+            "min_rev_yoy_pct": tool_input.get("min_rev_yoy_pct"),
+            "require_acceleration": tool_input.get("require_acceleration", False),
+            "require_sales_confirms": tool_input.get("require_sales_confirms", False),
+            "theme_stage": tool_input.get("theme_stage"),
+            "max_results": min(int(tool_input.get("max_results", 20)), 50),
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=90) as client:
+                r = await client.post(
+                    f"{url}/screener",
+                    json=payload,
+                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
+                )
+                r.raise_for_status()
+                data = r.json()
+        except Exception as e:
+            return f"Screener failed: {e}"
+
+        return data.get("result", "No screener results returned.")
 
     async def _store_memory(
         self,

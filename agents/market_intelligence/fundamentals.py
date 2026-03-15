@@ -339,6 +339,38 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
     return result
 
 
+async def get_fundamentals_batch(
+    tickers: list[str],
+    concurrency: int = 5,
+) -> dict[str, dict]:
+    """
+    Fetch fundamentals for multiple tickers concurrently.
+
+    Args:
+        tickers: List of ticker symbols.
+        concurrency: Max simultaneous yfinance calls (default 5).
+
+    Returns:
+        Dict mapping ticker → fundamentals dict (same shape as get_fundamentals).
+        Tickers that fail return {"ticker": T, "error": "..."}.
+    """
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def _fetch(ticker: str) -> dict:
+        async with semaphore:
+            return await get_fundamentals(ticker)
+
+    results = await asyncio.gather(*[_fetch(t) for t in tickers], return_exceptions=True)
+
+    out: dict[str, dict] = {}
+    for ticker, res in zip(tickers, results):
+        if isinstance(res, Exception):
+            out[ticker.upper()] = {"ticker": ticker.upper(), "error": str(res)}
+        else:
+            out[ticker.upper()] = res
+    return out
+
+
 # ── Formatter ─────────────────────────────────────────────────────────────────
 
 def format_fundamentals(data: dict) -> str:

@@ -54,6 +54,16 @@ class ExtensionRequest(BaseModel):
     tickers: list[str]
 
 
+class ScreenerRequest(BaseModel):
+    min_rs: float = 60.0
+    min_eps_yoy_pct: float | None = None
+    min_rev_yoy_pct: float | None = None
+    require_acceleration: bool = False
+    require_sales_confirms: bool = False
+    theme_stage: str | None = None
+    max_results: int = 20
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -148,6 +158,28 @@ class MarketIntelligenceAgent(BaseAgent):
                 "regime": regime.get("regime", "Unknown"),
             }
 
+        @self.app.post("/screener")
+        async def run_screener_endpoint(
+            body: ScreenerRequest,
+            _: str = Depends(verify_internal_secret),
+        ):
+            from agents.market_intelligence.screener import (
+                ScreenerFilters,
+                run_screener,
+                format_screener_results,
+            )
+            filters = ScreenerFilters(
+                min_rs=body.min_rs,
+                min_eps_yoy_pct=body.min_eps_yoy_pct,
+                min_rev_yoy_pct=body.min_rev_yoy_pct,
+                require_acceleration=body.require_acceleration,
+                require_sales_confirms=body.require_sales_confirms,
+                theme_stage=body.theme_stage,
+                max_results=body.max_results,
+            )
+            results = await run_screener(filters)
+            return {"result": format_screener_results(results, filters)}
+
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
         task = request.task.lower()
 
@@ -179,6 +211,12 @@ class MarketIntelligenceAgent(BaseAgent):
             "quarterly revenue", "gross margin", "income statement",
         ]):
             return await self._handle_fundamentals_query(request)
+
+        if any(k in task for k in [
+            "screener", "screen for", "find top", "best stocks with",
+            "filter stocks", "composite score", "quality stocks", "fundamental stocks",
+        ]):
+            return await self._handle_screener_query(request)
 
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
@@ -386,6 +424,46 @@ class MarketIntelligenceAgent(BaseAgent):
             results = await asyncio.gather(*[get_fundamentals(t) for t in targets])
             text = "\n\n---\n\n".join(format_fundamentals(r) for r in results)
 
+        return self._ok(request, result=text)
+
+    async def _handle_screener_query(self, request: AgentRequest) -> AgentResponse:
+        """Run the composite screener with filters parsed from natural language."""
+        import re
+        from agents.market_intelligence.screener import (
+            ScreenerFilters,
+            run_screener,
+            format_screener_results,
+        )
+
+        task = request.task
+        ctx = request.context or {}
+
+        # Parse filters from context (set by orchestrator) or natural language fallback
+        def _num(key: str, default: float | None = None) -> float | None:
+            val = ctx.get(key)
+            if val is not None:
+                return float(val)
+            # Attempt regex extraction from task text (e.g. "RS > 70", "EPS > 25%")
+            patterns = {
+                "min_rs": r"rs\s*[>≥]\s*(\d+)",
+                "min_eps_yoy_pct": r"eps\s*(?:yoy|growth)?\s*[>≥]\s*(\d+)%?",
+                "min_rev_yoy_pct": r"rev(?:enue)?\s*(?:yoy|growth)?\s*[>≥]\s*(\d+)%?",
+            }
+            m = re.search(patterns.get(key, ""), task, re.IGNORECASE)
+            return float(m.group(1)) if m else default
+
+        filters = ScreenerFilters(
+            min_rs=_num("min_rs", 60.0),
+            min_eps_yoy_pct=_num("min_eps_yoy_pct"),
+            min_rev_yoy_pct=_num("min_rev_yoy_pct"),
+            require_acceleration=bool(ctx.get("require_acceleration", False)),
+            require_sales_confirms=bool(ctx.get("require_sales_confirms", False)),
+            theme_stage=ctx.get("theme_stage"),
+            max_results=int(ctx.get("max_results", 20)),
+        )
+
+        results = await run_screener(filters)
+        text = format_screener_results(results, filters)
         return self._ok(request, result=text)
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:

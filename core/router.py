@@ -298,6 +298,53 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "run_stock_screener",
+            "description": (
+                "Run a composite stock screener: RS leadership + active theme stage + "
+                "O'Neil fundamentals (EPS/revenue YoY growth, acceleration). "
+                "Use for queries like: 'find top fundamental stocks with RS leadership', "
+                "'best setups with accelerating EPS', 'top Accelerating theme stocks with EPS growth', "
+                "'screen for RS > 70 and EPS growth > 25%'. "
+                "Always call this instead of call_market_agent for screener/filter queries. "
+                "Results are ranked by composite score (RS + theme bonus + EPS bonus + accel bonus)."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "min_rs": {
+                        "type": "number",
+                        "description": "Minimum RS composite score (default 60). Use 70+ for high-quality setups.",
+                    },
+                    "min_eps_yoy_pct": {
+                        "type": "number",
+                        "description": "Minimum latest-quarter EPS YoY growth % (e.g. 25 for ≥25%). Omit to not filter.",
+                    },
+                    "min_rev_yoy_pct": {
+                        "type": "number",
+                        "description": "Minimum latest-quarter revenue YoY growth % (e.g. 15 for ≥15%). Omit to not filter.",
+                    },
+                    "require_acceleration": {
+                        "type": "boolean",
+                        "description": "If true, only include stocks where latest EPS YoY > prior quarter EPS YoY.",
+                    },
+                    "require_sales_confirms": {
+                        "type": "boolean",
+                        "description": "If true, only include stocks where revenue YoY ≥ 15% (sales confirms earnings).",
+                    },
+                    "theme_stage": {
+                        "type": "string",
+                        "enum": ["Nascent", "Accelerating", "Mainstream", "Fading"],
+                        "description": "Filter to stocks in a specific active theme stage. Omit for all stages.",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Max number of results to return (default 20, max 50).",
+                    },
+                },
+                "required": [],
+            },
+        },
+        {
             "name": "store_memory",
             "description": (
                 "Store an important fact or preference about the user for future reference. "
