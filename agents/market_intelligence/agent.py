@@ -293,7 +293,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_briefing_query(self, request: AgentRequest) -> AgentResponse:
         task_lower = request.task.lower()
-        if "evening" in task_lower or any(k in task_lower for k in ["eod", "end of day", "after close", "nightly"]):
+        wants_morning = any(k in task_lower for k in ["morning", "pre-market", "premarket", "pre market"])
+        wants_evening = any(k in task_lower for k in ["evening", "eod", "end of day", "after close", "nightly"])
+        if wants_evening and not wants_morning:
             briefing_text = await send_evening_briefing()
         else:
             briefing_text = await send_morning_briefing()
