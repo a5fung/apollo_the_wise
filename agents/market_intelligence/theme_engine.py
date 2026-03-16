@@ -40,8 +40,8 @@ FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
 NEW_THEME_MIN_STOCKS = 3
 
-# Semaphore: max concurrent Perplexity search calls
-_SEARCH_SEM = asyncio.Semaphore(3)
+# Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
+_SEARCH_SEM = asyncio.Semaphore(5)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 

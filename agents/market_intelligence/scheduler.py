@@ -32,6 +32,11 @@ from core.notifications import notify_job_failure, notify_job_success
 
 logger = logging.getLogger(__name__)
 
+# Job name constants — used in mi_job_log; must match exactly
+JOB_NIGHTLY_DATA_PULL = "nightly_data_pull"
+JOB_EVENING_BRIEFING = "evening_briefing"
+JOB_MORNING_BRIEFING = "morning_briefing"
+
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False
 
@@ -69,10 +74,10 @@ async def _nightly_data_pull():
         failures.append(f"Theme engine: {e}")
 
     if failures:
-        await notify_job_failure("nightly_data_pull", " | ".join(failures))
+        await notify_job_failure(JOB_NIGHTLY_DATA_PULL, " | ".join(failures))
     else:
-        await log_job_run("nightly_data_pull")
-        await notify_job_success("nightly_data_pull", ", ".join(summary_parts))
+        await log_job_run(JOB_NIGHTLY_DATA_PULL)
+        await notify_job_success(JOB_NIGHTLY_DATA_PULL, ", ".join(summary_parts))
 
     logger.info("Nightly data pull complete")
 
@@ -82,10 +87,10 @@ async def _evening_briefing_job():
     logger.info("Sending evening briefing...")
     try:
         await send_evening_briefing()
-        await log_job_run("evening_briefing")
+        await log_job_run(JOB_EVENING_BRIEFING)
     except Exception as e:
         logger.error(f"Evening briefing failed: {e}")
-        await notify_job_failure("evening_briefing", str(e))
+        await notify_job_failure(JOB_EVENING_BRIEFING, str(e))
 
 
 async def _morning_briefing_job():
@@ -93,10 +98,10 @@ async def _morning_briefing_job():
     logger.info("Sending morning briefing...")
     try:
         await send_morning_briefing()
-        await log_job_run("morning_briefing")
+        await log_job_run(JOB_MORNING_BRIEFING)
     except Exception as e:
         logger.error(f"Morning briefing failed: {e}")
-        await notify_job_failure("morning_briefing", str(e))
+        await notify_job_failure(JOB_MORNING_BRIEFING, str(e))
 
 
 async def _ep_scan_job():
@@ -159,14 +164,14 @@ async def check_missed_jobs() -> None:
 
     # Morning briefing: 9 AM – noon ET
     if 9 <= hour < 12:
-        if not await job_ran_today("morning_briefing"):
+        if not await job_ran_today(JOB_MORNING_BRIEFING):
             logger.info("Catch-up: sending missed morning briefing")
             await send_telegram_message("_(Missed briefing — sending now)_")
             await _morning_briefing_job()
 
     # Nightly data pull: 4:30 PM – 8 PM ET
     if (hour == 16 and now.minute >= 30) or (17 <= hour < 20):
-        if not await job_ran_today("nightly_data_pull"):
+        if not await job_ran_today(JOB_NIGHTLY_DATA_PULL):
             logger.info("Catch-up: running missed nightly data pull")
             await _nightly_data_pull()
 
@@ -174,8 +179,8 @@ async def check_missed_jobs() -> None:
     if 20 <= hour < 24:
         # Check both jobs concurrently before deciding what to run
         data_ran, brief_ran = await asyncio.gather(
-            job_ran_today("nightly_data_pull"),
-            job_ran_today("evening_briefing"),
+            job_ran_today(JOB_NIGHTLY_DATA_PULL),
+            job_ran_today(JOB_EVENING_BRIEFING),
         )
         if not data_ran:
             logger.info("Catch-up: running missed nightly data pull before evening briefing")
@@ -194,7 +199,7 @@ def start_scheduler() -> AsyncIOScheduler:
     _scheduler.add_job(
         _nightly_data_pull,
         CronTrigger(hour=16, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
-        id="nightly_data_pull",
+        id=JOB_NIGHTLY_DATA_PULL,
         replace_existing=True,
     )
 
@@ -202,7 +207,7 @@ def start_scheduler() -> AsyncIOScheduler:
     _scheduler.add_job(
         _evening_briefing_job,
         CronTrigger(hour=20, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
-        id="evening_briefing",
+        id=JOB_EVENING_BRIEFING,
         replace_existing=True,
     )
 
@@ -231,7 +236,7 @@ def start_scheduler() -> AsyncIOScheduler:
     _scheduler.add_job(
         _morning_briefing_job,
         CronTrigger(hour=9, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
-        id="morning_briefing",
+        id=JOB_MORNING_BRIEFING,
         replace_existing=True,
     )
 
