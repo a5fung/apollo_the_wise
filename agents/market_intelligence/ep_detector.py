@@ -36,7 +36,7 @@ from agents.market_intelligence.collector import (
     get_fmp_earnings,
     get_fmp_analyst_ratings,
     get_fmp_news,
-    search_news_tavily,
+    search_news_perplexity,
 )
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history
 
@@ -354,19 +354,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
 
         # Fetch all external data concurrently
-        profile, fmp_news, ratings, tavily_results = await asyncio.gather(
+        profile, fmp_news, ratings, perplexity_answer = await asyncio.gather(
             get_fmp_profile(ticker),
             get_fmp_news(ticker),
             get_fmp_analyst_ratings(ticker),
-            search_news_tavily(f"{ticker} stock news catalyst earnings"),
+            search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news."),
         )
         await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
         upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
 
-        # Combine news sources
-        all_news = fmp_news + [{"title": t.get("title", ""), "text": t.get("content", "")}
-                                for t in tavily_results]
-        news_summary = "\n".join([n.get("title", "") for n in all_news[:3]])
+        # Combine news sources — Perplexity synthesized answer + yfinance headlines
+        all_news = fmp_news + ([{"title": "Perplexity synthesis", "text": perplexity_answer}]
+                                if perplexity_answer else [])
+        news_summary = perplexity_answer[:500] if perplexity_answer else "\n".join(
+            [n.get("title", "") for n in fmp_news[:3]]
+        )
 
         # Claude + Gemini in parallel — cancel Gemini if catalyst is routine
         claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))

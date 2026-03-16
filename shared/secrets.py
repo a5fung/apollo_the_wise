@@ -132,6 +132,10 @@ class Secrets:
     def tavily_api_key(self) -> Optional[str]:
         return _optional("TAVILY_API_KEY")
 
+    @property
+    def perplexity_api_key(self) -> Optional[str]:
+        return _optional("PERPLEXITY_API_KEY")
+
     # Market Intelligence
     @property
     def polygon_api_key(self) -> Optional[str]:

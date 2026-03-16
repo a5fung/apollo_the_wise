@@ -263,6 +263,29 @@ async def get_premarket_futures() -> dict[str, float]:
         return {}
 
 
+async def search_news_perplexity(query: str) -> str:
+    """Use Perplexity Sonar for news search. Returns a synthesized answer string."""
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        return ""
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "sonar",
+                    "messages": [{"role": "user", "content": query}],
+                    "search_recency_filter": "month",
+                },
+            )
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.warning(f"Perplexity search failed: {e}")
+        return ""
+
+
 async def search_news_tavily(query: str) -> list[dict]:
     """Use Tavily for news search when available."""
     api_key = os.environ.get("TAVILY_API_KEY")

@@ -24,7 +24,7 @@ from typing import Any
 
 import anthropic
 
-from agents.market_intelligence.collector import get_fmp_profile, search_news_tavily
+from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity
 from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ FADING_RETIRE_AFTER = 5
 NEW_THEME_MIN_STOCKS = 3
 
 # Semaphore: max concurrent Tavily calls (free tier rate limit)
-_TAVILY_SEM = asyncio.Semaphore(3)
+_SEARCH_SEM = asyncio.Semaphore(3)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 
@@ -140,13 +140,13 @@ async def _rescore_existing_theme(
     sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in strong_stocks if t in stocks_by_ticker)
     breadth_score = min(len(sectors) * 10, 30)
 
-    # News confirmation (30%)
+    # News confirmation (30%) — Perplexity confirms if the theme narrative is current
     news_score = 0
     try:
-        async with _TAVILY_SEM:
-            results = await search_news_tavily(f"{name} stocks sector momentum 2026")
-        if results:
-            news_score = min(len(results) * 6, 30)
+        async with _SEARCH_SEM:
+            answer = await search_news_perplexity(f"Is {name} a current active investment theme in the stock market?")
+        if answer:
+            news_score = 30
     except Exception:
         pass
 
@@ -286,10 +286,10 @@ async def _score_new_theme(
 
     news_score = 0
     try:
-        async with _TAVILY_SEM:
-            results = await search_news_tavily(f"{theme['name']} stocks sector momentum 2026")
-        if results:
-            news_score = min(len(results) * 6, 30)
+        async with _SEARCH_SEM:
+            answer = await search_news_perplexity(f"Is {theme['name']} a current active investment theme in the stock market?")
+        if answer:
+            news_score = 30
     except Exception:
         pass
 
