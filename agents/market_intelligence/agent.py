@@ -508,7 +508,7 @@ async def startup():
     )
     await initialize_schema()
     start_scheduler()
-    await check_missed_jobs()
+    asyncio.create_task(check_missed_jobs())  # Run in background — data pull can take 30+ min
     logger.info("Market Intelligence Agent ready on port 8006")
 
 

@@ -45,6 +45,18 @@ _SEARCH_SEM = asyncio.Semaphore(3)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 
+async def _news_score(theme_name: str) -> int:
+    """Return 30 if Perplexity confirms the theme is currently active, else 0."""
+    try:
+        async with _SEARCH_SEM:
+            answer = await search_news_perplexity(
+                f"Is {theme_name} a current active investment theme in the stock market?"
+            )
+        return 30 if answer else 0
+    except Exception:
+        return 0
+
+
 # Cache yfinance sector lookups
 _sector_cache: dict[str, str] = {}
 
@@ -141,14 +153,7 @@ async def _rescore_existing_theme(
     breadth_score = min(len(sectors) * 10, 30)
 
     # News confirmation (30%) — Perplexity confirms if the theme narrative is current
-    news_score = 0
-    try:
-        async with _SEARCH_SEM:
-            answer = await search_news_perplexity(f"Is {name} a current active investment theme in the stock market?")
-        if answer:
-            news_score = 30
-    except Exception:
-        pass
+    news_score = await _news_score(name)
 
     total_score = round(momentum_score + breadth_score + news_score, 1)
     prev_score = theme.get("score") or 0
@@ -284,14 +289,7 @@ async def _score_new_theme(
     sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in tickers if t in stocks_by_ticker)
     breadth_score = min(len(sectors) * 10, 30)
 
-    news_score = 0
-    try:
-        async with _SEARCH_SEM:
-            answer = await search_news_perplexity(f"Is {theme['name']} a current active investment theme in the stock market?")
-        if answer:
-            news_score = 30
-    except Exception:
-        pass
+    news_score = await _news_score(theme["name"])
 
     return {
         "theme_date": today,

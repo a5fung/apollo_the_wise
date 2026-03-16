@@ -11,7 +11,7 @@ Schedule (US Eastern Time / Pacific Time):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -165,18 +165,22 @@ async def check_missed_jobs() -> None:
             await _morning_briefing_job()
 
     # Nightly data pull: 4:30 PM – 8 PM ET
-    if hour == 16 and now.minute >= 30 or 17 <= hour < 20:
+    if (hour == 16 and now.minute >= 30) or (17 <= hour < 20):
         if not await job_ran_today("nightly_data_pull"):
             logger.info("Catch-up: running missed nightly data pull")
             await _nightly_data_pull()
 
     # Evening briefing: 8 PM – midnight ET
     if 20 <= hour < 24:
-        # Ensure data was pulled first
-        if not await job_ran_today("nightly_data_pull"):
+        # Check both jobs concurrently before deciding what to run
+        data_ran, brief_ran = await asyncio.gather(
+            job_ran_today("nightly_data_pull"),
+            job_ran_today("evening_briefing"),
+        )
+        if not data_ran:
             logger.info("Catch-up: running missed nightly data pull before evening briefing")
             await _nightly_data_pull()
-        if not await job_ran_today("evening_briefing"):
+        if not brief_ran:
             logger.info("Catch-up: sending missed evening briefing")
             await send_telegram_message("_(Missed briefing — sending now)_")
             await _evening_briefing_job()
