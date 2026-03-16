@@ -358,7 +358,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             get_fmp_profile(ticker),
             get_fmp_news(ticker),
             get_fmp_analyst_ratings(ticker),
-            search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news."),
+            search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
         )
         await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
         upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)

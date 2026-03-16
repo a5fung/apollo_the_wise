@@ -40,7 +40,7 @@ FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
 NEW_THEME_MIN_STOCKS = 3
 
-# Semaphore: max concurrent Tavily calls (free tier rate limit)
+# Semaphore: max concurrent Perplexity search calls
 _SEARCH_SEM = asyncio.Semaphore(3)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)

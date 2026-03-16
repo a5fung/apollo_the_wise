@@ -263,8 +263,11 @@ async def get_premarket_futures() -> dict[str, float]:
         return {}
 
 
-async def search_news_perplexity(query: str) -> str:
-    """Use Perplexity Sonar for news search. Returns a synthesized answer string."""
+async def search_news_perplexity(query: str, recency: str = "month") -> str:
+    """Use Perplexity Sonar for news search. Returns a synthesized answer string.
+
+    recency: "day" | "week" | "month" | "year" — use "week" for EP catalysts.
+    """
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
         return ""
@@ -276,7 +279,7 @@ async def search_news_perplexity(query: str) -> str:
                 json={
                     "model": "sonar",
                     "messages": [{"role": "user", "content": query}],
-                    "search_recency_filter": "month",
+                    "search_recency_filter": recency,
                 },
             )
             r.raise_for_status()

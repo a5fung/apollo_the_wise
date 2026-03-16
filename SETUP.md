@@ -96,8 +96,11 @@ REDIS_PASSWORD=pick_another_password
 INTERNAL_API_SECRET=<first random string>
 TRADINGVIEW_WEBHOOK_SECRET=<second random string>
 
+# Research / news search (primary)
+PERPLEXITY_API_KEY=pplx-...                # Required — get from perplexity.ai/api
+
 # Optional (needed for full agent functionality)
-TAVILY_API_KEY=tvly-...
+TAVILY_API_KEY=tvly-...                    # Legacy fallback only — not used in main pipeline
 GOOGLE_CAL_TOKEN=...                       # See Step 8 for calendar setup
 IBKR_CLIENT_PORTAL_URL=https://localhost:5000
 ```
