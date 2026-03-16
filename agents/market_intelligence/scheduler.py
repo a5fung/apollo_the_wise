@@ -11,12 +11,13 @@ Schedule (US Eastern Time / Pacific Time):
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import datetime, timezone
 
+import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from agents.market_intelligence.db import purge_old_data
+from agents.market_intelligence.db import purge_old_data, log_job_run, job_ran_today
 from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
@@ -70,6 +71,7 @@ async def _nightly_data_pull():
     if failures:
         await notify_job_failure("nightly_data_pull", " | ".join(failures))
     else:
+        await log_job_run("nightly_data_pull")
         await notify_job_success("nightly_data_pull", ", ".join(summary_parts))
 
     logger.info("Nightly data pull complete")
@@ -80,6 +82,7 @@ async def _evening_briefing_job():
     logger.info("Sending evening briefing...")
     try:
         await send_evening_briefing()
+        await log_job_run("evening_briefing")
     except Exception as e:
         logger.error(f"Evening briefing failed: {e}")
         await notify_job_failure("evening_briefing", str(e))
@@ -90,6 +93,7 @@ async def _morning_briefing_job():
     logger.info("Sending morning briefing...")
     try:
         await send_morning_briefing()
+        await log_job_run("morning_briefing")
     except Exception as e:
         logger.error(f"Morning briefing failed: {e}")
         await notify_job_failure("morning_briefing", str(e))
@@ -131,6 +135,51 @@ async def _stop_ep_scanning():
     global _ep_scan_active
     _ep_scan_active = False
     logger.info("EP scanning deactivated")
+
+
+async def check_missed_jobs() -> None:
+    """
+    On startup, send any briefings that were missed while the machine was off.
+
+    Catch-up windows (ET):
+    - Morning briefing:  09:00 – 12:00  (fires if missed and we start in that window)
+    - Nightly data pull: 16:30 – 20:00  (fires if missed and we start in that window)
+    - Evening briefing:  20:00 – 23:59  (fires if missed and we start in that window)
+
+    Each job is only caught up once per day (guarded by mi_job_log).
+    Weekdays only.
+    """
+    et = pytz.timezone("America/New_York")
+    now = datetime.now(et)
+
+    if now.weekday() >= 5:  # Saturday / Sunday
+        return
+
+    hour = now.hour
+
+    # Morning briefing: 9 AM – noon ET
+    if 9 <= hour < 12:
+        if not await job_ran_today("morning_briefing"):
+            logger.info("Catch-up: sending missed morning briefing")
+            await send_telegram_message("_(Missed briefing — sending now)_")
+            await _morning_briefing_job()
+
+    # Nightly data pull: 4:30 PM – 8 PM ET
+    if hour == 16 and now.minute >= 30 or 17 <= hour < 20:
+        if not await job_ran_today("nightly_data_pull"):
+            logger.info("Catch-up: running missed nightly data pull")
+            await _nightly_data_pull()
+
+    # Evening briefing: 8 PM – midnight ET
+    if 20 <= hour < 24:
+        # Ensure data was pulled first
+        if not await job_ran_today("nightly_data_pull"):
+            logger.info("Catch-up: running missed nightly data pull before evening briefing")
+            await _nightly_data_pull()
+        if not await job_ran_today("evening_briefing"):
+            logger.info("Catch-up: sending missed evening briefing")
+            await send_telegram_message("_(Missed briefing — sending now)_")
+            await _evening_briefing_job()
 
 
 def start_scheduler() -> AsyncIOScheduler:

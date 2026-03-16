@@ -124,6 +124,13 @@ async def initialize_schema() -> None:
                 active BOOLEAN DEFAULT TRUE
             );
 
+            CREATE TABLE IF NOT EXISTS mi_job_log (
+                job_name TEXT NOT NULL,
+                run_date DATE NOT NULL,
+                ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (job_name, run_date)
+            );
+
             CREATE INDEX IF NOT EXISTS idx_stock_scores_score_date ON mi_stock_scores(score_date);
             CREATE INDEX IF NOT EXISTS idx_stock_scores_ticker ON mi_stock_scores(ticker);
             CREATE INDEX IF NOT EXISTS idx_ep_alerts_alert_date ON mi_ep_alerts(alert_date);
@@ -599,6 +606,31 @@ async def purge_old_data() -> dict[str, int]:
                 logger.info(f"Purged {count} rows from {table} (older than {cutoff})")
 
     return deleted
+
+
+async def log_job_run(job_name: str) -> None:
+    """Record that a scheduled job ran successfully today."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO mi_job_log (job_name, run_date, ran_at)
+            VALUES ($1, CURRENT_DATE, NOW())
+            ON CONFLICT (job_name, run_date) DO UPDATE SET ran_at = NOW()
+            """,
+            job_name,
+        )
+
+
+async def job_ran_today(job_name: str) -> bool:
+    """Return True if this job already ran today."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT 1 FROM mi_job_log WHERE job_name = $1 AND run_date = CURRENT_DATE",
+            job_name,
+        )
+        return row is not None
 
 
 async def get_adv_map(d: "str | date") -> dict[str, float]:

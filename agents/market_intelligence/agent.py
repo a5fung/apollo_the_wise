@@ -35,7 +35,7 @@ from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
 from agents.market_intelligence.theme_engine import run_theme_engine, get_today_themes
-from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler
+from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler, check_missed_jobs
 from shared.models import AgentName, AgentRequest, AgentResponse
 
 logger = logging.getLogger(__name__)
@@ -508,6 +508,7 @@ async def startup():
     )
     await initialize_schema()
     start_scheduler()
+    await check_missed_jobs()
     logger.info("Market Intelligence Agent ready on port 8006")
 
 
