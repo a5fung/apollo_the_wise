@@ -56,7 +56,11 @@ class ResearchAgent(BaseAgent):
                     },
                 )
                 response.raise_for_status()
-                return response.json()["choices"][0]["message"]["content"]
+                text = response.json()["choices"][0]["message"]["content"]
+                # Strip markdown HR dividers that don't render in Telegram
+                return "\n".join(
+                    line for line in text.splitlines() if line.strip() not in ("---", "***", "___")
+                ).strip()
             except httpx.HTTPError as e:
                 logger.error(f"Perplexity API error: {e}")
                 return ""
