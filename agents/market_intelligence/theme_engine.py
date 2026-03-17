@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import os
 from datetime import date, timedelta
 from typing import Any
@@ -55,17 +56,19 @@ async def _news_check(theme_name: str) -> tuple[int, str]:
         async with _SEARCH_SEM:
             answer = await search_news_perplexity(
                 f"What specific news and catalysts are driving '{theme_name}' stocks right now? "
-                f"Be factual and current — 2 sentences max.",
+                f"1-2 sentences max. Plain text only — no markdown, no bold, no bullet points.",
                 recency="week",
             )
         if not answer:
             return 0, ""
-        # Trim to 2 sentences
-        sentences = [s.strip() for s in answer.replace("\n", " ").split(".") if s.strip()]
+        # Strip any markdown formatting Perplexity snuck in
+        clean = re.sub(r"\*+", "", answer).replace("#", "").replace("\n", " ").strip()
+        # Trim to first 2 complete sentences
+        sentences = [s.strip() for s in clean.split(".") if s.strip()]
         desc = ". ".join(sentences[:2]).strip()
         if desc and not desc.endswith("."):
             desc += "."
-        return 30, desc[:220]
+        return 30, desc[:280]
     except Exception:
         return 0, ""
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import os
 from datetime import date
 from typing import Any
@@ -197,7 +198,9 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
         lines.append(f"{emoji} *{t['name']}*  _{stage}_ · {score:.0f}")
         lines.append(f"  {tickers_str}")
         if t.get("description"):
-            lines.append(f"  _{t['description'][:120]}_")
+            # Strip any residual markdown chars that would break Telegram's parser
+            desc = re.sub(r"\*+", "", t["description"]).strip()
+            lines.append(f"  _{desc}_")
 
     if fading:
         lines.append("")
