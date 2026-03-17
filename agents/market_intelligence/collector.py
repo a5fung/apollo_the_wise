@@ -263,6 +263,47 @@ async def get_premarket_futures() -> dict[str, float]:
         return {}
 
 
+async def get_overnight_snapshot(watchlist: list[dict]) -> list[dict]:
+    """
+    Fetch overnight price changes for all watchlist instruments via yfinance.
+    Returns list of dicts with symbol, name, pct_change, price, threshold, triggered.
+    """
+    if not watchlist:
+        return []
+    try:
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+
+        def _fetch() -> list[dict]:
+            results = []
+            for item in watchlist:
+                symbol = item["symbol"]
+                try:
+                    fi = yf.Ticker(symbol).fast_info
+                    price = getattr(fi, "last_price", None)
+                    prev = getattr(fi, "previous_close", None)
+                    if price is not None and prev is not None and prev != 0:
+                        pct = (price - prev) / prev * 100
+                        threshold = item.get("threshold_pct", 0.5)
+                        results.append({
+                            "symbol": symbol,
+                            "name": item.get("display_name", symbol),
+                            "price": round(price, 2),
+                            "pct_change": round(pct, 2),
+                            "threshold": threshold,
+                            "category": item.get("category", "other"),
+                            "triggered": abs(pct) >= threshold,
+                        })
+                except Exception:
+                    pass
+            return results
+
+        return await loop.run_in_executor(None, _fetch)
+    except Exception as e:
+        logger.warning(f"Overnight snapshot failed: {e}")
+        return []
+
+
 async def search_news_perplexity(query: str, recency: str = "month") -> str:
     """Use Perplexity Sonar for news search. Returns a synthesized answer string.
 

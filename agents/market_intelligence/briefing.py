@@ -20,13 +20,18 @@ from typing import Any
 
 import httpx
 
-from agents.market_intelligence.collector import get_premarket_futures
+from agents.market_intelligence.collector import (
+    get_premarket_futures,
+    get_overnight_snapshot,
+    search_news_perplexity,
+)
 from agents.market_intelligence.db import (
     get_today_ep_alerts,
     get_rs_leaders,
     get_latest_regime,
     get_ma_pullbacks,
     get_rs_velocity,
+    get_overnight_watchlist,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 
@@ -360,12 +365,83 @@ def _ep_composite_key(ep: dict, theme_stage_by_ticker: dict[str, str]) -> float:
     return ep["ep_score"] + theme_bonus + rs_bonus
 
 
+def _format_overnight_section(
+    snapshot: list[dict],
+    news: str | None = None,
+) -> str:
+    """Format the overnight market moves + headline news section."""
+    if not snapshot:
+        return ""
+
+    lines = ["*OVERNIGHT*"]
+
+    # Price line: ES -1.8% | NQ -2.3% | VIX 34 (+18%) | CL $112 (+4.2%)
+    parts = []
+    for item in snapshot:
+        name = item["name"]
+        pct = item["pct_change"]
+        price = item["price"]
+        sign = "+" if pct >= 0 else ""
+        if item["category"] == "volatility":
+            parts.append(f"{name} {price:.0f} ({sign}{pct:.1f}%)")
+        elif item["category"] == "commodity":
+            parts.append(f"{name} ${price:.0f} ({sign}{pct:.1f}%)")
+        else:
+            parts.append(f"{name} *{sign}{pct:.1f}%*")
+    lines.append("  " + "  |  ".join(parts))
+
+    # News or no-news signal
+    if news:
+        lines.append(f"  _{news}_")
+    else:
+        # Check if any index moved significantly
+        index_moves = [i for i in snapshot if i["category"] == "index" and i["triggered"]]
+        if index_moves:
+            lines.append("  _No clear headline catalyst. Gap in a news vacuum — watch for institutional flow._")
+
+    return "\n".join(lines)
+
+
+async def _get_overnight_news(snapshot: list[dict]) -> str | None:
+    """
+    Query Perplexity for overnight market news if any instrument breached its threshold.
+    Returns concise news string or None.
+    """
+    triggered = [i for i in snapshot if i["triggered"]]
+    if not triggered:
+        return None
+
+    # Build a contextual query based on what moved
+    movers = []
+    for item in triggered:
+        sign = "up" if item["pct_change"] > 0 else "down"
+        movers.append(f"{item['name']} {sign} {abs(item['pct_change']):.1f}%")
+    movers_str = ", ".join(movers)
+
+    query = (
+        f"What major market-moving news happened since yesterday's market close? "
+        f"Context: {movers_str}. Be concise, maximum 3 sentences."
+    )
+
+    from agents.market_intelligence.theme_engine import _is_garbage
+    answer = await search_news_perplexity(query, recency="day")
+    if not answer or _is_garbage(answer):
+        return None
+
+    # Clean up
+    clean = re.sub(r"\[\d+\]", "", answer)
+    clean = re.sub(r"\*+", "", clean).replace("#", "").replace("\n", " ")
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
+
+
 def _format_morning_briefing(
     regime: dict,
     ep_alerts: list[dict],
     briefing_date: str,
     futures: dict[str, float] | None = None,
     themes: list[dict] | None = None,
+    overnight_section: str | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -380,7 +456,11 @@ def _format_morning_briefing(
 
     sections = [f"*Apollo Morning Briefing — {briefing_date}*", regime_line]
 
-    if futures:
+    # Overnight section (market moves + news) — replaces old futures line
+    if overnight_section:
+        sections.append("")
+        sections.append(overnight_section)
+    elif futures:
         parts = []
         if "es_pct" in futures:
             parts.append(f"ES *{_fmt_sign(futures['es_pct'])}*")
@@ -415,18 +495,27 @@ def _format_morning_briefing(
 
 async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
-    Assemble and send the morning briefing (EP alerts + regime context).
-    Returns the briefing text.
+    Assemble and send the morning briefing.
+    Includes overnight market moves + headline news, EP alerts, regime context.
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, ep_alerts, futures, themes = await asyncio.gather(
+    regime, ep_alerts, futures, themes, watchlist = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
         get_today_themes(today_str),
+        get_overnight_watchlist(),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+
+    # Fetch overnight snapshot from watchlist instruments
+    overnight_section = None
+    if watchlist:
+        snapshot = await get_overnight_snapshot(watchlist)
+        if snapshot:
+            news = await _get_overnight_news(snapshot)
+            overnight_section = _format_overnight_section(snapshot, news)
 
     text = _format_morning_briefing(
         regime=regime,
@@ -434,6 +523,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         briefing_date=today_str,
         futures=futures,
         themes=themes,
+        overnight_section=overnight_section,
     )
 
     success = await send_telegram_message(text, chat_id)

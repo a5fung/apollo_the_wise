@@ -204,6 +204,9 @@ class MarketIntelligenceAgent(BaseAgent):
         # Route by intent
         # Data refresh must be checked first — combined requests like "refresh then send brief"
         # would otherwise match "brief" and skip the refresh entirely.
+        if any(k in task for k in ["track ", "untrack ", "drop ", "watchlist", "overnight watch"]):
+            return await self._handle_watchlist(request)
+
         if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme", "refresh theme"]):
             return await self._handle_theme_only(request)
 
@@ -273,6 +276,97 @@ class MarketIntelligenceAgent(BaseAgent):
         if wants_brief:
             return self._ok(request, result="Data refresh running — briefing will arrive in Telegram in a few minutes.")
         return self._ok(request, result="Data refresh running — RS, regime, and themes will be updated in a few minutes.")
+
+    async def _handle_watchlist(self, request: AgentRequest) -> AgentResponse:
+        """Manage the overnight watchlist — track/untrack instruments."""
+        from agents.market_intelligence.db import (
+            get_overnight_watchlist,
+            upsert_watchlist_item,
+            deactivate_watchlist_item,
+        )
+        task = request.task.lower()
+
+        # Show watchlist
+        if "watchlist" in task or "overnight watch" in task:
+            items = await get_overnight_watchlist(active_only=False)
+            if not items:
+                return self._ok(request, result="Overnight watchlist is empty.")
+            lines = ["*Overnight Watchlist*"]
+            for i in items:
+                status = "✓" if i["active"] else "✗"
+                lines.append(f"{status} `{i['symbol']}` {i['display_name']} — threshold {i['threshold_pct']}% ({i['category']}) {i.get('notes', '')}")
+            return self._ok(request, result="\n".join(lines))
+
+        # Drop/untrack
+        if any(k in task for k in ["untrack", "drop "]):
+            # Extract symbol — use Claude to parse, or simple heuristic
+            # Look for known symbols or uppercase words
+            words = request.task.upper().split()
+            symbol = None
+            # Common mappings
+            name_to_symbol = {
+                "OIL": "CL=F", "CRUDE": "CL=F", "BITCOIN": "BTC-USD", "BTC": "BTC-USD",
+                "GOLD": "GC=F", "VIX": "^VIX", "SPY": "ES=F", "NASDAQ": "NQ=F",
+            }
+            for w in words:
+                if w in name_to_symbol:
+                    symbol = name_to_symbol[w]
+                    break
+                if "=" in w or w.startswith("^") or "-" in w:
+                    symbol = w
+                    break
+            if symbol:
+                found = await deactivate_watchlist_item(symbol)
+                if found:
+                    return self._ok(request, result=f"Removed `{symbol}` from overnight watchlist.")
+                return self._ok(request, result=f"Symbol `{symbol}` not found in watchlist.")
+            return self._ok(request, result="Couldn't identify which instrument to remove. Try: 'drop oil' or 'untrack BTC-USD'")
+
+        # Track new instrument
+        if "track " in task:
+            words = request.task.split()
+            name_to_symbol = {
+                "oil": ("CL=F", "Crude Oil", 3.0, "commodity"),
+                "crude": ("CL=F", "Crude Oil", 3.0, "commodity"),
+                "bitcoin": ("BTC-USD", "Bitcoin", 5.0, "crypto"),
+                "btc": ("BTC-USD", "Bitcoin", 5.0, "crypto"),
+                "gold": ("GC=F", "Gold", 2.0, "commodity"),
+                "silver": ("SI=F", "Silver", 3.0, "commodity"),
+                "bonds": ("^TNX", "10Y Treasury Yield", 3.0, "rates"),
+                "treasury": ("^TNX", "10Y Treasury Yield", 3.0, "rates"),
+                "dollar": ("DX-Y.NYB", "US Dollar Index", 1.0, "currency"),
+                "euro": ("EURUSD=X", "EUR/USD", 1.0, "currency"),
+                "natural gas": ("NG=F", "Natural Gas", 5.0, "commodity"),
+                "gas": ("NG=F", "Natural Gas", 5.0, "commodity"),
+            }
+            # Try to find threshold in the message (e.g., "track bitcoin with 5% threshold")
+            import re
+            threshold_match = re.search(r'(\d+(?:\.\d+)?)\s*%', request.task)
+            custom_threshold = float(threshold_match.group(1)) if threshold_match else None
+
+            # Try to match a known name
+            task_lower = task
+            matched = None
+            for name, info in name_to_symbol.items():
+                if name in task_lower:
+                    matched = info
+                    break
+
+            if matched:
+                symbol, display, default_thresh, cat = matched
+                thresh = custom_threshold or default_thresh
+                # Extract notes if "because" or "note:" is in the message
+                notes = ""
+                for marker in ["because ", "note: ", "reason: "]:
+                    if marker in task_lower:
+                        notes = request.task[task_lower.index(marker) + len(marker):].strip()
+                        break
+                await upsert_watchlist_item(symbol, display, thresh, cat, notes)
+                return self._ok(request, result=f"Added `{symbol}` ({display}) to overnight watchlist — threshold {thresh}%{' — ' + notes if notes else ''}")
+
+            return self._ok(request, result="Couldn't identify the instrument. Try: 'track bitcoin', 'track gold', 'track oil', or specify a Yahoo Finance symbol.")
+
+        return self._ok(request, result="Use: 'show watchlist', 'track bitcoin with 5% threshold', or 'drop oil'")
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
         """Re-run just the theme engine using existing RS data. No Polygon calls — fast."""

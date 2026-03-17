@@ -131,6 +131,25 @@ async def initialize_schema() -> None:
                 PRIMARY KEY (job_name, run_date)
             );
 
+            CREATE TABLE IF NOT EXISTS mi_overnight_watchlist (
+                symbol TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                threshold_pct FLOAT NOT NULL DEFAULT 0.5,
+                category TEXT NOT NULL DEFAULT 'index',
+                notes TEXT DEFAULT '',
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            -- Seed defaults if empty
+            INSERT INTO mi_overnight_watchlist (symbol, display_name, threshold_pct, category, notes)
+            VALUES
+                ('ES=F', 'S&P Futures', 0.5, 'index', 'always on'),
+                ('NQ=F', 'Nasdaq Futures', 0.5, 'index', 'always on'),
+                ('^VIX', 'VIX', 10.0, 'volatility', 'always on'),
+                ('CL=F', 'Crude Oil', 3.0, 'commodity', 'Iran war — Strait of Hormuz risk')
+            ON CONFLICT (symbol) DO NOTHING;
+
             CREATE INDEX IF NOT EXISTS idx_stock_scores_score_date ON mi_stock_scores(score_date);
             CREATE INDEX IF NOT EXISTS idx_stock_scores_ticker ON mi_stock_scores(ticker);
             CREATE INDEX IF NOT EXISTS idx_ep_alerts_alert_date ON mi_ep_alerts(alert_date);
@@ -781,6 +800,42 @@ async def get_pipeline_status() -> dict[str, Any]:
                 "regime": regime_row["regime"] if regime_row else "Unknown",
             },
         }
+
+
+async def get_overnight_watchlist(active_only: bool = True) -> list[dict[str, Any]]:
+    """Return the overnight watchlist instruments."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        where = "WHERE active = TRUE" if active_only else ""
+        rows = await conn.fetch(
+            f"SELECT * FROM mi_overnight_watchlist {where} ORDER BY category, symbol"
+        )
+        return [dict(r) for r in rows]
+
+
+async def upsert_watchlist_item(
+    symbol: str, display_name: str, threshold_pct: float,
+    category: str = "other", notes: str = "",
+) -> None:
+    """Add or update an instrument on the overnight watchlist."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_overnight_watchlist (symbol, display_name, threshold_pct, category, notes, active)
+            VALUES ($1, $2, $3, $4, $5, TRUE)
+            ON CONFLICT (symbol) DO UPDATE SET
+                display_name = $2, threshold_pct = $3, category = $4, notes = $5, active = TRUE
+        """, symbol, display_name, threshold_pct, category, notes)
+
+
+async def deactivate_watchlist_item(symbol: str) -> bool:
+    """Deactivate a watchlist instrument. Returns True if found."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE mi_overnight_watchlist SET active = FALSE WHERE symbol = $1", symbol
+        )
+        return result != "UPDATE 0"
 
 
 async def get_adv_map(d: "str | date") -> dict[str, float]:
