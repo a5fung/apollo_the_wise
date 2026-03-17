@@ -110,6 +110,15 @@ class MarketIntelligenceAgent(BaseAgent):
             background.add_task(_refresh)
             return {"status": "data refresh queued"}
 
+        @self.app.post("/theme/run")
+        async def run_themes_only(
+            background: BackgroundTasks,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Re-run just the theme engine (uses existing RS data). Fast — no Polygon calls."""
+            background.add_task(run_theme_engine)
+            return {"status": "theme engine queued"}
+
         @self.app.post("/teach")
         async def teach(
             body: TeachRequest,
@@ -195,6 +204,9 @@ class MarketIntelligenceAgent(BaseAgent):
         # Route by intent
         # Data refresh must be checked first — combined requests like "refresh then send brief"
         # would otherwise match "brief" and skip the refresh entirely.
+        if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme"]):
+            return await self._handle_theme_only(request)
+
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
@@ -261,6 +273,27 @@ class MarketIntelligenceAgent(BaseAgent):
         if wants_brief:
             return self._ok(request, result="Data refresh running — briefing will arrive in Telegram in a few minutes.")
         return self._ok(request, result="Data refresh running — RS, regime, and themes will be updated in a few minutes.")
+
+    async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
+        """Re-run just the theme engine using existing RS data. No Polygon calls — fast."""
+        task_lower = request.task.lower()
+        wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
+
+        async def _run():
+            try:
+                logger.info("Theme-only run starting...")
+                await run_theme_engine()
+                logger.info("Theme-only run complete")
+                if wants_brief:
+                    await send_evening_briefing()
+            except Exception as e:
+                logger.error(f"Theme-only run failed: {e}")
+
+        asyncio.create_task(_run())
+
+        if wants_brief:
+            return self._ok(request, result="Theme engine running — briefing will arrive in Telegram shortly.")
+        return self._ok(request, result="Theme engine running — themes will be updated shortly (uses existing RS data, no Polygon calls).")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")
