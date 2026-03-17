@@ -104,6 +104,21 @@ async def health_check_all_agents() -> dict[str, tuple[bool, str]]:
     return results
 
 
+async def get_market_pipeline_status() -> dict | None:
+    """Fetch market pipeline status from the market intelligence agent. Returns None if unreachable."""
+    url = get_agent_url("market_intelligence")
+    if not url:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{url}/market/status", headers=_auth_headers())
+            if r.status_code == 200:
+                return r.json()
+    except Exception:
+        pass
+    return None
+
+
 # ── Tool definitions for the orchestrator ────────────────────────────────────
 
 def get_orchestrator_tools() -> list[dict[str, Any]]:

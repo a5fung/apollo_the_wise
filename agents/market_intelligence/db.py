@@ -735,6 +735,54 @@ async def job_ran_today(job_name: str) -> bool:
         return row is not None
 
 
+async def get_pipeline_status() -> dict[str, Any]:
+    """Return market pipeline health: job run times, data freshness, regime, theme count."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Most recent run per job (within last 7 days)
+        job_rows = await conn.fetch("""
+            SELECT DISTINCT ON (job_name) job_name, ran_at, run_date
+            FROM mi_job_log
+            WHERE run_date >= CURRENT_DATE - INTERVAL '7 days'
+            ORDER BY job_name, ran_at DESC
+        """)
+        jobs = {
+            row["job_name"]: {
+                "last_ran": row["ran_at"].isoformat(),
+                "ran_today": row["run_date"] == date.today(),
+            }
+            for row in job_rows
+        }
+
+        # Data freshness
+        score_row = await conn.fetchrow("""
+            SELECT score_date, COUNT(DISTINCT ticker) AS stock_count
+            FROM mi_stock_scores
+            WHERE score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            GROUP BY score_date
+        """)
+
+        # Active theme count (not retired)
+        theme_count = await conn.fetchval(
+            "SELECT COUNT(*) FROM mi_themes WHERE stage != 'Retired'"
+        ) or 0
+
+        # Current regime
+        regime_row = await conn.fetchrow(
+            "SELECT regime FROM mi_market_regime ORDER BY regime_date DESC LIMIT 1"
+        )
+
+        return {
+            "jobs": jobs,
+            "data": {
+                "latest_score_date": score_row["score_date"].isoformat() if score_row else None,
+                "stocks_scored": int(score_row["stock_count"]) if score_row else 0,
+                "active_themes": int(theme_count),
+                "regime": regime_row["regime"] if regime_row else "Unknown",
+            },
+        }
+
+
 async def get_adv_map(d: "str | date") -> dict[str, float]:
     """Get stored ADV (avg daily volume) for all tickers as of a date."""
     pool = await get_pool()

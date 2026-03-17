@@ -262,6 +262,25 @@ def start_scheduler() -> AsyncIOScheduler:
     return _scheduler
 
 
+def get_scheduler_status() -> dict:
+    """Return scheduler state: EP scan active flag and next fire times for key jobs."""
+    next_jobs = []
+    scheduler_running = _scheduler is not None and _scheduler.running
+    if scheduler_running:
+        for job_id in [JOB_NIGHTLY_DATA_PULL, JOB_EVENING_BRIEFING, JOB_MORNING_BRIEFING]:
+            job = _scheduler.get_job(job_id)
+            if job and job.next_run_time:
+                next_jobs.append({
+                    "id": job_id,
+                    "next_run": job.next_run_time.isoformat(),
+                })
+    return {
+        "ep_scan_active": _ep_scan_active,
+        "scheduler_running": scheduler_running,
+        "next_jobs": next_jobs,
+    }
+
+
 def stop_scheduler() -> None:
     global _scheduler
     if _scheduler and _scheduler.running:

@@ -159,6 +159,14 @@ class MarketIntelligenceAgent(BaseAgent):
                 "regime": regime.get("regime", "Unknown"),
             }
 
+        @self.app.get("/market/status")
+        async def market_pipeline_status(_: str = Depends(verify_internal_secret)):
+            """Return pipeline health: job run times, data freshness, scheduler state."""
+            from agents.market_intelligence.db import get_pipeline_status
+            from agents.market_intelligence.scheduler import get_scheduler_status
+            pipeline = await get_pipeline_status()
+            return {**pipeline, "scheduler": get_scheduler_status()}
+
         @self.app.post("/screener")
         async def run_screener_endpoint(
             body: ScreenerRequest,

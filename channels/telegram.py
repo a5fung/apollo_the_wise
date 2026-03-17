@@ -42,6 +42,70 @@ def _safe(s: str) -> str:
     return re.sub(r"[*_`\[\]]", "", s)
 
 
+def _format_market_pipeline(status: dict) -> str:
+    """Format the market pipeline section for /status."""
+    import pytz
+    from datetime import datetime as dt
+
+    pt = pytz.timezone("America/Los_Angeles")
+
+    jobs = status.get("jobs", {})
+    data = status.get("data", {})
+    scheduler = status.get("scheduler", {})
+
+    _JOB_LABELS = {
+        "nightly_data_pull": "Data pull:    ",
+        "evening_briefing":  "Evening brief:",
+        "morning_briefing":  "Morning brief:",
+    }
+
+    def _fmt_time(iso: str) -> str:
+        d = dt.fromisoformat(iso).astimezone(pt)
+        t = d.strftime("%I:%M %p PT").lstrip("0")
+        return f"{d.strftime('%a')} {t}"
+
+    def _job_line(job_name: str, extra: str = "") -> str:
+        label = _JOB_LABELS.get(job_name, job_name)
+        job = jobs.get(job_name)
+        if not job:
+            return f"{label} ⚠️ not run yet"
+        time_str = _fmt_time(job["last_ran"])
+        day = "today" if job["ran_today"] else time_str.split()[0]
+        time_only = " ".join(time_str.split()[1:])
+        icon = "✅" if job["ran_today"] else "⚠️"
+        return f"{label} {icon} {day} {time_only}{extra}"
+
+    lines = ["*Market Pipeline*"]
+
+    # Data pull line — include data freshness summary
+    extra = ""
+    if data.get("stocks_scored"):
+        regime = data.get("regime", "?")
+        regime_icon = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🟠", "Crisis": "🔴"}.get(regime, "⚪")
+        extra = f" · {data['stocks_scored']} stocks · {regime_icon} {regime} · {data['active_themes']} themes"
+    lines.append(_job_line("nightly_data_pull", extra))
+    lines.append(_job_line("evening_briefing"))
+    lines.append(_job_line("morning_briefing"))
+
+    # EP scan state
+    ep_active = scheduler.get("ep_scan_active", False)
+    lines.append(f"EP scan:      {'🟢 active' if ep_active else '🔴 inactive'} · 4–6:30 AM PT weekdays")
+
+    # Next scheduled job
+    next_jobs = scheduler.get("next_jobs", [])
+    if next_jobs:
+        nj = next_jobs[0]
+        next_label = {
+            "nightly_data_pull": "Data pull",
+            "evening_briefing": "Evening brief",
+            "morning_briefing": "Morning brief",
+        }.get(nj["id"], nj["id"])
+        next_str = _fmt_time(nj["next_run"])
+        lines.append(f"Next:         {next_label} {next_str}")
+
+    return "\n".join(lines)
+
+
 class TelegramChannel:
     """Telegram bot interface for Apollo."""
 
@@ -398,12 +462,15 @@ class TelegramChannel:
     async def _handle_status(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle /status — system-level health (DB, Redis, agents)."""
+        """Handle /status — system-level health (DB, Redis, agents, market pipeline)."""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        from core.router import health_check_all_agents
-        agent_health = await health_check_all_agents()
+        from core.router import health_check_all_agents, get_market_pipeline_status
+        agent_health, market_status = await asyncio.gather(
+            health_check_all_agents(),
+            get_market_pipeline_status(),
+        )
 
         # Check DB + Redis + Claude API
         db_ok, db_err = await self._check_db()
@@ -414,14 +481,14 @@ class TelegramChannel:
 
         # Infrastructure
         lines.append("*Infrastructure*")
-        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL — {'storing memories & audit log' if db_ok else f'down: {_safe(db_err)} — is Docker running?'}")
-        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis — {'caching & confirmations' if redis_ok else f'down: {_safe(redis_err)} — is Docker running?'}")
-        lines.append(f"{'🟢' if claude_ok else '🔴'} Claude API — {'responding' if claude_ok else _safe(claude_err)}")
+        lines.append(f"{'🟢' if db_ok else '🔴'} PostgreSQL — {'ok' if db_ok else f'down: {_safe(db_err)} — is Docker running?'}")
+        lines.append(f"{'🟢' if redis_ok else '🔴'} Redis — {'ok' if redis_ok else f'down: {_safe(redis_err)} — is Docker running?'}")
+        lines.append(f"{'🟢' if claude_ok else '🔴'} Claude API — {'ok' if claude_ok else _safe(claude_err)}")
 
         # Agents
         lines.append("\n*Agents*")
         agent_hints = {
-            "market_intelligence": "start with: uvicorn agents.market_intelligence.agent:app --port 8006",
+            "market_intelligence": "restart: bash start.sh",
             "finance": "start with: uvicorn agents.finance.agent:app --port 8001",
             "calendar": "start with: uvicorn agents.calendar.agent:app --port 8002",
             "research": "start with: uvicorn agents.research.agent:app --port 8003",
@@ -435,6 +502,11 @@ class TelegramChannel:
             else:
                 hint = agent_hints.get(agent_name, "")
                 lines.append(f"🔴 {display} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
+
+        # Market pipeline
+        if market_status:
+            lines.append("")
+            lines.append(_format_market_pipeline(market_status))
 
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
