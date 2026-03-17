@@ -390,8 +390,11 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     today = trade_date or date.today()
     today_str = today.strftime("%Y-%m-%d")
 
-    logger.info("Theme engine: fetching top RS stocks...")
-    leaders = await get_rs_leaders(today_str, limit=60)
+    logger.info("Theme engine: fetching top RS stocks + velocity data...")
+    leaders, velocity_all = await asyncio.gather(
+        get_rs_leaders(today_str, limit=60),
+        get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30),
+    )
 
     if not leaders:
         logger.warning("Theme engine: no RS data — run RS engine first")
@@ -434,8 +437,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     ]
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
 
-    # Velocity: stocks with sustained multi-week RS acceleration, not yet in a theme
-    velocity_all = await get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30)
+    # Filter velocity to stocks not already covered by active themes
     velocity_leaders = [s for s in velocity_all if s["ticker"] not in covered_tickers]
     logger.info(f"Theme engine: {len(velocity_leaders)} velocity accelerators for discovery")
 

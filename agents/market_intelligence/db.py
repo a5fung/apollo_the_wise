@@ -331,7 +331,7 @@ async def get_rs_velocity(
         v3w = rs_14d_ago - rs_21d_ago
         v4w = rs_21d_ago - rs_28d_ago
         score = 0.40*v1w + 0.30*v2w + 0.20*v3w + 0.10*v4w
-        × 1.2 consistency bonus if all 4 weekly deltas are positive
+        × 1.2 consistency bonus if all available (non-NULL) weekly deltas are positive
 
     Only includes stocks that:
     - Have data for today AND at least 2 of the 4 prior week snapshots
