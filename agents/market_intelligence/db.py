@@ -351,23 +351,23 @@ async def get_rs_velocity(
                     sector
                 FROM mi_stock_scores
                 WHERE score_date IN (
-                    $1,
-                    $1 - INTERVAL '7 days',
-                    $1 - INTERVAL '14 days',
-                    $1 - INTERVAL '21 days',
-                    $1 - INTERVAL '28 days'
+                    $1::date,
+                    $1::date - INTERVAL '7 days',
+                    $1::date - INTERVAL '14 days',
+                    $1::date - INTERVAL '21 days',
+                    $1::date - INTERVAL '28 days'
                 )
                 AND rs_composite IS NOT NULL
             ),
             pivoted AS (
                 SELECT
                     ticker,
-                    MAX(CASE WHEN score_date = $1 THEN rs_composite END)                       AS rs_now,
-                    MAX(CASE WHEN score_date = $1 - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
-                    MAX(CASE WHEN score_date = $1 - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
-                    MAX(CASE WHEN score_date = $1 - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
-                    MAX(CASE WHEN score_date = $1 - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
-                    MAX(CASE WHEN score_date = $1 THEN sector END)                             AS sector
+                    MAX(CASE WHEN score_date = $1::date THEN rs_composite END)                       AS rs_now,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
+                    MAX(CASE WHEN score_date = $1::date THEN sector END)                             AS sector
                 FROM snapshots
                 GROUP BY ticker
             ),
