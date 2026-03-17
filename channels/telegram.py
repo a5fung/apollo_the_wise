@@ -178,6 +178,12 @@ class TelegramChannel:
             if handled:
                 return
 
+        # Fast-path: known market commands bypass the LLM router entirely
+        fast_response = await self._try_fast_path(text)
+        if fast_response is not None:
+            await self._reply(update, fast_response)
+            return
+
         # Send typing indicator while processing
         typing_task = asyncio.create_task(
             self._send_typing_indicator(update, context)
@@ -196,6 +202,42 @@ class TelegramChannel:
             typing_task.cancel()
 
         await self._reply(update, response)
+
+    async def _try_fast_path(self, text: str) -> str | None:
+        """
+        Bypass the LLM router for known market commands.
+        Returns a response string if handled, None if the message should go through Claude.
+        """
+        from core.router import get_agent_url
+        import httpx
+
+        t = text.strip().lower()
+
+        # Evening brief
+        if any(k in t for k in ["send brief", "send evening brief", "evening brief", "send briefing"]):
+            url = get_agent_url("market_intelligence")
+            if url:
+                try:
+                    secret = get_secrets().internal_api_secret
+                    async with httpx.AsyncClient(timeout=5) as client:
+                        await client.post(f"{url}/briefing/evening", headers={"X-Apollo-Secret": secret})
+                except Exception:
+                    pass
+            return "Check Telegram. 🐢"
+
+        # Theme-only rerun
+        if any(k in t for k in ["rerun theme", "run theme", "refresh theme", "theme engine"]):
+            url = get_agent_url("market_intelligence")
+            if url:
+                try:
+                    secret = get_secrets().internal_api_secret
+                    async with httpx.AsyncClient(timeout=5) as client:
+                        await client.post(f"{url}/theme/run", headers={"X-Apollo-Secret": secret})
+                except Exception:
+                    pass
+            return "Theme engine running — ~2 min. 🐢"
+
+        return None
 
     async def _handle_start(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

@@ -32,6 +32,26 @@ logger = logging.getLogger(__name__)
 
 THEME_MODEL = "claude-sonnet-4-6"
 
+# Signals that indicate a Perplexity response (or stored description) is garbage
+_GARBAGE_SIGNALS = [
+    "no specific news", "no catalysts", "search results show",
+    "search results don't", "don't provide current", "results don't provide",
+    "no information", "couldn't find", "unable to find", "cannot find",
+    "lack timely", "i cannot", "as of my", "no news",
+    "lacks real-t", "price movements or specific catalysts",
+    "does not provide", "doesn't provide",
+    "i don't have", "i would need access", "i recommend checking",
+    "don't have search results", "no recent market news",
+]
+
+
+def _is_garbage(text: str) -> bool:
+    """Return True if the text is a known bad/garbage description."""
+    if not text:
+        return False
+    low = text.lower()
+    return any(sig in low for sig in _GARBAGE_SIGNALS)
+
 # Min RS composite for a stock to "count" as strong within a theme
 THEME_RS_MIN = 50.0
 # A theme is "well-covered" if >= this many of its stocks still show strong RS
@@ -46,29 +66,30 @@ _SEARCH_SEM = asyncio.Semaphore(5)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 
-async def _news_check(theme_name: str) -> tuple[int, str]:
+async def _news_check(theme_name: str, tickers: list[str] | None = None) -> tuple[int, str]:
     """
     Query Perplexity for current catalysts driving this theme.
     Returns (score, fresh_description) — score is 30 if confirmed active, else 0.
-    Description is a 1-2 sentence summary of what's driving it RIGHT NOW.
+    Perplexity is asked to summarize directly — no post-processing LLM step.
     """
     try:
+        ticker_str = " ".join(tickers[:6]) if tickers else theme_name
+        query = f"What news catalyst is driving {ticker_str} higher this week? Be concise, maximum 3 sentences."
         async with _SEARCH_SEM:
-            answer = await search_news_perplexity(
-                f"What specific news and catalysts are driving '{theme_name}' stocks right now? "
-                f"1-2 sentences max. Plain text only — no markdown, no bold, no bullet points.",
-                recency="week",
-            )
+            answer = await search_news_perplexity(query, recency="week")
         if not answer:
             return 0, ""
-        # Strip any markdown formatting Perplexity snuck in
-        clean = re.sub(r"\*+", "", answer).replace("#", "").replace("\n", " ").strip()
-        # Trim to first 2 complete sentences
-        sentences = [s.strip() for s in clean.split(".") if s.strip()]
-        desc = ". ".join(sentences[:2]).strip()
-        if desc and not desc.endswith("."):
-            desc += "."
-        return 30, desc[:280]
+
+        # Detect Perplexity "no results" responses — store nothing, don't pollute DB
+        if _is_garbage(answer):
+            return 0, ""
+
+        # Strip citations [1][2], markdown, normalize whitespace
+        clean = re.sub(r"\[\d+\]", "", answer)
+        clean = re.sub(r"\*+", "", clean).replace("#", "").replace("\n", " ")
+        clean = re.sub(r"\s+", " ", clean).strip()
+
+        return 30, clean
     except Exception:
         return 0, ""
 
@@ -143,6 +164,11 @@ async def _rescore_existing_theme(
     strong_stocks = [t for t in tickers if t in stocks_by_ticker
                      and stocks_by_ticker[t].get("rs_composite", 0) >= THEME_RS_MIN]
 
+    # Sanitize existing description — don't carry forward Haiku garbage or Perplexity failures
+    existing_desc = theme.get("description", "")
+    if _is_garbage(existing_desc):
+        existing_desc = ""
+
     if len(strong_stocks) < THEME_COVERAGE_MIN:
         # Theme is losing its RS base — mark Fading
         fading_days = await _count_consecutive_fading(name)
@@ -155,28 +181,44 @@ async def _rescore_existing_theme(
             "name": name,
             "stage": "Fading",
             "score": max(0.0, (theme.get("score") or 0) * 0.8),
-            "description": theme.get("description", ""),
+            "description": existing_desc,
             "tickers": tickers,
         }
 
-    # Momentum score (40%): avg RS composite of strong constituents
+    # Momentum score (50%): avg RS composite of strong constituents
     rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks]
     momentum = sum(rs_scores) / len(rs_scores)
-    momentum_score = min(momentum / 100 * 40, 40)
+    momentum_score = min(momentum / 100 * 50, 50)
 
-    # Breadth score (30%): distinct sectors
-    sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in strong_stocks if t in stocks_by_ticker)
-    breadth_score = min(len(sectors) * 10, 30)
-
-    # News confirmation (30%) + fresh description from Perplexity
-    news_score, fresh_desc = await _news_check(name)
-
-    total_score = round(momentum_score + breadth_score + news_score, 1)
     prev_score = theme.get("score") or 0
-
-    # Lifecycle
     history = await _get_theme_history(name, days=7)
     age_days = len(history)
+
+    # Estimate delta using assumed news_score=30 to decide if refresh is needed
+    estimated_delta = (momentum_score + 30) - prev_score
+    prev_stage = theme.get("stage", "Nascent")
+
+    # Refresh description on Mon/Wed/Fri, or when something material changes
+    today_weekday = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
+    is_refresh_day = today_weekday in (0, 2, 4)
+    should_refresh = (
+        not existing_desc
+        or is_refresh_day
+        or abs(estimated_delta) > 10
+        or (prev_stage == "Fading" and estimated_delta >= 0)  # recovering
+    )
+
+    if should_refresh:
+        news_score, fresh_desc = await _news_check(name, strong_stocks)
+        # When we attempted a refresh, use what we got — even if empty.
+        # Never fall back to old description after a refresh attempt: it may be garbage.
+        description = fresh_desc
+    else:
+        news_score = 30
+        # Not a refresh day — keep sanitized existing description
+        description = existing_desc
+
+    total_score = round(momentum_score + news_score, 1)
     delta = total_score - prev_score
 
     if delta > 3:
@@ -186,7 +228,7 @@ async def _rescore_existing_theme(
     elif age_days >= 5 and total_score >= 50:
         stage = "Mainstream"
     else:
-        stage = theme.get("stage", "Nascent")
+        stage = prev_stage
         if stage == "Fading" and delta >= 0:
             stage = "Accelerating"  # recovering
 
@@ -195,7 +237,7 @@ async def _rescore_existing_theme(
         "name": name,
         "stage": stage,
         "score": total_score,
-        "description": fresh_desc or theme.get("description", ""),
+        "description": description,
         "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
     }
 
@@ -366,18 +408,15 @@ async def _score_new_theme(
 
     rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in tickers if t in stocks_by_ticker]
     momentum = (sum(rs_scores) / len(rs_scores)) if rs_scores else 0
-    momentum_score = min(momentum / 100 * 40, 40)
+    momentum_score = min(momentum / 100 * 50, 50)
 
-    sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in tickers if t in stocks_by_ticker)
-    breadth_score = min(len(sectors) * 10, 30)
-
-    news_score, fresh_desc = await _news_check(theme["name"])
+    news_score, fresh_desc = await _news_check(theme["name"], tickers)
 
     return {
         "theme_date": today,
         "name": theme["name"],
         "stage": "Nascent",
-        "score": round(momentum_score + breadth_score + news_score, 1),
+        "score": round(momentum_score + news_score, 1),
         "description": fresh_desc or theme.get("thesis", ""),
         "tickers": tickers,
     }

@@ -204,7 +204,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # Route by intent
         # Data refresh must be checked first — combined requests like "refresh then send brief"
         # would otherwise match "brief" and skip the refresh entirely.
-        if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme"]):
+        if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme", "refresh theme"]):
             return await self._handle_theme_only(request)
 
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):

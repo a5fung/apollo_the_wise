@@ -168,8 +168,8 @@ def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
     rows = []
     for i in range(0, len(top), 3):
         group = top[i:i + 3]
-        parts = [f"`{s['ticker']}` {int(s.get('rs_composite') or 0)}" for s in group]
-        rows.append("   ".join(parts))
+        parts = [f"{s['ticker']:<5} {int(s.get('rs_composite') or 0):>3}" for s in group]
+        rows.append("`" + "   ".join(parts) + "`")
 
     return header + "\n" + "\n".join(rows)
 
@@ -188,7 +188,7 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
 
     lines = [f"*{section_num}. THEME HEALTH* — {len(active)} active"]
 
-    for t in active[:4]:
+    for t in active[:6]:
         stage = t.get("stage", "")
         emoji = STAGE_EMOJI.get(stage, "")
         score = t.get("score", 0)
@@ -267,7 +267,8 @@ def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> st
         if ma_20:
             ma_parts.append(f"20MA {_pct(ma_20)}")
 
-        lines.append(f"  `{ticker}` RS {rs}  {close:.2f}  —  {' | '.join(ma_parts)}")
+        line = f"{ticker:<5} RS {rs:<3} {close:>8.2f}  —  {' | '.join(ma_parts)}"
+        lines.append(f"`{line}`")
 
     return "\n".join(lines)
 
@@ -447,7 +448,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
 # ── Telegram delivery ──────────────────────────────────────────────────────────
 
 async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
-    """Send a message directly via Telegram Bot API."""
+    """Send a message directly via Telegram Bot API. Splits if over 4000 chars."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not chat_id:
         allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
@@ -461,19 +462,36 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
 
+    # Split into chunks if over Telegram's 4096-char limit
+    chunks: list[str] = []
+    if len(text) <= 4000:
+        chunks = [text]
+    else:
+        # Split at double-newline (section boundaries) to keep sections intact
+        remaining = text
+        while len(remaining) > 4000:
+            split_at = remaining.rfind("\n\n", 0, 4000)
+            if split_at == -1:
+                split_at = 4000
+            chunks.append(remaining[:split_at].strip())
+            remaining = remaining[split_at:].strip()
+        if remaining:
+            chunks.append(remaining)
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "Markdown",
-                    "disable_web_page_preview": True,
-                },
-            )
-            r.raise_for_status()
-            return True
+            for chunk in chunks:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={
+                        "chat_id": chat_id,
+                        "text": chunk,
+                        "parse_mode": "Markdown",
+                        "disable_web_page_preview": True,
+                    },
+                )
+                r.raise_for_status()
+        return True
     except Exception as e:
         logger.error(f"Telegram send failed: {e}")
         return False

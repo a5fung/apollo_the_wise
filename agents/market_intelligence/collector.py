@@ -277,9 +277,22 @@ async def search_news_perplexity(query: str, recency: str = "month") -> str:
                 "https://api.perplexity.ai/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 json={
-                    "model": "sonar",
-                    "messages": [{"role": "user", "content": query}],
+                    "model": "sonar-pro",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a financial market analyst. Give direct, specific answers "
+                                "about current market catalysts. "
+                                "Never include citation numbers like [1] or [2]. "
+                                "Never say 'search results show' or 'I cannot find'. "
+                                "Plain text only — no markdown, no bullets."
+                            ),
+                        },
+                        {"role": "user", "content": query},
+                    ],
                     "search_recency_filter": recency,
+                    "return_citations": False,
                 },
             )
             r.raise_for_status()
