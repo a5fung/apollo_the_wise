@@ -46,6 +46,7 @@ def _format_market_pipeline(status: dict) -> str:
     """Format the market pipeline section for /status."""
     import pytz
     from datetime import datetime as dt
+    from agents.market_intelligence.briefing import REGIME_EMOJI
 
     pt = pytz.timezone("America/Los_Angeles")
 
@@ -53,27 +54,27 @@ def _format_market_pipeline(status: dict) -> str:
     data = status.get("data", {})
     scheduler = status.get("scheduler", {})
 
-    _JOB_LABELS = {
-        "nightly_data_pull": "Data pull:    ",
-        "evening_briefing":  "Evening brief:",
-        "morning_briefing":  "Morning brief:",
+    # Single source of truth for job display names; label width = 14 chars
+    _JOB_DISPLAY = {
+        "nightly_data_pull": "Data pull",
+        "evening_briefing":  "Evening brief",
+        "morning_briefing":  "Morning brief",
     }
 
-    def _fmt_time(iso: str) -> str:
+    def _fmt_time(iso: str) -> tuple[str, str]:
+        """Return (day_abbr, time_str) in PT, e.g. ("Mon", "1:32 PM PT")."""
         d = dt.fromisoformat(iso).astimezone(pt)
-        t = d.strftime("%I:%M %p PT").lstrip("0")
-        return f"{d.strftime('%a')} {t}"
+        return d.strftime("%a"), d.strftime("%I:%M %p PT").lstrip("0")
 
     def _job_line(job_name: str, extra: str = "") -> str:
-        label = _JOB_LABELS.get(job_name, job_name)
+        label = f"{_JOB_DISPLAY.get(job_name, job_name)}:".ljust(14)
         job = jobs.get(job_name)
         if not job:
             return f"{label} ⚠️ not run yet"
-        time_str = _fmt_time(job["last_ran"])
-        day = "today" if job["ran_today"] else time_str.split()[0]
-        time_only = " ".join(time_str.split()[1:])
+        day_abbr, time_str = _fmt_time(job["last_ran"])
+        day = "today" if job["ran_today"] else day_abbr
         icon = "✅" if job["ran_today"] else "⚠️"
-        return f"{label} {icon} {day} {time_only}{extra}"
+        return f"{label} {icon} {day} {time_str}{extra}"
 
     lines = ["*Market Pipeline*"]
 
@@ -81,7 +82,7 @@ def _format_market_pipeline(status: dict) -> str:
     extra = ""
     if data.get("stocks_scored"):
         regime = data.get("regime", "?")
-        regime_icon = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🟠", "Crisis": "🔴"}.get(regime, "⚪")
+        regime_icon = REGIME_EMOJI.get(regime, "⚪")
         extra = f" · {data['stocks_scored']} stocks · {regime_icon} {regime} · {data['active_themes']} themes"
     lines.append(_job_line("nightly_data_pull", extra))
     lines.append(_job_line("evening_briefing"))
@@ -89,19 +90,15 @@ def _format_market_pipeline(status: dict) -> str:
 
     # EP scan state
     ep_active = scheduler.get("ep_scan_active", False)
-    lines.append(f"EP scan:      {'🟢 active' if ep_active else '🔴 inactive'} · 4–6:30 AM PT weekdays")
+    lines.append(f"{'EP scan:'.ljust(14)} {'🟢 active' if ep_active else '🔴 inactive'} · 4–6:30 AM PT weekdays")
 
     # Next scheduled job
     next_jobs = scheduler.get("next_jobs", [])
     if next_jobs:
         nj = next_jobs[0]
-        next_label = {
-            "nightly_data_pull": "Data pull",
-            "evening_briefing": "Evening brief",
-            "morning_briefing": "Morning brief",
-        }.get(nj["id"], nj["id"])
-        next_str = _fmt_time(nj["next_run"])
-        lines.append(f"Next:         {next_label} {next_str}")
+        next_label = _JOB_DISPLAY.get(nj["id"], nj["id"])
+        day_abbr, time_str = _fmt_time(nj["next_run"])
+        lines.append(f"{'Next:'.ljust(14)} {next_label} {day_abbr} {time_str}")
 
     return "\n".join(lines)
 
@@ -467,15 +464,19 @@ class TelegramChannel:
             return
 
         from core.router import health_check_all_agents, get_market_pipeline_status
-        agent_health, market_status = await asyncio.gather(
+        (
+            agent_health,
+            market_status,
+            (db_ok, db_err),
+            (redis_ok, redis_err),
+            (claude_ok, claude_err),
+        ) = await asyncio.gather(
             health_check_all_agents(),
             get_market_pipeline_status(),
+            self._check_db(),
+            self._check_redis(),
+            self._check_claude(),
         )
-
-        # Check DB + Redis + Claude API
-        db_ok, db_err = await self._check_db()
-        redis_ok, redis_err = await self._check_redis()
-        claude_ok, claude_err = await self._check_claude()
 
         lines = ["*System Status*\n"]
 
