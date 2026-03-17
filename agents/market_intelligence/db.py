@@ -317,6 +317,108 @@ async def get_rs_leaders(d: "str | date", limit: int = 30) -> list[dict[str, Any
         return [dict(r) for r in rows]
 
 
+async def get_rs_velocity(
+    d: "str | date",
+    min_rs: float = 40.0,
+    limit: int = 30,
+) -> list[dict[str, Any]]:
+    """
+    Return stocks ranked by sustained multi-week RS acceleration.
+
+    Velocity composite (front-weighted like IBD RS rating):
+        v1w = rs_today  - rs_7d_ago
+        v2w = rs_7d_ago - rs_14d_ago
+        v3w = rs_14d_ago - rs_21d_ago
+        v4w = rs_21d_ago - rs_28d_ago
+        score = 0.40*v1w + 0.30*v2w + 0.20*v3w + 0.10*v4w
+        × 1.2 consistency bonus if all 4 weekly deltas are positive
+
+    Only includes stocks that:
+    - Have data for today AND at least 2 of the 4 prior week snapshots
+    - Have current rs_composite >= min_rs (filters out weak stocks "recovering")
+    - Have a positive velocity score (net rising RS over the window)
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+
+        rows = await conn.fetch("""
+            WITH snapshots AS (
+                SELECT
+                    ticker,
+                    score_date,
+                    rs_composite,
+                    sector
+                FROM mi_stock_scores
+                WHERE score_date IN (
+                    $1,
+                    $1 - INTERVAL '7 days',
+                    $1 - INTERVAL '14 days',
+                    $1 - INTERVAL '21 days',
+                    $1 - INTERVAL '28 days'
+                )
+                AND rs_composite IS NOT NULL
+            ),
+            pivoted AS (
+                SELECT
+                    ticker,
+                    MAX(CASE WHEN score_date = $1 THEN rs_composite END)                       AS rs_now,
+                    MAX(CASE WHEN score_date = $1 - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
+                    MAX(CASE WHEN score_date = $1 - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
+                    MAX(CASE WHEN score_date = $1 - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
+                    MAX(CASE WHEN score_date = $1 - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
+                    MAX(CASE WHEN score_date = $1 THEN sector END)                             AS sector
+                FROM snapshots
+                GROUP BY ticker
+            ),
+            velocity AS (
+                SELECT
+                    ticker,
+                    sector,
+                    rs_now,
+                    rs_7d,
+                    rs_14d,
+                    rs_21d,
+                    rs_28d,
+                    (rs_now  - rs_7d)  AS v1w,
+                    (rs_7d   - rs_14d) AS v2w,
+                    (rs_14d  - rs_21d) AS v3w,
+                    (rs_21d  - rs_28d) AS v4w,
+                    -- weighted velocity score
+                    (
+                        COALESCE(0.40 * (rs_now  - rs_7d),  0) +
+                        COALESCE(0.30 * (rs_7d   - rs_14d), 0) +
+                        COALESCE(0.20 * (rs_14d  - rs_21d), 0) +
+                        COALESCE(0.10 * (rs_21d  - rs_28d), 0)
+                    ) *
+                    -- 1.2x consistency bonus if all available deltas are positive
+                    CASE
+                        WHEN (rs_now > rs_7d OR rs_7d IS NULL)
+                         AND (rs_7d  > rs_14d OR rs_14d IS NULL)
+                         AND (rs_14d > rs_21d OR rs_21d IS NULL)
+                         AND (rs_21d > rs_28d OR rs_28d IS NULL)
+                        THEN 1.2 ELSE 1.0
+                    END AS velocity_score,
+                    -- count how many prior-week snapshots we have
+                    (CASE WHEN rs_7d  IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN rs_14d IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN rs_21d IS NOT NULL THEN 1 ELSE 0 END +
+                     CASE WHEN rs_28d IS NOT NULL THEN 1 ELSE 0 END) AS weeks_of_data
+                FROM pivoted
+                WHERE rs_now IS NOT NULL
+            )
+            SELECT *
+            FROM velocity
+            WHERE rs_now    >= $2
+              AND weeks_of_data >= 2
+              AND velocity_score > 0
+            ORDER BY velocity_score DESC
+            LIMIT $3
+        """, score_date, min_rs, limit)
+
+        return [dict(r) for r in rows]
+
+
 async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     pool = await get_pool()
     async with pool.acquire() as conn:

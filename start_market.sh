@@ -8,5 +8,4 @@ echo "→ Starting Market Intelligence Agent on port 8006..."
 python -m uvicorn agents.market_intelligence.agent:app \
     --host 0.0.0.0 \
     --port 8006 \
-    --reload \
     --env-file .env

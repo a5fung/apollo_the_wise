@@ -25,7 +25,7 @@ from typing import Any
 import anthropic
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity
-from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes
+from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity
 
 logger = logging.getLogger(__name__)
 
@@ -268,9 +268,10 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> di
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
+    velocity_leaders: list[dict] | None = None,
 ) -> list[dict]:
     """
-    Ask Claude to identify new themes from uncovered RS leaders.
+    Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
@@ -288,26 +289,49 @@ async def _discover_new_themes(
         )
         existing_block = f"\nEXISTING ACTIVE THEMES (for context — do NOT re-create these):\n{existing_lines}\n"
 
+    velocity_block = ""
+    if velocity_leaders:
+        def _vel_profile(s: dict) -> str:
+            parts = [f"RS {s.get('rs_now', 0):.0f}"]
+            for wk, key in [(1, "v1w"), (2, "v2w"), (3, "v3w"), (4, "v4w")]:
+                v = s.get(key)
+                if v is not None:
+                    parts.append(f"wk{wk}:{'+' if v >= 0 else ''}{v:.1f}")
+            consistent = all(
+                s.get(k, 0) >= 0 for k in ["v1w", "v2w", "v3w", "v4w"]
+                if s.get(k) is not None
+            )
+            flag = " ↑SUSTAINED" if consistent else ""
+            return f"- {s['ticker']} ({', '.join(parts)}, sector: {s.get('sector', 'Unknown')}){flag}"
+
+        vel_lines = "\n".join(_vel_profile(s) for s in velocity_leaders[:20])
+        velocity_block = f"""
+STOCKS WITH SUSTAINED MULTI-WEEK RS ACCELERATION (not yet in any theme):
+These stocks have been quietly rising in relative strength over multiple consecutive weeks.
+This is the early signal — the market may be accumulating these before the move is obvious.
+wk1/wk2/wk3/wk4 = RS change each week (wk1 = most recent). ↑SUSTAINED = rising all weeks.
+{vel_lines}
+"""
+
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
-Themes emerge BOTTOM-UP from price action. You're discovering what the market is rotating into.
-{existing_block}
-NEW RS LEADERS NOT YET IN ANY ACTIVE THEME:
+Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
+{existing_block}{velocity_block}
+ESTABLISHED RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
-Task: Identify NEW distinct investment themes from the uncovered stocks above.
-Do NOT recreate or rename existing themes — only identify genuinely new emerging groups.
+Task: Identify NEW distinct investment themes. Prioritize the VELOCITY ACCELERATORS above — a stock rising in RS for 3-4 consecutive weeks is a stronger signal than a stock with high but static RS. Look especially for clusters among the sustained accelerators.
 
 Rules:
-- A theme REQUIRES at least 3 stocks from the uncovered list — never force-fit stocks just to reach the count
-- Every stock in a theme must clearly operate in the SAME specific sub-industry or share the SAME business driver
+- A theme REQUIRES at least 3 stocks — never force-fit stocks just to reach the count
+- Every stock must clearly operate in the SAME specific sub-industry or share the SAME business driver
   - GOOD: optical networking equipment makers, uranium miners, AI inference chip designers, defense primes
   - BAD: mixing a REIT with a commodity stock, adding a consumer name to an industrial theme
   - BAD: grouping by vague similarity ("they're both tech", "both benefit from AI")
 - Name themes specifically ("Optical Networking Build-Out" not "Technology")
 - Each stock belongs to at most one theme
 - When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
-- It is perfectly fine to return zero themes if there is no clear cluster with 3+ genuinely related stocks
+- Return zero themes if no clear cluster exists — that is the correct answer
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
 
     try:
@@ -402,7 +426,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
             if result["stage"] != "Fading":
                 covered_tickers.update(result.get("tickers") or [])
 
-    # --- Step 2: Find uncovered RS leaders ---
+    # --- Step 2: Find uncovered RS leaders + velocity accelerators ---
     uncovered = [
         s for s in leaders[:40]
         if s["ticker"] not in covered_tickers
@@ -410,10 +434,26 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     ]
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
 
+    # Velocity: stocks with sustained multi-week RS acceleration, not yet in a theme
+    velocity_all = await get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30)
+    velocity_leaders = [s for s in velocity_all if s["ticker"] not in covered_tickers]
+    logger.info(f"Theme engine: {len(velocity_leaders)} velocity accelerators for discovery")
+
+    # Merge uncovered pools — velocity leaders may overlap with uncovered RS leaders
+    all_uncovered_tickers = {s["ticker"] for s in uncovered}
+    for s in velocity_leaders:
+        if s["ticker"] not in all_uncovered_tickers:
+            # Add velocity stock to stocks_by_ticker so it can be scored if selected
+            stocks_by_ticker.setdefault(s["ticker"], {
+                "ticker": s["ticker"],
+                "rs_composite": s.get("rs_now", 0),
+                "sector": s.get("sector", "Unknown"),
+            })
+
     # --- Step 3: Discover new themes ---
     new_raw: list[dict] = []
-    if len(uncovered) >= NEW_THEME_MIN_STOCKS:
-        new_raw = await _discover_new_themes(uncovered, updated_themes)
+    if len(uncovered) >= NEW_THEME_MIN_STOCKS or len(velocity_leaders) >= NEW_THEME_MIN_STOCKS:
+        new_raw = await _discover_new_themes(uncovered, updated_themes, velocity_leaders)
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
     new_themes: list[dict] = await asyncio.gather(*[

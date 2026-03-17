@@ -25,6 +25,7 @@ from agents.market_intelligence.db import (
     get_rs_leaders,
     get_latest_regime,
     get_ma_pullbacks,
+    get_rs_velocity,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 
@@ -166,7 +167,7 @@ def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
     rows = []
     for i in range(0, len(top), 3):
         group = top[i:i + 3]
-        parts = [f"#{i + j + 1} `{s['ticker']}` {int(s.get('rs_composite') or 0)}" for j, s in enumerate(group)]
+        parts = [f"`{s['ticker']}` {int(s.get('rs_composite') or 0)}" for s in group]
         rows.append("   ".join(parts))
 
     return header + "\n" + "\n".join(rows)
@@ -206,7 +207,38 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
     return "\n".join(lines)
 
 
-def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 4) -> str:
+def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
+    """Stocks with sustained multi-week RS acceleration — the early signal."""
+    if not velocity:
+        return ""
+
+    lines = [f"*{section_num}. RISING* — Sustained RS acceleration (early signal)"]
+
+    for s in velocity[:6]:
+        ticker = s["ticker"]
+        rs = int(s.get("rs_now") or 0)
+
+        weeks = []
+        for key in ["v1w", "v2w", "v3w", "v4w"]:
+            v = s.get(key)
+            if v is not None:
+                weeks.append(f"{'+' if v >= 0 else ''}{v:.0f}")
+
+        weeks_str = " → ".join(weeks)  # wk1 → wk2 → wk3 → wk4 (most recent first)
+
+        # Sustained flag: all available weekly deltas positive
+        all_positive = all(
+            s.get(k, 0) >= 0 for k in ["v1w", "v2w", "v3w", "v4w"] if s.get(k) is not None
+        )
+        flag = " ↑" if all_positive else ""
+
+        lines.append(f"  `{ticker}` RS {rs}  [{weeks_str}]{flag}")
+
+    lines.append("  _wk1→wk2→wk3→wk4 RS change. ↑ = rising all weeks_")
+    return "\n".join(lines)
+
+
+def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> str:
     if not pullbacks:
         return f"*{section_num}. MA PULLBACKS* — None in range today"
 
@@ -243,9 +275,11 @@ def _format_evening_briefing(
     regime: dict,
     rs_leaders: list[dict],
     themes: list[dict],
+    velocity: list[dict],
     pullbacks: list[dict],
     briefing_date: str,
 ) -> str:
+    velocity_section = _format_velocity_section(velocity, section_num=4)
     sections = [
         f"*Apollo Evening Briefing — {briefing_date}*",
         "",
@@ -255,7 +289,11 @@ def _format_evening_briefing(
         "",
         _format_theme_section(themes, section_num=3),
         "",
-        _format_pullbacks_section(pullbacks, section_num=4),
+    ]
+    if velocity_section:
+        sections += [velocity_section, ""]
+    sections += [
+        _format_pullbacks_section(pullbacks, section_num=5 if velocity_section else 4),
         "",
         "_Do your review. Pull up charts. Apply your judgment._",
     ]
@@ -264,15 +302,16 @@ def _format_evening_briefing(
 
 async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
-    Assemble and send the evening briefing (regime + RS + themes + pullbacks).
+    Assemble and send the evening briefing (regime + RS + themes + velocity + pullbacks).
     Returns the briefing text.
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, pullbacks = await asyncio.gather(
+    regime, rs_leaders, themes, velocity, pullbacks = await asyncio.gather(
         get_latest_regime(),
         get_rs_leaders(today_str, limit=30),
         get_today_themes(today_str),
+        get_rs_velocity(today_str, min_rs=40.0, limit=15),
         get_ma_pullbacks(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
@@ -281,6 +320,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         regime=regime,
         rs_leaders=rs_leaders,
         themes=themes,
+        velocity=velocity,
         pullbacks=pullbacks,
         briefing_date=today_str,
     )
