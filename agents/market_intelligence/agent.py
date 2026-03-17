@@ -68,6 +68,7 @@ class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
         self._claude = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        self._refresh_lock = asyncio.Lock()
         self._register_extra_routes()
 
     def _register_extra_routes(self) -> None:
@@ -184,6 +185,11 @@ class MarketIntelligenceAgent(BaseAgent):
         task = request.task.lower()
 
         # Route by intent
+        # Data refresh must be checked first — combined requests like "refresh then send brief"
+        # would otherwise match "brief" and skip the refresh entirely.
+        if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
+            return await self._handle_data_refresh(request)
+
         if any(k in task for k in ["ep", "episodic", "gap", "pivot", "gapper"]):
             return await self._handle_ep_query(request)
 
@@ -220,6 +226,33 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
+
+    async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
+        """Kick off regime + RS + theme engines in the background and return immediately."""
+        task_lower = request.task.lower()
+        wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
+        wants_morning = any(k in task_lower for k in ["morning", "pre-market"])
+
+        async def _run():
+            try:
+                logger.info("Background data refresh starting...")
+                await run_regime_engine()
+                await run_rs_engine()
+                await run_theme_engine()
+                logger.info("Background data refresh complete")
+                if wants_brief:
+                    if wants_morning:
+                        await send_morning_briefing()
+                    else:
+                        await send_evening_briefing()
+            except Exception as e:
+                logger.error(f"Background data refresh failed: {e}")
+
+        asyncio.create_task(_run())
+
+        if wants_brief:
+            return self._ok(request, result="Data refresh running — briefing will arrive in Telegram in a few minutes.")
+        return self._ok(request, result="Data refresh running — RS, regime, and themes will be updated in a few minutes.")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")
@@ -296,10 +329,10 @@ class MarketIntelligenceAgent(BaseAgent):
         wants_morning = any(k in task_lower for k in ["morning", "pre-market", "premarket", "pre market"])
         wants_evening = any(k in task_lower for k in ["evening", "eod", "end of day", "after close", "nightly"])
         if wants_evening and not wants_morning:
-            briefing_text = await send_evening_briefing()
+            await send_evening_briefing()
         else:
-            briefing_text = await send_morning_briefing()
-        return self._ok(request, result=briefing_text)
+            await send_morning_briefing()
+        return self._ok(request, result="Briefing sent.")
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:
         today_str = date.today().strftime("%Y-%m-%d")

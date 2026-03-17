@@ -6,6 +6,7 @@ Handles:
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -54,11 +55,11 @@ async def telegram_webhook(request: Request) -> JSONResponse:
         body = await request.body()
         data = json.loads(body)
         update = Update.de_json(data, _telegram_app.bot)
-        await _telegram_app.process_update(update)
+        # Process in background — return 200 immediately so Telegram never retries
+        asyncio.create_task(_telegram_app.process_update(update))
         return JSONResponse({"ok": True})
     except Exception as e:
         logger.exception(f"Error processing Telegram update: {e}")
-        # Always return 200 to Telegram (prevents retries for bad messages)
         return JSONResponse({"ok": False, "error": str(e)})
 
 

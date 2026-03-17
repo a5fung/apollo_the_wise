@@ -160,64 +160,48 @@ def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
     if not rs_leaders:
         return f"*{section_num}. RS LEADERS* — No data yet (run data refresh first)"
 
-    lines = [f"*{section_num}. RS LEADERS* — Top momentum stocks"]
+    top = rs_leaders[:20]
+    header = f"*{section_num}. RS LEADERS* — Top {len(top)} by RS composite"
 
-    by_sector: dict[str, list] = {}
-    no_sector = []
-    for stock in rs_leaders[:30]:
-        sector = stock.get("sector")
-        if sector:
-            by_sector.setdefault(sector, []).append(stock)
-        else:
-            no_sector.append(stock)
+    rows = []
+    for i in range(0, len(top), 3):
+        group = top[i:i + 3]
+        parts = [f"#{i + j + 1} `{s['ticker']}` {int(s.get('rs_composite') or 0)}" for j, s in enumerate(group)]
+        rows.append("   ".join(parts))
 
-    if by_sector:
-        for sector, stocks in list(by_sector.items())[:5]:
-            top = stocks[:3]
-            tickers_str = "  ".join(
-                f"`{s['ticker']}` {(s.get('rs_composite') or 0):.0f}"
-                for s in top
-            )
-            lines.append(f"  *{sector}*")
-            lines.append(f"  {tickers_str}")
-    else:
-        top = no_sector[:15]
-        row = []
-        for s in top:
-            row.append(f"`{s['ticker']}` {(s.get('rs_composite') or 0):.0f}")
-            if len(row) == 3:
-                lines.append("  " + "   ".join(row))
-                row = []
-        if row:
-            lines.append("  " + "   ".join(row))
-
-    return "\n".join(lines)
+    return header + "\n" + "\n".join(rows)
 
 
 def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
     if not themes:
         return f"*{section_num}. THEME HEALTH* — No theme data yet (run data refresh first)"
 
-    active = [t for t in themes if t.get("stage") != "Fading"]
+    # Prioritize Accelerating/Mainstream over Nascent for display order
+    _stage_order = {"Accelerating": 0, "Mainstream": 1, "Nascent": 2}
+    active = sorted(
+        [t for t in themes if t.get("stage") != "Fading"],
+        key=lambda t: (_stage_order.get(t.get("stage", ""), 3), -(t.get("score") or 0)),
+    )
     fading = [t for t in themes if t.get("stage") == "Fading"]
 
-    lines = [f"*{section_num}. THEME HEALTH* — {len(themes)} theme(s) tracked"]
+    lines = [f"*{section_num}. THEME HEALTH* — {len(active)} active"]
 
-    for t in active[:5]:
+    for t in active[:4]:
         stage = t.get("stage", "")
         emoji = STAGE_EMOJI.get(stage, "")
         score = t.get("score", 0)
-        tickers_str = "  ".join(f"`{tk}`" for tk in (t.get("tickers") or []))
+        tickers = (t.get("tickers") or [])[:6]  # cap at 6 tickers shown
+        tickers_str = "  ".join(f"`{tk}`" for tk in tickers)
         lines.append("")
         lines.append(f"{emoji} *{t['name']}*  _{stage}_ · {score:.0f}")
         lines.append(f"  {tickers_str}")
         if t.get("description"):
-            lines.append(f"  _{t['description'][:140]}_")
+            lines.append(f"  _{t['description'][:120]}_")
 
     if fading:
         lines.append("")
-        fading_str = "  ".join(f"`{t['name']}`" for t in fading)
-        lines.append(f"🔻 _Fading:_ {fading_str}")
+        fading_names = "  ·  ".join(t.get("name", "?") for t in fading[:5])
+        lines.append(f"🔻 _Fading:_ {fading_names}")
 
     return "\n".join(lines)
 
@@ -226,20 +210,29 @@ def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 4) -> st
     if not pullbacks:
         return f"*{section_num}. MA PULLBACKS* — None in range today"
 
-    lines = [f"*{section_num}. MA PULLBACKS* — Stocks testing key MAs"]
+    header = f"*{section_num}. MA PULLBACKS* — Stocks near key MAs"
 
+    lines = [header]
     for s in pullbacks[:12]:
         ticker = s["ticker"]
         close = s.get("close", 0)
-        rs = s.get("rs_composite") or 0
+        rs = int(s.get("rs_composite") or 0)
         near = s.get("near_mas", [])
+
+        ma_10 = next((m for m in near if m["ma"] == "10MA"), None)
+        ma_20 = next((m for m in near if m["ma"] == "20MA"), None)
+
+        def _pct(m: dict) -> str:
+            v = m["pct_from_ma"]
+            return f"{'+' if v >= 0 else ''}{v:.1f}%"
+
         ma_parts = []
-        for m in near:
-            sign = "+" if m["pct_from_ma"] >= 0 else ""
-            ma_parts.append(f"{m['ma']} {sign}{m['pct_from_ma']:.1f}%")
-        lines.append(
-            f"  `{ticker}` RS {rs:.0f}  {close:.2f}  —  {' | '.join(ma_parts)}"
-        )
+        if ma_10:
+            ma_parts.append(f"10MA {_pct(ma_10)}")
+        if ma_20:
+            ma_parts.append(f"20MA {_pct(ma_20)}")
+
+        lines.append(f"  `{ticker}` RS {rs}  {close:.2f}  —  {' | '.join(ma_parts)}")
 
     return "\n".join(lines)
 

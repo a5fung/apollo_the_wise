@@ -34,7 +34,7 @@ THEME_MODEL = "claude-sonnet-4-6"
 # Min RS composite for a stock to "count" as strong within a theme
 THEME_RS_MIN = 50.0
 # A theme is "well-covered" if >= this many of its stocks still show strong RS
-THEME_COVERAGE_MIN = 2
+THEME_COVERAGE_MIN = 3
 # Retire a theme after this many consecutive fading days
 FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
@@ -45,16 +45,29 @@ _SEARCH_SEM = asyncio.Semaphore(5)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 
-async def _news_score(theme_name: str) -> int:
-    """Return 30 if Perplexity confirms the theme is currently active, else 0."""
+async def _news_check(theme_name: str) -> tuple[int, str]:
+    """
+    Query Perplexity for current catalysts driving this theme.
+    Returns (score, fresh_description) — score is 30 if confirmed active, else 0.
+    Description is a 1-2 sentence summary of what's driving it RIGHT NOW.
+    """
     try:
         async with _SEARCH_SEM:
             answer = await search_news_perplexity(
-                f"Is {theme_name} a current active investment theme in the stock market?"
+                f"What specific news and catalysts are driving '{theme_name}' stocks right now? "
+                f"Be factual and current — 2 sentences max.",
+                recency="week",
             )
-        return 30 if answer else 0
+        if not answer:
+            return 0, ""
+        # Trim to 2 sentences
+        sentences = [s.strip() for s in answer.replace("\n", " ").split(".") if s.strip()]
+        desc = ". ".join(sentences[:2]).strip()
+        if desc and not desc.endswith("."):
+            desc += "."
+        return 30, desc[:220]
     except Exception:
-        return 0
+        return 0, ""
 
 
 # Cache yfinance sector lookups
@@ -152,8 +165,8 @@ async def _rescore_existing_theme(
     sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in strong_stocks if t in stocks_by_ticker)
     breadth_score = min(len(sectors) * 10, 30)
 
-    # News confirmation (30%) — Perplexity confirms if the theme narrative is current
-    news_score = await _news_score(name)
+    # News confirmation (30%) + fresh description from Perplexity
+    news_score, fresh_desc = await _news_check(name)
 
     total_score = round(momentum_score + breadth_score + news_score, 1)
     prev_score = theme.get("score") or 0
@@ -179,7 +192,7 @@ async def _rescore_existing_theme(
         "name": name,
         "stage": stage,
         "score": total_score,
-        "description": theme.get("description", ""),
+        "description": fresh_desc or theme.get("description", ""),
         "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
     }
 
@@ -207,7 +220,7 @@ _THEME_DISCOVERY_TOOL = {
                         "tickers": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "Ticker symbols belonging to this theme (min 2).",
+                            "description": "Ticker symbols belonging to this theme (minimum 3 — do not include stocks that don't clearly fit).",
                         },
                     },
                     "required": ["name", "thesis", "tickers"],
@@ -219,6 +232,39 @@ _THEME_DISCOVERY_TOOL = {
 }
 
 
+def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
+    """
+    Remove tickers whose sector is a lone outlier vs the rest of the theme.
+
+    Logic: find the majority sector group. Any ticker in a completely different
+    top-level sector (e.g. Consumer Cyclical in a metals theme) gets dropped —
+    unless it's Unknown (no sector data), in which case it's kept.
+
+    A ticker is an outlier if its sector doesn't appear in the majority and it's
+    the only one with that sector.
+    """
+    tickers = list(theme.get("tickers", []))
+    if len(tickers) < 3:
+        return theme
+
+    from collections import Counter
+    sector_of = {t: stocks_by_ticker.get(t, {}).get("sector") or "Unknown" for t in tickers}
+    known = [s for s in sector_of.values() if s != "Unknown"]
+    if not known:
+        return theme
+
+    counts = Counter(known)
+    # A sector is "minority of 1" if it appears exactly once and there are other sectors
+    singleton_sectors = {s for s, n in counts.items() if n == 1 and len(counts) > 1}
+
+    clean_tickers = [t for t in tickers if sector_of[t] not in singleton_sectors]
+    if len(clean_tickers) < len(tickers):
+        dropped = [t for t in tickers if t not in clean_tickers]
+        logger.info(f"Theme '{theme['name']}': dropped sector outliers {dropped}")
+
+    return {**theme, "tickers": clean_tickers}
+
+
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
@@ -227,7 +273,7 @@ async def _discover_new_themes(
     Ask Claude to identify new themes from uncovered RS leaders.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
     stock_lines = "\n".join(
         f"- {s['ticker']} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')})"
@@ -253,14 +299,19 @@ Task: Identify NEW distinct investment themes from the uncovered stocks above.
 Do NOT recreate or rename existing themes — only identify genuinely new emerging groups.
 
 Rules:
-- A theme needs at least 2 stocks from the uncovered list
-- Name themes specifically ("Edge AI Inference" not "Technology")
-- Each stock should belong to at most one new theme
-- Some stocks may not fit any theme — leave them out
-- Focus on what the market is pricing in RIGHT NOW based on which stocks move together"""
+- A theme REQUIRES at least 3 stocks from the uncovered list — never force-fit stocks just to reach the count
+- Every stock in a theme must clearly operate in the SAME specific sub-industry or share the SAME business driver
+  - GOOD: optical networking equipment makers, uranium miners, AI inference chip designers, defense primes
+  - BAD: mixing a REIT with a commodity stock, adding a consumer name to an industrial theme
+  - BAD: grouping by vague similarity ("they're both tech", "both benefit from AI")
+- Name themes specifically ("Optical Networking Build-Out" not "Technology")
+- Each stock belongs to at most one theme
+- When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
+- It is perfectly fine to return zero themes if there is no clear cluster with 3+ genuinely related stocks
+- Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
 
     try:
-        response = client.messages.create(
+        response = await client.messages.create(
             model=THEME_MODEL,
             max_tokens=1500,
             tools=[_THEME_DISCOVERY_TOOL],
@@ -268,7 +319,11 @@ Rules:
             messages=[{"role": "user", "content": prompt}],
         )
         tool_block = next(b for b in response.content if b.type == "tool_use")
-        return tool_block.input.get("themes", [])
+        raw_themes = tool_block.input.get("themes", [])
+        # Filter: enforce minimum 3 tickers, then strip sector-incompatible tickers
+        valid = [t for t in raw_themes if len(t.get("tickers", [])) >= 3]
+        return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
+                if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= 3]
     except Exception as e:
         logger.error(f"Claude new theme discovery failed: {e}")
         return []
@@ -289,14 +344,14 @@ async def _score_new_theme(
     sectors = set(stocks_by_ticker[t].get("sector", "Unknown") for t in tickers if t in stocks_by_ticker)
     breadth_score = min(len(sectors) * 10, 30)
 
-    news_score = await _news_score(theme["name"])
+    news_score, fresh_desc = await _news_check(theme["name"])
 
     return {
         "theme_date": today,
         "name": theme["name"],
         "stage": "Nascent",
         "score": round(momentum_score + breadth_score + news_score, 1),
-        "description": theme.get("thesis", ""),
+        "description": fresh_desc or theme.get("thesis", ""),
         "tickers": tickers,
     }
 
