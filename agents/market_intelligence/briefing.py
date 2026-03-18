@@ -445,8 +445,9 @@ def _format_overnight_section(
 
     # News or no-news signal
     if news:
-        # Split into bullet points by sentence for readability
-        sentences = re.split(r'(?<=\.)\s+', news)
+        # Split into bullet points by sentence.
+        # Only split on ". " followed by uppercase (avoids "U.S. ", "S&P ", "0.7% ")
+        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', news)
         for s in sentences:
             s = s.strip()
             if s:
@@ -483,12 +484,10 @@ async def _get_economic_calendar() -> str | None:
         # Try splitting by newlines first (if Perplexity returned line-separated)
         raw_lines = [l.strip() for l in clean.split("\n") if l.strip()]
 
-        # If single paragraph, split by sentence boundaries near time patterns
-        # e.g. "...10:30 AM ET. Crude oil..." → split at ". " after time references
+        # If single paragraph, split by sentence boundaries
         if len(raw_lines) <= 1 and raw_lines:
             text = raw_lines[0]
-            # Split on ". " but keep each sentence intact
-            sentences = re.split(r'(?<=\.)\s+', text)
+            sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', text)
             raw_lines = [s.strip() for s in sentences if s.strip()]
 
         bullets = []
