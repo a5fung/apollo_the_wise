@@ -445,7 +445,12 @@ def _format_overnight_section(
 
     # News or no-news signal
     if news:
-        lines.append(f"  _{news}_")
+        # Split into bullet points by sentence for readability
+        sentences = re.split(r'(?<=\.)\s+', news)
+        for s in sentences:
+            s = s.strip()
+            if s:
+                lines.append(f"  • _{s}_")
     else:
         # Check if any index moved significantly
         index_moves = [i for i in snapshot if i["category"] == "index" and i["triggered"]]
