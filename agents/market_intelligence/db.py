@@ -98,11 +98,13 @@ async def initialize_schema() -> None:
                 vix FLOAT,
                 breadth_pct_above_40ma FLOAT,
                 bo_bd_ratio_5d FLOAT,
+                pct4_ratio_10d FLOAT,
                 description TEXT,
                 ep_threshold INT DEFAULT 70,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS qqq_vs_50ma FLOAT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS pct4_ratio_10d FLOAT;
 
             CREATE TABLE IF NOT EXISTS mi_themes (
                 id SERIAL PRIMARY KEY,
@@ -275,18 +277,19 @@ async def upsert_regime(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_market_regime
                 (regime_date, regime, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix,
-                 breadth_pct_above_40ma, bo_bd_ratio_5d, description, ep_threshold)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                 breadth_pct_above_40ma, bo_bd_ratio_5d, pct4_ratio_10d, description, ep_threshold)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
             ON CONFLICT (regime_date) DO UPDATE SET
                 regime=EXCLUDED.regime, spy_vs_50ma=EXCLUDED.spy_vs_50ma,
                 spy_vs_200ma=EXCLUDED.spy_vs_200ma, qqq_vs_50ma=EXCLUDED.qqq_vs_50ma,
                 vix=EXCLUDED.vix, breadth_pct_above_40ma=EXCLUDED.breadth_pct_above_40ma,
-                bo_bd_ratio_5d=EXCLUDED.bo_bd_ratio_5d,
+                bo_bd_ratio_5d=EXCLUDED.bo_bd_ratio_5d, pct4_ratio_10d=EXCLUDED.pct4_ratio_10d,
                 description=EXCLUDED.description, ep_threshold=EXCLUDED.ep_threshold
         """,
             record["regime_date"], record["regime"], record.get("spy_vs_50ma"),
             record.get("spy_vs_200ma"), record.get("qqq_vs_50ma"), record.get("vix"),
             record.get("breadth_pct_above_40ma"), record.get("bo_bd_ratio_5d"),
+            record.get("pct4_ratio_10d"),
             record.get("description"), record.get("ep_threshold", 70),
         )
 

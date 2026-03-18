@@ -103,7 +103,8 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     qqq_vs_50 = regime.get("qqq_vs_50ma")
     vix = regime.get("vix")
     breadth = regime.get("breadth_pct_above_40ma")
-    bo_bd = regime.get("bo_bd_ratio_5d")
+    pct4_5d = regime.get("bo_bd_ratio_5d")
+    pct4_10d = regime.get("pct4_ratio_10d")
     ep_thresh = regime.get("ep_threshold", 70)
 
     lines = [f"*{section_num}. MARKET CONDITION* {emoji} *{label.upper()}*"]
@@ -124,8 +125,11 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     mkt_parts = []
     if breadth is not None:
         mkt_parts.append(f"Breadth {breadth:.0f}% above 40MA")
-    if bo_bd is not None:
-        mkt_parts.append(f"B/O:B/D {bo_bd:.1f}x")
+    # Show 10d ratio if available, else 5d
+    if pct4_10d is not None:
+        mkt_parts.append(f"+/-4% 10d {pct4_10d:.1f}x")
+    elif pct4_5d is not None:
+        mkt_parts.append(f"+/-4% 5d {pct4_5d:.1f}x")
     if mkt_parts:
         lines.append("  " + "  |  ".join(mkt_parts))
 
@@ -451,6 +455,32 @@ def _format_overnight_section(
     return "\n".join(lines)
 
 
+async def _get_economic_calendar() -> str | None:
+    """
+    Fetch today's key economic events via Perplexity.
+    Returns a concise string of events or None.
+    """
+    today = date.today()
+    day_str = today.strftime("%A, %B %d, %Y")
+    query = (
+        f"What are the key US economic events, data releases, and Fed speeches scheduled for {day_str}? "
+        f"Include times (Eastern). Be concise, list format, maximum 5 items."
+    )
+    try:
+        from agents.market_intelligence.theme_engine import _is_garbage
+        answer = await search_news_perplexity(query, recency="day")
+        if not answer or _is_garbage(answer):
+            return None
+        # Clean up
+        clean = re.sub(r"\[\d+\]", "", answer)
+        clean = re.sub(r"\*+", "", clean).replace("#", "")
+        clean = re.sub(r"\s+", " ", clean).strip()
+        return clean
+    except Exception as e:
+        logger.warning(f"Economic calendar fetch failed: {e}")
+        return None
+
+
 async def _get_overnight_news(snapshot: list[dict]) -> str | None:
     """
     Query Perplexity for overnight market news if any instrument breached its threshold.
@@ -491,6 +521,7 @@ def _format_morning_briefing(
     futures: dict[str, float] | None = None,
     themes: list[dict] | None = None,
     overnight_section: str | None = None,
+    econ_calendar: str | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -517,6 +548,11 @@ def _format_morning_briefing(
             parts.append(f"NQ *{_fmt_sign(futures['nq_pct'])}*")
         if parts:
             sections.append("Futures: " + "  |  ".join(parts))
+
+    # Economic calendar
+    if econ_calendar:
+        sections.append("")
+        sections.append(f"*CALENDAR*\n  _{econ_calendar}_")
 
     # Build ticker → theme stage map for composite sort (keep strongest stage per ticker)
     theme_stage_by_ticker: dict[str, str] = {}
@@ -549,12 +585,13 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, ep_alerts, futures, themes, watchlist = await asyncio.gather(
+    regime, ep_alerts, futures, themes, watchlist, econ_calendar = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
         get_today_themes(today_str),
         get_overnight_watchlist(),
+        _get_economic_calendar(),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -573,6 +610,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         futures=futures,
         themes=themes,
         overnight_section=overnight_section,
+        econ_calendar=econ_calendar,
     )
 
     success = await send_telegram_message(text, chat_id)

@@ -8,7 +8,7 @@ Inputs:
 - SPY vs 50-day MA and 200-day MA
 - VIX level + trend
 - Breadth: % of universe stocks above their 40-day MA (T2108 proxy)
-- Breadth: breakout vs breakdown day counts (Pradeep's Market Monitor)
+- +/-4% ratio: rolling 5d and 10d count of stocks with >=+4% vs <=-4% daily moves
 
 Regime → EP threshold adjustment:
 - Bull:       threshold = 70
@@ -40,7 +40,8 @@ def _determine_regime(
     qqq_vs_50ma: Optional[float],
     vix: Optional[float],
     breadth_pct: Optional[float],
-    bo_bd_ratio: Optional[float],
+    pct4_ratio_5d: Optional[float],
+    pct4_ratio_10d: Optional[float] = None,
 ) -> tuple[str, str, int]:
     """
     Returns: (regime_label, description, ep_threshold)
@@ -119,20 +120,23 @@ def _determine_regime(
             bullish_count += 1
             signals.append(f"{breadth_pct:.0f}% of stocks above 40MA — healthy breadth")
 
-    # B/O:B/D ratio (Pradeep's Monitor)
-    if bo_bd_ratio is not None:
-        if bo_bd_ratio >= 2.0:
+    # +/-4% ratio — rolling count of +4% vs -4% daily moves
+    # Use 10d as primary regime signal (smoother), 5d as short-term context
+    ratio = pct4_ratio_10d if pct4_ratio_10d is not None else pct4_ratio_5d
+    window = "10d" if pct4_ratio_10d is not None else "5d"
+    if ratio is not None:
+        if ratio >= 2.0:
             bullish_count += 2
-            signals.append(f"B/O:B/D ratio {bo_bd_ratio:.1f} — strong breadth momentum")
-        elif bo_bd_ratio >= 1.0:
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — strong breadth momentum")
+        elif ratio >= 1.0:
             bullish_count += 1
-            signals.append(f"B/O:B/D ratio {bo_bd_ratio:.1f} — slightly bullish breadth")
-        elif bo_bd_ratio <= 0.5:
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — slightly bullish breadth")
+        elif ratio <= 0.5:
             bearish_count += 2
-            signals.append(f"B/O:B/D ratio {bo_bd_ratio:.1f} — bearish breadth momentum")
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — bearish breadth momentum")
         else:
             bearish_count += 1
-            signals.append(f"B/O:B/D ratio {bo_bd_ratio:.1f} — weak breadth")
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — weak breadth")
 
     # Determine regime
     net = bullish_count - bearish_count
@@ -157,11 +161,12 @@ def _determine_regime(
     return regime, description, ep_threshold
 
 
-async def calculate_breadth(today_str: str) -> tuple[Optional[float], Optional[float]]:
+async def calculate_breadth(today_str: str) -> tuple[Optional[float], Optional[float], Optional[float]]:
     """
     Calculate breadth using the stored universe RS scores.
     - breadth_pct: % of universe stocks whose current price > their 40-day-ago price
-    - bo_bd_ratio: approximated from universe daily changes
+    - pct4_ratio_5d: +/-4% ratio over last 5 trading days (up4 / down4)
+    - pct4_ratio_10d: +/-4% ratio over last 10 trading days
 
     Uses individual ticker calls (free tier compatible).
     Runs on the universe defined in universe.py.
@@ -174,9 +179,9 @@ async def calculate_breadth(today_str: str) -> tuple[Optional[float], Optional[f
     date_40d = (today - timedelta(days=58)).strftime("%Y-%m-%d")  # ~40 trading days
 
     above_40d = 0
-    bo_count = 0
-    bd_count = 0
     total = 0
+    # Collect daily pct changes across all sampled stocks for rolling window
+    all_daily_changes: list[tuple[str, float]] = []  # (date_str, pct_change)
 
     # Sample 30 stocks from universe for breadth estimate (keeps API calls low)
     sample = UNIVERSE[:30]
@@ -187,32 +192,51 @@ async def calculate_breadth(today_str: str) -> tuple[Optional[float], Optional[f
                 continue
 
             from datetime import datetime, timezone
-            closes = {datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date().strftime("%Y-%m-%d"): b["c"]
-                      for b in bars if "c" in b and "t" in b}
+            closes = sorted(
+                [(datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date().strftime("%Y-%m-%d"), b["c"])
+                 for b in bars if "c" in b and "t" in b]
+            )
 
-            current = closes.get(today_str) or (list(closes.values())[-1] if closes else None)
-            past_close_list = [v for k, v in sorted(closes.items()) if k <= date_40d]
-            past = past_close_list[-1] if past_close_list else None
-            prev_close_list = [v for k, v in sorted(closes.items()) if k < today_str]
-            prev = prev_close_list[-1] if len(prev_close_list) >= 1 else None
+            # Breadth: current vs 40-day-ago
+            current = closes[-1][1] if closes else None
+            past_list = [c for d, c in closes if d <= date_40d]
+            past = past_list[-1] if past_list else None
 
             if current and past:
                 total += 1
                 if current > past:
                     above_40d += 1
 
-            if current and prev:
-                chg = (current - prev) / prev * 100
-                if chg >= 4:
-                    bo_count += 1
-                elif chg <= -4:
-                    bd_count += 1
+            # Collect daily changes for +/-4% ratio
+            for i in range(1, len(closes)):
+                prev_close = closes[i - 1][1]
+                if prev_close > 0:
+                    chg = (closes[i][1] - prev_close) / prev_close * 100
+                    all_daily_changes.append((closes[i][0], chg))
         except Exception:
             continue
 
     breadth_pct = round(above_40d / max(total, 1) * 100, 1) if total > 0 else None
-    bo_bd_ratio = round(bo_count / max(bd_count, 1), 2) if (bo_count + bd_count) > 0 else None
-    return breadth_pct, bo_bd_ratio
+
+    # Compute rolling +/-4% ratios
+    def _pct4_ratio(changes: list[tuple[str, float]], n_days: int) -> Optional[float]:
+        """Ratio of +4% days to -4% days over the last n trading days."""
+        # Get the last n unique trading dates
+        all_dates = sorted({d for d, _ in changes})
+        if len(all_dates) < n_days:
+            return None
+        cutoff_dates = set(all_dates[-n_days:])
+        recent = [(d, c) for d, c in changes if d in cutoff_dates]
+        up4 = sum(1 for _, c in recent if c >= 4)
+        down4 = sum(1 for _, c in recent if c <= -4)
+        if up4 + down4 == 0:
+            return None
+        return round(up4 / max(down4, 1), 2)
+
+    pct4_5d = _pct4_ratio(all_daily_changes, 5)
+    pct4_10d = _pct4_ratio(all_daily_changes, 10)
+
+    return breadth_pct, pct4_5d, pct4_10d
 
 
 async def run_regime_engine(trade_date: date | None = None) -> dict:
@@ -249,10 +273,10 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
 
     # Breadth (additional calls)
     logger.info("Regime engine: calculating breadth...")
-    breadth_pct, bo_bd_ratio = await calculate_breadth(today_str)
+    breadth_pct, pct4_5d, pct4_10d = await calculate_breadth(today_str)
 
     regime, description, ep_threshold = _determine_regime(
-        spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, current_vix, breadth_pct, bo_bd_ratio
+        spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, current_vix, breadth_pct, pct4_5d, pct4_10d
     )
 
     record = {
@@ -263,7 +287,8 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
         "qqq_vs_50ma": round(qqq_vs_50ma, 2) if qqq_vs_50ma else None,
         "vix": round(current_vix, 2) if current_vix else None,
         "breadth_pct_above_40ma": breadth_pct,
-        "bo_bd_ratio_5d": bo_bd_ratio,
+        "bo_bd_ratio_5d": pct4_5d,
+        "pct4_ratio_10d": pct4_10d,
         "description": description,
         "ep_threshold": ep_threshold,
     }
