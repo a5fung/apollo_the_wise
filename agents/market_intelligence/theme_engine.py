@@ -313,6 +313,7 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> di
 async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
     velocity_leaders: list[dict] | None = None,
     turners: list[dict] | None = None,
 ) -> list[dict]:
@@ -508,14 +509,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
 
     # Merge uncovered pools — velocity/turners may overlap with uncovered RS leaders
     all_uncovered_tickers = {s["ticker"] for s in uncovered}
-    for s in velocity_leaders:
-        if s["ticker"] not in all_uncovered_tickers:
-            stocks_by_ticker.setdefault(s["ticker"], {
-                "ticker": s["ticker"],
-                "rs_composite": s.get("rs_now", 0),
-                "sector": s.get("sector", "Unknown"),
-            })
-    for s in turners:
+    for s in [*velocity_leaders, *turners]:
         if s["ticker"] not in all_uncovered_tickers:
             stocks_by_ticker.setdefault(s["ticker"], {
                 "ticker": s["ticker"],
@@ -529,7 +523,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
                   or len(velocity_leaders) >= NEW_THEME_MIN_STOCKS
                   or len(turners) >= NEW_THEME_MIN_STOCKS)
     if has_enough:
-        new_raw = await _discover_new_themes(uncovered, updated_themes, velocity_leaders, turners)
+        new_raw = await _discover_new_themes(uncovered, updated_themes, stocks_by_ticker, velocity_leaders, turners)
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
     new_themes: list[dict] = await asyncio.gather(*[

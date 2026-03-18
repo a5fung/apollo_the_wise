@@ -15,6 +15,7 @@ import asyncio
 import logging
 import re
 import os
+from collections import defaultdict
 from datetime import date
 from typing import Any
 
@@ -253,7 +254,6 @@ def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
         return ""
 
     # Group by sector
-    from collections import defaultdict
     by_sector: dict[str, list[dict]] = defaultdict(list)
     for s in turners:
         sector = s.get("sector") or "Unknown"
@@ -330,7 +330,7 @@ def _format_evening_briefing(
     if velocity_section:
         next_num += 1
 
-    turners_section = _format_turners_section(turners or [], section_num=next_num) if turners else ""
+    turners_section = _format_turners_section(turners or [], section_num=next_num)
     if turners_section:
         next_num += 1
 
