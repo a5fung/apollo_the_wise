@@ -438,6 +438,88 @@ async def get_rs_velocity(
         return [dict(r) for r in rows]
 
 
+async def get_rs_turners(
+    d: "str | date",
+    max_rs_4w_ago: float = 30.0,
+    min_consecutive_weeks: int = 3,
+    limit: int = 40,
+) -> list[dict[str, Any]]:
+    """
+    Find stocks turning from weak to strengthening — the early rotation signal.
+
+    Criteria:
+    - RS was <= max_rs_4w_ago at the earliest available snapshot (was weak)
+    - RS improved for min_consecutive_weeks in a row (sustained turn)
+    - Current RS > earliest RS by at least 10 points (meaningful improvement)
+
+    Returns rows with: ticker, sector, rs_now, rs_7d..rs_28d, v1w..v4w,
+    consecutive_up_weeks, rs_gain (total improvement).
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+
+        rows = await conn.fetch("""
+            WITH snapshots AS (
+                SELECT
+                    ticker,
+                    score_date,
+                    rs_composite,
+                    sector
+                FROM mi_stock_scores
+                WHERE score_date IN (
+                    $1::date,
+                    $1::date - INTERVAL '7 days',
+                    $1::date - INTERVAL '14 days',
+                    $1::date - INTERVAL '21 days',
+                    $1::date - INTERVAL '28 days'
+                )
+                AND rs_composite IS NOT NULL
+            ),
+            pivoted AS (
+                SELECT
+                    ticker,
+                    MAX(CASE WHEN score_date = $1::date THEN rs_composite END)                       AS rs_now,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
+                    MAX(CASE WHEN score_date = $1::date - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
+                    MAX(CASE WHEN score_date = $1::date THEN sector END)                             AS sector
+                FROM snapshots
+                GROUP BY ticker
+            ),
+            deltas AS (
+                SELECT
+                    *,
+                    (rs_now  - rs_7d)  AS v1w,
+                    (rs_7d   - rs_14d) AS v2w,
+                    (rs_14d  - rs_21d) AS v3w,
+                    (rs_21d  - rs_28d) AS v4w,
+                    -- Count consecutive rising weeks (most recent first)
+                    CASE WHEN rs_now > rs_7d THEN 1 ELSE 0 END +
+                    CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d THEN 1 ELSE 0 END +
+                    CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d AND rs_14d > rs_21d THEN 1 ELSE 0 END +
+                    CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d AND rs_14d > rs_21d AND rs_21d > rs_28d THEN 1 ELSE 0 END
+                    AS consecutive_up_weeks,
+                    -- Earliest available RS (the "was weak" baseline)
+                    COALESCE(rs_28d, rs_21d, rs_14d, rs_7d) AS rs_earliest
+                FROM pivoted
+                WHERE rs_now IS NOT NULL
+            )
+            SELECT *,
+                   rs_now - rs_earliest AS rs_gain
+            FROM deltas
+            WHERE rs_earliest IS NOT NULL
+              AND rs_earliest <= $2
+              AND consecutive_up_weeks >= $3
+              AND rs_now > rs_earliest + 10
+            ORDER BY consecutive_up_weeks DESC, rs_now - rs_earliest DESC
+            LIMIT $4
+        """, score_date, max_rs_4w_ago, min_consecutive_weeks, limit)
+
+        return [dict(r) for r in rows]
+
+
 async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     pool = await get_pool()
     async with pool.acquire() as conn:

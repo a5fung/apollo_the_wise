@@ -31,6 +31,7 @@ from agents.market_intelligence.db import (
     get_latest_regime,
     get_ma_pullbacks,
     get_rs_velocity,
+    get_rs_turners,
     get_overnight_watchlist,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
@@ -246,6 +247,41 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
     return "\n".join(lines)
 
 
+def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
+    """Sector clusters turning from weak to strengthening — rotation watch."""
+    if not turners:
+        return ""
+
+    # Group by sector
+    from collections import defaultdict
+    by_sector: dict[str, list[dict]] = defaultdict(list)
+    for s in turners:
+        sector = s.get("sector") or "Unknown"
+        by_sector[sector].append(s)
+
+    # Only show sectors with 2+ stocks turning together (cluster signal)
+    clusters = {k: v for k, v in by_sector.items() if len(v) >= 2}
+    if not clusters:
+        return ""
+
+    lines = [f"*{section_num}. ROTATION WATCH* — Sectors turning from weak to improving"]
+
+    for sector, stocks in sorted(clusters.items(), key=lambda x: -len(x[1])):
+        # Sector header with avg RS gain
+        avg_gain = sum(s.get("rs_gain", 0) for s in stocks) / len(stocks)
+        avg_now = sum(s.get("rs_now", 0) for s in stocks) / len(stocks)
+        weeks = max(s.get("consecutive_up_weeks", 0) for s in stocks)
+        tickers = ", ".join(s["ticker"] for s in stocks[:6])
+        lines.append(
+            f"  *{sector}* ({len(stocks)} names, {weeks}wk streak)"
+            f" — RS avg {avg_now:.0f}, was {avg_now - avg_gain:.0f}"
+        )
+        lines.append(f"    {tickers}")
+
+    lines.append("  _Groups rising from weak RS for 3+ consecutive weeks_")
+    return "\n".join(lines)
+
+
 def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> str:
     if not pullbacks:
         return f"*{section_num}. MA PULLBACKS* — None in range today"
@@ -286,9 +322,18 @@ def _format_evening_briefing(
     themes: list[dict],
     velocity: list[dict],
     pullbacks: list[dict],
-    briefing_date: str,
+    turners: list[dict] | None = None,
+    briefing_date: str = "",
 ) -> str:
-    velocity_section = _format_velocity_section(velocity, section_num=4)
+    next_num = 4
+    velocity_section = _format_velocity_section(velocity, section_num=next_num)
+    if velocity_section:
+        next_num += 1
+
+    turners_section = _format_turners_section(turners or [], section_num=next_num) if turners else ""
+    if turners_section:
+        next_num += 1
+
     sections = [
         f"*Apollo Evening Briefing — {briefing_date}*",
         "",
@@ -301,8 +346,10 @@ def _format_evening_briefing(
     ]
     if velocity_section:
         sections += [velocity_section, ""]
+    if turners_section:
+        sections += [turners_section, ""]
     sections += [
-        _format_pullbacks_section(pullbacks, section_num=5 if velocity_section else 4),
+        _format_pullbacks_section(pullbacks, section_num=next_num),
         "",
         "_Do your review. Pull up charts. Apply your judgment._",
     ]
@@ -316,12 +363,13 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, velocity, pullbacks = await asyncio.gather(
+    regime, rs_leaders, themes, velocity, pullbacks, turners = await asyncio.gather(
         get_latest_regime(),
         get_rs_leaders(today_str, limit=30),
         get_today_themes(today_str),
         get_rs_velocity(today_str, min_rs=40.0, limit=15),
         get_ma_pullbacks(today_str),
+        get_rs_turners(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -331,6 +379,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         themes=themes,
         velocity=velocity,
         pullbacks=pullbacks,
+        turners=turners,
         briefing_date=today_str,
     )
 

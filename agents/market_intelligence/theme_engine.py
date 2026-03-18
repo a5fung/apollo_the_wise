@@ -26,7 +26,7 @@ from typing import Any
 import anthropic
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity
-from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity
+from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners
 
 logger = logging.getLogger(__name__)
 
@@ -314,9 +314,10 @@ async def _discover_new_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
     velocity_leaders: list[dict] | None = None,
+    turners: list[dict] | None = None,
 ) -> list[dict]:
     """
-    Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators.
+    Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
@@ -358,14 +359,31 @@ wk1/wk2/wk3/wk4 = RS change each week (wk1 = most recent). ↑SUSTAINED = rising
 {vel_lines}
 """
 
+    turners_block = ""
+    if turners:
+        def _turner_profile(s: dict) -> str:
+            rs_now = s.get("rs_now", 0)
+            rs_earliest = s.get("rs_earliest", 0)
+            weeks = s.get("consecutive_up_weeks", 0)
+            return f"- {s['ticker']} (RS {rs_now:.0f}, was {rs_earliest:.0f} → {weeks}wk streak, sector: {s.get('sector', 'Unknown')})"
+
+        turner_lines = "\n".join(_turner_profile(s) for s in turners[:20])
+        turners_block = f"""
+ROTATION CANDIDATES — TURNING FROM WEAK TO IMPROVING (not yet in any theme):
+These stocks had weak RS (below 30) but have been rising for 3+ consecutive weeks.
+This is the earliest rotation signal — a sector quietly turning before anyone notices.
+Look for CLUSTERS here — if 3+ stocks from the same sector are all turning, that's a potential emerging theme.
+{turner_lines}
+"""
+
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
 Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
-{existing_block}{velocity_block}
+{existing_block}{velocity_block}{turners_block}
 ESTABLISHED RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
-Task: Identify NEW distinct investment themes. Prioritize the VELOCITY ACCELERATORS above — a stock rising in RS for 3-4 consecutive weeks is a stronger signal than a stock with high but static RS. Look especially for clusters among the sustained accelerators.
+Task: Identify NEW distinct investment themes. Prioritize the VELOCITY ACCELERATORS and ROTATION CANDIDATES above — a stock rising in RS for 3-4 consecutive weeks is a stronger signal than a stock with high but static RS. Look especially for clusters among the sustained accelerators and turners. Turners represent the earliest rotation signal — sectors that may become the next leaders.
 
 Rules:
 - A theme REQUIRES at least 3 stocks — never force-fit stocks just to reach the count
@@ -432,10 +450,11 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     today = trade_date or date.today()
     today_str = today.strftime("%Y-%m-%d")
 
-    logger.info("Theme engine: fetching top RS stocks + velocity data...")
-    leaders, velocity_all = await asyncio.gather(
+    logger.info("Theme engine: fetching top RS stocks + velocity + turners...")
+    leaders, velocity_all, turners_all = await asyncio.gather(
         get_rs_leaders(today_str, limit=60),
         get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30),
+        get_rs_turners(today_str, max_rs_4w_ago=30.0, min_consecutive_weeks=3, limit=30),
     )
 
     if not leaders:
@@ -483,11 +502,21 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     velocity_leaders = [s for s in velocity_all if s["ticker"] not in covered_tickers]
     logger.info(f"Theme engine: {len(velocity_leaders)} velocity accelerators for discovery")
 
-    # Merge uncovered pools — velocity leaders may overlap with uncovered RS leaders
+    # Filter turners to stocks not already covered by active themes
+    turners = [s for s in turners_all if s["ticker"] not in covered_tickers]
+    logger.info(f"Theme engine: {len(turners)} rotation candidates (turners) for discovery")
+
+    # Merge uncovered pools — velocity/turners may overlap with uncovered RS leaders
     all_uncovered_tickers = {s["ticker"] for s in uncovered}
     for s in velocity_leaders:
         if s["ticker"] not in all_uncovered_tickers:
-            # Add velocity stock to stocks_by_ticker so it can be scored if selected
+            stocks_by_ticker.setdefault(s["ticker"], {
+                "ticker": s["ticker"],
+                "rs_composite": s.get("rs_now", 0),
+                "sector": s.get("sector", "Unknown"),
+            })
+    for s in turners:
+        if s["ticker"] not in all_uncovered_tickers:
             stocks_by_ticker.setdefault(s["ticker"], {
                 "ticker": s["ticker"],
                 "rs_composite": s.get("rs_now", 0),
@@ -496,8 +525,11 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
 
     # --- Step 3: Discover new themes ---
     new_raw: list[dict] = []
-    if len(uncovered) >= NEW_THEME_MIN_STOCKS or len(velocity_leaders) >= NEW_THEME_MIN_STOCKS:
-        new_raw = await _discover_new_themes(uncovered, updated_themes, velocity_leaders)
+    has_enough = (len(uncovered) >= NEW_THEME_MIN_STOCKS
+                  or len(velocity_leaders) >= NEW_THEME_MIN_STOCKS
+                  or len(turners) >= NEW_THEME_MIN_STOCKS)
+    if has_enough:
+        new_raw = await _discover_new_themes(uncovered, updated_themes, velocity_leaders, turners)
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
     new_themes: list[dict] = await asyncio.gather(*[
