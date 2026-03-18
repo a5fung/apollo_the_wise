@@ -474,8 +474,18 @@ async def _get_economic_calendar() -> str | None:
         # Clean up citation markers and markdown
         clean = re.sub(r"\[\d+\]", "", answer)
         clean = re.sub(r"\*+", "", clean).replace("#", "")
-        # Split into lines, strip numbering/bullets, format as bullet points
+
+        # Try splitting by newlines first (if Perplexity returned line-separated)
         raw_lines = [l.strip() for l in clean.split("\n") if l.strip()]
+
+        # If single paragraph, split by sentence boundaries near time patterns
+        # e.g. "...10:30 AM ET. Crude oil..." → split at ". " after time references
+        if len(raw_lines) <= 1 and raw_lines:
+            text = raw_lines[0]
+            # Split on ". " but keep each sentence intact
+            sentences = re.split(r'(?<=\.)\s+', text)
+            raw_lines = [s.strip() for s in sentences if s.strip()]
+
         bullets = []
         for line in raw_lines[:5]:
             # Strip leading numbering (1. 2. etc) or bullet chars
