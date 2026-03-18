@@ -464,18 +464,26 @@ async def _get_economic_calendar() -> str | None:
     day_str = today.strftime("%A, %B %d, %Y")
     query = (
         f"What are the key US economic events, data releases, and Fed speeches scheduled for {day_str}? "
-        f"Include times (Eastern). Be concise, list format, maximum 5 items."
+        f"Include times (Eastern). One item per line, maximum 5 items. No preamble."
     )
     try:
         from agents.market_intelligence.theme_engine import _is_garbage
         answer = await search_news_perplexity(query, recency="day")
         if not answer or _is_garbage(answer):
             return None
-        # Clean up
+        # Clean up citation markers and markdown
         clean = re.sub(r"\[\d+\]", "", answer)
         clean = re.sub(r"\*+", "", clean).replace("#", "")
-        clean = re.sub(r"\s+", " ", clean).strip()
-        return clean
+        # Split into lines, strip numbering/bullets, format as bullet points
+        raw_lines = [l.strip() for l in clean.split("\n") if l.strip()]
+        bullets = []
+        for line in raw_lines[:5]:
+            # Strip leading numbering (1. 2. etc) or bullet chars
+            line = re.sub(r"^[\d]+[.)]\s*", "", line)
+            line = re.sub(r"^[-•]\s*", "", line).strip()
+            if line:
+                bullets.append(f"• {line}")
+        return "\n".join(bullets) if bullets else None
     except Exception as e:
         logger.warning(f"Economic calendar fetch failed: {e}")
         return None
@@ -552,7 +560,7 @@ def _format_morning_briefing(
     # Economic calendar
     if econ_calendar:
         sections.append("")
-        sections.append(f"*CALENDAR*\n  _{econ_calendar}_")
+        sections.append(f"*CALENDAR*\n{econ_calendar}")
 
     # Build ticker → theme stage map for composite sort (keep strongest stage per ticker)
     theme_stage_by_ticker: dict[str, str] = {}
