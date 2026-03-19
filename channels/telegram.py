@@ -729,6 +729,7 @@ class TelegramChannel:
             BotCommand("status", "System health (DB, Redis, agents)"),
             BotCommand("setup",  "Change assistant name or personality"),
             BotCommand("memory", "View what I remember about you"),
+            BotCommand("spend",  "API spend today & this month"),
             BotCommand("audit",  "Recent action log"),
             BotCommand("start",  "Restart / re-introduce"),
         ]
