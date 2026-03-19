@@ -92,19 +92,21 @@ async def lifespan(app: FastAPI):
     await tg_app.initialize()
     await tg_app.start()
 
-    # Set webhook URL if configured
+    # Set webhook URL if configured, otherwise fall back to polling
     webhook_url = os.environ.get("WEBHOOK_BASE_URL")
     if webhook_url:
         full_url = f"{webhook_url.rstrip('/')}/telegram/webhook"
         try:
             await _telegram_channel.set_webhook(full_url)
+            logger.info(f"Telegram webhook set: {full_url}")
         except Exception as e:
             logger.error(f"Failed to set Telegram webhook: {e}")
     else:
-        logger.warning(
-            "WEBHOOK_BASE_URL not set — Telegram webhook not configured. "
-            "Set this env var to your public URL (e.g. https://your-vps.example.com)"
-        )
+        # Polling mode — no domain/SSL needed
+        import asyncio
+        await tg_app.bot.delete_webhook()
+        await tg_app.updater.start_polling(allowed_updates=["message"])
+        logger.info("Telegram running in polling mode (no WEBHOOK_BASE_URL set)")
 
     logger.info("Apollo ready")
 
@@ -128,6 +130,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Apollo shutting down...")
     if tg_app:
+        if tg_app.updater and tg_app.updater.running:
+            await tg_app.updater.stop()
         await tg_app.stop()
         await tg_app.shutdown()
 
