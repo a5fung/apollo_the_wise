@@ -63,6 +63,22 @@ class Apollo:
         self._client = anthropic.AsyncAnthropic(api_key=get_secrets().anthropic_api_key)
         self._send_message = send_message_fn
         self._tools = get_orchestrator_tools()
+        self._cached_tools: list[dict[str, Any]] | None = None
+
+    def _tools_with_cache_control(self) -> list[dict[str, Any]]:
+        """Return tools list with cache_control on the last tool.
+
+        Placing the breakpoint on the final tool means the entire
+        prefix (system prompt + all tool definitions) is covered by
+        a single cache entry.  Built once and reused.
+        """
+        if self._cached_tools is None:
+            import copy
+            tools = copy.deepcopy(self._tools)
+            if tools:
+                tools[-1]["cache_control"] = {"type": "ephemeral"}
+            self._cached_tools = tools
+        return self._cached_tools
 
     async def handle_message(
         self,
@@ -167,12 +183,21 @@ class Apollo:
             logger.debug(f"Tool loop iteration {iteration} for user {user_id}")
 
             try:
+                # Prompt caching: system prompt + tools are static per
+                # conversation and cacheable.  The last tool gets the
+                # cache_control breakpoint so the entire prefix
+                # (system + all tools) is cached together.
+                cached_tools = self._tools_with_cache_control()
                 response = await asyncio.wait_for(
                     self._client.messages.create(
                         model=ORCHESTRATOR_MODEL,
                         max_tokens=4096,
-                        system=system_prompt,
-                        tools=self._tools,
+                        system=[{
+                            "type": "text",
+                            "text": system_prompt,
+                            "cache_control": {"type": "ephemeral"},
+                        }],
+                        tools=cached_tools,
                         messages=current_messages,
                     ),
                     timeout=60,
