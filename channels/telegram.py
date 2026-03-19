@@ -46,7 +46,8 @@ def _format_market_pipeline(status: dict) -> str:
     """Format the market pipeline section for /status."""
     import pytz
     from datetime import datetime as dt
-    from agents.market_intelligence.briefing import REGIME_EMOJI
+
+    REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨", "Unknown": "⚫"}
 
     pt = pytz.timezone("America/Los_Angeles")
 
