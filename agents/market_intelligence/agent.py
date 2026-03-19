@@ -17,6 +17,10 @@ from typing import Any
 
 import anthropic
 from fastapi import BackgroundTasks, Depends
+
+# Suppress httpx INFO logs — they include full URLs with API keys
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 from pydantic import BaseModel
 
 from agents.base import BaseAgent, verify_internal_secret
