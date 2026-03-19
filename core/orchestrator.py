@@ -206,6 +206,21 @@ class Apollo:
                 logger.error(f"Claude API timed out after 60s for user {user_id}")
                 return "Sorry, I timed out waiting for a response. Please try again."
 
+            # Log token usage for spend tracking
+            try:
+                from core.spend import log_api_usage
+                usage = response.usage
+                await log_api_usage(
+                    model=ORCHESTRATOR_MODEL,
+                    caller="orchestrator",
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                    cache_creation_tokens=getattr(usage, "cache_creation_input_tokens", 0) or 0,
+                    cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+                )
+            except Exception as e:
+                logger.debug(f"Spend tracking failed: {e}")
+
             # If Claude wants to use tools
             if response.stop_reason == "tool_use":
                 # Add Claude's response to message history

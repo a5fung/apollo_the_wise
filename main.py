@@ -27,6 +27,7 @@ from channels.telegram import TelegramChannel
 from channels.webhooks import app as webhook_app, configure as configure_webhooks
 from core.memory import initialize_schema
 from core.notifications import notify_startup
+from core.spend import initialize_spend_schema
 from core.orchestrator import Apollo
 from core.router import health_check_all_agents
 from shared.secrets import get_secrets
@@ -70,6 +71,7 @@ async def lifespan(app: FastAPI):
     # Initialize database
     try:
         await initialize_schema()
+        await initialize_spend_schema()
         logger.info("Database ready")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")

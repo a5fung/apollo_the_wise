@@ -427,7 +427,7 @@ class TelegramChannel:
             "🔍 Web search · Summarization\n"
             "✈️ Travel · Flights · Hotels · Amex perks\n"
             "\n"
-            "/agents · /status · /setup · /memory"
+            "/agents · /status · /spend · /setup · /memory"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -604,6 +604,20 @@ class TelegramChannel:
 
         await update.message.reply_text("\n".join(lines))
 
+    async def _handle_spend(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle /spend command — show API spend summary."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        try:
+            from core.spend import get_spend_summary
+            summary = await get_spend_summary()
+            await update.message.reply_text(summary, parse_mode="Markdown")
+        except Exception as e:
+            await update.message.reply_text(f"Error fetching spend data: {e}")
+
     # ── Confirmation resolution ────────────────────────────────────────────────
 
     async def _try_resolve_confirmation(
@@ -687,6 +701,7 @@ class TelegramChannel:
         app.add_handler(CommandHandler("status", self._handle_status))
         app.add_handler(CommandHandler("memory", self._handle_memory))
         app.add_handler(CommandHandler("audit", self._handle_audit))
+        app.add_handler(CommandHandler("spend", self._handle_spend))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
         )

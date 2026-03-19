@@ -100,6 +100,21 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
             }
         ],
     )
+
+    # Log spend (sync context, so fire in background)
+    try:
+        import asyncio
+        from core.spend import log_api_usage
+        usage = response.usage
+        asyncio.get_event_loop().create_task(log_api_usage(
+            model="claude-haiku-4-5-20251001",
+            caller="context_compression",
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+        ))
+    except Exception:
+        pass
+
     return response.content[0].text
 
 
