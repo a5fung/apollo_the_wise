@@ -4,9 +4,9 @@ APScheduler jobs for Market Intelligence Agent.
 Schedule (US Eastern Time / Pacific Time):
 - 4:30 PM ET (1:30 PM PT): Nightly data pull — RS engine + market regime + themes
 - 8:00 PM ET (5:00 PM PT): Evening briefing — regime + RS leaders + themes + MA pullbacks
-- 7:00 AM – 9:30 AM ET (4:00 – 6:30 AM PT): EP scan every 5 minutes; HIGH alerts sent immediately
+- 7:00 AM – 10:00 AM ET (4:00 – 7:00 AM PT): EP scan every 5 minutes; HIGH alerts sent immediately
 - 9:00 AM ET (6:00 AM PT): Morning briefing — EP recap + regime context (30 min before open)
-- 9:35 AM ET (6:35 AM PT): Stop EP scanning
+- 10:00 AM ET (7:00 AM PT): Stop EP scanning
 """
 from __future__ import annotations
 
@@ -220,7 +220,7 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # EP scan: every 5 minutes 7:00–9:30 AM ET
+    # EP scan: every 5 minutes 7:00–10:00 AM ET (covers 15-min delayed open gaps)
     _scheduler.add_job(
         _ep_scan_job,
         CronTrigger(
@@ -241,10 +241,11 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Stop EP scanning at 9:35 AM ET (6:35 AM PT)
+    # Stop EP scanning at 10:00 AM ET (7:00 AM PT) — extended past open to catch
+    # at-open gaps with 15-min delayed data (Polygon Starter)
     _scheduler.add_job(
         _stop_ep_scanning,
-        CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_stop",
         replace_existing=True,
     )
