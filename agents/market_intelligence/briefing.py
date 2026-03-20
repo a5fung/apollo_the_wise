@@ -152,7 +152,7 @@ def _format_ep_section(ep_alerts: list[dict], section_num: int = 1) -> str:
     for ep in high:
         tier_e = TIER_EMOJI.get("HIGH", "")
         cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
-        gem = " ✓Gemini" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
+        gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
         conf = f" {ep['confidence_multiplier']:.1f}x conf" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
         lines.append(
             f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
@@ -941,7 +941,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     """Send an immediate EP alert to Telegram."""
     tier_e = TIER_EMOJI.get(ep.get("score_tier", ""), "")
     cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
-    gem = " ✓Gemini" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
+    gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
 
     text = (
         f"*EP ALERT {tier_e}*\n\n"
@@ -951,6 +951,6 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         f"Catalyst: {ep.get('catalyst', 'See news')[:300]}"
     )
     if ep.get("confidence_multiplier", 1.0) > 1.0:
-        text += f"\n\n_Claude + Gemini agree — {ep['confidence_multiplier']:.1f}x confidence_"
+        text += f"\n\n_Claude + Perplexity agree — {ep['confidence_multiplier']:.1f}x confidence_"
 
     await send_telegram_message(text, chat_id)

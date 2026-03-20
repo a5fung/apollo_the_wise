@@ -16,7 +16,7 @@ MAGNA53 scoring (0-100):
 - Volume conviction: pre-mkt vol ≥90th pct = 5pts, ≥70th = 3pts
 - Analyst upgrades:  3+ = 5pts
 - Low float:         <50M shares = 5pts
-- Market multiplier: Bull regime = 1.2x, Gemini agreement = 1.2x (stack)
+- Market multiplier: Bull regime = 1.2x, Perplexity agreement = 1.2x (stack)
 
 Max raw: 95. A 20%+ game-changer gap scores ≥70 before bonuses.
 Thresholds: ≥ ep_threshold (regime-dependent) = HIGH, 50-69 = MODERATE, <50 = skip
@@ -31,8 +31,11 @@ from typing import Any, Optional
 
 import anthropic
 
+from datetime import timedelta
+
 from agents.market_intelligence.collector import (
     get_snapshot_all,
+    get_index_history,
     get_fmp_profile,
     get_fmp_earnings,
     get_fmp_analyst_ratings,
@@ -82,17 +85,18 @@ def _get_claude():
     return _claude
 
 
-def _get_gemini():
-    """Get Gemini client if API key is configured."""
-    try:
-        from google import genai
-        api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            return None
-        return genai.Client(api_key=api_key)
-    except ImportError:
-        logger.warning("google-genai not installed, skipping Gemini validation")
-        return None
+async def _compute_adv_from_polygon(ticker: str, trade_date: date, days: int = 20) -> Optional[float]:
+    """Fetch recent daily bars from Polygon and compute average daily volume.
+    Used for EP candidates not in the 148-stock RS universe."""
+    from_date = (trade_date - timedelta(days=days * 2)).strftime("%Y-%m-%d")  # fetch extra for weekends/holidays
+    to_date = (trade_date - timedelta(days=1)).strftime("%Y-%m-%d")  # exclude today
+    bars = await get_index_history(ticker, from_date, to_date)
+    volumes = [b["v"] for b in bars if "v" in b and b["v"] > 0]
+    if len(volumes) < 5:
+        return None  # not enough data
+    # Use last `days` bars (or all if fewer)
+    recent = volumes[-days:]
+    return sum(recent) / len(recent)
 
 
 _CATALYST_TOOL = {
@@ -164,13 +168,15 @@ Only use routine if you've confirmed there is genuinely no company-specific cata
         return "routine", "Classification failed — treating as routine."
 
 
-async def _validate_catalyst_gemini(ticker: str, news_summary: str) -> Optional[str]:
+async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optional[str]:
     """
-    Use Gemini to cross-validate catalyst quality.
+    Use Perplexity Sonar to cross-validate catalyst quality.
     Returns "game_changer", "strong", "routine", or None if unavailable.
     """
-    gemini = _get_gemini()
-    if not gemini:
+    import httpx
+
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
         return None
 
     prompt = f"""For stock {ticker}, classify this catalyst as GAME_CHANGER, STRONG, or ROUTINE:
@@ -179,12 +185,21 @@ async def _validate_catalyst_gemini(ticker: str, news_summary: str) -> Optional[
 Respond with ONLY the classification word."""
 
     try:
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: gemini.models.generate_content(model="gemini-2.0-flash", contents=prompt)
-        )
-        text = response.text.strip().upper()
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "sonar",
+                    "messages": [
+                        {"role": "system", "content": "You classify stock catalysts. Respond with exactly one word: GAME_CHANGER, STRONG, or ROUTINE."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "return_citations": False,
+                },
+            )
+            r.raise_for_status()
+            text = r.json()["choices"][0]["message"]["content"].strip().upper()
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:
             return "game_changer"
         elif "STRONG" in text:
@@ -192,7 +207,7 @@ Respond with ONLY the classification word."""
         else:
             return "routine"
     except Exception as e:
-        logger.warning(f"Gemini validation failed for {ticker}: {e}")
+        logger.warning(f"Perplexity validation failed for {ticker}: {e}")
         return None
 
 
@@ -369,10 +384,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
             today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
             adv = adv_map.get(ticker)
+            # prevDay.v as temporary placeholder — proper 20-day ADV computed below for non-universe stocks
+            adv_source = "rs_universe" if adv else "pending"
             if not adv:
-                # Fallback: previous day's volume from snapshot (works for all tickers)
                 adv = snap.get("prevDay", {}).get("v") or None
-            rel_volume = (today_volume / adv) if adv and adv > 0 else None
 
             candidates.append({
                 "ticker": ticker,
@@ -381,7 +396,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "gap_pct": round(gap_pct, 2),
                 "today_volume": today_volume,
                 "adv": adv,
-                "rel_volume": round(rel_volume, 2) if rel_volume else None,
+                "adv_source": adv_source,
+                "rel_volume": round((today_volume / adv), 2) if adv and adv > 0 else None,
             })
         except Exception:
             continue
@@ -396,6 +412,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Batch-fetch volume history for all candidates (one DB query)
     candidate_tickers = [c["ticker"] for c in candidates]
     vol_history_map = await get_volume_history(candidate_tickers)
+
+    # Compute proper 20-day ADV for non-universe candidates (top 20 only)
+    # These stocks aren't in mi_stock_scores, so we fetch bars from Polygon
+    non_universe = [c for c in candidates[:20] if c["adv_source"] == "pending"]
+    if non_universe:
+        logger.info(f"Fetching 20-day ADV for {len(non_universe)} non-universe candidates...")
+        adv_tasks = [_compute_adv_from_polygon(c["ticker"], today) for c in non_universe]
+        adv_results = await asyncio.gather(*adv_tasks)
+        for c, computed_adv in zip(non_universe, adv_results):
+            if computed_adv:
+                c["adv"] = computed_adv
+                c["adv_source"] = "polygon_20d"
+                c["rel_volume"] = round(c["today_volume"] / computed_adv, 2) if computed_adv > 0 else None
+                logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
 
     # Score each candidate (rate-limited FMP calls)
     results = []
@@ -433,27 +463,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             [n.get("title", "") for n in fmp_news[:3]]
         )
 
-        # Claude + Gemini in parallel — cancel Gemini if catalyst is routine
+        # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
         claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))
-        gemini_task = asyncio.create_task(_validate_catalyst_gemini(ticker, news_summary))
+        pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
         catalyst_quality, claude_analysis = await claude_task
 
         # Skip routine catalysts outright
         if catalyst_quality == "routine" and c["gap_pct"] < 12:
-            gemini_task.cancel()
+            pplx_task.cancel()
             logger.info(f"Skip {ticker}: routine catalyst, gap {c['gap_pct']:.1f}%")
             continue
 
-        gemini_quality = await gemini_task
+        pplx_quality = await pplx_task
 
         # Agreement logic
         confidence_multiplier = 1.0
-        if gemini_quality and gemini_quality == catalyst_quality:
+        if pplx_quality and pplx_quality == catalyst_quality:
             confidence_multiplier = 1.2
-            logger.info(f"{ticker}: Claude+Gemini agree on {catalyst_quality} → 1.2x confidence")
-        elif gemini_quality and gemini_quality != catalyst_quality:
-            logger.info(f"{ticker}: Claude={catalyst_quality}, Gemini={gemini_quality} → disagreement, no boost")
+            logger.info(f"{ticker}: Claude+Perplexity agree on {catalyst_quality} → 1.2x confidence")
+        elif pplx_quality and pplx_quality != catalyst_quality:
+            logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
 
         # Score
         ep_score, breakdown = _score_ep(
@@ -479,7 +509,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "catalyst_quality": catalyst_quality,
             "catalyst": news_summary[:500],
             "claude_analysis": claude_analysis,
-            "gemini_validation": gemini_quality,
+            "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
             "score_breakdown": breakdown,
@@ -498,7 +528,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "catalyst": news_summary[:500],
             "catalyst_quality": catalyst_quality,
             "claude_analysis": claude_analysis,
-            "gemini_validation": gemini_quality,
+            "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
         })
