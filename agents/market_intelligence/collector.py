@@ -1,11 +1,11 @@
 """
 Data collection layer.
 
-Polygon.io — EOD OHLCV, pre-market snapshots, ticker details.
+Polygon.io (Massive) — EOD OHLCV, pre-market snapshots, ticker details.
 FMP — company profiles, earnings, analyst ratings.
 
 Rate limits:
-- Polygon free: 5 calls/minute → 1 call every 12s minimum
+- Polygon Starter: unlimited calls (snapshot returns all US tickers in one call)
 - FMP free: 250 calls/day → use sparingly, cache aggressively
 """
 from __future__ import annotations
@@ -23,21 +23,21 @@ logger = logging.getLogger(__name__)
 POLYGON_BASE = "https://api.polygon.io"
 FMP_BASE = "https://financialmodelingprep.com/api"
 
-# Polygon free tier: 5 req/min → sleep 12s between calls
+# Polygon Starter: unlimited calls, but keep a small delay to be polite
 _polygon_lock = asyncio.Semaphore(1)
 _polygon_last_call: float = 0.0
-POLYGON_RATE_DELAY = 12.0  # seconds
+POLYGON_RATE_DELAY = 0.2  # seconds — minimal courtesy delay
 
 
 async def _polygon_get(path: str, params: dict | None = None) -> Any:
-    """Rate-limited GET request to Polygon API."""
+    """GET request to Polygon API with retry on 429."""
     global _polygon_last_call
     api_key = os.environ.get("POLYGON_API_KEY", "")
     if not api_key:
         raise RuntimeError("POLYGON_API_KEY not set")
 
     async with _polygon_lock:
-        # Enforce rate limit
+        # Minimal courtesy delay between calls
         now = asyncio.get_event_loop().time()
         elapsed = now - _polygon_last_call
         if elapsed < POLYGON_RATE_DELAY:

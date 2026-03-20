@@ -46,10 +46,30 @@ logger = logging.getLogger(__name__)
 MIN_GAP_PCT = 8.0
 MIN_REL_VOLUME = 2.0
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
+MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
+MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
 
 # Auto-disqualifiers
 MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ before the gap
 EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP in last 60 days
+
+# Leveraged/inverse ETFs and broad ETFs — never real EPs
+_SKIP_TICKERS = frozenset({
+    # Leveraged / inverse
+    "TQQQ", "SQQQ", "SPXL", "SPXS", "UPRO", "SDS", "SSO", "QLD", "QID",
+    "UDOW", "SDOW", "LABU", "LABD", "SOXL", "SOXS", "TNA", "TZA",
+    "FNGU", "FNGD", "TECL", "TECS", "FAS", "FAZ", "NUGT", "DUST",
+    "JNUG", "JDST", "GDXD", "ERX", "ERY", "GUSH", "DRIP", "UVXY",
+    "SVXY", "VXX", "UVIX", "SVIX", "BOIL", "KOLD", "UCO", "SCO",
+    "AGQ", "ZSL", "GLL", "DULL", "UGL", "YANG", "YINN", "CWEB",
+    "BRZU", "BZQ", "EDC", "EDZ", "DRN", "DRV", "RETL", "BNKU",
+    "MSTZ", "MSTU", "CONL", "TSLL", "NVDL", "NVDS",  # Single-stock leveraged
+    # Broad index ETFs
+    "SPY", "QQQ", "IWM", "DIA", "VOO", "VTI", "IVV", "RSP",
+    # Sector ETFs (not individual stock EPs)
+    "XLK", "XLE", "XLF", "XLV", "XLI", "XLB", "XLP", "XLU", "XLY",
+    "XLRE", "XLC", "SMH", "IBB", "XBI", "GDX", "GDXJ", "KRE",
+})
 
 _claude = None
 
@@ -299,10 +319,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     candidates = []
     for ticker, snap in snapshots.items():
         try:
+            # Skip warrants, units, non-standard symbols, and ETFs
+            if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS:
+                continue
+
             prev_close = snap.get("prevDay", {}).get("c", 0)
+            if not prev_close or prev_close < MIN_PREV_CLOSE:
+                continue
+
             # Pre-market price: use day open or last trade
             current_price = snap.get("day", {}).get("o") or snap.get("lastTrade", {}).get("p", 0)
-            if not prev_close or not current_price:
+            if not current_price:
                 continue
 
             gap_pct = (current_price - prev_close) / prev_close * 100
@@ -326,7 +353,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         except Exception:
             continue
 
-    logger.info(f"Gap candidates ≥{MIN_GAP_PCT}%: {len(candidates)}")
+    # Sort by gap size descending — score the biggest movers first
+    candidates.sort(key=lambda c: c["gap_pct"], reverse=True)
+    logger.info(f"Gap candidates ≥{MIN_GAP_PCT}%: {len(candidates)}"
+                + (f" (top: {candidates[0]['ticker']} {candidates[0]['gap_pct']:.1f}%)" if candidates else ""))
     if not candidates:
         return []
 
