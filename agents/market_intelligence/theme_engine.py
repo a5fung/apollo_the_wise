@@ -59,7 +59,7 @@ THEME_COVERAGE_MIN = 3
 # Retire a theme after this many consecutive fading days
 FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
-NEW_THEME_MIN_STOCKS = 3
+NEW_THEME_MIN_STOCKS = 2
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -316,17 +316,37 @@ async def _discover_new_themes(
     stocks_by_ticker: dict[str, dict],
     velocity_leaders: list[dict] | None = None,
     turners: list[dict] | None = None,
+    elite_covered: list[dict] | None = None,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
+    Also receives elite covered stocks (RS 80+) that may need sub-theme splits.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
-    stock_lines = "\n".join(
-        f"- {s['ticker']} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')})"
-        for s in uncovered_stocks
-    )
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    def _stock_line(s: dict, theme_label: str = "") -> str:
+        ticker = s["ticker"]
+        desc = TICKER_DESC.get(ticker, "")
+        desc_part = f" — {desc}" if desc else ""
+        theme_part = f" [in: {theme_label}]" if theme_label else ""
+        return f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')}{desc_part}){theme_part}"
+
+    stock_lines = "\n".join(_stock_line(s) for s in uncovered_stocks)
+
+    # Elite covered stocks (RS 80+) shown with their current theme
+    elite_block = ""
+    if elite_covered:
+        elite_lines = "\n".join(_stock_line(s, s.get("_current_theme", "")) for s in elite_covered)
+        elite_block = f"""
+ELITE RS LEADERS ALREADY IN THEMES (RS 80+, shown for sub-theme analysis):
+These stocks are assigned to existing themes but may belong to a MORE SPECIFIC sub-theme.
+Example: MU in "AI Infrastructure" might actually belong to a distinct "AI Memory & Storage" theme.
+If you see a cluster of 2+ stocks here that share a specific sub-thesis different from their current theme, propose the sub-theme.
+{elite_lines}
+"""
 
     existing_block = ""
     if existing_themes:
@@ -334,11 +354,14 @@ async def _discover_new_themes(
             f"- {t['name']} [{t.get('stage')}] (score {t.get('score', 0):.0f}): {', '.join(t.get('tickers') or [])}"
             for t in existing_themes
         )
-        existing_block = f"\nEXISTING ACTIVE THEMES (for context — do NOT re-create these):\n{existing_lines}\n"
+        existing_block = f"\nEXISTING ACTIVE THEMES (for context — do NOT re-create these, but you MAY propose sub-themes that split off a more specific cluster):\n{existing_lines}\n"
 
     velocity_block = ""
     if velocity_leaders:
         def _vel_profile(s: dict) -> str:
+            ticker = s["ticker"]
+            desc = TICKER_DESC.get(ticker, "")
+            desc_part = f" — {desc}" if desc else ""
             parts = [f"RS {s.get('rs_now', 0):.0f}"]
             for wk, key in [(1, "v1w"), (2, "v2w"), (3, "v3w"), (4, "v4w")]:
                 v = s.get(key)
@@ -349,7 +372,7 @@ async def _discover_new_themes(
                 if s.get(k) is not None
             )
             flag = " ↑SUSTAINED" if consistent else ""
-            return f"- {s['ticker']} ({', '.join(parts)}, sector: {s.get('sector', 'Unknown')}){flag}"
+            return f"- {ticker} ({', '.join(parts)}, sector: {s.get('sector', 'Unknown')}{desc_part}){flag}"
 
         vel_lines = "\n".join(_vel_profile(s) for s in velocity_leaders[:20])
         velocity_block = f"""
@@ -363,10 +386,13 @@ wk1/wk2/wk3/wk4 = RS change each week (wk1 = most recent). ↑SUSTAINED = rising
     turners_block = ""
     if turners:
         def _turner_profile(s: dict) -> str:
+            ticker = s["ticker"]
+            desc = TICKER_DESC.get(ticker, "")
+            desc_part = f" — {desc}" if desc else ""
             rs_now = s.get("rs_now", 0)
             rs_earliest = s.get("rs_earliest", 0)
             weeks = s.get("consecutive_up_weeks", 0)
-            return f"- {s['ticker']} (RS {rs_now:.0f}, was {rs_earliest:.0f} → {weeks}wk streak, sector: {s.get('sector', 'Unknown')})"
+            return f"- {ticker} (RS {rs_now:.0f}, was {rs_earliest:.0f} → {weeks}wk streak, sector: {s.get('sector', 'Unknown')}{desc_part})"
 
         turner_lines = "\n".join(_turner_profile(s) for s in turners[:20])
         turners_block = f"""
@@ -380,20 +406,27 @@ Look for CLUSTERS here — if 3+ stocks from the same sector are all turning, th
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
 Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
-{existing_block}{velocity_block}{turners_block}
-ESTABLISHED RS LEADERS NOT YET IN ANY ACTIVE THEME:
+{existing_block}{elite_block}{velocity_block}{turners_block}
+RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
-Task: Identify NEW distinct investment themes. Prioritize the VELOCITY ACCELERATORS and ROTATION CANDIDATES above — a stock rising in RS for 3-4 consecutive weeks is a stronger signal than a stock with high but static RS. Look especially for clusters among the sustained accelerators and turners. Turners represent the earliest rotation signal — sectors that may become the next leaders.
+Task: Identify NEW distinct investment themes from ALL the stocks above. You have two jobs:
+
+1. DISCOVER new themes from uncovered stocks, velocity accelerators, and rotation candidates
+2. SPLIT sub-themes from the elite covered stocks — if 2+ elite stocks share a specific thesis DIFFERENT from their current theme assignment, propose a new sub-theme
+
+Use the company descriptions to understand what each stock actually does. Two stocks in the same "sector" may serve completely different markets. Conversely, stocks in different sectors may share a specific catalyst (e.g., a memory chip maker and an equipment company both driven by HBM demand).
+
+Prioritize the VELOCITY ACCELERATORS and ROTATION CANDIDATES — a stock rising in RS for 3-4 consecutive weeks is a stronger signal than a stock with high but static RS.
 
 Rules:
-- A theme REQUIRES at least 3 stocks — never force-fit stocks just to reach the count
+- A theme REQUIRES at least 2 stocks — a 2-stock cluster is valid as a "Nascent" early signal
 - Every stock must clearly operate in the SAME specific sub-industry or share the SAME business driver
-  - GOOD: optical networking equipment makers, uranium miners, AI inference chip designers, defense primes
+  - GOOD: DRAM/NAND memory makers, optical networking equipment, uranium miners, AI inference chips
   - BAD: mixing a REIT with a commodity stock, adding a consumer name to an industrial theme
   - BAD: grouping by vague similarity ("they're both tech", "both benefit from AI")
-- Name themes specifically ("Optical Networking Build-Out" not "Technology")
-- Each stock belongs to at most one theme
+- Name themes specifically ("AI Memory & HBM" not "Technology" or "Semiconductors")
+- A stock CAN move from an existing theme to a new sub-theme if the sub-theme is more specific
 - When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
 - Return zero themes if no clear cluster exists — that is the correct answer
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
@@ -408,10 +441,10 @@ Rules:
         )
         tool_block = next(b for b in response.content if b.type == "tool_use")
         raw_themes = tool_block.input.get("themes", [])
-        # Filter: enforce minimum 3 tickers, then strip sector-incompatible tickers
-        valid = [t for t in raw_themes if len(t.get("tickers", [])) >= 3]
+        # Filter: enforce minimum 2 tickers, then strip sector-incompatible tickers
+        valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
         return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
-                if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= 3]
+                if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
     except Exception as e:
         logger.error(f"Claude new theme discovery failed: {e}")
         return []
@@ -491,13 +524,33 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
             if result["stage"] != "Fading":
                 covered_tickers.update(result.get("tickers") or [])
 
-    # --- Step 2: Find uncovered RS leaders + velocity accelerators ---
+    # --- Step 2: Find uncovered RS leaders + elite covered for sub-theme splits ---
+
+    # Build theme membership lookup: ticker → theme name
+    ticker_to_theme: dict[str, str] = {}
+    for t in updated_themes:
+        if t["stage"] != "Fading":
+            for tk in (t.get("tickers") or []):
+                ticker_to_theme[tk] = t["name"]
+
     uncovered = [
         s for s in leaders[:40]
         if s["ticker"] not in covered_tickers
         and s.get("rs_composite", 0) >= THEME_RS_MIN
     ]
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
+
+    # Elite covered: RS 80+ stocks already in themes — sent to Claude for
+    # sub-theme analysis. These are strong enough to warrant checking if
+    # their current theme assignment is the best fit.
+    elite_covered = []
+    for s in leaders[:40]:
+        if (s["ticker"] in covered_tickers
+                and s.get("rs_composite", 0) >= 80):
+            s_copy = dict(s)
+            s_copy["_current_theme"] = ticker_to_theme.get(s["ticker"], "")
+            elite_covered.append(s_copy)
+    logger.info(f"Theme engine: {len(elite_covered)} elite covered stocks for sub-theme analysis")
 
     # Filter velocity to stocks not already covered by active themes
     velocity_leaders = [s for s in velocity_all if s["ticker"] not in covered_tickers]
@@ -521,9 +574,13 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     new_raw: list[dict] = []
     has_enough = (len(uncovered) >= NEW_THEME_MIN_STOCKS
                   or len(velocity_leaders) >= NEW_THEME_MIN_STOCKS
-                  or len(turners) >= NEW_THEME_MIN_STOCKS)
+                  or len(turners) >= NEW_THEME_MIN_STOCKS
+                  or len(elite_covered) >= NEW_THEME_MIN_STOCKS)
     if has_enough:
-        new_raw = await _discover_new_themes(uncovered, updated_themes, stocks_by_ticker, velocity_leaders, turners)
+        new_raw = await _discover_new_themes(
+            uncovered, updated_themes, stocks_by_ticker,
+            velocity_leaders, turners, elite_covered,
+        )
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
     new_themes: list[dict] = await asyncio.gather(*[

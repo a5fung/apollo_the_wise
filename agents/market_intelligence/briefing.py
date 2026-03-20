@@ -252,6 +252,46 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
     return "\n".join(lines)
 
 
+def _format_unanchored_section(
+    rs_leaders: list[dict],
+    themes: list[dict],
+    section_num: int = 4,
+) -> str:
+    """Flag RS 80+ stocks not belonging to any active theme — potential undiscovered themes."""
+    # Build set of all tickers in active (non-Fading) themes
+    themed_tickers: set[str] = set()
+    for t in themes:
+        if t.get("stage") != "Fading":
+            themed_tickers.update(t.get("tickers") or [])
+
+    # Find RS 80+ leaders not in any theme
+    unanchored = [
+        s for s in rs_leaders
+        if s.get("rs_composite", 0) >= 80
+        and s["ticker"] not in themed_tickers
+        and not s["ticker"].startswith("X")  # skip ETFs (XLK, XLE, etc.)
+        and s["ticker"] not in ("SPY", "QQQ", "IWM")
+    ]
+
+    if not unanchored:
+        return ""
+
+    lines = [f"*{section_num}. ⚠️ UNANCHORED LEADERS* — RS 80+ with no theme"]
+    lines.append("  _These stocks are outperforming without an assigned theme._")
+    lines.append("  _Investigate — a new theme may be forming._")
+
+    for s in unanchored[:10]:
+        ticker = s["ticker"]
+        rs = int(s.get("rs_composite") or 0)
+        sector = s.get("sector", "")
+        from agents.market_intelligence.universe import TICKER_DESC
+        desc = TICKER_DESC.get(ticker, "")
+        desc_part = f" — {desc}" if desc else ""
+        lines.append(f"  `{ticker}` RS {rs}  ({sector}{desc_part})")
+
+    return "\n".join(lines)
+
+
 def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
     """Sector clusters turning from weak to strengthening — rotation watch."""
     if not turners:
@@ -330,6 +370,12 @@ def _format_evening_briefing(
     briefing_date: str = "",
 ) -> str:
     next_num = 4
+
+    # Unanchored: RS 80+ stocks not in any theme
+    unanchored_section = _format_unanchored_section(rs_leaders, themes, section_num=next_num)
+    if unanchored_section:
+        next_num += 1
+
     velocity_section = _format_velocity_section(velocity, section_num=next_num)
     if velocity_section:
         next_num += 1
@@ -348,6 +394,8 @@ def _format_evening_briefing(
         _format_theme_section(themes, section_num=3),
         "",
     ]
+    if unanchored_section:
+        sections += [unanchored_section, ""]
     if velocity_section:
         sections += [velocity_section, ""]
     if turners_section:
