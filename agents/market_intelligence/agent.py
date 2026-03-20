@@ -33,6 +33,8 @@ from agents.market_intelligence.db import (
     get_ticker_extension_data,
     bulk_track_stocks,
     seed_theme,
+    upsert_ticker_override,
+    get_ticker_overrides,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
@@ -56,6 +58,12 @@ class TeachRequest(BaseModel):
 
 class ExtensionRequest(BaseModel):
     tickers: list[str]
+
+
+class UpdateStockInfoRequest(BaseModel):
+    ticker: str
+    description: str
+    notes: str = ""
 
 
 class ScreenerRequest(BaseModel):
@@ -153,6 +161,24 @@ class MarketIntelligenceAgent(BaseAgent):
                 return {"status": "nothing to do — provide tickers or theme_name"}
 
             return {"status": "ok", **results}
+
+        @self.app.post("/stocks/update_info")
+        async def update_stock_info(
+            body: UpdateStockInfoRequest,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Update a stock's description — overrides static universe.py."""
+            ticker = body.ticker.upper()
+            await upsert_ticker_override(ticker, body.description, body.notes or None)
+            # Apply immediately to in-memory lookup
+            from agents.market_intelligence.universe import apply_overrides
+            apply_overrides({ticker: body.description})
+            logger.info(f"Stock info updated: {ticker} → {body.description}")
+            return {
+                "status": "ok",
+                "ticker": ticker,
+                "description": body.description,
+            }
 
         @self.app.post("/ep/scan")
         async def manual_ep_scan(_: str = Depends(verify_internal_secret)):
@@ -681,6 +707,15 @@ async def startup():
         datefmt="%H:%M:%S",
     )
     await initialize_schema()
+    # Load description overrides from DB into in-memory TICKER_DESC
+    try:
+        from agents.market_intelligence.universe import apply_overrides
+        overrides = await get_ticker_overrides()
+        if overrides:
+            apply_overrides(overrides)
+            logger.info(f"Loaded {len(overrides)} ticker description override(s)")
+    except Exception as e:
+        logger.warning(f"Failed to load ticker overrides: {e}")
     start_scheduler()
     asyncio.create_task(check_missed_jobs())  # Run in background — data pull can take 30+ min
     logger.info("Market Intelligence Agent ready on port 8006")

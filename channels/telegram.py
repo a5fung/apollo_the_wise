@@ -405,9 +405,10 @@ class TelegramChannel:
             f"*{assistant_name} — Quick Reference*\n"
             "\n"
             "*Market Intelligence*\n"
-            "📊 `Send evening briefing` — full EOD review\n"
-            "☀️ `Send morning briefing` — pre-market + overnight news\n"
+            "📊 `Send evening briefing` — RS leaders + theme scorecard + EPS flags\n"
+            "☀️ `Send morning briefing` — pre-market + overnight news + EPs\n"
             "⚡ `Run theme engine` — refresh themes now\n"
+            "🔄 `Run data refresh` — full nightly pull (RS + regime + themes + fundamentals)\n"
             "\n"
             "Ask naturally:\n"
             '• "Any EPs today?" · "Market regime?"\n'
@@ -415,6 +416,11 @@ class TelegramChannel:
             '• "Score AXTI" · "Fundamentals on CIEN"\n'
             '• "Optical stocks near 20MA?"\n'
             '• "Screen RS > 70 with EPS growth > 25%"\n'
+            "\n"
+            "*Teach & Update*\n"
+            '📌 "AXTI is working, track it" — add stocks + seed themes\n'
+            '📝 "GLW got a Meta deal for optical" — updates company description\n'
+            '   _(Apollo recognizes business pivots and asks to confirm)_\n'
             "\n"
             "*Overnight Watchlist*\n"
             '🔔 `Show watchlist` — tracked instruments\n'

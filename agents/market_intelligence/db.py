@@ -170,6 +170,13 @@ async def initialize_schema() -> None:
                 PRIMARY KEY (ticker, flag_date)
             );
             CREATE INDEX IF NOT EXISTS idx_fund_flags_date ON mi_fundamental_flags(flag_date);
+
+            CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
+                ticker TEXT PRIMARY KEY,
+                description TEXT,
+                notes TEXT,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -1041,3 +1048,32 @@ async def get_fundamental_flags(d: "str | date") -> dict[str, dict[str, Any]]:
             score_date,
         )
         return {r["ticker"]: dict(r) for r in rows}
+
+
+# ── Ticker description overrides ──────────────────────────────────────────────
+
+
+async def upsert_ticker_override(
+    ticker: str, description: str, notes: str | None = None,
+) -> None:
+    """Store a description override for a ticker. Overwrites static universe.py."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_ticker_overrides (ticker, description, notes, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (ticker) DO UPDATE SET
+                description = EXCLUDED.description,
+                notes = EXCLUDED.notes,
+                updated_at = NOW()
+        """, ticker.upper(), description, notes)
+
+
+async def get_ticker_overrides() -> dict[str, str]:
+    """Get all ticker description overrides, keyed by ticker."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, description FROM mi_ticker_overrides"
+        )
+        return {r["ticker"]: r["description"] for r in rows}

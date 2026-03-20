@@ -318,6 +318,9 @@ class Apollo:
                 tool_input=tool_input,
             )
 
+        if tool_name == "update_stock_info":
+            return await self._update_stock_info(tool_input)
+
         if tool_name in agent_tool_map:
             agent_name = agent_tool_map[tool_name]
             return await self._call_sub_agent(
@@ -526,6 +529,40 @@ class Apollo:
             return f"Screener failed: {e}"
 
         return data.get("result", "No screener results returned.")
+
+    async def _update_stock_info(self, tool_input: dict[str, Any]) -> str:
+        """Call /stocks/update_info on the market agent to override a ticker description."""
+        from shared.registry import get_agent_url
+
+        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
+        if not url:
+            return "Market Intelligence Agent is not running."
+
+        payload = {
+            "ticker": tool_input.get("ticker", ""),
+            "description": tool_input.get("description", ""),
+            "notes": tool_input.get("notes", ""),
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(
+                    f"{url}/stocks/update_info",
+                    json=payload,
+                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
+                )
+                r.raise_for_status()
+                data = r.json()
+        except Exception as e:
+            return f"Failed to update stock info: {e}"
+
+        ticker = data.get("ticker", tool_input.get("ticker", "?"))
+        desc = data.get("description", "")
+        return (
+            f"Updated {ticker}'s description to: \"{desc}\"\n"
+            f"The theme engine will now use this description for clustering. "
+            f"This change is permanent until overridden again."
+        )
 
     async def _store_memory(
         self,

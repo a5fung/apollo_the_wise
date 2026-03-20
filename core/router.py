@@ -313,6 +313,37 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "update_stock_info",
+            "description": (
+                "Update a stock's business description when a material change happens — "
+                "e.g. a company pivots into a new product, wins a transformative contract, "
+                "or enters a new market. This overrides the static description used by the "
+                "theme engine for clustering. Use sparingly — only for genuine business "
+                "pivots or material catalysts that change what the company does, not for "
+                "routine earnings beats or price moves. "
+                "Example: 'GLW is now an optical datacenter components play after the Meta deal' "
+                "→ update description to reflect the new business driver."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "ticker": {
+                        "type": "string",
+                        "description": "The ticker symbol (e.g. 'GLW')",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "New one-line business description reflecting the material change (e.g. 'Optical datacenter components, precision glass for AI infrastructure — Meta partnership')",
+                    },
+                    "notes": {
+                        "type": "string",
+                        "description": "Why this was updated — the catalyst or context (e.g. 'Meta deal announced 2026-03, pivoted from specialty glass')",
+                    },
+                },
+                "required": ["ticker", "description"],
+            },
+        },
+        {
             "name": "run_stock_screener",
             "description": (
                 "Run a composite stock screener: RS leadership + active theme stage + "
