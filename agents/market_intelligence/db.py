@@ -353,6 +353,37 @@ async def get_rs_leaders(d: "str | date", limit: int = 30) -> list[dict[str, Any
         return [dict(r) for r in rows]
 
 
+async def get_rs_for_tickers(
+    d: "str | date", tickers: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Get RS scores for a specific list of tickers, keyed by ticker."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+        rows = await conn.fetch("""
+            SELECT ticker, rs_composite, rs_1m, rs_3m, rs_6m
+            FROM mi_stock_scores
+            WHERE score_date = $1 AND ticker = ANY($2)
+        """, score_date, tickers)
+        return {r["ticker"]: dict(r) for r in rows}
+
+
+async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:
+    """Get the most recent theme scores BEFORE the given date, keyed by theme name."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        target = _to_date(d)
+        rows = await conn.fetch("""
+            SELECT name, score FROM mi_themes
+            WHERE theme_date = (
+                SELECT MAX(theme_date) FROM mi_themes WHERE theme_date < $1
+            )
+        """, target)
+        return {r["name"]: r["score"] for r in rows}
+
+
 async def get_rs_velocity(
     d: "str | date",
     min_rs: float = 40.0,

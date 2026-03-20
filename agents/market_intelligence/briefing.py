@@ -35,6 +35,8 @@ from agents.market_intelligence.db import (
     get_rs_turners,
     get_overnight_watchlist,
     get_fundamental_flags,
+    get_rs_for_tickers,
+    get_prior_theme_scores,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 
@@ -248,6 +250,7 @@ def _format_rs_section(
 
 
 def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
+    """Legacy theme section — used when theme_rs_data is not available."""
     if not themes:
         return f"*{section_num}. THEME HEALTH* — No theme data yet (run data refresh first)"
 
@@ -279,6 +282,109 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
         lines.append("")
         fading_names = "  ·  ".join(t.get("name", "?") for t in fading[:5])
         lines.append(f"🔻 _Fading:_ {fading_names}")
+
+    return "\n".join(lines)
+
+
+def _format_theme_scorecard(
+    themes: list[dict],
+    theme_rs_data: dict[str, dict],
+    prior_scores: dict[str, float],
+    section_num: int = 3,
+) -> str:
+    """
+    Theme RS Scorecard — ranked table showing multi-timeframe RS per theme.
+
+    Columns:
+    - Comp: avg rs_composite of constituent stocks (40% 1M + 30% 3M + 30% 6M)
+    - 1M / 3M / 6M: avg constituent RS at each timeframe
+    - Δ: change in theme Comp vs prior day
+    - Stage emoji: 🌱⚡📊🔻
+    """
+    if not themes:
+        return f"*{section_num}. THEME SCORECARD* — No data yet"
+
+    active = [t for t in themes if t.get("stage") != "Fading"]
+    fading = [t for t in themes if t.get("stage") == "Fading"]
+
+    # Compute per-theme RS averages from constituent stock data
+    scored_themes = []
+    for t in active:
+        name = t["name"]
+        tickers = t.get("tickers") or []
+        if not tickers:
+            continue
+
+        # Gather RS values for this theme's constituents
+        comps, rs1m, rs3m, rs6m = [], [], [], []
+        for tk in tickers:
+            rs = theme_rs_data.get(tk)
+            if not rs:
+                continue
+            if rs.get("rs_composite") is not None:
+                comps.append(rs["rs_composite"])
+            if rs.get("rs_1m") is not None:
+                rs1m.append(rs["rs_1m"])
+            if rs.get("rs_3m") is not None:
+                rs3m.append(rs["rs_3m"])
+            if rs.get("rs_6m") is not None:
+                rs6m.append(rs["rs_6m"])
+
+        if not comps:
+            continue
+
+        avg_comp = sum(comps) / len(comps)
+        avg_1m = sum(rs1m) / len(rs1m) if rs1m else 0
+        avg_3m = sum(rs3m) / len(rs3m) if rs3m else 0
+        avg_6m = sum(rs6m) / len(rs6m) if rs6m else 0
+
+        # Delta vs prior day
+        prior = prior_scores.get(name)
+        delta = avg_comp - prior if prior is not None else None
+
+        scored_themes.append({
+            "name": name,
+            "stage": t.get("stage", ""),
+            "comp": avg_comp,
+            "rs_1m": avg_1m,
+            "rs_3m": avg_3m,
+            "rs_6m": avg_6m,
+            "delta": delta,
+            "n_stocks": len(tickers),
+            "n_scored": len(comps),
+        })
+
+    # Sort by composite RS descending
+    scored_themes.sort(key=lambda x: -x["comp"])
+
+    lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
+    lines.append("```")
+
+    # Header
+    lines.append(f"{'Theme':<26} Comp  1M  3M  6M    Δ")
+    lines.append("─" * 48)
+
+    for st in scored_themes:
+        emoji = STAGE_EMOJI.get(st["stage"], " ")
+        # Truncate name to fit
+        name = st["name"][:24]
+        delta_str = f"{st['delta']:+.1f}" if st["delta"] is not None else "  —"
+        lines.append(
+            f"{emoji}{name:<25}"
+            f"{st['comp']:>4.0f}"
+            f"{st['rs_1m']:>4.0f}"
+            f"{st['rs_3m']:>4.0f}"
+            f"{st['rs_6m']:>4.0f}"
+            f"{delta_str:>5}"
+        )
+
+    lines.append("```")
+
+    if fading:
+        fading_names = "  ·  ".join(t.get("name", "?") for t in fading[:5])
+        lines.append(f"🔻 _Fading:_ {fading_names}")
+
+    lines.append("_Comp=avg constituent RS. Δ=daily change._")
 
     return "\n".join(lines)
 
@@ -431,8 +537,18 @@ def _format_evening_briefing(
     turners: list[dict] | None = None,
     briefing_date: str = "",
     fund_flags: dict[str, dict] | None = None,
+    theme_rs_data: dict[str, dict] | None = None,
+    prior_theme_scores: dict[str, float] | None = None,
 ) -> str:
     next_num = 4
+
+    # Theme section: use scorecard if RS data available, else legacy format
+    if theme_rs_data:
+        theme_section = _format_theme_scorecard(
+            themes, theme_rs_data, prior_theme_scores or {}, section_num=3,
+        )
+    else:
+        theme_section = _format_theme_section(themes, section_num=3)
 
     # Unanchored: RS 80+ stocks not in any theme
     unanchored_section = _format_unanchored_section(rs_leaders, themes, section_num=next_num)
@@ -454,7 +570,7 @@ def _format_evening_briefing(
         "",
         _format_rs_section(rs_leaders, section_num=2, fund_flags=fund_flags),
         "",
-        _format_theme_section(themes, section_num=3),
+        theme_section,
         "",
     ]
     if unanchored_section:
@@ -478,16 +594,26 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags = await asyncio.gather(
-        get_latest_regime(),
-        get_rs_leaders(today_str, limit=30),
-        get_today_themes(today_str),
-        get_rs_velocity(today_str, min_rs=40.0, limit=15),
-        get_ma_pullbacks(today_str),
-        get_rs_turners(today_str),
-        get_fundamental_flags(today_str),
+    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores = (
+        await asyncio.gather(
+            get_latest_regime(),
+            get_rs_leaders(today_str, limit=30),
+            get_today_themes(today_str),
+            get_rs_velocity(today_str, min_rs=40.0, limit=15),
+            get_ma_pullbacks(today_str),
+            get_rs_turners(today_str),
+            get_fundamental_flags(today_str),
+            get_prior_theme_scores(today_str),
+        )
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+
+    # Collect all theme constituent tickers and fetch their RS data in one query
+    all_theme_tickers = []
+    for t in themes:
+        all_theme_tickers.extend(t.get("tickers") or [])
+    all_theme_tickers = list(set(all_theme_tickers))
+    theme_rs_data = await get_rs_for_tickers(today_str, all_theme_tickers) if all_theme_tickers else {}
 
     text = _format_evening_briefing(
         regime=regime,
@@ -498,6 +624,8 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         turners=turners,
         briefing_date=today_str,
         fund_flags=fund_flags,
+        theme_rs_data=theme_rs_data,
+        prior_theme_scores=prior_theme_scores,
     )
 
     success = await send_telegram_message(text, chat_id)
