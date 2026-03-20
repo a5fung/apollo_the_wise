@@ -132,18 +132,26 @@ async def _count_consecutive_fading(name: str) -> int:
 
 
 async def _save_themes(themes: list[dict]) -> None:
+    """
+    Persist today's theme snapshot.  Uses upsert by (theme_date, name)
+    so manually seeded themes are updated rather than wiped.
+    """
     if not themes:
         return
     today = themes[0]["theme_date"]
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM mi_themes WHERE theme_date = $1", today
-        )
+        # Upsert each theme — if a theme with this name was already seeded
+        # today (via teach_market_agent), update it rather than duplicating.
         for t in themes:
             await conn.execute("""
                 INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
                 VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (theme_date, name) DO UPDATE SET
+                    stage = EXCLUDED.stage,
+                    score = EXCLUDED.score,
+                    description = EXCLUDED.description,
+                    tickers = EXCLUDED.tickers
             """, t["theme_date"], t["name"], t["stage"],
                 t["score"], t["description"], t["tickers"])
 

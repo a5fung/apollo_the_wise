@@ -156,6 +156,7 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_stock_scores_ticker ON mi_stock_scores(ticker);
             CREATE INDEX IF NOT EXISTS idx_ep_alerts_alert_date ON mi_ep_alerts(alert_date);
             CREATE INDEX IF NOT EXISTS idx_themes_theme_date ON mi_themes(theme_date);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_themes_date_name ON mi_themes(theme_date, name);
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -621,11 +622,14 @@ async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") 
     """
     Manually seed a theme into mi_themes.
     Score starts at 0 — will be properly scored on next data refresh.
-    If theme already exists today, merges tickers.
+    If theme already exists today (by exact name), merges tickers.
+    Also checks for similar existing theme names (case-insensitive)
+    and merges into the existing one to prevent near-duplicates.
     """
     pool = await get_pool()
     tickers_upper = [t.upper() for t in tickers]
     async with pool.acquire() as conn:
+        # Check for exact match first
         existing = await conn.fetchrow(
             "SELECT id, tickers FROM mi_themes WHERE name = $1 AND theme_date = $2",
             name, today,
@@ -636,11 +640,25 @@ async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") 
                 "UPDATE mi_themes SET tickers = $1, description = COALESCE(NULLIF($2,''), description) WHERE id = $3",
                 merged, thesis, existing["id"],
             )
-        else:
-            await conn.execute("""
-                INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
-                VALUES ($1, $2, 'Nascent', 0, $3, $4)
-            """, today, name, thesis, tickers_upper)
+            return
+
+        # Check for case-insensitive similar name (prevent "AI Memory" vs "AI memory")
+        similar = await conn.fetchrow(
+            "SELECT id, tickers FROM mi_themes WHERE LOWER(name) = LOWER($1) AND theme_date = $2",
+            name, today,
+        )
+        if similar:
+            merged = list(set(list(similar["tickers"] or [])) | set(tickers_upper))
+            await conn.execute(
+                "UPDATE mi_themes SET tickers = $1, description = COALESCE(NULLIF($2,''), description) WHERE id = $3",
+                merged, thesis, similar["id"],
+            )
+            return
+
+        await conn.execute("""
+            INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
+            VALUES ($1, $2, 'Nascent', 0, $3, $4)
+        """, today, name, thesis, tickers_upper)
 
 
 async def get_ma_pullbacks(
