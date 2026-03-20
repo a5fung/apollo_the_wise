@@ -9,16 +9,17 @@ EP hard filters:
 - Relative volume ≥ 2x ADV in first 15-20 min
 
 MAGNA53 scoring (0-100):
-- Gap magnitude:     10%+ = 20pts, 8-9% = 10pts
-- Relative volume:   ADV in 15min = 20pts, 2-4x = 10pts
-- Catalyst quality:  game-changer = 20pts, strong = 10pts, routine = 0pts
+- Gap magnitude:     20%+ = 25pts, 15%+ = 20pts, 10%+ = 15pts, 8-9% = 10pts
+- Catalyst quality:  game-changer = 25pts, strong = 15pts, routine = 0pts
+- Relative volume:   5x+ ADV = 15pts, 2-4x = 10pts, 1-2x = 5pts
 - Neglect period:    6mo+ base = 15pts, 3mo = 8pts
-- Volume conviction: pre-mkt vol ≥90th pct of hist ADV = 10pts, ≥70th = 5pts
-- Analyst upgrades:  3+ = 10pts
+- Volume conviction: pre-mkt vol ≥90th pct = 5pts, ≥70th = 3pts
+- Analyst upgrades:  3+ = 5pts
 - Low float:         <50M shares = 5pts
-- Market multiplier: Bull regime = 1.2x
+- Market multiplier: Bull regime = 1.2x, Gemini agreement = 1.2x (stack)
 
-Thresholds: ≥70 = HIGH, 50-69 = MODERATE, <50 = skip
+Max raw: 95. A 20%+ game-changer gap scores ≥70 before bonuses.
+Thresholds: ≥ ep_threshold (regime-dependent) = HIGH, 50-69 = MODERATE, <50 = skip
 """
 from __future__ import annotations
 
@@ -222,30 +223,39 @@ def _score_ep(
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
     Returns: (final_score, score_breakdown)
+
+    Weights emphasize the two strongest EP signals: gap size + catalyst quality.
+    A 20%+ game-changer gap should score ≥70 on its own before bonuses.
     """
     breakdown = {}
 
-    # Gap magnitude (max 20)
-    if gap_pct >= 10:
+    # Gap magnitude (max 25) — scaled: bigger gaps = stronger signal
+    if gap_pct >= 20:
+        breakdown["gap"] = 25
+    elif gap_pct >= 15:
         breakdown["gap"] = 20
+    elif gap_pct >= 10:
+        breakdown["gap"] = 15
     elif gap_pct >= 8:
         breakdown["gap"] = 10
     else:
         breakdown["gap"] = 0
 
-    # Relative volume (max 20) — scaled to "ADV in 15 min" concept
+    # Relative volume (max 15)
     if rel_volume >= 5:
-        breakdown["rel_volume"] = 20
+        breakdown["rel_volume"] = 15
     elif rel_volume >= 2:
         breakdown["rel_volume"] = 10
+    elif rel_volume >= 1:
+        breakdown["rel_volume"] = 5
     else:
         breakdown["rel_volume"] = 0
 
-    # Catalyst quality (max 20)
+    # Catalyst quality (max 25) — the single most important EP signal
     if catalyst_quality == "game_changer":
-        breakdown["catalyst"] = 20
+        breakdown["catalyst"] = 25
     elif catalyst_quality == "strong":
-        breakdown["catalyst"] = 10
+        breakdown["catalyst"] = 15
     else:
         breakdown["catalyst"] = 0
 
@@ -256,8 +266,8 @@ def _score_ep(
     else:
         breakdown["float"] = 0
 
-    # Analyst upgrades (max 10)
-    breakdown["analyst"] = min(analyst_upgrades * 3, 10) if analyst_upgrades >= 3 else 0
+    # Analyst upgrades (max 5)
+    breakdown["analyst"] = min(analyst_upgrades * 2, 5) if analyst_upgrades >= 3 else 0
 
     # Neglect period — approximate from 52-week range
     # If price < 70% of 52-week high before the gap, it was neglected
@@ -274,15 +284,25 @@ def _score_ep(
     else:
         breakdown["neglect"] = 0
 
-    # Volume conviction: pre-market volume vs stock's own historical ADV distribution (max 10)
+    # Volume conviction: pre-market volume vs stock's own historical ADV distribution (max 5)
     if vol_percentile >= 90:
-        breakdown["vol_conviction"] = 10
-    elif vol_percentile >= 70:
         breakdown["vol_conviction"] = 5
+    elif vol_percentile >= 70:
+        breakdown["vol_conviction"] = 3
     else:
         breakdown["vol_conviction"] = 0
 
     raw_score = sum(breakdown.values())
+
+    # Conviction floor: massive gap + strong catalyst = minimum 75 raw score
+    # A 15%+ game_changer or 20%+ strong gap is inherently high-conviction
+    if gap_pct >= 15 and catalyst_quality == "game_changer":
+        raw_score = max(raw_score, 75)
+        breakdown["conviction_floor"] = max(0, 75 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
+    elif gap_pct >= 20 and catalyst_quality == "strong":
+        raw_score = max(raw_score, 70)
+        breakdown["conviction_floor"] = max(0, 70 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
+
     final_score = min(raw_score * regime_multiplier, 100)
     return round(final_score, 1), breakdown
 
@@ -327,8 +347,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if not prev_close or prev_close < MIN_PREV_CLOSE:
                 continue
 
-            # Pre-market price: use day open or last trade
-            current_price = snap.get("day", {}).get("o") or snap.get("lastTrade", {}).get("p", 0)
+            # Current price: min.c (latest minute bar, includes pre/post-market)
+            # → day.o (regular session open) → lastTrade.p (fallback)
+            # Pre-market: min.c is the only field that updates before 9:30 open
+            current_price = (
+                snap.get("min", {}).get("c")
+                or snap.get("day", {}).get("o")
+                or snap.get("lastTrade", {}).get("p", 0)
+            )
             if not current_price:
                 continue
 
@@ -336,8 +362,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if gap_pct < MIN_GAP_PCT:
                 continue
 
-            # Volume check — use DB ADV if available, else snapshot prevDay volume
-            today_volume = snap.get("day", {}).get("v", 0) or 0
+            # Volume: day.v for regular session, min.av for accumulated (includes pre-mkt)
+            today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
             adv = adv_map.get(ticker)
             if not adv:
                 # Fallback: previous day's volume from snapshot (works for all tickers)

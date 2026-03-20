@@ -142,20 +142,20 @@ def _determine_regime(
     net = bullish_count - bearish_count
     if net >= 4:
         regime = "Bull"
-        ep_threshold = 70
+        ep_threshold = 65
         verdict = "Market in bull trend — standard EP criteria apply."
     elif net >= 1:
         regime = "Choppy"
-        ep_threshold = 80
+        ep_threshold = 70
         verdict = "Market choppy — raise EP bar, size down."
     elif net >= -2:
         regime = "Correcting"
-        ep_threshold = 85
+        ep_threshold = 75
         verdict = "Market correcting — be very selective, only exceptional EPs."
     else:
         regime = "Crisis"
-        ep_threshold = 90
-        verdict = "Crisis conditions — stay mostly on sidelines."
+        ep_threshold = 80
+        verdict = "Crisis conditions — only game-changer EPs warrant attention."
 
     description = verdict + "\n" + "\n".join(f"  • {s}" for s in signals)
     return regime, description, ep_threshold
