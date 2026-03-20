@@ -25,7 +25,7 @@ from core.memory import (
     save_message,
     search_memories,
 )
-from core.router import call_agent, get_orchestrator_tools
+from core.router import auth_headers, call_agent, get_orchestrator_tools
 from shared.audit import log_action
 from shared.models import (
     AgentName,
@@ -380,6 +380,29 @@ class Apollo:
 
         return response.result or f"Task completed by {agent.value} agent."
 
+    async def _call_market_endpoint(
+        self,
+        endpoint: str,
+        payload: dict[str, Any],
+        timeout: int = 30,
+        error_prefix: str = "Market agent error",
+    ) -> dict[str, Any]:
+        """Shared HTTP POST to the market intelligence agent. Raises on failure."""
+        from shared.registry import get_agent_url
+
+        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
+        if not url:
+            raise RuntimeError("Market Intelligence Agent is not running.")
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.post(
+                f"{url}{endpoint}",
+                json=payload,
+                headers=auth_headers(),
+            )
+            r.raise_for_status()
+            return r.json()
+
     async def _teach_market_agent(
         self,
         user_id: int,
@@ -391,18 +414,12 @@ class Apollo:
         Checks for extended stocks before teaching — warns if any ticker is >15% above
         its 20MA in a non-Bull regime. The user can override by confirming.
         """
-        from shared.registry import get_agent_url
-
-        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
-        if not url:
-            return "Market Intelligence Agent is not running."
-
         tickers = tool_input.get("tickers", [])
         override = tool_input.get("override", False)
 
         # ── Anti-FOMO gatekeeper ──────────────────────────────────────────────
         if tickers and not override:
-            warning = await self._check_extension_warning(tickers, url)
+            warning = await self._check_extension_warning(tickers)
             if warning:
                 return warning  # Returns to Claude, which presents it to the user
         # ─────────────────────────────────────────────────────────────────────
@@ -415,14 +432,7 @@ class Apollo:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.post(
-                    f"{url}/teach",
-                    json=payload,
-                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
-                )
-                r.raise_for_status()
-                data = r.json()
+            data = await self._call_market_endpoint("/teach", payload)
         except Exception as e:
             return f"Failed to reach market agent: {e}"
 
@@ -445,7 +455,7 @@ class Apollo:
         parts = [v for v in [data.get("tracked"), data.get("theme")] if v]
         return "\n".join(parts) if parts else "Done."
 
-    async def _check_extension_warning(self, tickers: list[str], market_url: str) -> str | None:
+    async def _check_extension_warning(self, tickers: list[str]) -> str | None:
         """
         Check if any tickers are extended >15% above 20MA in a risky regime.
         Returns a warning string if so, or None if all clear.
@@ -453,14 +463,9 @@ class Apollo:
         EXTENSION_THRESHOLD = 15.0  # % above 20MA
 
         try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                r = await client.post(
-                    f"{market_url}/stocks/extension",
-                    json={"tickers": tickers},
-                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
-                )
-                r.raise_for_status()
-                data = r.json()
+            data = await self._call_market_endpoint(
+                "/stocks/extension", {"tickers": tickers}, timeout=10,
+            )
         except Exception as e:
             logger.warning(f"Extension check failed (skipping gatekeeper): {e}")
             return None  # Fail open — don't block the teach if check itself fails
@@ -500,12 +505,6 @@ class Apollo:
 
     async def _run_stock_screener(self, tool_input: dict[str, Any]) -> str:
         """Call /screener on the market agent with structured filter params."""
-        from shared.registry import get_agent_url
-
-        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
-        if not url:
-            return "Market Intelligence Agent is not running."
-
         payload = {
             "min_rs": tool_input.get("min_rs", 60.0),
             "min_eps_yoy_pct": tool_input.get("min_eps_yoy_pct"),
@@ -517,14 +516,7 @@ class Apollo:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=90) as client:
-                r = await client.post(
-                    f"{url}/screener",
-                    json=payload,
-                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
-                )
-                r.raise_for_status()
-                data = r.json()
+            data = await self._call_market_endpoint("/screener", payload, timeout=90)
         except Exception as e:
             return f"Screener failed: {e}"
 
@@ -532,12 +524,6 @@ class Apollo:
 
     async def _update_stock_info(self, tool_input: dict[str, Any]) -> str:
         """Call /stocks/update_info on the market agent to override a ticker description."""
-        from shared.registry import get_agent_url
-
-        url = get_agent_url(AgentName.MARKET_INTELLIGENCE.value)
-        if not url:
-            return "Market Intelligence Agent is not running."
-
         payload = {
             "ticker": tool_input.get("ticker", ""),
             "description": tool_input.get("description", ""),
@@ -545,14 +531,7 @@ class Apollo:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                r = await client.post(
-                    f"{url}/stocks/update_info",
-                    json=payload,
-                    headers={"X-Apollo-Secret": get_secrets().internal_api_secret},
-                )
-                r.raise_for_status()
-                data = r.json()
+            data = await self._call_market_endpoint("/stocks/update_info", payload)
         except Exception as e:
             return f"Failed to update stock info: {e}"
 

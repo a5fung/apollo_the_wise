@@ -448,12 +448,12 @@ def _format_unanchored_section(
     lines.append("  _These stocks are outperforming without an assigned theme._")
     lines.append("  _Investigate — a new theme may be forming._")
 
+    from agents.market_intelligence.universe import get_description
     for s in unanchored[:10]:
         ticker = s["ticker"]
         rs = int(s.get("rs_composite") or 0)
         sector = s.get("sector", "")
-        from agents.market_intelligence.universe import TICKER_DESC
-        desc = TICKER_DESC.get(ticker, "")
+        desc = get_description(ticker)
         desc_part = f" — {desc}" if desc else ""
         lines.append(f"  `{ticker}` RS {rs}  ({sector}{desc_part})")
 

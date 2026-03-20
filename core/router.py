@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 AGENT_TIMEOUT = 120
 
 
-def _auth_headers() -> dict[str, str]:
+def auth_headers() -> dict[str, str]:
     return {"X-Apollo-Secret": get_secrets().internal_api_secret}
 
 
@@ -48,7 +48,7 @@ async def call_agent(
             response = await client.post(
                 endpoint,
                 json=request.model_dump(),
-                headers=_auth_headers(),
+                headers=auth_headers(),
             )
             response.raise_for_status()
             return AgentResponse(**response.json())
@@ -90,7 +90,7 @@ async def health_check_all_agents() -> dict[str, tuple[bool, str]]:
             continue
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                r = await client.get(f"{url}/health", headers=_auth_headers())
+                r = await client.get(f"{url}/health", headers=auth_headers())
                 if r.status_code == 200:
                     results[agent_name] = (True, "")
                 else:
@@ -111,7 +111,7 @@ async def get_market_pipeline_status() -> dict | None:
         return None
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get(f"{url}/market/status", headers=_auth_headers())
+            r = await client.get(f"{url}/market/status", headers=auth_headers())
             if r.status_code == 200:
                 return r.json()
     except Exception:

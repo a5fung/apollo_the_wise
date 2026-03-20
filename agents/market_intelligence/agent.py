@@ -510,7 +510,7 @@ class MarketIntelligenceAgent(BaseAgent):
             )
 
         lines = [f"Active themes ({today_str}):"]
-        stage_emoji = {"Nascent": "🌱", "Accelerating": "⚡", "Mainstream": "📊", "Fading": "🔻"}
+        from agents.market_intelligence.briefing import STAGE_EMOJI as stage_emoji
         for t in themes:
             emoji = stage_emoji.get(t.get("stage", ""), "")
             tickers = ", ".join(t.get("tickers") or [])

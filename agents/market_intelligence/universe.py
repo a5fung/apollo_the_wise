@@ -185,16 +185,11 @@ UNIVERSE: list[str] = list(dict.fromkeys(t for t, _ in UNIVERSE_WITH_DESC))
 # Ticker → description lookup (static baseline)
 TICKER_DESC: dict[str, str] = {t: d for t, d in UNIVERSE_WITH_DESC}
 
-# Override cache — populated from DB at startup / nightly refresh
-_desc_overrides: dict[str, str] = {}
-
-
 def apply_overrides(overrides: dict[str, str]) -> None:
-    """Merge DB overrides into TICKER_DESC. Called at agent startup and nightly."""
-    _desc_overrides.update(overrides)
+    """Merge DB overrides into TICKER_DESC. Called at agent startup and on update."""
     TICKER_DESC.update(overrides)
 
 
 def get_description(ticker: str) -> str:
-    """Get ticker description — DB override takes precedence over static."""
-    return _desc_overrides.get(ticker) or TICKER_DESC.get(ticker, "")
+    """Get ticker description (includes any DB overrides applied via apply_overrides)."""
+    return TICKER_DESC.get(ticker, "")
