@@ -495,3 +495,61 @@ def format_fundamentals(data: dict) -> str:
         lines += flag_lines
 
     return "\n".join(lines)
+
+
+# ── Nightly flag cache ────────────────────────────────────────────────────────
+
+
+async def compute_fundamental_flags(
+    tickers: list[str],
+    flag_date: date,
+    concurrency: int = 5,
+) -> list[dict]:
+    """
+    Compute lightweight fundamental flags for a list of tickers.
+    Called during nightly data pull. Returns list of dicts ready for DB upsert.
+
+    Flags per ticker:
+    - eps_yoy_latest: latest quarter YoY EPS growth %
+    - eps_yoy_prior: prior quarter YoY EPS growth % (for acceleration calc)
+    - eps_accelerating: True if latest > prior (O'Neil acceleration)
+    - eps_streak_25pct: consecutive quarters with ≥25% YoY EPS growth
+    - sales_yoy_latest: latest quarter YoY revenue growth %
+    - next_earnings_date: next earnings report date (if known)
+    """
+    fundamentals = await get_fundamentals_batch(tickers, concurrency=concurrency)
+
+    records = []
+    for ticker, data in fundamentals.items():
+        if "error" in data:
+            continue
+
+        flags = data.get("quality_flags", {})
+        q_eps = data.get("quarterly_eps", [])
+        q_rev = data.get("quarterly_revenue", [])
+
+        # Extract YoY growth rates for the last two quarters
+        eps_yoy = [q["yoy_pct"] for q in q_eps if q.get("yoy_pct") is not None]
+        rev_yoy = [q["yoy_pct"] for q in q_rev if q.get("yoy_pct") is not None]
+
+        # Parse next earnings date
+        next_ed = None
+        raw_ed = data.get("next_earnings_date")
+        if raw_ed:
+            try:
+                next_ed = date.fromisoformat(str(raw_ed))
+            except (ValueError, TypeError):
+                pass
+
+        records.append({
+            "ticker": ticker,
+            "flag_date": flag_date,
+            "eps_yoy_latest": eps_yoy[-1] if eps_yoy else None,
+            "eps_yoy_prior": eps_yoy[-2] if len(eps_yoy) >= 2 else None,
+            "eps_accelerating": flags.get("eps_accelerating"),
+            "eps_streak_25pct": flags.get("eps_streak_25pct", 0),
+            "sales_yoy_latest": rev_yoy[-1] if rev_yoy else None,
+            "next_earnings_date": next_ed,
+        })
+
+    return records

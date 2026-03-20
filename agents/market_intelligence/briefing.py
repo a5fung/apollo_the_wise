@@ -34,6 +34,7 @@ from agents.market_intelligence.db import (
     get_rs_velocity,
     get_rs_turners,
     get_overnight_watchlist,
+    get_fundamental_flags,
 )
 from agents.market_intelligence.theme_engine import get_today_themes
 
@@ -169,13 +170,74 @@ def _format_ep_section(ep_alerts: list[dict], section_num: int = 1) -> str:
     return "\n".join(lines)
 
 
-def _format_rs_section(rs_leaders: list[dict], section_num: int = 2) -> str:
+def _eps_flag(ticker: str, fund_flags: dict[str, dict]) -> str:
+    """
+    Compact EPS flag for briefing display. Informational only — never filters stocks.
+
+    ▲▲+67%  = accelerating, latest qtr YoY growth shown (strong O'Neil signal)
+    ▲+22%   = accelerating, smaller magnitude
+    ▼+12%   = decelerating (growth rate slowing)
+    ▼-5%    = decelerating, negative growth
+    —       = no earnings data (pre-revenue, biotech, etc.)
+    """
+    f = fund_flags.get(ticker)
+    if not f:
+        return ""
+    latest = f.get("eps_yoy_latest")
+    if latest is None:
+        return " —"
+    acc = f.get("eps_accelerating")
+    pct = f"{latest:+.0f}%"
+    if acc is True:
+        # Double arrow if accelerating AND ≥25% growth (strong O'Neil signal)
+        arrow = "▲▲" if latest >= 25 else "▲"
+        return f" {arrow}{pct}"
+    elif acc is False:
+        return f" ▼{pct}"
+    else:
+        # Only one quarter of data — show growth but no arrow
+        return f" {pct}"
+
+
+def _earnings_flag(ticker: str, fund_flags: dict[str, dict], today: date) -> str:
+    """Show earnings proximity flag: 📅 if reporting within 5 trading days."""
+    f = fund_flags.get(ticker)
+    if not f or not f.get("next_earnings_date"):
+        return ""
+    ed = f["next_earnings_date"]
+    delta = (ed - today).days
+    if delta < 0:
+        return ""  # already reported
+    if delta <= 7:  # ~5 trading days
+        return " 📅"
+    return ""
+
+
+def _format_rs_section(
+    rs_leaders: list[dict],
+    section_num: int = 2,
+    fund_flags: dict[str, dict] | None = None,
+) -> str:
     if not rs_leaders:
         return f"*{section_num}. RS LEADERS* — No data yet (run data refresh first)"
 
+    fund_flags = fund_flags or {}
+    today = date.today()
     top = rs_leaders[:20]
     header = f"*{section_num}. RS LEADERS* — Top {len(top)} by RS composite"
 
+    # If we have fundamental flags, use single-column format for readability
+    if fund_flags:
+        rows = []
+        for s in top:
+            ticker = s["ticker"]
+            rs = int(s.get("rs_composite") or 0)
+            eps = _eps_flag(ticker, fund_flags)
+            earn = _earnings_flag(ticker, fund_flags, today)
+            rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
+        return header + "\n" + "\n".join(rows)
+
+    # Fallback: compact 3-per-row format (no fundamental data cached yet)
     rows = []
     for i in range(0, len(top), 3):
         group = top[i:i + 3]
@@ -368,6 +430,7 @@ def _format_evening_briefing(
     pullbacks: list[dict],
     turners: list[dict] | None = None,
     briefing_date: str = "",
+    fund_flags: dict[str, dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -389,7 +452,7 @@ def _format_evening_briefing(
         "",
         _format_regime_section(regime, section_num=1),
         "",
-        _format_rs_section(rs_leaders, section_num=2),
+        _format_rs_section(rs_leaders, section_num=2, fund_flags=fund_flags),
         "",
         _format_theme_section(themes, section_num=3),
         "",
@@ -415,13 +478,14 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     """
     today_str = date.today().strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners = await asyncio.gather(
+    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags = await asyncio.gather(
         get_latest_regime(),
         get_rs_leaders(today_str, limit=30),
         get_today_themes(today_str),
         get_rs_velocity(today_str, min_rs=40.0, limit=15),
         get_ma_pullbacks(today_str),
         get_rs_turners(today_str),
+        get_fundamental_flags(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -433,6 +497,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         pullbacks=pullbacks,
         turners=turners,
         briefing_date=today_str,
+        fund_flags=fund_flags,
     )
 
     success = await send_telegram_message(text, chat_id)

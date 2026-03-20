@@ -18,11 +18,15 @@ import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from agents.market_intelligence.db import purge_old_data, log_job_run, job_ran_today
+from agents.market_intelligence.db import (
+    purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
+    get_rs_leaders,
+)
 from agents.market_intelligence.rs_engine import run_rs_engine
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
+from agents.market_intelligence.fundamentals import compute_fundamental_flags
 from agents.market_intelligence.briefing import (
     send_morning_briefing,
     send_evening_briefing,
@@ -73,6 +77,22 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Theme engine failed: {e}")
         failures.append(f"Theme engine: {e}")
+
+    # Fundamental flags — fetch for top RS stocks + theme constituents
+    try:
+        from datetime import date as _date
+        today = _date.today()
+        today_str = today.strftime("%Y-%m-%d")
+        rs_leaders = await get_rs_leaders(today_str, limit=40)
+        fund_tickers = list({s["ticker"] for s in rs_leaders})[:40]
+        if fund_tickers:
+            flag_records = await compute_fundamental_flags(fund_tickers, today)
+            await upsert_fundamental_flags_batch(flag_records)
+            logger.info(f"Fundamental flags: cached {len(flag_records)} tickers")
+            summary_parts.append(f"{len(flag_records)} fund flags")
+    except Exception as e:
+        logger.error(f"Fundamental flags failed: {e}")
+        # Non-critical — don't add to failures, briefing works without flags
 
     if failures:
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, " | ".join(failures))

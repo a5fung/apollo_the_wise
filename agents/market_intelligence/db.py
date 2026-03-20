@@ -157,6 +157,19 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ep_alerts_alert_date ON mi_ep_alerts(alert_date);
             CREATE INDEX IF NOT EXISTS idx_themes_theme_date ON mi_themes(theme_date);
             CREATE UNIQUE INDEX IF NOT EXISTS idx_themes_date_name ON mi_themes(theme_date, name);
+
+            CREATE TABLE IF NOT EXISTS mi_fundamental_flags (
+                ticker TEXT NOT NULL,
+                flag_date DATE NOT NULL,
+                eps_yoy_latest FLOAT,
+                eps_yoy_prior FLOAT,
+                eps_accelerating BOOLEAN,
+                eps_streak_25pct INT DEFAULT 0,
+                sales_yoy_latest FLOAT,
+                next_earnings_date DATE,
+                PRIMARY KEY (ticker, flag_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_fund_flags_date ON mi_fundamental_flags(flag_date);
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -808,11 +821,13 @@ async def purge_old_data() -> dict[str, int]:
             "mi_ep_alerts":    today - timedelta(days=30),
             "mi_stock_scores": today - timedelta(days=90),
             "mi_themes":       today - timedelta(days=60),
+            "mi_fundamental_flags": today - timedelta(days=30),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
             "mi_stock_scores": "score_date",
             "mi_themes":       "theme_date",
+            "mi_fundamental_flags": "flag_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
@@ -950,3 +965,48 @@ async def get_adv_map(d: "str | date") -> dict[str, float]:
             _to_date(d),
         )
         return {r["ticker"]: r["adv_20"] for r in rows if r["adv_20"]}
+
+
+# ── Fundamental flags ─────────────────────────────────────────────────────────
+
+
+async def upsert_fundamental_flags_batch(records: list[dict[str, Any]]) -> None:
+    """Batch upsert fundamental flags — called during nightly data pull."""
+    if not records:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_fundamental_flags
+                (ticker, flag_date, eps_yoy_latest, eps_yoy_prior,
+                 eps_accelerating, eps_streak_25pct, sales_yoy_latest,
+                 next_earnings_date)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            ON CONFLICT (ticker, flag_date) DO UPDATE SET
+                eps_yoy_latest=EXCLUDED.eps_yoy_latest,
+                eps_yoy_prior=EXCLUDED.eps_yoy_prior,
+                eps_accelerating=EXCLUDED.eps_accelerating,
+                eps_streak_25pct=EXCLUDED.eps_streak_25pct,
+                sales_yoy_latest=EXCLUDED.sales_yoy_latest,
+                next_earnings_date=EXCLUDED.next_earnings_date
+        """, [
+            (
+                r["ticker"], r["flag_date"], r.get("eps_yoy_latest"),
+                r.get("eps_yoy_prior"), r.get("eps_accelerating"),
+                r.get("eps_streak_25pct", 0), r.get("sales_yoy_latest"),
+                r.get("next_earnings_date"),
+            )
+            for r in records
+        ])
+
+
+async def get_fundamental_flags(d: "str | date") -> dict[str, dict[str, Any]]:
+    """Get cached fundamental flags for all tickers, keyed by ticker."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+        rows = await conn.fetch(
+            "SELECT * FROM mi_fundamental_flags WHERE flag_date = $1",
+            score_date,
+        )
+        return {r["ticker"]: dict(r) for r in rows}
