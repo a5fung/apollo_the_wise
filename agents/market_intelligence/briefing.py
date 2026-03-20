@@ -836,7 +836,7 @@ def _format_morning_briefing(
         "",
         _format_ep_section(sorted_eps, section_num=1),
         "",
-        "_EP scan: 4–6:30 AM PT. HIGH alerts sent in real-time._",
+        "_EP scan: 4–7 AM PT. HIGH alerts sent in real-time._",
     ]
     return "\n".join(sections)
 

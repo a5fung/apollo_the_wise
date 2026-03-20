@@ -181,7 +181,7 @@ Respond with ONLY the classification word."""
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
-            lambda: gemini.models.generate_content(model="gemini-1.5-flash-8b", contents=prompt)
+            lambda: gemini.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         )
         text = response.text.strip().upper()
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:
@@ -320,7 +320,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, and ETFs
-            if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS:
+            if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS or "." in ticker:
                 continue
 
             prev_close = snap.get("prevDay", {}).get("c", 0)
@@ -336,9 +336,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if gap_pct < MIN_GAP_PCT:
                 continue
 
-            # Volume check
+            # Volume check — use DB ADV if available, else snapshot prevDay volume
             today_volume = snap.get("day", {}).get("v", 0) or 0
             adv = adv_map.get(ticker)
+            if not adv:
+                # Fallback: previous day's volume from snapshot (works for all tickers)
+                adv = snap.get("prevDay", {}).get("v") or None
             rel_volume = (today_volume / adv) if adv and adv > 0 else None
 
             candidates.append({
@@ -434,7 +437,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         )
 
         if ep_score < 50:
-            logger.debug(f"Skip {ticker}: score {ep_score} < 50")
+            logger.info(f"Skip {ticker}: score {ep_score} < 50 (gap={c['gap_pct']:.1f}% catalyst={catalyst_quality} breakdown={breakdown})")
             continue
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"

@@ -202,18 +202,28 @@ async def get_fmp_earnings(ticker: str) -> list[dict]:
 async def get_fmp_analyst_ratings(ticker: str) -> list[dict]:
     """Analyst upgrades/recommendations via yfinance."""
     try:
+        import pandas as pd
         import yfinance as yf
         loop = asyncio.get_event_loop()
         t = yf.Ticker(ticker)
         recs = await loop.run_in_executor(None, lambda: t.recommendations)
-        if recs is None or recs.empty:
+        if recs is None or (isinstance(recs, pd.DataFrame) and recs.empty):
             return []
-        # Normalise to a list of dicts with analystRatingsStrongBuy for compatibility
+        if not isinstance(recs, pd.DataFrame):
+            return []  # yfinance API changed — bail gracefully
         recent = recs.tail(10).copy()
-        col = recent["To Grade"] if "To Grade" in recent.columns else recent.get("To Grade", "")
-        recent["analystRatingsStrongBuy"] = col.apply(
-            lambda g: 1 if str(g).lower() in ("strong buy", "buy", "outperform", "overweight") else 0
-        )
+        # Find the grade column — yfinance has changed this across versions
+        grade_col = None
+        for col_name in ("To Grade", "toGrade", "strongBuy"):
+            if col_name in recent.columns:
+                grade_col = col_name
+                break
+        if grade_col:
+            recent["analystRatingsStrongBuy"] = recent[grade_col].apply(
+                lambda g: 1 if str(g).lower() in ("strong buy", "buy", "outperform", "overweight") else 0
+            )
+        else:
+            recent["analystRatingsStrongBuy"] = 0
         return recent.to_dict("records")
     except Exception as e:
         logger.warning(f"yfinance analyst ratings failed for {ticker}: {e}")
