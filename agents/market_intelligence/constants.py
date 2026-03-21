@@ -1,5 +1,20 @@
 """Shared constants for the Market Intelligence agent."""
 
+# Sectors excluded from RS leaders unless stock price >= SECTOR_FILTER_MIN_PRICE.
+# Small-cap biotech/pharma spike on drug trials — noise, not institutional accumulation.
+SECTOR_FILTER_SECTORS = frozenset({
+    "Healthcare",           # FMP top-level sector for biotech + pharma
+})
+SECTOR_FILTER_INDUSTRIES = frozenset({
+    "Biotechnology",
+    "Drug Manufacturers—Specialty & Generic",
+    "Drug Manufacturers - Specialty & Generic",
+    "Pharmaceutical Retailers",
+    "Diagnostics & Research",
+})
+# Stocks in filtered sectors with price >= this are kept (large-cap pharma/biotech)
+SECTOR_FILTER_MIN_PRICE = 50.0
+
 # Leveraged/inverse ETFs, broad index ETFs, sector ETFs — excluded from RS leaders and EP scans
 SKIP_TICKERS = frozenset({
     # Leveraged / inverse

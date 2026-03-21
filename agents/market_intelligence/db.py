@@ -244,6 +244,23 @@ async def upsert_stock_scores_batch(records: list[dict[str, Any]]) -> None:
         ])
 
 
+async def update_sectors_batch(score_date: date, sector_map: dict[str, str]) -> int:
+    """Update sector column for stocks on a given score_date. Returns count updated."""
+    if not sector_map:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        updated = 0
+        for ticker, sector in sector_map.items():
+            r = await conn.execute(
+                "UPDATE mi_stock_scores SET sector = $1 WHERE score_date = $2 AND ticker = $3",
+                sector, score_date, ticker,
+            )
+            if "UPDATE 1" in r:
+                updated += 1
+        return updated
+
+
 async def upsert_tracked_stocks_batch(
     records: list[tuple[str, "date", float]],
 ) -> None:
@@ -362,13 +379,16 @@ async def get_rs_leaders(
     min_price: float = 10.0,
 ) -> list[dict[str, Any]]:
     """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
-    Excludes leveraged/inverse ETFs and broad index ETFs.
+    Excludes leveraged/inverse ETFs, broad index ETFs, and small-cap biotech/pharma.
     Set min_adv=0 to get all stocks unfiltered."""
-    from agents.market_intelligence.constants import SKIP_TICKERS
+    from agents.market_intelligence.constants import (
+        SKIP_TICKERS, SECTOR_FILTER_SECTORS, SECTOR_FILTER_MIN_PRICE,
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
         if min_adv > 0:
+            # Fetch extra rows to allow post-filter for sector
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1
@@ -377,7 +397,18 @@ async def get_rs_leaders(
                   AND close IS NOT NULL AND close >= $5
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit, min_adv, list(SKIP_TICKERS), min_price)
+            """, score_date, limit * 2, min_adv, list(SKIP_TICKERS), min_price)
+            # Post-filter: exclude Healthcare/Biotech sector unless price >= threshold
+            filtered = []
+            for r in rows:
+                row = dict(r)
+                sector = row.get("sector") or ""
+                if sector in SECTOR_FILTER_SECTORS and (row.get("close") or 0) < SECTOR_FILTER_MIN_PRICE:
+                    continue
+                filtered.append(row)
+                if len(filtered) >= limit:
+                    break
+            return filtered
         else:
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores
@@ -386,7 +417,7 @@ async def get_rs_leaders(
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
             """, score_date, limit, list(SKIP_TICKERS))
-        return [dict(r) for r in rows]
+            return [dict(r) for r in rows]
 
 
 async def get_rs_for_tickers(

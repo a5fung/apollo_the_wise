@@ -20,7 +20,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
-    get_rs_leaders,
+    get_rs_leaders, update_sectors_batch,
 )
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
@@ -77,6 +77,28 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"RS engine failed: {e}")
         failures.append(f"RS engine: {e}")
+
+    # Sector enrichment — fetch sector for top RS stocks so biotech/pharma filter works
+    try:
+        from datetime import date as _date_cls
+        from agents.market_intelligence.collector import get_fmp_profile
+        _today = _date_cls.today()
+        top_for_sector = await get_rs_leaders(_today.strftime("%Y-%m-%d"), limit=200, min_adv=0, min_price=0)
+        sector_sem = asyncio.Semaphore(5)
+        sector_map: dict[str, str] = {}
+        async def _fetch_sector(ticker: str):
+            async with sector_sem:
+                profile = await get_fmp_profile(ticker)
+                s = profile.get("sector")
+                if s:
+                    sector_map[ticker] = s
+        await asyncio.gather(*[_fetch_sector(s["ticker"]) for s in top_for_sector if not s.get("sector")])
+        if sector_map:
+            updated = await update_sectors_batch(_today, sector_map)
+            logger.info(f"Sector enrichment: updated {updated} tickers")
+            summary_parts.append(f"{updated} sectors")
+    except Exception as e:
+        logger.error(f"Sector enrichment failed: {e}")
 
     try:
         themes = await run_theme_engine()

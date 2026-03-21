@@ -498,24 +498,25 @@ async def _score_new_theme(
 
 # Keyword groups for sector-level theme consolidation.
 # Themes whose names match the same group are capped at MAX_THEMES_PER_SECTOR.
-_SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str]]] = [
+_SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str], int]] = [
+    # (group_key, keywords, max_themes)
     ("oil_gas", ["oil", "gas", "lng", "e&p", "oilfield", "petroleum", "crude",
                  "permian", "drilling", "refin", "upstream", "downstream",
-                 "midstream", "completion", "pumping"]),
+                 "midstream", "completion", "pumping"], 2),
     ("biotech", ["biotech", "clinical", "orphan drug", "gene edit", "crispr",
-                 "mrna", "therapeutics", "pharma"]),
-    ("satellite", ["satellite", "space", "earth observation"]),
-    ("optical", ["optical", "photonic"]),
+                 "mrna", "therapeutics", "pharma", "drug"], 0),  # exclude entirely
+    ("satellite", ["satellite", "space", "earth observation"], 2),
+    ("optical", ["optical", "photonic"], 2),
 ]
-MAX_THEMES_PER_SECTOR = 2
+MAX_THEMES_PER_SECTOR_DEFAULT = 2
 
 
-def _sector_group(theme_name: str) -> str | None:
-    """Return the sector group key if the theme name matches any keyword group."""
+def _sector_group(theme_name: str) -> tuple[str, int] | None:
+    """Return (group_key, max_themes) if the theme name matches any keyword group."""
     low = theme_name.lower()
-    for group_key, keywords in _SECTOR_KEYWORD_GROUPS:
+    for group_key, keywords, max_themes in _SECTOR_KEYWORD_GROUPS:
         if any(kw in low for kw in keywords):
-            return group_key
+            return group_key, max_themes
     return None
 
 
@@ -575,19 +576,21 @@ def _merge_overlapping_themes(
     final: list[dict] = []
 
     for t in after_overlap:  # already sorted by score desc
-        group = _sector_group(t["name"])
-        if group is None:
+        result = _sector_group(t["name"])
+        if result is None:
             final.append(t)
             continue
 
+        group, max_for_group = result
         count = sector_counts.get(group, 0)
-        if count < MAX_THEMES_PER_SECTOR:
+        if count < max_for_group:
             final.append(t)
             sector_counts[group] = count + 1
         else:
-            # Absorb into the top theme of this sector group
+            # Absorb into the top theme of this sector group (if any kept)
             top_theme = next(
-                (f for f in final if _sector_group(f["name"]) == group),
+                (f for f in final if _sector_group(f["name"]) is not None
+                 and _sector_group(f["name"])[0] == group),
                 None,
             )
             if top_theme:
@@ -638,6 +641,28 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
+
+    # Fetch RS data for existing theme tickers not in top leaders
+    # This prevents strong themes (Optical, AI Memory) from going Fading
+    # just because their constituents aren't in the top 60 by RS composite.
+    from agents.market_intelligence.db import get_rs_for_tickers
+    existing_tickers = set()
+    for t in existing:
+        existing_tickers.update(t.get("tickers") or [])
+    missing_tickers = [tk for tk in existing_tickers if tk not in stocks_by_ticker]
+    if missing_tickers:
+        theme_rs = await get_rs_for_tickers(today_str, missing_tickers)
+        for tk, rs_data in theme_rs.items():
+            stocks_by_ticker[tk] = {
+                "ticker": tk,
+                "rs_composite": rs_data.get("rs_composite", 0),
+                "rs_1m": rs_data.get("rs_1m", 0),
+                "rs_3m": rs_data.get("rs_3m", 0),
+                "rs_6m": rs_data.get("rs_6m", 0),
+                "sector": "Unknown",
+            }
+        logger.info(f"Theme engine: fetched RS for {len(theme_rs)} existing theme tickers not in top leaders")
+
     logger.info(f"Theme engine: re-scoring {len(existing)} existing themes...")
 
     rescore_results = await asyncio.gather(*[
