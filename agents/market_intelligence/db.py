@@ -1044,17 +1044,32 @@ async def ingest_daily_closes(trade_date: date, bars: dict[str, dict]) -> int:
 
 async def get_daily_closes_all(from_date: date, to_date: date) -> dict[str, dict[str, float]]:
     """
-    Fetch all daily closes in a date range.
+    Fetch daily closes in a date range, filtered to tradeable stocks.
+    Only includes stocks with close >= $5 on the most recent date.
     Returns: {ticker: {date_str: close}}
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # First get tickers that had a close >= $5 on the latest date
+        # This filters out penny stocks and reduces memory from ~11K to ~5K tickers
+        qualifying = await conn.fetch("""
+            SELECT ticker FROM mi_daily_closes
+            WHERE trade_date = $1 AND close >= 5.0
+              AND LENGTH(ticker) <= 5
+        """, to_date)
+        tickers = {r["ticker"] for r in qualifying}
+
+        if not tickers:
+            return {}
+
         rows = await conn.fetch("""
             SELECT ticker, trade_date, close
             FROM mi_daily_closes
             WHERE trade_date >= $1 AND trade_date <= $2
+              AND ticker = ANY($3)
             ORDER BY ticker, trade_date
-        """, from_date, to_date)
+        """, from_date, to_date, list(tickers))
+
     result: dict[str, dict[str, float]] = {}
     for r in rows:
         ticker = r["ticker"]
