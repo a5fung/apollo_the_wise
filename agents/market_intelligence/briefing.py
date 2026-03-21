@@ -262,22 +262,29 @@ def _format_rs_section(
 
     # If we have fundamental flags, use single-column format for readability
     if fund_flags:
+        from agents.market_intelligence.universe import get_description
         rows = []
         for s in top:
             ticker = s["ticker"]
             rs = int(s.get("rs_composite") or 0)
             eps = _eps_flag(ticker, fund_flags)
             earn = _earnings_flag(ticker, fund_flags, today)
-            rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
+            # Short description: universe desc > sector fallback
+            desc = get_description(ticker) or s.get("sector") or ""
+            desc_part = f" — {desc}" if desc else ""
+            rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}{desc_part}")
         footer = "_EPS % = latest qtr YoY | ⬆ = accelerating_"
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
-    # Fallback: compact 3-per-row format (no fundamental data cached yet)
+    # Fallback: single-column with description (no fundamental data cached yet)
+    from agents.market_intelligence.universe import get_description
     rows = []
-    for i in range(0, len(top), 3):
-        group = top[i:i + 3]
-        parts = [f"{s['ticker']:<5} {int(s.get('rs_composite') or 0):>3}" for s in group]
-        rows.append("`" + "   ".join(parts) + "`")
+    for s in top:
+        ticker = s["ticker"]
+        rs = int(s.get("rs_composite") or 0)
+        desc = get_description(ticker) or s.get("sector") or ""
+        desc_part = f" — {desc}" if desc else ""
+        rows.append(f"`{ticker:<6} RS {rs:>3}`{desc_part}")
 
     return header + "\n" + "\n".join(rows)
 
@@ -745,6 +752,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         logger.info(f"Evening briefing sent for {today_str}")
     else:
         logger.error("Failed to send evening briefing")
+
+    # Send RS leaders chart mosaic (non-blocking — briefing text already sent)
+    try:
+        from agents.market_intelligence.charts import send_chart_mosaic
+        chart_tickers = [s["ticker"] for s in rs_leaders[:20]]
+        if chart_tickers:
+            await send_chart_mosaic(chart_tickers, chat_id)
+    except Exception as e:
+        logger.warning(f"Chart mosaic failed (non-critical): {e}")
 
     return text
 
