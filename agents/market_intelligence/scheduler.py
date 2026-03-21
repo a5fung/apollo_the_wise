@@ -27,6 +27,13 @@ from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.fundamentals import compute_fundamental_flags
+from agents.market_intelligence.data_quality import (
+    check_ingest_quality,
+    check_rs_quality,
+    check_sector_quality,
+)
+from agents.market_intelligence.outcome_tracker import run_outcome_tracker
+from agents.market_intelligence.state_alerts import detect_state_changes, send_state_alerts
 from agents.market_intelligence.briefing import (
     send_morning_briefing,
     send_evening_briefing,
@@ -47,11 +54,41 @@ _ep_scan_active = False
 
 
 async def _nightly_data_pull():
-    """Run at 4:30 PM ET (right after market close). Pull EOD data, calculate RS + regime + themes."""
+    """
+    Run at 4:30 PM ET (right after market close).
+    Order: ingest → RS → regime → sector → themes → fundamentals → outcomes → state alerts.
+    Regime runs after RS so breadth_full() can use stored mi_stock_scores.
+    """
     logger.info("Nightly data pull starting...")
+    from datetime import date as _date_cls
+    _today = _date_cls.today()
+    today_str = _today.strftime("%Y-%m-%d")
     failures = []
     summary_parts = []
+    ingested = 0
+    scored = 0
 
+    # 1. Ingest today's daily closes (1 Polygon call → all stocks)
+    try:
+        ingested = await ingest_daily()
+        logger.info(f"Daily closes ingested: {ingested} tickers")
+        await check_ingest_quality(ingested, _today)
+    except Exception as e:
+        logger.error(f"Daily close ingestion failed: {e}")
+        failures.append(f"Daily ingestion: {e}")
+
+    # 2. RS engine — scores, SMAs, raw returns
+    try:
+        rs_result = await run_rs_engine()
+        scored = rs_result.get("stocks_scored", 0)
+        logger.info(f"RS engine: scored {scored} stocks")
+        summary_parts.append(f"{scored} stocks scored")
+        await check_rs_quality(scored, _today)
+    except Exception as e:
+        logger.error(f"RS engine failed: {e}")
+        failures.append(f"RS engine: {e}")
+
+    # 3. Regime engine — now can use full-universe breadth from stored data
     try:
         regime_result = await run_regime_engine()
         regime = regime_result.get("regime", "?")
@@ -61,29 +98,10 @@ async def _nightly_data_pull():
         logger.error(f"Regime engine failed: {e}")
         failures.append(f"Regime: {e}")
 
-    # Ingest today's daily closes (1 Polygon call → all stocks)
+    # 4. Sector enrichment — fetch sector for top RS stocks so biotech/pharma filter works
     try:
-        ingested = await ingest_daily()
-        logger.info(f"Daily closes ingested: {ingested} tickers")
-    except Exception as e:
-        logger.error(f"Daily close ingestion failed: {e}")
-        failures.append(f"Daily ingestion: {e}")
-
-    try:
-        rs_result = await run_rs_engine()
-        scored = rs_result.get("stocks_scored", 0)
-        logger.info(f"RS engine: scored {scored} stocks")
-        summary_parts.append(f"{scored} stocks scored")
-    except Exception as e:
-        logger.error(f"RS engine failed: {e}")
-        failures.append(f"RS engine: {e}")
-
-    # Sector enrichment — fetch sector for top RS stocks so biotech/pharma filter works
-    try:
-        from datetime import date as _date_cls
         from agents.market_intelligence.collector import get_fmp_profile
-        _today = _date_cls.today()
-        top_for_sector = await get_rs_leaders(_today.strftime("%Y-%m-%d"), limit=200, min_adv=0, min_price=0)
+        top_for_sector = await get_rs_leaders(today_str, limit=200, min_adv=0, min_price=0)
         sector_sem = asyncio.Semaphore(5)
         sector_map: dict[str, str] = {}
         async def _fetch_sector(ticker: str):
@@ -97,9 +115,16 @@ async def _nightly_data_pull():
             updated = await update_sectors_batch(_today, sector_map)
             logger.info(f"Sector enrichment: updated {updated} tickers")
             summary_parts.append(f"{updated} sectors")
+
+        # Data quality: sector coverage check
+        with_sector = sum(1 for s in top_for_sector if s.get("sector"))
+        total_top = len(top_for_sector)
+        if total_top > 0:
+            await check_sector_quality(with_sector, total_top, _today)
     except Exception as e:
         logger.error(f"Sector enrichment failed: {e}")
 
+    # 5. Theme engine
     try:
         themes = await run_theme_engine()
         logger.info(f"Theme engine: {len(themes)} themes identified")
@@ -108,15 +133,11 @@ async def _nightly_data_pull():
         logger.error(f"Theme engine failed: {e}")
         failures.append(f"Theme engine: {e}")
 
-    # Fundamental flags — fetch for top RS stocks + theme constituents
+    # 6. Fundamental flags — fetch for top RS stocks + theme constituents
     try:
-        from datetime import date as _date
         from agents.market_intelligence.db import get_active_themes
-        today = _date.today()
-        today_str = today.strftime("%Y-%m-%d")
         rs_leaders = await get_rs_leaders(today_str, limit=40)
         fund_tickers = {s["ticker"] for s in rs_leaders}
-        # Also include all theme constituent tickers
         try:
             active_themes = await get_active_themes()
             for t in active_themes:
@@ -126,13 +147,32 @@ async def _nightly_data_pull():
             pass
         fund_list = list(fund_tickers)[:80]
         if fund_list:
-            flag_records = await compute_fundamental_flags(fund_list, today)
+            flag_records = await compute_fundamental_flags(fund_list, _today)
             await upsert_fundamental_flags_batch(flag_records)
             logger.info(f"Fundamental flags: cached {len(flag_records)} tickers")
             summary_parts.append(f"{len(flag_records)} fund flags")
     except Exception as e:
         logger.error(f"Fundamental flags failed: {e}")
-        # Non-critical — don't add to failures, briefing works without flags
+
+    # 7. Signal outcome tracker
+    try:
+        outcome_result = await run_outcome_tracker(_today)
+        total_outcomes = outcome_result.get("total", 0)
+        if total_outcomes:
+            logger.info(f"Outcome tracker: {total_outcomes} outcomes computed")
+            summary_parts.append(f"{total_outcomes} outcomes")
+    except Exception as e:
+        logger.error(f"Outcome tracker failed: {e}")
+
+    # 8. State-change alerts (sent immediately via Telegram)
+    try:
+        alerts = await detect_state_changes(_today)
+        if alerts:
+            await send_state_alerts(alerts)
+            logger.info(f"State alerts: {len(alerts)} alerts sent")
+            summary_parts.append(f"{len(alerts)} state alerts")
+    except Exception as e:
+        logger.error(f"State alerts failed: {e}")
 
     if failures:
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, " | ".join(failures))

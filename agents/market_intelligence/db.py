@@ -105,6 +105,12 @@ async def initialize_schema() -> None:
             );
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS qqq_vs_50ma FLOAT;
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS pct4_ratio_10d FLOAT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS t2108 FLOAT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS pradeep_1m_50 INT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS pradeep_3m_25 INT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS full_up4_count INT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS full_down4_count INT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS consec_breakdown_days INT;
 
             CREATE TABLE IF NOT EXISTS mi_themes (
                 id SERIAL PRIMARY KEY,
@@ -186,6 +192,34 @@ async def initialize_schema() -> None:
                 PRIMARY KEY (trade_date, ticker)
             );
             CREATE INDEX IF NOT EXISTS idx_daily_closes_ticker ON mi_daily_closes(ticker);
+
+            CREATE TABLE IF NOT EXISTS mi_data_quality (
+                run_date DATE NOT NULL,
+                step TEXT NOT NULL,
+                metric TEXT NOT NULL,
+                value FLOAT,
+                expected FLOAT,
+                passed BOOLEAN DEFAULT TRUE,
+                PRIMARY KEY (run_date, step, metric)
+            );
+
+            CREATE TABLE IF NOT EXISTS mi_signal_outcomes (
+                id SERIAL PRIMARY KEY,
+                signal_type TEXT NOT NULL,
+                signal_date DATE NOT NULL,
+                identifier TEXT NOT NULL,
+                detail JSONB,
+                fwd_1d_pct FLOAT,
+                fwd_1w_pct FLOAT,
+                fwd_1m_pct FLOAT,
+                fwd_3m_pct FLOAT,
+                spy_fwd_1m_pct FLOAT,
+                spy_fwd_3m_pct FLOAT,
+                computed_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (signal_type, signal_date, identifier)
+            );
+            CREATE INDEX IF NOT EXISTS idx_signal_outcomes_type
+                ON mi_signal_outcomes(signal_type, signal_date);
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -320,20 +354,29 @@ async def upsert_regime(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_market_regime
                 (regime_date, regime, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix,
-                 breadth_pct_above_40ma, bo_bd_ratio_5d, pct4_ratio_10d, description, ep_threshold)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                 breadth_pct_above_40ma, bo_bd_ratio_5d, pct4_ratio_10d, description, ep_threshold,
+                 t2108, pradeep_1m_50, pradeep_3m_25, full_up4_count, full_down4_count,
+                 consec_breakdown_days)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             ON CONFLICT (regime_date) DO UPDATE SET
                 regime=EXCLUDED.regime, spy_vs_50ma=EXCLUDED.spy_vs_50ma,
                 spy_vs_200ma=EXCLUDED.spy_vs_200ma, qqq_vs_50ma=EXCLUDED.qqq_vs_50ma,
                 vix=EXCLUDED.vix, breadth_pct_above_40ma=EXCLUDED.breadth_pct_above_40ma,
                 bo_bd_ratio_5d=EXCLUDED.bo_bd_ratio_5d, pct4_ratio_10d=EXCLUDED.pct4_ratio_10d,
-                description=EXCLUDED.description, ep_threshold=EXCLUDED.ep_threshold
+                description=EXCLUDED.description, ep_threshold=EXCLUDED.ep_threshold,
+                t2108=EXCLUDED.t2108, pradeep_1m_50=EXCLUDED.pradeep_1m_50,
+                pradeep_3m_25=EXCLUDED.pradeep_3m_25, full_up4_count=EXCLUDED.full_up4_count,
+                full_down4_count=EXCLUDED.full_down4_count,
+                consec_breakdown_days=EXCLUDED.consec_breakdown_days
         """,
             record["regime_date"], record["regime"], record.get("spy_vs_50ma"),
             record.get("spy_vs_200ma"), record.get("qqq_vs_50ma"), record.get("vix"),
             record.get("breadth_pct_above_40ma"), record.get("bo_bd_ratio_5d"),
             record.get("pct4_ratio_10d"),
             record.get("description"), record.get("ep_threshold", 70),
+            record.get("t2108"), record.get("pradeep_1m_50"), record.get("pradeep_3m_25"),
+            record.get("full_up4_count"), record.get("full_down4_count"),
+            record.get("consec_breakdown_days"),
         )
 
 
@@ -1009,6 +1052,8 @@ async def purge_old_data() -> dict[str, int]:
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
             "mi_daily_closes": today - timedelta(days=400),  # 13M — feeds 12M RS lookback
+            "mi_data_quality": today - timedelta(days=90),
+            "mi_signal_outcomes": today - timedelta(days=365),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
@@ -1016,6 +1061,8 @@ async def purge_old_data() -> dict[str, int]:
             "mi_themes":       "theme_date",
             "mi_fundamental_flags": "flag_date",
             "mi_daily_closes": "trade_date",
+            "mi_data_quality": "run_date",
+            "mi_signal_outcomes": "signal_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
@@ -1325,3 +1372,126 @@ async def get_ticker_overrides() -> dict[str, str]:
             "SELECT ticker, description FROM mi_ticker_overrides"
         )
         return {r["ticker"]: r["description"] for r in rows}
+
+
+# ── Data quality ─────────────────────────────────────────────────────────────
+
+
+async def upsert_data_quality(record: dict[str, Any]) -> None:
+    """Insert or update a data quality check result."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_data_quality (run_date, step, metric, value, expected, passed)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (run_date, step, metric) DO UPDATE SET
+                value=EXCLUDED.value, expected=EXCLUDED.expected, passed=EXCLUDED.passed
+        """,
+            record["run_date"], record["step"], record["metric"],
+            record["value"], record["expected"], record["passed"],
+        )
+
+
+async def get_data_quality_expected(
+    step: str, metric: str, lookback: int = 5,
+) -> Optional[float]:
+    """Average value of last N successful (passed=TRUE) quality checks for a step/metric."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT AVG(value) AS avg_val
+            FROM (
+                SELECT value FROM mi_data_quality
+                WHERE step = $1 AND metric = $2 AND passed = TRUE
+                ORDER BY run_date DESC
+                LIMIT $3
+            ) sub
+        """, step, metric, lookback)
+        return float(row["avg_val"]) if row and row["avg_val"] is not None else None
+
+
+async def get_data_quality_issues(run_date: date) -> list[dict[str, Any]]:
+    """Return rows where passed=FALSE for a given date."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM mi_data_quality WHERE run_date = $1 AND passed = FALSE",
+            run_date,
+        )
+        return [dict(r) for r in rows]
+
+
+# ── Signal outcomes ──────────────────────────────────────────────────────────
+
+
+async def upsert_signal_outcome(record: dict[str, Any]) -> None:
+    """Insert or update a signal outcome tracking row."""
+    import json
+    pool = await get_pool()
+    detail = record.get("detail")
+    detail_json = json.dumps(detail) if detail else None
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_signal_outcomes
+                (signal_type, signal_date, identifier, detail,
+                 fwd_1d_pct, fwd_1w_pct, fwd_1m_pct, fwd_3m_pct,
+                 spy_fwd_1m_pct, spy_fwd_3m_pct)
+            VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (signal_type, signal_date, identifier) DO UPDATE SET
+                detail=EXCLUDED.detail,
+                fwd_1d_pct=COALESCE(EXCLUDED.fwd_1d_pct, mi_signal_outcomes.fwd_1d_pct),
+                fwd_1w_pct=COALESCE(EXCLUDED.fwd_1w_pct, mi_signal_outcomes.fwd_1w_pct),
+                fwd_1m_pct=COALESCE(EXCLUDED.fwd_1m_pct, mi_signal_outcomes.fwd_1m_pct),
+                fwd_3m_pct=COALESCE(EXCLUDED.fwd_3m_pct, mi_signal_outcomes.fwd_3m_pct),
+                spy_fwd_1m_pct=COALESCE(EXCLUDED.spy_fwd_1m_pct, mi_signal_outcomes.spy_fwd_1m_pct),
+                spy_fwd_3m_pct=COALESCE(EXCLUDED.spy_fwd_3m_pct, mi_signal_outcomes.spy_fwd_3m_pct),
+                computed_at=NOW()
+        """,
+            record["signal_type"], record["signal_date"], record["identifier"],
+            detail_json,
+            record.get("fwd_1d_pct"), record.get("fwd_1w_pct"),
+            record.get("fwd_1m_pct"), record.get("fwd_3m_pct"),
+            record.get("spy_fwd_1m_pct"), record.get("spy_fwd_3m_pct"),
+        )
+
+
+async def get_signal_outcomes(
+    signal_type: str,
+    from_date: "date | None" = None,
+    to_date: "date | None" = None,
+) -> list[dict[str, Any]]:
+    """Query signal outcomes for reporting."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if from_date and to_date:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_signal_outcomes
+                WHERE signal_type = $1 AND signal_date >= $2 AND signal_date <= $3
+                ORDER BY signal_date DESC
+            """, signal_type, from_date, to_date)
+        elif from_date:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_signal_outcomes
+                WHERE signal_type = $1 AND signal_date >= $2
+                ORDER BY signal_date DESC
+            """, signal_type, from_date)
+        else:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_signal_outcomes
+                WHERE signal_type = $1
+                ORDER BY signal_date DESC
+                LIMIT 200
+            """, signal_type)
+        return [dict(r) for r in rows]
+
+
+async def get_prior_consec_breakdown_days(before_date: date) -> int:
+    """Get the most recent consec_breakdown_days value before a given date."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT consec_breakdown_days FROM mi_market_regime
+            WHERE regime_date < $1 AND consec_breakdown_days IS NOT NULL
+            ORDER BY regime_date DESC LIMIT 1
+        """, before_date)
+        return row["consec_breakdown_days"] if row else 0

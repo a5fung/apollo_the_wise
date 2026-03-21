@@ -38,6 +38,7 @@ from agents.market_intelligence.db import (
     get_rs_for_tickers,
     get_prior_theme_scores,
 )
+from agents.market_intelligence.data_quality import get_quality_warnings
 from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean
 from agents.market_intelligence.theme_engine import get_today_themes
 
@@ -126,8 +127,14 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
+    t2108 = regime.get("t2108")
+    pradeep_1m = regime.get("pradeep_1m_50")
+    consec_bd = regime.get("consec_breakdown_days")
+
     mkt_parts = []
-    if breadth is not None:
+    if t2108 is not None:
+        mkt_parts.append(f"T2108 {t2108:.0f}% above 50MA")
+    elif breadth is not None:
         mkt_parts.append(f"Breadth {breadth:.0f}% above 40MA")
     # Show 10d ratio if available, else 5d
     if pct4_10d is not None:
@@ -136,6 +143,14 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
         mkt_parts.append(f"+/-4% 5d {pct4_5d:.1f}x")
     if mkt_parts:
         lines.append("  " + "  |  ".join(mkt_parts))
+
+    momentum_parts = []
+    if pradeep_1m is not None:
+        momentum_parts.append(f"Momentum: {pradeep_1m} up 50%/1M")
+    if consec_bd is not None:
+        momentum_parts.append(f"Breakdowns: {consec_bd} consec days")
+    if momentum_parts:
+        lines.append("  " + "  |  ".join(momentum_parts))
 
     lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")
     return "\n".join(lines)
@@ -498,6 +513,43 @@ def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
     return "\n".join(lines)
 
 
+def _format_quality_warnings(warnings: list[str]) -> str:
+    """Format data quality warnings for prepending to briefings."""
+    if not warnings:
+        return ""
+    lines = ["⚠️ *DATA QUALITY*"]
+    for w in warnings:
+        lines.append(f"  {w}")
+    return "\n".join(lines)
+
+
+def _format_signal_quality_section(summary: dict, section_num: int = 6) -> str:
+    """Format weekly signal quality report (shown on Fridays)."""
+    lines = [f"*{section_num}. SIGNAL QUALITY (30d)*"]
+
+    rs_avg = summary.get("rs_avg_1m")
+    spy_avg = summary.get("spy_avg_1m")
+    rs_alpha = summary.get("rs_alpha")
+    if rs_avg is not None and spy_avg is not None:
+        lines.append(
+            f"  RS Top 20: avg {'+' if rs_avg >= 0 else ''}{rs_avg:.1f}% "
+            f"vs SPY {'+' if spy_avg >= 0 else ''}{spy_avg:.1f}% "
+            f"(alpha {'+' if rs_alpha >= 0 else ''}{rs_alpha:.1f}%)"
+        )
+    elif summary.get("rs_count", 0) == 0:
+        lines.append("  RS Top 20: insufficient data (need ~21 trading days)")
+
+    ep_total = summary.get("ep_total", 0)
+    ep_profitable = summary.get("ep_profitable", 0)
+    ep_hit = summary.get("ep_hit_rate")
+    if ep_total > 0:
+        lines.append(f"  EP alerts: {ep_profitable}/{ep_total} profitable at 1M ({ep_hit:.0f}%)")
+    else:
+        lines.append("  EP alerts: no 1M outcomes yet")
+
+    return "\n".join(lines)
+
+
 def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> str:
     if not pullbacks:
         return f"*{section_num}. MA PULLBACKS* — None in range today"
@@ -543,6 +595,8 @@ def _format_evening_briefing(
     fund_flags: dict[str, dict] | None = None,
     theme_rs_data: dict[str, dict] | None = None,
     prior_theme_scores: dict[str, float] | None = None,
+    quality_warnings: list[str] | None = None,
+    signal_quality_summary: dict | None = None,
 ) -> str:
     next_num = 4
 
@@ -570,6 +624,14 @@ def _format_evening_briefing(
     sections = [
         f"*Apollo Evening Briefing — {briefing_date}*",
         "",
+    ]
+
+    # Data quality warnings (prepended before section 1 if any)
+    if quality_warnings:
+        sections.append(_format_quality_warnings(quality_warnings))
+        sections.append("")
+
+    sections += [
         _format_regime_section(regime, section_num=1),
         "",
         _format_rs_section(rs_leaders, section_num=2, fund_flags=fund_flags),
@@ -586,8 +648,17 @@ def _format_evening_briefing(
     sections += [
         _format_pullbacks_section(pullbacks, section_num=next_num),
         "",
-        "_Do your review. Pull up charts. Apply your judgment._",
     ]
+
+    # Weekly signal quality section (Fridays only)
+    if signal_quality_summary:
+        next_num += 1
+        sections += [
+            _format_signal_quality_section(signal_quality_summary, section_num=next_num),
+            "",
+        ]
+
+    sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
 
@@ -596,9 +667,10 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     Assemble and send the evening briefing (regime + RS + themes + velocity + pullbacks).
     Returns the briefing text.
     """
-    today_str = date.today().strftime("%Y-%m-%d")
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores = (
+    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings = (
         await asyncio.gather(
             get_latest_regime(),
             get_rs_leaders(today_str, limit=30),
@@ -608,6 +680,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             get_rs_turners(today_str),
             get_fundamental_flags(today_str),
             get_prior_theme_scores(today_str),
+            get_quality_warnings(today),
         )
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
@@ -618,6 +691,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         all_theme_tickers.extend(t.get("tickers") or [])
     all_theme_tickers = list(set(all_theme_tickers))
     theme_rs_data = await get_rs_for_tickers(today_str, all_theme_tickers) if all_theme_tickers else {}
+
+    # Weekly signal quality section (Fridays only: weekday 4)
+    signal_quality_summary = None
+    if today.weekday() == 4:
+        try:
+            from agents.market_intelligence.outcome_tracker import get_weekly_signal_summary
+            signal_quality_summary = await get_weekly_signal_summary()
+        except Exception as e:
+            logger.warning(f"Signal quality summary failed: {e}")
 
     text = _format_evening_briefing(
         regime=regime,
@@ -630,6 +712,8 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         fund_flags=fund_flags,
         theme_rs_data=theme_rs_data,
         prior_theme_scores=prior_theme_scores,
+        quality_warnings=warnings,
+        signal_quality_summary=signal_quality_summary,
     )
 
     success = await send_telegram_message(text, chat_id)
@@ -789,6 +873,7 @@ def _format_morning_briefing(
     themes: list[dict] | None = None,
     overnight_section: str | None = None,
     econ_calendar: str | None = None,
+    quality_warnings: list[str] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -801,7 +886,13 @@ def _format_morning_briefing(
         regime_line += f"  |  {vix_str}"
     regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
 
-    sections = [f"*Apollo Morning Briefing — {briefing_date}*", regime_line]
+    sections = [f"*Apollo Morning Briefing — {briefing_date}*"]
+
+    # Data quality warnings
+    if quality_warnings:
+        sections.append(_format_quality_warnings(quality_warnings))
+
+    sections.append(regime_line)
 
     # Overnight section (market moves + news) — replaces old futures line
     if overnight_section:
@@ -850,15 +941,17 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     Assemble and send the morning briefing.
     Includes overnight market moves + headline news, EP alerts, regime context.
     """
-    today_str = date.today().strftime("%Y-%m-%d")
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
 
-    regime, ep_alerts, futures, themes, watchlist, econ_calendar = await asyncio.gather(
+    regime, ep_alerts, futures, themes, watchlist, econ_calendar, warnings = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
         get_today_themes(today_str),
         get_overnight_watchlist(),
         _get_economic_calendar(),
+        get_quality_warnings(today),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -878,6 +971,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         themes=themes,
         overnight_section=overnight_section,
         econ_calendar=econ_calendar,
+        quality_warnings=warnings,
     )
 
     success = await send_telegram_message(text, chat_id)
