@@ -245,6 +245,10 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
+        # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
+        if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
+            return await self._handle_history_query(request)
+
         if any(k in task for k in ["ep", "episodic", "gap", "pivot", "gapper"]):
             return await self._handle_ep_query(request)
 
@@ -262,9 +266,6 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
             return await self._handle_pullback_query(request)
-
-        if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
-            return await self._handle_history_query(request)
 
         if any(k in task for k in ["score ", "rs score", "rs for", "rank "]):
             return await self._handle_single_score(request)
