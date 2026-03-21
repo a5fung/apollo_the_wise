@@ -1050,13 +1050,18 @@ async def get_daily_closes_all(from_date: date, to_date: date) -> dict[str, dict
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # First get tickers that had a close >= $5 on the latest date
+        # First get tickers that had a close >= $5 on the latest available date
         # This filters out penny stocks and reduces memory from ~11K to ~5K tickers
+        latest_date = await conn.fetchval(
+            "SELECT MAX(trade_date) FROM mi_daily_closes WHERE trade_date <= $1", to_date
+        )
+        if not latest_date:
+            return {}
         qualifying = await conn.fetch("""
             SELECT ticker FROM mi_daily_closes
             WHERE trade_date = $1 AND close >= 5.0
               AND LENGTH(ticker) <= 5
-        """, to_date)
+        """, latest_date)
         tickers = {r["ticker"] for r in qualifying}
 
         if not tickers:
