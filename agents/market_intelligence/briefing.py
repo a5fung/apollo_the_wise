@@ -237,7 +237,8 @@ def _format_rs_section(
             eps = _eps_flag(ticker, fund_flags)
             earn = _earnings_flag(ticker, fund_flags, today)
             rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
-        return header + "\n" + "\n".join(rows)
+        footer = "_▲▲/▲=EPS accelerating, ▼=decelerating, %=latest qtr YoY_"
+        return header + "\n" + "\n".join(rows) + "\n" + footer
 
     # Fallback: compact 3-per-row format (no fundamental data cached yet)
     rows = []
@@ -350,6 +351,7 @@ def _format_theme_scorecard(
             "rs_3m": avg_3m,
             "rs_6m": avg_6m,
             "delta": delta,
+            "tickers": tickers,
             "n_stocks": len(tickers),
             "n_scored": len(comps),
         })
@@ -358,33 +360,32 @@ def _format_theme_scorecard(
     scored_themes.sort(key=lambda x: -x["comp"])
 
     lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
-    lines.append("```")
-
-    # Header
-    lines.append(f"{'Theme':<26} Comp  1M  3M  6M    Δ")
-    lines.append("─" * 48)
 
     for st in scored_themes:
         emoji = STAGE_EMOJI.get(st["stage"], " ")
-        # Truncate name to fit
-        name = st["name"][:24]
-        delta_str = f"{st['delta']:+.1f}" if st["delta"] is not None else "  —"
-        lines.append(
-            f"{emoji}{name:<25}"
-            f"{st['comp']:>4.0f}"
-            f"{st['rs_1m']:>4.0f}"
-            f"{st['rs_3m']:>4.0f}"
-            f"{st['rs_6m']:>4.0f}"
-            f"{delta_str:>5}"
-        )
+        name = st["name"]
+        delta_str = f"Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
+        comp = f"{st['comp']:.0f}"
 
-    lines.append("```")
+        # Top tickers by RS in this theme (up to 5)
+        theme_tickers = st.get("tickers", [])
+        ticker_rs_pairs = []
+        for tk in theme_tickers:
+            rs = theme_rs_data.get(tk)
+            if rs and rs.get("rs_composite") is not None:
+                ticker_rs_pairs.append((tk, rs["rs_composite"]))
+        ticker_rs_pairs.sort(key=lambda x: -x[1])
+        top_tickers = "  ".join(f"`{tk}` {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
+
+        lines.append(f"{emoji}*{name}*  RS {comp}  {delta_str}")
+        if top_tickers:
+            lines.append(f"  {top_tickers}")
 
     if fading:
         fading_names = "  ·  ".join(t.get("name", "?") for t in fading[:5])
-        lines.append(f"🔻 _Fading:_ {fading_names}")
+        lines.append(f"\n🔻 _Fading:_ {fading_names}")
 
-    lines.append("_Comp=avg constituent RS. Δ=daily change._")
+    lines.append("_RS=avg constituent composite. Δ=daily change._")
 
     return "\n".join(lines)
 
