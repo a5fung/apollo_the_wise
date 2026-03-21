@@ -777,6 +777,8 @@ async def get_ma_pullbacks(
     tickers: list[str] | None = None,
     rs_min: float = 50.0,
     pct_tolerance: float = 4.0,
+    min_adv: float = 500_000,
+    min_price: float = 10.0,
 ) -> list[dict[str, Any]]:
     """
     Return stocks near their 10/20/50 SMAs (pulling back to key MAs).
@@ -785,12 +787,11 @@ async def get_ma_pullbacks(
       - It was above the MA (uptrend)
       - Current price is within pct_tolerance% of the MA
 
-    Args:
-        d: Score date to query
-        tickers: Optional filter to specific tickers (e.g. a theme's stocks)
-        rs_min: Minimum RS composite to include (filters out weak stocks)
-        pct_tolerance: How close to the MA counts as a pullback (default ±4%)
+    Applies same liquidity/quality filters as RS leaders (ADV, price, skip list, sector).
     """
+    from agents.market_intelligence.constants import (
+        SKIP_TICKERS, SECTOR_FILTER_SECTORS, SECTOR_FILTER_MIN_PRICE,
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
@@ -806,9 +807,11 @@ async def get_ma_pullbacks(
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1
                 AND rs_composite >= $2
-                AND close IS NOT NULL
+                AND close IS NOT NULL AND close >= $3
+                AND ticker != ALL($4)
+                AND (adv_20 IS NULL OR adv_20 >= $5)
                 ORDER BY rs_composite DESC
-            """, score_date, rs_min)
+            """, score_date, rs_min, min_price, list(SKIP_TICKERS), min_adv)
 
     results = []
     tol = pct_tolerance / 100.0
@@ -817,6 +820,11 @@ async def get_ma_pullbacks(
         r = dict(row)
         close = r.get("close")
         if not close:
+            continue
+
+        # Sector filter: exclude small-cap Healthcare/Biotech
+        sector = r.get("sector") or ""
+        if sector in SECTOR_FILTER_SECTORS and close < SECTOR_FILTER_MIN_PRICE:
             continue
 
         near = []
