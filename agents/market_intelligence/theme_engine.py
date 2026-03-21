@@ -135,14 +135,14 @@ async def _save_themes(themes: list[dict]) -> None:
     """
     Persist today's theme snapshot.  Uses upsert by (theme_date, name)
     so manually seeded themes are updated rather than wiped.
+    Deletes any themes for today that aren't in the final list (e.g. merged away).
     """
     if not themes:
         return
     today = themes[0]["theme_date"]
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Upsert each theme — if a theme with this name was already seeded
-        # today (via teach_market_agent), update it rather than duplicating.
+        # Upsert each theme
         for t in themes:
             await conn.execute("""
                 INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
@@ -154,6 +154,13 @@ async def _save_themes(themes: list[dict]) -> None:
                     tickers = EXCLUDED.tickers
             """, t["theme_date"], t["name"], t["stage"],
                 t["score"], t["description"], t["tickers"])
+
+        # Remove themes that were merged/retired — not in the final list
+        final_names = [t["name"] for t in themes]
+        await conn.execute("""
+            DELETE FROM mi_themes
+            WHERE theme_date = $1 AND name != ALL($2)
+        """, today, final_names)
 
 
 async def _rescore_existing_theme(

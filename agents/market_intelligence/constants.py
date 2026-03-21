@@ -16,4 +16,8 @@ SKIP_TICKERS = frozenset({
     # Sector ETFs (not individual stock EPs)
     "XLK", "XLE", "XLF", "XLV", "XLI", "XLB", "XLP", "XLU", "XLY",
     "XLRE", "XLC", "SMH", "IBB", "XBI", "GDX", "GDXJ", "KRE",
+    # Commodity ETFs — track commodities, not stocks
+    "USO", "BNO", "DBO", "UNG", "GLD", "SLV", "IAU", "PPLT", "PALL",
+    "WEAT", "CORN", "SOYB", "CPER", "DBA", "DBC", "GSG", "PDBC",
+    "NRGU", "NRGD",  # Leveraged energy ETNs
 })
