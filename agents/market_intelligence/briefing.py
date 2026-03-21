@@ -189,14 +189,8 @@ def _eps_flag(ticker: str, fund_flags: dict[str, dict]) -> str:
         return ""
     acc = f.get("eps_accelerating")
     pct = f"{latest:+.0f}%"
-    if acc is True:
-        # Double plus if accelerating AND ≥25% growth (strong O'Neil signal)
-        prefix = "EPS+" if latest >= 25 else "EPS"
-        return f" {prefix}{pct}"
-    elif acc is False:
-        return f" eps{pct}"
-    else:
-        return f" eps{pct}"
+    arrow = "⬆" if acc is True else ""
+    return f" EPS{pct}{arrow}"
 
 
 def _earnings_flag(ticker: str, fund_flags: dict[str, dict], today: date) -> str:
@@ -235,7 +229,7 @@ def _format_rs_section(
             eps = _eps_flag(ticker, fund_flags)
             earn = _earnings_flag(ticker, fund_flags, today)
             rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
-        footer = "_EPS+25% = accelerating 25% YoY | eps+10% = decelerating_"
+        footer = "_EPS % = latest qtr YoY | ⬆ = accelerating_"
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
     # Fallback: compact 3-per-row format (no fundamental data cached yet)
