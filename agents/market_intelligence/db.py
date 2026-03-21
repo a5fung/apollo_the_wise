@@ -250,15 +250,11 @@ async def update_sectors_batch(score_date: date, sector_map: dict[str, str]) -> 
         return 0
     pool = await get_pool()
     async with pool.acquire() as conn:
-        updated = 0
-        for ticker, sector in sector_map.items():
-            r = await conn.execute(
-                "UPDATE mi_stock_scores SET sector = $1 WHERE score_date = $2 AND ticker = $3",
-                sector, score_date, ticker,
-            )
-            if "UPDATE 1" in r:
-                updated += 1
-        return updated
+        result = await conn.executemany(
+            "UPDATE mi_stock_scores SET sector = $1 WHERE score_date = $2 AND ticker = $3",
+            [(sector, score_date, ticker) for ticker, sector in sector_map.items()],
+        )
+        return len(sector_map)
 
 
 async def upsert_tracked_stocks_batch(
@@ -381,9 +377,7 @@ async def get_rs_leaders(
     """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
     Excludes leveraged/inverse ETFs, broad index ETFs, and small-cap biotech/pharma.
     Set min_adv=0 to get all stocks unfiltered."""
-    from agents.market_intelligence.constants import (
-        SKIP_TICKERS, SECTOR_FILTER_SECTORS, SECTOR_FILTER_MIN_PRICE,
-    )
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
@@ -397,13 +391,11 @@ async def get_rs_leaders(
                   AND close IS NOT NULL AND close >= $5
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit * 2, min_adv, list(SKIP_TICKERS), min_price)
-            # Post-filter: exclude Healthcare/Biotech sector unless price >= threshold
+            """, score_date, limit * 2, min_adv, SKIP_TICKERS_LIST, min_price)
             filtered = []
             for r in rows:
                 row = dict(r)
-                sector = row.get("sector") or ""
-                if sector in SECTOR_FILTER_SECTORS and (row.get("close") or 0) < SECTOR_FILTER_MIN_PRICE:
+                if is_sector_filtered(row.get("sector"), row.get("close")):
                     continue
                 filtered.append(row)
                 if len(filtered) >= limit:
@@ -416,7 +408,7 @@ async def get_rs_leaders(
                   AND ticker != ALL($3)
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit, list(SKIP_TICKERS))
+            """, score_date, limit, SKIP_TICKERS_LIST)
             return [dict(r) for r in rows]
 
 
@@ -789,9 +781,7 @@ async def get_ma_pullbacks(
 
     Applies same liquidity/quality filters as RS leaders (ADV, price, skip list, sector).
     """
-    from agents.market_intelligence.constants import (
-        SKIP_TICKERS, SECTOR_FILTER_SECTORS, SECTOR_FILTER_MIN_PRICE,
-    )
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
@@ -811,7 +801,7 @@ async def get_ma_pullbacks(
                 AND ticker != ALL($4)
                 AND (adv_20 IS NULL OR adv_20 >= $5)
                 ORDER BY rs_composite DESC
-            """, score_date, rs_min, min_price, list(SKIP_TICKERS), min_adv)
+            """, score_date, rs_min, min_price, SKIP_TICKERS_LIST, min_adv)
 
     results = []
     tol = pct_tolerance / 100.0
@@ -822,9 +812,7 @@ async def get_ma_pullbacks(
         if not close:
             continue
 
-        # Sector filter: exclude small-cap Healthcare/Biotech
-        sector = r.get("sector") or ""
-        if sector in SECTOR_FILTER_SECTORS and close < SECTOR_FILTER_MIN_PRICE:
+        if is_sector_filtered(r.get("sector"), close):
             continue
 
         near = []

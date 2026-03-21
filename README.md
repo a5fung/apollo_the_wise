@@ -83,8 +83,17 @@ Momentum ranking in the style of Marios Stamatoudis (not IBD RS Rating).
 - **Timeframes:** 1M / 3M / 6M price returns
 - **Composite:** 40% × 1M rank + 30% × 3M rank + 30% × 6M rank
 - **Score:** 0–100 percentile rank within the scored universe
-- **Universe:** 148 curated liquid US stocks + all actively tracked stocks
+- **Universe:** Full US stock universe (~9,700 stocks via Polygon daily closes)
 - **On-demand:** "Score AXTI" → 1 Polygon call, ranks against today's stored distribution
+
+### RS Filtering
+
+Leaders are filtered to surface institutional-quality names only:
+
+- **Min ADV:** 500K median daily volume (20-day median, immune to volume spikes)
+- **Min price:** $10 (filters penny stocks)
+- **Skip list:** Leveraged/inverse ETFs, broad index ETFs, sector ETFs, commodity ETFs
+- **Sector filter:** Healthcare/Biotech excluded unless price ≥ $50 (filters drug-trial noise, keeps large-cap pharma)
 
 ### RS Persistence
 
@@ -98,6 +107,8 @@ Bottom-up from price action (Marios Stamatoudis methodology). Themes emerge from
 - Claude clustering only runs on **uncovered RS leaders** (stocks not in any active theme)
 - Lifecycle: 🌱 Nascent → ⚡ Accelerating → 📊 Mainstream → 🔻 Fading → Retired (after 5 fading days)
 - Themes survive across days — persist until price action says otherwise
+- **Deduplication:** Overlapping themes auto-merged (Jaccard ≥ 0.6 or ticker subset). Sector-level caps prevent theme proliferation (e.g. max 2 oil/gas themes, biotech excluded).
+- **Trimmed mean scoring:** Theme RS composite drops bottom 20% of constituents — resists outlier drag from 1-2 weak stocks in an otherwise strong theme
 
 ### EP Detection
 
@@ -118,7 +129,7 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 | Correcting | ≥85 | Exceptional setups only |
 | Crisis | ≥90 | Very selective |
 
-Signals: SPY/QQQ vs 50MA + 200MA, VIX, breadth (% stocks above 40MA), B/O:B/D ratio.
+Signals: SPY/QQQ vs 50MA + 200MA, VIX, breadth (% stocks above 40MA), +/-4% ratio (10-day rolling).
 
 ### O'Neil Fundamentals
 
@@ -179,7 +190,7 @@ When you spot something the system isn't tracking:
 
 | Source | Used For | Tier |
 |---|---|---|
-| Polygon.io | Price history, RS engine, EP gap data | Free (5 req/min) |
+| Polygon.io | Price history, RS engine, EP gap data | Starter ($29/mo) |
 | yfinance | Company profile, sector, analyst ratings, news | Free |
 | Tavily | EP catalyst news search, theme confirmation | Free/Pro |
 | Anthropic | Orchestrator, catalyst classification, theme clustering | Pay-per-use |
@@ -208,15 +219,16 @@ Apollo_Assistant/
 │       ├── agent.py                 # FastAPI app on port 8006
 │       ├── db.py                    # Schema + all DB queries
 │       ├── collector.py             # Polygon + yfinance + Tavily data fetching
+│       ├── constants.py             # Shared constants (skip lists, sector filters, trimmed_mean)
 │       ├── rs_engine.py             # RS scoring + MA computation + single-ticker score
 │       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Gemini
 │       ├── regime.py                # Market regime engine
 │       ├── briefing.py              # Evening + morning briefing formatters
-│       ├── theme_engine.py          # Theme discovery + persistence + lifecycle
+│       ├── theme_engine.py          # Theme discovery + deduplication + lifecycle
 │       ├── scheduler.py             # APScheduler jobs (4:30pm data, 8pm evening, 9am morning)
 │       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
 │       ├── screener.py              # Composite screener (RS + theme + fundamentals)
-│       ├── universe.py              # 148-stock curated universe
+│       ├── universe.py              # Curated universe with company descriptions
 │       └── backtest_ep.py           # EP backtest against historical dates
 ├── docker/
 │   ├── docker-compose.yml           # Local dev
@@ -262,7 +274,7 @@ bash start_market.sh
 
 ## Production Deploy
 
-Target: Hetzner CX22 (~$6/mo), Docker Compose, Nginx + Let's Encrypt, Telegram webhooks.
+Target: Hetzner CPX21 Ashburn (~$8/mo), Docker Compose, Telegram long-polling.
 
 ```bash
 docker compose -f docker/docker-compose.prod.yml up -d --build
@@ -292,15 +304,16 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 
 ## Backlog / Upgrade Path
 
-**Highest leverage:**
-- **Polygon Starter ($29/mo)** → grouped daily endpoint → full US universe → real T2108 breadth → proper IBD-style RS (12M component, 8,000+ stocks)
-- Full Pradeep Market Monitor once full universe is available
+**Highest leverage (Polygon Starter now active):**
+- Real T2108 breadth (% stocks above 50MA) from full universe
+- Full Pradeep Market Monitor (50%+ 1M count, 25%+ 1Q count, consecutive breakdown tracking)
+- Correlation clustering — find stocks moving together before they're RS leaders
 
-**Morning briefing enrichments (planned):**
-- S&P/QQQ/NQ futures overnight move
-- Economic calendar ("Fed decision 2 PM today", "CPI 8:30 AM")
-- Major pre-market news via Tavily
+**Morning briefing enrichments:**
+- ✅ Futures / overnight moves
+- ✅ Economic calendar
 - Earnings calendar for tracked stocks
+- MODERATE EP recap
 
 **Fundamentals:**
 - EPS estimates (next quarter consensus + surprise%) via Alpha Vantage free tier — see backlog

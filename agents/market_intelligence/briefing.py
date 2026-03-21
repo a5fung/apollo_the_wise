@@ -38,6 +38,7 @@ from agents.market_intelligence.db import (
     get_rs_for_tickers,
     get_prior_theme_scores,
 )
+from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean
 from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
@@ -278,32 +279,6 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
 
     return "\n".join(lines)
 
-
-def _trimmed_mean(values: list[float]) -> float:
-    """
-    Trimmed mean — drop the bottom 20% of values, then average the rest.
-    Resists 1-2 outliers dragging down a strong theme while still reflecting
-    broad weakness if many stocks are fading.
-
-    ≤5 stocks: drop lowest 1. 6-10: drop lowest 2. 11+: drop bottom 20%.
-    Minimum 3 values required for trimming; below that, plain mean.
-    """
-    if not values:
-        return 0.0
-    if len(values) < 3:
-        return sum(values) / len(values)
-
-    sorted_vals = sorted(values)
-    n = len(sorted_vals)
-    if n <= 5:
-        drop = 1
-    elif n <= 10:
-        drop = 2
-    else:
-        drop = max(1, int(n * 0.2))
-
-    trimmed = sorted_vals[drop:]
-    return sum(trimmed) / len(trimmed)
 
 
 def _format_theme_scorecard(

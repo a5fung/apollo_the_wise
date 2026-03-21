@@ -201,15 +201,9 @@ async def _rescore_existing_theme(
         }
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
-    # Trimmed mean drops bottom 20% — resists 1-2 outliers dragging score down
-    rs_scores = sorted([stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks])
-    if len(rs_scores) >= 3:
-        n = len(rs_scores)
-        drop = 1 if n <= 5 else (2 if n <= 10 else max(1, int(n * 0.2)))
-        trimmed = rs_scores[drop:]
-    else:
-        trimmed = rs_scores
-    momentum = sum(trimmed) / len(trimmed)
+    from agents.market_intelligence.constants import trimmed_mean
+    rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks]
+    momentum = trimmed_mean(rs_scores)
     momentum_score = min(momentum / 100 * 50, 50)
 
     prev_score = theme.get("score") or 0
@@ -589,8 +583,8 @@ def _merge_overlapping_themes(
         else:
             # Absorb into the top theme of this sector group (if any kept)
             top_theme = next(
-                (f for f in final if _sector_group(f["name"]) is not None
-                 and _sector_group(f["name"])[0] == group),
+                (f for f in final
+                 if (sg := _sector_group(f["name"])) is not None and sg[0] == group),
                 None,
             )
             if top_theme:
