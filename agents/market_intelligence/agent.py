@@ -593,11 +593,13 @@ class MarketIntelligenceAgent(BaseAgent):
 
         lines: list[str] = []
         for tk, snapshots in history.items():
+            if not snapshots:
+                continue
             # Find peak
             peak = max(snapshots, key=lambda s: s["rs_composite"] or 0)
             latest = snapshots[-1]
-            peak_rs = peak["rs_composite"]
-            curr_rs = latest["rs_composite"]
+            peak_rs = peak["rs_composite"] or 0
+            curr_rs = latest["rs_composite"] or 0
             arrow = "↑" if curr_rs >= peak_rs - 5 else "↓"
 
             lines.append(f"*{tk}*  Peak RS {peak_rs:.0f} ({peak['date']}) → Current RS {curr_rs:.0f} {arrow}")
@@ -605,9 +607,13 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append(f"{'Date':>10}  {'RS':>3}  {'1M':>3}  {'3M':>3}  {'6M':>3}  {'Price':>8}")
             for s in snapshots:
                 price = f"${s['close']:.2f}" if s.get("close") else "    —"
+                rs = s["rs_composite"] or 0
+                r1 = s["rs_1m"] or 0
+                r3 = s["rs_3m"] or 0
+                r6 = s["rs_6m"] or 0
                 lines.append(
-                    f"{s['date']:>10}  {s['rs_composite']:3.0f}  "
-                    f"{s['rs_1m']:3.0f}  {s['rs_3m']:3.0f}  {s['rs_6m']:3.0f}  "
+                    f"{s['date']:>10}  {rs:3.0f}  "
+                    f"{r1:3.0f}  {r3:3.0f}  {r6:3.0f}  "
                     f"{price:>8}"
                 )
             lines.append("```")
@@ -634,12 +640,16 @@ class MarketIntelligenceAgent(BaseAgent):
 
         lines: list[str] = []
         for name, snapshots in by_name.items():
+            if not snapshots:
+                continue
             peak = max(snapshots, key=lambda s: s["score"] or 0)
             latest = snapshots[-1]
+            peak_score = peak["score"] or 0
+            latest_score = latest["score"] or 0
 
             lines.append(f"*{name}*")
-            lines.append(f"Peak: score {peak['score']:.0f} on {peak['date']} ({peak['stage']})")
-            lines.append(f"Current: score {latest['score']:.0f} ({latest['stage']})")
+            lines.append(f"Peak: score {peak_score:.0f} on {peak['date']} ({peak['stage']})")
+            lines.append(f"Current: score {latest_score:.0f} ({latest['stage']})")
 
             # Stage transitions
             prev_stage = None
@@ -647,8 +657,9 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("```")
             lines.append(f"{'Date':>10}  {'Stage':<13}  {'Score':>5}")
             for s in snapshots:
+                score = s["score"] or 0
                 marker = " ←" if s["stage"] != prev_stage and prev_stage else ""
-                lines.append(f"{s['date']:>10}  {s['stage']:<13}  {s['score']:5.0f}{marker}")
+                lines.append(f"{s['date']:>10}  {s['stage']:<13}  {score:5.0f}{marker}")
                 prev_stage = s["stage"]
             lines.append("```")
 
