@@ -118,9 +118,11 @@ async def build_chart_mosaic(tickers: list[str]) -> tuple[bytes | None, str]:
 async def send_chart_mosaic(
     tickers: list[str],
     chat_id: int | None = None,
+    mosaic_bytes: bytes | None = None,
 ) -> bool:
     """
-    Build and send RS leaders chart mosaic to Telegram.
+    Send RS leaders chart mosaic to Telegram.
+    Accepts pre-built mosaic_bytes to avoid double-fetching.
     Sends as a photo with Finviz screener link as caption.
     """
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -136,7 +138,9 @@ async def send_chart_mosaic(
         logger.error("TELEGRAM_BOT_TOKEN not set")
         return False
 
-    mosaic_bytes, screener_url = await build_chart_mosaic(tickers)
+    screener_url = _FINVIZ_SCREENER_URL.format(tickers=",".join(tickers[:_MAX_CHARTS]))
+    if not mosaic_bytes:
+        mosaic_bytes, screener_url = await build_chart_mosaic(tickers)
     if not mosaic_bytes:
         # Fallback: just send the link
         async with httpx.AsyncClient(timeout=15) as client:

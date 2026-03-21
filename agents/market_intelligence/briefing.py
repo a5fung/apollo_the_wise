@@ -754,13 +754,23 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         logger.error("Failed to send evening briefing")
 
     # Send RS leaders chart mosaic (non-blocking — briefing text already sent)
+    mosaic_bytes = None
     try:
-        from agents.market_intelligence.charts import send_chart_mosaic
+        from agents.market_intelligence.charts import build_chart_mosaic, send_chart_mosaic
         chart_tickers = [s["ticker"] for s in rs_leaders[:20]]
         if chart_tickers:
-            await send_chart_mosaic(chart_tickers, chat_id)
+            mosaic_bytes, _url = await build_chart_mosaic(chart_tickers)
+            if mosaic_bytes:
+                await send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes)
     except Exception as e:
         logger.warning(f"Chart mosaic failed (non-critical): {e}")
+
+    # Post to Twitter/X (reuse mosaic image)
+    try:
+        from agents.market_intelligence.twitter import post_to_twitter
+        await post_to_twitter(rs_leaders, regime, today_str, mosaic_bytes=mosaic_bytes)
+    except Exception as e:
+        logger.warning(f"Twitter post failed (non-critical): {e}")
 
     return text
 
@@ -1092,3 +1102,10 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         text += f"\n\n_Claude + Perplexity agree — {ep['confidence_multiplier']:.1f}x confidence_"
 
     await send_telegram_message(text, chat_id)
+
+    # Post to Twitter/X
+    try:
+        from agents.market_intelligence.twitter import post_ep_tweet
+        await post_ep_tweet(ep)
+    except Exception as e:
+        logger.warning(f"EP tweet failed (non-critical): {e}")
