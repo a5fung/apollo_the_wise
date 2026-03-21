@@ -193,9 +193,16 @@ async def _rescore_existing_theme(
             "tickers": tickers,
         }
 
-    # Momentum score (50%): avg RS composite of strong constituents
-    rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks]
-    momentum = sum(rs_scores) / len(rs_scores)
+    # Momentum score (50%): trimmed mean RS composite of strong constituents
+    # Trimmed mean drops bottom 20% — resists 1-2 outliers dragging score down
+    rs_scores = sorted([stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks])
+    if len(rs_scores) >= 3:
+        n = len(rs_scores)
+        drop = 1 if n <= 5 else (2 if n <= 10 else max(1, int(n * 0.2)))
+        trimmed = rs_scores[drop:]
+    else:
+        trimmed = rs_scores
+    momentum = sum(trimmed) / len(trimmed)
     momentum_score = min(momentum / 100 * 50, 50)
 
     prev_score = theme.get("score") or 0
@@ -482,6 +489,57 @@ async def _score_new_theme(
     }
 
 
+def _merge_overlapping_themes(
+    themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+) -> list[dict]:
+    """
+    Consolidate themes with high ticker overlap (Jaccard >= 0.6 or subset).
+
+    When two themes overlap significantly, the smaller one is absorbed into the
+    higher-scored theme. The surviving theme gets the union of both ticker lists.
+    """
+    if len(themes) <= 1:
+        return themes
+
+    # Sort by score descending — higher-scored themes absorb lower ones
+    themes = sorted(themes, key=lambda t: t.get("score", 0), reverse=True)
+    merged_into: dict[int, int] = {}  # index of absorbed → index of absorber
+
+    for i in range(len(themes)):
+        if i in merged_into:
+            continue
+        tickers_i = set(themes[i].get("tickers") or [])
+        if not tickers_i:
+            continue
+
+        for j in range(i + 1, len(themes)):
+            if j in merged_into:
+                continue
+            tickers_j = set(themes[j].get("tickers") or [])
+            if not tickers_j:
+                continue
+
+            intersection = tickers_i & tickers_j
+            union = tickers_i | tickers_j
+
+            # Jaccard similarity or complete subset
+            jaccard = len(intersection) / len(union) if union else 0
+            is_subset = tickers_j <= tickers_i
+
+            if jaccard >= 0.6 or is_subset:
+                logger.info(
+                    f"Theme merge: '{themes[j]['name']}' → '{themes[i]['name']}' "
+                    f"(Jaccard {jaccard:.2f}, {len(intersection)} shared tickers)"
+                )
+                # Absorb j into i: union tickers
+                tickers_i = tickers_i | tickers_j
+                themes[i]["tickers"] = list(tickers_i)
+                merged_into[j] = i
+
+    return [t for idx, t in enumerate(themes) if idx not in merged_into]
+
+
 async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
     """
     Run the full theme update cycle:
@@ -596,8 +654,8 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
         for raw in new_raw
     ])
 
-    # --- Step 4: Merge, sort, persist ---
-    all_themes = updated_themes + new_themes
+    # --- Step 4: Deduplicate overlapping themes, merge, sort, persist ---
+    all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)
     all_themes.sort(key=lambda t: t["score"], reverse=True)
 
     if all_themes:

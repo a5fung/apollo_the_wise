@@ -285,6 +285,33 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
     return "\n".join(lines)
 
 
+def _trimmed_mean(values: list[float]) -> float:
+    """
+    Trimmed mean — drop the bottom 20% of values, then average the rest.
+    Resists 1-2 outliers dragging down a strong theme while still reflecting
+    broad weakness if many stocks are fading.
+
+    ≤5 stocks: drop lowest 1. 6-10: drop lowest 2. 11+: drop bottom 20%.
+    Minimum 3 values required for trimming; below that, plain mean.
+    """
+    if not values:
+        return 0.0
+    if len(values) < 3:
+        return sum(values) / len(values)
+
+    sorted_vals = sorted(values)
+    n = len(sorted_vals)
+    if n <= 5:
+        drop = 1
+    elif n <= 10:
+        drop = 2
+    else:
+        drop = max(1, int(n * 0.2))
+
+    trimmed = sorted_vals[drop:]
+    return sum(trimmed) / len(trimmed)
+
+
 def _format_theme_scorecard(
     themes: list[dict],
     theme_rs_data: dict[str, dict],
@@ -292,13 +319,13 @@ def _format_theme_scorecard(
     section_num: int = 3,
 ) -> str:
     """
-    Theme RS Scorecard — ranked table showing multi-timeframe RS per theme.
+    Two-tier Theme RS Scorecard.
 
-    Columns:
-    - Comp: avg rs_composite of constituent stocks (40% 1M + 30% 3M + 30% 6M)
-    - 1M / 3M / 6M: avg constituent RS at each timeframe
-    - Δ: change in theme Comp vs prior day
-    - Stage emoji: 🌱⚡📊🔻
+    Tier 1 (top 5): detailed — name, RS composite (1M|3M|6M), delta, top constituents
+    Tier 2 (rest):  compact — one line per theme
+    Fading:         collapsed list
+
+    Uses trimmed mean for composite RS — drops bottom 20% to resist outlier drag.
     """
     if not themes:
         return f"*{section_num}. THEME SCORECARD* — No data yet"
@@ -332,10 +359,10 @@ def _format_theme_scorecard(
         if not comps:
             continue
 
-        avg_comp = sum(comps) / len(comps)
-        avg_1m = sum(rs1m) / len(rs1m) if rs1m else 0
-        avg_3m = sum(rs3m) / len(rs3m) if rs3m else 0
-        avg_6m = sum(rs6m) / len(rs6m) if rs6m else 0
+        avg_comp = _trimmed_mean(comps)
+        avg_1m = _trimmed_mean(rs1m) if rs1m else 0
+        avg_3m = _trimmed_mean(rs3m) if rs3m else 0
+        avg_6m = _trimmed_mean(rs6m) if rs6m else 0
 
         # Delta vs prior day
         prior = prior_scores.get(name)
@@ -359,26 +386,36 @@ def _format_theme_scorecard(
 
     lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
 
-    for st in scored_themes:
+    # Tier 1: Top 5 themes — detailed (3 lines each)
+    for st in scored_themes[:5]:
         emoji = STAGE_EMOJI.get(st["stage"], " ")
         name = st["name"]
-        delta_str = f" Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-        comp = f"{st['comp']:.0f}"
+        delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
 
-        # Top tickers by RS in this theme (up to 5)
-        theme_tickers = st.get("tickers", [])
+        # Top tickers by RS (only RS 50+) for display
         ticker_rs_pairs = []
-        for tk in theme_tickers:
+        for tk in st["tickers"]:
             rs = theme_rs_data.get(tk)
-            if rs and rs.get("rs_composite") is not None:
+            if rs and rs.get("rs_composite") is not None and rs["rs_composite"] >= 50:
                 ticker_rs_pairs.append((tk, rs["rs_composite"]))
         ticker_rs_pairs.sort(key=lambda x: -x[1])
         top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
 
         lines.append("")
         lines.append(f"{emoji}*{name}*")
-        lines.append(f"  RS {comp}{delta_str}  |  {top_tickers}")
+        lines.append(f"  RS {st['comp']:.0f} (1M {st['rs_1m']:.0f} | 3M {st['rs_3m']:.0f} | 6M {st['rs_6m']:.0f}){delta_str}")
+        if top_tickers:
+            lines.append(f"  {top_tickers}")
 
+    # Tier 2: Remaining themes — compact (1 line each)
+    if len(scored_themes) > 5:
+        lines.append("")
+        for st in scored_themes[5:]:
+            emoji = STAGE_EMOJI.get(st["stage"], " ")
+            delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
+            lines.append(f"{emoji}{st['name']}  RS {st['comp']:.0f}{delta_str}")
+
+    # Fading: collapsed
     if fading:
         lines.append("")
         fading_names = " · ".join(t.get("name", "?") for t in fading[:5])

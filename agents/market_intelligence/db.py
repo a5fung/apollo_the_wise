@@ -355,9 +355,11 @@ async def _resolve_score_date(conn: Any, requested: "date") -> "date":
     return latest if latest is not None else requested
 
 
-async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 200_000) -> list[dict[str, Any]]:
+async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 500_000) -> list[dict[str, Any]]:
     """Top RS stocks for a given date, filtered to liquid names (min ADV).
+    Excludes leveraged/inverse ETFs and broad index ETFs.
     Set min_adv=0 to get all stocks unfiltered."""
+    from agents.market_intelligence.constants import SKIP_TICKERS
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
@@ -366,16 +368,18 @@ async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 200_
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1
                   AND adv_20 IS NOT NULL AND adv_20 >= $3
+                  AND ticker != ALL($4)
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit, min_adv)
+            """, score_date, limit, min_adv, list(SKIP_TICKERS))
         else:
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores
                 WHERE score_date = $1
+                  AND ticker != ALL($3)
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit)
+            """, score_date, limit, list(SKIP_TICKERS))
         return [dict(r) for r in rows]
 
 
@@ -1105,19 +1109,21 @@ async def get_daily_closes_count(trade_date: date) -> int:
 
 async def get_adv_from_daily_closes(trade_date: date, days: int = 20) -> dict[str, float]:
     """
-    Compute 20-day average daily volume from mi_daily_closes for all tickers.
-    Much more accurate than single-day snapshot fallback.
+    Compute 20-day median daily volume from mi_daily_closes for all tickers.
+    Uses median (PERCENTILE_CONT) instead of mean — immune to volume spikes.
+    Calendar lookback: days * 1.5 to cover weekends/holidays for N trading days.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT ticker, AVG(volume) as adv
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) as adv
             FROM mi_daily_closes
             WHERE trade_date <= $1
-              AND trade_date >= $1 - $2 * INTERVAL '2 days'
+              AND trade_date >= $1 - (($2 * 1.5)::int * INTERVAL '1 day')
               AND volume > 0
             GROUP BY ticker
-            HAVING COUNT(*) >= 5
+            HAVING COUNT(*) >= 10
         """, trade_date, days)
     return {r["ticker"]: float(r["adv"]) for r in rows}
 

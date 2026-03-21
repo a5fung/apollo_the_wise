@@ -42,6 +42,7 @@ from agents.market_intelligence.collector import (
     get_fmp_news,
     search_news_perplexity,
 )
+from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history
 
 logger = logging.getLogger(__name__)
@@ -58,22 +59,7 @@ MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ before the gap
 EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP in last 60 days
 
 # Leveraged/inverse ETFs and broad ETFs — never real EPs
-_SKIP_TICKERS = frozenset({
-    # Leveraged / inverse
-    "TQQQ", "SQQQ", "SPXL", "SPXS", "UPRO", "SDS", "SSO", "QLD", "QID",
-    "UDOW", "SDOW", "LABU", "LABD", "SOXL", "SOXS", "TNA", "TZA",
-    "FNGU", "FNGD", "TECL", "TECS", "FAS", "FAZ", "NUGT", "DUST",
-    "JNUG", "JDST", "GDXD", "ERX", "ERY", "GUSH", "DRIP", "UVXY",
-    "SVXY", "VXX", "UVIX", "SVIX", "BOIL", "KOLD", "UCO", "SCO",
-    "AGQ", "ZSL", "GLL", "DULL", "UGL", "YANG", "YINN", "CWEB",
-    "BRZU", "BZQ", "EDC", "EDZ", "DRN", "DRV", "RETL", "BNKU",
-    "MSTZ", "MSTU", "CONL", "TSLL", "NVDL", "NVDS",  # Single-stock leveraged
-    # Broad index ETFs
-    "SPY", "QQQ", "IWM", "DIA", "VOO", "VTI", "IVV", "RSP",
-    # Sector ETFs (not individual stock EPs)
-    "XLK", "XLE", "XLF", "XLV", "XLI", "XLB", "XLP", "XLU", "XLY",
-    "XLRE", "XLC", "SMH", "IBB", "XBI", "GDX", "GDXJ", "KRE",
-})
+_SKIP_TICKERS = SKIP_TICKERS
 
 _claude = None
 
