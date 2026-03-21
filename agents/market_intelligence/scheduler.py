@@ -22,7 +22,7 @@ from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
     get_rs_leaders,
 )
-from agents.market_intelligence.rs_engine import run_rs_engine
+from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
 from agents.market_intelligence.ep_detector import run_ep_scan
@@ -60,6 +60,14 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Regime engine failed: {e}")
         failures.append(f"Regime: {e}")
+
+    # Ingest today's daily closes (1 Polygon call → all stocks)
+    try:
+        ingested = await ingest_daily()
+        logger.info(f"Daily closes ingested: {ingested} tickers")
+    except Exception as e:
+        logger.error(f"Daily close ingestion failed: {e}")
+        failures.append(f"Daily ingestion: {e}")
 
     try:
         rs_result = await run_rs_engine()

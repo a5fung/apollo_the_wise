@@ -1,14 +1,17 @@
 """
-Relative Strength Engine.
+Relative Strength Engine — Full Universe.
 
-Calculates 1M / 3M / 6M momentum scores using individual Polygon ticker
-aggregates (free tier compatible). Uses a pre-defined universe of ~150 stocks.
+Calculates 1M / 3M / 6M momentum scores for ALL US stocks using stored
+daily closes from mi_daily_closes (populated via grouped daily endpoint).
 
 RS composite = 40% × 1M rank + 30% × 3M rank + 30% × 6M rank
-Final RS score = percentile rank 0-100 across universe.
+Final RS score = percentile rank 0-100 across full universe (~8K+ stocks).
 
-Nightly run: ~150 stocks × 1 call each = ~30 min at free tier rate limit.
-Run at 6 AM ET so it completes before the 7 AM briefing.
+Nightly flow:
+1. ingest_daily() — fetch grouped daily for today (1 Polygon call, all stocks)
+2. run_rs_engine() — read from mi_daily_closes, rank all stocks, store results
+
+Bootstrap: bootstrap_daily_closes() fetches ~200 days of history on first run.
 """
 from __future__ import annotations
 
@@ -17,8 +20,16 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
-from agents.market_intelligence.collector import get_index_history, trading_date_n_months_ago
+from agents.market_intelligence.collector import (
+    get_grouped_daily,
+    get_index_history,
+    prev_trading_days,
+    trading_date_n_months_ago,
+)
 from agents.market_intelligence.db import (
+    get_daily_closes_all,
+    get_daily_closes_count,
+    ingest_daily_closes,
     upsert_stock_score,
     upsert_stock_scores_batch,
     get_active_tracked_stocks,
@@ -29,33 +40,23 @@ from agents.market_intelligence.db import (
     get_pool,
     _to_date,
 )
-from agents.market_intelligence.universe import UNIVERSE
 
 # RS composite threshold below which a stock is considered "weak" (bottom 40%)
 RS_WEAK_THRESHOLD = 40.0
 # Top N leaders to add/refresh in tracked stocks after each run
 RS_LEADER_CUTOFF = 50
+# Minimum price to score — filters penny stocks
+MIN_PRICE = 5.0
+# Maximum ticker length — filters warrants/units
+MAX_TICKER_LEN = 5
 
 logger = logging.getLogger(__name__)
-
-
-async def _fetch_closes(ticker: str, from_date: str, to_date: str) -> dict[str, float]:
-    """Fetch daily closes for a ticker. Returns {date_str: close}."""
-    from datetime import datetime, timezone
-    bars = await get_index_history(ticker, from_date, to_date)
-    result = {}
-    for b in bars:
-        if "c" in b and "t" in b:
-            d = datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date()
-            result[d.strftime("%Y-%m-%d")] = b["c"]
-    return result
 
 
 def _closest_close(closes: dict[str, float], target_date: str) -> Optional[float]:
     """Get close on or just before target_date (handles holidays/weekends)."""
     if target_date in closes:
         return closes[target_date]
-    # Walk back up to 5 days to find nearest trading day
     d = date.fromisoformat(target_date)
     for _ in range(5):
         d -= timedelta(days=1)
@@ -73,7 +74,7 @@ def _pct_return(current: float, past: Optional[float]) -> Optional[float]:
 
 def _compute_sma(closes: dict[str, float], n: int) -> Optional[float]:
     """Compute simple moving average of last N trading days."""
-    sorted_closes = sorted(closes.items())  # [(date_str, close), ...]
+    sorted_closes = sorted(closes.items())
     if len(sorted_closes) < n:
         return None
     last_n = [c for _, c in sorted_closes[-n:]]
@@ -91,68 +92,119 @@ def _percentile_ranks(values: list[Optional[float]]) -> list[Optional[float]]:
     return [rank_map.get(i) for i in range(len(values))]
 
 
+async def ingest_daily(trade_date: date | None = None) -> int:
+    """
+    Fetch grouped daily data for one date and store in mi_daily_closes.
+    Returns number of tickers stored.
+    """
+    td = trade_date or date.today()
+    td_str = td.strftime("%Y-%m-%d")
+
+    # Skip if already ingested
+    existing = await get_daily_closes_count(td)
+    if existing > 1000:
+        logger.info(f"Daily closes already ingested for {td_str}: {existing} tickers")
+        return existing
+
+    logger.info(f"Ingesting grouped daily for {td_str}...")
+    bars = await get_grouped_daily(td_str)
+    if not bars:
+        logger.warning(f"No grouped daily data for {td_str} — market may have been closed")
+        return 0
+
+    count = await ingest_daily_closes(td, bars)
+    logger.info(f"Ingested {count} tickers for {td_str}")
+    return count
+
+
+async def bootstrap_daily_closes(days: int = 200) -> int:
+    """
+    Backfill mi_daily_closes with historical grouped daily data.
+    Fetches one day at a time (1 Polygon call each).
+    Run once on setup, then daily ingestion keeps it current.
+    """
+    today = date.today()
+    total_ingested = 0
+
+    # Get approximate trading days going back
+    trading_dates = prev_trading_days(days, today)
+    trading_dates.reverse()  # oldest first
+
+    for td in trading_dates:
+        existing = await get_daily_closes_count(td)
+        if existing > 1000:
+            continue  # already have this day
+
+        td_str = td.strftime("%Y-%m-%d")
+        bars = await get_grouped_daily(td_str)
+        if not bars:
+            continue
+
+        count = await ingest_daily_closes(td, bars)
+        total_ingested += count
+        logger.info(f"Bootstrap: {td_str} — {count} tickers")
+
+    logger.info(f"Bootstrap complete: {total_ingested} total rows ingested")
+    return total_ingested
+
+
 async def run_rs_engine(trade_date: date | None = None) -> dict:
     """
-    Calculate RS scores for the configured universe.
+    Calculate RS scores for the full universe from stored daily closes.
     Stores results in mi_stock_scores.
     Returns summary dict.
     """
     today = trade_date or date.today()
     today_str = today.strftime("%Y-%m-%d")
-    from_date = (today - timedelta(days=200)).strftime("%Y-%m-%d")  # 6M+ history
+    from_date = today - timedelta(days=200)
 
     date_1m = trading_date_n_months_ago(1)
     date_3m = trading_date_n_months_ago(3)
     date_6m = trading_date_n_months_ago(6)
 
-    # Expand universe with actively tracked stocks (RS leaders from prior days)
-    tracked = await get_active_tracked_stocks()
-    full_universe = list(dict.fromkeys(UNIVERSE + tracked))  # deduplicate, preserve order
-    if len(tracked) > 0:
-        logger.info(f"RS Engine: base universe {len(UNIVERSE)}, +{len(tracked)} tracked = {len(full_universe)} total")
+    logger.info(f"RS Engine: loading daily closes from DB ({from_date} to {today_str})...")
 
-    logger.info(f"RS Engine: fetching {len(full_universe)} stocks from {from_date} to {today_str}")
-    logger.info(f"Lookback dates: 1M={date_1m}, 3M={date_3m}, 6M={date_6m}")
+    # Load all daily closes from DB (one query, all tickers)
+    all_closes = await get_daily_closes_all(from_date, today)
 
-    # Fetch price history for each stock (1 Polygon call per stock, rate-limited)
+    if not all_closes:
+        logger.error("No daily closes in DB — run bootstrap_daily_closes() first")
+        return {"stocks_scored": 0, "date": today_str, "error": "No daily closes — run bootstrap first"}
+
+    logger.info(f"RS Engine: loaded {len(all_closes)} tickers from DB")
+
+    # Compute RS for each ticker
     stock_data: list[dict] = []
-    for i, ticker in enumerate(full_universe):
-        try:
-            closes = await _fetch_closes(ticker, from_date, today_str)
-            if not closes:
-                continue
+    for ticker, closes in all_closes.items():
+        # Skip short symbols and penny stocks
+        if len(ticker) > MAX_TICKER_LEN:
+            continue
 
-            current = _closest_close(closes, today_str)
-            price_1m = _closest_close(closes, date_1m)
-            price_3m = _closest_close(closes, date_3m)
-            price_6m = _closest_close(closes, date_6m)
+        current = _closest_close(closes, today_str)
+        if not current or current < MIN_PRICE:
+            continue
 
-            if not current:
-                continue
+        price_1m = _closest_close(closes, date_1m)
+        price_3m = _closest_close(closes, date_3m)
+        price_6m = _closest_close(closes, date_6m)
 
-            stock_data.append({
-                "ticker": ticker,
-                "current": current,
-                "rs_1m_raw": _pct_return(current, price_1m),
-                "rs_3m_raw": _pct_return(current, price_3m),
-                "rs_6m_raw": _pct_return(current, price_6m),
-                "sma_10": _compute_sma(closes, 10),
-                "sma_20": _compute_sma(closes, 20),
-                "sma_50": _compute_sma(closes, 50),
-            })
-
-            if (i + 1) % 10 == 0:
-                logger.info(f"RS Engine: {i + 1}/{len(full_universe)} stocks fetched")
-
-        except Exception as e:
-            logger.warning(f"RS fetch failed for {ticker}: {e}")
+        stock_data.append({
+            "ticker": ticker,
+            "current": current,
+            "rs_1m_raw": _pct_return(current, price_1m),
+            "rs_3m_raw": _pct_return(current, price_3m),
+            "rs_6m_raw": _pct_return(current, price_6m),
+            "sma_10": _compute_sma(closes, 10),
+            "sma_20": _compute_sma(closes, 20),
+            "sma_50": _compute_sma(closes, 50),
+        })
 
     if not stock_data:
-        return {"stocks_scored": 0, "date": today_str, "error": "No data fetched"}
+        return {"stocks_scored": 0, "date": today_str, "error": "No valid stock data"}
 
     logger.info(f"RS Engine: computing ranks for {len(stock_data)} stocks")
 
-    # Rank each period
+    # Rank each period across the FULL universe
     rs_1m_vals = [s["rs_1m_raw"] for s in stock_data]
     rs_3m_vals = [s["rs_3m_raw"] for s in stock_data]
     rs_6m_vals = [s["rs_6m_raw"] for s in stock_data]
@@ -176,7 +228,13 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     indexed.sort(key=lambda x: x[1] or 0, reverse=True)
     rank_position = {orig_idx: pos + 1 for pos, (orig_idx, _) in enumerate(indexed)}
 
-    # Batch upsert all scores — single round-trip
+    # Compute ADV-20 from daily closes for each stock
+    # Use volume data from the closes dict — we need to fetch separately
+    # For now, compute from mi_daily_closes via DB
+    from agents.market_intelligence.db import get_adv_from_daily_closes
+    adv_map = await get_adv_from_daily_closes(today)
+
+    # Batch upsert all scores
     db_records = [
         {
             "ticker": s["ticker"],
@@ -187,7 +245,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "rs_composite": round(composite_ranks[i] or 0, 1),
             "rs_rank": rank_position[i],
             "sector": None,
-            "adv_20": None,
+            "adv_20": adv_map.get(s["ticker"]),
             "market_cap": None,
             "sma_10": s.get("sma_10"),
             "sma_20": s.get("sma_20"),
@@ -199,9 +257,15 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         }
         for i, s in enumerate(stock_data)
     ]
-    await upsert_stock_scores_batch(db_records)
 
-    # Batch update tracked stocks: add leaders, mark weak stocks
+    # Insert in chunks to avoid memory issues with 8K+ records
+    CHUNK = 2000
+    for start in range(0, len(db_records), CHUNK):
+        await upsert_stock_scores_batch(db_records[start:start + CHUNK])
+    logger.info(f"RS Engine: stored {len(db_records)} scores")
+
+    # Update tracked stocks: add leaders, mark weak
+    tracked = await get_active_tracked_stocks()
     tracked_set = set(tracked)
     leader_records: list[tuple[str, date, float]] = []
     weak_records: list[tuple[str, date]] = []
@@ -217,11 +281,10 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
     await upsert_tracked_stocks_batch(leader_records)
     await mark_tracked_stocks_weak_batch(weak_records)
-    added_to_tracking = len(leader_records)
 
     logger.info(
         f"RS Engine complete: scored {len(stock_data)} stocks for {today_str} "
-        f"({added_to_tracking} tracked leaders)"
+        f"({len(leader_records)} tracked leaders)"
     )
     return {"stocks_scored": len(stock_data), "date": today_str}
 
@@ -243,7 +306,20 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     ticker = ticker.upper()
     logger.info(f"Single-ticker RS score: {ticker}")
 
-    closes = await _fetch_closes(ticker, from_date, today_str)
+    # Try DB first, fall back to API
+    from agents.market_intelligence.db import get_daily_closes_all as _get_closes
+    closes_map = await _get_closes(today - timedelta(days=200), today)
+    closes = closes_map.get(ticker, {})
+    if not closes:
+        # Fallback: fetch from Polygon
+        from agents.market_intelligence.collector import get_index_history
+        from datetime import datetime, timezone
+        bars = await get_index_history(ticker, from_date, today_str)
+        for b in bars:
+            if "c" in b and "t" in b:
+                d = datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date()
+                closes[d.strftime("%Y-%m-%d")] = b["c"]
+
     if not closes:
         return {"error": f"No price data found for {ticker}"}
 

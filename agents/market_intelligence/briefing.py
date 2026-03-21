@@ -176,29 +176,27 @@ def _eps_flag(ticker: str, fund_flags: dict[str, dict]) -> str:
     """
     Compact EPS flag for briefing display. Informational only — never filters stocks.
 
-    ▲▲+67%  = accelerating, latest qtr YoY growth shown (strong O'Neil signal)
-    ▲+22%   = accelerating, smaller magnitude
-    ▼+12%   = decelerating (growth rate slowing)
-    ▼-5%    = decelerating, negative growth
-    —       = no earnings data (pre-revenue, biotech, etc.)
+    EPS++67%  = accelerating, latest qtr YoY growth shown (strong O'Neil signal)
+    EPS+22%   = accelerating, smaller magnitude
+    eps+12%   = decelerating (growth rate slowing)
+    eps-5%    = decelerating, negative growth
     """
     f = fund_flags.get(ticker)
     if not f:
         return ""
     latest = f.get("eps_yoy_latest")
     if latest is None:
-        return " —"
+        return ""
     acc = f.get("eps_accelerating")
     pct = f"{latest:+.0f}%"
     if acc is True:
-        # Double arrow if accelerating AND ≥25% growth (strong O'Neil signal)
-        arrow = "▲▲" if latest >= 25 else "▲"
-        return f" {arrow}{pct}"
+        # Double plus if accelerating AND ≥25% growth (strong O'Neil signal)
+        prefix = "EPS+" if latest >= 25 else "EPS"
+        return f" {prefix}{pct}"
     elif acc is False:
-        return f" ▼{pct}"
+        return f" eps{pct}"
     else:
-        # Only one quarter of data — show growth but no arrow
-        return f" {pct}"
+        return f" eps{pct}"
 
 
 def _earnings_flag(ticker: str, fund_flags: dict[str, dict], today: date) -> str:
@@ -237,7 +235,7 @@ def _format_rs_section(
             eps = _eps_flag(ticker, fund_flags)
             earn = _earnings_flag(ticker, fund_flags, today)
             rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
-        footer = "_▲▲/▲=EPS accelerating, ▼=decelerating, %=latest qtr YoY_"
+        footer = "_EPS+=accelerating, eps=decelerating, %=latest qtr YoY_"
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
     # Fallback: compact 3-per-row format (no fundamental data cached yet)

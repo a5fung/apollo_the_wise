@@ -177,6 +177,15 @@ async def initialize_schema() -> None:
                 notes TEXT,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            CREATE TABLE IF NOT EXISTS mi_daily_closes (
+                trade_date DATE NOT NULL,
+                ticker TEXT NOT NULL,
+                close FLOAT NOT NULL,
+                volume BIGINT,
+                PRIMARY KEY (trade_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_daily_closes_ticker ON mi_daily_closes(ticker);
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -860,12 +869,14 @@ async def purge_old_data() -> dict[str, int]:
             "mi_stock_scores": today - timedelta(days=90),
             "mi_themes":       today - timedelta(days=60),
             "mi_fundamental_flags": today - timedelta(days=30),
+            "mi_daily_closes": today - timedelta(days=210),  # 6M + buffer
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
             "mi_stock_scores": "score_date",
             "mi_themes":       "theme_date",
             "mi_fundamental_flags": "flag_date",
+            "mi_daily_closes": "trade_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
@@ -1003,6 +1014,82 @@ async def get_adv_map(d: "str | date") -> dict[str, float]:
             _to_date(d),
         )
         return {r["ticker"]: r["adv_20"] for r in rows if r["adv_20"]}
+
+
+# ── Daily closes (full universe) ───────────────────────────────────────────────
+
+
+async def ingest_daily_closes(trade_date: date, bars: dict[str, dict]) -> int:
+    """
+    Store daily closes + volumes from grouped daily data.
+    bars: {ticker: {T, o, h, l, c, v, ...}} from Polygon grouped daily.
+    Returns number of rows inserted.
+    """
+    if not bars:
+        return 0
+    pool = await get_pool()
+    records = [
+        (trade_date, ticker, b["c"], int(b.get("v", 0)))
+        for ticker, b in bars.items()
+        if "c" in b and len(ticker) <= 5 and "." not in ticker
+    ]
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_daily_closes (trade_date, ticker, close, volume)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (trade_date, ticker) DO NOTHING
+        """, records)
+    return len(records)
+
+
+async def get_daily_closes_all(from_date: date, to_date: date) -> dict[str, dict[str, float]]:
+    """
+    Fetch all daily closes in a date range.
+    Returns: {ticker: {date_str: close}}
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, trade_date, close
+            FROM mi_daily_closes
+            WHERE trade_date >= $1 AND trade_date <= $2
+            ORDER BY ticker, trade_date
+        """, from_date, to_date)
+    result: dict[str, dict[str, float]] = {}
+    for r in rows:
+        ticker = r["ticker"]
+        if ticker not in result:
+            result[ticker] = {}
+        result[ticker][r["trade_date"].strftime("%Y-%m-%d")] = r["close"]
+    return result
+
+
+async def get_daily_closes_count(trade_date: date) -> int:
+    """Check how many daily closes exist for a given date."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT COUNT(*) FROM mi_daily_closes WHERE trade_date = $1", trade_date
+        )
+
+
+async def get_adv_from_daily_closes(trade_date: date, days: int = 20) -> dict[str, float]:
+    """
+    Compute 20-day average daily volume from mi_daily_closes for all tickers.
+    Much more accurate than single-day snapshot fallback.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, AVG(volume) as adv
+            FROM mi_daily_closes
+            WHERE trade_date <= $1
+              AND trade_date >= $1 - $2 * INTERVAL '2 days'
+              AND volume > 0
+            GROUP BY ticker
+            HAVING COUNT(*) >= 5
+        """, trade_date, days)
+    return {r["ticker"]: float(r["adv"]) for r in rows}
 
 
 # ── Fundamental flags ─────────────────────────────────────────────────────────
