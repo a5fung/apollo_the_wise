@@ -127,30 +127,53 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
-    t2108 = regime.get("t2108")
-    pradeep_1m = regime.get("pradeep_1m_50")
-    consec_bd = regime.get("consec_breakdown_days")
+    # Condensed Stockbee Market Monitor
+    bm = regime.get("breadth_monitor") or {}
 
-    mkt_parts = []
+    # Primary signal: daily 4% breadth
+    p_sig = bm.get("primary_signal")
+    p_emoji = {2: "🟢🟢", 1: "🟢", -1: "🔴", -2: "🔴🔴"}.get(p_sig, "⚫")
+    r5 = bm.get("ratio_5d") or pct4_5d
+    r10 = bm.get("ratio_10d") or pct4_10d
+    up4 = bm.get("today_up4", regime.get("full_up4_count"))
+    down4 = bm.get("today_down4", regime.get("full_down4_count"))
+
+    primary_parts = [f"Primary {p_emoji}"]
+    if r5 is not None:
+        primary_parts.append(f"5d {r5:.2f}x")
+    if r10 is not None:
+        primary_parts.append(f"10d {r10:.2f}x")
+    if up4 is not None and down4 is not None:
+        primary_parts.append(f"({up4}↑ {down4}↓ today)")
+    lines.append("  " + "  ".join(primary_parts))
+
+    # Secondary signal: momentum + T2108
+    s_sig = bm.get("secondary_signal")
+    s_emoji = {2: "🟢🟢", 1: "🟢", -1: "🔴", -2: "🔴🔴"}.get(s_sig, "⚫")
+    t2108 = bm.get("t2108") or regime.get("t2108")
+    consec_bd = bm.get("consec_breakdown_days") or regime.get("consec_breakdown_days") or 0
+
+    secondary_parts = [f"Secondary {s_emoji}"]
     if t2108 is not None:
-        mkt_parts.append(f"T2108 {t2108:.0f}% above 50MA")
-    elif breadth is not None:
-        mkt_parts.append(f"Breadth {breadth:.0f}% above 40MA")
-    # Show 10d ratio if available, else 5d
-    if pct4_10d is not None:
-        mkt_parts.append(f"+/-4% 10d {pct4_10d:.1f}x")
-    elif pct4_5d is not None:
-        mkt_parts.append(f"+/-4% 5d {pct4_5d:.1f}x")
-    if mkt_parts:
-        lines.append("  " + "  |  ".join(mkt_parts))
+        secondary_parts.append(f"T2108 {t2108:.0f}%")
+    up50 = bm.get("up_50_1m", regime.get("pradeep_1m_50"))
+    down50 = bm.get("down_50_1m")
+    if up50 is not None:
+        s_str = f"50%/M {up50}↑"
+        if down50 is not None:
+            s_str += f"/{down50}↓"
+        secondary_parts.append(s_str)
+    up25q = bm.get("up_25_3m", regime.get("pradeep_3m_25"))
+    down25q = bm.get("down_25_3m")
+    if up25q is not None:
+        q_str = f"25%/Q {up25q}↑"
+        if down25q is not None:
+            q_str += f"/{down25q}↓"
+        secondary_parts.append(q_str)
+    lines.append("  " + "  ".join(secondary_parts))
 
-    momentum_parts = []
-    if pradeep_1m is not None:
-        momentum_parts.append(f"Momentum: {pradeep_1m} up 50%/1M")
-    if consec_bd is not None:
-        momentum_parts.append(f"Breakdowns: {consec_bd} consec days")
-    if momentum_parts:
-        lines.append("  " + "  |  ".join(momentum_parts))
+    if consec_bd > 0:
+        lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")
 
     lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")
     return "\n".join(lines)

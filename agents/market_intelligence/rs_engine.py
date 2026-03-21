@@ -196,6 +196,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "rs_6m_raw": _pct_return(current, price_6m),
             "sma_10": _compute_sma(closes, 10),
             "sma_20": _compute_sma(closes, 20),
+            "sma_40": _compute_sma(closes, 40),
             "sma_50": _compute_sma(closes, 50),
         })
 
@@ -249,6 +250,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "market_cap": None,
             "sma_10": s.get("sma_10"),
             "sma_20": s.get("sma_20"),
+            "sma_40": s.get("sma_40"),
             "sma_50": s.get("sma_50"),
             "close": s["current"],
             "raw_1m": round(s["rs_1m_raw"], 2) if s.get("rs_1m_raw") is not None else None,
@@ -372,6 +374,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
 
     sma_10 = _compute_sma(closes, 10)
     sma_20 = _compute_sma(closes, 20)
+    sma_40 = _compute_sma(closes, 40)
     sma_50 = _compute_sma(closes, 50)
 
     db_record = {
@@ -387,6 +390,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
         "market_cap": None,
         "sma_10": sma_10,
         "sma_20": sma_20,
+        "sma_40": sma_40,
         "sma_50": sma_50,
         "close": current,
         "raw_1m": round(r1, 2),

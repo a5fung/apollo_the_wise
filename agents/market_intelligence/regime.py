@@ -114,19 +114,19 @@ def _determine_regime(
             bullish_count += 1
             signals.append(f"VIX at {vix:.1f} — low fear, risk-on")
 
-    # T2108 — full-universe breadth (% above 50MA)
+    # T2108 — full-universe breadth (% above 40MA)
     if t2108 is not None:
         if t2108 < 25:
             bearish_count += 2
-            signals.append(f"T2108 {t2108:.0f}% above 50MA — oversold breadth")
+            signals.append(f"T2108 {t2108:.0f}% above 40MA — oversold breadth")
         elif t2108 < 40:
             bearish_count += 1
-            signals.append(f"T2108 {t2108:.0f}% above 50MA — weak breadth")
+            signals.append(f"T2108 {t2108:.0f}% above 40MA — weak breadth")
         elif t2108 <= 70:
             bullish_count += 1
-            signals.append(f"T2108 {t2108:.0f}% above 50MA — healthy breadth")
+            signals.append(f"T2108 {t2108:.0f}% above 40MA — healthy breadth")
         else:
-            signals.append(f"T2108 {t2108:.0f}% above 50MA — overbought")
+            signals.append(f"T2108 {t2108:.0f}% above 40MA — overbought")
     elif breadth_pct is not None:
         # Fallback to old breadth if T2108 not available yet
         if breadth_pct < 20:
@@ -199,42 +199,55 @@ def _determine_regime(
 
 async def calculate_breadth_full(today: date) -> dict:
     """
-    Full-universe breadth from stored mi_stock_scores + mi_daily_closes. Zero API calls.
+    Full Stockbee Market Monitor from stored mi_stock_scores + mi_daily_closes.
+    Zero API calls.
 
-    Returns dict with:
-    - t2108: % of scored stocks where close > sma_50
-    - breadth_pct: same as t2108 (for backwards compat)
-    - pradeep_1m_50: count of stocks with raw_1m >= 50 (up 50%+ in 1M)
-    - pradeep_3m_25: count of stocks with raw_3m >= 25 (up 25%+ in 3M)
-    - pct4_ratio_5d: +4% / -4% daily move ratio over 5 trading days
-    - pct4_ratio_10d: same over 10 trading days
-    - full_up4_count: total +4% stock-days in 10d window
-    - full_down4_count: total -4% stock-days in 10d window
+    Primary breadth (fast daily):
+    - today_up4 / today_down4: stocks moving 4%+ today
+    - pct4_ratio_5d / pct4_ratio_10d: rolling ratios
+
+    Secondary breadth (slower momentum backdrop):
+    - t2108: % above 40MA
+    - up/down 25% in quarter, up/down 25% in month, up/down 50% in month
     - consec_breakdown_days: consecutive days with 700+ stocks down 4%+
+
+    Also stores full monitor dict as breadth_monitor for on-demand display.
     """
     from agents.market_intelligence.db import get_pool, get_prior_consec_breakdown_days
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # T2108 + Pradeep counts from mi_stock_scores
+        # T2108 (% above 40MA) + all secondary momentum counts from mi_stock_scores
         breadth_row = await conn.fetchrow("""
             SELECT
-                COUNT(*) FILTER (WHERE sma_50 IS NOT NULL) AS total_with_sma,
-                COUNT(*) FILTER (WHERE close > sma_50 AND sma_50 IS NOT NULL) AS above_50ma,
-                COUNT(*) FILTER (WHERE raw_1m IS NOT NULL AND raw_1m >= 50) AS pradeep_1m_50,
-                COUNT(*) FILTER (WHERE raw_3m IS NOT NULL AND raw_3m >= 25) AS pradeep_3m_25
+                COUNT(*) FILTER (WHERE sma_40 IS NOT NULL) AS total_with_sma40,
+                COUNT(*) FILTER (WHERE close > sma_40 AND sma_40 IS NOT NULL) AS above_40ma,
+                COUNT(*) AS universe_size,
+                -- Secondary: monthly momentum
+                COUNT(*) FILTER (WHERE raw_1m IS NOT NULL AND raw_1m >= 25) AS up_25_1m,
+                COUNT(*) FILTER (WHERE raw_1m IS NOT NULL AND raw_1m <= -25) AS down_25_1m,
+                COUNT(*) FILTER (WHERE raw_1m IS NOT NULL AND raw_1m >= 50) AS up_50_1m,
+                COUNT(*) FILTER (WHERE raw_1m IS NOT NULL AND raw_1m <= -50) AS down_50_1m,
+                -- Secondary: quarterly momentum
+                COUNT(*) FILTER (WHERE raw_3m IS NOT NULL AND raw_3m >= 25) AS up_25_3m,
+                COUNT(*) FILTER (WHERE raw_3m IS NOT NULL AND raw_3m <= -25) AS down_25_3m
             FROM mi_stock_scores
             WHERE score_date = $1
         """, today)
 
-        total_with_sma = breadth_row["total_with_sma"] or 0
-        above_50ma = breadth_row["above_50ma"] or 0
-        t2108 = round(above_50ma / max(total_with_sma, 1) * 100, 1) if total_with_sma > 0 else None
+        total_with_sma40 = breadth_row["total_with_sma40"] or 0
+        above_40ma = breadth_row["above_40ma"] or 0
+        t2108 = round(above_40ma / max(total_with_sma40, 1) * 100, 1) if total_with_sma40 > 0 else None
+        universe_size = breadth_row["universe_size"] or 0
 
-        pradeep_1m_50 = breadth_row["pradeep_1m_50"] or 0
-        pradeep_3m_25 = breadth_row["pradeep_3m_25"] or 0
+        up_25_1m = breadth_row["up_25_1m"] or 0
+        down_25_1m = breadth_row["down_25_1m"] or 0
+        up_50_1m = breadth_row["up_50_1m"] or 0
+        down_50_1m = breadth_row["down_50_1m"] or 0
+        up_25_3m = breadth_row["up_25_3m"] or 0
+        down_25_3m = breadth_row["down_25_3m"] or 0
 
-        # +/-4% ratio from mi_daily_closes — last 11 trade dates for 10d of changes
+        # Primary: +/-4% ratio from mi_daily_closes — last 11 trade dates for 10d of changes
         trade_dates_rows = await conn.fetch("""
             SELECT DISTINCT trade_date FROM mi_daily_closes
             WHERE trade_date <= $1
@@ -245,8 +258,8 @@ async def calculate_breadth_full(today: date) -> dict:
 
         pct4_5d = None
         pct4_10d = None
-        full_up4_count = 0
-        full_down4_count = 0
+        today_up4 = 0
+        today_down4 = 0
         daily_down4_counts: dict[date, int] = {}
 
         if len(trade_dates) >= 2:
@@ -266,7 +279,6 @@ async def calculate_breadth_full(today: date) -> dict:
                 closes_by_ticker[tk][r["trade_date"]] = r["close"]
 
             # Compute daily changes for consecutive date pairs
-            # daily_up4[i] = count of +4% stocks on trade_dates[i+1]
             daily_up4: list[int] = []
             daily_down4: list[int] = []
             for i in range(len(trade_dates) - 1):
@@ -285,13 +297,16 @@ async def calculate_breadth_full(today: date) -> dict:
                 daily_down4.append(down4)
                 daily_down4_counts[d_curr] = down4
 
-            # 10d ratio (all available days)
-            total_up4 = sum(daily_up4)
-            total_down4 = sum(daily_down4)
-            full_up4_count = total_up4
-            full_down4_count = total_down4
-            if total_up4 + total_down4 > 0:
-                pct4_10d = round(total_up4 / max(total_down4, 1), 2)
+            # Today's counts (last entry)
+            if daily_up4:
+                today_up4 = daily_up4[-1]
+                today_down4 = daily_down4[-1]
+
+            # 10d ratio
+            total_up4_10d = sum(daily_up4)
+            total_down4_10d = sum(daily_down4)
+            if total_up4_10d + total_down4_10d > 0:
+                pct4_10d = round(total_up4_10d / max(total_down4_10d, 1), 2)
 
             # 5d ratio (last 5 days of changes)
             if len(daily_up4) >= 5:
@@ -301,23 +316,97 @@ async def calculate_breadth_full(today: date) -> dict:
                     pct4_5d = round(up4_5 / max(down4_5, 1), 2)
 
         # Consecutive breakdown days: 700+ stocks down 4%+ today
-        today_down4 = daily_down4_counts.get(today, 0) if daily_down4_counts else 0
         if today_down4 >= 700:
             prior = await get_prior_consec_breakdown_days(today)
             consec_breakdown_days = prior + 1
         else:
             consec_breakdown_days = 0
 
+        # ── Derive condensed signals ──────────────────────────────────
+        # Primary signal: based on 5d and 10d ratios
+        # Dark green (2): both > 2.0 | Green (1): both > 1.0
+        # Red (-1): either < 1.0 | Dark red (-2): either < 0.5
+        r5 = pct4_5d if pct4_5d is not None else 1.0
+        r10 = pct4_10d if pct4_10d is not None else 1.0
+        if r5 >= 2.0 and r10 >= 2.0:
+            primary_signal = 2
+        elif r5 >= 1.0 and r10 >= 1.0:
+            primary_signal = 1
+        elif r5 < 0.5 or r10 < 0.5:
+            primary_signal = -2
+        else:
+            primary_signal = -1
+
+        # Secondary signal: T2108 + momentum balance
+        # Count how many of the momentum pairs favor bulls vs bears
+        momentum_score = 0
+        if up_25_3m > down_25_3m:
+            momentum_score += 1
+        elif up_25_3m < down_25_3m:
+            momentum_score -= 1
+        if up_25_1m > down_25_1m:
+            momentum_score += 1
+        elif up_25_1m < down_25_1m:
+            momentum_score -= 1
+        if up_50_1m > down_50_1m:
+            momentum_score += 1
+        elif up_50_1m < down_50_1m:
+            momentum_score -= 1
+
+        # T2108 contribution
+        if t2108 is not None:
+            if t2108 < 25:
+                momentum_score -= 2
+            elif t2108 < 40:
+                momentum_score -= 1
+            elif t2108 <= 70:
+                momentum_score += 1
+            # > 70: overbought, neutral (don't add)
+
+        if momentum_score >= 3:
+            secondary_signal = 2
+        elif momentum_score >= 1:
+            secondary_signal = 1
+        elif momentum_score >= -2:
+            secondary_signal = -1
+        else:
+            secondary_signal = -2
+
+    # Full monitor for on-demand display
+    breadth_monitor = {
+        # Primary
+        "today_up4": today_up4,
+        "today_down4": today_down4,
+        "ratio_5d": pct4_5d,
+        "ratio_10d": pct4_10d,
+        "primary_signal": primary_signal,
+        # Secondary
+        "t2108": t2108,
+        "up_25_3m": up_25_3m,
+        "down_25_3m": down_25_3m,
+        "up_25_1m": up_25_1m,
+        "down_25_1m": down_25_1m,
+        "up_50_1m": up_50_1m,
+        "down_50_1m": down_50_1m,
+        "secondary_signal": secondary_signal,
+        # Meta
+        "universe_size": universe_size,
+        "consec_breakdown_days": consec_breakdown_days,
+    }
+
     return {
         "t2108": t2108,
         "breadth_pct": t2108,
-        "pradeep_1m_50": pradeep_1m_50,
-        "pradeep_3m_25": pradeep_3m_25,
+        "pradeep_1m_50": up_50_1m,
+        "pradeep_3m_25": up_25_3m,
         "pct4_ratio_5d": pct4_5d,
         "pct4_ratio_10d": pct4_10d,
-        "full_up4_count": full_up4_count,
-        "full_down4_count": full_down4_count,
+        "full_up4_count": today_up4,
+        "full_down4_count": today_down4,
         "consec_breakdown_days": consec_breakdown_days,
+        "primary_signal": primary_signal,
+        "secondary_signal": secondary_signal,
+        "breadth_monitor": breadth_monitor,
     }
 
 
@@ -391,6 +480,7 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
         "full_up4_count": breadth.get("full_up4_count"),
         "full_down4_count": breadth.get("full_down4_count"),
         "consec_breakdown_days": consec_breakdown_days,
+        "breadth_monitor": breadth.get("breadth_monitor"),
     }
 
     await upsert_regime(record)

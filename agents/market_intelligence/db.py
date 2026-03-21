@@ -65,6 +65,7 @@ async def initialize_schema() -> None:
             );
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_10 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_20 FLOAT;
+            ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_40 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS sma_50 FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS close FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_1m FLOAT;
@@ -111,6 +112,7 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS full_up4_count INT;
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS full_down4_count INT;
             ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS consec_breakdown_days INT;
+            ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS breadth_monitor JSONB;
 
             CREATE TABLE IF NOT EXISTS mi_themes (
                 id SERIAL PRIMARY KEY,
@@ -230,21 +232,21 @@ async def upsert_stock_score(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_stock_scores
                 (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
-                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close,
+                 sector, adv_20, market_cap, sma_10, sma_20, sma_40, sma_50, close,
                  raw_1m, raw_3m, raw_6m)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
                 sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
-                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_50=EXCLUDED.sma_50,
-                close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
+                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_40=EXCLUDED.sma_40,
+                sma_50=EXCLUDED.sma_50, close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
                 raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
         """,
             record["ticker"], record["score_date"], record.get("rs_1m"), record.get("rs_3m"),
             record.get("rs_6m"), record.get("rs_composite"), record.get("rs_rank"),
             record.get("sector"), record.get("adv_20"), record.get("market_cap"),
-            record.get("sma_10"), record.get("sma_20"), record.get("sma_50"),
+            record.get("sma_10"), record.get("sma_20"), record.get("sma_40"), record.get("sma_50"),
             record.get("close"), record.get("raw_1m"), record.get("raw_3m"), record.get("raw_6m"),
         )
 
@@ -258,21 +260,21 @@ async def upsert_stock_scores_batch(records: list[dict[str, Any]]) -> None:
         await conn.executemany("""
             INSERT INTO mi_stock_scores
                 (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
-                 sector, adv_20, market_cap, sma_10, sma_20, sma_50, close,
+                 sector, adv_20, market_cap, sma_10, sma_20, sma_40, sma_50, close,
                  raw_1m, raw_3m, raw_6m)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
                 sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
-                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_50=EXCLUDED.sma_50,
-                close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
+                sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_40=EXCLUDED.sma_40,
+                sma_50=EXCLUDED.sma_50, close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
                 raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
         """, [
             (r["ticker"], r["score_date"], r.get("rs_1m"), r.get("rs_3m"),
              r.get("rs_6m"), r.get("rs_composite"), r.get("rs_rank"),
              r.get("sector"), r.get("adv_20"), r.get("market_cap"),
-             r.get("sma_10"), r.get("sma_20"), r.get("sma_50"),
+             r.get("sma_10"), r.get("sma_20"), r.get("sma_40"), r.get("sma_50"),
              r.get("close"), r.get("raw_1m"), r.get("raw_3m"), r.get("raw_6m"))
             for r in records
         ])
@@ -349,15 +351,18 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:
+    import json
     pool = await get_pool()
+    bm = record.get("breadth_monitor")
+    bm_json = json.dumps(bm) if bm else None
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_market_regime
                 (regime_date, regime, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix,
                  breadth_pct_above_40ma, bo_bd_ratio_5d, pct4_ratio_10d, description, ep_threshold,
                  t2108, pradeep_1m_50, pradeep_3m_25, full_up4_count, full_down4_count,
-                 consec_breakdown_days)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+                 consec_breakdown_days, breadth_monitor)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb)
             ON CONFLICT (regime_date) DO UPDATE SET
                 regime=EXCLUDED.regime, spy_vs_50ma=EXCLUDED.spy_vs_50ma,
                 spy_vs_200ma=EXCLUDED.spy_vs_200ma, qqq_vs_50ma=EXCLUDED.qqq_vs_50ma,
@@ -367,7 +372,8 @@ async def upsert_regime(record: dict[str, Any]) -> None:
                 t2108=EXCLUDED.t2108, pradeep_1m_50=EXCLUDED.pradeep_1m_50,
                 pradeep_3m_25=EXCLUDED.pradeep_3m_25, full_up4_count=EXCLUDED.full_up4_count,
                 full_down4_count=EXCLUDED.full_down4_count,
-                consec_breakdown_days=EXCLUDED.consec_breakdown_days
+                consec_breakdown_days=EXCLUDED.consec_breakdown_days,
+                breadth_monitor=EXCLUDED.breadth_monitor
         """,
             record["regime_date"], record["regime"], record.get("spy_vs_50ma"),
             record.get("spy_vs_200ma"), record.get("qqq_vs_50ma"), record.get("vix"),
@@ -376,7 +382,7 @@ async def upsert_regime(record: dict[str, Any]) -> None:
             record.get("description"), record.get("ep_threshold", 70),
             record.get("t2108"), record.get("pradeep_1m_50"), record.get("pradeep_3m_25"),
             record.get("full_up4_count"), record.get("full_down4_count"),
-            record.get("consec_breakdown_days"),
+            record.get("consec_breakdown_days"), bm_json,
         )
 
 
