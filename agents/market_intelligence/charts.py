@@ -23,7 +23,7 @@ _FINVIZ_CHART_URL = "https://finviz.com/chart.ashx?t={ticker}&ty=c&ta=1&p=d&s=l"
 _FINVIZ_SCREENER_URL = "https://finviz.com/screener.ashx?v=210&t={tickers}"
 
 # Grid layout
-_COLS = 4
+_COLS = 2
 _MAX_CHARTS = 20
 
 
