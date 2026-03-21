@@ -127,50 +127,51 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
-    # Condensed Stockbee Market Monitor
+    # Stockbee Market Monitor
     bm = regime.get("breadth_monitor") or {}
 
-    # Primary signal: daily 4% breadth
-    p_sig = bm.get("primary_signal")
-    p_emoji = {2: "🟢🟢", 1: "🟢", -1: "🔴", -2: "🔴🔴"}.get(p_sig, "⚫")
+    # Primary: daily 4% counts (colored) + ratios (raw numbers)
     r5 = bm.get("ratio_5d") or pct4_5d
     r10 = bm.get("ratio_10d") or pct4_10d
     up4 = bm.get("today_up4", regime.get("full_up4_count"))
     down4 = bm.get("today_down4", regime.get("full_down4_count"))
 
-    primary_parts = [f"Primary {p_emoji}"]
-    if r5 is not None:
-        primary_parts.append(f"5d {r5:.2f}x")
-    if r10 is not None:
-        primary_parts.append(f"10d {r10:.2f}x")
+    primary_parts = ["Primary"]
     if up4 is not None and down4 is not None:
-        primary_parts.append(f"({up4}↑ {down4}↓ today)")
-    lines.append("  " + "  ".join(primary_parts))
+        count_emoji = "🟢" if up4 > down4 else "🔴"
+        primary_parts.append(f"{count_emoji} {up4}↑ {down4}↓")
+    ratio_parts = []
+    if r5 is not None:
+        ratio_parts.append(f"5d {r5:.2f}x")
+    if r10 is not None:
+        ratio_parts.append(f"10d {r10:.2f}x")
+    if ratio_parts:
+        primary_parts.append("  ".join(ratio_parts))
+    lines.append("  " + "  |  ".join(primary_parts))
 
-    # Secondary signal: momentum + T2108
-    s_sig = bm.get("secondary_signal")
-    s_emoji = {2: "🟢🟢", 1: "🟢", -1: "🔴", -2: "🔴🔴"}.get(s_sig, "⚫")
+    # Secondary: T2108 (contrarian — green when oversold <20) + momentum counts (colored)
     t2108 = bm.get("t2108") or regime.get("t2108")
     consec_bd = bm.get("consec_breakdown_days") or regime.get("consec_breakdown_days") or 0
 
-    secondary_parts = [f"Secondary {s_emoji}"]
+    secondary_parts = ["Secondary"]
     if t2108 is not None:
-        secondary_parts.append(f"T2108 {t2108:.0f}%")
+        t_emoji = "🟢" if t2108 < 20 else ""
+        secondary_parts.append(f"T2108 {t_emoji}{t2108:.0f}%")
     up50 = bm.get("up_50_1m", regime.get("pradeep_1m_50"))
     down50 = bm.get("down_50_1m")
-    if up50 is not None:
-        s_str = f"50%/M {up50}↑"
-        if down50 is not None:
-            s_str += f"/{down50}↓"
-        secondary_parts.append(s_str)
+    if up50 is not None and down50 is not None:
+        m_emoji = "🟢" if up50 > down50 else "🔴"
+        secondary_parts.append(f"50%/M {m_emoji}{up50}↑/{down50}↓")
+    elif up50 is not None:
+        secondary_parts.append(f"50%/M {up50}↑")
     up25q = bm.get("up_25_3m", regime.get("pradeep_3m_25"))
     down25q = bm.get("down_25_3m")
-    if up25q is not None:
-        q_str = f"25%/Q {up25q}↑"
-        if down25q is not None:
-            q_str += f"/{down25q}↓"
-        secondary_parts.append(q_str)
-    lines.append("  " + "  ".join(secondary_parts))
+    if up25q is not None and down25q is not None:
+        q_emoji = "🟢" if up25q > down25q else "🔴"
+        secondary_parts.append(f"25%/Q {q_emoji}{up25q}↑/{down25q}↓")
+    elif up25q is not None:
+        secondary_parts.append(f"25%/Q {up25q}↑")
+    lines.append("  " + "  |  ".join(secondary_parts))
 
     if consec_bd > 0:
         lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")
