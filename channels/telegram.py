@@ -417,6 +417,11 @@ class TelegramChannel:
             '• "Optical stocks near 20MA?"\n'
             '• "Screen RS > 70 with EPS growth > 25%"\n'
             "\n"
+            "*History*\n"
+            '🕐 "RS history CIEN, LITE, COHR" — weekly RS over 90 days\n'
+            '📈 "When did metals/miners theme peak?"\n'
+            '📉 "How has optical networking theme evolved?"\n'
+            "\n"
             "*Teach & Update*\n"
             '📌 "AXTI is working, track it" — add stocks + seed themes\n'
             '📝 "GLW got a Meta deal for optical" — updates company description\n'
