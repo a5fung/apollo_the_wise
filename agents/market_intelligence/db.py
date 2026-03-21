@@ -990,9 +990,9 @@ async def purge_old_data() -> dict[str, int]:
     Delete rows older than retention limits to keep the DB lean.
 
     Retention policy:
-    - mi_ep_alerts:    30 days  (daily scan history)
-    - mi_stock_scores: 90 days  (RS engine — needs 90d for trend context)
-    - mi_themes:       60 days  (daily theme snapshots)
+    - mi_ep_alerts:    90 days  (EP alert history for outcome tracking)
+    - mi_stock_scores: 365 days (RS history — needed for historical queries + outcome tracking)
+    - mi_themes:       365 days (theme lifecycle history — stage transitions over months)
     - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
     - mi_tracked_stocks: kept forever (state table, not time-series)
 
@@ -1004,11 +1004,11 @@ async def purge_old_data() -> dict[str, int]:
 
     async with pool.acquire() as conn:
         cutoffs = {
-            "mi_ep_alerts":    today - timedelta(days=30),
-            "mi_stock_scores": today - timedelta(days=90),
-            "mi_themes":       today - timedelta(days=60),
+            "mi_ep_alerts":    today - timedelta(days=90),
+            "mi_stock_scores": today - timedelta(days=365),
+            "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
-            "mi_daily_closes": today - timedelta(days=210),  # 6M + buffer
+            "mi_daily_closes": today - timedelta(days=400),  # 13M — feeds 12M RS lookback
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
