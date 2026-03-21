@@ -355,8 +355,13 @@ async def _resolve_score_date(conn: Any, requested: "date") -> "date":
     return latest if latest is not None else requested
 
 
-async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 500_000) -> list[dict[str, Any]]:
-    """Top RS stocks for a given date, filtered to liquid names (min ADV).
+async def get_rs_leaders(
+    d: "str | date",
+    limit: int = 30,
+    min_adv: float = 500_000,
+    min_price: float = 10.0,
+) -> list[dict[str, Any]]:
+    """Top RS stocks for a given date, filtered to liquid names (min ADV + min price).
     Excludes leveraged/inverse ETFs and broad index ETFs.
     Set min_adv=0 to get all stocks unfiltered."""
     from agents.market_intelligence.constants import SKIP_TICKERS
@@ -369,9 +374,10 @@ async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 500_
                 WHERE score_date = $1
                   AND adv_20 IS NOT NULL AND adv_20 >= $3
                   AND ticker != ALL($4)
+                  AND close IS NOT NULL AND close >= $5
                 ORDER BY rs_composite DESC NULLS LAST
                 LIMIT $2
-            """, score_date, limit, min_adv, list(SKIP_TICKERS))
+            """, score_date, limit, min_adv, list(SKIP_TICKERS), min_price)
         else:
             rows = await conn.fetch("""
                 SELECT * FROM mi_stock_scores

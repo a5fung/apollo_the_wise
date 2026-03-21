@@ -523,11 +523,14 @@ def _merge_overlapping_themes(
             intersection = tickers_i & tickers_j
             union = tickers_i | tickers_j
 
-            # Jaccard similarity or complete subset
+            # Jaccard similarity, subset, or high overlap ratio for smaller theme
             jaccard = len(intersection) / len(union) if union else 0
-            is_subset = tickers_j <= tickers_i
+            is_subset = tickers_j <= tickers_i or tickers_i <= tickers_j
+            # Check if most of the smaller theme's stocks are in the larger one
+            smaller_size = min(len(tickers_i), len(tickers_j))
+            overlap_ratio = len(intersection) / smaller_size if smaller_size else 0
 
-            if jaccard >= 0.6 or is_subset:
+            if jaccard >= 0.6 or is_subset or overlap_ratio >= 0.6:
                 logger.info(
                     f"Theme merge: '{themes[j]['name']}' → '{themes[i]['name']}' "
                     f"(Jaccard {jaccard:.2f}, {len(intersection)} shared tickers)"
