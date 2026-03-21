@@ -35,4 +35,7 @@ SKIP_TICKERS = frozenset({
     "USO", "BNO", "DBO", "UNG", "GLD", "SLV", "IAU", "PPLT", "PALL",
     "WEAT", "CORN", "SOYB", "CPER", "DBA", "DBC", "GSG", "PDBC",
     "NRGU", "NRGD",  # Leveraged energy ETNs
+    # 2x leveraged thematic ETFs
+    "CRCA",  # Direxion 2x daily
+    "OKLS",  # 2x leveraged
 })
