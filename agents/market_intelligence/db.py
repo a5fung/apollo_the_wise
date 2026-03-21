@@ -355,17 +355,27 @@ async def _resolve_score_date(conn: Any, requested: "date") -> "date":
     return latest if latest is not None else requested
 
 
-async def get_rs_leaders(d: "str | date", limit: int = 30) -> list[dict[str, Any]]:
-    """Top RS stocks for a given date, falling back to most recent if no data for requested date."""
+async def get_rs_leaders(d: "str | date", limit: int = 30, min_adv: float = 200_000) -> list[dict[str, Any]]:
+    """Top RS stocks for a given date, filtered to liquid names (min ADV).
+    Set min_adv=0 to get all stocks unfiltered."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
-        rows = await conn.fetch("""
-            SELECT * FROM mi_stock_scores
-            WHERE score_date = $1
-            ORDER BY rs_composite DESC NULLS LAST
-            LIMIT $2
-        """, score_date, limit)
+        if min_adv > 0:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_stock_scores
+                WHERE score_date = $1
+                  AND adv_20 IS NOT NULL AND adv_20 >= $3
+                ORDER BY rs_composite DESC NULLS LAST
+                LIMIT $2
+            """, score_date, limit, min_adv)
+        else:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_stock_scores
+                WHERE score_date = $1
+                ORDER BY rs_composite DESC NULLS LAST
+                LIMIT $2
+            """, score_date, limit)
         return [dict(r) for r in rows]
 
 

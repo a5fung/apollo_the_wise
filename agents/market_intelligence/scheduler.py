@@ -89,12 +89,22 @@ async def _nightly_data_pull():
     # Fundamental flags — fetch for top RS stocks + theme constituents
     try:
         from datetime import date as _date
+        from agents.market_intelligence.db import get_active_themes
         today = _date.today()
         today_str = today.strftime("%Y-%m-%d")
         rs_leaders = await get_rs_leaders(today_str, limit=40)
-        fund_tickers = list({s["ticker"] for s in rs_leaders})[:40]
-        if fund_tickers:
-            flag_records = await compute_fundamental_flags(fund_tickers, today)
+        fund_tickers = {s["ticker"] for s in rs_leaders}
+        # Also include all theme constituent tickers
+        try:
+            active_themes = await get_active_themes()
+            for t in active_themes:
+                for tk in (t.get("tickers") or []):
+                    fund_tickers.add(tk)
+        except Exception:
+            pass
+        fund_list = list(fund_tickers)[:80]
+        if fund_list:
+            flag_records = await compute_fundamental_flags(fund_list, today)
             await upsert_fundamental_flags_batch(flag_records)
             logger.info(f"Fundamental flags: cached {len(flag_records)} tickers")
             summary_parts.append(f"{len(flag_records)} fund flags")

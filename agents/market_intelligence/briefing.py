@@ -362,7 +362,7 @@ def _format_theme_scorecard(
     for st in scored_themes:
         emoji = STAGE_EMOJI.get(st["stage"], " ")
         name = st["name"]
-        delta_str = f"Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
+        delta_str = f" Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
         comp = f"{st['comp']:.0f}"
 
         # Top tickers by RS in this theme (up to 5)
@@ -373,17 +373,16 @@ def _format_theme_scorecard(
             if rs and rs.get("rs_composite") is not None:
                 ticker_rs_pairs.append((tk, rs["rs_composite"]))
         ticker_rs_pairs.sort(key=lambda x: -x[1])
-        top_tickers = "  ".join(f"`{tk}` {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
+        top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
 
-        lines.append(f"{emoji}*{name}*  RS {comp}  {delta_str}")
-        if top_tickers:
-            lines.append(f"  {top_tickers}")
+        lines.append("")
+        lines.append(f"{emoji}*{name}*")
+        lines.append(f"  RS {comp}{delta_str}  |  {top_tickers}")
 
     if fading:
-        fading_names = "  ·  ".join(t.get("name", "?") for t in fading[:5])
-        lines.append(f"\n🔻 _Fading:_ {fading_names}")
-
-    lines.append("_RS=avg constituent composite. Δ=daily change._")
+        lines.append("")
+        fading_names = " · ".join(t.get("name", "?") for t in fading[:5])
+        lines.append(f"🔻 _Fading: {fading_names}_")
 
     return "\n".join(lines)
 
