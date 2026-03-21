@@ -235,7 +235,7 @@ def _format_rs_section(
             eps = _eps_flag(ticker, fund_flags)
             earn = _earnings_flag(ticker, fund_flags, today)
             rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}")
-        footer = "_EPS+=accelerating, eps=decelerating, %=latest qtr YoY_"
+        footer = "_EPS+25% = accelerating 25% YoY | eps+10% = decelerating_"
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
     # Fallback: compact 3-per-row format (no fundamental data cached yet)
