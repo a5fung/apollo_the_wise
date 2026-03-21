@@ -121,6 +121,16 @@ class TelegramChannel:
         if self._app is None:
             logger.error("Telegram app not initialized — cannot send message")
             return
+        # Use HTML for messages with code blocks (Markdown v1 doesn't support ```)
+        if "```" in text:
+            try:
+                html = self._md_to_html(text)
+                await self._app.bot.send_message(
+                    chat_id=user_id, text=html, parse_mode=ParseMode.HTML,
+                )
+                return
+            except Exception:
+                pass  # fall through
         try:
             await self._app.bot.send_message(
                 chat_id=user_id,
@@ -663,6 +673,15 @@ class TelegramChannel:
 
     async def _reply(self, update: Update, text: str) -> None:
         """Send a reply, falling back to plain text if Markdown fails."""
+        # If text has triple-backtick code blocks, convert to HTML
+        # (Telegram Markdown v1 doesn't support ```)
+        if "```" in text:
+            html = self._md_to_html(text)
+            try:
+                await update.message.reply_text(html, parse_mode=ParseMode.HTML)
+                return
+            except Exception:
+                pass  # fall through to markdown/plain attempts
         try:
             await update.message.reply_text(
                 text,
@@ -675,6 +694,24 @@ class TelegramChannel:
                 await update.message.reply_text(plain)
             except Exception as e:
                 logger.error(f"Failed to send reply: {e}")
+
+    @staticmethod
+    def _md_to_html(text: str) -> str:
+        """Convert Markdown-ish text with ``` blocks to Telegram HTML."""
+        import html as html_mod
+        parts = text.split("```")
+        result = []
+        for i, part in enumerate(parts):
+            if i % 2 == 1:
+                # Inside code block — wrap in <pre>
+                result.append(f"<pre>{html_mod.escape(part)}</pre>")
+            else:
+                # Outside code block — convert *bold* to <b>, escape HTML
+                escaped = html_mod.escape(part)
+                # Restore bold: *text* → <b>text</b>
+                escaped = re.sub(r"\*([^*]+)\*", r"<b>\1</b>", escaped)
+                result.append(escaped)
+        return "".join(result)
 
     async def _send_typing_indicator(
         self,
