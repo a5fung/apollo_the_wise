@@ -496,22 +496,46 @@ async def _score_new_theme(
     }
 
 
+# Keyword groups for sector-level theme consolidation.
+# Themes whose names match the same group are capped at MAX_THEMES_PER_SECTOR.
+_SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str]]] = [
+    ("oil_gas", ["oil", "gas", "lng", "e&p", "oilfield", "petroleum", "crude",
+                 "permian", "drilling", "refin", "upstream", "downstream",
+                 "midstream", "completion", "pumping"]),
+    ("biotech", ["biotech", "clinical", "orphan drug", "gene edit", "crispr",
+                 "mrna", "therapeutics", "pharma"]),
+    ("satellite", ["satellite", "space", "earth observation"]),
+    ("optical", ["optical", "photonic"]),
+]
+MAX_THEMES_PER_SECTOR = 2
+
+
+def _sector_group(theme_name: str) -> str | None:
+    """Return the sector group key if the theme name matches any keyword group."""
+    low = theme_name.lower()
+    for group_key, keywords in _SECTOR_KEYWORD_GROUPS:
+        if any(kw in low for kw in keywords):
+            return group_key
+    return None
+
+
 def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
 ) -> list[dict]:
     """
-    Consolidate themes with high ticker overlap (Jaccard >= 0.6 or subset).
-
-    When two themes overlap significantly, the smaller one is absorbed into the
-    higher-scored theme. The surviving theme gets the union of both ticker lists.
+    Two-pass theme consolidation:
+    1. Ticker overlap: merge themes with Jaccard >= 0.6, subset, or 60%+ overlap
+    2. Sector cap: limit themes per broad sector (oil/gas, biotech, etc.) to top 2
     """
     if len(themes) <= 1:
         return themes
 
     # Sort by score descending — higher-scored themes absorb lower ones
     themes = sorted(themes, key=lambda t: t.get("score", 0), reverse=True)
-    merged_into: dict[int, int] = {}  # index of absorbed → index of absorber
+
+    # --- Pass 1: Ticker overlap merge ---
+    merged_into: dict[int, int] = {}
 
     for i in range(len(themes)):
         if i in merged_into:
@@ -530,24 +554,53 @@ def _merge_overlapping_themes(
             intersection = tickers_i & tickers_j
             union = tickers_i | tickers_j
 
-            # Jaccard similarity, subset, or high overlap ratio for smaller theme
             jaccard = len(intersection) / len(union) if union else 0
             is_subset = tickers_j <= tickers_i or tickers_i <= tickers_j
-            # Check if most of the smaller theme's stocks are in the larger one
             smaller_size = min(len(tickers_i), len(tickers_j))
             overlap_ratio = len(intersection) / smaller_size if smaller_size else 0
 
             if jaccard >= 0.6 or is_subset or overlap_ratio >= 0.6:
                 logger.info(
-                    f"Theme merge: '{themes[j]['name']}' → '{themes[i]['name']}' "
+                    f"Theme merge (overlap): '{themes[j]['name']}' → '{themes[i]['name']}' "
                     f"(Jaccard {jaccard:.2f}, {len(intersection)} shared tickers)"
                 )
-                # Absorb j into i: union tickers
                 tickers_i = tickers_i | tickers_j
                 themes[i]["tickers"] = list(tickers_i)
                 merged_into[j] = i
 
-    return [t for idx, t in enumerate(themes) if idx not in merged_into]
+    after_overlap = [t for idx, t in enumerate(themes) if idx not in merged_into]
+
+    # --- Pass 2: Sector cap — keep top N per broad sector group ---
+    sector_counts: dict[str, int] = {}
+    final: list[dict] = []
+
+    for t in after_overlap:  # already sorted by score desc
+        group = _sector_group(t["name"])
+        if group is None:
+            final.append(t)
+            continue
+
+        count = sector_counts.get(group, 0)
+        if count < MAX_THEMES_PER_SECTOR:
+            final.append(t)
+            sector_counts[group] = count + 1
+        else:
+            # Absorb into the top theme of this sector group
+            top_theme = next(
+                (f for f in final if _sector_group(f["name"]) == group),
+                None,
+            )
+            if top_theme:
+                existing = set(top_theme.get("tickers") or [])
+                extra = set(t.get("tickers") or [])
+                top_theme["tickers"] = list(existing | extra)
+                logger.info(
+                    f"Theme merge (sector cap): '{t['name']}' → '{top_theme['name']}' "
+                    f"(sector group '{group}', {len(extra)} tickers absorbed)"
+                )
+            # else: just drop it (shouldn't happen)
+
+    return final
 
 
 async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
