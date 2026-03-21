@@ -35,6 +35,8 @@ from agents.market_intelligence.db import (
     seed_theme,
     upsert_ticker_override,
     get_ticker_overrides,
+    get_rs_history,
+    get_theme_history,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
 from agents.market_intelligence.ep_detector import run_ep_scan
@@ -260,6 +262,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
             return await self._handle_pullback_query(request)
+
+        if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
+            return await self._handle_history_query(request)
 
         if any(k in task for k in ["score ", "rs score", "rs for", "rank "]):
             return await self._handle_single_score(request)
@@ -520,6 +525,117 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  {t['description'][:200]}")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
+
+    async def _handle_history_query(self, request: AgentRequest) -> AgentResponse:
+        """Handle historical RS and theme queries — 'when did metals peak?', 'RS history CIEN'."""
+        import re
+        from datetime import timedelta
+
+        task = request.task
+        context = request.context or {}
+        today = date.today()
+
+        # Extract tickers from task text
+        tickers = re.findall(r'\b([A-Z]{2,5})\b', task.upper())
+        skip_words = {
+            "RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW", "WHEN",
+            "DID", "WAS", "SHOW", "HOW", "HAS", "THEME", "HISTORY", "OVER",
+            "TIME", "PEAK", "FADE", "LAST", "MONTHS", "WEEKS",
+        }
+        tickers = [t for t in tickers if t not in skip_words]
+
+        # Extract date range from context or default to 90 days
+        from_date = context.get("from_date") or (today - timedelta(days=90)).isoformat()
+        to_date = context.get("to_date") or today.isoformat()
+
+        # Detect if this is a theme history query
+        theme_keywords = [
+            "theme", "sector", "metal", "miner", "oil", "gas", "optical",
+            "memory", "biotech", "solar", "nuclear", "defense", "crypto",
+            "semiconductor", "ai ", "gold",
+        ]
+        is_theme_query = any(kw in task.lower() for kw in theme_keywords)
+        # Also check context
+        theme_name = context.get("theme_name") or ""
+
+        # Try to extract theme name from the task if no explicit tickers
+        if is_theme_query and not theme_name:
+            # Use a simple heuristic: everything between quotes or key phrases
+            quoted = re.findall(r'"([^"]+)"', task)
+            if quoted:
+                theme_name = quoted[0]
+            else:
+                # Extract likely theme words from the query
+                for kw in ["metals", "miners", "mining", "gold", "oil", "gas",
+                           "optical", "memory", "semiconductor", "solar",
+                           "nuclear", "defense", "crypto", "ai memory",
+                           "photonics", "satellite", "energy"]:
+                    if kw in task.lower():
+                        theme_name = kw
+                        break
+
+        lines: list[str] = []
+
+        # Theme history
+        if theme_name or (is_theme_query and not tickers):
+            search = theme_name or "theme"
+            history = await get_theme_history(search, from_date, to_date)
+
+            if not history:
+                return self._ok(request, result=f"No theme history found matching '{search}'. Theme data is retained for 60 days.")
+
+            # Group by theme name (ILIKE may match multiple)
+            from collections import defaultdict
+            by_name: dict[str, list[dict]] = defaultdict(list)
+            for h in history:
+                by_name[h["name"]].append(h)
+
+            for name, snapshots in by_name.items():
+                lines.append(f"*{name}* — {len(snapshots)} snapshots")
+
+                # Find peak score and stage transitions
+                peak = max(snapshots, key=lambda s: s["score"] or 0)
+                lines.append(f"  Peak: score {peak['score']:.0f} on {peak['date']} ({peak['stage']})")
+
+                # Show stage transitions
+                prev_stage = None
+                transitions = []
+                for s in snapshots:
+                    if s["stage"] != prev_stage:
+                        transitions.append(f"  {s['date']}: → {s['stage']} (score {s['score']:.0f})")
+                        prev_stage = s["stage"]
+                lines.append("  Stage transitions:")
+                lines.extend(transitions[-10:])  # last 10 transitions
+
+                # Show tickers at peak
+                if peak.get("tickers"):
+                    lines.append(f"  Tickers at peak: {', '.join(peak['tickers'][:10])}")
+                lines.append("")
+
+            return self._ok(request, result="\n".join(lines), data={"theme_history": history})
+
+        # RS history for specific tickers
+        if tickers:
+            history = await get_rs_history(tickers[:10], from_date, to_date, interval="weekly")
+
+            if not history:
+                return self._ok(request, result=f"No RS history found for {', '.join(tickers)}. RS data is retained for 90 days.")
+
+            for tk, snapshots in history.items():
+                lines.append(f"*{tk}* — {len(snapshots)} weeks")
+                for s in snapshots:
+                    lines.append(
+                        f"  {s['date']}  RS {s['rs_composite']:3.0f}  "
+                        f"(1M {s['rs_1m']:2.0f} | 3M {s['rs_3m']:2.0f} | 6M {s['rs_6m']:2.0f})  "
+                        f"${s['close']:.2f}" if s['close'] else
+                        f"  {s['date']}  RS {s['rs_composite']:3.0f}  "
+                        f"(1M {s['rs_1m']:2.0f} | 3M {s['rs_3m']:2.0f} | 6M {s['rs_6m']:2.0f})"
+                    )
+                lines.append("")
+
+            return self._ok(request, result="\n".join(lines), data={"rs_history": history})
+
+        return self._ok(request, result="Please specify tickers (e.g. 'RS history CIEN LITE') or a theme name (e.g. 'when did metals theme peak?').")
 
     async def _handle_single_score(self, request: AgentRequest) -> AgentResponse:
         """Score a single ticker on demand against today's distribution."""

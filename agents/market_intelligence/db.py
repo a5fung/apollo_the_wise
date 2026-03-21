@@ -443,6 +443,98 @@ async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:
         return {r["name"]: r["score"] for r in rows}
 
 
+async def get_rs_history(
+    tickers: list[str],
+    from_date: "str | date",
+    to_date: "str | date",
+    interval: str = "weekly",
+) -> dict[str, list[dict[str, Any]]]:
+    """
+    Return RS time series for given tickers over a date range.
+
+    interval: 'daily' or 'weekly' (weekly = one row per ticker per week, using latest available date)
+    Returns: {ticker: [{date, rs_composite, rs_1m, rs_3m, rs_6m, close}, ...]}
+    """
+    pool = await get_pool()
+    fd, td = _to_date(from_date), _to_date(to_date)
+    tickers_upper = [t.upper() for t in tickers]
+    async with pool.acquire() as conn:
+        if interval == "weekly":
+            # Pick one row per week per ticker (latest score_date in each ISO week)
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (ticker, date_trunc('week', score_date))
+                    ticker, score_date, rs_composite, rs_1m, rs_3m, rs_6m, close
+                FROM mi_stock_scores
+                WHERE ticker = ANY($1)
+                  AND score_date >= $2
+                  AND score_date <= $3
+                ORDER BY ticker, date_trunc('week', score_date), score_date DESC
+            """, tickers_upper, fd, td)
+        else:
+            rows = await conn.fetch("""
+                SELECT ticker, score_date, rs_composite, rs_1m, rs_3m, rs_6m, close
+                FROM mi_stock_scores
+                WHERE ticker = ANY($1)
+                  AND score_date >= $2
+                  AND score_date <= $3
+                ORDER BY ticker, score_date
+            """, tickers_upper, fd, td)
+
+    result: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        tk = r["ticker"]
+        if tk not in result:
+            result[tk] = []
+        result[tk].append({
+            "date": r["score_date"].isoformat(),
+            "rs_composite": r["rs_composite"],
+            "rs_1m": r["rs_1m"],
+            "rs_3m": r["rs_3m"],
+            "rs_6m": r["rs_6m"],
+            "close": r["close"],
+        })
+    return result
+
+
+async def get_theme_history(
+    theme_name: str,
+    from_date: "str | date | None" = None,
+    to_date: "str | date | None" = None,
+) -> list[dict[str, Any]]:
+    """
+    Return all daily snapshots for a theme across a date range.
+    If from_date is None, returns all available history.
+    Matches theme name case-insensitively (ILIKE).
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if from_date and to_date:
+            rows = await conn.fetch("""
+                SELECT theme_date, name, stage, score, description, tickers
+                FROM mi_themes
+                WHERE name ILIKE $1
+                  AND theme_date >= $2
+                  AND theme_date <= $3
+                ORDER BY theme_date
+            """, f"%{theme_name}%", _to_date(from_date), _to_date(to_date))
+        else:
+            rows = await conn.fetch("""
+                SELECT theme_date, name, stage, score, description, tickers
+                FROM mi_themes
+                WHERE name ILIKE $1
+                ORDER BY theme_date
+            """, f"%{theme_name}%")
+
+    return [{
+        "date": r["theme_date"].isoformat(),
+        "name": r["name"],
+        "stage": r["stage"],
+        "score": r["score"],
+        "description": r["description"],
+        "tickers": r["tickers"],
+    } for r in rows]
+
+
 async def get_rs_velocity(
     d: "str | date",
     min_rs: float = 40.0,

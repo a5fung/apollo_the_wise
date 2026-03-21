@@ -252,9 +252,13 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
                 "It has live data: RS leaders (momentum rankings), EP alerts (gap-up stocks with "
                 "game-changing catalysts), market regime (bull/choppy/correcting/crisis), and "
                 "active themes (what sectors the market is rotating into right now). "
+                "It also has HISTORICAL data: RS history for any ticker over time (weekly snapshots, "
+                "90-day retention), theme history with stage transitions and peak scores (60-day retention). "
                 "Use for: stock picks or ideas, dividend stock questions, sector analysis, "
                 "EP/gap-up alerts, market conditions, top momentum stocks, morning briefing, "
-                "theme health, 'what's the market doing?', 'any good setups?'. "
+                "theme health, 'what's the market doing?', 'any good setups?', "
+                "'when did X theme peak?', 'RS history for CIEN', 'how has gold miners theme evolved?'. "
+                "For history queries, pass from_date/to_date and optional theme_name in the context object. "
                 "Ground every investment answer in this live data."
             ),
             "input_schema": {
