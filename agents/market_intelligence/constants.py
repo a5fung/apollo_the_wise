@@ -1,5 +1,13 @@
 """Shared constants and helpers for the Market Intelligence agent."""
 
+REGIME_EMOJI = {
+    "Bull": "🟢",
+    "Choppy": "🟡",
+    "Correcting": "🔴",
+    "Crisis": "🚨",
+    "Unknown": "⚫",
+}
+
 # Sectors excluded from RS leaders unless stock price >= SECTOR_FILTER_MIN_PRICE.
 # Small-cap biotech/pharma spike on drug trials — noise, not institutional accumulation.
 SECTOR_FILTER_SECTORS = frozenset({

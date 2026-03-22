@@ -7,15 +7,16 @@ Free tier: 280 char limit per tweet. Uses OAuth 1.0a via tweepy.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
 import os
 from datetime import date
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from agents.market_intelligence.constants import REGIME_EMOJI
 
-_REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨"}
+logger = logging.getLogger(__name__)
 _MAX_STOCKS = 10
 _CHAR_LIMIT = 280
 _ep_last_posted: date | None = None  # track last EP tweet date (1 per day max)
@@ -76,7 +77,7 @@ def format_thread(rs_leaders: list[dict], regime: dict, briefing_date: str) -> l
     from agents.market_intelligence.universe import get_description
 
     label = regime.get("regime", "Unknown")
-    emoji = _REGIME_EMOJI.get(label, "⚫")
+    emoji = REGIME_EMOJI.get(label, "⚫")
     vix = regime.get("vix")
 
     header = f"📊 Momentum Leaders — {briefing_date}\n{emoji} {label}"
@@ -125,7 +126,7 @@ async def post_to_twitter(
         return False
     client, api = result
 
-    try:
+    def _post_thread():
         tweets = format_thread(rs_leaders, regime, briefing_date)
 
         # Upload chart mosaic
@@ -152,6 +153,9 @@ async def post_to_twitter(
 
         logger.info(f"Twitter thread posted: {len(tweets)} tweets")
         return True
+
+    try:
+        return await asyncio.to_thread(_post_thread)
     except Exception as e:
         logger.error(f"Twitter post failed: {e}")
         return False
@@ -170,8 +174,12 @@ async def post_ep_tweet(ep: dict) -> bool:
         return False
     client, _ = result
 
-    try:
+    def _post():
         response = client.create_tweet(text=format_ep_tweet(ep))
+        return response
+
+    try:
+        response = await asyncio.to_thread(_post)
         _ep_last_posted = today
         logger.info(f"EP tweet posted: {response.data.get('id')}")
         return True

@@ -10,7 +10,6 @@ import asyncio
 import io
 import logging
 import os
-from typing import Any
 
 import httpx
 

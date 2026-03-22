@@ -39,18 +39,10 @@ from agents.market_intelligence.db import (
     get_prior_theme_scores,
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
-from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean
+from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI
 from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
-
-REGIME_EMOJI = {
-    "Bull": "🟢",
-    "Choppy": "🟡",
-    "Correcting": "🔴",
-    "Crisis": "🚨",
-    "Unknown": "⚫",
-}
 
 TIER_EMOJI = {
     "HIGH": "🔥",
@@ -260,9 +252,10 @@ def _format_rs_section(
     top = rs_leaders[:20]
     header = f"*{section_num}. RS LEADERS* — Top {len(top)} by RS composite"
 
+    from agents.market_intelligence.universe import get_description
+
     # If we have fundamental flags, use single-column format for readability
     if fund_flags:
-        from agents.market_intelligence.universe import get_description
         rows = []
         for s in top:
             ticker = s["ticker"]
@@ -277,7 +270,6 @@ def _format_rs_section(
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
     # Fallback: single-column with description (no fundamental data cached yet)
-    from agents.market_intelligence.universe import get_description
     rows = []
     for s in top:
         ticker = s["ticker"]
@@ -753,7 +745,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     else:
         logger.error("Failed to send evening briefing")
 
-    # Send RS leaders chart mosaic (non-blocking — briefing text already sent)
+    # Send RS leaders chart mosaic + post to Twitter/X in parallel
     mosaic_bytes = None
     try:
         from agents.market_intelligence.charts import build_chart_mosaic, send_chart_mosaic
@@ -761,16 +753,18 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         if chart_tickers:
             mosaic_bytes, _url = await build_chart_mosaic(chart_tickers)
             if mosaic_bytes:
-                await send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes)
+                from agents.market_intelligence.twitter import post_to_twitter
+                await asyncio.gather(
+                    send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes),
+                    post_to_twitter(rs_leaders, regime, today_str, mosaic_bytes=mosaic_bytes),
+                    return_exceptions=True,
+                )
+            else:
+                # No mosaic — still try Twitter without image
+                from agents.market_intelligence.twitter import post_to_twitter
+                await post_to_twitter(rs_leaders, regime, today_str)
     except Exception as e:
-        logger.warning(f"Chart mosaic failed (non-critical): {e}")
-
-    # Post to Twitter/X (reuse mosaic image)
-    try:
-        from agents.market_intelligence.twitter import post_to_twitter
-        await post_to_twitter(rs_leaders, regime, today_str, mosaic_bytes=mosaic_bytes)
-    except Exception as e:
-        logger.warning(f"Twitter post failed (non-critical): {e}")
+        logger.warning(f"Chart mosaic / Twitter failed (non-critical): {e}")
 
     return text
 

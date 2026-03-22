@@ -15,7 +15,6 @@ Environment:
   GDRIVE_TOKEN_FILE — path to OAuth token JSON (default: ~/gdrive-token.json)
   GDRIVE_FOLDER_ID — Google Drive folder ID to upload into
 """
-import json
 import os
 import sys
 
