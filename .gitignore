@@ -4,6 +4,9 @@
 secrets/
 credentials.json
 token.json
+gdrive-token.json
+gdrive-sa.json
+*-sa.json
 
 # Python
 __pycache__/
