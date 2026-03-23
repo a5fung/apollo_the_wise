@@ -47,7 +47,7 @@ def _format_market_pipeline(status: dict) -> str:
     import pytz
     from datetime import datetime as dt
 
-    REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨", "Unknown": "⚫"}
+    from agents.market_intelligence.constants import REGIME_EMOJI
 
     pt = pytz.timezone("America/Los_Angeles")
 
@@ -672,9 +672,31 @@ class TelegramChannel:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     async def _reply(self, update: Update, text: str) -> None:
-        """Send a reply, falling back to plain text if Markdown fails."""
-        # If text has triple-backtick code blocks, convert to HTML
-        # (Telegram Markdown v1 doesn't support ```)
+        """Send a reply, splitting into chunks if over Telegram's 4096-char limit."""
+        chunks = self._split_message(text)
+        for chunk in chunks:
+            await self._send_chunk(update, chunk)
+
+    def _split_message(self, text: str, limit: int = 4000) -> list[str]:
+        """Split text into chunks at section boundaries (double newline)."""
+        if len(text) <= limit:
+            return [text]
+        chunks: list[str] = []
+        remaining = text
+        while len(remaining) > limit:
+            split_at = remaining.rfind("\n\n", 0, limit)
+            if split_at == -1:
+                split_at = remaining.rfind("\n", 0, limit)
+            if split_at == -1:
+                split_at = limit
+            chunks.append(remaining[:split_at].strip())
+            remaining = remaining[split_at:].strip()
+        if remaining:
+            chunks.append(remaining)
+        return chunks
+
+    async def _send_chunk(self, update: Update, text: str) -> None:
+        """Send a single chunk, falling back to plain text if Markdown fails."""
         if "```" in text:
             html = self._md_to_html(text)
             try:
