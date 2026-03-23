@@ -395,6 +395,28 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
             },
         },
         {
+            "name": "tweet_message",
+            "description": (
+                "Post a tweet to the @Apollo_Trends Twitter/X account. "
+                "Use when the user asks to tweet, share on Twitter, or post something to X. "
+                "The user may say 'tweet that', 'share this on Twitter', or 'post that to X' — "
+                "in that case, condense your previous response into a compelling tweet (max 280 chars). "
+                "If the content is too long for one tweet, it will automatically be split into a thread. "
+                "Include relevant hashtags. Format for maximum engagement — concise, punchy, data-driven. "
+                "Always show the user the draft tweet text before posting and get their confirmation."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "The tweet text to post. Max 280 chars for a single tweet; longer text will be split into a thread.",
+                    },
+                },
+                "required": ["text"],
+            },
+        },
+        {
             "name": "store_memory",
             "description": (
                 "Store an important fact or preference about the user for future reference. "

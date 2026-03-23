@@ -3,6 +3,7 @@ Twitter/X auto-posting for Apollo_Trends.
 
 Posts evening briefing as a 2-tweet thread (header + chart mosaic, reply with more stocks).
 Posts EP alerts as single tweets with Finviz link (max 1 per day).
+Posts user-requested custom tweets (single or thread if >280 chars).
 Free tier: 280 char limit per tweet. Uses OAuth 1.0a via tweepy.
 """
 from __future__ import annotations
@@ -186,3 +187,75 @@ async def post_ep_tweet(ep: dict) -> bool:
     except Exception as e:
         logger.error(f"EP tweet failed: {e}")
         return False
+
+
+async def post_custom_tweet(text: str) -> dict:
+    """
+    Post a user-requested tweet. If text > 280 chars, splits into a thread
+    at sentence boundaries. Returns {"success": bool, "tweet_ids": [...], "error": str?}.
+    """
+    result = _get_client()
+    if not result:
+        return {"success": False, "error": "X API credentials not configured"}
+    client, _ = result
+
+    # Split into thread if needed
+    tweets = _split_into_tweets(text)
+
+    def _post():
+        posted_ids = []
+        parent_id = None
+        for tweet_text in tweets:
+            kwargs = {"text": tweet_text}
+            if parent_id:
+                kwargs["in_reply_to_tweet_id"] = parent_id
+            response = client.create_tweet(**kwargs)
+            tweet_id = response.data.get("id") if response.data else None
+            if tweet_id:
+                posted_ids.append(tweet_id)
+                parent_id = tweet_id
+            else:
+                break
+        return posted_ids
+
+    try:
+        tweet_ids = await asyncio.to_thread(_post)
+        if tweet_ids:
+            logger.info(f"Custom tweet posted: {len(tweet_ids)} tweet(s), ids={tweet_ids}")
+            return {"success": True, "tweet_ids": tweet_ids}
+        return {"success": False, "error": "No tweets were posted"}
+    except Exception as e:
+        logger.error(f"Custom tweet failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def _split_into_tweets(text: str) -> list[str]:
+    """Split text into tweet-sized chunks at sentence boundaries."""
+    if len(text) <= _CHAR_LIMIT:
+        return [text]
+
+    import re
+    tweets = []
+    remaining = text
+
+    while remaining:
+        if len(remaining) <= _CHAR_LIMIT:
+            tweets.append(remaining)
+            break
+
+        # Find last sentence boundary within limit
+        chunk = remaining[:_CHAR_LIMIT]
+        # Try splitting at ". " followed by uppercase, or at newline
+        split_at = None
+        for m in re.finditer(r'[.!?]\s', chunk):
+            split_at = m.end()
+        if split_at is None or split_at < 50:
+            # Fallback: split at last space
+            split_at = chunk.rfind(" ")
+            if split_at == -1:
+                split_at = _CHAR_LIMIT
+
+        tweets.append(remaining[:split_at].strip())
+        remaining = remaining[split_at:].strip()
+
+    return tweets

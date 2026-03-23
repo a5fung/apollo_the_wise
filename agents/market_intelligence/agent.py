@@ -68,6 +68,10 @@ class UpdateStockInfoRequest(BaseModel):
     notes: str = ""
 
 
+class TweetRequest(BaseModel):
+    text: str
+
+
 class ScreenerRequest(BaseModel):
     min_rs: float = 60.0
     min_eps_yoy_pct: float | None = None
@@ -132,6 +136,16 @@ class MarketIntelligenceAgent(BaseAgent):
             """Re-run just the theme engine (uses existing RS data). Fast — no Polygon calls."""
             background.add_task(run_theme_engine)
             return {"status": "theme engine queued"}
+
+        @self.app.post("/tweet")
+        async def post_tweet(
+            body: TweetRequest,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Post a custom tweet to @Apollo_Trends."""
+            from agents.market_intelligence.twitter import post_custom_tweet
+            result = await post_custom_tweet(body.text)
+            return result
 
         @self.app.post("/teach")
         async def teach(

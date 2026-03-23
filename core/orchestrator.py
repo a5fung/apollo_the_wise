@@ -308,6 +308,9 @@ class Apollo:
             "call_market_agent": AgentName.MARKET_INTELLIGENCE,
         }
 
+        if tool_name == "tweet_message":
+            return await self._post_tweet(tool_input)
+
         if tool_name == "run_stock_screener":
             return await self._run_stock_screener(tool_input)
 
@@ -542,6 +545,23 @@ class Apollo:
             f"The theme engine will now use this description for clustering. "
             f"This change is permanent until overridden again."
         )
+
+    async def _post_tweet(self, tool_input: dict[str, Any]) -> str:
+        """Post a custom tweet via the market agent's /tweet endpoint."""
+        text = tool_input.get("text", "")
+        if not text:
+            return "No tweet text provided."
+
+        try:
+            data = await self._call_market_endpoint("/tweet", {"text": text})
+        except Exception as e:
+            return f"Tweet failed: {e}"
+
+        if data.get("success"):
+            tweet_ids = data.get("tweet_ids", [])
+            count = len(tweet_ids)
+            return f"Tweet posted successfully ({count} tweet{'s' if count > 1 else ''}). https://x.com/Apollo_Trends/status/{tweet_ids[0]}"
+        return f"Tweet failed: {data.get('error', 'unknown error')}"
 
     async def _store_memory(
         self,
