@@ -266,12 +266,13 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["ep", "episodic", "gap", "pivot", "gapper"]):
             return await self._handle_ep_query(request)
 
-        if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
-            return await self._handle_regime_query(request)
-
-        # Theme must be checked before RS — "top themes by RS strength" should route to themes, not RS leaders
+        # Theme must be checked before regime and RS — "top themes by RS strength" or
+        # "regime and active themes" should route to themes (the more specific intent)
         if any(k in task for k in ["theme", "sector", "industry"]):
             return await self._handle_theme_query(request)
+
+        if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
+            return await self._handle_regime_query(request)
 
         if any(k in task for k in ["rs", "relative strength", "leader", "momentum", "top stock"]):
             return await self._handle_rs_query(request)
@@ -530,6 +531,11 @@ class MarketIntelligenceAgent(BaseAgent):
                 result="No theme data yet — themes are generated during the nightly data pull (6 AM ET) or via /data/refresh.",
             )
 
+        # Show the actual data date (may differ from today on weekends)
+        data_date = themes[0].get("theme_date", today_str)
+        if hasattr(data_date, "isoformat"):
+            data_date = data_date.isoformat()
+
         # Separate active from fading, sort by score descending
         active = sorted(
             [t for t in themes if t.get("stage") != "Fading"],
@@ -537,8 +543,14 @@ class MarketIntelligenceAgent(BaseAgent):
         )
         fading = [t for t in themes if t.get("stage") == "Fading"]
 
+        # Include regime context so Claude doesn't need a separate call
+        regime = await get_current_regime()
+        regime_line = ""
+        if regime:
+            regime_line = f"\nMarket regime: {regime.get('regime', 'Unknown')} | VIX {regime.get('vix', '?')}\n"
+
         from agents.market_intelligence.briefing import STAGE_EMOJI as stage_emoji
-        lines = [f"Active themes ({today_str}) — ranked by score:"]
+        lines = [f"Active themes (data from {data_date}) — ranked by score:{regime_line}"]
         for rank, t in enumerate(active, 1):
             emoji = stage_emoji.get(t.get("stage", ""), "")
             tickers = ", ".join(t.get("tickers") or [])
