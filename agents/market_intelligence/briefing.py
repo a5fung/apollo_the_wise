@@ -987,32 +987,52 @@ def _format_morning_briefing(
     return "\n".join(sections)
 
 
+# Cache Perplexity-sourced content per day to avoid non-deterministic re-rolls
+_perplexity_cache: dict[str, dict] = {}  # {date_str: {"overnight_news": str, "econ_calendar": str}}
+
+
 async def send_morning_briefing(chat_id: int | None = None) -> str:
     """
     Assemble and send the morning briefing.
     Includes overnight market moves + headline news, EP alerts, regime context.
+    Perplexity-sourced content (overnight news, calendar) is cached per day.
     """
     today = date.today()
     today_str = today.strftime("%Y-%m-%d")
+    cache = _perplexity_cache.get(today_str, {})
 
-    regime, ep_alerts, futures, themes, watchlist, econ_calendar, warnings = await asyncio.gather(
+    regime, ep_alerts, futures, themes, watchlist, warnings = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
         get_today_themes(today_str),
         get_overnight_watchlist(),
-        _get_economic_calendar(),
         get_quality_warnings(today),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+
+    # Economic calendar — use cache if available
+    if "econ_calendar" in cache:
+        econ_calendar = cache["econ_calendar"]
+    else:
+        econ_calendar = await _get_economic_calendar()
+        cache["econ_calendar"] = econ_calendar
 
     # Fetch overnight snapshot from watchlist instruments
     overnight_section = None
     if watchlist:
         snapshot = await get_overnight_snapshot(watchlist)
         if snapshot:
-            news = await _get_overnight_news(snapshot)
+            if "overnight_news" in cache:
+                news = cache["overnight_news"]
+            else:
+                news = await _get_overnight_news(snapshot)
+                cache["overnight_news"] = news
             overnight_section = _format_overnight_section(snapshot, news)
+
+    # Store cache for this day
+    _perplexity_cache.clear()
+    _perplexity_cache[today_str] = cache
 
     text = _format_morning_briefing(
         regime=regime,
