@@ -3,7 +3,7 @@ APScheduler jobs for Market Intelligence Agent.
 
 Schedule (US Eastern Time / Pacific Time):
 - 4:30 PM ET (1:30 PM PT): Nightly data pull — RS engine + market regime + themes
-- 8:00 PM ET (5:00 PM PT): Evening briefing — regime + RS leaders + themes + MA pullbacks
+- 6:00 PM ET (3:00 PM PT): Evening briefing — regime + RS leaders + themes + MA pullbacks
 - 7:00 AM – 10:00 AM ET (4:00 – 7:00 AM PT): EP scan every 5 minutes; HIGH alerts sent immediately
 - 9:00 AM ET (6:00 AM PT): Morning briefing — EP recap + regime context (30 min before open)
 - 10:00 AM ET (7:00 AM PT): Stop EP scanning
@@ -251,8 +251,8 @@ async def check_missed_jobs() -> None:
 
     Catch-up windows (ET):
     - Morning briefing:  09:00 – 12:00  (fires if missed and we start in that window)
-    - Nightly data pull: 16:30 – 20:00  (fires if missed and we start in that window)
-    - Evening briefing:  20:00 – 23:59  (fires if missed and we start in that window)
+    - Nightly data pull: 16:30 – 18:00  (fires if missed and we start in that window)
+    - Evening briefing:  18:00 – 23:59  (fires if missed and we start in that window)
 
     Each job is only caught up once per day (guarded by mi_job_log).
     Weekdays only.
@@ -272,14 +272,14 @@ async def check_missed_jobs() -> None:
             await send_telegram_message("_(Missed briefing — sending now)_")
             await _morning_briefing_job()
 
-    # Nightly data pull: 4:30 PM – 8 PM ET
-    if (hour == 16 and now.minute >= 30) or (17 <= hour < 20):
+    # Nightly data pull: 4:30 PM – 6 PM ET
+    if (hour == 16 and now.minute >= 30) or (hour == 17):
         if not await job_ran_today(JOB_NIGHTLY_DATA_PULL):
             logger.info("Catch-up: running missed nightly data pull")
             await _nightly_data_pull()
 
-    # Evening briefing: 8 PM – midnight ET
-    if 20 <= hour < 24:
+    # Evening briefing: 6 PM – midnight ET
+    if 18 <= hour < 24:
         # Check both jobs concurrently before deciding what to run
         data_ran, brief_ran = await asyncio.gather(
             job_ran_today(JOB_NIGHTLY_DATA_PULL),
@@ -306,10 +306,10 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Evening briefing: 8:00 PM ET (5:00 PM PT), Mon-Fri
+    # Evening briefing: 6:00 PM ET (3:00 PM PT), Mon-Fri
     _scheduler.add_job(
         _evening_briefing_job,
-        CronTrigger(hour=20, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=18, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_EVENING_BRIEFING,
         replace_existing=True,
     )
