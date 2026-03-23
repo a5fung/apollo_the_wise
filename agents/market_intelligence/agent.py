@@ -30,6 +30,7 @@ from agents.market_intelligence.db import (
     get_rs_leaders,
     get_latest_regime,
     get_ma_pullbacks,
+    get_rs_for_tickers,
     get_ticker_extension_data,
     bulk_track_stocks,
     seed_theme,
@@ -269,6 +270,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # Theme must be checked before regime and RS — "top themes by RS strength" or
         # "regime and active themes" should route to themes (the more specific intent)
         if any(k in task for k in ["theme", "sector", "industry"]):
+            logger.info(f"Routing to theme handler: {task[:80]}")
             return await self._handle_theme_query(request)
 
         if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
@@ -536,12 +538,27 @@ class MarketIntelligenceAgent(BaseAgent):
         if hasattr(data_date, "isoformat"):
             data_date = data_date.isoformat()
 
-        # Separate active from fading, sort by score descending
-        active = sorted(
-            [t for t in themes if t.get("stage") != "Fading"],
-            key=lambda t: -(t.get("score") or 0),
-        )
-        fading = [t for t in themes if t.get("stage") == "Fading"]
+        # Get RS data for all theme constituents (same ranking as briefing)
+        all_tickers = list({tk for t in themes for tk in (t.get("tickers") or [])})
+        rs_data = await get_rs_for_tickers(data_date, all_tickers)
+
+        from agents.market_intelligence.constants import trimmed_mean
+
+        # Compute composite RS per theme (same method as briefing scorecard)
+        active_with_rs = []
+        fading = []
+        for t in themes:
+            if t.get("stage") == "Fading":
+                fading.append(t)
+                continue
+            tickers = t.get("tickers") or []
+            comps = [rs_data[tk]["rs_composite"] for tk in tickers
+                     if tk in rs_data and rs_data[tk].get("rs_composite") is not None]
+            comp_rs = trimmed_mean(comps) if comps else 0
+            active_with_rs.append((t, comp_rs))
+
+        # Sort by composite RS descending (matches briefing ranking)
+        active_with_rs.sort(key=lambda x: -x[1])
 
         # Include regime context so Claude doesn't need a separate call
         regime = await get_current_regime()
@@ -550,12 +567,21 @@ class MarketIntelligenceAgent(BaseAgent):
             regime_line = f"\nMarket regime: {regime.get('regime', 'Unknown')} | VIX {regime.get('vix', '?')}\n"
 
         from agents.market_intelligence.briefing import STAGE_EMOJI as stage_emoji
-        lines = [f"Active themes (data from {data_date}) — ranked by score:{regime_line}"]
-        for rank, t in enumerate(active, 1):
+        lines = [f"Active themes (data from {data_date}) — ranked by composite RS:{regime_line}"]
+        for rank, (t, comp_rs) in enumerate(active_with_rs, 1):
             emoji = stage_emoji.get(t.get("stage", ""), "")
-            tickers = ", ".join(t.get("tickers") or [])
-            lines.append(f"\n#{rank} {emoji} *{t['name']}* — {t.get('stage')} (score {t.get('score', 0):.0f})")
-            lines.append(f"  Stocks: {tickers}")
+            tickers = t.get("tickers") or []
+            # Show per-stock RS inline
+            ticker_parts = []
+            for tk in tickers:
+                rs = rs_data.get(tk)
+                if rs and rs.get("rs_composite") is not None:
+                    ticker_parts.append(f"{tk} {rs['rs_composite']:.0f}")
+                else:
+                    ticker_parts.append(tk)
+            ticker_str = ", ".join(ticker_parts)
+            lines.append(f"\n#{rank} {emoji} *{t['name']}* — {t.get('stage')} (RS {comp_rs:.0f})")
+            lines.append(f"  Stocks: {ticker_str}")
             if t.get("description"):
                 lines.append(f"  {t['description'][:200]}")
 
