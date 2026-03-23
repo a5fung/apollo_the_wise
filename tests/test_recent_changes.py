@@ -317,9 +317,9 @@ class TestPurgeOldData:
         with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
             asyncio.run(db_module.purge_old_data())
 
-        assert captured["ep_alerts"] == today - timedelta(days=30)
-        assert captured["stock_scores"] == today - timedelta(days=90)
-        assert captured["themes"] == today - timedelta(days=60)
+        assert captured["ep_alerts"] == today - timedelta(days=90)
+        assert captured["stock_scores"] == today - timedelta(days=365)
+        assert captured["themes"] == today - timedelta(days=365)
 
     def test_weekly_cleanup_job_registered(self):
         """Scheduler should register a weekly_cleanup job."""
@@ -373,7 +373,7 @@ class TestScoreEpVolConviction:
             profile=self._base_profile(), analyst_upgrades=0,
             regime_multiplier=1.0, vol_percentile=50.0,
         )
-        assert bd_high["vol_conviction"] == 10
+        assert bd_high["vol_conviction"] == 5
         assert bd_low["vol_conviction"] == 0
         assert score_high > score_low
 
@@ -384,7 +384,7 @@ class TestScoreEpVolConviction:
             profile=self._base_profile(), analyst_upgrades=0,
             regime_multiplier=1.0, vol_percentile=75.0,
         )
-        assert breakdown["vol_conviction"] == 5
+        assert breakdown["vol_conviction"] == 3
 
     def test_low_vol_percentile_adds_0pts(self):
         from agents.market_intelligence.ep_detector import _score_ep
@@ -485,22 +485,29 @@ class TestThemeDiscoveryStructuredOutput:
         response.content = [block]
         return response
 
+    _STOCKS = [
+        {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
+        {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
+        {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
+    ]
+    _STOCKS_BY_TICKER = {s["ticker"]: s for s in _STOCKS}
+
     def test_uses_tool_choice(self):
         from agents.market_intelligence import theme_engine
         calls = []
 
-        def mock_create(**kwargs):
+        async def mock_create(**kwargs):
             calls.append(kwargs)
             return self._make_tool_response([])
 
-        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+        mock_client = MagicMock()
+        mock_client.messages.create = mock_create
+
+        with patch("anthropic.AsyncAnthropic", return_value=mock_client):
             asyncio.run(theme_engine._discover_new_themes(
-                uncovered_stocks=[
-                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
-                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
-                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
-                ],
+                uncovered_stocks=self._STOCKS,
                 existing_themes=[],
+                stocks_by_ticker=self._STOCKS_BY_TICKER,
             ))
 
         assert calls
@@ -510,17 +517,17 @@ class TestThemeDiscoveryStructuredOutput:
         from agents.market_intelligence import theme_engine
         expected = [{"name": "Edge AI", "thesis": "AI chips.", "tickers": ["A", "B"]}]
 
-        def mock_create(**kwargs):
+        async def mock_create(**kwargs):
             return self._make_tool_response(expected)
 
-        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+        mock_client = MagicMock()
+        mock_client.messages.create = mock_create
+
+        with patch("anthropic.AsyncAnthropic", return_value=mock_client):
             result = asyncio.run(theme_engine._discover_new_themes(
-                uncovered_stocks=[
-                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
-                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
-                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
-                ],
+                uncovered_stocks=self._STOCKS,
                 existing_themes=[],
+                stocks_by_ticker=self._STOCKS_BY_TICKER,
             ))
 
         assert result == expected
@@ -528,17 +535,17 @@ class TestThemeDiscoveryStructuredOutput:
     def test_returns_empty_list_on_exception(self):
         from agents.market_intelligence import theme_engine
 
-        def mock_create(**kwargs):
+        async def mock_create(**kwargs):
             raise RuntimeError("API error")
 
-        with patch("anthropic.Anthropic", return_value=MagicMock(messages=MagicMock(create=mock_create))):
+        mock_client = MagicMock()
+        mock_client.messages.create = mock_create
+
+        with patch("anthropic.AsyncAnthropic", return_value=mock_client):
             result = asyncio.run(theme_engine._discover_new_themes(
-                uncovered_stocks=[
-                    {"ticker": "A", "rs_composite": 80, "rs_rank": 1, "sector": "Tech"},
-                    {"ticker": "B", "rs_composite": 75, "rs_rank": 2, "sector": "Tech"},
-                    {"ticker": "C", "rs_composite": 70, "rs_rank": 3, "sector": "Tech"},
-                ],
+                uncovered_stocks=self._STOCKS,
                 existing_themes=[],
+                stocks_by_ticker=self._STOCKS_BY_TICKER,
             ))
 
         assert result == []

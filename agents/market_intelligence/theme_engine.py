@@ -26,7 +26,7 @@ from typing import Any
 import anthropic
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity
-from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners
+from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners, get_recent_rs_batch
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,11 @@ THEME_COVERAGE_MIN = 3
 FADING_RETIRE_AFTER = 5
 # Min uncovered RS leaders needed to attempt new theme discovery
 NEW_THEME_MIN_STOCKS = 2
+
+# Pruning thresholds — remove weak stocks from themes
+PRUNE_RS_HARD = 25.0     # RS below this → prune after 1 day (crash/scandal)
+PRUNE_RS_SOFT = 35.0     # RS below this → prune after 3 consecutive days (slow decay)
+PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -167,13 +172,59 @@ async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
     today: date,
-) -> dict | None:
+) -> tuple[dict | None, list[dict]]:
     """
     Re-score an existing theme using today's RS data.
-    Returns None if the theme should be retired.
+    Returns (theme_or_None, changelog_entries). None means retired.
     """
     name = theme["name"]
     tickers = list(theme.get("tickers") or [])
+    changelog: list[dict] = []
+
+    # --- Pruning: remove weak stocks before scoring ---
+    prune_candidates: list[tuple[str, float, str]] = []  # (ticker, rs, reason)
+    soft_check_tickers: list[str] = []
+
+    for tk in tickers:
+        stock = stocks_by_ticker.get(tk)
+        if not stock:
+            continue  # no RS data → keep
+        rs_now = stock.get("rs_composite")
+        if rs_now is None:
+            continue  # missing RS → keep
+        if rs_now < PRUNE_RS_HARD:
+            prune_candidates.append((tk, rs_now, f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} (hard)"))
+        elif rs_now < PRUNE_RS_SOFT:
+            soft_check_tickers.append(tk)
+
+    # Soft prune: check 3-day history
+    if soft_check_tickers:
+        rs_history = await get_recent_rs_batch(soft_check_tickers, today, days=3)
+        for tk in soft_check_tickers:
+            hist = rs_history.get(tk, [])
+            if len(hist) >= 3 and all(v < PRUNE_RS_SOFT for v in hist):
+                rs_now = hist[0]
+                prune_candidates.append((tk, rs_now, f"RS below {PRUNE_RS_SOFT:.0f} for 3 consecutive days"))
+
+    # Enforce minimum ticker count
+    if prune_candidates:
+        remaining_count = len(tickers) - len(prune_candidates)
+        if remaining_count < PRUNE_MIN_TICKERS:
+            # Sort by RS descending to keep the least-bad ones
+            prune_candidates.sort(key=lambda x: x[1], reverse=True)
+            keep_count = PRUNE_MIN_TICKERS - remaining_count
+            kept_back = prune_candidates[:keep_count]
+            prune_candidates = prune_candidates[keep_count:]
+            if kept_back:
+                logger.info(f"Theme '{name}': kept {[k[0] for k in kept_back]} to maintain min {PRUNE_MIN_TICKERS} tickers")
+
+    # Apply pruning
+    pruned_tickers = {p[0] for p in prune_candidates}
+    if pruned_tickers:
+        tickers = [t for t in tickers if t not in pruned_tickers]
+        for tk, rs, reason in prune_candidates:
+            changelog.append({"type": "ticker_pruned", "theme": name, "ticker": tk, "rs": rs, "reason": reason})
+            logger.info(f"Theme '{name}': pruned {tk} — {reason}")
 
     # Check how many constituent stocks still show strong RS today
     strong_stocks = [t for t in tickers if t in stocks_by_ticker
@@ -189,7 +240,7 @@ async def _rescore_existing_theme(
         fading_days = await _count_consecutive_fading(name)
         if fading_days >= FADING_RETIRE_AFTER:
             logger.info(f"Theme '{name}' retired after {fading_days} fading days")
-            return None  # retire it
+            return None, changelog  # retire it
 
         return {
             "theme_date": today,
@@ -198,7 +249,7 @@ async def _rescore_existing_theme(
             "score": max(0.0, (theme.get("score") or 0) * 0.8),
             "description": existing_desc,
             "tickers": tickers,
-        }
+        }, changelog
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
     from agents.market_intelligence.constants import trimmed_mean
@@ -255,7 +306,144 @@ async def _rescore_existing_theme(
         "score": total_score,
         "description": description,
         "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
-    }
+    }, changelog
+
+
+_THEME_ASSIGNMENT_TOOL = {
+    "name": "assign_stocks_to_themes",
+    "description": "Assign uncovered RS leader stocks to existing themes where they clearly fit.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "assignments": {
+                "type": "array",
+                "description": "List of stock-to-theme assignments. Empty array if nothing fits.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {"type": "string"},
+                        "theme": {"type": "string", "description": "Exact existing theme name"},
+                        "rationale": {"type": "string", "description": "One sentence why this stock fits"},
+                    },
+                    "required": ["ticker", "theme", "rationale"],
+                },
+            }
+        },
+        "required": ["assignments"],
+    },
+}
+
+
+async def _assign_uncovered_to_themes(
+    uncovered_stocks: list[dict],
+    existing_themes: list[dict],
+    stocks_by_ticker: dict[str, dict],
+) -> tuple[list[dict], list[dict]]:
+    """
+    Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
+    Returns (remaining_uncovered, changelog_entries).
+    """
+    if not uncovered_stocks or not existing_themes:
+        return uncovered_stocks, []
+
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+    stock_lines = []
+    for s in uncovered_stocks:
+        ticker = s["ticker"]
+        desc = TICKER_DESC.get(ticker, "")
+        desc_part = f" — {desc}" if desc else ""
+        stock_lines.append(
+            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')}{desc_part})"
+        )
+
+    theme_lines = []
+    for t in existing_themes:
+        if t.get("stage") == "Fading":
+            stage_note = " [Fading]"
+        else:
+            stage_note = ""
+        theme_lines.append(
+            f"- {t['name']}{stage_note}: {', '.join(t.get('tickers') or [])} — {t.get('description', '')[:120]}"
+        )
+
+    prompt = f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
+
+EXISTING THEMES:
+{chr(10).join(theme_lines)}
+
+UNCOVERED STOCKS (RS >= 50, not in any active theme):
+{chr(10).join(stock_lines)}
+
+Rules:
+- Only assign if the stock's business CLEARLY matches the theme's thesis
+- When in doubt, do NOT assign — the stock will get a chance to form its own theme
+- Pick the most specific theme if multiple could fit
+- Return empty array if nothing fits — that is the correct answer
+- Use the EXACT theme name from the list above"""
+
+    try:
+        response = await client.messages.create(
+            model=THEME_MODEL,
+            max_tokens=1000,
+            tools=[_THEME_ASSIGNMENT_TOOL],
+            tool_choice={"type": "tool", "name": "assign_stocks_to_themes"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+        tool_block = next(b for b in response.content if b.type == "tool_use")
+        assignments = tool_block.input.get("assignments", [])
+    except Exception as e:
+        logger.error(f"Claude theme assignment failed: {e}")
+        return uncovered_stocks, []
+
+    # Validate and apply assignments
+    theme_by_name = {t["name"]: t for t in existing_themes}
+    assigned_tickers: set[str] = set()
+    changelog: list[dict] = []
+
+    for a in assignments:
+        ticker = a.get("ticker", "")
+        theme_name = a.get("theme", "")
+        rationale = a.get("rationale", "")
+
+        # Validate theme exists
+        theme = theme_by_name.get(theme_name)
+        if not theme:
+            logger.warning(f"Assignment skipped: theme '{theme_name}' not found")
+            continue
+
+        # Validate ticker is in uncovered pool
+        if ticker not in {s["ticker"] for s in uncovered_stocks}:
+            continue
+
+        # Sector outlier check: reject if stock's sector is singleton in theme
+        stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
+        if stock_sector and stock_sector != "Unknown":
+            theme_tickers = theme.get("tickers") or []
+            theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
+            known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
+            if known_sectors and stock_sector not in known_sectors:
+                logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
+                continue
+
+        # Apply assignment
+        if "tickers" not in theme:
+            theme["tickers"] = []
+        if ticker not in theme["tickers"]:
+            theme["tickers"].append(ticker)
+        assigned_tickers.add(ticker)
+        changelog.append({
+            "type": "ticker_assigned",
+            "theme": theme_name,
+            "ticker": ticker,
+            "rationale": rationale,
+        })
+        logger.info(f"Assigned {ticker} → '{theme_name}': {rationale}")
+
+    remaining = [s for s in uncovered_stocks if s["ticker"] not in assigned_tickers]
+    return remaining, changelog
 
 
 _THEME_DISCOVERY_TOOL = {
@@ -600,15 +788,19 @@ def _merge_overlapping_themes(
     return final
 
 
-async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
+async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], list[dict]]:
     """
     Run the full theme update cycle:
-    1. Re-score existing active themes
-    2. Discover new themes from uncovered RS leaders
-    3. Persist results
+    1. Re-score existing active themes (with pruning)
+    2. Assign uncovered stocks to existing themes
+    3. Discover new themes from remaining uncovered RS leaders
+    4. Persist results
+
+    Returns (themes, changelog) where changelog tracks all membership changes.
     """
     today = trade_date or date.today()
     today_str = today.strftime("%Y-%m-%d")
+    changelog: list[dict] = []
 
     logger.info("Theme engine: fetching top RS stocks + velocity + turners...")
     leaders, velocity_all, turners_all = await asyncio.gather(
@@ -619,7 +811,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
 
     if not leaders:
         logger.warning("Theme engine: no RS data — run RS engine first")
-        return []
+        return [], []
 
     # Enrich with sector data (concurrent, rate-limited by semaphore)
     logger.info(f"Theme engine: enriching {len(leaders)} stocks with sector data...")
@@ -666,11 +858,24 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
 
     updated_themes: list[dict] = []
     covered_tickers: set[str] = set()
-    for result in rescore_results:
-        if result is not None:
-            updated_themes.append(result)
-            if result["stage"] != "Fading":
-                covered_tickers.update(result.get("tickers") or [])
+    for theme_result, prune_log in rescore_results:
+        changelog.extend(prune_log)
+        if theme_result is not None:
+            updated_themes.append(theme_result)
+            if theme_result["stage"] != "Fading":
+                covered_tickers.update(theme_result.get("tickers") or [])
+
+    # Log retirements
+    existing_names = {t["name"] for t in existing}
+    updated_names = {t["name"] for t in updated_themes}
+    for name in existing_names - updated_names:
+        orig = next((t for t in existing if t["name"] == name), None)
+        if orig:
+            changelog.append({
+                "type": "theme_retired",
+                "theme": name,
+                "tickers": list(orig.get("tickers") or []),
+            })
 
     # --- Step 2: Find uncovered RS leaders + elite covered for sub-theme splits ---
 
@@ -718,6 +923,14 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
                 "sector": s.get("sector", "Unknown"),
             })
 
+    # --- Step 2b: Assign uncovered stocks to existing themes ---
+    if uncovered and updated_themes:
+        uncovered, assign_log = await _assign_uncovered_to_themes(
+            uncovered, updated_themes, stocks_by_ticker,
+        )
+        changelog.extend(assign_log)
+        logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")
+
     # --- Step 3: Discover new themes ---
     new_raw: list[dict] = []
     has_enough = (len(uncovered) >= NEW_THEME_MIN_STOCKS
@@ -736,6 +949,14 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
         for raw in new_raw
     ])
 
+    # Log new themes
+    for nt in new_themes:
+        changelog.append({
+            "type": "theme_new",
+            "theme": nt["name"],
+            "tickers": list(nt.get("tickers") or []),
+        })
+
     # --- Step 4: Deduplicate overlapping themes, merge, sort, persist ---
     all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)
     all_themes.sort(key=lambda t: t["score"], reverse=True)
@@ -747,7 +968,7 @@ async def run_theme_engine(trade_date: date | None = None) -> list[dict]:
         f"Theme engine complete: {len(updated_themes)} updated, {len(new_themes)} new, "
         f"{len(existing) - len(updated_themes)} retired — {today_str}"
     )
-    return all_themes
+    return all_themes, changelog
 
 
 async def get_today_themes(d: "str | date | None" = None) -> list[dict]:

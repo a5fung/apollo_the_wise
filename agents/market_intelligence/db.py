@@ -478,6 +478,37 @@ async def get_rs_for_tickers(
         return {r["ticker"]: dict(r) for r in rows}
 
 
+async def get_recent_rs_batch(
+    tickers: list[str], d: "str | date", days: int = 3,
+) -> dict[str, list[float]]:
+    """Return last N days of rs_composite for multiple tickers.
+
+    Keyed by ticker, most recent first. Missing days are omitted (not filled).
+    """
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    target = _to_date(d)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, rs_composite, score_date
+            FROM mi_stock_scores
+            WHERE ticker = ANY($1)
+              AND score_date <= $2
+              AND rs_composite IS NOT NULL
+            ORDER BY ticker, score_date DESC
+        """, tickers, target)
+
+        result: dict[str, list[float]] = {}
+        for r in rows:
+            tk = r["ticker"]
+            if tk not in result:
+                result[tk] = []
+            if len(result[tk]) < days:
+                result[tk].append(float(r["rs_composite"]))
+        return result
+
+
 async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:
     """Get the most recent theme scores BEFORE the given date, keyed by theme name."""
     pool = await get_pool()

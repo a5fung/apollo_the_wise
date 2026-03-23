@@ -125,9 +125,10 @@ async def _nightly_data_pull():
         logger.error(f"Sector enrichment failed: {e}")
 
     # 5. Theme engine
+    theme_changelog: list[dict] = []
     try:
-        themes = await run_theme_engine()
-        logger.info(f"Theme engine: {len(themes)} themes identified")
+        themes, theme_changelog = await run_theme_engine()
+        logger.info(f"Theme engine: {len(themes)} themes identified, {len(theme_changelog)} changes")
         summary_parts.append(f"{len(themes)} themes")
     except Exception as e:
         logger.error(f"Theme engine failed: {e}")
@@ -167,10 +168,11 @@ async def _nightly_data_pull():
     # 8. State-change alerts (sent immediately via Telegram)
     try:
         alerts = await detect_state_changes(_today)
-        if alerts:
-            await send_state_alerts(alerts)
-            logger.info(f"State alerts: {len(alerts)} alerts sent")
-            summary_parts.append(f"{len(alerts)} state alerts")
+        if alerts or theme_changelog:
+            await send_state_alerts(alerts, theme_changelog)
+            total_alerts = len(alerts) + len(theme_changelog)
+            logger.info(f"State alerts: {total_alerts} alerts sent")
+            summary_parts.append(f"{total_alerts} state alerts")
     except Exception as e:
         logger.error(f"State alerts failed: {e}")
 

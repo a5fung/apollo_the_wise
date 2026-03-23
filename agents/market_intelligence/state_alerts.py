@@ -303,20 +303,83 @@ async def _check_theme_composition(today: date) -> list[dict]:
     return alerts
 
 
-async def send_state_alerts(alerts: list[dict]) -> None:
-    """Format alerts into Telegram message, send via send_telegram_message()."""
+async def send_state_alerts(
+    alerts: list[dict],
+    theme_changelog: list[dict] | None = None,
+) -> None:
+    """Format alerts + theme changelog into Telegram message."""
     from agents.market_intelligence.briefing import send_telegram_message
 
-    if not alerts:
+    theme_changelog = theme_changelog or []
+
+    if not alerts and not theme_changelog:
         return
 
     lines = ["*STATE CHANGES*"]
 
-    # Group by type
+    # Group alerts by type
     rs_alerts = [a for a in alerts if a["type"] == "rs_deterioration"]
     theme_alerts = [a for a in alerts if a["type"] == "theme_transition"]
     ma_alerts = [a for a in alerts if a["type"] == "ma_break"]
     comp_alerts = [a for a in alerts if a["type"] == "theme_composition"]
+
+    # Group changelog by type
+    pruned = [c for c in theme_changelog if c["type"] == "ticker_pruned"]
+    assigned = [c for c in theme_changelog if c["type"] == "ticker_assigned"]
+    new_themes = [c for c in theme_changelog if c["type"] == "theme_new"]
+    retired_themes = [c for c in theme_changelog if c["type"] == "theme_retired"]
+
+    # Dedup: remove tickers from composition alerts that are already in changelog
+    changelog_tickers = set()
+    for c in pruned:
+        changelog_tickers.add((c["theme"], c["ticker"], "removed"))
+    for c in assigned:
+        changelog_tickers.add((c["theme"], c["ticker"], "added"))
+
+    if comp_alerts:
+        deduped_comp = []
+        for a in comp_alerts:
+            added = [tk for tk in a.get("added", [])
+                     if (a["theme"], tk, "added") not in changelog_tickers]
+            removed = [tk for tk in a.get("removed", [])
+                       if (a["theme"], tk, "removed") not in changelog_tickers]
+            if added or removed:
+                deduped_comp.append({**a, "added": added, "removed": removed})
+        comp_alerts = deduped_comp
+
+    # --- Render sections ---
+
+    if theme_alerts:
+        lines.append("")
+        lines.append("⚡ *Theme Transitions*")
+        for a in theme_alerts[:10]:
+            lines.append(f"  {a['theme']}: {a['from_stage']} → {a['to_stage']}")
+
+    if assigned:
+        lines.append("")
+        lines.append("➕ *Stocks Added to Themes*")
+        for a in assigned[:10]:
+            lines.append(f"  {a['ticker']} → {a['theme']}")
+            if a.get("rationale"):
+                lines.append(f"    _{a['rationale']}_")
+
+    if pruned:
+        lines.append("")
+        lines.append("✂️ *Stocks Pruned from Themes*")
+        for a in pruned[:10]:
+            lines.append(f"  {a['ticker']} from {a['theme']} (RS {a['rs']:.0f})")
+
+    if new_themes:
+        lines.append("")
+        lines.append("🆕 *New Themes*")
+        for a in new_themes[:10]:
+            lines.append(f"  {a['theme']}: {', '.join(a.get('tickers', []))}")
+
+    if retired_themes:
+        lines.append("")
+        lines.append("🪦 *Themes Retired*")
+        for a in retired_themes[:10]:
+            lines.append(f"  {a['theme']}")
 
     if rs_alerts:
         lines.append("")
@@ -325,12 +388,6 @@ async def send_state_alerts(alerts: list[dict]) -> None:
             lines.append(
                 f"  {a['ticker']}: RS {a['rs_prior']} → {a['rs_now']} (-{a['drop']} in 2wk)"
             )
-
-    if theme_alerts:
-        lines.append("")
-        lines.append("⚡ *Theme Transitions*")
-        for a in theme_alerts[:10]:
-            lines.append(f"  {a['theme']}: {a['from_stage']} → {a['to_stage']}")
 
     if ma_alerts:
         lines.append("")
@@ -353,4 +410,4 @@ async def send_state_alerts(alerts: list[dict]) -> None:
 
     text = "\n".join(lines)
     await send_telegram_message(text)
-    logger.info(f"Sent {len(alerts)} state-change alerts")
+    logger.info(f"Sent {len(alerts) + len(theme_changelog)} state-change alerts")
