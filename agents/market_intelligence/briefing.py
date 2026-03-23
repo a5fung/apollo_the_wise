@@ -893,8 +893,9 @@ async def _get_overnight_news(snapshot: list[dict]) -> str | None:
     movers_str = ", ".join(movers)
 
     query = (
-        f"What major market-moving news happened since yesterday's market close? "
-        f"Context: {movers_str}. Be concise, maximum 3 sentences."
+        f"What specific news or events are causing these overnight market moves: {movers_str}? "
+        f"Focus on political developments, geopolitical events, trade policy, central bank actions, "
+        f"or corporate news announced since yesterday's close. Be specific and concise, maximum 3 sentences."
     )
 
     from agents.market_intelligence.theme_engine import _is_garbage
@@ -1085,12 +1086,16 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
     gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
 
+    # Strip conflicting gap% from catalyst text (Perplexity may say "18%" while actual gap is 27%)
+    catalyst_text = ep.get("catalyst", "See news")[:300]
+    catalyst_text = re.sub(r"gapped (?:up |down )?[\d.]+%", "gapped up", catalyst_text)
+
     text = (
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {cat_e} {ep.get('catalyst_quality', '').replace('_', ' ').title()}\n"
         f"Gap: *{ep['gap_pct']:.1f}%* | Rel Vol: *{ep.get('rel_volume') or '?'}x* | Score: *{ep['ep_score']:.0f}*\n\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
-        f"Catalyst: {ep.get('catalyst', 'See news')[:300]}"
+        f"Catalyst: {catalyst_text}"
     )
     if ep.get("confidence_multiplier", 1.0) > 1.0:
         text += f"\n\n_Claude + Perplexity agree — {ep['confidence_multiplier']:.1f}x confidence_"

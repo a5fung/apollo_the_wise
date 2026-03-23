@@ -804,7 +804,8 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT a.*,
+            SELECT DISTINCT ON (a.ticker)
+                   a.*,
                    s.rs_composite
             FROM mi_ep_alerts a
             LEFT JOIN LATERAL (
@@ -815,11 +816,14 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
                 LIMIT 1
             ) s ON TRUE
             WHERE a.alert_date = $1
-            ORDER BY a.ep_score DESC
+            ORDER BY a.ticker, a.ep_score DESC
             """,
             _to_date(d),
         )
-        return [dict(r) for r in rows]
+        # Re-sort by score after DISTINCT ON (which requires ORDER BY ticker first)
+        results = [dict(r) for r in rows]
+        results.sort(key=lambda r: r.get("ep_score", 0), reverse=True)
+        return results
 
 
 async def get_active_tracked_stocks() -> list[str]:

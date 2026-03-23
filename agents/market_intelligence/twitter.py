@@ -90,31 +90,42 @@ def format_thread(rs_leaders: list[dict], regime: dict, briefing_date: str) -> l
     return _pack_tweets(stock_lines, prefix=header, suffix="\n\n#momentum #trading #RS #stocks")
 
 
-def format_ep_tweet(ep: dict) -> str:
-    """Format an EP alert as a single tweet with Finviz link."""
+def format_ep_tweet(ep: dict) -> list[str]:
+    """Format an EP alert as 1-2 tweets. Returns list of tweet texts."""
     from agents.market_intelligence.universe import get_description
 
     ticker = ep["ticker"]
     desc = get_description(ticker)
     rvol = ep.get("rel_volume") or "?"
 
-    lines = [f"🔥 EP ALERT — ${ticker}"]
+    header = f"🔥 EP ALERT — ${ticker}"
     if desc:
-        lines[0] += f" ({desc})"
-    lines.append(f"Gap {ep['gap_pct']:+.1f}% | RVol {rvol}x | Score {ep['ep_score']:.0f}")
+        header += f" ({desc})"
+    stats = f"Gap {ep['gap_pct']:+.1f}% | RVol {rvol}x | Score {ep['ep_score']:.0f}"
     catalyst_q = ep.get("catalyst_quality", "").replace("_", " ").title()
+    footer = f"https://finviz.com/quote.ashx?t={ticker}\n#EP #momentum #trading"
+
+    # Build tweet 1: header + stats + catalyst label + as much analysis as fits
+    tweet1_lines = [header, stats]
     if catalyst_q:
-        lines.append(f"Catalyst: {catalyst_q}")
+        tweet1_lines.append(f"Catalyst: {catalyst_q}")
 
     analysis = ep.get("claude_analysis", "")
-    if analysis:
-        remaining = _CHAR_LIMIT - len("\n".join(lines)) - 80
-        if remaining > 20:
-            lines.append(analysis[:remaining])
+    tweet1_base = "\n".join(tweet1_lines)
 
-    lines.append(f"\nhttps://finviz.com/quote.ashx?t={ticker}")
-    lines.append("#EP #momentum #trading")
-    return "\n".join(lines)[:_CHAR_LIMIT]
+    # Try to fit analysis + footer in tweet 1
+    remaining = _CHAR_LIMIT - len(tweet1_base) - len(f"\n\n{footer}") - 2
+    if analysis and remaining > 40:
+        tweet1_lines.append(analysis[:remaining])
+        tweet1_lines.append(f"\n{footer}")
+        return ["\n".join(tweet1_lines)[:_CHAR_LIMIT]]
+
+    # Analysis doesn't fit — put footer in tweet 1, analysis in tweet 2
+    tweet1_lines.append(f"\n{footer}")
+    tweets = ["\n".join(tweet1_lines)[:_CHAR_LIMIT]]
+    if analysis:
+        tweets.append(analysis[:_CHAR_LIMIT])
+    return tweets
 
 
 async def post_to_twitter(
@@ -176,13 +187,22 @@ async def post_ep_tweet(ep: dict) -> bool:
     client, _ = result
 
     def _post():
-        response = client.create_tweet(text=format_ep_tweet(ep))
-        return response
+        tweets = format_ep_tweet(ep)
+        parent_id = None
+        for tweet_text in tweets:
+            kwargs = {"text": tweet_text}
+            if parent_id:
+                kwargs["in_reply_to_tweet_id"] = parent_id
+            response = client.create_tweet(**kwargs)
+            tid = response.data.get("id") if response.data else None
+            if tid:
+                parent_id = tid
+        return parent_id
 
     try:
-        response = await asyncio.to_thread(_post)
+        tweet_id = await asyncio.to_thread(_post)
         _ep_last_posted = today
-        logger.info(f"EP tweet posted: {response.data.get('id')}")
+        logger.info(f"EP tweet posted: {tweet_id}")
         return True
     except Exception as e:
         logger.error(f"EP tweet failed: {e}")

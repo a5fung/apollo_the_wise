@@ -136,7 +136,9 @@ Recent news (may include earnings announcements, guidance, contracts, upgrades):
 IMPORTANT: If the stock is gapping 8%+ on high volume, there is almost certainly a catalyst.
 Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
 An earnings beat with guidance raise on a neglected stock = game_changer or strong.
-Only use routine if you've confirmed there is genuinely no company-specific catalyst."""
+Only use routine if you've confirmed there is genuinely no company-specific catalyst.
+
+CRITICAL: If the catalyst is a MERGER, ACQUISITION, BUYOUT, or TAKEOVER offer (the company is being acquired), classify as "routine". M&A deals cap the upside at the offer price — there is no momentum trade, only merger arbitrage. This applies whether the stock is being bought out by another company, a PE firm, or any other acquirer."""
 
     try:
         response = _get_claude().messages.create(
@@ -454,6 +456,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
         catalyst_quality, claude_analysis = await claude_task
+
+        # Skip M&A / buyout — no momentum trade, just arbitrage
+        _MNA_KEYWORDS = ["acquisition", "acquire", "buyout", "takeover", "merger", "bought by", "being acquired"]
+        analysis_low = claude_analysis.lower()
+        catalyst_low = news_summary.lower() if news_summary else ""
+        if any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS):
+            pplx_task.cancel()
+            logger.info(f"Skip {ticker}: M&A/buyout detected — no EP trade")
+            continue
 
         # Skip routine catalysts outright
         if catalyst_quality == "routine" and c["gap_pct"] < 12:
