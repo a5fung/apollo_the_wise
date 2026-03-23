@@ -529,15 +529,27 @@ class MarketIntelligenceAgent(BaseAgent):
                 result="No theme data yet — themes are generated during the nightly data pull (6 AM ET) or via /data/refresh.",
             )
 
-        lines = [f"Active themes ({today_str}):"]
+        # Separate active from fading, sort by score descending
+        active = sorted(
+            [t for t in themes if t.get("stage") != "Fading"],
+            key=lambda t: -(t.get("score") or 0),
+        )
+        fading = [t for t in themes if t.get("stage") == "Fading"]
+
         from agents.market_intelligence.briefing import STAGE_EMOJI as stage_emoji
-        for t in themes:
+        lines = [f"Active themes ({today_str}) — ranked by score:"]
+        for rank, t in enumerate(active, 1):
             emoji = stage_emoji.get(t.get("stage", ""), "")
             tickers = ", ".join(t.get("tickers") or [])
-            lines.append(f"\n{emoji} *{t['name']}* — {t.get('stage')} (score {t.get('score', 0):.0f})")
+            lines.append(f"\n#{rank} {emoji} *{t['name']}* — {t.get('stage')} (score {t.get('score', 0):.0f})")
             lines.append(f"  Stocks: {tickers}")
             if t.get("description"):
                 lines.append(f"  {t['description'][:200]}")
+
+        if fading:
+            lines.append("\n🔻 *Fading* (score declining, do not treat as top themes):")
+            for t in fading:
+                lines.append(f"  {t['name']} (score {t.get('score', 0):.0f}) — {', '.join(t.get('tickers') or [])}")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
