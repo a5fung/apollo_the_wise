@@ -697,6 +697,8 @@ class TelegramChannel:
 
     async def _send_chunk(self, update: Update, text: str) -> None:
         """Send a single chunk, falling back to plain text if Markdown fails."""
+        # Strip Markdown headings — Telegram doesn't render them
+        text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
         if "```" in text:
             html = self._md_to_html(text)
             try:
