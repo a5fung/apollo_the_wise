@@ -269,14 +269,15 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
             return await self._handle_regime_query(request)
 
+        # Theme must be checked before RS — "top themes by RS strength" should route to themes, not RS leaders
+        if any(k in task for k in ["theme", "sector", "industry"]):
+            return await self._handle_theme_query(request)
+
         if any(k in task for k in ["rs", "relative strength", "leader", "momentum", "top stock"]):
             return await self._handle_rs_query(request)
 
         if any(k in task for k in ["brief", "morning", "evening", "summary", "overview"]):
             return await self._handle_briefing_query(request)
-
-        if any(k in task for k in ["theme", "sector", "industry"]):
-            return await self._handle_theme_query(request)
 
         if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
             return await self._handle_pullback_query(request)
