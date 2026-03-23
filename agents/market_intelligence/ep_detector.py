@@ -53,6 +53,7 @@ MIN_REL_VOLUME = 2.0
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
+MIN_PREV_DAY_VOLUME = 50_000   # Skip illiquid stocks — stale quotes create phantom gaps
 
 # Auto-disqualifiers
 MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ before the gap
@@ -352,6 +353,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             prev_close = snap.get("prevDay", {}).get("c", 0)
             if not prev_close or prev_close < MIN_PREV_CLOSE:
+                continue
+
+            # Skip illiquid stocks — stale/erroneous quotes create phantom gaps
+            prev_volume = snap.get("prevDay", {}).get("v", 0) or 0
+            if prev_volume < MIN_PREV_DAY_VOLUME:
                 continue
 
             # Current price: min.c (latest minute bar, includes pre/post-market)
