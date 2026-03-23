@@ -893,13 +893,12 @@ async def _get_overnight_news(snapshot: list[dict]) -> str | None:
     movers_str = ", ".join(movers)
 
     query = (
-        f"What specific news or events are causing these overnight market moves: {movers_str}? "
-        f"Focus on political developments, geopolitical events, trade policy, central bank actions, "
-        f"or corporate news announced since yesterday's close. Be specific and concise, maximum 3 sentences."
+        f"Why are {movers_str} today? "
+        f"What specific event or announcement caused this move?"
     )
 
     from agents.market_intelligence.theme_engine import _is_garbage
-    answer = await search_news_perplexity(query, recency="day")
+    answer = await search_news_perplexity(query, recency="week")
     if not answer or _is_garbage(answer):
         return None
 
