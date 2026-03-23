@@ -314,10 +314,22 @@ async def get_overnight_snapshot(watchlist: list[dict]) -> list[dict]:
         return []
 
 
-async def search_news_perplexity(query: str, recency: str = "month") -> str:
+_PERPLEXITY_SYSTEM_DEFAULT = (
+    "You are a financial market analyst. Give direct, specific answers "
+    "about current market catalysts. "
+    "Never include citation numbers like [1] or [2]. "
+    "Never say 'search results show' or 'I cannot find'. "
+    "Plain text only — no markdown, no bullets."
+)
+
+
+async def search_news_perplexity(
+    query: str, recency: str = "month", system_prompt: str | None = None,
+) -> str:
     """Use Perplexity Sonar for news search. Returns a synthesized answer string.
 
     recency: "day" | "week" | "month" | "year" — use "week" for EP catalysts.
+    system_prompt: override the default system prompt for specialized callers.
     """
     api_key = os.environ.get("PERPLEXITY_API_KEY")
     if not api_key:
@@ -332,13 +344,7 @@ async def search_news_perplexity(query: str, recency: str = "month") -> str:
                     "messages": [
                         {
                             "role": "system",
-                            "content": (
-                                "You are a financial market analyst. Give direct, specific answers "
-                                "about current market catalysts. "
-                                "Never include citation numbers like [1] or [2]. "
-                                "Never say 'search results show' or 'I cannot find'. "
-                                "Plain text only — no markdown, no bullets."
-                            ),
+                            "content": system_prompt or _PERPLEXITY_SYSTEM_DEFAULT,
                         },
                         {"role": "user", "content": query},
                     ],

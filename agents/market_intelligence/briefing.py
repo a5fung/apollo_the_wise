@@ -897,8 +897,15 @@ async def _get_overnight_news(snapshot: list[dict]) -> str | None:
         f"What specific event or announcement caused this move?"
     )
 
+    _OVERNIGHT_SYSTEM = (
+        "You are a financial market analyst. Identify the SPECIFIC catalyst — "
+        "name the person, policy, deal, or event. Mention social media posts, "
+        "presidential statements, or diplomatic developments by name if relevant. "
+        "Be direct and specific. No citation numbers."
+    )
+
     from agents.market_intelligence.theme_engine import _is_garbage
-    answer = await search_news_perplexity(query, recency="week")
+    answer = await search_news_perplexity(query, recency="week", system_prompt=_OVERNIGHT_SYSTEM)
     if not answer or _is_garbage(answer):
         return None
 
