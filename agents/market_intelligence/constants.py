@@ -59,6 +59,7 @@ SKIP_TICKERS = frozenset({
     "AGQ", "ZSL", "GLL", "DULL", "UGL", "YANG", "YINN", "CWEB",
     "BRZU", "BZQ", "EDC", "EDZ", "DRN", "DRV", "RETL", "BNKU",
     "MSTZ", "MSTU", "CONL", "TSLL", "NVDL", "NVDS",  # Single-stock leveraged
+    "MUU", "MULL",  # MicroSectors leveraged
     # Broad index ETFs
     "SPY", "QQQ", "IWM", "DIA", "VOO", "VTI", "IVV", "RSP",
     # Sector ETFs (not individual stock EPs)

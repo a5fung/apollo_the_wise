@@ -124,6 +124,33 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Sector enrichment failed: {e}")
 
+    # 4b. Quote type enrichment — classify tracked stocks as EQUITY/ETF/etc.
+    try:
+        from agents.market_intelligence.db import (
+            get_tracked_tickers_missing_quote_type, update_quote_types_batch,
+        )
+        missing_qt = await get_tracked_tickers_missing_quote_type(limit=50)
+        if missing_qt:
+            from agents.market_intelligence.collector import get_fmp_profile
+            qt_map: dict[str, str] = {}
+            qt_sem = asyncio.Semaphore(5)
+            async def _fetch_qt(ticker: str):
+                async with qt_sem:
+                    try:
+                        import yfinance as yf
+                        fi = yf.Ticker(ticker).fast_info
+                        qt = getattr(fi, "quote_type", None) or "EQUITY"
+                        qt_map[ticker] = qt
+                    except Exception:
+                        qt_map[ticker] = "EQUITY"  # assume equity if lookup fails
+            await asyncio.gather(*[_fetch_qt(tk) for tk in missing_qt])
+            if qt_map:
+                await update_quote_types_batch(qt_map)
+                n_etf = sum(1 for v in qt_map.values() if v != "EQUITY")
+                logger.info(f"Quote type enrichment: classified {len(qt_map)} tickers ({n_etf} non-equity)")
+    except Exception as e:
+        logger.error(f"Quote type enrichment failed: {e}")
+
     # 5. Theme engine
     theme_changelog: list[dict] = []
     try:
@@ -192,7 +219,8 @@ async def _evening_briefing_job():
         await send_evening_briefing()
         await log_job_run(JOB_EVENING_BRIEFING)
     except Exception as e:
-        logger.error(f"Evening briefing failed: {e}")
+        import traceback
+        logger.error(f"Evening briefing failed: {e}\n{traceback.format_exc()}")
         await notify_job_failure(JOB_EVENING_BRIEFING, str(e))
 
 
@@ -203,7 +231,8 @@ async def _morning_briefing_job():
         await send_morning_briefing()
         await log_job_run(JOB_MORNING_BRIEFING)
     except Exception as e:
-        logger.error(f"Morning briefing failed: {e}")
+        import traceback
+        logger.error(f"Morning briefing failed: {e}\n{traceback.format_exc()}")
         await notify_job_failure(JOB_MORNING_BRIEFING, str(e))
 
 

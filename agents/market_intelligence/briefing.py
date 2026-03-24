@@ -119,8 +119,14 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
-    # Stockbee Market Monitor
+    # Stockbee Market Monitor — asyncpg may return JSONB as string
     bm = regime.get("breadth_monitor") or {}
+    if isinstance(bm, str):
+        import json
+        try:
+            bm = json.loads(bm)
+        except (json.JSONDecodeError, TypeError):
+            bm = {}
 
     # Primary: daily 4% counts (colored) + ratios (raw numbers)
     r5 = bm.get("ratio_5d") or pct4_5d

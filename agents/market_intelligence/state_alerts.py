@@ -68,9 +68,9 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
             return []
         prior_date = prior_date_row["score_date"]
 
-        # Get active tracked tickers
+        # Get active tracked tickers (equity only — excludes ETFs/leveraged products)
         tracked = await conn.fetch(
-            "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE"
+            "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"
         )
         if not tracked:
             return []
@@ -168,7 +168,7 @@ async def _check_ma_breaks(today: date) -> list[dict]:
 
         # Get active tracked tickers with RS >= 60
         tracked = await conn.fetch(
-            "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE"
+            "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"
         )
         if not tracked:
             return []

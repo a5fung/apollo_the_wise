@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 _pool: Optional[asyncpg.Pool] = None
 
 
+def _json_encoder(value):
+    import json
+    return json.dumps(value)
+
+
+def _json_decoder(value):
+    import json
+    return json.loads(value)
+
+
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
@@ -31,9 +41,16 @@ async def get_pool() -> asyncpg.Pool:
         host = host_port.split(":")[0]
         port = int(host_port.split(":")[1]) if ":" in host_port else 5432
 
+        async def _init_conn(conn):
+            await conn.set_type_codec(
+                'jsonb', encoder=_json_encoder, decoder=_json_decoder,
+                schema='pg_catalog',
+            )
+
         _pool = await asyncpg.create_pool(
             host=host, port=port, database=db, user=user, password=password,
             min_size=1, max_size=5,
+            init=_init_conn,
         )
     return _pool
 
@@ -131,7 +148,8 @@ async def initialize_schema() -> None:
                 last_seen DATE NOT NULL,
                 peak_rs_score FLOAT DEFAULT 0,
                 consecutive_weak_days INT DEFAULT 0,
-                active BOOLEAN DEFAULT TRUE
+                active BOOLEAN DEFAULT TRUE,
+                quote_type TEXT DEFAULT NULL
             );
 
             CREATE TABLE IF NOT EXISTS mi_job_log (
@@ -222,6 +240,11 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_signal_outcomes_type
                 ON mi_signal_outcomes(signal_type, signal_date);
+        """)
+        # Migrations — add columns to existing tables
+        await conn.execute("""
+            ALTER TABLE mi_tracked_stocks
+                ADD COLUMN IF NOT EXISTS quote_type TEXT DEFAULT NULL;
         """)
     logger.info("Market Intelligence DB schema initialized")
 
@@ -329,6 +352,31 @@ async def mark_tracked_stocks_weak_batch(
                 active = CASE WHEN consecutive_weak_days + 1 >= $3 THEN FALSE ELSE active END
             WHERE ticker = $1
         """, [(ticker, today, retire_after) for ticker, today in records])
+
+
+async def update_quote_types_batch(updates: dict[str, str]) -> int:
+    """Set quote_type for tracked stocks. Returns count updated."""
+    if not updates:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            UPDATE mi_tracked_stocks SET quote_type = $2
+            WHERE ticker = $1 AND (quote_type IS NULL OR quote_type != $2)
+        """, [(ticker, qt) for ticker, qt in updates.items()])
+    return len(updates)
+
+
+async def get_tracked_tickers_missing_quote_type(limit: int = 100) -> list[str]:
+    """Get active tracked tickers that don't have quote_type set yet."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker FROM mi_tracked_stocks
+            WHERE active = TRUE AND quote_type IS NULL
+            LIMIT $1
+        """, limit)
+        return [r["ticker"] for r in rows]
 
 
 async def insert_ep_alert(record: dict[str, Any]) -> None:
