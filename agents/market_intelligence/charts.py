@@ -153,7 +153,7 @@ def build_theme_table_image(
     # Layout constants
     pad_x, pad_y = 24, 16
     row_h = 32
-    col_widths = [220, 50, 50, 50, 50]  # Theme, RS, 1M, 3M, 6M
+    col_widths = [420, 50, 50, 50, 50]  # Theme (full name), RS, 1M, 3M, 6M
     total_w = sum(col_widths) + 2 * pad_x
     # title + header + rows + bottom pad
     total_h = pad_y + row_h + row_h + len(top) * row_h + pad_y + 10
@@ -197,13 +197,10 @@ def build_theme_table_image(
             return warm_color
         return cool_color
 
-    # Theme abbreviation (reuse from twitter module)
-    from agents.market_intelligence.twitter import _abbreviate_theme
-
-    # Data rows
+    # Data rows — use full theme names (image has no char limit)
     for st in top:
         x = pad_x
-        name = _abbreviate_theme(st["name"], max_len=18)
+        name = st["name"][:38]  # cap at 38 chars to fit column
         draw.text((x, y), name, fill=text_color, font=font)
         x += col_widths[0]
         # RS values with color coding
