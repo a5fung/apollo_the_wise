@@ -115,11 +115,14 @@ async def build_chart_mosaic(tickers: list[str]) -> tuple[bytes | None, str]:
 
 
 def build_theme_table_image(
-    scored_themes: list[dict], briefing_date: str,
+    scored_themes: list[dict],
+    briefing_date: str,
+    theme_rs_data: dict[str, dict] | None = None,
 ) -> bytes | None:
     """
-    Render top 10 themes as a clean table image (PNG).
-    Columns: Theme, RS, 1M, 3M, 6M.
+    Render top 10 themes as a table image (PNG).
+    Row 1: Theme name + RS / 1M / 3M / 6M
+    Row 2: Top constituent tickers with individual RS
     Returns PNG bytes or None on error.
     """
     top = scored_themes[:10]
@@ -132,39 +135,54 @@ def build_theme_table_image(
         logger.error("Pillow not installed — cannot build theme table image")
         return None
 
-    # Try to load a monospace font; fall back to default
-    font_size = 18
-    header_size = 22
-    title_size = 24
+    # Load fonts
+    font_size = 17
+    ticker_size = 14
+    header_size = 18
+    title_size = 22
     try:
         font = ImageFont.truetype("consola.ttf", font_size)
+        ticker_font = ImageFont.truetype("consola.ttf", ticker_size)
         header_font = ImageFont.truetype("consolab.ttf", header_size)
         title_font = ImageFont.truetype("consolab.ttf", title_size)
     except (OSError, IOError):
         try:
             font = ImageFont.truetype("cour.ttf", font_size)
+            ticker_font = ImageFont.truetype("cour.ttf", ticker_size)
             header_font = ImageFont.truetype("courbd.ttf", header_size)
             title_font = ImageFont.truetype("courbd.ttf", title_size)
         except (OSError, IOError):
             font = ImageFont.load_default()
+            ticker_font = font
             header_font = font
             title_font = font
 
-    # Layout constants
+    # Measure the longest theme name to auto-size column
+    dummy_img = Image.new("RGB", (1, 1))
+    dummy_draw = ImageDraw.Draw(dummy_img)
+    max_name_w = max(
+        dummy_draw.textlength(st["name"], font=font) for st in top
+    )
+    theme_col_w = int(max_name_w) + 20  # pad
+
+    # Layout
     pad_x, pad_y = 24, 16
-    row_h = 32
-    col_widths = [420, 50, 50, 50, 50]  # Theme (full name), RS, 1M, 3M, 6M
+    name_row_h = 26
+    ticker_row_h = 20
+    row_h = name_row_h + ticker_row_h + 6  # theme name + tickers + gap
+    num_col_w = 44
+    col_widths = [theme_col_w, num_col_w, num_col_w, num_col_w, num_col_w]
     total_w = sum(col_widths) + 2 * pad_x
     # title + header + rows + bottom pad
-    total_h = pad_y + row_h + row_h + len(top) * row_h + pad_y + 10
+    total_h = pad_y + 30 + 28 + len(top) * row_h + pad_y
 
-    # Dark background, light text
+    # Colors
     bg_color = (25, 25, 35)
     header_color = (180, 180, 200)
     text_color = (230, 230, 240)
+    ticker_color = (140, 150, 170)
     title_color = (255, 255, 255)
     line_color = (60, 60, 80)
-    # RS color coding
     hot_color = (100, 220, 100)    # RS 80+
     warm_color = (220, 200, 80)    # RS 50-79
     cool_color = (180, 100, 100)   # RS <50
@@ -179,7 +197,7 @@ def build_theme_table_image(
     # Title
     y = pad_y
     draw.text((pad_x, y), f"Theme RS — {short_date}", fill=title_color, font=title_font)
-    y += row_h + 4
+    y += 30
 
     # Header row
     headers = ["Theme", "RS", "1M", "3M", "6M"]
@@ -187,7 +205,7 @@ def build_theme_table_image(
     for i, hdr in enumerate(headers):
         draw.text((x, y), hdr, fill=header_color, font=header_font)
         x += col_widths[i]
-    y += row_h
+    y += 28
     draw.line([(pad_x, y - 4), (total_w - pad_x, y - 4)], fill=line_color, width=1)
 
     def _rs_color(val: float) -> tuple:
@@ -197,18 +215,32 @@ def build_theme_table_image(
             return warm_color
         return cool_color
 
-    # Data rows — use full theme names (image has no char limit)
+    theme_rs_data = theme_rs_data or {}
+
     for st in top:
+        # Row 1: theme name + RS values
         x = pad_x
-        name = st["name"][:38]  # cap at 38 chars to fit column
-        draw.text((x, y), name, fill=text_color, font=font)
+        draw.text((x, y), st["name"], fill=text_color, font=font)
         x += col_widths[0]
-        # RS values with color coding
         for val_key, col_w in zip(["comp", "rs_1m", "rs_3m", "rs_6m"], col_widths[1:]):
             val = st[val_key]
             draw.text((x, y), f"{val:.0f}", fill=_rs_color(val), font=font)
             x += col_w
-        y += row_h
+        y += name_row_h
+
+        # Row 2: top constituent tickers with RS
+        ticker_parts = []
+        for tk in st.get("tickers") or []:
+            rs = theme_rs_data.get(tk)
+            if rs and rs.get("rs_composite") is not None and rs["rs_composite"] >= 50:
+                ticker_parts.append((tk, rs["rs_composite"]))
+        ticker_parts.sort(key=lambda x: -x[1])
+        ticker_str = "  ".join(f"${tk} {int(rs)}" for tk, rs in ticker_parts[:6])
+        if ticker_str:
+            draw.text((pad_x + 8, y), ticker_str, fill=ticker_color, font=ticker_font)
+        y += ticker_row_h + 6
+        # Subtle separator
+        draw.line([(pad_x, y - 3), (total_w - pad_x, y - 3)], fill=line_color, width=1)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")

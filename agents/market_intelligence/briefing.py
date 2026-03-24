@@ -771,8 +771,8 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         from agents.market_intelligence.twitter import post_to_twitter, post_theme_tweet
         chart_tickers = [s["ticker"] for s in rs_leaders[:20]]
 
-        # Build theme table image
-        theme_img = build_theme_table_image(scored_themes, today_str) if scored_themes else None
+        # Build theme table image (pass theme_rs_data for constituent ticker RS)
+        theme_img = build_theme_table_image(scored_themes, today_str, theme_rs_data=theme_rs_data) if scored_themes else None
 
         if chart_tickers:
             mosaic_bytes, _url = await build_chart_mosaic(chart_tickers)
