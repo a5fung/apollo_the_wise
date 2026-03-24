@@ -103,6 +103,11 @@ async def ingest_daily(trade_date: date | None = None) -> int:
     td = trade_date or date.today()
     td_str = td.strftime("%Y-%m-%d")
 
+    # Never ingest weekend data — markets are closed
+    if td.weekday() >= 5:
+        logger.info(f"Skipping ingestion for {td_str} (weekend)")
+        return 0
+
     # Skip if already ingested
     existing = await get_daily_closes_count(td)
     if existing > 1000:
@@ -129,6 +134,11 @@ async def ingest_from_snapshot(trade_date: date | None = None) -> int:
 
     td = trade_date or date.today()
     td_str = td.strftime("%Y-%m-%d")
+
+    # Never ingest weekend data
+    if td.weekday() >= 5:
+        logger.info(f"Skipping snapshot ingestion for {td_str} (weekend)")
+        return 0
 
     # Skip if already ingested
     existing = await get_daily_closes_count(td)
