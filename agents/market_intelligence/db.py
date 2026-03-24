@@ -481,12 +481,16 @@ async def get_rs_leaders(
         if min_adv > 0:
             # Fetch extra rows to allow post-filter for sector
             rows = await conn.fetch("""
-                SELECT * FROM mi_stock_scores
-                WHERE score_date = $1
-                  AND adv_20 IS NOT NULL AND adv_20 >= $3
-                  AND ticker != ALL($4)
-                  AND close IS NOT NULL AND close >= $5
-                ORDER BY rs_composite DESC NULLS LAST
+                SELECT s.* FROM mi_stock_scores s
+                WHERE s.score_date = $1
+                  AND s.adv_20 IS NOT NULL AND s.adv_20 >= $3
+                  AND s.ticker != ALL($4)
+                  AND s.close IS NOT NULL AND s.close >= $5
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mi_tracked_stocks t
+                      WHERE t.ticker = s.ticker AND t.quote_type IS NOT NULL AND t.quote_type != 'EQUITY'
+                  )
+                ORDER BY s.rs_composite DESC NULLS LAST
                 LIMIT $2
             """, score_date, limit * 2, min_adv, SKIP_TICKERS_LIST, min_price)
             filtered = []
