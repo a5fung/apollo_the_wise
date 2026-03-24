@@ -49,6 +49,9 @@ RS_LEADER_CUTOFF = 50
 MIN_PRICE = 5.0
 # Maximum ticker length — filters warrants/units
 MAX_TICKER_LEN = 5
+# Max 1-day return before flagging as corporate action (reverse split, etc.)
+# Real stocks rarely move >100% in a day; reverse splits create 200-5000% phantom jumps
+MAX_1D_RETURN = 1.0  # 100%
 
 logger = logging.getLogger(__name__)
 
@@ -183,6 +186,17 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         current = _closest_close(closes, today_str)
         if not current or current < MIN_PRICE:
             continue
+
+        # Detect reverse splits: if today's close is >100% above yesterday's,
+        # the price history is inconsistent (Polygon adjusts latest day only).
+        # Skip these tickers entirely — they'll re-enter once history normalizes.
+        sorted_dates = sorted(closes.keys(), reverse=True)
+        if len(sorted_dates) >= 2:
+            prev_close = closes[sorted_dates[1]]
+            if prev_close and prev_close > 0:
+                day_return = (current / prev_close) - 1.0
+                if day_return > MAX_1D_RETURN:
+                    continue
 
         price_1m = _closest_close(closes, date_1m)
         price_3m = _closest_close(closes, date_3m)
