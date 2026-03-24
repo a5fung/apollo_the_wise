@@ -399,8 +399,7 @@ def _format_theme_scorecard(
 
     lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
 
-    # Tier 1: Top 10 themes — detailed (3 lines each)
-    for st in scored_themes[:10]:
+    for st in scored_themes:
         emoji = STAGE_EMOJI.get(st["stage"], " ")
         name = st["name"]
         delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
@@ -419,14 +418,6 @@ def _format_theme_scorecard(
         lines.append(f"  RS {st['comp']:.0f} (1M {st['rs_1m']:.0f} | 3M {st['rs_3m']:.0f} | 6M {st['rs_6m']:.0f}){delta_str}")
         if top_tickers:
             lines.append(f"  {top_tickers}")
-
-    # Tier 2: Remaining themes — compact (1 line each)
-    if len(scored_themes) > 10:
-        lines.append("")
-        for st in scored_themes[10:]:
-            emoji = STAGE_EMOJI.get(st["stage"], " ")
-            delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-            lines.append(f"{emoji}{st['name']}  RS {st['comp']:.0f}{delta_str}")
 
     # Fading: collapsed
     if fading:
