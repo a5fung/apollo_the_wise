@@ -137,6 +137,103 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Sector enrichment failed: {e}")
 
+    # 4a. Claude description generation — upgrade generic industry names to trading-relevant descriptions
+    try:
+        from agents.market_intelligence.universe import UNIVERSE_WITH_DESC, get_description
+        from agents.market_intelligence.db import upsert_ticker_override
+        from agents.market_intelligence.universe import apply_overrides as _apply_overrides
+
+        # Curated tickers from universe.py — skip these
+        curated_tickers = {t for t, _ in UNIVERSE_WITH_DESC}
+
+        # Find top RS stocks needing better descriptions
+        # top_for_sector is from step 4 — if it failed, fall back to fresh query
+        if 'top_for_sector' not in locals():
+            top_for_sector = await get_rs_leaders(today_str, limit=200, min_adv=0, min_price=0)
+        candidates = []
+        for s in top_for_sector:
+            tk = s["ticker"]
+            if tk in curated_tickers:
+                continue
+            desc = get_description(tk)
+            # Skip if already has a trading-quality description (contains comma = multi-part = likely curated)
+            if desc and "," in desc:
+                continue
+            candidates.append(s)
+
+        if candidates[:40]:
+            # Fetch company info for candidates that need it
+            from agents.market_intelligence.collector import get_fmp_profile
+            profile_sem = asyncio.Semaphore(5)
+            profiles: dict[str, dict] = {}
+            async def _fetch_profile(ticker: str):
+                async with profile_sem:
+                    profiles[ticker] = await get_fmp_profile(ticker)
+            await asyncio.gather(*[_fetch_profile(c["ticker"]) for c in candidates[:40]])
+
+            # Build batch prompt for Claude
+            stock_lines = []
+            tickers_to_describe = []
+            for c in candidates[:40]:
+                tk = c["ticker"]
+                p = profiles.get(tk, {})
+                name = p.get("companyName", tk)
+                industry = p.get("industry", "")
+                biz = p.get("description", "")[:200]
+                if not (name or industry or biz):
+                    continue
+                tickers_to_describe.append(tk)
+                stock_lines.append(f"- {tk}: {name}. Industry: {industry}. {biz}")
+
+            if stock_lines:
+                import os
+                import anthropic
+                client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+                prompt = (
+                    "Generate concise trading-relevant descriptions for these stocks. "
+                    "Each description should be 3-8 words describing what the company actually does, "
+                    "focused on the business that drives the stock price. Use the style of these examples:\n"
+                    "- NVDA: AI/data center GPUs, inference & training chips\n"
+                    "- MU: DRAM & NAND memory, HBM for AI GPUs\n"
+                    "- AMAT: Semiconductor equipment, deposition & etch\n"
+                    "- LLY: Pharma, GLP-1 obesity/diabetes drugs\n"
+                    "- FCX: Copper & gold mining\n"
+                    "- VST: Power generation, nuclear fleet\n\n"
+                    "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n"
+                    "Example: {\"ACME\": \"Industrial automation, robotics\"}\n\n"
+                    "Stocks:\n" + "\n".join(stock_lines)
+                )
+
+                resp = await client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                import json
+                raw = resp.content[0].text.strip()
+                # Strip markdown code fences if present
+                if raw.startswith("```"):
+                    raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+                    if raw.endswith("```"):
+                        raw = raw[:-3]
+                    raw = raw.strip()
+
+                try:
+                    desc_map = json.loads(raw)
+                    if isinstance(desc_map, dict):
+                        for tk, desc in desc_map.items():
+                            tk = tk.upper()
+                            if isinstance(desc, str) and desc and tk in tickers_to_describe:
+                                await upsert_ticker_override(tk, desc)
+                        _apply_overrides(desc_map)
+                        logger.info(f"Claude descriptions: generated {len(desc_map)} trading-relevant descriptions")
+                        summary_parts.append(f"{len(desc_map)} descriptions")
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Claude description parse failed: {e}")
+    except Exception as e:
+        logger.error(f"Claude description enrichment failed: {e}")
+
     # 4b. Quote type enrichment — classify tracked stocks as EQUITY/ETF/etc.
     try:
         from agents.market_intelligence.db import (
