@@ -705,6 +705,16 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
+    # Refresh description overrides so newly enriched tickers show industry names
+    try:
+        from agents.market_intelligence.db import get_ticker_overrides
+        from agents.market_intelligence.universe import apply_overrides
+        overrides = await get_ticker_overrides()
+        if overrides:
+            apply_overrides(overrides)
+    except Exception:
+        pass
+
     # Collect all theme constituent tickers and fetch their RS data in one query
     all_theme_tickers = []
     for t in themes:

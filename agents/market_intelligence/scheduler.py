@@ -98,23 +98,36 @@ async def _nightly_data_pull():
         logger.error(f"Regime engine failed: {e}")
         failures.append(f"Regime: {e}")
 
-    # 4. Sector enrichment — fetch sector for top RS stocks so biotech/pharma filter works
+    # 4. Sector enrichment — fetch sector + industry for top RS stocks
     try:
         from agents.market_intelligence.collector import get_fmp_profile
+        from agents.market_intelligence.db import upsert_ticker_override
+        from agents.market_intelligence.universe import get_description
         top_for_sector = await get_rs_leaders(today_str, limit=200, min_adv=0, min_price=0)
         sector_sem = asyncio.Semaphore(5)
         sector_map: dict[str, str] = {}
+        desc_updates: dict[str, str] = {}
         async def _fetch_sector(ticker: str):
             async with sector_sem:
                 profile = await get_fmp_profile(ticker)
                 s = profile.get("sector")
                 if s:
                     sector_map[ticker] = s
+                # Save industry as description for stocks without a curated one
+                industry = profile.get("industry")
+                if industry and not get_description(ticker):
+                    desc_updates[ticker] = industry
         await asyncio.gather(*[_fetch_sector(s["ticker"]) for s in top_for_sector if not s.get("sector")])
         if sector_map:
             updated = await update_sectors_batch(_today, sector_map)
             logger.info(f"Sector enrichment: updated {updated} tickers")
             summary_parts.append(f"{updated} sectors")
+        if desc_updates:
+            for tk, desc in desc_updates.items():
+                await upsert_ticker_override(tk, desc)
+            from agents.market_intelligence.universe import apply_overrides
+            apply_overrides(desc_updates)
+            logger.info(f"Description enrichment: {len(desc_updates)} industry descriptions saved")
 
         # Data quality: sector coverage check
         with_sector = sum(1 for s in top_for_sector if s.get("sector"))
