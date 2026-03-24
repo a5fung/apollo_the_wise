@@ -68,14 +68,28 @@ async def _nightly_data_pull():
     ingested = 0
     scored = 0
 
-    # 1. Ingest today's daily closes (1 Polygon call → all stocks)
+    # 1. Ingest today's daily closes
+    # Try grouped daily first; if it fails/returns 0 (Polygon same-day restriction),
+    # fall back to snapshot endpoint which works on Starter plan.
     try:
         ingested = await ingest_daily()
+        if ingested == 0 and _today.weekday() < 5:
+            logger.warning("Grouped daily returned 0 on a weekday — falling back to snapshot")
+            from agents.market_intelligence.rs_engine import ingest_from_snapshot
+            ingested = await ingest_from_snapshot(_today)
         logger.info(f"Daily closes ingested: {ingested} tickers")
         await check_ingest_quality(ingested, _today)
     except Exception as e:
         logger.error(f"Daily close ingestion failed: {e}")
         failures.append(f"Daily ingestion: {e}")
+
+    # GUARDRAIL: if no data ingested on a weekday, abort the pipeline.
+    # Scoring with stale data produces wrong RS, wrong regime, wrong alerts.
+    if ingested == 0 and _today.weekday() < 5:
+        msg = f"Aborting nightly pull: 0 tickers ingested for {today_str} (weekday). Stale data would produce wrong signals."
+        logger.error(msg)
+        await notify_job_failure(JOB_NIGHTLY_DATA_PULL, msg)
+        return
 
     # 2. RS engine — scores, SMAs, raw returns
     try:

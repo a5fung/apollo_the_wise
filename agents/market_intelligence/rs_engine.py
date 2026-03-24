@@ -120,6 +120,53 @@ async def ingest_daily(trade_date: date | None = None) -> int:
     return count
 
 
+async def ingest_from_snapshot(trade_date: date | None = None) -> int:
+    """
+    Fallback ingestion using Polygon snapshot endpoint (works on Starter for same-day data).
+    Converts snapshot format to daily close format and stores in mi_daily_closes.
+    """
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    td = trade_date or date.today()
+    td_str = td.strftime("%Y-%m-%d")
+
+    # Skip if already ingested
+    existing = await get_daily_closes_count(td)
+    if existing > 1000:
+        logger.info(f"Daily closes already ingested for {td_str}: {existing} tickers")
+        return existing
+
+    logger.info(f"Ingesting from snapshot for {td_str}...")
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning(f"No snapshot data for {td_str}")
+        return 0
+
+    # Convert snapshot format to grouped-daily format expected by ingest_daily_closes
+    bars: dict[str, dict] = {}
+    for ticker, snap in snapshots.items():
+        day = snap.get("day", {})
+        if not day or not day.get("c"):
+            continue
+        bars[ticker] = {
+            "T": ticker,
+            "o": day.get("o", 0),
+            "h": day.get("h", 0),
+            "l": day.get("l", 0),
+            "c": day["c"],
+            "v": day.get("v", 0),
+            "vw": day.get("vw", 0),
+        }
+
+    if not bars:
+        logger.warning(f"Snapshot had no usable day data for {td_str}")
+        return 0
+
+    count = await ingest_daily_closes(td, bars)
+    logger.info(f"Ingested {count} tickers from snapshot for {td_str}")
+    return count
+
+
 async def bootstrap_daily_closes(days: int = 200) -> int:
     """
     Backfill mi_daily_closes with historical grouped daily data.
