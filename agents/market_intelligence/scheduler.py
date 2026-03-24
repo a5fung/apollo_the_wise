@@ -138,8 +138,9 @@ async def _nightly_data_pull():
                 async with qt_sem:
                     try:
                         import yfinance as yf
-                        fi = yf.Ticker(ticker).fast_info
-                        qt = getattr(fi, "quote_type", None) or "EQUITY"
+                        loop = asyncio.get_event_loop()
+                        info = await loop.run_in_executor(None, lambda: yf.Ticker(ticker).info)
+                        qt = info.get("quoteType", "EQUITY")
                         qt_map[ticker] = qt
                     except Exception:
                         qt_map[ticker] = "EQUITY"  # assume equity if lookup fails
