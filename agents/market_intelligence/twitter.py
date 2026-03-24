@@ -209,6 +209,123 @@ async def post_ep_tweet(ep: dict) -> bool:
         return False
 
 
+def _abbreviate_theme(name: str, max_len: int = 10) -> str:
+    """Shorten theme names to fit in a tweet table."""
+    # Order matters — apply longer phrases first
+    abbrevs = [
+        ("Semiconductor Capital", "Semi Cap"),
+        ("Semiconductor", "Semi"),
+        ("Infrastructure", "Infra"),
+        ("Equipment", "Equip"),
+        ("Networking & Photonics", "Net"),
+        ("Networking", "Net"),
+        ("Intelligence Data Services", ""),
+        ("Intelligence", "Intel"),
+        ("Renaissance", ""),
+        ("Generation", "Gen"),
+        ("Cybersecurity & Identity", "Cyber"),
+        ("Cybersecurity", "Cyber"),
+        ("Technology", "Tech"),
+        ("Artificial", "AI"),
+        ("Processing", "Proc"),
+        ("Computing", "Comp"),
+        ("Services", "Svc"),
+        ("Advanced", "Adv"),
+        ("Manufacturing", "Mfg"),
+        ("Enterprise", "Ent"),
+        ("Industrial Gas & Specialty Chemicals", "Ind Gas"),
+        ("Industrial Gas", "Ind Gas"),
+        ("Industrial", "Ind"),
+        ("Photonics", "Photon"),
+        ("Defense Primes & Aerospace", "Defense"),
+        ("Defense Primes", "Defense"),
+        ("Specialty Chemicals", "Chem"),
+        ("Satellite & Space", "Satellite"),
+        (" & ", "/"),
+        (" and ", "/"),
+    ]
+    result = name
+    # Strip common prefixes
+    for prefix in ("U.S. ", "US "):
+        if result.startswith(prefix):
+            result = result[len(prefix):]
+    for long, short in abbrevs:
+        result = result.replace(long, short)
+    # Collapse whitespace
+    result = " ".join(result.split()).strip()
+    if len(result) > max_len:
+        words = result.split()
+        while len(" ".join(words)) > max_len and len(words) > 1:
+            words.pop()
+        result = " ".join(words)
+    return result[:max_len]
+
+
+def format_theme_tweet(
+    scored_themes: list[dict], briefing_date: str,
+) -> str:
+    """
+    Format top 10 themes as a compact table tweet.
+    Columns: Theme name (abbreviated), RS, 1M, 3M, 6M.
+    Target: ≤280 chars.
+    """
+    top = scored_themes[:10]
+    if not top:
+        return ""
+
+    # Use short date: 3/23
+    parts = briefing_date.split("-")
+    short_date = f"{int(parts[1])}/{int(parts[2])}" if len(parts) == 3 else briefing_date
+
+    lines = [f"Theme RS {short_date}"]
+    for st in top:
+        name = _abbreviate_theme(st["name"])
+        lines.append(
+            f"{name:<10} {st['comp']:2.0f} {st['rs_1m']:2.0f} {st['rs_3m']:2.0f} {st['rs_6m']:2.0f}"
+        )
+    lines.append("#themes #momentum #stocks")
+
+    return "\n".join(lines)
+
+
+async def post_theme_tweet(
+    scored_themes: list[dict], briefing_date: str,
+    image_bytes: bytes | None = None,
+) -> bool:
+    """Post theme scorecard as an image tweet with text fallback."""
+    result = _get_client()
+    if not result:
+        return False
+    client, api = result
+
+    text = format_theme_tweet(scored_themes, briefing_date)
+    if not text:
+        return False
+
+    def _post():
+        media_id = None
+        if image_bytes:
+            media = api.media_upload(filename="theme_rs.png", file=io.BytesIO(image_bytes))
+            media_id = media.media_id
+
+        # Short caption when image is attached; full text as fallback
+        tweet_text = f"Theme RS — {briefing_date}\n#themes #momentum #stocks" if media_id else text
+        kwargs = {"text": tweet_text}
+        if media_id:
+            kwargs["media_ids"] = [media_id]
+        response = client.create_tweet(**kwargs)
+        return bool(response.data and response.data.get("id"))
+
+    try:
+        ok = await asyncio.to_thread(_post)
+        if ok:
+            logger.info("Theme scorecard tweet posted")
+        return ok
+    except Exception as e:
+        logger.error(f"Theme tweet failed: {e}")
+        return False
+
+
 async def post_custom_tweet(text: str) -> dict:
     """
     Post a user-requested tweet. If text > 280 chars, splits into a thread

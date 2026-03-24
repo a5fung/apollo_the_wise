@@ -325,28 +325,19 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
 
 
 
-def _format_theme_scorecard(
+def _compute_scored_themes(
     themes: list[dict],
     theme_rs_data: dict[str, dict],
     prior_scores: dict[str, float],
-    section_num: int = 3,
-) -> str:
+) -> tuple[list[dict], list[dict]]:
     """
-    Two-tier Theme RS Scorecard.
-
-    Tier 1 (top 5): detailed — name, RS composite (1M|3M|6M), delta, top constituents
-    Tier 2 (rest):  compact — one line per theme
-    Fading:         collapsed list
-
-    Uses trimmed mean for composite RS — drops bottom 20% to resist outlier drag.
+    Compute per-theme RS averages from constituent stock data.
+    Returns (scored_themes sorted by composite RS desc, fading themes).
+    Uses trimmed mean — drops bottom 20% to resist outlier drag.
     """
-    if not themes:
-        return f"*{section_num}. THEME SCORECARD* — No data yet"
-
     active = [t for t in themes if t.get("stage") != "Fading"]
     fading = [t for t in themes if t.get("stage") == "Fading"]
 
-    # Compute per-theme RS averages from constituent stock data
     scored_themes = []
     for t in active:
         name = t["name"]
@@ -354,7 +345,6 @@ def _format_theme_scorecard(
         if not tickers:
             continue
 
-        # Gather RS values for this theme's constituents
         comps, rs1m, rs3m, rs6m = [], [], [], []
         for tk in tickers:
             rs = theme_rs_data.get(tk)
@@ -377,7 +367,6 @@ def _format_theme_scorecard(
         avg_3m = _trimmed_mean(rs3m) if rs3m else 0
         avg_6m = _trimmed_mean(rs6m) if rs6m else 0
 
-        # Delta vs prior day
         prior = prior_scores.get(name)
         delta = avg_comp - prior if prior is not None else None
 
@@ -394,8 +383,24 @@ def _format_theme_scorecard(
             "n_scored": len(comps),
         })
 
-    # Sort by composite RS descending
     scored_themes.sort(key=lambda x: -x["comp"])
+    return scored_themes, fading
+
+
+def _format_theme_scorecard(
+    themes: list[dict],
+    theme_rs_data: dict[str, dict],
+    prior_scores: dict[str, float],
+    section_num: int = 3,
+) -> str:
+    """
+    Theme RS Scorecard — all active themes with RS composite (1M|3M|6M),
+    delta, and top constituents. Fading collapsed.
+    """
+    if not themes:
+        return f"*{section_num}. THEME SCORECARD* — No data yet"
+
+    scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores)
 
     lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
 
@@ -752,24 +757,34 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     else:
         logger.error("Failed to send evening briefing")
 
-    # Send RS leaders chart mosaic + post to Twitter/X in parallel
+    # Compute scored themes for Twitter theme tweet
+    scored_themes = []
+    if theme_rs_data and themes:
+        scored_themes, _ = _compute_scored_themes(themes, theme_rs_data, prior_theme_scores or {})
+
+    # Send RS leaders chart mosaic + theme table image + post to Twitter/X
     mosaic_bytes = None
     try:
-        from agents.market_intelligence.charts import build_chart_mosaic, send_chart_mosaic
+        from agents.market_intelligence.charts import (
+            build_chart_mosaic, send_chart_mosaic, build_theme_table_image,
+        )
+        from agents.market_intelligence.twitter import post_to_twitter, post_theme_tweet
         chart_tickers = [s["ticker"] for s in rs_leaders[:20]]
+
+        # Build theme table image
+        theme_img = build_theme_table_image(scored_themes, today_str) if scored_themes else None
+
         if chart_tickers:
             mosaic_bytes, _url = await build_chart_mosaic(chart_tickers)
+            twitter_tasks = [post_to_twitter(rs_leaders, regime, today_str, mosaic_bytes=mosaic_bytes)]
+            if scored_themes:
+                twitter_tasks.append(post_theme_tweet(scored_themes, today_str, image_bytes=theme_img))
+
+            telegram_tasks = []
             if mosaic_bytes:
-                from agents.market_intelligence.twitter import post_to_twitter
-                await asyncio.gather(
-                    send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes),
-                    post_to_twitter(rs_leaders, regime, today_str, mosaic_bytes=mosaic_bytes),
-                    return_exceptions=True,
-                )
-            else:
-                # No mosaic — still try Twitter without image
-                from agents.market_intelligence.twitter import post_to_twitter
-                await post_to_twitter(rs_leaders, regime, today_str)
+                telegram_tasks.append(send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes))
+
+            await asyncio.gather(*telegram_tasks, *twitter_tasks, return_exceptions=True)
     except Exception as e:
         logger.warning(f"Chart mosaic / Twitter failed (non-critical): {e}")
 

@@ -114,6 +114,111 @@ async def build_chart_mosaic(tickers: list[str]) -> tuple[bytes | None, str]:
         return None, screener_url
 
 
+def build_theme_table_image(
+    scored_themes: list[dict], briefing_date: str,
+) -> bytes | None:
+    """
+    Render top 10 themes as a clean table image (PNG).
+    Columns: Theme, RS, 1M, 3M, 6M.
+    Returns PNG bytes or None on error.
+    """
+    top = scored_themes[:10]
+    if not top:
+        return None
+
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        logger.error("Pillow not installed — cannot build theme table image")
+        return None
+
+    # Try to load a monospace font; fall back to default
+    font_size = 18
+    header_size = 22
+    title_size = 24
+    try:
+        font = ImageFont.truetype("consola.ttf", font_size)
+        header_font = ImageFont.truetype("consolab.ttf", header_size)
+        title_font = ImageFont.truetype("consolab.ttf", title_size)
+    except (OSError, IOError):
+        try:
+            font = ImageFont.truetype("cour.ttf", font_size)
+            header_font = ImageFont.truetype("courbd.ttf", header_size)
+            title_font = ImageFont.truetype("courbd.ttf", title_size)
+        except (OSError, IOError):
+            font = ImageFont.load_default()
+            header_font = font
+            title_font = font
+
+    # Layout constants
+    pad_x, pad_y = 24, 16
+    row_h = 32
+    col_widths = [220, 50, 50, 50, 50]  # Theme, RS, 1M, 3M, 6M
+    total_w = sum(col_widths) + 2 * pad_x
+    # title + header + rows + bottom pad
+    total_h = pad_y + row_h + row_h + len(top) * row_h + pad_y + 10
+
+    # Dark background, light text
+    bg_color = (25, 25, 35)
+    header_color = (180, 180, 200)
+    text_color = (230, 230, 240)
+    title_color = (255, 255, 255)
+    line_color = (60, 60, 80)
+    # RS color coding
+    hot_color = (100, 220, 100)    # RS 80+
+    warm_color = (220, 200, 80)    # RS 50-79
+    cool_color = (180, 100, 100)   # RS <50
+
+    img = Image.new("RGB", (total_w, total_h), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Short date
+    parts = briefing_date.split("-")
+    short_date = f"{int(parts[1])}/{int(parts[2])}" if len(parts) == 3 else briefing_date
+
+    # Title
+    y = pad_y
+    draw.text((pad_x, y), f"Theme RS — {short_date}", fill=title_color, font=title_font)
+    y += row_h + 4
+
+    # Header row
+    headers = ["Theme", "RS", "1M", "3M", "6M"]
+    x = pad_x
+    for i, hdr in enumerate(headers):
+        draw.text((x, y), hdr, fill=header_color, font=header_font)
+        x += col_widths[i]
+    y += row_h
+    draw.line([(pad_x, y - 4), (total_w - pad_x, y - 4)], fill=line_color, width=1)
+
+    def _rs_color(val: float) -> tuple:
+        if val >= 80:
+            return hot_color
+        if val >= 50:
+            return warm_color
+        return cool_color
+
+    # Theme abbreviation (reuse from twitter module)
+    from agents.market_intelligence.twitter import _abbreviate_theme
+
+    # Data rows
+    for st in top:
+        x = pad_x
+        name = _abbreviate_theme(st["name"], max_len=18)
+        draw.text((x, y), name, fill=text_color, font=font)
+        x += col_widths[0]
+        # RS values with color coding
+        for val_key, col_w in zip(["comp", "rs_1m", "rs_3m", "rs_6m"], col_widths[1:]):
+            val = st[val_key]
+            draw.text((x, y), f"{val:.0f}", fill=_rs_color(val), font=font)
+            x += col_w
+        y += row_h
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf.getvalue()
+
+
 async def send_chart_mosaic(
     tickers: list[str],
     chat_id: int | None = None,
