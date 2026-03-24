@@ -110,6 +110,49 @@ async def get_snapshot_all() -> dict[str, dict]:
         return {}
 
 
+async def fetch_all_ticker_types() -> dict[str, dict]:
+    """
+    Fetch security type + exchange for all US stock tickers from Polygon Reference API.
+    Returns: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|...}}
+    Paginated — typically 3-4 API calls for ~14K tickers.
+    """
+    result: dict[str, dict] = {}
+    cursor = None
+    page = 0
+    while True:
+        params = {"market": "stocks", "active": "true", "limit": "1000"}
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            data = await _polygon_get("/v3/reference/tickers", params)
+        except Exception as e:
+            logger.error(f"Ticker types fetch failed (page {page}): {e}")
+            break
+
+        for t in data.get("results", []):
+            ticker = t.get("ticker")
+            if ticker:
+                result[ticker] = {
+                    "type": t.get("type", ""),
+                    "exchange": t.get("primary_exchange", ""),
+                }
+
+        next_url = data.get("next_url")
+        if not next_url:
+            break
+        # Extract cursor from next_url
+        import urllib.parse
+        parsed = urllib.parse.urlparse(next_url)
+        qs = urllib.parse.parse_qs(parsed.query)
+        cursor = qs.get("cursor", [None])[0]
+        if not cursor:
+            break
+        page += 1
+
+    logger.info(f"Fetched types for {len(result)} tickers ({page + 1} pages)")
+    return result
+
+
 async def get_ticker_details(ticker: str) -> dict:
     """Get company details: name, sector, shares outstanding, etc."""
     try:

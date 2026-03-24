@@ -61,18 +61,21 @@ async def _nightly_data_pull():
     """
     logger.info("Nightly data pull starting...")
     from datetime import date as _date_cls
-    _today = _date_cls.today()
+    # Use ET date, not UTC — container may run in UTC but market dates are ET
+    _et = pytz.timezone("US/Eastern")
+    _today = datetime.now(_et).date()
     today_str = _today.strftime("%Y-%m-%d")
     failures = []
     summary_parts = []
     ingested = 0
     scored = 0
+    top_for_sector = None
 
     # 1. Ingest today's daily closes
     # Try grouped daily first; if it fails/returns 0 (Polygon same-day restriction),
     # fall back to snapshot endpoint which works on Starter plan.
     try:
-        ingested = await ingest_daily()
+        ingested = await ingest_daily(_today)
         if ingested == 0 and _today.weekday() < 5:
             logger.warning("Grouped daily returned 0 on a weekday — falling back to snapshot")
             from agents.market_intelligence.rs_engine import ingest_from_snapshot
@@ -91,9 +94,23 @@ async def _nightly_data_pull():
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, msg)
         return
 
+    # 1b. Refresh security types (weekly — classifies CS vs ETF/warrant/SPAC/etc.)
+    try:
+        from agents.market_intelligence.db import get_security_types_count, upsert_security_types_batch
+        types_count = await get_security_types_count()
+        # Bootstrap on first run, then refresh weekly (Monday)
+        if types_count == 0 or _today.weekday() == 0:
+            from agents.market_intelligence.collector import fetch_all_ticker_types
+            ticker_types = await fetch_all_ticker_types()
+            if ticker_types:
+                stored = await upsert_security_types_batch(ticker_types)
+                logger.info(f"Security types: stored {stored} tickers")
+    except Exception as e:
+        logger.error(f"Security types refresh failed: {e}")
+
     # 2. RS engine — scores, SMAs, raw returns
     try:
-        rs_result = await run_rs_engine()
+        rs_result = await run_rs_engine(_today)
         scored = rs_result.get("stocks_scored", 0)
         logger.info(f"RS engine: scored {scored} stocks")
         summary_parts.append(f"{scored} stocks scored")
@@ -104,7 +121,7 @@ async def _nightly_data_pull():
 
     # 3. Regime engine — now can use full-universe breadth from stored data
     try:
-        regime_result = await run_regime_engine()
+        regime_result = await run_regime_engine(_today)
         regime = regime_result.get("regime", "?")
         logger.info(f"Regime: {regime}")
         summary_parts.append(f"regime={regime}")
@@ -143,8 +160,8 @@ async def _nightly_data_pull():
             apply_overrides(desc_updates)
             logger.info(f"Description enrichment: {len(desc_updates)} industry descriptions saved")
 
-        # Data quality: sector coverage check
-        with_sector = sum(1 for s in top_for_sector if s.get("sector"))
+        # Data quality: sector coverage check (count pre-existing + newly fetched)
+        with_sector = sum(1 for s in top_for_sector if s.get("sector") or s["ticker"] in sector_map)
         total_top = len(top_for_sector)
         if total_top > 0:
             await check_sector_quality(with_sector, total_top, _today)
@@ -154,7 +171,7 @@ async def _nightly_data_pull():
     # 4a. Claude description generation — upgrade generic industry names to trading-relevant descriptions
     try:
         from agents.market_intelligence.universe import UNIVERSE_WITH_DESC, get_description
-        from agents.market_intelligence.db import upsert_ticker_override
+        from agents.market_intelligence.db import upsert_ticker_overrides_batch
         from agents.market_intelligence.universe import apply_overrides as _apply_overrides
 
         # Curated tickers from universe.py — skip these
@@ -162,7 +179,7 @@ async def _nightly_data_pull():
 
         # Find top RS stocks needing better descriptions
         # top_for_sector is from step 4 — if it failed, fall back to fresh query
-        if 'top_for_sector' not in locals():
+        if top_for_sector is None:
             top_for_sector = await get_rs_leaders(today_str, limit=200, min_adv=0, min_price=0)
         candidates = []
         for s in top_for_sector:
@@ -236,13 +253,13 @@ async def _nightly_data_pull():
                 try:
                     desc_map = json.loads(raw)
                     if isinstance(desc_map, dict):
-                        for tk, desc in desc_map.items():
-                            tk = tk.upper()
-                            if isinstance(desc, str) and desc and tk in tickers_to_describe:
-                                await upsert_ticker_override(tk, desc)
+                        valid = {tk.upper(): desc for tk, desc in desc_map.items()
+                                 if isinstance(desc, str) and desc and tk.upper() in tickers_to_describe}
+                        if valid:
+                            await upsert_ticker_overrides_batch(valid)
                         _apply_overrides(desc_map)
-                        logger.info(f"Claude descriptions: generated {len(desc_map)} trading-relevant descriptions")
-                        summary_parts.append(f"{len(desc_map)} descriptions")
+                        logger.info(f"Claude descriptions: generated {len(valid)} trading-relevant descriptions")
+                        summary_parts.append(f"{len(valid)} descriptions")
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.warning(f"Claude description parse failed: {e}")
     except Exception as e:

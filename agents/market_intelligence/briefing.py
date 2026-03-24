@@ -16,10 +16,11 @@ import logging
 import re
 import os
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import httpx
+import pytz
 
 from agents.market_intelligence.collector import (
     get_premarket_futures,
@@ -87,6 +88,14 @@ def _ep_threshold_context(thresh: int) -> str:
         return f"≥{thresh} — choppy, raise your bar"
     else:
         return f"≥{thresh} — standard"
+
+
+_ET = pytz.timezone("US/Eastern")
+
+
+def _et_today() -> date:
+    """Return today's date in US/Eastern timezone."""
+    return datetime.now(_ET).date()
 
 
 # ── Section formatters ─────────────────────────────────────────────────────────
@@ -254,7 +263,7 @@ def _format_rs_section(
         return f"*{section_num}. RS LEADERS* — No data yet (run data refresh first)"
 
     fund_flags = fund_flags or {}
-    today = date.today()
+    today = _et_today()
     top = rs_leaders[:20]
     header = f"*{section_num}. RS LEADERS* — Top {len(top)} by RS composite"
 
@@ -271,7 +280,7 @@ def _format_rs_section(
             # Short description: universe desc > sector fallback
             desc = get_description(ticker) or s.get("sector") or ""
             desc_part = f" — {desc}" if desc else ""
-            rows.append(f"`{ticker:<6} RS {rs:>3}`{eps}{earn}{desc_part}")
+            rows.append(f"`{ticker:<6} RS {rs:>3}{eps}{earn}{desc_part}`")
         footer = "_EPS % = latest qtr YoY | ⬆ = accelerating_"
         return header + "\n" + "\n".join(rows) + "\n" + footer
 
@@ -282,7 +291,7 @@ def _format_rs_section(
         rs = int(s.get("rs_composite") or 0)
         desc = get_description(ticker) or s.get("sector") or ""
         desc_part = f" — {desc}" if desc else ""
-        rows.append(f"`{ticker:<6} RS {rs:>3}`{desc_part}")
+        rows.append(f"`{ticker:<6} RS {rs:>3}{desc_part}`")
 
     return header + "\n" + "\n".join(rows)
 
@@ -420,7 +429,7 @@ def _format_theme_scorecard(
 
         lines.append("")
         lines.append(f"{emoji}*{name}*")
-        lines.append(f"  RS {st['comp']:.0f} (1M {st['rs_1m']:.0f} | 3M {st['rs_3m']:.0f} | 6M {st['rs_6m']:.0f}){delta_str}")
+        lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}")
         if top_tickers:
             lines.append(f"  {top_tickers}")
 
@@ -692,7 +701,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     Assemble and send the evening briefing (regime + RS + themes + velocity + pullbacks).
     Returns the briefing text.
     """
-    today = date.today()
+    today = _et_today()
     today_str = today.strftime("%Y-%m-%d")
 
     regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings = (
@@ -861,7 +870,7 @@ async def _get_economic_calendar() -> str | None:
     Fetch today's key economic events via Perplexity.
     Returns a concise string of events or None.
     """
-    today = date.today()
+    today = _et_today()
     day_str = today.strftime("%A, %B %d, %Y")
     query = (
         f"What are the key US economic events, data releases, and Fed speeches scheduled for {day_str}? "
@@ -1019,7 +1028,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     Includes overnight market moves + headline news, EP alerts, regime context.
     Perplexity-sourced content (overnight news, calendar) is cached per day.
     """
-    today = date.today()
+    today = _et_today()
     today_str = today.strftime("%Y-%m-%d")
     cache = _perplexity_cache.get(today_str, {})
 

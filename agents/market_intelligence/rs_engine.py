@@ -224,6 +224,10 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
     logger.info(f"RS Engine: loading daily closes from DB ({from_date} to {today_str})...")
 
+    # Load common stock tickers to filter out ETFs, warrants, SPACs, etc.
+    from agents.market_intelligence.db import get_common_stock_tickers
+    cs_tickers = await get_common_stock_tickers()
+
     # Load all daily closes from DB (one query, all tickers)
     all_closes = await get_daily_closes_all(from_date, today)
 
@@ -236,7 +240,10 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     # Compute RS for each ticker
     stock_data: list[dict] = []
     for ticker, closes in all_closes.items():
-        # Skip short symbols and penny stocks
+        # Skip non-common-stock securities (ETFs, warrants, SPACs, etc.)
+        if cs_tickers and ticker not in cs_tickers:
+            continue
+        # Skip long symbols and penny stocks
         if len(ticker) > MAX_TICKER_LEN:
             continue
 

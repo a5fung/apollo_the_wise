@@ -152,6 +152,13 @@ async def initialize_schema() -> None:
                 quote_type TEXT DEFAULT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS mi_security_types (
+                ticker TEXT PRIMARY KEY,
+                security_type TEXT NOT NULL,
+                exchange TEXT DEFAULT '',
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
             CREATE TABLE IF NOT EXISTS mi_job_log (
                 job_name TEXT NOT NULL,
                 run_date DATE NOT NULL,
@@ -1457,6 +1464,24 @@ async def upsert_ticker_override(
         """, ticker.upper(), description, notes)
 
 
+async def upsert_ticker_overrides_batch(
+    overrides: dict[str, str],
+) -> int:
+    """Batch-upsert description overrides. Returns count of rows upserted."""
+    if not overrides:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_ticker_overrides (ticker, description, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (ticker) DO UPDATE SET
+                description = EXCLUDED.description,
+                updated_at = NOW()
+        """, [(tk.upper(), desc) for tk, desc in overrides.items()])
+    return len(overrides)
+
+
 async def get_ticker_overrides() -> dict[str, str]:
     """Get all ticker description overrides, keyed by ticker."""
     pool = await get_pool()
@@ -1465,6 +1490,48 @@ async def get_ticker_overrides() -> dict[str, str]:
             "SELECT ticker, description FROM mi_ticker_overrides"
         )
         return {r["ticker"]: r["description"] for r in rows}
+
+
+# ── Security types ───────────────────────────────────────────────────────────
+
+
+async def upsert_security_types_batch(types: dict[str, dict]) -> int:
+    """Batch-upsert security types from Polygon reference data.
+    types: {ticker: {"type": "CS"|"ETF"|..., "exchange": "XNYS"|...}}
+    """
+    if not types:
+        return 0
+    pool = await get_pool()
+    rows = [(tk, info["type"], info.get("exchange", ""))
+            for tk, info in types.items() if info.get("type")]
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_security_types (ticker, security_type, exchange, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (ticker) DO UPDATE SET
+                security_type = EXCLUDED.security_type,
+                exchange = EXCLUDED.exchange,
+                updated_at = NOW()
+        """, rows)
+    return len(rows)
+
+
+async def get_common_stock_tickers() -> set[str]:
+    """Return set of tickers classified as Common Stock (CS, ADRC).
+    Used to filter out ETFs, warrants, units, SPACs, etc."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker FROM mi_security_types WHERE security_type IN ('CS', 'ADRC')"
+        )
+        return {r["ticker"] for r in rows}
+
+
+async def get_security_types_count() -> int:
+    """Return count of security types stored."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval("SELECT COUNT(*) FROM mi_security_types") or 0
 
 
 # ── Data quality ─────────────────────────────────────────────────────────────

@@ -158,11 +158,7 @@ def build_theme_table_image(
             title_font = font
 
     # Measure the longest theme name to auto-size column
-    dummy_img = Image.new("RGB", (1, 1))
-    dummy_draw = ImageDraw.Draw(dummy_img)
-    max_name_w = max(
-        dummy_draw.textlength(st["name"], font=font) for st in top
-    )
+    max_name_w = max(font.getlength(st["name"]) for st in top)
     theme_col_w = int(max_name_w) + 20  # pad
 
     # Layout

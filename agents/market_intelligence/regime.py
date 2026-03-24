@@ -263,12 +263,23 @@ async def calculate_breadth_full(today: date) -> dict:
         daily_down4_counts: dict[date, int] = {}
 
         if len(trade_dates) >= 2:
-            # Get all closes for these dates
-            closes_rows = await conn.fetch("""
-                SELECT trade_date, ticker, close FROM mi_daily_closes
-                WHERE trade_date = ANY($1)
-                  AND close IS NOT NULL AND close > 0
-            """, trade_dates)
+            # Get closes for common stocks only (exclude ETFs, warrants, SPACs, OTC, sub-$1)
+            # Falls back to unfiltered if mi_security_types is empty (first run)
+            has_types = await conn.fetchval("SELECT EXISTS(SELECT 1 FROM mi_security_types LIMIT 1)")
+            if has_types:
+                closes_rows = await conn.fetch("""
+                    SELECT d.trade_date, d.ticker, d.close FROM mi_daily_closes d
+                    INNER JOIN mi_security_types st ON st.ticker = d.ticker
+                        AND st.security_type IN ('CS', 'ADRC')
+                    WHERE d.trade_date = ANY($1)
+                      AND d.close IS NOT NULL AND d.close >= 1.0
+                """, trade_dates)
+            else:
+                closes_rows = await conn.fetch("""
+                    SELECT trade_date, ticker, close FROM mi_daily_closes
+                    WHERE trade_date = ANY($1)
+                      AND close IS NOT NULL AND close >= 1.0
+                """, trade_dates)
 
             # Build {ticker: {date: close}}
             closes_by_ticker: dict[str, dict[date, float]] = {}
@@ -289,6 +300,8 @@ async def calculate_breadth_full(today: date) -> dict:
                 for tk, dates in closes_by_ticker.items():
                     if d_prev in dates and d_curr in dates:
                         pct_chg = (dates[d_curr] - dates[d_prev]) / dates[d_prev] * 100
+                        if abs(pct_chg) > 100:
+                            continue  # skip reverse splits / corporate actions
                         if pct_chg >= 4:
                             up4 += 1
                         elif pct_chg <= -4:
