@@ -57,6 +57,12 @@ MAX_1D_RETURN = 1.0  # 100%
 # because Polygon adjusts recent prices but older history may lag.
 MAX_PERIOD_RETURN = 300.0  # 300% (i.e., 4x price increase)
 
+# Tickers to exclude from RS scoring entirely.
+# M&A/buyout targets trade at deal price with no momentum — not RS leaders.
+RS_EXCLUDE_TICKERS: set[str] = {
+    "DAWN",   # Bought out — trading at deal price
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -244,6 +250,9 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     # Compute RS for each ticker
     stock_data: list[dict] = []
     for ticker, closes in all_closes.items():
+        # Skip excluded tickers (M&A targets, etc.)
+        if ticker in RS_EXCLUDE_TICKERS:
+            continue
         # Skip non-common-stock securities (ETFs, warrants, SPACs, etc.)
         if cs_tickers and ticker not in cs_tickers:
             continue
