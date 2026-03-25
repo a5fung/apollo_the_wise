@@ -497,10 +497,9 @@ def _format_unanchored_section(
     for s in unanchored[:10]:
         ticker = s["ticker"]
         rs = int(s.get("rs_composite") or 0)
-        sector = s.get("sector", "")
-        desc = get_description(ticker)
+        desc = get_description(ticker) or s.get("sector") or ""
         desc_part = f" — {desc}" if desc else ""
-        lines.append(f"  `{ticker}` RS {rs}  ({sector}{desc_part})")
+        lines.append(f"`{ticker:<6} RS {rs:>3}{desc_part}`")
 
     return "\n".join(lines)
 
