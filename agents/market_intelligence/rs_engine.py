@@ -99,26 +99,27 @@ def _compute_sma(closes: dict[str, float], n: int) -> Optional[float]:
 
 def _volatility_ratio(closes: dict[str, float], short: int = 10, long: int = 50) -> Optional[float]:
     """
-    Ratio of recent vs historical close-to-close volatility (stdev of daily returns).
+    Ratio of recent vs historical close-to-close volatility.
+    Uses median absolute deviation (MAD) — robust to outlier gap days
+    that inflate stdev and cause false positives on normal stocks.
     < 0.25 = volatility crushed (M&A pinning, halt, etc.)
     ~ 1.0  = normal
-    > 1.5  = expanding (breakout / selloff)
     Returns None if insufficient data.
     """
     sorted_prices = [c for _, c in sorted(closes.items()) if c and c > 0]
     if len(sorted_prices) < long + 1:
         return None
-    # Daily returns as fractions
-    returns = [(sorted_prices[i] / sorted_prices[i - 1]) - 1.0
-               for i in range(1, len(sorted_prices))]
-    recent = returns[-short:]
-    historical = returns[-long:]
+    # Daily returns as absolute values
+    abs_returns = [abs(sorted_prices[i] / sorted_prices[i - 1] - 1.0)
+                   for i in range(1, len(sorted_prices))]
+    recent = abs_returns[-short:]
+    historical = abs_returns[-long:]
     import statistics
-    std_recent = statistics.pstdev(recent)
-    std_hist = statistics.pstdev(historical)
-    if std_hist < 0.0001:  # near-zero historical vol (shouldn't happen for real stocks)
+    mad_recent = statistics.median(recent)
+    mad_hist = statistics.median(historical)
+    if mad_hist < 0.0001:
         return None
-    return std_recent / std_hist
+    return mad_recent / mad_hist
 
 
 def _percentile_ranks(values: list[Optional[float]]) -> list[Optional[float]]:
