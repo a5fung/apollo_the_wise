@@ -293,6 +293,13 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     if not stock_data:
         return {"stocks_scored": 0, "date": today_str, "error": "No valid stock data"}
 
+    # Clear stale scores for this date before writing new ones.
+    # Prevents filtered-out stocks (reverse splits, non-CS) from persisting.
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM mi_stock_scores WHERE score_date = $1", today)
+    logger.info(f"RS Engine: cleared old scores for {today_str}")
+
     logger.info(f"RS Engine: computing ranks for {len(stock_data)} stocks")
 
     # Rank each period across the FULL universe
