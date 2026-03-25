@@ -52,6 +52,10 @@ MAX_TICKER_LEN = 5
 # Max 1-day return before flagging as corporate action (reverse split, etc.)
 # Real stocks rarely move >100% in a day; reverse splits create 200-5000% phantom jumps
 MAX_1D_RETURN = 1.0  # 100%
+# Max multi-month return before flagging as reverse split with stale history.
+# Real stocks rarely 4x in 6 months; reverse splits create phantom 500-5000% returns
+# because Polygon adjusts recent prices but older history may lag.
+MAX_PERIOD_RETURN = 3.0  # 300%
 
 logger = logging.getLogger(__name__)
 
@@ -266,12 +270,20 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         price_3m = _closest_close(closes, date_3m)
         price_6m = _closest_close(closes, date_6m)
 
+        # Detect reverse splits with stale history: if any period return is absurdly high,
+        # the price history is inconsistent (e.g., FUBO reverse split makes 6M look +500%).
+        raw_1m = _pct_return(current, price_1m)
+        raw_3m = _pct_return(current, price_3m)
+        raw_6m = _pct_return(current, price_6m)
+        if any(r is not None and r > MAX_PERIOD_RETURN for r in (raw_1m, raw_3m, raw_6m)):
+            continue
+
         stock_data.append({
             "ticker": ticker,
             "current": current,
-            "rs_1m_raw": _pct_return(current, price_1m),
-            "rs_3m_raw": _pct_return(current, price_3m),
-            "rs_6m_raw": _pct_return(current, price_6m),
+            "rs_1m_raw": raw_1m,
+            "rs_3m_raw": raw_3m,
+            "rs_6m_raw": raw_6m,
             "sma_10": _compute_sma(closes, 10),
             "sma_20": _compute_sma(closes, 20),
             "sma_40": _compute_sma(closes, 40),

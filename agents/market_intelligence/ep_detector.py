@@ -132,14 +132,27 @@ Company: {profile.get('companyName', '')} — {profile.get('sector', '')}
 Description: {company_desc}
 
 Recent news (may include earnings announcements, guidance, contracts, upgrades):
-{news_text or "No news found — check if this is an after-hours earnings release."}
+{news_text or "No news found."}
 
-IMPORTANT: If the stock is gapping 8%+ on high volume, there is almost certainly a catalyst.
-Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
-An earnings beat with guidance raise on a neglected stock = game_changer or strong.
-Only use routine if you've confirmed there is genuinely no company-specific catalyst.
+IMPORTANT RULES:
+1. Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
+2. An earnings beat with guidance raise on a neglected stock = game_changer or strong.
+3. If the catalyst is a MERGER, ACQUISITION, BUYOUT, or TAKEOVER offer, classify as "routine" — M&A caps upside.
 
-CRITICAL: If the catalyst is a MERGER, ACQUISITION, BUYOUT, or TAKEOVER offer (the company is being acquired), classify as "routine". M&A deals cap the upside at the offer price — there is no momentum trade, only merger arbitrage. This applies whether the stock is being bought out by another company, a PE firm, or any other acquirer."""
+CRITICAL — VERIFY THE CATALYST IS REAL:
+- If the news text mentions "earnings" or "quarterly results" but does NOT include specific numbers
+  (revenue, EPS, guidance figures), the catalyst is likely FABRICATED. Classify as "routine".
+- If the news is vague, generic, or reads like a summary with no specific details (no dates, no
+  numbers, no named sources), classify as "routine" — the news source may have hallucinated.
+- If none of the news items clearly explain WHY the stock gapped, classify as "routine".
+- Penny stocks, biotechs with no revenue, and SPACs frequently gap on low-quality catalysts
+  (press releases, conference presentations, speculative articles). Be skeptical — classify as "routine"
+  unless the catalyst is concrete and verifiable.
+- Do NOT assume earnings occurred just because news mentions "earnings" — look for actual reported
+  numbers (EPS beat/miss, revenue figures, guidance).
+
+In your analysis, state the SPECIFIC catalyst clearly. If you cannot identify a concrete, verifiable
+catalyst, say so explicitly."""
 
     try:
         response = _get_claude().messages.create(

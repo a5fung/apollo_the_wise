@@ -14,6 +14,10 @@ from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
 
+# Security types considered "common stock" for RS scoring, breadth, and themes.
+# CS = Common Stock, ADRC = ADR Common (foreign stocks traded on US exchanges).
+COMMON_STOCK_TYPES = ('CS', 'ADRC')
+
 _pool: Optional[asyncpg.Pool] = None
 
 
@@ -1522,7 +1526,8 @@ async def get_common_stock_tickers() -> set[str]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker FROM mi_security_types WHERE security_type IN ('CS', 'ADRC')"
+            "SELECT ticker FROM mi_security_types WHERE security_type = ANY($1)",
+            list(COMMON_STOCK_TYPES),
         )
         return {r["ticker"] for r in rows}
 

@@ -264,22 +264,15 @@ async def calculate_breadth_full(today: date) -> dict:
 
         if len(trade_dates) >= 2:
             # Get closes for common stocks only (exclude ETFs, warrants, SPACs, OTC, sub-$1)
-            # Falls back to unfiltered if mi_security_types is empty (first run)
-            has_types = await conn.fetchval("SELECT EXISTS(SELECT 1 FROM mi_security_types LIMIT 1)")
-            if has_types:
-                closes_rows = await conn.fetch("""
-                    SELECT d.trade_date, d.ticker, d.close FROM mi_daily_closes d
-                    INNER JOIN mi_security_types st ON st.ticker = d.ticker
-                        AND st.security_type IN ('CS', 'ADRC')
-                    WHERE d.trade_date = ANY($1)
-                      AND d.close IS NOT NULL AND d.close >= 1.0
-                """, trade_dates)
-            else:
-                closes_rows = await conn.fetch("""
-                    SELECT trade_date, ticker, close FROM mi_daily_closes
-                    WHERE trade_date = ANY($1)
-                      AND close IS NOT NULL AND close >= 1.0
-                """, trade_dates)
+            # Uses LEFT JOIN so it falls back gracefully if mi_security_types is empty
+            from agents.market_intelligence.db import COMMON_STOCK_TYPES
+            closes_rows = await conn.fetch("""
+                SELECT d.trade_date, d.ticker, d.close FROM mi_daily_closes d
+                LEFT JOIN mi_security_types st ON st.ticker = d.ticker
+                WHERE d.trade_date = ANY($1)
+                  AND d.close IS NOT NULL AND d.close >= 1.0
+                  AND (st.security_type = ANY($2) OR st.ticker IS NULL)
+            """, trade_dates, list(COMMON_STOCK_TYPES))
 
             # Build {ticker: {date: close}}
             closes_by_ticker: dict[str, dict[date, float]] = {}

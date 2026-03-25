@@ -13,10 +13,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import urllib.parse
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 import httpx
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +143,6 @@ async def fetch_all_ticker_types() -> dict[str, dict]:
         if not next_url:
             break
         # Extract cursor from next_url
-        import urllib.parse
         parsed = urllib.parse.urlparse(next_url)
         qs = urllib.parse.parse_qs(parsed.query)
         cursor = qs.get("cursor", [None])[0]
@@ -199,6 +200,14 @@ def trading_date_n_months_ago(months: int) -> str:
     while d.weekday() >= 5:
         d -= timedelta(days=1)
     return d.strftime("%Y-%m-%d")
+
+
+_ET = pytz.timezone("US/Eastern")
+
+
+def et_today() -> date:
+    """Return today's date in US/Eastern timezone."""
+    return datetime.now(_ET).date()
 
 
 # ── yfinance — company profile, analyst ratings (free, no API key) ────────────

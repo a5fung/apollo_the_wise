@@ -60,10 +60,8 @@ async def _nightly_data_pull():
     Regime runs after RS so breadth_full() can use stored mi_stock_scores.
     """
     logger.info("Nightly data pull starting...")
-    from datetime import date as _date_cls
-    # Use ET date, not UTC — container may run in UTC but market dates are ET
-    _et = pytz.timezone("US/Eastern")
-    _today = datetime.now(_et).date()
+    from agents.market_intelligence.collector import et_today
+    _today = et_today()
     today_str = _today.strftime("%Y-%m-%d")
     failures = []
     summary_parts = []
@@ -130,6 +128,7 @@ async def _nightly_data_pull():
         failures.append(f"Regime: {e}")
 
     # 4. Sector enrichment — fetch sector + industry for top RS stocks
+    profile_cache: dict[str, dict] = {}  # shared across steps 4 and 4a
     try:
         from agents.market_intelligence.collector import get_fmp_profile
         from agents.market_intelligence.db import upsert_ticker_override
@@ -141,6 +140,7 @@ async def _nightly_data_pull():
         async def _fetch_sector(ticker: str):
             async with sector_sem:
                 profile = await get_fmp_profile(ticker)
+                profile_cache[ticker] = profile
                 s = profile.get("sector")
                 if s:
                     sector_map[ticker] = s
@@ -193,14 +193,16 @@ async def _nightly_data_pull():
             candidates.append(s)
 
         if candidates[:40]:
-            # Fetch company info for candidates that need it
+            # Fetch company info — reuse profiles cached by step 4, only fetch missing ones
             from agents.market_intelligence.collector import get_fmp_profile
             profile_sem = asyncio.Semaphore(5)
-            profiles: dict[str, dict] = {}
+            profiles: dict[str, dict] = {tk: p for tk, p in profile_cache.items()}
+            need_fetch = [c["ticker"] for c in candidates[:40] if c["ticker"] not in profiles]
             async def _fetch_profile(ticker: str):
                 async with profile_sem:
                     profiles[ticker] = await get_fmp_profile(ticker)
-            await asyncio.gather(*[_fetch_profile(c["ticker"]) for c in candidates[:40]])
+            if need_fetch:
+                await asyncio.gather(*[_fetch_profile(tk) for tk in need_fetch])
 
             # Build batch prompt for Claude
             stock_lines = []
@@ -428,8 +430,8 @@ async def check_missed_jobs() -> None:
     Each job is only caught up once per day (guarded by mi_job_log).
     Weekdays only.
     """
-    et = pytz.timezone("America/New_York")
-    now = datetime.now(et)
+    from agents.market_intelligence.collector import _ET
+    now = datetime.now(_ET)
 
     if now.weekday() >= 5:  # Saturday / Sunday
         return

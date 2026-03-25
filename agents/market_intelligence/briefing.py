@@ -16,13 +16,13 @@ import logging
 import re
 import os
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 import httpx
-import pytz
 
 from agents.market_intelligence.collector import (
+    et_today as _et_today,
     get_premarket_futures,
     get_overnight_snapshot,
     search_news_perplexity,
@@ -88,14 +88,6 @@ def _ep_threshold_context(thresh: int) -> str:
         return f"≥{thresh} — choppy, raise your bar"
     else:
         return f"≥{thresh} — standard"
-
-
-_ET = pytz.timezone("US/Eastern")
-
-
-def _et_today() -> date:
-    """Return today's date in US/Eastern timezone."""
-    return datetime.now(_ET).date()
 
 
 # ── Section formatters ─────────────────────────────────────────────────────────
@@ -907,26 +899,34 @@ async def _get_economic_calendar() -> str | None:
         return None
 
 
-async def _get_overnight_news(snapshot: list[dict]) -> str | None:
+async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
     """
-    Query Perplexity for overnight market news if any instrument breached its threshold.
+    Query Perplexity for overnight market news.
+    If snapshot has triggered movers, asks about specific moves.
+    Otherwise asks for general pre-market headlines.
     Returns concise news string or None.
     """
-    triggered = [i for i in snapshot if i["triggered"]]
-    if not triggered:
-        return None
+    triggered = [i for i in (snapshot or []) if i.get("triggered")]
 
-    # Build a contextual query based on what moved
-    movers = []
-    for item in triggered:
-        sign = "up" if item["pct_change"] > 0 else "down"
-        movers.append(f"{item['name']} {sign} {abs(item['pct_change']):.1f}%")
-    movers_str = ", ".join(movers)
-
-    query = (
-        f"Why are {movers_str} today? "
-        f"What specific event or announcement caused this move?"
-    )
+    if triggered:
+        # Build a contextual query based on what moved
+        movers = []
+        for item in triggered:
+            sign = "up" if item["pct_change"] > 0 else "down"
+            movers.append(f"{item['name']} {sign} {abs(item['pct_change']):.1f}%")
+        movers_str = ", ".join(movers)
+        query = (
+            f"Why are {movers_str} today? "
+            f"What specific event or announcement caused this move?"
+        )
+    else:
+        today = _et_today()
+        day_str = today.strftime("%A, %B %d, %Y")
+        query = (
+            f"What are the top US stock market headlines for {day_str}? "
+            f"Focus on overnight developments, earnings, macro events, geopolitical news "
+            f"that will affect today's trading session. Be specific and direct."
+        )
 
     _OVERNIGHT_SYSTEM = (
         "You are a financial market analyst. Identify the SPECIFIC catalyst — "
@@ -1049,17 +1049,29 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         econ_calendar = await _get_economic_calendar()
         cache["econ_calendar"] = econ_calendar
 
-    # Fetch overnight snapshot from watchlist instruments
+    # Fetch overnight snapshot + news (news always fetched, even without watchlist)
     overnight_section = None
+    snapshot = []
     if watchlist:
         snapshot = await get_overnight_snapshot(watchlist)
-        if snapshot:
-            if "overnight_news" in cache:
-                news = cache["overnight_news"]
-            else:
-                news = await _get_overnight_news(snapshot)
-                cache["overnight_news"] = news
-            overnight_section = _format_overnight_section(snapshot, news)
+
+    if "overnight_news" in cache:
+        news = cache["overnight_news"]
+    else:
+        news = await _get_overnight_news(snapshot or None)
+        cache["overnight_news"] = news
+
+    if snapshot:
+        overnight_section = _format_overnight_section(snapshot, news)
+    elif news:
+        # No watchlist/snapshot, but we have news — show it standalone
+        lines = ["*OVERNIGHT*"]
+        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', news)
+        for s in sentences:
+            s = s.strip()
+            if s:
+                lines.append(f"  • _{s}_")
+        overnight_section = "\n".join(lines)
 
     # Store cache for this day
     _perplexity_cache.clear()
