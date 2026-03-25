@@ -57,11 +57,14 @@ MAX_1D_RETURN = 1.0  # 100%
 # because Polygon adjusts recent prices but older history may lag.
 MAX_PERIOD_RETURN = 300.0  # 300% (i.e., 4x price increase)
 
-# Tickers to exclude from RS scoring entirely.
-# M&A/buyout targets trade at deal price with no momentum — not RS leaders.
-RS_EXCLUDE_TICKERS: set[str] = {
-    "DAWN",   # Bought out — trading at deal price
-}
+# Tickers to exclude from RS scoring entirely (manual overrides).
+RS_EXCLUDE_TICKERS: set[str] = set()
+
+# Volatility crush detection — auto-detects M&A pinning, halts, etc.
+# If recent volatility (10d) is < 25% of historical volatility (50d),
+# and the stock has RS ≥ 80, it's likely pinned at a deal price.
+VOL_CRUSH_THRESHOLD = 0.25  # ratio of recent/historical vol
+VOL_CRUSH_RS_MIN = 80       # only flag high-RS stocks (low-RS with low vol = just boring)
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +95,30 @@ def _compute_sma(closes: dict[str, float], n: int) -> Optional[float]:
         return None
     last_n = [c for _, c in sorted_closes[-n:]]
     return round(sum(last_n) / n, 4)
+
+
+def _volatility_ratio(closes: dict[str, float], short: int = 10, long: int = 50) -> Optional[float]:
+    """
+    Ratio of recent vs historical close-to-close volatility (stdev of daily returns).
+    < 0.25 = volatility crushed (M&A pinning, halt, etc.)
+    ~ 1.0  = normal
+    > 1.5  = expanding (breakout / selloff)
+    Returns None if insufficient data.
+    """
+    sorted_prices = [c for _, c in sorted(closes.items()) if c and c > 0]
+    if len(sorted_prices) < long + 1:
+        return None
+    # Daily returns as fractions
+    returns = [(sorted_prices[i] / sorted_prices[i - 1]) - 1.0
+               for i in range(1, len(sorted_prices))]
+    recent = returns[-short:]
+    historical = returns[-long:]
+    import statistics
+    std_recent = statistics.pstdev(recent)
+    std_hist = statistics.pstdev(historical)
+    if std_hist < 0.0001:  # near-zero historical vol (shouldn't happen for real stocks)
+        return None
+    return std_recent / std_hist
 
 
 def _percentile_ranks(values: list[Optional[float]]) -> list[Optional[float]]:
@@ -297,6 +324,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "sma_20": _compute_sma(closes, 20),
             "sma_40": _compute_sma(closes, 40),
             "sma_50": _compute_sma(closes, 50),
+            "vol_ratio": _volatility_ratio(closes),
         })
 
     if not stock_data:
@@ -335,9 +363,26 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     indexed.sort(key=lambda x: x[1] or 0, reverse=True)
     rank_position = {orig_idx: pos + 1 for pos, (orig_idx, _) in enumerate(indexed)}
 
+    # Detect M&A / deal-price pinning via volatility crush.
+    # High-RS stocks with crushed volatility are likely trading at a fixed deal price.
+    # Zero out their composite so they don't appear as RS leaders.
+    vol_crush_count = 0
+    for i, s in enumerate(stock_data):
+        vr = s.get("vol_ratio")
+        comp = composite_ranks[i] or 0
+        if vr is not None and vr < VOL_CRUSH_THRESHOLD and comp >= VOL_CRUSH_RS_MIN:
+            logger.info(
+                f"Vol crush: {s['ticker']} RS {comp:.0f} vol_ratio {vr:.2f} — likely M&A pinning, zeroing RS"
+            )
+            composite_ranks[i] = 0
+            rs_1m_ranks[i] = 0
+            rs_3m_ranks[i] = 0
+            rs_6m_ranks[i] = 0
+            vol_crush_count += 1
+    if vol_crush_count:
+        logger.info(f"RS Engine: {vol_crush_count} stocks zeroed for volatility crush (likely M&A)")
+
     # Compute ADV-20 from daily closes for each stock
-    # Use volume data from the closes dict — we need to fetch separately
-    # For now, compute from mi_daily_closes via DB
     from agents.market_intelligence.db import get_adv_from_daily_closes
     adv_map = await get_adv_from_daily_closes(today)
 
