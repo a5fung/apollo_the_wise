@@ -52,10 +52,10 @@ MAX_TICKER_LEN = 5
 # Max 1-day return before flagging as corporate action (reverse split, etc.)
 # Real stocks rarely move >100% in a day; reverse splits create 200-5000% phantom jumps
 MAX_1D_RETURN = 1.0  # 100%
-# Max multi-month return before flagging as reverse split with stale history.
+# Max multi-month return (in %) before flagging as reverse split with stale history.
 # Real stocks rarely 4x in 6 months; reverse splits create phantom 500-5000% returns
 # because Polygon adjusts recent prices but older history may lag.
-MAX_PERIOD_RETURN = 3.0  # 300%
+MAX_PERIOD_RETURN = 300.0  # 300% (i.e., 4x price increase)
 
 logger = logging.getLogger(__name__)
 
