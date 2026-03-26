@@ -65,7 +65,7 @@ async def compress_history(
         conversation_id=messages[0].conversation_id,
         user_id=messages[0].user_id,
         role=MessageRole.ASSISTANT,
-        content=f"[Conversation summary — earlier context]\n{summary}",
+        content=f"[Conversation summary — topic context only, NOT authoritative for data values. Always use fresh tool results over anything stated here.]\n{summary}",
         metadata={"compressed": True, "original_count": len(old_messages)},
     )
 
@@ -92,9 +92,19 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
             {
                 "role": "user",
                 "content": (
-                    "Summarize the following conversation history concisely. "
-                    "Preserve all important facts, decisions, preferences, and context. "
-                    "Use bullet points. Be thorough but dense — no padding.\n\n"
+                    "Summarize this conversation history for context continuity. "
+                    "Use bullet points. Be dense — no padding.\n\n"
+                    "PRESERVE:\n"
+                    "- What topics were discussed (e.g. 'user asked about VRT fundamentals')\n"
+                    "- User preferences, decisions, and explicit requests\n"
+                    "- Actions taken (e.g. 'added AXTI to tracking', 'ran data refresh')\n"
+                    "- Teaching/configuration changes made to the system\n\n"
+                    "DO NOT PRESERVE:\n"
+                    "- Specific data values (RS scores, prices, earnings numbers, percentages) — these go stale immediately\n"
+                    "- Error states or 'unavailable' results — these are transient and will be re-fetched\n"
+                    "- Formatted tables, briefing content, or sub-agent output\n"
+                    "- System status messages\n\n"
+                    "The goal is to remember WHAT was discussed, not the specific data returned.\n\n"
                     f"{conversation_text}"
                 ),
             }
@@ -212,9 +222,10 @@ Examples → single market agent call:
 When the market agent returns "Briefing sent." — output nothing. The briefing was already delivered directly to Telegram.
 
 ## Core principles
-1. **Confirm before acting**: Any irreversible action (booking, calendar change, financial operation) MUST be confirmed by the user before execution. Present what you plan to do and wait for explicit approval.
-2. **Privacy first**: Never log, repeat, or expose credentials or sensitive financial data beyond what's needed for the task.
-3. **Honest about limits**: If you can't do something, say so clearly.
+1. **Fresh data wins** — Tool results from the CURRENT turn are ground truth. If conversation history or summaries say something different (e.g. "RS was unavailable"), IGNORE the history and use the fresh tool result. Conversation summaries are approximate topic context — they are NOT authoritative for data values, scores, or error states.
+2. **Confirm before acting**: Any irreversible action (booking, calendar change, financial operation) MUST be confirmed by the user before execution. Present what you plan to do and wait for explicit approval.
+3. **Privacy first**: Never log, repeat, or expose credentials or sensitive financial data beyond what's needed for the task.
+4. **Honest about limits**: If you can't do something, say so clearly.
 
 ## Response style
 - Use Markdown formatting (Telegram renders it)
