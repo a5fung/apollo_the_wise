@@ -771,6 +771,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         sections: list[str] = []
 
+        # Log raw results for debugging
+        logger.info(f"RS result type={type(rs_result).__name__}: {rs_result if isinstance(rs_result, dict) else repr(rs_result)}")
+
         # RS section
         if isinstance(rs_result, dict) and "error" not in rs_result:
             rank = rs_result["rs_rank"]
