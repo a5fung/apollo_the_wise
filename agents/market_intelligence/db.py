@@ -1187,26 +1187,30 @@ async def purge_old_data() -> dict[str, int]:
 
 
 async def log_job_run(job_name: str) -> None:
-    """Record that a scheduled job ran successfully today."""
+    """Record that a scheduled job ran successfully today (ET date)."""
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """
             INSERT INTO mi_job_log (job_name, run_date, ran_at)
-            VALUES ($1, CURRENT_DATE, NOW())
+            VALUES ($1, $2, NOW())
             ON CONFLICT (job_name, run_date) DO UPDATE SET ran_at = NOW()
             """,
             job_name,
+            et_today(),
         )
 
 
 async def job_ran_today(job_name: str) -> bool:
-    """Return True if this job already ran today."""
+    """Return True if this job already ran today (ET date)."""
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT 1 FROM mi_job_log WHERE job_name = $1 AND run_date = CURRENT_DATE",
+            "SELECT 1 FROM mi_job_log WHERE job_name = $1 AND run_date = $2",
             job_name,
+            et_today(),
         )
         return row is not None
 
