@@ -386,9 +386,22 @@ async def _ep_scan_job():
         return
     try:
         eps = await run_ep_scan()
+        # Dedup: only alert tickers we haven't already alerted today
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            already_alerted = {
+                r["ticker"] for r in await conn.fetch(
+                    "SELECT DISTINCT ticker FROM mi_ep_alerts WHERE alert_date = $1",
+                    today,
+                )
+            }
         for ep in eps:
-            if ep.get("score_tier") == "HIGH":
+            if ep.get("score_tier") == "HIGH" and ep["ticker"] not in already_alerted:
                 await send_ep_alert(ep)
+                already_alerted.add(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
     except Exception as e:
         logger.error(f"EP scan failed: {e}")
