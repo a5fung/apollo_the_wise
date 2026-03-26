@@ -122,11 +122,25 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
         except Exception:
             return None
 
-    q_income, a_income, info, calendar = await asyncio.gather(
+    def _fetch_earnings_estimate():
+        try:
+            return t.earnings_estimate
+        except Exception:
+            return None
+
+    def _fetch_revenue_estimate():
+        try:
+            return t.revenue_estimate
+        except Exception:
+            return None
+
+    q_income, a_income, info, calendar, earnings_est, revenue_est = await asyncio.gather(
         loop.run_in_executor(None, _fetch_q_income),
         loop.run_in_executor(None, _fetch_a_income),
         loop.run_in_executor(None, _fetch_info),
         loop.run_in_executor(None, _fetch_calendar),
+        loop.run_in_executor(None, _fetch_earnings_estimate),
+        loop.run_in_executor(None, _fetch_revenue_estimate),
         return_exceptions=True,
     )
 
@@ -135,6 +149,8 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
     if isinstance(a_income, Exception): a_income = None
     if isinstance(info, Exception):     info = {}
     if isinstance(calendar, Exception): calendar = None
+    if isinstance(earnings_est, Exception): earnings_est = None
+    if isinstance(revenue_est, Exception): revenue_est = None
 
     result: dict[str, Any] = {"ticker": ticker.upper()}
 
@@ -283,6 +299,49 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
 
     result["annual_eps"] = annual_eps
     result["annual_revenue"] = annual_revenue
+
+    # ── Forward estimates (consensus) ─────────────────────────────────────────
+
+    forward_eps: list[dict] = []
+    if earnings_est is not None and hasattr(earnings_est, "empty") and not earnings_est.empty:
+        try:
+            # Index = period (0q, +1q, 0y, +1y), Columns = fields (avg, low, high, growth, ...)
+            for period in earnings_est.index:
+                entry: dict[str, Any] = {"period": str(period)}
+                for field in ["avg", "low", "high", "numberOfAnalysts", "growth"]:
+                    if field in earnings_est.columns:
+                        val = _safe_float(earnings_est.at[period, field])
+                        if field == "growth" and val is not None:
+                            entry["growth_pct"] = round(val * 100, 1)
+                        elif field == "numberOfAnalysts" and val is not None:
+                            entry["num_analysts"] = int(val)
+                        elif val is not None:
+                            entry[field] = round(val, 2)
+                forward_eps.append(entry)
+        except Exception:
+            logger.warning(f"Forward EPS parsing failed for {ticker}", exc_info=True)
+    result["forward_eps"] = forward_eps
+
+    forward_revenue: list[dict] = []
+    if revenue_est is not None and hasattr(revenue_est, "empty") and not revenue_est.empty:
+        try:
+            for period in revenue_est.index:
+                entry = {"period": str(period)}
+                for field in ["avg", "low", "high", "numberOfAnalysts", "growth"]:
+                    if field in revenue_est.columns:
+                        val = _safe_float(revenue_est.at[period, field])
+                        if field == "growth" and val is not None:
+                            entry["growth_pct"] = round(val * 100, 1)
+                        elif field == "numberOfAnalysts" and val is not None:
+                            entry["num_analysts"] = int(val)
+                        elif field in ("avg", "low", "high") and val is not None:
+                            entry[field] = round(val / 1_000_000, 1)  # to $M
+                        elif val is not None:
+                            entry[field] = val
+                forward_revenue.append(entry)
+        except Exception:
+            logger.warning(f"Forward revenue parsing failed for {ticker}", exc_info=True)
+    result["forward_revenue"] = forward_revenue
 
     # ── Next earnings date ───────────────────────────────────────────────────
 
@@ -493,6 +552,30 @@ def format_fundamentals(data: dict) -> str:
     if flag_lines:
         lines.append("")
         lines += flag_lines
+
+    # Forward estimates
+    fwd_eps = data.get("forward_eps", [])
+    fwd_rev = data.get("forward_revenue", [])
+    _FWD_LABELS = {"0q": "CurQ", "+1q": "NxtQ", "0y": "CurY", "+1y": "NxtY"}
+    if fwd_eps or fwd_rev:
+        lines.append("")
+        lines.append("*Forward Estimates (Consensus)*")
+        lines.append("```")
+        periods = [e["period"] for e in fwd_eps] or [r["period"] for r in fwd_rev]
+        labels = [_FWD_LABELS.get(p, p) for p in periods]
+        col_w = 10
+        lines.append("      " + "".join(l.rjust(col_w) for l in labels))
+        if fwd_eps:
+            vals = [f"{e['avg']:.2f}" if e.get("avg") else "n/a" for e in fwd_eps]
+            lines.append("EPS   " + "".join(v.rjust(col_w) for v in vals))
+            growth = [f"{e['growth_pct']:+.0f}%" if e.get("growth_pct") is not None else "n/a" for e in fwd_eps]
+            lines.append(" YoY  " + "".join(v.rjust(col_w) for v in growth))
+        if fwd_rev:
+            vals = [f"{r['avg']:.0f}M" if r.get("avg") else "n/a" for r in fwd_rev]
+            lines.append("Rev   " + "".join(v.rjust(col_w) for v in vals))
+            growth = [f"{r['growth_pct']:+.0f}%" if r.get("growth_pct") is not None else "n/a" for r in fwd_rev]
+            lines.append(" YoY  " + "".join(v.rjust(col_w) for v in growth))
+        lines.append("```")
 
     return "\n".join(lines)
 

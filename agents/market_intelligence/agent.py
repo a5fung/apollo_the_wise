@@ -276,7 +276,17 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
             return await self._handle_regime_query(request)
 
-        if any(k in task for k in ["rs", "relative strength", "leader", "momentum", "top stock"]):
+        if any(k in task for k in ["rs", "relative strength", "leader", "momentum", "top stock",
+                                     "score ", "rank "]):
+            # If a specific ticker is detected, route to single-ticker score
+            import re as _re
+            _candidate = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+            _skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+                      "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
+                      "STOCK", "STOCKS", "LEADER", "LEADERS"}
+            _candidate = [t for t in _candidate if t not in _skip]
+            if _candidate:
+                return await self._handle_single_score(request)
             return await self._handle_rs_query(request)
 
         if any(k in task for k in ["brief", "morning", "evening", "summary", "overview"]):
@@ -284,9 +294,6 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["pullback", "pull back", "10ma", "20ma", "50ma", "ema", "sma", "moving average", "testing ma", "near ma"]):
             return await self._handle_pullback_query(request)
-
-        if any(k in task for k in ["score ", "rs score", "rs for", "rank "]):
-            return await self._handle_single_score(request)
 
         if any(k in task for k in [
             "fundamental", "earnings growth", "eps growth", "sales growth",
@@ -880,6 +887,9 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=text)
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
+        import re as _re
+        from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
+
         today_str = date.today().strftime("%Y-%m-%d")
         regime = await get_current_regime()
         ep_alerts = await get_today_ep_alerts(today_str)
@@ -891,12 +901,46 @@ class MarketIntelligenceAgent(BaseAgent):
             f"Top RS stocks: {', '.join(s['ticker'] for s in rs_leaders[:5])}\n"
         )
 
+        # Detect tickers in the query and fetch their RS + fundamentals
+        candidate_tickers = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = {"FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW", "HOW",
+                "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND", "ANY",
+                "GIVE", "YOUR", "ANALYSIS", "ABOUT", "TELL", "INFO"}
+        candidate_tickers = [t for t in candidate_tickers if t not in skip][:3]
+
+        if candidate_tickers:
+            # Fetch RS scores and fundamentals in parallel
+            rs_tasks = [score_single_ticker(t) for t in candidate_tickers]
+            fund_tasks = [get_fundamentals(t) for t in candidate_tickers]
+            results = await asyncio.gather(*rs_tasks, *fund_tasks, return_exceptions=True)
+
+            n = len(candidate_tickers)
+            for i, ticker in enumerate(candidate_tickers):
+                rs_result = results[i]
+                fund_result = results[n + i]
+
+                context += f"\n--- {ticker} ---\n"
+                if isinstance(rs_result, dict) and "error" not in rs_result:
+                    context += (
+                        f"RS Composite: {rs_result['rs_composite']:.0f} "
+                        f"(#{rs_result['rs_rank']} of {rs_result['universe_size']})\n"
+                        f"  1M: {rs_result['rs_1m']:.0f}  3M: {rs_result['rs_3m']:.0f}  6M: {rs_result['rs_6m']:.0f}\n"
+                        f"  Raw returns: 1M {rs_result['raw_1m']:+.1f}%  3M {rs_result['raw_3m']:+.1f}%  6M {rs_result['raw_6m']:+.1f}%\n"
+                        f"  Close: ${rs_result['close']:.2f}  |  {' '.join(rs_result.get('ma_context', []))}\n"
+                    )
+                elif isinstance(rs_result, dict):
+                    context += f"RS: {rs_result.get('error', 'unavailable')}\n"
+
+                if isinstance(fund_result, dict) and "error" not in fund_result:
+                    context += format_fundamentals(fund_result) + "\n"
+
         response = self._claude.messages.create(
             model=MARKET_AGENT_MODEL,
             max_tokens=1024,
             system=(
                 "You are a market intelligence assistant specializing in momentum/EP trading. "
-                "Answer concisely. Format for Telegram Markdown. "
+                "Answer concisely using ONLY the data provided below. Format for Telegram (no markdown tables). "
+                "Never invent RS scores or fundamental data — only report what is in the context. "
                 "Focus on actionable intelligence, not generic advice."
             ),
             messages=[{
