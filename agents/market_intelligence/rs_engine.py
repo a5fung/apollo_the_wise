@@ -20,6 +20,7 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.collector import (
     get_grouped_daily,
     get_index_history,
@@ -138,7 +139,7 @@ async def ingest_daily(trade_date: date | None = None) -> int:
     Fetch grouped daily data for one date and store in mi_daily_closes.
     Returns number of tickers stored.
     """
-    td = trade_date or date.today()
+    td = trade_date or et_today()
     td_str = td.strftime("%Y-%m-%d")
 
     # Never ingest weekend data — markets are closed
@@ -170,7 +171,7 @@ async def ingest_from_snapshot(trade_date: date | None = None) -> int:
     """
     from agents.market_intelligence.collector import get_snapshot_all
 
-    td = trade_date or date.today()
+    td = trade_date or et_today()
     td_str = td.strftime("%Y-%m-%d")
 
     # Never ingest weekend data
@@ -221,7 +222,7 @@ async def bootstrap_daily_closes(days: int = 200) -> int:
     Fetches one day at a time (1 Polygon call each).
     Run once on setup, then daily ingestion keeps it current.
     """
-    today = date.today()
+    today = et_today()
     total_ingested = 0
 
     # Get approximate trading days going back
@@ -252,7 +253,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     Stores results in mi_stock_scores.
     Returns summary dict.
     """
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
     from_date = today - timedelta(days=200)
 
@@ -449,7 +450,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     1 Polygon API call. Ranks the ticker's raw returns against stored raw returns
     from today's full run. Requires at least one full RS run to have completed.
     """
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
     from_date = (today - timedelta(days=200)).strftime("%Y-%m-%d")
 

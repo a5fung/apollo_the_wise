@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import (
     get_pool,
     upsert_signal_outcome,
@@ -30,7 +31,7 @@ _3M_OFFSET = 90     # ~63 trading days
 
 async def run_outcome_tracker(trade_date: date | None = None) -> dict:
     """Main entry. Runs all outcome computations. Returns summary."""
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     total = 0
 
     try:
@@ -339,8 +340,7 @@ async def get_weekly_signal_summary(lookback_days: int = 30) -> dict:
     - EP alert hit rate (% profitable at 1M)
     - Theme stage transition avg returns
     """
-    from datetime import date as _date
-    today = _date.today()
+    today = et_today()
     from_date = today - timedelta(days=lookback_days)
 
     rs_outcomes = await get_signal_outcomes("rs_leader", from_date=from_date)

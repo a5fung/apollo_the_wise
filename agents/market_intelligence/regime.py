@@ -22,7 +22,7 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
-from agents.market_intelligence.collector import get_index_history
+from agents.market_intelligence.collector import get_index_history, et_today
 from agents.market_intelligence.db import (
     upsert_regime,
     get_latest_regime as _get_latest_regime,
@@ -421,7 +421,7 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
     Calculate current market regime and store in DB.
     Returns regime summary dict.
     """
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
     from_date = (today - timedelta(days=250)).strftime("%Y-%m-%d")
 

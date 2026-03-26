@@ -15,6 +15,7 @@ import os
 from datetime import date
 from typing import Any
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.constants import REGIME_EMOJI
 
 logger = logging.getLogger(__name__)
@@ -176,7 +177,7 @@ async def post_to_twitter(
 async def post_ep_tweet(ep: dict) -> bool:
     """Post an EP alert tweet. Max 1 per day — posts the first HIGH, skips the rest."""
     global _ep_last_posted
-    today = date.today()
+    today = et_today()
     if _ep_last_posted == today:
         logger.info("EP tweet already posted today — skipping")
         return False

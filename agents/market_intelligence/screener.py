@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import get_rs_leaders
 from agents.market_intelligence.fundamentals import get_fundamentals_batch
 from agents.market_intelligence.theme_engine import get_today_themes
@@ -68,7 +69,7 @@ async def run_screener(filters: ScreenerFilters) -> list[ScreenerResult]:
     """
     Run the composite screener and return results sorted by composite score.
     """
-    today_str = date.today().strftime("%Y-%m-%d")
+    today_str = et_today().strftime("%Y-%m-%d")
 
     # Broad RS universe — filter by min_rs before fetching fundamentals
     leaders = await get_rs_leaders(today_str, limit=200)

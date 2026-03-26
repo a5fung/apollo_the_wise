@@ -33,6 +33,7 @@ import anthropic
 
 from datetime import timedelta
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.collector import (
     get_snapshot_all,
     get_index_history,
@@ -335,7 +336,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     prev_close_date: "YYYY-MM-DD" of the last trading day
     """
-    today = date.today()
+    today = et_today()
     today_str = today.strftime("%Y-%m-%d")
     prev_date = prev_close_date or today_str  # fallback
 

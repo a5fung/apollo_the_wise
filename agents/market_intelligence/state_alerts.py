@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 async def detect_state_changes(trade_date: date | None = None) -> list[dict]:
     """Compare today's state to prior. Returns alert dicts."""
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     alerts: list[dict] = []
 
     try:

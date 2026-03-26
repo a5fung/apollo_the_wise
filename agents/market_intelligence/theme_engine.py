@@ -25,7 +25,7 @@ from typing import Any
 
 import anthropic
 
-from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity
+from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
 from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners, get_recent_rs_batch
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ async def _get_sector(ticker: str) -> str:
 async def _get_theme_history(name: str, days: int = 10) -> list[dict]:
     """Get recent daily snapshots for a named theme."""
     pool = await get_pool()
-    cutoff = date.today() - timedelta(days=days)
+    cutoff = et_today() - timedelta(days=days)
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT * FROM mi_themes WHERE name = $1 AND theme_date >= $2 ORDER BY theme_date DESC",
@@ -798,7 +798,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
 
     Returns (themes, changelog) where changelog tracks all membership changes.
     """
-    today = trade_date or date.today()
+    today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
     changelog: list[dict] = []
 

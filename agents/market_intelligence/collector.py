@@ -185,7 +185,7 @@ def prev_trading_days(n: int, from_date: date | None = None) -> list[date]:
     Return a list of n approximate trading dates going back from from_date.
     Approximation: skips weekends only (not holidays). Good enough for RS calc.
     """
-    d = from_date or date.today()
+    d = from_date or et_today()
     days = []
     while len(days) < n:
         d -= timedelta(days=1)
@@ -196,7 +196,7 @@ def prev_trading_days(n: int, from_date: date | None = None) -> list[date]:
 
 def trading_date_n_months_ago(months: int) -> str:
     """Approximate trading date n months ago (skip weekends)."""
-    d = date.today() - timedelta(days=months * 21)  # ~21 trading days/month
+    d = et_today() - timedelta(days=months * 21)  # ~21 trading days/month
     while d.weekday() >= 5:
         d -= timedelta(days=1)
     return d.strftime("%Y-%m-%d")

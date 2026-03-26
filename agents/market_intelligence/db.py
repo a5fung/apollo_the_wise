@@ -1080,8 +1080,9 @@ async def get_ticker_extension_data(tickers: list[str]) -> list[dict]:
     Return latest close, sma_20, and extension % from 20MA for specified tickers.
     Looks back up to 7 days in case today's data isn't scored yet.
     """
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
-    cutoff = date.today() - timedelta(days=7)
+    cutoff = et_today() - timedelta(days=7)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT DISTINCT ON (ticker)
@@ -1115,8 +1116,9 @@ async def get_volume_history(tickers: list[str], days: int = 60) -> dict[str, li
     Used to compute pre-market volume percentile in EP scoring — one batch
     query for all candidates rather than one query per ticker.
     """
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
-    cutoff = date.today() - timedelta(days=days)
+    cutoff = et_today() - timedelta(days=days)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker, adv_20
@@ -1145,8 +1147,9 @@ async def purge_old_data() -> dict[str, int]:
 
     Returns dict with row counts deleted per table.
     """
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
-    today = date.today()
+    today = et_today()
     deleted: dict[str, int] = {}
 
     async with pool.acquire() as conn:
@@ -1217,6 +1220,7 @@ async def job_ran_today(job_name: str) -> bool:
 
 async def get_pipeline_status() -> dict[str, Any]:
     """Return market pipeline health: job run times, data freshness, regime, theme count."""
+    from agents.market_intelligence.collector import et_today
     pool = await get_pool()
     async with pool.acquire() as conn:
         # Most recent run per job (within last 7 days)
@@ -1229,7 +1233,7 @@ async def get_pipeline_status() -> dict[str, Any]:
         jobs = {
             row["job_name"]: {
                 "last_ran": row["ran_at"].isoformat(),
-                "ran_today": row["run_date"] == date.today(),
+                "ran_today": row["run_date"] == et_today(),
             }
             for row in job_rows
         }

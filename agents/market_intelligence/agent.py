@@ -40,6 +40,7 @@ from agents.market_intelligence.db import (
     get_theme_history,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
@@ -153,7 +154,7 @@ class MarketIntelligenceAgent(BaseAgent):
             body: TeachRequest,
             _: str = Depends(verify_internal_secret),
         ):
-            today = date.today()
+            today = et_today()
             results: dict[str, str] = {}
 
             if body.tickers:
@@ -451,7 +452,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Theme engine running — themes will be updated shortly (uses existing RS data, no Polygon calls).")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = et_today().strftime("%Y-%m-%d")
         alerts = await get_today_ep_alerts(today_str)
         regime = await get_current_regime()
 
@@ -489,7 +490,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=result, data=regime)
 
     async def _handle_rs_query(self, request: AgentRequest) -> AgentResponse:
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = et_today().strftime("%Y-%m-%d")
         leaders = await get_rs_leaders(today_str, limit=20)
 
         if not leaders:
@@ -531,7 +532,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Briefing sent.")
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = et_today().strftime("%Y-%m-%d")
         themes = await get_today_themes(today_str)
 
         if not themes:
@@ -606,7 +607,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         task = request.task
         context = request.context or {}
-        today = date.today()
+        today = et_today()
 
         # Extract tickers from task text
         tickers = re.findall(r'\b([A-Z]{2,5})\b', task.upper())
@@ -775,7 +776,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=text, data=result)
 
     async def _handle_pullback_query(self, request: AgentRequest) -> AgentResponse:
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = et_today().strftime("%Y-%m-%d")
 
         # Check if filtering to a specific theme's tickers
         tickers = None
@@ -890,7 +891,7 @@ class MarketIntelligenceAgent(BaseAgent):
         import re as _re
         from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
 
-        today_str = date.today().strftime("%Y-%m-%d")
+        today_str = et_today().strftime("%Y-%m-%d")
         regime = await get_current_regime()
         ep_alerts = await get_today_ep_alerts(today_str)
         rs_leaders = await get_rs_leaders(today_str, limit=10)
