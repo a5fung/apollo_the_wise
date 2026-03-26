@@ -743,37 +743,71 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines), data={"theme_history": history})
 
     async def _handle_single_score(self, request: AgentRequest) -> AgentResponse:
-        """Score a single ticker on demand against today's distribution."""
+        """Score a single ticker on demand — RS + fundamentals + theme context."""
         import re
+        from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
+
         # Extract ticker from task — look for uppercase word 2-5 chars
         tickers = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         # Filter out common non-ticker words
-        skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW"}
+        skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+                "PULL", "GET", "SHOW", "CHECK", "FIND", "FUNDAMENTAL",
+                "FUNDAMENTALS", "STOCK", "ANALYSIS"}
         tickers = [t for t in tickers if t not in skip]
 
         if not tickers:
             return self._ok(request, result="Please specify a ticker — e.g. 'score AXTI'")
 
         ticker = tickers[0]
-        result = await score_single_ticker(ticker)
 
-        if "error" in result:
-            return self._ok(request, result=f"Could not score `{ticker}`: {result['error']}")
-
-        rank = result["rs_rank"]
-        n = result["universe_size"]
-        composite = result["rs_composite"]
-        close = result["close"]
-        ma_str = "  ".join(result.get("ma_context", [])) or "No MA data"
-
-        text = (
-            f"`{ticker}` — RS Score\n"
-            f"  Composite: *{composite:.0f}*  (#{rank} of {n})\n"
-            f"  1M: {result['rs_1m']:.0f}  3M: {result['rs_3m']:.0f}  6M: {result['rs_6m']:.0f}\n"
-            f"  Raw: 1M {result['raw_1m']:+.1f}%  3M {result['raw_3m']:+.1f}%  6M {result['raw_6m']:+.1f}%\n"
-            f"  Close: {close:.2f}  |  {ma_str}"
+        # Fetch RS, fundamentals, and theme context in parallel
+        today_str = et_today().strftime("%Y-%m-%d")
+        rs_task = score_single_ticker(ticker)
+        fund_task = get_fundamentals(ticker)
+        themes_task = get_today_themes(today_str)
+        rs_result, fund_result, themes = await asyncio.gather(
+            rs_task, fund_task, themes_task, return_exceptions=True,
         )
-        return self._ok(request, result=text, data=result)
+
+        sections: list[str] = []
+
+        # RS section
+        if isinstance(rs_result, dict) and "error" not in rs_result:
+            rank = rs_result["rs_rank"]
+            n = rs_result["universe_size"]
+            composite = rs_result["rs_composite"]
+            close = rs_result["close"]
+            ma_str = "  ".join(rs_result.get("ma_context", [])) or "No MA data"
+            sections.append(
+                f"`{ticker}` — RS Score\n"
+                f"  Composite: *{rs_result['rs_composite']:.0f}*  (#{rank} of {n})\n"
+                f"  1M: {rs_result['rs_1m']:.0f}  3M: {rs_result['rs_3m']:.0f}  6M: {rs_result['rs_6m']:.0f}\n"
+                f"  Raw: 1M {rs_result['raw_1m']:+.1f}%  3M {rs_result['raw_3m']:+.1f}%  6M {rs_result['raw_6m']:+.1f}%\n"
+                f"  Close: {close:.2f}  |  {ma_str}"
+            )
+        elif isinstance(rs_result, dict):
+            sections.append(f"`{ticker}` — RS: {rs_result.get('error', 'unavailable')}")
+        else:
+            sections.append(f"`{ticker}` — RS: unavailable")
+
+        # Theme context
+        if isinstance(themes, list):
+            for t in themes:
+                theme_tickers = t.get("tickers") or []
+                if ticker in theme_tickers:
+                    sections.append(
+                        f"\nTheme: *{t['name']}* ({t.get('stage', '?')})"
+                        f" — score {t.get('score', 0):.0f}"
+                    )
+                    break
+
+        # Fundamentals section
+        if isinstance(fund_result, dict) and "error" not in fund_result:
+            sections.append("\n" + format_fundamentals(fund_result))
+        elif isinstance(fund_result, dict):
+            sections.append(f"\nFundamentals: {fund_result.get('error', 'unavailable')}")
+
+        return self._ok(request, result="\n".join(sections), data=rs_result if isinstance(rs_result, dict) else {})
 
     async def _handle_pullback_query(self, request: AgentRequest) -> AgentResponse:
         today_str = et_today().strftime("%Y-%m-%d")
