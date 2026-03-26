@@ -529,10 +529,11 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
 
     # Rank position vs universe
     async with pool.acquire() as conn:
-        existing_composites = [r["rs_composite"] async for r in await conn.cursor(
+        comp_rows = await conn.fetch(
             "SELECT rs_composite FROM mi_stock_scores WHERE score_date = $1 AND rs_composite IS NOT NULL",
             use_date,
-        )]
+        )
+    existing_composites = [r["rs_composite"] for r in comp_rows]
     rank_pos = sum(1 for c in existing_composites if c > composite) + 1
 
     sma_10 = _compute_sma(closes, 10)
