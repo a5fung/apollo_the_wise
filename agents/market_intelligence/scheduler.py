@@ -372,6 +372,8 @@ async def _morning_briefing_job():
     """Run at 9:00 AM ET (6:00 AM PT). Send morning briefing — EP recap + regime context."""
     logger.info("Sending morning briefing...")
     try:
+        # Run EP scan first so alerts are in DB before briefing reads them
+        await _ep_scan_job()
         await send_morning_briefing()
         await log_job_run(JOB_MORNING_BRIEFING)
     except Exception as e:
