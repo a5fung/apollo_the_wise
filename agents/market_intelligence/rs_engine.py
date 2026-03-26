@@ -486,17 +486,27 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     raw_3m = _pct_return(current, _closest_close(closes, date_3m))
     raw_6m = _pct_return(current, _closest_close(closes, date_6m))
 
-    # Load today's raw return distribution for proper percentile ranking
+    # Load raw return distribution for proper percentile ranking
+    # Fall back to most recent score_date within 5 days (handles weekends, holidays, pre-nightly-pull)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        score_date_row = await conn.fetchrow("""
+            SELECT DISTINCT score_date FROM mi_stock_scores
+            WHERE score_date <= $1 AND score_date >= $1 - INTERVAL '5 days'
+            ORDER BY score_date DESC LIMIT 1
+        """, _to_date(today_str))
+        if not score_date_row:
+            return {"error": "No RS data available — run a full data refresh first, then retry"}
+        use_date = score_date_row["score_date"]
+
         rows = await conn.fetch(
             "SELECT ticker, raw_1m, raw_3m, raw_6m FROM mi_stock_scores WHERE score_date = $1 AND raw_1m IS NOT NULL",
-            _to_date(today_str),
+            use_date,
         )
 
     existing = [dict(r) for r in rows]
     if not existing:
-        return {"error": "No raw return data for today — run a full data refresh first, then retry"}
+        return {"error": "No RS data available — run a full data refresh first, then retry"}
 
     n = len(existing)
     dist_1m = [r["raw_1m"] for r in existing if r["raw_1m"] is not None]
@@ -521,7 +531,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     async with pool.acquire() as conn:
         existing_composites = [r["rs_composite"] async for r in await conn.cursor(
             "SELECT rs_composite FROM mi_stock_scores WHERE score_date = $1 AND rs_composite IS NOT NULL",
-            _to_date(today_str),
+            use_date,
         )]
     rank_pos = sum(1 for c in existing_composites if c > composite) + 1
 
@@ -577,6 +587,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
         "sma_20": sma_20,
         "sma_50": sma_50,
         "ma_context": ma_lines,
+        "score_date": use_date.isoformat(),
     }
 
 

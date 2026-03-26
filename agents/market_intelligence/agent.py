@@ -873,8 +873,8 @@ class MarketIntelligenceAgent(BaseAgent):
         targets = all_tickers[:3]
 
         if len(targets) == 1:
-            data = await get_fundamentals(targets[0])
-            text = format_fundamentals(data)
+            # Single ticker → use unified handler (RS + fundamentals + theme)
+            return await self._handle_single_score(request)
         else:
             results = await asyncio.gather(*[get_fundamentals(t) for t in targets])
             text = "\n\n---\n\n".join(format_fundamentals(r) for r in results)
