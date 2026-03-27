@@ -45,37 +45,49 @@ def _safe(s: str) -> str:
 def _format_market_pipeline(status: dict) -> str:
     """Format the market pipeline section for /status."""
     import pytz
-    from datetime import datetime as dt
+    from datetime import date, datetime as dt, timedelta
 
     REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨", "Unknown": "⚫"}
 
+    et = pytz.timezone("America/New_York")
     pt = pytz.timezone("America/Los_Angeles")
+    now_et = dt.now(et)
 
     jobs = status.get("jobs", {})
     data = status.get("data", {})
     scheduler = status.get("scheduler", {})
 
-    # Single source of truth for job display names; label width = 14 chars
     _JOB_DISPLAY = {
         "nightly_data_pull": "Data pull",
         "evening_briefing":  "Evening brief",
         "morning_briefing":  "Morning brief",
     }
 
-    def _fmt_time(iso: str) -> tuple[str, str]:
-        """Return (day_abbr, time_str) in PT, e.g. ("Mon", "1:32 PM PT")."""
+    def _last_expected_run_date() -> date:
+        """Most recent weekday (today if weekday, else last Friday)."""
+        d = now_et.date()
+        while d.weekday() >= 5:
+            d -= timedelta(days=1)
+        return d
+
+    def _fmt_time(iso: str) -> str:
+        """Return time string in PT, e.g. '1:32 PM PT'."""
         d = dt.fromisoformat(iso).astimezone(pt)
-        return d.strftime("%a"), d.strftime("%I:%M %p PT").lstrip("0")
+        return d.strftime("%I:%M %p PT").lstrip("0")
 
     def _job_line(job_name: str, extra: str = "") -> str:
         label = f"{_JOB_DISPLAY.get(job_name, job_name)}:".ljust(14)
         job = jobs.get(job_name)
         if not job:
-            return f"{label} ⚠️ not run yet"
-        day_abbr, time_str = _fmt_time(job["last_ran"])
-        day = "today" if job["ran_today"] else day_abbr
-        icon = "✅" if job["ran_today"] else "⚠️"
-        return f"{label} {icon} {day} {time_str}{extra}"
+            return f"{label} ⚠️ never run"
+        last_ran = dt.fromisoformat(job["last_ran"])
+        last_ran_date = last_ran.astimezone(et).date()
+        expected = _last_expected_run_date()
+        # Healthy if it ran on the last expected weekday (or more recently)
+        healthy = last_ran_date >= expected
+        icon = "✅" if healthy else "⚠️"
+        time_str = _fmt_time(job["last_ran"])
+        return f"{label} {icon} {time_str}{extra}"
 
     lines = ["*Market Pipeline*"]
 
@@ -89,17 +101,22 @@ def _format_market_pipeline(status: dict) -> str:
     lines.append(_job_line("evening_briefing"))
     lines.append(_job_line("morning_briefing"))
 
-    # EP scan state
-    ep_active = scheduler.get("ep_scan_active", False)
-    lines.append(f"{'EP scan:'.ljust(14)} {'🟢 active' if ep_active else '🔴 inactive'} · 4–6:30 AM PT weekdays")
+    # EP scan — healthy if scheduler is running (scan activates automatically during market hours)
+    scheduler_running = scheduler.get("scheduler_running", False)
+    if scheduler_running:
+        lines.append(f"{'EP scan:'.ljust(14)} ✅ scheduled · 4–6:30 AM PT weekdays")
+    else:
+        lines.append(f"{'EP scan:'.ljust(14)} 🔴 scheduler offline")
 
     # Next scheduled job
     next_jobs = scheduler.get("next_jobs", [])
     if next_jobs:
         nj = next_jobs[0]
         next_label = _JOB_DISPLAY.get(nj["id"], nj["id"])
-        day_abbr, time_str = _fmt_time(nj["next_run"])
-        lines.append(f"{'Next:'.ljust(14)} {next_label} {day_abbr} {time_str}")
+        nj_dt = dt.fromisoformat(nj["next_run"]).astimezone(pt)
+        day_str = nj_dt.strftime("%a")
+        time_str = nj_dt.strftime("%I:%M %p PT").lstrip("0")
+        lines.append(f"{'Next:'.ljust(14)} {next_label} {day_str} {time_str}")
 
     return "\n".join(lines)
 
