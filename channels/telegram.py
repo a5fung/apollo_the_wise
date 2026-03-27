@@ -47,7 +47,7 @@ def _format_market_pipeline(status: dict) -> str:
     import pytz
     from datetime import datetime as dt
 
-    from agents.market_intelligence.constants import REGIME_EMOJI
+    REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨", "Unknown": "⚫"}
 
     pt = pytz.timezone("America/Los_Angeles")
 

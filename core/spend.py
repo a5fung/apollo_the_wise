@@ -220,14 +220,16 @@ async def get_spend_summary() -> str:
     for row in today.get("by_caller", []):
         cost = row.get("cost") or 0
         calls = row.get("calls") or 0
-        lines.append(f"  {row['caller']}: ${cost:.3f} ({calls} calls)")
+        caller = row["caller"].replace("_", " ")
+        lines.append(f"  {caller}: ${cost:.3f} ({calls} calls)")
 
     # Month
     lines.append(f"\n*{month['month']}* — ${month_cost:.2f} ({month_calls} calls)")
     for row in month.get("by_caller", []):
         cost = row.get("cost") or 0
         calls = row.get("calls") or 0
-        lines.append(f"  {row['caller']}: ${cost:.3f} ({calls} calls)")
+        caller = row["caller"].replace("_", " ")
+        lines.append(f"  {caller}: ${cost:.3f} ({calls} calls)")
 
     # Budget
     if budget > 0:
