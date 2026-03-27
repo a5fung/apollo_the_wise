@@ -251,6 +251,20 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_signal_outcomes_type
                 ON mi_signal_outcomes(signal_type, signal_date);
+
+            CREATE TABLE IF NOT EXISTS mi_intraday_bars (
+                ticker TEXT NOT NULL,
+                bar_time TIMESTAMPTZ NOT NULL,
+                open FLOAT NOT NULL,
+                high FLOAT NOT NULL,
+                low FLOAT NOT NULL,
+                close FLOAT NOT NULL,
+                volume BIGINT NOT NULL,
+                vwap FLOAT,
+                PRIMARY KEY (ticker, bar_time)
+            );
+            CREATE INDEX IF NOT EXISTS idx_intraday_bars_ticker
+                ON mi_intraday_bars(ticker);
         """)
         # Migrations — add columns to existing tables
         await conn.execute("""
@@ -1161,6 +1175,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_daily_closes": today - timedelta(days=400),  # 13M — feeds 12M RS lookback
             "mi_data_quality": today - timedelta(days=90),
             "mi_signal_outcomes": today - timedelta(days=365),
+            "mi_intraday_bars": today - timedelta(days=120),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
@@ -1170,6 +1185,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_daily_closes": "trade_date",
             "mi_data_quality": "run_date",
             "mi_signal_outcomes": "signal_date",
+            "mi_intraday_bars": "bar_time",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
