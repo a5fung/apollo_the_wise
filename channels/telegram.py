@@ -64,9 +64,12 @@ def _format_market_pipeline(status: dict) -> str:
     }
 
     def _last_expected_run_date() -> date:
-        """Most recent weekday (today if weekday, else last Friday)."""
+        """Most recent weekday where jobs should have completed.
+        Before 5 PM ET, use previous weekday (today's jobs haven't run yet)."""
         d = now_et.date()
-        while d.weekday() >= 5:
+        if now_et.hour < 17:  # before 5 PM ET — today's jobs haven't fired
+            d -= timedelta(days=1)
+        while d.weekday() >= 5:  # skip weekends
             d -= timedelta(days=1)
         return d
 
