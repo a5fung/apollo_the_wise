@@ -295,6 +295,10 @@ async def update_open_positions(today: date) -> list[dict]:
         if remaining <= 0:
             continue
 
+        # Skip Day 1 — intraday simulation already handled it
+        if today <= alert_date:
+            continue
+
         # Fetch today's daily bar
         today_str = today.strftime("%Y-%m-%d")
         daily_bars = await get_index_history(ticker, today_str, today_str)
