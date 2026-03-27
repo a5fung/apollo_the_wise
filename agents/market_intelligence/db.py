@@ -265,6 +265,30 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_intraday_bars_ticker
                 ON mi_intraday_bars(ticker);
+
+            CREATE TABLE IF NOT EXISTS mi_paper_trades (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                ep_score FLOAT NOT NULL,
+                catalyst_quality TEXT,
+                gap_pct FLOAT,
+                regime TEXT,
+                status TEXT NOT NULL DEFAULT 'open',
+                entries JSONB NOT NULL DEFAULT '[]',
+                exits JSONB NOT NULL DEFAULT '[]',
+                remaining_shares FLOAT NOT NULL DEFAULT 0,
+                stop_price FLOAT,
+                last_entry_price FLOAT,
+                total_pnl FLOAT NOT NULL DEFAULT 0,
+                hold_days INT NOT NULL DEFAULT 0,
+                skip_reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                closed_at TIMESTAMPTZ,
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_paper_trades_status
+                ON mi_paper_trades(status);
         """)
         # Migrations — add columns to existing tables
         await conn.execute("""

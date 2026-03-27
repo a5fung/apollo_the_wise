@@ -40,6 +40,10 @@ from agents.market_intelligence.briefing import (
     send_ep_alert,
     send_telegram_message,
 )
+from agents.market_intelligence.backtester.tracker import (
+    run_paper_trade_tracker,
+    format_tracker_telegram,
+)
 from core.notifications import notify_job_failure, notify_job_success
 
 logger = logging.getLogger(__name__)
@@ -409,6 +413,20 @@ async def _ep_scan_job():
         logger.error(f"EP scan failed: {e}")
 
 
+async def _paper_trade_tracker_job():
+    """Run at 4:45 PM ET. Simulate Day 1 for new EPs, update trailing stops on open positions."""
+    logger.info("Paper trade tracker starting...")
+    try:
+        summary = await run_paper_trade_tracker()
+        msg = format_tracker_telegram(summary)
+        await send_telegram_message(msg)
+        logger.info("Paper trade tracker complete")
+    except Exception as e:
+        import traceback
+        logger.error(f"Paper trade tracker failed: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("paper_trade_tracker", str(e))
+
+
 async def _weekly_cleanup():
     """Run Sunday 2:00 AM ET. Purge old rows per retention policy."""
     logger.info("Weekly DB cleanup starting...")
@@ -537,6 +555,14 @@ def start_scheduler() -> AsyncIOScheduler:
         _stop_ep_scanning,
         CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_stop",
+        replace_existing=True,
+    )
+
+    # Paper trade tracker: 4:45 PM ET — after nightly data pull, simulate new EPs + update stops
+    _scheduler.add_job(
+        _paper_trade_tracker_job,
+        CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+        id="paper_trade_tracker",
         replace_existing=True,
     )
 
