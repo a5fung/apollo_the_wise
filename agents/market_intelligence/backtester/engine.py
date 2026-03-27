@@ -417,16 +417,20 @@ async def _load_ep_alerts(
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT ticker, alert_date, gap_pct, rel_volume, ep_score,
+            SELECT DISTINCT ON (ticker, alert_date)
+                   ticker, alert_date, gap_pct, rel_volume, ep_score,
                    score_tier, catalyst, catalyst_quality, claude_analysis,
                    vol_percentile
             FROM mi_ep_alerts
             WHERE alert_date >= $1 AND alert_date <= $2
               AND ep_score >= $3
               AND score_tier = 'HIGH'
-            ORDER BY alert_date ASC, ep_score DESC
+            ORDER BY ticker, alert_date, ep_score DESC
         """, from_date, to_date, min_score)
-    return [dict(r) for r in rows]
+    # Re-sort by date after DISTINCT ON
+    results = [dict(r) for r in rows]
+    results.sort(key=lambda r: (r["alert_date"], -r.get("ep_score", 0)))
+    return results
 
 
 async def _load_regimes(from_date: date, to_date: date) -> dict[date, str]:
