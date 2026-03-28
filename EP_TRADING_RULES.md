@@ -66,9 +66,10 @@ and refined over time — not gospel.*
 
 ### B1. Opening Range = 5-minute bar
 
-We use the first 5-min bar (9:30–9:35 ET) as the opening range.
-Qullamaggie mentions 1-min, 5-min, or 60-min — we chose 5-min as a
-balance between noise (1-min) and missed entries (60-min).
+We use the first 1-min bar (9:30–9:31 ET) as the opening range.
+Qullamaggie mentions 1-min, 5-min, or 60-min — we use 1-min to get
+the tightest ORB and avoid the ATR filter rejecting big-gap EPs
+where the first 5 minutes are naturally volatile.
 
 ### B2. Re-entry after stop-out (Day 1)
 

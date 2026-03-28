@@ -1,4 +1,4 @@
-"""Polygon 5-min bar fetching with DB cache."""
+"""Polygon 1-min bar fetching with DB cache."""
 from __future__ import annotations
 
 import logging
@@ -18,7 +18,7 @@ MARKET_CLOSE = time(16, 0)
 
 async def get_intraday_bars(ticker: str, trade_date: date) -> list[dict]:
     """
-    Get 5-min bars for a ticker on a trading day (9:30-16:00 ET).
+    Get 1-min bars for a ticker on a trading day (9:30-16:00 ET).
     Checks DB cache first, fetches from Polygon if missing.
     Returns list of dicts with keys: bar_time, open, high, low, close, volume, vwap
     sorted by bar_time ascending.
@@ -57,13 +57,13 @@ async def _get_cached_bars(ticker: str, trade_date: date) -> list[dict]:
 
 
 async def _fetch_polygon_bars(ticker: str, trade_date: date) -> list[dict]:
-    """Fetch 5-min bars from Polygon for a single trading day."""
+    """Fetch 1-min bars from Polygon for a single trading day."""
     from_str = trade_date.strftime("%Y-%m-%d")
     to_str = from_str  # single day
 
     try:
         data = await _polygon_get(
-            f"/v2/aggs/ticker/{ticker}/range/5/minute/{from_str}/{to_str}",
+            f"/v2/aggs/ticker/{ticker}/range/1/minute/{from_str}/{to_str}",
             {"adjusted": "true", "sort": "asc", "limit": 5000},
         )
     except Exception as e:

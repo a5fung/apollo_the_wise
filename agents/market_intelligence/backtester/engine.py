@@ -30,14 +30,14 @@ def _simulate_day1(
     atr_pct: float | None = None,
 ) -> BacktestTrade | None:
     """
-    Simulate Day 1 intraday trading on 5-min bars (ORB entry).
+    Simulate Day 1 intraday trading on 1-min bars (ORB entry).
 
     Rules:
-    - Opening Range = first 5-min bar's high/low
-    - ATR stop width check: skip if ORB range > 1.5x ATR-14
+    - Opening Range = first 1-min bar's high/low
+    - ATR stop width check: skip if risk % > 1.5x ATR %
     - Entry when price breaks above ORB high (bars[1:])
     - Stop = ORB low (hard stop: bar low <= stop)
-    - Re-entry when bar closes above ORB high, max 3 attempts
+    - Re-entry when bar closes above ORB high, max 2 attempts
     - EOD: hold full position (no partial sell)
     """
     if not bars:
