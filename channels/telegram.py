@@ -544,10 +544,7 @@ class TelegramChannel:
             # ── Live (Alpaca) trades ──
             live = data.get("live")
             if live and not live.get("error"):
-                equity = live.get("equity")
-                lines.append(f"*Alpaca Paper Trading*")
-                if equity:
-                    lines.append(f"Account: ${equity:,.0f}")
+                lines.append("*Alpaca Paper Trading*")
                 lines.append("")
 
                 # Open positions
@@ -626,11 +623,14 @@ class TelegramChannel:
                                 or paper.get("open_positions", 0) > 0)
                 if has_activity:
                     lines.append("")
-                    lines.append("*Backtester (EOD sim):*")
+                    lines.append("━━━━━━━━━━━━━━━━━━━━")
+                    lines.append("*Paper Trades (EOD sim)*")
+                    lines.append("")
 
                     # Open positions
                     p_open = paper.get("open_details", [])
                     if p_open:
+                        lines.append(f"*Open ({len(p_open)}):*")
                         for p in p_open:
                             ticker = p.get("ticker", "?")
                             entry = p.get("last_entry_price")
@@ -638,31 +638,47 @@ class TelegramChannel:
                             shares = p.get("remaining_shares", 0)
                             hold = p.get("hold_days", 0)
                             score = p.get("ep_score", 0)
-                            entry_str = f"@${entry:.2f}" if entry else ""
-                            stop_str = f"stop ${stop:.2f}" if stop else ""
+                            pnl = p.get("total_pnl", 0)
+                            pnl_emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+
+                            entry_str = f"${entry:.2f}" if entry else "?"
+                            stop_str = f"${stop:.2f}" if stop else "?"
                             lines.append(
-                                f"  📍 {ticker} {entry_str} {stop_str} · "
-                                f"{shares:.0f}sh · {hold}d · score {score:.0f}"
+                                f"  {pnl_emoji} *{ticker}* · {hold}d\n"
+                                f"      Entry: {entry_str} · Stop: {stop_str}\n"
+                                f"      {shares:.0f} shares · Score: {score:.0f}\n"
+                                f"      Unreal P&L: ${pnl:+,.2f}"
                             )
+                        lines.append("")
+                    else:
+                        lines.append("No open positions\n")
 
                     # Recent closed
                     p_recent = paper.get("recent_trades", [])
                     p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
                     if p_closed_list:
+                        lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:
                             pnl = t.get("total_pnl", 0)
                             emoji = "✅" if pnl > 0 else "❌"
+                            entry = t.get("last_entry_price")
+                            entry_str = f"${entry:.2f}" if entry else "?"
                             lines.append(
-                                f"  {emoji} {t['ticker']} ${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
+                                f"  {emoji} *{t['ticker']}* ${pnl:+,.2f} ({t.get('hold_days', 0)}d)\n"
+                                f"      Entry: {entry_str} · Score: {t.get('ep_score', 0):.0f}"
                             )
+                        lines.append("")
 
-                    # Summary line
+                    # Totals
                     p_closed_count = paper.get("closed_trades", 0)
-                    parts = [f"{paper['total_trades']} trades ({paper['open_positions']} open)"]
+                    lines.append("*Totals:*")
+                    lines.append(f"  Trades: {paper['total_trades']} ({paper['open_positions']} open)")
                     if p_closed_count > 0:
-                        parts.append(f"{paper['win_rate']:.0f}% win")
-                        parts.append(f"${paper['realized_pnl']:+,.2f} realized")
-                    lines.append(f"  {' · '.join(parts)}")
+                        lines.append(f"  W/L: {paper['winners']}/{paper['losers']} ({paper['win_rate']:.0f}% win)")
+                        lines.append(f"  Realized P&L: ${paper['realized_pnl']:+,.2f}")
+                    skipped = paper.get("skipped", 0)
+                    if skipped:
+                        lines.append(f"  Filtered: {skipped}")
 
             if not lines:
                 lines.append("No trades yet.")
