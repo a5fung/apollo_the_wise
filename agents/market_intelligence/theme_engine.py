@@ -235,8 +235,11 @@ async def _rescore_existing_theme(
     if _is_garbage(existing_desc):
         existing_desc = ""
 
-    if len(strong_stocks) < THEME_COVERAGE_MIN:
-        # Theme is losing its RS base — mark Fading
+    # A theme is Fading if it lacks strong stocks — but 2 elite stocks (RS 80+) is enough
+    avg_strong_rs = (sum(stocks_by_ticker[t]["rs_composite"] for t in strong_stocks) / len(strong_stocks)) if strong_stocks else 0
+    is_elite_pair = len(strong_stocks) >= 2 and avg_strong_rs >= 80
+
+    if len(strong_stocks) < THEME_COVERAGE_MIN and not is_elite_pair:
         fading_days = await _count_consecutive_fading(name)
         if fading_days >= FADING_RETIRE_AFTER:
             logger.info(f"Theme '{name}' retired after {fading_days} fading days")

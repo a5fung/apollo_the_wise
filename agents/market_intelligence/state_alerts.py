@@ -6,7 +6,7 @@ Alerts arrive ~4:30-5:00 PM ET via Telegram.
 
 Noise thresholds:
 - RS deterioration: drop > 15 points in ~10 trading days
-- Theme transitions: all stage changes (limited count, not noisy)
+- Theme transitions: only genuine stage changes (ticker-overlap matching to handle renames)
 - MA breaks: RS >= 60, volume >= 1.5x ADV, only 20MA and 50MA
 - Theme composition: only RS 70+ stocks joining/leaving
 """
@@ -19,6 +19,9 @@ from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
+
+# Minimum ticker overlap to consider two themes "the same" despite name differences
+_THEME_MATCH_OVERLAP = 0.5  # 50% of tickers in common
 
 
 async def detect_state_changes(trade_date: date | None = None) -> list[dict]:
@@ -58,7 +61,6 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
     alerts = []
 
     async with pool.acquire() as conn:
-        # Find score date ~10 trading days ago
         prior_date_row = await conn.fetchrow("""
             SELECT DISTINCT score_date FROM mi_stock_scores
             WHERE score_date <= $1 - INTERVAL '12 days'
@@ -69,7 +71,6 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
             return []
         prior_date = prior_date_row["score_date"]
 
-        # Get active tracked tickers (equity only — excludes ETFs/leveraged products)
         tracked = await conn.fetch(
             "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"
         )
@@ -77,7 +78,6 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
             return []
         tickers = [r["ticker"] for r in tracked]
 
-        # Get today's and prior RS for tracked stocks
         today_scores = await conn.fetch("""
             SELECT ticker, rs_composite FROM mi_stock_scores
             WHERE score_date = $1 AND ticker = ANY($2) AND rs_composite IS NOT NULL
@@ -105,16 +105,58 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
     return alerts
 
 
+def _match_themes_by_tickers(
+    today_themes: list[dict],
+    prior_themes: list[dict],
+) -> dict[str, str]:
+    """
+    Match today's themes to prior themes by ticker overlap, not name.
+    Returns {today_name: prior_name} for matched themes.
+    Handles the theme engine renaming themes via Claude each day.
+    """
+    matches: dict[str, str] = {}
+    used_prior: set[str] = set()
+
+    for t in today_themes:
+        today_tickers = set(t.get("tickers") or [])
+        if not today_tickers:
+            continue
+
+        best_match = None
+        best_overlap = 0.0
+
+        for p in prior_themes:
+            p_name = p["name"]
+            if p_name in used_prior:
+                continue
+            prior_tickers = set(p.get("tickers") or [])
+            if not prior_tickers:
+                continue
+
+            intersection = len(today_tickers & prior_tickers)
+            # Overlap = fraction of the smaller set that's shared
+            overlap = intersection / min(len(today_tickers), len(prior_tickers))
+
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_match = p_name
+
+        if best_match and best_overlap >= _THEME_MATCH_OVERLAP:
+            matches[t["name"]] = best_match
+            used_prior.add(best_match)
+
+    return matches
+
+
 async def _check_theme_transitions(today: date) -> list[dict]:
     """
-    Compare today's themes to yesterday's by name.
-    Alert on any stage change.
+    Compare today's themes to yesterday's using ticker-overlap matching.
+    Only alert on genuine stage changes, not theme renames.
     """
     pool = await get_pool()
     alerts = []
 
     async with pool.acquire() as conn:
-        # Find yesterday's theme date
         prior_date_row = await conn.fetchrow("""
             SELECT DISTINCT theme_date FROM mi_themes
             WHERE theme_date < $1
@@ -125,21 +167,31 @@ async def _check_theme_transitions(today: date) -> list[dict]:
         prior_date = prior_date_row["theme_date"]
 
         today_themes = await conn.fetch(
-            "SELECT name, stage FROM mi_themes WHERE theme_date = $1", today
+            "SELECT name, stage, tickers FROM mi_themes WHERE theme_date = $1", today
         )
         prior_themes = await conn.fetch(
-            "SELECT name, stage FROM mi_themes WHERE theme_date = $1", prior_date
+            "SELECT name, stage, tickers FROM mi_themes WHERE theme_date = $1", prior_date
         )
 
-        prior_map = {r["name"]: r["stage"] for r in prior_themes}
+        # Match by ticker overlap
+        name_map = _match_themes_by_tickers(
+            [dict(r) for r in today_themes],
+            [dict(r) for r in prior_themes],
+        )
+        prior_stage_map = {r["name"]: r["stage"] for r in prior_themes}
 
         for t in today_themes:
-            name = t["name"]
-            if name in prior_map and prior_map[name] != t["stage"]:
+            today_name = t["name"]
+            matched_prior = name_map.get(today_name)
+            if not matched_prior:
+                continue  # genuinely new theme — handled by changelog, not here
+
+            prior_stage = prior_stage_map.get(matched_prior)
+            if prior_stage and prior_stage != t["stage"]:
                 alerts.append({
                     "type": "theme_transition",
-                    "theme": name,
-                    "from_stage": prior_map[name],
+                    "theme": today_name,
+                    "from_stage": prior_stage,
                     "to_stage": t["stage"],
                 })
 
@@ -157,7 +209,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
     alerts = []
 
     async with pool.acquire() as conn:
-        # Find yesterday's score date
         prior_date_row = await conn.fetchrow("""
             SELECT DISTINCT score_date FROM mi_stock_scores
             WHERE score_date < $1
@@ -167,7 +218,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
             return []
         prior_date = prior_date_row["score_date"]
 
-        # Get active tracked tickers with RS >= 60
         tracked = await conn.fetch(
             "SELECT ticker FROM mi_tracked_stocks WHERE active = TRUE AND (quote_type IS NULL OR quote_type = 'EQUITY')"
         )
@@ -175,7 +225,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
             return []
         tickers = [r["ticker"] for r in tracked]
 
-        # Today's data
         today_data = await conn.fetch("""
             SELECT ticker, rs_composite, close, sma_20, sma_50, adv_20
             FROM mi_stock_scores
@@ -184,7 +233,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
               AND close IS NOT NULL
         """, today, tickers)
 
-        # Yesterday's data
         prior_data = await conn.fetch("""
             SELECT ticker, close, sma_20, sma_50
             FROM mi_stock_scores
@@ -192,7 +240,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
         """, prior_date, tickers)
         prior_map = {r["ticker"]: dict(r) for r in prior_data}
 
-        # Today's volume from mi_daily_closes
         today_vol = await conn.fetch("""
             SELECT ticker, volume FROM mi_daily_closes
             WHERE trade_date = $1 AND ticker = ANY($2) AND volume > 0
@@ -210,7 +257,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
             today_volume = vol_map.get(ticker, 0)
             vol_ratio = today_volume / adv if adv > 0 else 0
 
-            # Only alert if volume is significant
             if vol_ratio < 1.5:
                 continue
 
@@ -222,7 +268,6 @@ async def _check_ma_breaks(today: date) -> list[dict]:
                 if not today_ma or not prior_ma or not prior_close:
                     continue
 
-                # Broke today: was above, now below
                 if prior_close >= prior_ma and close < today_ma:
                     alerts.append({
                         "type": "ma_break",
@@ -238,6 +283,7 @@ async def _check_ma_breaks(today: date) -> list[dict]:
 async def _check_theme_composition(today: date) -> list[dict]:
     """
     For each theme on both today and yesterday:
+    - Match themes by ticker overlap (handles renames)
     - Compare tickers[] arrays
     - Alert for RS 70+ stocks joining/leaving
     """
@@ -260,13 +306,19 @@ async def _check_theme_composition(today: date) -> list[dict]:
         prior_themes = await conn.fetch(
             "SELECT name, tickers FROM mi_themes WHERE theme_date = $1", prior_date
         )
-        prior_map = {r["name"]: set(r["tickers"] or []) for r in prior_themes}
 
-        # Get RS scores for filtering (only alert on RS 70+ stocks)
+        # Match by ticker overlap
+        name_map = _match_themes_by_tickers(
+            [dict(r) for r in today_themes],
+            [dict(r) for r in prior_themes],
+        )
+        prior_ticker_map = {r["name"]: set(r["tickers"] or []) for r in prior_themes}
+
+        # Get RS scores for filtering
         all_tickers = set()
         for t in today_themes:
             all_tickers.update(t["tickers"] or [])
-        for tks in prior_map.values():
+        for tks in prior_ticker_map.values():
             all_tickers.update(tks)
 
         if not all_tickers:
@@ -279,24 +331,24 @@ async def _check_theme_composition(today: date) -> list[dict]:
         rs_map = {r["ticker"]: r["rs_composite"] for r in rs_rows}
 
         for t in today_themes:
-            name = t["name"]
-            if name not in prior_map:
-                continue
+            today_name = t["name"]
+            matched_prior = name_map.get(today_name)
+            if not matched_prior:
+                continue  # new theme — no composition diff
 
             today_set = set(t["tickers"] or [])
-            prior_set = prior_map[name]
+            prior_set = prior_ticker_map.get(matched_prior, set())
 
             added = today_set - prior_set
             removed = prior_set - today_set
 
-            # Filter to RS 70+ only
             added_strong = [tk for tk in added if rs_map.get(tk, 0) >= 70]
             removed_strong = [tk for tk in removed if rs_map.get(tk, 0) >= 70]
 
             if added_strong or removed_strong:
                 alerts.append({
                     "type": "theme_composition",
-                    "theme": name,
+                    "theme": today_name,
                     "added": sorted(added_strong),
                     "removed": sorted(removed_strong),
                 })
@@ -308,13 +360,21 @@ async def send_state_alerts(
     alerts: list[dict],
     theme_changelog: list[dict] | None = None,
 ) -> None:
-    """Format alerts + theme changelog into Telegram message."""
+    """Format alerts + theme changelog into Telegram message.
+
+    Filters changelog to suppress noise from theme renames:
+    - Pruned/assigned only shown if the stock actually changed themes (not just a rename)
+    - New/retired themes only shown if they have no high-overlap match with prior day
+    """
     from agents.market_intelligence.briefing import send_telegram_message
 
     theme_changelog = theme_changelog or []
 
     if not alerts and not theme_changelog:
         return
+
+    # Load today's and yesterday's themes to detect renames
+    renamed_themes = await _get_renamed_themes()
 
     lines = ["*STATE CHANGES*"]
 
@@ -324,13 +384,19 @@ async def send_state_alerts(
     ma_alerts = [a for a in alerts if a["type"] == "ma_break"]
     comp_alerts = [a for a in alerts if a["type"] == "theme_composition"]
 
-    # Group changelog by type
-    pruned = [c for c in theme_changelog if c["type"] == "ticker_pruned"]
-    assigned = [c for c in theme_changelog if c["type"] == "ticker_assigned"]
-    new_themes = [c for c in theme_changelog if c["type"] == "theme_new"]
-    retired_themes = [c for c in theme_changelog if c["type"] == "theme_retired"]
+    # Group changelog by type — filter out rename noise
+    all_renamed_names = set(renamed_themes.keys()) | set(renamed_themes.values())
 
-    # Dedup: remove tickers from composition alerts that are already in changelog
+    pruned = [c for c in theme_changelog if c["type"] == "ticker_pruned"
+              and c.get("theme") not in all_renamed_names]
+    assigned = [c for c in theme_changelog if c["type"] == "ticker_assigned"
+                and c.get("theme") not in all_renamed_names]
+    new_themes = [c for c in theme_changelog if c["type"] == "theme_new"
+                  and c.get("theme") not in renamed_themes]
+    retired_themes = [c for c in theme_changelog if c["type"] == "theme_retired"
+                      and c.get("theme") not in renamed_themes.values()]
+
+    # Dedup: remove tickers from composition alerts already in changelog
     changelog_tickers = set()
     for c in pruned:
         changelog_tickers.add((c["theme"], c["ticker"], "removed"))
@@ -409,6 +475,39 @@ async def send_state_alerts(
                 parts.append("-" + " -".join(a["removed"]))
             lines.append(f"  {a['theme']}: {' '.join(parts)}")
 
+    # Only send if there's actual content beyond the header
+    if len(lines) <= 1:
+        logger.info("State changes: all filtered as rename noise, nothing to send")
+        return
+
     text = "\n".join(lines)
     await send_telegram_message(text)
     logger.info(f"Sent {len(alerts) + len(theme_changelog)} state-change alerts")
+
+
+async def _get_renamed_themes() -> dict[str, str]:
+    """Get {today_name: prior_name} for themes that were just renamed (high ticker overlap).
+    Used to suppress noise in changelog."""
+    today = et_today()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        prior_date_row = await conn.fetchrow("""
+            SELECT DISTINCT theme_date FROM mi_themes
+            WHERE theme_date < $1
+            ORDER BY theme_date DESC LIMIT 1
+        """, today)
+        if not prior_date_row:
+            return {}
+        prior_date = prior_date_row["theme_date"]
+
+        today_themes = await conn.fetch(
+            "SELECT name, tickers FROM mi_themes WHERE theme_date = $1", today
+        )
+        prior_themes = await conn.fetch(
+            "SELECT name, tickers FROM mi_themes WHERE theme_date = $1", prior_date
+        )
+
+    return _match_themes_by_tickers(
+        [dict(r) for r in today_themes],
+        [dict(r) for r in prior_themes],
+    )

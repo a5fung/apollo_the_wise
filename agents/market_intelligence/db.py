@@ -716,6 +716,42 @@ async def get_theme_history(
     } for r in rows]
 
 
+async def _resolve_weekly_snapshots(conn: Any, base_date: "date") -> list:
+    """
+    Find actual score_dates closest to base_date - 7/14/21/28 days.
+    Returns [d0, d7, d14, d21, d28] where each is the nearest score_date
+    within ±2 days of the target, or None if no data exists.
+    """
+    targets = [
+        base_date,
+        base_date - timedelta(days=7),
+        base_date - timedelta(days=14),
+        base_date - timedelta(days=21),
+        base_date - timedelta(days=28),
+    ]
+    # Single query: get all distinct score_dates in the ±2 day range of any target
+    window_start = min(targets) - timedelta(days=2)
+    window_end = max(targets) + timedelta(days=2)
+    rows = await conn.fetch(
+        "SELECT DISTINCT score_date FROM mi_stock_scores WHERE score_date BETWEEN $1 AND $2",
+        window_start, window_end,
+    )
+    all_dates = {r["score_date"] for r in rows}
+
+    resolved = []
+    for t in targets:
+        # Find closest date within ±2 days
+        best = None
+        best_dist = 999
+        for sd in all_dates:
+            dist = abs((sd - t).days)
+            if dist <= 2 and dist < best_dist:
+                best = sd
+                best_dist = dist
+        resolved.append(best)
+    return resolved
+
+
 async def get_rs_velocity(
     d: "str | date",
     min_rs: float = 40.0,
@@ -730,16 +766,29 @@ async def get_rs_velocity(
         v3w = rs_14d_ago - rs_21d_ago
         v4w = rs_21d_ago - rs_28d_ago
         score = 0.40*v1w + 0.30*v2w + 0.20*v3w + 0.10*v4w
-        × 1.2 consistency bonus if all available (non-NULL) weekly deltas are positive
+        × 1.2 consistency bonus if all non-NULL weekly deltas are positive
 
     Only includes stocks that:
     - Have data for today AND at least 2 of the 4 prior week snapshots
     - Have current rs_composite >= min_rs (filters out weak stocks "recovering")
     - Have a positive velocity score (net rising RS over the window)
+    - Most recent week (v1w) must be positive (still accelerating, not stalled)
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
+        dates = await _resolve_weekly_snapshots(conn, score_date)
+        d0, d7, d14, d21, d28 = dates
+
+        # Need at least d0 and d7 to compute anything meaningful
+        if not d0 or not d7:
+            return []
+
+        # Build list of available dates for the snapshot query
+        available = [x for x in dates if x is not None]
+
+        # Use a sentinel date that can't match any real data for NULL snapshots
+        SENTINEL = date(2000, 1, 1)
 
         rows = await conn.fetch("""
             WITH snapshots AS (
@@ -749,24 +798,18 @@ async def get_rs_velocity(
                     rs_composite,
                     sector
                 FROM mi_stock_scores
-                WHERE score_date IN (
-                    $1::date,
-                    $1::date - INTERVAL '7 days',
-                    $1::date - INTERVAL '14 days',
-                    $1::date - INTERVAL '21 days',
-                    $1::date - INTERVAL '28 days'
-                )
+                WHERE score_date = ANY($1)
                 AND rs_composite IS NOT NULL
             ),
             pivoted AS (
                 SELECT
                     ticker,
-                    MAX(CASE WHEN score_date = $1::date THEN rs_composite END)                       AS rs_now,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
-                    MAX(CASE WHEN score_date = $1::date THEN sector END)                             AS sector
+                    MAX(CASE WHEN score_date = $2 THEN rs_composite END) AS rs_now,
+                    MAX(CASE WHEN score_date = $3 THEN rs_composite END) AS rs_7d,
+                    MAX(CASE WHEN score_date = $4 THEN rs_composite END) AS rs_14d,
+                    MAX(CASE WHEN score_date = $5 THEN rs_composite END) AS rs_21d,
+                    MAX(CASE WHEN score_date = $6 THEN rs_composite END) AS rs_28d,
+                    MAX(CASE WHEN score_date = $2 THEN sector END)       AS sector
                 FROM snapshots
                 GROUP BY ticker
             ),
@@ -783,19 +826,23 @@ async def get_rs_velocity(
                     (rs_7d   - rs_14d) AS v2w,
                     (rs_14d  - rs_21d) AS v3w,
                     (rs_21d  - rs_28d) AS v4w,
-                    -- weighted velocity score
+                    -- weighted velocity score (NULL weeks excluded, not treated as 0)
                     (
                         COALESCE(0.40 * (rs_now  - rs_7d),  0) +
                         COALESCE(0.30 * (rs_7d   - rs_14d), 0) +
                         COALESCE(0.20 * (rs_14d  - rs_21d), 0) +
                         COALESCE(0.10 * (rs_21d  - rs_28d), 0)
                     ) *
-                    -- 1.2x consistency bonus if all available deltas are positive
+                    -- consistency bonus ONLY when we have real data and all deltas positive
                     CASE
-                        WHEN (rs_now > rs_7d OR rs_7d IS NULL)
-                         AND (rs_7d  > rs_14d OR rs_14d IS NULL)
-                         AND (rs_14d > rs_21d OR rs_21d IS NULL)
-                         AND (rs_21d > rs_28d OR rs_28d IS NULL)
+                        WHEN (rs_now  - rs_7d  > 0)
+                         AND (rs_7d  - rs_14d > 0 OR rs_14d IS NULL)
+                         AND (rs_14d - rs_21d > 0 OR rs_21d IS NULL)
+                         AND (rs_21d - rs_28d > 0 OR rs_28d IS NULL)
+                         -- require at least 2 real non-NULL positive deltas for bonus
+                         AND (CASE WHEN rs_14d IS NOT NULL AND rs_7d - rs_14d > 0 THEN 1 ELSE 0 END +
+                              CASE WHEN rs_21d IS NOT NULL AND rs_14d - rs_21d > 0 THEN 1 ELSE 0 END +
+                              CASE WHEN rs_28d IS NOT NULL AND rs_21d - rs_28d > 0 THEN 1 ELSE 0 END) >= 1
                         THEN 1.2 ELSE 1.0
                     END AS velocity_score,
                     -- count how many prior-week snapshots we have
@@ -808,12 +855,18 @@ async def get_rs_velocity(
             )
             SELECT *
             FROM velocity
-            WHERE rs_now    >= $2
+            WHERE rs_now    >= $7
               AND weeks_of_data >= 2
               AND velocity_score > 0
+              AND (rs_now - rs_7d) > 0  -- must still be rising this week
             ORDER BY velocity_score DESC
-            LIMIT $3
-        """, score_date, min_rs, limit)
+            LIMIT $8
+        """, available,
+             d0, d7,
+             d14 or SENTINEL,
+             d21 or SENTINEL,
+             d28 or SENTINEL,
+             min_rs, limit)
 
         return [dict(r) for r in rows]
 
@@ -831,6 +884,7 @@ async def get_rs_turners(
     - RS was <= max_rs_4w_ago at the earliest available snapshot (was weak)
     - RS improved for min_consecutive_weeks in a row (sustained turn)
     - Current RS > earliest RS by at least 10 points (meaningful improvement)
+    - Stocks must have sector data (NULL sectors excluded)
 
     Returns rows with: ticker, sector, rs_now, rs_7d..rs_28d, v1w..v4w,
     consecutive_up_weeks, rs_gain (total improvement).
@@ -838,6 +892,14 @@ async def get_rs_turners(
     pool = await get_pool()
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
+        dates = await _resolve_weekly_snapshots(conn, score_date)
+        d0, d7, d14, d21, d28 = dates
+
+        if not d0 or not d7:
+            return []
+
+        available = [x for x in dates if x is not None]
+        SENTINEL = date(2000, 1, 1)
 
         rows = await conn.fetch("""
             WITH snapshots AS (
@@ -847,24 +909,18 @@ async def get_rs_turners(
                     rs_composite,
                     sector
                 FROM mi_stock_scores
-                WHERE score_date IN (
-                    $1::date,
-                    $1::date - INTERVAL '7 days',
-                    $1::date - INTERVAL '14 days',
-                    $1::date - INTERVAL '21 days',
-                    $1::date - INTERVAL '28 days'
-                )
+                WHERE score_date = ANY($1)
                 AND rs_composite IS NOT NULL
             ),
             pivoted AS (
                 SELECT
                     ticker,
-                    MAX(CASE WHEN score_date = $1::date THEN rs_composite END)                       AS rs_now,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '7 days'  THEN rs_composite END)  AS rs_7d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '14 days' THEN rs_composite END)  AS rs_14d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '21 days' THEN rs_composite END)  AS rs_21d,
-                    MAX(CASE WHEN score_date = $1::date - INTERVAL '28 days' THEN rs_composite END)  AS rs_28d,
-                    MAX(CASE WHEN score_date = $1::date THEN sector END)                             AS sector
+                    MAX(CASE WHEN score_date = $2 THEN rs_composite END) AS rs_now,
+                    MAX(CASE WHEN score_date = $3 THEN rs_composite END) AS rs_7d,
+                    MAX(CASE WHEN score_date = $4 THEN rs_composite END) AS rs_14d,
+                    MAX(CASE WHEN score_date = $5 THEN rs_composite END) AS rs_21d,
+                    MAX(CASE WHEN score_date = $6 THEN rs_composite END) AS rs_28d,
+                    MAX(CASE WHEN score_date = $2 THEN sector END)       AS sector
                 FROM snapshots
                 GROUP BY ticker
             ),
@@ -885,17 +941,23 @@ async def get_rs_turners(
                     COALESCE(rs_28d, rs_21d, rs_14d, rs_7d) AS rs_earliest
                 FROM pivoted
                 WHERE rs_now IS NOT NULL
+                  AND sector IS NOT NULL  -- exclude stocks with no sector data
             )
             SELECT *,
                    rs_now - rs_earliest AS rs_gain
             FROM deltas
             WHERE rs_earliest IS NOT NULL
-              AND rs_earliest <= $2
-              AND consecutive_up_weeks >= $3
+              AND rs_earliest <= $7
+              AND consecutive_up_weeks >= $8
               AND rs_now > rs_earliest + 10
             ORDER BY consecutive_up_weeks DESC, rs_now - rs_earliest DESC
-            LIMIT $4
-        """, score_date, max_rs_4w_ago, min_consecutive_weeks, limit)
+            LIMIT $9
+        """, available,
+             d0, d7,
+             d14 or SENTINEL,
+             d21 or SENTINEL,
+             d28 or SENTINEL,
+             max_rs_4w_ago, min_consecutive_weeks, limit)
 
         return [dict(r) for r in rows]
 

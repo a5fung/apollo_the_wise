@@ -439,9 +439,14 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
     if not velocity:
         return ""
 
+    # Filter: most recent week must show actual gain (v1w > 0)
+    active = [s for s in velocity if (s.get("v1w") or 0) > 0]
+    if not active:
+        return ""
+
     lines = [f"*{section_num}. RISING* — Sustained RS acceleration (early signal)"]
 
-    for s in velocity[:6]:
+    for s in active[:6]:
         ticker = s["ticker"]
         rs = int(s.get("rs_now") or 0)
 
@@ -451,7 +456,7 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
             if v is not None:
                 weeks.append(f"{'+' if v >= 0 else ''}{v:.0f}")
 
-        weeks_str = " → ".join(weeks)  # wk1 → wk2 → wk3 → wk4 (most recent first)
+        weeks_str = " → ".join(weeks)
 
         # Sustained flag: all available weekly deltas positive
         all_positive = all(
@@ -461,7 +466,7 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
 
         lines.append(f"  `{ticker}` RS {rs}  [{weeks_str}]{flag}")
 
-    lines.append("  _wk1→wk2→wk3→wk4 RS change. ↑ = rising all weeks_")
+    lines.append("  _weekly RS Δ (recent→old). ↑ = every week positive_")
     return "\n".join(lines)
 
 
@@ -471,11 +476,10 @@ def _format_unanchored_section(
     section_num: int = 4,
 ) -> str:
     """Flag RS 80+ stocks not belonging to any active theme — potential undiscovered themes."""
-    # Build set of all tickers in active (non-Fading) themes
+    # Build set of all tickers in ANY theme (including Fading — still "anchored")
     themed_tickers: set[str] = set()
     for t in themes:
-        if t.get("stage") != "Fading":
-            themed_tickers.update(t.get("tickers") or [])
+        themed_tickers.update(t.get("tickers") or [])
 
     # Find RS 80+ leaders not in any theme
     unanchored = [
@@ -509,10 +513,12 @@ def _format_turners_section(turners: list[dict], section_num: int = 5) -> str:
     if not turners:
         return ""
 
-    # Group by sector
+    # Group by sector (skip stocks with no sector data)
     by_sector: dict[str, list[dict]] = defaultdict(list)
     for s in turners:
-        sector = s.get("sector") or "Unknown"
+        sector = s.get("sector")
+        if not sector:
+            continue
         by_sector[sector].append(s)
 
     # Only show sectors with 2+ stocks turning together (cluster signal)
@@ -550,6 +556,13 @@ def _format_quality_warnings(warnings: list[str]) -> str:
 
 def _format_signal_quality_section(summary: dict, section_num: int = 6) -> str:
     """Format weekly signal quality report (shown on Fridays)."""
+    has_rs = summary.get("rs_avg_1m") is not None
+    has_ep = summary.get("ep_total", 0) > 0
+
+    # Skip entire section if no data yet (early deployment)
+    if not has_rs and not has_ep:
+        return ""
+
     lines = [f"*{section_num}. SIGNAL QUALITY (30d)*"]
 
     rs_avg = summary.get("rs_avg_1m")
@@ -561,16 +574,12 @@ def _format_signal_quality_section(summary: dict, section_num: int = 6) -> str:
             f"vs SPY {'+' if spy_avg >= 0 else ''}{spy_avg:.1f}% "
             f"(alpha {'+' if rs_alpha >= 0 else ''}{rs_alpha:.1f}%)"
         )
-    elif summary.get("rs_count", 0) == 0:
-        lines.append("  RS Top 20: insufficient data (need ~21 trading days)")
 
     ep_total = summary.get("ep_total", 0)
     ep_profitable = summary.get("ep_profitable", 0)
     ep_hit = summary.get("ep_hit_rate")
     if ep_total > 0:
         lines.append(f"  EP alerts: {ep_profitable}/{ep_total} profitable at 1M ({ep_hit:.0f}%)")
-    else:
-        lines.append("  EP alerts: no 1M outcomes yet")
 
     return "\n".join(lines)
 
