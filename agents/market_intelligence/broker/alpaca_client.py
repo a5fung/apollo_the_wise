@@ -250,8 +250,10 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
     Uses Alpaca's real-time market data (no 15-min delay like Polygon Starter).
     """
     try:
+        from zoneinfo import ZoneInfo
         client = _get_data_client()
-        start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30))
+        et = ZoneInfo("America/New_York")
+        start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et)
         end = start + timedelta(minutes=1)
         request = StockBarsRequest(
             symbol_or_symbols=ticker,
