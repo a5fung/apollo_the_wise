@@ -44,7 +44,7 @@ DEFAULT_MIN_RVOL = 2.0
 MIN_PRICE = 5.0
 MAX_TICKER_LEN = 5
 QUICK_VOL_MULTIPLIER = 2.0  # Pre-filter: today volume >= 2x prev day volume
-MIN_MEDIAN_DOLLAR_VOL = 5_000_000  # $5M median daily dollar volume — mcap proxy for historical scans
+MIN_MEDIAN_DOLLAR_VOL = 2_000_000  # $2M median daily dollar volume — mcap proxy for historical scans
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────

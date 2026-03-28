@@ -130,7 +130,7 @@ def _compute_stats(trades: list[BacktestTrade], initial_capital: float) -> dict[
         else:
             current_consec = 0
 
-    # Max drawdown
+    # Max drawdown (% of peak equity, not initial capital)
     equity_curve = []
     running_equity = initial_capital
     for t in trades:
@@ -139,10 +139,13 @@ def _compute_stats(trades: list[BacktestTrade], initial_capital: float) -> dict[
 
     peak = initial_capital
     max_dd = 0.0
+    max_dd_peak = initial_capital
     for eq in equity_curve:
         peak = max(peak, eq)
         dd = eq - peak
-        max_dd = min(max_dd, dd)
+        if dd < max_dd:
+            max_dd = dd
+            max_dd_peak = peak
 
     # Sharpe approximation (annualized)
     returns = [t.return_pct / 100 for t in trades]
@@ -170,7 +173,7 @@ def _compute_stats(trades: list[BacktestTrade], initial_capital: float) -> dict[
         "expectancy": total_pnl / len(trades),
         "total_pnl": total_pnl,
         "max_drawdown": max_dd,
-        "max_drawdown_pct": abs(max_dd) / initial_capital * 100 if initial_capital > 0 else 0,
+        "max_drawdown_pct": abs(max_dd) / max_dd_peak * 100 if max_dd_peak > 0 else 0,
         "max_consecutive_losses": max_consec,
         "avg_hold_days": sum(t.hold_days for t in trades) / len(trades),
         "sharpe": sharpe,
