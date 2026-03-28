@@ -1,98 +1,145 @@
-# EP Trading Rules — Qullamaggie-Style Gap Trading
+# EP Trading Rules
 
-> Apollo's complete ruleset for Episodic Pivot (EP) gap trades.
-> Used by both the backtester and live execution flow.
+> Apollo's ruleset for Episodic Pivot (EP) gap trades.
+> Used by both the backtester and live paper tracker.
+>
+> Rules are split into **Qullamaggie's core rules** (sourced directly from
+> qullamaggie.com) and **Apollo additions** (our own extensions where he
+> says "create your own rules" or doesn't specify).
 
 ---
 
-## 1. Pre-Trade Filters
+## Part A — Qullamaggie's Core Rules
 
-All filters must pass before a trade is considered:
+*Sources: qullamaggie.com/how-to-master-a-setup-episodic-pivots/ and
+qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/*
 
-| Filter | Threshold | Rationale |
-|--------|-----------|-----------|
-| EP Score | >= 70 (HIGH tier) | Quality gate — combines gap %, volume, catalyst |
-| ADV Dollar Volume | >= $1M median 20-day | Liquidity — ensures clean fills |
-| ATR% (14-day) | <= 15% | Volatility cap — avoids penny-stock chaos |
-| Market Cap | >= $500M | Institutional interest floor |
-| Market Regime | Not "bear" (advisory) | Trend alignment — logged but not hard-blocked |
+### A1. What qualifies as an EP
 
-## 2. Entry Rules — Opening Range Breakout (ORB)
+- Gap up **10%+** on earnings or a similarly significant catalyst
+- **"Big volume. If the volume is not there in premarket, it needs to come in at the open."**
+- **"Big growth numbers, preferably mid/high or even triple digit EPS and revenue growth and a significant beat to analyst expectations."**
+- **"It's best if the stock has not rallied over the past 3-6 months."**
+- Avoid repeat EPs on the same stock — **"failure rate is higher"**
 
-### Opening Range
-- **Definition:** High and low of the first 5-minute bar (9:30-9:35 ET)
-- ORB High = first bar's high
-- ORB Low = first bar's low
+### A2. Entry
 
-### ATR Stop Width Validation
-- If `ORB range (high - low) > 1.5 × 14-day ATR` → **skip trade** (reason: `stop_too_wide`)
-- Risk/reward doesn't work when the opening range is too volatile
+- **"Enter opening range highs. ORH can be the highs of the first 1-, 5-, or 60-minute candle."**
+- Entry price = the ORH breakout level
 
-### Breakout Entry
-- Walk 5-min bars after the opening range
-- **Entry trigger:** Bar high exceeds ORB High
-- **Entry price:** ORB High (breakout level, not bar's high)
-- **Initial stop:** ORB Low
+### A3. Stop
 
-### Re-Entry After Stop
-- If stopped out intraday, re-enter when bar closes above ORB High
-- New stop = re-entry bar's low
-- **Maximum 3 entry attempts** per day
-- No entry if ORB High never broken → skip (reason: `orb_no_breakout`)
+- **"The stop is at the lows of the day."**
+- This means the lowest price printed so far at the time of entry — which is the opening range low when entering on an ORH break early in the session.
 
-## 3. Day 1 EOD Handling
+### A4. ATR stop validation
 
-- **Hold full position** through Day 1 close
-- No partial selling on Day 1
-- Hard stop (ORB Low) remains active via bar-low check
+- **"Make sure your stop is no more than 1x, or maximum 1.5x the average daily range or the average true range."**
+- If the distance from entry to stop exceeds this, pass on the trade.
 
-## 4. Position Management — Day 2+
+### A5. Trailing stop
 
-### Hard Stop Floor
-- `hard_stop = Day 1 intraday low` (lowest low across all 5-min bars)
-- Never raised, never lowered — absolute floor protection
-- Triggered when `bar_low <= hard_stop` → exit at hard_stop price
+- **"Trail your stop with the 10- or 20-day moving average once they surpass your initial stop."**
+- Exit on first daily close below the active MA.
+- He also says: **"Create your own sell rules. You can trail these with the 20- or 50-day moving average, or whatever you find to work the best."**
 
-### 10/20 SMA Trailing Stop
-- **Active SMA selection:**
-  - If 10-SMA > 20-SMA → use 10-SMA (strong uptrend)
-  - Otherwise → use 20-SMA (weaker trend, wider trail)
-- **SMA trail only active** when active_sma > hard_stop
-- **Exit trigger:** Daily **close** below the effective stop
-- **Warm-up:** Need 20+ daily closes for full SMA. If < 20, fall back to hard stop only.
+### A6. Position sizing
 
-### Effective Stop Calculation
-```
-effective_stop = max(hard_stop, active_sma, entry_price if breakeven_active)
-```
+- General guidance: **0.25–1% account risk per trade**, max 30% of account in one position.
+- No EP-specific sizing formula given.
 
-## 5. Partial Profit — Day 3-5
+### A7. What he does NOT specify
+
+These are areas where he explicitly leaves it open or doesn't address:
+- Day 1 EOD handling (partial sell vs hold full)
+- Re-entry after being stopped out intraday
+- Exact partial profit timing / percentage
+- Breakeven stop mechanics
+- Whether to use 10 vs 20 SMA (he says "10- or 20-day")
+
+---
+
+## Part B — Apollo Additions
+
+*Our extensions for areas Qullamaggie leaves open. These are backtested
+and refined over time — not gospel.*
+
+### B1. Opening Range = 5-minute bar
+
+We use the first 5-min bar (9:30–9:35 ET) as the opening range.
+Qullamaggie mentions 1-min, 5-min, or 60-min — we chose 5-min as a
+balance between noise (1-min) and missed entries (60-min).
+
+### B2. Re-entry after stop-out (Day 1)
+
+- If stopped out intraday, re-enter when a bar's high breaks above ORB High
+- **Stop stays at ORB Low** for all attempts (consistent with "lows of the day")
+- Maximum 3 entry attempts per day
+- If ORH never broken → skip (`orb_no_breakout`)
+
+### B3. Day 1 EOD
+
+- Hold full position through close — no partial selling on Day 1
+- Rationale: Qullamaggie's best EPs run for days/weeks. Day 1 partials cut winners early.
+
+### B4. SMA selection logic
+
+- Use 10-SMA when 10 > 20 (strong uptrend, tighter trail)
+- Use 20-SMA otherwise (wider trail for weaker trends)
+- SMA trail only activates once it surpasses the hard stop floor
+- Warm-up: need 20+ daily closes; if fewer, hard stop only
+
+### B5. Partial profit — Day 3-5
 
 | Day | Action |
 |-----|--------|
 | Day 1-2 | Hold full position |
-| Day 3-4 | Sell 1/3 **only if in profit** (close > entry price) |
-| Day 5 | Sell 1/3 **regardless** of profit |
+| Day 3-4 | Sell 1/3 only if in profit (close > entry price) |
+| Day 5 | Sell 1/3 regardless |
 
-- **After partial:** Move stop floor to breakeven (entry price)
-- Breakeven floor participates in effective stop calculation
-- Exit reason: `partial_profit`
+- After partial → move stop floor to breakeven (entry price)
+- Breakeven participates in effective stop: `max(hard_stop, active_sma, entry_price)`
 
-## 6. Exit Reasons
+### B6. Hard stop floor (Day 2+)
+
+- `hard_stop = Day 1 intraday low` (lowest low across all 5-min bars)
+- Never raised, never lowered — absolute floor
+- Triggered on `bar_low <= hard_stop` → exit at hard_stop price
+
+---
+
+## Part C — Pre-Trade Filters (Apollo)
+
+| Filter | Threshold | Source |
+|--------|-----------|--------|
+| EP Score | >= 70 (HIGH tier) | Apollo MAGNA53 model |
+| Gap % | >= 8% (scoring penalizes 8-9%) | Qullamaggie says 10%+ |
+| ADV Dollar Volume | >= $1M median 20-day | Apollo liquidity gate |
+| ATR% (14-day) | <= 15% | Apollo volatility cap |
+| Market Cap | >= $500M | Apollo institutional floor |
+| ATR stop width | <= 1.5× ATR-14 | Qullamaggie: "1x, max 1.5x ATR" |
+| EP cooldown | 60 days same ticker | Qullamaggie: "failure rate higher on repeats" |
+| Prior momentum | Not yet implemented | Qullamaggie: "not rallied past 3-6 months" |
+
+---
+
+## Part D — Exit Reasons & Skip Reasons
+
+### Exit reasons
 
 | Reason | Trigger | Price |
 |--------|---------|-------|
-| `stop_hit` | Bar low <= hard_stop (Day 1 or Day 2+) | Hard stop price |
-| `partial_profit` | Day 3-5 partial take | Bar close |
+| `stop_hit` | Bar low <= stop (ORB low Day 1, hard_stop Day 2+) | Stop price |
+| `partial_profit` | Day 3-5 partial take (Apollo rule B5) | Bar close |
 | `sma_trail_stop` | Daily close < effective stop | Bar close |
 | `data_ended` | Ran out of price data | Last close |
 
-## 7. Skip Reasons
+### Skip reasons
 
 | Reason | Trigger |
 |--------|---------|
 | `orb_no_breakout` | Price never exceeded ORB High on Day 1 |
-| `stop_too_wide` | ORB range > 1.5× ATR-14 |
+| `stop_too_wide` | Entry-to-stop distance > 1.5× ATR-14 |
 | `adv_too_low` | Dollar volume < $1M |
 | `adv_no_data` | No volume data available |
 | `atr_too_high` | ATR% > 15% |
@@ -100,23 +147,31 @@ effective_stop = max(hard_stop, active_sma, entry_price if breakeven_active)
 | `data_unavailable` | No intraday bars for Day 1 |
 | `no_valid_entry` | Day 1 simulation returned nothing |
 
-## 8. Risk Safeguards
+---
 
-- **Max concurrent positions:** 5
-- **Max daily new trades:** 3
-- **Max sector concentration:** 40%
-- **Max portfolio heat:** 20% of account
-- **Position size:** Fixed dollar amount (default $10K)
+## Part E — Risk Safeguards (Apollo)
 
-## 9. Backtester Implementation
+- Max concurrent positions: 5
+- Max daily new trades: 3
+- Max sector concentration: 40%
+- Max portfolio heat: 20% of account
+- Position size: Fixed $10K per trade (Phase 3: risk-based sizing)
+
+---
+
+## Part F — Implementation
 
 Files: `agents/market_intelligence/backtester/`
-- `filters.py` — Pre-trade filters + `compute_atr_14()`
-- `engine.py` — Day 1 ORB sim + Day 2+ SMA trail sim
-- `models.py` — `BacktestTrade` with `orb_high`, `orb_low`, `atr_14`, `breakeven_stop`
-- `report.py` — Text report + CSV export
-- `intraday.py` — Polygon 5-min bar fetcher
-- `safeguards.py` — Position/risk limits
+
+| File | Purpose |
+|------|---------|
+| `filters.py` | Pre-trade filters + `compute_atr_14()` |
+| `engine.py` | Day 1 ORB sim + Day 2+ SMA trail sim |
+| `models.py` | `BacktestTrade` with `orb_high`, `orb_low`, `atr_14`, `breakeven_stop` |
+| `report.py` | Text report + CSV export |
+| `tracker.py` | Live paper trade tracker (daily updates) |
+| `intraday.py` | Polygon 5-min bar fetcher |
+| `safeguards.py` | Position/risk limits |
 
 ---
 
@@ -124,5 +179,6 @@ Files: `agents/market_intelligence/backtester/`
 
 | Date | Change |
 |------|--------|
+| 2026-03-28 | v2.1: Verify rules against source, separate Qullamaggie vs Apollo additions, fix re-entry stop |
 | 2026-03-27 | v2: ORB entry, ATR stop validation, 10/20 SMA trail, delayed partial profit |
 | 2026-03-19 | v1: Buy at open, day-low ratchet trail, EOD Day 1 partial |

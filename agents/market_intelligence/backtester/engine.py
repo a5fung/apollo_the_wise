@@ -93,7 +93,7 @@ def _simulate_day1(
                 attempt += 1
                 entry_price = orb_high
                 shares = position_size / entry_price
-                current_stop = orb_low if attempt == 1 else bar["low"]
+                current_stop = orb_low
                 current_shares = shares
                 in_position = True
 
