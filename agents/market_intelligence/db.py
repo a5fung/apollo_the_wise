@@ -283,6 +283,13 @@ async def initialize_schema() -> None:
                 total_pnl FLOAT NOT NULL DEFAULT 0,
                 hold_days INT NOT NULL DEFAULT 0,
                 skip_reason TEXT,
+                orb_high FLOAT,
+                orb_low FLOAT,
+                atr_14 FLOAT,
+                day1_low FLOAT,
+                partial_taken BOOLEAN NOT NULL DEFAULT FALSE,
+                breakeven_active BOOLEAN NOT NULL DEFAULT FALSE,
+                running_closes JSONB NOT NULL DEFAULT '[]',
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 closed_at TIMESTAMPTZ,
                 UNIQUE (ticker, alert_date)
@@ -355,6 +362,33 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_tracked_stocks
                 ADD COLUMN IF NOT EXISTS quote_type TEXT DEFAULT NULL;
         """)
+        # ── Delete protection for trade tables ──────────────────────────────
+        # Prevent accidental DELETE/TRUNCATE on trade tables via DB trigger.
+        # To intentionally delete: SET LOCAL mi.allow_trade_delete = 'yes';
+        await conn.execute("""
+            CREATE OR REPLACE FUNCTION protect_trade_tables() RETURNS TRIGGER AS $$
+            BEGIN
+                IF current_setting('mi.allow_trade_delete', true) = 'yes' THEN
+                    RETURN OLD;
+                END IF;
+                RAISE EXCEPTION 'DELETE on % is blocked. SET LOCAL mi.allow_trade_delete = ''yes'' first.',
+                    TG_TABLE_NAME;
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
+        for tbl in ("mi_paper_trades", "mi_live_trades", "mi_live_orders"):
+            await conn.execute(f"""
+                DROP TRIGGER IF EXISTS prevent_delete_{tbl} ON {tbl};
+                CREATE TRIGGER prevent_delete_{tbl}
+                    BEFORE DELETE ON {tbl}
+                    FOR EACH ROW EXECUTE FUNCTION protect_trade_tables();
+            """)
+
+        # ── Log row counts on startup for early data-loss detection ───────
+        for tbl in ("mi_paper_trades", "mi_live_trades"):
+            count = await conn.fetchval(f"SELECT COUNT(*) FROM {tbl}")
+            logger.info(f"Startup row count: {tbl} = {count}")
+
     logger.info("Market Intelligence DB schema initialized")
 
 
