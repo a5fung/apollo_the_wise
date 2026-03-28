@@ -456,6 +456,10 @@ async def delete_historical_alerts(from_date: date, to_date: date) -> int:
     """Delete historical_scan alerts in date range (for idempotent re-runs)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Ensure source column exists before querying it
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'"
+        )
         result = await conn.execute("""
             DELETE FROM mi_ep_alerts
             WHERE source = 'historical_scan'
