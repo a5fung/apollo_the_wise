@@ -342,9 +342,9 @@ async def _nightly_data_pull():
 
     # 8. State-change alerts (sent immediately via Telegram)
     try:
-        alerts = await detect_state_changes(_today)
+        alerts, today_themes, prior_themes = await detect_state_changes(_today)
         if alerts or theme_changelog:
-            await send_state_alerts(alerts, theme_changelog)
+            await send_state_alerts(alerts, theme_changelog, today_themes, prior_themes)
             total_alerts = len(alerts) + len(theme_changelog)
             logger.info(f"State alerts: {total_alerts} alerts sent")
             summary_parts.append(f"{total_alerts} state alerts")

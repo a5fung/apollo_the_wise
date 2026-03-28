@@ -752,6 +752,29 @@ async def _resolve_weekly_snapshots(conn: Any, base_date: "date") -> list:
     return resolved
 
 
+# Sentinel date that can't match any real data — used for NULL snapshot placeholders in SQL
+_SENTINEL_DATE = date(2000, 1, 1)
+
+
+async def _prepare_weekly_snapshots(
+    conn: Any, d: "str | date",
+) -> tuple["date", list, "date", "date", "date | None", "date | None", "date | None"] | None:
+    """
+    Resolve score_date and weekly snapshots. Returns None if insufficient data.
+    Otherwise returns (d0, available, d0, d7, d14_or_sentinel, d21_or_sentinel, d28_or_sentinel).
+    """
+    score_date = await _resolve_score_date(conn, _to_date(d))
+    dates = await _resolve_weekly_snapshots(conn, score_date)
+    d0, d7, d14, d21, d28 = dates
+
+    if not d0 or not d7:
+        return None
+
+    available = [x for x in dates if x is not None]
+    return (d0, available, d0, d7,
+            d14 or _SENTINEL_DATE, d21 or _SENTINEL_DATE, d28 or _SENTINEL_DATE)
+
+
 async def get_rs_velocity(
     d: "str | date",
     min_rs: float = 40.0,
@@ -776,30 +799,16 @@ async def get_rs_velocity(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        score_date = await _resolve_score_date(conn, _to_date(d))
-        dates = await _resolve_weekly_snapshots(conn, score_date)
-        d0, d7, d14, d21, d28 = dates
-
-        # Need at least d0 and d7 to compute anything meaningful
-        if not d0 or not d7:
+        prep = await _prepare_weekly_snapshots(conn, d)
+        if not prep:
             return []
-
-        # Build list of available dates for the snapshot query
-        available = [x for x in dates if x is not None]
-
-        # Use a sentinel date that can't match any real data for NULL snapshots
-        SENTINEL = date(2000, 1, 1)
+        d0, available, d0_, d7, d14, d21, d28 = prep
 
         rows = await conn.fetch("""
             WITH snapshots AS (
-                SELECT
-                    ticker,
-                    score_date,
-                    rs_composite,
-                    sector
+                SELECT ticker, score_date, rs_composite, sector
                 FROM mi_stock_scores
-                WHERE score_date = ANY($1)
-                AND rs_composite IS NOT NULL
+                WHERE score_date = ANY($1) AND rs_composite IS NOT NULL
             ),
             pivoted AS (
                 SELECT
@@ -815,37 +824,27 @@ async def get_rs_velocity(
             ),
             velocity AS (
                 SELECT
-                    ticker,
-                    sector,
-                    rs_now,
-                    rs_7d,
-                    rs_14d,
-                    rs_21d,
-                    rs_28d,
+                    ticker, sector, rs_now, rs_7d, rs_14d, rs_21d, rs_28d,
                     (rs_now  - rs_7d)  AS v1w,
                     (rs_7d   - rs_14d) AS v2w,
                     (rs_14d  - rs_21d) AS v3w,
                     (rs_21d  - rs_28d) AS v4w,
-                    -- weighted velocity score (NULL weeks excluded, not treated as 0)
                     (
                         COALESCE(0.40 * (rs_now  - rs_7d),  0) +
                         COALESCE(0.30 * (rs_7d   - rs_14d), 0) +
                         COALESCE(0.20 * (rs_14d  - rs_21d), 0) +
                         COALESCE(0.10 * (rs_21d  - rs_28d), 0)
                     ) *
-                    -- consistency bonus ONLY when we have real data and all deltas positive
                     CASE
                         WHEN (rs_now  - rs_7d  > 0)
                          AND (rs_7d  - rs_14d > 0 OR rs_14d IS NULL)
                          AND (rs_14d - rs_21d > 0 OR rs_21d IS NULL)
                          AND (rs_21d - rs_28d > 0 OR rs_28d IS NULL)
-                         -- require at least 2 real non-NULL positive deltas for bonus
                          AND (CASE WHEN rs_14d IS NOT NULL AND rs_7d - rs_14d > 0 THEN 1 ELSE 0 END +
                               CASE WHEN rs_21d IS NOT NULL AND rs_14d - rs_21d > 0 THEN 1 ELSE 0 END +
                               CASE WHEN rs_28d IS NOT NULL AND rs_21d - rs_28d > 0 THEN 1 ELSE 0 END) >= 1
                         THEN 1.2 ELSE 1.0
                     END AS velocity_score,
-                    -- count how many prior-week snapshots we have
                     (CASE WHEN rs_7d  IS NOT NULL THEN 1 ELSE 0 END +
                      CASE WHEN rs_14d IS NOT NULL THEN 1 ELSE 0 END +
                      CASE WHEN rs_21d IS NOT NULL THEN 1 ELSE 0 END +
@@ -855,18 +854,11 @@ async def get_rs_velocity(
             )
             SELECT *
             FROM velocity
-            WHERE rs_now    >= $7
-              AND weeks_of_data >= 2
-              AND velocity_score > 0
-              AND (rs_now - rs_7d) > 0  -- must still be rising this week
+            WHERE rs_now >= $7 AND weeks_of_data >= 2
+              AND velocity_score > 0 AND (rs_now - rs_7d) > 0
             ORDER BY velocity_score DESC
             LIMIT $8
-        """, available,
-             d0, d7,
-             d14 or SENTINEL,
-             d21 or SENTINEL,
-             d28 or SENTINEL,
-             min_rs, limit)
+        """, available, d0, d7, d14, d21, d28, min_rs, limit)
 
         return [dict(r) for r in rows]
 
@@ -891,26 +883,16 @@ async def get_rs_turners(
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        score_date = await _resolve_score_date(conn, _to_date(d))
-        dates = await _resolve_weekly_snapshots(conn, score_date)
-        d0, d7, d14, d21, d28 = dates
-
-        if not d0 or not d7:
+        prep = await _prepare_weekly_snapshots(conn, d)
+        if not prep:
             return []
-
-        available = [x for x in dates if x is not None]
-        SENTINEL = date(2000, 1, 1)
+        d0, available, d0_, d7, d14, d21, d28 = prep
 
         rows = await conn.fetch("""
             WITH snapshots AS (
-                SELECT
-                    ticker,
-                    score_date,
-                    rs_composite,
-                    sector
+                SELECT ticker, score_date, rs_composite, sector
                 FROM mi_stock_scores
-                WHERE score_date = ANY($1)
-                AND rs_composite IS NOT NULL
+                WHERE score_date = ANY($1) AND rs_composite IS NOT NULL
             ),
             pivoted AS (
                 SELECT
@@ -925,26 +907,21 @@ async def get_rs_turners(
                 GROUP BY ticker
             ),
             deltas AS (
-                SELECT
-                    *,
+                SELECT *,
                     (rs_now  - rs_7d)  AS v1w,
                     (rs_7d   - rs_14d) AS v2w,
                     (rs_14d  - rs_21d) AS v3w,
                     (rs_21d  - rs_28d) AS v4w,
-                    -- Count consecutive rising weeks (most recent first)
                     CASE WHEN rs_now > rs_7d THEN 1 ELSE 0 END +
                     CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d THEN 1 ELSE 0 END +
                     CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d AND rs_14d > rs_21d THEN 1 ELSE 0 END +
                     CASE WHEN rs_now > rs_7d AND rs_7d > rs_14d AND rs_14d > rs_21d AND rs_21d > rs_28d THEN 1 ELSE 0 END
                     AS consecutive_up_weeks,
-                    -- Earliest available RS (the "was weak" baseline)
                     COALESCE(rs_28d, rs_21d, rs_14d, rs_7d) AS rs_earliest
                 FROM pivoted
-                WHERE rs_now IS NOT NULL
-                  AND sector IS NOT NULL  -- exclude stocks with no sector data
+                WHERE rs_now IS NOT NULL AND sector IS NOT NULL
             )
-            SELECT *,
-                   rs_now - rs_earliest AS rs_gain
+            SELECT *, rs_now - rs_earliest AS rs_gain
             FROM deltas
             WHERE rs_earliest IS NOT NULL
               AND rs_earliest <= $7
@@ -952,11 +929,7 @@ async def get_rs_turners(
               AND rs_now > rs_earliest + 10
             ORDER BY consecutive_up_weeks DESC, rs_now - rs_earliest DESC
             LIMIT $9
-        """, available,
-             d0, d7,
-             d14 or SENTINEL,
-             d21 or SENTINEL,
-             d28 or SENTINEL,
+        """, available, d0, d7, d14, d21, d28,
              max_rs_4w_ago, min_consecutive_weeks, limit)
 
         return [dict(r) for r in rows]
