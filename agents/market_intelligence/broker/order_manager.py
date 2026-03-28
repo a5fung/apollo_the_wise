@@ -102,14 +102,23 @@ async def prepare_orb_order(
 
 
 async def submit_entry(trade_id: int) -> dict | None:
-    """Place bracket order on Alpaca for a confirmed trade. Updates DB."""
+    """Place bracket order on Alpaca for a confirmed trade. Updates DB.
+
+    Uses atomic status transition (confirmed → order_placed) to prevent
+    duplicate orders from concurrent calls (e.g., double-click).
+    """
     pool = await get_pool()
+
+    # Atomic lock: only proceed if status is 'confirmed' and claim it
     async with pool.acquire() as conn:
-        trade = await conn.fetchrow(
-            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
-        )
+        trade = await conn.fetchrow("""
+            UPDATE mi_live_trades SET status = 'submitting'
+            WHERE id = $1 AND status = 'confirmed'
+            RETURNING *
+        """, trade_id)
+
     if not trade:
-        logger.error(f"Trade {trade_id} not found")
+        logger.warning(f"Trade {trade_id} not in 'confirmed' state — skipping (duplicate?)")
         return None
 
     ticker = trade["ticker"]

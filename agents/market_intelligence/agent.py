@@ -344,9 +344,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 # 1. Account info
                 account = await alpaca.get_account()
                 results["account"] = {
-                    "equity": account["equity"],
-                    "buying_power": account["buying_power"],
+                    "connected": True,
                     "trading_blocked": account["trading_blocked"],
+                    "paper": os.environ.get("ALPACA_PAPER", "true").lower() == "true",
                 }
                 # 2. Get a market data bar (AAPL yesterday)
                 from datetime import date, timedelta

@@ -850,7 +850,7 @@ class TelegramChannel:
         if callback_data.startswith("trade_confirm:") or callback_data.startswith("trade_skip:"):
             try:
                 from agents.market_intelligence.broker.telegram_confirm import handle_callback
-                result = await handle_callback(callback_data)
+                result = await handle_callback(callback_data, user_id=user_id)
                 action = result.get("action", result.get("error", "unknown"))
                 await query.answer(f"Trade {action}")
                 # Edit the original message to show the result
