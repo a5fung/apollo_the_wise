@@ -262,7 +262,8 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             end=end,
         )
         bars = client.get_stock_bars(request)
-        bar_set = bars[ticker] if ticker in bars else []
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, [])
         if not bar_set:
             logger.warning(f"No first bar for {ticker} on {trade_date}")
             return None
