@@ -248,9 +248,92 @@ class MarketIntelligenceAgent(BaseAgent):
 
         @self.app.get("/trades/summary")
         async def trades_summary(_: str = Depends(verify_internal_secret)):
-            """Return paper trade summary for /trades command."""
-            from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
-            return await get_paper_trading_summary()
+            """Return combined trade summary: live (Alpaca) + paper trades."""
+            from agents.market_intelligence.db import get_pool
+            from agents.market_intelligence.broker import alpaca_client as alpaca
+
+            pool = await get_pool()
+            result = {"live": None, "paper": None}
+
+            # ── Live (Alpaca) trades ──
+            try:
+                async with pool.acquire() as conn:
+                    stats = await conn.fetchrow("""
+                        SELECT
+                            COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
+                            COUNT(*) FILTER (WHERE status = 'filled' AND remaining_shares > 0) as open_count,
+                            COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) as winners,
+                            COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                            COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl
+                        FROM mi_live_trades
+                    """)
+                    open_trades = await conn.fetch("""
+                        SELECT id, ticker, alert_date, ep_score, entry_price,
+                               remaining_shares, stop_price, hard_stop, hold_days,
+                               position_size, risk_dollars, total_pnl,
+                               partial_taken, breakeven_active, catalyst_quality
+                        FROM mi_live_trades
+                        WHERE status = 'filled' AND remaining_shares > 0
+                        ORDER BY alert_date ASC
+                    """)
+                    recent_closed = await conn.fetch("""
+                        SELECT ticker, alert_date, entry_price, total_pnl,
+                               hold_days, exits, catalyst_quality, ep_score
+                        FROM mi_live_trades
+                        WHERE status = 'closed'
+                        ORDER BY closed_at DESC LIMIT 3
+                    """)
+
+                # Fetch current prices from Alpaca for unrealized P&L
+                open_details = []
+                for t in open_trades:
+                    t = dict(t)
+                    try:
+                        pos = await alpaca.get_position(t["ticker"])
+                        if pos:
+                            t["current_price"] = pos["current_price"]
+                            t["unrealized_pnl"] = pos["unrealized_pl"]
+                            t["market_value"] = pos["market_value"]
+                        else:
+                            t["current_price"] = None
+                            t["unrealized_pnl"] = 0
+                            t["market_value"] = 0
+                    except Exception:
+                        t["current_price"] = None
+                        t["unrealized_pnl"] = 0
+                        t["market_value"] = 0
+                    open_details.append(t)
+
+                # Get account equity
+                try:
+                    account = await alpaca.get_account()
+                    equity = account["equity"]
+                except Exception:
+                    equity = None
+
+                closed_count = (stats["winners"] or 0) + (stats["losers"] or 0)
+                result["live"] = {
+                    "total": stats["total"] or 0,
+                    "open_count": stats["open_count"] or 0,
+                    "winners": stats["winners"] or 0,
+                    "losers": stats["losers"] or 0,
+                    "win_rate": (stats["winners"] / closed_count * 100) if closed_count > 0 else 0,
+                    "realized_pnl": float(stats["realized_pnl"] or 0),
+                    "equity": equity,
+                    "open_positions": open_details,
+                    "recent_closed": [dict(r) for r in recent_closed],
+                }
+            except Exception as e:
+                result["live"] = {"error": str(e)}
+
+            # ── Paper (backtester) trades ──
+            try:
+                from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
+                result["paper"] = await get_paper_trading_summary()
+            except Exception as e:
+                result["paper"] = {"error": str(e)}
+
+            return result
 
         @self.app.post("/broker/test")
         async def broker_test(_: str = Depends(verify_internal_secret)):

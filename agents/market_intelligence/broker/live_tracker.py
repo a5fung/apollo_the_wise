@@ -456,6 +456,107 @@ async def morning_stop_refresh() -> int:
     return refreshed
 
 
+# ── Daily Summary ────────────────────────────────────────────────────────────
+
+
+async def send_live_trade_summary() -> None:
+    """Send a daily Telegram summary of live trading activity. Called after position update."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        stats = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
+                COUNT(*) FILTER (WHERE status = 'filled' AND remaining_shares > 0) as open_count,
+                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) as winners,
+                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl
+            FROM mi_live_trades
+        """)
+        open_trades = await conn.fetch("""
+            SELECT ticker, entry_price, remaining_shares, stop_price, hold_days,
+                   partial_taken, total_pnl
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+            ORDER BY alert_date ASC
+        """)
+        today = et_today()
+        todays_closes = await conn.fetch("""
+            SELECT ticker, total_pnl, hold_days
+            FROM mi_live_trades
+            WHERE status = 'closed' AND closed_at::date = $1
+        """, today)
+        todays_entries = await conn.fetch("""
+            SELECT ticker, entry_price, entry_shares
+            FROM mi_live_trades
+            WHERE alert_date = $1 AND status IN ('filled', 'order_placed')
+        """, today)
+
+    # Build message
+    lines = ["📊 *Live Trade Update*\n"]
+
+    # Today's activity
+    if todays_entries:
+        lines.append("*Entered today:*")
+        for t in todays_entries:
+            lines.append(f"  ▶ {t['ticker']} @${t['entry_price']:.2f} × {t['entry_shares']:.0f}")
+        lines.append("")
+
+    if todays_closes:
+        lines.append("*Closed today:*")
+        for t in todays_closes:
+            emoji = "✅" if t["total_pnl"] > 0 else "❌"
+            lines.append(f"  {emoji} {t['ticker']} ${t['total_pnl']:+,.2f} ({t['hold_days']}d)")
+        lines.append("")
+
+    # Open positions
+    if open_trades:
+        # Fetch current prices from Alpaca
+        lines.append(f"*Open positions ({len(open_trades)}):*")
+        for t in open_trades:
+            ticker = t["ticker"]
+            try:
+                pos = await alpaca.get_position(ticker)
+                current = pos["current_price"] if pos else None
+                unrealized = pos["unrealized_pl"] if pos else 0
+            except Exception:
+                current = None
+                unrealized = 0
+
+            entry_str = f"${t['entry_price']:.2f}" if t["entry_price"] else "?"
+            current_str = f"${current:.2f}" if current else "?"
+            pnl_emoji = "🟢" if unrealized > 0 else "🔴" if unrealized < 0 else "⚪"
+            partial = " ½" if t["partial_taken"] else ""
+
+            lines.append(
+                f"  {pnl_emoji} {ticker} {entry_str}→{current_str} "
+                f"${unrealized:+,.0f} · {t['hold_days']}d{partial}"
+            )
+        lines.append("")
+
+    # Running totals
+    closed_count = (stats["winners"] or 0) + (stats["losers"] or 0)
+    win_rate = (stats["winners"] / closed_count * 100) if closed_count > 0 else 0
+
+    try:
+        account = await alpaca.get_account()
+        equity = account["equity"]
+        lines.append(f"*Account:* ${equity:,.0f}")
+    except Exception:
+        pass
+
+    if closed_count > 0:
+        lines.append(
+            f"*Record:* {stats['winners']}W/{stats['losers']}L "
+            f"({win_rate:.0f}%) · ${float(stats['realized_pnl']):+,.2f}"
+        )
+    elif stats["total"]:
+        lines.append(f"*Trades:* {stats['total']} (no closes yet)")
+
+    # Only send if there's any activity
+    if stats["total"] or 0 > 0:
+        await send_telegram_message("\n".join(lines))
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 

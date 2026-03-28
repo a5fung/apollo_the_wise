@@ -473,14 +473,18 @@ async def _morning_stop_refresh_job():
 
 
 async def _live_position_update_job():
-    """Run at 4:45 PM ET. SMA trail, partials, stop updates for live positions."""
+    """Run at 4:45 PM ET. SMA trail, partials, stop updates for live positions. Send daily summary."""
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
     logger.info("Live position update starting...")
     try:
-        from agents.market_intelligence.broker.live_tracker import update_open_positions_live
+        from agents.market_intelligence.broker.live_tracker import (
+            update_open_positions_live,
+            send_live_trade_summary,
+        )
         results = await update_open_positions_live()
+        await send_live_trade_summary()
         logger.info(f"Live position update complete: {len(results)} positions processed")
     except Exception as e:
         import traceback

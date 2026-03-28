@@ -517,7 +517,7 @@ class TelegramChannel:
     async def _handle_trades(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle /trades — show paper trade positions and P&L."""
+        """Handle /trades — show live (Alpaca) + paper trade positions and P&L."""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
@@ -531,58 +531,109 @@ class TelegramChannel:
                 return
 
             secret = self._secrets.internal_api_secret
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(
                     f"{url}/trades/summary",
                     headers={"X-Apollo-Secret": secret},
                 )
                 resp.raise_for_status()
-                summary = resp.json()
+                data = resp.json()
 
-            lines = ["*EP Paper Trades*\n"]
+            lines = []
 
-            # Open positions
-            open_pos = summary.get("open_details", [])
-            if open_pos:
-                lines.append(f"*Open positions ({len(open_pos)}):*")
-                for p in open_pos:
-                    ticker = p["ticker"]
-                    entry = p.get("last_entry_price")
-                    stop = p.get("stop_price")
-                    shares = p.get("remaining_shares", 0)
-                    hold = p.get("hold_days", 0)
-                    score = p.get("ep_score", 0)
-                    entry_str = f"@${entry:.2f}" if entry else ""
-                    stop_str = f"stop ${stop:.2f}" if stop else ""
-                    lines.append(
-                        f"  📍 {ticker} {entry_str} {stop_str}\n"
-                        f"      {shares:.0f} shares · {hold}d · score {score:.0f}"
-                    )
+            # ── Live (Alpaca) trades ──
+            live = data.get("live")
+            if live and not live.get("error"):
+                equity = live.get("equity")
+                lines.append(f"*Alpaca Paper Trading*")
+                if equity:
+                    lines.append(f"Account: ${equity:,.0f}")
                 lines.append("")
 
-            # Recent closed trades
-            recent = summary.get("recent_trades", [])
-            closed_recent = [t for t in recent if t.get("status") == "closed"]
-            if closed_recent:
-                lines.append("*Recent closed:*")
-                for t in closed_recent:
-                    emoji = "✅" if t.get("total_pnl", 0) > 0 else "❌"
-                    lines.append(
-                        f"  {emoji} {t['ticker']} "
-                        f"P&L ${t.get('total_pnl', 0):+,.2f} "
-                        f"({t.get('hold_days', 0)}d)"
-                    )
-                lines.append("")
+                # Open positions
+                open_pos = live.get("open_positions", [])
+                if open_pos:
+                    lines.append(f"*Open ({len(open_pos)}):*")
+                    for p in open_pos:
+                        ticker = p["ticker"]
+                        entry = p.get("entry_price")
+                        current = p.get("current_price")
+                        stop = p.get("stop_price")
+                        shares = p.get("remaining_shares", 0)
+                        hold = p.get("hold_days", 0)
+                        unrealized = p.get("unrealized_pnl", 0)
+                        mkt_val = p.get("market_value", 0)
+                        realized = p.get("total_pnl", 0)
+                        partial = " (partial taken)" if p.get("partial_taken") else ""
 
-            # Running totals
-            closed = summary.get("closed_trades", 0)
-            lines.append("*Totals:*")
-            lines.append(f"  Trades: {summary.get('total_trades', 0)} ({summary.get('open_positions', 0)} open)")
-            if closed > 0:
-                lines.append(f"  W/L: {summary.get('winners', 0)}/{summary.get('losers', 0)} ({summary.get('win_rate', 0):.0f}% win)")
-                lines.append(f"  Realized P&L: ${summary.get('realized_pnl', 0):+,.2f}")
-            if summary.get("skipped"):
-                lines.append(f"  Filtered: {summary['skipped']}")
+                        entry_str = f"${entry:.2f}" if entry else "?"
+                        current_str = f"${current:.2f}" if current else "?"
+                        pnl_emoji = "🟢" if unrealized > 0 else "🔴" if unrealized < 0 else "⚪"
+
+                        lines.append(
+                            f"  {pnl_emoji} *{ticker}* · {hold}d{partial}\n"
+                            f"      Entry: {entry_str} → Now: {current_str}\n"
+                            f"      {shares:.0f} shares · ${mkt_val:,.0f} position\n"
+                            f"      Stop: ${stop:.2f} · Unreal: ${unrealized:+,.2f}"
+                        )
+                        if realized:
+                            lines[-1] += f" · Real: ${realized:+,.2f}"
+                    lines.append("")
+                else:
+                    lines.append("No open positions\n")
+
+                # Last 3 closed
+                closed_trades = live.get("recent_closed", [])
+                if closed_trades:
+                    lines.append("*Last 3 closed:*")
+                    for t in closed_trades:
+                        pnl = t.get("total_pnl", 0)
+                        emoji = "✅" if pnl > 0 else "❌"
+                        entry = t.get("entry_price")
+                        hold = t.get("hold_days", 0)
+                        score = t.get("ep_score", 0)
+                        # Get exit price from exits JSON
+                        exits = t.get("exits", [])
+                        if isinstance(exits, str):
+                            import json
+                            exits = json.loads(exits or "[]")
+                        last_exit = exits[-1] if exits else {}
+                        exit_price = last_exit.get("price")
+                        exit_reason = last_exit.get("reason", "?")
+
+                        entry_str = f"${entry:.2f}" if entry else "?"
+                        exit_str = f"${exit_price:.2f}" if exit_price else "?"
+                        lines.append(
+                            f"  {emoji} *{t['ticker']}* ${pnl:+,.2f} ({hold}d)\n"
+                            f"      {entry_str} → {exit_str} · {exit_reason} · score {score:.0f}"
+                        )
+                    lines.append("")
+
+                # Totals
+                closed_count = live.get("winners", 0) + live.get("losers", 0)
+                lines.append("*Totals:*")
+                lines.append(f"  Trades: {live.get('total', 0)} ({live.get('open_count', 0)} open)")
+                if closed_count > 0:
+                    lines.append(f"  W/L: {live['winners']}/{live['losers']} ({live['win_rate']:.0f}% win)")
+                    lines.append(f"  Realized P&L: ${live['realized_pnl']:+,.2f}")
+            elif live and live.get("error"):
+                lines.append(f"*Alpaca:* error — {live['error']}\n")
+
+            # ── Paper (backtester) trades — compact summary ──
+            paper = data.get("paper")
+            if paper and not paper.get("error"):
+                p_closed = paper.get("closed_trades", 0)
+                if p_closed > 0 or paper.get("open_positions", 0) > 0:
+                    lines.append("")
+                    lines.append(
+                        f"*Backtester:* {paper['total_trades']} trades "
+                        f"({paper['open_positions']} open) · "
+                        f"{paper.get('win_rate', 0):.0f}% win · "
+                        f"${paper.get('realized_pnl', 0):+,.2f}"
+                    )
+
+            if not lines:
+                lines.append("No trades yet.")
 
             await self._reply(update, "\n".join(lines))
         except Exception as e:
