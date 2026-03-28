@@ -1,0 +1,556 @@
+"""
+Order lifecycle management for live EP trading.
+
+Handles: order preparation, submission, fill checking, stop updates,
+partial exits, full exits, EOD cleanup, and position sync.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import math
+from datetime import date, datetime
+
+from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.briefing import send_telegram_message
+from agents.market_intelligence.db import get_pool
+
+logger = logging.getLogger(__name__)
+
+
+# ── Order Preparation ────────────────────────────────────────────────────────
+
+
+async def prepare_orb_order(
+    alert: dict,
+    orb_bar: dict,
+    atr_14: float,
+    regime_record: dict | None,
+) -> dict | None:
+    """
+    Compute entry/stop/shares/risk from ORB bar and account equity.
+    Returns order spec dict or None if the trade fails validation.
+    """
+    orb_high = orb_bar["high"]
+    orb_low = orb_bar["low"]
+    orb_range = orb_high - orb_low
+
+    if orb_range <= 0:
+        logger.warning(f"{alert['ticker']}: ORB range is zero, skipping")
+        return None
+
+    # ATR validation: skip if ORB risk > 1.5x ATR
+    if atr_14 and orb_range > 1.5 * atr_14:
+        logger.info(f"{alert['ticker']}: ORB range ${orb_range:.2f} > 1.5x ATR ${atr_14:.2f}, skipping")
+        return None
+
+    # Get actual account equity from Alpaca
+    try:
+        account = await alpaca.get_account()
+        equity = account["equity"]
+    except Exception:
+        logger.error("Cannot get account equity, aborting order prep")
+        return None
+
+    # Position sizing: 1% risk, halved if QQQ EMA bearish
+    risk_pct = 0.01
+    if regime_record and regime_record.get("qqq_ema_bullish") is False:
+        risk_pct *= 0.5
+
+    risk_dollars = equity * risk_pct
+    risk_per_share = orb_high - orb_low
+    shares = math.floor(risk_dollars / risk_per_share)
+
+    if shares <= 0:
+        logger.warning(f"{alert['ticker']}: computed 0 shares, skipping")
+        return None
+
+    # Max 20% of account in one position
+    max_position = equity * 0.20
+    if shares * orb_high > max_position:
+        shares = math.floor(max_position / orb_high)
+
+    if shares <= 0:
+        return None
+
+    position_size = shares * orb_high
+    # Limit price: ORB high + 0.1% slippage buffer
+    limit_price = round(orb_high * 1.001, 2)
+
+    return {
+        "ticker": alert["ticker"],
+        "entry_price": orb_high,
+        "limit_price": limit_price,
+        "stop_loss_price": orb_low,
+        "shares": shares,
+        "risk_dollars": round(risk_dollars, 2),
+        "risk_per_share": round(risk_per_share, 2),
+        "position_size": round(position_size, 2),
+        "equity": equity,
+        "orb_high": orb_high,
+        "orb_low": orb_low,
+        "atr_14": atr_14,
+        "ep_score": alert.get("ep_score"),
+        "catalyst_quality": alert.get("catalyst_quality"),
+        "gap_pct": alert.get("gap_pct"),
+        "regime": regime_record.get("regime") if regime_record else None,
+    }
+
+
+# ── Order Submission ─────────────────────────────────────────────────────────
+
+
+async def submit_entry(trade_id: int) -> dict | None:
+    """Place bracket order on Alpaca for a confirmed trade. Updates DB."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade:
+        logger.error(f"Trade {trade_id} not found")
+        return None
+
+    ticker = trade["ticker"]
+    try:
+        order = await alpaca.place_bracket_order(
+            ticker=ticker,
+            qty=trade["entry_shares"],
+            stop_price=trade["orb_high"],
+            limit_price=round(trade["orb_high"] * 1.001, 2),
+            stop_loss_price=trade["orb_low"],
+        )
+    except Exception as e:
+        # 1 retry after 5s for transient errors
+        logger.warning(f"Entry order failed for {ticker}, retrying: {e}")
+        await asyncio.sleep(5)
+        try:
+            order = await alpaca.place_bracket_order(
+                ticker=ticker,
+                qty=trade["entry_shares"],
+                stop_price=trade["orb_high"],
+                limit_price=round(trade["orb_high"] * 1.001, 2),
+                stop_loss_price=trade["orb_low"],
+            )
+        except Exception as e2:
+            logger.error(f"Entry order failed after retry for {ticker}: {e2}")
+            await _update_trade_status(trade_id, "order_failed", skip_reason=str(e2))
+            await send_telegram_message(f"⚠️ Order FAILED for {ticker}: {e2}")
+            return None
+
+    # Store order in DB
+    entry_order_id = order["id"]
+    stop_order_id = None
+    if order.get("legs"):
+        for leg in order["legs"]:
+            if leg.get("type") == "stop":
+                stop_order_id = leg["id"]
+                break
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                status = 'order_placed',
+                entry_order_id = $2,
+                stop_order_id = $3
+            WHERE id = $1
+        """, trade_id, entry_order_id, stop_order_id)
+
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                 stop_price, limit_price, status, raw_response)
+            VALUES ($1, $2, $3, 'buy', 'stop_limit', $4, $5, $6, $7, $8::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """,
+            trade_id, entry_order_id, ticker,
+            float(trade["entry_shares"]),
+            float(trade["orb_high"]),
+            round(float(trade["orb_high"]) * 1.001, 2),
+            order["status"],
+            json.dumps(order),
+        )
+
+    logger.info(f"Entry order submitted: {ticker} order_id={entry_order_id}")
+    return order
+
+
+# ── Fill Checking ────────────────────────────────────────────────────────────
+
+
+async def check_fills() -> list[dict]:
+    """Poll Alpaca for fills on pending entry orders. Update DB and notify."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        pending = await conn.fetch("""
+            SELECT id, ticker, entry_order_id, entry_shares, orb_low
+            FROM mi_live_trades
+            WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
+        """)
+
+    results = []
+    for trade in pending:
+        order = await alpaca.get_order(trade["entry_order_id"])
+        if not order:
+            continue
+
+        status = order["status"]
+        ticker = trade["ticker"]
+
+        if status == "filled":
+            filled_price = order["filled_avg_price"]
+            filled_qty = order["filled_qty"]
+
+            # Check for partial fill with tiny position
+            if filled_qty < trade["entry_shares"] and filled_price and filled_qty * filled_price < 500:
+                logger.info(f"Partial fill too small for {ticker}: {filled_qty} shares, closing")
+                try:
+                    await alpaca.close_position(ticker)
+                except Exception:
+                    pass
+                await _update_trade_status(trade["id"], "closed", skip_reason="partial_fill_too_small")
+                results.append({"ticker": ticker, "action": "partial_cancelled"})
+                continue
+
+            # Find the stop-loss order leg
+            stop_order_id = None
+            for leg in order.get("legs", []):
+                if leg.get("type") == "stop" or leg.get("stop_price"):
+                    stop_order_id = leg["id"]
+                    break
+
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        status = 'filled',
+                        entry_price = $2,
+                        entry_shares = $3,
+                        remaining_shares = $3,
+                        hard_stop = $4,
+                        stop_price = $4,
+                        filled_at = NOW(),
+                        stop_order_id = COALESCE($5, stop_order_id)
+                    WHERE id = $1
+                """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
+
+                # Update order audit trail
+                await conn.execute("""
+                    UPDATE mi_live_orders SET
+                        status = 'filled',
+                        filled_qty = $2,
+                        filled_avg_price = $3,
+                        filled_at = NOW()
+                    WHERE alpaca_order_id = $1
+                """, trade["entry_order_id"], filled_qty, filled_price)
+
+            await send_telegram_message(
+                f"✅ *FILLED:* {ticker}\n"
+                f"Entry: ${filled_price:.2f} × {filled_qty:.0f} shares\n"
+                f"Stop: ${trade['orb_low']:.2f}"
+            )
+            logger.info(f"Fill: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
+            results.append({"ticker": ticker, "action": "filled", "price": filled_price})
+
+        elif status in ("cancelled", "expired", "rejected"):
+            await _update_trade_status(trade["id"], "cancelled", skip_reason=status)
+            logger.info(f"Order {status}: {ticker}")
+            results.append({"ticker": ticker, "action": status})
+
+    return results
+
+
+# ── Stop Management ──────────────────────────────────────────────────────────
+
+
+async def update_stop(trade_id: int, new_stop_price: float) -> bool:
+    """Cancel old stop order and place new one at updated price."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade or not trade["remaining_shares"]:
+        return False
+
+    ticker = trade["ticker"]
+    old_stop_id = trade.get("stop_order_id")
+
+    # Cancel existing stop
+    if old_stop_id:
+        await alpaca.cancel_order(old_stop_id)
+
+    # Place new stop
+    try:
+        new_order = await alpaca.place_stop_order(
+            ticker=ticker,
+            qty=trade["remaining_shares"],
+            stop_price=new_stop_price,
+        )
+    except Exception as e:
+        logger.error(f"Failed to place new stop for {ticker}: {e}")
+        # Urgent: stop not in place!
+        await send_telegram_message(
+            f"🚨 *STOP ORDER FAILED* for {ticker}!\n"
+            f"Attempted stop @${new_stop_price:.2f}\n"
+            f"Error: {e}\n"
+            f"Position has NO stop protection!"
+        )
+        # Try once more
+        await asyncio.sleep(3)
+        try:
+            new_order = await alpaca.place_stop_order(
+                ticker=ticker, qty=trade["remaining_shares"], stop_price=new_stop_price,
+            )
+        except Exception as e2:
+            logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
+            return False
+
+    new_stop_id = new_order["id"]
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                stop_order_id = $2,
+                stop_price = $3
+            WHERE id = $1
+        """, trade_id, new_stop_id, new_stop_price)
+
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                 stop_price, status, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """,
+            trade_id, new_stop_id, ticker,
+            float(trade["remaining_shares"]),
+            new_stop_price, new_order["status"],
+            json.dumps(new_order),
+        )
+
+    logger.info(f"Stop updated: {ticker} → ${new_stop_price:.2f}")
+    return True
+
+
+async def execute_partial_exit(trade_id: int, shares: float) -> bool:
+    """Market sell for partial exit (1/3 position)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade:
+        return False
+
+    ticker = trade["ticker"]
+    try:
+        order = await alpaca.place_market_sell(ticker, shares)
+    except Exception as e:
+        logger.error(f"Partial exit failed for {ticker}: {e}")
+        await send_telegram_message(f"⚠️ Partial exit FAILED for {ticker}: {e}")
+        return False
+
+    # Update DB
+    exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+    fill_price = order.get("filled_avg_price") or trade["entry_price"]
+    pnl = (fill_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
+
+    exits.append({
+        "time": datetime.utcnow().isoformat(),
+        "price": fill_price,
+        "reason": "partial_profit",
+        "shares": shares,
+        "pnl": pnl,
+        "order_id": order["id"],
+    })
+
+    remaining = trade["remaining_shares"] - shares
+    total_pnl = sum(e.get("pnl", 0) for e in exits)
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                exits = $2::jsonb,
+                remaining_shares = $3,
+                total_pnl = $4,
+                partial_taken = TRUE,
+                breakeven_active = TRUE
+            WHERE id = $1
+        """, trade_id, json.dumps(exits), remaining, total_pnl)
+
+    # Update stop order quantity to match remaining shares
+    if trade.get("stop_order_id") and remaining > 0:
+        await update_stop(trade_id, trade["stop_price"])
+
+    await send_telegram_message(
+        f"📤 *Partial exit:* {ticker}\n"
+        f"Sold {shares:.0f} shares @${fill_price:.2f}\n"
+        f"P&L: ${pnl:+,.2f} | Remaining: {remaining:.0f}"
+    )
+    return True
+
+
+async def execute_full_exit(trade_id: int, reason: str) -> bool:
+    """Close entire remaining position."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade or trade["remaining_shares"] <= 0:
+        return False
+
+    ticker = trade["ticker"]
+
+    # Cancel stop order first
+    if trade.get("stop_order_id"):
+        await alpaca.cancel_order(trade["stop_order_id"])
+
+    try:
+        order = await alpaca.close_position(ticker)
+    except Exception as e:
+        logger.error(f"Full exit failed for {ticker}: {e}")
+        await send_telegram_message(f"⚠️ Full exit FAILED for {ticker}: {e}")
+        return False
+
+    fill_price = order.get("filled_avg_price") or trade.get("entry_price", 0)
+    remaining = trade["remaining_shares"]
+    pnl = (fill_price - trade["entry_price"]) * remaining if trade["entry_price"] else 0
+
+    exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+    exits.append({
+        "time": datetime.utcnow().isoformat(),
+        "price": fill_price,
+        "reason": reason,
+        "shares": remaining,
+        "pnl": pnl,
+        "order_id": order["id"],
+    })
+    total_pnl = sum(e.get("pnl", 0) for e in exits)
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                status = 'closed',
+                exits = $2::jsonb,
+                remaining_shares = 0,
+                total_pnl = $3,
+                stop_order_id = NULL,
+                closed_at = NOW()
+            WHERE id = $1
+        """, trade_id, json.dumps(exits), total_pnl)
+
+    emoji = "✅" if total_pnl > 0 else "❌"
+    await send_telegram_message(
+        f"{emoji} *Closed:* {ticker} — {reason}\n"
+        f"Exit @${fill_price:.2f} × {remaining:.0f} shares\n"
+        f"Total P&L: ${total_pnl:+,.2f}"
+    )
+    return True
+
+
+# ── EOD Cleanup ──────────────────────────────────────────────────────────────
+
+
+async def cancel_unfilled_entries() -> int:
+    """Cancel all unfilled entry orders at EOD. Returns count cancelled."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        pending = await conn.fetch("""
+            SELECT id, ticker, entry_order_id
+            FROM mi_live_trades
+            WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
+        """)
+
+    cancelled = 0
+    for trade in pending:
+        success = await alpaca.cancel_order(trade["entry_order_id"])
+        if success:
+            await _update_trade_status(trade["id"], "cancelled", skip_reason="eod_unfilled")
+            cancelled += 1
+            logger.info(f"EOD cancel: {trade['ticker']}")
+
+    if cancelled:
+        await send_telegram_message(f"🕓 EOD: cancelled {cancelled} unfilled order(s)")
+    return cancelled
+
+
+async def sync_positions() -> list[str]:
+    """
+    Reconcile DB vs Alpaca positions. Alpaca is source of truth.
+    Returns list of discrepancy messages.
+    """
+    alpaca_positions = await alpaca.get_all_positions()
+    alpaca_map = {p["symbol"]: p for p in alpaca_positions}
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        db_trades = await conn.fetch("""
+            SELECT id, ticker, remaining_shares, entry_price, status
+            FROM mi_live_trades
+            WHERE status IN ('filled', 'order_placed')
+        """)
+
+    discrepancies = []
+
+    # Check each DB trade against Alpaca
+    for trade in db_trades:
+        ticker = trade["ticker"]
+        if ticker in alpaca_map:
+            alpaca_qty = alpaca_map[ticker]["qty"]
+            db_qty = trade["remaining_shares"] or 0
+            if abs(alpaca_qty - db_qty) > 0.5:
+                msg = f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f}"
+                discrepancies.append(msg)
+                # Update DB to match Alpaca
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET remaining_shares = $2 WHERE id = $1",
+                        trade["id"], alpaca_qty,
+                    )
+            del alpaca_map[ticker]
+        else:
+            # DB says we have a position but Alpaca doesn't
+            if trade["status"] == "filled" and (trade["remaining_shares"] or 0) > 0:
+                msg = f"Position gone from Alpaca: {ticker} (DB says {trade['remaining_shares']:.0f} shares)"
+                discrepancies.append(msg)
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        UPDATE mi_live_trades SET
+                            status = 'closed', remaining_shares = 0,
+                            closed_at = NOW(), stop_order_id = NULL
+                        WHERE id = $1
+                    """, trade["id"])
+
+    # Alpaca has positions not in DB
+    for ticker, pos in alpaca_map.items():
+        msg = f"Unknown Alpaca position: {ticker} ({pos['qty']:.0f} shares) — not in mi_live_trades"
+        discrepancies.append(msg)
+
+    if discrepancies:
+        msg = "⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)
+        await send_telegram_message(msg)
+        logger.warning(f"Position sync: {len(discrepancies)} discrepancies")
+    else:
+        logger.info("Position sync: all clear")
+
+    return discrepancies
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if skip_reason:
+            await conn.execute(
+                "UPDATE mi_live_trades SET status = $2, skip_reason = $3 WHERE id = $1",
+                trade_id, status, skip_reason,
+            )
+        else:
+            await conn.execute(
+                "UPDATE mi_live_trades SET status = $2 WHERE id = $1",
+                trade_id, status,
+            )

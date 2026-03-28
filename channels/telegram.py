@@ -13,6 +13,7 @@ from telegram import Update
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -513,6 +514,68 @@ class TelegramChannel:
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
+    async def _handle_trades(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle /trades — show paper trade positions and P&L."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        try:
+            from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
+
+            summary = await get_paper_trading_summary()
+
+            lines = ["*EP Paper Trades*\n"]
+
+            # Open positions
+            open_pos = summary.get("open_details", [])
+            if open_pos:
+                lines.append(f"*Open positions ({len(open_pos)}):*")
+                for p in open_pos:
+                    ticker = p["ticker"]
+                    entry = p.get("last_entry_price")
+                    stop = p.get("stop_price")
+                    shares = p.get("remaining_shares", 0)
+                    hold = p.get("hold_days", 0)
+                    score = p.get("ep_score", 0)
+                    entry_str = f"@${entry:.2f}" if entry else ""
+                    stop_str = f"stop ${stop:.2f}" if stop else ""
+                    lines.append(
+                        f"  📍 {ticker} {entry_str} {stop_str}\n"
+                        f"      {shares:.0f} shares · {hold}d · score {score:.0f}"
+                    )
+                lines.append("")
+
+            # Recent closed trades
+            recent = summary.get("recent_trades", [])
+            closed_recent = [t for t in recent if t["status"] == "closed"]
+            if closed_recent:
+                lines.append("*Recent closed:*")
+                for t in closed_recent:
+                    emoji = "✅" if t.get("total_pnl", 0) > 0 else "❌"
+                    lines.append(
+                        f"  {emoji} {t['ticker']} "
+                        f"P&L ${t.get('total_pnl', 0):+,.2f} "
+                        f"({t.get('hold_days', 0)}d)"
+                    )
+                lines.append("")
+
+            # Running totals
+            closed = summary["closed_trades"]
+            lines.append("*Totals:*")
+            lines.append(f"  Trades: {summary['total_trades']} ({summary['open_positions']} open)")
+            if closed > 0:
+                lines.append(f"  W/L: {summary['winners']}/{summary['losers']} ({summary['win_rate']:.0f}% win)")
+                lines.append(f"  Realized P&L: ${summary['realized_pnl']:+,.2f}")
+            if summary.get("skipped"):
+                lines.append(f"  Filtered: {summary['skipped']}")
+
+            await self._reply(update, "\n".join(lines))
+        except Exception as e:
+            logger.error(f"/trades failed: {e}")
+            await update.message.reply_text(f"Error loading trades: {e}")
+
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -700,6 +763,43 @@ class TelegramChannel:
         except Exception as e:
             await update.message.reply_text(f"Error fetching spend data: {e}")
 
+    # ── Trade callback handler ────────────────────────────────────────────────
+
+    async def _handle_callback_query(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        """Handle inline keyboard button presses (trade confirm/skip)."""
+        query = update.callback_query
+        if not query or not query.data:
+            return
+
+        user_id = query.from_user.id if query.from_user else None
+        if user_id not in self._secrets.telegram_allowed_user_ids:
+            await query.answer("Unauthorized")
+            return
+
+        callback_data = query.data
+
+        # Forward trade callbacks to market agent
+        if callback_data.startswith("trade_confirm:") or callback_data.startswith("trade_skip:"):
+            try:
+                from agents.market_intelligence.broker.telegram_confirm import handle_callback
+                result = await handle_callback(callback_data)
+                action = result.get("action", result.get("error", "unknown"))
+                await query.answer(f"Trade {action}")
+                # Edit the original message to show the result
+                if "confirm" in callback_data:
+                    await query.edit_message_reply_markup(reply_markup=None)
+                elif "skip" in callback_data:
+                    await query.edit_message_reply_markup(reply_markup=None)
+            except Exception as e:
+                logger.error(f"Callback handling failed: {e}")
+                await query.answer(f"Error: {e}")
+        else:
+            await query.answer("Unknown action")
+
     # ── Confirmation resolution ────────────────────────────────────────────────
 
     async def _try_resolve_confirmation(
@@ -836,9 +936,11 @@ class TelegramChannel:
         app.add_handler(CommandHandler("audit", self._handle_audit))
         app.add_handler(CommandHandler("spend", self._handle_spend))
         app.add_handler(CommandHandler("rules", self._handle_rules))
+        app.add_handler(CommandHandler("trades", self._handle_trades))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
         )
+        app.add_handler(CallbackQueryHandler(self._handle_callback_query))
 
         self._app = app
         return app
@@ -849,7 +951,7 @@ class TelegramChannel:
             raise RuntimeError("Application not built yet. Call build_application() first.")
         await self._app.bot.set_webhook(
             url=webhook_url,
-            allowed_updates=["message"],
+            allowed_updates=["message", "callback_query"],
         )
         await self._register_commands()
         logger.info(f"Telegram webhook set to: {webhook_url}")
@@ -866,6 +968,7 @@ class TelegramChannel:
             BotCommand("spend",  "API spend today & this month"),
             BotCommand("audit",  "Recent action log"),
             BotCommand("rules",  "EP trading rules (Qullamaggie v2)"),
+            BotCommand("trades", "Paper trade positions & P&L"),
             BotCommand("start",  "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)

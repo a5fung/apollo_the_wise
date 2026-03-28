@@ -427,6 +427,83 @@ async def _paper_trade_tracker_job():
         await notify_job_failure("paper_trade_tracker", str(e))
 
 
+async def _orb_monitor_job():
+    """Run at 9:31 AM ET. Process today's HIGH EP alerts, send trade proposals."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("ORB monitor starting...")
+    try:
+        from agents.market_intelligence.broker.live_tracker import process_new_alerts_live
+        results = await process_new_alerts_live()
+        proposed = sum(1 for r in results if r.get("action") == "proposed")
+        logger.info(f"ORB monitor complete: {proposed} proposals out of {len(results)} alerts")
+    except Exception as e:
+        import traceback
+        logger.error(f"ORB monitor failed: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("orb_monitor", str(e))
+
+
+async def _check_fills_job():
+    """Poll Alpaca for fills on pending entry orders."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import check_fills
+        results = await check_fills()
+        if results:
+            logger.info(f"Fill check: {len(results)} updates")
+    except Exception as e:
+        logger.error(f"Fill check failed: {e}")
+
+
+async def _morning_stop_refresh_job():
+    """Run at 9:35 AM ET. Refresh stop orders for Day 2+ positions."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.live_tracker import morning_stop_refresh
+        count = await morning_stop_refresh()
+        logger.info(f"Morning stop refresh: {count} stops refreshed")
+    except Exception as e:
+        logger.error(f"Morning stop refresh failed: {e}")
+        await notify_job_failure("morning_stop_refresh", str(e))
+
+
+async def _live_position_update_job():
+    """Run at 4:45 PM ET. SMA trail, partials, stop updates for live positions."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("Live position update starting...")
+    try:
+        from agents.market_intelligence.broker.live_tracker import update_open_positions_live
+        results = await update_open_positions_live()
+        logger.info(f"Live position update complete: {len(results)} positions processed")
+    except Exception as e:
+        import traceback
+        logger.error(f"Live position update failed: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("live_position_update", str(e))
+
+
+async def _eod_cleanup_job():
+    """Run at 4:05 PM ET. Cancel unfilled orders, sync positions with Alpaca."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("EOD cleanup starting...")
+    try:
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, sync_positions
+        cancelled = await cancel_unfilled_entries()
+        discrepancies = await sync_positions()
+        logger.info(f"EOD cleanup: {cancelled} cancelled, {len(discrepancies)} discrepancies")
+    except Exception as e:
+        logger.error(f"EOD cleanup failed: {e}")
+        await notify_job_failure("eod_cleanup", str(e))
+
+
 async def _weekly_cleanup():
     """Run Sunday 2:00 AM ET. Purge old rows per retention policy."""
     logger.info("Weekly DB cleanup starting...")
@@ -571,6 +648,54 @@ def start_scheduler() -> AsyncIOScheduler:
         _weekly_cleanup,
         CronTrigger(day_of_week="sun", hour=2, minute=0, timezone="America/New_York"),
         id="weekly_cleanup",
+        replace_existing=True,
+    )
+
+    # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
+    # ORB monitor: 9:31 AM ET — process today's alerts, send proposals
+    _scheduler.add_job(
+        _orb_monitor_job,
+        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
+        id="orb_monitor",
+        replace_existing=True,
+    )
+
+    # Fill checker: 9:35, 9:40, 9:45, 10:00 AM ET — poll Alpaca for fills
+    for minute in [35, 40, 45]:
+        _scheduler.add_job(
+            _check_fills_job,
+            CronTrigger(hour=9, minute=minute, day_of_week="mon-fri", timezone="America/New_York"),
+            id=f"check_fills_{minute}",
+            replace_existing=True,
+        )
+    _scheduler.add_job(
+        _check_fills_job,
+        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="check_fills_1000",
+        replace_existing=True,
+    )
+
+    # Morning stop refresh: 9:35 AM ET — re-place stops for Day 2+ positions
+    _scheduler.add_job(
+        _morning_stop_refresh_job,
+        CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="morning_stop_refresh",
+        replace_existing=True,
+    )
+
+    # EOD cleanup: 4:05 PM ET — cancel unfilled, sync positions
+    _scheduler.add_job(
+        _eod_cleanup_job,
+        CronTrigger(hour=16, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
+        id="eod_cleanup",
+        replace_existing=True,
+    )
+
+    # Live position update: 4:45 PM ET — SMA trail, partials, stop updates
+    _scheduler.add_job(
+        _live_position_update_job,
+        CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+        id="live_position_update",
         replace_existing=True,
     )
 

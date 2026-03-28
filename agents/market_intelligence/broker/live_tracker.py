@@ -1,0 +1,460 @@
+"""
+Live trade tracker — the real-time analog of backtester/tracker.py.
+
+Reuses the same trading logic (ORB entry, SMA trail, partials) but executes
+via Alpaca broker instead of simulating retroactively.
+
+Schedule:
+- 9:31 AM ET: process_new_alerts_live() — ORB monitor, send proposals
+- 4:45 PM ET: update_open_positions_live() — SMA trail, partials, stop updates
+- 9:35 AM ET: morning_stop_refresh() — refresh stops for Day 2+ positions
+"""
+from __future__ import annotations
+
+import json
+import logging
+import os
+from datetime import date, datetime, timedelta, time
+
+from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.broker.order_manager import (
+    prepare_orb_order,
+    execute_partial_exit,
+    execute_full_exit,
+    update_stop,
+)
+from agents.market_intelligence.broker.telegram_confirm import send_trade_proposal
+from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
+from agents.market_intelligence.collector import et_today, get_index_history
+from agents.market_intelligence.briefing import send_telegram_message
+from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.constants import (
+    LIVE_TRADING_ENABLED,
+    MAX_CONCURRENT_LIVE_POSITIONS,
+    DAILY_LOSS_LIMIT_PCT,
+    CIRCUIT_BREAKER_CONSEC_LOSSES,
+)
+
+logger = logging.getLogger(__name__)
+
+
+# ── Safeguards ───────────────────────────────────────────────────────────────
+
+
+async def _check_safeguards() -> tuple[bool, str | None]:
+    """
+    Check all safety gates before proposing a new trade.
+    Returns (ok, reason) — reason is None if ok.
+    """
+    if not LIVE_TRADING_ENABLED:
+        return False, "live_trading_disabled"
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Max concurrent positions
+        open_count = await conn.fetchval("""
+            SELECT COUNT(*) FROM mi_live_trades
+            WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
+        """)
+        if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
+            return False, f"max_positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})"
+
+        # Daily loss limit
+        try:
+            account = await alpaca.get_account()
+            equity = account["equity"]
+        except Exception:
+            return False, "cannot_get_account"
+
+        today = et_today()
+        today_losses = await conn.fetchval("""
+            SELECT COALESCE(SUM(total_pnl), 0)
+            FROM mi_live_trades
+            WHERE alert_date = $1 AND status = 'closed' AND total_pnl < 0
+        """, today)
+        daily_limit = equity * DAILY_LOSS_LIMIT_PCT
+        if abs(today_losses) >= daily_limit:
+            return False, f"daily_loss_limit (${today_losses:+,.0f} >= ${daily_limit:.0f})"
+
+        # Circuit breaker: N consecutive losses
+        recent_closed = await conn.fetch("""
+            SELECT total_pnl FROM mi_live_trades
+            WHERE status = 'closed' AND total_pnl IS NOT NULL
+            ORDER BY closed_at DESC LIMIT $1
+        """, CIRCUIT_BREAKER_CONSEC_LOSSES)
+
+        if len(recent_closed) >= CIRCUIT_BREAKER_CONSEC_LOSSES:
+            all_losses = all(r["total_pnl"] <= 0 for r in recent_closed)
+            if all_losses:
+                return False, f"circuit_breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)"
+
+    return True, None
+
+
+# ── New Alerts (Day 1) ───────────────────────────────────────────────────────
+
+
+async def process_new_alerts_live(today: date | None = None) -> list[dict]:
+    """
+    For each HIGH EP alert today:
+    1. Pre-trade filters (ADV, ATR)
+    2. Fetch first 1-min bar from Alpaca
+    3. ATR validation
+    4. Build order spec
+    5. Check safeguards
+    6. Send Telegram proposal with inline keyboard
+    7. Store pending proposal in DB
+    """
+    if today is None:
+        today = et_today()
+
+    if not LIVE_TRADING_ENABLED:
+        logger.info("Live trading disabled, skipping")
+        return []
+
+    # Get today's HIGH EP alerts
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        alerts = await conn.fetch("""
+            SELECT DISTINCT ON (ticker)
+                   ticker, alert_date, gap_pct, rel_volume, ep_score,
+                   score_tier, catalyst, catalyst_quality, vol_percentile
+            FROM mi_ep_alerts
+            WHERE alert_date = $1 AND score_tier = 'HIGH'
+            ORDER BY ticker, ep_score DESC
+        """, today)
+    alerts = [dict(a) for a in alerts]
+
+    if not alerts:
+        logger.info("No HIGH EP alerts today for live trading")
+        return []
+
+    # Get regime
+    async with pool.acquire() as conn:
+        regime_record = await conn.fetchrow(
+            "SELECT * FROM mi_market_regime WHERE regime_date <= $1 ORDER BY regime_date DESC LIMIT 1",
+            today,
+        )
+    regime_record = dict(regime_record) if regime_record else None
+
+    results = []
+
+    for alert in alerts:
+        ticker = alert["ticker"]
+
+        # Skip if already processed today
+        async with pool.acquire() as conn:
+            exists = await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
+                ticker, today,
+            )
+        if exists:
+            logger.debug(f"Live trade already exists for {ticker} on {today}")
+            continue
+
+        # Pre-trade filters (ADV, ATR% — skip mcap for small account)
+        passed, skip_reason = await check_filters(ticker, today)
+        if not passed:
+            await _insert_skipped_trade(ticker, today, alert, regime_record, skip_reason)
+            results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
+            continue
+
+        # Compute ATR
+        atr_14, _atr_pct = await compute_atr_14(ticker, today)
+
+        # Fetch first 1-min bar from Alpaca (real-time, no 15-min delay)
+        orb_bar = await alpaca.get_first_bar(ticker, today)
+        if not orb_bar:
+            await _insert_skipped_trade(ticker, today, alert, regime_record, "no_orb_bar")
+            results.append({"ticker": ticker, "action": "skipped", "reason": "no_orb_bar"})
+            continue
+
+        # Build order spec
+        order_spec = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
+        if not order_spec:
+            await _insert_skipped_trade(ticker, today, alert, regime_record, "order_spec_failed")
+            results.append({"ticker": ticker, "action": "skipped", "reason": "order_spec_failed"})
+            continue
+
+        # Check safeguards
+        ok, sg_reason = await _check_safeguards()
+        if not ok:
+            await _insert_skipped_trade(ticker, today, alert, regime_record, sg_reason)
+            results.append({"ticker": ticker, "action": "blocked", "reason": sg_reason})
+            continue
+
+        # Insert pending trade
+        async with pool.acquire() as conn:
+            trade_id = await conn.fetchval("""
+                INSERT INTO mi_live_trades
+                    (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
+                     status, orb_high, orb_low, atr_14,
+                     entry_price, entry_shares, stop_price, hard_stop,
+                     position_size, risk_dollars, proposed_at)
+                VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
+                        $10,$11,$12,$13,$14,$15,NOW())
+                ON CONFLICT (ticker, alert_date) DO NOTHING
+                RETURNING id
+            """,
+                ticker, today, alert["ep_score"],
+                alert.get("catalyst_quality"), alert.get("gap_pct"),
+                order_spec.get("regime"),
+                order_spec["orb_high"], order_spec["orb_low"], atr_14,
+                order_spec["entry_price"], float(order_spec["shares"]),
+                order_spec["stop_loss_price"], order_spec["stop_loss_price"],
+                order_spec["position_size"], order_spec["risk_dollars"],
+            )
+
+        if not trade_id:
+            logger.debug(f"Trade already exists for {ticker}, skipping proposal")
+            continue
+
+        # Send Telegram proposal
+        sent = await send_trade_proposal(alert, order_spec, trade_id)
+        if sent:
+            logger.info(f"Trade proposal sent: {ticker} (id={trade_id})")
+            results.append({"ticker": ticker, "action": "proposed", "trade_id": trade_id})
+        else:
+            results.append({"ticker": ticker, "action": "proposal_send_failed"})
+
+    if results:
+        proposed = sum(1 for r in results if r["action"] == "proposed")
+        skipped = sum(1 for r in results if r["action"] in ("filtered", "skipped", "blocked"))
+        logger.info(f"ORB monitor: {proposed} proposed, {skipped} skipped out of {len(alerts)} alerts")
+
+    return results
+
+
+# ── Day 2+ Position Management ──────────────────────────────────────────────
+
+
+async def update_open_positions_live(today: date | None = None) -> list[dict]:
+    """
+    Update open live positions: SMA trail + Day 3-5 partial profit.
+    Same logic as backtester/tracker.py update_open_positions(), but executes
+    real orders via Alpaca.
+    """
+    if today is None:
+        today = et_today()
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        open_trades = await conn.fetch("""
+            SELECT * FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+            ORDER BY alert_date ASC
+        """)
+
+    if not open_trades:
+        logger.info("No open live positions to update")
+        return []
+
+    results = []
+
+    for trade in open_trades:
+        trade = dict(trade)
+        ticker = trade["ticker"]
+        alert_date = trade["alert_date"]
+        remaining = trade["remaining_shares"]
+        entry_price = trade["entry_price"]
+        hard_stop = trade.get("hard_stop") or trade["stop_price"]
+        partial_taken = trade.get("partial_taken", False)
+        breakeven_active = trade.get("breakeven_active", False)
+        exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+        running_closes = trade.get("running_closes", [])
+        if isinstance(running_closes, str):
+            running_closes = json.loads(running_closes or "[]")
+
+        if remaining <= 0 or today <= alert_date:
+            continue
+
+        # Fetch today's daily bar
+        today_str = today.strftime("%Y-%m-%d")
+        daily_bars = await get_index_history(ticker, today_str, today_str)
+
+        if not daily_bars:
+            logger.debug(f"No daily bar for {ticker} on {today}")
+            results.append({"ticker": ticker, "action": "no_data"})
+            continue
+
+        bar = daily_bars[0]
+        bar_low = bar.get("l", 0)
+        bar_close = bar.get("c", 0)
+        hold_days = (today - alert_date).days
+
+        # Append today's close
+        running_closes.append(float(bar_close))
+
+        # 1. Hard stop check — Alpaca's stop order should catch this,
+        #    but verify and update DB if it triggered
+        if hard_stop and bar_low <= hard_stop:
+            # Check if Alpaca already closed the position
+            pos = await alpaca.get_position(ticker)
+            if not pos or pos["qty"] <= 0:
+                # Stop already triggered on Alpaca
+                pnl = (hard_stop - entry_price) * remaining if entry_price else 0
+                exits.append({
+                    "time": datetime.combine(today, time(16, 0)).isoformat(),
+                    "price": hard_stop,
+                    "reason": "stop_hit",
+                    "shares": remaining,
+                    "pnl": pnl,
+                })
+                total_pnl = sum(e.get("pnl", 0) for e in exits)
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        UPDATE mi_live_trades SET
+                            status = 'closed', exits = $2::jsonb,
+                            remaining_shares = 0, stop_price = NULL,
+                            total_pnl = $3, hold_days = $4, closed_at = NOW(),
+                            stop_order_id = NULL,
+                            running_closes = $5::jsonb
+                        WHERE id = $1
+                    """, trade["id"], json.dumps(exits), total_pnl, hold_days,
+                        json.dumps(running_closes))
+                await send_telegram_message(
+                    f"❌ *Stop hit:* {ticker} @${hard_stop:.2f}\n"
+                    f"P&L: ${total_pnl:+,.2f} ({hold_days}d)"
+                )
+                results.append({"ticker": ticker, "action": "stopped_out", "pnl": total_pnl})
+                continue
+            # If Alpaca still has position, stop didn't trigger yet — let it ride
+
+        # 2. Compute SMAs
+        active_sma = None
+        if len(running_closes) >= 20:
+            sma_10 = sum(running_closes[-10:]) / 10
+            sma_20 = sum(running_closes[-20:]) / 20
+            active_sma = sma_10 if sma_10 > sma_20 else sma_20
+        elif len(running_closes) >= 10:
+            active_sma = sum(running_closes[-10:]) / 10
+
+        # 3. Partial profit on Day 3-5
+        if hold_days >= 3 and not partial_taken and entry_price:
+            take_partial = False
+            if hold_days <= 4 and bar_close > entry_price:
+                take_partial = True
+            elif hold_days >= 5:
+                take_partial = True
+
+            if take_partial:
+                partial_shares = remaining / 3
+                await execute_partial_exit(trade["id"], partial_shares)
+                partial_taken = True
+                breakeven_active = True
+                remaining -= partial_shares
+
+        # 4. Effective stop = max(hard_stop, active_sma, breakeven)
+        effective_stop = hard_stop or 0
+        if active_sma and active_sma > effective_stop:
+            effective_stop = active_sma
+        if breakeven_active and entry_price and entry_price > effective_stop:
+            effective_stop = entry_price
+
+        # 5. SMA trail check (close-based)
+        if bar_close < effective_stop and remaining > 0:
+            await execute_full_exit(trade["id"], "sma_trail_stop")
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        hold_days = $2, running_closes = $3::jsonb
+                    WHERE id = $1
+                """, trade["id"], hold_days, json.dumps(running_closes))
+            results.append({"ticker": ticker, "action": "sma_stopped", "hold_days": hold_days})
+            continue
+
+        # 6. Still open — update stop on Alpaca if it changed
+        current_stop = trade["stop_price"] or 0
+        if effective_stop > current_stop + 0.01 and remaining > 0:
+            await update_stop(trade["id"], round(effective_stop, 2))
+
+        # Update DB state
+        total_pnl = sum(e.get("pnl", 0) for e in exits)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    stop_price = $2, hold_days = $3, total_pnl = $4,
+                    partial_taken = $5, breakeven_active = $6,
+                    running_closes = $7::jsonb,
+                    remaining_shares = $8
+                WHERE id = $1
+            """, trade["id"], effective_stop, hold_days, total_pnl,
+                partial_taken, breakeven_active,
+                json.dumps(running_closes), remaining)
+
+        results.append({
+            "ticker": ticker, "action": "updated",
+            "effective_stop": effective_stop, "hold_days": hold_days,
+        })
+
+    return results
+
+
+# ── Morning Stop Refresh ─────────────────────────────────────────────────────
+
+
+async def morning_stop_refresh() -> int:
+    """
+    At 9:35 AM, ensure stop orders are active for all Day 2+ positions.
+    Alpaca DAY stops expire overnight — re-place them as GTC.
+    Returns count of stops refreshed.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trades = await conn.fetch("""
+            SELECT id, ticker, remaining_shares, stop_price, stop_order_id
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+        """)
+
+    refreshed = 0
+    for trade in trades:
+        ticker = trade["ticker"]
+        stop_price = trade["stop_price"]
+
+        if not stop_price or not trade["remaining_shares"]:
+            continue
+
+        # Check if existing stop order is still active
+        if trade["stop_order_id"]:
+            order = await alpaca.get_order(trade["stop_order_id"])
+            if order and order["status"] in ("new", "accepted", "held"):
+                logger.debug(f"Stop still active for {ticker}")
+                continue
+
+        # Re-place stop
+        success = await update_stop(trade["id"], stop_price)
+        if success:
+            refreshed += 1
+            logger.info(f"Morning stop refreshed: {ticker} @${stop_price:.2f}")
+
+    if refreshed:
+        await send_telegram_message(f"🔄 Morning: refreshed {refreshed} stop order(s)")
+    return refreshed
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+async def _insert_skipped_trade(
+    ticker: str,
+    today: date,
+    alert: dict,
+    regime_record: dict | None,
+    skip_reason: str,
+) -> None:
+    """Insert a skipped live trade record."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_trades
+                (ticker, alert_date, ep_score, catalyst_quality, gap_pct,
+                 regime, status, skip_reason)
+            VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7)
+            ON CONFLICT (ticker, alert_date) DO NOTHING
+        """,
+            ticker, today, alert["ep_score"],
+            alert.get("catalyst_quality"), alert.get("gap_pct"),
+            regime_record.get("regime") if regime_record else None,
+            skip_reason,
+        )

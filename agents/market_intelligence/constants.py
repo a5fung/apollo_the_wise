@@ -6,6 +6,14 @@ RISK_PCT = 0.01              # 1% account risk per trade
 MAX_POSITION_PCT = 0.20      # Max 20% of account in one trade
 ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 
+# ── Live trading ─────────────────────────────────────────────────────────────
+import os
+LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+MAX_CONCURRENT_LIVE_POSITIONS = 4
+CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
+DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
+CIRCUIT_BREAKER_CONSEC_LOSSES = 3    # Pause after N consecutive losses
+
 REGIME_EMOJI = {
     "Bull": "🟢",
     "Choppy": "🟡",

@@ -290,6 +290,66 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_paper_trades_status
                 ON mi_paper_trades(status);
         """)
+        # ── Live trading tables ───────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_live_trades (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                ep_score FLOAT,
+                catalyst_quality TEXT,
+                gap_pct FLOAT,
+                regime TEXT,
+                status TEXT NOT NULL DEFAULT 'pending_confirmation',
+                orb_high FLOAT,
+                orb_low FLOAT,
+                atr_14 FLOAT,
+                entry_price FLOAT,
+                entry_shares FLOAT,
+                stop_price FLOAT,
+                hard_stop FLOAT,
+                position_size FLOAT,
+                risk_dollars FLOAT,
+                entry_order_id TEXT,
+                stop_order_id TEXT,
+                exits JSONB DEFAULT '[]',
+                remaining_shares FLOAT DEFAULT 0,
+                total_pnl FLOAT DEFAULT 0,
+                hold_days INT DEFAULT 0,
+                partial_taken BOOLEAN DEFAULT FALSE,
+                breakeven_active BOOLEAN DEFAULT FALSE,
+                running_closes JSONB DEFAULT '[]',
+                proposed_at TIMESTAMPTZ,
+                confirmed_at TIMESTAMPTZ,
+                skip_reason TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                filled_at TIMESTAMPTZ,
+                closed_at TIMESTAMPTZ,
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_live_trades_status
+                ON mi_live_trades(status);
+
+            CREATE TABLE IF NOT EXISTS mi_live_orders (
+                id SERIAL PRIMARY KEY,
+                trade_id INT REFERENCES mi_live_trades(id),
+                alpaca_order_id TEXT UNIQUE,
+                ticker TEXT NOT NULL,
+                side TEXT NOT NULL,
+                order_type TEXT NOT NULL,
+                qty FLOAT NOT NULL,
+                stop_price FLOAT,
+                limit_price FLOAT,
+                status TEXT NOT NULL,
+                filled_qty FLOAT,
+                filled_avg_price FLOAT,
+                submitted_at TIMESTAMPTZ DEFAULT NOW(),
+                filled_at TIMESTAMPTZ,
+                cancelled_at TIMESTAMPTZ,
+                raw_response JSONB
+            );
+        """)
+
         # Migrations — add columns to existing tables
         await conn.execute("""
             ALTER TABLE mi_tracked_stocks
@@ -1772,3 +1832,57 @@ async def get_prior_consec_breakdown_days(before_date: date) -> int:
             ORDER BY regime_date DESC LIMIT 1
         """, before_date)
         return row["consec_breakdown_days"] if row else 0
+
+
+# ── Live trading CRUD ────────────────────────────────────────────────────────
+
+
+async def get_open_live_trades() -> list[dict[str, Any]]:
+    """Get all open (filled) live trades."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT * FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+            ORDER BY alert_date ASC
+        """)
+    return [dict(r) for r in rows]
+
+
+async def get_live_trading_summary() -> dict[str, Any]:
+    """Get summary of all live trades for reporting."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        stats = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE status NOT IN ('skipped', 'cancelled')) as total_trades,
+                COUNT(*) FILTER (WHERE status = 'filled') as open_positions,
+                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) as winners,
+                COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
+                COUNT(*) FILTER (WHERE status IN ('skipped', 'cancelled')) as skipped
+            FROM mi_live_trades
+        """)
+
+        open_positions = await conn.fetch("""
+            SELECT ticker, alert_date, ep_score, remaining_shares,
+                   stop_price, entry_price, total_pnl, hold_days
+            FROM mi_live_trades WHERE status = 'filled'
+            ORDER BY alert_date ASC
+        """)
+
+    total = stats["total_trades"] or 0
+    closed = (stats["winners"] or 0) + (stats["losers"] or 0)
+    win_rate = (stats["winners"] / closed * 100) if closed > 0 else 0
+
+    return {
+        "total_trades": total,
+        "open_positions": stats["open_positions"] or 0,
+        "closed_trades": closed,
+        "winners": stats["winners"] or 0,
+        "losers": stats["losers"] or 0,
+        "win_rate": win_rate,
+        "realized_pnl": float(stats["realized_pnl"] or 0),
+        "skipped": stats["skipped"] or 0,
+        "open_details": [dict(r) for r in open_positions],
+    }

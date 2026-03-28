@@ -246,6 +246,17 @@ class MarketIntelligenceAgent(BaseAgent):
             results = await run_screener(filters)
             return {"result": format_screener_results(results, filters)}
 
+        @self.app.post("/broker/callback")
+        async def broker_callback(
+            body: dict,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Handle forwarded trade callback from Telegram inline buttons."""
+            from agents.market_intelligence.broker.telegram_confirm import handle_callback
+            callback_data = body.get("callback_data", "")
+            result = await handle_callback(callback_data)
+            return result
+
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
         task = request.task.lower()
 
