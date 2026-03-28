@@ -44,6 +44,7 @@ DEFAULT_MIN_RVOL = 2.0
 MIN_PRICE = 5.0
 MAX_TICKER_LEN = 5
 QUICK_VOL_MULTIPLIER = 2.0  # Pre-filter: today volume >= 2x prev day volume
+MIN_MEDIAN_DOLLAR_VOL = 5_000_000  # $5M median daily dollar volume — mcap proxy for historical scans
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
@@ -335,20 +336,24 @@ async def _scan_date(
     if not quick_candidates:
         return []
 
-    # Batch compute proper rvol from mi_daily_closes
+    # Batch compute proper rvol + dollar volume from mi_daily_closes
     tickers = [c["ticker"] for c in quick_candidates]
-    median_volumes = await _compute_batch_rvol(tickers, trade_date)
+    median_volumes, median_dollar_vols = await _compute_batch_rvol(tickers, trade_date)
 
     results = []
     for c in quick_candidates:
         ticker = c["ticker"]
         median_vol = median_volumes.get(ticker)
 
+        # Dollar volume filter — historical mcap proxy ($5M median daily)
+        median_dv = median_dollar_vols.get(ticker, 0)
+        if median_dv < MIN_MEDIAN_DOLLAR_VOL:
+            continue
+
         if median_vol and median_vol > 0:
             rel_volume = c["curr_volume"] / median_vol
         else:
-            # Fallback: use prev day as denominator (already passed 2x quick filter)
-            rel_volume = min_rvol  # assume it passes
+            continue  # no volume history = skip
 
         if rel_volume < min_rvol:
             continue
@@ -364,13 +369,15 @@ async def _scan_date(
     return results
 
 
-async def _compute_batch_rvol(tickers: list[str], trade_date: date) -> dict[str, float]:
+async def _compute_batch_rvol(
+    tickers: list[str], trade_date: date,
+) -> tuple[dict[str, float], dict[str, float]]:
     """
-    Single SQL query: 20-day median volume for all candidate tickers.
-    Returns {ticker: median_volume}.
+    Single SQL query: 20-day median volume AND median dollar volume for all candidate tickers.
+    Returns (median_volumes, median_dollar_volumes).
     """
     if not tickers:
-        return {}
+        return {}, {}
 
     pool = await get_pool()
     lookback_start = trade_date - timedelta(days=35)  # ~20 trading days
@@ -378,7 +385,8 @@ async def _compute_batch_rvol(tickers: list[str], trade_date: date) -> dict[str,
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker,
-                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) as median_vol
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) as median_vol,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY close * volume) as median_dollar_vol
             FROM mi_daily_closes
             WHERE ticker = ANY($1)
               AND trade_date >= $2
@@ -388,7 +396,9 @@ async def _compute_batch_rvol(tickers: list[str], trade_date: date) -> dict[str,
             HAVING COUNT(*) >= 10
         """, tickers, lookback_start, trade_date)
 
-    return {r["ticker"]: float(r["median_vol"]) for r in rows}
+    median_vols = {r["ticker"]: float(r["median_vol"]) for r in rows}
+    median_dollar_vols = {r["ticker"]: float(r["median_dollar_vol"]) for r in rows}
+    return median_vols, median_dollar_vols
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
