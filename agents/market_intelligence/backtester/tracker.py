@@ -550,11 +550,12 @@ async def get_paper_trading_summary() -> dict[str, Any]:
             ORDER BY alert_date ASC
         """)
 
-        recent_closed = await conn.fetch("""
+        recent_trades = await conn.fetch("""
             SELECT ticker, alert_date, ep_score, total_pnl, hold_days,
-                   catalyst_quality, gap_pct
-            FROM mi_paper_trades WHERE status = 'closed'
-            ORDER BY closed_at DESC LIMIT 10
+                   status, last_entry_price, stop_price, catalyst_quality, gap_pct
+            FROM mi_paper_trades
+            WHERE status IN ('open', 'closed')
+            ORDER BY alert_date DESC LIMIT 5
         """)
 
     total = stats["total_trades"] or 0
@@ -571,7 +572,7 @@ async def get_paper_trading_summary() -> dict[str, Any]:
         "realized_pnl": float(stats["realized_pnl"] or 0),
         "skipped": stats["skipped"] or 0,
         "open_details": [dict(r) for r in open_positions],
-        "recent_closed": [dict(r) for r in recent_closed],
+        "recent_trades": [dict(r) for r in recent_trades],
     }
 
 
@@ -631,7 +632,7 @@ def format_tracker_telegram(summary: dict) -> str:
 
     # Position updates
     updates = summary.get("today_updates", [])
-    stopped = [u for u in updates if u["action"] == "stopped_out"]
+    stopped = [u for u in updates if u["action"] in ("stopped_out", "sma_stopped")]
     if stopped:
         lines.append("*Stopped out:*")
         for u in stopped:
@@ -641,14 +642,21 @@ def format_tracker_telegram(summary: dict) -> str:
             )
         lines.append("")
 
-    # Open positions
-    open_details = summary.get("open_details", [])
-    if open_details:
-        lines.append("*Open positions:*")
-        for p in open_details:
+    # Recent trades (last 5, open or closed, with details)
+    recent = summary.get("recent_trades", [])
+    if recent:
+        lines.append("*Recent trades:*")
+        for t in recent:
+            status_icon = "📍" if t["status"] == "open" else ("✅" if t.get("total_pnl", 0) > 0 else "❌")
+            ticker = t["ticker"]
+            pnl = t.get("total_pnl", 0)
+            entry = t.get("last_entry_price")
+            hold = t.get("hold_days", 0)
+            score = t.get("ep_score", 0)
+            entry_str = f"@${entry:.2f}" if entry else ""
             lines.append(
-                f"  📍 {p['ticker']} entry=${p['last_entry_price']:.2f} "
-                f"stop=${p['stop_price']:.2f} day {p['hold_days']}"
+                f"  {status_icon} {ticker} {entry_str} "
+                f"score={score:.0f} {hold}d P&L=${pnl:+,.2f}"
             )
         lines.append("")
 
