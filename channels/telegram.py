@@ -619,18 +619,50 @@ class TelegramChannel:
             elif live and live.get("error"):
                 lines.append(f"*Alpaca:* error — {live['error']}\n")
 
-            # ── Paper (backtester) trades — compact summary ──
+            # ── Paper (backtester) trades ──
             paper = data.get("paper")
             if paper and not paper.get("error"):
-                p_closed = paper.get("closed_trades", 0)
-                if p_closed > 0 or paper.get("open_positions", 0) > 0:
+                has_activity = (paper.get("closed_trades", 0) > 0
+                                or paper.get("open_positions", 0) > 0)
+                if has_activity:
                     lines.append("")
-                    lines.append(
-                        f"*Backtester:* {paper['total_trades']} trades "
-                        f"({paper['open_positions']} open) · "
-                        f"{paper.get('win_rate', 0):.0f}% win · "
-                        f"${paper.get('realized_pnl', 0):+,.2f}"
-                    )
+                    lines.append("*Backtester (EOD sim):*")
+
+                    # Open positions
+                    p_open = paper.get("open_details", [])
+                    if p_open:
+                        for p in p_open:
+                            ticker = p.get("ticker", "?")
+                            entry = p.get("last_entry_price")
+                            stop = p.get("stop_price")
+                            shares = p.get("remaining_shares", 0)
+                            hold = p.get("hold_days", 0)
+                            score = p.get("ep_score", 0)
+                            entry_str = f"@${entry:.2f}" if entry else ""
+                            stop_str = f"stop ${stop:.2f}" if stop else ""
+                            lines.append(
+                                f"  📍 {ticker} {entry_str} {stop_str} · "
+                                f"{shares:.0f}sh · {hold}d · score {score:.0f}"
+                            )
+
+                    # Recent closed
+                    p_recent = paper.get("recent_trades", [])
+                    p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
+                    if p_closed_list:
+                        for t in p_closed_list[:3]:
+                            pnl = t.get("total_pnl", 0)
+                            emoji = "✅" if pnl > 0 else "❌"
+                            lines.append(
+                                f"  {emoji} {t['ticker']} ${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
+                            )
+
+                    # Summary line
+                    p_closed_count = paper.get("closed_trades", 0)
+                    parts = [f"{paper['total_trades']} trades ({paper['open_positions']} open)"]
+                    if p_closed_count > 0:
+                        parts.append(f"{paper['win_rate']:.0f}% win")
+                        parts.append(f"${paper['realized_pnl']:+,.2f} realized")
+                    lines.append(f"  {' · '.join(parts)}")
 
             if not lines:
                 lines.append("No trades yet.")
