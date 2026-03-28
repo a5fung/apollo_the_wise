@@ -246,6 +246,42 @@ class MarketIntelligenceAgent(BaseAgent):
             results = await run_screener(filters)
             return {"result": format_screener_results(results, filters)}
 
+        @self.app.get("/trades/summary")
+        async def trades_summary(_: str = Depends(verify_internal_secret)):
+            """Return paper trade summary for /trades command."""
+            from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
+            return await get_paper_trading_summary()
+
+        @self.app.post("/broker/test")
+        async def broker_test(_: str = Depends(verify_internal_secret)):
+            """Sanity test: verify Alpaca connectivity, account info, and order placement."""
+            results = {}
+            try:
+                from agents.market_intelligence.broker import alpaca_client as alpaca
+                # 1. Account info
+                account = await alpaca.get_account()
+                results["account"] = {
+                    "equity": account["equity"],
+                    "buying_power": account["buying_power"],
+                    "trading_blocked": account["trading_blocked"],
+                }
+                # 2. Get a market data bar (AAPL yesterday)
+                from datetime import date, timedelta
+                yesterday = date.today() - timedelta(days=1)
+                bar = await alpaca.get_first_bar("AAPL", yesterday)
+                results["market_data"] = {"AAPL_bar": bar}
+                # 3. Check positions
+                positions = await alpaca.get_all_positions()
+                results["positions"] = len(positions)
+                # 4. Check open orders
+                orders = await alpaca.get_open_orders()
+                results["open_orders"] = len(orders)
+                results["status"] = "ok"
+            except Exception as e:
+                results["status"] = "error"
+                results["error"] = str(e)
+            return results
+
         @self.app.post("/broker/callback")
         async def broker_callback(
             body: dict,

@@ -522,9 +522,22 @@ class TelegramChannel:
             return
 
         try:
-            from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
+            from core.router import get_agent_url
+            import httpx
 
-            summary = await get_paper_trading_summary()
+            url = get_agent_url("market_intelligence")
+            if not url:
+                await update.message.reply_text("Market agent not available.")
+                return
+
+            secret = self._secrets.internal_api_secret
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{url}/trades/summary",
+                    headers={"X-Apollo-Secret": secret},
+                )
+                resp.raise_for_status()
+                summary = resp.json()
 
             lines = ["*EP Paper Trades*\n"]
 
@@ -549,7 +562,7 @@ class TelegramChannel:
 
             # Recent closed trades
             recent = summary.get("recent_trades", [])
-            closed_recent = [t for t in recent if t["status"] == "closed"]
+            closed_recent = [t for t in recent if t.get("status") == "closed"]
             if closed_recent:
                 lines.append("*Recent closed:*")
                 for t in closed_recent:
@@ -562,12 +575,12 @@ class TelegramChannel:
                 lines.append("")
 
             # Running totals
-            closed = summary["closed_trades"]
+            closed = summary.get("closed_trades", 0)
             lines.append("*Totals:*")
-            lines.append(f"  Trades: {summary['total_trades']} ({summary['open_positions']} open)")
+            lines.append(f"  Trades: {summary.get('total_trades', 0)} ({summary.get('open_positions', 0)} open)")
             if closed > 0:
-                lines.append(f"  W/L: {summary['winners']}/{summary['losers']} ({summary['win_rate']:.0f}% win)")
-                lines.append(f"  Realized P&L: ${summary['realized_pnl']:+,.2f}")
+                lines.append(f"  W/L: {summary.get('winners', 0)}/{summary.get('losers', 0)} ({summary.get('win_rate', 0):.0f}% win)")
+                lines.append(f"  Realized P&L: ${summary.get('realized_pnl', 0):+,.2f}")
             if summary.get("skipped"):
                 lines.append(f"  Filtered: {summary['skipped']}")
 

@@ -209,13 +209,36 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
             logger.debug(f"Trade already exists for {ticker}, skipping proposal")
             continue
 
-        # Send Telegram proposal
-        sent = await send_trade_proposal(alert, order_spec, trade_id)
-        if sent:
-            logger.info(f"Trade proposal sent: {ticker} (id={trade_id})")
-            results.append({"ticker": ticker, "action": "proposed", "trade_id": trade_id})
+        # Paper mode: auto-confirm and submit immediately
+        # Live mode: send Telegram proposal with Confirm/Skip buttons
+        is_paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
+
+        if is_paper:
+            # Auto-confirm — no user interaction needed for paper trading
+            from agents.market_intelligence.broker.order_manager import submit_entry
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET status = 'confirmed', confirmed_at = NOW()
+                    WHERE id = $1
+                """, trade_id)
+            order = await submit_entry(trade_id)
+            if order:
+                await send_telegram_message(
+                    f"📊 *Paper trade auto-entered:* {ticker}\n"
+                    f"Entry: ${order_spec['entry_price']:.2f} | Stop: ${order_spec['stop_loss_price']:.2f}\n"
+                    f"Shares: {order_spec['shares']} | Risk: ${order_spec['risk_dollars']:.0f}"
+                )
+                results.append({"ticker": ticker, "action": "auto_entered", "trade_id": trade_id})
+            else:
+                results.append({"ticker": ticker, "action": "auto_enter_failed"})
         else:
-            results.append({"ticker": ticker, "action": "proposal_send_failed"})
+            # Live mode: require user confirmation
+            sent = await send_trade_proposal(alert, order_spec, trade_id)
+            if sent:
+                logger.info(f"Trade proposal sent: {ticker} (id={trade_id})")
+                results.append({"ticker": ticker, "action": "proposed", "trade_id": trade_id})
+            else:
+                results.append({"ticker": ticker, "action": "proposal_send_failed"})
 
     if results:
         proposed = sum(1 for r in results if r["action"] == "proposed")
