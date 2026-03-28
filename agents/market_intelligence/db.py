@@ -431,12 +431,16 @@ async def get_tracked_tickers_missing_quote_type(limit: int = 100) -> list[str]:
 async def insert_ep_alert(record: dict[str, Any]) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Ensure source column exists (idempotent)
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'"
+        )
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
                  catalyst, catalyst_quality, claude_analysis, gemini_validation,
-                 confidence_multiplier, vol_percentile)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                 confidence_multiplier, vol_percentile, source)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -444,7 +448,20 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("claude_analysis"), record.get("gemini_validation"),
             record.get("confidence_multiplier", 1.0),
             record.get("vol_percentile"),
+            record.get("source", "live"),
         )
+
+
+async def delete_historical_alerts(from_date: date, to_date: date) -> int:
+    """Delete historical_scan alerts in date range (for idempotent re-runs)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("""
+            DELETE FROM mi_ep_alerts
+            WHERE source = 'historical_scan'
+              AND alert_date >= $1 AND alert_date <= $2
+        """, from_date, to_date)
+        return int(result.split()[-1])  # "DELETE N"
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:

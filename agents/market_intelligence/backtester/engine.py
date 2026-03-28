@@ -423,6 +423,7 @@ async def run_backtest(
     position_size: float = 10_000,
     min_score: float = 70,
     initial_capital: float = 100_000,
+    source_filter: str | None = None,
 ) -> BacktestResult:
     """
     Run full EP gap trading backtest over a date range.
@@ -433,6 +434,7 @@ async def run_backtest(
         position_size: Dollar amount per trade
         min_score: Minimum EP score (default: 70 for HIGH tier)
         initial_capital: Starting account value for safeguard tracking
+        source_filter: If set, only load alerts with this source (e.g. 'historical_scan')
     """
     today = et_today()
     if to_date is None:
@@ -446,7 +448,7 @@ async def run_backtest(
     await ensure_intraday_table()
 
     # Load EP alerts from DB
-    alerts = await _load_ep_alerts(from_date, to_date, min_score)
+    alerts = await _load_ep_alerts(from_date, to_date, min_score, source_filter=source_filter)
     logger.info(f"Found {len(alerts)} EP alerts with score >= {min_score}")
 
     # Load regime data for each alert date
@@ -468,8 +470,9 @@ async def run_backtest(
         regime_record = regimes.get(alert_date)
         alert["regime"] = regime_record.get("regime") if regime_record else None
 
-        # Apply pre-trade filters
-        passed, skip_reason = await check_filters(ticker, alert_date)
+        # Apply pre-trade filters (skip mcap for historical scans — current mcap != historical)
+        is_historical = source_filter == "historical_scan"
+        passed, skip_reason = await check_filters(ticker, alert_date, skip_mcap=is_historical)
         if not passed:
             st = BacktestTrade(
                 ticker=ticker, alert_date=alert_date,
@@ -519,12 +522,13 @@ async def run_backtest(
 
 
 async def _load_ep_alerts(
-    from_date: date, to_date: date, min_score: float
+    from_date: date, to_date: date, min_score: float,
+    source_filter: str | None = None,
 ) -> list[dict]:
     """Load EP alerts from DB for the backtest date range."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        query = """
             SELECT DISTINCT ON (ticker, alert_date)
                    ticker, alert_date, gap_pct, rel_volume, ep_score,
                    score_tier, catalyst, catalyst_quality, claude_analysis,
@@ -533,8 +537,13 @@ async def _load_ep_alerts(
             WHERE alert_date >= $1 AND alert_date <= $2
               AND ep_score >= $3
               AND score_tier = 'HIGH'
-            ORDER BY ticker, alert_date, ep_score DESC
-        """, from_date, to_date, min_score)
+        """
+        params: list = [from_date, to_date, min_score]
+        if source_filter:
+            query += "  AND source = $4\n"
+            params.append(source_filter)
+        query += "            ORDER BY ticker, alert_date, ep_score DESC"
+        rows = await conn.fetch(query, *params)
     # Re-sort by date after DISTINCT ON
     results = [dict(r) for r in rows]
     results.sort(key=lambda r: (r["alert_date"], -r.get("ep_score", 0)))

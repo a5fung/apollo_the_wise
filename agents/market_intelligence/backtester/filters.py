@@ -21,10 +21,12 @@ _mcap_cache: dict[str, float | None] = {}
 async def check_filters(
     ticker: str,
     alert_date: date,
+    skip_mcap: bool = False,
 ) -> tuple[bool, str | None]:
     """
     Apply pre-trade filters. Returns (passed, skip_reason).
     Checks: ADV dollar volume, ATR%, market cap.
+    skip_mcap: skip market cap check (for historical scans where current mcap != historical).
     """
     # 1. ADV dollar volume check
     adv_check = await _check_adv_dollar_volume(ticker, alert_date)
@@ -37,9 +39,10 @@ async def check_filters(
         return False, atr_check
 
     # 3. Market cap check
-    mcap_check = await _check_market_cap(ticker)
-    if mcap_check:
-        return False, mcap_check
+    if not skip_mcap:
+        mcap_check = await _check_market_cap(ticker)
+        if mcap_check:
+            return False, mcap_check
 
     return True, None
 
