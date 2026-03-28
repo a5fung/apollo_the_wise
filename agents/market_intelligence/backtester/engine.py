@@ -93,9 +93,9 @@ def _simulate_day1(
                 continue
 
             if bar["high"] > orb_high:
-                # Breakout entry at ORB high level
+                # Breakout entry at ORB high + slippage
                 attempt += 1
-                entry_price = orb_high
+                entry_price = round(orb_high * (1 + ENTRY_SLIPPAGE_PCT), 2)
                 shares = position_size / entry_price
                 current_stop = orb_low
                 current_shares = shares
@@ -307,11 +307,33 @@ def _bar_date(bar: dict) -> date:
     return date.today()
 
 
+from agents.market_intelligence.constants import ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT, ENTRY_SLIPPAGE_PCT
+
+
+def _position_size(
+    entry_price: float,
+    stop_price: float,
+    regime_record: dict | None = None,
+) -> float:
+    """Risk-based position sizing for backtest."""
+    risk_per_share = entry_price - stop_price
+    if risk_per_share <= 0:
+        return 5_000
+    base_risk = ACCOUNT_SIZE * RISK_PCT
+    if regime_record and regime_record.get("qqq_ema_bullish") is False:
+        base_risk *= 0.5
+    shares = base_risk / risk_per_share
+    position = shares * entry_price
+    max_position = ACCOUNT_SIZE * MAX_POSITION_PCT
+    return min(position, max_position)
+
+
 async def simulate_trade(
     ticker: str,
     alert_date: date,
     ep_alert: dict,
     position_size: float,
+    regime_record: dict | None = None,
 ) -> BacktestTrade:
     """
     Full trade simulation: Day 1 ORB intraday + Day 2+ SMA trailing stop.
@@ -333,6 +355,13 @@ async def simulate_trade(
             atr_14=atr_14,
         )
         return trade
+
+    # Risk-based position sizing: use ORB high/low from first bar
+    if bars and regime_record:
+        orb_high = bars[0].get("high", 0)
+        orb_low = bars[0].get("low", 0)
+        if orb_high > 0 and orb_low > 0:
+            position_size = _position_size(orb_high, orb_low, regime_record)
 
     # Day 1 simulation (ORB entry with ATR validation)
     trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14, atr_pct=atr_pct)
@@ -436,7 +465,8 @@ async def run_backtest(
             alert_date = date.fromisoformat(alert_date)
 
         # Attach regime
-        alert["regime"] = regimes.get(alert_date)
+        regime_record = regimes.get(alert_date)
+        alert["regime"] = regime_record.get("regime") if regime_record else None
 
         # Apply pre-trade filters
         passed, skip_reason = await check_filters(ticker, alert_date)
@@ -465,7 +495,7 @@ async def run_backtest(
 
         # Simulate trade
         logger.info(f"Simulating {ticker} on {alert_date} (score={alert.get('ep_score', 0):.0f})")
-        trade = await simulate_trade(ticker, alert_date, alert, position_size)
+        trade = await simulate_trade(ticker, alert_date, alert, position_size, regime_record=regime_record)
 
         if trade.skipped:
             skipped.append(trade)
@@ -511,13 +541,13 @@ async def _load_ep_alerts(
     return results
 
 
-async def _load_regimes(from_date: date, to_date: date) -> dict[date, str]:
-    """Load market regime for each date in range."""
+async def _load_regimes(from_date: date, to_date: date) -> dict[date, dict]:
+    """Load full market regime records for each date in range."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT regime_date, regime
+            SELECT *
             FROM mi_market_regime
             WHERE regime_date >= $1 AND regime_date <= $2
         """, from_date, to_date)
-    return {r["regime_date"]: r["regime"] for r in rows}
+    return {r["regime_date"]: dict(r) for r in rows}

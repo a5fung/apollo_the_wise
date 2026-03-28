@@ -44,7 +44,7 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool
 
 logger = logging.getLogger(__name__)
 
@@ -237,6 +237,7 @@ def _score_ep(
     analyst_upgrades: int,
     regime_multiplier: float,
     vol_percentile: float = 50.0,
+    prior_3m_change: float | None = None,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
@@ -309,6 +310,17 @@ def _score_ep(
         breakdown["vol_conviction"] = 3
     else:
         breakdown["vol_conviction"] = 0
+
+    # Prior momentum penalty — Qullamaggie: "best if stock has not rallied past 3-6 months"
+    if prior_3m_change is not None:
+        if prior_3m_change >= 50:
+            breakdown["prior_momentum"] = -25
+        elif prior_3m_change >= 30:
+            breakdown["prior_momentum"] = -15
+        else:
+            breakdown["prior_momentum"] = 0
+    else:
+        breakdown["prior_momentum"] = 0
 
     raw_score = sum(breakdown.values())
 
@@ -421,6 +433,22 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     candidate_tickers = [c["ticker"] for c in candidates]
     vol_history_map = await get_volume_history(candidate_tickers)
 
+    # Batch-fetch 3-month-ago closes for prior momentum check
+    prior_3m_map: dict[str, float] = {}
+    try:
+        pool = await get_pool()
+        target_date = today - timedelta(days=90)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (ticker) ticker, close
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1) AND trade_date <= $2 AND trade_date >= $3
+                ORDER BY ticker, trade_date DESC
+            """, candidate_tickers, target_date, target_date - timedelta(days=14))
+        prior_3m_map = {r["ticker"]: float(r["close"]) for r in rows}
+    except Exception as e:
+        logger.warning(f"Failed to fetch 3-month closes for prior momentum: {e}")
+
     # Compute proper 20-day ADV for non-universe candidates (top 20 only)
     # These stocks aren't in mi_stock_scores, so we fetch bars from Polygon
     non_universe = [c for c in candidates[:20] if c["adv_source"] == "pending"]
@@ -502,6 +530,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         elif pplx_quality and pplx_quality != catalyst_quality:
             logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
 
+        # Compute prior 3-month change %
+        prior_3m_change = None
+        close_3m_ago = prior_3m_map.get(ticker)
+        if close_3m_ago and close_3m_ago > 0 and c["prev_close"]:
+            prior_3m_change = (c["prev_close"] - close_3m_ago) / close_3m_ago * 100
+
         # Score
         ep_score, breakdown = _score_ep(
             gap_pct=c["gap_pct"],
@@ -511,6 +545,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             analyst_upgrades=upgrades_30d,
             regime_multiplier=regime_multiplier * confidence_multiplier,
             vol_percentile=vol_pct,
+            prior_3m_change=prior_3m_change,
         )
 
         if ep_score < 50:

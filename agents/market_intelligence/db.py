@@ -453,13 +453,18 @@ async def upsert_regime(record: dict[str, Any]) -> None:
     bm = record.get("breadth_monitor")
     bm_json = json.dumps(bm) if bm else None
     async with pool.acquire() as conn:
+        # Ensure QQQ EMA columns exist (idempotent)
+        for col, typ in [("qqq_ema_10", "FLOAT"), ("qqq_ema_20", "FLOAT"), ("qqq_ema_bullish", "BOOLEAN")]:
+            await conn.execute(f"ALTER TABLE mi_market_regime ADD COLUMN IF NOT EXISTS {col} {typ}")
         await conn.execute("""
             INSERT INTO mi_market_regime
                 (regime_date, regime, spy_vs_50ma, spy_vs_200ma, qqq_vs_50ma, vix,
                  breadth_pct_above_40ma, bo_bd_ratio_5d, pct4_ratio_10d, description, ep_threshold,
                  t2108, pradeep_1m_50, pradeep_3m_25, full_up4_count, full_down4_count,
-                 consec_breakdown_days, breadth_monitor)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb)
+                 consec_breakdown_days, breadth_monitor,
+                 qqq_ema_10, qqq_ema_20, qqq_ema_bullish)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb,
+                    $19,$20,$21)
             ON CONFLICT (regime_date) DO UPDATE SET
                 regime=EXCLUDED.regime, spy_vs_50ma=EXCLUDED.spy_vs_50ma,
                 spy_vs_200ma=EXCLUDED.spy_vs_200ma, qqq_vs_50ma=EXCLUDED.qqq_vs_50ma,
@@ -470,7 +475,9 @@ async def upsert_regime(record: dict[str, Any]) -> None:
                 pradeep_3m_25=EXCLUDED.pradeep_3m_25, full_up4_count=EXCLUDED.full_up4_count,
                 full_down4_count=EXCLUDED.full_down4_count,
                 consec_breakdown_days=EXCLUDED.consec_breakdown_days,
-                breadth_monitor=EXCLUDED.breadth_monitor
+                breadth_monitor=EXCLUDED.breadth_monitor,
+                qqq_ema_10=EXCLUDED.qqq_ema_10, qqq_ema_20=EXCLUDED.qqq_ema_20,
+                qqq_ema_bullish=EXCLUDED.qqq_ema_bullish
         """,
             record["regime_date"], record["regime"], record.get("spy_vs_50ma"),
             record.get("spy_vs_200ma"), record.get("qqq_vs_50ma"), record.get("vix"),
@@ -480,6 +487,7 @@ async def upsert_regime(record: dict[str, Any]) -> None:
             record.get("t2108"), record.get("pradeep_1m_50"), record.get("pradeep_3m_25"),
             record.get("full_up4_count"), record.get("full_down4_count"),
             record.get("consec_breakdown_days"), bm_json,
+            record.get("qqq_ema_10"), record.get("qqq_ema_20"), record.get("qqq_ema_bullish"),
         )
 
 

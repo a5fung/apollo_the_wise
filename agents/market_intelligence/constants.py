@@ -1,5 +1,11 @@
 """Shared constants and helpers for the Market Intelligence agent."""
 
+# ── Position sizing ──────────────────────────────────────────────────────────
+ACCOUNT_SIZE = 100_000       # Total account value ($)
+RISK_PCT = 0.01              # 1% account risk per trade
+MAX_POSITION_PCT = 0.20      # Max 20% of account in one trade
+ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
+
 REGIME_EMOJI = {
     "Bull": "🟢",
     "Choppy": "🟡",

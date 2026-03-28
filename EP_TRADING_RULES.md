@@ -11,8 +11,9 @@
 
 ## Part A — Qullamaggie's Core Rules
 
-*Sources: qullamaggie.com/how-to-master-a-setup-episodic-pivots/ and
-qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/*
+*Sources: qullamaggie.com/how-to-master-a-setup-episodic-pivots/,
+qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/,
+and youtube.com/watch?v=0l185cn1d0Y (3rd-party EP breakdown, transcript verified)*
 
 ### A1. What qualifies as an EP
 
@@ -35,6 +36,7 @@ qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/*
 ### A4. ATR stop validation
 
 - **"Make sure your stop is no more than 1x, or maximum 1.5x the average daily range or the average true range."**
+- Video source confirms: **"Make sure your risk is no more than one times the average daily range."** — preference is 1x, 1.5x is the absolute max.
 - If the distance from entry to stop exceeds this, pass on the trade.
 
 ### A5. Trailing stop
@@ -48,7 +50,15 @@ qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/*
 - General guidance: **0.25–1% account risk per trade**, max 30% of account in one position.
 - No EP-specific sizing formula given.
 
-### A7. What he does NOT specify
+### A7. Additional context (from video/blog)
+
+- **Volume benchmark:** "Trade their average daily volume within the first 15-20 minutes"
+- **Regime filter:** "10 and 20-day EMA on QQQ. When 10 > 20 and both rising, green light for aggressive positioning"
+- **Catalyst hierarchy:** Earnings (easiest) > business/industry news > regulatory/policy > biotech (hardest)
+- **Consolidation:** "The setup works best when the stock has been consolidating for 3 months before the gap up"
+- **Earning season focus:** "Every quarter, 3-4 weeks where these setups proliferate"
+
+### A8. What he does NOT specify
 
 These are areas where he explicitly leaves it open or doesn't address:
 - Day 1 EOD handling (partial sell vs hold full)
@@ -101,7 +111,22 @@ where the first 5 minutes are naturally volatile.
 - After partial → move stop floor to breakeven (entry price)
 - Breakeven participates in effective stop: `max(hard_stop, active_sma, entry_price)`
 
-### B6. Hard stop floor (Day 2+)
+### B6. QQQ EMA Regime Gate (Soft)
+
+- **Rule:** When QQQ 10-day EMA < 20-day EMA, use half position risk ($500 instead of $1,000 on $100K account)
+- Full risk when 10 EMA > 20 EMA
+- Qullamaggie: "reduce position sizes or avoid the setup entirely" in unfavorable regimes
+- Soft gate (not skip) — preserves upside on outlier winners in weak markets
+
+### B7. Risk-Based Position Sizing
+
+- **Formula:** `shares = (account_size × risk_pct) / (entry_price - stop_price)`
+- `position_size = shares × entry_price`, capped at 20% of account
+- Default: 1% account risk per trade ($1,000 on $100K)
+- Tight stops → bigger positions; wide stops → smaller positions
+- Qullamaggie: "0.25-1% account risk per trade"
+
+### B8. Hard stop floor (Day 2+)
 
 - `hard_stop = Day 1 intraday low` (lowest low across all 5-min bars)
 - Never raised, never lowered — absolute floor
@@ -120,7 +145,7 @@ where the first 5 minutes are naturally volatile.
 | Market Cap | >= $500M | Apollo institutional floor |
 | ATR stop width | <= 1.5× ATR-14 | Qullamaggie: "1x, max 1.5x ATR" |
 | EP cooldown | 60 days same ticker | Qullamaggie: "failure rate higher on repeats" |
-| Prior momentum | Not yet implemented | Qullamaggie: "not rallied past 3-6 months" |
+| Prior momentum | 30%+ in 3mo → -15pts, 50%+ → -25pts | Qullamaggie: "not rallied past 3-6 months" |
 
 ---
 
@@ -156,7 +181,8 @@ where the first 5 minutes are naturally volatile.
 - Max daily new trades: 3
 - Max sector concentration: 40%
 - Max portfolio heat: 20% of account
-- Position size: Fixed $10K per trade (Phase 3: risk-based sizing)
+- Position size: Risk-based (1% account risk per trade, capped at 20% of account)
+- Regime gate: Half risk when QQQ 10 EMA < 20 EMA (soft gate)
 
 ---
 
@@ -180,6 +206,7 @@ Files: `agents/market_intelligence/backtester/`
 
 | Date | Change |
 |------|--------|
+| 2026-03-28 | v3: QQQ EMA regime gate, prior momentum penalty, risk-based position sizing |
 | 2026-03-28 | v2.1: Verify rules against source, separate Qullamaggie vs Apollo additions, fix re-entry stop |
 | 2026-03-27 | v2: ORB entry, ATR stop validation, 10/20 SMA trail, delayed partial profit |
 | 2026-03-19 | v1: Buy at open, day-low ratchet trail, EOD Day 1 partial |

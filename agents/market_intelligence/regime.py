@@ -38,6 +38,17 @@ def _moving_average(closes: list[float], period: int) -> Optional[float]:
     return sum(closes[-period:]) / period
 
 
+def _ema(closes: list[float], period: int) -> Optional[float]:
+    """Exponential moving average over a list of closes."""
+    if len(closes) < period:
+        return None
+    ema = sum(closes[:period]) / period
+    k = 2 / (period + 1)
+    for close in closes[period:]:
+        ema = close * k + ema * (1 - k)
+    return ema
+
+
 def _determine_regime(
     spy_vs_50ma: Optional[float],
     spy_vs_200ma: Optional[float],
@@ -448,6 +459,11 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
     spy_vs_200ma = ((current_spy - spy_200ma) / spy_200ma * 100) if current_spy and spy_200ma else None
     qqq_vs_50ma = ((current_qqq - qqq_50ma) / qqq_50ma * 100) if current_qqq and qqq_50ma else None
 
+    # QQQ 10/20 EMA — soft regime gate for position sizing
+    qqq_ema_10 = _ema(qqq_closes, 10)
+    qqq_ema_20 = _ema(qqq_closes, 20)
+    qqq_ema_bullish = (qqq_ema_10 > qqq_ema_20) if qqq_ema_10 and qqq_ema_20 else None
+
     # Breadth — full-universe from stored data (zero API calls)
     logger.info("Regime engine: calculating breadth from stored data...")
     breadth = await calculate_breadth_full(today)
@@ -487,6 +503,9 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
         "full_down4_count": breadth.get("full_down4_count"),
         "consec_breakdown_days": consec_breakdown_days,
         "breadth_monitor": breadth.get("breadth_monitor"),
+        "qqq_ema_10": round(qqq_ema_10, 2) if qqq_ema_10 else None,
+        "qqq_ema_20": round(qqq_ema_20, 2) if qqq_ema_20 else None,
+        "qqq_ema_bullish": qqq_ema_bullish,
     }
 
     await upsert_regime(record)

@@ -20,9 +20,30 @@ from agents.market_intelligence.backtester.engine import _simulate_day1, _bar_da
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.db import get_pool
 
+from agents.market_intelligence.constants import ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT
+
 logger = logging.getLogger(__name__)
 
-POSITION_SIZE = 10_000  # $10K per trade
+
+def _position_size(
+    entry_price: float,
+    stop_price: float,
+    regime: dict | None = None,
+) -> float:
+    """
+    Risk-based position sizing: target 1% account risk per trade.
+    Halve risk when QQQ 10 EMA < 20 EMA (soft regime gate).
+    """
+    risk_per_share = entry_price - stop_price
+    if risk_per_share <= 0:
+        return 5_000  # fallback
+    base_risk = ACCOUNT_SIZE * RISK_PCT
+    if regime and regime.get("qqq_ema_bullish") is False:
+        base_risk *= 0.5  # half risk in weak regime
+    shares = base_risk / risk_per_share
+    position = shares * entry_price
+    max_position = ACCOUNT_SIZE * MAX_POSITION_PCT
+    return min(position, max_position)
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -107,15 +128,15 @@ async def _get_todays_alerts(today: date) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-async def _get_regime(d: date) -> str | None:
-    """Get market regime for a date."""
+async def _get_regime_record(d: date) -> dict | None:
+    """Get full market regime record for a date."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT regime FROM mi_market_regime WHERE regime_date <= $1 ORDER BY regime_date DESC LIMIT 1",
+            "SELECT * FROM mi_market_regime WHERE regime_date <= $1 ORDER BY regime_date DESC LIMIT 1",
             d,
         )
-    return row["regime"] if row else None
+    return dict(row) if row else None
 
 
 async def _trade_already_exists(ticker: str, alert_date: date) -> bool:
@@ -220,7 +241,8 @@ async def process_new_alerts(today: date) -> list[dict]:
         return []
 
     await ensure_intraday_table()
-    regime = await _get_regime(today)
+    regime_record = await _get_regime_record(today)
+    regime = regime_record.get("regime") if regime_record else None
     results = []
 
     for alert in alerts:
@@ -264,7 +286,12 @@ async def process_new_alerts(today: date) -> list[dict]:
             results.append({"ticker": ticker, "action": "skipped", "reason": "no_intraday_data"})
             continue
 
-        trade = _simulate_day1(ticker, bars, POSITION_SIZE, atr_14=atr_14)
+        # Risk-based position sizing: use ORB high/low for entry/stop
+        orb_high = bars[0]["high"]
+        orb_low = bars[0]["low"]
+        pos_size = _position_size(orb_high, orb_low, regime_record)
+
+        trade = _simulate_day1(ticker, bars, pos_size, atr_14=atr_14)
         if trade is None:
             await _insert_paper_trade({
                 "ticker": ticker, "alert_date": today,
