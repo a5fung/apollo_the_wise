@@ -5,7 +5,7 @@ import asyncio
 import logging
 from datetime import date, datetime, timedelta
 
-from agents.market_intelligence.backtester.filters import check_filters
+from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.backtester.intraday import ensure_intraday_table, get_intraday_bars
 from agents.market_intelligence.backtester.models import (
     BacktestResult,
@@ -26,76 +26,74 @@ def _simulate_day1(
     ticker: str,
     bars: list[dict],
     position_size: float,
+    atr_14: float | None = None,
 ) -> BacktestTrade | None:
     """
-    Simulate Day 1 intraday trading on 5-min bars.
+    Simulate Day 1 intraday trading on 5-min bars (ORB entry).
 
     Rules:
-    - Entry at first bar (9:30) open price
-    - Stop = first bar's low
-    - If any bar closes below stop → stopped out at that bar's close
-    - Re-enter when a bar closes above first bar's close
-    - On re-entry: new stop = re-entry bar's low
-    - Max 3 attempts per day
+    - Opening Range = first 5-min bar's high/low
+    - ATR stop width check: skip if ORB range > 1.5x ATR-14
+    - Entry when price breaks above ORB high (bars[1:])
+    - Stop = ORB low (hard stop: bar low <= stop)
+    - Re-entry when bar closes above ORB high, max 3 attempts
+    - EOD: hold full position (no partial sell)
     """
     if not bars:
         return None
 
     first_bar = bars[0]
+    orb_high = first_bar["high"]
+    orb_low = first_bar["low"]
+
+    if orb_high <= 0 or orb_low <= 0:
+        return None
+
+    # ATR stop width validation: skip if ORB range too wide
+    orb_range = orb_high - orb_low
+    if atr_14 and orb_range > 1.5 * atr_14:
+        alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
+        trade = BacktestTrade(
+            ticker=ticker, alert_date=alert_date,
+            ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
+            skipped=True, skip_reason="stop_too_wide",
+            orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
+        )
+        return trade
+
     entries: list[TradeEntry] = []
     exits: list[TradeExit] = []
     attempt = 0
     in_position = False
     current_stop = 0.0
     current_shares = 0.0
-    first_bar_close = first_bar["close"]
 
-    # Attempt 1: buy at market open
-    entry_price = first_bar["open"]
-    if entry_price <= 0:
-        return None
-
-    shares = position_size / entry_price
-    current_stop = first_bar["low"]
-    current_shares = shares
-    in_position = True
-    attempt = 1
-
-    entries.append(TradeEntry(
-        entry_time=first_bar["bar_time"],
-        entry_price=entry_price,
-        stop_price=current_stop,
-        attempt_number=attempt,
-        shares=shares,
-    ))
-
-    # Walk remaining bars
+    # Walk bars[1:] looking for ORB high breakout
     for bar in bars[1:]:
         if in_position:
-            # Check if bar closes below stop → stopped out
-            if bar["close"] <= current_stop:
-                pnl = (bar["close"] - entries[-1].entry_price) * current_shares
+            # Hard stop: bar low breaches stop
+            if bar["low"] <= current_stop:
+                pnl = (current_stop - entries[-1].entry_price) * current_shares
                 exits.append(TradeExit(
                     exit_time=bar["bar_time"],
-                    exit_price=bar["close"],
+                    exit_price=current_stop,
                     exit_reason="stop_hit",
                     shares_exited=current_shares,
                     pnl=pnl,
                 ))
                 in_position = False
                 current_shares = 0.0
-
         else:
-            # Not in position — look for re-entry
+            # Look for breakout / re-entry
             if attempt >= MAX_ENTRY_ATTEMPTS:
-                continue  # no more attempts
+                continue
 
-            # Re-enter when bar closes above first bar's close
-            if bar["close"] > first_bar_close:
+            if bar["high"] > orb_high:
+                # Breakout entry at ORB high level
                 attempt += 1
-                entry_price = bar["close"]  # enter at this bar's close
+                entry_price = orb_high
                 shares = position_size / entry_price
-                current_stop = bar["low"]
+                current_stop = orb_low if attempt == 1 else bar["low"]
                 current_shares = shares
                 in_position = True
 
@@ -107,39 +105,45 @@ def _simulate_day1(
                     shares=shares,
                 ))
 
-    # EOD handling
+                # Check if same bar also hits stop
+                if bar["low"] <= current_stop:
+                    pnl = (current_stop - entry_price) * current_shares
+                    exits.append(TradeExit(
+                        exit_time=bar["bar_time"],
+                        exit_price=current_stop,
+                        exit_reason="stop_hit",
+                        shares_exited=current_shares,
+                        pnl=pnl,
+                    ))
+                    in_position = False
+                    current_shares = 0.0
+
+    # No breakout all day
+    if not entries:
+        alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
+        trade = BacktestTrade(
+            ticker=ticker, alert_date=alert_date,
+            ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
+            skipped=True, skip_reason="orb_no_breakout",
+            orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
+        )
+        return trade
+
+    # EOD handling — hold full position (no partial sell)
     if in_position and entries:
         last_bar = bars[-1]
         last_entry = entries[-1]
-
-        # Sell 1/3 at close
-        partial_shares = current_shares / 3
-        remaining_shares = current_shares - partial_shares
-
-        pnl_partial = (last_bar["close"] - last_entry.entry_price) * partial_shares
-        exits.append(TradeExit(
-            exit_time=last_bar["bar_time"],
-            exit_price=last_bar["close"],
-            exit_reason="eod_partial",
-            shares_exited=partial_shares,
-            pnl=pnl_partial,
-        ))
-
-        # Return trade with remaining 2/3 still open
         total_pnl = sum(e.pnl for e in exits)
+
         trade = BacktestTrade(
             ticker=ticker,
             alert_date=last_bar["bar_time"].date() if hasattr(last_bar["bar_time"], "date") else date.today(),
-            ep_score=0,  # filled by caller
-            catalyst_quality="",
-            gap_pct=0,
-            regime=None,
-            entries=entries,
-            exits=exits,
-            total_pnl=total_pnl,
+            ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
+            entries=entries, exits=exits, total_pnl=total_pnl,
+            orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
-        # Stash remaining position info for Day 2+ simulation
-        trade._remaining_shares = remaining_shares  # type: ignore[attr-defined]
+        # Stash full position for Day 2+ simulation
+        trade._remaining_shares = current_shares  # type: ignore[attr-defined]
         trade._last_entry = last_entry  # type: ignore[attr-defined]
         trade._day1_low = min(b["low"] for b in bars)  # type: ignore[attr-defined]
         return trade
@@ -150,13 +154,9 @@ def _simulate_day1(
         return BacktestTrade(
             ticker=ticker,
             alert_date=bars[0]["bar_time"].date() if hasattr(bars[0]["bar_time"], "date") else date.today(),
-            ep_score=0,
-            catalyst_quality="",
-            gap_pct=0,
-            regime=None,
-            entries=entries,
-            exits=exits,
-            total_pnl=total_pnl,
+            ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
+            entries=entries, exits=exits, total_pnl=total_pnl,
+            orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
 
     return None
@@ -166,15 +166,17 @@ def _simulate_trailing_stop(
     trade: BacktestTrade,
     daily_bars: list[dict],
     alert_date: date,
+    pre_alert_bars: list[dict] | None = None,
 ) -> None:
     """
-    Simulate Day 2+ trailing stop on daily OHLCV bars.
+    Simulate Day 2+ with 10/20 SMA trailing stop and delayed partial profit.
 
     Rules:
-    - Broker-side stop at prior day's low
-    - If any day's low breaches stop → fill at stop price
-    - Before each close, ratchet stop up to this day's low (never lower)
-    - Hold until stop is hit
+    - Hard stop = Day 1 low (floor, never lowered)
+    - SMA trail: active SMA = 10-SMA if 10 > 20, else 20-SMA
+    - Exit on daily close below effective stop (max of hard stop, SMA, breakeven)
+    - Partial profit: sell 1/3 on Day 3-5 (Day 3-4 only if profitable, Day 5 regardless)
+    - After partial: move stop floor to breakeven (entry price)
     """
     remaining_shares = getattr(trade, "_remaining_shares", 0.0)
     last_entry = getattr(trade, "_last_entry", None)
@@ -182,27 +184,35 @@ def _simulate_trailing_stop(
     if remaining_shares <= 0 or last_entry is None:
         return
 
-    # Initial stop = Day 1's low
-    stop_price = getattr(trade, "_day1_low", last_entry.stop_price)
+    hard_stop = getattr(trade, "_day1_low", last_entry.stop_price)
+    entry_price = last_entry.entry_price
+    partial_taken = False
+    breakeven_active = False
+    day_count = 0
 
-    # Filter daily bars to Day 2+ only (after alert_date)
-    future_bars = [
-        b for b in daily_bars
-        if _bar_date(b) > alert_date
-    ]
+    # Build running close list from pre-alert bars for SMA warm-up
+    running_closes: list[float] = []
+    if pre_alert_bars:
+        for b in pre_alert_bars:
+            c = b.get("c", b.get("close", 0))
+            if c and c > 0:
+                running_closes.append(float(c))
 
-    for bar in future_bars:
+    for bar in daily_bars:
         bar_low = bar.get("l", bar.get("low", 0))
         bar_close = bar.get("c", bar.get("close", 0))
         bar_date = _bar_date(bar)
+        day_count += 1
 
-        # Check if stop hit (bar's low breaches stop)
-        if bar_low <= stop_price:
-            pnl = (stop_price - last_entry.entry_price) * remaining_shares
+        running_closes.append(float(bar_close))
+
+        # 1. Hard stop check (intraday low breaches hard stop)
+        if bar_low <= hard_stop:
+            pnl = (hard_stop - entry_price) * remaining_shares
             trade.exits.append(TradeExit(
                 exit_time=datetime.combine(bar_date, datetime.min.time()),
-                exit_price=stop_price,
-                exit_reason="trailing_stop",
+                exit_price=hard_stop,
+                exit_reason="stop_hit",
                 shares_exited=remaining_shares,
                 pnl=pnl,
             ))
@@ -210,17 +220,65 @@ def _simulate_trailing_stop(
             trade.hold_days = (bar_date - alert_date).days
             return
 
-        # Ratchet stop up (never lower)
-        if bar_low > stop_price:
-            stop_price = bar_low
+        # 2. Compute SMAs
+        active_sma = None
+        if len(running_closes) >= 20:
+            sma_10 = sum(running_closes[-10:]) / 10
+            sma_20 = sum(running_closes[-20:]) / 20
+            active_sma = sma_10 if sma_10 > sma_20 else sma_20
+        elif len(running_closes) >= 10:
+            active_sma = sum(running_closes[-10:]) / 10
+
+        # 3. Partial profit on Day 3-5
+        if day_count >= 3 and not partial_taken:
+            take_partial = False
+            if day_count <= 4 and bar_close > entry_price:
+                take_partial = True
+            elif day_count >= 5:
+                take_partial = True
+
+            if take_partial:
+                partial_shares = remaining_shares / 3
+                remaining_shares -= partial_shares
+                pnl = (bar_close - entry_price) * partial_shares
+                trade.exits.append(TradeExit(
+                    exit_time=datetime.combine(bar_date, datetime.min.time()),
+                    exit_price=bar_close,
+                    exit_reason="partial_profit",
+                    shares_exited=partial_shares,
+                    pnl=pnl,
+                ))
+                partial_taken = True
+                breakeven_active = True
+                trade.breakeven_stop = True
+
+        # 4. SMA trail check (close-based)
+        effective_stop = hard_stop
+        if active_sma and active_sma > hard_stop:
+            effective_stop = active_sma
+        if breakeven_active and entry_price > effective_stop:
+            effective_stop = entry_price
+
+        if bar_close < effective_stop:
+            pnl = (bar_close - entry_price) * remaining_shares
+            trade.exits.append(TradeExit(
+                exit_time=datetime.combine(bar_date, datetime.min.time()),
+                exit_price=bar_close,
+                exit_reason="sma_trail_stop",
+                shares_exited=remaining_shares,
+                pnl=pnl,
+            ))
+            trade.total_pnl = sum(e.pnl for e in trade.exits)
+            trade.hold_days = (bar_date - alert_date).days
+            return
 
     # Still holding at end of data — exit at last available close
-    if future_bars:
-        last_bar = future_bars[-1]
+    if daily_bars:
+        last_bar = daily_bars[-1]
         last_close = last_bar.get("c", last_bar.get("close", 0))
         last_date = _bar_date(last_bar)
 
-        pnl = (last_close - last_entry.entry_price) * remaining_shares
+        pnl = (last_close - entry_price) * remaining_shares
         trade.exits.append(TradeExit(
             exit_time=datetime.combine(last_date, datetime.min.time()),
             exit_price=last_close,
@@ -231,7 +289,6 @@ def _simulate_trailing_stop(
         trade.total_pnl = sum(e.pnl for e in trade.exits)
         trade.hold_days = (last_date - alert_date).days
     else:
-        # No future bars at all — close at Day 1 last price
         trade.hold_days = 0
         trade.total_pnl = sum(e.pnl for e in trade.exits)
 
@@ -253,8 +310,11 @@ async def simulate_trade(
     position_size: float,
 ) -> BacktestTrade:
     """
-    Full trade simulation: Day 1 intraday + Day 2+ trailing stop.
+    Full trade simulation: Day 1 ORB intraday + Day 2+ SMA trailing stop.
     """
+    # Compute ATR before Day 1 for stop width validation
+    atr_14 = await compute_atr_14(ticker, alert_date)
+
     # Fetch Day 1 intraday bars
     bars = await get_intraday_bars(ticker, alert_date)
 
@@ -266,11 +326,12 @@ async def simulate_trade(
             gap_pct=ep_alert.get("gap_pct", 0),
             regime=ep_alert.get("regime"),
             skipped=True, skip_reason="data_unavailable",
+            atr_14=atr_14,
         )
         return trade
 
-    # Day 1 simulation
-    trade = _simulate_day1(ticker, bars, position_size)
+    # Day 1 simulation (ORB entry with ATR validation)
+    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14)
     if trade is None:
         return BacktestTrade(
             ticker=ticker, alert_date=alert_date,
@@ -279,6 +340,7 @@ async def simulate_trade(
             gap_pct=ep_alert.get("gap_pct", 0),
             regime=ep_alert.get("regime"),
             skipped=True, skip_reason="no_valid_entry",
+            atr_14=atr_14,
         )
 
     # Fill in EP alert metadata
@@ -287,17 +349,29 @@ async def simulate_trade(
     trade.gap_pct = ep_alert.get("gap_pct", 0)
     trade.regime = ep_alert.get("regime")
     trade.alert_date = alert_date
+    trade.atr_14 = atr_14
+
+    # If trade was skipped by Day 1 (ORB no breakout, stop too wide), return as-is
+    if trade.skipped:
+        return trade
 
     # Day 2+ trailing stop (only if still holding)
     remaining = getattr(trade, "_remaining_shares", 0.0)
     if remaining > 0:
-        # Fetch daily bars for trailing stop simulation
+        # Fetch daily bars starting 35 days before alert for SMA warm-up
         today = et_today()
-        from_date = (alert_date + timedelta(days=1)).strftime("%Y-%m-%d")
-        to_date = today.strftime("%Y-%m-%d")
+        from_date_str = (alert_date - timedelta(days=35)).strftime("%Y-%m-%d")
+        to_date_str = today.strftime("%Y-%m-%d")
 
-        daily_bars = await get_index_history(ticker, from_date, to_date)
-        _simulate_trailing_stop(trade, daily_bars, alert_date)
+        daily_bars = await get_index_history(ticker, from_date_str, to_date_str)
+
+        # Split into pre-alert (warm-up) and post-alert (trading) bars
+        pre_alert_bars = [b for b in daily_bars if _bar_date(b) <= alert_date]
+        future_bars = [b for b in daily_bars if _bar_date(b) > alert_date]
+
+        _simulate_trailing_stop(
+            trade, future_bars, alert_date, pre_alert_bars=pre_alert_bars,
+        )
 
     # Ensure total_pnl is up to date
     trade.total_pnl = sum(e.pnl for e in trade.exits)

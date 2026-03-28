@@ -69,10 +69,10 @@ async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
     return None
 
 
-async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
-    """Check 14-day ATR% <= 15%. Returns skip reason or None."""
+async def compute_atr_14(ticker: str, as_of_date: date) -> float | None:
+    """Compute 14-day ATR (close-to-close approx). Returns dollar value or None."""
     pool = await get_pool()
-    lookback_start = trade_date - timedelta(days=30)  # calendar days for ~14 trading days
+    lookback_start = as_of_date - timedelta(days=30)  # calendar days for ~14 trading days
 
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -82,10 +82,10 @@ async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
               AND trade_date <= $2
               AND trade_date >= $3
             ORDER BY trade_date ASC
-        """, ticker, trade_date, lookback_start)
+        """, ticker, as_of_date, lookback_start)
 
     if len(rows) < 10:
-        return None  # not enough data — let it through
+        return None
 
     closes = [float(r["close"]) for r in rows]
 
@@ -96,11 +96,28 @@ async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
         return None
 
     atr_14 = sum(true_ranges[-14:]) / min(14, len(true_ranges[-14:]))
-    current_close = closes[-1]
+    return atr_14
 
-    if current_close <= 0:
+
+async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
+    """Check 14-day ATR% <= 15%. Returns skip reason or None."""
+    atr_14 = await compute_atr_14(ticker, trade_date)
+    if atr_14 is None:
+        return None  # not enough data — let it through
+
+    pool = await get_pool()
+    lookback_start = trade_date - timedelta(days=30)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT close FROM mi_daily_closes
+            WHERE ticker = $1 AND trade_date <= $2 AND trade_date >= $3
+            ORDER BY trade_date DESC LIMIT 1
+        """, ticker, trade_date, lookback_start)
+
+    if not row or float(row["close"]) <= 0:
         return None
 
+    current_close = float(row["close"])
     atr_pct = (atr_14 / current_close) * 100
 
     if atr_pct > MAX_ATR_PCT:

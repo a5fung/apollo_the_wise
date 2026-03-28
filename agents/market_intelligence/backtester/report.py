@@ -236,7 +236,8 @@ def export_csv(result: BacktestResult) -> str:
     writer = csv.writer(output)
     writer.writerow([
         "ticker", "alert_date", "ep_score", "catalyst_quality", "gap_pct",
-        "regime", "entries", "exits", "total_pnl", "return_pct",
+        "regime", "orb_high", "orb_low", "atr_14",
+        "entries", "exits", "total_pnl", "return_pct",
         "hold_days", "exit_reasons",
     ])
 
@@ -251,7 +252,11 @@ def export_csv(result: BacktestResult) -> str:
         )
         writer.writerow([
             t.ticker, t.alert_date, f"{t.ep_score:.0f}", t.catalyst_quality,
-            f"{t.gap_pct:.1f}", t.regime or "", entry_info, exit_info,
+            f"{t.gap_pct:.1f}", t.regime or "",
+            f"{t.orb_high:.2f}" if t.orb_high else "",
+            f"{t.orb_low:.2f}" if t.orb_low else "",
+            f"{t.atr_14:.2f}" if t.atr_14 else "",
+            entry_info, exit_info,
             f"{t.total_pnl:.2f}", f"{t.return_pct:.1f}",
             t.hold_days, "/".join(e.exit_reason for e in t.exits),
         ])

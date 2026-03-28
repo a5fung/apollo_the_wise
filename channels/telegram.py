@@ -468,7 +468,48 @@ class TelegramChannel:
             "🔍 Web search · Summarization\n"
             "✈️ Travel · Flights · Hotels · Amex perks\n"
             "\n"
-            "/agents · /status · /spend · /setup · /memory"
+            "/agents · /status · /spend · /rules · /setup · /memory"
+        )
+        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+
+    async def _handle_rules(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Handle /rules — EP trading rules summary."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        text = (
+            "*EP Trading Rules (Qullamaggie v2)*\n"
+            "\n"
+            "*Pre-Trade Filters*\n"
+            "• EP Score ≥ 70 (HIGH tier)\n"
+            "• ADV ≥ $1M · ATR% ≤ 15% · MCap ≥ $500M\n"
+            "\n"
+            "*Entry — Opening Range Breakout*\n"
+            "• Opening Range = first 5-min bar (9:30-9:35)\n"
+            "• Buy when price breaks above ORB High\n"
+            "• Entry price = ORB High · Stop = ORB Low\n"
+            "• Skip if ORB range > 1.5× ATR-14 (`stop_too_wide`)\n"
+            "• Skip if ORB High never broken (`orb_no_breakout`)\n"
+            "• Max 3 entry attempts per day\n"
+            "\n"
+            "*Day 1*\n"
+            "• Hold full position through close (no partial)\n"
+            "• Hard stop = ORB Low (bar low breach)\n"
+            "\n"
+            "*Day 2+ Position Management*\n"
+            "• Hard stop floor = Day 1 intraday low (never raised)\n"
+            "• Trail: 10-SMA if 10 > 20, else 20-SMA\n"
+            "• Exit on daily close < effective stop\n"
+            "• `effective_stop = max(hard_stop, SMA, breakeven)`\n"
+            "\n"
+            "*Partial Profit (Day 3-5)*\n"
+            "• Day 3-4: sell ⅓ if in profit\n"
+            "• Day 5: sell ⅓ regardless\n"
+            "• After partial → stop floor moves to breakeven\n"
+            "\n"
+            "_Full doc: EP\\_TRADING\\_RULES.md_"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -794,6 +835,7 @@ class TelegramChannel:
         app.add_handler(CommandHandler("memory", self._handle_memory))
         app.add_handler(CommandHandler("audit", self._handle_audit))
         app.add_handler(CommandHandler("spend", self._handle_spend))
+        app.add_handler(CommandHandler("rules", self._handle_rules))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
         )
@@ -823,6 +865,7 @@ class TelegramChannel:
             BotCommand("memory", "View what I remember about you"),
             BotCommand("spend",  "API spend today & this month"),
             BotCommand("audit",  "Recent action log"),
+            BotCommand("rules",  "EP trading rules (Qullamaggie v2)"),
             BotCommand("start",  "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)

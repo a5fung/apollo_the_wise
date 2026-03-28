@@ -38,6 +38,10 @@ class BacktestTrade:
     hold_days: int = 0
     skipped: bool = False
     skip_reason: str | None = None
+    orb_high: float | None = None
+    orb_low: float | None = None
+    atr_14: float | None = None
+    breakeven_stop: bool = False
 
     @property
     def total_shares_entered(self) -> float:
