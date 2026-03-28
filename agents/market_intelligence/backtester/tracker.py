@@ -13,10 +13,10 @@ import logging
 from datetime import date, datetime, timedelta, time
 from typing import Any
 
-from agents.market_intelligence.backtester.filters import check_filters
+from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.backtester.intraday import ensure_intraday_table, get_intraday_bars
 from agents.market_intelligence.backtester.models import BacktestTrade, TradeEntry, TradeExit
-from agents.market_intelligence.backtester.engine import _simulate_day1, _simulate_trailing_stop, _bar_date
+from agents.market_intelligence.backtester.engine import _simulate_day1, _bar_date
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.db import get_pool
 
@@ -50,6 +50,13 @@ async def ensure_paper_trades_table() -> None:
                 total_pnl FLOAT NOT NULL DEFAULT 0,
                 hold_days INT NOT NULL DEFAULT 0,
                 skip_reason TEXT,
+                orb_high FLOAT,
+                orb_low FLOAT,
+                atr_14 FLOAT,
+                day1_low FLOAT,
+                partial_taken BOOLEAN NOT NULL DEFAULT FALSE,
+                breakeven_active BOOLEAN NOT NULL DEFAULT FALSE,
+                running_closes JSONB NOT NULL DEFAULT '[]',
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 closed_at TIMESTAMPTZ,
                 UNIQUE (ticker, alert_date)
@@ -57,6 +64,21 @@ async def ensure_paper_trades_table() -> None:
             CREATE INDEX IF NOT EXISTS idx_paper_trades_status
                 ON mi_paper_trades(status);
         """)
+        # Add columns if table already exists (idempotent)
+        for col, typ, default in [
+            ("orb_high", "FLOAT", None),
+            ("orb_low", "FLOAT", None),
+            ("atr_14", "FLOAT", None),
+            ("day1_low", "FLOAT", None),
+            ("partial_taken", "BOOLEAN", "FALSE"),
+            ("breakeven_active", "BOOLEAN", "FALSE"),
+            ("running_closes", "JSONB", "'[]'"),
+        ]:
+            default_clause = f"DEFAULT {default}" if default else ""
+            await conn.execute(f"""
+                ALTER TABLE mi_paper_trades ADD COLUMN IF NOT EXISTS
+                    {col} {typ} {default_clause}
+            """)
 
 
 async def _get_open_trades() -> list[dict]:
@@ -115,8 +137,11 @@ async def _insert_paper_trade(trade: dict) -> None:
             INSERT INTO mi_paper_trades
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
                  status, entries, exits, remaining_shares, stop_price,
-                 last_entry_price, total_pnl, hold_days, skip_reason)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11,$12,$13,$14,$15)
+                 last_entry_price, total_pnl, hold_days, skip_reason,
+                 orb_high, orb_low, atr_14, day1_low,
+                 partial_taken, breakeven_active, running_closes)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11,$12,$13,$14,$15,
+                    $16,$17,$18,$19,$20,$21,$22::jsonb)
             ON CONFLICT (ticker, alert_date) DO NOTHING
         """,
             trade["ticker"], trade["alert_date"], trade["ep_score"],
@@ -130,7 +155,29 @@ async def _insert_paper_trade(trade: dict) -> None:
             trade.get("total_pnl", 0),
             trade.get("hold_days", 0),
             trade.get("skip_reason"),
+            trade.get("orb_high"),
+            trade.get("orb_low"),
+            trade.get("atr_14"),
+            trade.get("day1_low"),
+            trade.get("partial_taken", False),
+            trade.get("breakeven_active", False),
+            json.dumps(trade.get("running_closes", [])),
         )
+
+
+async def _update_paper_trade_extras(
+    trade_id: int, partial_taken: bool, breakeven_active: bool, running_closes: list[float],
+) -> None:
+    """Update the new v2 columns on a paper trade."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_paper_trades SET
+                partial_taken = $2,
+                breakeven_active = $3,
+                running_closes = $4::jsonb
+            WHERE id = $1
+        """, trade_id, partial_taken, breakeven_active, json.dumps(running_closes))
 
 
 async def _update_paper_trade(trade_id: int, updates: dict) -> None:
@@ -164,7 +211,7 @@ async def _update_paper_trade(trade_id: int, updates: dict) -> None:
 
 async def process_new_alerts(today: date) -> list[dict]:
     """
-    Simulate Day 1 trades for today's EP alerts.
+    Simulate Day 1 trades for today's EP alerts (ORB entry + ATR validation).
     Returns list of trade summaries for reporting.
     """
     alerts = await _get_todays_alerts(today)
@@ -198,6 +245,9 @@ async def process_new_alerts(today: date) -> list[dict]:
             results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
             continue
 
+        # Compute ATR for stop width validation
+        atr_14 = await compute_atr_14(ticker, today)
+
         # Fetch intraday bars and simulate Day 1
         bars = await get_intraday_bars(ticker, today)
         if not bars:
@@ -208,12 +258,13 @@ async def process_new_alerts(today: date) -> list[dict]:
                 "gap_pct": alert.get("gap_pct"),
                 "regime": regime,
                 "status": "skipped", "skip_reason": "no_intraday_data",
+                "atr_14": atr_14,
             })
             logger.warning(f"No intraday data for {ticker} on {today}")
             results.append({"ticker": ticker, "action": "skipped", "reason": "no_intraday_data"})
             continue
 
-        trade = _simulate_day1(ticker, bars, POSITION_SIZE)
+        trade = _simulate_day1(ticker, bars, POSITION_SIZE, atr_14=atr_14)
         if trade is None:
             await _insert_paper_trade({
                 "ticker": ticker, "alert_date": today,
@@ -222,8 +273,25 @@ async def process_new_alerts(today: date) -> list[dict]:
                 "gap_pct": alert.get("gap_pct"),
                 "regime": regime,
                 "status": "skipped", "skip_reason": "no_valid_entry",
+                "atr_14": atr_14,
             })
             results.append({"ticker": ticker, "action": "skipped", "reason": "no_valid_entry"})
+            continue
+
+        # Day 1 sim may return a skipped trade (orb_no_breakout, stop_too_wide)
+        if trade.skipped:
+            await _insert_paper_trade({
+                "ticker": ticker, "alert_date": today,
+                "ep_score": alert["ep_score"],
+                "catalyst_quality": alert.get("catalyst_quality"),
+                "gap_pct": alert.get("gap_pct"),
+                "regime": regime,
+                "status": "skipped", "skip_reason": trade.skip_reason,
+                "orb_high": trade.orb_high, "orb_low": trade.orb_low,
+                "atr_14": atr_14,
+            })
+            logger.info(f"Skipped {ticker}: {trade.skip_reason}")
+            results.append({"ticker": ticker, "action": "skipped", "reason": trade.skip_reason})
             continue
 
         remaining = getattr(trade, "_remaining_shares", 0.0)
@@ -245,6 +313,20 @@ async def process_new_alerts(today: date) -> list[dict]:
         stop = day1_low if day1_low else (last_entry.stop_price if last_entry else None)
         entry_price = last_entry.entry_price if last_entry else None
 
+        # Fetch pre-alert closes for SMA warm-up (stored for Day 2+ updates)
+        pre_closes: list[float] = []
+        try:
+            from_str = (today - timedelta(days=35)).strftime("%Y-%m-%d")
+            to_str = today.strftime("%Y-%m-%d")
+            daily_bars = await get_index_history(ticker, from_str, to_str)
+            pre_closes = [
+                float(b.get("c", b.get("close", 0)))
+                for b in daily_bars
+                if _bar_date(b) <= today and b.get("c", b.get("close", 0))
+            ]
+        except Exception as e:
+            logger.debug(f"Failed to fetch pre-alert closes for {ticker}: {e}")
+
         await _insert_paper_trade({
             "ticker": ticker, "alert_date": today,
             "ep_score": alert["ep_score"],
@@ -259,6 +341,11 @@ async def process_new_alerts(today: date) -> list[dict]:
             "last_entry_price": entry_price,
             "total_pnl": sum(e.pnl for e in trade.exits),
             "hold_days": 0,
+            "orb_high": trade.orb_high,
+            "orb_low": trade.orb_low,
+            "atr_14": atr_14,
+            "day1_low": day1_low,
+            "running_closes": pre_closes,
         })
 
         action = "opened" if remaining > 0 else "closed_day1"
@@ -275,7 +362,7 @@ async def process_new_alerts(today: date) -> list[dict]:
 
 async def update_open_positions(today: date) -> list[dict]:
     """
-    Update trailing stops for open positions using today's daily bar.
+    Update open positions: 10/20 SMA trail + Day 3-5 partial profit.
     Returns list of position updates for reporting.
     """
     open_trades = await _get_open_trades()
@@ -288,9 +375,14 @@ async def update_open_positions(today: date) -> list[dict]:
         ticker = pt["ticker"]
         alert_date = pt["alert_date"]
         remaining = pt["remaining_shares"]
-        stop_price = pt["stop_price"]
         entry_price = pt["last_entry_price"]
+        hard_stop = pt.get("day1_low") or pt["stop_price"]
+        partial_taken = pt.get("partial_taken", False)
+        breakeven_active = pt.get("breakeven_active", False)
         exits = pt["exits"] if isinstance(pt["exits"], list) else json.loads(pt["exits"] or "[]")
+        running_closes = pt.get("running_closes", [])
+        if isinstance(running_closes, str):
+            running_closes = json.loads(running_closes or "[]")
 
         if remaining <= 0:
             continue
@@ -313,13 +405,16 @@ async def update_open_positions(today: date) -> list[dict]:
         bar_close = bar.get("c", 0)
         hold_days = (today - alert_date).days
 
-        if stop_price and bar_low <= stop_price:
-            # Stop hit — close remaining position
-            pnl = (stop_price - entry_price) * remaining if entry_price else 0
+        # Append today's close to running list
+        running_closes.append(float(bar_close))
+
+        # 1. Hard stop check (intraday low breaches hard stop)
+        if hard_stop and bar_low <= hard_stop:
+            pnl = (hard_stop - entry_price) * remaining if entry_price else 0
             exits.append({
                 "time": datetime.combine(today, time(16, 0)).isoformat(),
-                "price": stop_price,
-                "reason": "trailing_stop",
+                "price": hard_stop,
+                "reason": "stop_hit",
                 "shares": remaining,
                 "pnl": pnl,
             })
@@ -334,29 +429,101 @@ async def update_open_positions(today: date) -> list[dict]:
                 "hold_days": hold_days,
                 "closed_at": datetime.utcnow(),
             })
-            logger.info(f"Trailing stop hit: {ticker} @${stop_price:.2f} P&L=${pnl:+,.2f} (total ${total_pnl:+,.2f})")
+            logger.info(f"Hard stop hit: {ticker} @${hard_stop:.2f} P&L=${pnl:+,.2f}")
             results.append({
                 "ticker": ticker, "action": "stopped_out",
-                "stop_price": stop_price, "pnl": pnl,
+                "stop_price": hard_stop, "pnl": pnl,
                 "total_pnl": total_pnl, "hold_days": hold_days,
             })
-        else:
-            # Ratchet stop up (never lower)
-            new_stop = max(stop_price or 0, bar_low)
+            continue
+
+        # 2. Compute SMAs
+        active_sma = None
+        if len(running_closes) >= 20:
+            sma_10 = sum(running_closes[-10:]) / 10
+            sma_20 = sum(running_closes[-20:]) / 20
+            active_sma = sma_10 if sma_10 > sma_20 else sma_20
+        elif len(running_closes) >= 10:
+            active_sma = sum(running_closes[-10:]) / 10
+
+        # 3. Partial profit on Day 3-5
+        if hold_days >= 3 and not partial_taken and entry_price:
+            take_partial = False
+            if hold_days <= 4 and bar_close > entry_price:
+                take_partial = True
+            elif hold_days >= 5:
+                take_partial = True
+
+            if take_partial:
+                partial_shares = remaining / 3
+                remaining -= partial_shares
+                pnl = (bar_close - entry_price) * partial_shares
+                exits.append({
+                    "time": datetime.combine(today, time(16, 0)).isoformat(),
+                    "price": bar_close,
+                    "reason": "partial_profit",
+                    "shares": partial_shares,
+                    "pnl": pnl,
+                })
+                partial_taken = True
+                breakeven_active = True
+                logger.info(f"Partial profit: {ticker} sold {partial_shares:.1f} shares @${bar_close:.2f} P&L=${pnl:+,.2f}")
+
+        # 4. SMA trail check (close-based)
+        effective_stop = hard_stop or 0
+        if active_sma and active_sma > effective_stop:
+            effective_stop = active_sma
+        if breakeven_active and entry_price and entry_price > effective_stop:
+            effective_stop = entry_price
+
+        if bar_close < effective_stop:
+            pnl = (bar_close - entry_price) * remaining if entry_price else 0
+            exits.append({
+                "time": datetime.combine(today, time(16, 0)).isoformat(),
+                "price": bar_close,
+                "reason": "sma_trail_stop",
+                "shares": remaining,
+                "pnl": pnl,
+            })
+            total_pnl = sum(e.get("pnl", 0) for e in exits)
+
             await _update_paper_trade(pt["id"], {
-                "status": "open",
+                "status": "closed",
                 "exits": exits,
-                "remaining_shares": remaining,
-                "stop_price": new_stop,
-                "total_pnl": sum(e.get("pnl", 0) for e in exits),
+                "remaining_shares": 0,
+                "stop_price": None,
+                "total_pnl": total_pnl,
                 "hold_days": hold_days,
+                "closed_at": datetime.utcnow(),
             })
-            logger.debug(f"Updated {ticker}: stop ${stop_price:.2f}→${new_stop:.2f}, day {hold_days}")
+            await _update_paper_trade_extras(pt["id"], partial_taken, breakeven_active, running_closes)
+            logger.info(f"SMA trail stop: {ticker} @${bar_close:.2f} P&L=${pnl:+,.2f}")
             results.append({
-                "ticker": ticker, "action": "updated",
-                "old_stop": stop_price, "new_stop": new_stop,
-                "hold_days": hold_days,
+                "ticker": ticker, "action": "sma_stopped",
+                "stop_price": effective_stop, "pnl": pnl,
+                "total_pnl": total_pnl, "hold_days": hold_days,
             })
+            continue
+
+        # 5. Still open — update state
+        total_pnl = sum(e.get("pnl", 0) for e in exits)
+        await _update_paper_trade(pt["id"], {
+            "status": "open",
+            "exits": exits,
+            "remaining_shares": remaining,
+            "stop_price": effective_stop,
+            "total_pnl": total_pnl,
+            "hold_days": hold_days,
+        })
+        await _update_paper_trade_extras(pt["id"], partial_taken, breakeven_active, running_closes)
+
+        logger.debug(f"Updated {ticker}: eff_stop=${effective_stop:.2f}, day {hold_days}, sma={active_sma}")
+        results.append({
+            "ticker": ticker, "action": "updated",
+            "effective_stop": effective_stop,
+            "hold_days": hold_days,
+            "partial_taken": partial_taken,
+        })
 
     return results
 

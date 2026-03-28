@@ -74,7 +74,7 @@ balance between noise (1-min) and missed entries (60-min).
 
 - If stopped out intraday, re-enter when a bar's high breaks above ORB High
 - **Stop stays at ORB Low** for all attempts (consistent with "lows of the day")
-- Maximum 3 entry attempts per day
+- Maximum 2 entry attempts per day (1 initial + 1 re-entry)
 - If ORH never broken → skip (`orb_no_breakout`)
 
 ### B3. Day 1 EOD

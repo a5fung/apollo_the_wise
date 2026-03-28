@@ -19,7 +19,7 @@ from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
 
-MAX_ENTRY_ATTEMPTS = 3
+MAX_ENTRY_ATTEMPTS = 2
 
 
 def _simulate_day1(
