@@ -246,7 +246,7 @@ async def process_new_alerts(today: date) -> list[dict]:
             continue
 
         # Compute ATR for stop width validation
-        atr_14 = await compute_atr_14(ticker, today)
+        atr_14, _atr_pct = await compute_atr_14(ticker, today)
 
         # Fetch intraday bars and simulate Day 1
         bars = await get_intraday_bars(ticker, today)

@@ -27,6 +27,7 @@ def _simulate_day1(
     bars: list[dict],
     position_size: float,
     atr_14: float | None = None,
+    atr_pct: float | None = None,
 ) -> BacktestTrade | None:
     """
     Simulate Day 1 intraday trading on 5-min bars (ORB entry).
@@ -49,9 +50,12 @@ def _simulate_day1(
     if orb_high <= 0 or orb_low <= 0:
         return None
 
-    # ATR stop width validation: skip if ORB range too wide
-    orb_range = orb_high - orb_low
-    if atr_14 and orb_range > 1.5 * atr_14:
+    # ATR stop width validation (percentage-based per Qullamaggie)
+    # risk_pct = distance from entry to stop as % of entry
+    # atr_pct = ATR as % of pre-gap close (passed in from compute_atr_14)
+    # Qullamaggie: "stop no more than 1x, max 1.5x ADR/ATR"
+    risk_pct = (orb_high - orb_low) / orb_high if orb_high > 0 else 0
+    if atr_pct and atr_pct > 0 and risk_pct > 1.5 * (atr_pct / 100):
         alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
         trade = BacktestTrade(
             ticker=ticker, alert_date=alert_date,
@@ -313,7 +317,7 @@ async def simulate_trade(
     Full trade simulation: Day 1 ORB intraday + Day 2+ SMA trailing stop.
     """
     # Compute ATR before Day 1 for stop width validation
-    atr_14 = await compute_atr_14(ticker, alert_date)
+    atr_14, atr_pct = await compute_atr_14(ticker, alert_date)
 
     # Fetch Day 1 intraday bars
     bars = await get_intraday_bars(ticker, alert_date)
@@ -331,7 +335,7 @@ async def simulate_trade(
         return trade
 
     # Day 1 simulation (ORB entry with ATR validation)
-    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14)
+    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14, atr_pct=atr_pct)
     if trade is None:
         return BacktestTrade(
             ticker=ticker, alert_date=alert_date,
