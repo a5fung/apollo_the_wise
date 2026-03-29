@@ -532,6 +532,34 @@ async def _stop_ep_scanning():
     logger.info("EP scanning deactivated")
 
 
+async def _ep_scan_watchdog():
+    """Run at 10:05 AM ET. Alert if no EP scan ran today — catches silent failures."""
+    from agents.market_intelligence.collector import _ET
+    now = datetime.now(_ET)
+    if now.weekday() >= 5:
+        return
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            count = await conn.fetchval(
+                "SELECT COUNT(*) FROM mi_ep_alerts WHERE alert_date = $1",
+                now.date(),
+            )
+        if count == 0:
+            logger.warning("EP scan watchdog: NO alerts generated today!")
+            await send_telegram_message(
+                "⚠️ *EP Scan Watchdog*\n"
+                "No EP scan ran today. The scanner may have failed or "
+                "the container restarted after the scan window.\n"
+                "Run manually: tell Apollo \"run EP scan\""
+            )
+        else:
+            logger.info(f"EP scan watchdog: {count} alerts today — OK")
+    except Exception as e:
+        logger.error(f"EP scan watchdog failed: {e}")
+
+
 async def check_missed_jobs() -> None:
     """
     On startup, send any briefings that were missed while the machine was off.
@@ -551,6 +579,14 @@ async def check_missed_jobs() -> None:
         return
 
     hour = now.hour
+
+    # EP scanning: if we start inside the 7:00–10:00 AM window, activate immediately
+    if 7 <= hour < 10:
+        global _ep_scan_active
+        if not _ep_scan_active:
+            _ep_scan_active = True
+            logger.info("Catch-up: activated EP scanning (started inside scan window)")
+            await send_telegram_message("_(Container restarted during EP scan window — scanning activated)_")
 
     # Morning briefing: 9 AM – noon ET
     if 9 <= hour < 12:
@@ -636,6 +672,14 @@ def start_scheduler() -> AsyncIOScheduler:
         _stop_ep_scanning,
         CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_stop",
+        replace_existing=True,
+    )
+
+    # EP scan watchdog: 10:05 AM ET — alert if no scan ran today
+    _scheduler.add_job(
+        _ep_scan_watchdog,
+        CronTrigger(hour=10, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
+        id="ep_scan_watchdog",
         replace_existing=True,
     )
 
