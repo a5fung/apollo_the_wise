@@ -47,6 +47,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
     Returns (ok, reason) — reason is None if ok.
     """
     if not LIVE_TRADING_ENABLED:
+        logger.debug("Safeguard: live trading disabled")
         return False, "live_trading_disabled"
 
     pool = await get_pool()
@@ -57,13 +58,15 @@ async def _check_safeguards() -> tuple[bool, str | None]:
             WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
         """)
         if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
+            logger.info(f"Safeguard blocked: max positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})")
             return False, f"max_positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})"
 
         # Daily loss limit
         try:
             account = await alpaca.get_account()
             equity = account["equity"]
-        except Exception:
+        except Exception as e:
+            logger.error(f"Safeguard: cannot get account equity: {e}")
             return False, "cannot_get_account"
 
         today = et_today()
@@ -74,6 +77,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         """, today)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
+            logger.info(f"Safeguard blocked: daily loss limit (${today_losses:+,.0f} >= ${daily_limit:.0f})")
             return False, f"daily_loss_limit (${today_losses:+,.0f} >= ${daily_limit:.0f})"
 
         # Circuit breaker: N consecutive losses
@@ -86,6 +90,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         if len(recent_closed) >= CIRCUIT_BREAKER_CONSEC_LOSSES:
             all_losses = all(r["total_pnl"] <= 0 for r in recent_closed)
             if all_losses:
+                logger.info(f"Safeguard blocked: circuit breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)")
                 return False, f"circuit_breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)"
 
     return True, None
@@ -128,6 +133,8 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
     if not alerts:
         logger.info("No HIGH EP alerts today for live trading")
         return []
+
+    logger.info(f"ORB monitor: {len(alerts)} HIGH EP alerts to process: {[a['ticker'] for a in alerts]}")
 
     # Get regime
     async with pool.acquire() as conn:
@@ -215,6 +222,7 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
 
         if is_paper:
             # Auto-confirm — no user interaction needed for paper trading
+            logger.info(f"Paper auto-confirm: {ticker} (trade_id={trade_id})")
             from agents.market_intelligence.broker.order_manager import submit_entry
             async with pool.acquire() as conn:
                 await conn.execute("""
@@ -272,6 +280,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         logger.info("No open live positions to update")
         return []
 
+    logger.info(f"Updating {len(open_trades)} open live positions: {[dict(t)['ticker'] for t in open_trades]}")
     results = []
 
     for trade in open_trades:
@@ -307,6 +316,11 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
         # Append today's close
         running_closes.append(float(bar_close))
+
+        logger.info(
+            f"Processing {ticker}: day={hold_days} close=${bar_close:.2f} low=${bar_low:.2f} "
+            f"stop=${hard_stop:.2f} shares={remaining:.0f} partial={partial_taken}"
+        )
 
         # 1. Hard stop check — Alpaca's stop order should catch this,
         #    but verify and update DB if it triggered
@@ -373,6 +387,11 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             effective_stop = active_sma
         if breakeven_active and entry_price and entry_price > effective_stop:
             effective_stop = entry_price
+
+        logger.info(
+            f"{ticker}: effective_stop=${effective_stop:.2f} "
+            f"(hard=${hard_stop or 0:.2f} sma={active_sma or 0:.2f} be={'yes' if breakeven_active else 'no'})"
+        )
 
         # 5. SMA trail check (close-based)
         if bar_close < effective_stop and remaining > 0:
@@ -518,7 +537,8 @@ async def send_live_trade_summary() -> None:
                 pos = await alpaca.get_position(ticker)
                 current = pos["current_price"] if pos else None
                 unrealized = pos["unrealized_pl"] if pos else 0
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Could not get position for {ticker} in summary: {e}")
                 current = None
                 unrealized = 0
 
@@ -541,8 +561,8 @@ async def send_live_trade_summary() -> None:
         account = await alpaca.get_account()
         equity = account["equity"]
         lines.append(f"*Account:* ${equity:,.0f}")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Could not get account equity for summary: {e}")
 
     if closed_count > 0:
         lines.append(

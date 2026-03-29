@@ -49,8 +49,8 @@ async def prepare_orb_order(
     try:
         account = await alpaca.get_account()
         equity = account["equity"]
-    except Exception:
-        logger.error("Cannot get account equity, aborting order prep")
+    except Exception as e:
+        logger.error(f"Cannot get account equity for {alert['ticker']}, aborting order prep: {e}")
         return None
 
     # Position sizing: 1% risk, halved if QQQ EMA bearish
@@ -72,13 +72,14 @@ async def prepare_orb_order(
         shares = math.floor(max_position / orb_high)
 
     if shares <= 0:
+        logger.warning(f"{alert['ticker']}: 0 shares after max-position cap (max=${max_position:.0f}, price=${orb_high:.2f})")
         return None
 
     position_size = shares * orb_high
     # Limit price: ORB high + 0.1% slippage buffer
     limit_price = round(orb_high * 1.001, 2)
 
-    return {
+    spec = {
         "ticker": alert["ticker"],
         "entry_price": orb_high,
         "limit_price": limit_price,
@@ -96,6 +97,12 @@ async def prepare_orb_order(
         "gap_pct": alert.get("gap_pct"),
         "regime": regime_record.get("regime") if regime_record else None,
     }
+    logger.info(
+        f"Order spec: {alert['ticker']} entry=${orb_high:.2f} stop=${orb_low:.2f} "
+        f"shares={shares} risk=${risk_dollars:.2f} position=${position_size:.2f} "
+        f"risk_pct={risk_pct:.2%} equity=${equity:.0f}"
+    )
+    return spec
 
 
 # ── Order Submission ─────────────────────────────────────────────────────────
@@ -217,8 +224,8 @@ async def check_fills() -> list[dict]:
                 logger.info(f"Partial fill too small for {ticker}: {filled_qty} shares, closing")
                 try:
                     await alpaca.close_position(ticker)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Failed to close partial fill for {ticker}: {e}")
                 await _update_trade_status(trade["id"], "closed", skip_reason="partial_fill_too_small")
                 results.append({"ticker": ticker, "action": "partial_cancelled"})
                 continue
@@ -281,6 +288,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
         )
     if not trade or not trade["remaining_shares"]:
+        logger.warning(f"update_stop: trade {trade_id} not found or no remaining shares")
         return False
 
     ticker = trade["ticker"]
@@ -288,7 +296,9 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
 
     # Cancel existing stop
     if old_stop_id:
-        await alpaca.cancel_order(old_stop_id)
+        cancelled = await alpaca.cancel_order(old_stop_id)
+        if not cancelled:
+            logger.warning(f"Could not cancel old stop {old_stop_id} for {ticker} — may already be filled/cancelled")
 
     # Place new stop
     try:
@@ -350,9 +360,11 @@ async def execute_partial_exit(trade_id: int, shares: float) -> bool:
             "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
         )
     if not trade:
+        logger.warning(f"execute_partial_exit: trade {trade_id} not found")
         return False
 
     ticker = trade["ticker"]
+    logger.info(f"Partial exit: {ticker} selling {shares:.0f} shares (trade_id={trade_id})")
     try:
         order = await alpaca.place_market_sell(ticker, shares)
     except Exception as e:
@@ -408,13 +420,16 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
         )
     if not trade or trade["remaining_shares"] <= 0:
+        logger.warning(f"execute_full_exit: trade {trade_id} not found or no remaining shares")
         return False
 
     ticker = trade["ticker"]
+    logger.info(f"Full exit: {ticker} reason={reason} shares={trade['remaining_shares']:.0f} (trade_id={trade_id})")
 
     # Cancel stop order first
     if trade.get("stop_order_id"):
-        await alpaca.cancel_order(trade["stop_order_id"])
+        cancelled = await alpaca.cancel_order(trade["stop_order_id"])
+        logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
 
     try:
         order = await alpaca.close_position(ticker)
@@ -473,12 +488,15 @@ async def cancel_unfilled_entries() -> int:
         """)
 
     cancelled = 0
+    logger.info(f"EOD cleanup: {len(pending)} unfilled entries to cancel")
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
             await _update_trade_status(trade["id"], "cancelled", skip_reason="eod_unfilled")
             cancelled += 1
-            logger.info(f"EOD cancel: {trade['ticker']}")
+            logger.info(f"EOD cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
+        else:
+            logger.warning(f"EOD cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
 
     if cancelled:
         await send_telegram_message(f"🕓 EOD: cancelled {cancelled} unfilled order(s)")
@@ -490,8 +508,10 @@ async def sync_positions() -> list[str]:
     Reconcile DB vs Alpaca positions. Alpaca is source of truth.
     Returns list of discrepancy messages.
     """
+    logger.info("Position sync starting...")
     alpaca_positions = await alpaca.get_all_positions()
     alpaca_map = {p["symbol"]: p for p in alpaca_positions}
+    logger.info(f"Position sync: {len(alpaca_positions)} Alpaca positions")
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -551,6 +571,7 @@ async def sync_positions() -> list[str]:
 
 
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:
+    logger.info(f"Trade {trade_id} → status={status}" + (f" reason={skip_reason}" if skip_reason else ""))
     pool = await get_pool()
     async with pool.acquire() as conn:
         if skip_reason:

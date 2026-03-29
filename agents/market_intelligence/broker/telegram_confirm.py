@@ -96,8 +96,11 @@ async def handle_callback(callback_data: str, user_id: int | None = None) -> dic
         CONFIRMATION_TIMEOUT_SEC,
     )
 
+    logger.info(f"Callback received: {callback_data} user_id={user_id}")
+
     # Kill switch check
     if not LIVE_TRADING_ENABLED:
+        logger.warning("Callback rejected: live trading disabled")
         return {"error": "live trading is disabled"}
 
     # Validate callback format
@@ -136,7 +139,7 @@ async def handle_callback(callback_data: str, user_id: int | None = None) -> dic
             """, trade_id)
 
         if not trade:
-            # Either doesn't exist or already confirmed/skipped/expired
+            logger.warning(f"Trade {trade_id} not available for confirmation (already processed or not found)")
             return {"error": "trade not available (already processed or not found)"}
 
         # Timeout check: reject if proposal is stale
@@ -160,8 +163,10 @@ async def handle_callback(callback_data: str, user_id: int | None = None) -> dic
         order = await submit_entry(trade_id)
 
         if order:
+            logger.info(f"Trade {trade_id} confirmed → order_id={order['id']}")
             return {"action": "confirmed", "trade_id": trade_id, "order_id": order["id"]}
         else:
+            logger.error(f"Trade {trade_id} confirmed but order submission failed")
             return {"action": "confirmed_but_order_failed", "trade_id": trade_id}
 
     elif action == "trade_skip":
@@ -178,6 +183,7 @@ async def handle_callback(callback_data: str, user_id: int | None = None) -> dic
             ticker_row = await conn.fetchval(
                 "SELECT ticker FROM mi_live_trades WHERE id = $1", trade_id,
             )
+        logger.info(f"Trade {trade_id} ({ticker_row}) skipped by user")
         await send_telegram_message(f"⏭ Skipped trade: {ticker_row or trade_id}")
         return {"action": "skipped", "trade_id": trade_id}
 

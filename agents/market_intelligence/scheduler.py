@@ -388,8 +388,11 @@ async def _morning_briefing_job():
 
 async def _ep_scan_job():
     """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps; HIGH alerts sent immediately."""
+    logger.info("EP scan starting...")
     try:
         eps = await run_ep_scan()
+        high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
+        logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
         # Dedup: only alert tickers we haven't already alerted today
         from agents.market_intelligence.collector import et_today
         today = et_today()
@@ -408,7 +411,9 @@ async def _ep_scan_job():
                 already_alerted.add(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
     except Exception as e:
-        logger.error(f"EP scan failed: {e}")
+        import traceback
+        logger.error(f"EP scan failed: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("ep_scan", str(e))
 
 
 async def _paper_trade_tracker_job():
@@ -453,7 +458,8 @@ async def _check_fills_job():
         if results:
             logger.info(f"Fill check: {len(results)} updates")
     except Exception as e:
-        logger.error(f"Fill check failed: {e}")
+        import traceback
+        logger.error(f"Fill check failed: {e}\n{traceback.format_exc()}")
 
 
 async def _morning_stop_refresh_job():

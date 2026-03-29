@@ -469,7 +469,7 @@ class TelegramChannel:
             "🔍 Web search · Summarization\n"
             "✈️ Travel · Flights · Hotels · Amex perks\n"
             "\n"
-            "/agents · /status · /spend · /rules · /setup · /memory"
+            "/agents · /status · /spend · /trades · /rules · /setup"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -824,19 +824,23 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        user_id = update.effective_user.id
-        from core.memory import search_memories
-        memories = await search_memories(user_id, limit=20)
+        try:
+            user_id = update.effective_user.id
+            from core.memory import search_memories
+            memories = await search_memories(user_id, limit=20)
 
-        if not memories:
-            await update.message.reply_text("No memories stored yet.")
-            return
+            if not memories:
+                await update.message.reply_text("No memories stored yet.")
+                return
 
-        lines = ["**Your memories**\n"]
-        for m in memories:
-            lines.append(f"[{m.category}] {m.content}")
+            lines = ["**Your memories**\n"]
+            for m in memories:
+                lines.append(f"[{m.category}] {m.content}")
 
-        await update.message.reply_text("\n".join(lines))
+            await update.message.reply_text("\n".join(lines))
+        except Exception as e:
+            logger.error(f"/memory command failed: {e}")
+            await update.message.reply_text(f"Error loading memories: {e}")
 
     async def _handle_audit(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -845,21 +849,10 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        user_id = update.effective_user.id
-        from shared.audit import read_audit_log
-        entries = read_audit_log(limit=10, user_id=user_id)
-
-        if not entries:
-            await update.message.reply_text("No audit log entries yet.")
-            return
-
-        lines = ["**Recent actions**\n"]
-        for e in entries:
-            ts = e.timestamp.strftime("%m/%d %H:%M")
-            confirmed = " ✅" if e.confirmed_by_user else ""
-            lines.append(f"`{ts}` [{e.agent.value}] {e.action}{confirmed}")
-
-        await update.message.reply_text("\n".join(lines))
+        await update.message.reply_text(
+            "The /audit command has been retired.\n"
+            "Use /trades for trading activity or check Docker logs for system events."
+        )
 
     async def _handle_spend(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1044,8 +1037,6 @@ class TelegramChannel:
         app.add_handler(CommandHandler("agents", self._handle_agents))
         app.add_handler(CommandHandler("setup", self._handle_setup))
         app.add_handler(CommandHandler("status", self._handle_status))
-        app.add_handler(CommandHandler("memory", self._handle_memory))
-        app.add_handler(CommandHandler("audit", self._handle_audit))
         app.add_handler(CommandHandler("spend", self._handle_spend))
         app.add_handler(CommandHandler("rules", self._handle_rules))
         app.add_handler(CommandHandler("trades", self._handle_trades))
@@ -1075,12 +1066,10 @@ class TelegramChannel:
             BotCommand("help",   "Capabilities & command reference"),
             BotCommand("agents", "Live status of all sub-agents"),
             BotCommand("status", "System health (DB, Redis, agents)"),
-            BotCommand("setup",  "Change assistant name or personality"),
-            BotCommand("memory", "View what I remember about you"),
+            BotCommand("trades", "Paper & live trade positions + P&L"),
             BotCommand("spend",  "API spend today & this month"),
-            BotCommand("audit",  "Recent action log"),
             BotCommand("rules",  "EP trading rules (Qullamaggie v2)"),
-            BotCommand("trades", "Paper trade positions & P&L"),
+            BotCommand("setup",  "Change assistant name or personality"),
             BotCommand("start",  "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)

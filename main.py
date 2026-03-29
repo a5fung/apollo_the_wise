@@ -107,8 +107,9 @@ async def lifespan(app: FastAPI):
         # Polling mode — no domain/SSL needed
         import asyncio
         await tg_app.bot.delete_webhook()
-        await tg_app.updater.start_polling(allowed_updates=["message"])
+        await tg_app.updater.start_polling(allowed_updates=["message", "callback_query"])
         logger.info("Telegram running in polling mode (no WEBHOOK_BASE_URL set)")
+        await _telegram_channel._register_commands()
 
     logger.info("Apollo ready")
 
