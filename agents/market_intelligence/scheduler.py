@@ -54,7 +54,7 @@ JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 
 _scheduler: AsyncIOScheduler | None = None
-_ep_scan_active = False
+_ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
 
 
 async def _nightly_data_pull():
@@ -388,8 +388,6 @@ async def _morning_briefing_job():
 
 async def _ep_scan_job():
     """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps; HIGH alerts sent immediately."""
-    if not _ep_scan_active:
-        return
     try:
         eps = await run_ep_scan()
         # Dedup: only alert tickers we haven't already alerted today
@@ -521,15 +519,13 @@ async def _weekly_cleanup():
 
 
 async def _start_ep_scanning():
-    global _ep_scan_active
-    _ep_scan_active = True
-    logger.info("EP scanning activated")
+    """Kept for /status display. Scanning is controlled by cron window, not this flag."""
+    logger.info("EP scan window open (7:00 AM ET)")
 
 
 async def _stop_ep_scanning():
-    global _ep_scan_active
-    _ep_scan_active = False
-    logger.info("EP scanning deactivated")
+    """Kept for /status display. Scanning is controlled by cron window, not this flag."""
+    logger.info("EP scan window closed (10:00 AM ET)")
 
 
 async def _ep_scan_watchdog():
@@ -579,14 +575,6 @@ async def check_missed_jobs() -> None:
         return
 
     hour = now.hour
-
-    # EP scanning: if we start inside the 7:00–10:00 AM window, activate immediately
-    if 7 <= hour < 10:
-        global _ep_scan_active
-        if not _ep_scan_active:
-            _ep_scan_active = True
-            logger.info("Catch-up: activated EP scanning (started inside scan window)")
-            await send_telegram_message("_(Container restarted during EP scan window — scanning activated)_")
 
     # Morning briefing: 9 AM – noon ET
     if 9 <= hour < 12:
@@ -764,8 +752,12 @@ def get_scheduler_status() -> dict:
                     "id": job_id,
                     "next_run": job.next_run_time.isoformat(),
                 })
+    # EP scan window is 7-10 AM ET, controlled by cron (not a flag)
+    from agents.market_intelligence.collector import _ET
+    now_et = datetime.now(_ET)
+    in_scan_window = 7 <= now_et.hour < 10 and now_et.weekday() < 5
     return {
-        "ep_scan_active": _ep_scan_active,
+        "ep_scan_active": in_scan_window,
         "scheduler_running": scheduler_running,
         "next_jobs": next_jobs,
     }
