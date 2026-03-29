@@ -33,6 +33,22 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 - **6:00 AM PT (9 AM ET)** — Morning briefing: EP recap + regime context, 30 min before open.
 - HIGH EP alerts fire in real-time during pre-market scan (4–6:30 AM PT). No waiting for briefing.
 
+### Paper Trading (Alpaca)
+
+Apollo runs semi-automated paper trading via Alpaca to validate EP signals with real market execution.
+
+| Feature | How it works |
+|---|---|
+| ORB entry | 9:31 AM — fetches first 1-min bar, places bracket order (stop-limit buy at ORB high + stop-loss at ORB low) |
+| Auto-confirm | Paper mode bypasses Telegram confirmation — trades execute automatically |
+| Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
+| Position tracking | `/trades` command — open positions with P&L, recent closed, win rate, totals |
+| Safeguards | Max 4 positions, 2% daily loss limit, 3-loss circuit breaker |
+| Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions |
+| EOD cleanup | 4:05 PM — cancel unfilled entries, sync positions with Alpaca |
+
+**Status:** Paper trading live on Alpaca paper account ($100K). Collecting data to validate before real money.
+
 ### General capabilities
 
 - **Finance** — IBKR portfolio/P&L (read-only), TradingView price alerts pushed to Telegram
@@ -57,7 +73,8 @@ Apollo Orchestrator (port 8000)     ← Claude Sonnet — plans, reasons, delega
 │                                                                 │
 │  Market Intelligence :8006    Finance Agent :8001               │
 │  RS engine, EP detection,     IBKR read-only,                   │
-│  theme clustering, regime     TradingView webhooks              │
+│  theme clustering, regime,    TradingView webhooks              │
+│  Alpaca paper trading                                           │
 │                                                                 │
 │  Calendar Agent :8002         Research Agent :8003              │
 │  Google + iCloud CalDAV       Tavily web search                 │
@@ -178,11 +195,15 @@ When you spot something the system isn't tracking:
 
 | Time (ET) | Time (PT) | What |
 |---|---|---|
-| 4:30 PM | 1:30 PM | Data pull — RS engine + regime + themes (right after close) |
-| 8:00 PM | 5:00 PM | Evening briefing → Telegram |
 | 7:00 AM | 4:00 AM | EP scan starts; HIGH alerts fire in real-time |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
-| 9:35 AM | 6:35 AM | EP scan stops |
+| 9:31 AM | 6:31 AM | ORB monitor — fetch first bar, send trade proposals |
+| 9:35 AM | 6:35 AM | EP scan stops; morning stop refresh for Day 2+ positions |
+| 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
+| 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
+| 4:30 PM | 1:30 PM | Data pull — RS engine + regime + themes (right after close) |
+| 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
+| 8:00 PM | 5:00 PM | Evening briefing → Telegram |
 
 ---
 
@@ -195,6 +216,7 @@ When you spot something the system isn't tracking:
 | Tavily | EP catalyst news search, theme confirmation | Free/Pro |
 | Anthropic | Orchestrator, catalyst classification, theme clustering | Pay-per-use |
 | Gemini | EP catalyst cross-validation | Free (gemini-1.5-flash-8b) |
+| Alpaca | Paper/live trading, real-time market data (ORB bars) | Free (paper) |
 | Telegram | Bot delivery | Free |
 
 ---
@@ -229,7 +251,14 @@ Apollo_Assistant/
 │       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
 │       ├── screener.py              # Composite screener (RS + theme + fundamentals)
 │       ├── universe.py              # Curated universe with company descriptions
-│       └── backtest_ep.py           # EP backtest against historical dates
+│       ├── backtester/
+│       │   ├── backtest_ep.py       # Historical EP backtester
+│       │   └── tracker.py           # Paper trade tracker (EOD simulation)
+│       └── broker/
+│           ├── alpaca_client.py     # Async Alpaca SDK wrapper (paper + live)
+│           ├── order_manager.py     # Order lifecycle (entry, stops, partials, exits)
+│           ├── live_tracker.py      # Real-time ORB monitor + Day 2+ management
+│           └── telegram_confirm.py  # Inline keyboard trade proposals
 ├── docker/
 │   ├── docker-compose.yml           # Local dev
 │   ├── docker-compose.prod.yml      # Production (all services + Uptime Kuma)
@@ -268,6 +297,9 @@ bash start_market.sh
 - `POLYGON_API_KEY`
 - `GEMINI_API_KEY`
 - `TAVILY_API_KEY`
+- `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — from Alpaca dashboard
+- `ALPACA_PAPER=true` — paper trading mode (default safe)
+- `LIVE_TRADING_ENABLED=false` — master kill switch
 - `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `INTERNAL_API_SECRET`
 
 ---
@@ -294,6 +326,9 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 |---|---|
 | Telegram access | Allowlist — only configured user IDs can interact |
 | IBKR | Read-only API — no trade execution implemented |
+| Alpaca trading | Master kill switch (`LIVE_TRADING_ENABLED`), paper/live toggle (`ALPACA_PAPER`), confirmation timeout (5 min), atomic status transitions prevent duplicate orders |
+| Trade data integrity | DB DELETE triggers block accidental deletion on trade tables; startup row count logging detects data loss |
+| Account info | Account equity never shown in Telegram messages (% of account only) |
 | Irreversible actions | YES/NO confirmation gate before execution |
 | Sub-agent isolation | Each container has only its own secrets |
 | TradingView webhooks | Verified via shared secret header |
