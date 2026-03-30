@@ -16,7 +16,7 @@ import logging
 import re
 import os
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -955,6 +955,85 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
     return clean
 
 
+def _format_earnings_calendar(
+    fundamental_flags: dict[str, dict],
+    themes: list[dict] | None,
+    rs_scores: dict[str, dict],
+    today: date,
+) -> str | None:
+    """Format earnings-this-week section for morning briefing.
+
+    Returns formatted text block or None if no earnings this week.
+    """
+    # Determine Mon–Fri of current week
+    weekday = today.weekday()  # 0=Mon
+    week_start = today - timedelta(days=weekday)
+    week_end = week_start + timedelta(days=4)
+
+    # Build ticker → theme name map from themes data
+    ticker_theme: dict[str, str] = {}
+    for t in (themes or []):
+        for tk in (t.get("tickers") or []):
+            if tk not in ticker_theme:
+                ticker_theme[tk] = t.get("name", "")
+
+    # Filter tickers with earnings this week
+    earnings: list[dict] = []
+    for ticker, flags in fundamental_flags.items():
+        ed = flags.get("next_earnings_date")
+        if ed is None:
+            continue
+        if isinstance(ed, str):
+            try:
+                ed = date.fromisoformat(ed)
+            except (ValueError, TypeError):
+                continue
+        if week_start <= ed <= week_end:
+            rs = rs_scores.get(ticker, {})
+            rs_comp = rs.get("rs_composite")
+            earnings.append({
+                "ticker": ticker,
+                "date": ed,
+                "rs": round(rs_comp) if rs_comp is not None else None,
+                "theme": ticker_theme.get(ticker, ""),
+            })
+
+    if not earnings:
+        return None
+
+    # Sort by date, then RS descending
+    earnings.sort(key=lambda e: (e["date"], -(e["rs"] or 0)))
+
+    # Group by date
+    DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    by_date: dict[date, list[dict]] = {}
+    for e in earnings:
+        by_date.setdefault(e["date"], []).append(e)
+
+    lines = ["📅 *EARNINGS THIS WEEK*"]
+    for d in sorted(by_date):
+        entries = by_date[d]
+        parts = []
+        for e in entries:
+            label = e["ticker"]
+            if e["rs"] is not None:
+                label += f" (RS {e['rs']}"
+                if e["theme"]:
+                    label += f", {e['theme']}"
+                label += ")"
+            elif e["theme"]:
+                label += f" ({e['theme']})"
+            parts.append(label)
+
+        ticker_str = " · ".join(parts)
+        if d == today:
+            lines.append(f"  ⚠️ TODAY: {ticker_str}")
+        else:
+            lines.append(f"  {DAY_NAMES[d.weekday()]}: {ticker_str}")
+
+    return "\n".join(lines)
+
+
 def _format_morning_briefing(
     regime: dict,
     ep_alerts: list[dict],
@@ -964,6 +1043,7 @@ def _format_morning_briefing(
     overnight_section: str | None = None,
     econ_calendar: str | None = None,
     quality_warnings: list[str] | None = None,
+    earnings_calendar: str | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1001,6 +1081,11 @@ def _format_morning_briefing(
     if econ_calendar:
         sections.append("")
         sections.append(f"*CALENDAR*\n{econ_calendar}")
+
+    # Earnings this week
+    if earnings_calendar:
+        sections.append("")
+        sections.append(earnings_calendar)
 
     # Build ticker → theme stage map for composite sort (keep strongest stage per ticker)
     theme_stage_by_ticker: dict[str, str] = {}
@@ -1040,15 +1125,25 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     today_str = today.strftime("%Y-%m-%d")
     cache = _perplexity_cache.get(today_str, {})
 
-    regime, ep_alerts, futures, themes, watchlist, warnings = await asyncio.gather(
+    regime, ep_alerts, futures, themes, watchlist, warnings, fund_flags = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_futures(),
         get_today_themes(today_str),
         get_overnight_watchlist(),
         get_quality_warnings(today),
+        get_fundamental_flags(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
+
+    # Earnings calendar — get RS scores for tickers with earnings data
+    earnings_calendar_text = None
+    if fund_flags:
+        earnings_tickers = list(fund_flags.keys())
+        rs_scores = await get_rs_for_tickers(today_str, earnings_tickers)
+        earnings_calendar_text = _format_earnings_calendar(
+            fund_flags, themes, rs_scores, today,
+        )
 
     # Economic calendar — use cache if available
     if "econ_calendar" in cache:
@@ -1094,6 +1189,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         overnight_section=overnight_section,
         econ_calendar=econ_calendar,
         quality_warnings=warnings,
+        earnings_calendar=earnings_calendar_text,
     )
 
     success = await send_telegram_message(text, chat_id)
