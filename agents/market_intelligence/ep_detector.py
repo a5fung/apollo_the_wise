@@ -4,9 +4,15 @@ EP (Episodic Pivot) Detector.
 Scans pre-market for gap-up stocks and scores them using the MAGNA53 model
 (Pradeep Bonde / Kullamägi methodology).
 
-EP hard filters:
+Hard filters (applied BEFORE scoring — stocks that fail never reach the DB or briefing):
 - Gap ≥ 8% vs previous close
-- Relative volume ≥ 2x ADV in first 15-20 min
+- Previous close ≥ $5, previous day volume ≥ 50K shares
+- Relative volume ≥ 2x ADV, pre-market volume ≥ 25K shares
+- Pre-trade quality: ADV dollar volume ≥ $1M, ATR% ≤ 15%, market cap ≥ $500M
+  (same check_filters used by backtester/tracker — single source of truth)
+- Extension: skip if already up ≥ 50% in last 5 trading days
+- Cooldown: skip if this ticker had an EP alert in last 60 days
+- No M&A/buyout catalysts
 
 MAGNA53 scoring (0-100):
 - Gap magnitude:     20%+ = 25pts, 15%+ = 20pts, 10%+ = 15pts, 8-9% = 10pts
@@ -45,6 +51,7 @@ from agents.market_intelligence.collector import (
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool
+from agents.market_intelligence.backtester.filters import check_filters
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +63,9 @@ MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
 MIN_PREV_DAY_VOLUME = 50_000   # Skip illiquid stocks — stale quotes create phantom gaps
 
-# Auto-disqualifiers
-MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ before the gap
-EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP in last 60 days
+# Auto-disqualifiers (hard filters — applied before scoring)
+MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ in last 5 trading days before the gap
+EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP alert in last 60 days
 
 # Leveraged/inverse ETFs and broad ETFs — never real EPs
 _SKIP_TICKERS = SKIP_TICKERS
@@ -463,6 +470,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 c["rel_volume"] = round(c["today_volume"] / computed_adv, 2) if computed_adv > 0 else None
                 logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
 
+    # Batch-fetch 5-day-ago closes for extension check (already up 50%+ before today's gap)
+    extension_map: dict[str, float] = {}
+    try:
+        target_5d = today - timedelta(days=8)  # ~5 trading days
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (ticker) ticker, close
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1) AND trade_date <= $2 AND trade_date >= $3
+                ORDER BY ticker, trade_date DESC
+            """, candidate_tickers, target_5d, target_5d - timedelta(days=7))
+        extension_map = {r["ticker"]: float(r["close"]) for r in rows}
+    except Exception as e:
+        logger.warning(f"Failed to fetch 5-day closes for extension check: {e}")
+
+    # Batch-fetch recent EP alerts for cooldown check (same ticker in last 60 days)
+    cooldown_tickers: set[str] = set()
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ticker FROM mi_ep_alerts
+                WHERE ticker = ANY($1) AND alert_date >= $2 AND alert_date < $3
+            """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
+        cooldown_tickers = {r["ticker"] for r in rows}
+    except Exception as e:
+        logger.warning(f"Failed to fetch EP cooldown data: {e}")
+
     # Score each candidate (rate-limited FMP calls)
     results = []
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
@@ -477,6 +511,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Hard filter: absolute pre-market volume (filters micro-float noise)
         if c["today_volume"] < MIN_PREMARKET_SHARES:
             logger.debug(f"Skip {ticker}: pre-market volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares")
+            continue
+
+        # Hard filter: EP cooldown — don't re-alert same ticker within 60 days
+        if ticker in cooldown_tickers:
+            logger.info(f"Skip {ticker}: EP alert within last {EP_COOLDOWN_DAYS} days (cooldown)")
+            continue
+
+        # Hard filter: extension — skip if already up 50%+ before today's gap
+        close_5d_ago = extension_map.get(ticker)
+        if close_5d_ago and close_5d_ago > 0 and c["prev_close"]:
+            extension_pct = (c["prev_close"] - close_5d_ago) / close_5d_ago * 100
+            if extension_pct >= MAX_EXTENSION_PCT:
+                logger.info(f"Skip {ticker}: already up {extension_pct:.0f}% in last 5 days (max {MAX_EXTENSION_PCT}%)")
+                continue
+
+        # Hard filter: pre-trade quality (ADV $1M, ATR%, market cap)
+        # Single source of truth — same filters used by backtester and live tracker
+        passed, skip_reason = await check_filters(ticker, today)
+        if not passed:
+            logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
             continue
 
         # Volume conviction percentile

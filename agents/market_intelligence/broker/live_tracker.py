@@ -481,6 +481,7 @@ async def morning_stop_refresh() -> int:
 async def send_live_trade_summary() -> None:
     """Send a daily Telegram summary of live trading activity. Called after position update."""
     pool = await get_pool()
+    today = et_today()
     async with pool.acquire() as conn:
         stats = await conn.fetchrow("""
             SELECT
@@ -498,7 +499,6 @@ async def send_live_trade_summary() -> None:
             WHERE status = 'filled' AND remaining_shares > 0
             ORDER BY alert_date ASC
         """)
-        today = et_today()
         todays_closes = await conn.fetch("""
             SELECT ticker, total_pnl, hold_days
             FROM mi_live_trades
@@ -509,15 +509,26 @@ async def send_live_trade_summary() -> None:
             FROM mi_live_trades
             WHERE alert_date = $1 AND status IN ('filled', 'order_placed')
         """, today)
+        todays_skipped = await conn.fetch("""
+            SELECT ticker, skip_reason
+            FROM mi_live_trades
+            WHERE alert_date = $1 AND status IN ('skipped', 'cancelled', 'order_failed')
+        """, today)
 
     # Build message
-    lines = ["📊 *Live Trade Update*\n"]
+    lines = ["📊 *Live Trade Update (Alpaca — Paper)*\n"]
 
     # Today's activity
     if todays_entries:
         lines.append("*Entered today:*")
         for t in todays_entries:
             lines.append(f"  ▶ {t['ticker']} @${t['entry_price']:.2f} × {t['entry_shares']:.0f}")
+        lines.append("")
+
+    if todays_skipped:
+        lines.append("*Filtered today:*")
+        for t in todays_skipped:
+            lines.append(f"  ⊘ {t['ticker']}: {t['skip_reason']}")
         lines.append("")
 
     if todays_closes:
@@ -572,8 +583,9 @@ async def send_live_trade_summary() -> None:
     elif stats["total"]:
         lines.append(f"*Trades:* {stats['total']} (no closes yet)")
 
-    # Only send if there's any activity
-    if stats["total"] or 0 > 0:
+    # Send if there's any activity today or open positions
+    has_activity = todays_entries or todays_closes or todays_skipped or open_trades
+    if has_activity or (stats["total"] and stats["total"] > 0):
         await send_telegram_message("\n".join(lines))
 
 

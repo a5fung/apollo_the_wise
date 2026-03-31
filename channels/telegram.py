@@ -691,35 +691,8 @@ class TelegramChannel:
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle /agents — show each agent's role and live health."""
-        if not update.effective_user or not self._is_allowed(update.effective_user.id):
-            return
-
-        from core.router import health_check_all_agents
-        health = await health_check_all_agents()
-
-        agent_descriptions = {
-            "market_intelligence": "📈 RS leaders, EP alerts, regime, themes",
-            "finance":  "📊 Portfolio, quotes, TradingView alerts",
-            "calendar": "📅 Google Calendar & iCloud events",
-            "research": "🔍 Web search & summarisation",
-            "browser":  "🌐 Playwright browser automation",
-            "travel":   "✈️ Flights, hotels, Amex Platinum perks",
-        }
-
-        lines = ["*Sub-Agents*\n"]
-        # Only show agents that are enabled (present in health dict)
-        for agent_name, (is_healthy, _reason) in health.items():
-            description = agent_descriptions.get(agent_name, "")
-            display = agent_name.replace("_", " ").title()
-            icon = "🟢" if is_healthy else "🔴"
-            lines.append(f"{icon} *{display}* — {description}")
-
-        if not health:
-            lines.append("_No agents enabled_")
-
-        lines.append("\n🟢 online  🔴 offline/unreachable")
-        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+        """Handle /agents — alias for /status."""
+        await self._handle_status(update, context)
 
     async def _handle_status(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1064,8 +1037,7 @@ class TelegramChannel:
         from telegram import BotCommand
         commands = [
             BotCommand("help",   "Capabilities & command reference"),
-            BotCommand("agents", "Live status of all sub-agents"),
-            BotCommand("status", "System health (DB, Redis, agents)"),
+            BotCommand("status", "System health, agents, market pipeline"),
             BotCommand("trades", "Paper & live trade positions + P&L"),
             BotCommand("spend",  "API spend today & this month"),
             BotCommand("rules",  "EP trading rules (Qullamaggie v2)"),
