@@ -692,6 +692,11 @@ _SECTOR_KEYWORD_GROUPS: list[tuple[str, list[str], int]] = [
                  "mrna", "therapeutics", "pharma", "drug"], 0),  # exclude entirely
     ("satellite", ["satellite", "space", "earth observation"], 2),
     ("optical", ["optical", "photonic"], 2),
+    ("agriculture", ["agri", "fertilizer", "crop", "nitrogen", "nutrient",
+                      "agricultural", "herbicide", "pesticide"], 2),
+    ("chemicals", ["chemical", "polymer", "acetyl", "specialty chem",
+                    "petrochemical"], 2),
+    ("ip_licensing", ["ip licensing", "patent", "royalty software"], 1),
 ]
 MAX_THEMES_PER_SECTOR_DEFAULT = 2
 

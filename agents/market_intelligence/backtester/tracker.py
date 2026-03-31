@@ -635,7 +635,7 @@ async def run_paper_trade_tracker() -> dict[str, Any]:
 
 def format_tracker_telegram(summary: dict) -> str:
     """Format paper trade summary for Telegram notification."""
-    lines = ["📊 *Paper Trade Tracker*\n"]
+    lines = ["📊 *Paper Trade Tracker (EOD sim)*\n"]
 
     # Today's new trades
     new = summary.get("today_new", [])

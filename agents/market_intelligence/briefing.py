@@ -63,6 +63,11 @@ STAGE_EMOJI = {
     "Fading": "🔻",
 }
 
+# Sentence-split regex: split on "./?/! " followed by uppercase.
+# Requires 2+ lowercase/digit chars before the punctuation, which naturally
+# avoids splitting after abbreviations like U.S., a.m., Dr., St., etc.
+_SENTENCE_SPLIT_RE = re.compile(r'(?<=[a-z0-9][a-z0-9][.!?])\s+(?=[A-Z])')
+
 
 def _fmt_sign(v: float) -> str:
     return f"+{v:.1f}%" if v >= 0 else f"{v:.1f}%"
@@ -850,8 +855,10 @@ def _format_overnight_section(
     # News or no-news signal
     if news:
         # Split into bullet points by sentence.
-        # Only split on ". " followed by uppercase (avoids "U.S. ", "S&P ", "0.7% ")
-        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', news)
+        # Negative lookbehind avoids splitting after common abbreviations
+        # (U.S., a.m., p.m., e.g., i.e., vs., etc., Dr., Mr., Mrs., St., Corp., Inc.)
+        # and after single uppercase letters (initials like "J. Powell").
+        sentences = _SENTENCE_SPLIT_RE.split(news)
         for s in sentences:
             s = s.strip()
             if s:
@@ -891,7 +898,7 @@ async def _get_economic_calendar() -> str | None:
         # If single paragraph, split by sentence boundaries
         if len(raw_lines) <= 1 and raw_lines:
             text = raw_lines[0]
-            sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', text)
+            sentences = _SENTENCE_SPLIT_RE.split(text)
             raw_lines = [s.strip() for s in sentences if s.strip()]
 
         bullets = []
@@ -940,7 +947,9 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
         "You are a financial market analyst. Identify the SPECIFIC catalyst — "
         "name the person, policy, deal, or event. Mention social media posts, "
         "presidential statements, or diplomatic developments by name if relevant. "
-        "Be direct and specific. No citation numbers."
+        "Be direct and specific. No citation numbers. "
+        "Do NOT restate futures prices or percentage moves — the reader already sees those. "
+        "Focus only on the WHY: what news, event, or development drove the move."
     )
 
     from agents.market_intelligence.theme_engine import _is_garbage
@@ -1169,7 +1178,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     elif news:
         # No watchlist/snapshot, but we have news — show it standalone
         lines = ["*OVERNIGHT*"]
-        sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', news)
+        sentences = _SENTENCE_SPLIT_RE.split(news)
         for s in sentences:
             s = s.strip()
             if s:
