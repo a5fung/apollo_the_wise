@@ -55,6 +55,7 @@ JOB_MORNING_BRIEFING = "morning_briefing"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
+_ep_scans_completed_today: int = 0  # Tracks successful scan runs for watchdog
 
 
 async def _nightly_data_pull():
@@ -388,9 +389,11 @@ async def _morning_briefing_job():
 
 async def _ep_scan_job():
     """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps; HIGH alerts sent immediately."""
+    global _ep_scans_completed_today
     logger.info("EP scan starting...")
     try:
         eps = await run_ep_scan()
+        _ep_scans_completed_today += 1
         high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
         logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
         # Dedup: only alert tickers we haven't already alerted today
@@ -526,6 +529,8 @@ async def _weekly_cleanup():
 
 async def _start_ep_scanning():
     """Kept for /status display. Scanning is controlled by cron window, not this flag."""
+    global _ep_scans_completed_today
+    _ep_scans_completed_today = 0
     logger.info("EP scan window open (7:00 AM ET)")
 
 
@@ -535,29 +540,29 @@ async def _stop_ep_scanning():
 
 
 async def _ep_scan_watchdog():
-    """Run at 10:05 AM ET. Alert if no EP scan ran today — catches silent failures."""
+    """Run at 10:05 AM ET. Alert if scans failed to run. No alert for zero EPs (normal)."""
     from agents.market_intelligence.collector import _ET
     now = datetime.now(_ET)
     if now.weekday() >= 5:
         return
     try:
-        from agents.market_intelligence.db import get_pool
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            count = await conn.fetchval(
-                "SELECT COUNT(*) FROM mi_ep_alerts WHERE alert_date = $1",
-                now.date(),
-            )
-        if count == 0:
-            logger.warning("EP scan watchdog: NO alerts generated today!")
+        if _ep_scans_completed_today == 0:
+            logger.warning("EP scan watchdog: NO scans completed today!")
             await send_telegram_message(
                 "⚠️ *EP Scan Watchdog*\n"
-                "No EP scan ran today. The scanner may have failed or "
+                "No EP scan completed today. The scanner may have failed or "
                 "the container restarted after the scan window.\n"
                 "Run manually: tell Apollo \"run EP scan\""
             )
         else:
-            logger.info(f"EP scan watchdog: {count} alerts today — OK")
+            from agents.market_intelligence.db import get_pool
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                alert_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM mi_ep_alerts WHERE alert_date = $1",
+                    now.date(),
+                )
+            logger.info(f"EP scan watchdog: {_ep_scans_completed_today} scans ran, {alert_count} alerts — OK")
     except Exception as e:
         logger.error(f"EP scan watchdog failed: {e}")
 
