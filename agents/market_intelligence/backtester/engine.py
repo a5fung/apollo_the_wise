@@ -60,7 +60,7 @@ def _simulate_day1(
         trade = BacktestTrade(
             ticker=ticker, alert_date=alert_date,
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
-            skipped=True, skip_reason="stop_too_wide",
+            skipped=True, skip_reason="Stop too wide",
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
         return trade
@@ -128,7 +128,7 @@ def _simulate_day1(
         trade = BacktestTrade(
             ticker=ticker, alert_date=alert_date,
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
-            skipped=True, skip_reason="orb_no_breakout",
+            skipped=True, skip_reason="No ORB breakout",
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
         return trade
@@ -351,7 +351,7 @@ async def simulate_trade(
             catalyst_quality=ep_alert.get("catalyst_quality", ""),
             gap_pct=ep_alert.get("gap_pct", 0),
             regime=ep_alert.get("regime"),
-            skipped=True, skip_reason="data_unavailable",
+            skipped=True, skip_reason="Data unavailable",
             atr_14=atr_14,
         )
         return trade
@@ -372,7 +372,7 @@ async def simulate_trade(
             catalyst_quality=ep_alert.get("catalyst_quality", ""),
             gap_pct=ep_alert.get("gap_pct", 0),
             regime=ep_alert.get("regime"),
-            skipped=True, skip_reason="no_valid_entry",
+            skipped=True, skip_reason="No valid entry",
             atr_14=atr_14,
         )
 

@@ -63,11 +63,11 @@ async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
         """, ticker, trade_date)
 
     if not row or row["adv_dollar"] is None:
-        return f"adv_no_data"
+        return "ADV no data"
 
     adv_dollar = float(row["adv_dollar"])
     if adv_dollar < MIN_ADV_DOLLAR_VOLUME:
-        return f"adv_too_low (${adv_dollar:,.0f})"
+        return f"ADV too low (${adv_dollar:,.0f})"
 
     return None
 
@@ -115,7 +115,7 @@ async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
         return None  # not enough data — let it through
 
     if atr_pct > MAX_ATR_PCT:
-        return f"atr_too_high ({atr_pct:.1f}%)"
+        return f"ATR too high ({atr_pct:.1f}%)"
 
     return None
 
@@ -138,6 +138,6 @@ async def _check_market_cap(ticker: str) -> str | None:
         return None  # no data — let it through
 
     if mcap < MIN_MARKET_CAP:
-        return f"mcap_too_low (${mcap / 1e6:.0f}M)"
+        return f"Market cap too low (${mcap / 1e6:.0f}M)"
 
     return None

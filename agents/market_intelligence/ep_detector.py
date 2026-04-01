@@ -486,14 +486,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"Failed to fetch 5-day closes for extension check: {e}")
 
     # Batch-fetch recent EP alerts for cooldown check (same ticker in last 60 days)
+    # Also check today — skip re-scoring tickers already alerted in an earlier scan run
     cooldown_tickers: set[str] = set()
+    already_today: set[str] = set()
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
                 SELECT DISTINCT ticker FROM mi_ep_alerts
                 WHERE ticker = ANY($1) AND alert_date >= $2 AND alert_date < $3
             """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
-        cooldown_tickers = {r["ticker"] for r in rows}
+            cooldown_tickers = {r["ticker"] for r in rows}
+            rows_today = await conn.fetch("""
+                SELECT DISTINCT ticker FROM mi_ep_alerts
+                WHERE ticker = ANY($1) AND alert_date = $2
+            """, candidate_tickers, today)
+            already_today = {r["ticker"] for r in rows_today}
     except Exception as e:
         logger.warning(f"Failed to fetch EP cooldown data: {e}")
 
@@ -516,6 +523,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Hard filter: EP cooldown — don't re-alert same ticker within 60 days
         if ticker in cooldown_tickers:
             logger.info(f"Skip {ticker}: EP alert within last {EP_COOLDOWN_DAYS} days (cooldown)")
+            continue
+
+        # Skip if already scored in an earlier scan run today
+        if ticker in already_today:
+            logger.debug(f"Skip {ticker}: already scored today")
             continue
 
         # Hard filter: extension — skip if already up 50%+ before today's gap

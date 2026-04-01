@@ -196,8 +196,8 @@ def _format_ep_section(ep_alerts: list[dict], section_num: int = 1) -> str:
     for ep in high:
         tier_e = TIER_EMOJI.get("HIGH", "")
         cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
-        gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
-        conf = f" {ep['confidence_multiplier']:.1f}x conf" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
+        gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
+        conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
         lines.append(
             f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
             f"rv {ep.get('rel_volume') or '?'}x "

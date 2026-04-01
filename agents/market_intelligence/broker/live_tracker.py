@@ -172,15 +172,15 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
         # Fetch first 1-min bar from Alpaca (real-time, no 15-min delay)
         orb_bar = await alpaca.get_first_bar(ticker, today)
         if not orb_bar:
-            await _insert_skipped_trade(ticker, today, alert, regime_record, "no_orb_bar")
-            results.append({"ticker": ticker, "action": "skipped", "reason": "no_orb_bar"})
+            await _insert_skipped_trade(ticker, today, alert, regime_record, "No ORB bar")
+            results.append({"ticker": ticker, "action": "skipped", "reason": "No ORB bar"})
             continue
 
         # Build order spec
         order_spec = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
         if not order_spec:
-            await _insert_skipped_trade(ticker, today, alert, regime_record, "order_spec_failed")
-            results.append({"ticker": ticker, "action": "skipped", "reason": "order_spec_failed"})
+            await _insert_skipped_trade(ticker, today, alert, regime_record, "Order spec failed")
+            results.append({"ticker": ticker, "action": "skipped", "reason": "Order spec failed"})
             continue
 
         # Check safeguards

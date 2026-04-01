@@ -299,13 +299,13 @@ async def process_new_alerts(today: date) -> list[dict]:
                 "catalyst_quality": alert.get("catalyst_quality"),
                 "gap_pct": alert.get("gap_pct"),
                 "regime": regime,
-                "status": "skipped", "skip_reason": "no_valid_entry",
+                "status": "skipped", "skip_reason": "No valid entry",
                 "atr_14": atr_14,
             })
-            results.append({"ticker": ticker, "action": "skipped", "reason": "no_valid_entry"})
+            results.append({"ticker": ticker, "action": "skipped", "reason": "No valid entry"})
             continue
 
-        # Day 1 sim may return a skipped trade (orb_no_breakout, stop_too_wide)
+        # Day 1 sim may return a skipped trade (No ORB breakout, Stop too wide)
         if trade.skipped:
             await _insert_paper_trade({
                 "ticker": ticker, "alert_date": today,

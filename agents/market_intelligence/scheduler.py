@@ -392,11 +392,7 @@ async def _ep_scan_job():
     global _ep_scans_completed_today
     logger.info("EP scan starting...")
     try:
-        eps = await run_ep_scan()
-        _ep_scans_completed_today += 1
-        high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
-        logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
-        # Dedup: only alert tickers we haven't already alerted today
+        # Snapshot already-alerted tickers BEFORE scan (scan inserts new rows)
         from agents.market_intelligence.collector import et_today
         today = et_today()
         from agents.market_intelligence.db import get_pool
@@ -408,6 +404,10 @@ async def _ep_scan_job():
                     today,
                 )
             }
+        eps = await run_ep_scan()
+        _ep_scans_completed_today += 1
+        high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
+        logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
         for ep in eps:
             if ep.get("score_tier") == "HIGH" and ep["ticker"] not in already_alerted:
                 await send_ep_alert(ep)
