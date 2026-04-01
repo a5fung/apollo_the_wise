@@ -247,14 +247,15 @@ async def close_position(ticker: str, qty: float | None = None) -> dict | None:
 async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
     """
     Get the first 1-minute bar for a ticker on a given date.
-    Uses Alpaca's real-time market data (no 15-min delay like Polygon Starter).
+    Fetches the 9:30-9:35 window and returns the earliest bar available.
+    Handles delayed opens and bars that aren't finalized at exactly 9:31.
     """
     try:
         from zoneinfo import ZoneInfo
         client = _get_data_client()
         et = ZoneInfo("America/New_York")
         start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et)
-        end = start + timedelta(minutes=1)
+        end = start + timedelta(minutes=5)
         request = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,
@@ -265,9 +266,10 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
         bar_data = bars.data if hasattr(bars, 'data') else bars
         bar_set = bar_data.get(ticker, [])
         if not bar_set:
-            logger.warning(f"No first bar for {ticker} on {trade_date}")
+            logger.warning(f"No bars for {ticker} in 9:30-9:35 window on {trade_date}")
             return None
         b = bar_set[0]
+        logger.info(f"ORB bar for {ticker}: {b.timestamp} O={b.open} H={b.high} L={b.low} C={b.close} V={b.volume}")
         return {
             "open": float(b.open),
             "high": float(b.high),

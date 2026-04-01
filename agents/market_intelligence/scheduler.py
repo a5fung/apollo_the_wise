@@ -699,10 +699,11 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
-    # ORB monitor: 9:31 AM ET — process today's alerts, send proposals
+    # ORB monitor: 9:32 AM ET — process today's alerts, send proposals
+    # (9:32 not 9:31 to ensure first 1-min bar is finalized)
     _scheduler.add_job(
         _orb_monitor_job,
-        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=9, minute=32, day_of_week="mon-fri", timezone="America/New_York"),
         id="orb_monitor",
         replace_existing=True,
     )
