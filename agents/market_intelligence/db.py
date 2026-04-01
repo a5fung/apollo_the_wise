@@ -384,6 +384,12 @@ async def initialize_schema() -> None:
                     FOR EACH ROW EXECUTE FUNCTION protect_trade_tables();
             """)
 
+        # ── Migrations ───────────────────────────────────────────────────
+        await conn.execute("""
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
+        """)
+
         # ── Log row counts on startup for early data-loss detection ───────
         for tbl in ("mi_paper_trades", "mi_live_trades"):
             count = await conn.fetchval(f"SELECT COUNT(*) FROM {tbl}")

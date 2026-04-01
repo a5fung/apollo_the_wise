@@ -197,11 +197,11 @@ async def submit_entry(trade_id: int) -> dict | None:
 
 
 async def check_fills() -> list[dict]:
-    """Poll Alpaca for fills on pending entry orders. Update DB and notify."""
+    """Poll Alpaca for fills on pending entry orders + Day 1 stop-outs for re-entry."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id, entry_shares, orb_low
+            SELECT id, ticker, entry_order_id, entry_shares, orb_low, entry_attempt
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
@@ -262,7 +262,7 @@ async def check_fills() -> list[dict]:
                 """, trade["entry_order_id"], filled_qty, filled_price)
 
             await send_telegram_message(
-                f"✅ *FILLED:* {ticker}\n"
+                f"✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
                 f"Entry: ${filled_price:.2f} × {filled_qty:.0f} shares\n"
                 f"Stop: ${trade['orb_low']:.2f}"
             )
@@ -273,6 +273,192 @@ async def check_fills() -> list[dict]:
             await _update_trade_status(trade["id"], "cancelled", skip_reason=status)
             logger.info(f"Order {status}: {ticker}")
             results.append({"ticker": ticker, "action": status})
+
+    # Check Day 1 stop-outs for re-entry (max 2 attempts per Qullamaggie)
+    reentry_results = await _check_day1_reentry()
+    results.extend(reentry_results)
+
+    return results
+
+
+MAX_ENTRY_ATTEMPTS = 2
+
+
+async def attempt_day1_reentry(
+    trade_id: int,
+    stop_fill_price: float,
+    source: str = "polling",
+) -> dict:
+    """
+    Attempt re-entry for a Day 1 trade that was stopped out.
+    Shared by both WebSocket handler and polling fallback.
+
+    Uses price-aware logic: if current price > ORB high, places a limit buy
+    instead of a stop-limit (which would never trigger).
+
+    Returns {"ticker": ..., "action": "reentry"|"reentry_failed"|"closed", ...}
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow("""
+            SELECT id, ticker, entry_price, entry_shares, remaining_shares,
+                   orb_high, orb_low, atr_14, stop_order_id, entry_attempt,
+                   exits, ep_score, catalyst_quality, gap_pct, regime, alert_date
+            FROM mi_live_trades WHERE id = $1
+        """, trade_id)
+
+    if not trade:
+        return {"ticker": "?", "action": "not_found"}
+
+    trade = dict(trade)
+    ticker = trade["ticker"]
+    entry_price = trade["entry_price"]
+    shares = trade["remaining_shares"]
+    orb_high = trade["orb_high"]
+    orb_low = trade["orb_low"]
+
+    # Record the stop-out exit
+    pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
+    exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+    exits.append({
+        "time": datetime.utcnow().isoformat(),
+        "price": stop_fill_price,
+        "reason": "stop_hit",
+        "shares": shares,
+        "pnl": pnl,
+        "attempt": trade["entry_attempt"],
+        "source": source,
+    })
+
+    attempt = trade["entry_attempt"] + 1
+    logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, attempting re-entry #{attempt}")
+
+    # Price-aware re-entry: check if price already above ORB high
+    try:
+        latest = await alpaca.get_latest_trade(ticker)
+        if latest and latest["price"] > orb_high:
+            # Price already past breakout — stop-limit would never trigger
+            limit_price = round(latest["price"] * 1.002, 2)
+            logger.info(
+                f"Price ${latest['price']:.2f} > ORB high ${orb_high:.2f}, "
+                f"using limit buy at ${limit_price:.2f}"
+            )
+            new_order = await alpaca.place_limit_buy_with_stop(
+                ticker=ticker,
+                qty=trade["entry_shares"],
+                limit_price=limit_price,
+                stop_loss_price=orb_low,
+            )
+            order_type = "limit"
+        else:
+            # Normal: price below ORB high, use stop-limit as usual
+            new_order = await alpaca.place_bracket_order(
+                ticker=ticker,
+                qty=trade["entry_shares"],
+                stop_price=orb_high,
+                limit_price=round(orb_high * 1.001, 2),
+                stop_loss_price=orb_low,
+            )
+            order_type = "stop_limit"
+    except Exception as e:
+        logger.error(f"Re-entry order failed for {ticker}: {e}")
+        total_pnl = sum(ex.get("pnl", 0) for ex in exits)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed', exits = $2::jsonb,
+                    remaining_shares = 0, total_pnl = $3,
+                    stop_order_id = NULL, closed_at = NOW(),
+                    entry_attempt = $4
+                WHERE id = $1
+            """, trade["id"], json.dumps(exits), total_pnl, attempt)
+        await send_telegram_message(
+            f"❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"P&L: ${pnl:+,.2f} | Re-entry failed: {e}"
+        )
+        return {"ticker": ticker, "action": "reentry_failed"}
+
+    # Update trade for re-entry
+    new_entry_order_id = new_order["id"]
+    new_stop_order_id = None
+    for leg in new_order.get("legs", []):
+        if leg.get("type") == "stop" or leg.get("stop_price"):
+            new_stop_order_id = leg["id"]
+            break
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                status = 'order_placed',
+                entry_order_id = $2,
+                stop_order_id = $3,
+                remaining_shares = 0,
+                entry_attempt = $4,
+                exits = $5::jsonb,
+                filled_at = NULL
+            WHERE id = $1
+        """, trade["id"], new_entry_order_id, new_stop_order_id,
+            attempt, json.dumps(exits))
+
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                 stop_price, limit_price, status, raw_response)
+            VALUES ($1, $2, $3, 'buy', $4, $5, $6, $7, $8, $9::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """,
+            trade["id"], new_entry_order_id, ticker, order_type,
+            float(trade["entry_shares"]),
+            float(orb_high),
+            round(float(orb_high) * 1.001, 2),
+            new_order["status"],
+            json.dumps(new_order),
+        )
+
+    entry_desc = (
+        f"limit buy @${latest['price']:.2f}" if order_type == "limit"
+        else f"buy >${orb_high:.2f}"
+    )
+    await send_telegram_message(
+        f"🔄 *Re-entry:* {ticker} (attempt {attempt}/{MAX_ENTRY_ATTEMPTS})\n"
+        f"Stopped @${stop_fill_price:.2f} (${pnl:+,.2f})\n"
+        f"New order: {entry_desc} stop ${orb_low:.2f}\n"
+        f"_[{source}]_"
+    )
+    logger.info(f"Re-entry order placed: {ticker} attempt={attempt} type={order_type} order_id={new_entry_order_id}")
+    return {"ticker": ticker, "action": "reentry", "attempt": attempt, "order_type": order_type}
+
+
+async def _check_day1_reentry() -> list[dict]:
+    """
+    Polling fallback: check filled Day 1 trades for stop-out.
+    If stopped out and attempt < 2, calls attempt_day1_reentry().
+    """
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trades = await conn.fetch("""
+            SELECT id, ticker, stop_order_id, orb_low
+            FROM mi_live_trades
+            WHERE alert_date = $1
+              AND status = 'filled'
+              AND remaining_shares > 0
+              AND entry_attempt < $2
+              AND stop_order_id IS NOT NULL
+        """, today, MAX_ENTRY_ATTEMPTS)
+
+    results = []
+    for trade in trades:
+        trade = dict(trade)
+        stop_order = await alpaca.get_order(trade["stop_order_id"])
+        if not stop_order or stop_order["status"] != "filled":
+            continue
+
+        stop_fill_price = stop_order.get("filled_avg_price") or trade["orb_low"]
+        result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="polling")
+        results.append(result)
 
     return results
 
@@ -492,7 +678,7 @@ async def cancel_unfilled_entries() -> int:
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
-            await _update_trade_status(trade["id"], "cancelled", skip_reason="eod_unfilled")
+            await _update_trade_status(trade["id"], "cancelled", skip_reason="EOD unfilled")
             cancelled += 1
             logger.info(f"EOD cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
         else:

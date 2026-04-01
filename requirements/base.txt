@@ -34,7 +34,7 @@ apscheduler>=3.10.0
 pytz>=2024.1
 google-genai>=1.0.0
 yfinance>=0.2.0
-alpaca-py>=0.30.0
+alpaca-py==0.43.2  # Pinned — trade_stream.py uses TradingStream._run_forever()
 
 # Dev/testing
 pytest>=8.0.0

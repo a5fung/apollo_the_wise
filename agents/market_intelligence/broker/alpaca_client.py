@@ -283,6 +283,63 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
         return None
 
 
+# ── Price Data ──────────────────────────────────────────────────────────────
+
+
+async def get_latest_trade(ticker: str) -> dict | None:
+    """Fetch the latest trade price for a ticker. Used for price-aware re-entry."""
+    try:
+        from alpaca.data.requests import StockLatestTradeRequest
+        client = _get_data_client()
+        result = client.get_stock_latest_trade(
+            StockLatestTradeRequest(symbol_or_symbols=ticker)
+        )
+        t = result.get(ticker)
+        if t:
+            return {"price": float(t.price), "timestamp": t.timestamp.isoformat()}
+        return None
+    except Exception as e:
+        logger.error(f"Failed to get latest trade for {ticker}: {e}")
+        return None
+
+
+# ── Limit Buy (for re-entry when price > ORB high) ─────────────────────────
+
+
+async def place_limit_buy_with_stop(
+    ticker: str,
+    qty: float,
+    limit_price: float,
+    stop_loss_price: float,
+) -> dict:
+    """
+    Place a limit buy with attached stop-loss.
+    Used for re-entry when price has already passed ORB high (stop-limit would never trigger).
+    """
+    try:
+        client = _get_trading_client()
+        order = client.submit_order(
+            LimitOrderRequest(
+                symbol=ticker,
+                qty=qty,
+                side=OrderSide.BUY,
+                type=OrderType.LIMIT,
+                time_in_force=TimeInForce.DAY,
+                limit_price=round(limit_price, 2),
+                stop_loss={"stop_price": round(stop_loss_price, 2)},
+            )
+        )
+        logger.info(
+            f"Limit buy placed: {ticker} qty={qty} "
+            f"limit={limit_price:.2f} SL={stop_loss_price:.2f} "
+            f"order_id={order.id}"
+        )
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Limit buy failed for {ticker}: {e}")
+        raise
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 

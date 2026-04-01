@@ -451,18 +451,46 @@ async def _orb_monitor_job():
 
 
 async def _check_fills_job():
-    """Poll Alpaca for fills on pending entry orders."""
+    """Fallback fill checker — only runs if WebSocket stream is unhealthy."""
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
+
+    # Skip if WebSocket stream is handling fills
+    try:
+        from agents.market_intelligence.broker.trade_stream import get_stream_status
+        status = get_stream_status()
+        if status["healthy"] and status["task_alive"]:
+            logger.debug("Stream healthy, skipping polling fill check")
+            return
+    except ImportError:
+        pass  # trade_stream not available — always poll
+
+    logger.warning("Stream unhealthy, running fallback fill check")
     try:
         from agents.market_intelligence.broker.order_manager import check_fills
         results = await check_fills()
         if results:
-            logger.info(f"Fill check: {len(results)} updates")
+            logger.info(f"Fallback fill check: {len(results)} updates")
     except Exception as e:
         import traceback
-        logger.error(f"Fill check failed: {e}\n{traceback.format_exc()}")
+        logger.error(f"Fallback fill check failed: {e}\n{traceback.format_exc()}")
+
+
+async def _stream_health_watchdog():
+    """Check if the trade stream is alive. Restart if dead."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.trade_stream import get_stream_status, start_trade_stream
+        status = get_stream_status()
+        if not status["task_alive"]:
+            logger.warning("Stream watchdog: task not alive, restarting")
+            await send_telegram_message("⚠️ Trade stream died, restarting...")
+            asyncio.create_task(start_trade_stream())
+    except Exception as e:
+        logger.error(f"Stream watchdog error: {e}")
 
 
 async def _morning_stop_refresh_job():
@@ -708,18 +736,22 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Fill checker: 9:35, 9:40, 9:45, 10:00 AM ET — poll Alpaca for fills
-    for minute in [35, 40, 45]:
+    # Fill checker — fallback polling (WebSocket is primary, this is safety net)
+    # Runs every 30 min; skips if WebSocket stream is healthy
+    fill_check_times = [(10, 0), (10, 30), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0)]
+    for hour, minute in fill_check_times:
         _scheduler.add_job(
             _check_fills_job,
-            CronTrigger(hour=9, minute=minute, day_of_week="mon-fri", timezone="America/New_York"),
-            id=f"check_fills_{minute}",
+            CronTrigger(hour=hour, minute=minute, day_of_week="mon-fri", timezone="America/New_York"),
+            id=f"check_fills_{hour:02d}{minute:02d}",
             replace_existing=True,
         )
+
+    # Stream health watchdog: every 5 min during market hours
     _scheduler.add_job(
-        _check_fills_job,
-        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
-        id="check_fills_1000",
+        _stream_health_watchdog,
+        CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
+        id="stream_health_watchdog",
         replace_existing=True,
     )
 
