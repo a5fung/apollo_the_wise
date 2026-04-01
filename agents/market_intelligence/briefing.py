@@ -499,8 +499,6 @@ def _format_unanchored_section(
         return ""
 
     lines = [f"*{section_num}. ⚠️ UNANCHORED LEADERS* — RS 80+ with no theme"]
-    lines.append("  _These stocks are outperforming without an assigned theme._")
-    lines.append("  _Investigate — a new theme may be forming._")
 
     from agents.market_intelligence.universe import get_description
     for s in unanchored[:10]:

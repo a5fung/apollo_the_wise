@@ -65,6 +65,7 @@ NEW_THEME_MIN_STOCKS = 2
 PRUNE_RS_HARD = 25.0     # RS below this → prune after 1 day (crash/scandal)
 PRUNE_RS_SOFT = 35.0     # RS below this → prune after 3 consecutive days (slow decay)
 PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
+MAX_THEMES_PER_STOCK = 2 # A stock can belong to at most 2 themes (primary + sub-theme)
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -634,6 +635,7 @@ Rules:
   - BAD: grouping by vague similarity ("they're both tech", "both benefit from AI")
 - Name themes specifically ("AI Memory & HBM" not "Technology" or "Semiconductors")
 - A stock CAN move from an existing theme to a new sub-theme if the sub-theme is more specific
+- A stock should appear in at most 2 themes. Do NOT include a stock in a new theme if it already appears in 2+ existing themes (check the list above)
 - When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
 - Return zero themes if no clear cluster exists — that is the correct answer
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
@@ -761,6 +763,40 @@ def _merge_overlapping_themes(
 
     after_overlap = [t for idx, t in enumerate(themes) if idx not in merged_into]
 
+    # --- Pass 1.5: Small-theme absorption ---
+    # A theme with <= 3 stocks where only 0-1 are unique (not in any other theme)
+    # is not a distinct theme — absorb into the highest-scoring overlapping theme.
+    from collections import Counter
+    ticker_membership = Counter()
+    for t in after_overlap:
+        for tk in (t.get("tickers") or []):
+            ticker_membership[tk] += 1
+
+    absorbed = set()
+    for idx, t in enumerate(after_overlap):
+        tickers = set(t.get("tickers") or [])
+        if len(tickers) > 3 or not tickers:
+            continue
+        unique_count = sum(1 for tk in tickers if ticker_membership[tk] == 1)
+        if unique_count > 1:
+            continue
+        # Find highest-scoring overlapping theme to absorb into
+        for target in after_overlap:
+            if target["name"] == t["name"] or target["name"] in absorbed:
+                continue
+            target_tickers = set(target.get("tickers") or [])
+            if tickers & target_tickers:  # any overlap
+                target["tickers"] = list(target_tickers | tickers)
+                absorbed.add(t["name"])
+                logger.info(
+                    f"Theme merge (small-theme absorption): '{t['name']}' → '{target['name']}' "
+                    f"({len(tickers)} stocks, {unique_count} unique)"
+                )
+                break
+
+    if absorbed:
+        after_overlap = [t for t in after_overlap if t["name"] not in absorbed]
+
     # --- Pass 2: Sector cap — keep top N per broad sector group ---
     sector_counts: dict[str, int] = {}
     final: list[dict] = []
@@ -794,6 +830,51 @@ def _merge_overlapping_themes(
             # else: just drop it (shouldn't happen)
 
     return final
+
+
+def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
+    """
+    Hard cap: a stock can appear in at most MAX_THEMES_PER_STOCK themes.
+    Themes must be sorted by score descending (highest-scored = primary).
+    Removes stocks from lower-scored themes when they exceed the cap.
+    Drops themes that fall below PRUNE_MIN_TICKERS after removals.
+    """
+    from collections import defaultdict
+
+    ticker_assignments: dict[str, list[str]] = defaultdict(list)
+    theme_by_name = {t["name"]: t for t in themes}
+
+    for t in themes:  # iterate in score order (already sorted)
+        for tk in (t.get("tickers") or []):
+            ticker_assignments[tk].append(t["name"])
+
+    removals = 0
+    for tk, assigned_themes in ticker_assignments.items():
+        if len(assigned_themes) <= MAX_THEMES_PER_STOCK:
+            continue
+        # Keep the top N by score (already in score order)
+        excess = assigned_themes[MAX_THEMES_PER_STOCK:]
+        for theme_name in excess:
+            theme = theme_by_name[theme_name]
+            theme["tickers"] = [t for t in theme["tickers"] if t != tk]
+            logger.info(
+                f"Theme cap: removed {tk} from '{theme_name}' "
+                f"(was in {len(assigned_themes)} themes, keeping top {MAX_THEMES_PER_STOCK})"
+            )
+            removals += 1
+
+    if removals:
+        logger.info(f"Theme cap enforced: {removals} ticker-theme removals")
+
+    # Drop themes that fell below minimum
+    result = []
+    for t in themes:
+        tickers = t.get("tickers") or []
+        if len(tickers) >= PRUNE_MIN_TICKERS:
+            result.append(t)
+        else:
+            logger.info(f"Theme '{t['name']}' dropped: only {len(tickers)} ticker(s) after cap enforcement")
+    return result
 
 
 async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], list[dict]]:
@@ -965,9 +1046,10 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
             "tickers": list(nt.get("tickers") or []),
         })
 
-    # --- Step 4: Deduplicate overlapping themes, merge, sort, persist ---
+    # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---
     all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)
     all_themes.sort(key=lambda t: t["score"], reverse=True)
+    all_themes = _enforce_max_themes_per_stock(all_themes)
 
     if all_themes:
         await _save_themes(all_themes)
