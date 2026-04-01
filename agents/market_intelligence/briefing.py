@@ -444,8 +444,9 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
     if not velocity:
         return ""
 
-    # Filter: most recent week must show actual gain (v1w > 0)
-    active = [s for s in velocity if (s.get("v1w") or 0) > 0]
+    # Filter: at least 2 consecutive positive weeks (v1w > 0 AND v2w > 0)
+    active = [s for s in velocity
+              if (s.get("v1w") or 0) > 0 and (s.get("v2w") or 0) > 0]
     if not active:
         return ""
 
@@ -461,7 +462,7 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
             if v is not None:
                 weeks.append(f"{'+' if v >= 0 else ''}{v:.0f}")
 
-        weeks_str = " → ".join(weeks)
+        weeks_str = " ← ".join(weeks)
 
         # Sustained flag: all available weekly deltas positive
         all_positive = all(
@@ -471,7 +472,7 @@ def _format_velocity_section(velocity: list[dict], section_num: int = 4) -> str:
 
         lines.append(f"  `{ticker}` RS {rs}  [{weeks_str}]{flag}")
 
-    lines.append("  _weekly RS Δ (recent→old). ↑ = every week positive_")
+    lines.append("  _weekly RS Δ (recent←old). ↑ = every week positive_")
     return "\n".join(lines)
 
 
