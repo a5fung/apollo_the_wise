@@ -953,7 +953,11 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
 
     from agents.market_intelligence.theme_engine import _is_garbage
     answer = await search_news_perplexity(query, recency="week", system_prompt=_OVERNIGHT_SYSTEM)
-    if not answer or _is_garbage(answer):
+    if not answer:
+        logger.warning("Overnight news: Perplexity returned empty response")
+        return None
+    if _is_garbage(answer):
+        logger.warning(f"Overnight news: filtered as garbage: {answer[:120]}")
         return None
 
     # Clean up
@@ -1165,12 +1169,15 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     snapshot = []
     if watchlist:
         snapshot = await get_overnight_snapshot(watchlist)
+    logger.info(f"Morning briefing: watchlist={len(watchlist)} items, snapshot={len(snapshot)} items")
 
     if "overnight_news" in cache:
         news = cache["overnight_news"]
+        logger.info("Morning briefing: overnight news from cache")
     else:
         news = await _get_overnight_news(snapshot or None)
         cache["overnight_news"] = news
+        logger.info(f"Morning briefing: overnight news={'yes' if news else 'none'} ({len(news) if news else 0} chars)")
 
     if snapshot:
         overnight_section = _format_overnight_section(snapshot, news)
