@@ -388,6 +388,8 @@ async def initialize_schema() -> None:
         await conn.execute("""
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
         """)
 
         # ── Log row counts on startup for early data-loss detection ───────
@@ -740,17 +742,17 @@ async def get_recent_rs_batch(
 
 
 async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:
-    """Get the most recent theme scores BEFORE the given date, keyed by theme name."""
+    """Get the most recent theme RS averages BEFORE the given date, keyed by theme name."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         target = _to_date(d)
         rows = await conn.fetch("""
-            SELECT name, score FROM mi_themes
+            SELECT name, rs_avg FROM mi_themes
             WHERE theme_date = (
                 SELECT MAX(theme_date) FROM mi_themes WHERE theme_date < $1
-            )
+            ) AND rs_avg IS NOT NULL
         """, target)
-        return {r["name"]: r["score"] for r in rows}
+        return {r["name"]: r["rs_avg"] for r in rows}
 
 
 async def get_rs_history(

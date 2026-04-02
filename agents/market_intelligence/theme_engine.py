@@ -26,6 +26,7 @@ from typing import Any
 import anthropic
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
+from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners, get_recent_rs_batch
 
 logger = logging.getLogger(__name__)
@@ -151,15 +152,16 @@ async def _save_themes(themes: list[dict]) -> None:
         # Upsert each theme
         for t in themes:
             await conn.execute("""
-                INSERT INTO mi_themes (theme_date, name, stage, score, description, tickers)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO mi_themes (theme_date, name, stage, score, rs_avg, description, tickers)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT (theme_date, name) DO UPDATE SET
                     stage = EXCLUDED.stage,
                     score = EXCLUDED.score,
+                    rs_avg = EXCLUDED.rs_avg,
                     description = EXCLUDED.description,
                     tickers = EXCLUDED.tickers
             """, t["theme_date"], t["name"], t["stage"],
-                t["score"], t["description"], t["tickers"])
+                t["score"], t.get("rs_avg"), t["description"], t["tickers"])
 
         # Remove themes that were merged/retired — not in the final list
         final_names = [t["name"] for t in themes]
@@ -251,12 +253,12 @@ async def _rescore_existing_theme(
             "name": name,
             "stage": "Fading",
             "score": max(0.0, (theme.get("score") or 0) * 0.8),
+            "rs_avg": None,
             "description": existing_desc,
             "tickers": tickers,
         }, changelog
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
-    from agents.market_intelligence.constants import trimmed_mean
     rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in strong_stocks]
     momentum = trimmed_mean(rs_scores)
     momentum_score = min(momentum / 100 * 50, 50)
@@ -308,6 +310,7 @@ async def _rescore_existing_theme(
         "name": name,
         "stage": stage,
         "score": total_score,
+        "rs_avg": round(momentum, 1),
         "description": description,
         "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
     }, changelog
@@ -668,7 +671,7 @@ async def _score_new_theme(
     tickers = theme.get("tickers", [])
 
     rs_scores = [stocks_by_ticker[t].get("rs_composite", 0) for t in tickers if t in stocks_by_ticker]
-    momentum = (sum(rs_scores) / len(rs_scores)) if rs_scores else 0
+    momentum = trimmed_mean(rs_scores) if rs_scores else 0
     momentum_score = min(momentum / 100 * 50, 50)
 
     news_score, fresh_desc = await _news_check(theme["name"], tickers)
@@ -678,6 +681,7 @@ async def _score_new_theme(
         "name": theme["name"],
         "stage": "Nascent",
         "score": round(momentum_score + news_score, 1),
+        "rs_avg": round(momentum, 1),
         "description": fresh_desc or theme.get("thesis", ""),
         "tickers": tickers,
     }
