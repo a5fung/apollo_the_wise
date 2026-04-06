@@ -74,6 +74,18 @@ async def _nightly_data_pull():
     scored = 0
     top_for_sector = None
 
+    # 0. Calendar check — skip silently on market holidays instead of firing an alert.
+    # Uses exchange_calendars (rule-based, offline) so no network dependency.
+    # Fails open: if the library errors, we proceed and let the 0-ingest guardrail below catch real issues.
+    from agents.market_intelligence.trading_calendar import get_market_status
+    market_status = get_market_status(_today)
+    if not market_status.is_trading_day:
+        logger.info(
+            f"Nightly pull skipped — {market_status.reason}. "
+            f"No alert sent. To audit skipped days, grep logs for '[trading_calendar]'."
+        )
+        return
+
     # 1. Ingest today's daily closes
     # Try grouped daily first; if it fails/returns 0 (Polygon same-day restriction),
     # fall back to snapshot endpoint which works on Starter plan.
@@ -89,10 +101,11 @@ async def _nightly_data_pull():
         logger.error(f"Daily close ingestion failed: {e}")
         failures.append(f"Daily ingestion: {e}")
 
-    # GUARDRAIL: if no data ingested on a weekday, abort the pipeline.
-    # Scoring with stale data produces wrong RS, wrong regime, wrong alerts.
+    # GUARDRAIL: if no data ingested on a confirmed trading day, abort the pipeline.
+    # The calendar check above already handled holidays — if we reach here with 0
+    # tickers, it's a genuine Polygon failure or data issue.
     if ingested == 0 and _today.weekday() < 5:
-        msg = f"Aborting nightly pull: 0 tickers ingested for {today_str} (weekday). Stale data would produce wrong signals."
+        msg = f"Aborting nightly pull: 0 tickers ingested for {today_str} (confirmed trading day per NYSE calendar). Stale data would produce wrong signals."
         logger.error(msg)
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, msg)
         return
@@ -570,8 +583,13 @@ async def _stop_ep_scanning():
 async def _ep_scan_watchdog():
     """Run at 10:05 AM ET. Alert if scans failed to run. No alert for zero EPs (normal)."""
     from agents.market_intelligence.collector import _ET
+    from agents.market_intelligence.trading_calendar import get_market_status
     now = datetime.now(_ET)
     if now.weekday() >= 5:
+        return
+    market_status = get_market_status(now.date())
+    if not market_status.is_trading_day:
+        logger.info(f"EP scan watchdog: skipping — {market_status.reason}")
         return
     try:
         if _ep_scans_completed_today == 0:
@@ -611,6 +629,13 @@ async def check_missed_jobs() -> None:
     now = datetime.now(_ET)
 
     if now.weekday() >= 5:  # Saturday / Sunday
+        return
+
+    # Also skip catch-up on market holidays
+    from agents.market_intelligence.trading_calendar import get_market_status
+    market_status = get_market_status(now.date())
+    if not market_status.is_trading_day:
+        logger.info(f"check_missed_jobs: skipping catch-up — {market_status.reason}")
         return
 
     hour = now.hour
