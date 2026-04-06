@@ -414,7 +414,10 @@ class MarketIntelligenceAgent(BaseAgent):
             _candidate = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
             _skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                       "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
-                      "STOCK", "STOCKS", "LEADER", "LEADERS"}
+                      "STOCK", "STOCKS", "LEADER", "LEADERS",
+                      "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
+                      "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
+                      "AM", "US", "WE", "NO", "GO", "HI"}
             _candidate = [t for t in _candidate if t not in _skip]
             if _candidate:
                 return await self._handle_single_score(request)
@@ -882,7 +885,10 @@ class MarketIntelligenceAgent(BaseAgent):
         # Filter out common non-ticker words
         skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                 "PULL", "GET", "SHOW", "CHECK", "FIND", "FUNDAMENTAL",
-                "FUNDAMENTALS", "STOCK", "ANALYSIS"}
+                "FUNDAMENTALS", "STOCK", "ANALYSIS",
+                "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
+                "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
+                "AM", "US", "WE", "NO", "GO", "HI"}
         tickers = [t for t in tickers if t not in skip]
 
         if not tickers:
@@ -991,7 +997,10 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # Extract tickers — uppercase words 2-5 chars, skip common non-tickers
         skip = {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
-                "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI"}
+                "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI",
+                "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
+                "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
+                "AM", "US", "WE", "NO", "GO", "HI"}
         found = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         tickers = [t for t in found if t not in skip]
 
