@@ -1165,6 +1165,7 @@ async def startup():
     from agents.market_intelligence.broker.trade_stream import start_trade_stream
     asyncio.create_task(start_trade_stream())
     logger.info("Market Intelligence Agent ready on port 8006")
+    asyncio.create_task(send_telegram_message("🔄 Market agent online"))
 
 
 @app.on_event("shutdown")
