@@ -134,40 +134,30 @@ async def _handle_tradingview_alert(alert: TradingViewAlert) -> None:
         logger.error("No allowed Telegram user IDs configured — cannot forward alert")
         return
 
-    # Notify all allowed users (typically just one — the owner)
+    def _esc(s: str) -> str:
+        """Strip Markdown special chars from dynamic TradingView strings."""
+        import re
+        return re.sub(r"[*_`\[\]]", "", s) if s else s
+
     for user_id in secrets.telegram_allowed_user_ids:
-        # Build a context-rich notification
         price_str = f"${alert.price:,.2f}" if alert.price else "N/A"
+
+        # Escape dynamic fields — TradingView names often contain underscores
+        ticker   = _esc(alert.ticker or "UNKNOWN")
+        exch     = _esc(alert.exchange or "")
+        name     = _esc(alert.alert_name or "")
+        message  = _esc(alert.message or "")
+
         notification = (
             f"🔔 *TradingView Alert*\n\n"
-            f"📈 *{alert.ticker}*"
-            + (f" ({alert.exchange})" if alert.exchange else "")
+            f"📈 *{ticker}*"
+            + (f" ({exch})" if exch else "")
             + f"\n💵 Price: `{price_str}`"
-            + (f"\n📋 {alert.alert_name}" if alert.alert_name else "")
-            + (f"\n💬 {alert.message}" if alert.message else "")
+            + (f"\n📋 {name}" if name else "")
+            + (f"\n💬 {message}" if message else "")
         )
 
-        # Use Apollo to provide richer context (will call Finance Agent)
-        if _apollo:
-            try:
-                # Quick enrichment via orchestrator
-                enrichment_query = (
-                    f"I just received a TradingView alert for {alert.ticker} "
-                    f"at price {price_str}. Alert: '{alert.alert_name or alert.message}'. "
-                    f"Briefly summarize what's relevant about this alert and the current "
-                    f"chart situation if you have data."
-                )
-                enriched = await _apollo.handle_message(
-                    user_id=user_id,
-                    text=enrichment_query,
-                    conversation_id=f"tv_alert_{alert.ticker}",
-                )
-                notification += f"\n\n{enriched}"
-            except Exception as e:
-                logger.error(f"Failed to enrich TradingView alert: {e}")
-
-        from channels.telegram import TelegramChannel
-        # We need to send via the telegram app directly
+        # Send the base notification immediately — don't wait for enrichment
         try:
             await _telegram_app.bot.send_message(
                 chat_id=user_id,
@@ -176,3 +166,33 @@ async def _handle_tradingview_alert(alert: TradingViewAlert) -> None:
             )
         except Exception as e:
             logger.error(f"Failed to send TV alert to {user_id}: {e}")
+            # Try again without Markdown in case of parse error
+            try:
+                plain = notification.replace("*", "").replace("`", "")
+                await _telegram_app.bot.send_message(chat_id=user_id, text=plain)
+            except Exception as e2:
+                logger.error(f"Failed plain-text fallback TV alert to {user_id}: {e2}")
+            return
+
+        # Enrich asynchronously — won't block or delay the notification above
+        if _apollo:
+            async def _enrich(uid=user_id):
+                try:
+                    enrichment_query = (
+                        f"TradingView alert for {alert.ticker} at {price_str}. "
+                        f"Alert: '{alert.alert_name or alert.message}'. "
+                        f"One or two sentences on what's relevant."
+                    )
+                    enriched = await _apollo.handle_message(
+                        user_id=uid,
+                        text=enrichment_query,
+                        conversation_id=f"tv_alert_{alert.ticker}",
+                    )
+                    if enriched:
+                        await _telegram_app.bot.send_message(
+                            chat_id=uid, text=enriched
+                        )
+                except Exception as e:
+                    logger.error(f"TV alert enrichment failed: {e}")
+
+            asyncio.create_task(_enrich())
