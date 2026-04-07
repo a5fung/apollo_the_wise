@@ -564,36 +564,34 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Use: 'show watchlist', 'track bitcoin with 5% threshold', or 'drop oil'")
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
-        """Re-run just the theme engine using existing RS data. No Polygon calls — fast."""
+        """Re-run just the theme engine using existing RS data. No Polygon calls — fast.
+
+        Runs synchronously so the result flows back through the normal orchestrator→Telegram
+        channel (reliable). Orchestrator timeout is set to 360s to accommodate the 2-4 min run.
+        """
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
 
-        async def _run():
-            try:
-                logger.info("Theme-only run starting...")
-                themes, changelog = await run_theme_engine()
-                logger.info("Theme-only run complete")
-                active = [t for t in themes if t.get("stage") != "Fading"]
-                revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
-                pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
-                summary = f"✅ Theme engine complete — {len(active)} active themes"
-                if revalidated:
-                    removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
-                    summary += f"\n🧹 Removed mismatched stocks: {removed}"
-                if pruned:
-                    summary += f"\n✂️ Pruned {len(pruned)} weak stock(s)"
-                await send_telegram_message(summary)
-                if wants_brief:
-                    await send_evening_briefing()
-            except Exception as e:
-                logger.error(f"Theme-only run failed: {e}")
-                await send_telegram_message(f"❌ Theme engine failed: {e}")
-
-        asyncio.create_task(_run())
-
-        if wants_brief:
-            return self._ok(request, result="Theme engine running — briefing will arrive in Telegram shortly.")
-        return self._ok(request, result="Theme engine running — I'll send a summary when it's done (~2 min).")
+        try:
+            logger.info("Theme-only run starting...")
+            themes, changelog = await run_theme_engine()
+            logger.info("Theme-only run complete")
+            active = [t for t in themes if t.get("stage") != "Fading"]
+            revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
+            pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
+            summary = f"Theme engine complete — {len(active)} active themes"
+            if revalidated:
+                removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
+                summary += f"\nRemoved mismatched: {removed}"
+            if pruned:
+                summary += f"\nPruned {len(pruned)} weak stock(s)"
+            if wants_brief:
+                asyncio.create_task(send_evening_briefing())
+                summary += "\nEvening briefing sending..."
+            return self._ok(request, result=summary)
+        except Exception as e:
+            logger.error(f"Theme-only run failed: {e}", exc_info=True)
+            return self._error(request, error=f"Theme engine failed: {e}")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
         today_str = et_today().strftime("%Y-%m-%d")
