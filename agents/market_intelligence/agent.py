@@ -39,7 +39,7 @@ from agents.market_intelligence.db import (
     get_rs_history,
     get_theme_history,
 )
-from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
+from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
@@ -571,18 +571,29 @@ class MarketIntelligenceAgent(BaseAgent):
         async def _run():
             try:
                 logger.info("Theme-only run starting...")
-                await run_theme_engine()
+                themes, changelog = await run_theme_engine()
                 logger.info("Theme-only run complete")
+                active = [t for t in themes if t.get("stage") != "Fading"]
+                revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
+                pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
+                summary = f"✅ Theme engine complete — {len(active)} active themes"
+                if revalidated:
+                    removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
+                    summary += f"\n🧹 Removed mismatched stocks: {removed}"
+                if pruned:
+                    summary += f"\n✂️ Pruned {len(pruned)} weak stock(s)"
+                await send_telegram_message(summary)
                 if wants_brief:
                     await send_evening_briefing()
             except Exception as e:
                 logger.error(f"Theme-only run failed: {e}")
+                await send_telegram_message(f"❌ Theme engine failed: {e}")
 
         asyncio.create_task(_run())
 
         if wants_brief:
             return self._ok(request, result="Theme engine running — briefing will arrive in Telegram shortly.")
-        return self._ok(request, result="Theme engine running — themes will be updated shortly (uses existing RS data, no Polygon calls).")
+        return self._ok(request, result="Theme engine running — I'll send a summary when it's done (~2 min).")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
         today_str = et_today().strftime("%Y-%m-%d")

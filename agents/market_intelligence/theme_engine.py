@@ -114,6 +114,93 @@ async def _get_sector(ticker: str) -> str:
     return sector
 
 
+async def _ensure_descriptions(tickers: list[str]) -> None:
+    """
+    For any ticker missing a trading-relevant description, fetch from yfinance
+    and generate a concise one via Claude Haiku. Persists to DB and updates
+    TICKER_DESC in memory so clustering can use it immediately.
+
+    Stocks that still have no description after the fetch attempt are logged —
+    they will be excluded from clustering rather than clustered blind.
+    """
+    from agents.market_intelligence.universe import TICKER_DESC, apply_overrides
+    from agents.market_intelligence.db import upsert_ticker_overrides_batch
+
+    missing = [t for t in tickers if not TICKER_DESC.get(t)]
+    if not missing:
+        return
+
+    logger.info(f"[theme descriptions] {len(missing)} stocks missing descriptions, fetching: {missing}")
+
+    # Fetch yfinance profiles concurrently
+    sem = asyncio.Semaphore(5)
+    profiles: dict[str, dict] = {}
+
+    async def _fetch(ticker: str) -> None:
+        async with sem:
+            profiles[ticker] = await get_fmp_profile(ticker)
+
+    await asyncio.gather(*[_fetch(t) for t in missing])
+
+    # Build prompt for Claude Haiku — same style as scheduler step 4a
+    stock_lines = []
+    to_describe = []
+    for tk in missing:
+        p = profiles.get(tk, {})
+        name = p.get("companyName", tk)
+        industry = p.get("industry", "")
+        biz = p.get("description", "")[:200]
+        if not (name or industry or biz):
+            logger.warning(f"[theme descriptions] {tk}: no profile data from yfinance — will be excluded from clustering")
+            continue
+        to_describe.append(tk)
+        stock_lines.append(f"- {tk}: {name}. Industry: {industry}. {biz}")
+
+    if not stock_lines:
+        return
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        prompt = (
+            "Generate concise trading-relevant descriptions for these stocks. "
+            "Each description should be 3-8 words describing what the company actually does, "
+            "focused on the business that drives the stock price. Use the style of these examples:\n"
+            "- NVDA: AI/data center GPUs, inference & training chips\n"
+            "- MU: DRAM & NAND memory, HBM for AI GPUs\n"
+            "- FCX: Copper & gold mining\n"
+            "- AGRO: Agricultural farming, sugar, ethanol production\n\n"
+            "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
+            "Stocks:\n" + "\n".join(stock_lines)
+        )
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        import json
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+            raw = raw.rstrip("```").strip()
+        desc_map = json.loads(raw)
+        if isinstance(desc_map, dict):
+            valid = {tk.upper(): desc for tk, desc in desc_map.items()
+                     if isinstance(desc, str) and desc and tk.upper() in to_describe}
+            if valid:
+                await upsert_ticker_overrides_batch(valid)
+                apply_overrides(valid)
+                logger.info(f"[theme descriptions] Generated and persisted {len(valid)} descriptions: {list(valid.keys())}")
+            # Log any that still have no description
+            still_missing = [t for t in missing if not TICKER_DESC.get(t)]
+            if still_missing:
+                logger.warning(
+                    f"[theme descriptions] {len(still_missing)} stocks still have no description after fetch — "
+                    f"will be excluded from clustering: {still_missing}"
+                )
+    except Exception as e:
+        logger.error(f"[theme descriptions] Failed to generate descriptions: {e}")
+
+
 async def _get_theme_history(name: str, days: int = 10) -> list[dict]:
     """Get recent daily snapshots for a named theme."""
     pool = await get_pool()
@@ -169,6 +256,81 @@ async def _save_themes(themes: list[dict]) -> None:
             DELETE FROM mi_themes
             WHERE theme_date = $1 AND name != ALL($2)
         """, today, final_names)
+
+
+async def _validate_theme_membership(
+    theme_name: str,
+    tickers: list[str],
+    changelog: list[dict],
+) -> list[str]:
+    """
+    Ask Claude Haiku whether each stock's description is consistent with the theme.
+    Removes stocks that clearly don't belong. Runs on Mon/Wed/Fri during re-scoring.
+
+    This catches stocks that were added before descriptions existed or were incorrectly
+    clustered (e.g. AGRO ending up in an IP Licensing theme).
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    # Only validate stocks that have descriptions — no-description stocks stay
+    # (they were either pre-existing or survived _ensure_descriptions somehow)
+    describable = [(tk, TICKER_DESC[tk]) for tk in tickers if TICKER_DESC.get(tk)]
+    if len(describable) < 2:
+        return tickers  # not enough data to validate
+
+    stock_lines = "\n".join(f"- {tk}: {desc}" for tk, desc in describable)
+    prompt = (
+        f"Theme: \"{theme_name}\"\n\n"
+        f"Stocks in this theme and their descriptions:\n{stock_lines}\n\n"
+        f"Which stocks CLEARLY DO NOT belong to this theme based on their description? "
+        f"A stock clearly doesn't belong if its business has no plausible connection to the theme thesis. "
+        f"Be conservative — only flag obvious mismatches (e.g. a farming company in an IP licensing theme). "
+        f"If in doubt, keep the stock.\n\n"
+        f"Return JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all fit."
+    )
+
+    try:
+        client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        import json
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rstrip("```").strip()
+        result = json.loads(raw)
+        to_remove = {tk.upper() for tk in result.get("remove", []) if isinstance(tk, str)}
+
+        # Never remove so many that the theme drops below minimum
+        survivable = [t for t in tickers if t not in to_remove]
+        if len(survivable) < PRUNE_MIN_TICKERS:
+            logger.warning(
+                f"Theme '{theme_name}': re-validation would drop below {PRUNE_MIN_TICKERS} tickers — skipping removals"
+            )
+            return tickers
+
+        if to_remove:
+            for tk in to_remove:
+                if tk in tickers:
+                    changelog.append({
+                        "type": "ticker_revalidated_out",
+                        "theme": theme_name,
+                        "ticker": tk,
+                        "reason": f"description inconsistent with theme '{theme_name}'",
+                    })
+                    logger.info(
+                        f"Theme '{theme_name}': removed {tk} — description '{TICKER_DESC.get(tk, '')}' "
+                        f"does not match theme"
+                    )
+            return [t for t in tickers if t not in to_remove]
+
+        return tickers
+
+    except Exception as e:
+        logger.warning(f"Theme '{theme_name}': re-validation failed ({e}) — keeping all tickers")
+        return tickers
 
 
 async def _rescore_existing_theme(
@@ -228,6 +390,13 @@ async def _rescore_existing_theme(
         for tk, rs, reason in prune_candidates:
             changelog.append({"type": "ticker_pruned", "theme": name, "ticker": tk, "rs": rs, "reason": reason})
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
+
+    # --- Re-validation: remove stocks whose description clearly doesn't match the theme ---
+    # Runs on Mon/Wed/Fri to catch stocks that were added before descriptions were available,
+    # or were incorrectly clustered. Uses Claude Haiku — lightweight, ~5s per theme.
+    today_weekday = today.weekday()
+    if today_weekday in (0, 2, 4) and len(tickers) >= 2:
+        tickers = await _validate_theme_membership(name, tickers, changelog)
 
     # Check how many constituent stocks still show strong RS today
     strong_stocks = [t for t in tickers if t in stocks_by_ticker
@@ -357,13 +526,23 @@ async def _assign_uncovered_to_themes(
 
     client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
+    # Exclude stocks with no description — clustering blind produces bogus theme assignments.
+    no_desc = [s["ticker"] for s in uncovered_stocks if not TICKER_DESC.get(s["ticker"])]
+    if no_desc:
+        logger.warning(
+            f"[theme assign] Excluding {len(no_desc)} stocks with no description from assignment: {no_desc}. "
+            f"Check _ensure_descriptions — yfinance may have returned no data for these tickers."
+        )
+    uncovered_stocks = [s for s in uncovered_stocks if TICKER_DESC.get(s["ticker"])]
+    if not uncovered_stocks:
+        return [], []
+
     stock_lines = []
     for s in uncovered_stocks:
         ticker = s["ticker"]
         desc = TICKER_DESC.get(ticker, "")
-        desc_part = f" — {desc}" if desc else ""
         stock_lines.append(
-            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')}{desc_part})"
+            f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, sector: {s.get('sector', 'Unknown')} — {desc})"
         )
 
     theme_lines = []
@@ -538,12 +717,20 @@ async def _discover_new_themes(
 
     from agents.market_intelligence.universe import TICKER_DESC
 
+    # Exclude stocks with no description — clustering blind produces bogus themes.
+    no_desc = [s["ticker"] for s in uncovered_stocks if not TICKER_DESC.get(s["ticker"])]
+    if no_desc:
+        logger.warning(
+            f"[theme discover] Excluding {len(no_desc)} stocks with no description from discovery: {no_desc}. "
+            f"Check _ensure_descriptions — yfinance may have returned no data for these tickers."
+        )
+    uncovered_stocks = [s for s in uncovered_stocks if TICKER_DESC.get(s["ticker"])]
+
     def _stock_line(s: dict, theme_label: str = "") -> str:
         ticker = s["ticker"]
         desc = TICKER_DESC.get(ticker, "")
-        desc_part = f" — {desc}" if desc else ""
         theme_part = f" [in: {theme_label}]" if theme_label else ""
-        return f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')}{desc_part}){theme_part}"
+        return f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')} — {desc}){theme_part}"
 
     stock_lines = "\n".join(_stock_line(s) for s in uncovered_stocks)
 
@@ -917,6 +1104,11 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     await asyncio.gather(*[_enrich_sector(s) for s in leaders])
 
     stocks_by_ticker = {s["ticker"]: s for s in leaders}
+
+    # --- Step 0.5: Ensure every RS leader has a description before clustering ---
+    # Fetches from yfinance + Claude Haiku for any stock missing one, persists to DB.
+    # Stocks that still have no description after this step are excluded from clustering.
+    await _ensure_descriptions([s["ticker"] for s in leaders])
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
