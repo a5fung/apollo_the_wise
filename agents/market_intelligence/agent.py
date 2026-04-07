@@ -39,7 +39,7 @@ from agents.market_intelligence.db import (
     get_rs_history,
     get_theme_history,
 )
-from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
+from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
