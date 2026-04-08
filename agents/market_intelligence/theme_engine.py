@@ -349,18 +349,30 @@ async def _rescore_existing_theme(
     # --- Pruning: remove weak stocks before scoring ---
     prune_candidates: list[tuple[str, float, str]] = []  # (ticker, rs, reason)
     soft_check_tickers: list[str] = []
+    missing_rs_tickers: list[str] = []   # in theme but absent from today's RS data
 
     for tk in tickers:
         stock = stocks_by_ticker.get(tk)
         if not stock:
-            continue  # no RS data → keep
+            missing_rs_tickers.append(tk)  # collect for history check instead of blindly keeping
+            continue
         rs_now = stock.get("rs_composite")
         if rs_now is None:
-            continue  # missing RS → keep
+            missing_rs_tickers.append(tk)
+            continue
         if rs_now < PRUNE_RS_HARD:
             prune_candidates.append((tk, rs_now, f"RS {rs_now:.0f} < {PRUNE_RS_HARD:.0f} (hard)"))
         elif rs_now < PRUNE_RS_SOFT:
             soft_check_tickers.append(tk)
+
+    # Stocks missing today's RS: check recent history — if consistently weak, prune them too.
+    # Prevents tickers from hiding in themes by occasionally dropping out of the RS engine.
+    if missing_rs_tickers:
+        missing_history = await get_recent_rs_batch(missing_rs_tickers, today, days=5)
+        for tk in missing_rs_tickers:
+            hist = missing_history.get(tk, [])
+            if hist and all(v < PRUNE_RS_HARD for v in hist):
+                prune_candidates.append((tk, hist[0], f"RS {hist[0]:.0f} consistently < {PRUNE_RS_HARD:.0f} (no current data)"))
 
     # Soft prune: check 3-day history
     if soft_check_tickers:
@@ -461,18 +473,24 @@ async def _rescore_existing_theme(
         description = existing_desc
 
     total_score = round(momentum_score + news_score, 1)
-    delta = total_score - prev_score
 
-    if delta > 3:
+    # Use 3-day smoothed previous score for stage transitions.
+    # Raw daily delta is too noisy: news_score swings ±30 when Perplexity finds/loses news,
+    # and tiny RS shifts (delta > 3) would flip themes every day.
+    history_scores = [h.get("score", 0) for h in history[-3:]] if history else []
+    smoothed_prev = sum(history_scores) / len(history_scores) if history_scores else prev_score
+    smooth_delta = total_score - smoothed_prev
+
+    if smooth_delta > 8:
         stage = "Accelerating"
-    elif delta < -5:
+    elif smooth_delta < -8:
         stage = "Fading"
     elif age_days >= 5 and total_score >= 50:
         stage = "Mainstream"
     else:
         stage = prev_stage
-        if stage == "Fading" and delta >= 0:
-            stage = "Accelerating"  # recovering
+        if stage == "Fading" and smooth_delta > 5:   # require real recovery, not noise
+            stage = "Accelerating"
 
     return {
         "theme_date": today,
