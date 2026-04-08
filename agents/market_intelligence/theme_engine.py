@@ -337,6 +337,7 @@ async def _validate_theme_membership(
                     )
             return [t for t in tickers if t not in to_remove]
 
+        logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
         return tickers
 
     except Exception as e:
