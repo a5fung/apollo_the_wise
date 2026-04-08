@@ -292,11 +292,13 @@ async def _validate_theme_membership(
     prompt = (
         f"Theme: \"{theme_name}\"\n\n"
         f"Stocks in this theme and their descriptions:\n{stock_lines}\n\n"
-        f"Which stocks CLEARLY DO NOT belong to this theme based on their description? "
-        f"A stock clearly doesn't belong if its business has no plausible connection to the theme thesis. "
-        f"Be conservative — only flag obvious mismatches (e.g. a farming company in an IP licensing theme). "
-        f"If in doubt, keep the stock.\n\n"
-        f"Return JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all fit."
+        f"Identify stocks that DO NOT BELONG in this theme.\n"
+        f"A stock does not belong if its core business is in a DIFFERENT INDUSTRY than the theme — "
+        f"e.g. a car rental company in a data center theme, a mining company in a biotech theme, "
+        f"a retailer in a semiconductor theme. Be DECISIVE: wrong industry = remove. "
+        f"Do not keep a stock just because you are unsure — if the business sector clearly differs "
+        f"from the theme, flag it.\n\n"
+        f"Return JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all belong."
     )
 
     try:
@@ -413,10 +415,8 @@ async def _rescore_existing_theme(
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
 
     # --- Re-validation: remove stocks whose description clearly doesn't match the theme ---
-    # Runs on Mon/Wed/Fri to catch stocks that were added before descriptions were available,
-    # or were incorrectly clustered. Uses Claude Haiku — lightweight, ~5s per theme.
-    today_weekday = today.weekday()
-    if today_weekday in (0, 2, 4) and len(tickers) >= 2:
+    # Runs daily — cheap (one Haiku call per theme) and catches bad memberships fast.
+    if len(tickers) >= 2:
         tickers = await _validate_theme_membership(name, tickers, changelog)
 
     # Check how many constituent stocks still show strong RS today
@@ -551,7 +551,7 @@ async def _assign_uncovered_to_themes(
 
     from agents.market_intelligence.universe import TICKER_DESC
 
-    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = _get_anthropic_client()
 
     # Exclude stocks with no description — clustering blind produces bogus theme assignments.
     no_desc = [s["ticker"] for s in uncovered_stocks if not TICKER_DESC.get(s["ticker"])]
@@ -1139,6 +1139,13 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
+
+    # --- Step 1.1: Ensure existing theme members also have descriptions ---
+    # _ensure_descriptions above only covers top RS leaders. Stocks already in themes
+    # are excluded from uncovered_stocks and never get described — so _validate_theme_membership
+    # silently skips them (no description = not validated = never removed even if wrong).
+    existing_theme_tickers = list({tk for t in existing for tk in (t.get("tickers") or [])})
+    await _ensure_descriptions(existing_theme_tickers)
 
     # Fetch RS data for existing theme tickers not in top leaders
     # This prevents strong themes (Optical, AI Memory) from going Fading
