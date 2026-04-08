@@ -17,6 +17,7 @@ New sub-themes can always emerge from uncovered RS leaders.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import os
@@ -24,6 +25,16 @@ from datetime import date, timedelta
 from typing import Any
 
 import anthropic
+
+# Reused across all Haiku calls in this module — avoids rebuilding the HTTP client per call.
+_anthropic_client: anthropic.AsyncAnthropic | None = None
+
+
+def _get_anthropic_client() -> anthropic.AsyncAnthropic:
+    global _anthropic_client
+    if _anthropic_client is None:
+        _anthropic_client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    return _anthropic_client
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
 from agents.market_intelligence.constants import trimmed_mean
@@ -160,7 +171,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         return
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        client = _get_anthropic_client()
         prompt = (
             "Generate concise trading-relevant descriptions for these stocks. "
             "Each description should be 3-8 words describing what the company actually does, "
@@ -177,7 +188,6 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}],
         )
-        import json
         raw = resp.content[0].text.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -290,13 +300,12 @@ async def _validate_theme_membership(
     )
 
     try:
-        client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        client = _get_anthropic_client()
         resp = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
-        import json
         raw = resp.content[0].text.strip()
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rstrip("```").strip()

@@ -52,6 +52,14 @@ logger = logging.getLogger(__name__)
 
 MARKET_AGENT_MODEL = "claude-haiku-4-5-20251001"
 
+# Common short words that match the ticker regex but are never tickers.
+# Shared across all three ticker-extraction call sites in execute_task.
+_PREPOSITION_SKIP: frozenset[str] = frozenset({
+    "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
+    "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
+    "AM", "US", "WE", "NO", "GO", "HI",
+})
+
 
 class TeachRequest(BaseModel):
     tickers: list[str] = []
@@ -412,12 +420,9 @@ class MarketIntelligenceAgent(BaseAgent):
             # If a specific ticker is detected, route to single-ticker score
             import re as _re
             _candidate = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-            _skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+            _skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                       "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
-                      "STOCK", "STOCKS", "LEADER", "LEADERS",
-                      "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
-                      "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
-                      "AM", "US", "WE", "NO", "GO", "HI"}
+                      "STOCK", "STOCKS", "LEADER", "LEADERS"}
             _candidate = [t for t in _candidate if t not in _skip]
             if _candidate:
                 return await self._handle_single_score(request)
@@ -566,8 +571,8 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
         """Re-run just the theme engine using existing RS data. No Polygon calls — fast.
 
-        Runs synchronously so the result flows back through the normal orchestrator→Telegram
-        channel (reliable). Orchestrator timeout is set to 360s to accommodate the 2-4 min run.
+        Awaits the full theme engine run (no background task) so the result flows back
+        through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
         """
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
@@ -892,12 +897,9 @@ class MarketIntelligenceAgent(BaseAgent):
         # Extract ticker from task — look for uppercase word 2-5 chars
         tickers = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         # Filter out common non-ticker words
-        skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+        skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                 "PULL", "GET", "SHOW", "CHECK", "FIND", "FUNDAMENTAL",
-                "FUNDAMENTALS", "STOCK", "ANALYSIS",
-                "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
-                "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
-                "AM", "US", "WE", "NO", "GO", "HI"}
+                "FUNDAMENTALS", "STOCK", "ANALYSIS"}
         tickers = [t for t in tickers if t not in skip]
 
         if not tickers:
@@ -1005,11 +1007,8 @@ class MarketIntelligenceAgent(BaseAgent):
         from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
 
         # Extract tickers — uppercase words 2-5 chars, skip common non-tickers
-        skip = {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
-                "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI",
-                "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
-                "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
-                "AM", "US", "WE", "NO", "GO", "HI"}
+        skip = _PREPOSITION_SKIP | {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
+                "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI"}
         found = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         tickers = [t for t in found if t not in skip]
 
