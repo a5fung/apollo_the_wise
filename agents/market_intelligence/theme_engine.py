@@ -1205,9 +1205,16 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
             for tk in (t.get("tickers") or []):
                 ticker_to_theme[tk] = t["name"]
 
+    # Tickers just removed by validation this run — don't re-assign them to any theme
+    # in the same run or they'll be immediately put back where they were just kicked from.
+    revalidated_out = {e["ticker"] for e in changelog if e.get("type") == "ticker_revalidated_out"}
+    if revalidated_out:
+        logger.info(f"Theme engine: excluding {revalidated_out} from uncovered pool (just revalidated out)")
+
     uncovered = [
         s for s in leaders[:40]
         if s["ticker"] not in covered_tickers
+        and s["ticker"] not in revalidated_out
         and s.get("rs_composite", 0) >= THEME_RS_MIN
     ]
     logger.info(f"Theme engine: {len(uncovered)} uncovered RS leaders for new theme discovery")
