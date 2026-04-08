@@ -303,6 +303,12 @@ async def get_premarket_futures() -> dict[str, float]:
     """
     Pre-market futures snapshot via yfinance.
     Returns overnight % change for ES (S&P 500) and NQ (Nasdaq 100).
+
+    Uses SPY/QQQ instead of ES=F/NQ=F: futures contracts have a 5 PM ET settle
+    as their previous_close, so a gap that opened after 5 PM shows as near-zero
+    change. SPY/QQQ have a clean 4 PM equity close as previous_close and track
+    their respective index futures closely pre-market.
+
     Fails gracefully — returns empty dict on any error.
     """
     try:
@@ -311,12 +317,14 @@ async def get_premarket_futures() -> dict[str, float]:
 
         def _fetch() -> dict:
             result = {}
-            for symbol, key in (("ES=F", "es_pct"), ("NQ=F", "nq_pct")):
+            # SPY ≈ ES futures; QQQ ≈ NQ futures — both have clean 4 PM previous_close
+            for symbol, key in (("SPY", "es_pct"), ("QQQ", "nq_pct")):
                 fi = yf.Ticker(symbol).fast_info
                 price = getattr(fi, "last_price", None)
                 prev = getattr(fi, "previous_close", None)
-                if price is not None and prev is not None:
+                if price is not None and prev is not None and prev != 0:
                     result[key] = (price - prev) / prev * 100
+                    logger.debug(f"Futures proxy {symbol}: last={price:.2f} prev_close={prev:.2f} → {result[key]:+.2f}%")
             return result
 
         return await loop.run_in_executor(None, _fetch)

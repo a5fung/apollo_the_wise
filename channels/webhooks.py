@@ -77,12 +77,13 @@ async def tradingview_alert(request: Request) -> JSONResponse:
     Secure your TradingView webhook URL by appending:
       ?token=YOUR_TRADINGVIEW_WEBHOOK_SECRET
     """
+    logger.info(f"TradingView webhook hit: method={request.method} client={request.client}")
     secrets = get_secrets()
 
     # Token verification
     token = request.query_params.get("token") or request.headers.get("X-TV-Token")
     if not token or not hmac.compare_digest(token, secrets.tradingview_webhook_secret):
-        logger.warning("TradingView webhook received with invalid token")
+        logger.warning(f"TradingView webhook: invalid/missing token (got: {token!r:.20})")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     try:
@@ -103,6 +104,8 @@ async def tradingview_alert(request: Request) -> JSONResponse:
     # Forward to Finance Agent and notify user via Telegram
     if _apollo and _telegram_app:
         await _handle_tradingview_alert(alert)
+    else:
+        logger.error(f"TradingView alert dropped — not initialized: _apollo={_apollo is not None} _telegram_app={_telegram_app is not None}")
 
     return JSONResponse({"ok": True})
 
