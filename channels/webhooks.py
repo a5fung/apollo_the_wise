@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -136,7 +137,6 @@ async def _handle_tradingview_alert(alert: TradingViewAlert) -> None:
 
     def _esc(s: str) -> str:
         """Strip Markdown special chars from dynamic TradingView strings."""
-        import re
         return re.sub(r"[*_`\[\]]", "", s) if s else s
 
     for user_id in secrets.telegram_allowed_user_ids:

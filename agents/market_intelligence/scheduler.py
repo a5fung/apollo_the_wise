@@ -25,6 +25,7 @@ from agents.market_intelligence.db import (
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
+from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.fundamentals import compute_fundamental_flags
 from agents.market_intelligence.data_quality import (
@@ -74,10 +75,7 @@ async def _nightly_data_pull():
     scored = 0
     top_for_sector = None
 
-    # 0. Calendar check — skip silently on market holidays instead of firing an alert.
-    # Uses exchange_calendars (rule-based, offline) so no network dependency.
-    # Fails open: if the library errors, we proceed and let the 0-ingest guardrail below catch real issues.
-    from agents.market_intelligence.trading_calendar import get_market_status
+    # 0. Skip on NYSE holidays — the 0-ingest guardrail below handles genuine Polygon failures.
     market_status = get_market_status(_today)
     if not market_status.is_trading_day:
         logger.info(
@@ -583,7 +581,6 @@ async def _stop_ep_scanning():
 async def _ep_scan_watchdog():
     """Run at 10:05 AM ET. Alert if scans failed to run. No alert for zero EPs (normal)."""
     from agents.market_intelligence.collector import _ET
-    from agents.market_intelligence.trading_calendar import get_market_status
     now = datetime.now(_ET)
     if now.weekday() >= 5:
         return
@@ -631,8 +628,6 @@ async def check_missed_jobs() -> None:
     if now.weekday() >= 5:  # Saturday / Sunday
         return
 
-    # Also skip catch-up on market holidays
-    from agents.market_intelligence.trading_calendar import get_market_status
     market_status = get_market_status(now.date())
     if not market_status.is_trading_day:
         logger.info(f"check_missed_jobs: skipping catch-up — {market_status.reason}")
