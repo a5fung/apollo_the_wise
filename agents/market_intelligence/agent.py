@@ -506,7 +506,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # Common mappings
             name_to_symbol = {
                 "OIL": "CL=F", "CRUDE": "CL=F", "BITCOIN": "BTC-USD", "BTC": "BTC-USD",
-                "GOLD": "GC=F", "VIX": "^VIX", "SPY": "ES=F", "NASDAQ": "NQ=F",
+                "GOLD": "GC=F", "VIX": "^VIX", "SPY": "SPY", "NASDAQ": "QQQ",
             }
             for w in words:
                 if w in name_to_symbol:

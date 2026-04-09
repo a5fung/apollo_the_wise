@@ -23,7 +23,7 @@ import httpx
 
 from agents.market_intelligence.collector import (
     et_today as _et_today,
-    get_premarket_futures,
+    get_premarket_snapshot,
     get_overnight_snapshot,
     search_news_perplexity,
 )
@@ -836,7 +836,7 @@ def _format_overnight_section(
 
     lines = ["*OVERNIGHT*"]
 
-    # Price line: ES -1.8% | NQ -2.3% | VIX 34 (+18%) | CL $112 (+4.2%)
+    # Price line: SPY -1.8% | QQQ -2.3% | VIX 34 (+18%) | CL $112 (+4.2%)
     parts = []
     for item in snapshot:
         name = item["name"]
@@ -947,7 +947,7 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
         "name the person, policy, deal, or event. Mention social media posts, "
         "presidential statements, or diplomatic developments by name if relevant. "
         "Be direct and specific. No citation numbers. "
-        "Do NOT restate futures prices or percentage moves — the reader already sees those. "
+        "Do NOT restate index prices or percentage moves — the reader already sees those. "
         "Focus only on the WHY: what news, event, or development drove the move."
     )
 
@@ -1050,7 +1050,7 @@ def _format_morning_briefing(
     regime: dict,
     ep_alerts: list[dict],
     briefing_date: str,
-    futures: dict[str, float] | None = None,
+    premarket: dict[str, float] | None = None,
     themes: list[dict] | None = None,
     overnight_section: str | None = None,
     econ_calendar: str | None = None,
@@ -1080,12 +1080,12 @@ def _format_morning_briefing(
     if overnight_section:
         sections.append("")
         sections.append(overnight_section)
-    elif futures:
+    elif premarket:
         parts = []
-        if "es_pct" in futures:
-            parts.append(f"SPY *{_fmt_sign(futures['es_pct'])}*")
-        if "nq_pct" in futures:
-            parts.append(f"QQQ *{_fmt_sign(futures['nq_pct'])}*")
+        if "spy_pct" in premarket:
+            parts.append(f"SPY *{_fmt_sign(premarket['spy_pct'])}*")
+        if "qqq_pct" in premarket:
+            parts.append(f"QQQ *{_fmt_sign(premarket['qqq_pct'])}*")
         if parts:
             sections.append("Pre-market: " + "  |  ".join(parts))
 
@@ -1137,10 +1137,10 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     today_str = today.strftime("%Y-%m-%d")
     cache = _perplexity_cache.get(today_str, {})
 
-    regime, ep_alerts, futures, themes, watchlist, warnings, fund_flags = await asyncio.gather(
+    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
-        get_premarket_futures(),
+        get_premarket_snapshot(),
         get_today_themes(today_str),
         get_overnight_watchlist(),
         get_quality_warnings(today),
@@ -1169,6 +1169,13 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     snapshot = []
     if watchlist:
         snapshot = await get_overnight_snapshot(watchlist)
+        # Override SPY/QQQ with reliable Polygon data (yfinance is stale pre-market)
+        polygon_map = {"SPY": premarket.get("spy_pct"), "QQQ": premarket.get("qqq_pct")}
+        for item in snapshot:
+            pct = polygon_map.get(item["symbol"])
+            if pct is not None:
+                item["pct_change"] = round(pct, 2)
+                item["triggered"] = abs(pct) >= item["threshold"]
     logger.info(f"Morning briefing: watchlist={len(watchlist)} items, snapshot={len(snapshot)} items")
 
     if "overnight_news" in cache:
@@ -1199,7 +1206,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         regime=regime,
         ep_alerts=ep_alerts,
         briefing_date=today_str,
-        futures=futures,
+        premarket=premarket,
         themes=themes,
         overnight_section=overnight_section,
         econ_calendar=econ_calendar,

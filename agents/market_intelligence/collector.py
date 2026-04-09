@@ -299,16 +299,14 @@ async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
         return []
 
 
-async def get_premarket_futures() -> dict[str, float]:
+async def get_premarket_snapshot() -> dict[str, float]:
     """
-    Pre-market futures snapshot via Polygon.
-    Returns overnight % change for ES (S&P 500) and NQ (Nasdaq 100).
+    Pre-market price snapshot for SPY and QQQ via Polygon.
+    Returns overnight % change keyed as spy_pct and qqq_pct.
 
-    Uses SPY/QQQ snapshots from Polygon:
+    Uses Polygon /v2/snapshot (not yfinance — yfinance is unreliable pre-market):
       - prevDay.c  = confirmed 4 PM regular-session close (reliable reference)
       - min.c      = latest minute bar close (updates in pre-market)
-    This gives the true overnight change vs the equity close — the same
-    reference point a trader would use looking at futures vs yesterday's close.
 
     Fails gracefully — returns empty dict on any error.
     """
@@ -319,7 +317,7 @@ async def get_premarket_futures() -> dict[str, float]:
         )
         snaps = {t["ticker"]: t for t in data.get("tickers", []) if "ticker" in t}
         result = {}
-        for ticker, key in (("SPY", "es_pct"), ("QQQ", "nq_pct")):
+        for ticker, key in (("SPY", "spy_pct"), ("QQQ", "qqq_pct")):
             snap = snaps.get(ticker, {})
             prev = snap.get("prevDay", {}).get("c")
             current = (
@@ -330,10 +328,10 @@ async def get_premarket_futures() -> dict[str, float]:
             if prev and current and prev != 0:
                 pct = (current - prev) / prev * 100
                 result[key] = pct
-                logger.debug(f"Futures proxy {ticker}: current={current:.2f} prevDay.c={prev:.2f} → {pct:+.2f}%")
+                logger.debug(f"Premarket snapshot {ticker}: current={current:.2f} prevDay.c={prev:.2f} → {pct:+.2f}%")
         return result
     except Exception as e:
-        logger.warning(f"Futures snapshot failed: {e}")
+        logger.warning(f"Premarket snapshot failed: {e}")
         return {}
 
 
