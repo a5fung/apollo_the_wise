@@ -38,7 +38,10 @@ def _get_anthropic_client() -> anthropic.AsyncAnthropic:
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
 from agents.market_intelligence.constants import trimmed_mean
-from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners, get_recent_rs_batch
+from agents.market_intelligence.db import (
+    get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
+    get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -325,16 +328,22 @@ async def _validate_theme_membership(
         if to_remove:
             for tk in to_remove:
                 if tk in tickers:
+                    reason = f"description inconsistent with theme '{theme_name}'"
                     changelog.append({
                         "type": "ticker_revalidated_out",
                         "theme": theme_name,
                         "ticker": tk,
-                        "reason": f"description inconsistent with theme '{theme_name}'",
+                        "reason": reason,
                     })
                     logger.info(
                         f"Theme '{theme_name}': removed {tk} — description '{TICKER_DESC.get(tk, '')}' "
                         f"does not match theme"
                     )
+                    # Persist to DB so this exclusion survives future engine runs
+                    try:
+                        await add_theme_exclusion(tk, theme_name, reason)
+                    except Exception as exc:
+                        logger.warning(f"Failed to persist exclusion {tk}/{theme_name}: {exc}")
             return [t for t in tickers if t not in to_remove]
 
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
@@ -349,14 +358,34 @@ async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
     today: date,
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> tuple[dict | None, list[dict]]:
     """
     Re-score an existing theme using today's RS data.
     Returns (theme_or_None, changelog_entries). None means retired.
+    theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     """
     name = theme["name"]
     tickers = list(theme.get("tickers") or [])
     changelog: list[dict] = []
+
+    # --- Enforce persistent exclusions FIRST — before any pruning or validation ---
+    if theme_exclusions:
+        excluded_for_theme = theme_exclusions.get(name, set())
+        if excluded_for_theme:
+            excluded_present = [t for t in tickers if t in excluded_for_theme]
+            if excluded_present:
+                logger.info(
+                    f"Theme '{name}': stripping persistently excluded tickers: {excluded_present}"
+                )
+                tickers = [t for t in tickers if t not in excluded_for_theme]
+                for tk in excluded_present:
+                    changelog.append({
+                        "type": "ticker_excluded",
+                        "theme": name,
+                        "ticker": tk,
+                        "reason": "persistent exclusion (DB)",
+                    })
 
     # --- Pruning: remove weak stocks before scoring ---
     prune_candidates: list[tuple[str, float, str]] = []  # (ticker, rs, reason)
@@ -542,10 +571,12 @@ async def _assign_uncovered_to_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
     stocks_by_ticker: dict[str, dict],
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
     Returns (remaining_uncovered, changelog_entries).
+    theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     """
     if not uncovered_stocks or not existing_themes:
         return uncovered_stocks, []
@@ -630,6 +661,11 @@ Rules:
 
         # Validate ticker is in uncovered pool
         if ticker not in {s["ticker"] for s in uncovered_stocks}:
+            continue
+
+        # Honor persistent exclusions — never re-assign a ticker that was excluded from this theme
+        if theme_exclusions and ticker in theme_exclusions.get(theme_name, set()):
+            logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
             continue
 
         # Sector outlier check: reject if stock's sector is singleton in theme
@@ -1171,8 +1207,14 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
 
     logger.info(f"Theme engine: re-scoring {len(existing)} existing themes...")
 
+    # Load persistent exclusions once — passed to rescore + assign to prevent re-entry
+    theme_exclusions = await get_all_theme_exclusions()
+    if theme_exclusions:
+        total_excl = sum(len(v) for v in theme_exclusions.values())
+        logger.info(f"Theme engine: loaded {total_excl} persistent ticker exclusions across {len(theme_exclusions)} themes")
+
     rescore_results = await asyncio.gather(*[
-        _rescore_existing_theme(theme, stocks_by_ticker, today)
+        _rescore_existing_theme(theme, stocks_by_ticker, today, theme_exclusions=theme_exclusions)
         for theme in existing
     ])
 
@@ -1254,6 +1296,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     if uncovered and updated_themes:
         uncovered, assign_log = await _assign_uncovered_to_themes(
             uncovered, updated_themes, stocks_by_ticker,
+            theme_exclusions=theme_exclusions,
         )
         changelog.extend(assign_log)
         logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")

@@ -245,3 +245,30 @@ TRADINGVIEW_WEBHOOK_SECRET
 - `requirements/base.txt` — added exchange-calendars>=4.5
 - `tests/test_theme_notification.py` — NEW: 13 tests, all passing
 - `CLAUDE.md` — this file
+
+## Changes Made 2026-04-09 (third session)
+
+### Bug Fixed
+
+**CAR (Avis Budget Group) perpetually stuck in data center theme** — three prior fix attempts all failed because they relied on Haiku `_validate_theme_membership` to make the correct decision each run. Haiku is inconsistent: it sometimes decides CAR does belong in an IT/data-center theme (or fails with a caught exception), so the ticker is never reliably removed. The fix needed to be at the enforcement layer, not the decision layer.
+
+### Solution: Persistent Theme Exclusion Table
+
+New `mi_theme_exclusions` DB table stores (ticker, theme_name) pairs that are permanently banned from re-entering that theme, regardless of RS score or Haiku decisions.
+
+**Enforcement is two-layer:**
+1. `_rescore_existing_theme`: strips excluded tickers BEFORE pruning and BEFORE Haiku validation. Excluded tickers simply never reach the validation step.
+2. `_assign_uncovered_to_themes`: skips excluded tickers when Claude tries to re-assign uncovered stocks to existing themes. Prevents re-entry via the discovery path.
+
+**Automatic persistence:** When `_validate_theme_membership` successfully removes a ticker, it now writes to `mi_theme_exclusions` via `add_theme_exclusion()`. This means future runs don't depend on Haiku making the same decision again.
+
+**User command:** "exclude CAR from [theme name]" → immediate DB insert, no engine run needed. Next theme engine run strips it. "list exclusions" shows all active bans. "remove exclusion CAR from [theme]" undoes it.
+
+### Files Changed
+- `agents/market_intelligence/db.py` — added `mi_theme_exclusions` table (CREATE TABLE + index in `initialize_schema`), plus `add_theme_exclusion`, `get_all_theme_exclusions`, `remove_theme_exclusion`, `list_theme_exclusions` functions
+- `agents/market_intelligence/theme_engine.py` — updated imports; `_validate_theme_membership` now persists removals to DB; `_rescore_existing_theme` accepts `theme_exclusions` kwarg and strips excluded tickers first; `_assign_uncovered_to_themes` accepts `theme_exclusions` kwarg and blocks excluded assignments; `run_theme_engine` loads exclusions once via `get_all_theme_exclusions()` and passes to both functions
+- `agents/market_intelligence/agent.py` — added imports for exclusion functions; new route in `execute_task` for "exclude"/"ban from theme"/"list exclusions" keywords; new `_handle_theme_exclusion` handler
+- `CLAUDE.md` — this file
+
+### Key Design Decision
+The fix is enforcement, not persuasion. We don't ask Haiku again — we don't let the ticker reach Haiku at all. The exclusion is stored at the DB layer and applied at the top of `_rescore_existing_theme` before any scoring logic runs. This is the only approach that is robust against Haiku inconsistency, network failures, or edge cases in description parsing.

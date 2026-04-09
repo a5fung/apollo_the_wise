@@ -38,6 +38,10 @@ from agents.market_intelligence.db import (
     get_ticker_overrides,
     get_rs_history,
     get_theme_history,
+    get_prior_theme_scores,
+    add_theme_exclusion,
+    remove_theme_exclusion,
+    list_theme_exclusions,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
@@ -393,6 +397,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["track ", "untrack ", "drop ", "watchlist", "overnight watch"]):
             return await self._handle_watchlist(request)
 
+        if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
+            return await self._handle_theme_exclusion(request)
+
         if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme", "refresh theme"]):
             return await self._handle_theme_only(request)
 
@@ -567,6 +574,68 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._ok(request, result="Couldn't identify the instrument. Try: 'track bitcoin', 'track gold', 'track oil', or specify a Yahoo Finance symbol.")
 
         return self._ok(request, result="Use: 'show watchlist', 'track bitcoin with 5% threshold', or 'drop oil'")
+
+    async def _handle_theme_exclusion(self, request: AgentRequest) -> AgentResponse:
+        """
+        Manage persistent theme-level ticker exclusions.
+        Once excluded, a ticker will never re-enter that theme regardless of RS or Haiku decisions.
+
+        Commands:
+          "exclude CAR from [theme name]" — add exclusion
+          "remove exclusion CAR from [theme name]" — undo exclusion
+          "list exclusions" / "show theme exclusions" — list all
+        """
+        import re as _re
+        task = request.task.lower()
+        task_orig = request.task
+
+        # List exclusions
+        if any(k in task for k in ["list exclusions", "show exclusions", "theme exclusions"]):
+            rows = await list_theme_exclusions()
+            if not rows:
+                return self._ok(request, result="No theme exclusions set.")
+            lines = ["*Persistent Theme Exclusions*"]
+            for r in rows:
+                lines.append(f"• `{r['ticker']}` excluded from _{r['theme_name']}_ — {r['reason'] or 'manual'}")
+            return self._ok(request, result="\n".join(lines))
+
+        # Extract ticker — first 2-5 letter uppercase word that looks like a ticker
+        tickers_found = _re.findall(r'\b([A-Z]{2,5})\b', task_orig.upper())
+        skip = _PREPOSITION_SKIP | {"EXCLUDE", "REMOVE", "FROM", "THEME", "BAN", "KICK", "LIST", "SHOW"}
+        ticker = next((t for t in tickers_found if t not in skip), None)
+        if not ticker:
+            return self._ok(request, result="Couldn't identify a ticker. Try: 'exclude CAR from [theme name]'")
+
+        # Check if this is a removal
+        is_removal = any(k in task for k in ["remove exclusion", "unexclude", "allow back", "undo exclusion"])
+
+        # Extract theme name — everything after "from" (or "from theme")
+        theme_name = ""
+        m = _re.search(r'\bfrom(?:\s+theme)?\s+(.+)', task_orig, _re.IGNORECASE)
+        if m:
+            theme_name = m.group(1).strip()
+            # Remove any trailing punctuation
+            theme_name = theme_name.rstrip(".,!?")
+
+        if not theme_name:
+            return self._ok(request, result=f"Couldn't extract theme name. Try: 'exclude {ticker} from [exact theme name]'")
+
+        if is_removal:
+            removed = await remove_theme_exclusion(ticker, theme_name)
+            if removed:
+                return self._ok(request, result=f"Exclusion lifted: `{ticker}` can now re-enter _{theme_name}_.")
+            return self._ok(request, result=f"No exclusion found for `{ticker}` in _{theme_name}_.")
+        else:
+            reason = f"manually excluded by user"
+            await add_theme_exclusion(ticker, theme_name, reason)
+            return self._ok(
+                request,
+                result=(
+                    f"Done. `{ticker}` is now permanently excluded from _{theme_name}_.\n"
+                    f"It will be stripped on the next theme engine run and can never re-enter that theme.\n"
+                    f"To undo: 'remove exclusion {ticker} from {theme_name}'"
+                ),
+            )
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
         """Re-run just the theme engine using existing RS data. No Polygon calls — fast.

@@ -392,6 +392,20 @@ async def initialize_schema() -> None:
                     FOR EACH ROW EXECUTE FUNCTION protect_trade_tables();
             """)
 
+        # ── Theme exclusions table ────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_exclusions (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                theme_name TEXT NOT NULL,
+                reason TEXT,
+                excluded_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, theme_name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_exclusions_theme
+                ON mi_theme_exclusions(theme_name);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -1936,3 +1950,66 @@ async def get_live_trading_summary() -> dict[str, Any]:
         "skipped": stats["skipped"] or 0,
         "open_details": [dict(r) for r in open_positions],
     }
+
+
+# ── Theme exclusions ──────────────────────────────────────────────────────────
+
+async def add_theme_exclusion(ticker: str, theme_name: str, reason: str = "") -> None:
+    """
+    Permanently exclude a ticker from a specific theme.
+    Once excluded, the ticker will never be assigned to that theme by the engine,
+    regardless of RS score or Haiku validation decisions.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_theme_exclusions (ticker, theme_name, reason)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (ticker, theme_name) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                excluded_at = NOW()
+        """, ticker.upper(), theme_name, reason)
+    logger.info(f"Theme exclusion added: {ticker} excluded from '{theme_name}'")
+
+
+async def get_all_theme_exclusions() -> dict[str, set[str]]:
+    """
+    Load all theme exclusions.
+    Returns dict mapping theme_name → set of excluded tickers.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT ticker, theme_name FROM mi_theme_exclusions")
+    result: dict[str, set[str]] = {}
+    for row in rows:
+        theme = row["theme_name"]
+        if theme not in result:
+            result[theme] = set()
+        result[theme].add(row["ticker"])
+    return result
+
+
+async def remove_theme_exclusion(ticker: str, theme_name: str) -> bool:
+    """Remove a previously set exclusion. Returns True if a row was deleted."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM mi_theme_exclusions WHERE ticker = $1 AND theme_name = $2",
+            ticker.upper(), theme_name,
+        )
+    deleted = result.split()[-1] != "0"
+    if deleted:
+        logger.info(f"Theme exclusion removed: {ticker} can now re-enter '{theme_name}'")
+    return deleted
+
+
+async def list_theme_exclusions() -> list[dict[str, Any]]:
+    """Return all exclusions as a list of dicts (for display)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, theme_name, reason, excluded_at
+            FROM mi_theme_exclusions
+            ORDER BY excluded_at DESC
+        """)
+    return [dict(r) for r in rows]
