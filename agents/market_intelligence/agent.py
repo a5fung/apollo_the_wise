@@ -38,6 +38,7 @@ from agents.market_intelligence.db import (
     get_ticker_overrides,
     get_rs_history,
     get_theme_history,
+    get_prior_theme_scores,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
@@ -592,27 +593,81 @@ class MarketIntelligenceAgent(BaseAgent):
 
         Awaits the full theme engine run (no background task) so the result flows back
         through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
+        Returns a stage-grouped scorecard in the same format as the evening brief.
         """
+        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI
+
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
+        today_str = et_today().strftime("%Y-%m-%d")
 
         try:
             logger.info("Theme-only run starting...")
             themes, changelog = await run_theme_engine()
             logger.info("Theme-only run complete")
-            active = [t for t in themes if t.get("stage") != "Fading"]
+
+            # Get RS data for all theme tickers + prior scores (for delta)
+            all_tickers = list({tk for t in themes for tk in (t.get("tickers") or [])})
+            if all_tickers:
+                theme_rs_data, prior_scores = await asyncio.gather(
+                    get_rs_for_tickers(today_str, all_tickers),
+                    get_prior_theme_scores(today_str),
+                )
+            else:
+                theme_rs_data, prior_scores = {}, {}
+
+            scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores or {})
+
+            # Group by stage
+            stage_order = ["Accelerating", "Nascent", "Mainstream"]
+            stage_groups: dict[str, list] = {s: [] for s in stage_order}
+            for st in scored_themes:
+                stage_groups.setdefault(st.get("stage", "Nascent"), []).append(st)
+
+            lines = [f"*THEME ENGINE — {len(scored_themes)} active*"]
+
+            # Changelog notes (removals/pruning)
             revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
             pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
-            summary = f"Theme engine complete — {len(active)} active themes"
             if revalidated:
                 removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
-                summary += f"\nRemoved mismatched: {removed}"
+                lines.append(f"_Removed: {removed}_")
             if pruned:
-                summary += f"\nPruned {len(pruned)} weak stock(s)"
+                lines.append(f"_Pruned {len(pruned)} weak stock(s)_")
+
+            for stage in stage_order:
+                group = stage_groups.get(stage, [])
+                if not group:
+                    continue
+                emoji = STAGE_EMOJI.get(stage, "")
+                lines.append(f"\n{emoji} *{stage.upper()}* ({len(group)})")
+                for st in group:
+                    theme_emoji = STAGE_EMOJI.get(st["stage"], " ")
+                    delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
+                    lines.append(f"\n{theme_emoji}*{st['name']}*")
+                    lines.append(
+                        f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}"
+                    )
+                    ticker_rs = [
+                        (tk, theme_rs_data[tk]["rs_composite"])
+                        for tk in st["tickers"]
+                        if theme_rs_data.get(tk, {}).get("rs_composite") is not None
+                        and theme_rs_data[tk]["rs_composite"] >= 50
+                    ]
+                    ticker_rs.sort(key=lambda x: -x[1])
+                    top = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs[:5])
+                    if top:
+                        lines.append(f"  {top}")
+
+            if fading:
+                fading_names = " · ".join(t.get("name", "?") for t in fading[:5])
+                lines.append(f"\n🔻 _Fading: {fading_names}_")
+
             if wants_brief:
                 asyncio.create_task(send_evening_briefing())
-                summary += "\nEvening briefing sending..."
-            return self._ok(request, result=summary)
+                lines.append("\n_Evening briefing sending..._")
+
+            return self._ok(request, result="\n".join(lines))
         except Exception as e:
             logger.error(f"Theme-only run failed: {e}", exc_info=True)
             return self._error(request, error=f"Theme engine failed: {e}")
