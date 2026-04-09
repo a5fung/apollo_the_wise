@@ -223,6 +223,7 @@ async def initialize_schema() -> None:
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
 
+
             CREATE TABLE IF NOT EXISTS mi_daily_closes (
                 trade_date DATE NOT NULL,
                 ticker TEXT NOT NULL,

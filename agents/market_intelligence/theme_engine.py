@@ -282,16 +282,24 @@ async def _validate_theme_membership(
     """
     from agents.market_intelligence.universe import TICKER_DESC
 
-    # Only validate stocks that have descriptions — no-description stocks stay
-    # (they were either pre-existing or survived _ensure_descriptions somehow)
-    describable = [(tk, TICKER_DESC[tk]) for tk in tickers if TICKER_DESC.get(tk)]
-    if len(describable) < 2:
-        return tickers  # not enough data to validate
+    if len(tickers) < 2:
+        return tickers
 
-    stock_lines = "\n".join(f"- {tk}: {desc}" for tk, desc in describable)
+    # Include ALL tickers — described ones get their description, undescribed ones
+    # are identified by ticker symbol alone (Haiku knows CAR=Avis, UBER=rideshare, etc.)
+    # Previously, undescribed tickers were silently kept, making validation blind to them.
+    stock_lines_parts = []
+    for tk in tickers:
+        desc = TICKER_DESC.get(tk)
+        if desc:
+            stock_lines_parts.append(f"- {tk}: {desc}")
+        else:
+            stock_lines_parts.append(f"- {tk}: (use your knowledge of this ticker)")
+    stock_lines = "\n".join(stock_lines_parts)
+
     prompt = (
         f"Theme: \"{theme_name}\"\n\n"
-        f"Stocks in this theme and their descriptions:\n{stock_lines}\n\n"
+        f"Stocks in this theme:\n{stock_lines}\n\n"
         f"Identify stocks that DO NOT BELONG in this theme.\n"
         f"A stock does not belong if its core business is in a DIFFERENT INDUSTRY than the theme — "
         f"e.g. a car rental company in a data center theme, a mining company in a biotech theme, "
