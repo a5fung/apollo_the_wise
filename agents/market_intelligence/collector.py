@@ -180,6 +180,49 @@ async def get_index_history(ticker: str, from_date: str, to_date: str) -> list[d
         return []
 
 
+async def get_vix_history(from_date: str, to_date: str) -> list[dict]:
+    """
+    Get actual VIX daily closes. Tries Polygon I:VIX first (Indices plan),
+    falls back to yfinance ^VIX (free, reliable for daily bars).
+    Returns list of dicts with at least {"c": float} matching get_index_history format.
+    """
+    # Try Polygon I:VIX (works on Indices plan, may 404 on Starter)
+    try:
+        data = await _polygon_get(
+            f"/v2/aggs/ticker/I:VIX/range/1/day/{from_date}/{to_date}",
+            {"adjusted": "true", "sort": "asc", "limit": 300},
+        )
+        bars = data.get("results", [])
+        if bars:
+            logger.debug(f"VIX history: got {len(bars)} bars from Polygon I:VIX")
+            return bars
+    except Exception as e:
+        logger.debug(f"Polygon I:VIX unavailable ({e}), falling back to yfinance")
+
+    # Fall back to yfinance ^VIX
+    try:
+        import yfinance as yf
+        loop = asyncio.get_event_loop()
+
+        def _fetch():
+            df = yf.download("^VIX", start=from_date, end=to_date, progress=False, auto_adjust=True)
+            if df.empty:
+                return []
+            # Normalise to Polygon bar format: {"t": epoch_ms, "c": close}
+            bars = []
+            for ts, row in df.iterrows():
+                close = float(row["Close"].iloc[0]) if hasattr(row["Close"], "iloc") else float(row["Close"])
+                bars.append({"t": int(ts.timestamp() * 1000), "c": close})
+            return bars
+
+        bars = await loop.run_in_executor(None, _fetch)
+        logger.debug(f"VIX history: got {len(bars)} bars from yfinance ^VIX")
+        return bars
+    except Exception as e:
+        logger.error(f"VIX history failed (both Polygon and yfinance): {e}")
+        return []
+
+
 def prev_trading_days(n: int, from_date: date | None = None) -> list[date]:
     """
     Return a list of n approximate trading dates going back from from_date.

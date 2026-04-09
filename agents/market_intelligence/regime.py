@@ -22,7 +22,7 @@ import logging
 from datetime import date, timedelta
 from typing import Optional
 
-from agents.market_intelligence.collector import get_index_history, et_today
+from agents.market_intelligence.collector import get_index_history, get_vix_history, et_today
 from agents.market_intelligence.db import (
     upsert_regime,
     get_latest_regime as _get_latest_regime,
@@ -438,10 +438,10 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
 
     logger.info(f"Regime engine: fetching SPY/VIX history...")
 
-    # SPY, QQQ, VIX proxy history (3 Polygon calls — free tier compatible)
+    # SPY, QQQ history + actual VIX (Polygon I:VIX with yfinance fallback)
     spy_bars = await get_index_history("SPY", from_date, today_str)
     qqq_bars = await get_index_history("QQQ", from_date, today_str)
-    vix_bars = await get_index_history("UVXY", from_date, today_str)
+    vix_bars = await get_vix_history(from_date, today_str)
 
     spy_closes = [b["c"] for b in spy_bars if "c" in b]
     qqq_closes = [b["c"] for b in qqq_bars if "c" in b]
