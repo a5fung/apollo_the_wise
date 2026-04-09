@@ -66,6 +66,37 @@ async def telegram_webhook(request: Request) -> JSONResponse:
 
 # ── TradingView webhook ───────────────────────────────────────────────────────
 
+@app.get("/tradingview/test")
+async def tradingview_test(token: str = "") -> JSONResponse:
+    """
+    Smoke-test the TradingView alert pipeline end-to-end.
+    Hit this with ?token=YOUR_TRADINGVIEW_WEBHOOK_SECRET from curl/browser
+    to verify: token auth works, bot can send to Telegram.
+    """
+    secrets = get_secrets()
+    if not token or not hmac.compare_digest(token, secrets.tradingview_webhook_secret):
+        return JSONResponse({"ok": False, "error": "invalid token"}, status_code=401)
+
+    if not _telegram_app:
+        return JSONResponse({"ok": False, "error": "_telegram_app not initialized"})
+    if not secrets.telegram_allowed_user_ids:
+        return JSONResponse({"ok": False, "error": "TELEGRAM_ALLOWED_USER_IDS not set"})
+
+    sent = []
+    errors = []
+    for uid in secrets.telegram_allowed_user_ids:
+        try:
+            await _telegram_app.bot.send_message(
+                chat_id=uid,
+                text="🔔 TradingView webhook test — pipeline OK",
+            )
+            sent.append(uid)
+        except Exception as e:
+            errors.append({"uid": uid, "error": str(e)})
+
+    return JSONResponse({"ok": True, "sent": sent, "errors": errors})
+
+
 @app.post("/tradingview/alert")
 async def tradingview_alert(request: Request) -> JSONResponse:
     """

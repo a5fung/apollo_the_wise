@@ -257,18 +257,6 @@ class TelegramChannel:
                     pass
             return "Check Telegram. 🐢"
 
-        # Theme-only rerun
-        if any(k in t for k in ["rerun theme", "run theme", "refresh theme", "theme engine"]):
-            url = get_agent_url("market_intelligence")
-            if url:
-                try:
-                    secret = get_secrets().internal_api_secret
-                    async with httpx.AsyncClient(timeout=5) as client:
-                        await client.post(f"{url}/theme/run", headers={"X-Apollo-Secret": secret})
-                except Exception:
-                    pass
-            return "Theme engine running — ~2 min. 🐢"
-
         return None
 
     async def _handle_start(

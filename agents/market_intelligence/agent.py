@@ -143,8 +143,27 @@ class MarketIntelligenceAgent(BaseAgent):
             background: BackgroundTasks,
             _: str = Depends(verify_internal_secret),
         ):
-            """Re-run just the theme engine (uses existing RS data). Fast — no Polygon calls."""
-            background.add_task(run_theme_engine)
+            """Re-run just the theme engine (uses existing RS data). Fast — no Polygon calls.
+            Runs asynchronously and sends result via Telegram when complete.
+            Prefer the /task endpoint (which uses _handle_theme_only) for synchronous results.
+            """
+            async def _run_and_notify():
+                try:
+                    themes, changelog = await run_theme_engine()
+                    active = [t for t in themes if t.get("stage") != "Fading"]
+                    revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
+                    pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
+                    summary = f"Theme engine complete — {len(active)} active themes"
+                    if revalidated:
+                        removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
+                        summary += f"\nRemoved mismatched: {removed}"
+                    if pruned:
+                        summary += f"\nPruned {len(pruned)} weak stock(s)"
+                    await send_telegram_message(summary)
+                except Exception as e:
+                    logger.error(f"Background theme run failed: {e}", exc_info=True)
+                    await send_telegram_message(f"Theme engine failed: {e}")
+            background.add_task(_run_and_notify)
             return {"status": "theme engine queued"}
 
         @self.app.post("/tweet")
