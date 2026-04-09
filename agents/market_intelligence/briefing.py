@@ -1083,11 +1083,11 @@ def _format_morning_briefing(
     elif futures:
         parts = []
         if "es_pct" in futures:
-            parts.append(f"ES *{_fmt_sign(futures['es_pct'])}*")
+            parts.append(f"SPY *{_fmt_sign(futures['es_pct'])}*")
         if "nq_pct" in futures:
-            parts.append(f"NQ *{_fmt_sign(futures['nq_pct'])}*")
+            parts.append(f"QQQ *{_fmt_sign(futures['nq_pct'])}*")
         if parts:
-            sections.append("Futures: " + "  |  ".join(parts))
+            sections.append("Pre-market: " + "  |  ".join(parts))
 
     # Economic calendar
     if econ_calendar:

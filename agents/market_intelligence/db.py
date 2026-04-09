@@ -183,10 +183,18 @@ async def initialize_schema() -> None:
             -- Seed defaults if empty
             INSERT INTO mi_overnight_watchlist (symbol, display_name, threshold_pct, category, notes)
             VALUES
-                ('ES=F', 'S&P Futures', 0.5, 'index', 'always on'),
-                ('NQ=F', 'Nasdaq Futures', 0.5, 'index', 'always on'),
+                ('SPY', 'SPY', 0.5, 'index', 'always on'),
+                ('QQQ', 'QQQ', 0.5, 'index', 'always on'),
                 ('^VIX', 'VIX', 10.0, 'volatility', 'always on'),
                 ('CL=F', 'Crude Oil', 3.0, 'commodity', 'Iran war — Strait of Hormuz risk')
+            ON CONFLICT (symbol) DO NOTHING;
+
+            -- Migration: replace futures symbols (ES=F, NQ=F) with ETFs (SPY, QQQ)
+            DELETE FROM mi_overnight_watchlist WHERE symbol IN ('ES=F', 'NQ=F');
+            INSERT INTO mi_overnight_watchlist (symbol, display_name, threshold_pct, category, notes)
+            VALUES
+                ('SPY', 'SPY', 0.5, 'index', 'always on'),
+                ('QQQ', 'QQQ', 0.5, 'index', 'always on')
             ON CONFLICT (symbol) DO NOTHING;
 
             CREATE INDEX IF NOT EXISTS idx_stock_scores_score_date ON mi_stock_scores(score_date);
