@@ -296,3 +296,36 @@ TRADINGVIEW_WEBHOOK_SECRET
 - `agents/market_intelligence/theme_engine.py` — JSON parsing robustness for Haiku responses, _discover_new_themes client fix
 - `tests/test_recent_changes.py` — updated for premarket snapshot rename + new key names
 - `CLAUDE.md` — this file
+
+## Changes Made 2026-04-09 (second session)
+
+### Bugs Fixed
+
+1. **Theme engine rerun silently broken** (`channels/telegram.py`): `_try_fast_path` intercepted "theme engine" / "rerun theme" keywords BEFORE the orchestrator, called the old `/theme/run` background endpoint (which just queued a task with no result delivery), and returned "~2 min 🐢". The synchronous `_handle_theme_only` fix from the prior session was never reachable. Fix: deleted the broken fast-path entry entirely. "Rerun theme engine" now flows through orchestrator → market agent `/task` → `_handle_theme_only` which awaits synchronously and returns the actual scorecard.
+
+2. **`/theme/run` endpoint returning nothing** (`agents/market_intelligence/agent.py`): The `/theme/run` HTTP endpoint still used `background.add_task(run_theme_engine)` with no result delivery. Fixed to run `_run_and_notify()` which calls `send_telegram_message(summary)` on completion.
+
+3. **Theme rerun returned only a short summary** (`agents/market_intelligence/agent.py`): `_handle_theme_only` returned "Theme engine complete — N active themes" (one line), causing orchestrator Claude to summarize it and ask "Want me to pull the full breakdown?" — requiring a second round-trip. Fixed to return a full stage-grouped scorecard in the same per-line format as the evening brief (emoji + name + RS 1M|3M|6M + Δ + top tickers), grouped by Accelerating → Nascent → Mainstream, Fading collapsed.
+
+4. **"Show me the themes" returning pipe tables** (`agents/market_intelligence/agent.py`): `_handle_theme_query` used a custom format that Claude would reformat as pipe tables (Telegram can't render them). Replaced with the same stage-grouped brief-style format as `_handle_theme_only`. Both handlers now share the same `_compute_scored_themes` + `STAGE_EMOJI` approach from `briefing.py`.
+
+5. **Theme stage resetting to Nascent after rename/merge** (`agents/market_intelligence/theme_engine.py`): `_get_theme_history` used exact name match (`WHERE name = $1`). When Claude renames a theme (e.g. "Optical Networking Equipment" → "Broadband Fiber & Optical Access Network Infrastructure"), the new name has 0 history rows → `age_days = 0` → stage restarts at Nascent, even for themes active for months. Fixed by adding a ticker-overlap fallback: if exact name returns nothing, scan recent theme history and find the best Jaccard match against current tickers (threshold: 0.4). If found, inherit that history so stage/age carry over across renames. `_count_consecutive_fading` gets the same fallback via `tickers` kwarg.
+
+6. **Orchestrator Claude reformatting theme results** (`core/context.py`): System prompt had no instruction for theme reruns, so Claude would summarize the market agent's result and offer follow-up questions. Added explicit instruction: the rerun result IS the complete scorecard — output verbatim, do not summarize, do not ask if user wants more, do not make a second call.
+
+7. **TradingView diagnostic endpoint added** (`channels/webhooks.py`): Added `GET /tradingview/test?token=SECRET` to smoke-test the full pipeline (auth + `bot.send_message`) without waiting for a real TradingView alert. Hit it from curl after deploy to verify connectivity.
+
+### Key Design Decisions
+
+- **Theme display format**: Both `_handle_theme_only` (rerun) and `_handle_theme_query` (show themes) must use the same stage-grouped, per-line format as the evening brief. Never use pipe tables — Telegram cannot render them. Always produce pre-formatted output from the market agent so the orchestrator Claude has nothing to reformat.
+- **Fast-path in telegram.py**: Only use `_try_fast_path` for fire-and-forget operations (evening brief trigger). Never use it for operations that need to return a result — it bypasses the orchestrator's result delivery path. Theme engine rerun must go through orchestrator → `/task` → `_handle_theme_only`.
+- **Theme history inheritance**: Jaccard threshold of 0.4 for name-fallback is intentionally lower than the merge threshold (0.6) to maximize history preservation across renames. The fallback only fires when exact name has 0 results, so false positives (inheriting wrong history) are low risk.
+- **Haiku JSON parsing**: All Haiku (claude-haiku-4-5) responses that contain JSON must use the regex fallback pattern — Haiku frequently prepends explanation text before the JSON object. Never rely on raw `json.loads()` for Haiku responses.
+
+### Files Changed
+- `channels/telegram.py` — removed broken theme engine fast-path from `_try_fast_path`
+- `channels/webhooks.py` — added GET /tradingview/test diagnostic endpoint
+- `agents/market_intelligence/agent.py` — /theme/run sends Telegram on completion; _handle_theme_only returns full scorecard; _handle_theme_query uses brief-style format; added get_prior_theme_scores import
+- `agents/market_intelligence/theme_engine.py` — _get_theme_history ticker-overlap fallback for renamed themes; _count_consecutive_fading gets tickers kwarg
+- `core/context.py` — system prompt: theme rerun instruction + "output verbatim, do not ask follow-up"
+- `CLAUDE.md` — this file
