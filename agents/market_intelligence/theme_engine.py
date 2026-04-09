@@ -317,8 +317,13 @@ async def _validate_theme_membership(
             messages=[{"role": "user", "content": prompt}],
         )
         raw = resp.content[0].text.strip()
+        # Strip code fences if present
         if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rstrip("```").strip()
+            raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
+        # Fallback: extract JSON object even if Haiku adds explanation text
+        if not raw.startswith("{"):
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            raw = m.group(0) if m else raw
         result = json.loads(raw)
         to_remove = {tk.upper() for tk in result.get("remove", []) if isinstance(tk, str)}
 
@@ -749,7 +754,7 @@ async def _discover_new_themes(
     Also receives elite covered stocks (RS 80+) that may need sub-theme splits.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
     """
-    client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = _get_anthropic_client()
 
     from agents.market_intelligence.universe import TICKER_DESC
 
