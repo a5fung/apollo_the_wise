@@ -1,7 +1,7 @@
 """
 Tests for recent changes:
-- get_premarket_futures() in collector.py
-- _format_morning_briefing() futures line in briefing.py
+- get_premarket_snapshot() in collector.py
+- _format_morning_briefing() premarket line in briefing.py
 - _safe() module-level extraction in telegram.py
 - RISKY_REGIMES module-level constant in orchestrator.py
 - asyncio.gather() usage in briefing (structural check)
@@ -17,121 +17,116 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-# ── collector: get_premarket_futures ─────────────────────────────────────────
+# ── collector: get_premarket_snapshot ─────────────────────────────────────────
 
-class TestGetPremarketFutures:
+def _make_polygon_snapshot(spy_prev, spy_curr, qqq_prev, qqq_curr):
+    """Build a fake Polygon /v2/snapshot response for SPY and QQQ."""
+    tickers = []
+    if spy_prev is not None:
+        tickers.append({
+            "ticker": "SPY",
+            "prevDay": {"c": spy_prev},
+            "min": {"c": spy_curr},
+        })
+    if qqq_prev is not None:
+        tickers.append({
+            "ticker": "QQQ",
+            "prevDay": {"c": qqq_prev},
+            "min": {"c": qqq_curr},
+        })
+    return {"tickers": tickers}
+
+
+class TestGetPremarketSnapshot:
     def test_returns_pct_when_data_available(self):
-        """Should compute % change correctly from last_price / previous_close."""
-        from agents.market_intelligence.collector import get_premarket_futures
+        """Should compute % change correctly from Polygon prevDay.c / min.c."""
+        from agents.market_intelligence.collector import get_premarket_snapshot
 
-        def make_fast_info(last, prev):
-            fi = MagicMock()
-            fi.last_price = last
-            fi.previous_close = prev
-            return fi
+        payload = _make_polygon_snapshot(500.0, 510.0, 450.0, 445.5)
+        with patch("agents.market_intelligence.collector._polygon_get", new=AsyncMock(return_value=payload)):
+            result = asyncio.run(get_premarket_snapshot())
 
-        with patch("yfinance.Ticker") as mock_ticker:
-            def ticker_side_effect(symbol):
-                t = MagicMock()
-                if symbol == "ES=F":
-                    t.fast_info = make_fast_info(5100.0, 5000.0)
-                elif symbol == "NQ=F":
-                    t.fast_info = make_fast_info(17820.0, 18000.0)
-                return t
-            mock_ticker.side_effect = ticker_side_effect
-
-            result = asyncio.run(get_premarket_futures())
-
-        assert "es_pct" in result
-        assert "nq_pct" in result
-        assert abs(result["es_pct"] - 2.0) < 0.01    # (5100-5000)/5000*100
-        assert abs(result["nq_pct"] - (-1.0)) < 0.01  # (17820-18000)/18000*100
+        assert "spy_pct" in result
+        assert "qqq_pct" in result
+        assert abs(result["spy_pct"] - 2.0) < 0.01    # (510-500)/500*100
+        assert abs(result["qqq_pct"] - (-1.0)) < 0.01  # (445.5-450)/450*100
 
     def test_returns_empty_dict_on_exception(self):
         """Should fail gracefully and return {} — never crash the briefing."""
-        from agents.market_intelligence.collector import get_premarket_futures
+        from agents.market_intelligence.collector import get_premarket_snapshot
 
-        with patch("yfinance.Ticker", side_effect=RuntimeError("network error")):
-            result = asyncio.run(get_premarket_futures())
+        with patch("agents.market_intelligence.collector._polygon_get", new=AsyncMock(side_effect=RuntimeError("network error"))):
+            result = asyncio.run(get_premarket_snapshot())
 
         assert result == {}
 
-    def test_skips_entry_when_price_missing(self):
-        """If previous_close is None, that symbol should be omitted."""
-        from agents.market_intelligence.collector import get_premarket_futures
+    def test_skips_entry_when_prev_missing(self):
+        """If prevDay.c is missing for SPY, only QQQ should appear."""
+        from agents.market_intelligence.collector import get_premarket_snapshot
 
-        def make_fast_info(last, prev):
-            fi = MagicMock()
-            fi.last_price = last
-            fi.previous_close = prev
-            return fi
+        payload = {
+            "tickers": [
+                {"ticker": "SPY", "prevDay": {}, "min": {"c": 510.0}},  # no prevDay.c
+                {"ticker": "QQQ", "prevDay": {"c": 450.0}, "min": {"c": 445.5}},
+            ]
+        }
+        with patch("agents.market_intelligence.collector._polygon_get", new=AsyncMock(return_value=payload)):
+            result = asyncio.run(get_premarket_snapshot())
 
-        with patch("yfinance.Ticker") as mock_ticker:
-            def ticker_side_effect(symbol):
-                t = MagicMock()
-                if symbol == "ES=F":
-                    t.fast_info = make_fast_info(5100.0, None)  # missing prev
-                elif symbol == "NQ=F":
-                    t.fast_info = make_fast_info(17820.0, 18000.0)
-                return t
-            mock_ticker.side_effect = ticker_side_effect
-
-            result = asyncio.run(get_premarket_futures())
-
-        assert "es_pct" not in result
-        assert "nq_pct" in result
+        assert "spy_pct" not in result
+        assert "qqq_pct" in result
 
 
-# ── briefing: _format_morning_briefing with futures ──────────────────────────
+# ── briefing: _format_morning_briefing with premarket ────────────────────────
 
 class TestFormatMorningBriefing:
     def _regime(self, label="Bull", vix=14.5, ep_thresh=70):
         return {"regime": label, "vix": vix, "ep_threshold": ep_thresh}
 
-    def test_futures_line_present_when_data_available(self):
+    def test_premarket_line_present_when_data_available(self):
         from agents.market_intelligence.briefing import _format_morning_briefing
         text = _format_morning_briefing(
             regime=self._regime(),
             ep_alerts=[],
             briefing_date="2026-03-14",
-            futures={"es_pct": 0.3, "nq_pct": -0.8},
+            premarket={"spy_pct": 0.3, "qqq_pct": -0.8},
         )
-        assert "Futures:" in text
-        assert "ES" in text
-        assert "NQ" in text
+        assert "Pre-market:" in text
+        assert "SPY" in text
+        assert "QQQ" in text
         assert "+0.3%" in text
         assert "-0.8%" in text
 
-    def test_futures_line_absent_when_empty_dict(self):
+    def test_premarket_line_absent_when_empty_dict(self):
         from agents.market_intelligence.briefing import _format_morning_briefing
         text = _format_morning_briefing(
             regime=self._regime(),
             ep_alerts=[],
             briefing_date="2026-03-14",
-            futures={},
+            premarket={},
         )
-        assert "Futures:" not in text
+        assert "Pre-market:" not in text
 
-    def test_futures_line_absent_when_none(self):
+    def test_premarket_line_absent_when_none(self):
         from agents.market_intelligence.briefing import _format_morning_briefing
         text = _format_morning_briefing(
             regime=self._regime(),
             ep_alerts=[],
             briefing_date="2026-03-14",
-            futures=None,
+            premarket=None,
         )
-        assert "Futures:" not in text
+        assert "Pre-market:" not in text
 
-    def test_only_es_shown_when_nq_missing(self):
+    def test_only_spy_shown_when_qqq_missing(self):
         from agents.market_intelligence.briefing import _format_morning_briefing
         text = _format_morning_briefing(
             regime=self._regime(),
             ep_alerts=[],
             briefing_date="2026-03-14",
-            futures={"es_pct": 1.2},
+            premarket={"spy_pct": 1.2},
         )
-        assert "ES" in text
-        assert "NQ" not in text
+        assert "SPY" in text
+        assert "QQQ" not in text
 
     def test_regime_line_present(self):
         from agents.market_intelligence.briefing import _format_morning_briefing
@@ -215,11 +210,11 @@ class TestBriefingUsesGather:
         src = inspect.getsource(briefing.send_morning_briefing)
         assert "asyncio.gather" in src
 
-    def test_morning_gather_includes_futures(self):
-        """The morning gather should include get_premarket_futures."""
+    def test_morning_gather_includes_premarket_snapshot(self):
+        """The morning gather should include get_premarket_snapshot."""
         from agents.market_intelligence import briefing
         src = inspect.getsource(briefing.send_morning_briefing)
-        assert "get_premarket_futures" in src
+        assert "get_premarket_snapshot" in src
 
 
 # ── db: purge_old_data ────────────────────────────────────────────────────────
@@ -667,30 +662,16 @@ class TestEpCompositeSort:
         assert _ep_composite_key(eps[0], stage_map) == 80 + 15  # Accelerating wins
 
 
-# ── collector: 0% gap futures (falsy float fix) ───────────────────────────────
+# ── collector: 0% premarket change (falsy float fix) ─────────────────────────
 
-class TestPremarketFuturesFalsyZero:
+class TestPremarketSnapshotFalsyZero:
     def test_zero_pct_change_is_included(self):
-        """ES=F flat overnight (0.0% change) must NOT be dropped — 0.0 is falsy."""
-        from agents.market_intelligence.collector import get_premarket_futures
+        """SPY flat overnight (0.0% change) must NOT be dropped — 0.0 is falsy."""
+        from agents.market_intelligence.collector import get_premarket_snapshot
 
-        def make_fast_info(last, prev):
-            fi = MagicMock()
-            fi.last_price = last
-            fi.previous_close = prev
-            return fi
+        payload = _make_polygon_snapshot(500.0, 500.0, 450.0, 445.5)  # SPY 0% change
+        with patch("agents.market_intelligence.collector._polygon_get", new=AsyncMock(return_value=payload)):
+            result = asyncio.run(get_premarket_snapshot())
 
-        with patch("yfinance.Ticker") as mock_ticker:
-            def ticker_side_effect(symbol):
-                t = MagicMock()
-                if symbol == "ES=F":
-                    t.fast_info = make_fast_info(5000.0, 5000.0)  # 0% change
-                elif symbol == "NQ=F":
-                    t.fast_info = make_fast_info(17820.0, 18000.0)
-                return t
-            mock_ticker.side_effect = ticker_side_effect
-
-            result = asyncio.run(get_premarket_futures())
-
-        assert "es_pct" in result, "0.0% overnight change must be included (not treated as falsy)"
-        assert abs(result["es_pct"]) < 0.001
+        assert "spy_pct" in result, "0.0% overnight change must be included (not treated as falsy)"
+        assert abs(result["spy_pct"]) < 0.001

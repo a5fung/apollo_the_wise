@@ -299,29 +299,39 @@ async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
         return []
 
 
-async def get_premarket_futures() -> dict[str, float]:
+async def get_premarket_snapshot() -> dict[str, float]:
     """
-    Pre-market futures snapshot via yfinance.
-    Returns overnight % change for ES (S&P 500) and NQ (Nasdaq 100).
+    Pre-market price snapshot for SPY and QQQ via Polygon.
+    Returns overnight % change keyed as spy_pct and qqq_pct.
+
+    Uses Polygon /v2/snapshot (not yfinance — yfinance is unreliable pre-market):
+      - prevDay.c  = confirmed 4 PM regular-session close (reliable reference)
+      - min.c      = latest minute bar close (updates in pre-market)
+
     Fails gracefully — returns empty dict on any error.
     """
     try:
-        import yfinance as yf
-        loop = asyncio.get_event_loop()
-
-        def _fetch() -> dict:
-            result = {}
-            for symbol, key in (("ES=F", "es_pct"), ("NQ=F", "nq_pct")):
-                fi = yf.Ticker(symbol).fast_info
-                price = getattr(fi, "last_price", None)
-                prev = getattr(fi, "previous_close", None)
-                if price is not None and prev is not None:
-                    result[key] = (price - prev) / prev * 100
-            return result
-
-        return await loop.run_in_executor(None, _fetch)
+        data = await _polygon_get(
+            "/v2/snapshot/locale/us/markets/stocks/tickers",
+            {"tickers": "SPY,QQQ"},
+        )
+        snaps = {t["ticker"]: t for t in data.get("tickers", []) if "ticker" in t}
+        result = {}
+        for ticker, key in (("SPY", "spy_pct"), ("QQQ", "qqq_pct")):
+            snap = snaps.get(ticker, {})
+            prev = snap.get("prevDay", {}).get("c")
+            current = (
+                snap.get("min", {}).get("c")
+                or snap.get("lastTrade", {}).get("p")
+                or snap.get("day", {}).get("o")
+            )
+            if prev and current and prev != 0:
+                pct = (current - prev) / prev * 100
+                result[key] = pct
+                logger.debug(f"Premarket snapshot {ticker}: current={current:.2f} prevDay.c={prev:.2f} → {pct:+.2f}%")
+        return result
     except Exception as e:
-        logger.warning(f"Futures snapshot failed: {e}")
+        logger.warning(f"Premarket snapshot failed: {e}")
         return {}
 
 

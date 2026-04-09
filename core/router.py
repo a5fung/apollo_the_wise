@@ -15,8 +15,9 @@ from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
 
-# Timeout for sub-agent calls (seconds)
-AGENT_TIMEOUT = 120
+# Timeout for sub-agent calls (seconds).
+# Theme engine can take 3-4 min on first run; set high enough to not cut it off.
+AGENT_TIMEOUT = 360
 
 
 def auth_headers() -> dict[str, str]:

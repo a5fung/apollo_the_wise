@@ -25,6 +25,7 @@ from agents.market_intelligence.db import (
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
 from agents.market_intelligence.theme_engine import run_theme_engine
+from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.fundamentals import compute_fundamental_flags
 from agents.market_intelligence.data_quality import (
@@ -74,6 +75,15 @@ async def _nightly_data_pull():
     scored = 0
     top_for_sector = None
 
+    # 0. Skip on NYSE holidays — the 0-ingest guardrail below handles genuine Polygon failures.
+    market_status = get_market_status(_today)
+    if not market_status.is_trading_day:
+        logger.info(
+            f"Nightly pull skipped — {market_status.reason}. "
+            f"No alert sent. To audit skipped days, grep logs for '[trading_calendar]'."
+        )
+        return
+
     # 1. Ingest today's daily closes
     # Try grouped daily first; if it fails/returns 0 (Polygon same-day restriction),
     # fall back to snapshot endpoint which works on Starter plan.
@@ -89,10 +99,11 @@ async def _nightly_data_pull():
         logger.error(f"Daily close ingestion failed: {e}")
         failures.append(f"Daily ingestion: {e}")
 
-    # GUARDRAIL: if no data ingested on a weekday, abort the pipeline.
-    # Scoring with stale data produces wrong RS, wrong regime, wrong alerts.
+    # GUARDRAIL: if no data ingested on a confirmed trading day, abort the pipeline.
+    # The calendar check above already handled holidays — if we reach here with 0
+    # tickers, it's a genuine Polygon failure or data issue.
     if ingested == 0 and _today.weekday() < 5:
-        msg = f"Aborting nightly pull: 0 tickers ingested for {today_str} (weekday). Stale data would produce wrong signals."
+        msg = f"Aborting nightly pull: 0 tickers ingested for {today_str} (confirmed trading day per NYSE calendar). Stale data would produce wrong signals."
         logger.error(msg)
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, msg)
         return
@@ -573,6 +584,10 @@ async def _ep_scan_watchdog():
     now = datetime.now(_ET)
     if now.weekday() >= 5:
         return
+    market_status = get_market_status(now.date())
+    if not market_status.is_trading_day:
+        logger.info(f"EP scan watchdog: skipping — {market_status.reason}")
+        return
     try:
         if _ep_scans_completed_today == 0:
             logger.warning("EP scan watchdog: NO scans completed today!")
@@ -611,6 +626,11 @@ async def check_missed_jobs() -> None:
     now = datetime.now(_ET)
 
     if now.weekday() >= 5:  # Saturday / Sunday
+        return
+
+    market_status = get_market_status(now.date())
+    if not market_status.is_trading_day:
+        logger.info(f"check_missed_jobs: skipping catch-up — {market_status.reason}")
         return
 
     hour = now.hour

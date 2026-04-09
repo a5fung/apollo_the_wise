@@ -512,12 +512,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         # Hard filter: rel volume (skip if no ADV data available — can't verify)
         if c.get("adv") and rel_volume < MIN_REL_VOLUME:
-            logger.debug(f"Skip {ticker}: rel_volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x")
+            logger.info(f"Skip {ticker}: rel_volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x (gap={c['gap_pct']:.1f}%)")
             continue
 
         # Hard filter: absolute pre-market volume (filters micro-float noise)
         if c["today_volume"] < MIN_PREMARKET_SHARES:
-            logger.debug(f"Skip {ticker}: pre-market volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares")
+            logger.info(f"Skip {ticker}: pre-mkt vol {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares (gap={c['gap_pct']:.1f}%)")
             continue
 
         # Hard filter: EP cooldown — don't re-alert same ticker within 60 days
@@ -654,4 +654,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% score={ep_score} tier={tier}")
 
     results.sort(key=lambda r: r["ep_score"], reverse=True)
+
+    # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
+    # and diagnose why candidates were filtered out.
+    high = [r for r in results if r["score_tier"] == "HIGH"]
+    moderate = [r for r in results if r["score_tier"] == "MODERATE"]
+    logger.info(
+        f"EP scan complete: {len(candidates)} gap candidates → {len(results)} scored "
+        f"({len(high)} HIGH, {len(moderate)} MODERATE) | "
+        f"regime={regime_label} threshold={ep_threshold}"
+    )
+
     return results

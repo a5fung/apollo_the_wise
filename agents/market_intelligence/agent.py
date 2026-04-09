@@ -39,7 +39,7 @@ from agents.market_intelligence.db import (
     get_rs_history,
     get_theme_history,
 )
-from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing
+from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.ep_detector import run_ep_scan
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
@@ -51,6 +51,14 @@ from shared.models import AgentName, AgentRequest, AgentResponse
 logger = logging.getLogger(__name__)
 
 MARKET_AGENT_MODEL = "claude-haiku-4-5-20251001"
+
+# Common short words that match the ticker regex but are never tickers.
+# Shared across all three ticker-extraction call sites in execute_task.
+_PREPOSITION_SKIP: frozenset[str] = frozenset({
+    "OF", "IN", "AT", "ON", "BY", "TO", "AS", "AN", "OR",
+    "MY", "ME", "IT", "IS", "IF", "BE", "DO", "SO", "UP",
+    "AM", "US", "WE", "NO", "GO", "HI",
+})
 
 
 class TeachRequest(BaseModel):
@@ -412,7 +420,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # If a specific ticker is detected, route to single-ticker score
             import re as _re
             _candidate = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-            _skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+            _skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                       "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
                       "STOCK", "STOCKS", "LEADER", "LEADERS"}
             _candidate = [t for t in _candidate if t not in _skip]
@@ -498,7 +506,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # Common mappings
             name_to_symbol = {
                 "OIL": "CL=F", "CRUDE": "CL=F", "BITCOIN": "BTC-USD", "BTC": "BTC-USD",
-                "GOLD": "GC=F", "VIX": "^VIX", "SPY": "ES=F", "NASDAQ": "NQ=F",
+                "GOLD": "GC=F", "VIX": "^VIX", "SPY": "SPY", "NASDAQ": "QQQ",
             }
             for w in words:
                 if w in name_to_symbol:
@@ -561,25 +569,34 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Use: 'show watchlist', 'track bitcoin with 5% threshold', or 'drop oil'")
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
-        """Re-run just the theme engine using existing RS data. No Polygon calls — fast."""
+        """Re-run just the theme engine using existing RS data. No Polygon calls — fast.
+
+        Awaits the full theme engine run (no background task) so the result flows back
+        through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
+        """
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
 
-        async def _run():
-            try:
-                logger.info("Theme-only run starting...")
-                await run_theme_engine()
-                logger.info("Theme-only run complete")
-                if wants_brief:
-                    await send_evening_briefing()
-            except Exception as e:
-                logger.error(f"Theme-only run failed: {e}")
-
-        asyncio.create_task(_run())
-
-        if wants_brief:
-            return self._ok(request, result="Theme engine running — briefing will arrive in Telegram shortly.")
-        return self._ok(request, result="Theme engine running — themes will be updated shortly (uses existing RS data, no Polygon calls).")
+        try:
+            logger.info("Theme-only run starting...")
+            themes, changelog = await run_theme_engine()
+            logger.info("Theme-only run complete")
+            active = [t for t in themes if t.get("stage") != "Fading"]
+            revalidated = [e for e in changelog if e.get("type") == "ticker_revalidated_out"]
+            pruned = [e for e in changelog if e.get("type") == "ticker_pruned"]
+            summary = f"Theme engine complete — {len(active)} active themes"
+            if revalidated:
+                removed = ", ".join(f"{e['ticker']} from {e['theme']}" for e in revalidated)
+                summary += f"\nRemoved mismatched: {removed}"
+            if pruned:
+                summary += f"\nPruned {len(pruned)} weak stock(s)"
+            if wants_brief:
+                asyncio.create_task(send_evening_briefing())
+                summary += "\nEvening briefing sending..."
+            return self._ok(request, result=summary)
+        except Exception as e:
+            logger.error(f"Theme-only run failed: {e}", exc_info=True)
+            return self._error(request, error=f"Theme engine failed: {e}")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
         today_str = et_today().strftime("%Y-%m-%d")
@@ -880,7 +897,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # Extract ticker from task — look for uppercase word 2-5 chars
         tickers = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         # Filter out common non-ticker words
-        skip = {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+        skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
                 "PULL", "GET", "SHOW", "CHECK", "FIND", "FUNDAMENTAL",
                 "FUNDAMENTALS", "STOCK", "ANALYSIS"}
         tickers = [t for t in tickers if t not in skip]
@@ -990,7 +1007,7 @@ class MarketIntelligenceAgent(BaseAgent):
         from agents.market_intelligence.fundamentals import get_fundamentals, format_fundamentals
 
         # Extract tickers — uppercase words 2-5 chars, skip common non-tickers
-        skip = {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
+        skip = _PREPOSITION_SKIP | {"EPS", "YOY", "GET", "THE", "FOR", "AND", "NET", "REV", "ROI",
                 "CEO", "IPO", "ETF", "SPY", "QQQ", "IWM", "GDP", "CPI"}
         found = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
         tickers = [t for t in found if t not in skip]
@@ -1147,6 +1164,7 @@ async def startup():
     from agents.market_intelligence.broker.trade_stream import start_trade_stream
     asyncio.create_task(start_trade_stream())
     logger.info("Market Intelligence Agent ready on port 8006")
+    asyncio.create_task(send_telegram_message("🔄 Market agent online"))
 
 
 @app.on_event("shutdown")
