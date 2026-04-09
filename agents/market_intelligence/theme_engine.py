@@ -211,21 +211,62 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         logger.error(f"[theme descriptions] Failed to generate descriptions: {e}")
 
 
-async def _get_theme_history(name: str, days: int = 10) -> list[dict]:
-    """Get recent daily snapshots for a named theme."""
+async def _get_theme_history(name: str, days: int = 10, tickers: list[str] | None = None) -> list[dict]:
+    """Get recent daily snapshots for a named theme.
+
+    Falls back to ticker-overlap matching when the exact name is not found —
+    this handles themes that were renamed or merged by Claude.  A theme with
+    Jaccard >= 0.4 against the current tickers is treated as the same theme
+    so it keeps its earned stage/age rather than restarting at Nascent.
+    """
     pool = await get_pool()
     cutoff = et_today() - timedelta(days=days)
     async with pool.acquire() as conn:
+        # Primary: exact name match
         rows = await conn.fetch(
             "SELECT * FROM mi_themes WHERE name = $1 AND theme_date >= $2 ORDER BY theme_date DESC",
             name, cutoff,
         )
-        return [dict(r) for r in rows]
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Fallback: find the best-matching prior theme by ticker overlap
+        if tickers:
+            current_set = set(tickers)
+            all_recent = await conn.fetch(
+                "SELECT * FROM mi_themes WHERE name != $1 AND theme_date >= $2 ORDER BY theme_date DESC",
+                name, cutoff,
+            )
+            # Group rows by name, then score each name by Jaccard against current tickers
+            seen: dict[str, list[dict]] = {}
+            for row in all_recent:
+                n = row["name"]
+                if n not in seen:
+                    seen[n] = []
+                seen[n].append(dict(row))
+
+            best_name, best_j = None, 0.0
+            for n, hist_rows in seen.items():
+                hist_tickers = set(hist_rows[0].get("tickers") or [])
+                if not hist_tickers:
+                    continue
+                j = len(current_set & hist_tickers) / len(current_set | hist_tickers)
+                if j > best_j:
+                    best_j, best_name = j, n
+
+            if best_j >= 0.4 and best_name:
+                logger.info(
+                    f"Theme history: '{name}' not found, inheriting from '{best_name}' "
+                    f"(Jaccard {best_j:.2f}) — stage/age preserved across rename"
+                )
+                return seen[best_name]
+
+        return []
 
 
-async def _count_consecutive_fading(name: str) -> int:
+async def _count_consecutive_fading(name: str, tickers: list[str] | None = None) -> int:
     """Count how many consecutive recent days this theme has been Fading."""
-    history = await _get_theme_history(name, days=10)
+    history = await _get_theme_history(name, days=10, tickers=tickers)
     count = 0
     for row in history:
         if row["stage"] == "Fading":
@@ -447,7 +488,7 @@ async def _rescore_existing_theme(
     is_elite_pair = len(strong_stocks) >= 2 and avg_strong_rs >= 80
 
     if len(strong_stocks) < THEME_COVERAGE_MIN and not is_elite_pair:
-        fading_days = await _count_consecutive_fading(name)
+        fading_days = await _count_consecutive_fading(name, tickers=tickers)
         if fading_days >= FADING_RETIRE_AFTER:
             logger.info(f"Theme '{name}' retired after {fading_days} fading days")
             return None, changelog  # retire it
@@ -468,7 +509,7 @@ async def _rescore_existing_theme(
     momentum_score = min(momentum / 100 * 50, 50)
 
     prev_score = theme.get("score") or 0
-    history = await _get_theme_history(name, days=7)
+    history = await _get_theme_history(name, days=7, tickers=tickers)
     age_days = len(history)
 
     # Estimate delta using assumed news_score=30 to decide if refresh is needed
