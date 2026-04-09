@@ -173,7 +173,7 @@ Always ground your answer in the live data from the market agent, not general kn
 
 ## Theme engine rerun (theme-only, no RS re-pull)
 "Rerun theme engine", "run theme engine", "refresh themes", "redo themes" → call_market_agent("rerun theme engine").
-This runs fast (no Polygon calls) and returns the result directly — do NOT say "running in background", wait for the actual result and output it.
+This runs synchronously and returns the complete theme scorecard directly. Output the result EXACTLY as returned — do not summarize, do not reformat, do not add commentary. The result already contains the full stage-grouped theme list.
 
 ## Composite screener — use run_stock_screener for filter queries
 For queries that ask to FIND or FILTER stocks by multiple criteria — call `run_stock_screener` directly (not call_market_agent). This tool combines RS rank + active theme stage + O'Neil fundamentals into a single composite score.
