@@ -245,3 +245,54 @@ TRADINGVIEW_WEBHOOK_SECRET
 - `requirements/base.txt` — added exchange-calendars>=4.5
 - `tests/test_theme_notification.py` — NEW: 13 tests, all passing
 - `CLAUDE.md` — this file
+
+## Changes Made 2026-04-09
+
+### Bugs Fixed
+
+1. **Overnight brief still showed futures names (`ES=F`/`NQ=F`)** (`db.py`, `agent.py`, `briefing.py`, `collector.py`): The 2026-04-08 rename to SPY/QQQ was incomplete — the DB watchlist table still seeded `ES=F`/`NQ=F`, `name_to_symbol` in `_handle_watchlist` still mapped `"SPY"→"ES=F"`, and briefing still used old key names. Full migration:
+   - `db.py` `initialize_schema()`: Added inline migration `DELETE FROM mi_overnight_watchlist WHERE symbol IN ('ES=F', 'NQ=F')` followed by `INSERT ... ('SPY', ...), ('QQQ', ...)` seed.
+   - `agent.py` `name_to_symbol`: Changed `"SPY": "ES=F"` → `"SPY": "SPY"`, `"NASDAQ": "NQ=F"` → `"NASDAQ": "QQQ"`.
+   - `collector.py`: Renamed `get_premarket_futures()` → `get_premarket_snapshot()`, return keys `es_pct`/`nq_pct` → `spy_pct`/`qqq_pct`, fixed log messages.
+   - `briefing.py`: Updated all call sites and key references (`futures`→`premarket`, `es_pct`/`nq_pct`→`spy_pct`/`qqq_pct`, label "Futures:"→"Pre-market:", comment example `ES -1.8% | NQ -2.3%`→`SPY -1.8% | QQQ -2.3%`). Added Polygon override for SPY/QQQ in overnight snapshot (yfinance is stale pre-market, Polygon data is accurate):
+     ```python
+     polygon_map = {"SPY": premarket.get("spy_pct"), "QQQ": premarket.get("qqq_pct")}
+     for item in snapshot:
+         pct = polygon_map.get(item["symbol"])
+         if pct is not None:
+             item["pct_change"] = round(pct, 2)
+             item["triggered"] = abs(pct) >= item["threshold"]
+     ```
+
+2. **VIX showing 41 when actual VIX <20** (`collector.py`, `regime.py`): `regime.py` was using UVXY (a leveraged inverse VIX ETF) as a VIX proxy — UVXY price ≠ VIX index value. Fixed by adding `get_vix_history(from_date, to_date)` in `collector.py` that fetches actual VIX index via Polygon `I:VIX`, with yfinance `^VIX` fallback. `regime.py` updated to call `get_vix_history()` instead of `get_index_history("UVXY", ...)`.
+
+3. **Theme validation not removing bogus members (CAR in data center theme)** (`theme_engine.py`): `_validate_theme_membership()` used `json.loads()` on raw Haiku response. Haiku sometimes prepends explanation text before the JSON object, causing parse failure. The `except` block silently kept all tickers unchanged — CAR was never removed. Fixed with regex fallback extraction:
+   ```python
+   raw = resp.content[0].text.strip()
+   if raw.startswith("```"):
+       raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
+   if not raw.startswith("{"):
+       m = re.search(r'\{.*\}', raw, re.DOTALL)
+       raw = m.group(0) if m else raw
+   result = json.loads(raw)
+   ```
+
+4. **`_discover_new_themes` bypassing shared Anthropic client** (`theme_engine.py`): Line 752 used `anthropic.AsyncAnthropic(api_key=...)` directly instead of the shared `_get_anthropic_client()` lazy initializer. This bypassed any shared client config/retry logic and wasted connection resources. Fixed to use `_get_anthropic_client()`.
+
+5. **Tests broken by `get_premarket_futures` rename** (`tests/test_recent_changes.py`): Rewrote all affected test classes to use the new function name, new key names (`spy_pct`/`qqq_pct`), and Polygon mock instead of yfinance mock.
+
+### Key Design Decisions
+
+- **SPY/QQQ pre-market accuracy**: For the overnight watchlist display, yfinance returns stale previous-close data before market open. Polygon's snapshot endpoint returns actual pre-market trading data. The Polygon override for SPY/QQQ is intentional — always prefer Polygon for these two specific symbols in morning brief context.
+- **Actual VIX only**: Do not use any ETF (UVXY, VXX, VIXY) as a VIX proxy. These products have tracking error, leverage decay, and roll costs that make their price completely disconnected from VIX index levels. Always use `I:VIX` (Polygon) or `^VIX` (yfinance).
+- **Theme validation parsing**: Haiku (claude-haiku-4-5) frequently adds explanation text before returning JSON. All Haiku JSON responses must use the regex extraction fallback pattern. Do not rely on raw `json.loads()` for Haiku responses.
+
+### Files Changed
+- `agents/market_intelligence/db.py` — DB migration to replace ES=F/NQ=F with SPY/QQQ in overnight watchlist
+- `agents/market_intelligence/agent.py` — name_to_symbol drop/untrack mapping fix (SPY→SPY, NASDAQ→QQQ)
+- `agents/market_intelligence/collector.py` — renamed get_premarket_futures→get_premarket_snapshot, keys es_pct/nq_pct→spy_pct/qqq_pct, added get_vix_history()
+- `agents/market_intelligence/briefing.py` — all futures→SPY/QQQ references updated, Polygon override for pre-market accuracy
+- `agents/market_intelligence/regime.py` — VIX: UVXY proxy → actual VIX via get_vix_history()
+- `agents/market_intelligence/theme_engine.py` — JSON parsing robustness for Haiku responses, _discover_new_themes client fix
+- `tests/test_recent_changes.py` — updated for premarket snapshot rename + new key names
+- `CLAUDE.md` — this file
