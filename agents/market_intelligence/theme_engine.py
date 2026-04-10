@@ -49,6 +49,52 @@ logger = logging.getLogger(__name__)
 
 THEME_MODEL = "claude-sonnet-4-6"
 
+# Stop-words to ignore when comparing theme names for fuzzy exclusion matching
+_THEME_NAME_STOP = {"and", "the", "of", "in", "for", "a", "an", "with", "by", "at", "&", "-"}
+
+
+def _themes_are_related(name_a: str, name_b: str, threshold: float = 0.35) -> bool:
+    """
+    Return True if two theme names share enough significant words to be considered
+    the same theme under a different name.
+
+    Used for exclusion matching so that renaming "Data Center Infrastructure" to
+    "AI Data Center & Cloud Infrastructure" does not bypass the exclusion for CAR.
+
+    threshold=0.35: requires ~1 shared word out of 3 — intentionally low so that
+    "Data Center Infrastructure" matches "Data Center AI & Cloud" even after a rename.
+    """
+    def _words(name: str) -> set[str]:
+        return {
+            w.lower() for w in re.split(r'[\s\-&,/()]+', name)
+            if len(w) > 2 and w.lower() not in _THEME_NAME_STOP
+        }
+
+    words_a = _words(name_a)
+    words_b = _words(name_b)
+    if not words_a or not words_b:
+        return False
+    jaccard = len(words_a & words_b) / len(words_a | words_b)
+    return jaccard >= threshold
+
+
+def _get_excluded_tickers_for_theme(
+    theme_name: str,
+    all_exclusions: dict[str, set[str]],
+) -> set[str]:
+    """
+    Return the set of tickers excluded from a given theme.
+    Matches by exact name AND by fuzzy word-overlap, so exclusions survive renames.
+
+    Example: CAR excluded from "Data Center Infrastructure" also blocks it from
+    "AI Data Center & Cloud Infrastructure" (same theme, renamed by Claude).
+    """
+    result: set[str] = set()
+    for exc_theme, exc_tickers in all_exclusions.items():
+        if exc_theme == theme_name or _themes_are_related(exc_theme, theme_name):
+            result |= exc_tickers
+    return result
+
 
 class PerplexityUnavailableError(Exception):
     """
@@ -476,8 +522,9 @@ async def _rescore_existing_theme(
     changelog: list[dict] = []
 
     # --- Enforce persistent exclusions FIRST — before any pruning or validation ---
+    # Uses fuzzy name matching so exclusions survive theme renames by Claude.
     if theme_exclusions:
-        excluded_for_theme = theme_exclusions.get(name, set())
+        excluded_for_theme = _get_excluded_tickers_for_theme(name, theme_exclusions)
         if excluded_for_theme:
             excluded_present = [t for t in tickers if t in excluded_for_theme]
             if excluded_present:
@@ -837,8 +884,8 @@ If none of these apply, call assign_stocks_to_themes directly."""
         if ticker not in {s["ticker"] for s in uncovered_stocks}:
             continue
 
-        # Honor persistent exclusions — never re-assign a ticker that was excluded from this theme
-        if theme_exclusions and ticker in theme_exclusions.get(theme_name, set()):
+        # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
+        if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
             logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
             continue
 
@@ -1007,11 +1054,17 @@ async def _discover_new_themes(
     velocity_leaders: list[dict] | None = None,
     turners: list[dict] | None = None,
     elite_covered: list[dict] | None = None,
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
     Also receives elite covered stocks (RS 80+) that may need sub-theme splits.
     Uses structured tool use — output is schema-guaranteed, no JSON parsing.
+    theme_exclusions: mapping of theme_name → set of tickers excluded from it.
+    Exclusions are applied as a post-filter: if Claude places an excluded ticker in a
+    theme whose name is semantically related to the original exclusion theme (fuzzy match),
+    the ticker is silently stripped before the theme is returned. This prevents excluded
+    tickers from sneaking back in via newly-discovered themes with different names.
     """
     client = _get_anthropic_client()
 
@@ -1168,8 +1221,27 @@ If none of these apply, call report_themes directly — advisor consultation is 
                     logger.info(f"Theme discovery: Sonnet used advisor {advisor_calls}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
                 valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
-                return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
-                        if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+                result_themes = []
+                for t in valid:
+                    t = _strip_sector_outliers(t, stocks_by_ticker)
+                    # Post-filter: strip tickers that are excluded from any semantically
+                    # related theme — catches CAR sneaking into a renamed data-center theme
+                    if theme_exclusions:
+                        theme_name = t.get("name", "")
+                        before = list(t.get("tickers", []))
+                        excluded_here = _get_excluded_tickers_for_theme(theme_name, theme_exclusions)
+                        if excluded_here:
+                            after = [tk for tk in before if tk not in excluded_here]
+                            removed = [tk for tk in before if tk in excluded_here]
+                            if removed:
+                                logger.info(
+                                    f"Discovery post-filter: stripped {removed} from new theme "
+                                    f"'{theme_name}' — active exclusions match (fuzzy)"
+                                )
+                            t = {**t, "tickers": after}
+                    if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS:
+                        result_themes.append(t)
+                return result_themes
 
             # Handle advisor calls — Opus is consulted, result returned as tool result
             messages.append({"role": "assistant", "content": response.content})
@@ -1629,6 +1701,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         new_raw = await _discover_new_themes(
             uncovered, updated_themes, stocks_by_ticker,
             velocity_leaders, turners, elite_covered,
+            theme_exclusions=theme_exclusions,
         )
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 
