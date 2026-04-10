@@ -406,6 +406,21 @@ async def initialize_schema() -> None:
                 ON mi_theme_exclusions(theme_name);
         """)
 
+        # ── Audit log — critical events queryable from Telegram ──────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_audit_log (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                event_type TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                detail TEXT DEFAULT ''
+            );
+            CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
+                ON mi_audit_log(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_audit_log_event_type
+                ON mi_audit_log(event_type);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -1970,6 +1985,11 @@ async def add_theme_exclusion(ticker: str, theme_name: str, reason: str = "") ->
                 excluded_at = NOW()
         """, ticker.upper(), theme_name, reason)
     logger.info(f"Theme exclusion added: {ticker} excluded from '{theme_name}'")
+    await log_audit_event(
+        "theme_excluded",
+        summary=f"{ticker.upper()} excluded from '{theme_name}'",
+        detail=reason,
+    )
 
 
 async def get_all_theme_exclusions() -> dict[str, set[str]]:
@@ -2012,4 +2032,51 @@ async def list_theme_exclusions() -> list[dict[str, Any]]:
             FROM mi_theme_exclusions
             ORDER BY excluded_at DESC
         """)
+    return [dict(r) for r in rows]
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+
+async def log_audit_event(event_type: str, summary: str, detail: str = "") -> None:
+    """
+    Write a critical event to the audit log. Never raises — safe to call from anywhere.
+    event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
+                'stage_change' | 'theme_excluded' | 'ep_alert'
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
+                event_type, summary[:500], detail[:2000],
+            )
+    except Exception as e:
+        logger.warning(f"audit log write failed ({event_type}): {e}")
+
+
+async def get_audit_log(
+    limit: int = 30,
+    event_type: str | None = None,
+    since_hours: int = 48,
+) -> list[dict[str, Any]]:
+    """Fetch recent audit log entries, newest first."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if event_type:
+            rows = await conn.fetch("""
+                SELECT id, created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE event_type = $1
+                  AND created_at >= NOW() - ($2 || ' hours')::INTERVAL
+                ORDER BY created_at DESC
+                LIMIT $3
+            """, event_type, str(since_hours), limit)
+        else:
+            rows = await conn.fetch("""
+                SELECT id, created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE created_at >= NOW() - ($1 || ' hours')::INTERVAL
+                ORDER BY created_at DESC
+                LIMIT $2
+            """, str(since_hours), limit)
     return [dict(r) for r in rows]

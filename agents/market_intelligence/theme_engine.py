@@ -40,7 +40,7 @@ from agents.market_intelligence.collector import get_fmp_profile, search_news_pe
 from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
-    get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions,
+    get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -681,7 +681,7 @@ If none of these apply, call assign_stocks_to_themes directly."""
                             f"  Q: {question}\n"
                             f"  Context snippet: {context[:200]}"
                         )
-                        advice = await _call_advisor(question, context)
+                        advice = await _call_advisor(question, context, caller="assignment")
                         logger.info(f"Theme assignment: advisor verdict: {advice[:300]}")
                     tool_results.append({
                         "type": "tool_result",
@@ -809,7 +809,7 @@ _ADVISOR_TOOL = {
 _MAX_ADVISOR_CALLS = 3
 
 
-async def _call_advisor(question: str, context: str) -> str:
+async def _call_advisor(question: str, context: str, caller: str = "") -> str:
     """Call Opus as a senior advisor for hard theme-clustering judgment calls."""
     client = _get_anthropic_client()
     try:
@@ -822,7 +822,13 @@ async def _call_advisor(question: str, context: str) -> str:
             ),
             messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
         )
-        return resp.content[0].text
+        verdict = resp.content[0].text
+        await log_audit_event(
+            "advisor_call",
+            summary=f"[{caller}] {question[:120]}",
+            detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
+        )
+        return verdict
     except Exception as e:
         logger.warning(f"Advisor call failed: {e}")
         return "Advisor unavailable — use your best judgment."
@@ -1049,7 +1055,7 @@ If none of these apply, call report_themes directly — advisor consultation is 
                             f"  Q: {question}\n"
                             f"  Context snippet: {context[:200]}"
                         )
-                        advice = await _call_advisor(question, context)
+                        advice = await _call_advisor(question, context, caller="discovery")
                         logger.info(f"Theme discovery: advisor verdict: {advice[:300]}")
                     tool_results.append({
                         "type": "tool_result",
@@ -1469,13 +1475,37 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         for raw in new_raw
     ])
 
-    # Log new themes
+    # Log new themes + write to audit log
     for nt in new_themes:
+        tickers = list(nt.get("tickers") or [])
         changelog.append({
             "type": "theme_new",
             "theme": nt["name"],
-            "tickers": list(nt.get("tickers") or []),
+            "tickers": tickers,
         })
+        await log_audit_event(
+            "theme_discovered",
+            summary=f"New theme: {nt['name']} ({len(tickers)} stocks)",
+            detail=f"Tickers: {', '.join(tickers)}\nThesis: {nt.get('description', nt.get('thesis', ''))}",
+        )
+
+    # Write retirements to audit log
+    for entry in changelog:
+        if entry.get("type") == "theme_retired":
+            await log_audit_event(
+                "theme_retired",
+                summary=f"Retired: {entry['theme']}",
+                detail=f"Last tickers: {', '.join(entry.get('tickers') or [])}",
+            )
+
+    # Write stage changes to audit log
+    for entry in changelog:
+        if entry.get("type") == "stage_change":
+            await log_audit_event(
+                "stage_change",
+                summary=f"{entry['theme']}: {entry.get('old_stage')} → {entry.get('new_stage')}",
+                detail=f"Score: {entry.get('score', '?')}",
+            )
 
     # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---
     all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)

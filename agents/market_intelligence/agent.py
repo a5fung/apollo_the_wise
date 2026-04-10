@@ -42,6 +42,7 @@ from agents.market_intelligence.db import (
     add_theme_exclusion,
     remove_theme_exclusion,
     list_theme_exclusions,
+    get_audit_log,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
@@ -406,6 +407,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
+        if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log"]):
+            return await self._handle_audit_log(request)
+
         # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
             return await self._handle_history_query(request)
@@ -636,6 +640,77 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"To undo: 'remove exclusion {ticker} from {theme_name}'"
                 ),
             )
+
+    async def _handle_audit_log(self, request: AgentRequest) -> AgentResponse:
+        """
+        Fetch and display recent critical events from the audit log.
+        Commands:
+          "audit log" / "show logs" — last 20 events (48h)
+          "advisor log" — only advisor_call events
+          "show logs 7d" — last 7 days
+        """
+        import re as _re
+        task = request.task.lower()
+
+        # Parse optional time window (e.g. "7d", "24h")
+        since_hours = 48
+        m = _re.search(r'(\d+)\s*d\b', task)
+        if m:
+            since_hours = int(m.group(1)) * 24
+        else:
+            m = _re.search(r'(\d+)\s*h\b', task)
+            if m:
+                since_hours = int(m.group(1))
+
+        # Filter by event type if specified
+        event_type = None
+        if "advisor" in task:
+            event_type = "advisor_call"
+        elif "discover" in task or "new theme" in task:
+            event_type = "theme_discovered"
+        elif "retire" in task:
+            event_type = "theme_retired"
+        elif "stage" in task:
+            event_type = "stage_change"
+        elif "exclusion" in task or "excluded" in task:
+            event_type = "theme_excluded"
+
+        rows = await get_audit_log(limit=25, event_type=event_type, since_hours=since_hours)
+
+        if not rows:
+            label = f"last {since_hours}h" + (f" [{event_type}]" if event_type else "")
+            return self._ok(request, result=f"No audit log entries in {label}.")
+
+        _TYPE_EMOJI = {
+            "advisor_call":     "🤖",
+            "theme_discovered": "🌱",
+            "theme_retired":    "🪦",
+            "stage_change":     "📈",
+            "theme_excluded":   "🚫",
+            "ep_alert":         "⚡",
+        }
+
+        lines = [f"*Audit Log* — last {since_hours}h{' · ' + event_type if event_type else ''}"]
+        for r in rows:
+            ts = r["created_at"].strftime("%m/%d %H:%M")
+            emoji = _TYPE_EMOJI.get(r["event_type"], "•")
+            lines.append(f"{emoji} `{ts}` {r['summary']}")
+
+        # If asking for advisor log, show detail for each entry
+        if event_type == "advisor_call" and len(rows) <= 10:
+            lines = [f"*Advisor Log* — last {since_hours}h"]
+            for r in rows:
+                ts = r["created_at"].strftime("%m/%d %H:%M")
+                detail = r.get("detail", "")
+                # Extract verdict from detail (after "Verdict:")
+                verdict = ""
+                if "Verdict:" in detail:
+                    verdict = detail.split("Verdict:")[-1].strip()[:300]
+                lines.append(f"\n`{ts}` 🤖 *{r['summary'][:80]}*")
+                if verdict:
+                    lines.append(f"_{verdict}_")
+
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
         """Re-run just the theme engine using existing RS data. No Polygon calls — fast.
