@@ -259,13 +259,21 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
     try:
         client = _get_anthropic_client()
         prompt = (
-            "Generate concise trading-relevant descriptions for these stocks. "
-            "Each description should be 3-8 words describing what the company actually does, "
-            "focused on the business that drives the stock price. Use the style of these examples:\n"
+            "Generate concise trading-relevant descriptions for these stocks.\n\n"
+            "Rules:\n"
+            "- 3-8 words describing the PRIMARY revenue driver only\n"
+            "- Ignore 'digital transformation', 'technology investments', 'platform initiatives' "
+            "unless that IS the core business\n"
+            "- A car rental company is 'car & truck rental', NOT 'mobility platform'\n"
+            "- A retailer is 'retail stores / e-commerce', NOT 'digital commerce platform'\n"
+            "- Focus on what they SELL, not how they describe themselves in PR\n\n"
+            "Examples:\n"
             "- NVDA: AI/data center GPUs, inference & training chips\n"
             "- MU: DRAM & NAND memory, HBM for AI GPUs\n"
             "- FCX: Copper & gold mining\n"
-            "- AGRO: Agricultural farming, sugar, ethanol production\n\n"
+            "- AGRO: Agricultural farming, sugar, ethanol production\n"
+            "- CAR: Car & truck rental (Avis, Budget brands)\n"
+            "- UBER: Rideshare & food delivery marketplace\n\n"
             "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
             "Stocks:\n" + "\n".join(stock_lines)
         )
@@ -280,8 +288,25 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             raw = raw.rstrip("```").strip()
         desc_map = json.loads(raw)
         if isinstance(desc_map, dict):
-            valid = {tk.upper(): desc for tk, desc in desc_map.items()
-                     if isinstance(desc, str) and desc and tk.upper() in to_describe}
+            # Prefix every Haiku-generated description with the GICS sector/industry
+            # from yfinance. This is the scalable fix for bad clustering:
+            # "Consumer Cyclical / Rental & Leasing Services — car & truck rental"
+            # can never end up in a data center theme regardless of what Haiku writes.
+            # No per-ticker maintenance needed — every new stock auto-gets its sector.
+            valid = {}
+            for tk, desc in desc_map.items():
+                tk_up = tk.upper()
+                if not isinstance(desc, str) or not desc or tk_up not in to_describe:
+                    continue
+                p = profiles.get(tk_up, {})
+                sector = p.get("sector", "")
+                industry = p.get("industry", "")
+                if sector and industry and sector != industry:
+                    valid[tk_up] = f"{sector} / {industry} — {desc}"
+                elif sector:
+                    valid[tk_up] = f"{sector} — {desc}"
+                else:
+                    valid[tk_up] = desc
             # Only persist for stocks that were genuinely missing — never overwrite
             # an existing description that was correct (guards against Haiku generating
             # bad descriptions for stocks that already have good ones in TICKER_DESC)
