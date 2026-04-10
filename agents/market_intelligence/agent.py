@@ -1518,6 +1518,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         industry=industry or sector,
                         score_date=score_date,
                         sector=sector,
+                        ticker_rs=rs_result["rs_composite"],
                     )
                     if rank_data:
                         label = rank_data["label"]

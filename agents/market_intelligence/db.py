@@ -1909,9 +1909,13 @@ async def get_sector_rs_rank(
     score_date,
     sector: str | None = None,
     min_peers: int = 10,
+    ticker_rs: float | None = None,
 ) -> dict:
     """
     Compute a ticker's RS percentile within its industry peer group.
+
+    ticker_rs: the ticker's already-known RS composite score. If provided,
+    avoids a DB join that fails for on-demand-scored tickers not in mi_stock_scores.
 
     Returns {rank, total, pct, label, fallback} or {} if insufficient peers.
     Falls back to sector-level if industry has < min_peers tracked stocks.
@@ -1936,11 +1940,12 @@ async def get_sector_rs_rank(
         if not rows or len(rows) < min_peers:
             return None
         composites = {r["ticker"]: r["rs_composite"] for r in rows}
-        ticker_rs = composites.get(ticker_up)
-        if ticker_rs is None:
+        # Use caller-supplied RS if available (on-demand scored tickers not in nightly table)
+        known_rs = ticker_rs if ticker_rs is not None else composites.get(ticker_up)
+        if known_rs is None:
             return None
         total = len(composites)
-        rank = sum(1 for rs in composites.values() if rs > ticker_rs) + 1
+        rank = sum(1 for rs in composites.values() if rs > known_rs) + 1
         pct = round((total - rank + 1) / total * 100)
         return {"rank": rank, "total": total, "pct": pct}
 
