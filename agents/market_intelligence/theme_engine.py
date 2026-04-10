@@ -87,11 +87,13 @@ _SEARCH_SEM = asyncio.Semaphore(5)
 # Semaphore: max concurrent FMP sector lookups
 _SECTOR_SEM = asyncio.Semaphore(5)
 
-async def _news_check(theme_name: str, tickers: list[str] | None = None) -> tuple[int, str]:
+async def _news_check(theme_name: str, tickers: list[str] | None = None) -> tuple[int, str, bool]:
     """
     Query Perplexity for current catalysts driving this theme.
-    Returns (score, fresh_description) — score is 30 if confirmed active, else 0.
-    Perplexity is asked to summarize directly — no post-processing LLM step.
+    Returns (score, fresh_description, api_error).
+    - score=30, api_error=False: Perplexity confirmed active catalysts
+    - score=0, api_error=False: Perplexity returned but found no news
+    - score=0, api_error=True: Perplexity is down/rate-limited — caller should NOT penalize theme
     """
     try:
         ticker_str = " ".join(tickers[:6]) if tickers else theme_name
@@ -99,20 +101,22 @@ async def _news_check(theme_name: str, tickers: list[str] | None = None) -> tupl
         async with _SEARCH_SEM:
             answer = await search_news_perplexity(query, recency="week")
         if not answer:
-            return 0, ""
+            return 0, "", False
 
         # Detect Perplexity "no results" responses — store nothing, don't pollute DB
         if _is_garbage(answer):
-            return 0, ""
+            return 0, "", False
 
         # Strip citations [1][2], markdown, normalize whitespace
         clean = re.sub(r"\[\d+\]", "", answer)
         clean = re.sub(r"\*+", "", clean).replace("#", "").replace("\n", " ")
         clean = re.sub(r"\s+", " ", clean).strip()
 
-        return 30, clean
-    except Exception:
-        return 0, ""
+        return 30, clean, False
+    except Exception as e:
+        # API error (401, network, timeout) — treat as "unknown", not "no catalysts"
+        logger.warning(f"[news_check] Perplexity unavailable for '{theme_name}': {e}")
+        return 0, "", True
 
 
 # Cache yfinance sector lookups
@@ -205,6 +209,12 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             truly_new = {tk: desc for tk, desc in valid.items() if not TICKER_DESC.get(tk)}
             if truly_new:
                 await upsert_ticker_overrides_batch(truly_new)
+                # Persistent audit record — survives image rebuilds, queryable from Telegram
+                await log_audit_event(
+                    "description_generated",
+                    summary=f"Generated {len(truly_new)} new stock descriptions",
+                    detail="\n".join(f"{tk}: {desc}" for tk, desc in truly_new.items()),
+                )
             # Apply all to in-memory TICKER_DESC (safe — only stocks that were missing)
             if valid:
                 apply_overrides(valid)
@@ -388,6 +398,7 @@ async def _validate_theme_membership(
         if to_remove:
             for tk in to_remove:
                 if tk in tickers:
+                    desc = TICKER_DESC.get(tk, "")
                     changelog.append({
                         "type": "ticker_revalidated_out",
                         "theme": theme_name,
@@ -395,8 +406,14 @@ async def _validate_theme_membership(
                         "reason": f"description inconsistent with theme '{theme_name}'",
                     })
                     logger.info(
-                        f"Theme '{theme_name}': removed {tk} — description '{TICKER_DESC.get(tk, '')}' "
+                        f"Theme '{theme_name}': removed {tk} — description '{desc}' "
                         f"does not match theme"
+                    )
+                    # Persistent audit record — survives image rebuilds, queryable from Telegram
+                    await log_audit_event(
+                        "ticker_revalidated_out",
+                        summary=f"{tk} removed from '{theme_name}' by validation",
+                        detail=f"Description: '{desc}' — Haiku flagged as not matching theme",
                     )
                     # Note: do NOT auto-persist to mi_theme_exclusions here.
                     # Validation removals are in-memory only — they re-run Mon/Wed/Fri.
@@ -563,10 +580,15 @@ async def _rescore_existing_theme(
     )
 
     if should_refresh:
-        news_score, fresh_desc = await _news_check(name, strong_stocks)
-        # When we attempted a refresh, use what we got — even if empty.
-        # Never fall back to old description after a refresh attempt: it may be garbage.
-        description = fresh_desc
+        news_score, fresh_desc, api_err = await _news_check(name, strong_stocks)
+        if api_err:
+            # Perplexity is down/rate-limited — don't penalize the theme with score=0.
+            # Use neutral news_score (15, half credit) and keep existing description.
+            # A 401/network error tells us nothing about whether catalysts are active.
+            news_score = 15
+            description = existing_desc
+        else:
+            description = fresh_desc
     else:
         news_score = 30
         # Not a refresh day — keep sanitized existing description
@@ -1162,7 +1184,10 @@ async def _score_new_theme(
     momentum = trimmed_mean(rs_scores) if rs_scores else 0
     momentum_score = min(momentum / 100 * 50, 50)
 
-    news_score, fresh_desc = await _news_check(theme["name"], tickers)
+    news_score, fresh_desc, _api_err = await _news_check(theme["name"], tickers)
+    # For brand-new themes, API error → use thesis as description, neutral score
+    if _api_err:
+        news_score = 15
 
     return {
         "theme_date": today,
