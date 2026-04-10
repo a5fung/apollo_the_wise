@@ -630,15 +630,52 @@ Rules:
 - Use the EXACT theme name from the list above"""
 
     try:
-        response = await client.messages.create(
-            model=THEME_MODEL,
-            max_tokens=1000,
-            tools=[_THEME_ASSIGNMENT_TOOL],
-            tool_choice={"type": "tool", "name": "assign_stocks_to_themes"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        tool_block = next(b for b in response.content if b.type == "tool_use")
-        assignments = tool_block.input.get("assignments", [])
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        advisor_calls = 0
+        assignments = []
+
+        while True:
+            response = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=1000,
+                tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
+
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            if not tool_uses:
+                logger.warning("Theme assignment: model stopped without calling assign_stocks_to_themes")
+                break
+
+            assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
+            if assign_block:
+                assignments = assign_block.input.get("assignments", [])
+                break
+
+            # Handle advisor calls
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in tool_uses:
+                if block.name == "consult_advisor":
+                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                        advice = "Advisor call limit reached — use your best judgment and proceed."
+                        logger.warning("Theme assignment: advisor call limit reached")
+                    else:
+                        advisor_calls += 1
+                        logger.info(f"Theme assignment: consulting advisor ({advisor_calls}/{_MAX_ADVISOR_CALLS}): {block.input.get('question', '')[:80]}")
+                        advice = await _call_advisor(
+                            block.input.get("question", ""),
+                            block.input.get("context", ""),
+                        )
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": advice,
+                    })
+            messages.append({"role": "user", "content": tool_results})
+
     except Exception as e:
         logger.error(f"Claude theme assignment failed: {e}")
         return uncovered_stocks, []
@@ -729,6 +766,52 @@ _THEME_DISCOVERY_TOOL = {
         "required": ["themes"],
     },
 }
+
+_ADVISOR_TOOL = {
+    "name": "consult_advisor",
+    "description": (
+        "Consult the senior advisor (Opus) for a hard judgment call. Use sparingly — "
+        "only when genuinely uncertain: e.g. borderline cluster coherence, ambiguous sub-theme split, "
+        "or whether stocks truly share the same catalyst vs. superficial similarity. "
+        "Do NOT use for obvious decisions. Advisor gives a direct verdict."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "The specific decision you need a second opinion on — be precise",
+            },
+            "context": {
+                "type": "string",
+                "description": "Relevant stocks, descriptions, RS scores, and your current thinking",
+            },
+        },
+        "required": ["question", "context"],
+    },
+}
+
+# Maximum advisor (Opus) calls per theme engine run — prevents runaway cost on edge cases
+_MAX_ADVISOR_CALLS = 3
+
+
+async def _call_advisor(question: str, context: str) -> str:
+    """Call Opus as a senior advisor for hard theme-clustering judgment calls."""
+    client = _get_anthropic_client()
+    try:
+        resp = await client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=600,
+            system=(
+                "You are a senior market intelligence analyst (Qullamaggie/O'Neil methodology). "
+                "Give direct, decisive answers. State your conclusion first, reasoning second. No hedging."
+            ),
+            messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
+        )
+        return resp.content[0].text
+    except Exception as e:
+        logger.warning(f"Advisor call failed: {e}")
+        return "Advisor unavailable — use your best judgment."
 
 
 def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
@@ -895,19 +978,56 @@ Rules:
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
 
     try:
-        response = await client.messages.create(
-            model=THEME_MODEL,
-            max_tokens=1500,
-            tools=[_THEME_DISCOVERY_TOOL],
-            tool_choice={"type": "tool", "name": "report_themes"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        tool_block = next(b for b in response.content if b.type == "tool_use")
-        raw_themes = tool_block.input.get("themes", [])
-        # Filter: enforce minimum 2 tickers, then strip sector-incompatible tickers
-        valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
-        return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
-                if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+        client = _get_anthropic_client()
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        advisor_calls = 0
+
+        while True:
+            response = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=1500,
+                tools=[_THEME_DISCOVERY_TOOL, _ADVISOR_TOOL],
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
+
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            # Model stopped without calling a tool — shouldn't happen but handle gracefully
+            if not tool_uses:
+                logger.warning("Theme discovery: model stopped without calling report_themes")
+                return []
+
+            # If report_themes was called, we're done
+            report_block = next((b for b in tool_uses if b.name == "report_themes"), None)
+            if report_block:
+                raw_themes = report_block.input.get("themes", [])
+                valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+                return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
+                        if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+
+            # Handle advisor calls — Opus is consulted, result returned as tool result
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in tool_uses:
+                if block.name == "consult_advisor":
+                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                        advice = "Advisor call limit reached — use your best judgment and proceed."
+                        logger.warning("Theme discovery: advisor call limit reached")
+                    else:
+                        advisor_calls += 1
+                        logger.info(f"Theme discovery: consulting advisor ({advisor_calls}/{_MAX_ADVISOR_CALLS}): {block.input.get('question', '')[:80]}")
+                        advice = await _call_advisor(
+                            block.input.get("question", ""),
+                            block.input.get("context", ""),
+                        )
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": advice,
+                    })
+            messages.append({"role": "user", "content": tool_results})
+
     except Exception as e:
         logger.error(f"Claude new theme discovery failed: {e}")
         return []
