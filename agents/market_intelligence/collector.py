@@ -431,6 +431,39 @@ _PERPLEXITY_SYSTEM_DEFAULT = (
 )
 
 
+async def check_perplexity_health() -> tuple[bool, int, str]:
+    """
+    Probe Perplexity with a minimal call to verify the API key and credit balance.
+    Returns (ok, status_code, error_message).
+
+    - (True, 200, ""): API is healthy — engine may proceed
+    - (False, 401, "..."): Invalid API key or no credits — HARD ABORT required
+    - (False, 402, "..."): Payment required / credits exhausted — HARD ABORT required
+    - (True, 0, ""): Network/transient error — treat as OK (don't abort for flakiness)
+    """
+    api_key = os.environ.get("PERPLEXITY_API_KEY")
+    if not api_key:
+        return False, 0, "PERPLEXITY_API_KEY env var not set"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": "sonar-pro",
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 5,
+                },
+            )
+            if r.status_code in (401, 402):
+                return False, r.status_code, r.text[:300]
+            return True, r.status_code, ""
+    except Exception as e:
+        # Network errors, timeouts, DNS — treat as transient, don't abort
+        logger.warning(f"Perplexity health probe network error (non-fatal): {e}")
+        return True, 0, ""
+
+
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
 ) -> str:

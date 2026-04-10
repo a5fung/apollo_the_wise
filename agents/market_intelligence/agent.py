@@ -57,7 +57,9 @@ from agents.market_intelligence.collector import et_today, search_news_perplexit
 from agents.market_intelligence.ep_detector import run_ep_scan, MIN_GAP_PCT, MIN_PREV_CLOSE, MIN_REL_VOLUME, MIN_PREMARKET_SHARES, MAX_EXTENSION_PCT, EP_COOLDOWN_DAYS
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
-from agents.market_intelligence.theme_engine import run_theme_engine, get_today_themes
+from agents.market_intelligence.theme_engine import (
+    run_theme_engine, get_today_themes, PerplexityUnavailableError,
+)
 from agents.market_intelligence.scheduler import start_scheduler, stop_scheduler, check_missed_jobs
 from shared.models import AgentName, AgentRequest, AgentResponse
 
@@ -880,6 +882,17 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("\n_Evening briefing sending..._")
 
             return self._ok(request, result="\n".join(lines))
+        except PerplexityUnavailableError as e:
+            # Hard abort — Perplexity is down (401/402). Already sent Telegram alert from
+            # run_theme_engine. Surface the error explicitly — no silent fallback.
+            return self._error(
+                request,
+                error=(
+                    f"🚨 Theme engine ABORTED — Perplexity API unavailable.\n\n"
+                    f"{e}\n\n"
+                    f"No theme data was changed. Add API credits then retry."
+                ),
+            )
         except Exception as e:
             logger.error(f"Theme-only run failed: {e}", exc_info=True)
             return self._error(request, error=f"Theme engine failed: {e}")

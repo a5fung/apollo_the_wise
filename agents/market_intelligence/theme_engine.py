@@ -36,7 +36,9 @@ def _get_anthropic_client() -> anthropic.AsyncAnthropic:
         _anthropic_client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _anthropic_client
 
-from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
+from agents.market_intelligence.collector import (
+    get_fmp_profile, search_news_perplexity, check_perplexity_health, et_today,
+)
 from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
@@ -46,6 +48,34 @@ from agents.market_intelligence.db import (
 logger = logging.getLogger(__name__)
 
 THEME_MODEL = "claude-sonnet-4-6"
+
+
+class PerplexityUnavailableError(Exception):
+    """
+    Raised when the Perplexity API is unavailable due to an auth failure or
+    exhausted credits (HTTP 401/402). This is a HARD abort — the theme engine
+    must not proceed because every news_check call will return score=0, which
+    would cause smooth_delta < -8 for all themes simultaneously and flip them
+    all to Fading in one run.
+    """
+    pass
+
+
+async def _preflight_perplexity() -> None:
+    """
+    Probe Perplexity before the theme engine runs. Raises PerplexityUnavailableError
+    on 401 (invalid key) or 402 (no credits). Network/transient errors are ignored —
+    they won't cause mass Fading because individual _news_check calls return api_err=True
+    which now uses a neutral score=15 instead of score=0.
+    """
+    ok, status_code, detail = await check_perplexity_health()
+    if not ok:
+        msg = (
+            f"Perplexity API unavailable (HTTP {status_code}) — "
+            "theme engine ABORTED to prevent mass theme collapse.\n"
+            f"Detail: {detail[:200]}"
+        )
+        raise PerplexityUnavailableError(msg)
 
 # Signals that indicate a Perplexity response (or stored description) is garbage
 _GARBAGE_SIGNALS = [
@@ -1407,6 +1437,32 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
     changelog: list[dict] = []
+
+    # --- Preflight: verify Perplexity is reachable before touching any theme data ---
+    # A 401/402 from Perplexity causes news_score=0 for EVERY theme, which produces
+    # smooth_delta ≈ -30 and flips all themes to Fading in a single run.
+    # Abort early and alert rather than silently corrupting the theme state.
+    try:
+        await _preflight_perplexity()
+    except PerplexityUnavailableError as e:
+        error_msg = str(e)
+        logger.error(f"[theme engine] ABORTING — {error_msg}")
+        # Surface to Telegram immediately — this is a critical, actionable failure
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(
+                f"🚨 *Theme Engine ABORTED*\n\n"
+                f"{error_msg}\n\n"
+                f"No theme data was updated. Add API credits then send *rerun theme engine* to retry."
+            )
+        except Exception:
+            pass
+        await log_audit_event(
+            "theme_engine_aborted",
+            summary=f"Theme engine aborted — Perplexity unavailable",
+            detail=error_msg,
+        )
+        raise  # propagate to caller (scheduler adds to failures, _handle_theme_only shows error)
 
     logger.info("Theme engine: fetching top RS stocks + velocity + turners...")
     leaders, velocity_all, turners_all = await asyncio.gather(
