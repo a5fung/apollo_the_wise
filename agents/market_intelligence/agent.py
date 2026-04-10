@@ -50,6 +50,7 @@ from agents.market_intelligence.db import (
     get_ep_scan_log_history,
     get_ep_scan_log,
     get_pool,
+    restore_recently_retired_themes,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today, search_news_perplexity
@@ -427,6 +428,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
             return await self._handle_theme_exclusion(request)
 
+        if any(k in task for k in ["restore retired themes", "restore themes", "unretire themes", "recover themes"]):
+            return await self._handle_restore_themes(request)
+
         if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme", "refresh theme"]):
             return await self._handle_theme_only(request)
 
@@ -699,6 +703,27 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"To undo: 'remove exclusion {ticker} from {theme_name}'"
                 ),
             )
+
+    async def _handle_restore_themes(self, request: AgentRequest) -> AgentResponse:
+        """
+        Recover from runaway nightly validation destroying themes.
+        Deletes 'Retired' rows from the last 1-2 days, restoring the prior valid snapshot.
+        Follow with 'rerun theme engine' to re-score.
+        """
+        from datetime import timedelta
+        today = et_today()
+        since = today - timedelta(days=1)
+        count = await restore_recently_retired_themes(since)
+        if count == 0:
+            return self._ok(request, result="No recently-retired themes found to restore (looking back 1 day).")
+        return self._ok(
+            request,
+            result=(
+                f"Restored {count} themes that were incorrectly retired in the last 24 hours.\n"
+                f"Their prior snapshots are now active again.\n"
+                f"Run 'rerun theme engine' to re-score them with today's RS data."
+            ),
+        )
 
     async def _handle_audit_log(self, request: AgentRequest) -> AgentResponse:
         """

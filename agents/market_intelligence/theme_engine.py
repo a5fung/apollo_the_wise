@@ -344,12 +344,12 @@ async def _validate_theme_membership(
     prompt = (
         f"Theme: \"{theme_name}\"\n\n"
         f"Stocks in this theme:\n{stock_lines}\n\n"
-        f"Identify stocks that DO NOT BELONG in this theme.\n"
-        f"A stock does not belong if its core business is in a DIFFERENT INDUSTRY than the theme — "
-        f"e.g. a car rental company in a data center theme, a mining company in a biotech theme, "
-        f"a retailer in a semiconductor theme. Be DECISIVE: wrong industry = remove. "
-        f"Do not keep a stock just because you are unsure — if the business sector clearly differs "
-        f"from the theme, flag it.\n\n"
+        f"Identify stocks that CLEARLY DO NOT BELONG in this theme.\n"
+        f"Only remove a stock if its core business is OBVIOUSLY in a completely different industry — "
+        f"e.g. a car rental company in a data center theme, a mining company in a biotech theme. "
+        f"If a stock is plausibly related to the theme (e.g. a supplier, adjacent technology, "
+        f"or customer base overlap), KEEP IT. When in doubt, keep the stock. "
+        f"Only flag stocks whose business has NO meaningful connection to the theme.\n\n"
         f"Return JSON only: {{\"remove\": [\"TICKER1\", \"TICKER2\"]}} or {{\"remove\": []}} if all belong."
     )
 
@@ -498,8 +498,9 @@ async def _rescore_existing_theme(
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
 
     # --- Re-validation: remove stocks whose description clearly doesn't match the theme ---
-    # Runs daily — cheap (one Haiku call per theme) and catches bad memberships fast.
-    if len(tickers) >= 2:
+    # Only runs Mon/Wed/Fri to avoid Haiku inconsistency destroying themes nightly.
+    today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
+    if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
         tickers = await _validate_theme_membership(name, tickers, changelog)
 
     # Check how many constituent stocks still show strong RS today

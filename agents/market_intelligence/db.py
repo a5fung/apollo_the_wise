@@ -1301,6 +1301,40 @@ async def get_active_themes() -> list[dict]:
         return [dict(r) for r in rows]
 
 
+async def restore_recently_retired_themes(since_date: "date") -> int:
+    """
+    Recover from runaway validation destroying themes in a single night.
+
+    Deletes all 'Retired' rows for themes that were retired on or after since_date.
+    Because get_active_themes() uses DISTINCT ON (name) ORDER BY theme_date DESC,
+    this exposes the previous day's valid snapshot for each restored theme.
+
+    Returns the count of themes restored.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Find names that were retired on/after since_date but had prior non-Retired rows
+        names = await conn.fetch("""
+            SELECT DISTINCT name FROM mi_themes
+            WHERE stage = 'Retired' AND theme_date >= $1
+              AND name IN (
+                  SELECT DISTINCT name FROM mi_themes
+                  WHERE stage != 'Retired' AND theme_date < $1
+              )
+        """, since_date)
+        if not names:
+            return 0
+        theme_names = [r["name"] for r in names]
+        # Delete the Retired rows — exposes the prior valid snapshot
+        result = await conn.execute("""
+            DELETE FROM mi_themes
+            WHERE stage = 'Retired' AND theme_date >= $1
+        """, since_date)
+        count = int(result.split()[-1])
+        logger.info(f"Restored {count} recently-retired theme rows: {theme_names}")
+        return count
+
+
 async def bulk_track_stocks(tickers: list[str], today: "date") -> int:
     """Add tickers to tracked stocks immediately (bypasses universe cap). Returns count upserted."""
     if not tickers:
