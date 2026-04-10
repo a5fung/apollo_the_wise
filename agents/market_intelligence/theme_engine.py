@@ -382,22 +382,21 @@ async def _validate_theme_membership(
         if to_remove:
             for tk in to_remove:
                 if tk in tickers:
-                    reason = f"description inconsistent with theme '{theme_name}'"
                     changelog.append({
                         "type": "ticker_revalidated_out",
                         "theme": theme_name,
                         "ticker": tk,
-                        "reason": reason,
+                        "reason": f"description inconsistent with theme '{theme_name}'",
                     })
                     logger.info(
                         f"Theme '{theme_name}': removed {tk} — description '{TICKER_DESC.get(tk, '')}' "
                         f"does not match theme"
                     )
-                    # Persist to DB so this exclusion survives future engine runs
-                    try:
-                        await add_theme_exclusion(tk, theme_name, reason)
-                    except Exception as exc:
-                        logger.warning(f"Failed to persist exclusion {tk}/{theme_name}: {exc}")
+                    # Note: do NOT auto-persist to mi_theme_exclusions here.
+                    # Validation removals are in-memory only — they re-run Mon/Wed/Fri.
+                    # Auto-persisting causes permanent bans when descriptions are wrong
+                    # (e.g. bad yfinance data). Use explicit "exclude X from theme" for
+                    # intentional permanent bans.
             return [t for t in tickers if t not in to_remove]
 
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
