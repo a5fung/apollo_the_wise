@@ -1856,11 +1856,15 @@ async def upsert_ticker_overrides_batch(
 
 
 async def get_ticker_overrides() -> dict[str, str]:
-    """Get all ticker description overrides, keyed by ticker."""
+    """Get all ticker description overrides, keyed by ticker.
+    Only returns rows with non-null, non-empty descriptions to avoid
+    overwriting the static TICKER_DESC baseline with NULL values from
+    sector-only rows (created by upsert_ticker_sectors_batch)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker, description FROM mi_ticker_overrides"
+            "SELECT ticker, description FROM mi_ticker_overrides "
+            "WHERE description IS NOT NULL AND description != ''"
         )
         return {r["ticker"]: r["description"] for r in rows}
 
