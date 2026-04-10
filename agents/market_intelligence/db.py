@@ -1108,6 +1108,29 @@ async def get_rs_turners(
         return [dict(r) for r in rows]
 
 
+async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:
+    """Return EP alerts from the past N days, sorted by date desc then score desc."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT a.ticker, a.alert_date, a.ep_score, a.score_tier,
+                   a.gap_pct, a.catalyst_quality, a.claude_analysis,
+                   s.rs_composite
+            FROM mi_ep_alerts a
+            LEFT JOIN LATERAL (
+                SELECT rs_composite FROM mi_stock_scores
+                WHERE ticker = a.ticker
+                ORDER BY score_date DESC LIMIT 1
+            ) s ON TRUE
+            WHERE a.alert_date >= CURRENT_DATE - $1::int
+            ORDER BY a.alert_date DESC, a.ep_score DESC
+            """,
+            days,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     pool = await get_pool()
     async with pool.acquire() as conn:

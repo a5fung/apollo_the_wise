@@ -46,6 +46,7 @@ from agents.market_intelligence.db import (
     get_ticker_sector,
     upsert_ticker_sectors_batch,
     get_sector_rs_rank,
+    get_ep_history,
     get_pool,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
@@ -436,6 +437,10 @@ class MarketIntelligenceAgent(BaseAgent):
         # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
             return await self._handle_history_query(request)
+
+        # EP history — must come before general EP route
+        if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
+            return await self._handle_ep_history(request)
 
         # "why not EP / why wasn't X flagged" — diagnostic must come before general EP route
         if any(k in task for k in ["why not ep", "why no ep", "why wasn't", "why was not", "not flagged", "not an ep", "missed ep", "why didn't", "why did not"]):
@@ -1004,6 +1009,46 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("\n*News*: no recent catalyst found via search")
 
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_ep_history(self, request: AgentRequest) -> AgentResponse:
+        """Show EP alerts from the past N days grouped by date."""
+        import re as _re
+        task = request.task.lower()
+
+        # Parse optional day window — "last 7 days", "7d", "past 30 days"
+        days = 14
+        m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
+        if m:
+            days = min(int(m.group(1)), 90)
+
+        alerts = await get_ep_history(days)
+
+        if not alerts:
+            return self._ok(request, result=f"No EP alerts in the past {days} days.")
+
+        # Group by date
+        from collections import defaultdict
+        by_date: dict = defaultdict(list)
+        for a in alerts:
+            by_date[str(a["alert_date"])].append(a)
+
+        lines = [f"*EP Alerts — last {days} days* ({len(alerts)} total)\n"]
+        for dt in sorted(by_date.keys(), reverse=True):
+            day_alerts = by_date[dt]
+            high = [a for a in day_alerts if a.get("score_tier") == "HIGH"]
+            mod  = [a for a in day_alerts if a.get("score_tier") == "MODERATE"]
+            lines.append(f"*{dt}* — {len(high)} HIGH  {len(mod)} MODERATE")
+            for a in day_alerts:
+                tier_icon = "🔥" if a.get("score_tier") == "HIGH" else "⚡"
+                rs_str = f"  RS {a['rs_composite']:.0f}" if a.get("rs_composite") else ""
+                lines.append(
+                    f"  {tier_icon} `{a['ticker']}` — score {a['ep_score']:.0f}"
+                    f"  gap {a['gap_pct']:.1f}%"
+                    f"  {a.get('catalyst_quality','?')} catalyst{rs_str}"
+                )
+            lines.append("")
+
+        return self._ok(request, result="\n".join(lines).strip(), data={"ep_alerts": alerts})
 
     async def _handle_regime_query(self, request: AgentRequest) -> AgentResponse:
         regime = await get_current_regime()

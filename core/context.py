@@ -165,6 +165,9 @@ Examples that require calling the market agent:
 
 Always ground your answer in the live data from the market agent, not general knowledge.
 
+## EP history
+"Recent EPs", "EP history", "EPs last week", "past EPs", "EPs last 7 days", "EP log" → call_market_agent("EP history") or call_market_agent("EP history 7d"). The market agent returns all fired HIGH/MODERATE alerts grouped by date. Output exactly as returned.
+
 ## EP diagnostic — "why not EP?" questions
 When the user asks why a stock wasn't flagged as an EP — "why not EP ARAI?", "why wasn't NVDA an EP?", "COIN not flagged as EP", "missed EP on X", "why didn't X trigger?" — call_market_agent with the EXACT user phrasing. Do NOT answer from general knowledge. The market agent runs the actual filter checks (price floor, extension, cooldown, RS vs regime, gap size) and fetches live news to give a specific answer.
 
