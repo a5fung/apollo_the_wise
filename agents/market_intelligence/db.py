@@ -428,6 +428,10 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
+            ALTER TABLE mi_ticker_overrides
+                ADD COLUMN IF NOT EXISTS sector TEXT;
+            ALTER TABLE mi_ticker_overrides
+                ADD COLUMN IF NOT EXISTS industry TEXT;
         """)
 
         # ── Log row counts on startup for early data-loss detection ───────
@@ -1746,6 +1750,98 @@ async def get_ticker_overrides() -> dict[str, str]:
             "SELECT ticker, description FROM mi_ticker_overrides"
         )
         return {r["ticker"]: r["description"] for r in rows}
+
+
+async def upsert_ticker_sectors_batch(sectors: dict[str, dict]) -> int:
+    """
+    Batch-upsert sector/industry for tickers. Does NOT overwrite description.
+    sectors: {ticker: {"sector": "Healthcare", "industry": "Biotechnology"}}
+    Returns count upserted.
+    """
+    if not sectors:
+        return 0
+    pool = await get_pool()
+    rows = [
+        (tk.upper(), v.get("sector", ""), v.get("industry", ""))
+        for tk, v in sectors.items()
+    ]
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            INSERT INTO mi_ticker_overrides (ticker, sector, industry, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (ticker) DO UPDATE SET
+                sector   = EXCLUDED.sector,
+                industry = EXCLUDED.industry,
+                updated_at = NOW()
+        """, rows)
+    return len(rows)
+
+
+async def get_ticker_sector(ticker: str) -> dict:
+    """Return cached {sector, industry} for a ticker, or {} if not cached."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT sector, industry FROM mi_ticker_overrides WHERE ticker = $1",
+            ticker.upper(),
+        )
+    if not row or not row["sector"]:
+        return {}
+    return {"sector": row["sector"] or "", "industry": row["industry"] or ""}
+
+
+async def get_sector_rs_rank(
+    ticker: str,
+    industry: str,
+    score_date,
+    sector: str | None = None,
+    min_peers: int = 10,
+) -> dict:
+    """
+    Compute a ticker's RS percentile within its industry peer group.
+
+    Returns {rank, total, pct, label, fallback} or {} if insufficient peers.
+    Falls back to sector-level if industry has < min_peers tracked stocks.
+    """
+    pool = await get_pool()
+    ticker_up = ticker.upper()
+
+    async def _query(group_col: str, group_val: str) -> dict | None:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"""
+                SELECT s.ticker, s.rs_composite
+                FROM mi_stock_scores s
+                JOIN mi_ticker_overrides o ON s.ticker = o.ticker
+                WHERE s.score_date = $1
+                  AND o.{group_col} = $2
+                  AND s.rs_composite IS NOT NULL
+                """,
+                score_date,
+                group_val,
+            )
+        if not rows or len(rows) < min_peers:
+            return None
+        composites = {r["ticker"]: r["rs_composite"] for r in rows}
+        ticker_rs = composites.get(ticker_up)
+        if ticker_rs is None:
+            return None
+        total = len(composites)
+        rank = sum(1 for rs in composites.values() if rs > ticker_rs) + 1
+        pct = round((total - rank + 1) / total * 100)
+        return {"rank": rank, "total": total, "pct": pct}
+
+    result = await _query("industry", industry)
+    if result:
+        return {**result, "label": industry, "fallback": False}
+
+    # Fall back to sector if industry bucket is too thin
+    if sector and sector != industry:
+        result = await _query("sector", sector)
+        if result:
+            return {**result, "label": sector, "fallback": True}
+
+    return {}
 
 
 # ── Security types ───────────────────────────────────────────────────────────

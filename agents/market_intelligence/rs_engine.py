@@ -38,6 +38,9 @@ from agents.market_intelligence.db import (
     upsert_tracked_stocks_batch,
     mark_tracked_stock_weak,
     mark_tracked_stocks_weak_batch,
+    update_sectors_batch,
+    upsert_ticker_sectors_batch,
+    get_ticker_overrides,
     get_pool,
     _to_date,
 )
@@ -437,11 +440,89 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     await upsert_tracked_stocks_batch(leader_records)
     await mark_tracked_stocks_weak_batch(weak_records)
 
+    # Enrich top 300 leaders with sector/industry data for industry RS ranking
+    top_leader_tickers = [
+        stock_data[i]["ticker"]
+        for i in range(len(stock_data))
+        if rank_position[i] <= 300
+    ]
+    await _enrich_sectors(top_leader_tickers, today)
+
     logger.info(
         f"RS Engine complete: scored {len(stock_data)} stocks for {today_str} "
         f"({len(leader_records)} tracked leaders)"
     )
     return {"stocks_scored": len(stock_data), "date": today_str}
+
+
+async def _enrich_sectors(tickers: list[str], score_date: date) -> None:
+    """
+    Fetch and cache sector/industry for tickers not yet in mi_ticker_overrides.
+    Updates both mi_ticker_overrides (persistent cache) and mi_stock_scores.sector
+    (for the screener and sector RS queries).
+    """
+    if not tickers:
+        return
+
+    from agents.market_intelligence.collector import get_fmp_profile
+
+    # Load what we already have — only fetch what's missing
+    existing = await get_ticker_overrides()  # {ticker: description}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        cached_rows = await conn.fetch(
+            "SELECT ticker FROM mi_ticker_overrides WHERE sector IS NOT NULL AND sector != ''"
+        )
+    cached_sectors = {r["ticker"] for r in cached_rows}
+
+    to_fetch = [t for t in tickers if t not in cached_sectors]
+    if not to_fetch:
+        # All cached — still push sectors into mi_stock_scores for today
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ticker, sector FROM mi_ticker_overrides WHERE ticker = ANY($1) AND sector IS NOT NULL",
+                tickers,
+            )
+        sector_map = {r["ticker"]: r["sector"] for r in rows if r["sector"]}
+        if sector_map:
+            await update_sectors_batch(score_date, sector_map)
+        return
+
+    logger.info(f"Sector enrichment: fetching {len(to_fetch)} new tickers from yfinance")
+
+    sem = asyncio.Semaphore(10)
+
+    async def _fetch_one(ticker: str) -> tuple[str, dict]:
+        async with sem:
+            profile = await get_fmp_profile(ticker)
+            return ticker, profile
+
+    results = await asyncio.gather(*[_fetch_one(t) for t in to_fetch], return_exceptions=True)
+
+    new_sectors: dict[str, dict] = {}
+    for item in results:
+        if isinstance(item, Exception):
+            continue
+        ticker, profile = item
+        sector = profile.get("sector", "")
+        industry = profile.get("industry", "")
+        if sector:
+            new_sectors[ticker] = {"sector": sector, "industry": industry}
+
+    if new_sectors:
+        await upsert_ticker_sectors_batch(new_sectors)
+        logger.info(f"Sector enrichment: cached {len(new_sectors)} sectors")
+
+    # Push all known sectors into mi_stock_scores.sector for today
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, sector FROM mi_ticker_overrides WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''",
+            tickers,
+        )
+    sector_map = {r["ticker"]: r["sector"] for r in rows if r["sector"]}
+    if sector_map:
+        await update_sectors_batch(score_date, sector_map)
+        logger.info(f"Sector enrichment: updated mi_stock_scores.sector for {len(sector_map)} stocks")
 
 
 async def score_single_ticker(ticker: str, trade_date: date | None = None) -> dict:

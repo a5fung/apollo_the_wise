@@ -43,6 +43,10 @@ from agents.market_intelligence.db import (
     remove_theme_exclusion,
     list_theme_exclusions,
     get_audit_log,
+    get_ticker_sector,
+    upsert_ticker_sectors_batch,
+    get_sector_rs_rank,
+    get_pool,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
@@ -470,6 +474,15 @@ class MarketIntelligenceAgent(BaseAgent):
             "quarterly revenue", "gross margin", "income statement",
         ]):
             return await self._handle_fundamentals_query(request)
+
+        # "research MRNA" / "look up AAPL" — single-ticker full analysis via market agent
+        if any(k in task for k in ["research ", "look up ", "lookup ", "analyse ", "analyze "]):
+            import re as _re
+            _cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+            _skip = _PREPOSITION_SKIP | {"RS", "FOR", "AND", "THE", "GET", "SHOW",
+                                         "LOOK", "ANALYSE", "ANALYZE", "RESEARCH"}
+            if any(t for t in _cands if t not in _skip):
+                return await self._handle_single_score(request)
 
         if any(k in task for k in [
             "screener", "screen for", "find top", "best stocks with",
@@ -1123,14 +1136,17 @@ class MarketIntelligenceAgent(BaseAgent):
 
         ticker = tickers[0]
 
-        # Fetch RS, fundamentals, and theme context in parallel
+        # Fetch RS, fundamentals, theme context, and cached sector in parallel
         today_str = et_today().strftime("%Y-%m-%d")
         rs_task = score_single_ticker(ticker)
         fund_task = get_fundamentals(ticker)
         themes_task = get_today_themes(today_str)
-        rs_result, fund_result, themes = await asyncio.gather(
-            rs_task, fund_task, themes_task, return_exceptions=True,
+        sector_task = get_ticker_sector(ticker)
+        rs_result, fund_result, themes, sector_cache = await asyncio.gather(
+            rs_task, fund_task, themes_task, sector_task, return_exceptions=True,
         )
+        if isinstance(sector_cache, Exception):
+            sector_cache = {}
 
         sections: list[str] = []
 
@@ -1156,22 +1172,100 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             sections.append(f"`{ticker}` — RS: unavailable")
 
-        # Theme context
-        if isinstance(themes, list):
-            for t in themes:
-                theme_tickers = t.get("tickers") or []
-                if ticker in theme_tickers:
-                    sections.append(
-                        f"\nTheme: *{t['name']}* ({t.get('stage', '?')})"
-                        f" — score {t.get('score', 0):.0f}"
-                    )
-                    break
-
         # Fundamentals section
         if isinstance(fund_result, dict) and "error" not in fund_result:
             sections.append("\n" + format_fundamentals(fund_result))
         elif isinstance(fund_result, dict):
             sections.append(f"\nFundamentals: {fund_result.get('error', 'unavailable')}")
+
+        # ── Relative strength context (theme + industry layers) ──────────────
+        rs_context_lines: list[str] = []
+
+        # Layer 1: Theme RS rank (tightest peer group)
+        theme_match = None
+        if isinstance(themes, list):
+            for t in themes:
+                if ticker in (t.get("tickers") or []):
+                    theme_match = t
+                    break
+
+        if theme_match:
+            theme_tickers = theme_match.get("tickers") or []
+            theme_name = theme_match["name"]
+            stage = theme_match.get("stage", "?")
+            # Rank this ticker within the theme by RS
+            if isinstance(rs_result, dict) and "rs_composite" in rs_result:
+                ticker_rs = rs_result["rs_composite"]
+                # Fetch RS for all theme members
+                try:
+                    peer_rs = await get_rs_for_tickers(today_str, theme_tickers)
+                    composites = [v["rs_composite"] for v in peer_rs.values() if v.get("rs_composite") is not None]
+                    if composites:
+                        rank_in_theme = sum(1 for c in composites if c > ticker_rs) + 1
+                        rs_context_lines.append(
+                            f"  Theme: *{theme_name}* ({stage})  →  "
+                            f"#{rank_in_theme} of {len(composites)}"
+                        )
+                except Exception:
+                    rs_context_lines.append(f"  Theme: *{theme_name}* ({stage})")
+
+        # Layer 2: Industry RS (always shown; fetches sector on-demand if not cached)
+        industry = sector_cache.get("industry", "")
+        sector = sector_cache.get("sector", "")
+
+        # If not cached, try fetching on-demand from yfinance and persist
+        if not industry:
+            try:
+                from agents.market_intelligence.collector import get_fmp_profile
+                profile = await get_fmp_profile(ticker)
+                industry = profile.get("industry", "")
+                sector = profile.get("sector", "")
+                if industry or sector:
+                    await upsert_ticker_sectors_batch(
+                        {ticker: {"sector": sector, "industry": industry}}
+                    )
+            except Exception:
+                pass
+
+        if industry or sector:
+            try:
+                from datetime import date as _date
+                score_date = None
+                if isinstance(rs_result, dict) and "score_date" in rs_result:
+                    sd = rs_result["score_date"]
+                    score_date = _date.fromisoformat(sd) if isinstance(sd, str) else sd
+                if score_date is None:
+                    pool = await get_pool()
+                    async with pool.acquire() as conn:
+                        row = await conn.fetchrow(
+                            "SELECT MAX(score_date) AS d FROM mi_stock_scores"
+                        )
+                    score_date = row["d"] if row else None
+
+                if score_date and isinstance(rs_result, dict) and "rs_composite" in rs_result:
+                    rank_data = await get_sector_rs_rank(
+                        ticker,
+                        industry=industry or sector,
+                        score_date=score_date,
+                        sector=sector,
+                    )
+                    if rank_data:
+                        label = rank_data["label"]
+                        rank = rank_data["rank"]
+                        total = rank_data["total"]
+                        pct = rank_data["pct"]
+                        fallback = rank_data.get("fallback", False)
+                        suffix = " (sector)" if fallback else ""
+                        rs_context_lines.append(
+                            f"  {label}{suffix}  →  {pct}th pct  (#{rank} of {total} tracked)"
+                        )
+                    elif industry:
+                        rs_context_lines.append(f"  {industry}  →  not enough peers tracked yet")
+            except Exception as e:
+                logger.debug(f"Sector RS rank failed for {ticker}: {e}")
+
+        if rs_context_lines:
+            sections.append("\n*RS context*\n" + "\n".join(rs_context_lines))
 
         return self._ok(request, result="\n".join(sections), data=rs_result if isinstance(rs_result, dict) else {})
 
