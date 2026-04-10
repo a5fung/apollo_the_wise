@@ -165,6 +165,18 @@ Examples that require calling the market agent:
 
 Always ground your answer in the live data from the market agent, not general knowledge.
 
+## Single-ticker RS and industry context
+Industry-relative RS is automatically included in every single-ticker query. To get it, call the market agent with the ticker directly:
+- "RS MRNA" → returns RS score + theme rank + industry percentile
+- "fundamentals MRNA" → same data plus fundamentals table
+
+**CRITICAL**: The market agent has no memory of conversation history. ALWAYS include the ticker symbol explicitly in the call — never rely on pronouns or context ("its industry", "that stock", "the same ticker"). If the user says "what about its industry RS?", extract the ticker from prior context and call `call_market_agent("RS [TICKER]")`.
+
+Examples:
+- User: "What about RS vs its industry?" (talking about MRNA) → call_market_agent("RS MRNA")
+- "How does COIN compare to its peers?" → call_market_agent("RS COIN")
+- "industry RS for NVDA" → call_market_agent("RS NVDA")
+
 ## EP history
 "Recent EPs", "EP history", "EPs last week", "past EPs", "EPs last 7 days", "EP log" → call_market_agent("EP history") or call_market_agent("EP history 7d"). The market agent returns all fired HIGH/MODERATE alerts grouped by date. Output exactly as returned.
 

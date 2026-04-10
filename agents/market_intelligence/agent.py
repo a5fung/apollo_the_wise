@@ -457,8 +457,19 @@ class MarketIntelligenceAgent(BaseAgent):
             return await self._handle_ep_query(request)
 
         # Theme must be checked before regime and RS — "top themes by RS strength" or
-        # "regime and active themes" should route to themes (the more specific intent)
-        if any(k in task for k in ["theme", "sector", "industry"]):
+        # "regime and active themes" should route to themes (the more specific intent).
+        # Exception: "industry" with a ticker means single-ticker industry RS context
+        # (the single-score handler already includes industry-relative RS).
+        _has_ticker_for_industry = False
+        if "industry" in task and "theme" not in task and "sector" not in task:
+            import re as _re2
+            _ind_candidates = _re2.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+            _ind_skip = _PREPOSITION_SKIP | {"RS", "FOR", "THE", "AND", "ITS", "VS", "VERSUS",
+                         "INDUSTRY", "SECTOR", "RELATIVE", "STRENGTH", "COMPARED", "TO",
+                         "WHAT", "HOW", "DOES", "SHOW", "GET", "CHECK"}
+            _has_ticker_for_industry = any(t for t in _ind_candidates if t not in _ind_skip)
+
+        if not _has_ticker_for_industry and any(k in task for k in ["theme", "sector", "industry"]):
             logger.info(f"Routing to theme handler: {task[:80]}")
             return await self._handle_theme_query(request)
 
