@@ -706,22 +706,26 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_restore_themes(self, request: AgentRequest) -> AgentResponse:
         """
-        Recover from runaway nightly validation destroying themes.
-        Deletes 'Retired' rows from the last 1-2 days, restoring the prior valid snapshot.
+        Full recovery from auto-validation accumulating exclusions and retiring themes.
+        Clears all auto-generated exclusions + unretires recently retired themes.
         Follow with 'rerun theme engine' to re-score.
         """
         from datetime import timedelta
         today = et_today()
-        since = today - timedelta(days=1)
-        count = await restore_recently_retired_themes(since)
-        if count == 0:
-            return self._ok(request, result="No recently-retired themes found to restore (looking back 1 day).")
+        # Look back 5 days to catch all nightly validation damage since feature was added
+        since = today - timedelta(days=5)
+        result = await restore_recently_retired_themes(since)
+        themes = result["themes_restored"]
+        exclusions = result["exclusions_cleared"]
+        if themes == 0 and exclusions == 0:
+            return self._ok(request, result="Nothing to restore — no retired themes or auto-exclusions found in the last 5 days.")
         return self._ok(
             request,
             result=(
-                f"Restored {count} themes that were incorrectly retired in the last 24 hours.\n"
-                f"Their prior snapshots are now active again.\n"
-                f"Run 'rerun theme engine' to re-score them with today's RS data."
+                f"Recovery complete:\n"
+                f"• {exclusions} auto-generated theme exclusions cleared\n"
+                f"• {themes} incorrectly retired themes restored to prior state\n\n"
+                f"Run 'rerun theme engine' to re-score everything with today's RS data."
             ),
         )
 
