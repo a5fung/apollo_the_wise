@@ -49,8 +49,8 @@ from agents.market_intelligence.db import (
     get_pool,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
-from agents.market_intelligence.collector import et_today
-from agents.market_intelligence.ep_detector import run_ep_scan
+from agents.market_intelligence.collector import et_today, search_news_perplexity
+from agents.market_intelligence.ep_detector import run_ep_scan, MIN_GAP_PCT, MIN_PREV_CLOSE, MIN_REL_VOLUME, MIN_PREMARKET_SHARES, MAX_EXTENSION_PCT, EP_COOLDOWN_DAYS
 from agents.market_intelligence.rs_engine import run_rs_engine, score_single_ticker
 from agents.market_intelligence.regime import run_regime_engine, get_current_regime
 from agents.market_intelligence.theme_engine import run_theme_engine, get_today_themes
@@ -436,6 +436,15 @@ class MarketIntelligenceAgent(BaseAgent):
         # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
             return await self._handle_history_query(request)
+
+        # "why not EP / why wasn't X flagged" — diagnostic must come before general EP route
+        if any(k in task for k in ["why not ep", "why no ep", "why wasn't", "why was not", "not flagged", "not an ep", "missed ep", "why didn't", "why did not"]):
+            import re as _re
+            _cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+            _skip = _PREPOSITION_SKIP | {"WHY", "NOT", "NO", "EP", "WAS", "DID", "AN", "THE", "FOR"}
+            _ticker = next((t for t in _cands if t not in _skip), None)
+            if _ticker:
+                return await self._handle_ep_diagnostic(_ticker, request)
 
         if any(k in task for k in ["ep", "episodic", "gap", "pivot", "gapper"]):
             return await self._handle_ep_query(request)
@@ -853,6 +862,149 @@ class MarketIntelligenceAgent(BaseAgent):
 
         return self._ok(request, result=result, data={"ep_alerts": alerts})
 
+    async def _handle_ep_diagnostic(self, ticker: str, request: AgentRequest) -> AgentResponse:
+        """
+        Diagnose why a specific ticker was not flagged as an EP.
+        Runs each hard filter in sequence, reports the first failure, and fetches
+        a real news summary so the answer is specific — not generic.
+        """
+        from datetime import timedelta
+        from agents.market_intelligence.db import get_pool as _pool
+
+        today = et_today()
+        today_str = today.strftime("%Y-%m-%d")
+        yesterday_str = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        lines = [f"`{ticker}` — EP Diagnostic\n"]
+        root_cause = None
+
+        # ── Fetch all data we need in parallel ───────────────────────────────
+        pool = await _pool()
+
+        async def _get_recent_closes():
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """SELECT trade_date, close, volume FROM mi_daily_closes
+                       WHERE ticker = $1 ORDER BY trade_date DESC LIMIT 10""",
+                    ticker,
+                )
+            return [dict(r) for r in rows]
+
+        async def _get_recent_ep():
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """SELECT alert_date, ep_score, score_tier, gap_pct
+                       FROM mi_ep_alerts WHERE ticker = $1
+                       ORDER BY alert_date DESC LIMIT 3""",
+                    ticker,
+                )
+            return [dict(r) for r in rows]
+
+        closes_data, recent_ep, rs_result, regime, news = await asyncio.gather(
+            _get_recent_closes(),
+            _get_recent_ep(),
+            score_single_ticker(ticker),
+            get_current_regime(),
+            search_news_perplexity(
+                f"What happened with {ticker} stock recently? Why did it move? Latest catalyst.",
+                recency="week",
+            ),
+            return_exceptions=True,
+        )
+
+        if isinstance(closes_data, Exception):
+            closes_data = []
+        if isinstance(recent_ep, Exception):
+            recent_ep = []
+        if isinstance(rs_result, Exception):
+            rs_result = {}
+        if isinstance(regime, Exception):
+            regime = {}
+        if isinstance(news, Exception):
+            news = ""
+
+        ep_threshold = regime.get("ep_threshold", 70) if isinstance(regime, dict) else 70
+        regime_label = regime.get("regime", "Unknown") if isinstance(regime, dict) else "Unknown"
+
+        # ── Run filters in order, same as ep_detector.py ─────────────────────
+
+        # 1. Price filter
+        prev_close = closes_data[0]["close"] if closes_data else None
+        if prev_close is not None:
+            if prev_close < MIN_PREV_CLOSE:
+                root_cause = f"Price ${prev_close:.2f} is below the ${MIN_PREV_CLOSE:.0f} minimum — sub-${MIN_PREV_CLOSE:.0f} stocks are filtered before any other checks."
+                lines.append(f"❌ *Price filter*: ${prev_close:.2f} < ${MIN_PREV_CLOSE:.0f} minimum\n   → {root_cause}")
+            else:
+                lines.append(f"✅ Price: ${prev_close:.2f} (≥ ${MIN_PREV_CLOSE:.0f})")
+        else:
+            lines.append("⚠️ Price: no data in universe — ticker not tracked in mi_daily_closes")
+            root_cause = f"{ticker} has no price history in the system. It was never scored by the RS engine and can't be evaluated by the EP scanner."
+
+        # 2. Extension filter (already up 50%+ in prior 5 days before the gap)
+        if root_cause is None and len(closes_data) >= 6:
+            close_5d_ago = closes_data[5]["close"]
+            prev = closes_data[0]["close"]
+            if close_5d_ago and close_5d_ago > 0:
+                extension_pct = (prev - close_5d_ago) / close_5d_ago * 100
+                if extension_pct >= MAX_EXTENSION_PCT:
+                    root_cause = f"Already up {extension_pct:.0f}% in the prior 5 days — the EP scanner skips stocks that have already run ≥{MAX_EXTENSION_PCT:.0f}% before the gap day."
+                    lines.append(f"❌ *Extension filter*: up {extension_pct:.0f}% in last 5 days (max {MAX_EXTENSION_PCT:.0f}%)\n   → {root_cause}")
+                else:
+                    lines.append(f"✅ Extension: +{extension_pct:.1f}% over 5 days (< {MAX_EXTENSION_PCT:.0f}% limit)")
+
+        # 3. EP cooldown (prior alert within 60 days)
+        if root_cause is None and recent_ep:
+            days_since = (today - recent_ep[0]["alert_date"]).days if hasattr(recent_ep[0]["alert_date"], "day") else 999
+            if days_since < EP_COOLDOWN_DAYS:
+                root_cause = f"EP alert was triggered {days_since} days ago (cooldown is {EP_COOLDOWN_DAYS} days). Same ticker won't re-alert until the cooldown expires."
+                lines.append(f"❌ *Cooldown*: EP alert {days_since}d ago — cooldown is {EP_COOLDOWN_DAYS}d\n   → {root_cause}")
+            else:
+                lines.append(f"✅ Cooldown: last EP was {days_since}d ago (> {EP_COOLDOWN_DAYS}d)")
+        elif root_cause is None:
+            lines.append(f"✅ Cooldown: no prior EP alerts")
+
+        # 4. RS vs regime threshold (informational — RS is not a hard filter but affects score)
+        if root_cause is None:
+            if isinstance(rs_result, dict) and "rs_composite" in rs_result:
+                rs = rs_result["rs_composite"]
+                lines.append(f"{'✅' if rs >= ep_threshold else '⚠️'} RS: {rs:.0f}  |  Regime: {regime_label} (EP bar: {ep_threshold}+)")
+                if rs < ep_threshold:
+                    lines.append(f"   → RS {rs:.0f} is below the {ep_threshold} threshold for {regime_label} regime. Score could still reach the bar with a strong catalyst and big gap, but it's harder.")
+            else:
+                lines.append(f"⚠️ RS: no score available — ticker may not be in the RS universe")
+
+        # 5. Gap size check (if we can infer from recent closes)
+        if root_cause is None and len(closes_data) >= 2:
+            # Best estimate: today's close vs yesterday's close
+            today_close = closes_data[0]["close"]
+            prev = closes_data[1]["close"]
+            implied_gap = (today_close - prev) / prev * 100 if prev else 0
+            if implied_gap < MIN_GAP_PCT:
+                root_cause = f"Implied gap {implied_gap:.1f}% is below the {MIN_GAP_PCT:.0f}% minimum. This may reflect a within-day move rather than an overnight gap."
+                lines.append(f"❌ *Gap size*: ~{implied_gap:.1f}% (minimum is {MIN_GAP_PCT:.0f}%)\n   → {root_cause}")
+            else:
+                lines.append(f"✅ Gap: ~{implied_gap:.1f}% (≥ {MIN_GAP_PCT:.0f}%)")
+
+        # ── Summary ───────────────────────────────────────────────────────────
+        lines.append("")
+        if root_cause:
+            lines.append(f"*Root cause*: {root_cause}")
+        else:
+            lines.append(
+                f"*No hard filter failure found.* {ticker} may have been:\n"
+                f"• Ranked outside the top-20 gap candidates at scan time (only top 20 by gap% are scored)\n"
+                f"• EP score below {ep_threshold} after MAGNA53 scoring (catalyst classified as routine)\n"
+                f"• The gap happened after the 9:30 AM ET scan window closed"
+            )
+
+        # ── News context ──────────────────────────────────────────────────────
+        if news and isinstance(news, str) and len(news) > 20:
+            lines.append(f"\n*What happened*: {news[:600].strip()}")
+        elif not news:
+            lines.append("\n*News*: no recent catalyst found via search")
+
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_regime_query(self, request: AgentRequest) -> AgentResponse:
         regime = await get_current_regime()
         label = regime.get("regime", "Unknown")
@@ -1136,17 +1288,23 @@ class MarketIntelligenceAgent(BaseAgent):
 
         ticker = tickers[0]
 
-        # Fetch RS, fundamentals, theme context, and cached sector in parallel
+        # Fetch RS, fundamentals, theme context, cached sector, and news in parallel
         today_str = et_today().strftime("%Y-%m-%d")
+        is_research = any(k in request.task.lower() for k in ["research", "look up", "lookup", "analyse", "analyze"])
         rs_task = score_single_ticker(ticker)
         fund_task = get_fundamentals(ticker)
         themes_task = get_today_themes(today_str)
         sector_task = get_ticker_sector(ticker)
-        rs_result, fund_result, themes, sector_cache = await asyncio.gather(
-            rs_task, fund_task, themes_task, sector_task, return_exceptions=True,
+        news_task = (
+            search_news_perplexity(f"What is happening with {ticker} stock? Recent news, catalyst, or business developments.", recency="month")
+            if is_research else asyncio.sleep(0)
+        )
+        rs_result, fund_result, themes, sector_cache, news_result = await asyncio.gather(
+            rs_task, fund_task, themes_task, sector_task, news_task, return_exceptions=True,
         )
         if isinstance(sector_cache, Exception):
             sector_cache = {}
+        news_text = news_result if isinstance(news_result, str) and len(news_result) > 20 else None
 
         sections: list[str] = []
 
@@ -1266,6 +1424,10 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if rs_context_lines:
             sections.append("\n*RS context*\n" + "\n".join(rs_context_lines))
+
+        # News section — only for explicit research queries
+        if news_text:
+            sections.append(f"\n*Recent news*\n{news_text[:700].strip()}")
 
         return self._ok(request, result="\n".join(sections), data=rs_result if isinstance(rs_result, dict) else {})
 
