@@ -199,8 +199,14 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         if isinstance(desc_map, dict):
             valid = {tk.upper(): desc for tk, desc in desc_map.items()
                      if isinstance(desc, str) and desc and tk.upper() in to_describe}
+            # Only persist for stocks that were genuinely missing — never overwrite
+            # an existing description that was correct (guards against Haiku generating
+            # bad descriptions for stocks that already have good ones in TICKER_DESC)
+            truly_new = {tk: desc for tk, desc in valid.items() if not TICKER_DESC.get(tk)}
+            if truly_new:
+                await upsert_ticker_overrides_batch(truly_new)
+            # Apply all to in-memory TICKER_DESC (safe — only stocks that were missing)
             if valid:
-                await upsert_ticker_overrides_batch(valid)
                 apply_overrides(valid)
                 logger.info(f"[theme descriptions] Generated and persisted {len(valid)} descriptions: {list(valid.keys())}")
             # Log any that still have no description
@@ -497,11 +503,9 @@ async def _rescore_existing_theme(
             changelog.append({"type": "ticker_pruned", "theme": name, "ticker": tk, "rs": rs, "reason": reason})
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
 
-    # --- Re-validation: remove stocks whose description clearly doesn't match the theme ---
-    # Only runs Mon/Wed/Fri to avoid Haiku inconsistency destroying themes nightly.
-    today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
-    if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
-        tickers = await _validate_theme_membership(name, tickers, changelog)
+    # _validate_theme_membership is NOT called here.
+    # Haiku-based nightly validation caused mass theme destruction (Apr 2026).
+    # Clearly-wrong stocks are handled by explicit user exclusion commands instead.
 
     # Check how many constituent stocks still show strong RS today
     strong_stocks = [t for t in tickers if t in stocks_by_ticker

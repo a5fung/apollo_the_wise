@@ -1303,28 +1303,48 @@ async def get_active_themes() -> list[dict]:
 
 async def restore_recently_retired_themes(since_date: "date") -> dict:
     """
-    Full recovery from auto-validation destroying themes over multiple nights.
+    Full recovery from one-night mass theme collapse caused by bad validation run.
 
-    Two-step cleanup:
-    1. Clear all auto-generated exclusions (reason contains 'description inconsistent').
-       These were auto-persisted by _validate_theme_membership before the bug was fixed.
-       User-directed exclusions (reason='manually excluded by user') are preserved.
-    2. Delete Retired rows since since_date so get_active_themes() re-exposes the prior
-       valid snapshots (DISTINCT ON name ORDER BY theme_date DESC).
+    Root cause: upsert_ticker_sectors_batch wrote NULL descriptions → old
+    get_ticker_overrides returned them → TICKER_DESC overwritten with None for
+    hundreds of stocks → _ensure_descriptions mass-regenerated bad descriptions →
+    validation with aggressive prompt stripped RS 99 stocks from correct themes →
+    themes went Fading in one run.
+
+    Three-step cleanup:
+    1. Clear auto-generated exclusions (reason 'description inconsistent').
+    2. For themes that went from non-Fading to Fading on/after since_date,
+       DELETE today's depleted rows — get_active_themes() then returns the prior
+       valid snapshot (DISTINCT ON name ORDER BY theme_date DESC).
+    3. Retire-only rows: also delete Retired rows from since_date.
 
     Returns {"themes_restored": N, "exclusions_cleared": M}.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Step 1: clear auto-generated exclusions — these accumulated nightly
+        # Step 1: clear auto-generated exclusions
         excl_result = await conn.execute("""
             DELETE FROM mi_theme_exclusions
             WHERE reason LIKE '%description inconsistent%'
         """)
         exclusions_cleared = int(excl_result.split()[-1])
 
-        # Step 2: find and restore retired themes with prior valid snapshots
-        names = await conn.fetch("""
+        # Step 2: find themes that collapsed (Fading) since since_date
+        # but had a non-Fading snapshot before that — one-night drop is suspicious
+        collapsed = await conn.fetch("""
+            SELECT DISTINCT t.name
+            FROM mi_themes t
+            WHERE t.theme_date >= $1
+              AND t.stage = 'Fading'
+              AND EXISTS (
+                  SELECT 1 FROM mi_themes p
+                  WHERE p.name = t.name
+                    AND p.theme_date < $1
+                    AND p.stage NOT IN ('Fading', 'Retired')
+              )
+        """, since_date)
+
+        retired = await conn.fetch("""
             SELECT DISTINCT name FROM mi_themes
             WHERE stage = 'Retired' AND theme_date >= $1
               AND name IN (
@@ -1332,21 +1352,24 @@ async def restore_recently_retired_themes(since_date: "date") -> dict:
                   WHERE stage != 'Retired' AND theme_date < $1
               )
         """, since_date)
-        if not names:
-            logger.info(f"restore_recently_retired_themes: cleared {exclusions_cleared} exclusions, no retired themes to restore")
+
+        names_to_restore = list({r["name"] for r in collapsed} | {r["name"] for r in retired})
+        if not names_to_restore:
+            logger.info(f"restore_recently_retired_themes: cleared {exclusions_cleared} exclusions, no collapsed themes found")
             return {"themes_restored": 0, "exclusions_cleared": exclusions_cleared}
 
-        theme_names = [r["name"] for r in names]
+        # Delete the damaged rows — exposes the prior valid snapshot
         result = await conn.execute("""
             DELETE FROM mi_themes
-            WHERE stage = 'Retired' AND theme_date >= $1
-        """, since_date)
+            WHERE theme_date >= $1
+              AND name = ANY($2)
+        """, since_date, names_to_restore)
         themes_restored = int(result.split()[-1])
         logger.info(
             f"restore_recently_retired_themes: cleared {exclusions_cleared} auto-exclusions, "
-            f"restored {themes_restored} theme rows: {theme_names}"
+            f"deleted {themes_restored} damaged rows for {len(names_to_restore)} themes: {names_to_restore}"
         )
-        return {"themes_restored": themes_restored, "exclusions_cleared": exclusions_cleared}
+        return {"themes_restored": len(names_to_restore), "exclusions_cleared": exclusions_cleared}
 
 
 async def bulk_track_stocks(tickers: list[str], today: "date") -> int:
