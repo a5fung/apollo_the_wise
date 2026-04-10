@@ -50,7 +50,7 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates
 from agents.market_intelligence.backtester.filters import check_filters
 
 logger = logging.getLogger(__name__)
@@ -506,23 +506,48 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # Score each candidate (rate-limited FMP calls)
     results = []
+    scan_log: list[dict] = []  # accumulated for batch DB write at end
+
+    def _log_filtered(c: dict, reason: str) -> None:
+        scan_log.append({
+            "scan_date": today,
+            "ticker": c["ticker"],
+            "gap_pct": c.get("gap_pct"),
+            "prev_close": c.get("prev_close"),
+            "rel_volume": c.get("rel_volume"),
+            "filter_reason": reason,
+            "ep_score": None,
+            "score_tier": None,
+            "catalyst_quality": None,
+        })
+
+    # Log candidates beyond top-20 cap
+    for c in candidates[20:]:
+        _log_filtered(c, f"outside top-20 gap cap (gap {c['gap_pct']:.1f}%)")
+
     for c in candidates[:20]:  # Cap at 20 to stay within FMP call budget
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
 
         # Hard filter: rel volume (skip if no ADV data available — can't verify)
         if c.get("adv") and rel_volume < MIN_REL_VOLUME:
-            logger.info(f"Skip {ticker}: rel_volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x (gap={c['gap_pct']:.1f}%)")
+            reason = f"low rel volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x"
+            logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+            _log_filtered(c, reason)
             continue
 
         # Hard filter: absolute pre-market volume (filters micro-float noise)
         if c["today_volume"] < MIN_PREMARKET_SHARES:
-            logger.info(f"Skip {ticker}: pre-mkt vol {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares (gap={c['gap_pct']:.1f}%)")
+            reason = f"pre-mkt volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares"
+            logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+            _log_filtered(c, reason)
             continue
 
         # Hard filter: EP cooldown — don't re-alert same ticker within 60 days
         if ticker in cooldown_tickers:
-            logger.info(f"Skip {ticker}: EP alert within last {EP_COOLDOWN_DAYS} days (cooldown)")
+            reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
+            logger.info(f"Skip {ticker}: {reason}")
+            _log_filtered(c, reason)
             continue
 
         # Skip if already scored in an earlier scan run today
@@ -535,14 +560,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if close_5d_ago and close_5d_ago > 0 and c["prev_close"]:
             extension_pct = (c["prev_close"] - close_5d_ago) / close_5d_ago * 100
             if extension_pct >= MAX_EXTENSION_PCT:
-                logger.info(f"Skip {ticker}: already up {extension_pct:.0f}% in last 5 days (max {MAX_EXTENSION_PCT}%)")
+                reason = f"already up {extension_pct:.0f}% in prior 5 days (extended)"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason)
                 continue
 
         # Hard filter: pre-trade quality (ADV $1M, ATR%, market cap)
         # Single source of truth — same filters used by backtester and live tracker
         passed, skip_reason = await check_filters(ticker, today)
         if not passed:
+            reason = f"quality filter: {skip_reason}"
             logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
+            _log_filtered(c, reason)
             continue
 
         # Volume conviction percentile
@@ -577,13 +606,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         catalyst_low = news_summary.lower() if news_summary else ""
         if any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS):
             pplx_task.cancel()
-            logger.info(f"Skip {ticker}: M&A/buyout detected — no EP trade")
+            reason = "M&A/buyout catalyst — no momentum trade"
+            logger.info(f"Skip {ticker}: {reason}")
+            _log_filtered(c, reason)
             continue
 
         # Skip routine catalysts outright
         if catalyst_quality == "routine" and c["gap_pct"] < 12:
             pplx_task.cancel()
-            logger.info(f"Skip {ticker}: routine catalyst, gap {c['gap_pct']:.1f}%")
+            reason = f"routine catalyst, gap {c['gap_pct']:.1f}%"
+            logger.info(f"Skip {ticker}: {reason}")
+            _log_filtered(c, reason)
             continue
 
         pplx_quality = await pplx_task
@@ -615,7 +648,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         )
 
         if ep_score < 50:
-            logger.info(f"Skip {ticker}: score {ep_score} < 50 (gap={c['gap_pct']:.1f}% catalyst={catalyst_quality} breakdown={breakdown})")
+            reason = f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
+            logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
+            scan_log.append({
+                "scan_date": today, "ticker": ticker,
+                "gap_pct": c.get("gap_pct"), "prev_close": c.get("prev_close"),
+                "rel_volume": rel_volume, "filter_reason": reason,
+                "ep_score": ep_score, "score_tier": None,
+                "catalyst_quality": catalyst_quality,
+            })
             continue
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"
@@ -634,6 +675,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "alert_date": today,
         }
         results.append(result)
+
+        # Log to scan log as passed
+        scan_log.append({
+            "scan_date": today, "ticker": ticker,
+            "gap_pct": c.get("gap_pct"), "prev_close": c.get("prev_close"),
+            "rel_volume": rel_volume, "filter_reason": None,
+            "ep_score": ep_score, "score_tier": tier,
+            "catalyst_quality": catalyst_quality,
+        })
 
         # Store in DB
         await insert_ep_alert({
@@ -654,6 +704,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% score={ep_score} tier={tier}")
 
     results.sort(key=lambda r: r["ep_score"], reverse=True)
+
+    # Batch-write scan log (fire and forget — never block results)
+    asyncio.create_task(log_ep_scan_candidates(scan_log))
 
     # Summary log — always visible, even when no alerts fire. Helps verify the scan ran
     # and diagnose why candidates were filtered out.

@@ -407,6 +407,26 @@ async def initialize_schema() -> None:
                 ON mi_theme_exclusions(theme_name);
         """)
 
+        # ── EP scan log — every gap candidate + filter outcome ───────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ep_scan_log (
+                id SERIAL PRIMARY KEY,
+                scan_date DATE NOT NULL,
+                ticker TEXT NOT NULL,
+                gap_pct FLOAT,
+                prev_close FLOAT,
+                rel_volume FLOAT,
+                filter_reason TEXT,
+                ep_score FLOAT,
+                score_tier TEXT,
+                catalyst_quality TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (scan_date, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_scan_log_date
+                ON mi_ep_scan_log(scan_date DESC);
+        """)
+
         # ── Audit log — critical events queryable from Telegram ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_audit_log (
@@ -1129,6 +1149,76 @@ async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:
             days,
         )
     return [dict(r) for r in rows]
+
+
+async def log_ep_scan_candidates(records: list[dict]) -> None:
+    """
+    Batch-upsert EP scan candidates for a given scan date.
+    Each record: {scan_date, ticker, gap_pct, prev_close, rel_volume,
+                  filter_reason (or None if scored), ep_score, score_tier, catalyst_quality}
+    Never raises — scan must not be blocked by logging failures.
+    """
+    if not records:
+        return
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            await conn.executemany("""
+                INSERT INTO mi_ep_scan_log
+                    (scan_date, ticker, gap_pct, prev_close, rel_volume,
+                     filter_reason, ep_score, score_tier, catalyst_quality)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ON CONFLICT (scan_date, ticker) DO UPDATE SET
+                    filter_reason    = EXCLUDED.filter_reason,
+                    ep_score         = EXCLUDED.ep_score,
+                    score_tier       = EXCLUDED.score_tier,
+                    catalyst_quality = EXCLUDED.catalyst_quality
+            """, [
+                (
+                    r["scan_date"], r["ticker"], r.get("gap_pct"),
+                    r.get("prev_close"), r.get("rel_volume"),
+                    r.get("filter_reason"), r.get("ep_score"),
+                    r.get("score_tier"), r.get("catalyst_quality"),
+                )
+                for r in records
+            ])
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(f"EP scan log write failed: {e}")
+
+
+async def get_ep_scan_log(d: "str | date") -> list[dict[str, Any]]:
+    """Return all gap candidates evaluated on a given date, scored + filtered."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT ticker, gap_pct, prev_close, rel_volume,
+                      filter_reason, ep_score, score_tier, catalyst_quality
+               FROM mi_ep_scan_log
+               WHERE scan_date = $1
+               ORDER BY ep_score DESC NULLS LAST, gap_pct DESC""",
+            _to_date(d),
+        )
+    return [dict(r) for r in rows]
+
+
+async def get_ep_scan_log_history(days: int = 14) -> dict[str, list[dict]]:
+    """Return scan log grouped by date for the past N days."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT scan_date, ticker, gap_pct, prev_close, rel_volume,
+                      filter_reason, ep_score, score_tier, catalyst_quality
+               FROM mi_ep_scan_log
+               WHERE scan_date >= CURRENT_DATE - $1::int
+               ORDER BY scan_date DESC, ep_score DESC NULLS LAST, gap_pct DESC""",
+            days,
+        )
+    result: dict[str, list] = {}
+    for r in rows:
+        key = str(r["scan_date"])
+        result.setdefault(key, []).append(dict(r))
+    return result
 
 
 async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:

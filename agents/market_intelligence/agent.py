@@ -47,6 +47,8 @@ from agents.market_intelligence.db import (
     upsert_ticker_sectors_batch,
     get_sector_rs_rank,
     get_ep_history,
+    get_ep_scan_log_history,
+    get_ep_scan_log,
     get_pool,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
@@ -870,20 +872,47 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_ep_diagnostic(self, ticker: str, request: AgentRequest) -> AgentResponse:
         """
         Diagnose why a specific ticker was not flagged as an EP.
-        Runs each hard filter in sequence, reports the first failure, and fetches
-        a real news summary so the answer is specific — not generic.
+        Checks scan log first (definitive), then reconstructs from current data.
+        Fetches real news so the answer is specific — not generic.
         """
         from datetime import timedelta
-        from agents.market_intelligence.db import get_pool as _pool
 
         today = et_today()
         today_str = today.strftime("%Y-%m-%d")
-        yesterday_str = (today - timedelta(days=1)).strftime("%Y-%m-%d")
 
         lines = [f"`{ticker}` — EP Diagnostic\n"]
         root_cause = None
 
-        # ── Fetch all data we need in parallel ───────────────────────────────
+        # ── Check scan log first — definitive if we have it ──────────────────
+        scan_entry = None
+        try:
+            day_log = await get_ep_scan_log(today_str)
+            scan_entry = next((r for r in day_log if r["ticker"] == ticker), None)
+            if not scan_entry:
+                # Check yesterday too (gap may have been yesterday's event)
+                yesterday_log = await get_ep_scan_log((today - timedelta(days=1)).strftime("%Y-%m-%d"))
+                scan_entry = next((r for r in yesterday_log if r["ticker"] == ticker), None)
+        except Exception:
+            pass
+
+        if scan_entry:
+            if scan_entry.get("filter_reason"):
+                root_cause = scan_entry["filter_reason"]
+                lines.append(f"❌ *Scan log says*: {root_cause}")
+                if scan_entry.get("gap_pct"):
+                    lines.append(f"   Gap at scan time: {scan_entry['gap_pct']:.1f}%")
+            elif scan_entry.get("ep_score"):
+                score = scan_entry["ep_score"]
+                tier = scan_entry.get("score_tier") or "below threshold"
+                lines.append(f"✅ Passed all filters — scored {score:.0f} ({tier})")
+                if tier not in ("HIGH", "MODERATE"):
+                    root_cause = f"score {score:.0f} was below the MODERATE threshold (50)"
+            lines.append("")
+
+        # ── Reconstruct from current data if no scan log entry ───────────────
+        if not scan_entry:
+            lines.append("_(No scan log entry found — reconstructing from current data)_\n")
+
         pool = await _pool()
 
         async def _get_recent_closes():
@@ -1011,7 +1040,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_ep_history(self, request: AgentRequest) -> AgentResponse:
-        """Show EP alerts from the past N days grouped by date."""
+        """Show EP alerts + filtered candidates from the past N days grouped by date."""
         import re as _re
         task = request.task.lower()
 
@@ -1021,30 +1050,57 @@ class MarketIntelligenceAgent(BaseAgent):
         if m:
             days = min(int(m.group(1)), 90)
 
-        alerts = await get_ep_history(days)
+        alerts, scan_log = await asyncio.gather(
+            get_ep_history(days),
+            get_ep_scan_log_history(days),
+            return_exceptions=True,
+        )
+        if isinstance(alerts, Exception):
+            alerts = []
+        if isinstance(scan_log, Exception):
+            scan_log = {}
 
-        if not alerts:
-            return self._ok(request, result=f"No EP alerts in the past {days} days.")
+        if not alerts and not scan_log:
+            return self._ok(request, result=f"No EP scan data in the past {days} days.")
 
-        # Group by date
+        # Build per-date alert index
         from collections import defaultdict
-        by_date: dict = defaultdict(list)
-        for a in alerts:
-            by_date[str(a["alert_date"])].append(a)
+        alerts_by_date: dict = defaultdict(list)
+        for a in (alerts or []):
+            alerts_by_date[str(a["alert_date"])].append(a)
 
-        lines = [f"*EP Alerts — last {days} days* ({len(alerts)} total)\n"]
-        for dt in sorted(by_date.keys(), reverse=True):
-            day_alerts = by_date[dt]
+        # All dates with any activity
+        all_dates = sorted(set(list(alerts_by_date.keys()) + list(scan_log.keys())), reverse=True)
+
+        lines = [f"*EP Scan Log — last {days} days*\n"]
+        for dt in all_dates:
+            day_alerts = alerts_by_date.get(dt, [])
+            day_scan = scan_log.get(dt, [])
+            # Filtered = in scan log with a filter_reason (not None)
+            filtered = [r for r in day_scan if r.get("filter_reason")]
+
             high = [a for a in day_alerts if a.get("score_tier") == "HIGH"]
             mod  = [a for a in day_alerts if a.get("score_tier") == "MODERATE"]
-            lines.append(f"*{dt}* — {len(high)} HIGH  {len(mod)} MODERATE")
+            header = f"*{dt}*"
+            parts = []
+            if high or mod:
+                parts.append(f"{len(high)} HIGH  {len(mod)} MODERATE")
+            if filtered:
+                parts.append(f"{len(filtered)} filtered")
+            lines.append(f"{header} — " + ("  |  ".join(parts) if parts else "no activity"))
+
             for a in day_alerts:
                 tier_icon = "🔥" if a.get("score_tier") == "HIGH" else "⚡"
                 rs_str = f"  RS {a['rs_composite']:.0f}" if a.get("rs_composite") else ""
                 lines.append(
-                    f"  {tier_icon} `{a['ticker']}` — score {a['ep_score']:.0f}"
-                    f"  gap {a['gap_pct']:.1f}%"
-                    f"  {a.get('catalyst_quality','?')} catalyst{rs_str}"
+                    f"  {tier_icon} `{a['ticker']}` score {a['ep_score']:.0f}"
+                    f"  gap {a['gap_pct']:.1f}%  {a.get('catalyst_quality','?')}{rs_str}"
+                )
+
+            for r in filtered:
+                lines.append(
+                    f"  ✗ `{r['ticker']}` gap {r['gap_pct']:.1f}%"
+                    f"  — {r['filter_reason']}"
                 )
             lines.append("")
 
