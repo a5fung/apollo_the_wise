@@ -410,3 +410,33 @@ Was routing to non-existent research agent → error. Now routes to market agent
 - **Theme RS is Layer 1** because it's the tightest, most relevant peer group for a momentum trader. Industry RS is always shown as Layer 2.
 - **EP diagnostic stops at first failure** — the goal is root cause, not a checklist. Once the price filter fails, nothing else matters.
 - **News only on research queries** — not added to RS-only or fundamentals-only queries to avoid bloating those responses.
+
+## Changes Made 2026-04-11
+
+### Bugs Fixed
+
+**1. VIX one-day stale in yfinance fallback** (`collector.py`): Polygon `I:VIX` always fails on Starter plan (requires Indices add-on), so the fallback to yfinance `^VIX` always runs. yfinance `end` is exclusive; passing `to_date="2026-04-09"` returns data only through April 8. Nightly run at 4:30 PM was capturing yesterday's close, not today's. Fix: add 1 day to `to_date` for the yfinance call.
+
+**2. Industry RS missing for on-demand scored tickers** (`db.py`, `agent.py`): `get_sector_rs_rank` JOIN'd `mi_stock_scores` to find the ticker's own RS score. On-demand scored tickers (`score_single_ticker`) are not written to `mi_stock_scores` — `ticker_rs = composites.get(ticker_up)` returned None and bailed. Fix: added `ticker_rs` parameter to `get_sector_rs_rank`; caller passes the already-known RS composite, skipping the DB lookup.
+
+**3. "industry" keyword hijacking single-ticker queries** (`agent.py`): `"industry"` in execute_task routing unconditionally triggered the theme handler before RS/single-score. "What about RS vs its industry for MRNA?" → theme scorecard instead of per-ticker context. Fix: only route to theme if no ticker is found alongside "industry". Also added system prompt instruction for Apollo to always include the ticker explicitly when asking about industry RS.
+
+**4. NULL description rows overwriting TICKER_DESC baseline** (`db.py`): Root cause of TSEM moving from semiconductor theme to oil & gas. `upsert_ticker_sectors_batch` creates rows in `mi_ticker_overrides` with `description=NULL` (sector/industry only). `get_ticker_overrides()` was fetching ALL rows, so `apply_overrides({"TSEM": None})` overwrote the correct static description with None. Next run, `_ensure_descriptions` saw None → fetched fresh → bad description persisted → Haiku removed TSEM from semi → assigned to oil & gas. Fix: `get_ticker_overrides` now filters `WHERE description IS NOT NULL AND description != ''`.
+
+**5. Validation removals auto-persisted as permanent exclusions** (`theme_engine.py`): `_validate_theme_membership` was writing removed tickers to `mi_theme_exclusions`, which blocked re-entry even after fixing the underlying description. The exclusion table is for user-directed bans only. Validation removals are already self-healing (runs Mon/Wed/Fri). Fix: removed the `add_theme_exclusion` call from `_validate_theme_membership`.
+
+**6. EP scan log wired into morning briefing** (`briefing.py`): `_format_ep_section` already had `scan_log` param but `send_morning_briefing` was not fetching it. Fixed: `get_ep_scan_log(today_str)` added to `asyncio.gather`, passed through `_format_morning_briefing` → `_format_ep_section`. Morning EP section now shows candidate count and near-miss line.
+
+**7. Apollo reformatting single-ticker output** (`core/context.py`): Apollo was prepending "Here's what the system has on X:" and rewriting the market agent data as prose. Tightened system prompt to explicitly ban preambles and require starting directly with the verbatim data block.
+
+### Files Changed
+- `agents/market_intelligence/collector.py` — VIX yfinance end+1 fix
+- `agents/market_intelligence/db.py` — `get_sector_rs_rank` accepts `ticker_rs` param; `get_ticker_overrides` filters NULL descriptions
+- `agents/market_intelligence/agent.py` — pass `ticker_rs` to `get_sector_rs_rank`; "industry" routing fix; "industry RS" system prompt instruction
+- `agents/market_intelligence/theme_engine.py` — removed auto-persist of validation removals to exclusion table
+- `agents/market_intelligence/briefing.py` — fetch + wire `ep_scan_log` into morning briefing
+- `core/context.py` — industry RS routing instruction; ban on single-ticker preambles
+
+### Deploy Notes
+- market-agent only: collector.py, db.py, agent.py, theme_engine.py, briefing.py
+- Both containers: core/context.py (orchestrator system prompt)
