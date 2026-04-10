@@ -272,3 +272,53 @@ New `mi_theme_exclusions` DB table stores (ticker, theme_name) pairs that are pe
 
 ### Key Design Decision
 The fix is enforcement, not persuasion. We don't ask Haiku again — we don't let the ticker reach Haiku at all. The exclusion is stored at the DB layer and applied at the top of `_rescore_existing_theme` before any scoring logic runs. This is the only approach that is robust against Haiku inconsistency, network failures, or edge cases in description parsing.
+
+## Changes Made 2026-04-10
+
+### Features Added
+
+**1. Advisor Strategy — Opus consultation for hard theme clustering decisions**
+
+`_discover_new_themes` and `_assign_uncovered_to_themes` now use a multi-turn tool-use loop with two tools: the output tool (same as before) + `consult_advisor` (new). Sonnet decides when to escalate. If confident → calls `report_themes` directly. If genuinely uncertain → calls `consult_advisor`, Opus returns a decisive verdict, Sonnet continues.
+
+- `_ADVISOR_TOOL` definition + `_call_advisor(question, context, caller)` helper in `theme_engine.py`
+- Both functions switched from `tool_choice={"type": "tool", "name": ...}` (forced single call) to `tool_choice={"type": "auto"}` with a loop
+- `_MAX_ADVISOR_CALLS = 3` per function — hard cap on Opus spend
+- Advisor failures return a graceful fallback string — Sonnet is never blocked
+- Self-assessment checklist added to both prompts: concrete conditions that should trigger advisor call (borderline cluster, 2-stock uncertainty, multi-theme fit, vague thesis)
+
+**2. Audit Log — critical engine events queryable from Telegram**
+
+New `mi_audit_log` DB table captures: `advisor_call`, `theme_discovered`, `theme_retired`, `stage_change`, `theme_excluded`. No SSH needed, persists across restarts.
+
+- `log_audit_event(event_type, summary, detail)` in `db.py` — never raises
+- `get_audit_log(limit, event_type, since_hours)` in `db.py`
+- Written from: `_call_advisor` (question + verdict), `add_theme_exclusion` (auto + manual), `run_theme_engine` (discoveries + retirements + stage changes)
+- New Telegram commands via `_handle_audit_log`: "audit log", "advisor log", "show logs 7d", "show logs [type]"
+
+**3. Full decision logging in theme engine**
+
+Both advisor loops log:
+- "Sonnet went direct (no advisor needed)" when skipped — confirms it's calibrated, not broken
+- Full question + 200-char context snippet on each advisor call
+- Full Opus verdict (up to 300 chars)
+- "advisor call limit reached" with the question that hit the cap
+
+**4. Help command updated**
+
+`_handle_help` in `channels/telegram.py` now includes Theme Management and Audit & Diagnostics sections with all new commands.
+
+### Files Changed
+- `agents/market_intelligence/theme_engine.py` — `_ADVISOR_TOOL`, `_call_advisor`, multi-turn loops in `_discover_new_themes` + `_assign_uncovered_to_themes`, self-assessment checklist in prompts, full decision logging, audit log writes for discoveries/retirements/stage changes
+- `agents/market_intelligence/db.py` — `mi_audit_log` table in `initialize_schema`, `log_audit_event`, `get_audit_log` functions; `add_theme_exclusion` now also writes to audit log
+- `agents/market_intelligence/agent.py` — `get_audit_log` import, "audit log"/"advisor log"/"show logs" route, `_handle_audit_log` handler
+- `channels/telegram.py` — updated `_handle_help` with Theme Management + Audit & Diagnostics sections
+- `README.md` — theme engine section updated with all new features, Audit Log section added, security model updated
+- `CLAUDE.md` — this file
+
+### Advisor Strategy — Key Architecture Notes
+- Both functions use `tool_choice="auto"` not forced tool choice — Sonnet decides when to escalate
+- The self-assessment checklist in the prompt gives Sonnet concrete criteria vs. vague "use sparingly" instructions
+- `_call_advisor` takes a `caller` param ("discovery" or "assignment") for audit log attribution
+- Loop exits when the output tool is called OR when no tool_use blocks in response (graceful fallback)
+- Each advisor call writes to `mi_audit_log` — queryable from Telegram with "advisor log"

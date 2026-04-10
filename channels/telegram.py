@@ -438,7 +438,7 @@ class TelegramChannel:
             "*Market Intelligence*\n"
             "📊 `Send evening briefing` — RS leaders + theme scorecard + EPS flags\n"
             "☀️ `Send morning briefing` — pre-market + overnight news + EPs\n"
-            "⚡ `Run theme engine` — refresh themes now\n"
+            "⚡ `Run theme engine` — refresh themes now (returns full scorecard)\n"
             "🔄 `Run data refresh` — full nightly pull (RS + regime + themes + fundamentals)\n"
             "\n"
             "Ask naturally:\n"
@@ -457,6 +457,17 @@ class TelegramChannel:
             '📌 "AXTI is working, track it" — add stocks + seed themes\n'
             '📝 "GLW got a Meta deal for optical" — updates company description\n'
             '   _(Apollo recognizes business pivots and asks to confirm)_\n'
+            "\n"
+            "*Theme Management*\n"
+            '🚫 `Exclude CAR from [exact theme name]` — permanently ban ticker from theme\n'
+            '📋 `List exclusions` — show all active theme bans\n'
+            '↩️ `Remove exclusion CAR from [theme name]` — undo a ban\n'
+            "\n"
+            "*Audit & Diagnostics*\n"
+            '🔍 `Audit log` — last 20 engine events (48h)\n'
+            '🤖 `Advisor log` — Opus advisor calls + full verdicts\n'
+            '📅 `Show logs 7d` — extend window to 7 days\n'
+            '   _Filter: "show logs advisor/discover/retired/excluded"_\n'
             "\n"
             "*Overnight Watchlist*\n"
             '🔔 `Show watchlist` — tracked instruments\n'
