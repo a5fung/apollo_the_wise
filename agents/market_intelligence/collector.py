@@ -204,8 +204,11 @@ async def get_vix_history(from_date: str, to_date: str) -> list[dict]:
         import yfinance as yf
         loop = asyncio.get_event_loop()
 
+        # yfinance end is exclusive — add 1 day so to_date itself is included
+        yf_end = (date.fromisoformat(to_date) + timedelta(days=1)).strftime("%Y-%m-%d")
+
         def _fetch():
-            df = yf.download("^VIX", start=from_date, end=to_date, progress=False, auto_adjust=True)
+            df = yf.download("^VIX", start=from_date, end=yf_end, progress=False, auto_adjust=True)
             if df.empty:
                 return []
             # Normalise to Polygon bar format: {"t": epoch_ms, "c": close}
