@@ -217,10 +217,13 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
     Stocks that still have no description after the fetch attempt are logged —
     they will be excluded from clustering rather than clustered blind.
     """
-    from agents.market_intelligence.universe import TICKER_DESC, apply_overrides
+    from agents.market_intelligence.universe import TICKER_DESC, apply_overrides, _STATIC_BASELINE
     from agents.market_intelligence.db import upsert_ticker_overrides_batch
 
-    missing = [t for t in tickers if not TICKER_DESC.get(t)]
+    # Skip tickers with static hardcoded descriptions — even if a bad DB row has
+    # overwritten the in-memory entry, we must not re-generate (and re-corrupt) them.
+    # Static entries in universe.py are authoritative and should never be touched here.
+    missing = [t for t in tickers if not TICKER_DESC.get(t) and t not in _STATIC_BASELINE]
     if not missing:
         return
 

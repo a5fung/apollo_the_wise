@@ -454,6 +454,23 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS industry TEXT;
         """)
 
+        # ── One-time cleanup: delete auto-generated descriptions for tickers ──
+        # that now have authoritative static entries in universe.py.
+        # These corrupted rows were created by _ensure_descriptions when
+        # Perplexity was down — yfinance summaries for e.g. Avis Budget Group
+        # mention "connected vehicles / digital platform", causing Haiku to
+        # generate tech-adjacent descriptions that landed them in data-center themes.
+        # After this migration, _ensure_descriptions skips _STATIC_BASELINE tickers
+        # so the bad rows can never be re-created.
+        static_tickers_to_clean = [
+            "CAR",   # Avis Budget Group — was getting tech-adjacent description
+        ]
+        await conn.execute(
+            "DELETE FROM mi_ticker_overrides WHERE ticker = ANY($1)",
+            static_tickers_to_clean,
+        )
+        logger.info(f"Migration: cleared bad auto-generated descriptions for {static_tickers_to_clean}")
+
         # ── Log row counts on startup for early data-loss detection ───────
         for tbl in ("mi_paper_trades", "mi_live_trades"):
             count = await conn.fetchval(f"SELECT COUNT(*) FROM {tbl}")

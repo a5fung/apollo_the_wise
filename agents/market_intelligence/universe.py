@@ -78,6 +78,7 @@ UNIVERSE_WITH_DESC: list[tuple[str, str]] = [
     ("CROX", "Casual footwear (Crocs, Heydude)"),
     ("BKNG", "Online travel booking (Booking.com, Priceline)"),
     ("ABNB", "Short-term rental marketplace"),
+    ("CAR", "Car & truck rental — Avis, Budget, Zipcar brands. No technology products."),
     ("UBER", "Ride-hailing, food delivery, freight"),
     ("LYFT", "Ride-hailing"),
     ("DPZ", "Pizza delivery chain, tech-driven operations"),
@@ -184,6 +185,13 @@ UNIVERSE: list[str] = list(dict.fromkeys(t for t, _ in UNIVERSE_WITH_DESC))
 
 # Ticker → description lookup (static baseline)
 TICKER_DESC: dict[str, str] = {t: d for t, d in UNIVERSE_WITH_DESC}
+
+# Immutable snapshot of tickers with hardcoded descriptions.
+# Used by _ensure_descriptions to prevent Haiku from regenerating descriptions
+# for tickers that already have authoritative static entries — even if a bad
+# DB row has overwritten them in memory.
+_STATIC_BASELINE: frozenset[str] = frozenset(TICKER_DESC.keys())
+
 
 def apply_overrides(overrides: dict[str, str]) -> None:
     """Merge DB overrides into TICKER_DESC. Called at agent startup and on update."""
