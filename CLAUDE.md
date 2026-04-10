@@ -359,3 +359,54 @@ Both advisor loops log:
 - `_call_advisor` takes a `caller` param ("discovery" or "assignment") for audit log attribution
 - Loop exits when the output tool is called OR when no tool_use blocks in response (graceful fallback)
 - Each advisor call writes to `mi_audit_log` — queryable from Telegram with "advisor log"
+
+## Changes Made 2026-04-10 (second session)
+
+### Features Added
+
+**1. Industry-relative RS — two-layer context on every single-ticker query**
+
+Every RS/fundamentals/research query on a single ticker now appends an *RS context* section:
+- **Layer 1 (Theme RS)**: If the ticker is in an active theme, shows its rank within that theme's constituents by RS score (e.g. "#3 of 12 in AI Infrastructure")
+- **Layer 2 (Industry RS)**: GICS industry-level percentile rank among all same-industry stocks with cached sector data (e.g. "Biotechnology → 71st pct (#95 of 340 tracked)")
+- Falls back to sector-level if industry bucket has < 10 peers
+- Suppresses industry line if theme signal is available and industry is too coarse (< 30 peers)
+
+**Data pipeline:**
+- `mi_ticker_overrides` gained `sector` and `industry` columns (ALTER TABLE migration)
+- Nightly RS engine now enriches top 300 leaders: fetches sectors from yfinance for any not yet cached, updates `mi_ticker_overrides` (persistent) and `mi_stock_scores.sector` (for screener/leaders queries). Only missing tickers fetched — near-zero cost on subsequent runs.
+- Single-ticker queries also fetch+cache sector on-demand from yfinance if not already in `mi_ticker_overrides`
+
+**2. EP Diagnostic handler — "why not EP ARAI?"**
+
+New `_handle_ep_diagnostic(ticker, request)` runs the actual filter checks in sequence and stops at the first failure:
+1. Price floor ($5 minimum) — immediate skip for sub-$5 stocks
+2. Extension filter (already up ≥50% in prior 5 days)
+3. EP cooldown (prior alert within 60 days)
+4. RS vs regime threshold (informational)
+5. Gap size check (inferred from recent closes)
+
+Also fetches Perplexity news to include what actually happened with the stock. Returns a specific answer, not a list of generic possibilities.
+
+Example: "why not EP ARAI?" → `❌ Price filter: $0.67 < $5 minimum` + Perplexity summary of the patent catalyst.
+
+Routing triggers: "why not ep", "why no ep", "why wasn't", "not flagged", "not an ep", "missed ep", "why didn't".
+
+**3. News on research queries**
+
+"research MRNA", "look up NVDA", "analyze COIN" now fetch a Perplexity news summary (recent catalyst, business developments) in parallel with RS + fundamentals. Appended as *Recent news* section. Only fires for explicit research/lookup queries — not for RS-only or fundamentals-only queries.
+
+**4. Fixed "research [ticker]" routing**
+
+Was routing to non-existent research agent → error. Now routes to market agent `_handle_single_score` which returns RS + fundamentals + RS context + news.
+
+### Files Changed
+- `agents/market_intelligence/db.py` — sector/industry columns in `mi_ticker_overrides` (migration), `upsert_ticker_sectors_batch`, `get_ticker_sector`, `get_sector_rs_rank`
+- `agents/market_intelligence/rs_engine.py` — `_enrich_sectors()` helper, called at end of `run_rs_engine()` for top 300 leaders
+- `agents/market_intelligence/agent.py` — imports `search_news_perplexity` + EP filter constants; "research/look up/analyze" routing to `_handle_single_score`; "why not EP" routing to `_handle_ep_diagnostic`; `_handle_single_score` fetches sector + news in parallel; `_handle_ep_diagnostic` new method
+
+### Key Design Decisions
+- **Industry RS uses GICS Industry level** (e.g. "Biotechnology"), not Sector ("Healthcare") — right granularity for momentum work. Falls back to Sector if industry bucket < 10.
+- **Theme RS is Layer 1** because it's the tightest, most relevant peer group for a momentum trader. Industry RS is always shown as Layer 2.
+- **EP diagnostic stops at first failure** — the goal is root cause, not a checklist. Once the price filter fails, nothing else matters.
+- **News only on research queries** — not added to RS-only or fundamentals-only queries to avoid bloating those responses.
