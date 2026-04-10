@@ -165,6 +165,13 @@ Examples that require calling the market agent:
 
 Always ground your answer in the live data from the market agent, not general knowledge.
 
+## EP diagnostic — "why not EP?" questions
+When the user asks why a stock wasn't flagged as an EP — "why not EP ARAI?", "why wasn't NVDA an EP?", "COIN not flagged as EP", "missed EP on X", "why didn't X trigger?" — call_market_agent with the EXACT user phrasing. Do NOT answer from general knowledge. The market agent runs the actual filter checks (price floor, extension, cooldown, RS vs regime, gap size) and fetches live news to give a specific answer.
+
+Example: "why not EP ARAI?" → call_market_agent("why not EP ARAI?")
+
+NEVER synthesize a generic list of possible reasons yourself. The market agent has the real data.
+
 ## Data refresh
 "Run nightly data pull", "refresh market data", "repull data" → call_market_agent("refresh market data").
 "Refresh then send brief" / "repull and send brief" → single call: call_market_agent("refresh data and send evening briefing"). The market agent handles both steps in sequence.
