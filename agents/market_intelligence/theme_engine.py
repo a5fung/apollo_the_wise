@@ -38,7 +38,10 @@ def _get_anthropic_client() -> anthropic.AsyncAnthropic:
 
 from agents.market_intelligence.collector import get_fmp_profile, search_news_perplexity, et_today
 from agents.market_intelligence.constants import trimmed_mean
-from agents.market_intelligence.db import get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners, get_recent_rs_batch
+from agents.market_intelligence.db import (
+    get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
+    get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -379,16 +382,22 @@ async def _validate_theme_membership(
         if to_remove:
             for tk in to_remove:
                 if tk in tickers:
+                    reason = f"description inconsistent with theme '{theme_name}'"
                     changelog.append({
                         "type": "ticker_revalidated_out",
                         "theme": theme_name,
                         "ticker": tk,
-                        "reason": f"description inconsistent with theme '{theme_name}'",
+                        "reason": reason,
                     })
                     logger.info(
                         f"Theme '{theme_name}': removed {tk} — description '{TICKER_DESC.get(tk, '')}' "
                         f"does not match theme"
                     )
+                    # Persist to DB so this exclusion survives future engine runs
+                    try:
+                        await add_theme_exclusion(tk, theme_name, reason)
+                    except Exception as exc:
+                        logger.warning(f"Failed to persist exclusion {tk}/{theme_name}: {exc}")
             return [t for t in tickers if t not in to_remove]
 
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
@@ -403,14 +412,34 @@ async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
     today: date,
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> tuple[dict | None, list[dict]]:
     """
     Re-score an existing theme using today's RS data.
     Returns (theme_or_None, changelog_entries). None means retired.
+    theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     """
     name = theme["name"]
     tickers = list(theme.get("tickers") or [])
     changelog: list[dict] = []
+
+    # --- Enforce persistent exclusions FIRST — before any pruning or validation ---
+    if theme_exclusions:
+        excluded_for_theme = theme_exclusions.get(name, set())
+        if excluded_for_theme:
+            excluded_present = [t for t in tickers if t in excluded_for_theme]
+            if excluded_present:
+                logger.info(
+                    f"Theme '{name}': stripping persistently excluded tickers: {excluded_present}"
+                )
+                tickers = [t for t in tickers if t not in excluded_for_theme]
+                for tk in excluded_present:
+                    changelog.append({
+                        "type": "ticker_excluded",
+                        "theme": name,
+                        "ticker": tk,
+                        "reason": "persistent exclusion (DB)",
+                    })
 
     # --- Pruning: remove weak stocks before scoring ---
     prune_candidates: list[tuple[str, float, str]] = []  # (ticker, rs, reason)
@@ -596,10 +625,12 @@ async def _assign_uncovered_to_themes(
     uncovered_stocks: list[dict],
     existing_themes: list[dict],
     stocks_by_ticker: dict[str, dict],
+    theme_exclusions: dict[str, set[str]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
     Returns (remaining_uncovered, changelog_entries).
+    theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
     """
     if not uncovered_stocks or not existing_themes:
         return uncovered_stocks, []
@@ -650,18 +681,69 @@ Rules:
 - When in doubt, do NOT assign — the stock will get a chance to form its own theme
 - Pick the most specific theme if multiple could fit
 - Return empty array if nothing fits — that is the correct answer
-- Use the EXACT theme name from the list above"""
+- Use the EXACT theme name from the list above
+
+Before calling assign_stocks_to_themes, ask yourself: am I uncertain about any assignment?
+Consult the advisor FIRST if any of these apply:
+- A stock could plausibly fit 2 different themes and you're not sure which is more specific
+- A stock's description is ambiguous — it could be in this theme or something unrelated
+If none of these apply, call assign_stocks_to_themes directly."""
 
     try:
-        response = await client.messages.create(
-            model=THEME_MODEL,
-            max_tokens=1000,
-            tools=[_THEME_ASSIGNMENT_TOOL],
-            tool_choice={"type": "tool", "name": "assign_stocks_to_themes"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        tool_block = next(b for b in response.content if b.type == "tool_use")
-        assignments = tool_block.input.get("assignments", [])
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        advisor_calls = 0
+        assignments = []
+
+        while True:
+            response = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=1000,
+                tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
+
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            if not tool_uses:
+                logger.warning("Theme assignment: model stopped without calling assign_stocks_to_themes")
+                break
+
+            assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
+            if assign_block:
+                if advisor_calls == 0:
+                    logger.info("Theme assignment: Sonnet went direct (no advisor needed)")
+                else:
+                    logger.info(f"Theme assignment: Sonnet used advisor {advisor_calls}x before assigning")
+                assignments = assign_block.input.get("assignments", [])
+                break
+
+            # Handle advisor calls
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in tool_uses:
+                if block.name == "consult_advisor":
+                    question = block.input.get("question", "")
+                    context = block.input.get("context", "")
+                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                        advice = "Advisor call limit reached — use your best judgment and proceed."
+                        logger.warning(f"Theme assignment: advisor call limit reached — question was: {question[:120]}")
+                    else:
+                        advisor_calls += 1
+                        logger.info(
+                            f"Theme assignment: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
+                            f"  Q: {question}\n"
+                            f"  Context snippet: {context[:200]}"
+                        )
+                        advice = await _call_advisor(question, context, caller="assignment")
+                        logger.info(f"Theme assignment: advisor verdict: {advice[:300]}")
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": advice,
+                    })
+            messages.append({"role": "user", "content": tool_results})
+
     except Exception as e:
         logger.error(f"Claude theme assignment failed: {e}")
         return uncovered_stocks, []
@@ -684,6 +766,11 @@ Rules:
 
         # Validate ticker is in uncovered pool
         if ticker not in {s["ticker"] for s in uncovered_stocks}:
+            continue
+
+        # Honor persistent exclusions — never re-assign a ticker that was excluded from this theme
+        if theme_exclusions and ticker in theme_exclusions.get(theme_name, set()):
+            logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
             continue
 
         # Sector outlier check: reject if stock's sector is singleton in theme
@@ -747,6 +834,58 @@ _THEME_DISCOVERY_TOOL = {
         "required": ["themes"],
     },
 }
+
+_ADVISOR_TOOL = {
+    "name": "consult_advisor",
+    "description": (
+        "Consult the senior advisor (Opus) for a hard judgment call. Use sparingly — "
+        "only when genuinely uncertain: e.g. borderline cluster coherence, ambiguous sub-theme split, "
+        "or whether stocks truly share the same catalyst vs. superficial similarity. "
+        "Do NOT use for obvious decisions. Advisor gives a direct verdict."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "The specific decision you need a second opinion on — be precise",
+            },
+            "context": {
+                "type": "string",
+                "description": "Relevant stocks, descriptions, RS scores, and your current thinking",
+            },
+        },
+        "required": ["question", "context"],
+    },
+}
+
+# Maximum advisor (Opus) calls per theme engine run — prevents runaway cost on edge cases
+_MAX_ADVISOR_CALLS = 3
+
+
+async def _call_advisor(question: str, context: str, caller: str = "") -> str:
+    """Call Opus as a senior advisor for hard theme-clustering judgment calls."""
+    client = _get_anthropic_client()
+    try:
+        resp = await client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=600,
+            system=(
+                "You are a senior market intelligence analyst (Qullamaggie/O'Neil methodology). "
+                "Give direct, decisive answers. State your conclusion first, reasoning second. No hedging."
+            ),
+            messages=[{"role": "user", "content": f"{question}\n\nContext:\n{context}"}],
+        )
+        verdict = resp.content[0].text
+        await log_audit_event(
+            "advisor_call",
+            summary=f"[{caller}] {question[:120]}",
+            detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
+        )
+        return verdict
+    except Exception as e:
+        logger.warning(f"Advisor call failed: {e}")
+        return "Advisor unavailable — use your best judgment."
 
 
 def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
@@ -910,22 +1049,75 @@ Rules:
 - A stock should appear in at most 2 themes. Do NOT include a stock in a new theme if it already appears in 2+ existing themes (check the list above)
 - When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
 - Return zero themes if no clear cluster exists — that is the correct answer
-- Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
+- Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives
+
+Before calling report_themes, ask yourself: am I genuinely uncertain about any cluster?
+Consult the advisor FIRST if any of these apply:
+- A stock fits multiple possible themes and you're not sure which is the better home
+- You have a 2-stock cluster and aren't confident it's a real theme vs. coincidence
+- Stocks share a sector label but their actual business drivers feel different to you
+- You want to name a theme but can't articulate a crisp specific thesis
+If none of these apply, call report_themes directly — advisor consultation is for real ambiguity only."""
 
     try:
-        response = await client.messages.create(
-            model=THEME_MODEL,
-            max_tokens=1500,
-            tools=[_THEME_DISCOVERY_TOOL],
-            tool_choice={"type": "tool", "name": "report_themes"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        tool_block = next(b for b in response.content if b.type == "tool_use")
-        raw_themes = tool_block.input.get("themes", [])
-        # Filter: enforce minimum 2 tickers, then strip sector-incompatible tickers
-        valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
-        return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
-                if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+        client = _get_anthropic_client()
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        advisor_calls = 0
+
+        while True:
+            response = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=1500,
+                tools=[_THEME_DISCOVERY_TOOL, _ADVISOR_TOOL],
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
+
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            # Model stopped without calling a tool — shouldn't happen but handle gracefully
+            if not tool_uses:
+                logger.warning("Theme discovery: model stopped without calling report_themes")
+                return []
+
+            # If report_themes was called, we're done
+            report_block = next((b for b in tool_uses if b.name == "report_themes"), None)
+            if report_block:
+                if advisor_calls == 0:
+                    logger.info("Theme discovery: Sonnet went direct (no advisor needed)")
+                else:
+                    logger.info(f"Theme discovery: Sonnet used advisor {advisor_calls}x before reporting")
+                raw_themes = report_block.input.get("themes", [])
+                valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+                return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
+                        if len(_strip_sector_outliers(t, stocks_by_ticker).get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
+
+            # Handle advisor calls — Opus is consulted, result returned as tool result
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+            for block in tool_uses:
+                if block.name == "consult_advisor":
+                    question = block.input.get("question", "")
+                    context = block.input.get("context", "")
+                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                        advice = "Advisor call limit reached — use your best judgment and proceed."
+                        logger.warning(f"Theme discovery: advisor call limit reached — question was: {question[:120]}")
+                    else:
+                        advisor_calls += 1
+                        logger.info(
+                            f"Theme discovery: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
+                            f"  Q: {question}\n"
+                            f"  Context snippet: {context[:200]}"
+                        )
+                        advice = await _call_advisor(question, context, caller="discovery")
+                        logger.info(f"Theme discovery: advisor verdict: {advice[:300]}")
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": advice,
+                    })
+            messages.append({"role": "user", "content": tool_results})
+
     except Exception as e:
         logger.error(f"Claude new theme discovery failed: {e}")
         return []
@@ -1225,8 +1417,14 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
 
     logger.info(f"Theme engine: re-scoring {len(existing)} existing themes...")
 
+    # Load persistent exclusions once — passed to rescore + assign to prevent re-entry
+    theme_exclusions = await get_all_theme_exclusions()
+    if theme_exclusions:
+        total_excl = sum(len(v) for v in theme_exclusions.values())
+        logger.info(f"Theme engine: loaded {total_excl} persistent ticker exclusions across {len(theme_exclusions)} themes")
+
     rescore_results = await asyncio.gather(*[
-        _rescore_existing_theme(theme, stocks_by_ticker, today)
+        _rescore_existing_theme(theme, stocks_by_ticker, today, theme_exclusions=theme_exclusions)
         for theme in existing
     ])
 
@@ -1308,6 +1506,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     if uncovered and updated_themes:
         uncovered, assign_log = await _assign_uncovered_to_themes(
             uncovered, updated_themes, stocks_by_ticker,
+            theme_exclusions=theme_exclusions,
         )
         changelog.extend(assign_log)
         logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")
@@ -1330,13 +1529,37 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         for raw in new_raw
     ])
 
-    # Log new themes
+    # Log new themes + write to audit log
     for nt in new_themes:
+        tickers = list(nt.get("tickers") or [])
         changelog.append({
             "type": "theme_new",
             "theme": nt["name"],
-            "tickers": list(nt.get("tickers") or []),
+            "tickers": tickers,
         })
+        await log_audit_event(
+            "theme_discovered",
+            summary=f"New theme: {nt['name']} ({len(tickers)} stocks)",
+            detail=f"Tickers: {', '.join(tickers)}\nThesis: {nt.get('description', nt.get('thesis', ''))}",
+        )
+
+    # Write retirements to audit log
+    for entry in changelog:
+        if entry.get("type") == "theme_retired":
+            await log_audit_event(
+                "theme_retired",
+                summary=f"Retired: {entry['theme']}",
+                detail=f"Last tickers: {', '.join(entry.get('tickers') or [])}",
+            )
+
+    # Write stage changes to audit log
+    for entry in changelog:
+        if entry.get("type") == "stage_change":
+            await log_audit_event(
+                "stage_change",
+                summary=f"{entry['theme']}: {entry.get('old_stage')} → {entry.get('new_stage')}",
+                detail=f"Score: {entry.get('score', '?')}",
+            )
 
     # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---
     all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)

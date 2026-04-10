@@ -126,6 +126,18 @@ Bottom-up from price action (Marios Stamatoudis methodology). Themes emerge from
 - Themes survive across days — persist until price action says otherwise
 - **Deduplication:** Overlapping themes auto-merged (Jaccard ≥ 0.6 or ticker subset). Sector-level caps prevent theme proliferation (e.g. max 2 oil/gas themes, biotech excluded).
 - **Trimmed mean scoring:** Theme RS composite drops bottom 20% of constituents — resists outlier drag from 1-2 weak stocks in an otherwise strong theme
+- **Stage transitions use 3-day smoothed score** (±8pt thresholds) — prevents noisy daily flips from Perplexity binary news scores
+- **Jaccard history fallback:** If a theme was renamed, stage/age history is inherited from the prior name via ticker-overlap matching (threshold 0.4 Jaccard) — prevents renamed themes from resetting to Nascent
+- **Description-based validation:** `_validate_theme_membership` runs Mon/Wed/Fri — asks Claude Haiku if each stock's description still matches the theme; removes mismatches. Results persisted to `mi_theme_exclusions` so future runs don't re-evaluate the same call
+- **Persistent exclusions:** `mi_theme_exclusions` table — once a ticker is removed from a theme (via validation or manual command), it's permanently banned from re-entering that theme regardless of RS or Haiku's next decision. Enforcement happens at DB layer before any scoring runs.
+- **Advisor strategy:** Theme discovery and assignment use Claude Sonnet with an Opus advisor tool. Sonnet consults Opus on genuinely hard decisions (borderline clusters, ambiguous assignments) — all other calls go straight to output. Capped at 3 Opus calls per run.
+
+**Manage themes from Telegram:**
+```
+Exclude CAR from IT Infrastructure & Data Center    → permanent ban, takes effect next run
+List exclusions                                     → see all active bans
+Remove exclusion CAR from [theme name]              → undo ban
+```
 
 ### EP Detection
 
@@ -188,6 +200,28 @@ When you spot something the system isn't tracking:
 2. Apollo asks: which tickers? new theme or existing? one-line thesis?
 3. Apollo calls `/teach` → tickers added to RS tracking + theme seeded
 4. Offer to run data refresh → new tickers scored immediately
+
+### Audit Log
+
+Critical engine events are written to `mi_audit_log` and queryable from Telegram — no SSH needed.
+
+| Event type | What triggers it |
+|---|---|
+| `advisor_call` | Sonnet consulted Opus — includes full question + verdict |
+| `theme_discovered` | New theme created — name, tickers, thesis |
+| `theme_retired` | Theme retired after 5 fading days |
+| `stage_change` | Theme lifecycle transition |
+| `theme_excluded` | Ticker permanently banned from theme (manual or auto-validation) |
+
+**From Telegram:**
+```
+Audit log          → last 20 events, 48h
+Advisor log        → Opus calls + verdicts (full detail)
+Show logs 7d       → extend to 7 days
+Show logs advisor  → filter to advisor calls only
+Show logs discover → new theme discoveries only
+Show logs excluded → exclusion events
+```
 
 ---
 
@@ -332,7 +366,7 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 | Irreversible actions | YES/NO confirmation gate before execution |
 | Sub-agent isolation | Each container has only its own secrets |
 | TradingView webhooks | Verified via shared secret header |
-| Audit trail | Append-only `audit.log` — every action logged |
+| Audit trail | `mi_audit_log` DB table — advisor calls, theme changes, exclusions; queryable from Telegram |
 | Secrets | Env vars only, never in code or logs |
 
 ---

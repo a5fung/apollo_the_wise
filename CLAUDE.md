@@ -254,78 +254,108 @@ TRADINGVIEW_WEBHOOK_SECRET
    - `db.py` `initialize_schema()`: Added inline migration `DELETE FROM mi_overnight_watchlist WHERE symbol IN ('ES=F', 'NQ=F')` followed by `INSERT ... ('SPY', ...), ('QQQ', ...)` seed.
    - `agent.py` `name_to_symbol`: Changed `"SPY": "ES=F"` → `"SPY": "SPY"`, `"NASDAQ": "NQ=F"` → `"NASDAQ": "QQQ"`.
    - `collector.py`: Renamed `get_premarket_futures()` → `get_premarket_snapshot()`, return keys `es_pct`/`nq_pct` → `spy_pct`/`qqq_pct`, fixed log messages.
-   - `briefing.py`: Updated all call sites and key references (`futures`→`premarket`, `es_pct`/`nq_pct`→`spy_pct`/`qqq_pct`, label "Futures:"→"Pre-market:", comment example `ES -1.8% | NQ -2.3%`→`SPY -1.8% | QQQ -2.3%`). Added Polygon override for SPY/QQQ in overnight snapshot (yfinance is stale pre-market, Polygon data is accurate):
-     ```python
-     polygon_map = {"SPY": premarket.get("spy_pct"), "QQQ": premarket.get("qqq_pct")}
-     for item in snapshot:
-         pct = polygon_map.get(item["symbol"])
-         if pct is not None:
-             item["pct_change"] = round(pct, 2)
-             item["triggered"] = abs(pct) >= item["threshold"]
-     ```
+   - `briefing.py`: Updated all call sites and key references. Added Polygon override for SPY/QQQ in overnight snapshot (yfinance is stale pre-market).
 
-2. **VIX showing 41 when actual VIX <20** (`collector.py`, `regime.py`): `regime.py` was using UVXY (a leveraged inverse VIX ETF) as a VIX proxy — UVXY price ≠ VIX index value. Fixed by adding `get_vix_history(from_date, to_date)` in `collector.py` that fetches actual VIX index via Polygon `I:VIX`, with yfinance `^VIX` fallback. `regime.py` updated to call `get_vix_history()` instead of `get_index_history("UVXY", ...)`.
+2. **VIX showing 41 when actual VIX <20** (`collector.py`, `regime.py`): `regime.py` was using UVXY (a leveraged inverse VIX ETF) as a VIX proxy. Fixed by adding `get_vix_history()` that fetches actual VIX index via Polygon `I:VIX`, with yfinance `^VIX` fallback.
 
-3. **Theme validation not removing bogus members (CAR in data center theme)** (`theme_engine.py`): `_validate_theme_membership()` used `json.loads()` on raw Haiku response. Haiku sometimes prepends explanation text before the JSON object, causing parse failure. The `except` block silently kept all tickers unchanged — CAR was never removed. Fixed with regex fallback extraction:
-   ```python
-   raw = resp.content[0].text.strip()
-   if raw.startswith("```"):
-       raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
-   if not raw.startswith("{"):
-       m = re.search(r'\{.*\}', raw, re.DOTALL)
-       raw = m.group(0) if m else raw
-   result = json.loads(raw)
-   ```
+3. **Theme validation not removing bogus members** (`theme_engine.py`): `_validate_theme_membership()` used `json.loads()` on raw Haiku response. Haiku sometimes prepends explanation text → parse failure → silent keep-all. Fixed with regex fallback extraction before `json.loads()`.
 
-4. **`_discover_new_themes` bypassing shared Anthropic client** (`theme_engine.py`): Line 752 used `anthropic.AsyncAnthropic(api_key=...)` directly instead of the shared `_get_anthropic_client()` lazy initializer. This bypassed any shared client config/retry logic and wasted connection resources. Fixed to use `_get_anthropic_client()`.
-
-5. **Tests broken by `get_premarket_futures` rename** (`tests/test_recent_changes.py`): Rewrote all affected test classes to use the new function name, new key names (`spy_pct`/`qqq_pct`), and Polygon mock instead of yfinance mock.
-
-### Key Design Decisions
-
-- **SPY/QQQ pre-market accuracy**: For the overnight watchlist display, yfinance returns stale previous-close data before market open. Polygon's snapshot endpoint returns actual pre-market trading data. The Polygon override for SPY/QQQ is intentional — always prefer Polygon for these two specific symbols in morning brief context.
-- **Actual VIX only**: Do not use any ETF (UVXY, VXX, VIXY) as a VIX proxy. These products have tracking error, leverage decay, and roll costs that make their price completely disconnected from VIX index levels. Always use `I:VIX` (Polygon) or `^VIX` (yfinance).
-- **Theme validation parsing**: Haiku (claude-haiku-4-5) frequently adds explanation text before returning JSON. All Haiku JSON responses must use the regex extraction fallback pattern. Do not rely on raw `json.loads()` for Haiku responses.
+4. **`_discover_new_themes` bypassing shared Anthropic client** (`theme_engine.py`): Fixed to use `_get_anthropic_client()` lazy initializer.
 
 ### Files Changed
-- `agents/market_intelligence/db.py` — DB migration to replace ES=F/NQ=F with SPY/QQQ in overnight watchlist
-- `agents/market_intelligence/agent.py` — name_to_symbol drop/untrack mapping fix (SPY→SPY, NASDAQ→QQQ)
-- `agents/market_intelligence/collector.py` — renamed get_premarket_futures→get_premarket_snapshot, keys es_pct/nq_pct→spy_pct/qqq_pct, added get_vix_history()
-- `agents/market_intelligence/briefing.py` — all futures→SPY/QQQ references updated, Polygon override for pre-market accuracy
-- `agents/market_intelligence/regime.py` — VIX: UVXY proxy → actual VIX via get_vix_history()
-- `agents/market_intelligence/theme_engine.py` — JSON parsing robustness for Haiku responses, _discover_new_themes client fix
-- `tests/test_recent_changes.py` — updated for premarket snapshot rename + new key names
-- `CLAUDE.md` — this file
+- `agents/market_intelligence/db.py`, `agent.py`, `collector.py`, `briefing.py`, `regime.py`, `theme_engine.py`
+- `tests/test_recent_changes.py`, `CLAUDE.md`
 
 ## Changes Made 2026-04-09 (second session)
 
 ### Bugs Fixed
 
-1. **Theme engine rerun silently broken** (`channels/telegram.py`): `_try_fast_path` intercepted "theme engine" / "rerun theme" keywords BEFORE the orchestrator, called the old `/theme/run` background endpoint (which just queued a task with no result delivery), and returned "~2 min 🐢". The synchronous `_handle_theme_only` fix from the prior session was never reachable. Fix: deleted the broken fast-path entry entirely. "Rerun theme engine" now flows through orchestrator → market agent `/task` → `_handle_theme_only` which awaits synchronously and returns the actual scorecard.
+1. **Theme engine rerun silently broken** (`channels/telegram.py`): `_try_fast_path` intercepted "theme engine" keywords before orchestrator and called old `/theme/run` background endpoint (no result delivery). Fix: deleted the fast-path block. Rerun now flows through orchestrator → `_handle_theme_only` which awaits synchronously and returns the full scorecard.
 
-2. **`/theme/run` endpoint returning nothing** (`agents/market_intelligence/agent.py`): The `/theme/run` HTTP endpoint still used `background.add_task(run_theme_engine)` with no result delivery. Fixed to run `_run_and_notify()` which calls `send_telegram_message(summary)` on completion.
+2. **Theme rerun returned only a short summary** (`agent.py`): `_handle_theme_only` returned one line, so orchestrator Claude would ask "Want me to pull the full breakdown?" Fixed to return a full stage-grouped scorecard (same format as evening brief).
 
-3. **Theme rerun returned only a short summary** (`agents/market_intelligence/agent.py`): `_handle_theme_only` returned "Theme engine complete — N active themes" (one line), causing orchestrator Claude to summarize it and ask "Want me to pull the full breakdown?" — requiring a second round-trip. Fixed to return a full stage-grouped scorecard in the same per-line format as the evening brief (emoji + name + RS 1M|3M|6M + Δ + top tickers), grouped by Accelerating → Nascent → Mainstream, Fading collapsed.
+3. **"Show themes" returning pipe tables** (`agent.py`): `_handle_theme_query` format caused Claude to reformat as pipe tables. Replaced with stage-grouped brief-style format.
 
-4. **"Show me the themes" returning pipe tables** (`agents/market_intelligence/agent.py`): `_handle_theme_query` used a custom format that Claude would reformat as pipe tables (Telegram can't render them). Replaced with the same stage-grouped brief-style format as `_handle_theme_only`. Both handlers now share the same `_compute_scored_themes` + `STAGE_EMOJI` approach from `briefing.py`.
+4. **Theme stage resetting to Nascent after rename** (`theme_engine.py`): `_get_theme_history` used exact name match. Fixed with Jaccard ticker-overlap fallback (threshold 0.4) — renamed themes inherit history from prior name.
 
-5. **Theme stage resetting to Nascent after rename/merge** (`agents/market_intelligence/theme_engine.py`): `_get_theme_history` used exact name match (`WHERE name = $1`). When Claude renames a theme (e.g. "Optical Networking Equipment" → "Broadband Fiber & Optical Access Network Infrastructure"), the new name has 0 history rows → `age_days = 0` → stage restarts at Nascent, even for themes active for months. Fixed by adding a ticker-overlap fallback: if exact name returns nothing, scan recent theme history and find the best Jaccard match against current tickers (threshold: 0.4). If found, inherit that history so stage/age carry over across renames. `_count_consecutive_fading` gets the same fallback via `tickers` kwarg.
-
-6. **Orchestrator Claude reformatting theme results** (`core/context.py`): System prompt had no instruction for theme reruns, so Claude would summarize the market agent's result and offer follow-up questions. Added explicit instruction: the rerun result IS the complete scorecard — output verbatim, do not summarize, do not ask if user wants more, do not make a second call.
-
-7. **TradingView diagnostic endpoint added** (`channels/webhooks.py`): Added `GET /tradingview/test?token=SECRET` to smoke-test the full pipeline (auth + `bot.send_message`) without waiting for a real TradingView alert. Hit it from curl after deploy to verify connectivity.
-
-### Key Design Decisions
-
-- **Theme display format**: Both `_handle_theme_only` (rerun) and `_handle_theme_query` (show themes) must use the same stage-grouped, per-line format as the evening brief. Never use pipe tables — Telegram cannot render them. Always produce pre-formatted output from the market agent so the orchestrator Claude has nothing to reformat.
-- **Fast-path in telegram.py**: Only use `_try_fast_path` for fire-and-forget operations (evening brief trigger). Never use it for operations that need to return a result — it bypasses the orchestrator's result delivery path. Theme engine rerun must go through orchestrator → `/task` → `_handle_theme_only`.
-- **Theme history inheritance**: Jaccard threshold of 0.4 for name-fallback is intentionally lower than the merge threshold (0.6) to maximize history preservation across renames. The fallback only fires when exact name has 0 results, so false positives (inheriting wrong history) are low risk.
-- **Haiku JSON parsing**: All Haiku (claude-haiku-4-5) responses that contain JSON must use the regex fallback pattern — Haiku frequently prepends explanation text before the JSON object. Never rely on raw `json.loads()` for Haiku responses.
+5. **Orchestrator Claude reformatting theme results** (`core/context.py`): Added explicit system prompt instruction to output theme rerun result verbatim, no follow-up questions.
 
 ### Files Changed
-- `channels/telegram.py` — removed broken theme engine fast-path from `_try_fast_path`
-- `channels/webhooks.py` — added GET /tradingview/test diagnostic endpoint
-- `agents/market_intelligence/agent.py` — /theme/run sends Telegram on completion; _handle_theme_only returns full scorecard; _handle_theme_query uses brief-style format; added get_prior_theme_scores import
-- `agents/market_intelligence/theme_engine.py` — _get_theme_history ticker-overlap fallback for renamed themes; _count_consecutive_fading gets tickers kwarg
-- `core/context.py` — system prompt: theme rerun instruction + "output verbatim, do not ask follow-up"
+- `channels/telegram.py`, `channels/webhooks.py`, `agents/market_intelligence/agent.py`
+- `agents/market_intelligence/theme_engine.py`, `core/context.py`, `CLAUDE.md`
+## Changes Made 2026-04-09 (third session)
+
+### Bug Fixed
+
+**CAR (Avis Budget Group) perpetually stuck in data center theme** — three prior fix attempts all failed because they relied on Haiku `_validate_theme_membership` to make the correct decision each run. Haiku is inconsistent: it sometimes decides CAR does belong in an IT/data-center theme (or fails with a caught exception), so the ticker is never reliably removed. The fix needed to be at the enforcement layer, not the decision layer.
+
+### Solution: Persistent Theme Exclusion Table
+
+New `mi_theme_exclusions` DB table stores (ticker, theme_name) pairs that are permanently banned from re-entering that theme, regardless of RS score or Haiku decisions.
+
+**Enforcement is two-layer:**
+1. `_rescore_existing_theme`: strips excluded tickers BEFORE pruning and BEFORE Haiku validation. Excluded tickers simply never reach the validation step.
+2. `_assign_uncovered_to_themes`: skips excluded tickers when Claude tries to re-assign uncovered stocks to existing themes. Prevents re-entry via the discovery path.
+
+**Automatic persistence:** When `_validate_theme_membership` successfully removes a ticker, it now writes to `mi_theme_exclusions` via `add_theme_exclusion()`. This means future runs don't depend on Haiku making the same decision again.
+
+**User command:** "exclude CAR from [theme name]" → immediate DB insert, no engine run needed. Next theme engine run strips it. "list exclusions" shows all active bans. "remove exclusion CAR from [theme]" undoes it.
+
+### Files Changed
+- `agents/market_intelligence/db.py` — added `mi_theme_exclusions` table (CREATE TABLE + index in `initialize_schema`), plus `add_theme_exclusion`, `get_all_theme_exclusions`, `remove_theme_exclusion`, `list_theme_exclusions` functions
+- `agents/market_intelligence/theme_engine.py` — updated imports; `_validate_theme_membership` now persists removals to DB; `_rescore_existing_theme` accepts `theme_exclusions` kwarg and strips excluded tickers first; `_assign_uncovered_to_themes` accepts `theme_exclusions` kwarg and blocks excluded assignments; `run_theme_engine` loads exclusions once via `get_all_theme_exclusions()` and passes to both functions
+- `agents/market_intelligence/agent.py` — added imports for exclusion functions; new route in `execute_task` for "exclude"/"ban from theme"/"list exclusions" keywords; new `_handle_theme_exclusion` handler
 - `CLAUDE.md` — this file
+
+### Key Design Decision
+The fix is enforcement, not persuasion. We don't ask Haiku again — we don't let the ticker reach Haiku at all. The exclusion is stored at the DB layer and applied at the top of `_rescore_existing_theme` before any scoring logic runs. This is the only approach that is robust against Haiku inconsistency, network failures, or edge cases in description parsing.
+
+## Changes Made 2026-04-10
+
+### Features Added
+
+**1. Advisor Strategy — Opus consultation for hard theme clustering decisions**
+
+`_discover_new_themes` and `_assign_uncovered_to_themes` now use a multi-turn tool-use loop with two tools: the output tool (same as before) + `consult_advisor` (new). Sonnet decides when to escalate. If confident → calls `report_themes` directly. If genuinely uncertain → calls `consult_advisor`, Opus returns a decisive verdict, Sonnet continues.
+
+- `_ADVISOR_TOOL` definition + `_call_advisor(question, context, caller)` helper in `theme_engine.py`
+- Both functions switched from `tool_choice={"type": "tool", "name": ...}` (forced single call) to `tool_choice={"type": "auto"}` with a loop
+- `_MAX_ADVISOR_CALLS = 3` per function — hard cap on Opus spend
+- Advisor failures return a graceful fallback string — Sonnet is never blocked
+- Self-assessment checklist added to both prompts: concrete conditions that should trigger advisor call (borderline cluster, 2-stock uncertainty, multi-theme fit, vague thesis)
+
+**2. Audit Log — critical engine events queryable from Telegram**
+
+New `mi_audit_log` DB table captures: `advisor_call`, `theme_discovered`, `theme_retired`, `stage_change`, `theme_excluded`. No SSH needed, persists across restarts.
+
+- `log_audit_event(event_type, summary, detail)` in `db.py` — never raises
+- `get_audit_log(limit, event_type, since_hours)` in `db.py`
+- Written from: `_call_advisor` (question + verdict), `add_theme_exclusion` (auto + manual), `run_theme_engine` (discoveries + retirements + stage changes)
+- New Telegram commands via `_handle_audit_log`: "audit log", "advisor log", "show logs 7d", "show logs [type]"
+
+**3. Full decision logging in theme engine**
+
+Both advisor loops log:
+- "Sonnet went direct (no advisor needed)" when skipped — confirms it's calibrated, not broken
+- Full question + 200-char context snippet on each advisor call
+- Full Opus verdict (up to 300 chars)
+- "advisor call limit reached" with the question that hit the cap
+
+**4. Help command updated**
+
+`_handle_help` in `channels/telegram.py` now includes Theme Management and Audit & Diagnostics sections with all new commands.
+
+### Files Changed
+- `agents/market_intelligence/theme_engine.py` — `_ADVISOR_TOOL`, `_call_advisor`, multi-turn loops in `_discover_new_themes` + `_assign_uncovered_to_themes`, self-assessment checklist in prompts, full decision logging, audit log writes for discoveries/retirements/stage changes
+- `agents/market_intelligence/db.py` — `mi_audit_log` table in `initialize_schema`, `log_audit_event`, `get_audit_log` functions; `add_theme_exclusion` now also writes to audit log
+- `agents/market_intelligence/agent.py` — `get_audit_log` import, "audit log"/"advisor log"/"show logs" route, `_handle_audit_log` handler
+- `channels/telegram.py` — updated `_handle_help` with Theme Management + Audit & Diagnostics sections
+- `README.md` — theme engine section updated with all new features, Audit Log section added, security model updated
+- `CLAUDE.md` — this file
+
+### Advisor Strategy — Key Architecture Notes
+- Both functions use `tool_choice="auto"` not forced tool choice — Sonnet decides when to escalate
+- The self-assessment checklist in the prompt gives Sonnet concrete criteria vs. vague "use sparingly" instructions
+- `_call_advisor` takes a `caller` param ("discovery" or "assignment") for audit log attribution
+- Loop exits when the output tool is called OR when no tool_use blocks in response (graceful fallback)
+- Each advisor call writes to `mi_audit_log` — queryable from Telegram with "advisor log"

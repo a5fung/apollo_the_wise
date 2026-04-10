@@ -393,6 +393,35 @@ async def initialize_schema() -> None:
                     FOR EACH ROW EXECUTE FUNCTION protect_trade_tables();
             """)
 
+        # ── Theme exclusions table ────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_exclusions (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                theme_name TEXT NOT NULL,
+                reason TEXT,
+                excluded_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, theme_name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_exclusions_theme
+                ON mi_theme_exclusions(theme_name);
+        """)
+
+        # ── Audit log — critical events queryable from Telegram ──────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_audit_log (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                event_type TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                detail TEXT DEFAULT ''
+            );
+            CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
+                ON mi_audit_log(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_audit_log_event_type
+                ON mi_audit_log(event_type);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -1937,3 +1966,118 @@ async def get_live_trading_summary() -> dict[str, Any]:
         "skipped": stats["skipped"] or 0,
         "open_details": [dict(r) for r in open_positions],
     }
+
+
+# ── Theme exclusions ──────────────────────────────────────────────────────────
+
+async def add_theme_exclusion(ticker: str, theme_name: str, reason: str = "") -> None:
+    """
+    Permanently exclude a ticker from a specific theme.
+    Once excluded, the ticker will never be assigned to that theme by the engine,
+    regardless of RS score or Haiku validation decisions.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_theme_exclusions (ticker, theme_name, reason)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (ticker, theme_name) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                excluded_at = NOW()
+        """, ticker.upper(), theme_name, reason)
+    logger.info(f"Theme exclusion added: {ticker} excluded from '{theme_name}'")
+    await log_audit_event(
+        "theme_excluded",
+        summary=f"{ticker.upper()} excluded from '{theme_name}'",
+        detail=reason,
+    )
+
+
+async def get_all_theme_exclusions() -> dict[str, set[str]]:
+    """
+    Load all theme exclusions.
+    Returns dict mapping theme_name → set of excluded tickers.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT ticker, theme_name FROM mi_theme_exclusions")
+    result: dict[str, set[str]] = {}
+    for row in rows:
+        theme = row["theme_name"]
+        if theme not in result:
+            result[theme] = set()
+        result[theme].add(row["ticker"])
+    return result
+
+
+async def remove_theme_exclusion(ticker: str, theme_name: str) -> bool:
+    """Remove a previously set exclusion. Returns True if a row was deleted."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM mi_theme_exclusions WHERE ticker = $1 AND theme_name = $2",
+            ticker.upper(), theme_name,
+        )
+    deleted = result.split()[-1] != "0"
+    if deleted:
+        logger.info(f"Theme exclusion removed: {ticker} can now re-enter '{theme_name}'")
+    return deleted
+
+
+async def list_theme_exclusions() -> list[dict[str, Any]]:
+    """Return all exclusions as a list of dicts (for display)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, theme_name, reason, excluded_at
+            FROM mi_theme_exclusions
+            ORDER BY excluded_at DESC
+        """)
+    return [dict(r) for r in rows]
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+
+async def log_audit_event(event_type: str, summary: str, detail: str = "") -> None:
+    """
+    Write a critical event to the audit log. Never raises — safe to call from anywhere.
+    event_type: 'advisor_call' | 'theme_discovered' | 'theme_retired' |
+                'stage_change' | 'theme_excluded' | 'ep_alert'
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
+                event_type, summary[:500], detail[:2000],
+            )
+    except Exception as e:
+        logger.warning(f"audit log write failed ({event_type}): {e}")
+
+
+async def get_audit_log(
+    limit: int = 30,
+    event_type: str | None = None,
+    since_hours: int = 48,
+) -> list[dict[str, Any]]:
+    """Fetch recent audit log entries, newest first."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if event_type:
+            rows = await conn.fetch("""
+                SELECT id, created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE event_type = $1
+                  AND created_at >= NOW() - ($2 || ' hours')::INTERVAL
+                ORDER BY created_at DESC
+                LIMIT $3
+            """, event_type, str(since_hours), limit)
+        else:
+            rows = await conn.fetch("""
+                SELECT id, created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE created_at >= NOW() - ($1 || ' hours')::INTERVAL
+                ORDER BY created_at DESC
+                LIMIT $2
+            """, str(since_hours), limit)
+    return [dict(r) for r in rows]

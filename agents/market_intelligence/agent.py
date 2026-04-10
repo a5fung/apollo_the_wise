@@ -39,6 +39,10 @@ from agents.market_intelligence.db import (
     get_rs_history,
     get_theme_history,
     get_prior_theme_scores,
+    add_theme_exclusion,
+    remove_theme_exclusion,
+    list_theme_exclusions,
+    get_audit_log,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today
@@ -413,11 +417,17 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["track ", "untrack ", "drop ", "watchlist", "overnight watch"]):
             return await self._handle_watchlist(request)
 
+        if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
+            return await self._handle_theme_exclusion(request)
+
         if any(k in task for k in ["theme engine", "rerun theme", "re-run theme", "run theme", "refresh theme"]):
             return await self._handle_theme_only(request)
 
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
+
+        if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log"]):
+            return await self._handle_audit_log(request)
 
         # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
@@ -587,6 +597,139 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._ok(request, result="Couldn't identify the instrument. Try: 'track bitcoin', 'track gold', 'track oil', or specify a Yahoo Finance symbol.")
 
         return self._ok(request, result="Use: 'show watchlist', 'track bitcoin with 5% threshold', or 'drop oil'")
+
+    async def _handle_theme_exclusion(self, request: AgentRequest) -> AgentResponse:
+        """
+        Manage persistent theme-level ticker exclusions.
+        Once excluded, a ticker will never re-enter that theme regardless of RS or Haiku decisions.
+
+        Commands:
+          "exclude CAR from [theme name]" — add exclusion
+          "remove exclusion CAR from [theme name]" — undo exclusion
+          "list exclusions" / "show theme exclusions" — list all
+        """
+        import re as _re
+        task = request.task.lower()
+        task_orig = request.task
+
+        # List exclusions
+        if any(k in task for k in ["list exclusions", "show exclusions", "theme exclusions"]):
+            rows = await list_theme_exclusions()
+            if not rows:
+                return self._ok(request, result="No theme exclusions set.")
+            lines = ["*Persistent Theme Exclusions*"]
+            for r in rows:
+                lines.append(f"• `{r['ticker']}` excluded from _{r['theme_name']}_ — {r['reason'] or 'manual'}")
+            return self._ok(request, result="\n".join(lines))
+
+        # Extract ticker — first 2-5 letter uppercase word that looks like a ticker
+        tickers_found = _re.findall(r'\b([A-Z]{2,5})\b', task_orig.upper())
+        skip = _PREPOSITION_SKIP | {"EXCLUDE", "REMOVE", "FROM", "THEME", "BAN", "KICK", "LIST", "SHOW"}
+        ticker = next((t for t in tickers_found if t not in skip), None)
+        if not ticker:
+            return self._ok(request, result="Couldn't identify a ticker. Try: 'exclude CAR from [theme name]'")
+
+        # Check if this is a removal
+        is_removal = any(k in task for k in ["remove exclusion", "unexclude", "allow back", "undo exclusion"])
+
+        # Extract theme name — everything after "from" (or "from theme")
+        theme_name = ""
+        m = _re.search(r'\bfrom(?:\s+theme)?\s+(.+)', task_orig, _re.IGNORECASE)
+        if m:
+            theme_name = m.group(1).strip()
+            # Remove any trailing punctuation
+            theme_name = theme_name.rstrip(".,!?")
+
+        if not theme_name:
+            return self._ok(request, result=f"Couldn't extract theme name. Try: 'exclude {ticker} from [exact theme name]'")
+
+        if is_removal:
+            removed = await remove_theme_exclusion(ticker, theme_name)
+            if removed:
+                return self._ok(request, result=f"Exclusion lifted: `{ticker}` can now re-enter _{theme_name}_.")
+            return self._ok(request, result=f"No exclusion found for `{ticker}` in _{theme_name}_.")
+        else:
+            reason = f"manually excluded by user"
+            await add_theme_exclusion(ticker, theme_name, reason)
+            return self._ok(
+                request,
+                result=(
+                    f"Done. `{ticker}` is now permanently excluded from _{theme_name}_.\n"
+                    f"It will be stripped on the next theme engine run and can never re-enter that theme.\n"
+                    f"To undo: 'remove exclusion {ticker} from {theme_name}'"
+                ),
+            )
+
+    async def _handle_audit_log(self, request: AgentRequest) -> AgentResponse:
+        """
+        Fetch and display recent critical events from the audit log.
+        Commands:
+          "audit log" / "show logs" — last 20 events (48h)
+          "advisor log" — only advisor_call events
+          "show logs 7d" — last 7 days
+        """
+        import re as _re
+        task = request.task.lower()
+
+        # Parse optional time window (e.g. "7d", "24h")
+        since_hours = 48
+        m = _re.search(r'(\d+)\s*d\b', task)
+        if m:
+            since_hours = int(m.group(1)) * 24
+        else:
+            m = _re.search(r'(\d+)\s*h\b', task)
+            if m:
+                since_hours = int(m.group(1))
+
+        # Filter by event type if specified
+        event_type = None
+        if "advisor" in task:
+            event_type = "advisor_call"
+        elif "discover" in task or "new theme" in task:
+            event_type = "theme_discovered"
+        elif "retire" in task:
+            event_type = "theme_retired"
+        elif "stage" in task:
+            event_type = "stage_change"
+        elif "exclusion" in task or "excluded" in task:
+            event_type = "theme_excluded"
+
+        rows = await get_audit_log(limit=25, event_type=event_type, since_hours=since_hours)
+
+        if not rows:
+            label = f"last {since_hours}h" + (f" [{event_type}]" if event_type else "")
+            return self._ok(request, result=f"No audit log entries in {label}.")
+
+        _TYPE_EMOJI = {
+            "advisor_call":     "🤖",
+            "theme_discovered": "🌱",
+            "theme_retired":    "🪦",
+            "stage_change":     "📈",
+            "theme_excluded":   "🚫",
+            "ep_alert":         "⚡",
+        }
+
+        lines = [f"*Audit Log* — last {since_hours}h{' · ' + event_type if event_type else ''}"]
+        for r in rows:
+            ts = r["created_at"].strftime("%m/%d %H:%M")
+            emoji = _TYPE_EMOJI.get(r["event_type"], "•")
+            lines.append(f"{emoji} `{ts}` {r['summary']}")
+
+        # If asking for advisor log, show detail for each entry
+        if event_type == "advisor_call" and len(rows) <= 10:
+            lines = [f"*Advisor Log* — last {since_hours}h"]
+            for r in rows:
+                ts = r["created_at"].strftime("%m/%d %H:%M")
+                detail = r.get("detail", "")
+                # Extract verdict from detail (after "Verdict:")
+                verdict = ""
+                if "Verdict:" in detail:
+                    verdict = detail.split("Verdict:")[-1].strip()[:300]
+                lines.append(f"\n`{ts}` 🤖 *{r['summary'][:80]}*")
+                if verdict:
+                    lines.append(f"_{verdict}_")
+
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_theme_only(self, request: AgentRequest) -> AgentResponse:
         """Re-run just the theme engine using existing RS data. No Polygon calls — fast.
