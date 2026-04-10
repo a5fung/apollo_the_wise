@@ -627,7 +627,13 @@ Rules:
 - When in doubt, do NOT assign — the stock will get a chance to form its own theme
 - Pick the most specific theme if multiple could fit
 - Return empty array if nothing fits — that is the correct answer
-- Use the EXACT theme name from the list above"""
+- Use the EXACT theme name from the list above
+
+Before calling assign_stocks_to_themes, ask yourself: am I uncertain about any assignment?
+Consult the advisor FIRST if any of these apply:
+- A stock could plausibly fit 2 different themes and you're not sure which is more specific
+- A stock's description is ambiguous — it could be in this theme or something unrelated
+If none of these apply, call assign_stocks_to_themes directly."""
 
     try:
         messages: list[dict] = [{"role": "user", "content": prompt}]
@@ -651,6 +657,10 @@ Rules:
 
             assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
             if assign_block:
+                if advisor_calls == 0:
+                    logger.info("Theme assignment: Sonnet went direct (no advisor needed)")
+                else:
+                    logger.info(f"Theme assignment: Sonnet used advisor {advisor_calls}x before assigning")
                 assignments = assign_block.input.get("assignments", [])
                 break
 
@@ -659,16 +669,20 @@ Rules:
             tool_results = []
             for block in tool_uses:
                 if block.name == "consult_advisor":
+                    question = block.input.get("question", "")
+                    context = block.input.get("context", "")
                     if advisor_calls >= _MAX_ADVISOR_CALLS:
                         advice = "Advisor call limit reached — use your best judgment and proceed."
-                        logger.warning("Theme assignment: advisor call limit reached")
+                        logger.warning(f"Theme assignment: advisor call limit reached — question was: {question[:120]}")
                     else:
                         advisor_calls += 1
-                        logger.info(f"Theme assignment: consulting advisor ({advisor_calls}/{_MAX_ADVISOR_CALLS}): {block.input.get('question', '')[:80]}")
-                        advice = await _call_advisor(
-                            block.input.get("question", ""),
-                            block.input.get("context", ""),
+                        logger.info(
+                            f"Theme assignment: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
+                            f"  Q: {question}\n"
+                            f"  Context snippet: {context[:200]}"
                         )
+                        advice = await _call_advisor(question, context)
+                        logger.info(f"Theme assignment: advisor verdict: {advice[:300]}")
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -975,7 +989,15 @@ Rules:
 - A stock should appear in at most 2 themes. Do NOT include a stock in a new theme if it already appears in 2+ existing themes (check the list above)
 - When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
 - Return zero themes if no clear cluster exists — that is the correct answer
-- Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives"""
+- Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives
+
+Before calling report_themes, ask yourself: am I genuinely uncertain about any cluster?
+Consult the advisor FIRST if any of these apply:
+- A stock fits multiple possible themes and you're not sure which is the better home
+- You have a 2-stock cluster and aren't confident it's a real theme vs. coincidence
+- Stocks share a sector label but their actual business drivers feel different to you
+- You want to name a theme but can't articulate a crisp specific thesis
+If none of these apply, call report_themes directly — advisor consultation is for real ambiguity only."""
 
     try:
         client = _get_anthropic_client()
@@ -1001,6 +1023,10 @@ Rules:
             # If report_themes was called, we're done
             report_block = next((b for b in tool_uses if b.name == "report_themes"), None)
             if report_block:
+                if advisor_calls == 0:
+                    logger.info("Theme discovery: Sonnet went direct (no advisor needed)")
+                else:
+                    logger.info(f"Theme discovery: Sonnet used advisor {advisor_calls}x before reporting")
                 raw_themes = report_block.input.get("themes", [])
                 valid = [t for t in raw_themes if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS]
                 return [_strip_sector_outliers(t, stocks_by_ticker) for t in valid
@@ -1011,16 +1037,20 @@ Rules:
             tool_results = []
             for block in tool_uses:
                 if block.name == "consult_advisor":
+                    question = block.input.get("question", "")
+                    context = block.input.get("context", "")
                     if advisor_calls >= _MAX_ADVISOR_CALLS:
                         advice = "Advisor call limit reached — use your best judgment and proceed."
-                        logger.warning("Theme discovery: advisor call limit reached")
+                        logger.warning(f"Theme discovery: advisor call limit reached — question was: {question[:120]}")
                     else:
                         advisor_calls += 1
-                        logger.info(f"Theme discovery: consulting advisor ({advisor_calls}/{_MAX_ADVISOR_CALLS}): {block.input.get('question', '')[:80]}")
-                        advice = await _call_advisor(
-                            block.input.get("question", ""),
-                            block.input.get("context", ""),
+                        logger.info(
+                            f"Theme discovery: advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS}\n"
+                            f"  Q: {question}\n"
+                            f"  Context snippet: {context[:200]}"
                         )
+                        advice = await _call_advisor(question, context)
+                        logger.info(f"Theme discovery: advisor verdict: {advice[:300]}")
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
