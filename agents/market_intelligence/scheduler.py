@@ -424,6 +424,15 @@ async def _ep_scan_job():
                 await send_ep_alert(ep)
                 already_alerted.add(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "ep_alert",
+                        summary=f"HIGH EP: {ep['ticker']} gap={ep.get('gap_pct', 0):.1f}% score={ep['ep_score']:.0f}",
+                        detail=f"Catalyst: {ep.get('catalyst', '')[:300]}\nAnalysis: {ep.get('claude_analysis', '')[:200]}",
+                    )
+                except Exception:
+                    pass
     except Exception as e:
         import traceback
         logger.error(f"EP scan failed: {e}\n{traceback.format_exc()}")

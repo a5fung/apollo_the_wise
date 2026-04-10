@@ -585,6 +585,16 @@ async def _rescore_existing_theme(
         if stage == "Fading" and smooth_delta > 5:   # require real recovery, not noise
             stage = "Accelerating"
 
+    if stage != prev_stage:
+        changelog.append({
+            "type": "stage_change",
+            "theme": name,
+            "old_stage": prev_stage,
+            "new_stage": stage,
+            "score": total_score,
+        })
+        logger.info(f"Theme '{name}': {prev_stage} → {stage} (score {total_score:.1f}, Δ {smooth_delta:+.1f})")
+
     return {
         "theme_date": today,
         "name": name,
@@ -882,6 +892,16 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             summary=f"[{caller}] {question[:120]}",
             detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
         )
+        try:
+            from core.spend import log_api_usage
+            await log_api_usage(
+                model="claude-opus-4-6",
+                caller=f"theme_advisor_{caller}",
+                input_tokens=resp.usage.input_tokens,
+                output_tokens=resp.usage.output_tokens,
+            )
+        except Exception:
+            pass
         return verdict
     except Exception as e:
         logger.warning(f"Advisor call failed: {e}")

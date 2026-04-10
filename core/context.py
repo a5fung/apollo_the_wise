@@ -20,8 +20,8 @@ RECENT_MESSAGES_KEEP = 10
 COMPRESSION_THRESHOLD = 20
 
 
-def _build_anthropic_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
+def _build_anthropic_client() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(api_key=get_secrets().anthropic_api_key)
 
 
 def messages_to_claude_format(
@@ -85,7 +85,7 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
         for msg in messages
     )
 
-    response = client.messages.create(
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
         messages=[
@@ -111,17 +111,15 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
         ],
     )
 
-    # Log spend (sync context, so fire in background)
     try:
-        import asyncio
         from core.spend import log_api_usage
         usage = response.usage
-        asyncio.get_event_loop().create_task(log_api_usage(
+        await log_api_usage(
             model="claude-haiku-4-5-20251001",
             caller="context_compression",
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
-        ))
+        )
     except Exception:
         pass
 
