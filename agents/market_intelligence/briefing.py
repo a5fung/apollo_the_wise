@@ -29,6 +29,7 @@ from agents.market_intelligence.collector import (
 )
 from agents.market_intelligence.db import (
     get_today_ep_alerts,
+    get_ep_scan_log,
     get_rs_leaders,
     get_latest_regime,
     get_ma_pullbacks,
@@ -184,34 +185,77 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     return "\n".join(lines)
 
 
-def _format_ep_section(ep_alerts: list[dict], section_num: int = 1) -> str:
+def _format_ep_section(
+    ep_alerts: list[dict],
+    section_num: int = 1,
+    scan_log: list[dict] | None = None,
+) -> str:
+    filtered = [r for r in (scan_log or []) if r.get("filter_reason")]
+    total_scanned = len(ep_alerts) + len(filtered)
+    # Also count candidates beyond the top-20 cap
+    beyond_cap = [r for r in filtered if "top-20" in (r.get("filter_reason") or "")]
+    total_scanned += len(beyond_cap)  # already counted in filtered, just for clarity
+
+    scan_count_str = f"  ({total_scanned} gap candidates scanned)" if total_scanned > 0 else ""
+
     if not ep_alerts:
-        return f"*{section_num}. EP ALERTS* — None this morning"
+        header = f"*{section_num}. EP ALERTS* — None this morning{scan_count_str}"
+    else:
+        high = [e for e in ep_alerts if e.get("score_tier") == "HIGH"]
+        moderate = [e for e in ep_alerts if e.get("score_tier") == "MODERATE"]
+        header = (
+            f"*{section_num}. EP ALERTS* — "
+            f"{len(high)} HIGH  {len(moderate)} MODERATE{scan_count_str}"
+        )
 
-    high = [e for e in ep_alerts if e.get("score_tier") == "HIGH"]
-    moderate = [e for e in ep_alerts if e.get("score_tier") == "MODERATE"]
+    lines = [header]
 
-    lines = [f"*{section_num}. EP ALERTS* — {len(ep_alerts)} candidate(s)"]
-
-    for ep in high:
-        tier_e = TIER_EMOJI.get("HIGH", "")
+    for ep in ep_alerts:
+        tier = ep.get("score_tier", "")
+        tier_e = TIER_EMOJI.get(tier, "")
         cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
         gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
         conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
-        lines.append(
-            f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
-            f"rv {ep.get('rel_volume') or '?'}x "
-            f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
-        )
-        if ep.get("claude_analysis"):
-            lines.append(f"    _{ep['claude_analysis'][:120]}_")
+        if tier == "HIGH":
+            lines.append(
+                f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
+                f"rv {ep.get('rel_volume') or '?'}x "
+                f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
+            )
+            if ep.get("claude_analysis"):
+                lines.append(f"    _{ep['claude_analysis'][:120]}_")
+        else:
+            lines.append(
+                f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
+                f"score {ep['ep_score']:.0f} — verify catalyst"
+            )
 
-    for ep in moderate:
-        tier_e = TIER_EMOJI.get("MODERATE", "")
-        lines.append(
-            f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-            f"score {ep['ep_score']:.0f} — verify catalyst"
-        )
+    # Near-miss line — compact, one per line max 5, skip top-20-cap noise
+    near_misses = [
+        r for r in filtered
+        if "top-20" not in (r.get("filter_reason") or "")
+    ][:5]
+    if near_misses:
+        parts = []
+        for r in near_misses:
+            reason = r.get("filter_reason", "")
+            # Shorten common reasons
+            if "price" in reason and "<" in reason:
+                short = reason.split("—")[0].strip() if "—" in reason else reason[:30]
+            elif "cooldown" in reason:
+                short = "cooldown"
+            elif "extended" in reason:
+                short = "extended"
+            elif "quality" in reason:
+                short = "quality filter"
+            elif "routine" in reason:
+                short = "routine catalyst"
+            elif "low rel volume" in reason:
+                short = "low rel vol"
+            else:
+                short = reason[:25]
+            parts.append(f"`{r['ticker']}` {short}")
+        lines.append(f"  _Near misses: {',  '.join(parts)}_")
 
     return "\n".join(lines)
 
@@ -1056,6 +1100,7 @@ def _format_morning_briefing(
     econ_calendar: str | None = None,
     quality_warnings: list[str] | None = None,
     earnings_calendar: str | None = None,
+    ep_scan_log: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1116,7 +1161,7 @@ def _format_morning_briefing(
 
     sections += [
         "",
-        _format_ep_section(sorted_eps, section_num=1),
+        _format_ep_section(sorted_eps, section_num=1, scan_log=ep_scan_log),
         "",
         "_EP scan: 4–7 AM PT. HIGH alerts sent in real-time._",
     ]
@@ -1137,7 +1182,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     today_str = today.strftime("%Y-%m-%d")
     cache = _perplexity_cache.get(today_str, {})
 
-    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags = await asyncio.gather(
+    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_snapshot(),
@@ -1145,6 +1190,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         get_overnight_watchlist(),
         get_quality_warnings(today),
         get_fundamental_flags(today_str),
+        get_ep_scan_log(today_str),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -1212,6 +1258,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         econ_calendar=econ_calendar,
         quality_warnings=warnings,
         earnings_calendar=earnings_calendar_text,
+        ep_scan_log=ep_scan_log,
     )
 
     success = await send_telegram_message(text, chat_id)
