@@ -288,11 +288,10 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             raw = raw.rstrip("```").strip()
         desc_map = json.loads(raw)
         if isinstance(desc_map, dict):
-            # Prefix every Haiku-generated description with the GICS sector/industry
-            # from yfinance. This is the scalable fix for bad clustering:
+            # Anchor each description with GICS sector/industry so clustering can't
+            # misplace stocks whose yfinance summaries contain tech-adjacent language.
             # "Consumer Cyclical / Rental & Leasing Services — car & truck rental"
-            # can never end up in a data center theme regardless of what Haiku writes.
-            # No per-ticker maintenance needed — every new stock auto-gets its sector.
+            # is unambiguous to any LLM regardless of the 8-word business description.
             valid = {}
             for tk, desc in desc_map.items():
                 tk_up = tk.upper()
@@ -1256,17 +1255,16 @@ If none of these apply, call report_themes directly — advisor consultation is 
                     # related theme — catches CAR sneaking into a renamed data-center theme
                     if theme_exclusions:
                         theme_name = t.get("name", "")
-                        before = list(t.get("tickers", []))
                         excluded_here = _get_excluded_tickers_for_theme(theme_name, theme_exclusions)
                         if excluded_here:
-                            after = [tk for tk in before if tk not in excluded_here]
-                            removed = [tk for tk in before if tk in excluded_here]
+                            tickers_in = t.get("tickers", [])
+                            removed = [tk for tk in tickers_in if tk in excluded_here]
                             if removed:
                                 logger.info(
                                     f"Discovery post-filter: stripped {removed} from new theme "
                                     f"'{theme_name}' — active exclusions match (fuzzy)"
                                 )
-                            t = {**t, "tickers": after}
+                                t = {**t, "tickers": [tk for tk in tickers_in if tk not in excluded_here]}
                     if len(t.get("tickers", [])) >= NEW_THEME_MIN_STOCKS:
                         result_themes.append(t)
                 return result_themes

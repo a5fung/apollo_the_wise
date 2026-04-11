@@ -78,7 +78,7 @@ UNIVERSE_WITH_DESC: list[tuple[str, str]] = [
     ("CROX", "Casual footwear (Crocs, Heydude)"),
     ("BKNG", "Online travel booking (Booking.com, Priceline)"),
     ("ABNB", "Short-term rental marketplace"),
-    ("CAR", "Car & truck rental — Avis, Budget, Zipcar brands. No technology products."),
+    ("CAR", "Car & truck rental (Avis, Budget, Zipcar)"),
     ("UBER", "Ride-hailing, food delivery, freight"),
     ("LYFT", "Ride-hailing"),
     ("DPZ", "Pizza delivery chain, tech-driven operations"),
