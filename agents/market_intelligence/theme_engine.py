@@ -1357,14 +1357,59 @@ def _sector_group(theme_name: str) -> tuple[str, int] | None:
     return None
 
 
+def _strip_commodity_contradictions(themes: list[dict]) -> list[dict]:
+    """
+    Strip members whose descriptions obviously contradict the theme's commodity.
+    Prevents gold miners ending up in uranium themes and vice versa.
+    Deterministic — no Claude call needed.
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    # (theme_keywords_that_trigger, member_description_keywords_that_contradict)
+    COMMODITY_RULES: list[tuple[list[str], list[str]]] = [
+        (["uranium", "nuclear fuel", "nuclear energy"],
+         ["gold", "silver", "precious metal", "gold miner", "silver miner", "zinc miner", "copper miner"]),
+        (["gold miner", "silver miner", "precious metal", "gold & silver"],
+         ["uranium", "nuclear", "lithium", "cobalt", "rare earth"]),
+    ]
+
+    for theme in themes:
+        name_lower = theme["name"].lower()
+        desc_lower = (theme.get("description") or "").lower()
+
+        for theme_kws, contra_kws in COMMODITY_RULES:
+            if not any(kw in name_lower or kw in desc_lower for kw in theme_kws):
+                continue
+            clean, stripped = [], []
+            for tk in (theme.get("tickers") or []):
+                tk_desc = (TICKER_DESC.get(tk) or "").lower()
+                if any(ckw in tk_desc for ckw in contra_kws):
+                    stripped.append(tk)
+                else:
+                    clean.append(tk)
+            if stripped:
+                logger.info(
+                    f"[commodity filter] '{theme['name']}': stripped {stripped} "
+                    f"(descriptions contradict theme commodity)"
+                )
+                theme["tickers"] = clean
+
+    return themes
+
+
 def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
+    protected_names: set[str] | None = None,
 ) -> list[dict]:
     """
     Two-pass theme consolidation:
     1. Ticker overlap: merge themes with Jaccard >= 0.6, subset, or 60%+ overlap
     2. Sector cap: limit themes per broad sector (oil/gas, biotech, etc.) to top 2
+
+    protected_names: existing theme names that must not be absorbed by new clusters.
+    When a protected theme would be absorbed, the overlapping stocks are stripped from
+    the new cluster instead — the existing theme keeps its identity.
     """
     if len(themes) <= 1:
         return themes
@@ -1398,19 +1443,31 @@ def _merge_overlapping_themes(
             overlap_ratio = len(intersection) / smaller_size if smaller_size else 0
 
             if jaccard >= 0.6 or is_subset or overlap_ratio >= 0.6:
-                logger.info(
-                    f"Theme merge (overlap): '{themes[j]['name']}' → '{themes[i]['name']}' "
-                    f"(Jaccard {jaccard:.2f}, {len(intersection)} shared tickers)"
-                )
-                tickers_i = tickers_i | tickers_j
-                themes[i]["tickers"] = list(tickers_i)
-                merged_into[j] = i
+                j_protected = protected_names and themes[j]["name"] in protected_names
+                if j_protected:
+                    # Protected existing theme (j) would be absorbed by new cluster (i).
+                    # Reverse: strip the overlap from the new cluster to preserve identity.
+                    tickers_i = tickers_i - intersection
+                    themes[i]["tickers"] = list(tickers_i)
+                    logger.info(
+                        f"Theme protect: stripped {sorted(intersection)} from new cluster "
+                        f"'{themes[i]['name']}' to preserve existing '{themes[j]['name']}'"
+                    )
+                else:
+                    logger.info(
+                        f"Theme merge (overlap): '{themes[j]['name']}' → '{themes[i]['name']}' "
+                        f"(Jaccard {jaccard:.2f}, {len(intersection)} shared tickers)"
+                    )
+                    tickers_i = tickers_i | tickers_j
+                    themes[i]["tickers"] = list(tickers_i)
+                    merged_into[j] = i
 
     after_overlap = [t for idx, t in enumerate(themes) if idx not in merged_into]
 
     # --- Pass 1.5: Small-theme absorption ---
     # A theme with <= 3 stocks where only 0-1 are unique (not in any other theme)
     # is not a distinct theme — absorb into the highest-scoring overlapping theme.
+    # Protected existing themes are exempt from this absorption.
     from collections import Counter
     ticker_membership = Counter()
     for t in after_overlap:
@@ -1419,6 +1476,8 @@ def _merge_overlapping_themes(
 
     absorbed = set()
     for idx, t in enumerate(after_overlap):
+        if protected_names and t["name"] in protected_names:
+            continue  # never absorb an existing theme in pass 1.5
         tickers = set(t.get("tickers") or [])
         if len(tickers) > 3 or not tickers:
             continue
@@ -1769,7 +1828,11 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
             )
 
     # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---
-    all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker)
+    # Strip commodity contradictions from new clusters before merge (e.g. gold miners in uranium theme)
+    new_themes = _strip_commodity_contradictions(new_themes)
+    # Pass existing theme names so they can't be absorbed by new clusters
+    existing_names: set[str] = {t["name"] for t in updated_themes}
+    all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker, protected_names=existing_names)
     all_themes.sort(key=lambda t: t["score"], reverse=True)
     all_themes = _enforce_max_themes_per_stock(all_themes)
 

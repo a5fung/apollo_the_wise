@@ -452,27 +452,39 @@ def _format_theme_scorecard(
 
     scored_themes, fading = _compute_scored_themes(themes, theme_rs_data, prior_scores)
 
+    # Group by stage
+    stage_order = ["Accelerating", "Mainstream", "Nascent"]
+    stage_groups: dict[str, list] = {s: [] for s in stage_order}
+    for st in scored_themes:
+        stage_groups.setdefault(st.get("stage", "Nascent"), []).append(st)
+
     lines = [f"*{section_num}. THEME SCORECARD* — {len(scored_themes)} active"]
 
-    for st in scored_themes:
-        emoji = STAGE_EMOJI.get(st["stage"], " ")
-        name = st["name"]
-        delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
+    for stage in stage_order:
+        group = stage_groups.get(stage, [])
+        if not group:
+            continue
+        emoji = STAGE_EMOJI.get(stage, "")
+        lines.append(f"\n{emoji} *{stage.upper()}* ({len(group)})")
 
-        # Top tickers by RS (only RS 50+) for display
-        ticker_rs_pairs = []
-        for tk in st["tickers"]:
-            rs = theme_rs_data.get(tk)
-            if rs and rs.get("rs_composite") is not None and rs["rs_composite"] >= 50:
-                ticker_rs_pairs.append((tk, rs["rs_composite"]))
-        ticker_rs_pairs.sort(key=lambda x: -x[1])
-        top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
+        for st in group:
+            name = st["name"]
+            delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
 
-        lines.append("")
-        lines.append(f"{emoji}*{name}*")
-        lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}")
-        if top_tickers:
-            lines.append(f"  {top_tickers}")
+            # Top tickers by RS (only RS 50+) for display
+            ticker_rs_pairs = []
+            for tk in st["tickers"]:
+                rs = theme_rs_data.get(tk)
+                if rs and rs.get("rs_composite") is not None and rs["rs_composite"] >= 50:
+                    ticker_rs_pairs.append((tk, rs["rs_composite"]))
+            ticker_rs_pairs.sort(key=lambda x: -x[1])
+            top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
+
+            lines.append("")
+            lines.append(f"*{name}*")
+            lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}")
+            if top_tickers:
+                lines.append(f"  {top_tickers}")
 
     # Fading: collapsed
     if fading:
