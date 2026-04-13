@@ -1,5 +1,23 @@
 # Apollo the Wise — Claude Context
 
+## Session Sync Protocol
+This file is the cross-device sync mechanism. Mobile and desktop sessions both commit changes here.
+
+**At the start of every session:**
+```bash
+git pull origin main
+```
+Read the "Changes Made" sections at the bottom to understand what happened in prior sessions.
+
+**At the end of every session (if code was changed):**
+1. Append a `## Changes Made YYYY-MM-DD` section documenting bugs fixed / features added / files changed
+2. Commit and push:
+```bash
+git add CLAUDE.md <changed files>
+git commit -m "Brief description of changes"
+git push origin main
+```
+
 ## What This Is
 A Telegram-based personal assistant ("chief of staff") built around market intelligence. Talks naturally in Telegram, delegates to specialized sub-agents. Primary use case is momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology).
 
