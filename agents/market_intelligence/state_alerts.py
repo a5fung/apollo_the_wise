@@ -419,10 +419,22 @@ async def send_state_alerts(
     # --- Render sections ---
 
     if theme_alerts:
+        _stage_rank = {"Fading": 0, "Nascent": 1, "Mainstream": 2, "Accelerating": 3}
+        positive = [a for a in theme_alerts if _stage_rank.get(a["to_stage"], 0) > _stage_rank.get(a["from_stage"], 0)]
+        negative = [a for a in theme_alerts if _stage_rank.get(a["to_stage"], 0) < _stage_rank.get(a["from_stage"], 0)]
+
         lines.append("")
         lines.append("⚡ *Theme Transitions*")
-        for a in theme_alerts[:10]:
-            lines.append(f"  {a['theme']}: {a['from_stage']} → {a['to_stage']}")
+        if positive:
+            lines.append("_Improving_")
+            for a in positive[:10]:
+                lines.append(f"  {a['theme']}: {a['from_stage']} → {a['to_stage']}")
+        if negative:
+            if positive:
+                lines.append("")
+            lines.append("_Deteriorating_")
+            for a in negative[:10]:
+                lines.append(f"  {a['theme']}: {a['from_stage']} → {a['to_stage']}")
 
     if assigned:
         lines.append("")
