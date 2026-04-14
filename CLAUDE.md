@@ -228,8 +228,8 @@ TRADINGVIEW_WEBHOOK_SECRET
 - **send_telegram_message**: defined in `briefing.py`. Used by scheduler for alerts/briefings. Market-agent startup sends "🔄 Market agent online". Returns `False` on failure (never raises). Always escape dynamic strings before passing if using Markdown.
 
 ## Production Deploy
-- Target: Hetzner CPX21 Ashburn (~$8/mo), directory: `/home/Apollo/apollo_the_wise/`
-- Server runs as root; git ownership fix: `git config --global --add safe.directory /home/Apollo/apollo_the_wise`
+- Target: Hetzner CPX21 Ashburn (~$8/mo), directory: `/home/apollo/apollo_the_wise/` (lowercase)
+- SSH: `ssh apollo@87.99.134.162` (key `~/.ssh/id_ed25519`)
 - Deploy market-agent only: `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent && docker compose -f docker/docker-compose.prod.yml up -d market-agent`
 - Deploy both (needed when changing orchestrator code like router.py): `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache orchestrator market-agent && docker compose -f docker/docker-compose.prod.yml up -d orchestrator market-agent`
 - Service names in docker-compose: `orchestrator`, `market-agent`, `postgres`, `redis`
@@ -495,3 +495,43 @@ Was routing to non-existent research agent → error. Now routes to market agent
 - monitor tonight's 4:30 PM ET nightly run for `[name inheritance]` log lines
 - watch for fat-theme split proposals in `mi_audit_log` (query: "audit log" in Telegram)
 - Both containers: core/context.py (orchestrator system prompt)
+
+## Changes Made 2026-04-14 (second session)
+
+### Features Added / Bugs Fixed
+
+**1. Real-time ORB entry via Alpaca bar WebSocket** (`broker/bar_stream.py` NEW, `scheduler.py`, `agent.py`):
+Root cause of missed ORB entries: standalone ORB monitor cron at 9:32 AM ran before the 9:35 first-complete-bar EP scan. Pre-market HIGH alerts had no path to ORB entry.
+
+Architecture fix:
+- New `broker/bar_stream.py`: wraps `alpaca-py` `StockDataStream` (separate from `TradingStream`). `subscribe_ep_candidate(ticker)` registers a handler; `_handle_bar` fires on first bar close (9:30 ET), calls `process_new_alerts_live()` immediately.
+- `_ep_scan_job` (scheduler): pre-market HIGH alerts → `bar_stream.subscribe_ep_candidate()`; post-open new HIGHs (9:31+ scan) → `await _orb_monitor_job()` inline.
+- Removed standalone ORB cron (9:32). Added dedicated 9:31 EP scan (`ep_scan_open`). Added 9:35 `bar_stream_cleanup` cron (`unsubscribe_all()`).
+- `agent.py` startup: `asyncio.create_task(start_bar_stream())` alongside trade stream.
+
+Result: EP fires at 9:25 AM → ticker subscribed to bar stream → bar closes 9:30:59 → order placed at 9:31:00.
+
+**2. M&A hard filter** (`ep_detector.py`): Added `"mna"` as 4th Claude catalyst enum. M&A/tender offer/going-private → classified as `"mna"` → `is_mna = True` → hard skip before scoring. Expanded `_MNA_KEYWORDS` list: "definitive agreement", "tender offer", "going private", "taken private", "strategic transaction", "merger agreement", "to be acquired". Fixes AVNS-type buyouts slipping through as `"routine"` + big gap.
+
+**3. 11 AM re-entry cutoff** (`broker/order_manager.py`): `attempt_day1_reentry` now checks `datetime.now(_ET).hour >= 11` before placing a new limit buy. After 11 AM, closes the trade instead of re-entering.
+
+**4. Open intensity metric (not projected volume)** (`ep_detector.py`, `briefing.py`): Post-open RVOL extrapolated to full day is misleading (TVTX: 78x intensity but ~4x actual RVOL). Renamed to "open intensity": `intensity = raw_rvol * (390 / minutes_since_open)`. Used in `_score_ep()` as `vol_signal` when available (post-open scans). Briefing shows `RVOL: 2.0x (intensity 78x)`. Label change is intentionally honest — intensity ≠ projected daily volume.
+
+**5. ADV median fix for non-universe stocks** (`ep_detector.py`): `_compute_adv_from_polygon` was using `mean(volumes)`. RS engine uses `PERCENTILE_CONT(0.5)` (median). Fixed to `statistics.median(volumes)` for consistency.
+
+### Key Investigation (TVTX)
+Server logs confirmed TVTX RVOL accumulated gradually: 1.83x at 9:25, 1.88x at 9:30, 1.97x at 9:35, 2.01x at 9:40. First crossed threshold AT open, not pre-market. Bar stream would not have helped TVTX (wasn't a pre-market HIGH). New bar stream architecture helps stocks that ARE confirmed pre-market and need real-time ORB order placement.
+
+### Server Path Correction
+CLAUDE.md had wrong path `/home/Apollo/apollo_the_wise/` (capital A). Actual path: `/home/apollo/apollo_the_wise/` (lowercase). SSH user: `apollo`, not `root`.
+
+### Files Changed
+- `agents/market_intelligence/broker/bar_stream.py` — NEW: StockDataStream wrapper, subscribe/handle/cleanup
+- `agents/market_intelligence/scheduler.py` — removed ORB cron, added 9:31 scan + 9:35 cleanup, pre/post-open EP handling
+- `agents/market_intelligence/agent.py` — start_bar_stream in startup, stop_bar_stream in shutdown
+- `agents/market_intelligence/broker/order_manager.py` — 11 AM re-entry cutoff
+- `agents/market_intelligence/ep_detector.py` — mna enum + hard filter, open intensity metric, ADV median fix
+- `agents/market_intelligence/briefing.py` — intensity display in EP alert
+
+### Deploy Notes
+- market-agent only: broker/bar_stream.py, scheduler.py, agent.py, broker/order_manager.py, ep_detector.py, briefing.py
