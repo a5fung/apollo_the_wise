@@ -509,7 +509,7 @@ class TelegramChannel:
             "• Day 5: sell 1/3 regardless\n"
             "• After partial: stop floor moves to breakeven\n"
             "\n"
-            "_Full doc: EP\\_TRADING\\_RULES.md_"
+            "Full doc: EP_TRADING_RULES.md"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
