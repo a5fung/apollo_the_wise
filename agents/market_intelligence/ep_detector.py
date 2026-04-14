@@ -81,17 +81,21 @@ def _get_claude():
 
 
 async def _compute_adv_from_polygon(ticker: str, trade_date: date, days: int = 20) -> Optional[float]:
-    """Fetch recent daily bars from Polygon and compute average daily volume.
-    Used for EP candidates not in the 148-stock RS universe."""
+    """Fetch recent daily bars from Polygon and compute 20-day median daily volume.
+    Used for EP candidates not in the RS universe.
+    Uses median (not mean) — consistent with get_adv_from_daily_closes in db.py."""
     from_date = (trade_date - timedelta(days=days * 2)).strftime("%Y-%m-%d")  # fetch extra for weekends/holidays
     to_date = (trade_date - timedelta(days=1)).strftime("%Y-%m-%d")  # exclude today
     bars = await get_index_history(ticker, from_date, to_date)
-    volumes = [b["v"] for b in bars if "v" in b and b["v"] > 0]
+    volumes = sorted(b["v"] for b in bars if "v" in b and b["v"] > 0)
     if len(volumes) < 5:
         return None  # not enough data
-    # Use last `days` bars (or all if fewer)
-    recent = volumes[-days:]
-    return sum(recent) / len(recent)
+    recent = volumes[-days:] if len(volumes) > days else volumes
+    # Median: immune to single-day volume spikes that would inflate mean
+    mid = len(recent) // 2
+    if len(recent) % 2 == 1:
+        return float(recent[mid])
+    return float((recent[mid - 1] + recent[mid]) / 2)
 
 
 _CATALYST_TOOL = {
