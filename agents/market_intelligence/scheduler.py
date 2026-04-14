@@ -400,12 +400,14 @@ async def _morning_briefing_job():
 
 async def _ep_scan_job():
     """Run every 5 minutes 7:00–10:00 AM ET. Scan for EP gaps; HIGH alerts sent immediately.
-    Post-open (>= 9:31): triggers ORB entry inline for any new HIGH alerts found."""
+
+    Pre-market new HIGHs: subscribed to bar stream for real-time first-bar ORB entry.
+    Post-open new HIGHs: bar already closed, ORB entry triggered inline immediately."""
     global _ep_scans_completed_today
     logger.info("EP scan starting...")
     try:
-        # Snapshot already-alerted tickers BEFORE scan (scan inserts new rows)
         from agents.market_intelligence.collector import et_today, _ET
+        from agents.market_intelligence.broker import bar_stream
         today = et_today()
         from agents.market_intelligence.db import get_pool
         pool = await get_pool()
@@ -420,12 +422,15 @@ async def _ep_scan_job():
         _ep_scans_completed_today += 1
         high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
         logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
-        new_highs = []
+
+        now_et = datetime.now(_ET)
+        market_open = now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 31)
+        new_highs_post_open = []
+
         for ep in eps:
             if ep.get("score_tier") == "HIGH" and ep["ticker"] not in already_alerted:
                 await send_ep_alert(ep)
                 already_alerted.add(ep["ticker"])
-                new_highs.append(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
                 try:
                     from agents.market_intelligence.db import log_audit_event
@@ -437,12 +442,15 @@ async def _ep_scan_job():
                 except Exception:
                     pass
 
-        # Post-open: if new HIGHs found, trigger ORB entry immediately — no cron lag.
-        # Pre-market HIGHs are handled by the dedicated 9:31 ORB job (_orb_first_bar_job).
-        now_et = datetime.now(_ET)
-        market_open = now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 31)
-        if market_open and new_highs:
-            logger.info(f"Post-open EP scan: {len(new_highs)} new HIGHs → triggering ORB entry now")
+                if market_open:
+                    # First bar already closed — trigger ORB inline, no bar stream needed
+                    new_highs_post_open.append(ep["ticker"])
+                else:
+                    # Pre-market — subscribe to bar stream; ORB fires when first bar closes
+                    bar_stream.subscribe_ep_candidate(ep["ticker"])
+
+        if new_highs_post_open:
+            logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry inline")
             await _orb_monitor_job()
 
     except Exception as e:
@@ -708,15 +716,22 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Start EP scanning at 7:00 AM ET (4:00 AM PT)
+    # Reset bar stream daily state + start EP scanning at 7:00 AM ET
+    async def _ep_scan_start_job():
+        from agents.market_intelligence.broker import bar_stream
+        bar_stream.reset_daily_state()
+        await _start_ep_scanning()
+
     _scheduler.add_job(
-        _start_ep_scanning,
+        _ep_scan_start_job,
         CronTrigger(hour=7, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_start",
         replace_existing=True,
     )
 
-    # EP scan: every 5 minutes 7:00–10:00 AM ET (pre-market candidates)
+    # EP scan: every 5 minutes 7:00–10:00 AM ET
+    # Pre-market HIGHs → bar stream subscription (ORB fires on first bar close)
+    # Post-open HIGHs  → ORB entry inline immediately after scan
     _scheduler.add_job(
         _ep_scan_job,
         CronTrigger(
@@ -729,8 +744,7 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # EP scan at exactly 9:31 AM — first complete 1-min bar (9:30–9:31) just closed.
-    # Detects at-open volume upgrades; if any new HIGHs found, ORB entry fires inline.
+    # EP scan at 9:31 AM — first complete bar just closed, catches at-open volume upgrades
     _scheduler.add_job(
         _ep_scan_job,
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
@@ -738,13 +752,15 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # First-bar ORB job: 9:31 AM — process pre-market HIGH alerts now that bar is closed.
-    # Pre-market HIGHs are skipped by the 9:31 EP scan (already_today dedup), so they
-    # need their own trigger. Inline ORB entry in _ep_scan_job handles at-open upgrades.
+    # Unsubscribe bar stream at 9:35 AM — ORB window closed
+    async def _bar_stream_cleanup():
+        from agents.market_intelligence.broker import bar_stream
+        bar_stream.unsubscribe_all()
+
     _scheduler.add_job(
-        _orb_monitor_job,
-        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
-        id="orb_first_bar",
+        _bar_stream_cleanup,
+        CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="bar_stream_cleanup",
         replace_existing=True,
     )
 

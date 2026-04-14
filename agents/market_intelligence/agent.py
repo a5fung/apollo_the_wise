@@ -1787,9 +1787,11 @@ async def startup():
         logger.warning(f"Failed to load ticker overrides: {e}")
     start_scheduler()
     asyncio.create_task(check_missed_jobs())  # Run in background — data pull can take 30+ min
-    # Start WebSocket trade stream for real-time fill/stop detection
+    # Start WebSocket streams
     from agents.market_intelligence.broker.trade_stream import start_trade_stream
-    asyncio.create_task(start_trade_stream())
+    from agents.market_intelligence.broker.bar_stream import start_bar_stream
+    asyncio.create_task(start_trade_stream())   # fill/stop detection
+    asyncio.create_task(start_bar_stream())     # real-time first-bar ORB entry
     logger.info("Market Intelligence Agent ready on port 8006")
     asyncio.create_task(send_telegram_message("🔄 Market agent online"))
 
@@ -1797,5 +1799,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     from agents.market_intelligence.broker.trade_stream import stop_trade_stream
+    from agents.market_intelligence.broker.bar_stream import stop_bar_stream
     await stop_trade_stream()
+    await stop_bar_stream()
     stop_scheduler()
