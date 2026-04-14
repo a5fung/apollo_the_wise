@@ -1795,6 +1795,17 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         for raw in new_raw
     ])
 
+    # Phase 1: Name inheritance — if a newly discovered theme's tickers closely match a
+    # recently retired theme (Jaccard >= 0.4), inherit the old name so themes don't drift
+    # after a brief retirement. _get_theme_history already implements the Jaccard fallback.
+    for nt in new_themes:
+        history = await _get_theme_history(nt["name"], days=30, tickers=list(nt.get("tickers") or []))
+        if history:
+            old_name = history[0]["name"]
+            if old_name != nt["name"]:
+                logger.info(f"[name inheritance] '{nt['name']}' → '{old_name}' (Jaccard match with retired theme)")
+                nt["name"] = old_name
+
     # Log new themes + write to audit log
     for nt in new_themes:
         tickers = list(nt.get("tickers") or [])
