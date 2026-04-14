@@ -448,6 +448,8 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS parent_theme TEXT;
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides

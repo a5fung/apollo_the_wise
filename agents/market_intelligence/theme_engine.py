@@ -412,16 +412,18 @@ async def _save_themes(themes: list[dict]) -> None:
         # Upsert each theme
         for t in themes:
             await conn.execute("""
-                INSERT INTO mi_themes (theme_date, name, stage, score, rs_avg, description, tickers)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO mi_themes (theme_date, name, stage, score, rs_avg, description, tickers, parent_theme)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (theme_date, name) DO UPDATE SET
                     stage = EXCLUDED.stage,
                     score = EXCLUDED.score,
                     rs_avg = EXCLUDED.rs_avg,
                     description = EXCLUDED.description,
-                    tickers = EXCLUDED.tickers
+                    tickers = EXCLUDED.tickers,
+                    parent_theme = EXCLUDED.parent_theme
             """, t["theme_date"], t["name"], t["stage"],
-                t["score"], t.get("rs_avg"), t["description"], t["tickers"])
+                t["score"], t.get("rs_avg"), t["description"], t["tickers"],
+                t.get("parent_theme"))
 
         # Remove themes that were merged/retired — not in the final list
         final_names = [t["name"] for t in themes]
@@ -1041,6 +1043,178 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
         return "Advisor unavailable — use your best judgment."
 
 
+_SPLIT_TOOL = {
+    "name": "propose_split",
+    "description": (
+        "Propose splitting one coherent sub-group out of a large theme, OR decline. "
+        "Set split=null if the theme is already coherent and no clean sub-group exists."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "split": {
+                "description": "null if no split warranted; otherwise the sub-theme to carve out.",
+                "oneOf": [
+                    {"type": "null"},
+                    {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Sub-theme name"},
+                            "tickers": {"type": "array", "items": {"type": "string"}},
+                            "thesis": {"type": "string", "description": "1-2 sentence thesis"},
+                        },
+                        "required": ["name", "tickers", "thesis"],
+                    },
+                ],
+            }
+        },
+        "required": ["split"],
+    },
+}
+
+# Minimum stocks for a valid sub-theme split
+_SPLIT_MIN_STOCKS = 3
+# Maximum stocks that can be split off at once (keeps the parent coherent)
+_SPLIT_MAX_STOCKS = 8
+# Theme must exceed this size to be eligible for splitting
+MAX_THEME_STOCKS = 20
+
+
+async def _split_fat_theme(
+    theme: dict,
+    stocks_by_ticker: dict[str, dict],
+    advisor_calls_used: int,
+) -> tuple[dict | None, int]:
+    """
+    Ask Sonnet (with optional Opus escalation) whether a fat theme (>MAX_THEME_STOCKS)
+    has a coherent sub-group worth splitting off.
+
+    Returns (sub_theme_dict_or_None, total_advisor_calls_used).
+    The sub_theme dict has keys: name, tickers, thesis, parent_theme.
+    Failures return (None, advisor_calls_used) — never block the run.
+    """
+    from agents.market_intelligence.universe import TICKER_DESC
+
+    tickers = list(theme.get("tickers") or [])
+    name = theme["name"]
+
+    stock_lines = []
+    for tk in sorted(tickers):
+        desc = TICKER_DESC.get(tk, "")
+        rs_val = (stocks_by_ticker.get(tk) or {}).get("rs_composite")
+        rs_str = f" RS {int(rs_val)}" if rs_val is not None else ""
+        stock_lines.append(f"  {tk}{rs_str}: {desc[:100]}")
+
+    prompt = f"""You are analyzing a theme that has grown too broad ({len(tickers)} stocks).
+Your job: identify ONE coherent sub-group to split off as a more specific sub-theme.
+
+Parent theme: {name}
+Stocks:
+{chr(10).join(stock_lines)}
+
+SPLIT RULES:
+- Propose at most ONE split
+- Sub-group must have {_SPLIT_MIN_STOCKS}–{_SPLIT_MAX_STOCKS} stocks, all ideally RS >= 70
+- Must represent a TIGHTER sub-industry (e.g. "compound semi wafer fabs" within a broad photonic semi theme)
+- Must NOT split by market cap, geography, or vague similarity
+- Parent theme must remain coherent after the split (at least 5 stocks remaining)
+- If the theme is already tight/coherent → propose split=null
+
+Self-check before calling propose_split WITHOUT advisor:
+□ Is the sub-group a clearly distinct, named sub-industry?
+□ Does the parent remain coherent after the split?
+□ Would a momentum trader track these separately?
+If any answer is "no" or "unsure" → call consult_advisor first."""
+
+    client = _get_anthropic_client()
+    messages = [{"role": "user", "content": prompt}]
+    advisor_calls = advisor_calls_used
+
+    try:
+        while True:
+            response = await client.messages.create(
+                model=THEME_MODEL,
+                max_tokens=800,
+                tools=[_SPLIT_TOOL, _ADVISOR_TOOL],
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
+
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            if not tool_uses:
+                # No tool called — treat as "no split"
+                logger.info(f"[fat-theme split] '{name}': Sonnet returned no tool call → no split")
+                return None, advisor_calls
+
+            messages.append({"role": "assistant", "content": response.content})
+            tool_results = []
+
+            for block in tool_uses:
+                if block.name == "propose_split":
+                    split = block.input.get("split")
+                    if not split:
+                        logger.info(f"[fat-theme split] '{name}': Sonnet declined split")
+                        await log_audit_event(
+                            "fat_theme_no_split",
+                            summary=f"No split: {name} ({len(tickers)} stocks)",
+                            detail="Sonnet found theme already coherent.",
+                        )
+                        return None, advisor_calls
+
+                    sub_tickers = [t.upper() for t in split.get("tickers", [])]
+                    # Validate: tickers must be in parent, count in range
+                    valid_tickers = [t for t in sub_tickers if t in tickers]
+                    if len(valid_tickers) < _SPLIT_MIN_STOCKS:
+                        logger.warning(f"[fat-theme split] '{name}': proposed split has too few valid tickers ({valid_tickers})")
+                        return None, advisor_calls
+
+                    sub_theme = {
+                        "name": split["name"],
+                        "tickers": valid_tickers,
+                        "thesis": split.get("thesis", ""),
+                        "parent_theme": name,
+                    }
+                    logger.info(
+                        f"[fat-theme split] '{name}' → sub-theme '{sub_theme['name']}' "
+                        f"({len(valid_tickers)} stocks: {valid_tickers})"
+                    )
+                    await log_audit_event(
+                        "theme_split",
+                        summary=f"Split: '{sub_theme['name']}' from '{name}' ({len(valid_tickers)} stocks)",
+                        detail=f"Tickers: {valid_tickers}\nThesis: {sub_theme['thesis']}",
+                    )
+                    return sub_theme, advisor_calls
+
+                elif block.name == "consult_advisor":
+                    question = block.input.get("question", "")
+                    context_str = block.input.get("context", "")
+                    if advisor_calls >= _MAX_ADVISOR_CALLS:
+                        advice = "Advisor call limit reached — use your best judgment."
+                        logger.warning(f"[fat-theme split] advisor limit reached for '{name}'")
+                    else:
+                        advisor_calls += 1
+                        logger.info(f"[fat-theme split] advisor call {advisor_calls}/{_MAX_ADVISOR_CALLS} for '{name}'")
+                        advice = await _call_advisor(question, context_str, caller="split")
+                        logger.info(f"[fat-theme split] advisor verdict: {advice[:300]}")
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": advice,
+                    })
+
+            if tool_results:
+                messages.append({"role": "user", "content": tool_results})
+            else:
+                break
+
+    except Exception as e:
+        logger.warning(f"[fat-theme split] '{name}': failed ({e}) — skipping split")
+
+    return None, advisor_calls
+
+
 def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
     """
     Remove tickers whose sector is a lone outlier vs the rest of the theme.
@@ -1401,6 +1575,7 @@ def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
     protected_names: set[str] | None = None,
+    sub_theme_parents: dict[str, str] | None = None,
 ) -> list[dict]:
     """
     Two-pass theme consolidation:
@@ -1410,6 +1585,9 @@ def _merge_overlapping_themes(
     protected_names: existing theme names that must not be absorbed by new clusters.
     When a protected theme would be absorbed, the overlapping stocks are stripped from
     the new cluster instead — the existing theme keeps its identity.
+
+    sub_theme_parents: mapping of sub-theme name → parent theme name. A sub-theme is
+    allowed to overlap with its parent — never merged back in.
     """
     if len(themes) <= 1:
         return themes
@@ -1443,6 +1621,14 @@ def _merge_overlapping_themes(
             overlap_ratio = len(intersection) / smaller_size if smaller_size else 0
 
             if jaccard >= 0.6 or is_subset or overlap_ratio >= 0.6:
+                # Sub-theme coexistence: a sub-theme is allowed to overlap with its parent
+                j_is_subtopic_of_i = (
+                    sub_theme_parents
+                    and sub_theme_parents.get(themes[j]["name"]) == themes[i]["name"]
+                )
+                if j_is_subtopic_of_i:
+                    continue  # coexistence — never re-absorb a sub-theme into its parent
+
                 j_protected = protected_names and themes[j]["name"] in protected_names
                 if j_protected:
                     # Protected existing theme (j) would be absorbed by new cluster (i).
@@ -1478,6 +1664,8 @@ def _merge_overlapping_themes(
     for idx, t in enumerate(after_overlap):
         if protected_names and t["name"] in protected_names:
             continue  # never absorb an existing theme in pass 1.5
+        if sub_theme_parents and t["name"] in sub_theme_parents:
+            continue  # never absorb a sub-theme in pass 1.5
         tickers = set(t.get("tickers") or [])
         if len(tickers) > 3 or not tickers:
             continue
@@ -1843,9 +2031,78 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     new_themes = _strip_commodity_contradictions(new_themes)
     # Pass existing theme names so they can't be absorbed by new clusters
     existing_names: set[str] = {t["name"] for t in updated_themes}
-    all_themes = _merge_overlapping_themes(updated_themes + new_themes, stocks_by_ticker, protected_names=existing_names)
+
+    # Load sub-theme parent relationships from yesterday's DB snapshot so sub-themes
+    # created in prior runs are still exempt from re-absorption by their parent.
+    prior_sub_parents: dict[str, str] = {}
+    for t in existing:
+        pt = t.get("parent_theme")
+        if pt:
+            prior_sub_parents[t["name"]] = pt
+
+    all_themes = _merge_overlapping_themes(
+        updated_themes + new_themes,
+        stocks_by_ticker,
+        protected_names=existing_names,
+        sub_theme_parents=prior_sub_parents,
+    )
     all_themes.sort(key=lambda t: t["score"], reverse=True)
     all_themes = _enforce_max_themes_per_stock(all_themes)
+
+    # --- Step 4b: Fat-theme sub-theme splitting ---
+    # For themes that grew too broad, ask Sonnet (+ optional Opus) to split off one sub-group.
+    advisor_calls_used = 0
+    fat_themes = [
+        t for t in all_themes
+        if len(t.get("tickers") or []) > MAX_THEME_STOCKS
+        and t.get("stage") not in ("Fading",)
+        and not t.get("parent_theme")  # never split a sub-theme further
+    ]
+    if fat_themes:
+        logger.info(f"[fat-theme split] {len(fat_themes)} fat theme(s) eligible for splitting")
+
+    new_sub_themes: list[dict] = []
+    this_run_sub_parents: dict[str, str] = {}
+
+    for fat in fat_themes:
+        sub_raw, advisor_calls_used = await _split_fat_theme(
+            fat, stocks_by_ticker, advisor_calls_used
+        )
+        if sub_raw is None:
+            continue
+
+        valid_tickers = [tk for tk in sub_raw["tickers"] if tk in (fat.get("tickers") or [])]
+        if len(valid_tickers) < _SPLIT_MIN_STOCKS:
+            continue
+
+        # Remove sub-group from parent
+        fat["tickers"] = [tk for tk in (fat.get("tickers") or []) if tk not in valid_tickers]
+
+        # Score and stage the sub-theme
+        sub_scored = await _score_new_theme(
+            {"name": sub_raw["name"], "tickers": valid_tickers, "thesis": sub_raw["thesis"]},
+            stocks_by_ticker,
+            today,
+        )
+        sub_scored["parent_theme"] = fat["name"]
+        new_sub_themes.append(sub_scored)
+        this_run_sub_parents[sub_raw["name"]] = fat["name"]
+        logger.info(
+            f"[fat-theme split] applied: '{sub_raw['name']}' ({len(valid_tickers)} stocks) "
+            f"split from '{fat['name']}'"
+        )
+
+    if new_sub_themes:
+        # Merge sub-themes into all_themes, protecting them from re-absorption
+        combined_sub_parents = {**prior_sub_parents, **this_run_sub_parents}
+        all_themes = _merge_overlapping_themes(
+            all_themes + new_sub_themes,
+            stocks_by_ticker,
+            protected_names=existing_names | set(this_run_sub_parents.keys()),
+            sub_theme_parents=combined_sub_parents,
+        )
+        all_themes.sort(key=lambda t: t["score"], reverse=True)
+        all_themes = _enforce_max_themes_per_stock(all_themes)
 
     if all_themes:
         await _save_themes(all_themes)
