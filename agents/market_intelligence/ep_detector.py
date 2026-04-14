@@ -250,6 +250,7 @@ def _score_ep(
     regime_multiplier: float,
     vol_percentile: float = 50.0,
     prior_3m_change: float | None = None,
+    projected_vol_multiple: float | None = None,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
@@ -257,10 +258,13 @@ def _score_ep(
 
     Weights emphasize the two strongest EP signals: gap size + catalyst quality.
     A 20%+ game-changer gap should score ≥70 on its own before bonuses.
+
+    projected_vol_multiple: post-open only — current_vol / adv * (390 / min_since_open).
+    Used for volume scoring instead of raw RVOL when available; raw RVOL is used pre-market.
     """
     breakdown = {}
 
-    # Gap magnitude (max 25) — scaled: bigger gaps = stronger signal
+    # Gap magnitude (max 15) — scaled: bigger gaps = stronger signal
     if gap_pct >= 20:
         breakdown["gap"] = 25
     elif gap_pct >= 15:
@@ -272,13 +276,19 @@ def _score_ep(
     else:
         breakdown["gap"] = 0
 
-    # Relative volume (max 15)
-    if rel_volume >= 5:
+    # Volume intensity (max 15)
+    # Post-open: use projected daily multiple (pace-normalised) — 10x projected at 9:35
+    # is Godzilla volume, very different from 10x raw at 2pm.
+    # Pre-market: use raw RVOL — no intraday projection possible.
+    vol_signal = projected_vol_multiple if projected_vol_multiple is not None else rel_volume
+    if vol_signal >= 10:
         breakdown["rel_volume"] = 15
-    elif rel_volume >= 2:
+    elif vol_signal >= 5:
+        breakdown["rel_volume"] = 12
+    elif vol_signal >= 3:
         breakdown["rel_volume"] = 10
-    elif rel_volume >= 1:
-        breakdown["rel_volume"] = 5
+    elif vol_signal >= 2:
+        breakdown["rel_volume"] = 7
     else:
         breakdown["rel_volume"] = 0
 
@@ -376,6 +386,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     logger.info(f"EP scan: regime={regime_label}, threshold={ep_threshold}")
 
+    # Minutes since market open — used for projected volume calculation post-open
+    from agents.market_intelligence.collector import _ET
+    now_et = datetime.now(_ET)
+    _SESSION_MINUTES = 390  # 6.5-hour regular session
+    if now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 30):
+        _minutes_since_open = max(1, (now_et.hour - 9) * 60 + (now_et.minute - 30))
+    else:
+        _minutes_since_open = None  # pre-market — no projection
+
     # Fetch all snapshots (1 Polygon call)
     snapshots = await get_snapshot_all()
     if not snapshots:
@@ -422,6 +441,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if not adv:
                 adv = snap.get("prevDay", {}).get("v") or None
 
+            raw_rvol = round((today_volume / adv), 2) if adv and adv > 0 else None
+            # Projected daily multiple: if this pace holds all session, what's total RVOL?
+            # Only meaningful post-open (day.v reflects regular session volume).
+            projected = None
+            if raw_rvol is not None and _minutes_since_open and today_volume > 0:
+                projected = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
+
             candidates.append({
                 "ticker": ticker,
                 "prev_close": prev_close,
@@ -430,7 +456,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "today_volume": today_volume,
                 "adv": adv,
                 "adv_source": adv_source,
-                "rel_volume": round((today_volume / adv), 2) if adv and adv > 0 else None,
+                "rel_volume": raw_rvol,
+                "projected_vol_multiple": projected,
             })
         except Exception:
             continue
@@ -474,6 +501,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 c["adv"] = computed_adv
                 c["adv_source"] = "polygon_20d"
                 c["rel_volume"] = round(c["today_volume"] / computed_adv, 2) if computed_adv > 0 else None
+                if c["rel_volume"] and _minutes_since_open:
+                    c["projected_vol_multiple"] = round(c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
                 logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
 
     # Batch-fetch 5-day-ago closes for extension check (already up 50%+ before today's gap)
@@ -657,6 +686,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             profile=profile,
             analyst_upgrades=upgrades_30d,
             regime_multiplier=regime_multiplier * confidence_multiplier,
+            projected_vol_multiple=c.get("projected_vol_multiple"),
             vol_percentile=vol_pct,
             prior_3m_change=prior_3m_change,
         )
@@ -715,7 +745,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "vol_percentile": vol_pct,
         })
 
-        logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% score={ep_score} tier={tier}")
+        proj = c.get("projected_vol_multiple")
+        vol_str = f"rvol={rel_volume:.1f}x proj={proj:.0f}x" if proj else f"rvol={rel_volume:.1f}x"
+        logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% {vol_str} score={ep_score} tier={tier}")
 
     results.sort(key=lambda r: r["ep_score"], reverse=True)
 
