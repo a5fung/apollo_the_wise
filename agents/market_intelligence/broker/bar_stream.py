@@ -52,8 +52,9 @@ async def start_bar_stream() -> None:
         return
 
     from alpaca.data.live import StockDataStream
+    from alpaca.data.enums import DataFeed
     paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
-    _data_stream = StockDataStream(api_key, secret_key, feed="iex")
+    _data_stream = StockDataStream(api_key, secret_key, feed=DataFeed.IEX)
 
     _stream_task = asyncio.create_task(_run_stream())
     mode = "PAPER" if paper else "LIVE"
