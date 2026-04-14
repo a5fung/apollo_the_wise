@@ -452,6 +452,12 @@ async def _ep_scan_job():
         if new_highs_post_open:
             logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry inline")
             await _orb_monitor_job()
+        elif market_open and now_et.minute == 31:
+            # 9:31 open scan: always run ORB as fallback for pre-market HIGHs
+            # bar_stream handles them in real-time, but if stream was unhealthy or missed
+            # a subscription, process_new_alerts_live skips already-processed tickers safely.
+            logger.info("9:31 ORB fallback: checking for unprocessed pre-market HIGHs")
+            await _orb_monitor_job()
 
     except Exception as e:
         import traceback

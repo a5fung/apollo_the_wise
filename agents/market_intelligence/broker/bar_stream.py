@@ -81,6 +81,16 @@ async def _run_stream() -> None:
     while retries < MAX_RETRIES:
         try:
             _stream_healthy = True
+            if retries > 0 and _subscribed:
+                # Re-register handlers after reconnect — server-side subscriptions are
+                # lost on disconnect. The SDK may re-send them, but we call explicitly
+                # to be safe. Idempotent: re-registering same handler is fine.
+                logger.info(f"Bar stream reconnect: re-subscribing {len(_subscribed)} tickers: {sorted(_subscribed)}")
+                for ticker in list(_subscribed):
+                    try:
+                        _data_stream.subscribe_bars(_handle_bar, ticker)
+                    except Exception as sub_e:
+                        logger.warning(f"Bar stream: re-subscribe {ticker} failed: {sub_e}")
             logger.info("Bar stream connecting...")
             await _data_stream._run_forever()
         except asyncio.CancelledError:
@@ -90,6 +100,8 @@ async def _run_stream() -> None:
             _stream_healthy = False
             retries += 1
             logger.error(f"Bar stream died: {e} (retry {retries}/{MAX_RETRIES})")
+            if _subscribed:
+                logger.warning(f"Bar stream died with active subscriptions: {sorted(_subscribed)}")
             if retries < MAX_RETRIES:
                 await asyncio.sleep(min(5 * retries, 30))
 

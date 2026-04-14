@@ -364,6 +364,7 @@ def _score_ep(
     # Conviction floor: massive gap + quality catalyst = high-conviction regardless
     # of secondary factors. The gap itself is evidence of institutional conviction.
     # 20%+ strong = same floor as 15%+ game_changer (market voted with its feet)
+    # 10-15% game_changer: floor 60 → MODERATE at minimum; fires HIGH in Bull w/ Gemini
     if gap_pct >= 15 and catalyst_quality == "game_changer":
         raw_score = max(raw_score, 80)
         breakdown["conviction_floor"] = max(0, 80 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
@@ -373,6 +374,9 @@ def _score_ep(
     elif gap_pct >= 15 and catalyst_quality == "strong":
         raw_score = max(raw_score, 70)
         breakdown["conviction_floor"] = max(0, 70 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
+    elif gap_pct >= 10 and catalyst_quality == "game_changer":
+        raw_score = max(raw_score, 60)
+        breakdown["conviction_floor"] = max(0, 60 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
 
     final_score = min(raw_score * regime_multiplier, 100)
     return round(final_score, 1), breakdown

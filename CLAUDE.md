@@ -535,3 +535,35 @@ CLAUDE.md had wrong path `/home/Apollo/apollo_the_wise/` (capital A). Actual pat
 
 ### Deploy Notes
 - market-agent only: broker/bar_stream.py, scheduler.py, agent.py, broker/order_manager.py, ep_detector.py, briefing.py
+
+## Changes Made 2026-04-14 (third session)
+
+### Bugs Fixed / Features Added
+
+**1. 9:31 ORB fallback for pre-market HIGHs** (`scheduler.py`):
+The 9:31 `ep_scan_open` job only called `_orb_monitor_job()` when NEW post-open HIGHs were detected. Pre-market HIGHs (already in `mi_ep_alerts`, in `already_alerted` set) were skipped even if the bar stream missed them. Fixed: when `now_et.minute == 31` and no post-open new HIGHs detected, always call `_orb_monitor_job()` as a fallback. `process_new_alerts_live` checks `mi_live_trades` for existing entries → safe, idempotent.
+
+**2. Bar stream reconnect re-subscription** (`broker/bar_stream.py`):
+On reconnect after WebSocket drop, server-side subscriptions are lost. Added explicit `subscribe_bars` re-call for all tickers in `_subscribed` on each retry. Also added warning log when stream dies with active subscriptions so production logs make the failure visible.
+
+**3. Scoring dead zone eliminated** (`ep_detector.py`):
+10–14.9% gap + `game_changer` catalyst scored ~40–48pts (below MODERATE threshold 50) — a real EP like BE at 13.4% was completely invisible until it crossed 15%. Root cause: conviction floor only kicked in at `gap >= 15%`. Fix: added new floor tier `gap >= 10% + game_changer → floor 60 (MODERATE)`. Impact by regime:
+- Bull + Gemini: 60 × 1.2 × 1.2 = 86.4 → HIGH ✓
+- Bull only: 60 × 1.2 = 72 → HIGH ✓
+- Choppy/Correcting/Crisis + Gemini: 60 × 1.2 = 72 → MODERATE (morning briefing) ✓
+- Crisis no Gemini: 60 → MODERATE ✓
+Previously these stocks were invisible (scored 0-48 → skip).
+
+**4. Critical finding: paper trading has never placed an order** (investigation only, no fix needed):
+Queried `mi_live_trades` — only 2 records, both `skipped`:
+- TH (2026-04-01): HIGH 96pts, 35% gap → `no_orb_bar` (first bar unavailable on IEX feed — one-time issue)
+- EEIQ (2026-03-30): HIGH 96pts, 54% gap → `adv_too_low ($70,931)` — correct filter, EEIQ had $70K ADV
+The RVOL pre-market bug (from the same session) explains why most pre-market EPs like BE never reached `mi_live_trades` at all — they were filtered before scoring. After fixes from session 2 + 3, the full ORB entry path should finally execute.
+
+### Files Changed
+- `agents/market_intelligence/ep_detector.py` — new conviction floor tier: `gap >= 10% + game_changer → floor 60`
+- `agents/market_intelligence/scheduler.py` — 9:31 ORB fallback always fires when `now_et.minute == 31`
+- `agents/market_intelligence/broker/bar_stream.py` — reconnect re-subscription + active-subscription warning log
+
+### Deploy Notes
+- market-agent only: ep_detector.py, scheduler.py, broker/bar_stream.py
