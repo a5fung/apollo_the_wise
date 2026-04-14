@@ -1770,11 +1770,31 @@ app = _agent.app
 
 @app.on_event("startup")
 async def startup():
+    import os
+    from logging.handlers import RotatingFileHandler
+    _fmt = logging.Formatter(
+        "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    # Persist logs to host-mounted volume so rebuilds don't lose history
+    log_dir = "/app/logs"
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+        _fh = RotatingFileHandler(
+            f"{log_dir}/market-agent.log",
+            maxBytes=50 * 1024 * 1024,   # 50 MB per file
+            backupCount=10,               # 500 MB total, ~weeks of history
+        )
+        _fh.setFormatter(_fmt)
+        logging.getLogger().addHandler(_fh)
+        logging.getLogger(__name__).info(f"File logging started: {log_dir}/market-agent.log")
+    except Exception as _e:
+        logging.getLogger(__name__).warning(f"Could not start file logging: {_e}")
     await initialize_schema()
     # Load description overrides from DB into in-memory TICKER_DESC
     try:

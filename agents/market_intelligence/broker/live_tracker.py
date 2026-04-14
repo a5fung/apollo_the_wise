@@ -158,6 +158,14 @@ async def _submit_orb_trade(
             """, trade_id)
         order = await submit_entry(trade_id)
         if order:
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "orb_order_placed",
+                    f"{ticker} entry=${order_spec['entry_price']:.2f} stop=${order_spec['stop_loss_price']:.2f} shares={order_spec['shares']} risk=${order_spec['risk_dollars']:.0f} trade_id={trade_id}",
+                )
+            except Exception:
+                pass
             await send_telegram_message(
                 f"📊 *Paper trade auto-entered:* {ticker}\n"
                 f"Entry: ${order_spec['entry_price']:.2f} | Stop: ${order_spec['stop_loss_price']:.2f}\n"
@@ -166,6 +174,11 @@ async def _submit_orb_trade(
             return {"ticker": ticker, "action": "auto_entered", "trade_id": trade_id}
         else:
             logger.error(f"submit_entry returned None for {ticker} (trade_id={trade_id}) — order placement failed, check order_failed status in DB")
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_order_failed", f"{ticker} — submit_entry returned None (trade_id={trade_id}), check mi_live_trades.skip_reason")
+            except Exception:
+                pass
             await send_telegram_message(f"⚠️ *Paper auto-enter failed:* {ticker} — check logs (trade_id={trade_id})")
             return {"ticker": ticker, "action": "auto_enter_failed"}
     else:
@@ -215,6 +228,11 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         return []
 
     logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts to process: {[a['ticker'] for a in alerts]}")
+    try:
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event("orb_triggered", f"[{trigger}] {len(alerts)} alerts: {[a['ticker'] for a in alerts]}")
+    except Exception:
+        pass
 
     # Get regime
     async with pool.acquire() as conn:
@@ -244,6 +262,12 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         passed, skip_reason = await check_filters(ticker, today)
         if not passed:
             await _insert_skipped_trade(ticker, today, alert, regime_record, skip_reason)
+            logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
+            except Exception:
+                pass
             results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
             continue
 
@@ -254,10 +278,20 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         orb_bar = await alpaca.get_first_bar(ticker, today)
         if not orb_bar:
             logger.warning(f"ORB bar not available yet for {ticker} [{trigger}] — queuing for retry")
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_bar_miss", f"{ticker} [{trigger}] attempt 1 — bar not available, queuing retry")
+            except Exception:
+                pass
             pending_orb.append((alert, atr_14))
             results.append({"ticker": ticker, "action": "pending_orb"})
             continue
 
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("orb_bar_fetched", f"{ticker} [{trigger}] O={orb_bar['open']:.2f} H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} range={orb_bar['high']-orb_bar['low']:.2f}")
+        except Exception:
+            pass
         result = await _submit_orb_trade(alert, orb_bar, atr_14, today, regime_record, pool)
         results.append(result)
 
@@ -273,8 +307,19 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
             ticker = alert["ticker"]
             orb_bar = await alpaca.get_first_bar(ticker, today)
             if not orb_bar:
+                logger.warning(f"ORB bar still unavailable for {ticker} [{trigger}] (retry {retry}/{MAX_ORB_RETRIES})")
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event("orb_bar_miss", f"{ticker} [{trigger}] retry {retry}/{MAX_ORB_RETRIES} — still no bar")
+                except Exception:
+                    pass
                 still_pending.append((alert, atr_14))
                 continue
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_bar_fetched", f"{ticker} [{trigger}] retry {retry} O={orb_bar['open']:.2f} H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} range={orb_bar['high']-orb_bar['low']:.2f}")
+            except Exception:
+                pass
             result = await _submit_orb_trade(alert, orb_bar, atr_14, today, regime_record, pool)
             # Remove the pending_orb placeholder from results
             results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
@@ -288,6 +333,11 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
         results.append({"ticker": ticker, "action": "skipped", "reason": "No ORB bar"})
         logger.warning(f"No ORB bar for {ticker} after {MAX_ORB_RETRIES} retries")
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("orb_no_bar", f"{ticker} — bar never available after {MAX_ORB_RETRIES} retries, trade skipped")
+        except Exception:
+            pass
 
     if results:
         entered = sum(1 for r in results if r.get("action") in ("auto_entered", "proposed"))

@@ -190,6 +190,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - /home/apollo/apollo_the_wise/logs:/app/logs  # persists across rebuilds
     restart: always
     logging:
       driver: "json-file"
