@@ -263,8 +263,10 @@ def _score_ep(
     Weights emphasize the two strongest EP signals: gap size + catalyst quality.
     A 20%+ game-changer gap should score ≥70 on its own before bonuses.
 
-    projected_vol_multiple: post-open only — current_vol / adv * (390 / min_since_open).
-    Used for volume scoring instead of raw RVOL when available; raw RVOL is used pre-market.
+    projected_vol_multiple: open intensity — raw_rvol * (390 / min_since_open).
+    Measures how many times above the normal rate-for-this-time the stock is trading.
+    Linear extrapolation overstates final daily RVOL (opening minutes are always dense),
+    but correctly rewards early institutional conviction. Pre-market: raw RVOL used instead.
     """
     breakdown = {}
 
@@ -446,11 +448,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 adv = snap.get("prevDay", {}).get("v") or None
 
             raw_rvol = round((today_volume / adv), 2) if adv and adv > 0 else None
-            # Projected daily multiple: if this pace holds all session, what's total RVOL?
-            # Only meaningful post-open (day.v reflects regular session volume).
-            projected = None
+            # Open intensity: current_vol / expected_vol_by_now = raw_rvol * (390 / min_elapsed)
+            # Measures how many times above the *normal rate for this time* the stock is trading.
+            # Linear — overstates final daily RVOL (opening minutes are always dense), but
+            # correctly captures institutional conviction intensity at the moment of the EP.
+            open_intensity = None
             if raw_rvol is not None and _minutes_since_open and today_volume > 0:
-                projected = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
+                open_intensity = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
 
             candidates.append({
                 "ticker": ticker,
@@ -461,7 +465,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 "adv": adv,
                 "adv_source": adv_source,
                 "rel_volume": raw_rvol,
-                "projected_vol_multiple": projected,
+                "projected_vol_multiple": open_intensity,  # field name kept for DB compat
             })
         except Exception:
             continue

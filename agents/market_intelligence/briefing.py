@@ -1348,7 +1348,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {cat_e} {ep.get('catalyst_quality', '').replace('_', ' ').title()}\n"
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
-        + (f" (proj *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
+        + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
         f"Catalyst: {catalyst_text}"
