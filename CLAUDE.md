@@ -183,7 +183,8 @@ On startup: market-agent sends "🔄 Market agent online" via `send_telegram_mes
 | 7:00 AM | EP scan starts; HIGH alerts fire in real-time |
 | 9:00 AM | Morning briefing → Telegram |
 | 9:31 AM | ORB monitor — fetch first bar, place bracket orders |
-| 9:35 AM | EP scan stops; stop refresh for Day 2+ positions |
+| 9:35 AM | Stop refresh for Day 2+ positions |
+| 10:00 AM | EP scan stops |
 | 4:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
 | 4:30 PM | Data pull — RS engine + regime + themes |
 | 4:45 PM | Position update — SMA trail, partials, stop updates |
@@ -457,4 +458,40 @@ Was routing to non-existent research agent → error. Now routes to market agent
 
 ### Deploy Notes
 - market-agent only: collector.py, db.py, agent.py, theme_engine.py, briefing.py
+
+## Changes Made 2026-04-14
+
+### Bugs Fixed
+
+**1. `/rules` Telegram command silently failing** (`channels/telegram.py`): Telegram Markdown v1 rejects backtick-wrapped underscores and escaped underscores inside italic spans (`_text_`). Both patterns caused silent HTTP 400 errors with no user-visible output. Fixed: removed backtick formatting from `stop_too_wide`, `orb_no_breakout`, `effective_stop` identifiers; changed `_Full doc: EP\_TRADING\_RULES.md_` to plain `Full doc: EP_TRADING_RULES.md`; replaced `≥`/`≤`/`×`/`⅓`/`→` with ASCII equivalents.
+
+**2. Theme Transitions: flat list replaced with Improving/Deteriorating groups** (`state_alerts.py`): Added `_stage_rank` dict (`Fading=0, Nascent=1, Mainstream=2, Accelerating=3`). Alerts with increasing rank go under `_Improving_` header; decreasing rank under `_Deteriorating_` header.
+
+**3. Theme scorecard stage grouping regression** (`briefing.py`): `_format_theme_scorecard` was outputting a flat list. The stage grouping fix (Accelerating/Mainstream/Nascent headers) had only landed in `agent.py` in April 9. Re-applied stage group headers to `_format_theme_scorecard` in briefing.py to match.
+
+**4. Gold miners absorbed into uranium theme** (`theme_engine.py`): Claude clusters by price momentum without commodity specificity — SSRM, ORLA (gold/silver miners) were assigned to the uranium nuclear theme. Added `_strip_commodity_contradictions(themes)` with `COMMODITY_RULES` keyword pairs; runs after merge, strips any theme member whose description contains a contradicting commodity keyword.
+
+**5. Photonics theme absorbed by new large cluster** (`theme_engine.py`): `overlap_ratio = intersection / smaller_size` = 1.0 for a 3-stock subset fully inside a 25-stock cluster → small theme absorbed. Fixed `_merge_overlapping_themes` with `protected_names: set[str]` parameter: existing themes are protected; new clusters have the overlap stripped instead of absorbing the existing theme.
+
+### Features Added
+
+**6. Phase 1 — Name inheritance on rediscovery** (`theme_engine.py`): After `_discover_new_themes`, each new theme now calls `_get_theme_history` (which has Jaccard >= 0.4 fallback). If a retired theme matches by ticker overlap, the old name is substituted. Fixes "Compound Semi & Specialty Photonic Materials" → "Independent Foundry" drift when theme briefly retires.
+
+**7. Phase 2 — Fat theme splitting with Sonnet + Opus advisor** (`theme_engine.py`): Themes with >20 stocks (excluding Fading) are candidates for a sub-theme split. Sonnet analyzes the stock list with `propose_split` tool; uncertain cases escalate to Opus advisor (`consult_advisor` tool). Split produces a focused sub-theme of 3–8 stocks with a more specific thesis. `sub_theme_parents` dict in `_merge_overlapping_themes` protects sub-themes from re-absorption by their parent. All split decisions logged to `mi_audit_log`.
+
+**8. `parent_theme` column in `mi_themes`** (`db.py`): New `ALTER TABLE ... ADD COLUMN IF NOT EXISTS parent_theme TEXT` migration. `_save_themes` writes parent relationship; `get_today_themes` returns it. Nightly run loads prior sub-theme relationships to protect them in next run.
+
+**9. CLAUDE.md EP scan stop time corrected**: Was `9:35 AM | EP scan stops`. Actual scheduler: `hour='7-9', minute='*/5'` (runs through 9:55 AM), stop cron at `hour='10', minute='0'`. Split into `9:35 AM | Stop refresh for Day 2+ positions` and `10:00 AM | EP scan stops`.
+
+### Files Changed
+- `channels/telegram.py` — `/rules` Markdown v1 formatting fixes
+- `agents/market_intelligence/state_alerts.py` — theme transitions Improving/Deteriorating split
+- `agents/market_intelligence/briefing.py` — stage group headers in `_format_theme_scorecard`
+- `agents/market_intelligence/theme_engine.py` — `_strip_commodity_contradictions`; `protected_names` + `sub_theme_parents` in `_merge_overlapping_themes`; Phase 1 name inheritance; Phase 2 fat-theme split (`_split_fat_theme`, `MAX_THEME_STOCKS=20`); `_save_themes` parent_theme write
+- `agents/market_intelligence/db.py` — `parent_theme` column migration
+
+### Deploy Notes
+- market-agent + telegram only: state_alerts.py, briefing.py, theme_engine.py, db.py, telegram.py
+- monitor tonight's 4:30 PM ET nightly run for `[name inheritance]` log lines
+- watch for fat-theme split proposals in `mi_audit_log` (query: "audit log" in Telegram)
 - Both containers: core/context.py (orchestrator system prompt)
