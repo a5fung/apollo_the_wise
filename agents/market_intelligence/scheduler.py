@@ -451,13 +451,13 @@ async def _ep_scan_job():
 
         if new_highs_post_open:
             logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry inline")
-            await _orb_monitor_job()
+            await _orb_monitor_job(trigger="post_open_new_high")
         elif market_open and now_et.minute == 31:
             # 9:31 open scan: always run ORB as fallback for pre-market HIGHs
             # bar_stream handles them in real-time, but if stream was unhealthy or missed
             # a subscription, process_new_alerts_live skips already-processed tickers safely.
             logger.info("9:31 ORB fallback: checking for unprocessed pre-market HIGHs")
-            await _orb_monitor_job()
+            await _orb_monitor_job(trigger="cron_9_31")
 
     except Exception as e:
         import traceback
@@ -479,20 +479,21 @@ async def _paper_trade_tracker_job():
         await notify_job_failure("paper_trade_tracker", str(e))
 
 
-async def _orb_monitor_job():
+async def _orb_monitor_job(trigger: str = "cron"):
     """Process HIGH EP alerts: fetch first bar, place buy stop at ORB high.
     Called from two paths:
-    - 9:31 AM cron (orb_first_bar): pre-market HIGH alerts, bar just closed
-    - Inline from _ep_scan_job: post-open at-open upgrades, triggered immediately"""
+    - 9:31 AM fallback (trigger="cron_9_31"): pre-market HIGH alerts, bar just closed
+    - Inline from _ep_scan_job (trigger="post_open_new_high"): at-open upgrades"""
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
-    logger.info("ORB monitor starting...")
+    logger.info(f"ORB monitor starting [{trigger}]...")
     try:
         from agents.market_intelligence.broker.live_tracker import process_new_alerts_live
-        results = await process_new_alerts_live()
-        proposed = sum(1 for r in results if r.get("action") == "proposed")
-        logger.info(f"ORB monitor complete: {proposed} proposals out of {len(results)} alerts")
+        results = await process_new_alerts_live(trigger=trigger)
+        entered = sum(1 for r in results if r.get("action") in ("auto_entered", "proposed"))
+        skipped = sum(1 for r in results if r.get("action") in ("filtered", "skipped", "blocked"))
+        logger.info(f"ORB monitor [{trigger}]: {entered} entered, {skipped} skipped, {len(results)} total")
     except Exception as e:
         import traceback
         logger.error(f"ORB monitor failed: {e}\n{traceback.format_exc()}")

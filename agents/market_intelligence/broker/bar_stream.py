@@ -181,12 +181,13 @@ async def _handle_bar(bar) -> None:
     logger.info(
         f"Bar stream: first bar received for {ticker} "
         f"O={bar.open:.2f} H={bar.high:.2f} L={bar.low:.2f} C={bar.close:.2f} "
-        f"V={bar.volume:,} — triggering ORB entry"
+        f"V={bar.volume:,} — triggering ORB entry "
+        f"[stream healthy={_stream_healthy}, subscribed={sorted(_subscribed)}]"
     )
 
     try:
         from agents.market_intelligence.broker.live_tracker import process_new_alerts_live
-        results = await process_new_alerts_live()
+        results = await process_new_alerts_live(trigger="bar_stream")
         entered = [r["ticker"] for r in results if r.get("action") in ("auto_entered", "proposed")]
         if entered:
             logger.info(f"Bar stream ORB entry: {entered}")

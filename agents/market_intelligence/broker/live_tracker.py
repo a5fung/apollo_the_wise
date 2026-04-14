@@ -165,6 +165,8 @@ async def _submit_orb_trade(
             )
             return {"ticker": ticker, "action": "auto_entered", "trade_id": trade_id}
         else:
+            logger.error(f"submit_entry returned None for {ticker} (trade_id={trade_id}) — order placement failed, check order_failed status in DB")
+            await send_telegram_message(f"⚠️ *Paper auto-enter failed:* {ticker} — check logs (trade_id={trade_id})")
             return {"ticker": ticker, "action": "auto_enter_failed"}
     else:
         sent = await send_trade_proposal(alert, order_spec, trade_id)
@@ -175,7 +177,7 @@ async def _submit_orb_trade(
             return {"ticker": ticker, "action": "proposal_send_failed"}
 
 
-async def process_new_alerts_live(today: date | None = None) -> list[dict]:
+async def process_new_alerts_live(today: date | None = None, trigger: str = "cron") -> list[dict]:
     """
     For each HIGH EP alert today:
     1. Pre-trade filters (ADV, ATR)
@@ -185,6 +187,8 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
     5. Check safeguards
     6. Send Telegram proposal with inline keyboard
     7. Store pending proposal in DB
+
+    trigger: "bar_stream" | "cron_9_31" | "cron_fallback" | "cron" — logged for debugging
     """
     if today is None:
         today = et_today()
@@ -210,7 +214,7 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
         logger.info("No HIGH EP alerts today for live trading")
         return []
 
-    logger.info(f"ORB monitor: {len(alerts)} HIGH EP alerts to process: {[a['ticker'] for a in alerts]}")
+    logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts to process: {[a['ticker'] for a in alerts]}")
 
     # Get regime
     async with pool.acquire() as conn:
@@ -249,6 +253,7 @@ async def process_new_alerts_live(today: date | None = None) -> list[dict]:
         # Fetch first 1-min bar from Alpaca — retry every 60s until 9:35 ET
         orb_bar = await alpaca.get_first_bar(ticker, today)
         if not orb_bar:
+            logger.warning(f"ORB bar not available yet for {ticker} [{trigger}] — queuing for retry")
             pending_orb.append((alert, atr_14))
             results.append({"ticker": ticker, "action": "pending_orb"})
             continue
