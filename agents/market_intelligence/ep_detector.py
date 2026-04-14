@@ -7,7 +7,7 @@ Scans pre-market for gap-up stocks and scores them using the MAGNA53 model
 Hard filters (applied BEFORE scoring — stocks that fail never reach the DB or briefing):
 - Gap ≥ 8% vs previous close
 - Previous close ≥ $5, previous day volume ≥ 50K shares
-- Relative volume ≥ 2x ADV, pre-market volume ≥ 25K shares
+- Post-open only: relative volume ≥ 2x ADV. Pre-market: only 25K share floor (pre-market vol is structurally tiny vs full-day ADV even on huge news days — gap + catalyst carry the signal)
 - Pre-trade quality: ADV dollar volume ≥ $1M, ATR% ≤ 15%, market cap ≥ $500M
   (same check_filters used by backtester/tracker — single source of truth)
 - Extension: skip if already up ≥ 50% in last 5 trading days
@@ -572,9 +572,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
 
-        # Hard filter: rel volume (skip if no ADV data available — can't verify)
-        if c.get("adv") and rel_volume < MIN_REL_VOLUME:
-            reason = f"low rel volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x"
+        # Hard filter: rel volume — post-open only.
+        # Pre-market RVOL vs full-day ADV is structurally tiny (BE: 0.02x on a +15% day).
+        # Qullamaggie's "trade ADV in first 15-20 min" is a post-open observation.
+        # Pre-market gate is the absolute share floor below (25K) — gap + catalyst carry the signal.
+        if _minutes_since_open and c.get("adv") and rel_volume < MIN_REL_VOLUME:
+            reason = f"low rel volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x (post-open)"
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
             _log_filtered(c, reason)
             continue
