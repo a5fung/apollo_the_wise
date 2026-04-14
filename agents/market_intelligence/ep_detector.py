@@ -70,6 +70,14 @@ EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP alert in last 60 day
 # Leveraged/inverse ETFs and broad ETFs — never real EPs
 _SKIP_TICKERS = SKIP_TICKERS
 
+# Catalyst cache — FMP + Claude + Perplexity results for today.
+# A stock oscillating near the 15% conviction threshold (e.g. BE at 13-15%)
+# gets re-scored every 5 min. The catalyst doesn't change; skip the API calls.
+# Keys: ticker → (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
+# Resets automatically when the calendar date changes.
+_catalyst_cache: dict[str, tuple[str, float, str, str]] = {}
+_catalyst_cache_date: "date | None" = None
+
 _claude = None
 
 
@@ -623,65 +631,83 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Volume conviction percentile
         vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
 
-        # Fetch all external data concurrently
-        profile, fmp_news, ratings, perplexity_answer = await asyncio.gather(
-            get_fmp_profile(ticker),
-            get_fmp_news(ticker),
-            get_fmp_analyst_ratings(ticker),
-            search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
-        )
-        await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
-        upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
+        # Catalyst cache check — skip FMP/Claude/Perplexity if already evaluated today.
+        # A stock oscillating near the 15% threshold gets re-scored every 5 min;
+        # the catalyst is the same each time. One evaluation per ticker per day.
+        global _catalyst_cache, _catalyst_cache_date
+        if _catalyst_cache_date != today:
+            _catalyst_cache.clear()
+            _catalyst_cache_date = today
 
-        # Combine news sources — Perplexity synthesized answer + yfinance headlines
-        all_news = fmp_news + ([{"title": "Perplexity synthesis", "text": perplexity_answer}]
-                                if perplexity_answer else [])
-        news_summary = perplexity_answer[:500] if perplexity_answer else "\n".join(
-            [n.get("title", "") for n in fmp_news[:3]]
-        )
+        cached = _catalyst_cache.get(ticker)
+        if cached:
+            catalyst_quality, confidence_multiplier, news_summary, claude_analysis = cached
+            profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
+            upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
+            logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
+        else:
+            # Fetch all external data concurrently
+            profile, fmp_news, ratings, perplexity_answer = await asyncio.gather(
+                get_fmp_profile(ticker),
+                get_fmp_news(ticker),
+                get_fmp_analyst_ratings(ticker),
+                search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
+            )
+            await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
+            upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
 
-        # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
-        claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))
-        pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
+            # Combine news sources — Perplexity synthesized answer + yfinance headlines
+            all_news = fmp_news + ([{"title": "Perplexity synthesis", "text": perplexity_answer}]
+                                    if perplexity_answer else [])
+            news_summary = perplexity_answer[:500] if perplexity_answer else "\n".join(
+                [n.get("title", "") for n in fmp_news[:3]]
+            )
 
-        catalyst_quality, claude_analysis = await claude_task
+            # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
+            claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))
+            pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
-        # Skip M&A / buyout — price capped at deal value, no momentum trade
-        _MNA_KEYWORDS = [
-            "acquisition", "acquire", "buyout", "takeover", "merger", "bought by",
-            "being acquired", "definitive agreement", "tender offer", "going private",
-            "taken private", "strategic transaction", "merger agreement", "to be acquired",
-        ]
-        analysis_low = claude_analysis.lower()
-        catalyst_low = news_summary.lower() if news_summary else ""
-        is_mna = (
-            catalyst_quality == "mna"
-            or any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS)
-        )
-        if is_mna:
-            pplx_task.cancel()
-            reason = "M&A/buyout catalyst — no momentum trade"
-            logger.info(f"Skip {ticker}: {reason}")
-            _log_filtered(c, reason)
-            continue
+            catalyst_quality, claude_analysis = await claude_task
 
-        # Skip routine catalysts outright
-        if catalyst_quality == "routine" and c["gap_pct"] < 12:
-            pplx_task.cancel()
-            reason = f"routine catalyst, gap {c['gap_pct']:.1f}%"
-            logger.info(f"Skip {ticker}: {reason}")
-            _log_filtered(c, reason)
-            continue
+            # Skip M&A / buyout — price capped at deal value, no momentum trade
+            _MNA_KEYWORDS = [
+                "acquisition", "acquire", "buyout", "takeover", "merger", "bought by",
+                "being acquired", "definitive agreement", "tender offer", "going private",
+                "taken private", "strategic transaction", "merger agreement", "to be acquired",
+            ]
+            analysis_low = claude_analysis.lower()
+            catalyst_low = news_summary.lower() if news_summary else ""
+            is_mna = (
+                catalyst_quality == "mna"
+                or any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS)
+            )
+            if is_mna:
+                pplx_task.cancel()
+                reason = "M&A/buyout catalyst — no momentum trade"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason)
+                continue
 
-        pplx_quality = await pplx_task
+            # Skip routine catalysts outright
+            if catalyst_quality == "routine" and c["gap_pct"] < 12:
+                pplx_task.cancel()
+                reason = f"routine catalyst, gap {c['gap_pct']:.1f}%"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason)
+                continue
 
-        # Agreement logic
-        confidence_multiplier = 1.0
-        if pplx_quality and pplx_quality == catalyst_quality:
-            confidence_multiplier = 1.2
-            logger.info(f"{ticker}: Claude+Perplexity agree on {catalyst_quality} → 1.2x confidence")
-        elif pplx_quality and pplx_quality != catalyst_quality:
-            logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
+            pplx_quality = await pplx_task
+
+            # Agreement logic
+            confidence_multiplier = 1.0
+            if pplx_quality and pplx_quality == catalyst_quality:
+                confidence_multiplier = 1.2
+                logger.info(f"{ticker}: Claude+Perplexity agree on {catalyst_quality} → 1.2x confidence")
+            elif pplx_quality and pplx_quality != catalyst_quality:
+                logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
+
+            # Store in cache for subsequent scans today
+            _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
 
         # Compute prior 3-month change %
         prior_3m_change = None

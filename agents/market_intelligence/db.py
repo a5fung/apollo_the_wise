@@ -1188,6 +1188,8 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
                      filter_reason, ep_score, score_tier, catalyst_quality)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 ON CONFLICT (scan_date, ticker) DO UPDATE SET
+                    gap_pct          = EXCLUDED.gap_pct,
+                    rel_volume       = EXCLUDED.rel_volume,
                     filter_reason    = EXCLUDED.filter_reason,
                     ep_score         = EXCLUDED.ep_score,
                     score_tier       = EXCLUDED.score_tier,
