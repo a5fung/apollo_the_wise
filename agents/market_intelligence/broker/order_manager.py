@@ -331,6 +331,27 @@ async def attempt_day1_reentry(
     })
 
     attempt = trade["entry_attempt"] + 1
+
+    # Re-entry only valid in the morning session — no late-day chasing
+    from agents.market_intelligence.collector import _ET
+    now_et = datetime.now(_ET)
+    if now_et.hour >= 11:
+        total_pnl_so_far = sum(ex.get("pnl", 0) for ex in exits)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed', exits = $2::jsonb,
+                    remaining_shares = 0, total_pnl = $3,
+                    stop_order_id = NULL, closed_at = NOW()
+                WHERE id = $1
+            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+        await send_telegram_message(
+            f"❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"P&L: ${pnl:+,.2f} | No re-entry after 11 AM"
+        )
+        logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, no re-entry after 11 AM")
+        return {"ticker": ticker, "action": "closed", "reason": "after_11am"}
+
     logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, attempting re-entry #{attempt}")
 
     # Price-aware re-entry: check if price already above ORB high
