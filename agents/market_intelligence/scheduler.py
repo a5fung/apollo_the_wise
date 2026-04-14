@@ -701,7 +701,7 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # EP scan: every 5 minutes 7:00–10:00 AM ET (covers 15-min delayed open gaps)
+    # EP scan: every 5 minutes 7:00–10:00 AM ET (pre-market candidates)
     _scheduler.add_job(
         _ep_scan_job,
         CronTrigger(
@@ -711,6 +711,16 @@ def start_scheduler() -> AsyncIOScheduler:
             timezone="America/New_York",
         ),
         id="ep_scan",
+        replace_existing=True,
+    )
+
+    # EP scan at exactly 9:31 AM — first complete 1-min bar (9:30–9:31) is now closed.
+    # At-open volume upgrades (near-miss pre-market → confirms at open) are detected here.
+    # ORB monitor at 9:33 picks up both pre-market and at-open HIGHs in one pass.
+    _scheduler.add_job(
+        _ep_scan_job,
+        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
+        id="ep_scan_open",
         replace_existing=True,
     )
 
@@ -756,23 +766,14 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
-    # ORB monitor pass 1: 9:32 AM ET — process pre-market HIGH alerts
-    # (9:32 not 9:31 to ensure first 1-min bar is finalized)
+    # ORB monitor: 9:33 AM ET — process all HIGH EP alerts (pre-market + at-open upgrades).
+    # 9:31 EP scan catches at-open volume upgrades from the first complete bar.
+    # 9:33 gives that scan ~2 min to finish before the ORB monitor queries the DB.
+    # ON CONFLICT DO NOTHING prevents double-processing if this fires more than once.
     _scheduler.add_job(
         _orb_monitor_job,
-        CronTrigger(hour=9, minute=32, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=9, minute=33, day_of_week="mon-fri", timezone="America/New_York"),
         id="orb_monitor",
-        replace_existing=True,
-    )
-
-    # ORB monitor pass 2: 9:37 AM ET — catch at-open EP upgrades from the 9:35 scan
-    # EPs that were near-miss pre-market but confirmed volume on the first bar are
-    # inserted by the 9:35 scan. ON CONFLICT DO NOTHING prevents double-processing
-    # of stocks already handled at 9:32.
-    _scheduler.add_job(
-        _orb_monitor_job,
-        CronTrigger(hour=9, minute=37, day_of_week="mon-fri", timezone="America/New_York"),
-        id="orb_monitor_pass2",
         replace_existing=True,
     )
 
