@@ -399,12 +399,13 @@ async def _morning_briefing_job():
 
 
 async def _ep_scan_job():
-    """Run every 5 minutes 7:00–9:30 AM ET. Scan for EP gaps; HIGH alerts sent immediately."""
+    """Run every 5 minutes 7:00–10:00 AM ET. Scan for EP gaps; HIGH alerts sent immediately.
+    Post-open (>= 9:31): triggers ORB entry inline for any new HIGH alerts found."""
     global _ep_scans_completed_today
     logger.info("EP scan starting...")
     try:
         # Snapshot already-alerted tickers BEFORE scan (scan inserts new rows)
-        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.collector import et_today, _ET
         today = et_today()
         from agents.market_intelligence.db import get_pool
         pool = await get_pool()
@@ -419,10 +420,12 @@ async def _ep_scan_job():
         _ep_scans_completed_today += 1
         high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
         logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
+        new_highs = []
         for ep in eps:
             if ep.get("score_tier") == "HIGH" and ep["ticker"] not in already_alerted:
                 await send_ep_alert(ep)
                 already_alerted.add(ep["ticker"])
+                new_highs.append(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
                 try:
                     from agents.market_intelligence.db import log_audit_event
@@ -433,6 +436,15 @@ async def _ep_scan_job():
                     )
                 except Exception:
                     pass
+
+        # Post-open: if new HIGHs found, trigger ORB entry immediately — no cron lag.
+        # Pre-market HIGHs are handled by the dedicated 9:31 ORB job (_orb_first_bar_job).
+        now_et = datetime.now(_ET)
+        market_open = now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 31)
+        if market_open and new_highs:
+            logger.info(f"Post-open EP scan: {len(new_highs)} new HIGHs → triggering ORB entry now")
+            await _orb_monitor_job()
+
     except Exception as e:
         import traceback
         logger.error(f"EP scan failed: {e}\n{traceback.format_exc()}")
@@ -454,7 +466,10 @@ async def _paper_trade_tracker_job():
 
 
 async def _orb_monitor_job():
-    """Run at 9:31 AM ET. Process today's HIGH EP alerts, send trade proposals."""
+    """Process HIGH EP alerts: fetch first bar, place buy stop at ORB high.
+    Called from two paths:
+    - 9:31 AM cron (orb_first_bar): pre-market HIGH alerts, bar just closed
+    - Inline from _ep_scan_job: post-open at-open upgrades, triggered immediately"""
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
@@ -714,13 +729,22 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # EP scan at exactly 9:31 AM — first complete 1-min bar (9:30–9:31) is now closed.
-    # At-open volume upgrades (near-miss pre-market → confirms at open) are detected here.
-    # ORB monitor at 9:33 picks up both pre-market and at-open HIGHs in one pass.
+    # EP scan at exactly 9:31 AM — first complete 1-min bar (9:30–9:31) just closed.
+    # Detects at-open volume upgrades; if any new HIGHs found, ORB entry fires inline.
     _scheduler.add_job(
         _ep_scan_job,
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_open",
+        replace_existing=True,
+    )
+
+    # First-bar ORB job: 9:31 AM — process pre-market HIGH alerts now that bar is closed.
+    # Pre-market HIGHs are skipped by the 9:31 EP scan (already_today dedup), so they
+    # need their own trigger. Inline ORB entry in _ep_scan_job handles at-open upgrades.
+    _scheduler.add_job(
+        _orb_monitor_job,
+        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
+        id="orb_first_bar",
         replace_existing=True,
     )
 
@@ -766,16 +790,6 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
-    # ORB monitor: 9:33 AM ET — process all HIGH EP alerts (pre-market + at-open upgrades).
-    # 9:31 EP scan catches at-open volume upgrades from the first complete bar.
-    # 9:33 gives that scan ~2 min to finish before the ORB monitor queries the DB.
-    # ON CONFLICT DO NOTHING prevents double-processing if this fires more than once.
-    _scheduler.add_job(
-        _orb_monitor_job,
-        CronTrigger(hour=9, minute=33, day_of_week="mon-fri", timezone="America/New_York"),
-        id="orb_monitor",
-        replace_existing=True,
-    )
 
     # Fill checker — fallback polling (WebSocket is primary, this is safety net)
     # Runs every 30 min; skips if WebSocket stream is healthy
