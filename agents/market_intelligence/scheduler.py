@@ -756,12 +756,23 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
-    # ORB monitor: 9:32 AM ET — process today's alerts, send proposals
+    # ORB monitor pass 1: 9:32 AM ET — process pre-market HIGH alerts
     # (9:32 not 9:31 to ensure first 1-min bar is finalized)
     _scheduler.add_job(
         _orb_monitor_job,
         CronTrigger(hour=9, minute=32, day_of_week="mon-fri", timezone="America/New_York"),
         id="orb_monitor",
+        replace_existing=True,
+    )
+
+    # ORB monitor pass 2: 9:37 AM ET — catch at-open EP upgrades from the 9:35 scan
+    # EPs that were near-miss pre-market but confirmed volume on the first bar are
+    # inserted by the 9:35 scan. ON CONFLICT DO NOTHING prevents double-processing
+    # of stocks already handled at 9:32.
+    _scheduler.add_job(
+        _orb_monitor_job,
+        CronTrigger(hour=9, minute=37, day_of_week="mon-fri", timezone="America/New_York"),
+        id="orb_monitor_pass2",
         replace_existing=True,
     )
 
