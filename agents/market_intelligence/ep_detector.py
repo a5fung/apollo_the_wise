@@ -102,12 +102,14 @@ _CATALYST_TOOL = {
         "properties": {
             "quality": {
                 "type": "string",
-                "enum": ["game_changer", "strong", "routine"],
+                "enum": ["game_changer", "strong", "routine", "mna"],
                 "description": (
                     "game_changer: massive earnings beat + guidance raise, FDA approval, "
                     "transformative contract. strong: solid beat + guidance raise, analyst "
                     "upgrade cluster, major partnership. routine: in-line results, no "
-                    "company-specific catalyst."
+                    "company-specific catalyst. mna: merger, acquisition, buyout, takeover, "
+                    "going-private, tender offer, or any deal where the company is being acquired — "
+                    "price is capped at deal value, no momentum trade possible."
                 ),
             },
             "analysis": {
@@ -124,7 +126,7 @@ async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict
     """
     Use Claude to classify catalyst quality via structured tool use.
     Returns: (quality, analysis_text)
-    quality: "game_changer" | "strong" | "routine"
+    quality: "game_changer" | "strong" | "routine" | "mna"
 
     Uses tool_choice to guarantee schema-valid output — no string parsing,
     no silent fallback to "routine" on format deviations.
@@ -145,7 +147,10 @@ Recent news (may include earnings announcements, guidance, contracts, upgrades):
 IMPORTANT RULES:
 1. Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
 2. An earnings beat with guidance raise on a neglected stock = game_changer or strong.
-3. If the catalyst is a MERGER, ACQUISITION, BUYOUT, or TAKEOVER offer, classify as "routine" — M&A caps upside.
+3. If the catalyst is a MERGER, ACQUISITION, BUYOUT, TAKEOVER, TENDER OFFER, GOING-PRIVATE, or any
+   deal where the company is being acquired — classify as "mna". This is a hard skip: price is capped
+   at deal value, there is no momentum trade. Keywords: "definitive agreement", "to be acquired",
+   "tender offer", "going private", "taken private", "strategic transaction", "buyout", "merger agreement".
 
 CRITICAL — VERIFY THE CATALYST IS REAL:
 - If the news text mentions "earnings" or "quarterly results" but does NOT include specific numbers
@@ -278,6 +283,7 @@ def _score_ep(
         breakdown["rel_volume"] = 0
 
     # Catalyst quality (max 25) — the single most important EP signal
+    # "mna" should never reach scoring (hard-filtered above), but treat as 0 if it does
     if catalyst_quality == "game_changer":
         breakdown["catalyst"] = 25
     elif catalyst_quality == "strong":
@@ -600,11 +606,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         catalyst_quality, claude_analysis = await claude_task
 
-        # Skip M&A / buyout — no momentum trade, just arbitrage
-        _MNA_KEYWORDS = ["acquisition", "acquire", "buyout", "takeover", "merger", "bought by", "being acquired"]
+        # Skip M&A / buyout — price capped at deal value, no momentum trade
+        _MNA_KEYWORDS = [
+            "acquisition", "acquire", "buyout", "takeover", "merger", "bought by",
+            "being acquired", "definitive agreement", "tender offer", "going private",
+            "taken private", "strategic transaction", "merger agreement", "to be acquired",
+        ]
         analysis_low = claude_analysis.lower()
         catalyst_low = news_summary.lower() if news_summary else ""
-        if any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS):
+        is_mna = (
+            catalyst_quality == "mna"
+            or any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS)
+        )
+        if is_mna:
             pplx_task.cancel()
             reason = "M&A/buyout catalyst — no momentum trade"
             logger.info(f"Skip {ticker}: {reason}")
