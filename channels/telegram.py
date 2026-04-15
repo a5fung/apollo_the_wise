@@ -678,20 +678,27 @@ class TelegramChannel:
                                 f"  {emoji} *{t['ticker']}*{gap_str} score={score:.0f}{att_str} "
                                 f"${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
                             )
-                            for e in entries:
-                                ep = e.get("price", e.get("entry_price", 0))
-                                es = e.get("stop", e.get("stop_price", 0))
-                                att = e.get("attempt", "?")
-                                sh = e.get("shares", "")
+                            # Entry/stop shown once (same price every attempt)
+                            if entries:
+                                e0 = entries[0]
+                                ep = e0.get("price", e0.get("entry_price", 0))
+                                es = e0.get("stop", e0.get("stop_price", 0))
+                                sh = e0.get("shares", "")
                                 sh_str = f" ×{sh:.0f}" if sh else ""
-                                lines.append(f"      Entry #{att} @${ep:.2f}{sh_str} stop=${es:.2f}")
-                            for ex in exits:
-                                ex_price = ex.get("price") or ex.get("exit_price", 0)
-                                reason = ex.get("reason", "")
+                                lines.append(f"      ORB entry=${ep:.2f} stop=${es:.2f}{sh_str}")
+                            # Per-attempt: in-time → out-time (reason) P&L
+                            exits_by_att = {ex.get("attempt", i + 1): ex for i, ex in enumerate(exits)}
+                            for e in entries:
+                                att = e.get("attempt", "?")
+                                in_t = e.get("time", "")
+                                in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
+                                ex = exits_by_att.get(att, {})
+                                out_t = ex.get("time", "")
+                                out_str = out_t[11:16] if len(out_t) >= 16 else "open"
+                                reason = ex.get("reason", "open")
                                 ex_pnl = ex.get("pnl", 0)
-                                att = ex.get("attempt", "")
-                                att_tag = f" #{att}" if att else ""
-                                lines.append(f"      Exit{att_tag} @${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
+                                att_label = f"#{att} " if num_att > 1 else ""
+                                lines.append(f"      {att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
                         lines.append("")
 
                     # Totals
