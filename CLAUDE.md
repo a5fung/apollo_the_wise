@@ -567,3 +567,36 @@ The RVOL pre-market bug (from the same session) explains why most pre-market EPs
 
 ### Deploy Notes
 - market-agent only: ep_detector.py, scheduler.py, broker/bar_stream.py
+
+## Changes Made 2026-04-14 (fourth session)
+
+### Bugs Fixed / Features Added
+
+**1. Structural ORB entry rule enforcement — single source of truth**
+
+Two code paths were implementing the same ORB stop-width check independently:
+- EOD sim (`engine.py` `_simulate_day1`): `orb_range > 1.5 * atr_14` (dollar-based)
+- Live path (`order_manager.py` `prepare_orb_order`): `orb_range > 1.5 * atr_14` (dollar-based)
+
+Even though they matched after the previous session's fix, having two inline implementations means future edits to one won't propagate to the other — divergence is a matter of time.
+
+Fix: extracted `validate_orb_entry(orb_high, orb_low, atr_14) -> (bool, skip_reason)` to `backtester/filters.py`. Both paths now import and call this single function. Divergence is structurally impossible.
+
+Also cleaned up: removed dead `atr_pct` parameter from `_simulate_day1` and its call site in `simulate_trade`.
+
+**2. Trade query routing fix**
+
+"show filtered trades", "skipped trades", "all trades", "ep trades" were falling through to the finance agent (not configured). Added these keywords to the `_handle_trades_query` routing block in `agent.py`.
+
+**3. TVTX verdict**
+
+TVTX today: ORB range $1.28, 1.5x ATR = $2.62. Passes `validate_orb_entry`. Both EOD sim (confirmed traded) and live Alpaca path (after RVOL bug fix + structural fix) would enter this trade.
+
+### Files Changed
+- `agents/market_intelligence/backtester/filters.py` — new `validate_orb_entry` function
+- `agents/market_intelligence/backtester/engine.py` — `_simulate_day1` calls `validate_orb_entry`; dead `atr_pct` param removed
+- `agents/market_intelligence/broker/order_manager.py` — `prepare_orb_order` calls `validate_orb_entry`
+- `agents/market_intelligence/agent.py` — added trade routing keywords
+
+### Deploy Notes
+- market-agent only — deployed 2026-04-15
