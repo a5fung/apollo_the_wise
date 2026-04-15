@@ -449,7 +449,7 @@ The critical path to live trading: **P2 → P3 → P4 → P6 → live**. Everyth
 | P6 | **Trading journal** | Log your own trades ("Bought NVDA at 142"). Win rate by regime/setup accumulates over time — start now so data builds. |
 | P7 | **"What to watch today" pregame** | On-demand morning synthesis: regime + Accelerating themes + open EPs + tracked stocks near MAs. More compact than the scheduled brief, available after open when the brief is stale. |
 | P8 | **Earnings calendar** | Flag when RS leaders / theme stocks report that week. Holding through earnings unknowingly is a real risk. yfinance has next earnings date already. |
-| P9 | **Observability / reasoning traces** | "Why did this EP fire / theme change stage?" EP score breakdown already exists — just needs surfacing. Builds signal trust. |
+| P9 | **Trade postmortem command** | `postmortem TICKER` — joins EP score/catalyst, entry/stop timeline, regime, theme context, and news into one narrative. Turns failed (and winning) trades into structured learning. Most data already in DB; hardest part is intraday news for past dates. Most useful after P4 surfaces which trades to review. |
 | P10 | **Watchlist price alerts** | "Alert me when NVDA breaks 140." Scheduled price check, high daily utility. |
 | P11 | **EPS estimates** | Forward consensus + surprise%. Data source TBD (Alpha Vantage free tier). Lower priority than earnings date. |
 | P12 | **Sector rotation view** | 4-week RS trend by sector/theme — "is money rotating from semis to defense?" Query against existing `mi_stock_scores.sector`. |
