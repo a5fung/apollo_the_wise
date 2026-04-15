@@ -5,7 +5,7 @@ import asyncio
 import logging
 from datetime import date, datetime, timedelta
 
-from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
+from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14, validate_orb_entry
 from agents.market_intelligence.backtester.intraday import ensure_intraday_table, get_intraday_bars
 from agents.market_intelligence.backtester.models import (
     BacktestResult,
@@ -27,14 +27,13 @@ def _simulate_day1(
     bars: list[dict],
     position_size: float,
     atr_14: float | None = None,
-    atr_pct: float | None = None,
 ) -> BacktestTrade | None:
     """
     Simulate Day 1 intraday trading on 1-min bars (ORB entry).
 
     Rules:
     - Opening Range = first 1-min bar's high/low
-    - ATR stop width check: skip if risk % > 1.5x ATR %
+    - ATR stop width check: via validate_orb_entry (shared with live path)
     - Entry when price breaks above ORB high (bars[1:])
     - Stop = ORB low (hard stop: bar low <= stop)
     - Re-entry when bar closes above ORB high, max 2 attempts
@@ -50,18 +49,16 @@ def _simulate_day1(
     if orb_high <= 0 or orb_low <= 0:
         return None
 
-    # ATR stop width validation (dollar-based, matches prepare_orb_order)
-    # Qullamaggie: "stop no more than 1x, max 1.5x ADR/ATR"
-    orb_range = orb_high - orb_low
-    if atr_14 and atr_14 > 0 and orb_range > 1.5 * atr_14:
+    # ATR stop width validation — single shared rule with live path
+    valid, skip_reason = validate_orb_entry(orb_high, orb_low, atr_14)
+    if not valid:
         alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
-        trade = BacktestTrade(
+        return BacktestTrade(
             ticker=ticker, alert_date=alert_date,
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
-            skipped=True, skip_reason="Stop too wide",
+            skipped=True, skip_reason=skip_reason or "orb_validation_failed",
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
-        return trade
 
     entries: list[TradeEntry] = []
     exits: list[TradeExit] = []
@@ -362,7 +359,7 @@ async def simulate_trade(
             position_size = _position_size(orb_high, orb_low, regime_record)
 
     # Day 1 simulation (ORB entry with ATR validation)
-    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14, atr_pct=atr_pct)
+    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14)
     if trade is None:
         return BacktestTrade(
             ticker=ticker, alert_date=alert_date,

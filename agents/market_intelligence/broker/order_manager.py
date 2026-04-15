@@ -12,6 +12,7 @@ import logging
 import math
 from datetime import date, datetime
 
+from agents.market_intelligence.backtester.filters import validate_orb_entry
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.db import get_pool
@@ -34,15 +35,11 @@ async def prepare_orb_order(
     """
     orb_high = orb_bar["high"]
     orb_low = orb_bar["low"]
-    orb_range = orb_high - orb_low
 
-    if orb_range <= 0:
-        logger.warning(f"{alert['ticker']}: ORB range is zero, skipping")
-        return None
-
-    # ATR validation: skip if ORB risk > 1.5x ATR
-    if atr_14 and orb_range > 1.5 * atr_14:
-        logger.info(f"{alert['ticker']}: ORB range ${orb_range:.2f} > 1.5x ATR ${atr_14:.2f}, skipping")
+    # Single shared entry validation rule (same as EOD sim via validate_orb_entry)
+    valid, skip_reason = validate_orb_entry(orb_high, orb_low, atr_14)
+    if not valid:
+        logger.info(f"{alert['ticker']}: ORB entry rejected — {skip_reason}")
         return None
 
     # Get actual account equity from Alpaca

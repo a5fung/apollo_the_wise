@@ -444,7 +444,8 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["my trades", "show trades", "trade history", "paper trade", "paper trading", "paper p&l",
                                     "trade p&l", "trades today", "recent trades", "open trades", "closed trades",
-                                    "trade summary", "trading summary", "entry exit", "entries exits"]):
+                                    "trade summary", "trading summary", "entry exit", "entries exits",
+                                    "filtered trades", "skipped trades", "all trades", "ep trades"]):
             return await self._handle_trades_query(request)
 
         # Single-ticker trade lookup — "entry/exit for TVTX", "TVTX trade", "what happened with TVTX trade"

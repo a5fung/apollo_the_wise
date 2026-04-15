@@ -120,6 +120,24 @@ async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
     return None
 
 
+def validate_orb_entry(
+    orb_high: float,
+    orb_low: float,
+    atr_14: float | None,
+) -> tuple[bool, str | None]:
+    """
+    Single authoritative ORB entry validation rule.
+    Called by both EOD sim (engine.py) and live path (order_manager.py).
+    Returns (passed, skip_reason).
+    """
+    orb_range = orb_high - orb_low
+    if orb_range <= 0:
+        return False, "orb_range_zero"
+    if atr_14 and atr_14 > 0 and orb_range > 1.5 * atr_14:
+        return False, f"stop_too_wide ({orb_range:.2f} > 1.5x ATR {atr_14:.2f})"
+    return True, None
+
+
 async def _check_market_cap(ticker: str) -> str | None:
     """Check market cap >= $500M. Returns skip reason or None."""
     if ticker in _mcap_cache:
