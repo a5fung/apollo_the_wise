@@ -457,3 +457,7 @@ The critical path to live trading: **P2 → P3 → P4 → P6 → live**. Everyth
 | P14 | **Weekend "what to watch this week" briefing** | Saturday morning synthesis: regime trend + momentum themes + EP setups to watch. Lower urgency — already queryable on demand. |
 | P15 | **Correlation clustering** | Early sub-theme discovery before RS leaders emerge. Highest alpha, highest complexity. Build after feedback loop is working. |
 | P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation report is solid and regime improves from Crisis. |
+| P17 | **Stop order timeout / market-exit fallback** | Alpaca stops can fail to fill under halts or extreme conditions. If a GTC stop isn't filled within N minutes of its trigger price, fire a Telegram alert and optionally place a market exit. Hook into the 9:35 AM stop-refresh job. |
+| P18 | **Alert reasoning traces** | Append a compact rationale line to every EP alert and theme transition message — gap %, RVOL, catalyst type, regime. All data already computed; purely a formatting change in `ep_detector.py` and `briefing.py`. |
+| P19 | **Per-regime daily loss limit + equity-based reset** | Verify the 2% daily loss cap resets against current account equity each morning (not a fixed dollar). Tighten progressively by regime: Bull 2% → Choppy 1.5% → Correcting 1% → Crisis 0.5%. |
+| P20 | **HTTPS on TradingView webhook** | Webhook currently served over port 80 via nginx. Add Let's Encrypt cert (certbot) so the endpoint is TLS-encrypted and the `TRADINGVIEW_WEBHOOK_SECRET` isn't exposed in transit. |
