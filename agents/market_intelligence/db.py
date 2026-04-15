@@ -442,6 +442,20 @@ async def initialize_schema() -> None:
                 ON mi_audit_log(event_type);
         """)
 
+        # ── Trading journal — user observations with auto-enriched context ─
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_journal_entries (
+                id SERIAL PRIMARY KEY,
+                entry_text TEXT NOT NULL,
+                regime TEXT,
+                ep_context JSONB,
+                theme_context TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_journal_created
+                ON mi_journal_entries(created_at DESC);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -450,6 +464,10 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS parent_theme TEXT;
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS days_active INT NOT NULL DEFAULT 0;
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS consecutive_accelerating INT NOT NULL DEFAULT 0;
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides
@@ -2390,4 +2408,76 @@ async def get_audit_log(
                 ORDER BY created_at DESC
                 LIMIT $2
             """, str(since_hours), limit)
+    return [dict(r) for r in rows]
+
+
+# ── EP outcomes ───────────────────────────────────────────────────────────────
+
+
+async def get_ep_outcomes(
+    days_back: int = 30,
+    tier: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    JOIN ep_alerts with signal_outcomes to show forward returns per alert.
+    Uses LEFT JOIN so recent alerts with no outcomes yet still appear.
+    signal_type is 'ep_alert' per outcome_tracker.py convention.
+    spy_fwd_1m_pct is the only SPY comparison field in the schema.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        tier_filter = "AND a.score_tier = $2" if tier else ""
+        params: list[Any] = [days_back]
+        if tier:
+            params.append(tier.upper())
+        rows = await conn.fetch(f"""
+            SELECT
+                a.ticker, a.alert_date, a.score_tier, a.gap_pct,
+                a.catalyst_quality, a.ep_score,
+                o.fwd_1d_pct, o.fwd_1w_pct, o.fwd_1m_pct, o.spy_fwd_1m_pct
+            FROM mi_ep_alerts a
+            LEFT JOIN mi_signal_outcomes o
+                ON o.signal_type = 'ep_alert'
+               AND o.signal_date = a.alert_date
+               AND o.identifier = a.ticker
+            WHERE a.alert_date >= CURRENT_DATE - $1::int
+            {tier_filter}
+            ORDER BY a.alert_date DESC, a.ep_score DESC
+        """, *params)
+    return [dict(r) for r in rows]
+
+
+# ── Trading journal ───────────────────────────────────────────────────────────
+
+
+async def add_journal_entry(
+    text: str,
+    regime: str | None,
+    ep_context: list[dict[str, Any]] | None,
+    theme_context: str | None,
+) -> int:
+    """Insert a journal entry with auto-enriched context. Returns new row id."""
+    import json as _json
+    pool = await get_pool()
+    ep_json = _json.dumps(ep_context) if ep_context else None
+    async with pool.acquire() as conn:
+        row_id = await conn.fetchval("""
+            INSERT INTO mi_journal_entries (entry_text, regime, ep_context, theme_context)
+            VALUES ($1, $2, $3::jsonb, $4)
+            RETURNING id
+        """, text, regime, ep_json, theme_context)
+    return row_id
+
+
+async def get_journal_entries(days_back: int = 7, limit: int = 20) -> list[dict[str, Any]]:
+    """Return recent journal entries, newest first."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, entry_text, regime, ep_context, theme_context, created_at
+            FROM mi_journal_entries
+            WHERE created_at >= NOW() - ($1 || ' days')::INTERVAL
+            ORDER BY created_at DESC
+            LIMIT $2
+        """, str(days_back), limit)
     return [dict(r) for r in rows]

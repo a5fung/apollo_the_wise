@@ -64,6 +64,19 @@ STAGE_EMOJI = {
     "Fading": "🔻",
 }
 
+
+def _conviction_suffix(theme: dict) -> str:
+    """Return conviction display suffix, e.g. '  d14 🔥×3' or ''."""
+    days = theme.get("days_active") or 0
+    consec = theme.get("consecutive_accelerating") or 0
+    parts = []
+    if days > 1:
+        parts.append(f"d{days}")
+    if consec >= 2:
+        parts.append(f"🔥×{consec}")
+    return ("  " + " ".join(parts)) if parts else ""
+
+
 # Sentence-split regex: split on "./?/! " followed by uppercase.
 # Requires 2+ lowercase/digit chars before the punctuation, which naturally
 # avoids splitting after abbreviations like U.S., a.m., Dr., St., etc.
@@ -358,8 +371,9 @@ def _format_theme_section(themes: list[dict], section_num: int = 3) -> str:
         score = t.get("score", 0)
         tickers = (t.get("tickers") or [])[:6]  # cap at 6 tickers shown
         tickers_str = "  ".join(f"`{tk}`" for tk in tickers)
+        conviction = _conviction_suffix(t)
         lines.append("")
-        lines.append(f"{emoji} *{t['name']}*  _{stage}_ · {score:.0f}")
+        lines.append(f"{emoji} *{t['name']}*{conviction}  _{stage}_ · {score:.0f}")
         lines.append(f"  {tickers_str}")
         if t.get("description"):
             # Strip any residual markdown chars that would break Telegram's parser
@@ -480,8 +494,9 @@ def _format_theme_scorecard(
             ticker_rs_pairs.sort(key=lambda x: -x[1])
             top_tickers = " · ".join(f"{tk} {int(rs)}" for tk, rs in ticker_rs_pairs[:5])
 
+            conviction = _conviction_suffix(st)
             lines.append("")
-            lines.append(f"*{name}*")
+            lines.append(f"*{name}*{conviction}")
             lines.append(f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}")
             if top_tickers:
                 lines.append(f"  {top_tickers}")

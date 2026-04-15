@@ -51,6 +51,9 @@ from agents.market_intelligence.db import (
     get_ep_scan_log,
     get_pool,
     restore_recently_retired_themes,
+    get_ep_outcomes,
+    add_journal_entry,
+    get_journal_entries,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today, search_news_perplexity
@@ -439,6 +442,13 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
+        # Journal — add (colon disambiguates from query) or query
+        if any(k in task for k in ["journal:", "log trade", "note trade", "add journal"]):
+            return await self._handle_journal_add(request)
+        if any(k in task for k in ["show journal", "my journal", "journal this week",
+                                     "journal today", "journal last", "journal entries"]):
+            return await self._handle_journal_query(request)
+
         if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log", "orb log", "show orb"]):
             return await self._handle_audit_log(request)
 
@@ -464,6 +474,11 @@ class MarketIntelligenceAgent(BaseAgent):
         # EP history — must come before general EP route
         if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
+
+        # EP outcome table — forward returns per alert; before general "ep" route
+        if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
+                                     "ep returns", "ep results", "ep track"]):
+            return await self._handle_ep_outcomes(request)
 
         # "why not EP / why wasn't X flagged" — diagnostic must come before general EP route
         if any(k in task for k in ["why not ep", "why no ep", "why wasn't", "why was not", "not flagged", "not an ep", "missed ep", "why didn't", "why did not"]):
@@ -826,6 +841,185 @@ class MarketIntelligenceAgent(BaseAgent):
 
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
+        """Show EP alerts with their forward returns from mi_signal_outcomes."""
+        import re as _re
+        task = request.task.lower()
+
+        # Parse optional tier filter
+        tier = None
+        if "high" in task:
+            tier = "HIGH"
+        elif "moderate" in task or "mod" in task:
+            tier = "MODERATE"
+
+        # Parse optional days window
+        days = 30
+        m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
+        if m:
+            days = min(int(m.group(1)), 90)
+
+        rows = await get_ep_outcomes(days_back=days, tier=tier)
+
+        if not rows:
+            return self._ok(
+                request,
+                result="No EP alerts in the selected window. Try 'ep outcomes 90d'.",
+            )
+
+        def _fmt(v) -> str:
+            if v is None:
+                return "  — "
+            sign = "+" if v >= 0 else ""
+            return f"{sign}{v:.1f}%"
+
+        with_outcomes = [r for r in rows if any(
+            r.get(f) is not None for f in ("fwd_1d_pct", "fwd_1w_pct", "fwd_1m_pct")
+        )]
+        pending = len(rows) - len(with_outcomes)
+
+        tier_label = f" ({tier})" if tier else ""
+        lines = [f"*EP Outcomes — last {days}d{tier_label}*", ""]
+
+        if with_outcomes:
+            lines.append("```")
+            lines.append("Ticker  Date       Tier  Gap    Cat     D1      D5      SPY1M")
+            lines.append("------  ---------  ----  -----  ------  ------  ------  -----")
+            for r in with_outcomes:
+                ticker_s  = r["ticker"].ljust(6)
+                dt        = str(r["alert_date"])[:10]
+                tier_s    = (r["score_tier"] or "?")[:4].ljust(4)
+                gap_s     = f"{r['gap_pct']:+.1f}%".rjust(5)
+                cat_s     = (r.get("catalyst_quality") or "?")[:6].ljust(6)
+                d1        = _fmt(r.get("fwd_1d_pct")).rjust(6)
+                d5        = _fmt(r.get("fwd_1w_pct")).rjust(6)
+                spy1m     = _fmt(r.get("spy_fwd_1m_pct")).rjust(5)
+                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {cat_s}  {d1}  {d5}  {spy1m}")
+            lines.append("```")
+            lines.append("_D1=next day  D5=1 week  SPY1M=1-month SPY (alpha context)_")
+
+        if pending > 0:
+            lines.append(f"\n_{pending} recent alert(s) pending — outcomes computed nightly_")
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_journal_add(self, request: AgentRequest) -> AgentResponse:
+        """Log a trade observation with auto-enriched market context."""
+        import re as _re
+        task = request.task
+
+        # Strip routing prefix to get the user's note
+        entry_text = _re.sub(
+            r'^(?:journal[:\s]+|log trade[:\s]+|note trade[:\s]+|add journal[:\s]+)',
+            '', task, flags=_re.IGNORECASE
+        ).strip()
+
+        if not entry_text:
+            return self._ok(
+                request,
+                result="Include your note after the command — e.g.\n`journal: bought NVDA at 142, EP breakout`",
+            )
+
+        today_str = et_today().strftime("%Y-%m-%d")
+        regime_data, ep_alerts, themes = await asyncio.gather(
+            get_current_regime(),
+            get_today_ep_alerts(today_str),
+            get_today_themes(today_str),
+        )
+
+        regime_str = (regime_data or {}).get("regime", "Unknown")
+
+        ep_context = None
+        if ep_alerts:
+            ep_context = [
+                {
+                    "ticker": a["ticker"],
+                    "ep_score": a.get("ep_score"),
+                    "tier": a.get("score_tier"),
+                    "catalyst": a.get("catalyst_quality"),
+                    "gap_pct": a.get("gap_pct"),
+                }
+                for a in ep_alerts
+            ]
+
+        theme_context = None
+        accel = [t for t in (themes or []) if t.get("stage") == "Accelerating"]
+        if accel:
+            from agents.market_intelligence.briefing import _conviction_suffix
+            parts = []
+            for t in accel[:5]:
+                suffix = _conviction_suffix(t)
+                parts.append(f"{t['name']}{suffix}")
+            theme_context = "Accelerating: " + ", ".join(parts)
+
+        entry_id = await add_journal_entry(
+            text=entry_text,
+            regime=regime_str,
+            ep_context=ep_context,
+            theme_context=theme_context,
+        )
+
+        lines = [f"*Journal #{entry_id} saved*", f"_{entry_text}_", ""]
+        lines.append(f"*Regime:* {regime_str}")
+        if ep_context:
+            tickers = ", ".join(f"`{e['ticker']}`" for e in ep_context)
+            lines.append(f"*EPs today:* {tickers}")
+        else:
+            lines.append("*EPs today:* None")
+        if theme_context:
+            lines.append(f"*Themes:* {theme_context}")
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_journal_query(self, request: AgentRequest) -> AgentResponse:
+        """Show recent journal entries."""
+        import re as _re
+        task = request.task.lower()
+
+        days = 7
+        if "today" in task:
+            days = 1
+        elif "this week" in task or "week" in task:
+            days = 7
+        elif "this month" in task or "month" in task:
+            days = 30
+        else:
+            m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
+            if m:
+                days = min(int(m.group(1)), 90)
+
+        entries = await get_journal_entries(days_back=days, limit=20)
+
+        if not entries:
+            period = "today" if days == 1 else f"the last {days} days"
+            return self._ok(
+                request,
+                result=(
+                    f"No journal entries for {period}.\n"
+                    "Add one with: `journal: bought NVDA at 142, EP breakout`"
+                ),
+            )
+
+        lines = [f"*Journal — last {days} day(s)* ({len(entries)} entries)"]
+        for e in entries:
+            created = e["created_at"]
+            ts = created.strftime("%b %d %H:%M") if hasattr(created, "strftime") else str(created)[:16]
+            lines.append(f"\n*#{e['id']}* _{ts}_")
+            lines.append(e["entry_text"])
+            meta = []
+            if e.get("regime"):
+                meta.append(f"Regime: {e['regime']}")
+            if e.get("ep_context"):
+                ep_tickers = [ep["ticker"] for ep in e["ep_context"] if ep.get("ticker")]
+                if ep_tickers:
+                    meta.append(f"EPs: {', '.join(ep_tickers)}")
+            if e.get("theme_context"):
+                meta.append(e["theme_context"])
+            if meta:
+                lines.append(f"  _{'  |  '.join(meta)}_")
+
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_trades_query(self, request: AgentRequest, ticker: str | None = None) -> AgentResponse:
         """
         Show paper trade history with entry/exit prices, P&L, stops.
@@ -977,7 +1171,7 @@ class MarketIntelligenceAgent(BaseAgent):
         through the normal orchestrator→Telegram channel. Orchestrator timeout is 360s.
         Returns a stage-grouped scorecard in the same format as the evening brief.
         """
-        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI
+        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
 
         task_lower = request.task.lower()
         wants_brief = any(k in task_lower for k in ["brief", "send", "briefing"])
@@ -1026,7 +1220,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 for st in group:
                     theme_emoji = STAGE_EMOJI.get(st["stage"], " ")
                     delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-                    lines.append(f"\n{theme_emoji}*{st['name']}*")
+                    conviction = _conviction_suffix(st)
+                    lines.append(f"\n{theme_emoji}*{st['name']}*{conviction}")
                     lines.append(
                         f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}"
                     )
@@ -1383,7 +1578,7 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="Briefing sent.")
 
     async def _handle_theme_query(self, request: AgentRequest) -> AgentResponse:
-        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI
+        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
 
         today_str = et_today().strftime("%Y-%m-%d")
         themes = await get_today_themes(today_str)
@@ -1429,7 +1624,8 @@ class MarketIntelligenceAgent(BaseAgent):
             for st in group:
                 theme_emoji = STAGE_EMOJI.get(st["stage"], " ")
                 delta_str = f"  Δ{st['delta']:+.1f}" if st["delta"] is not None else ""
-                lines.append(f"\n{theme_emoji}*{st['name']}*")
+                conviction = _conviction_suffix(st)
+                lines.append(f"\n{theme_emoji}*{st['name']}*{conviction}")
                 lines.append(
                     f"  RS {int(st['comp'])} (1M {int(st['rs_1m'])} | 3M {int(st['rs_3m'])} | 6M {int(st['rs_6m'])}){delta_str}"
                 )

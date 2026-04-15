@@ -409,21 +409,45 @@ async def _save_themes(themes: list[dict]) -> None:
     today = themes[0]["theme_date"]
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Fetch prior conviction counters for all theme names in one query
+        prior_rows = await conn.fetch("""
+            SELECT DISTINCT ON (name)
+                name, days_active, consecutive_accelerating, stage
+            FROM mi_themes
+            WHERE name = ANY($1) AND theme_date < $2
+            ORDER BY name, theme_date DESC
+        """, [t["name"] for t in themes], today)
+        prior_map = {r["name"]: dict(r) for r in prior_rows}
+
         # Upsert each theme
         for t in themes:
+            prior = prior_map.get(t["name"])
+            if prior is None:
+                days_active = 1
+                consec_acc = 1 if t["stage"] == "Accelerating" else 0
+            else:
+                prior_days = prior.get("days_active") or 0
+                prior_consec = prior.get("consecutive_accelerating") or 0
+                days_active = prior_days if t["stage"] == "Fading" else prior_days + 1
+                consec_acc = (prior_consec + 1) if t["stage"] == "Accelerating" else 0
+
             await conn.execute("""
-                INSERT INTO mi_themes (theme_date, name, stage, score, rs_avg, description, tickers, parent_theme)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                INSERT INTO mi_themes
+                    (theme_date, name, stage, score, rs_avg, description, tickers,
+                     parent_theme, days_active, consecutive_accelerating)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT (theme_date, name) DO UPDATE SET
                     stage = EXCLUDED.stage,
                     score = EXCLUDED.score,
                     rs_avg = EXCLUDED.rs_avg,
                     description = EXCLUDED.description,
                     tickers = EXCLUDED.tickers,
-                    parent_theme = EXCLUDED.parent_theme
+                    parent_theme = EXCLUDED.parent_theme,
+                    days_active = EXCLUDED.days_active,
+                    consecutive_accelerating = EXCLUDED.consecutive_accelerating
             """, t["theme_date"], t["name"], t["stage"],
                 t["score"], t.get("rs_avg"), t["description"], t["tickers"],
-                t.get("parent_theme"))
+                t.get("parent_theme"), days_active, consec_acc)
 
         # Remove themes that were merged/retired — not in the final list
         final_names = [t["name"] for t in themes]
