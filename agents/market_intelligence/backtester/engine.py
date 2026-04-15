@@ -130,10 +130,11 @@ def _simulate_day1(
         )
         return trade
 
+    min_bar_low = min(b["low"] for b in bars)
+
     # EOD handling — hold full position (no partial sell)
     if in_position and entries:
         last_bar = bars[-1]
-        last_entry = entries[-1]
         total_pnl = sum(e.pnl for e in exits)
 
         trade = BacktestTrade(
@@ -142,11 +143,10 @@ def _simulate_day1(
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
             entries=entries, exits=exits, total_pnl=total_pnl,
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
+            remaining_shares=current_shares,
+            last_entry=entries[-1],
+            day1_low=min_bar_low,
         )
-        # Stash full position for Day 2+ simulation
-        trade._remaining_shares = current_shares  # type: ignore[attr-defined]
-        trade._last_entry = last_entry  # type: ignore[attr-defined]
-        trade._day1_low = min(b["low"] for b in bars)  # type: ignore[attr-defined]
         return trade
 
     # Fully stopped out on Day 1
@@ -158,10 +158,10 @@ def _simulate_day1(
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
             entries=entries, exits=exits, total_pnl=total_pnl,
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
+            remaining_shares=0.0,
+            last_entry=entries[-1],
+            day1_low=min_bar_low,
         )
-        trade._remaining_shares = 0.0  # type: ignore[attr-defined]
-        trade._last_entry = entries[-1]  # type: ignore[attr-defined]
-        trade._day1_low = min(b["low"] for b in bars)  # type: ignore[attr-defined]
         return trade
 
     return None
@@ -183,13 +183,13 @@ def _simulate_trailing_stop(
     - Partial profit: sell 1/3 on Day 3-5 (Day 3-4 only if profitable, Day 5 regardless)
     - After partial: move stop floor to breakeven (entry price)
     """
-    remaining_shares = getattr(trade, "_remaining_shares", 0.0)
-    last_entry = getattr(trade, "_last_entry", None)
+    remaining_shares = trade.remaining_shares
+    last_entry = trade.last_entry
 
     if remaining_shares <= 0 or last_entry is None:
         return
 
-    hard_stop = getattr(trade, "_day1_low", last_entry.stop_price)
+    hard_stop = trade.day1_low if trade.day1_low is not None else last_entry.stop_price
     entry_price = last_entry.entry_price
     partial_taken = False
     breakeven_active = False
@@ -390,8 +390,7 @@ async def simulate_trade(
         return trade
 
     # Day 2+ trailing stop (only if still holding)
-    remaining = getattr(trade, "_remaining_shares", 0.0)
-    if remaining > 0:
+    if trade.remaining_shares > 0:
         # Fetch daily bars starting 35 days before alert for SMA warm-up
         today = et_today()
         from_date_str = (alert_date - timedelta(days=35)).strftime("%Y-%m-%d")
@@ -409,11 +408,6 @@ async def simulate_trade(
 
     # Ensure total_pnl is up to date
     trade.total_pnl = sum(e.pnl for e in trade.exits)
-
-    # Clean up temp attributes
-    for attr in ("_remaining_shares", "_last_entry", "_day1_low"):
-        if hasattr(trade, attr):
-            delattr(trade, attr)
 
     return trade
 

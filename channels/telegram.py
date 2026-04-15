@@ -656,13 +656,9 @@ class TelegramChannel:
                     p_recent = paper.get("recent_trades", [])
                     p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
                     if p_closed_list:
-                        import json as _json
-
-                        def _pjson(raw) -> list:
-                            if not raw:
-                                return []
-                            return raw if isinstance(raw, list) else _json.loads(raw or "[]")
-
+                        from agents.market_intelligence.backtester.tracker import (
+                            _attempt_count, format_trade_attempts,
+                        )
                         lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:
                             pnl = t.get("total_pnl", 0)
@@ -670,35 +666,13 @@ class TelegramChannel:
                             score = t.get("ep_score", 0)
                             gap = t.get("gap_pct")
                             gap_str = f" +{gap:.1f}%" if gap else ""
-                            entries = _pjson(t.get("entries"))
-                            exits = _pjson(t.get("exits"))
-                            num_att = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0) if entries else 0
+                            num_att = _attempt_count(t.get("entries"))
                             att_str = f" {num_att}x" if num_att > 1 else ""
                             lines.append(
                                 f"  {emoji} *{t['ticker']}*{gap_str} score={score:.0f}{att_str} "
                                 f"${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
                             )
-                            # Entry/stop shown once (same price every attempt)
-                            if entries:
-                                e0 = entries[0]
-                                ep = e0.get("price", e0.get("entry_price", 0))
-                                es = e0.get("stop", e0.get("stop_price", 0))
-                                sh = e0.get("shares", "")
-                                sh_str = f" ×{sh:.0f}" if sh else ""
-                                lines.append(f"      ORB entry=${ep:.2f} stop=${es:.2f}{sh_str}")
-                            # Per-attempt: in-time → out-time (reason) P&L
-                            exits_by_att = {ex.get("attempt", i + 1): ex for i, ex in enumerate(exits)}
-                            for e in entries:
-                                att = e.get("attempt", "?")
-                                in_t = e.get("time", "")
-                                in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
-                                ex = exits_by_att.get(att, {})
-                                out_t = ex.get("time", "")
-                                out_str = out_t[11:16] if len(out_t) >= 16 else "open"
-                                reason = ex.get("reason", "open")
-                                ex_pnl = ex.get("pnl", 0)
-                                att_label = f"#{att} " if num_att > 1 else ""
-                                lines.append(f"      {att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
+                            lines += format_trade_attempts(t.get("entries"), t.get("exits"), prefix="      ")
                         lines.append("")
 
                     # Totals

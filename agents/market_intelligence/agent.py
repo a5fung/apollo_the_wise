@@ -838,7 +838,6 @@ class MarketIntelligenceAgent(BaseAgent):
         When LIVE_TRADING_ENABLED=true, queries mi_live_trades (Alpaca paper).
         When false, queries mi_paper_trades (EOD sim).
         """
-        import json as _json
         from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
         task = request.task.lower()
         pool = await get_pool()
@@ -926,14 +925,11 @@ class MarketIntelligenceAgent(BaseAgent):
         if not rows and ticker:
             return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
 
+        from agents.market_intelligence.backtester.tracker import parse_json_list, format_trade_attempts, _attempt_count
+
         lines = [f"*{label}*\n"]
 
         is_skipped = lambda r: r["status"] not in ("open", "closed", "filled", "order_placed", "pending_confirmation", "confirmed")
-
-        def _parse_jsonb(raw) -> list:
-            if not raw:
-                return []
-            return raw if isinstance(raw, list) else _json.loads(raw or "[]")
 
         for r in rows:
             is_open = r["status"] in open_statuses
@@ -943,8 +939,7 @@ class MarketIntelligenceAgent(BaseAgent):
             score = f"score={r['ep_score']:.0f}" if r["ep_score"] else ""
             gap = f"gap={r['gap_pct']:.1f}%" if r["gap_pct"] else ""
 
-            entries = _parse_jsonb(r.get("entries"))
-            num_attempts = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0) if entries else 0
+            num_attempts = _attempt_count(r.get("entries"))
             att_str = f" {num_attempts}x" if num_attempts > 1 else ""
 
             header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}{att_str}"
@@ -954,29 +949,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  Filtered: {r['skip_reason'] or 'unknown'}")
                 continue
 
-            # Entry/stop shown once (same price every attempt)
-            if entries:
-                e0 = entries[0]
-                ep = e0.get("price", e0.get("entry_price", 0))
-                es = e0.get("stop", e0.get("stop_price", 0))
-                sh = e0.get("shares", "")
-                sh_str = f" ×{sh:.0f}" if sh else ""
-                lines.append(f"  ORB entry=${ep:.2f} stop=${es:.2f}{sh_str}")
-
-            # Per-attempt: in-time → out-time (reason) P&L
-            exits = _parse_jsonb(r.get("exits"))
-            exits_by_att = {ex.get("attempt", i + 1): ex for i, ex in enumerate(exits)}
-            for e in entries:
-                att = e.get("attempt", "?")
-                in_t = e.get("time", "")
-                in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
-                ex = exits_by_att.get(att, {})
-                out_t = ex.get("time", "")
-                out_str = out_t[11:16] if len(out_t) >= 16 else "open"
-                reason = ex.get("reason", "open")
-                ex_pnl = ex.get("pnl", 0)
-                att_label = f"#{att} " if num_attempts > 1 else ""
-                lines.append(f"  {att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
+            lines += format_trade_attempts(r.get("entries"), r.get("exits"), prefix="  ")
 
             # Summary
             if not is_open:

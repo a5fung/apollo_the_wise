@@ -43,6 +43,10 @@ class BacktestTrade:
     orb_low: float | None = None
     atr_14: float | None = None
     breakeven_stop: bool = False
+    # Day 1 simulation state — set by _simulate_day1, consumed by simulate_trade
+    remaining_shares: float = 0.0
+    last_entry: TradeEntry | None = None
+    day1_low: float | None = None
 
     @property
     def total_shares_entered(self) -> float:

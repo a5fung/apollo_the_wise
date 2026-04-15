@@ -600,3 +600,41 @@ TVTX today: ORB range $1.28, 1.5x ATR = $2.62. Passes `validate_orb_entry`. Both
 
 ### Deploy Notes
 - market-agent only — deployed 2026-04-15
+
+## Changes Made 2026-04-14 (fifth session)
+
+### Code Quality (/simplify review applied)
+
+**1. `BacktestTrade` proper fields** (`backtester/models.py`):
+Added `remaining_shares: float`, `last_entry: TradeEntry | None`, `day1_low: float | None` as proper dataclass fields. Previously set as dynamic attrs with `type: ignore[attr-defined]` — a leaky abstraction that made the contract invisible.
+
+**2. Engine cleanup** (`backtester/engine.py`):
+- `_simulate_day1`: both EOD-hold and fully-stopped-out branches now set proper dataclass fields directly (no more `trade._remaining_shares = ...`)
+- `min(b["low"] for b in bars)` computed once before both branches (was computed twice)
+- `_simulate_trailing_stop`: reads `trade.remaining_shares/last_entry/day1_low` directly
+- `simulate_trade`: removed temp attr cleanup loop (no longer needed)
+
+**3. Single JSON parse helper** (`backtester/tracker.py`):
+`parse_json_list(raw) -> list` extracted to module level. Previously defined three times as `_parse_json` (tracker.py inside function), `_parse_jsonb` (agent.py inline), `_pjson` (telegram.py inline).
+
+**4. Single per-attempt formatter** (`backtester/tracker.py`):
+`format_trade_attempts(entries_raw, exits_raw, prefix)` extracted to module level — produces the canonical "ORB entry=... stop=..." + per-attempt timestamp lines. Previously duplicated identically in agent.py, telegram.py, and tracker.py's `format_tracker_telegram`. All three now call the shared function.
+
+**5. `format_tracker_telegram` aligned** (`backtester/tracker.py`):
+EOD scheduler formatter now uses `format_trade_attempts` — same per-attempt timestamp format as `/trades` command. Previously used a different entry-line format (inconsistency flagged by /simplify).
+
+**6. `briefing.py` task_names** (`briefing.py`):
+Replaced confusing `["rs_leaders_tweet", "theme_tweet"][:len(twitter_tasks)]` slice with explicit `twitter_names` list construction.
+
+### Net change: -50 lines across 6 files
+
+### Files Changed
+- `agents/market_intelligence/backtester/models.py`
+- `agents/market_intelligence/backtester/engine.py`
+- `agents/market_intelligence/backtester/tracker.py`
+- `agents/market_intelligence/agent.py`
+- `agents/market_intelligence/briefing.py`
+- `channels/telegram.py`
+
+### Deploy Notes
+- market-agent + telegram: tracker.py, engine.py, models.py, agent.py, briefing.py, telegram.py

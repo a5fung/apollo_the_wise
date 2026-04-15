@@ -855,10 +855,10 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
             results = await asyncio.gather(*telegram_tasks, *twitter_tasks, return_exceptions=True)
             # Log any failures — return_exceptions=True silently swallows them otherwise
-            task_names = (
-                ["chart_mosaic"] * len(telegram_tasks)
-                + ["rs_leaders_tweet", "theme_tweet"][: len(twitter_tasks)]
-            )
+            twitter_names = ["rs_leaders_tweet"]
+            if scored_themes:
+                twitter_names.append("theme_tweet")
+            task_names = ["chart_mosaic"] * len(telegram_tasks) + twitter_names
             for name, result in zip(task_names, results):
                 if isinstance(result, Exception):
                     logger.error(f"Twitter/chart task '{name}' failed: {result}")

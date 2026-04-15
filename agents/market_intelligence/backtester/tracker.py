@@ -25,6 +25,51 @@ from agents.market_intelligence.constants import ACCOUNT_SIZE, RISK_PCT, MAX_POS
 logger = logging.getLogger(__name__)
 
 
+def parse_json_list(raw) -> list:
+    """Parse a DB JSONB column that may be a list, JSON string, or None."""
+    if not raw:
+        return []
+    return raw if isinstance(raw, list) else json.loads(raw or "[]")
+
+
+def format_trade_attempts(entries_raw, exits_raw, prefix: str = "  ") -> list[str]:
+    """
+    Format trade entry + per-attempt exit timestamps into display lines.
+
+    Returns:
+      - One 'ORB entry=... stop=...' line (same price every attempt)
+      - One timestamp line per attempt: '#1 09:31 → 10:00 (stop_hit) P&L $-635'
+    """
+    entries = parse_json_list(entries_raw)
+    exits = parse_json_list(exits_raw)
+    if not entries:
+        return []
+
+    lines: list[str] = []
+    e0 = entries[0]
+    ep = e0.get("price", e0.get("entry_price", 0))
+    es = e0.get("stop", e0.get("stop_price", 0))
+    sh = e0.get("shares", "")
+    sh_str = f" ×{sh:.0f}" if sh else ""
+    lines.append(f"{prefix}ORB entry=${ep:.2f} stop=${es:.2f}{sh_str}")
+
+    num_att = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0)
+    exits_by_att = {ex.get("attempt", i + 1): ex for i, ex in enumerate(exits)}
+    for e in entries:
+        att = e.get("attempt", "?")
+        in_t = e.get("time", "")
+        in_str = in_t[11:16] if len(in_t) >= 16 else in_t[:10]
+        ex = exits_by_att.get(att, {})
+        out_t = ex.get("time", "")
+        out_str = out_t[11:16] if len(out_t) >= 16 else "open"
+        reason = ex.get("reason", "open")
+        ex_pnl = ex.get("pnl", 0)
+        att_label = f"#{att} " if num_att > 1 else ""
+        lines.append(f"{prefix}{att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
+
+    return lines
+
+
 def _position_size(
     entry_price: float,
     stop_price: float,
@@ -321,9 +366,9 @@ async def process_new_alerts(today: date) -> list[dict]:
             results.append({"ticker": ticker, "action": "skipped", "reason": trade.skip_reason})
             continue
 
-        remaining = getattr(trade, "_remaining_shares", 0.0)
-        last_entry = getattr(trade, "_last_entry", None)
-        day1_low = getattr(trade, "_day1_low", None)
+        remaining = trade.remaining_shares
+        last_entry = trade.last_entry
+        day1_low = trade.day1_low
 
         entries_json = [
             {"time": e.entry_time.isoformat(), "price": e.entry_price,
@@ -641,59 +686,22 @@ async def run_paper_trade_tracker() -> dict[str, Any]:
     return summary
 
 
+def _attempt_count(entries_raw) -> int:
+    entries = parse_json_list(entries_raw)
+    if not entries:
+        return 0
+    return max(e.get("attempt", i + 1) for i, e in enumerate(entries))
+
+
 def format_tracker_telegram(summary: dict) -> str:
     """Format paper trade summary for Telegram notification."""
-    import json as _json
     lines = ["📊 *Paper Trade Tracker (EOD sim)*\n"]
-
-    def _parse_json(raw) -> list:
-        if not raw:
-            return []
-        return raw if isinstance(raw, list) else _json.loads(raw or "[]")
-
-    def _attempt_count(entries_raw) -> int:
-        entries = _parse_json(entries_raw)
-        if not entries:
-            return 0
-        return max(e.get("attempt", i + 1) for i, e in enumerate(entries))
-
-    def _entry_lines(entries_raw, prefix="    ") -> list[str]:
-        """Format entries JSONB — one line per attempt."""
-        entries = _parse_json(entries_raw)
-        if not entries:
-            return []
-        out = []
-        for e in entries:
-            attempt = e.get("attempt", "?")
-            price = e.get("price", e.get("entry_price", 0))
-            stop = e.get("stop", e.get("stop_price", 0))
-            shares = e.get("shares", "")
-            shares_str = f" ×{shares:.0f}" if shares else ""
-            out.append(f"{prefix}Entry #{attempt} @${price:.2f}{shares_str} stop=${stop:.2f}")
-        return out
-
-    def _exit_lines(exits_raw, prefix="    ") -> list[str]:
-        """Format exits JSONB into readable lines."""
-        exits = _parse_json(exits_raw)
-        out = []
-        for ex in exits:
-            price = ex.get("price") or ex.get("exit_price", 0)
-            reason = ex.get("reason", "")
-            pnl = ex.get("pnl", 0)
-            shares = ex.get("shares") or ex.get("shares_exited", "")
-            attempt = ex.get("attempt", "")
-            shares_str = f" ×{shares:.0f}" if shares else ""
-            attempt_str = f" (attempt {attempt})" if attempt else ""
-            out.append(f"{prefix}Exit @${price:.2f}{shares_str} {reason}{attempt_str} P&L ${pnl:+.0f}")
-        return out
 
     # Today's new trades
     new = summary.get("today_new", [])
     if new:
         lines.append("*New today:*")
         for t in new:
-            entry = t.get("entry_price") or t.get("orb_high")
-            stop = t.get("stop") or t.get("orb_low")
             gap = t.get("gap_pct")
             gap_str = f" gap={gap:.1f}%" if gap else ""
             score_str = f" score={t['ep_score']:.0f}" if t.get("ep_score") else ""
@@ -701,14 +709,12 @@ def format_tracker_telegram(summary: dict) -> str:
                 attempts = _attempt_count(t.get("entries"))
                 att_str = f" {attempts}x" if attempts > 1 else ""
                 lines.append(f"  ▶ {t['ticker']}{gap_str}{score_str}{att_str}")
-                lines += _entry_lines(t.get("entries"))
-                lines += _exit_lines(t.get("exits"))
+                lines += format_trade_attempts(t.get("entries"), t.get("exits"), prefix="    ")
             elif t["action"] == "closed_day1":
                 attempts = _attempt_count(t.get("entries"))
                 att_str = f" {attempts}x attempts" if attempts > 1 else ""
                 lines.append(f"  ⏹ {t['ticker']}{gap_str}{score_str}{att_str}")
-                lines += _entry_lines(t.get("entries"))
-                lines += _exit_lines(t.get("exits"))
+                lines += format_trade_attempts(t.get("entries"), t.get("exits"), prefix="    ")
                 lines.append(f"    *Day 1 P&L: ${t['pnl']:+,.2f}*")
             elif t["action"] in ("filtered", "skipped"):
                 lines.append(f"  ⊘ {t['ticker']}{gap_str}{score_str}: {t.get('reason', '')}")
@@ -733,7 +739,7 @@ def format_tracker_telegram(summary: dict) -> str:
             lines.append(f"  ½ {u['ticker']} @${u.get('price', 0):.2f} P&L=${u.get('pnl', 0):+,.2f}")
         lines.append("")
 
-    # Recent trades — show entry, stop, exits
+    # Recent trades — same per-attempt format as /trades command
     recent = summary.get("recent_trades", [])
     if recent:
         lines.append("*Recent trades:*")
@@ -750,8 +756,7 @@ def format_tracker_telegram(summary: dict) -> str:
                 f"  {status_icon} {t['ticker']}{gap_str} score={score:.0f}{att_str} "
                 f"{hold}d P&L=${pnl:+,.2f}"
             )
-            lines += _entry_lines(t.get("entries"), prefix="    ")
-            lines += _exit_lines(t.get("exits"), prefix="    ")
+            lines += format_trade_attempts(t.get("entries"), t.get("exits"), prefix="    ")
         lines.append("")
 
     # Running totals
