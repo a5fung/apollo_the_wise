@@ -842,64 +842,115 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
-        """Show EP alerts with their forward returns from mi_signal_outcomes."""
+        """
+        Show EP outcomes grouped by what actually happened: traded, filtered by rule, or not attempted.
+        Purpose: audit whether our entry filters are correctly calibrated.
+        Excludes pre-Claude 'unknown' catalyst records (Jan-Feb 2026 early scans).
+        """
         import re as _re
+        from statistics import mean
         task = request.task.lower()
 
-        # Parse optional tier filter
         tier = None
         if "high" in task:
             tier = "HIGH"
         elif "moderate" in task or "mod" in task:
             tier = "MODERATE"
 
-        # Parse optional days window
         days = 90
         m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
         if m:
             days = min(int(m.group(1)), 180)
 
-        rows = await get_ep_outcomes(days_back=days, tier=tier)
+        include_unknown = "all" in task or "unknown" in task
+
+        rows = await get_ep_outcomes(days_back=days, tier=tier, include_unknown=include_unknown)
 
         if not rows:
             return self._ok(
                 request,
-                result="No EP alerts in the selected window. Try 'ep outcomes 90d'.",
+                result=(
+                    "*EP Outcomes* — no Claude-scored alerts in window\n"
+                    "_Early records (Jan-Feb) used a placeholder scorer and are excluded.\n"
+                    "Add 'all' to include them: 'ep outcomes all'_"
+                ),
             )
 
-        def _fmt(v) -> str:
+        def _fmt(v, width=6) -> str:
             if v is None:
-                return "  — "
+                return "—".rjust(width)
             sign = "+" if v >= 0 else ""
-            return f"{sign}{v:.1f}%"
+            return f"{sign}{v:.1f}%".rjust(width)
 
-        with_outcomes = [r for r in rows if any(
-            r.get(f) is not None for f in ("fwd_1d_pct", "fwd_1w_pct", "fwd_1m_pct")
-        )]
-        pending = len(rows) - len(with_outcomes)
+        traded    = [r for r in rows if r["trade_status"] == "traded"]
+        filtered  = [r for r in rows if r["trade_status"] == "filtered"]
+        no_attempt = [r for r in rows if r["trade_status"] == "no_attempt"]
 
         tier_label = f" ({tier})" if tier else ""
-        lines = [f"*EP Outcomes — last {days}d{tier_label}*", ""]
+        lines = [f"*EP Outcomes — last {days}d{tier_label}*"]
+        lines.append("_Audits whether our entry filters let the right trades through._")
+        lines.append("")
 
-        if with_outcomes:
+        # ── Section 1: Traded ──────────────────────────────────────────────────
+        lines.append(f"*TRADED ({len(traded)})*")
+        if not traded:
+            lines.append("_None in this window._")
+        else:
             lines.append("```")
-            lines.append("Ticker  Date       Tier  Gap    Cat     D1      D5      SPY1M")
-            lines.append("------  ---------  ----  -----  ------  ------  ------  -----")
-            for r in with_outcomes:
+            lines.append("Ticker  Date       Tier  Gap    Entry    P&L      D1      D5")
+            lines.append("------  ---------  ----  -----  -------  -------  ------  ------")
+            for r in traded:
+                ticker_s = r["ticker"].ljust(6)
+                dt       = str(r["alert_date"])[:10]
+                tier_s   = (r["score_tier"] or "?")[:4].ljust(4)
+                gap_s    = f"{r['gap_pct']:+.1f}%".rjust(5)
+                entry_s  = f"${r['entry_price']:.2f}".rjust(7) if r.get("entry_price") else "     —"
+                pnl_s    = _fmt(r.get("total_pnl"), width=7)
+                d1       = _fmt(r.get("fwd_1d_pct"))
+                d5       = _fmt(r.get("fwd_1w_pct"))
+                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {entry_s}  {pnl_s}  {d1}  {d5}")
+            lines.append("```")
+            pnl_vals = [r["total_pnl"] for r in traded if r.get("total_pnl") is not None]
+            if pnl_vals:
+                wins = sum(1 for v in pnl_vals if v > 0)
+                lines.append(f"_Win rate: {wins}/{len(pnl_vals)} · Total P&L: ${sum(pnl_vals):+.0f}_")
+        lines.append("")
+
+        # ── Section 2: Filtered by rule ────────────────────────────────────────
+        lines.append(f"*FILTERED BY RULE ({len(filtered)})*  _— did we miss good trades?_")
+        if not filtered:
+            lines.append("_None in this window._")
+        else:
+            lines.append("```")
+            lines.append("Ticker  Date       Tier  Gap    Filter reason     D1      D5")
+            lines.append("------  ---------  ----  -----  ----------------  ------  ------")
+            for r in filtered:
                 ticker_s  = r["ticker"].ljust(6)
                 dt        = str(r["alert_date"])[:10]
                 tier_s    = (r["score_tier"] or "?")[:4].ljust(4)
                 gap_s     = f"{r['gap_pct']:+.1f}%".rjust(5)
-                cat_s     = (r.get("catalyst_quality") or "?")[:6].ljust(6)
-                d1        = _fmt(r.get("fwd_1d_pct")).rjust(6)
-                d5        = _fmt(r.get("fwd_1w_pct")).rjust(6)
-                spy1m     = _fmt(r.get("spy_fwd_1m_pct")).rjust(5)
-                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {cat_s}  {d1}  {d5}  {spy1m}")
+                reason_s  = (r.get("skip_reason") or "?")[:16].ljust(16)
+                d1        = _fmt(r.get("fwd_1d_pct"))
+                d5        = _fmt(r.get("fwd_1w_pct"))
+                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {reason_s}  {d1}  {d5}")
             lines.append("```")
-            lines.append("_D1=next day  D5=1 week  SPY1M=1-month SPY (alpha context)_")
+            # Flag any filters that consistently let winners through
+            filter_d1 = [r for r in filtered if r.get("fwd_1d_pct") is not None]
+            if filter_d1:
+                avg = mean(r["fwd_1d_pct"] for r in filter_d1)
+                sign = "+" if avg >= 0 else ""
+                wins = sum(1 for r in filter_d1 if r["fwd_1d_pct"] > 0)
+                flag = " ⚠ filters may be too strict" if avg > 2 else ""
+                lines.append(f"_Filtered avg D1: {sign}{avg:.1f}% ({wins}/{len(filter_d1)} positive){flag}_")
+        lines.append("")
 
-        if pending > 0:
-            lines.append(f"\n_{pending} recent alert(s) pending — outcomes computed nightly_")
+        # ── Section 3: Not attempted ───────────────────────────────────────────
+        if no_attempt:
+            lines.append(f"*NOT ATTEMPTED ({len(no_attempt)})*  _— alert fired outside ORB window_")
+            names = ", ".join(f"{r['ticker']} ({str(r['alert_date'])[:10]})" for r in no_attempt[:8])
+            if len(no_attempt) > 8:
+                names += f" +{len(no_attempt) - 8} more"
+            lines.append(f"_{names}_")
 
         return self._ok(request, result="\n".join(lines))
 

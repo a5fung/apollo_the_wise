@@ -2417,37 +2417,61 @@ async def get_audit_log(
 async def get_ep_outcomes(
     days_back: int = 90,
     tier: str | None = None,
+    include_unknown: bool = False,
 ) -> list[dict[str, Any]]:
     """
-    JOIN ep_alerts with signal_outcomes to show forward returns per alert.
-    Uses DISTINCT ON (ticker, alert_date) to deduplicate repeated 5-min scan inserts
-    (mi_ep_alerts has no unique constraint — same ticker can be inserted many times/day).
-    Uses LEFT JOIN so recent alerts with no outcomes yet still appear.
-    signal_type is 'ep_alert' per outcome_tracker.py convention.
-    spy_fwd_1m_pct is the only SPY comparison field in the schema.
+    Return each EP alert enriched with:
+    - mi_signal_outcomes: fwd_1d_pct, fwd_1w_pct (forward returns, computed nightly)
+    - mi_live_trades: skip_reason, entry_price, total_pnl, status (what the system did with it)
+
+    trade_status categories derived here:
+      'traded'    — live_trades row exists, no skip_reason, entry_price set
+      'filtered'  — live_trades row exists, skip_reason set (ORB too wide, ADV too low, etc.)
+      'no_attempt'— no live_trades row (alert fired outside ORB window, or pre-bar-stream era)
+
+    Deduplicated via DISTINCT ON (ticker, alert_date) — mi_ep_alerts has no UNIQUE constraint
+    (5-min scans can insert the same alert multiple times per day).
+    Excludes catalyst_quality='unknown' by default (pre-Claude early records with no value).
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        tier_filter = "AND a.score_tier = $2" if tier else ""
         params: list[Any] = [days_back]
+        filters = ["a.alert_date >= CURRENT_DATE - $1::int"]
+        if not include_unknown:
+            filters.append("a.catalyst_quality != 'unknown'")
         if tier:
             params.append(tier.upper())
+            filters.append(f"a.score_tier = ${len(params)}")
+        where = " AND ".join(filters)
         rows = await conn.fetch(f"""
-            SELECT ticker, alert_date, score_tier, gap_pct,
-                   catalyst_quality, ep_score,
-                   fwd_1d_pct, fwd_1w_pct, fwd_1m_pct, spy_fwd_1m_pct
+            SELECT
+                ticker, alert_date, score_tier, gap_pct, catalyst_quality, ep_score,
+                fwd_1d_pct, fwd_1w_pct,
+                lt_status, skip_reason, entry_price, total_pnl,
+                CASE
+                    WHEN lt_status IS NULL THEN 'no_attempt'
+                    WHEN skip_reason IS NOT NULL THEN 'filtered'
+                    WHEN entry_price IS NOT NULL THEN 'traded'
+                    ELSE 'no_attempt'
+                END AS trade_status
             FROM (
                 SELECT DISTINCT ON (a.ticker, a.alert_date)
                     a.ticker, a.alert_date, a.score_tier, a.gap_pct,
                     a.catalyst_quality, a.ep_score,
-                    o.fwd_1d_pct, o.fwd_1w_pct, o.fwd_1m_pct, o.spy_fwd_1m_pct
+                    o.fwd_1d_pct, o.fwd_1w_pct,
+                    lt.status       AS lt_status,
+                    lt.skip_reason  AS skip_reason,
+                    lt.entry_price  AS entry_price,
+                    lt.total_pnl    AS total_pnl
                 FROM mi_ep_alerts a
                 LEFT JOIN mi_signal_outcomes o
                     ON o.signal_type = 'ep_alert'
                    AND o.signal_date = a.alert_date
                    AND o.identifier = a.ticker
-                WHERE a.alert_date >= CURRENT_DATE - $1::int
-                {tier_filter}
+                LEFT JOIN mi_live_trades lt
+                    ON lt.ticker = a.ticker
+                   AND lt.alert_date = a.alert_date
+                WHERE {where}
                 ORDER BY a.ticker, a.alert_date, a.ep_score DESC
             ) deduped
             ORDER BY alert_date DESC, ep_score DESC
