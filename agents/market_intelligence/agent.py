@@ -882,13 +882,15 @@ class MarketIntelligenceAgent(BaseAgent):
 
         where = " AND ".join(where_clauses)
 
+        # mi_paper_trades has entries column; mi_live_trades does not
+        entries_col = "entries" if not LIVE_TRADING_ENABLED else "NULL::jsonb AS entries"
         async with pool.acquire() as conn:
             rows = await conn.fetch(f"""
                 SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality, regime,
                        status, skip_reason,
                        {entry_col} AS entry_price, orb_high, orb_low, stop_price,
                        total_pnl, hold_days,
-                       exits
+                       exits, {entries_col}
                 FROM {table}
                 WHERE {where}
                 ORDER BY alert_date DESC
@@ -928,6 +930,11 @@ class MarketIntelligenceAgent(BaseAgent):
 
         is_skipped = lambda r: r["status"] not in ("open", "closed", "filled", "order_placed", "pending_confirmation", "confirmed")
 
+        def _parse_jsonb(raw) -> list:
+            if not raw:
+                return []
+            return raw if isinstance(raw, list) else _json.loads(raw or "[]")
+
         for r in rows:
             is_open = r["status"] in open_statuses
             pnl_positive = (r["total_pnl"] or 0) > 0
@@ -936,29 +943,37 @@ class MarketIntelligenceAgent(BaseAgent):
             score = f"score={r['ep_score']:.0f}" if r["ep_score"] else ""
             gap = f"gap={r['gap_pct']:.1f}%" if r["gap_pct"] else ""
 
-            header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}"
+            entries = _parse_jsonb(r.get("entries"))
+            num_attempts = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0) if entries else 0
+            att_str = f" {num_attempts}x" if num_attempts > 1 else ""
+
+            header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}{att_str}"
             lines.append(header)
 
             if is_skipped(r):
                 lines.append(f"  Filtered: {r['skip_reason'] or 'unknown'}")
                 continue
 
-            # Entry
-            entry_price = r["entry_price"] or r["orb_high"]
-            if entry_price:
-                orb_low = r["orb_low"]
-                lines.append(f"  Entry: ${entry_price:.2f}  Stop: ${orb_low:.2f}" if orb_low else f"  Entry: ${entry_price:.2f}")
+            # Per-entry lines
+            for e in entries:
+                attempt = e.get("attempt", "?")
+                ep = e.get("price", e.get("entry_price", 0))
+                es = e.get("stop", e.get("stop_price", 0))
+                sh = e.get("shares", "")
+                sh_str = f" ×{sh:.0f}" if sh else ""
+                stop_str = f" stop=${es:.2f}" if es else ""
+                lines.append(f"  Entry #{attempt} @${ep:.2f}{sh_str}{stop_str}")
 
-            # Exits from JSONB
-            exits = r["exits"]
-            if isinstance(exits, str):
-                exits = _json.loads(exits or "[]")
-            for ex in (exits or []):
+            # Per-exit lines
+            exits = _parse_jsonb(r.get("exits"))
+            for ex in exits:
                 ex_time = ex.get("time", "")[:10] if ex.get("time") else ""
                 reason = ex.get("reason", "")
                 ex_price = ex.get("price") or ex.get("exit_price", 0)
                 ex_pnl = ex.get("pnl", 0)
-                lines.append(f"  Exit {ex_time}: ${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
+                attempt = ex.get("attempt", "")
+                att_tag = f" #{attempt}" if attempt else ""
+                lines.append(f"  Exit{att_tag} {ex_time}: ${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
 
             # Summary
             if not is_open:
