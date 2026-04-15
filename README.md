@@ -409,16 +409,55 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 
 ## Backlog / Upgrade Path
 
-**Highest leverage (Polygon Starter now active):**
-- Real T2108 breadth (% stocks above 50MA) from full universe
-- Full Pradeep Market Monitor (50%+ 1M count, 25%+ 1Q count, consecutive breakdown tracking)
-- Correlation clustering — find stocks moving together before they're RS leaders
+### Recently completed (April 2026)
+- ✅ Real-time ORB entry via Alpaca bar WebSocket (pre-market HIGH → subscribed → order at 9:30:59)
+- ✅ Single shared ORB stop-width rule (`validate_orb_entry`) — EOD sim and live path structurally identical
+- ✅ M&A hard filter — definitive agreement / tender offer → skip before scoring
+- ✅ EP scoring dead zone fix — 10%+ gap + game_changer catalyst → minimum MODERATE score
+- ✅ TradingView webhooks — nginx reverse proxy on port 80, instant delivery
+- ✅ Theme name inheritance on rediscovery — retired-then-returned themes keep their name
+- ✅ Fat theme splitting — Sonnet + Opus advisor splits >20-stock catchalls into focused sub-themes
+- ✅ Industry-relative RS — every single-ticker query shows theme rank + GICS industry percentile
+- ✅ EP diagnostic — "why not EP TICKER?" runs filter checks, stops at first failure, fetches news
+- ✅ Trade audit trail — per-attempt entry/exit timestamps on every trade display
+- ✅ Audit log — all engine decisions queryable from Telegram (advisor calls, theme events, ORB events)
 
-**Morning briefing enrichments:**
-- ✅ Futures / overnight moves
-- ✅ Economic calendar
-- Earnings calendar for tracked stocks
-- MODERATE EP recap
+### Previously completed
+- ✅ Full Pradeep Market Monitor (T2108, breadth counts, 4% ratio, consecutive breakdown tracking)
+- ✅ Signal outcome tracking (EP/RS forward returns, theme stage constituent returns)
+- ✅ State-change alerts (RS deterioration, theme transitions, MA breaks)
+- ✅ Composite screener (RS + theme stage + O'Neil fundamentals)
+- ✅ Chart mosaic (top RS leaders grid → Telegram + X post)
+- ✅ Persistent theme exclusions (DB-layer ban, not Haiku-dependent)
+- ✅ Advisor strategy (Sonnet + Opus for hard clustering decisions)
+- ✅ Real-time trade stream (Alpaca WebSocket fills + stops)
+- ✅ Day 1 re-entry (max 2 attempts, price-aware re-entry logic)
 
-**Fundamentals:**
-- EPS estimates (next quarter consensus + surprise%) via Alpha Vantage free tier — see backlog
+---
+
+### Next up
+
+**P6 — Trading Journal**
+You tell Apollo: "Bought NVDA breakout at 142" / "Stopped out of SMCI at -7%". Apollo stores execution → tracks win rate by EP tier, regime, theme stage, setup type. Over time surfaces patterns: "Your Bull regime EP trades: 68% win rate. Choppy: 41%." Builds on automated outcome tracking (P8) by adding your actual execution data.
+
+**P7 — EPS Estimates**
+Next-quarter consensus + surprise % surfaced in two places: morning briefing earnings calendar (flag RS leaders / theme stocks reporting that day/week) and on-demand fundamentals command. Via Alpha Vantage free tier or yfinance.
+
+**P10 — Observability / Reasoning Traces**
+"Why did Apollo surface this?" — add reasoning traces to alerts and briefing entries.
+- EP alert: "gap 12%, rvol 4.2x, game_changer catalyst, RS 87, Accelerating theme"
+- Theme: "Moved to Accelerating: 4/5 constituents RS 80+"
+- RS leader: "RS jumped 65→91 in 2 weeks (velocity leader)"
+
+**Morning briefing enrichments**
+- MODERATE EP recap — HIGHs fire real-time; briefing should recap MODERATEs for manual catalyst check
+- Earnings calendar — flag when RS leader or tracked stock reports that day/week
+- Pre-market movers in theme stocks — which tracked names are gapping pre-market?
+
+---
+
+### North Star
+
+**Correlation clustering** — Find stocks moving together *before* they're RS leaders. If 4 photonics names show 0.85+ daily return correlation over 2 weeks, that's an early cluster — even if none is top-60 RS yet. Builds bottom-up theme discovery earlier in the cycle. Needs stored daily returns for broader universe (Polygon Starter active).
+
+**Live trading** — Current goal is validating the paper trading system. Once Crisis regime lifts and paper results are consistent, flip `LIVE_TRADING_ENABLED=true` with real money on a small account.
