@@ -32,12 +32,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 import anthropic
-
-from datetime import timedelta
 
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.collector import (
