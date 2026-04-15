@@ -854,10 +854,10 @@ class MarketIntelligenceAgent(BaseAgent):
             tier = "MODERATE"
 
         # Parse optional days window
-        days = 30
+        days = 90
         m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
         if m:
-            days = min(int(m.group(1)), 90)
+            days = min(int(m.group(1)), 180)
 
         rows = await get_ep_outcomes(days_back=days, tier=tier)
 

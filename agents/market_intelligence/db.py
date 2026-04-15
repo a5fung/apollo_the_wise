@@ -2415,11 +2415,13 @@ async def get_audit_log(
 
 
 async def get_ep_outcomes(
-    days_back: int = 30,
+    days_back: int = 90,
     tier: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     JOIN ep_alerts with signal_outcomes to show forward returns per alert.
+    Uses DISTINCT ON (ticker, alert_date) to deduplicate repeated 5-min scan inserts
+    (mi_ep_alerts has no unique constraint — same ticker can be inserted many times/day).
     Uses LEFT JOIN so recent alerts with no outcomes yet still appear.
     signal_type is 'ep_alert' per outcome_tracker.py convention.
     spy_fwd_1m_pct is the only SPY comparison field in the schema.
@@ -2431,18 +2433,24 @@ async def get_ep_outcomes(
         if tier:
             params.append(tier.upper())
         rows = await conn.fetch(f"""
-            SELECT
-                a.ticker, a.alert_date, a.score_tier, a.gap_pct,
-                a.catalyst_quality, a.ep_score,
-                o.fwd_1d_pct, o.fwd_1w_pct, o.fwd_1m_pct, o.spy_fwd_1m_pct
-            FROM mi_ep_alerts a
-            LEFT JOIN mi_signal_outcomes o
-                ON o.signal_type = 'ep_alert'
-               AND o.signal_date = a.alert_date
-               AND o.identifier = a.ticker
-            WHERE a.alert_date >= CURRENT_DATE - $1::int
-            {tier_filter}
-            ORDER BY a.alert_date DESC, a.ep_score DESC
+            SELECT ticker, alert_date, score_tier, gap_pct,
+                   catalyst_quality, ep_score,
+                   fwd_1d_pct, fwd_1w_pct, fwd_1m_pct, spy_fwd_1m_pct
+            FROM (
+                SELECT DISTINCT ON (a.ticker, a.alert_date)
+                    a.ticker, a.alert_date, a.score_tier, a.gap_pct,
+                    a.catalyst_quality, a.ep_score,
+                    o.fwd_1d_pct, o.fwd_1w_pct, o.fwd_1m_pct, o.spy_fwd_1m_pct
+                FROM mi_ep_alerts a
+                LEFT JOIN mi_signal_outcomes o
+                    ON o.signal_type = 'ep_alert'
+                   AND o.signal_date = a.alert_date
+                   AND o.identifier = a.ticker
+                WHERE a.alert_date >= CURRENT_DATE - $1::int
+                {tier_filter}
+                ORDER BY a.ticker, a.alert_date, a.ep_score DESC
+            ) deduped
+            ORDER BY alert_date DESC, ep_score DESC
         """, *params)
     return [dict(r) for r in rows]
 
