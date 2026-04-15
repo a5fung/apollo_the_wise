@@ -466,7 +466,12 @@ async def _ep_scan_job():
 
 
 async def _paper_trade_tracker_job():
-    """Run at 4:45 PM ET. Simulate Day 1 for new EPs, update trailing stops on open positions."""
+    """Run at 4:45 PM ET. Simulate Day 1 for new EPs, update trailing stops on open positions.
+    Skipped when LIVE_TRADING_ENABLED=true — the live Alpaca path is the single source of truth."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if LIVE_TRADING_ENABLED:
+        logger.info("Paper trade tracker: skipped (live trading enabled — Alpaca is source of truth)")
+        return
     logger.info("Paper trade tracker starting...")
     try:
         summary = await run_paper_trade_tracker()

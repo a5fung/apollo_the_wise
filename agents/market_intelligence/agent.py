@@ -833,26 +833,51 @@ class MarketIntelligenceAgent(BaseAgent):
         'closed trades'                 — only closed
         'paper p&l'                     — running totals only
         'entry/exit for TVTX'           — single ticker detail
+
+        When LIVE_TRADING_ENABLED=true, queries mi_live_trades (Alpaca paper).
+        When false, queries mi_paper_trades (EOD sim).
         """
         import json as _json
+        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
         task = request.task.lower()
         pool = await get_pool()
 
         where_clauses = ["1=1"]
         params: list = []
 
-        if ticker:
-            where_clauses.append(f"ticker = ${len(params)+1}")
-            params.append(ticker.upper())
-        if "open" in task and "closed" not in task:
-            where_clauses.append(f"status = ${len(params)+1}")
-            params.append("open")
-        elif "closed" in task and "open" not in task:
-            where_clauses.append(f"status = ${len(params)+1}")
-            params.append("closed")
-        elif "skipped" in task or "filtered" in task:
-            where_clauses.append(f"status = ${len(params)+1}")
-            params.append("skipped")
+        if LIVE_TRADING_ENABLED:
+            # mi_live_trades: "open" = filled + remaining_shares > 0
+            table = "mi_live_trades"
+            entry_col = "entry_price"
+            if ticker:
+                where_clauses.append(f"ticker = ${len(params)+1}")
+                params.append(ticker.upper())
+            if "open" in task and "closed" not in task:
+                where_clauses.append("status IN ('filled', 'order_placed') AND remaining_shares > 0")
+            elif "closed" in task and "open" not in task:
+                where_clauses.append(f"status = ${len(params)+1}")
+                params.append("closed")
+            elif "skipped" in task or "filtered" in task:
+                where_clauses.append("status IN ('skipped', 'cancelled', 'order_failed')")
+            open_statuses = ("filled", "order_placed", "pending_confirmation", "confirmed")
+            label = "Paper Trade History (Alpaca)"
+        else:
+            table = "mi_paper_trades"
+            entry_col = "last_entry_price"
+            if ticker:
+                where_clauses.append(f"ticker = ${len(params)+1}")
+                params.append(ticker.upper())
+            if "open" in task and "closed" not in task:
+                where_clauses.append(f"status = ${len(params)+1}")
+                params.append("open")
+            elif "closed" in task and "open" not in task:
+                where_clauses.append(f"status = ${len(params)+1}")
+                params.append("closed")
+            elif "skipped" in task or "filtered" in task:
+                where_clauses.append(f"status = ${len(params)+1}")
+                params.append("skipped")
+            open_statuses = ("open",)
+            label = "Paper Trade History (EOD sim)"
 
         where = " AND ".join(where_clauses)
 
@@ -860,36 +885,52 @@ class MarketIntelligenceAgent(BaseAgent):
             rows = await conn.fetch(f"""
                 SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality, regime,
                        status, skip_reason,
-                       last_entry_price, orb_high, orb_low, stop_price,
-                       total_pnl, hold_days, partial_taken,
-                       entries, exits
-                FROM mi_paper_trades
+                       {entry_col} AS entry_price, orb_high, orb_low, stop_price,
+                       total_pnl, hold_days,
+                       exits
+                FROM {table}
                 WHERE {where}
-                ORDER BY alert_date DESC, created_at DESC
+                ORDER BY alert_date DESC
                 LIMIT 20
             """, *params)
 
             # Running totals
-            totals = await conn.fetchrow("""
-                SELECT
-                    COUNT(*) FILTER (WHERE status NOT IN ('skipped')) as total,
-                    COUNT(*) FILTER (WHERE status = 'open')           as open_count,
-                    COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0)  as winners,
-                    COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
-                    COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
-                    COUNT(*) FILTER (WHERE status = 'skipped') as filtered_count
-                FROM mi_paper_trades
-            """)
+            if LIVE_TRADING_ENABLED:
+                totals = await conn.fetchrow("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status NOT IN ('skipped','cancelled','order_failed')) as total,
+                        COUNT(*) FILTER (WHERE status IN ('filled','order_placed') AND remaining_shares > 0) as open_count,
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0)  as winners,
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                        COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
+                        COUNT(*) FILTER (WHERE status IN ('skipped','cancelled','order_failed')) as filtered_count
+                    FROM mi_live_trades
+                """)
+            else:
+                totals = await conn.fetchrow("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status NOT IN ('skipped')) as total,
+                        COUNT(*) FILTER (WHERE status = 'open')           as open_count,
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0)  as winners,
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                        COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
+                        COUNT(*) FILTER (WHERE status = 'skipped') as filtered_count
+                    FROM mi_paper_trades
+                """)
 
         if not rows and not ticker:
             return self._ok(request, result="No paper trades recorded yet.")
         if not rows and ticker:
             return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
 
-        lines = ["*Paper Trade History (EOD sim)*\n"]
+        lines = [f"*{label}*\n"]
+
+        is_skipped = lambda r: r["status"] not in ("open", "closed", "filled", "order_placed", "pending_confirmation", "confirmed")
 
         for r in rows:
-            status_emoji = {"open": "🟡", "closed": "✅" if (r["total_pnl"] or 0) > 0 else "❌", "skipped": "⊘"}.get(r["status"], "•")
+            is_open = r["status"] in open_statuses
+            pnl_positive = (r["total_pnl"] or 0) > 0
+            status_emoji = "🟡" if is_open else ("✅" if pnl_positive else ("⊘" if is_skipped(r) else "❌"))
             date_str = r["alert_date"].strftime("%b %d")
             score = f"score={r['ep_score']:.0f}" if r["ep_score"] else ""
             gap = f"gap={r['gap_pct']:.1f}%" if r["gap_pct"] else ""
@@ -897,14 +938,15 @@ class MarketIntelligenceAgent(BaseAgent):
             header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}"
             lines.append(header)
 
-            if r["status"] == "skipped":
+            if is_skipped(r):
                 lines.append(f"  Filtered: {r['skip_reason'] or 'unknown'}")
                 continue
 
             # Entry
-            entry_price = r["last_entry_price"] or r["orb_high"]
+            entry_price = r["entry_price"] or r["orb_high"]
             if entry_price:
-                lines.append(f"  Entry: ${entry_price:.2f}  Stop: ${r['orb_low']:.2f}" if r["orb_low"] else f"  Entry: ${entry_price:.2f}")
+                orb_low = r["orb_low"]
+                lines.append(f"  Entry: ${entry_price:.2f}  Stop: ${orb_low:.2f}" if orb_low else f"  Entry: ${entry_price:.2f}")
 
             # Exits from JSONB
             exits = r["exits"]
@@ -918,9 +960,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  Exit {ex_time}: ${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
 
             # Summary
-            if r["status"] == "closed":
+            if not is_open:
                 lines.append(f"  *Total P&L: ${r['total_pnl']:+,.2f}* ({r['hold_days']}d)")
-            elif r["status"] == "open":
+            else:
                 stop_str = f"  Stop: ${r['stop_price']:.2f}" if r["stop_price"] else ""
                 lines.append(f"  Open — {r['hold_days']}d{stop_str}")
 

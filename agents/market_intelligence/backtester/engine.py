@@ -50,12 +50,10 @@ def _simulate_day1(
     if orb_high <= 0 or orb_low <= 0:
         return None
 
-    # ATR stop width validation (percentage-based per Qullamaggie)
-    # risk_pct = distance from entry to stop as % of entry
-    # atr_pct = ATR as % of pre-gap close (passed in from compute_atr_14)
+    # ATR stop width validation (dollar-based, matches prepare_orb_order)
     # Qullamaggie: "stop no more than 1x, max 1.5x ADR/ATR"
-    risk_pct = (orb_high - orb_low) / orb_high if orb_high > 0 else 0
-    if atr_pct and atr_pct > 0 and risk_pct > 1.5 * (atr_pct / 100):
+    orb_range = orb_high - orb_low
+    if atr_14 and atr_14 > 0 and orb_range > 1.5 * atr_14:
         alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
         trade = BacktestTrade(
             ticker=ticker, alert_date=alert_date,
