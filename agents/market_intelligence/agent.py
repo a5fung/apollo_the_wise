@@ -439,8 +439,22 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
-        if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log"]):
+        if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log", "orb log", "show orb"]):
             return await self._handle_audit_log(request)
+
+        if any(k in task for k in ["my trades", "show trades", "trade history", "paper trade", "paper trading", "paper p&l",
+                                    "trade p&l", "trades today", "recent trades", "open trades", "closed trades",
+                                    "trade summary", "trading summary", "entry exit", "entries exits"]):
+            return await self._handle_trades_query(request)
+
+        # Single-ticker trade lookup — "entry/exit for TVTX", "TVTX trade", "what happened with TVTX trade"
+        if any(k in task for k in ["entry", "exit", "trade"]):
+            import re as _re
+            _cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+            _skip = _PREPOSITION_SKIP | {"ENTRY", "EXIT", "TRADE", "THE", "FOR", "AND", "WHAT", "WITH"}
+            _trade_ticker = next((t for t in _cands if t not in _skip), None)
+            if _trade_ticker:
+                return await self._handle_trades_query(request, ticker=_trade_ticker)
 
         # History must be checked before theme/RS — "when did metals theme peak?" has "theme" in it
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
@@ -764,6 +778,8 @@ class MarketIntelligenceAgent(BaseAgent):
             event_type = "stage_change"
         elif "exclusion" in task or "excluded" in task:
             event_type = "theme_excluded"
+        elif "orb" in task:
+            event_type = "orb_triggered"
 
         rows = await get_audit_log(limit=25, event_type=event_type, since_hours=since_hours)
 
@@ -778,6 +794,13 @@ class MarketIntelligenceAgent(BaseAgent):
             "stage_change":     "📈",
             "theme_excluded":   "🚫",
             "ep_alert":         "⚡",
+            "orb_triggered":    "🎯",
+            "orb_filtered":     "⊘",
+            "orb_bar_miss":     "⏳",
+            "orb_bar_fetched":  "📊",
+            "orb_no_bar":       "❌",
+            "orb_order_placed": "✅",
+            "orb_order_failed": "🚨",
         }
 
         lines = [f"*Audit Log* — last {since_hours}h{' · ' + event_type if event_type else ''}"]
@@ -799,6 +822,117 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"\n`{ts}` 🤖 *{r['summary'][:80]}*")
                 if verdict:
                     lines.append(f"_{verdict}_")
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_trades_query(self, request: AgentRequest, ticker: str | None = None) -> AgentResponse:
+        """
+        Show paper trade history with entry/exit prices, P&L, stops.
+        'my trades' / 'show trades'     — recent 20 trades (all statuses)
+        'open trades'                   — only open positions
+        'closed trades'                 — only closed
+        'paper p&l'                     — running totals only
+        'entry/exit for TVTX'           — single ticker detail
+        """
+        import json as _json
+        task = request.task.lower()
+        pool = await get_pool()
+
+        where_clauses = ["1=1"]
+        params: list = []
+
+        if ticker:
+            where_clauses.append(f"ticker = ${len(params)+1}")
+            params.append(ticker.upper())
+        if "open" in task and "closed" not in task:
+            where_clauses.append(f"status = ${len(params)+1}")
+            params.append("open")
+        elif "closed" in task and "open" not in task:
+            where_clauses.append(f"status = ${len(params)+1}")
+            params.append("closed")
+        elif "skipped" in task or "filtered" in task:
+            where_clauses.append(f"status = ${len(params)+1}")
+            params.append("skipped")
+
+        where = " AND ".join(where_clauses)
+
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(f"""
+                SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality, regime,
+                       status, skip_reason,
+                       last_entry_price, orb_high, orb_low, stop_price,
+                       total_pnl, hold_days, partial_taken,
+                       entries, exits
+                FROM mi_paper_trades
+                WHERE {where}
+                ORDER BY alert_date DESC, created_at DESC
+                LIMIT 20
+            """, *params)
+
+            # Running totals
+            totals = await conn.fetchrow("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status NOT IN ('skipped')) as total,
+                    COUNT(*) FILTER (WHERE status = 'open')           as open_count,
+                    COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0)  as winners,
+                    COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) as losers,
+                    COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) as realized_pnl,
+                    COUNT(*) FILTER (WHERE status = 'skipped') as filtered_count
+                FROM mi_paper_trades
+            """)
+
+        if not rows and not ticker:
+            return self._ok(request, result="No paper trades recorded yet.")
+        if not rows and ticker:
+            return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
+
+        lines = ["*Paper Trade History (EOD sim)*\n"]
+
+        for r in rows:
+            status_emoji = {"open": "🟡", "closed": "✅" if (r["total_pnl"] or 0) > 0 else "❌", "skipped": "⊘"}.get(r["status"], "•")
+            date_str = r["alert_date"].strftime("%b %d")
+            score = f"score={r['ep_score']:.0f}" if r["ep_score"] else ""
+            gap = f"gap={r['gap_pct']:.1f}%" if r["gap_pct"] else ""
+
+            header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}"
+            lines.append(header)
+
+            if r["status"] == "skipped":
+                lines.append(f"  Filtered: {r['skip_reason'] or 'unknown'}")
+                continue
+
+            # Entry
+            entry_price = r["last_entry_price"] or r["orb_high"]
+            if entry_price:
+                lines.append(f"  Entry: ${entry_price:.2f}  Stop: ${r['orb_low']:.2f}" if r["orb_low"] else f"  Entry: ${entry_price:.2f}")
+
+            # Exits from JSONB
+            exits = r["exits"]
+            if isinstance(exits, str):
+                exits = _json.loads(exits or "[]")
+            for ex in (exits or []):
+                ex_time = ex.get("time", "")[:10] if ex.get("time") else ""
+                reason = ex.get("reason", "")
+                ex_price = ex.get("price") or ex.get("exit_price", 0)
+                ex_pnl = ex.get("pnl", 0)
+                lines.append(f"  Exit {ex_time}: ${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
+
+            # Summary
+            if r["status"] == "closed":
+                lines.append(f"  *Total P&L: ${r['total_pnl']:+,.2f}* ({r['hold_days']}d)")
+            elif r["status"] == "open":
+                stop_str = f"  Stop: ${r['stop_price']:.2f}" if r["stop_price"] else ""
+                lines.append(f"  Open — {r['hold_days']}d{stop_str}")
+
+        # Totals footer
+        t = totals
+        closed_count = (t["winners"] or 0) + (t["losers"] or 0)
+        win_rate = (t["winners"] / closed_count * 100) if closed_count > 0 else 0
+        lines.append(
+            f"\n*Totals:* {t['total']} traded · {t['open_count']} open · "
+            f"{closed_count} closed ({win_rate:.0f}% win) · "
+            f"P&L ${float(t['realized_pnl']):+,.2f} · {t['filtered_count']} filtered"
+        )
 
         return self._ok(request, result="\n".join(lines))
 
