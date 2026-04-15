@@ -22,6 +22,7 @@ class TradeExit:
     exit_reason: str  # stop_hit, eod_partial, trailing_stop, data_ended
     shares_exited: float
     pnl: float
+    attempt_number: int = 0  # which entry attempt this exit closes
 
 
 @dataclass

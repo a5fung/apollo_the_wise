@@ -79,6 +79,7 @@ def _simulate_day1(
                     exit_reason="stop_hit",
                     shares_exited=current_shares,
                     pnl=pnl,
+                    attempt_number=attempt,
                 ))
                 in_position = False
                 current_shares = 0.0
@@ -113,6 +114,7 @@ def _simulate_day1(
                         exit_reason="stop_hit",
                         shares_exited=current_shares,
                         pnl=pnl,
+                        attempt_number=attempt,
                     ))
                     in_position = False
                     current_shares = 0.0

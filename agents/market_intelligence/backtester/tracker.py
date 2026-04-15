@@ -332,7 +332,8 @@ async def process_new_alerts(today: date) -> list[dict]:
         ]
         exits_json = [
             {"time": e.exit_time.isoformat(), "price": e.exit_price,
-             "reason": e.exit_reason, "shares": e.shares_exited, "pnl": e.pnl}
+             "reason": e.exit_reason, "shares": e.shares_exited, "pnl": e.pnl,
+             "attempt": e.attempt_number}
             for e in trade.exits
         ]
 
@@ -387,6 +388,7 @@ async def process_new_alerts(today: date) -> list[dict]:
             "orb_low": trade.orb_low,
             "gap_pct": alert.get("gap_pct"),
             "exits": exits_json,
+            "entries": entries_json,
         })
 
     return results
@@ -585,7 +587,7 @@ async def get_paper_trading_summary() -> dict[str, Any]:
         recent_trades = await conn.fetch("""
             SELECT ticker, alert_date, ep_score, total_pnl, hold_days,
                    status, last_entry_price, orb_high, orb_low, stop_price,
-                   catalyst_quality, gap_pct, exits
+                   catalyst_quality, gap_pct, exits, entries
             FROM mi_paper_trades
             WHERE status IN ('open', 'closed')
             ORDER BY alert_date DESC LIMIT 5
@@ -644,19 +646,45 @@ def format_tracker_telegram(summary: dict) -> str:
     import json as _json
     lines = ["📊 *Paper Trade Tracker (EOD sim)*\n"]
 
+    def _parse_json(raw) -> list:
+        if not raw:
+            return []
+        return raw if isinstance(raw, list) else _json.loads(raw or "[]")
+
+    def _attempt_count(entries_raw) -> int:
+        entries = _parse_json(entries_raw)
+        if not entries:
+            return 0
+        return max(e.get("attempt", i + 1) for i, e in enumerate(entries))
+
+    def _entry_lines(entries_raw, prefix="    ") -> list[str]:
+        """Format entries JSONB — one line per attempt."""
+        entries = _parse_json(entries_raw)
+        if not entries:
+            return []
+        out = []
+        for e in entries:
+            attempt = e.get("attempt", "?")
+            price = e.get("price", e.get("entry_price", 0))
+            stop = e.get("stop", e.get("stop_price", 0))
+            shares = e.get("shares", "")
+            shares_str = f" ×{shares:.0f}" if shares else ""
+            out.append(f"{prefix}Entry #{attempt} @${price:.2f}{shares_str} stop=${stop:.2f}")
+        return out
+
     def _exit_lines(exits_raw, prefix="    ") -> list[str]:
         """Format exits JSONB into readable lines."""
-        if not exits_raw:
-            return []
-        exits = exits_raw if isinstance(exits_raw, list) else _json.loads(exits_raw or "[]")
+        exits = _parse_json(exits_raw)
         out = []
         for ex in exits:
             price = ex.get("price") or ex.get("exit_price", 0)
             reason = ex.get("reason", "")
             pnl = ex.get("pnl", 0)
             shares = ex.get("shares") or ex.get("shares_exited", "")
+            attempt = ex.get("attempt", "")
             shares_str = f" ×{shares:.0f}" if shares else ""
-            out.append(f"{prefix}Exit @${price:.2f}{shares_str} ({reason}) P&L ${pnl:+.0f}")
+            attempt_str = f" (attempt {attempt})" if attempt else ""
+            out.append(f"{prefix}Exit @${price:.2f}{shares_str} {reason}{attempt_str} P&L ${pnl:+.0f}")
         return out
 
     # Today's new trades
@@ -670,14 +698,16 @@ def format_tracker_telegram(summary: dict) -> str:
             gap_str = f" gap={gap:.1f}%" if gap else ""
             score_str = f" score={t['ep_score']:.0f}" if t.get("ep_score") else ""
             if t["action"] == "opened":
-                entry_str = f" entry=${entry:.2f}" if entry else ""
-                stop_str = f" stop=${stop:.2f}" if stop else ""
-                lines.append(f"  ▶ {t['ticker']}{gap_str}{score_str}{entry_str}{stop_str}")
+                attempts = _attempt_count(t.get("entries"))
+                att_str = f" {attempts}x" if attempts > 1 else ""
+                lines.append(f"  ▶ {t['ticker']}{gap_str}{score_str}{att_str}")
+                lines += _entry_lines(t.get("entries"))
                 lines += _exit_lines(t.get("exits"))
             elif t["action"] == "closed_day1":
-                entry_str = f" entry=${entry:.2f}" if entry else ""
-                stop_str = f" stop=${stop:.2f}" if stop else ""
-                lines.append(f"  ⏹ {t['ticker']}{gap_str}{score_str}{entry_str}{stop_str}")
+                attempts = _attempt_count(t.get("entries"))
+                att_str = f" {attempts}x attempts" if attempts > 1 else ""
+                lines.append(f"  ⏹ {t['ticker']}{gap_str}{score_str}{att_str}")
+                lines += _entry_lines(t.get("entries"))
                 lines += _exit_lines(t.get("exits"))
                 lines.append(f"    *Day 1 P&L: ${t['pnl']:+,.2f}*")
             elif t["action"] in ("filtered", "skipped"):
@@ -709,19 +739,18 @@ def format_tracker_telegram(summary: dict) -> str:
         lines.append("*Recent trades:*")
         for t in recent:
             status_icon = "📍" if t["status"] == "open" else ("✅" if t.get("total_pnl", 0) > 0 else "❌")
-            entry = t.get("last_entry_price") or t.get("orb_high")
-            stop = t.get("stop_price") or t.get("orb_low")
             pnl = t.get("total_pnl", 0)
             hold = t.get("hold_days", 0)
             score = t.get("ep_score", 0)
             gap = t.get("gap_pct")
+            attempts = _attempt_count(t.get("entries"))
             gap_str = f" +{gap:.1f}%" if gap else ""
-            entry_str = f" in=${entry:.2f}" if entry else ""
-            stop_str = f" stop=${stop:.2f}" if stop and t["status"] == "open" else ""
+            att_str = f" {attempts}x" if attempts > 1 else ""
             lines.append(
-                f"  {status_icon} {t['ticker']}{gap_str} score={score:.0f}{entry_str}{stop_str} "
+                f"  {status_icon} {t['ticker']}{gap_str} score={score:.0f}{att_str} "
                 f"{hold}d P&L=${pnl:+,.2f}"
             )
+            lines += _entry_lines(t.get("entries"), prefix="    ")
             lines += _exit_lines(t.get("exits"), prefix="    ")
         lines.append("")
 
