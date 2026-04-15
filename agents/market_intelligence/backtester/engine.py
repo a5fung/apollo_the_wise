@@ -150,13 +150,17 @@ def _simulate_day1(
     # Fully stopped out on Day 1
     if exits:
         total_pnl = sum(e.pnl for e in exits)
-        return BacktestTrade(
+        trade = BacktestTrade(
             ticker=ticker,
             alert_date=bars[0]["bar_time"].date() if hasattr(bars[0]["bar_time"], "date") else date.today(),
             ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
             entries=entries, exits=exits, total_pnl=total_pnl,
             orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
         )
+        trade._remaining_shares = 0.0  # type: ignore[attr-defined]
+        trade._last_entry = entries[-1]  # type: ignore[attr-defined]
+        trade._day1_low = min(b["low"] for b in bars)  # type: ignore[attr-defined]
+        return trade
 
     return None
 
