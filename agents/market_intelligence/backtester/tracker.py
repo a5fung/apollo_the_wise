@@ -382,6 +382,11 @@ async def process_new_alerts(today: date) -> list[dict]:
             "ticker": ticker, "action": action,
             "ep_score": alert["ep_score"], "pnl": pnl,
             "remaining_shares": remaining, "stop": stop,
+            "entry_price": entry_price,
+            "orb_high": trade.orb_high,
+            "orb_low": trade.orb_low,
+            "gap_pct": alert.get("gap_pct"),
+            "exits": exits_json,
         })
 
     return results
@@ -579,7 +584,8 @@ async def get_paper_trading_summary() -> dict[str, Any]:
 
         recent_trades = await conn.fetch("""
             SELECT ticker, alert_date, ep_score, total_pnl, hold_days,
-                   status, last_entry_price, stop_price, catalyst_quality, gap_pct
+                   status, last_entry_price, orb_high, orb_low, stop_price,
+                   catalyst_quality, gap_pct, exits
             FROM mi_paper_trades
             WHERE status IN ('open', 'closed')
             ORDER BY alert_date DESC LIMIT 5
@@ -635,56 +641,88 @@ async def run_paper_trade_tracker() -> dict[str, Any]:
 
 def format_tracker_telegram(summary: dict) -> str:
     """Format paper trade summary for Telegram notification."""
+    import json as _json
     lines = ["📊 *Paper Trade Tracker (EOD sim)*\n"]
+
+    def _exit_lines(exits_raw, prefix="    ") -> list[str]:
+        """Format exits JSONB into readable lines."""
+        if not exits_raw:
+            return []
+        exits = exits_raw if isinstance(exits_raw, list) else _json.loads(exits_raw or "[]")
+        out = []
+        for ex in exits:
+            price = ex.get("price") or ex.get("exit_price", 0)
+            reason = ex.get("reason", "")
+            pnl = ex.get("pnl", 0)
+            shares = ex.get("shares") or ex.get("shares_exited", "")
+            shares_str = f" ×{shares:.0f}" if shares else ""
+            out.append(f"{prefix}Exit @${price:.2f}{shares_str} ({reason}) P&L ${pnl:+.0f}")
+        return out
 
     # Today's new trades
     new = summary.get("today_new", [])
     if new:
         lines.append("*New today:*")
         for t in new:
+            entry = t.get("entry_price") or t.get("orb_high")
+            stop = t.get("stop") or t.get("orb_low")
+            gap = t.get("gap_pct")
+            gap_str = f" gap={gap:.1f}%" if gap else ""
+            score_str = f" score={t['ep_score']:.0f}" if t.get("ep_score") else ""
             if t["action"] == "opened":
-                lines.append(
-                    f"  ▶ {t['ticker']} opened (score={t['ep_score']:.0f}) "
-                    f"stop=${t['stop']:.2f}"
-                )
+                entry_str = f" entry=${entry:.2f}" if entry else ""
+                stop_str = f" stop=${stop:.2f}" if stop else ""
+                lines.append(f"  ▶ {t['ticker']}{gap_str}{score_str}{entry_str}{stop_str}")
+                lines += _exit_lines(t.get("exits"))
             elif t["action"] == "closed_day1":
-                lines.append(
-                    f"  ⏹ {t['ticker']} closed Day 1 P&L=${t['pnl']:+,.2f}"
-                )
-            elif t["action"] == "filtered":
-                lines.append(f"  ⊘ {t['ticker']} filtered: {t['reason']}")
-            elif t["action"] == "skipped":
-                lines.append(f"  ⊘ {t['ticker']} skipped: {t['reason']}")
+                entry_str = f" entry=${entry:.2f}" if entry else ""
+                stop_str = f" stop=${stop:.2f}" if stop else ""
+                lines.append(f"  ⏹ {t['ticker']}{gap_str}{score_str}{entry_str}{stop_str}")
+                lines += _exit_lines(t.get("exits"))
+                lines.append(f"    *Day 1 P&L: ${t['pnl']:+,.2f}*")
+            elif t["action"] in ("filtered", "skipped"):
+                lines.append(f"  ⊘ {t['ticker']}{gap_str}{score_str}: {t.get('reason', '')}")
         lines.append("")
 
-    # Position updates
+    # Position updates (stops hit, SMA trails, partials)
     updates = summary.get("today_updates", [])
     stopped = [u for u in updates if u["action"] in ("stopped_out", "sma_stopped")]
+    partials = [u for u in updates if u["action"] == "partial_taken"]
     if stopped:
         lines.append("*Stopped out:*")
         for u in stopped:
+            reason = "stop" if u["action"] == "stopped_out" else "SMA trail"
             lines.append(
-                f"  ✖ {u['ticker']} @${u['stop_price']:.2f} "
+                f"  ✖ {u['ticker']} @${u['stop_price']:.2f} ({reason}) "
                 f"P&L=${u['total_pnl']:+,.2f} ({u['hold_days']}d)"
             )
         lines.append("")
+    if partials:
+        lines.append("*Partial exits:*")
+        for u in partials:
+            lines.append(f"  ½ {u['ticker']} @${u.get('price', 0):.2f} P&L=${u.get('pnl', 0):+,.2f}")
+        lines.append("")
 
-    # Recent trades (last 5, open or closed, with details)
+    # Recent trades — show entry, stop, exits
     recent = summary.get("recent_trades", [])
     if recent:
         lines.append("*Recent trades:*")
         for t in recent:
             status_icon = "📍" if t["status"] == "open" else ("✅" if t.get("total_pnl", 0) > 0 else "❌")
-            ticker = t["ticker"]
+            entry = t.get("last_entry_price") or t.get("orb_high")
+            stop = t.get("stop_price") or t.get("orb_low")
             pnl = t.get("total_pnl", 0)
-            entry = t.get("last_entry_price")
             hold = t.get("hold_days", 0)
             score = t.get("ep_score", 0)
-            entry_str = f"@${entry:.2f}" if entry else ""
+            gap = t.get("gap_pct")
+            gap_str = f" +{gap:.1f}%" if gap else ""
+            entry_str = f" in=${entry:.2f}" if entry else ""
+            stop_str = f" stop=${stop:.2f}" if stop and t["status"] == "open" else ""
             lines.append(
-                f"  {status_icon} {ticker} {entry_str} "
-                f"score={score:.0f} {hold}d P&L=${pnl:+,.2f}"
+                f"  {status_icon} {t['ticker']}{gap_str} score={score:.0f}{entry_str}{stop_str} "
+                f"{hold}d P&L=${pnl:+,.2f}"
             )
+            lines += _exit_lines(t.get("exits"), prefix="    ")
         lines.append("")
 
     # Running totals
@@ -692,10 +730,7 @@ def format_tracker_telegram(summary: dict) -> str:
     lines.append(f"  Trades: {summary['total_trades']} ({summary['open_positions']} open)")
     closed = summary["closed_trades"]
     if closed > 0:
-        lines.append(
-            f"  Closed: {closed} "
-            f"({summary['win_rate']:.0f}% win rate)"
-        )
+        lines.append(f"  Closed: {closed} ({summary['win_rate']:.0f}% win rate)")
         lines.append(f"  Realized P&L: ${summary['realized_pnl']:+,.2f}")
     if summary.get("skipped"):
         lines.append(f"  Filtered: {summary['skipped']}")
