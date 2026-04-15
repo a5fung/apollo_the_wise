@@ -853,7 +853,19 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             if mosaic_bytes:
                 telegram_tasks.append(send_chart_mosaic(chart_tickers, chat_id, mosaic_bytes=mosaic_bytes))
 
-            await asyncio.gather(*telegram_tasks, *twitter_tasks, return_exceptions=True)
+            results = await asyncio.gather(*telegram_tasks, *twitter_tasks, return_exceptions=True)
+            # Log any failures — return_exceptions=True silently swallows them otherwise
+            task_names = (
+                ["chart_mosaic"] * len(telegram_tasks)
+                + ["rs_leaders_tweet", "theme_tweet"][: len(twitter_tasks)]
+            )
+            for name, result in zip(task_names, results):
+                if isinstance(result, Exception):
+                    logger.error(f"Twitter/chart task '{name}' failed: {result}")
+                elif result is False:
+                    logger.warning(f"Twitter/chart task '{name}' returned False (check credentials or rate limits)")
+                else:
+                    logger.info(f"Twitter/chart task '{name}' OK")
     except Exception as e:
         logger.warning(f"Chart mosaic / Twitter failed (non-critical): {e}")
 
