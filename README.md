@@ -435,29 +435,25 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 
 ---
 
-### Next up
+### Priority backlog
 
-**P6 — Trading Journal**
-You tell Apollo: "Bought NVDA breakout at 142" / "Stopped out of SMCI at -7%". Apollo stores execution → tracks win rate by EP tier, regime, theme stage, setup type. Over time surfaces patterns: "Your Bull regime EP trades: 68% win rate. Choppy: 41%." Builds on automated outcome tracking (P8) by adding your actual execution data.
+The critical path to live trading: **P2 → P3 → P4 → P6 → live**. Everything else adds independent value.
 
-**P7 — EPS Estimates**
-Next-quarter consensus + surprise % surfaced in two places: morning briefing earnings calendar (flag RS leaders / theme stocks reporting that day/week) and on-demand fundamentals command. Via Alpha Vantage free tier or yfinance.
-
-**P10 — Observability / Reasoning Traces**
-"Why did Apollo surface this?" — add reasoning traces to alerts and briefing entries.
-- EP alert: "gap 12%, rvol 4.2x, game_changer catalyst, RS 87, Accelerating theme"
-- Theme: "Moved to Accelerating: 4/5 constituents RS 80+"
-- RS leader: "RS jumped 65→91 in 2 weeks (velocity leader)"
-
-**Morning briefing enrichments**
-- MODERATE EP recap — HIGHs fire real-time; briefing should recap MODERATEs for manual catalyst check
-- Earnings calendar — flag when RS leader or tracked stock reports that day/week
-- Pre-market movers in theme stocks — which tracked names are gapping pre-market?
-
----
-
-### North Star
-
-**Correlation clustering** — Find stocks moving together *before* they're RS leaders. If 4 photonics names show 0.85+ daily return correlation over 2 weeks, that's an early cluster — even if none is top-60 RS yet. Builds bottom-up theme discovery earlier in the cycle. Needs stored daily returns for broader universe (Polygon Starter active).
-
-**Live trading** — Current goal is validating the paper trading system. Once Crisis regime lifts and paper results are consistent, flip `LIVE_TRADING_ENABLED=true` with real money on a small account.
+| # | Item | Why now |
+|---|---|---|
+| P1 | **Fix X/Twitter RS leaders tweet** | Broken — half of nightly distribution silently failing |
+| P2 | **MODERATE EP recap in morning briefing** | HIGHs fire real-time; MODERATEs vanish. One could be the best trade of the day. Single DB query. |
+| P3 | **Paper trading validation report** | Gate before real money — win rate / avg-R by regime, catalyst type, theme stage over full history |
+| P4 | **EP outcome table** | "How did last week's EPs do?" Already have `mi_signal_outcomes` — mostly a formatter. Makes scoring calibration visible. |
+| P5 | **Theme conviction display** | Days active + consecutive Accelerating days on every theme line. Tells you "3-week run" vs. "flipped yesterday." One column addition. |
+| P6 | **Trading journal** | Log your own trades ("Bought NVDA at 142"). Win rate by regime/setup accumulates over time — start now so data builds. |
+| P7 | **"What to watch today" pregame** | On-demand morning synthesis: regime + Accelerating themes + open EPs + tracked stocks near MAs. More compact than the scheduled brief, available after open when the brief is stale. |
+| P8 | **Earnings calendar** | Flag when RS leaders / theme stocks report that week. Holding through earnings unknowingly is a real risk. yfinance has next earnings date already. |
+| P9 | **Observability / reasoning traces** | "Why did this EP fire / theme change stage?" EP score breakdown already exists — just needs surfacing. Builds signal trust. |
+| P10 | **Watchlist price alerts** | "Alert me when NVDA breaks 140." Scheduled price check, high daily utility. |
+| P11 | **EPS estimates** | Forward consensus + surprise%. Data source TBD (Alpha Vantage free tier). Lower priority than earnings date. |
+| P12 | **Sector rotation view** | 4-week RS trend by sector/theme — "is money rotating from semis to defense?" Query against existing `mi_stock_scores.sector`. |
+| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days — oscillating members that need permanent exclusion. |
+| P14 | **Weekend "what to watch this week" briefing** | Saturday morning synthesis: regime trend + momentum themes + EP setups to watch. Lower urgency — already queryable on demand. |
+| P15 | **Correlation clustering** | Early sub-theme discovery before RS leaders emerge. Highest alpha, highest complexity. Build after feedback loop is working. |
+| P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation report is solid and regime improves from Crisis. |
