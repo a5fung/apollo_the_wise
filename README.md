@@ -39,10 +39,15 @@ Apollo runs semi-automated paper trading via Alpaca to validate EP signals with 
 
 | Feature | How it works |
 |---|---|
-| ORB entry | 9:31 AM — fetches first 1-min bar, places bracket order (stop-limit buy at ORB high + stop-loss at ORB low) |
+| ORB entry (pre-market HIGHs) | Pre-market HIGH alerts subscribe to Alpaca bar WebSocket. First bar close at 9:30:59 → order placed at 9:31:00 |
+| ORB entry (post-open HIGHs) | 9:31 AM scan finds new HIGHs → ORB order placed inline |
+| ORB fallback | If bar stream misses a pre-market HIGH, 9:31 scan fires `_orb_monitor_job` as safety net |
+| Stop width validation | `validate_orb_entry(orb_high, orb_low, atr_14)` — single shared rule used by both EOD sim and live Alpaca path. ORB range must be ≤ 1.5x ATR-14. |
+| M&A hard filter | Definitive agreement / tender offer / going-private catalysts classified as `mna` → hard skip before scoring |
+| 11 AM cutoff | Re-entry after stop-out only before 11 AM ET — after that, the trade is closed |
 | Auto-confirm | Paper mode bypasses Telegram confirmation — trades execute automatically |
 | Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
-| Position tracking | `/trades` command — open positions with P&L, recent closed, win rate, totals |
+| Position tracking | `/trades` command — entry/stop once + per-attempt timestamps (`#1 09:31 → 10:00 (stop_hit) P&L $-635`) |
 | Safeguards | Max 4 positions, 2% daily loss limit, 3-loss circuit breaker |
 | Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions |
 | EOD cleanup | 4:05 PM — cancel unfilled entries, sync positions with Alpaca |
@@ -124,12 +129,16 @@ Bottom-up from price action (Marios Stamatoudis methodology). Themes emerge from
 - Claude clustering only runs on **uncovered RS leaders** (stocks not in any active theme)
 - Lifecycle: 🌱 Nascent → ⚡ Accelerating → 📊 Mainstream → 🔻 Fading → Retired (after 5 fading days)
 - Themes survive across days — persist until price action says otherwise
-- **Deduplication:** Overlapping themes auto-merged (Jaccard ≥ 0.6 or ticker subset). Sector-level caps prevent theme proliferation (e.g. max 2 oil/gas themes, biotech excluded).
+- **Deduplication:** Overlapping themes auto-merged (Jaccard ≥ 0.6 or ticker subset). Sector-level caps prevent theme proliferation (e.g. max 2 oil/gas themes, biotech excluded). Existing themes are protected — new clusters have overlap stripped rather than absorbing the existing theme.
 - **Trimmed mean scoring:** Theme RS composite drops bottom 20% of constituents — resists outlier drag from 1-2 weak stocks in an otherwise strong theme
 - **Stage transitions use 3-day smoothed score** (±8pt thresholds) — prevents noisy daily flips from Perplexity binary news scores
-- **Jaccard history fallback:** If a theme was renamed, stage/age history is inherited from the prior name via ticker-overlap matching (threshold 0.4 Jaccard) — prevents renamed themes from resetting to Nascent
-- **Description-based validation:** `_validate_theme_membership` runs Mon/Wed/Fri — asks Claude Haiku if each stock's description still matches the theme; removes mismatches. Results persisted to `mi_theme_exclusions` so future runs don't re-evaluate the same call
-- **Persistent exclusions:** `mi_theme_exclusions` table — once a ticker is removed from a theme (via validation or manual command), it's permanently banned from re-entering that theme regardless of RS or Haiku's next decision. Enforcement happens at DB layer before any scoring runs.
+- **Name inheritance on rediscovery:** If a theme briefly retires and comes back, the old name is inherited via Jaccard ticker-overlap matching (threshold 0.4) — prevents the same 25-stock cluster cycling through new names every few weeks
+- **Fat theme splitting:** Themes with >20 stocks are candidates for a sub-theme split. Sonnet analyzes the stock list; uncertain cases escalate to Opus advisor. Sub-themes with 3–8 stocks get a more specific thesis and are protected from re-absorption by their parent. Split decisions logged to `mi_audit_log`.
+- **Sub-theme parent relationship:** `parent_theme` column in `mi_themes` — sub-themes coexist with their parent instead of being merged back
+- **Commodity contradiction rules:** Stocks can't be in commodity-contradicting themes (e.g. gold miners can't be in uranium/nuclear themes) — stripped at enforcement layer
+- **Jaccard history fallback:** Stage/age history inherited from prior name via ticker-overlap matching — renamed themes don't reset to Nascent
+- **Description-based validation:** `_validate_theme_membership` runs Mon/Wed/Fri — asks Claude Haiku if each stock's description still matches the theme; removes mismatches
+- **Persistent exclusions:** `mi_theme_exclusions` table — once a ticker is removed from a theme (via validation or manual command), it's permanently banned from re-entering that theme. Enforcement at DB layer, before any scoring runs.
 - **Advisor strategy:** Theme discovery and assignment use Claude Sonnet with an Opus advisor tool. Sonnet consults Opus on genuinely hard decisions (borderline clusters, ambiguous assignments) — all other calls go straight to output. Capped at 3 Opus calls per run.
 
 **Manage themes from Telegram:**
@@ -147,7 +156,12 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 - **HIGH (≥85):** Immediate Telegram alert during pre-market scan
 - **MODERATE (≥65):** Shown in morning briefing
 - **Gemini cross-validation:** When Claude + Gemini agree on catalyst → 1.2x confidence multiplier
-- **Scan schedule:** 7:00–9:30 AM ET, every 5 minutes
+- **M&A hard filter:** Definitive agreement / tender offer / going-private → classified `mna` → hard skip before scoring. Buyouts don't trade like EPs.
+- **Game-changer floor:** Gap ≥10% + `game_changer` catalyst → minimum score 60 (MODERATE), ensuring high-quality mid-gap moves aren't invisible
+- **Open intensity metric:** Post-open volume shown as intensity (`raw_rvol × 390 / minutes_since_open`) rather than projected daily RVOL — honest label, not extrapolated noise
+- **Scan schedule:** 7:00 AM – 10:00 AM ET, every 5 minutes
+
+**EP diagnostic from Telegram:** "Why not EP ARAI?" → runs filter checks in sequence, stops at first failure, fetches recent news. Returns specific answer (e.g. `❌ Price filter: $0.67 < $5 minimum`) instead of a generic checklist.
 
 ### Market Regime
 
@@ -159,6 +173,17 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 | Crisis | ≥90 | Very selective |
 
 Signals: SPY/QQQ vs 50MA + 200MA, VIX, breadth (% stocks above 40MA), +/-4% ratio (10-day rolling).
+
+### Single-Ticker Analysis
+
+Every RS / fundamentals / research query on a single ticker includes two layers of peer context:
+
+- **Layer 1 — Theme RS:** If the ticker is in an active theme, its rank within that theme's constituents (e.g. "#3 of 12 in AI Infrastructure")
+- **Layer 2 — Industry RS:** GICS industry-level percentile rank among all same-industry stocks (e.g. "Biotechnology → 71st pct, #95 of 340 tracked"). Falls back to sector level if industry bucket < 10 peers.
+
+"Research MRNA" / "Look up NVDA" also fetch a Perplexity news summary (recent catalyst, business developments) in parallel.
+
+---
 
 ### O'Neil Fundamentals
 
@@ -212,6 +237,9 @@ Critical engine events are written to `mi_audit_log` and queryable from Telegram
 | `theme_retired` | Theme retired after 5 fading days |
 | `stage_change` | Theme lifecycle transition |
 | `theme_excluded` | Ticker permanently banned from theme (manual or auto-validation) |
+| `orb_triggered` | ORB order placed for an EP alert |
+| `orb_filtered` | ORB skipped (stop too wide, ADV too low, etc.) |
+| `orb_no_bar` | Bar data unavailable at entry time |
 
 **From Telegram:**
 ```
@@ -229,11 +257,12 @@ Show logs excluded → exclusion events
 
 | Time (ET) | Time (PT) | What |
 |---|---|---|
-| 7:00 AM | 4:00 AM | EP scan starts; HIGH alerts fire in real-time |
+| 7:00 AM | 4:00 AM | EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
-| 9:31 AM | 6:31 AM | ORB monitor — fetch first bar, send trade proposals |
-| 9:35 AM | 6:35 AM | EP scan stops; morning stop refresh for Day 2+ positions |
+| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs |
+| 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions |
 | 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
+| 10:00 AM | 7:00 AM | EP scan stops |
 | 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
 | 4:30 PM | 1:30 PM | Data pull — RS engine + regime + themes (right after close) |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
@@ -285,11 +314,17 @@ Apollo_Assistant/
 │       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
 │       ├── screener.py              # Composite screener (RS + theme + fundamentals)
 │       ├── universe.py              # Curated universe with company descriptions
+│       ├── trading_calendar.py      # NYSE holiday calendar (exchange-calendars lib, offline)
 │       ├── backtester/
-│       │   ├── backtest_ep.py       # Historical EP backtester
-│       │   └── tracker.py           # Paper trade tracker (EOD simulation)
+│       │   ├── engine.py            # Core trade simulation (Day 1 ORB + Day 2+ SMA trail)
+│       │   ├── filters.py           # validate_orb_entry() — single shared ORB stop-width rule
+│       │   ├── models.py            # BacktestTrade, TradeEntry, TradeExit dataclasses
+│       │   ├── tracker.py           # Paper trade tracker (EOD sim); parse_json_list, format_trade_attempts
+│       │   ├── intraday.py          # Intraday bar fetching + caching
+│       │   └── safeguards.py        # Position limits, daily loss cap, circuit breaker
 │       └── broker/
 │           ├── alpaca_client.py     # Async Alpaca SDK wrapper (paper + live)
+│           ├── bar_stream.py        # Alpaca StockDataStream — subscribe EP candidates, fire ORB on first bar
 │           ├── order_manager.py     # Order lifecycle (entry, stops, partials, exits)
 │           ├── live_tracker.py      # Real-time ORB monitor + Day 2+ management
 │           └── telegram_confirm.py  # Inline keyboard trade proposals
@@ -365,8 +400,9 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 | Account info | Account equity never shown in Telegram messages (% of account only) |
 | Irreversible actions | YES/NO confirmation gate before execution |
 | Sub-agent isolation | Each container has only its own secrets |
-| TradingView webhooks | Verified via shared secret header |
-| Audit trail | `mi_audit_log` DB table — advisor calls, theme changes, exclusions; queryable from Telegram |
+| TradingView webhooks | Verified via shared secret header; delivered via nginx reverse proxy on port 80 |
+| Single ORB rule | `validate_orb_entry()` in `backtester/filters.py` — shared by EOD sim and live Alpaca path, structural divergence impossible |
+| Audit trail | `mi_audit_log` DB table — advisor calls, theme changes, exclusions, ORB events; queryable from Telegram |
 | Secrets | Env vars only, never in code or logs |
 
 ---
