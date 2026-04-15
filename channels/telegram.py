@@ -656,16 +656,42 @@ class TelegramChannel:
                     p_recent = paper.get("recent_trades", [])
                     p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
                     if p_closed_list:
+                        import json as _json
+
+                        def _pjson(raw) -> list:
+                            if not raw:
+                                return []
+                            return raw if isinstance(raw, list) else _json.loads(raw or "[]")
+
                         lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:
                             pnl = t.get("total_pnl", 0)
                             emoji = "✅" if pnl > 0 else "❌"
-                            entry = t.get("last_entry_price")
-                            entry_str = f"${entry:.2f}" if entry else "?"
+                            score = t.get("ep_score", 0)
+                            gap = t.get("gap_pct")
+                            gap_str = f" +{gap:.1f}%" if gap else ""
+                            entries = _pjson(t.get("entries"))
+                            exits = _pjson(t.get("exits"))
+                            num_att = max((e.get("attempt", i + 1) for i, e in enumerate(entries)), default=0) if entries else 0
+                            att_str = f" {num_att}x" if num_att > 1 else ""
                             lines.append(
-                                f"  {emoji} *{t['ticker']}* ${pnl:+,.2f} ({t.get('hold_days', 0)}d)\n"
-                                f"      Entry: {entry_str} · Score: {t.get('ep_score', 0):.0f}"
+                                f"  {emoji} *{t['ticker']}*{gap_str} score={score:.0f}{att_str} "
+                                f"${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
                             )
+                            for e in entries:
+                                ep = e.get("price", e.get("entry_price", 0))
+                                es = e.get("stop", e.get("stop_price", 0))
+                                att = e.get("attempt", "?")
+                                sh = e.get("shares", "")
+                                sh_str = f" ×{sh:.0f}" if sh else ""
+                                lines.append(f"      Entry #{att} @${ep:.2f}{sh_str} stop=${es:.2f}")
+                            for ex in exits:
+                                ex_price = ex.get("price") or ex.get("exit_price", 0)
+                                reason = ex.get("reason", "")
+                                ex_pnl = ex.get("pnl", 0)
+                                att = ex.get("attempt", "")
+                                att_tag = f" #{att}" if att else ""
+                                lines.append(f"      Exit{att_tag} @${ex_price:.2f} ({reason}) P&L ${ex_pnl:+.0f}")
                         lines.append("")
 
                     # Totals
