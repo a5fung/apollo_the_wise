@@ -583,14 +583,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         rel_volume = c.get("rel_volume") or 0
 
         # Hard filter: rel volume — post-open only.
-        # Pre-market RVOL vs full-day ADV is structurally tiny (BE: 0.02x on a +15% day).
-        # Qullamaggie's "trade ADV in first 15-20 min" is a post-open observation.
-        # Pre-market gate is the absolute share floor below (25K) — gap + catalyst carry the signal.
-        if _minutes_since_open and c.get("adv") and rel_volume < MIN_REL_VOLUME:
-            reason = f"low rel volume {rel_volume:.1f}x < {MIN_REL_VOLUME}x (post-open)"
-            logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
-            _log_filtered(c, reason)
-            continue
+        # Use open_intensity (projected full-day vol) if available — raw rel_vol at 9:35 AM
+        # is structurally tiny even on a record volume day (0.26x raw = 4x projected at 25min in).
+        # Pre-market gate is the absolute share floor below (25K).
+        if _minutes_since_open and c.get("adv"):
+            intensity = c.get("projected_vol_multiple")
+            vol_check = intensity if intensity is not None else rel_volume
+            if vol_check < MIN_REL_VOLUME:
+                which = f"projected {intensity:.1f}x" if intensity is not None else f"rel_vol {rel_volume:.1f}x"
+                reason = f"low volume {which} < {MIN_REL_VOLUME}x (post-open)"
+                logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+                _log_filtered(c, reason)
+                continue
 
         # Hard filter: absolute pre-market volume (filters micro-float noise)
         if c["today_volume"] < MIN_PREMARKET_SHARES:

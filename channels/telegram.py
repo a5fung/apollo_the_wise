@@ -656,15 +656,37 @@ class TelegramChannel:
                     p_recent = paper.get("recent_trades", [])
                     p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
                     if p_closed_list:
-                        def _attempt_count(entries_raw) -> int:
+                        def _parse_json_list(raw) -> list:
                             import json
                             try:
-                                entries = json.loads(entries_raw) if isinstance(entries_raw, str) else (entries_raw or [])
+                                return json.loads(raw) if isinstance(raw, str) else (raw or [])
                             except Exception:
-                                entries = []
+                                return []
+                        def _attempt_count(entries_raw) -> int:
+                            entries = _parse_json_list(entries_raw)
                             if not entries:
                                 return 0
                             return max(e.get("attempt", i + 1) for i, e in enumerate(entries))
+                        def _fmt_attempts(entries_raw, exits_raw, prefix="      ") -> list:
+                            entries = _parse_json_list(entries_raw)
+                            exits = _parse_json_list(exits_raw)
+                            if not entries:
+                                return []
+                            out = []
+                            e0 = entries[0]
+                            ep = e0.get("price", e0.get("entry_price", 0))
+                            es = e0.get("stop", e0.get("stop_price", 0))
+                            out.append(f"{prefix}ORB entry=${ep:.2f} stop=${es:.2f}")
+                            exits_by_att = {ex.get("attempt", i+1): ex for i, ex in enumerate(exits)}
+                            for e in entries:
+                                att = e.get("attempt", "?")
+                                in_str = (e.get("time","") or "")[:16][11:16] or "?"
+                                ex = exits_by_att.get(att, {})
+                                out_str = ((ex.get("time","") or "")[:16][11:16]) or "open"
+                                reason = ex.get("reason", "open")
+                                pnl = ex.get("pnl", 0)
+                                out.append(f"{prefix}#{att} {in_str}→{out_str} ({reason}) ${pnl:+.0f}")
+                            return out
                         lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:
                             pnl = t.get("total_pnl", 0)
@@ -678,7 +700,7 @@ class TelegramChannel:
                                 f"  {emoji} *{t['ticker']}*{gap_str} score={score:.0f}{att_str} "
                                 f"${pnl:+,.2f} ({t.get('hold_days', 0)}d)"
                             )
-                            lines += format_trade_attempts(t.get("entries"), t.get("exits"), prefix="      ")
+                            lines += _fmt_attempts(t.get("entries"), t.get("exits"))
                         lines.append("")
 
                     # Totals
