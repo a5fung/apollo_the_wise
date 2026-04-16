@@ -944,12 +944,17 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # ── Section 3: No ORB attempt ──────────────────────────────────────────
         if no_attempt:
-            tickers = ", ".join(r["ticker"] for r in no_attempt[:6])
-            suffix = f" +{len(no_attempt)-6} more" if len(no_attempt) > 6 else ""
-            lines.append(f"*NO ORB ATTEMPT ({len(no_attempt)})*: {tickers}{suffix}")
-            lines.append("EP scored but no paper trade row created — alert arrived after 10am,")
-            lines.append("or system was restarting when ORB window opened. Not filtered out;")
-            lines.append("just never reached the gate. Informational only.")
+            moderate = [r for r in no_attempt if r.get("score_tier") == "MODERATE"]
+            high_missed = [r for r in no_attempt if r.get("score_tier") == "HIGH"]
+            lines.append(f"*NO ORB ATTEMPT ({len(no_attempt)})*")
+            if moderate:
+                tickers = ", ".join(r["ticker"] for r in moderate)
+                lines.append(f"MODERATE ({len(moderate)}): {tickers}")
+                lines.append("  By design — system only enters HIGH alerts. MODERATE are morning briefing only.")
+            if high_missed:
+                tickers = ", ".join(r["ticker"] for r in high_missed)
+                lines.append(f"HIGH missed ({len(high_missed)}): {tickers}")
+                lines.append("  Paper tracker wasn't running on these dates (early setup period).")
 
         return self._ok(request, result="\n".join(lines))
 
