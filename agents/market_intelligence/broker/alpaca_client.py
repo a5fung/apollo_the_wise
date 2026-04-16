@@ -22,6 +22,7 @@ from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderSt
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+from alpaca.data.enums import DataFeed
 
 logger = logging.getLogger(__name__)
 
@@ -261,6 +262,7 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             timeframe=TimeFrame.Minute,
             start=start,
             end=end,
+            feed=DataFeed.IEX,  # IEX feed is free; SIP requires paid subscription
         )
         bars = client.get_stock_bars(request)
         bar_data = bars.data if hasattr(bars, 'data') else bars

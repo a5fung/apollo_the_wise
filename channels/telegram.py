@@ -656,9 +656,15 @@ class TelegramChannel:
                     p_recent = paper.get("recent_trades", [])
                     p_closed_list = [t for t in p_recent if t.get("status") == "closed"]
                     if p_closed_list:
-                        from agents.market_intelligence.backtester.tracker import (
-                            _attempt_count, format_trade_attempts,
-                        )
+                        def _attempt_count(entries_raw) -> int:
+                            import json
+                            try:
+                                entries = json.loads(entries_raw) if isinstance(entries_raw, str) else (entries_raw or [])
+                            except Exception:
+                                entries = []
+                            if not entries:
+                                return 0
+                            return max(e.get("attempt", i + 1) for i, e in enumerate(entries))
                         lines.append("*Last closed:*")
                         for t in p_closed_list[:3]:
                             pnl = t.get("total_pnl", 0)
