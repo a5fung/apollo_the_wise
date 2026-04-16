@@ -1896,8 +1896,15 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         changelog.extend(prune_log)
         if theme_result is not None:
             updated_themes.append(theme_result)
-            if theme_result["stage"] != "Fading":
-                covered_tickers.update(theme_result.get("tickers") or [])
+            # Include Fading themes in covered_tickers so their stocks don't leak
+            # back into the uncovered pool on every run.  Previously only non-Fading
+            # themes covered their tickers, which meant any RS≥50 stock in a Fading
+            # theme was re-clustered into whatever new group Claude formed each day —
+            # producing accumulation like "DCH in 4 unrelated themes".
+            # Correct behavior: tickers stay covered until the theme fully retires
+            # (FADING_RETIRE_AFTER days).  Strong stocks (RS 80+) can still move to
+            # sub-themes via the elite_covered path below.
+            covered_tickers.update(theme_result.get("tickers") or [])
 
     # Log retirements
     existing_names = {t["name"] for t in existing}
