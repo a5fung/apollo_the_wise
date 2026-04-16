@@ -594,7 +594,12 @@ async def _rescore_existing_theme(
         missing_history = await get_recent_rs_batch(missing_rs_tickers, today, days=5)
         for tk in missing_rs_tickers:
             hist = missing_history.get(tk, [])
-            if hist and all(v < PRUNE_RS_HARD for v in hist):
+            if not hist:
+                # No RS data at all in the last 5 trading days — likely delisted,
+                # acquired, halted indefinitely, or a symbol change. Remove from theme
+                # rather than letting it sit as a zombie dragging the RS average.
+                prune_candidates.append((tk, 0.0, "No RS data for 5 consecutive days (delisted/halted?)"))
+            elif all(v < PRUNE_RS_HARD for v in hist):
                 prune_candidates.append((tk, hist[0], f"RS {hist[0]:.0f} consistently < {PRUNE_RS_HARD:.0f} (no current data)"))
 
     # Soft prune: check 3-day history
@@ -795,8 +800,11 @@ async def _assign_uncovered_to_themes(
     if not uncovered_stocks:
         return [], []
 
+    # Sort deterministically so Claude sees the same order on every run.
+    # Without this, RS-score ties resolve differently run-to-run, causing
+    # the same leader set to produce different clusters.
     stock_lines = []
-    for s in uncovered_stocks:
+    for s in sorted(uncovered_stocks, key=lambda s: s["ticker"]):
         ticker = s["ticker"]
         desc = TICKER_DESC.get(ticker, "")
         stock_lines.append(
@@ -1286,7 +1294,8 @@ async def _discover_new_themes(
         theme_part = f" [in: {theme_label}]" if theme_label else ""
         return f"- {ticker} (RS {s.get('rs_composite', 0):.0f}, rank #{s.get('rs_rank', '?')}, sector: {s.get('sector', 'Unknown')} — {desc}){theme_part}"
 
-    stock_lines = "\n".join(_stock_line(s) for s in uncovered_stocks)
+    # Sort deterministically — same fix as _assign_uncovered_to_themes.
+    stock_lines = "\n".join(_stock_line(s) for s in sorted(uncovered_stocks, key=lambda s: s["ticker"]))
 
     # Elite covered stocks (RS 80+) shown with their current theme
     elite_block = ""
