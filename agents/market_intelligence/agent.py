@@ -876,81 +876,76 @@ class MarketIntelligenceAgent(BaseAgent):
                 ),
             )
 
-        def _fmt(v, width=6) -> str:
+        def _pct(v, w=6) -> str:
             if v is None:
-                return "—".rjust(width)
-            sign = "+" if v >= 0 else ""
-            return f"{sign}{v:.1f}%".rjust(width)
+                return "—".rjust(w)
+            return f"{'+'if v>=0 else ''}{v:.1f}%".rjust(w)
 
-        traded    = [r for r in rows if r["trade_status"] == "traded"]
-        filtered  = [r for r in rows if r["trade_status"] == "filtered"]
+        def _pnl(v) -> str:
+            if v is None:
+                return "—"
+            return f"${v:+.0f}"
+
+        traded     = [r for r in rows if r["trade_status"] == "traded"]
+        filtered   = [r for r in rows if r["trade_status"] == "filtered"]
         no_attempt = [r for r in rows if r["trade_status"] == "no_attempt"]
 
         tier_label = f" ({tier})" if tier else ""
         lines = [f"*EP Outcomes — last {days}d{tier_label}*"]
-        lines.append("_Audits whether our entry filters let the right trades through._")
+        lines.append("_Traded = system entered. Filtered = rule rejected. D1=next day %._")
         lines.append("")
 
         # ── Section 1: Traded ──────────────────────────────────────────────────
         lines.append(f"*TRADED ({len(traded)})*")
         if not traded:
-            lines.append("_None in this window._")
+            lines.append("_None yet._")
         else:
             lines.append("```")
-            lines.append("Ticker  Date       Tier  Gap    Entry    P&L      D1      D5")
-            lines.append("------  ---------  ----  -----  -------  -------  ------  ------")
+            lines.append("Ticker  Date       Tier   P&L      D1")
+            lines.append("------  ---------  ----  -------  ------")
             for r in traded:
                 ticker_s = r["ticker"].ljust(6)
                 dt       = str(r["alert_date"])[:10]
                 tier_s   = (r["score_tier"] or "?")[:4].ljust(4)
-                gap_s    = f"{r['gap_pct']:+.1f}%".rjust(5)
-                entry_s  = f"${r['entry_price']:.2f}".rjust(7) if r.get("entry_price") else "     —"
-                pnl_s    = _fmt(r.get("total_pnl"), width=7)
-                d1       = _fmt(r.get("fwd_1d_pct"))
-                d5       = _fmt(r.get("fwd_1w_pct"))
-                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {entry_s}  {pnl_s}  {d1}  {d5}")
+                pnl_s    = _pnl(r.get("total_pnl")).rjust(7)
+                d1       = _pct(r.get("fwd_1d_pct"))
+                lines.append(f"{ticker_s}  {dt}  {tier_s}  {pnl_s}  {d1}")
             lines.append("```")
             pnl_vals = [r["total_pnl"] for r in traded if r.get("total_pnl") is not None]
             if pnl_vals:
                 wins = sum(1 for v in pnl_vals if v > 0)
-                lines.append(f"_Win rate: {wins}/{len(pnl_vals)} · Total P&L: ${sum(pnl_vals):+.0f}_")
+                lines.append(f"_Win rate: {wins}/{len(pnl_vals)} · Total P&L: {_pnl(sum(pnl_vals))}_")
         lines.append("")
 
         # ── Section 2: Filtered by rule ────────────────────────────────────────
-        lines.append(f"*FILTERED BY RULE ({len(filtered)})*  _— did we miss good trades?_")
+        lines.append(f"*FILTERED ({len(filtered)})*  _— what the rules rejected_")
         if not filtered:
             lines.append("_None in this window._")
         else:
             lines.append("```")
-            lines.append("Ticker  Date       Tier  Gap    Filter reason     D1      D5")
-            lines.append("------  ---------  ----  -----  ----------------  ------  ------")
+            lines.append("Ticker  Date       Skip reason          D1")
+            lines.append("------  ---------  -------------------  ------")
             for r in filtered:
-                ticker_s  = r["ticker"].ljust(6)
-                dt        = str(r["alert_date"])[:10]
-                tier_s    = (r["score_tier"] or "?")[:4].ljust(4)
-                gap_s     = f"{r['gap_pct']:+.1f}%".rjust(5)
-                reason_s  = (r.get("skip_reason") or "?")[:16].ljust(16)
-                d1        = _fmt(r.get("fwd_1d_pct"))
-                d5        = _fmt(r.get("fwd_1w_pct"))
-                lines.append(f"{ticker_s}  {dt}  {tier_s}  {gap_s}  {reason_s}  {d1}  {d5}")
+                ticker_s = r["ticker"].ljust(6)
+                dt       = str(r["alert_date"])[:10]
+                reason_s = (r.get("skip_reason") or "?")[:19].ljust(19)
+                d1       = _pct(r.get("fwd_1d_pct"))
+                lines.append(f"{ticker_s}  {dt}  {reason_s}  {d1}")
             lines.append("```")
-            # Flag any filters that consistently let winners through
             filter_d1 = [r for r in filtered if r.get("fwd_1d_pct") is not None]
             if filter_d1:
                 avg = mean(r["fwd_1d_pct"] for r in filter_d1)
-                sign = "+" if avg >= 0 else ""
                 wins = sum(1 for r in filter_d1 if r["fwd_1d_pct"] > 0)
-                flag = " ⚠ filters may be too strict" if avg > 2 else ""
-                lines.append(f"_Filtered avg D1: {sign}{avg:.1f}% ({wins}/{len(filter_d1)} positive){flag}_")
+                flag = " ⚠ rules may be too strict" if avg > 3 else ""
+                lines.append(f"_Filtered avg D1: {'+'if avg>=0 else ''}{avg:.1f}% ({wins}/{len(filter_d1)} up){flag}_")
         lines.append("")
 
         # ── Section 3: Not attempted ───────────────────────────────────────────
         if no_attempt:
-            lines.append(f"*NOT ATTEMPTED ({len(no_attempt)})*  _— alert fired outside ORB window_")
-            names = ", ".join(f"{r['ticker']} ({str(r['alert_date'])[:10]})" for r in no_attempt[:8])
-            if len(no_attempt) > 8:
-                names += f" +{len(no_attempt) - 8} more"
-            lines.append(f"_{names}_")
+            tickers = ", ".join(r["ticker"] for r in no_attempt[:6])
+            suffix = f" +{len(no_attempt)-6} more" if len(no_attempt) > 6 else ""
+            lines.append(f"*NO ORB ATTEMPT ({len(no_attempt)})*: _{tickers}{suffix}_")
+            lines.append("_Alert fired but ORB gate never ran (after 10am, holiday, etc.)_")
 
         return self._ok(request, result="\n".join(lines))
 

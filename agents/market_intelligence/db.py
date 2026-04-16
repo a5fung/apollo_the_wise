@@ -2420,17 +2420,15 @@ async def get_ep_outcomes(
     include_unknown: bool = False,
 ) -> list[dict[str, Any]]:
     """
-    Return each EP alert enriched with:
-    - mi_signal_outcomes: fwd_1d_pct, fwd_1w_pct (forward returns, computed nightly)
-    - mi_live_trades: skip_reason, entry_price, total_pnl, status (what the system did with it)
+    Return each EP alert enriched with paper trade data and forward returns.
 
-    trade_status categories derived here:
-      'traded'    — live_trades row exists, no skip_reason, entry_price set
-      'filtered'  — live_trades row exists, skip_reason set (ORB too wide, ADV too low, etc.)
-      'no_attempt'— no live_trades row (alert fired outside ORB window, or pre-bar-stream era)
+    Joins mi_paper_trades (the active paper trading table — mi_live_trades is for
+    Alpaca live mode which is currently off). Derives trade_status:
+      'traded'    — paper trade row exists with no skip_reason (actual entry attempted)
+      'filtered'  — paper trade skip_reason set (ORB too wide, ADV too low, etc.)
+      'no_attempt'— no paper trade row (alert fired outside ORB window, or similar)
 
-    Deduplicated via DISTINCT ON (ticker, alert_date) — mi_ep_alerts has no UNIQUE constraint
-    (5-min scans can insert the same alert multiple times per day).
+    Deduplicated via DISTINCT ON (ticker, alert_date) — mi_ep_alerts has no UNIQUE constraint.
     Excludes catalyst_quality='unknown' by default (pre-Claude early records with no value).
     """
     pool = await get_pool()
@@ -2447,30 +2445,29 @@ async def get_ep_outcomes(
             SELECT
                 ticker, alert_date, score_tier, gap_pct, catalyst_quality, ep_score,
                 fwd_1d_pct, fwd_1w_pct,
-                lt_status, skip_reason, entry_price, total_pnl,
+                pt_status, skip_reason, last_entry_price, total_pnl,
                 CASE
-                    WHEN lt_status IS NULL THEN 'no_attempt'
-                    WHEN skip_reason IS NOT NULL THEN 'filtered'
-                    WHEN entry_price IS NOT NULL THEN 'traded'
-                    ELSE 'no_attempt'
+                    WHEN pt_status IS NULL         THEN 'no_attempt'
+                    WHEN skip_reason IS NOT NULL   THEN 'filtered'
+                    ELSE 'traded'
                 END AS trade_status
             FROM (
                 SELECT DISTINCT ON (a.ticker, a.alert_date)
                     a.ticker, a.alert_date, a.score_tier, a.gap_pct,
                     a.catalyst_quality, a.ep_score,
                     o.fwd_1d_pct, o.fwd_1w_pct,
-                    lt.status       AS lt_status,
-                    lt.skip_reason  AS skip_reason,
-                    lt.entry_price  AS entry_price,
-                    lt.total_pnl    AS total_pnl
+                    pt.status           AS pt_status,
+                    pt.skip_reason      AS skip_reason,
+                    pt.last_entry_price AS last_entry_price,
+                    pt.total_pnl        AS total_pnl
                 FROM mi_ep_alerts a
                 LEFT JOIN mi_signal_outcomes o
                     ON o.signal_type = 'ep_alert'
                    AND o.signal_date = a.alert_date
                    AND o.identifier = a.ticker
-                LEFT JOIN mi_live_trades lt
-                    ON lt.ticker = a.ticker
-                   AND lt.alert_date = a.alert_date
+                LEFT JOIN mi_paper_trades pt
+                    ON pt.ticker = a.ticker
+                   AND pt.alert_date = a.alert_date
                 WHERE {where}
                 ORDER BY a.ticker, a.alert_date, a.ep_score DESC
             ) deduped
