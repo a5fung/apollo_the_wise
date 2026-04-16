@@ -632,10 +632,9 @@ async def _rescore_existing_theme(
             logger.info(f"Theme '{name}': pruned {tk} — {reason}")
 
     # Re-validation: remove stocks whose description clearly doesn't match the theme.
-    # Runs Mon/Wed/Fri only (original design). With correct descriptions loaded from DB
-    # (get_ticker_overrides now filters NULL rows), Haiku works from accurate data.
-    today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
-    if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
+    # Runs daily — descriptions are reliable (DB-loaded, sector-anchored) and Haiku is
+    # cheap (~$0.00002/call). Waiting Mon/Wed/Fri left wrong assignments live for 48h.
+    if len(tickers) >= 2:
         tickers = await _validate_theme_membership(name, tickers, changelog)
 
     # Check how many constituent stocks still show strong RS today
@@ -1560,25 +1559,43 @@ def _sector_group(theme_name: str) -> tuple[str, int] | None:
 
 def _strip_commodity_contradictions(themes: list[dict]) -> list[dict]:
     """
-    Strip members whose descriptions obviously contradict the theme's commodity.
-    Prevents gold miners ending up in uranium themes and vice versa.
+    Strip members with descriptions that obviously contradict the theme.
+    Covers commodity crossovers (gold vs uranium) and broad sector mismatches
+    (auto parts in aerospace, consumer retail in semiconductor, etc.).
     Deterministic — no Claude call needed.
     """
     from agents.market_intelligence.universe import TICKER_DESC
 
-    # (theme_keywords_that_trigger, member_description_keywords_that_contradict)
-    COMMODITY_RULES: list[tuple[list[str], list[str]]] = [
+    # Each rule: (theme_keywords_that_trigger, member_desc_keywords_that_contradict)
+    CONTRADICTION_RULES: list[tuple[list[str], list[str]]] = [
+        # Commodity crossovers
         (["uranium", "nuclear fuel", "nuclear energy"],
          ["gold", "silver", "precious metal", "gold miner", "silver miner", "zinc miner", "copper miner"]),
         (["gold miner", "silver miner", "precious metal", "gold & silver"],
          ["uranium", "nuclear", "lithium", "cobalt", "rare earth"]),
+        # Aerospace / defense themes should not contain auto parts, consumer retail, or financial stocks
+        (["aerospace", "defense contractor", "space launch", "missile", "mro"],
+         ["auto parts", "consumer cyclical / auto", "car dealer", "auto dealer",
+          "specialty retail", "apparel", "restaurant", "robo-advisor", "bank", "insurance"]),
+        # AI / semiconductor / hardware themes should not contain auto dealers, traditional retail, or basic materials
+        (["ai chip", "ai hardware", "semiconductor", "data center", "gpu", "hbm", "inference chip"],
+         ["auto parts", "car dealer", "auto dealer", "consumer cyclical / auto",
+          "specialty retail", "apparel", "fertilizer", "coal miner"]),
+        # Oil & gas / energy themes should not contain consumer discretionary or tech-only businesses
+        (["oil & gas", "oil exploration", "upstream e&p", "shale", "lng", "natural gas exploration"],
+         ["auto parts", "consumer cyclical / auto", "specialty retail", "apparel",
+          "software as a service", "saas", "robo-advisor", "fintech"]),
+        # Fintech / financial themes should not contain industrials, energy, or mining businesses
+        (["robo-advisor", "fintech", "payments", "neobank", "digital bank", "wealth management"],
+         ["auto parts", "consumer cyclical / auto", "oil well", "uranium", "coal miner",
+          "aerospace", "defense", "semiconductor fab"]),
     ]
 
     for theme in themes:
         name_lower = theme["name"].lower()
         desc_lower = (theme.get("description") or "").lower()
 
-        for theme_kws, contra_kws in COMMODITY_RULES:
+        for theme_kws, contra_kws in CONTRADICTION_RULES:
             if not any(kw in name_lower or kw in desc_lower for kw in theme_kws):
                 continue
             clean, stripped = [], []
@@ -1590,8 +1607,8 @@ def _strip_commodity_contradictions(themes: list[dict]) -> list[dict]:
                     clean.append(tk)
             if stripped:
                 logger.info(
-                    f"[commodity filter] '{theme['name']}': stripped {stripped} "
-                    f"(descriptions contradict theme commodity)"
+                    f"[sector filter] '{theme['name']}': stripped {stripped} "
+                    f"(descriptions contradict theme domain)"
                 )
                 theme["tickers"] = clean
 
@@ -2061,7 +2078,10 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
             )
 
     # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---
-    # Strip commodity contradictions from new clusters before merge (e.g. gold miners in uranium theme)
+    # Run sector contradiction filter on both new themes and existing themes that received
+    # new assignments this run. Existing themes may have picked up wrong stocks via the
+    # assignment path, which bypasses the discovery-only filter below.
+    updated_themes = _strip_commodity_contradictions(updated_themes)
     new_themes = _strip_commodity_contradictions(new_themes)
     # Pass existing theme names so they can't be absorbed by new clusters
     existing_names: set[str] = {t["name"] for t in updated_themes}
