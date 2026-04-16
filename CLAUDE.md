@@ -269,3 +269,21 @@ TRADINGVIEW_WEBHOOK_SECRET
 
 ## Changes Made 2026-04-15
 - **Bug fixed**: `ep_detector.py` missing `datetime` import — `from datetime import date` only, but `datetime.now()` used for open intensity metric. All EP scans failing since deploy. Fix: `from datetime import date, datetime, timedelta`.
+
+## Changes Made 2026-04-16
+### Design review + backlog (branch: claude/apollo-design-review-cEVYD)
+- Added P17–P20 to README backlog (stop order timeout, alert reasoning traces, per-regime daily loss limit, HTTPS on webhook)
+
+### Code review fixes (commit 608e87c)
+- `agent.py`: Extracted `_SINGLE_SCORE_QUERY_SKIP` frozenset — `execute_task` RS block (line ~515) and `_handle_single_score` (line ~1612) now share the same constant. Previously they drifted: routing admitted tickers the handler then rejected (silent "please specify a ticker").
+- `confirmations.py`: `datetime.utcnow()` → `datetime.now(timezone.utc)` (Python 3.12+ deprecation)
+- `ep_detector.py` + `collector.py`: Explicit bounds check on Perplexity `choices[0]` — empty response now logs a clear warning instead of being swallowed as generic IndexError
+- `backtester/filters.py`: ATR% guard raised from `last_close > 0` to `last_close >= 1.0` (sub-$1 penny stocks produced meaningless volatility percentages)
+- `CLAUDE.md`: Updated ticker extraction section to document `_SINGLE_SCORE_QUERY_SKIP` invariant
+
+### EP detection + ORB entry P0 fixes (commit e6408df)
+- `broker/bar_stream.py`: ORB bar handler only accepted `minute==30`. Halted/delayed-open stocks send first bar at minute 31–45 — silently dropped, trade never fired. Now accepts 9:30–9:45 ET window.
+- `broker/alpaca_client.py`: `get_first_bar` queried only 9:30–9:35; delayed-open retries re-queried same narrow window. Extended to 9:30–10:00 (30 min). Added `client_order_id` param to `place_bracket_order`.
+- `broker/order_manager.py`: `submit_entry` had no idempotency key — network timeout + retry created duplicate Alpaca positions. Now uses `f"apollo-{trade_id}-entry"` on both calls.
+- `broker/live_tracker.py`: `process_new_alerts_live` skipped tickers with any existing `mi_live_trades` row including `order_failed` — failed submissions blocked retries all day. Now detects `order_failed`, deletes stale row, re-submits.
+- `ep_detector.py`: `already_today` blocked re-scoring any ticker seen earlier that day regardless of tier. Escalating MODERATE→HIGH setups were dropped. Now tracks `score_tier`; only `HIGH` blocks re-scoring.
