@@ -287,3 +287,7 @@ TRADINGVIEW_WEBHOOK_SECRET
 - `broker/order_manager.py`: `submit_entry` had no idempotency key — network timeout + retry created duplicate Alpaca positions. Now uses `f"apollo-{trade_id}-entry"` on both calls.
 - `broker/live_tracker.py`: `process_new_alerts_live` skipped tickers with any existing `mi_live_trades` row including `order_failed` — failed submissions blocked retries all day. Now detects `order_failed`, deletes stale row, re-submits.
 - `ep_detector.py`: `already_today` blocked re-scoring any ticker seen earlier that day regardless of tier. Escalating MODERATE→HIGH setups were dropped. Now tracks `score_tier`; only `HIGH` blocks re-scoring.
+
+### Theme engine flakiness fixes (commit 88d5f8a)
+- `theme_engine.py`: `uncovered_stocks` was passed to Claude clustering in RS-score arrival order. RS ties broke differently each run → same leaders produced different clusters on different days. Now sorted by ticker before building both `_assign_uncovered_to_themes` and `_discover_new_themes` prompts.
+- `theme_engine.py`: Missing-RS ticker pruning used `if hist and all(...)` — empty hist (no RS data for 5 days) evaluated to False, leaving delisted/acquired/halted tickers in themes as zombies that contaminated RS averages and clustering. Now explicitly prunes on empty hist with reason logged.
