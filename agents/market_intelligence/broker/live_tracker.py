@@ -114,11 +114,13 @@ async def _submit_orb_trade(
     order_spec = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
     if not order_spec:
         await _insert_skipped_trade(ticker, today, alert, regime_record, "Order spec failed")
+        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: stop too wide or no valid entry (ORB range too large)")
         return {"ticker": ticker, "action": "skipped", "reason": "Order spec failed"}
 
     ok, sg_reason = await _check_safeguards()
     if not ok:
         await _insert_skipped_trade(ticker, today, alert, regime_record, sg_reason)
+        await send_telegram_message(f"🚫 *{ticker}* blocked by safeguard: {sg_reason}")
         return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
 
     async with pool.acquire() as conn:
@@ -268,6 +270,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
             except Exception:
                 pass
+            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: {skip_reason}")
             results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
             continue
 
@@ -333,6 +336,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
         results.append({"ticker": ticker, "action": "skipped", "reason": "No ORB bar"})
         logger.warning(f"No ORB bar for {ticker} after {MAX_ORB_RETRIES} retries")
+        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: no first bar after {MAX_ORB_RETRIES} retries")
         try:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event("orb_no_bar", f"{ticker} — bar never available after {MAX_ORB_RETRIES} retries, trade skipped")
