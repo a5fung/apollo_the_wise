@@ -165,10 +165,14 @@ async def _handle_bar(bar) -> None:
     ticker = bar.symbol
     bar_time = bar.timestamp  # UTC datetime
 
-    # Only act on the first bar of the session (9:30–9:31 ET)
+    # Only act on bars in the ORB window (9:30–9:45 ET).
+    # Bar timestamps are the START of the minute bar, so the normal first bar
+    # carries minute=30.  Halted stocks that reopen at 9:32, 9:38, etc. will
+    # send their first bar later — we still want to fire ORB for those.
     bar_time_et = bar_time.astimezone(_ET)
-    if not (bar_time_et.hour == 9 and bar_time_et.minute == 30):
-        logger.debug(f"Bar stream: ignoring non-open bar for {ticker} at {bar_time_et.strftime('%H:%M')}")
+    in_orb_window = (bar_time_et.hour == 9 and 30 <= bar_time_et.minute <= 45)
+    if not in_orb_window:
+        logger.debug(f"Bar stream: ignoring out-of-window bar for {ticker} at {bar_time_et.strftime('%H:%M')}")
         return
 
     if ticker in _processed_today:

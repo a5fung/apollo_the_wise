@@ -248,15 +248,21 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     for alert in alerts:
         ticker = alert["ticker"]
 
-        # Skip if already processed today
+        # Skip if already processed today — but allow retry if the prior attempt failed.
         async with pool.acquire() as conn:
-            exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
+            existing = await conn.fetchrow(
+                "SELECT id, status FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2",
                 ticker, today,
             )
-        if exists:
-            logger.debug(f"Live trade already exists for {ticker} on {today}")
-            continue
+        if existing:
+            if existing["status"] != "order_failed":
+                logger.debug(f"Live trade already exists for {ticker}: status={existing['status']}")
+                continue
+            # Prior attempt failed at order submission — delete stale record so the
+            # INSERT in _submit_orb_trade can succeed cleanly.
+            logger.info(f"Retrying {ticker}: previous attempt had status=order_failed — clearing and re-submitting")
+            async with pool.acquire() as conn:
+                await conn.execute("DELETE FROM mi_live_trades WHERE id = $1", existing["id"])
 
         # Pre-trade filters (ADV, ATR% — skip mcap for small account)
         passed, skip_reason = await check_filters(ticker, today)

@@ -543,9 +543,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"Failed to fetch 5-day closes for extension check: {e}")
 
     # Batch-fetch recent EP alerts for cooldown check (same ticker in last 60 days)
-    # Also check today — skip re-scoring tickers already alerted in an earlier scan run
+    # Also check today — skip re-scoring tickers already scored HIGH today, but
+    # allow re-score if prior run only produced MODERATE (setup may have improved).
     cooldown_tickers: set[str] = set()
-    already_today: set[str] = set()
+    already_today: dict[str, str] = {}  # ticker → best score_tier seen today
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
@@ -554,10 +555,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
             cooldown_tickers = {r["ticker"] for r in rows}
             rows_today = await conn.fetch("""
-                SELECT DISTINCT ticker FROM mi_ep_alerts
+                SELECT DISTINCT ON (ticker) ticker, score_tier FROM mi_ep_alerts
                 WHERE ticker = ANY($1) AND alert_date = $2
+                ORDER BY ticker, ep_score DESC
             """, candidate_tickers, today)
-            already_today = {r["ticker"] for r in rows_today}
+            already_today = {r["ticker"]: r["score_tier"] for r in rows_today}
     except Exception as e:
         logger.warning(f"Failed to fetch EP cooldown data: {e}")
 
@@ -610,10 +612,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _log_filtered(c, reason)
             continue
 
-        # Skip if already scored in an earlier scan run today
-        if ticker in already_today:
-            logger.debug(f"Skip {ticker}: already scored today")
+        # Skip if already HIGH-scored in an earlier scan run today.
+        # Allow re-score if the prior run only produced MODERATE — the setup
+        # may have developed further (wider gap, higher RVOL, better catalyst)
+        # and could now qualify as HIGH.
+        if already_today.get(ticker) == "HIGH":
+            logger.debug(f"Skip {ticker}: already HIGH scored today")
             continue
+        if ticker in already_today:
+            logger.info(f"Allow re-score {ticker}: prior tier={already_today[ticker]}, re-evaluating")
 
         # Hard filter: extension — skip if already up 50%+ before today's gap
         close_5d_ago = extension_map.get(ticker)

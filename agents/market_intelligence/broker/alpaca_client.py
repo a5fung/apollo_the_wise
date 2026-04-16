@@ -84,11 +84,14 @@ async def place_bracket_order(
     stop_price: float,
     limit_price: float,
     stop_loss_price: float,
+    client_order_id: str | None = None,
 ) -> dict:
     """
     Place a bracket order: stop-limit buy entry with attached stop-loss.
     - Entry: stop-limit buy triggers at stop_price, fills up to limit_price
     - Stop-loss: hard stop at stop_loss_price
+    - client_order_id: if provided, Alpaca deduplicates on this ID so a
+      network-timeout retry cannot create a duplicate position.
     """
     try:
         client = _get_trading_client()
@@ -102,6 +105,7 @@ async def place_bracket_order(
                 stop_price=round(stop_price, 2),
                 limit_price=round(limit_price, 2),
                 stop_loss={"stop_price": round(stop_loss_price, 2)},
+                client_order_id=client_order_id,
             )
         )
         logger.info(
@@ -247,15 +251,17 @@ async def close_position(ticker: str, qty: float | None = None) -> dict | None:
 async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
     """
     Get the first 1-minute bar for a ticker on a given date.
-    Fetches the 9:30-9:35 window and returns the earliest bar available.
-    Handles delayed opens and bars that aren't finalized at exactly 9:31.
+    Fetches the full 9:30–10:00 window (30 min) and returns the earliest bar.
+    The wider window is required for halted/delayed-open stocks — a stock
+    halted on news can reopen anywhere from 9:31 to ~9:45 and the original
+    5-minute window would return no bars even after multiple retries.
     """
     try:
         from zoneinfo import ZoneInfo
         client = _get_data_client()
         et = ZoneInfo("America/New_York")
         start = datetime.combine(trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et)
-        end = start + timedelta(minutes=5)
+        end = start + timedelta(minutes=30)  # 9:30–10:00 covers delayed opens
         request = StockBarsRequest(
             symbol_or_symbols=ticker,
             timeframe=TimeFrame.Minute,

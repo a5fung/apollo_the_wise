@@ -126,6 +126,11 @@ async def submit_entry(trade_id: int) -> dict | None:
         return None
 
     ticker = trade["ticker"]
+    # Deterministic client_order_id so both this call and the retry carry the
+    # same ID.  Alpaca rejects a duplicate submission with the same ID, which
+    # is exactly what we want: if the first call succeeded but timed out before
+    # returning, the retry will get a rejection instead of creating a second position.
+    client_order_id = f"apollo-{trade_id}-entry"
     try:
         order = await alpaca.place_bracket_order(
             ticker=ticker,
@@ -133,10 +138,13 @@ async def submit_entry(trade_id: int) -> dict | None:
             stop_price=trade["orb_high"],
             limit_price=round(trade["orb_high"] * 1.001, 2),
             stop_loss_price=trade["orb_low"],
+            client_order_id=client_order_id,
         )
     except Exception as e:
-        # 1 retry after 5s for transient errors
-        logger.warning(f"Entry order failed for {ticker}, retrying: {e}")
+        # 1 retry after 5s for transient errors.
+        # Same client_order_id ensures Alpaca deduplicates if the first
+        # submission went through but the network response was dropped.
+        logger.warning(f"Entry order failed for {ticker}, retrying in 5s: {e}")
         await asyncio.sleep(5)
         try:
             order = await alpaca.place_bracket_order(
@@ -145,6 +153,7 @@ async def submit_entry(trade_id: int) -> dict | None:
                 stop_price=trade["orb_high"],
                 limit_price=round(trade["orb_high"] * 1.001, 2),
                 stop_loss_price=trade["orb_low"],
+                client_order_id=client_order_id,
             )
         except Exception as e2:
             logger.error(f"Entry order failed after retry for {ticker}: {e2}")
