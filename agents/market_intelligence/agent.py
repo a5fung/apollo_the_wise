@@ -892,60 +892,64 @@ class MarketIntelligenceAgent(BaseAgent):
 
         tier_label = f" ({tier})" if tier else ""
         lines = [f"*EP Outcomes — last {days}d{tier_label}*"]
-        lines.append("_Traded = system entered. Filtered = rule rejected. D1=next day %._")
+        lines.append("Traded = ORB entered. Filtered = rule rejected at gate. D1/D5 = fwd returns.")
         lines.append("")
 
         # ── Section 1: Traded ──────────────────────────────────────────────────
         lines.append(f"*TRADED ({len(traded)})*")
         if not traded:
-            lines.append("_None yet._")
+            lines.append("None yet.")
         else:
             lines.append("```")
-            lines.append("Ticker  Date       Tier   P&L      D1")
-            lines.append("------  ---------  ----  -------  ------")
+            lines.append("Ticker  Date        P&L      D1      D5")
+            lines.append("------  ----------  -------  ------  ------")
             for r in traded:
                 ticker_s = r["ticker"].ljust(6)
                 dt       = str(r["alert_date"])[:10]
-                tier_s   = (r["score_tier"] or "?")[:4].ljust(4)
                 pnl_s    = _pnl(r.get("total_pnl")).rjust(7)
                 d1       = _pct(r.get("fwd_1d_pct"))
-                lines.append(f"{ticker_s}  {dt}  {tier_s}  {pnl_s}  {d1}")
+                d5       = _pct(r.get("fwd_1w_pct"))
+                lines.append(f"{ticker_s}  {dt}  {pnl_s}  {d1}  {d5}")
             lines.append("```")
             pnl_vals = [r["total_pnl"] for r in traded if r.get("total_pnl") is not None]
             if pnl_vals:
                 wins = sum(1 for v in pnl_vals if v > 0)
-                lines.append(f"_Win rate: {wins}/{len(pnl_vals)} · Total P&L: {_pnl(sum(pnl_vals))}_")
+                lines.append(f"Win rate: {wins}/{len(pnl_vals)} · Total P&L: {_pnl(sum(pnl_vals))}")
         lines.append("")
 
         # ── Section 2: Filtered by rule ────────────────────────────────────────
-        lines.append(f"*FILTERED ({len(filtered)})*  _— what the rules rejected_")
+        lines.append(f"*FILTERED ({len(filtered)})*")
+        lines.append("ORB gate ran but rejected — check D1 to see if we missed good entries.")
         if not filtered:
-            lines.append("_None in this window._")
+            lines.append("None in this window.")
         else:
             lines.append("```")
-            lines.append("Ticker  Date       Skip reason          D1")
-            lines.append("------  ---------  -------------------  ------")
+            lines.append("Ticker  Date        Skip reason           D1      D5")
+            lines.append("------  ----------  --------------------  ------  ------")
             for r in filtered:
                 ticker_s = r["ticker"].ljust(6)
                 dt       = str(r["alert_date"])[:10]
-                reason_s = (r.get("skip_reason") or "?")[:19].ljust(19)
+                reason_s = (r.get("skip_reason") or "?")[:20].ljust(20)
                 d1       = _pct(r.get("fwd_1d_pct"))
-                lines.append(f"{ticker_s}  {dt}  {reason_s}  {d1}")
+                d5       = _pct(r.get("fwd_1w_pct"))
+                lines.append(f"{ticker_s}  {dt}  {reason_s}  {d1}  {d5}")
             lines.append("```")
             filter_d1 = [r for r in filtered if r.get("fwd_1d_pct") is not None]
             if filter_d1:
                 avg = mean(r["fwd_1d_pct"] for r in filter_d1)
                 wins = sum(1 for r in filter_d1 if r["fwd_1d_pct"] > 0)
-                flag = " ⚠ rules may be too strict" if avg > 3 else ""
-                lines.append(f"_Filtered avg D1: {'+'if avg>=0 else ''}{avg:.1f}% ({wins}/{len(filter_d1)} up){flag}_")
+                flag = " — rules may be too strict" if avg > 3 else ""
+                lines.append(f"Filtered avg D1: {'+'if avg>=0 else ''}{avg:.1f}% ({wins}/{len(filter_d1)} up){flag}")
         lines.append("")
 
-        # ── Section 3: Not attempted ───────────────────────────────────────────
+        # ── Section 3: No ORB attempt ──────────────────────────────────────────
         if no_attempt:
             tickers = ", ".join(r["ticker"] for r in no_attempt[:6])
             suffix = f" +{len(no_attempt)-6} more" if len(no_attempt) > 6 else ""
-            lines.append(f"*NO ORB ATTEMPT ({len(no_attempt)})*: _{tickers}{suffix}_")
-            lines.append("_Alert fired but ORB gate never ran (after 10am, holiday, etc.)_")
+            lines.append(f"*NO ORB ATTEMPT ({len(no_attempt)})*: {tickers}{suffix}")
+            lines.append("EP scored but no paper trade row created — alert arrived after 10am,")
+            lines.append("or system was restarting when ORB window opened. Not filtered out;")
+            lines.append("just never reached the gate. Informational only.")
 
         return self._ok(request, result="\n".join(lines))
 
