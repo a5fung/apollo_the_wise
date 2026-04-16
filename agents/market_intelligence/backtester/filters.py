@@ -104,7 +104,10 @@ async def compute_atr_14(ticker: str, as_of_date: date) -> tuple[float | None, f
 
     atr_14 = sum(true_ranges[-14:]) / min(14, len(true_ranges[-14:]))
     last_close = closes[-1]
-    atr_pct = (atr_14 / last_close * 100) if last_close > 0 else None
+    # Guard against sub-$1 penny stocks: atr_pct becomes meaningless when close is tiny
+    # (e.g. $0.50 close × $0.10 ATR = 20% but noise, not volatility). Stocks < $1 fail
+    # other filters anyway; return None so caller falls through without a false positive.
+    atr_pct = (atr_14 / last_close * 100) if last_close >= 1.0 else None
     return atr_14, atr_pct
 
 

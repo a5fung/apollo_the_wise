@@ -494,7 +494,11 @@ async def search_news_perplexity(
                 },
             )
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
+            choices = r.json().get("choices") or []
+            if not choices:
+                logger.warning("Perplexity returned empty choices")
+                return ""
+            return choices[0]["message"]["content"]
     except Exception as e:
         logger.warning(f"Perplexity search failed: {e}")
         return ""

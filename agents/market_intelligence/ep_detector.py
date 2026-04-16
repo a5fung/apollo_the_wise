@@ -224,7 +224,11 @@ Respond with ONLY the classification word."""
                 },
             )
             r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip().upper()
+            choices = r.json().get("choices") or []
+            if not choices:
+                logger.warning(f"Perplexity returned empty choices for {ticker}")
+                return None
+            text = choices[0]["message"]["content"].strip().upper()
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:
             return "game_changer"
         elif "STRONG" in text:

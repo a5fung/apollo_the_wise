@@ -75,6 +75,16 @@ _PREPOSITION_SKIP: frozenset[str] = frozenset({
     "AM", "US", "WE", "NO", "GO", "HI",
 })
 
+# Query-vocabulary words that appear in RS / score / single-ticker analysis queries.
+# Used by BOTH the execute_task RS routing block AND _handle_single_score — they must
+# stay identical or routing will admit a ticker the handler then rejects (or vice versa).
+_SINGLE_SCORE_QUERY_SKIP: frozenset[str] = frozenset({
+    "RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
+    "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
+    "STOCK", "STOCKS", "LEADER", "LEADERS",
+    "FUNDAMENTAL", "FUNDAMENTALS", "ANALYSIS",
+})
+
 
 class TeachRequest(BaseModel):
     tickers: list[str] = []
@@ -502,9 +512,7 @@ class MarketIntelligenceAgent(BaseAgent):
             # If a specific ticker is detected, route to single-ticker score
             import re as _re
             _candidate = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-            _skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
-                      "TOP", "PULL", "GET", "SHOW", "LIST", "CHECK", "FIND",
-                      "STOCK", "STOCKS", "LEADER", "LEADERS"}
+            _skip = _PREPOSITION_SKIP | _SINGLE_SCORE_QUERY_SKIP
             _candidate = [t for t in _candidate if t not in _skip]
             if _candidate:
                 return await self._handle_single_score(request)
@@ -1599,10 +1607,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # Extract ticker from task — look for uppercase word 2-5 chars
         tickers = re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-        # Filter out common non-ticker words
-        skip = _PREPOSITION_SKIP | {"RS", "FOR", "SCORE", "RANK", "WHAT", "THE", "AND", "NOW",
-                "PULL", "GET", "SHOW", "CHECK", "FIND", "FUNDAMENTAL",
-                "FUNDAMENTALS", "STOCK", "ANALYSIS"}
+        # Filter out common non-ticker words — must match the execute_task RS routing skip
+        # set (_SINGLE_SCORE_QUERY_SKIP) or routing admits a ticker this handler then rejects.
+        skip = _PREPOSITION_SKIP | _SINGLE_SCORE_QUERY_SKIP
         tickers = [t for t in tickers if t not in skip]
 
         if not tickers:

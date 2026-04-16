@@ -117,10 +117,11 @@ All keyword-based ticker extraction uses:
 ```python
 re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
 ```
-Skip sets must include common English short words (`OF`, `IN`, `AT`, `ON`, `BY`, `TO`, `AS`, `AN`, `OR`, `MY`, `ME`, `IS`, `IT`, `IF`, ...) to prevent prepositions from being parsed as tickers. Bug fixed 2026-04-06 — always update all three skip sets when adding words:
-- `execute_task` routing block (line ~415)
-- `_handle_single_score` skip set (line ~883)
-- `_handle_fundamentals_query` skip set (line ~999)
+Two shared constants at the top of `agents/market_intelligence/agent.py`:
+- `_PREPOSITION_SKIP` — English short words (`OF`, `IN`, `AT`, `ON`, `BY`, `TO`, `AS`, `AN`, `OR`, `MY`, `ME`, `IS`, `IT`, `IF`, ...). Used by every call site.
+- `_SINGLE_SCORE_QUERY_SKIP` — query-vocabulary words (`RS`, `SCORE`, `RANK`, `TOP`, `STOCK`, `LEADERS`, `FUNDAMENTALS`, ...). Used by BOTH the `execute_task` RS routing block AND `_handle_single_score` — they must stay identical or routing will admit a ticker the handler then rejects (bug fixed 2026-04-16).
+
+`_handle_fundamentals_query` has its own skip set (`EPS`, `YOY`, `REV`, etc.) because fundamentals queries use different vocabulary.
 
 ## Key Domain Concepts
 
