@@ -835,6 +835,11 @@ Rules:
 - Pick the most specific theme if multiple could fit
 - Return empty array if nothing fits — that is the correct answer
 - Use the EXACT theme name from the list above
+- SECTOR MISMATCH = HARD REJECT: A stock's sector must be compatible with the theme's domain.
+  A Consumer Cyclical auto parts stock does NOT belong in Aerospace, AI Hardware, Oil & Gas, or Financial themes.
+  An Energy sector stock does NOT belong in Technology, Healthcare, Consumer, or Financial themes.
+  If the stock's description prefix (e.g. "Consumer Cyclical / Auto Parts") clearly places it in a
+  different industry domain than the theme, do NOT assign — regardless of any vague similarity.
 
 Before calling assign_stocks_to_themes, ask yourself: am I uncertain about any assignment?
 Consult the advisor FIRST if any of these apply:
@@ -926,14 +931,27 @@ If none of these apply, call assign_stocks_to_themes directly."""
             logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
             continue
 
-        # Sector outlier check: reject if stock's sector is singleton in theme
+        # Sector outlier check: reject if stock's sector is outlier among theme members.
+        # Falls back to extracting sector from the description anchor when Polygon returns
+        # no sector data (format: "Consumer Cyclical / Auto Parts — ..." or "Sector — ...").
+        # Without this fallback, stocks with Unknown sector bypass the check entirely and
+        # get assigned to completely unrelated themes (root cause of DCH-in-4-themes bug).
         stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
+        if not stock_sector or stock_sector == "Unknown":
+            desc_anchor = TICKER_DESC.get(ticker, "")
+            if " / " in desc_anchor:
+                stock_sector = desc_anchor.split(" / ")[0].strip()
+            elif " — " in desc_anchor:
+                stock_sector = desc_anchor.split(" — ")[0].strip()
         if stock_sector and stock_sector != "Unknown":
             theme_tickers = theme.get("tickers") or []
             theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
             known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
             if known_sectors and stock_sector not in known_sectors:
-                logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
+                logger.info(
+                    f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in "
+                    f"'{theme_name}' (theme sectors: {set(known_sectors)})"
+                )
                 continue
 
         # Apply assignment

@@ -291,3 +291,9 @@ TRADINGVIEW_WEBHOOK_SECRET
 ### Theme engine flakiness fixes (commit 88d5f8a)
 - `theme_engine.py`: `uncovered_stocks` was passed to Claude clustering in RS-score arrival order. RS ties broke differently each run → same leaders produced different clusters on different days. Now sorted by ticker before building both `_assign_uncovered_to_themes` and `_discover_new_themes` prompts.
 - `theme_engine.py`: Missing-RS ticker pruning used `if hist and all(...)` — empty hist (no RS data for 5 days) evaluated to False, leaving delisted/acquired/halted tickers in themes as zombies that contaminated RS averages and clustering. Now explicitly prunes on empty hist with reason logged.
+
+### DCH multi-theme contamination root cause + fix (commit TBD)
+- **Root cause #1 (fixed prior commit 1a617d0)**: Fading theme tickers were excluded from `covered_tickers` — any RS≥50 stock in a Fading theme leaked back into `uncovered_stocks` on every run for up to 5 days, causing repeated re-clustering into whatever active themes were available.
+- **Root cause #2 (this commit)**: Sector outlier check in `_assign_uncovered_to_themes` was silently bypassed when Polygon returned no sector for a stock (`sector = "Unknown"`). Fix: extract sector from the description anchor (format: `"Consumer Cyclical / Auto Parts — ..."`) when Polygon returns Unknown. DCH with this anchor would now be blocked from Aerospace/AI/Oil/Fintech themes.
+- `theme_engine.py` `_assign_uncovered_to_themes`: sector outlier check now falls back to description-based sector extraction; also logs the theme's sector set for diagnosability.
+- `theme_engine.py` assignment prompt: added explicit SECTOR MISMATCH = HARD REJECT rule with concrete examples so Claude doesn't over-assign on vague similarity.
