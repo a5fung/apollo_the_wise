@@ -458,13 +458,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 adv = snap.get("prevDay", {}).get("v") or None
 
             raw_rvol = round((today_volume / adv), 2) if adv and adv > 0 else None
-            # Open intensity: current_vol / expected_vol_by_now = raw_rvol * (390 / min_elapsed)
-            # Measures how many times above the *normal rate for this time* the stock is trading.
-            # Linear — overstates final daily RVOL (opening minutes are always dense), but
-            # correctly captures institutional conviction intensity at the moment of the EP.
+            # Open intensity: projected full-day RVOL = raw_rvol * (390 / min_elapsed)
+            # Gate: only project after 15 minutes (9:45 AM). The opening 15 minutes are
+            # structurally dense — every stock shows 10-30x projected RVOL at 9:31 AM
+            # regardless of real institutional interest. Before the gate, use raw RVOL.
             open_intensity = None
             if raw_rvol is not None and _minutes_since_open and today_volume > 0:
-                open_intensity = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
+                if _minutes_since_open >= 15:
+                    open_intensity = round(raw_rvol * (_SESSION_MINUTES / _minutes_since_open), 1)
+                # else: intensity stays None — vol filter uses raw_rvol pre-9:45
 
             candidates.append({
                 "ticker": ticker,
@@ -519,22 +521,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 c["adv"] = computed_adv
                 c["adv_source"] = "polygon_20d"
                 c["rel_volume"] = round(c["today_volume"] / computed_adv, 2) if computed_adv > 0 else None
-                if c["rel_volume"] and _minutes_since_open:
+                if c["rel_volume"] and _minutes_since_open and _minutes_since_open >= 15:
                     c["projected_vol_multiple"] = round(c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
                 logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
 
-    # Batch-fetch 5-day-ago closes for extension check (already up 50%+ before today's gap)
+    # Batch-fetch MIN close over last 5 trading days for extension check.
+    # Using MIN (not the close from exactly 5 days ago) catches stocks that surged
+    # 3 days ago and are now re-extending — a single look-back point would miss this.
     extension_map: dict[str, float] = {}
     try:
-        target_5d = today - timedelta(days=8)  # ~5 trading days
+        window_start = today - timedelta(days=10)  # ~5 trading days + buffer
         async with pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT DISTINCT ON (ticker) ticker, close
+                SELECT ticker, MIN(close) AS low_close
                 FROM mi_daily_closes
-                WHERE ticker = ANY($1) AND trade_date <= $2 AND trade_date >= $3
-                ORDER BY ticker, trade_date DESC
-            """, candidate_tickers, target_5d, target_5d - timedelta(days=7))
-        extension_map = {r["ticker"]: float(r["close"]) for r in rows}
+                WHERE ticker = ANY($1) AND trade_date >= $2 AND trade_date < $3
+                GROUP BY ticker
+            """, candidate_tickers, window_start, today)
+        extension_map = {r["ticker"]: float(r["low_close"]) for r in rows}
     except Exception as e:
         logger.warning(f"Failed to fetch 5-day closes for extension check: {e}")
 
