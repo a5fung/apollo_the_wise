@@ -544,24 +544,12 @@ async def _validate_theme_membership(
                         summary=f"{tk} removed from '{theme_name}' by validation",
                         detail=f"Description: '{desc}' — Haiku flagged as not matching theme",
                     )
-                    # Persist to mi_theme_exclusions so the removal survives tomorrow's
-                    # re-score. Without this, the ticker reloads from DB every night and
-                    # validation has to re-fight the same battle Mon/Wed/Fri forever.
-                    # Fuzzy name matching in _get_excluded_tickers_for_theme means the
-                    # exclusion survives theme renames by Claude.
-                    try:
-                        from agents.market_intelligence.db import get_pool as _get_pool
-                        _pool = await _get_pool()
-                        async with _pool.acquire() as _conn:
-                            await _conn.execute(
-                                """INSERT INTO mi_theme_exclusions (ticker, theme_name)
-                                   VALUES ($1, $2)
-                                   ON CONFLICT (ticker, theme_name) DO NOTHING""",
-                                tk, theme_name,
-                            )
-                        logger.info(f"Theme '{theme_name}': persisted exclusion for {tk} to mi_theme_exclusions")
-                    except Exception as _e:
-                        logger.warning(f"Theme '{theme_name}': could not persist exclusion for {tk}: {_e}")
+                    # NOTE: do NOT auto-persist to mi_theme_exclusions here.
+                    # Previously tried (commit d07a363), deliberately reverted (commit f0372ef)
+                    # because bad yfinance descriptions caused TSEM to be permanently banned
+                    # from semiconductor theme. Validation is in-memory only — re-runs Mon/Wed/Fri.
+                    # The real fix for same-run re-assignment is covered_tickers including
+                    # Fading themes (so validation-removed tickers don't appear as uncovered).
             return [t for t in tickers if t not in to_remove]
 
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
@@ -1924,8 +1912,10 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
         changelog.extend(prune_log)
         if theme_result is not None:
             updated_themes.append(theme_result)
-            if theme_result["stage"] != "Fading":
-                covered_tickers.update(theme_result.get("tickers") or [])
+            # Cover tickers from ALL stages including Fading — prevents a stock
+            # removed by validation from being immediately re-assigned as "uncovered"
+            # in the same run. Fading tickers shouldn't attract new assignment either.
+            covered_tickers.update(theme_result.get("tickers") or [])
 
     # Log retirements
     existing_names = {t["name"] for t in existing}
