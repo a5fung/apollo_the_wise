@@ -134,13 +134,14 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
         except Exception:
             return None
 
+    _YF_TIMEOUT = 30.0
     q_income, a_income, info, calendar, earnings_est, revenue_est = await asyncio.gather(
-        loop.run_in_executor(None, _fetch_q_income),
-        loop.run_in_executor(None, _fetch_a_income),
-        loop.run_in_executor(None, _fetch_info),
-        loop.run_in_executor(None, _fetch_calendar),
-        loop.run_in_executor(None, _fetch_earnings_estimate),
-        loop.run_in_executor(None, _fetch_revenue_estimate),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_q_income), timeout=_YF_TIMEOUT),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_a_income), timeout=_YF_TIMEOUT),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_info), timeout=_YF_TIMEOUT),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_calendar), timeout=_YF_TIMEOUT),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_earnings_estimate), timeout=_YF_TIMEOUT),
+        asyncio.wait_for(loop.run_in_executor(None, _fetch_revenue_estimate), timeout=_YF_TIMEOUT),
         return_exceptions=True,
     )
 

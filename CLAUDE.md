@@ -1,36 +1,24 @@
 # Apollo the Wise — Claude Context
 
 ## Session Sync Protocol
-This file is the cross-device sync mechanism. Mobile and desktop sessions both commit changes here.
+At the start of every session: `git pull origin main`
+Read "Changes Made" sections to understand prior sessions.
 
-**At the start of every session:**
-```bash
-git pull origin main
-```
-Read the "Changes Made" sections at the bottom to understand what happened in prior sessions.
-
-**At the end of every session (if code was changed):**
-1. Append a `## Changes Made YYYY-MM-DD` section documenting bugs fixed / features added / files changed
-2. Commit and push:
+At the end (if code changed):
 ```bash
 git add CLAUDE.md <changed files>
-git commit -m "Brief description of changes"
+git commit -m "Brief description"
 git push origin main
 ```
 
 ## What This Is
-A Telegram-based personal assistant ("chief of staff") built around market intelligence. Talks naturally in Telegram, delegates to specialized sub-agents. Primary use case is momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology).
+Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Routes to specialized sub-agents.
 
 ## Running Locally
 ```bash
-# Terminal 1 — orchestrator + infra (Postgres, Redis)
-bash start.sh
-
-# Terminal 2 — market intelligence agent
-bash start_market.sh
-
-# Verify
-# Send /agents in Telegram — all agents should show green
+bash start.sh          # Terminal 1 — orchestrator + Postgres + Redis
+bash start_market.sh   # Terminal 2 — market agent
+# Verify: /agents in Telegram — all green
 ```
 
 ## Architecture
@@ -47,224 +35,130 @@ Sub-agents (Docker, each isolated):
       │
 PostgreSQL (pgvector) + Redis
 ```
-
 **Key rule:** Sub-agents never talk to each other — only Apollo talks to sub-agents.
 
 ## Code Layout
 ```
-core/
-  orchestrator.py     # Claude tool-use loop (handle_message → _tool_use_loop)
-  router.py           # HTTP routing to sub-agents + tool definitions for Claude
-  context.py          # System prompt builder + conversation compression
-  memory.py           # PostgreSQL + pgvector long-term memory
-  confirmations.py    # YES/NO gate for irreversible actions
-
+core/          orchestrator.py, router.py, context.py, memory.py, confirmations.py
 agents/
-  base.py             # BaseAgent ABC: FastAPI app, POST /task, GET /health, _ok/_error helpers
   market_intelligence/
-    agent.py          # MarketIntelligenceAgent — execute_task() routes by keyword
-    db.py             # All DB queries (single source of truth for schema)
-    rs_engine.py      # RS scoring (1M/3M/6M composite, full universe ~9700 stocks)
-    ep_detector.py    # MAGNA53 EP scoring + Claude + Gemini cross-validation
-    regime.py         # Market regime (Bull/Choppy/Correcting/Crisis)
-    theme_engine.py   # Theme discovery, deduplication, lifecycle management
-    trading_calendar.py  # NYSE holiday calendar (exchange-calendars lib, offline)
-    briefing.py       # Evening + morning briefing formatters + send_telegram_message
-    fundamentals.py   # O'Neil-style EPS/revenue tables via yfinance
-    screener.py       # Composite screener (RS + theme stage + fundamentals)
-    collector.py      # Polygon + yfinance + Tavily data fetching
-    scheduler.py      # APScheduler jobs
-    broker/           # Alpaca paper trading (ORB, stops, partials)
-
-shared/
-  models.py           # Pydantic models: AgentRequest/AgentResponse, ConversationMessage, MemoryEntry
-  registry.py         # integrations.yaml loader — agent URLs, enabled providers
-  secrets.py          # Env var secrets access
-
-channels/
-  telegram.py         # Telegram bot + /help
-  webhooks.py         # FastAPI webhook receiver (TradingView alerts)
-
-tests/
-  test_theme_notification.py  # 13 tests verifying theme engine completion notification path
+    agent.py           # execute_task() routes by keyword
+    db.py              # All DB queries — single source of truth for schema
+    rs_engine.py       # RS scoring (~9700 stocks)
+    ep_detector.py     # MAGNA53 EP scoring + Claude + Gemini
+    theme_engine.py    # Theme discovery, dedup, lifecycle
+    briefing.py        # Briefing formatters + send_telegram_message
+    scheduler.py       # APScheduler jobs
+    broker/            # Alpaca ORB trading
+channels/      telegram.py, webhooks.py
+shared/        models.py, registry.py, secrets.py
 ```
 
 ## Adding a Sub-Agent Tool
-1. Define the tool schema in `core/router.py` → `get_orchestrator_tools()`
-2. Add dispatch in `core/orchestrator.py` → `_dispatch_tool()`
-3. Handle in the sub-agent's `execute_task()` in `agents/<name>/agent.py`
+1. Tool schema → `core/router.py` → `get_orchestrator_tools()`
+2. Dispatch → `core/orchestrator.py` → `_dispatch_tool()`
+3. Handle → `agents/<name>/agent.py` → `execute_task()`
 
 ## Market Agent Routing (`execute_task`)
-Routes by keyword match on `request.task.lower()`. **Order matters** — first match wins:
-1. watchlist (`track `, `untrack `, `drop `, `watchlist`)
-2. theme engine only (`theme engine`, `rerun theme`, ...)
-3. refresh (`refresh`, `data pull`, `nightly pull`, ...)
-4. history (`history`, `when did`, `peak`, `peaked`, ...) — before theme/RS
-5. EP (`ep`, `episodic`, `gap`, `pivot`, `gapper`)
-6. theme (`theme`, `sector`, `industry`) — before regime/RS
-7. regime (`regime`, `market condition`, `spy`, `breadth`, `vix`, `risk`)
-8. RS/score — if ticker found → `_handle_single_score`; else → `_handle_rs_query`
-9. briefing (`brief`, `morning`, `evening`, `summary`, `overview`)
-10. pullback (`pullback`, `10ma`, `20ma`, `50ma`, ...)
-11. fundamentals (`fundamental`, `earnings growth`, `eps growth`, ...)
-12. screener (`screener`, `screen for`, `find top`, ...)
-13. fallback → `_handle_general` (Claude decides what data to pull)
+Order matters — first match wins:
+1. watchlist / 2. theme engine rerun / 3. refresh / 4. history
+5. EP outcomes ("ep outcome", "ep performance", "ep returns", "ep results")
+6. EP ("ep", "episodic", "gap", "pivot", "gapper")
+7. journal add ("journal:", "log trade") / journal query ("show journal", "my journal")
+8. theme ("theme", "sector", "industry") — before regime/RS
+9. regime / 10. RS/score / 11. briefing / 12. pullback / 13. fundamentals
+14. screener / 15. audit log ("audit log", "show logs", "show errors") / 16. fallback
 
-**`_handle_single_score`** is the unified single-ticker handler — fetches RS + fundamentals + theme context in parallel. Both the RS route and fundamentals route call it for single-ticker queries.
-
-## Ticker Extraction Pattern
-All keyword-based ticker extraction uses:
+## Ticker Extraction
 ```python
 re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
 ```
-Skip sets must include common English short words (`OF`, `IN`, `AT`, `ON`, `BY`, `TO`, `AS`, `AN`, `OR`, `MY`, `ME`, `IS`, `IT`, `IF`, ...) to prevent prepositions from being parsed as tickers. Bug fixed 2026-04-06 — always update all three skip sets when adding words:
-- `execute_task` routing block (line ~415)
-- `_handle_single_score` skip set (line ~883)
-- `_handle_fundamentals_query` skip set (line ~999)
+Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR, MY, ME, IS, IT, IF...). **Update all three skip sets** when adding words: `execute_task` routing block, `_handle_single_score`, `_handle_fundamentals_query`.
 
 ## Key Domain Concepts
 
 ### RS Scoring
-- **Composite** = 40% × 1M rank + 30% × 3M rank + 30% × 6M rank
-- **Universe** ~9,700 US stocks via Polygon grouped daily endpoint
-- **Filters**: price ≥ $10, ADV ≥ 500K (20-day median), skip leveraged/inverse ETFs, skip biotech < $50
-- **Nightly**: `run_rs_engine()` — reads `mi_daily_closes`, ranks all stocks
-- **On-demand**: `score_single_ticker(ticker)` — 1 Polygon call, ranks vs stored distribution
+- Composite = 40% × 1M + 30% × 3M + 30% × 6M percentile rank
+- Universe ~9,700 stocks via Polygon grouped daily (adjusted=true always)
+- Sector enrichment: only top 300 by rank get sector in `mi_stock_scores`. For theme tickers outside top 60, fetch sector from `mi_ticker_overrides` (persistent cache) via `get_sectors_batch()`.
 
 ### Theme Engine
-- Bottom-up from price action (not top-down hypothesis)
-- Existing themes re-scored daily from current RS; Claude clustering only runs on uncovered RS leaders
-- Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (after 5 fading days)
-- Deduplication: Jaccard ≥ 0.6 or ticker subset → auto-merge
-- Trimmed mean RS (drops bottom 20% of constituents)
-- **Stage transition uses 3-day smoothed score** (not raw daily delta) — thresholds ±8 pts
-- **Description fetching**: `_ensure_descriptions()` fetches yfinance + Claude Haiku for any RS leader missing a description before clustering. Persists to DB via `upsert_ticker_overrides_batch`. Loaded from DB at startup via `get_ticker_overrides()` → `apply_overrides()`.
-- **Re-validation**: `_validate_theme_membership()` runs Mon/Wed/Fri — asks Claude Haiku if each stock's description matches the theme, removes mismatches. Changelog type: `ticker_revalidated_out`.
-- **Pruning**: hard (RS < 25, 1 day), soft (RS < 35, 3 days). Stocks absent from today's RS data are checked against 5-day history — if consistently below RS 25, still pruned.
-
-### Theme Completion Notification
-`_handle_theme_only` runs the theme engine **synchronously** and returns the result via `AgentResponse.result`. The orchestrator delivers it through the normal Telegram bot channel. No direct Telegram send from market-agent. Orchestrator timeout: `AGENT_TIMEOUT = 360s` in `core/router.py`.
-
-On startup: market-agent sends "🔄 Market agent online" via `send_telegram_message`.
+- Bottom-up from price action — themes emerge from RS, not hypotheses
+- Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
+- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. Parse Haiku response with regex to extract JSON — Haiku appends explanation text that breaks `json.loads` directly.
+- **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — bad descriptions caused TSEM to be permanently banned from semiconductor theme).
+- **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
+- **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
+- **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
+- **Unknown sector fallback**: when sector is "Unknown", checks description keyword overlap (4+ letter words) before allowing assignment.
+- **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
 
 ### EP Detection (MAGNA53)
-- Inputs: gap %, relative volume, catalyst quality (Claude), neglect factor, float, regime multiplier
-- HIGH ≥ 85 → immediate Telegram alert; MODERATE ≥ 65 → morning briefing
-- Gemini cross-validation: Claude + Gemini agree → 1.2× confidence multiplier
-- Scan: 7:00–9:30 AM ET every 5 min
+- Alpaca bars use **IEX feed** (free), not SIP (paid) — critical for `get_first_bar()`
+- **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
+- **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
+- HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
 
-### Market Regime
-| Label | EP Bar | Signals |
-|---|---|---|
-| Bull | ≥70 | SPY/QQQ above 50MA + 200MA, VIX low |
-| Choppy | ≥80 | Mixed signals |
-| Correcting | ≥85 | Below key MAs |
-| Crisis | ≥90 | Very defensive |
-
-### NYSE Holiday Calendar
-`trading_calendar.py` wraps the `exchange-calendars` library (offline, rule-based). Used in `scheduler.py` to skip nightly data pull and EP scan on market holidays. Fails open (returns `is_trading_day=True`) on library error so the 0-ingest guardrail still catches real failures.
+### Error Alerting
+- Silent failures in theme engine now write to `mi_audit_log` with event types: `validation_error`, `assignment_error`, `discovery_error`
+- After nightly run: if any `*_error` events in last 2h → immediate Telegram alert
+- Morning briefing: shows overnight error count at top if any
+- Telegram: `show errors 7d` pulls all error events for the period
 
 ### Paper Trading (Alpaca)
-- ORB entry at 9:31 AM (first 1-min bar)
-- Bracket order: stop-limit buy at ORB high, stop-loss at ORB low
-- Day 2+ management: SMA 10/20 trailing stops, 1/3 partial exit on Day 3–5
+- `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
+- `mi_live_trades` = actual Alpaca order table
+- ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, stop at ORB low
 - Safeguards: max 4 positions, 2% daily loss limit, 3-loss circuit breaker
-- Master kill switch: `LIVE_TRADING_ENABLED=false` (env var)
+- Kill switch: `LIVE_TRADING_ENABLED=false`
 
-### TradingView Webhooks
-`channels/webhooks.py` → `POST /tradingview/alert?token=TRADINGVIEW_WEBHOOK_SECRET`
-- **Markdown escaping**: strip `*`, `_`, backtick, `[]` from alert_name and message before sending — TradingView names like `RSI_Overbought_1D` break Telegram Markdown v1 → silent 400 drop
-- Send base notification **immediately**, then enrichment via `_apollo.handle_message` runs as background task (separate follow-up message)
-- Plain-text fallback if Markdown send fails
+### Telegram Formatting
+- NEVER use pipe tables — Telegram can't render them. Use monospace code blocks.
+- `send_telegram_message` in `briefing.py`. Returns False on failure (never raises).
+- Escape dynamic strings before passing with Markdown mode.
 
 ## Daily Schedule (ET)
 | Time | Job |
 |---|---|
-| 7:00 AM | EP scan starts; HIGH alerts fire in real-time |
-| 9:00 AM | Morning briefing → Telegram |
-| 9:31 AM | ORB monitor — fetch first bar, place bracket orders |
-| 9:35 AM | Stop refresh for Day 2+ positions |
+| 7:00 AM | EP scan starts (every 5 min) |
+| 9:00 AM | Morning briefing |
+| 9:31 AM | ORB monitor — bracket orders |
+| 9:35 AM | Stop refresh Day 2+ |
 | 10:00 AM | EP scan stops |
-| 4:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
-| 4:30 PM | Data pull — RS engine + regime + themes |
-| 4:45 PM | Position update — SMA trail, partials, stop updates |
-| 8:00 PM | Evening briefing → Telegram |
+| 4:05 PM | EOD cleanup |
+| 5:00 PM | Data pull — RS + regime + themes + error check |
+| 4:45 PM | Position update |
+| 8:00 PM | Evening briefing |
 
-## Data Sources
-| Source | Use | Key |
-|---|---|---|
-| Polygon.io | Price history, RS engine, EP gap data | Starter tier ($29/mo) |
-| yfinance | Fundamentals, sector, analyst data | Free |
-| Tavily | News search, EP catalyst validation | Free/Pro |
-| Anthropic | Orchestrator + Claude for market analysis | `ANTHROPIC_API_KEY` |
-| Gemini | EP cross-validation (gemini-1.5-flash-8b) | `GEMINI_API_KEY` |
-| Alpaca | Paper trading + ORB bars | `ALPACA_API_KEY` + `ALPACA_SECRET_KEY` |
+## Production Deploy
+- Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
+- Market agent only: `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent && docker compose -f docker/docker-compose.prod.yml up -d market-agent`
+- Both services: same but add `orchestrator` to build/up commands
+- Service names: `orchestrator`, `market-agent`, `postgres`, `redis`
 
 ## Required Env Vars
 ```
-TELEGRAM_BOT_TOKEN
-TELEGRAM_ALLOWED_USER_IDS
-ANTHROPIC_API_KEY
-POLYGON_API_KEY
-GEMINI_API_KEY
-TAVILY_API_KEY
-ALPACA_API_KEY
-ALPACA_SECRET_KEY
-ALPACA_PAPER=true
-LIVE_TRADING_ENABLED=false
-POSTGRES_PASSWORD
-REDIS_PASSWORD
-INTERNAL_API_SECRET
-TRADINGVIEW_WEBHOOK_SECRET
+TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
+ANTHROPIC_API_KEY, POLYGON_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY
+ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
+POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 ```
 
-## Important Conventions
-- **Telegram formatting**: Use Markdown (bold, code blocks). NEVER use pipe tables (`| col |`) — Telegram can't render them. Always use monospace code blocks for tabular data.
-- **Sub-agent output**: Return formatted strings in `result` field of `AgentResponse`. Orchestrator passes them through to Telegram verbatim for briefings/lists/tables.
-- **Single-ticker analysis**: `_handle_single_score` returns raw data first, then orchestrator adds brief analytical commentary (4–6 lines max).
-- **Confirmation gate**: Any irreversible action (trade, calendar change) must go through `request_confirmation()` before executing.
-- **Auth**: All inter-service calls use `X-Apollo-Secret` header. See `shared/secrets.py`.
-- **No agent-to-agent calls**: All routing goes through the orchestrator. Sub-agents are isolated.
-- **send_telegram_message**: defined in `briefing.py`. Used by scheduler for alerts/briefings. Market-agent startup sends "🔄 Market agent online". Returns `False` on failure (never raises). Always escape dynamic strings before passing if using Markdown.
+## Changes Made 2026-04-17
 
-## Production Deploy
-- Target: Hetzner CPX21 Ashburn (~$8/mo), directory: `/home/apollo/apollo_the_wise/` (lowercase)
-- SSH: `ssh apollo@87.99.134.162` (key `~/.ssh/id_ed25519`)
-- Deploy market-agent only: `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent && docker compose -f docker/docker-compose.prod.yml up -d market-agent`
-- Deploy both (needed when changing orchestrator code like router.py): `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache orchestrator market-agent && docker compose -f docker/docker-compose.prod.yml up -d orchestrator market-agent`
-- Service names in docker-compose: `orchestrator`, `market-agent`, `postgres`, `redis`
-- Includes Uptime Kuma for self-hosted status monitoring
+### Bugs Fixed
+- **Validation silently failing** (root cause of CAR bug): Haiku returns valid JSON then appends explanation text. `json.loads` failed with "Extra data" — `except` block kept all tickers. Fix: always extract JSON object via regex before parsing.
+- **Sector always "Unknown" for fallback stocks**: Theme tickers outside top-60 RS leaders got `sector="Unknown"` hardcoded, bypassing the sector outlier check. Fix: `get_sectors_batch()` reads from `mi_ticker_overrides` (persistent cache).
+- **EP projection false positives in first 15 min**: Linear extrapolation at 9:31 AM produces absurd 30-40x projected RVOL. Fix: 15-minute gate — projection only after 9:45 AM.
+- **Extension check using single stale point**: Used close from exactly 5 days ago. Fix: `MIN(close)` over last ~5 trading days.
+- **Auto-persist validation removals**: Re-introduced dangerous code (reverted April 10 for good reason — caused TSEM permanent ban). Reverted again.
 
-## Feature State (as of 2026-04-15)
+### Features Added
+- **Proactive error alerting**: Nightly Telegram alert if `*_error` audit events; morning briefing error section; `show errors Nd` command.
+- **Theme engine architectural hardening**: Scratchpad in all tool schemas; Unknown sector description-overlap fallback; immediate post-assignment validation; description chunking (15/batch).
+- **P4**: EP outcome table (`ep outcomes 30d`)
+- **P5**: Theme conviction display (days_active, consecutive_accelerating on theme lines)
+- **P6**: Trading journal (`journal: <note>`, `show journal`)
 
-### Theme Engine — current architecture
-- `mi_theme_exclusions` table: user-directed (ticker, theme_name) bans. Commands: "exclude X from [theme]", "list exclusions", "remove exclusion X from [theme]". **NOT** auto-populated from validation removals — those are self-healing.
-- `mi_audit_log` table: advisor_call, theme_discovered, theme_retired, stage_change, theme_excluded. Telegram: "audit log", "advisor log", "show logs 7d".
-- Advisor strategy: `_call_advisor(question, context, caller)` in `theme_engine.py`. Sonnet auto-escalates to Opus on hard decisions. `_MAX_ADVISOR_CALLS=3` per run.
-- `_strip_commodity_contradictions(themes)` — prevents e.g. gold miners entering uranium theme.
-- `_merge_overlapping_themes` has `protected_names` — existing themes protected from absorption by new clusters.
-- Fat theme splitting: themes >20 stocks → Sonnet proposes sub-theme split (3–8 stocks). `parent_theme` column in `mi_themes`.
-- Name inheritance on rediscovery: Jaccard ≥ 0.4 overlap → retired theme name reused.
-- `get_ticker_overrides` filters `WHERE description IS NOT NULL` — prevents sector-only rows from overwriting descriptions (was root cause of TSEM semiconductor→oil&gas misassignment).
-
-### EP / ORB — current architecture
-- `broker/bar_stream.py`: Alpaca `StockDataStream` for real-time ORB entry. Pre-market HIGHs subscribed; order fires on first bar close at 9:30:59.
-- 9:31 ORB fallback in `_ep_scan_job`: always calls `_orb_monitor_job()` at minute==31 as bar-stream safety net.
-- M&A hard filter: `"mna"` catalyst enum → `is_mna=True` → hard skip before scoring.
-- Conviction floor: gap ≥ 10% + game_changer → floor 60 (MODERATE). gap ≥ 15% → floor 75. Eliminates dead zone.
-- Open intensity (not projected RVOL): `intensity = raw_rvol * (390 / minutes_since_open)`.
-- 11 AM re-entry cutoff: `order_manager.attempt_day1_reentry` closes trade instead of re-entering after 11 AM.
-- `validate_orb_entry(orb_high, orb_low, atr_14)` in `backtester/filters.py` — single source of truth for ORB stop-width check (both EOD sim and live path import this).
-
-### Single-ticker queries
-- Two-layer RS context: Layer 1 = theme rank (e.g. "#3 of 12 in AI Infrastructure"), Layer 2 = GICS industry percentile.
-- EP diagnostic: "why not EP TICKER?" → `_handle_ep_diagnostic` stops at first filter failure.
-- Research queries fetch Perplexity news in parallel; RS-only / fundamentals-only do not.
-- VIX: Polygon `I:VIX` always fails on Starter plan; yfinance `^VIX` fallback used with end+1 day fix.
-
-### Backtester / shared helpers
-- `BacktestTrade` has proper fields: `remaining_shares`, `last_entry`, `day1_low`.
-- `parse_json_list` and `format_trade_attempts` in `backtester/tracker.py` — shared by agent.py, telegram.py, tracker.py.
-
-## Changes Made 2026-04-15
-- **Bug fixed**: `ep_detector.py` missing `datetime` import — `from datetime import date` only, but `datetime.now()` used for open intensity metric. All EP scans failing since deploy. Fix: `from datetime import date, datetime, timedelta`.
+### Files Changed
+`theme_engine.py`, `ep_detector.py`, `db.py`, `agent.py`, `briefing.py`, `scheduler.py`

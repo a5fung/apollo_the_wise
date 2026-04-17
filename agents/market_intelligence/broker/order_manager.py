@@ -717,10 +717,13 @@ async def sync_positions() -> list[str]:
     alpaca_map = {p["symbol"]: p for p in alpaca_positions}
     logger.info(f"Position sync: {len(alpaca_positions)} Alpaca positions")
 
+    alpaca_tickers = {p["symbol"] for p in alpaca_positions}
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         db_trades = await conn.fetch("""
-            SELECT id, ticker, remaining_shares, entry_price, status
+            SELECT id, ticker, remaining_shares, entry_price, status,
+                   stop_order_id, stop_price, orb_low
             FROM mi_live_trades
             WHERE status IN ('filled', 'order_placed')
         """)
@@ -760,6 +763,40 @@ async def sync_positions() -> list[str]:
     for ticker, pos in alpaca_map.items():
         msg = f"Unknown Alpaca position: {ticker} ({pos['qty']:.0f} shares) — not in mi_live_trades"
         discrepancies.append(msg)
+
+    # Orphaned stop check — filled positions in Alpaca with no stop order in DB
+    for trade in db_trades:
+        ticker = trade["ticker"]
+        if trade["status"] != "filled":
+            continue
+        if not (trade["remaining_shares"] or 0) > 0:
+            continue
+        if trade["stop_order_id"]:
+            continue
+        if ticker not in alpaca_tickers:
+            continue
+        # Position is live in Alpaca but has no stop order — remediate
+        stop = trade["stop_price"] or trade["orb_low"]
+        if not stop:
+            msg = f"⚠️ Orphaned position {ticker}: filled with no stop & no stop_price in DB — manual intervention needed"
+            discrepancies.append(msg)
+            logger.error(f"sync_positions: orphaned {ticker} trade_id={trade['id']} — no stop_price to remediate")
+            continue
+        try:
+            qty = float(trade["remaining_shares"])
+            new_order = await alpaca.place_stop_order(ticker, qty, float(stop))
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
+                    trade["id"], new_order["id"],
+                )
+            msg = f"🛡 Orphaned stop remediated: {ticker} qty={qty:.0f} stop=${stop:.2f}"
+            discrepancies.append(msg)
+            logger.warning(f"sync_positions: placed remediation stop for {ticker} trade_id={trade['id']} stop={stop:.2f}")
+        except Exception as e:
+            msg = f"⚠️ Failed to remediate orphaned stop for {ticker}: {e}"
+            discrepancies.append(msg)
+            logger.error(f"sync_positions: stop remediation failed for {ticker}: {e}")
 
     if discrepancies:
         msg = "⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)

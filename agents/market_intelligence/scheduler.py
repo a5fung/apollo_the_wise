@@ -61,7 +61,7 @@ _ep_scans_completed_today: int = 0  # Tracks successful scan runs for watchdog
 
 async def _nightly_data_pull():
     """
-    Run at 4:30 PM ET (right after market close).
+    Run at 5:00 PM ET (30 min after tape settles).
     Order: ingest → RS → regime → sector → themes → fundamentals → outcomes → state alerts.
     Regime runs after RS so breadth_full() can use stored mi_stock_scores.
     """
@@ -671,7 +671,7 @@ async def check_missed_jobs() -> None:
 
     Catch-up windows (ET):
     - Morning briefing:  09:00 – 12:00  (fires if missed and we start in that window)
-    - Nightly data pull: 16:30 – 18:00  (fires if missed and we start in that window)
+    - Nightly data pull: 17:00 – 18:00  (fires if missed and we start in that window)
     - Evening briefing:  18:00 – 23:59  (fires if missed and we start in that window)
 
     Each job is only caught up once per day (guarded by mi_job_log).
@@ -697,8 +697,8 @@ async def check_missed_jobs() -> None:
             await send_telegram_message("_(Missed briefing — sending now)_")
             await _morning_briefing_job()
 
-    # Nightly data pull: 4:30 PM – 6 PM ET
-    if (hour == 16 and now.minute >= 30) or (hour == 17):
+    # Nightly data pull: 5:00 PM – 6 PM ET
+    if hour == 17:
         if not await job_ran_today(JOB_NIGHTLY_DATA_PULL):
             logger.info("Catch-up: running missed nightly data pull")
             await _nightly_data_pull()
@@ -723,10 +723,10 @@ def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
 
-    # Data pull: 4:30 PM ET (right after market close), Mon-Fri
+    # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri
     _scheduler.add_job(
         _nightly_data_pull,
-        CronTrigger(hour=16, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
         replace_existing=True,
     )
