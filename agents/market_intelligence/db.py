@@ -2017,6 +2017,19 @@ async def get_ticker_sector(ticker: str) -> dict:
     return {"sector": row["sector"] or "", "industry": row["industry"] or ""}
 
 
+async def get_sectors_batch(tickers: list[str]) -> dict[str, str]:
+    """Bulk lookup of cached sectors from mi_ticker_overrides. Returns {ticker: sector}."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, sector FROM mi_ticker_overrides WHERE ticker = ANY($1) AND sector IS NOT NULL AND sector != ''",
+            tickers,
+        )
+    return {r["ticker"]: r["sector"] for r in rows}
+
+
 async def get_sector_rs_rank(
     ticker: str,
     industry: str,

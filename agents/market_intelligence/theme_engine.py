@@ -1875,13 +1875,16 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
     # Fetch RS data for existing theme tickers not in top leaders
     # This prevents strong themes (Optical, AI Memory) from going Fading
     # just because their constituents aren't in the top 60 by RS composite.
-    from agents.market_intelligence.db import get_rs_for_tickers
+    from agents.market_intelligence.db import get_rs_for_tickers, get_sectors_batch
     existing_tickers = set()
     for t in existing:
         existing_tickers.update(t.get("tickers") or [])
     missing_tickers = [tk for tk in existing_tickers if tk not in stocks_by_ticker]
     if missing_tickers:
         theme_rs = await get_rs_for_tickers(today_str, missing_tickers)
+        # Use persistent sector cache (mi_ticker_overrides) so the sector outlier check
+        # works even when a stock dips below the RS engine's top-300 enrichment cutoff.
+        cached_sectors = await get_sectors_batch(list(theme_rs.keys()))
         for tk, rs_data in theme_rs.items():
             stocks_by_ticker[tk] = {
                 "ticker": tk,
@@ -1889,7 +1892,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
                 "rs_1m": rs_data.get("rs_1m", 0),
                 "rs_3m": rs_data.get("rs_3m", 0),
                 "rs_6m": rs_data.get("rs_6m", 0),
-                "sector": "Unknown",
+                "sector": cached_sectors.get(tk, "Unknown"),
             }
         logger.info(f"Theme engine: fetched RS for {len(theme_rs)} existing theme tickers not in top leaders")
 
