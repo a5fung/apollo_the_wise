@@ -1140,6 +1140,7 @@ def _format_morning_briefing(
     quality_warnings: list[str] | None = None,
     earnings_calendar: str | None = None,
     ep_scan_log: list[dict] | None = None,
+    overnight_errors: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1153,6 +1154,15 @@ def _format_morning_briefing(
     regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
 
     sections = [f"*Apollo Morning Briefing — {briefing_date}*"]
+
+    # Engine errors from overnight run — shown prominently so nothing is missed
+    if overnight_errors:
+        err_lines = [f"⚠️ *{len(overnight_errors)} engine error(s) overnight* — type 'show errors' for detail"]
+        for r in overnight_errors[:3]:
+            err_lines.append(f"  🔴 {r['summary']}")
+        if len(overnight_errors) > 3:
+            err_lines.append(f"  ... and {len(overnight_errors) - 3} more")
+        sections.append("\n".join(err_lines))
 
     # Data quality warnings
     if quality_warnings:
@@ -1221,7 +1231,8 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     today_str = today.strftime("%Y-%m-%d")
     cache = _perplexity_cache.get(today_str, {})
 
-    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log = await asyncio.gather(
+    from agents.market_intelligence.db import get_audit_log as _get_audit_log
+    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log, overnight_errors = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_snapshot(),
@@ -1230,6 +1241,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         get_quality_warnings(today),
         get_fundamental_flags(today_str),
         get_ep_scan_log(today_str),
+        _get_audit_log(limit=10, event_type_like="%error%", since_hours=18),
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
@@ -1298,6 +1310,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         quality_warnings=warnings,
         earnings_calendar=earnings_calendar_text,
         ep_scan_log=ep_scan_log,
+        overnight_errors=overnight_errors,
     )
 
     success = await send_telegram_message(text, chat_id)

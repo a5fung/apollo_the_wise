@@ -20,7 +20,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
-    get_rs_leaders, update_sectors_batch,
+    get_rs_leaders, update_sectors_batch, get_audit_log,
 )
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
@@ -362,6 +362,17 @@ async def _nightly_data_pull():
             summary_parts.append(f"{total_alerts} state alerts")
     except Exception as e:
         logger.error(f"State alerts failed: {e}")
+
+    # Check for silent engine errors (parse failures, API errors that didn't hard-fail)
+    try:
+        error_rows = await get_audit_log(limit=20, event_type_like="%error%", since_hours=2)
+        if error_rows:
+            error_lines = "\n".join(f"  • {r['summary']}" for r in error_rows)
+            error_msg = f"⚠️ *{len(error_rows)} silent error(s) during nightly run:*\n{error_lines}\nType 'show errors' for details."
+            await send_telegram_message(error_msg)
+            logger.warning(f"Nightly run had {len(error_rows)} silent errors — alerted via Telegram")
+    except Exception as e:
+        logger.error(f"Error check after nightly run failed: {e}")
 
     if failures:
         await notify_job_failure(JOB_NIGHTLY_DATA_PULL, " | ".join(failures))
