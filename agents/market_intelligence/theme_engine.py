@@ -256,81 +256,86 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
     if not stock_lines:
         return
 
-    try:
-        client = _get_anthropic_client()
-        prompt = (
-            "Generate concise trading-relevant descriptions for these stocks.\n\n"
-            "Rules:\n"
-            "- 3-8 words describing the PRIMARY revenue driver only\n"
-            "- Ignore 'digital transformation', 'technology investments', 'platform initiatives' "
-            "unless that IS the core business\n"
-            "- A car rental company is 'car & truck rental', NOT 'mobility platform'\n"
-            "- A retailer is 'retail stores / e-commerce', NOT 'digital commerce platform'\n"
-            "- Focus on what they SELL, not how they describe themselves in PR\n\n"
-            "Examples:\n"
-            "- NVDA: AI/data center GPUs, inference & training chips\n"
-            "- MU: DRAM & NAND memory, HBM for AI GPUs\n"
-            "- FCX: Copper & gold mining\n"
-            "- AGRO: Agricultural farming, sugar, ethanol production\n"
-            "- CAR: Car & truck rental (Avis, Budget brands)\n"
-            "- UBER: Rideshare & food delivery marketplace\n\n"
-            "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
-            "Stocks:\n" + "\n".join(stock_lines)
+    PROMPT_PREFIX = (
+        "Generate concise trading-relevant descriptions for these stocks.\n\n"
+        "Rules:\n"
+        "- 3-8 words describing the PRIMARY revenue driver only\n"
+        "- Ignore 'digital transformation', 'technology investments', 'platform initiatives' "
+        "unless that IS the core business\n"
+        "- A car rental company is 'car & truck rental', NOT 'mobility platform'\n"
+        "- A retailer is 'retail stores / e-commerce', NOT 'digital commerce platform'\n"
+        "- Focus on what they SELL, not how they describe themselves in PR\n\n"
+        "Examples:\n"
+        "- NVDA: AI/data center GPUs, inference & training chips\n"
+        "- MU: DRAM & NAND memory, HBM for AI GPUs\n"
+        "- FCX: Copper & gold mining\n"
+        "- AGRO: Agricultural farming, sugar, ethanol production\n"
+        "- CAR: Car & truck rental (Avis, Budget brands)\n"
+        "- UBER: Rideshare & food delivery marketplace\n\n"
+        "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
+        "Stocks:\n"
+    )
+
+    # Chunk to ≤15 tickers — Haiku silently drops tickers on large batches
+    CHUNK_SIZE = 15
+    client = _get_anthropic_client()
+    all_valid: dict[str, str] = {}
+
+    for chunk_start in range(0, len(stock_lines), CHUNK_SIZE):
+        chunk_lines = stock_lines[chunk_start:chunk_start + CHUNK_SIZE]
+        chunk_tickers = to_describe[chunk_start:chunk_start + CHUNK_SIZE]
+        try:
+            resp = await client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
+            )
+            raw = resp.content[0].text.strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+                raw = raw.rstrip("```").strip()
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            raw = m.group(0) if m else raw
+            desc_map = json.loads(raw)
+            if isinstance(desc_map, dict):
+                for tk, desc in desc_map.items():
+                    tk_up = tk.upper()
+                    if not isinstance(desc, str) or not desc or tk_up not in chunk_tickers:
+                        continue
+                    p = profiles.get(tk_up, {})
+                    sector = p.get("sector", "")
+                    industry = p.get("industry", "")
+                    if sector and industry and sector != industry:
+                        all_valid[tk_up] = f"{sector} / {industry} — {desc}"
+                    elif sector:
+                        all_valid[tk_up] = f"{sector} — {desc}"
+                    else:
+                        all_valid[tk_up] = desc
+            dropped = [tk for tk in chunk_tickers if tk not in all_valid]
+            if dropped:
+                logger.warning(f"[theme descriptions] Haiku dropped {len(dropped)} tickers in chunk: {dropped}")
+        except Exception as e:
+            logger.error(f"[theme descriptions] Chunk {chunk_start//CHUNK_SIZE + 1} failed: {e}")
+
+    if all_valid:
+        # Only persist for stocks that were genuinely missing
+        truly_new = {tk: desc for tk, desc in all_valid.items() if not TICKER_DESC.get(tk)}
+        if truly_new:
+            await upsert_ticker_overrides_batch(truly_new)
+            await log_audit_event(
+                "description_generated",
+                summary=f"Generated {len(truly_new)} new stock descriptions",
+                detail="\n".join(f"{tk}: {desc}" for tk, desc in truly_new.items()),
+            )
+        apply_overrides(all_valid)
+        logger.info(f"[theme descriptions] Generated and persisted {len(all_valid)} descriptions: {list(all_valid.keys())}")
+
+    still_missing = [t for t in missing if not TICKER_DESC.get(t)]
+    if still_missing:
+        logger.warning(
+            f"[theme descriptions] {len(still_missing)} stocks still have no description after fetch — "
+            f"will be excluded from clustering: {still_missing}"
         )
-        resp = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = resp.content[0].text.strip()
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-            raw = raw.rstrip("```").strip()
-        desc_map = json.loads(raw)
-        if isinstance(desc_map, dict):
-            # Anchor each description with GICS sector/industry so clustering can't
-            # misplace stocks whose yfinance summaries contain tech-adjacent language.
-            # "Consumer Cyclical / Rental & Leasing Services — car & truck rental"
-            # is unambiguous to any LLM regardless of the 8-word business description.
-            valid = {}
-            for tk, desc in desc_map.items():
-                tk_up = tk.upper()
-                if not isinstance(desc, str) or not desc or tk_up not in to_describe:
-                    continue
-                p = profiles.get(tk_up, {})
-                sector = p.get("sector", "")
-                industry = p.get("industry", "")
-                if sector and industry and sector != industry:
-                    valid[tk_up] = f"{sector} / {industry} — {desc}"
-                elif sector:
-                    valid[tk_up] = f"{sector} — {desc}"
-                else:
-                    valid[tk_up] = desc
-            # Only persist for stocks that were genuinely missing — never overwrite
-            # an existing description that was correct (guards against Haiku generating
-            # bad descriptions for stocks that already have good ones in TICKER_DESC)
-            truly_new = {tk: desc for tk, desc in valid.items() if not TICKER_DESC.get(tk)}
-            if truly_new:
-                await upsert_ticker_overrides_batch(truly_new)
-                # Persistent audit record — survives image rebuilds, queryable from Telegram
-                await log_audit_event(
-                    "description_generated",
-                    summary=f"Generated {len(truly_new)} new stock descriptions",
-                    detail="\n".join(f"{tk}: {desc}" for tk, desc in truly_new.items()),
-                )
-            # Apply all to in-memory TICKER_DESC (safe — only stocks that were missing)
-            if valid:
-                apply_overrides(valid)
-                logger.info(f"[theme descriptions] Generated and persisted {len(valid)} descriptions: {list(valid.keys())}")
-            # Log any that still have no description
-            still_missing = [t for t in missing if not TICKER_DESC.get(t)]
-            if still_missing:
-                logger.warning(
-                    f"[theme descriptions] {len(still_missing)} stocks still have no description after fetch — "
-                    f"will be excluded from clustering: {still_missing}"
-                )
-    except Exception as e:
-        logger.error(f"[theme descriptions] Failed to generate descriptions: {e}")
 
 
 async def _get_theme_history(name: str, days: int = 10, tickers: list[str] | None = None) -> list[dict]:
@@ -782,6 +787,15 @@ _THEME_ASSIGNMENT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": (
+                    "REQUIRED. Write your step-by-step reasoning BEFORE producing assignments. "
+                    "For each uncovered stock: (1) state its core business, (2) name the candidate theme(s), "
+                    "(3) explain why it fits or doesn't fit, (4) state your decision. "
+                    "This reasoning is how you avoid hallucinated connections."
+                ),
+            },
             "assignments": {
                 "type": "array",
                 "description": "List of stock-to-theme assignments. Empty array if nothing fits.",
@@ -796,7 +810,7 @@ _THEME_ASSIGNMENT_TOOL = {
                 },
             }
         },
-        "required": ["assignments"],
+        "required": ["analysis_scratchpad", "assignments"],
     },
 }
 
@@ -958,15 +972,30 @@ If none of these apply, call assign_stocks_to_themes directly."""
             logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
             continue
 
-        # Sector outlier check: reject if stock's sector is singleton in theme
+        # Sector outlier check: reject if stock's sector is outlier vs theme
         stock_sector = stocks_by_ticker.get(ticker, {}).get("sector", "Unknown")
+        theme_tickers = theme.get("tickers") or []
+        theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
+        known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
         if stock_sector and stock_sector != "Unknown":
-            theme_tickers = theme.get("tickers") or []
-            theme_sectors = [stocks_by_ticker.get(tk, {}).get("sector", "Unknown") for tk in theme_tickers]
-            known_sectors = [s for s in theme_sectors if s and s != "Unknown"]
             if known_sectors and stock_sector not in known_sectors:
                 logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
                 continue
+        else:
+            # No sector data — fall back to description keyword overlap as a sanity check.
+            # If zero 4+ letter words overlap between the stock description and theme description,
+            # the assignment is almost certainly wrong and we block it.
+            stock_desc = (TICKER_DESC.get(ticker) or "").lower()
+            theme_desc = (theme.get("description") or "").lower()
+            if stock_desc and theme_desc:
+                desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
+                theme_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
+                if not desc_words.intersection(theme_words):
+                    logger.info(
+                        f"Assignment skipped: {ticker} has Unknown sector and zero "
+                        f"description overlap with '{theme_name}'"
+                    )
+                    continue
 
         # Apply assignment
         if "tickers" not in theme:
@@ -982,6 +1011,21 @@ If none of these apply, call assign_stocks_to_themes directly."""
         })
         logger.info(f"Assigned {ticker} → '{theme_name}': {rationale}")
 
+    # Immediately validate net-new assignments — don't wait for Mon/Wed/Fri scheduled run.
+    # This catches LLM hallucinations before they ever hit the database.
+    if assigned_tickers:
+        for theme in existing_themes:
+            newly_added = [tk for tk in (theme.get("tickers") or []) if tk in assigned_tickers]
+            if not newly_added:
+                continue
+            # Run Haiku validation on just the new additions in context of this theme
+            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog)
+            removed = set(theme.get("tickers") or []) - set(validated)
+            if removed:
+                logger.info(f"Post-assignment validation removed {removed} from '{theme['name']}'")
+                theme["tickers"] = validated
+                assigned_tickers -= removed
+
     remaining = [s for s in uncovered_stocks if s["ticker"] not in assigned_tickers]
     return remaining, changelog
 
@@ -992,6 +1036,15 @@ _THEME_DISCOVERY_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": (
+                    "REQUIRED. Write your clustering reasoning BEFORE proposing themes. "
+                    "For each candidate group: (1) what shared catalyst or business model connects them, "
+                    "(2) which stocks clearly belong vs. are borderline, (3) whether the group is large "
+                    "enough (≥3 stocks) and coherent enough to name. Reject spurious clusters here."
+                ),
+            },
             "themes": {
                 "type": "array",
                 "description": "List of newly discovered themes. Empty array if none found.",
@@ -1016,7 +1069,7 @@ _THEME_DISCOVERY_TOOL = {
                 },
             }
         },
-        "required": ["themes"],
+        "required": ["analysis_scratchpad", "themes"],
     },
 }
 
@@ -1092,6 +1145,15 @@ _SPLIT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "analysis_scratchpad": {
+                "type": "string",
+                "description": (
+                    "REQUIRED. Reason through the split BEFORE deciding. "
+                    "Which stocks share a more specific catalyst vs. the broader theme? "
+                    "Is the sub-group large enough (≥3) and distinct enough to stand alone? "
+                    "What would remain in the parent — is it still coherent?"
+                ),
+            },
             "split": {
                 "description": "null if no split warranted; otherwise the sub-theme to carve out.",
                 "oneOf": [
@@ -1108,7 +1170,7 @@ _SPLIT_TOOL = {
                 ],
             }
         },
-        "required": ["split"],
+        "required": ["analysis_scratchpad", "split"],
     },
 }
 
