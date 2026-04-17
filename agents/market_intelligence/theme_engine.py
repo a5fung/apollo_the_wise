@@ -509,10 +509,10 @@ async def _validate_theme_membership(
         # Strip code fences if present
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
-        # Fallback: extract JSON object even if Haiku adds explanation text
-        if not raw.startswith("{"):
-            m = re.search(r'\{.*\}', raw, re.DOTALL)
-            raw = m.group(0) if m else raw
+        # Always extract just the JSON object — Haiku often appends explanation text
+        # after a valid JSON block, causing json.loads to fail with "Extra data".
+        m = re.search(r'\{[^{}]*\}', raw, re.DOTALL)
+        raw = m.group(0) if m else raw
         result = json.loads(raw)
         to_remove = {tk.upper() for tk in result.get("remove", []) if isinstance(tk, str)}
 
