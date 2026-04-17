@@ -544,11 +544,24 @@ async def _validate_theme_membership(
                         summary=f"{tk} removed from '{theme_name}' by validation",
                         detail=f"Description: '{desc}' — Haiku flagged as not matching theme",
                     )
-                    # Note: do NOT auto-persist to mi_theme_exclusions here.
-                    # Validation removals are in-memory only — they re-run Mon/Wed/Fri.
-                    # Auto-persisting causes permanent bans when descriptions are wrong
-                    # (e.g. bad yfinance data). Use explicit "exclude X from theme" for
-                    # intentional permanent bans.
+                    # Persist to mi_theme_exclusions so the removal survives tomorrow's
+                    # re-score. Without this, the ticker reloads from DB every night and
+                    # validation has to re-fight the same battle Mon/Wed/Fri forever.
+                    # Fuzzy name matching in _get_excluded_tickers_for_theme means the
+                    # exclusion survives theme renames by Claude.
+                    try:
+                        from agents.market_intelligence.db import get_pool as _get_pool
+                        _pool = await _get_pool()
+                        async with _pool.acquire() as _conn:
+                            await _conn.execute(
+                                """INSERT INTO mi_theme_exclusions (ticker, theme_name)
+                                   VALUES ($1, $2)
+                                   ON CONFLICT (ticker, theme_name) DO NOTHING""",
+                                tk, theme_name,
+                            )
+                        logger.info(f"Theme '{theme_name}': persisted exclusion for {tk} to mi_theme_exclusions")
+                    except Exception as _e:
+                        logger.warning(f"Theme '{theme_name}': could not persist exclusion for {tk}: {_e}")
             return [t for t in tickers if t not in to_remove]
 
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
