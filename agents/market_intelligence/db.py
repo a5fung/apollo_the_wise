@@ -2400,8 +2400,11 @@ async def get_audit_log(
     limit: int = 30,
     event_type: str | None = None,
     since_hours: int = 48,
+    event_type_like: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch recent audit log entries, newest first."""
+    """Fetch recent audit log entries, newest first.
+    event_type: exact match. event_type_like: SQL LIKE pattern (e.g. '%error%').
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         if event_type:
@@ -2413,6 +2416,15 @@ async def get_audit_log(
                 ORDER BY created_at DESC
                 LIMIT $3
             """, event_type, str(since_hours), limit)
+        elif event_type_like:
+            rows = await conn.fetch("""
+                SELECT id, created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE event_type LIKE $1
+                  AND created_at >= NOW() - ($2 || ' hours')::INTERVAL
+                ORDER BY created_at DESC
+                LIMIT $3
+            """, event_type_like, str(since_hours), limit)
         else:
             rows = await conn.fetch("""
                 SELECT id, created_at, event_type, summary, detail

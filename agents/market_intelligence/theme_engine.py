@@ -556,7 +556,17 @@ async def _validate_theme_membership(
         return tickers
 
     except Exception as e:
-        logger.warning(f"Theme '{theme_name}': re-validation failed ({e}) — keeping all tickers")
+        # Log the raw response so silent failures are diagnosable — this bug cost days of work
+        raw_snippet = locals().get("raw", "<not set>")[:200]
+        logger.error(
+            f"Theme '{theme_name}': re-validation FAILED ({type(e).__name__}: {e}) — "
+            f"keeping all tickers. Raw Haiku response: {raw_snippet!r}"
+        )
+        await log_audit_event(
+            "validation_error",
+            summary=f"Validation parse error for '{theme_name}' — tickers unchanged",
+            detail=f"{type(e).__name__}: {e} | raw={raw_snippet!r}",
+        )
         return tickers
 
 
@@ -915,7 +925,12 @@ If none of these apply, call assign_stocks_to_themes directly."""
             messages.append({"role": "user", "content": tool_results})
 
     except Exception as e:
-        logger.error(f"Claude theme assignment failed: {e}")
+        logger.error(f"Claude theme assignment FAILED ({type(e).__name__}: {e}) — no assignments made")
+        await log_audit_event(
+            "assignment_error",
+            summary="Theme assignment error — no stocks assigned this run",
+            detail=str(e),
+        )
         return uncovered_stocks, []
 
     # Validate and apply assignments
@@ -1495,7 +1510,12 @@ If none of these apply, call report_themes directly — advisor consultation is 
             messages.append({"role": "user", "content": tool_results})
 
     except Exception as e:
-        logger.error(f"Claude new theme discovery failed: {e}")
+        logger.error(f"Claude new theme discovery FAILED ({type(e).__name__}: {e}) — no new themes this run")
+        await log_audit_event(
+            "discovery_error",
+            summary="Theme discovery error — no new themes discovered this run",
+            detail=str(e),
+        )
         return []
 
 

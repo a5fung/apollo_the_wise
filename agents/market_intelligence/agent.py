@@ -796,30 +796,40 @@ class MarketIntelligenceAgent(BaseAgent):
             event_type = "theme_excluded"
         elif "orb" in task:
             event_type = "orb_triggered"
+        event_type_like = None
+        if "error" in task or "fail" in task:
+            event_type_like = "%error%"  # matches validation_error, assignment_error, discovery_error
 
-        rows = await get_audit_log(limit=25, event_type=event_type, since_hours=since_hours)
+        rows = await get_audit_log(limit=25, event_type=event_type, event_type_like=event_type_like, since_hours=since_hours)
 
         if not rows:
-            label = f"last {since_hours}h" + (f" [{event_type}]" if event_type else "")
+            filter_label = event_type or event_type_like or ""
+            label = f"last {since_hours}h" + (f" [{filter_label}]" if filter_label else "")
             return self._ok(request, result=f"No audit log entries in {label}.")
 
         _TYPE_EMOJI = {
-            "advisor_call":     "🤖",
-            "theme_discovered": "🌱",
-            "theme_retired":    "🪦",
-            "stage_change":     "📈",
-            "theme_excluded":   "🚫",
-            "ep_alert":         "⚡",
-            "orb_triggered":    "🎯",
-            "orb_filtered":     "⊘",
-            "orb_bar_miss":     "⏳",
-            "orb_bar_fetched":  "📊",
-            "orb_no_bar":       "❌",
-            "orb_order_placed": "✅",
-            "orb_order_failed": "🚨",
+            "advisor_call":          "🤖",
+            "theme_discovered":      "🌱",
+            "theme_retired":         "🪦",
+            "stage_change":          "📈",
+            "theme_excluded":        "🚫",
+            "ticker_revalidated_out":"🗑️",
+            "validation_error":      "🔴",
+            "assignment_error":      "🔴",
+            "discovery_error":       "🔴",
+            "theme_engine_aborted":  "🔴",
+            "ep_alert":              "⚡",
+            "orb_triggered":         "🎯",
+            "orb_filtered":          "⊘",
+            "orb_bar_miss":          "⏳",
+            "orb_bar_fetched":       "📊",
+            "orb_no_bar":            "❌",
+            "orb_order_placed":      "✅",
+            "orb_order_failed":      "🚨",
         }
 
-        lines = [f"*Audit Log* — last {since_hours}h{' · ' + event_type if event_type else ''}"]
+        filter_label = event_type or event_type_like or ""
+        lines = [f"*Audit Log* — last {since_hours}h{' · ' + filter_label if filter_label else ''}"]
         for r in rows:
             ts = r["created_at"].strftime("%m/%d %H:%M")
             emoji = _TYPE_EMOJI.get(r["event_type"], "•")
