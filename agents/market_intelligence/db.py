@@ -2514,10 +2514,10 @@ async def get_closes_for_correlation(
 ) -> dict[str, list[float]]:
     """
     Return {ticker: [closes in ascending date order]} for the given window.
-    Filters: close >= $5, avg daily dollar volume >= min_avg_dollar_volume (default $20M).
-    At $20M: ~2800 tickers, corr matrix ~60MB, total memory ~133MB — fits 512MB container.
-    (Full universe of 5K+ stocks needs ~400MB just for the matrix, causing OOM kills.)
-    Only tickers with full coverage across all trading days in the window are returned.
+    Filters: close >= $5, common stock only (SPY exempted for beta adjustment),
+    avg daily dollar volume >= min_avg_dollar_volume (default $20M keeps the
+    downstream correlation matrix within the 512MB market-agent container).
+    Only tickers with full coverage across all trading days are returned.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -2530,7 +2530,7 @@ async def get_closes_for_correlation(
               AND dc.close >= 5.0
               AND (
                   dc.ticker = 'SPY'
-                  OR (st.security_type IN ('CS', 'ADRC')
+                  OR (st.security_type = ANY($4)
                       AND dc.ticker IN (
                           SELECT ticker
                           FROM mi_daily_closes
@@ -2541,7 +2541,7 @@ async def get_closes_for_correlation(
                       ))
               )
             ORDER BY dc.ticker, dc.trade_date
-        """, from_date, to_date, min_avg_dollar_volume)
+        """, from_date, to_date, min_avg_dollar_volume, list(COMMON_STOCK_TYPES))
 
     # Group by ticker
     from collections import defaultdict
@@ -2608,7 +2608,7 @@ async def get_correlation_clusters(cluster_date: str | date) -> list[dict]:
             FROM mi_correlation_clusters
             WHERE cluster_date = $1
             ORDER BY mean_corr DESC, cluster_hash
-        """, cluster_date)
+        """, _to_date(cluster_date))
 
     from collections import defaultdict
     groups: dict[str, dict] = {}

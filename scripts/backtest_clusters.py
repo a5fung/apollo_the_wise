@@ -134,9 +134,7 @@ async def run_backtest(from_date: date, to_date: date) -> None:
             continue
         after = day + lookahead_min
         before = day + lookahead_max
-        # Do NOT cap look-ahead at to_date — themes are queried from DB directly
-        # and may appear after the clustering period ends (that's the whole point).
-
+        # Look-ahead deliberately extends past to_date — themes may emerge after the clustering window.
         future_themes = await _get_themes_between(after, before)
         for c in clusters:
             precision_total += 1
