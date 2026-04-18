@@ -200,5 +200,14 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 ### New DB Table
 `mi_correlation_clusters` (cluster_date, cluster_hash, ticker, member_count, mean_corr, avg_rs)
 
+### Bugs Fixed (post-backtest)
+- **ETF contamination**: Full universe included leveraged ETFs (TSLZ, TQQQ, GLD, GBTC) that cluster by construction. Fixed: JOIN `mi_security_types` WHERE `security_type IN ('CS', 'ADRC')`, with explicit SPY exemption for beta adjustment.
+- **OOM on 5K universe**: 5K×5K float64 ≈ 400MB → container OOM kill (exit 137). Fixed: `min_avg_dollar_volume=$20M` default → ~2800 tickers, ~133MB total — fits 512MB container.
+- **Holiday months short of 21 days**: December/January holidays → only 19–20 trading days in 30-day calendar window. Fixed: `_LOOKBACK_DAYS = 35`.
+- **Backtest look-ahead cap**: `if before > to_date: continue` prevented any cluster from reaching future theme data. Removed. Recall query also extended to `to_date + 6 weeks`.
+
+### Backtest Results
+Dec 2025 → Feb 2026: precision 0.5%, recall 8.2%. **Statistically inconclusive** — theme data only starts 2026-03-19, so most cluster look-ahead windows land in a data gap. Qualitative check (2026-04-17) shows 10 coherent sector clusters (quantum computing, tankers, insurance, storage REITs, paint/coatings). Re-backtest when theme history reaches 6+ months (~June 2026).
+
 ### Files Changed
 `correlation_engine.py` (new), `db.py`, `theme_engine.py`, `scheduler.py`, `agent.py`, `scripts/backtest_clusters.py` (new)
