@@ -2535,3 +2535,28 @@ async def get_journal_entries(days_back: int = 7, limit: int = 20) -> list[dict[
             LIMIT $2
         """, str(days_back), limit)
     return [dict(r) for r in rows]
+
+
+async def get_paper_trade_stats() -> list[dict[str, Any]]:
+    """
+    Return all closed paper trades enriched with regime and forward returns.
+    Used for the P3 validation report.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+                t.ticker, t.total_pnl, t.hold_days, t.ep_score,
+                t.gap_pct, t.catalyst_quality, t.alert_date,
+                r.regime,
+                o.fwd_1d_pct, o.fwd_1w_pct
+            FROM mi_paper_trades t
+            LEFT JOIN mi_market_regime r ON r.regime_date = t.alert_date
+            LEFT JOIN mi_signal_outcomes o
+                ON o.signal_type = 'ep_alert'
+                AND o.signal_date = t.alert_date
+                AND o.identifier = t.ticker
+            WHERE t.status = 'closed'
+            ORDER BY t.alert_date DESC
+        """)
+    return [dict(r) for r in rows]

@@ -240,8 +240,10 @@ def _format_ep_section(
         else:
             lines.append(
                 f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-                f"score {ep['ep_score']:.0f} — verify catalyst"
+                f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e}"
             )
+            if ep.get("claude_analysis"):
+                lines.append(f"    _{ep['claude_analysis'][:120]}_")
 
     # Near-miss line — compact, one per line max 5, skip top-20-cap noise
     near_misses = [

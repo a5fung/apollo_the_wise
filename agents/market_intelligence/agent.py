@@ -54,6 +54,7 @@ from agents.market_intelligence.db import (
     get_ep_outcomes,
     add_journal_entry,
     get_journal_entries,
+    get_paper_trade_stats,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today, search_news_perplexity
@@ -474,6 +475,11 @@ class MarketIntelligenceAgent(BaseAgent):
         # EP history — must come before general EP route
         if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
+
+        # Paper trade validation report (P3)
+        if any(k in task for k in ["validation report", "paper performance",
+                                     "paper report", "ep validation"]):
+            return await self._handle_validation_report(request)
 
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
@@ -965,6 +971,82 @@ class MarketIntelligenceAgent(BaseAgent):
                 tickers = ", ".join(r["ticker"] for r in high_missed)
                 lines.append(f"HIGH missed ({len(high_missed)}): {tickers}")
                 lines.append("  Paper tracker wasn't running on these dates (early setup period).")
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_validation_report(self, request: AgentRequest) -> AgentResponse:
+        """
+        P3 — Aggregate paper trade performance report.
+        Scaffold mode (N < 10): raw trade list + "collecting data" message.
+        Full mode (N >= 10): win rate, avg P&L, breakdowns by regime/catalyst/gap.
+        """
+        from collections import defaultdict
+        trades = await get_paper_trade_stats()
+        n = len(trades)
+        header = f"*Paper Trade Validation — {n} closed trade{'s' if n != 1 else ''}*"
+
+        if n == 0:
+            return self._ok(request, result=(
+                f"{header}\n_No closed trades yet. ORB entries accumulate automatically._"
+            ))
+
+        if n < 10:
+            lines = [header, f"_Collecting data — need ~10 for meaningful stats._\n"]
+            for t in trades:
+                pnl = t["total_pnl"] or 0
+                sign = "+" if pnl >= 0 else ""
+                lines.append(
+                    f"`{t['ticker']}` {t['alert_date']}  "
+                    f"{sign}{pnl:.1f}%  {t['regime'] or '?'}  "
+                    f"{t['catalyst_quality'] or '?'}"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        # Full report
+        wins = [t for t in trades if (t["total_pnl"] or 0) > 0]
+        losses = [t for t in trades if (t["total_pnl"] or 0) <= 0]
+        avg_pnl = sum(t["total_pnl"] or 0 for t in trades) / n
+        avg_hold = sum(t["hold_days"] or 0 for t in trades) / n
+
+        lines = [
+            header,
+            "```",
+            f"Win rate  {len(wins)/n*100:.0f}%  ({len(wins)}W / {len(losses)}L)",
+            f"Avg P&L   {avg_pnl:+.1f}%",
+            f"Avg hold  {avg_hold:.1f} days",
+            "```",
+        ]
+
+        def _section(label, grouped):
+            out = [f"\n*{label}*", "```"]
+            for key, pnls in sorted(grouped.items()):
+                w = sum(1 for p in pnls if p > 0)
+                out.append(f"{key:<14} {w}/{len(pnls)} wins  avg {sum(pnls)/len(pnls):+.1f}%")
+            out.append("```")
+            return out
+
+        def gap_bucket(g):
+            g = g or 0
+            if g < 10: return "<10%"
+            if g < 15: return "10-15%"
+            if g < 20: return "15-20%"
+            return "20%+"
+
+        by_regime: dict = defaultdict(list)
+        by_cat: dict = defaultdict(list)
+        by_gap: dict = defaultdict(list)
+        for t in trades:
+            pnl = t["total_pnl"] or 0
+            by_regime[t["regime"] or "Unknown"].append(pnl)
+            by_cat[t["catalyst_quality"] or "unknown"].append(pnl)
+            by_gap[gap_bucket(t["gap_pct"])].append(pnl)
+
+        lines += _section("By Regime", by_regime)
+        lines += _section("By Catalyst", by_cat)
+
+        gap_order = ["<10%", "10-15%", "15-20%", "20%+"]
+        ordered_gap = {k: by_gap[k] for k in gap_order if k in by_gap}
+        lines += _section("By Gap Size", ordered_gap)
 
         return self._ok(request, result="\n".join(lines))
 
