@@ -177,3 +177,14 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ### Files Changed
 `broker/order_manager.py`, `fundamentals.py`, `scheduler.py`, `twitter.py`, `briefing.py`, `db.py`, `agent.py`
+
+## Changes Made 2026-04-17 (session 3)
+
+### Features Added
+- **Validation cooldown**: When validation removes a stock from a theme, writes a 14-day cooldown to `mi_validation_cooldowns`. Prevents re-assignment during cooldown via: (1) Claude prompt context injection, (2) post-assignment hard filter. Full audit trail (`validation_cooldown_triggered`, `cooldown_blocked_assignment`, `validation_cooldown_bypassed`). Commands: `show cooldowns`, `bypass cooldown TICKER [theme] [reason]`. Evening briefing shows compact `🧊 Cooldowns:` footer if any active. Fixes the CAR-in-Data-Center churn bug.
+
+### New DB Table
+`mi_validation_cooldowns` (ticker, theme_name, cooldown_until, removal_count, bypassed, bypassed_reason)
+
+### Files Changed
+`db.py`, `theme_engine.py`, `agent.py`, `briefing.py`
