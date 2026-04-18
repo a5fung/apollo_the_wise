@@ -188,3 +188,17 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ### Files Changed
 `db.py`, `theme_engine.py`, `agent.py`, `briefing.py`
+
+## Changes Made 2026-04-17 (session 4)
+
+### Features Added
+- **P15 — Correlation clustering**: New `correlation_engine.py` computes beta-adjusted (SPY-residual) Pearson correlations over 20 trading days on the full liquid universe (~4–6K tickers). BFS connected components ≥ 4 stocks at pairwise corr ≥ 0.85. Two filters: chaining filter (mean_corr ≥ 0.80 on sub-matrix), theme dedup (skip if ≥ 50% members already in same theme). Clusters fed into `_discover_new_themes()` prompt as early statistical signals.
+- Key correctness patches: zero-variance stocks stripped before `np.corrcoef` (halted/flat tickers → NaN rows); `ddof=1` used consistently for both `np.var` and `np.cov` (population/sample mismatch = invalid beta); chaining filter via sub-matrix `mean_corr`; prompt guardrail against "Cluster A/B" names.
+- `show clusters` command in Telegram
+- `scripts/backtest_clusters.py`: precision + recall metrics on historical data (target: precision ≥ 30%, recall ≥ 60%)
+
+### New DB Table
+`mi_correlation_clusters` (cluster_date, cluster_hash, ticker, member_count, mean_corr, avg_rs)
+
+### Files Changed
+`correlation_engine.py` (new), `db.py`, `theme_engine.py`, `scheduler.py`, `agent.py`, `scripts/backtest_clusters.py` (new)
