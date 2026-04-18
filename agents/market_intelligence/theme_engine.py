@@ -43,6 +43,7 @@ from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
+    add_validation_cooldown, get_cooldown_set,
 )
 
 logger = logging.getLogger(__name__)
@@ -549,6 +550,16 @@ async def _validate_theme_membership(
                         summary=f"{tk} removed from '{theme_name}' by validation",
                         detail=f"Description: '{desc}' — Haiku flagged as not matching theme",
                     )
+                    # Write 14-day cooldown so the stock can't be re-assigned immediately
+                    count = await add_validation_cooldown(
+                        tk, theme_name,
+                        reason=f"Description '{desc}' does not match theme",
+                    )
+                    await log_audit_event(
+                        "validation_cooldown_triggered",
+                        summary=f"{tk} → '{theme_name}' cooldown 14d (removal #{count})",
+                        detail=f"Description: '{desc}'",
+                    )
                     # NOTE: do NOT auto-persist to mi_theme_exclusions here.
                     # Previously tried (commit d07a363), deliberately reverted (commit f0372ef)
                     # because bad yfinance descriptions caused TSEM to be permanently banned
@@ -862,6 +873,18 @@ async def _assign_uncovered_to_themes(
             f"- {t['name']}{stage_note}: {', '.join(t.get('tickers') or [])} — {t.get('description', '')[:120]}"
         )
 
+    # Load active cooldowns and inject as a hard constraint in the prompt
+    cooldown_set = await get_cooldown_set()
+    cooldown_note = ""
+    if cooldown_set:
+        pairs = [f"{tk} from '{th}'" for tk, th in sorted(cooldown_set)]
+        cooldown_note = (
+            "\n\nCOOLDOWN CONSTRAINT — DO NOT assign these stocks to these themes "
+            "(recently removed by validation, 14-day cooldown active):\n"
+            + "\n".join(f"- {p}" for p in pairs)
+            + "\n"
+        )
+
     prompt = f"""You are a market intelligence analyst. Assign uncovered stocks to existing themes ONLY when the fit is obvious.
 
 EXISTING THEMES:
@@ -869,7 +892,7 @@ EXISTING THEMES:
 
 UNCOVERED STOCKS (RS >= 50, not in any active theme):
 {chr(10).join(stock_lines)}
-
+{cooldown_note}
 Rules:
 - Only assign if the stock's business CLEARLY matches the theme's thesis
 - When in doubt, do NOT assign — the stock will get a chance to form its own theme
@@ -996,6 +1019,16 @@ If none of these apply, call assign_stocks_to_themes directly."""
                         f"description overlap with '{theme_name}'"
                     )
                     continue
+
+        # Hard cooldown filter — safety net in case Claude ignored the prompt constraint
+        if (ticker, theme_name) in cooldown_set:
+            logger.info(f"Assignment blocked by cooldown: {ticker} → '{theme_name}'")
+            await log_audit_event(
+                "cooldown_blocked_assignment",
+                summary=f"Cooldown prevented {ticker} → '{theme_name}'",
+                detail="Claude ignored cooldown constraint — hard filter applied",
+            )
+            continue
 
         # Apply assignment
         if "tickers" not in theme:

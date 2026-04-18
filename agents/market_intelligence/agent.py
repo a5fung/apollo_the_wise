@@ -55,6 +55,9 @@ from agents.market_intelligence.db import (
     add_journal_entry,
     get_journal_entries,
     get_paper_trade_stats,
+    get_active_cooldowns,
+    bypass_cooldown,
+    log_audit_event,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today, search_news_perplexity
@@ -475,6 +478,12 @@ class MarketIntelligenceAgent(BaseAgent):
         # EP history — must come before general EP route
         if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
+
+        # Validation cooldowns
+        if any(k in task for k in ["show cooldowns", "cooldown list", "validation cooldowns", "active cooldowns"]):
+            return await self._handle_cooldown_query(request)
+        if any(k in task for k in ["bypass cooldown", "clear cooldown"]):
+            return await self._handle_cooldown_bypass(request)
 
         # Paper trade validation report (P3)
         if any(k in task for k in ["validation report", "paper performance",
@@ -973,6 +982,80 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("  Paper tracker wasn't running on these dates (early setup period).")
 
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_cooldown_query(self, request: AgentRequest) -> AgentResponse:
+        """Show active validation cooldowns."""
+        from datetime import datetime, timezone
+        cooldowns = await get_active_cooldowns()
+        if not cooldowns:
+            return self._ok(request, result="No active cooldowns — all stocks eligible for assignment.")
+
+        now = datetime.now(tz=timezone.utc)
+        lines = [f"*Validation Cooldowns — {len(cooldowns)} active*", "```"]
+        for c in cooldowns:
+            days_left = max(0, (c["cooldown_until"] - now).days)
+            chronic = " ⚠️ chronic" if c["removal_count"] >= 3 else ""
+            lines.append(
+                f"{c['ticker']:<6} {c['theme_name'][:30]:<30} {days_left:2}d left  "
+                f"removed {c['removal_count']}×{chronic}"
+            )
+        lines.append("```")
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_cooldown_bypass(self, request: AgentRequest) -> AgentResponse:
+        """Bypass a validation cooldown: 'bypass cooldown TICKER [theme] [reason]'."""
+        import re as _re
+        task = request.task
+
+        # Extract ticker — first ALL-CAPS word after the trigger phrase
+        m = _re.search(r'(?:bypass|clear)\s+cooldown\s+([A-Z]{2,5})', task.upper())
+        if not m:
+            return self._ok(request, result="Usage: `bypass cooldown TICKER [theme name] [reason]`")
+
+        ticker = m.group(1)
+
+        # Extract optional theme name — quoted or next words before any lowercase text
+        theme_name: str | None = None
+        reason = ""
+        after = task[m.end():].strip()
+        quoted = _re.match(r'"([^"]+)"', after)
+        if quoted:
+            theme_name = quoted.group(1)
+            reason = after[quoted.end():].strip()
+        elif after:
+            # Heuristic: if next word(s) are uppercase/title-case, treat as theme prefix
+            reason = after
+
+        count = await bypass_cooldown(ticker, theme_name, reason=reason)
+        if count == 0:
+            return self._ok(request, result=f"No active cooldown found for `{ticker}`{' in ' + theme_name if theme_name else ''}.")
+
+        scope = f"'{theme_name}'" if theme_name else "all themes"
+        await log_audit_event(
+            "validation_cooldown_bypassed",
+            summary=f"{ticker} cooldown bypassed ({scope})",
+            detail=f"reason={reason or 'none'}",
+        )
+
+        # Check if chronic — warn user
+        from datetime import datetime, timezone
+        cooldowns = await get_active_cooldowns()
+        chronic_note = ""
+        # Check bypassed row (now marked bypassed, won't show in active list)
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT removal_count FROM mi_validation_cooldowns WHERE ticker=$1"
+                + (" AND theme_name=$2" if theme_name else ""),
+                *(( ticker, theme_name) if theme_name else (ticker,))
+            )
+        if row and row["removal_count"] >= 3:
+            chronic_note = f"\n⚠️ Note: removed {row['removal_count']}× — consider `exclude {ticker}` for a permanent ban if this keeps happening."
+
+        return self._ok(
+            request,
+            result=f"✅ Bypass set — `{ticker}` eligible for {scope} reassignment on next nightly run.{chronic_note}"
+        )
 
     async def _handle_validation_report(self, request: AgentRequest) -> AgentResponse:
         """

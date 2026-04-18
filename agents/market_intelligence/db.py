@@ -456,6 +456,26 @@ async def initialize_schema() -> None:
                 ON mi_journal_entries(created_at DESC);
         """)
 
+        # ── Validation cooldowns — prevent re-assignment of recently removed tickers ──
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_validation_cooldowns (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                theme_name TEXT NOT NULL,
+                removed_at TIMESTAMPTZ DEFAULT NOW(),
+                cooldown_until TIMESTAMPTZ NOT NULL,
+                removal_reason TEXT,
+                removal_count INT DEFAULT 1,
+                bypassed BOOLEAN DEFAULT FALSE,
+                bypassed_at TIMESTAMPTZ,
+                bypassed_reason TEXT,
+                UNIQUE (ticker, theme_name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_cooldowns_active
+                ON mi_validation_cooldowns(cooldown_until)
+                WHERE NOT bypassed;
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -2394,6 +2414,79 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
             )
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")
+
+
+# ── Validation cooldowns ───────────────────────────────────────────────────────
+
+async def add_validation_cooldown(
+    ticker: str, theme_name: str, reason: str = "", days: int = 14
+) -> int:
+    """
+    Upsert a cooldown for ticker+theme. On conflict, increments removal_count and resets timer.
+    Returns the new removal_count.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO mi_validation_cooldowns (ticker, theme_name, removal_reason, cooldown_until)
+            VALUES ($1, $2, $3, NOW() + ($4 || ' days')::INTERVAL)
+            ON CONFLICT (ticker, theme_name) DO UPDATE SET
+                removed_at = NOW(),
+                cooldown_until = NOW() + ($4 || ' days')::INTERVAL,
+                removal_reason = $3,
+                removal_count = mi_validation_cooldowns.removal_count + 1,
+                bypassed = FALSE,
+                bypassed_at = NULL,
+                bypassed_reason = NULL
+            RETURNING removal_count
+        """, ticker, theme_name, reason[:500], str(days))
+        return row["removal_count"] if row else 1
+
+
+async def get_active_cooldowns() -> list[dict[str, Any]]:
+    """Return all non-bypassed cooldowns that haven't expired yet."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, theme_name, removed_at, cooldown_until, removal_reason,
+                   removal_count, bypassed
+            FROM mi_validation_cooldowns
+            WHERE NOT bypassed AND cooldown_until > NOW()
+            ORDER BY removal_count DESC, cooldown_until ASC
+        """)
+    return [dict(r) for r in rows]
+
+
+async def get_cooldown_set() -> set[tuple[str, str]]:
+    """Return {(ticker, theme_name)} for active cooldowns — O(1) lookup."""
+    rows = await get_active_cooldowns()
+    return {(r["ticker"], r["theme_name"]) for r in rows}
+
+
+async def bypass_cooldown(ticker: str, theme_name: str | None = None, reason: str = "") -> int:
+    """
+    Set bypassed=True for matching rows. theme_name=None bypasses all themes for ticker.
+    Returns count of rows updated.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if theme_name:
+            result = await conn.execute("""
+                UPDATE mi_validation_cooldowns
+                SET bypassed = TRUE, bypassed_at = NOW(), bypassed_reason = $3
+                WHERE ticker = $1 AND theme_name = $2
+            """, ticker, theme_name, reason[:500])
+        else:
+            result = await conn.execute("""
+                UPDATE mi_validation_cooldowns
+                SET bypassed = TRUE, bypassed_at = NOW(), bypassed_reason = $2
+                WHERE ticker = $1
+            """, ticker, reason[:500])
+        # asyncpg returns "UPDATE N" as status string
+        try:
+            return int(result.split()[-1])
+        except (ValueError, IndexError):
+            return 0
 
 
 async def get_audit_log(

@@ -695,6 +695,19 @@ def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> st
 
 # ── Evening briefing ───────────────────────────────────────────────────────────
 
+def _format_cooldown_footer(cooldowns: list[dict]) -> str:
+    if not cooldowns:
+        return ""
+    from datetime import datetime, timezone
+    now = datetime.now(tz=timezone.utc)
+    parts = []
+    for c in cooldowns:
+        days_left = max(0, (c["cooldown_until"] - now).days)
+        chronic = " ⚠️" if c["removal_count"] >= 3 else ""
+        parts.append(f"`{c['ticker']}` → {c['theme_name']} {days_left}d{chronic}")
+    return "🧊 *Cooldowns:* " + "  •  ".join(parts)
+
+
 def _format_evening_briefing(
     regime: dict,
     rs_leaders: list[dict],
@@ -708,6 +721,7 @@ def _format_evening_briefing(
     prior_theme_scores: dict[str, float] | None = None,
     quality_warnings: list[str] | None = None,
     signal_quality_summary: dict | None = None,
+    cooldowns: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -769,6 +783,11 @@ def _format_evening_briefing(
             "",
         ]
 
+    cooldown_footer = _format_cooldown_footer(cooldowns or [])
+    if cooldown_footer:
+        sections.append(cooldown_footer)
+        sections.append("")
+
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -781,7 +800,9 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     today = _et_today()
     today_str = today.strftime("%Y-%m-%d")
 
-    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings = (
+    from agents.market_intelligence.db import get_active_cooldowns as _get_active_cooldowns
+
+    regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
             get_latest_regime(),
             get_rs_leaders(today_str, limit=30),
@@ -792,6 +813,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
             get_fundamental_flags(today_str),
             get_prior_theme_scores(today_str),
             get_quality_warnings(today),
+            _get_active_cooldowns(),
         )
     )
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
@@ -835,6 +857,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         prior_theme_scores=prior_theme_scores,
         quality_warnings=warnings,
         signal_quality_summary=signal_quality_summary,
+        cooldowns=cooldowns,
     )
 
     success = await send_telegram_message(text, chat_id)
