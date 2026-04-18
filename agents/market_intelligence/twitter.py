@@ -137,22 +137,13 @@ async def post_to_twitter(
     result = _get_client()
     if not result:
         return False
-    client, api = result
+    client, _ = result
 
     def _post_thread():
         tweets = format_thread(rs_leaders, regime, briefing_date)
 
-        # Upload chart mosaic
-        media_id = None
-        if mosaic_bytes:
-            media = api.media_upload(filename="rs_leaders.png", file=io.BytesIO(mosaic_bytes))
-            media_id = media.media_id
-
-        # Post header
-        kwargs = {"text": tweets[0]}
-        if media_id:
-            kwargs["media_ids"] = [media_id]
-        response = client.create_tweet(**kwargs)
+        # Post header (no image — v1.1 media_upload not available on free tier)
+        response = client.create_tweet(text=tweets[0])
         parent_id = response.data.get("id") if response.data else None
         if not parent_id:
             return False
