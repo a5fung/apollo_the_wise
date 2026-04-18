@@ -1391,6 +1391,7 @@ async def _discover_new_themes(
     turners: list[dict] | None = None,
     elite_covered: list[dict] | None = None,
     theme_exclusions: dict[str, set[str]] | None = None,
+    correlation_clusters: list[dict] | None = None,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
@@ -1490,10 +1491,34 @@ Look for CLUSTERS here — if 3+ stocks from the same sector are all turning, th
 {turner_lines}
 """
 
+    # Build correlation cluster block if any clusters are relevant (have uncovered tickers)
+    covered_in_themes = {tk for t in existing_themes for tk in (t.get("tickers") or [])}
+    cluster_block = ""
+    if correlation_clusters:
+        relevant = [
+            c for c in correlation_clusters
+            if any(t not in covered_in_themes for t in c["tickers"])
+        ]
+        if relevant:
+            cluster_lines = "\n".join(
+                f"- Cluster {chr(65 + i)} ({c['member_count']} stocks, corr {c['mean_corr']:.2f}, "
+                f"avg RS {c['avg_rs']:.0f}): {', '.join(c['tickers'])}"
+                for i, c in enumerate(relevant)
+            )
+            cluster_block = f"""
+CORRELATION CLUSTERS (beta-adjusted residual correlation ≥ 0.85, 20-day window):
+These stocks have been moving together statistically before any narrative crystallized — potential emerging themes.
+{cluster_lines}
+
+If a cluster maps to a clear business thesis, propose it as a Nascent theme.
+If the correlation reason is unclear, do NOT force a theme — leave the stocks uncovered.
+IMPORTANT: If a cluster forms a valid theme, invent a specific descriptive business name (e.g., 'Optical Networking', 'Uranium Miners'). Do NOT name it 'Cluster A', 'Cluster B', or any placeholder — those labels are internal identifiers only.
+"""
+
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
 Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
-{existing_block}{elite_block}{velocity_block}{turners_block}
+{existing_block}{elite_block}{velocity_block}{turners_block}{cluster_block}
 RS LEADERS NOT YET IN ANY ACTIVE THEME:
 {stock_lines}
 
@@ -1909,7 +1934,10 @@ def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
     return result
 
 
-async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], list[dict]]:
+async def run_theme_engine(
+    trade_date: date | None = None,
+    clusters: list[dict] | None = None,
+) -> tuple[list[dict], list[dict]]:
     """
     Run the full theme update cycle:
     1. Re-score existing active themes (with pruning)
@@ -2120,6 +2148,7 @@ async def run_theme_engine(trade_date: date | None = None) -> tuple[list[dict], 
             uncovered, updated_themes, stocks_by_ticker,
             velocity_leaders, turners, elite_covered,
             theme_exclusions=theme_exclusions,
+            correlation_clusters=clusters,
         )
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 

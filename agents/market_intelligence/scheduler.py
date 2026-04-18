@@ -311,10 +311,21 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Quote type enrichment failed: {e}")
 
+    # 4.5. Correlation clustering — statistical pre-pass for theme discovery
+    correlation_clusters: list[dict] = []
+    try:
+        from agents.market_intelligence.correlation_engine import run_correlation_clustering
+        correlation_clusters = await run_correlation_clustering(_today)
+        logger.info(f"Correlation clustering: {len(correlation_clusters)} clusters found")
+        if correlation_clusters:
+            summary_parts.append(f"{len(correlation_clusters)} corr clusters")
+    except Exception as e:
+        logger.warning(f"Correlation clustering failed (non-fatal): {e}")
+
     # 5. Theme engine
     theme_changelog: list[dict] = []
     try:
-        themes, theme_changelog = await run_theme_engine()
+        themes, theme_changelog = await run_theme_engine(clusters=correlation_clusters)
         logger.info(f"Theme engine: {len(themes)} themes identified, {len(theme_changelog)} changes")
         summary_parts.append(f"{len(themes)} themes")
     except Exception as e:

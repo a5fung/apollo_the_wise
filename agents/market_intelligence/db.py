@@ -456,6 +456,23 @@ async def initialize_schema() -> None:
                 ON mi_journal_entries(created_at DESC);
         """)
 
+        # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_correlation_clusters (
+                id SERIAL PRIMARY KEY,
+                cluster_date DATE NOT NULL,
+                cluster_hash TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                member_count INT NOT NULL,
+                mean_corr FLOAT NOT NULL,
+                avg_rs FLOAT DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (cluster_date, cluster_hash, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_corr_clusters_date
+                ON mi_correlation_clusters(cluster_date DESC);
+        """)
+
         # ── Validation cooldowns — prevent re-assignment of recently removed tickers ──
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_validation_cooldowns (
@@ -2487,6 +2504,110 @@ async def bypass_cooldown(ticker: str, theme_name: str | None = None, reason: st
             return int(result.split()[-1])
         except (ValueError, IndexError):
             return 0
+
+
+# ── Correlation clusters ───────────────────────────────────────────────────────
+
+async def get_closes_for_correlation(
+    from_date: date, to_date: date
+) -> dict[str, list[float]]:
+    """
+    Return {ticker: [closes in ascending date order]} for the given window.
+    Only tickers with close >= $5 on every day and full coverage across the window are returned.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, trade_date, close
+            FROM mi_daily_closes
+            WHERE trade_date >= $1
+              AND trade_date <= $2
+              AND close >= 5.0
+            ORDER BY ticker, trade_date
+        """, from_date, to_date)
+
+    # Group by ticker
+    from collections import defaultdict
+    data: dict[str, list[tuple[date, float]]] = defaultdict(list)
+    for r in rows:
+        data[r["ticker"]].append((r["trade_date"], r["close"]))
+
+    # Count trading days in window to know required length
+    dates_in_window: set = {r["trade_date"] for r in rows}
+    n_days = len(dates_in_window)
+    if n_days < 21:  # need 21 closes to get 20 daily returns
+        logger.warning(f"get_closes_for_correlation: only {n_days} trading days in window — need ≥ 21")
+        return {}
+
+    # Only keep tickers with full coverage
+    result: dict[str, list[float]] = {}
+    for ticker, pairs in data.items():
+        if len(pairs) >= n_days:
+            result[ticker] = [p[1] for p in pairs]
+
+    return result
+
+
+async def upsert_correlation_clusters(
+    cluster_date: date, clusters: list[dict]
+) -> None:
+    """Replace today's cluster rows with fresh data."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM mi_correlation_clusters WHERE cluster_date = $1",
+            cluster_date,
+        )
+        if not clusters:
+            return
+        rows = []
+        for c in clusters:
+            for ticker in c["tickers"]:
+                rows.append((
+                    cluster_date,
+                    c["cluster_hash"],
+                    ticker,
+                    c["member_count"],
+                    c["mean_corr"],
+                    c.get("avg_rs", 0.0),
+                ))
+        await conn.executemany("""
+            INSERT INTO mi_correlation_clusters
+                (cluster_date, cluster_hash, ticker, member_count, mean_corr, avg_rs)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (cluster_date, cluster_hash, ticker) DO UPDATE SET
+                member_count = EXCLUDED.member_count,
+                mean_corr = EXCLUDED.mean_corr,
+                avg_rs = EXCLUDED.avg_rs
+        """, rows)
+
+
+async def get_correlation_clusters(cluster_date: str) -> list[dict]:
+    """Return clusters for the given date, grouped by cluster_hash."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT cluster_hash, ticker, member_count, mean_corr, avg_rs
+            FROM mi_correlation_clusters
+            WHERE cluster_date = $1
+            ORDER BY mean_corr DESC, cluster_hash
+        """, cluster_date)
+
+    from collections import defaultdict
+    groups: dict[str, dict] = {}
+    for r in rows:
+        h = r["cluster_hash"]
+        if h not in groups:
+            groups[h] = {
+                "cluster_hash": h,
+                "tickers": [],
+                "member_count": r["member_count"],
+                "mean_corr": r["mean_corr"],
+                "avg_rs": r["avg_rs"],
+            }
+        groups[h]["tickers"].append(r["ticker"])
+
+    return list(groups.values())
 
 
 async def get_audit_log(

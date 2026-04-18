@@ -58,6 +58,7 @@ from agents.market_intelligence.db import (
     get_active_cooldowns,
     bypass_cooldown,
     log_audit_event,
+    get_correlation_clusters,
 )
 from agents.market_intelligence.briefing import send_morning_briefing, send_evening_briefing, send_telegram_message
 from agents.market_intelligence.collector import et_today, search_news_perplexity
@@ -478,6 +479,10 @@ class MarketIntelligenceAgent(BaseAgent):
         # EP history — must come before general EP route
         if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
+
+        # Correlation clusters
+        if any(k in task for k in ["show clusters", "correlation clusters", "cluster report"]):
+            return await self._handle_correlation_clusters(request)
 
         # Validation cooldowns
         if any(k in task for k in ["show cooldowns", "cooldown list", "validation cooldowns", "active cooldowns"]):
@@ -981,6 +986,25 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"HIGH missed ({len(high_missed)}): {tickers}")
                 lines.append("  Paper tracker wasn't running on these dates (early setup period).")
 
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_correlation_clusters(self, request: AgentRequest) -> AgentResponse:
+        """Show today's correlation clusters."""
+        today_str = et_today().strftime("%Y-%m-%d")
+        clusters = await get_correlation_clusters(today_str)
+        if not clusters:
+            return self._ok(
+                request,
+                result=f"No correlation clusters for {today_str} — run nightly pipeline first, or no groups of 4+ stocks hit the 0.85 residual threshold today.",
+            )
+        lines = [f"*Correlation Clusters — {today_str}*", f"{len(clusters)} clusters  •  20d beta-adjusted window", "```"]
+        for i, c in enumerate(clusters):
+            label = chr(65 + i)
+            tickers_str = "  ".join(c["tickers"])
+            lines.append(
+                f"{label}  {tickers_str:<40}  corr {c['mean_corr']:.2f}  avg RS {c['avg_rs']:.0f}"
+            )
+        lines.append("```")
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_cooldown_query(self, request: AgentRequest) -> AgentResponse:
