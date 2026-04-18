@@ -162,3 +162,18 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ### Files Changed
 `theme_engine.py`, `ep_detector.py`, `db.py`, `agent.py`, `briefing.py`, `scheduler.py`
+
+## Changes Made 2026-04-17 (session 2)
+
+### Hardening (live trading prep)
+- **Orphaned stop remediation**: `sync_positions()` now detects filled trades with no `stop_order_id` and auto-places a protective stop using stored `stop_price`/`orb_low`. Alerts via Telegram.
+- **yfinance timeout**: All 6 executor calls in `get_fundamentals()` wrapped with `asyncio.wait_for(30s)` — prevents thread pool starvation if Yahoo hangs.
+- **Data pull timing**: 4:30 PM → 5:00 PM ET so volume/print data has settled before RS scoring.
+- **RS leaders tweet**: Dropped `media_upload` (v1.1 API, 403 on free tier) — posts text-only thread now.
+
+### Features Added
+- **P2**: MODERATE EP alerts in morning briefing now show `rel_volume` + `claude_analysis` summary line. Previously showed only gap% and score.
+- **P3 scaffold**: `validation report` / `paper performance` command. Scaffold mode (N < 10 trades) shows raw list. Full report at N ≥ 10: win rate, avg P&L, breakdowns by regime/catalyst/gap bucket.
+
+### Files Changed
+`broker/order_manager.py`, `fundamentals.py`, `scheduler.py`, `twitter.py`, `briefing.py`, `db.py`, `agent.py`
