@@ -134,8 +134,8 @@ async def run_backtest(from_date: date, to_date: date) -> None:
             continue
         after = day + lookahead_min
         before = day + lookahead_max
-        if before > to_date:
-            continue
+        # Do NOT cap look-ahead at to_date — themes are queried from DB directly
+        # and may appear after the clustering period ends (that's the whole point).
 
         future_themes = await _get_themes_between(after, before)
         for c in clusters:
@@ -145,8 +145,8 @@ async def run_backtest(from_date: date, to_date: date) -> None:
 
     precision = precision_hits / precision_total if precision_total else 0.0
 
-    # Recall: for each theme that emerged, did clusters flag it 2+ weeks prior?
-    all_themes = await _get_themes_between(from_date + lookahead_min, to_date)
+    # Recall: for each theme that emerged in the look-ahead window after the clustering period
+    all_themes = await _get_themes_between(from_date + lookahead_min, to_date + lookahead_max)
     # Deduplicate themes by name (keep first occurrence)
     seen_themes: dict[str, dict] = {}
     for t in sorted(all_themes, key=lambda x: x["theme_date"]):

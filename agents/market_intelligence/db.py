@@ -2509,22 +2509,39 @@ async def bypass_cooldown(ticker: str, theme_name: str | None = None, reason: st
 # ── Correlation clusters ───────────────────────────────────────────────────────
 
 async def get_closes_for_correlation(
-    from_date: date, to_date: date
+    from_date: date, to_date: date,
+    min_avg_dollar_volume: float = 20_000_000.0,
 ) -> dict[str, list[float]]:
     """
     Return {ticker: [closes in ascending date order]} for the given window.
-    Only tickers with close >= $5 on every day and full coverage across the window are returned.
+    Filters: close >= $5, avg daily dollar volume >= min_avg_dollar_volume (default $20M).
+    At $20M: ~2800 tickers, corr matrix ~60MB, total memory ~133MB — fits 512MB container.
+    (Full universe of 5K+ stocks needs ~400MB just for the matrix, causing OOM kills.)
+    Only tickers with full coverage across all trading days in the window are returned.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT ticker, trade_date, close
-            FROM mi_daily_closes
-            WHERE trade_date >= $1
-              AND trade_date <= $2
-              AND close >= 5.0
-            ORDER BY ticker, trade_date
-        """, from_date, to_date)
+            SELECT dc.ticker, dc.trade_date, dc.close
+            FROM mi_daily_closes dc
+            LEFT JOIN mi_security_types st ON st.ticker = dc.ticker
+            WHERE dc.trade_date >= $1
+              AND dc.trade_date <= $2
+              AND dc.close >= 5.0
+              AND (
+                  dc.ticker = 'SPY'
+                  OR (st.security_type IN ('CS', 'ADRC')
+                      AND dc.ticker IN (
+                          SELECT ticker
+                          FROM mi_daily_closes
+                          WHERE trade_date >= $1 AND trade_date <= $2 AND close >= 5.0
+                            AND volume IS NOT NULL AND volume > 0
+                          GROUP BY ticker
+                          HAVING AVG(close * volume) >= $3
+                      ))
+              )
+            ORDER BY dc.ticker, dc.trade_date
+        """, from_date, to_date, min_avg_dollar_volume)
 
     # Group by ticker
     from collections import defaultdict
@@ -2582,7 +2599,7 @@ async def upsert_correlation_clusters(
         """, rows)
 
 
-async def get_correlation_clusters(cluster_date: str) -> list[dict]:
+async def get_correlation_clusters(cluster_date: str | date) -> list[dict]:
     """Return clusters for the given date, grouped by cluster_hash."""
     pool = await get_pool()
     async with pool.acquire() as conn:

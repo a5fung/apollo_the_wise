@@ -20,7 +20,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_LOOKBACK_DAYS = 30       # calendar days to query (gets ~20 trading days)
+_LOOKBACK_DAYS = 35       # calendar days to query (gets ~21+ trading days even in holiday months)
 _MIN_TRADING_DAYS = 21    # need 21 closes → 20 daily returns
 _CORR_THRESHOLD = 0.85    # edge threshold for BFS adjacency
 _MIN_CLUSTER_SIZE = 4     # minimum stocks per cluster
