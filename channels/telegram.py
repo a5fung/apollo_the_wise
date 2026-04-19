@@ -722,6 +722,51 @@ class TelegramChannel:
             logger.error(f"/trades failed: {e}")
             await update.message.reply_text(f"Error loading trades: {e}")
 
+    # ── Market-intelligence slash commands ───────────────────────────────────
+
+    _MARKET_SLASH_COMMANDS = {
+        "/hud", "/eps", "/9m", "/themes", "/clusters", "/regime", "/positions",
+    }
+
+    async def _dispatch_market_slash(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Generic handler for all market-intelligence slash commands."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+        cmd_raw = (update.message.text or "").strip().split()[0]
+        cmd = cmd_raw.split("@")[0].lower()  # strip @botname suffix if present
+
+        import uuid, httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task=cmd,
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            result = data.get("result") or data.get("error") or "No response."
+        except Exception as e:
+            logger.error(f"{cmd} failed: {e}")
+            result = f"Error: {e}"
+
+        await self._reply(update, result)
+
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -1047,6 +1092,9 @@ class TelegramChannel:
         app.add_handler(CommandHandler("spend", self._handle_spend))
         app.add_handler(CommandHandler("rules", self._handle_rules))
         app.add_handler(CommandHandler("trades", self._handle_trades))
+        # Market-intelligence slash commands — bypass orchestrator LLM
+        for _cmd in ("hud", "eps", "9m", "themes", "clusters", "regime", "positions"):
+            app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
         )
@@ -1070,13 +1118,20 @@ class TelegramChannel:
         """Register bot commands with BotFather so they appear in the / menu."""
         from telegram import BotCommand
         commands = [
-            BotCommand("help",   "Capabilities & command reference"),
-            BotCommand("status", "System health, agents, market pipeline"),
-            BotCommand("trades", "Paper & live trade positions + P&L"),
-            BotCommand("spend",  "API spend today & this month"),
-            BotCommand("rules",  "EP trading rules (Qullamaggie v2)"),
-            BotCommand("setup",  "Change assistant name or personality"),
-            BotCommand("start",  "Restart / re-introduce"),
+            BotCommand("hud",       "Status snapshot: regime, EPs, 9M, themes, clusters"),
+            BotCommand("eps",       "Today's EP alerts (MAGNA53)"),
+            BotCommand("9m",        "9M EP alerts and Day 2 sugar babies"),
+            BotCommand("themes",    "Active theme summary"),
+            BotCommand("clusters",  "Correlation clusters (beta-adjusted)"),
+            BotCommand("regime",    "Current market regime and breadth"),
+            BotCommand("positions", "Watchlist and tracked positions"),
+            BotCommand("trades",    "Paper & live trade positions + P&L"),
+            BotCommand("status",    "System health, agents, market pipeline"),
+            BotCommand("spend",     "API spend today & this month"),
+            BotCommand("rules",     "EP trading rules (Qullamaggie v2)"),
+            BotCommand("help",      "Capabilities & command reference"),
+            BotCommand("setup",     "Change assistant name or personality"),
+            BotCommand("start",     "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)
         logger.info("Bot commands registered with Telegram")
