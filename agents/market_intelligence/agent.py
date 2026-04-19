@@ -2621,7 +2621,7 @@ class MarketIntelligenceAgent(BaseAgent):
         yesterday = prev_trading_days(1, from_date=today)[0]
 
         watchlist_rows = await get_overnight_watchlist()
-        watchlist_tickers = [r["ticker"] for r in watchlist_rows]
+        watchlist_tickers = [r["symbol"] for r in watchlist_rows]
 
         regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_babies = await _aio.gather(
             get_latest_regime(),
