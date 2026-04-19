@@ -590,8 +590,76 @@ class MarketIntelligenceAgent(BaseAgent):
         ]):
             return await self._handle_screener_query(request)
 
+        # Trading config — position sizing, safeguards, account parameters
+        if any(k in task for k in [
+            "position size", "max position", "position sizing", "risk per trade",
+            "trading config", "trading rules", "trading parameters", "trading setup",
+            "account size", "how much risk", "risk amount", "dollar risk",
+            "safeguard", "circuit breaker", "daily loss limit", "loss limit",
+            "how many positions", "max concurrent", "entry slippage",
+            "how does trading work", "trading system", "what are the rules",
+        ]):
+            return await self._handle_trading_config(request)
+
         # General: let Claude decide what data to pull
         return await self._handle_general(request)
+
+    async def _handle_trading_config(self, request: AgentRequest) -> AgentResponse:
+        """Return live trading configuration drawn directly from constants.py and the DB."""
+        from agents.market_intelligence.constants import (
+            ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT,
+            MAX_CONCURRENT_LIVE_POSITIONS, DAILY_LOSS_LIMIT_PCT,
+            CIRCUIT_BREAKER_CONSEC_LOSSES, CONFIRMATION_TIMEOUT_SEC,
+            LIVE_TRADING_ENABLED,
+        )
+        from agents.market_intelligence.db import get_latest_regime
+
+        regime = await get_latest_regime()
+        qqq_bullish = regime.get("qqq_ema_bullish") if regime else None
+        active_risk_pct = RISK_PCT if qqq_bullish is not False else RISK_PCT * 0.5
+        risk_dollars = round(ACCOUNT_SIZE * active_risk_pct)
+        max_pos_dollars = round(ACCOUNT_SIZE * MAX_POSITION_PCT)
+        daily_loss_dollars = round(ACCOUNT_SIZE * DAILY_LOSS_LIMIT_PCT)
+
+        mode = "LIVE" if LIVE_TRADING_ENABLED else "PAPER"
+        qqq_gate = "full risk" if qqq_bullish is not False else "half risk (QQQ 10EMA < 20EMA)"
+
+        lines = [
+            f"*Trading Configuration — {mode} mode*\n",
+            "*Account*",
+            f"  Account size:       ${ACCOUNT_SIZE:,.0f}",
+            f"  Mode:               {'🟢 Live' if LIVE_TRADING_ENABLED else '📄 Paper (Alpaca)'}",
+            "",
+            "*Position Sizing (per trade)*",
+            f"  Risk per trade:     {RISK_PCT*100:.0f}% = ${risk_dollars:,}",
+            f"  QQQ EMA gate:       {qqq_gate}",
+            f"  Active risk:        ${round(ACCOUNT_SIZE * active_risk_pct):,}/trade right now",
+            f"  Max position size:  {MAX_POSITION_PCT*100:.0f}% = ${max_pos_dollars:,}",
+            f"  Sizing formula:     shares = risk_$ / (entry - stop)",
+            "",
+            "*Safeguards*",
+            f"  Max open positions: {MAX_CONCURRENT_LIVE_POSITIONS} (shared MAGNA53 + 9M EP)",
+            f"  Daily loss limit:   {DAILY_LOSS_LIMIT_PCT*100:.0f}% = ${daily_loss_dollars:,}",
+            f"  Circuit breaker:    pause after {CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses",
+            f"  Confirm timeout:    {CONFIRMATION_TIMEOUT_SEC//60} min (live mode only)",
+            "",
+            "*MAGNA53 EP Entry Filters*",
+            "  Min gap:            8%",
+            "  Min price:          $5.00",
+            "  Min ADV:            $1M median 20-day",
+            "  Max ATR%:           15%",
+            "  Min market cap:     $500M",
+            "  Max stop width:     1.5× ATR-14",
+            "  EP cooldown:        60 days same ticker",
+            "",
+            "*9M EP Entry Filters*",
+            "  Volume threshold:   8.9M actual / 12M projected",
+            "  Min price:          $3.00",
+            "  Stop anchor:        prior day's low (breakout wall)",
+            "  Max stop width:     15% of entry price",
+            "  Sugar baby gate:    close in top 25% of range + green",
+        ]
+        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""
