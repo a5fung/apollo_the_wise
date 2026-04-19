@@ -189,6 +189,21 @@ class MarketIntelligenceAgent(BaseAgent):
             background.add_task(_run_and_notify)
             return {"status": "theme engine queued"}
 
+        @self.app.post("/hud/pin")
+        async def hud_pin(
+            body: dict,
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Store chat_id + message_id for the pinned HUD so the hourly refresh can edit it."""
+            from agents.market_intelligence.db import set_hud_state
+            chat_id = body.get("chat_id")
+            message_id = body.get("message_id")
+            if chat_id is None or message_id is None:
+                return {"error": "chat_id and message_id required"}
+            await set_hud_state("hud_chat_id", str(chat_id))
+            await set_hud_state("hud_message_id", str(message_id))
+            return {"status": "ok"}
+
         @self.app.post("/tweet")
         async def post_tweet(
             body: TweetRequest,
@@ -2565,102 +2580,274 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result=text)
 
     async def _handle_slash_command(self, request: AgentRequest) -> AgentResponse:
-        cmd = request.task.strip().split()[0].lower()
+        parts = request.task.strip().split()
+        cmd = parts[0].lower()
         dispatch = {
-            "/hud":       self._handle_hud,
-            "/eps":       self._handle_ep_query,
-            "/9m":        self._handle_9m_ep_query,
-            "/themes":    self._handle_theme_query,
-            "/clusters":  self._handle_correlation_clusters,
-            "/regime":    self._handle_regime_query,
-            "/positions": self._handle_watchlist,
+            "/hud":            self._handle_hud,
+            "/eps":            self._handle_ep_query,
+            "/9m":             self._handle_9m_ep_query,
+            "/themes":         self._handle_theme_query,
+            "/clusters":       self._handle_correlation_clusters,
+            "/regime":         self._handle_regime_query,
+            "/positions":      self._handle_watchlist,
+            "/pregame":        self._handle_pregame,
+            "/eps_detail":     self._handle_eps_detail,
+            "/themes_detail":  self._handle_themes_detail,
+            "/trades_detail":  self._handle_trades_detail,
         }
         handler = dispatch.get(cmd)
         if handler:
             return await handler(request)
-        available = "  ".join(sorted(dispatch.keys()))
+        available = "  ".join(sorted(k for k in dispatch if not k.endswith("_detail")))
         return self._ok(request, result=f"Unknown command: `{cmd}`\n\nAvailable:\n`{available}`")
 
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
-        """Single-shot status snapshot across all parallel engines."""
+        msg = await _build_hud_text()
+        return self._ok(request, result=msg)
+
+    async def _handle_pregame(self, request: AgentRequest) -> AgentResponse:
+        """Compact trade-ready shortlist: regime, Accelerating themes, HIGH EPs, watchlist MAs, 9M."""
         import asyncio as _aio
         from agents.market_intelligence.db import (
             get_active_themes,
+            get_overnight_watchlist,
             get_today_9m_ep_alerts,
             get_pending_9m_sugar_babies,
         )
         from agents.market_intelligence.collector import et_today, prev_trading_days
-        from agents.market_intelligence.scheduler import get_scheduler_status
 
         today = et_today()
         today_str = today.isoformat()
         yesterday = prev_trading_days(1, from_date=today)[0]
 
-        regime, ep_alerts, ninem_alerts, sugar_babies, themes, clusters = await _aio.gather(
+        watchlist_rows = await get_overnight_watchlist()
+        watchlist_tickers = [r["ticker"] for r in watchlist_rows]
+
+        regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_babies = await _aio.gather(
             get_latest_regime(),
             get_today_ep_alerts(today_str),
+            get_active_themes(),
+            get_ma_pullbacks(today_str, tickers=watchlist_tickers or None),
             get_today_9m_ep_alerts(today_str),
             get_pending_9m_sugar_babies(yesterday),
-            get_active_themes(),
-            get_correlation_clusters(today_str),
             return_exceptions=True,
         )
 
-        # Regime line
+        sep = "━━━━━━━━━━━━━━━━━━━━━"
+        now_et = today.strftime("%a %b %-d %I:%M %p ET").lstrip("0")
+        lines = [f"📋 *Pregame — {now_et}*", sep]
+
+        # Regime
         r = regime if isinstance(regime, dict) else {}
         regime_name = r.get("regime", "Unknown")
         qqq_ok = r.get("qqq_ema_bullish")
         qqq_icon = "✅" if qqq_ok else ("❌" if qqq_ok is False else "❓")
         ep_bar = r.get("ep_threshold", "?")
-        regime_date = r.get("regime_date")
-        data_age = f" · data {regime_date}" if regime_date else ""
-        regime_line = f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}{data_age}"
+        lines.append(f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}")
 
-        # MAGNA53 EP counts
-        if isinstance(ep_alerts, list):
-            high_ct = sum(1 for a in ep_alerts if a.get("score_tier") == "HIGH")
-            mod_ct  = sum(1 for a in ep_alerts if a.get("score_tier") == "MODERATE")
-            ep_line = f"🎯 MAGNA53: *{high_ct} HIGH* · {mod_ct} MODERATE"
-        else:
-            ep_line = "🎯 MAGNA53: unavailable"
-
-        # 9M EP counts
-        ninem_today = len(ninem_alerts) if isinstance(ninem_alerts, list) else "?"
-        ninem_d2    = len(sugar_babies)  if isinstance(sugar_babies, list)  else "?"
-        ninem_line  = f"🏦 9M EP: {ninem_today} intraday · {ninem_d2} Day 2 pending"
-
-        # Theme counts
+        # Accelerating themes only
         if isinstance(themes, list):
-            active_ct = len(themes)
-            accel_ct  = sum(1 for t in themes if t.get("stage") == "Accelerating")
-            fading_ct = sum(1 for t in themes if t.get("stage") == "Fading")
-            theme_line = f"🗂 Themes: {active_ct} active ({accel_ct} accelerating · {fading_ct} fading)"
+            accel = [t for t in themes if t.get("stage") == "Accelerating"]
+            if accel:
+                lines.append("")
+                lines.append("🔥 *Accelerating Themes:*")
+                for t in accel[:5]:
+                    tks = " ".join((t.get("tickers") or [])[:4])
+                    lines.append(f"  {t['name']}  {tks}")
+
+        # HIGH EPs only
+        if isinstance(ep_alerts, list):
+            high_eps = [e for e in ep_alerts if e.get("score_tier") == "HIGH"]
+            if high_eps:
+                lines.append("")
+                lines.append(f"🎯 *HIGH EPs today ({len(high_eps)}):*")
+                for ep in high_eps[:6]:
+                    lines.append(
+                        f"  *{ep['ticker']}*  {ep.get('gap_pct', 0):+.1f}%  score {ep['ep_score']:.0f}"
+                    )
+            else:
+                lines.append("")
+                lines.append("🎯 No HIGH EPs today yet.")
+
+        # Watchlist MA pullbacks
+        if isinstance(ma_rows, list) and ma_rows:
+            lines.append("")
+            lines.append("📍 *Watchlist near MAs:*")
+            for row in ma_rows[:5]:
+                pct = row.get("pct_from_ma", 0)
+                lines.append(f"  {row['ticker']}  {row.get('ma_label','?')}  {pct:+.1f}%")
+
+        # 9M sugar babies
+        if isinstance(sugar_babies, list) and sugar_babies:
+            lines.append("")
+            lines.append(f"🏦 *9M Day 2 pending ({len(sugar_babies)}):* " +
+                         " ".join(b["ticker"] for b in sugar_babies[:4]))
         else:
-            theme_line = "🗂 Themes: unavailable"
+            lines.append("")
+            lines.append("🏦 No 9M sugar babies pending.")
 
-        # Cluster count
-        cluster_ct = len(clusters) if isinstance(clusters, list) else "?"
-        cluster_line = f"📊 Clusters: {cluster_ct} today"
+        return self._ok(request, result="\n".join(lines))
 
-        # System health
-        sched = get_scheduler_status()
-        health_line = "⚙️ System: scheduler running" if sched.get("scheduler_running") else "⚠️ System: scheduler NOT running"
+    async def _handle_eps_detail(self, request: AgentRequest) -> AgentResponse:
+        """Inline keyboard detail: /eps_detail {tier} {date_str}"""
+        parts = request.task.strip().split()
+        # parts: ['/eps_detail', tier, date_str]
+        tier = parts[1].upper() if len(parts) > 1 else "HIGH"
+        date_str = parts[2] if len(parts) > 2 else et_today().isoformat()
 
-        sep = "━━━━━━━━━━━━━━━━━━━━━"
-        now_et = today.strftime("%a %b %-d")
-        msg = "\n".join([
-            f"📡 *Apollo HUD* — {now_et}",
-            sep,
-            regime_line,
-            sep,
-            ep_line,
-            ninem_line,
-            theme_line,
-            cluster_line,
-            sep,
-            health_line,
-        ])
-        return self._ok(request, result=msg)
+        alerts = await get_today_ep_alerts(date_str)
+        if tier == "SUMMARY":
+            high_ct = sum(1 for a in alerts if a.get("score_tier") == "HIGH")
+            mod_ct  = sum(1 for a in alerts if a.get("score_tier") == "MODERATE")
+            return self._ok(request, result=f"🎯 *EP Alerts — {date_str}*\n{high_ct} HIGH · {mod_ct} MODERATE")
+
+        filtered = [a for a in alerts if a.get("score_tier") == tier]
+        if not filtered:
+            return self._ok(request, result=f"No {tier} EP alerts for {date_str}.")
+
+        lines = [f"🎯 *{tier} EPs — {date_str}* ({len(filtered)})"]
+        for ep in filtered:
+            lines.append(
+                f"\n• *{ep['ticker']}* — score {ep['ep_score']:.0f} | gap {ep.get('gap_pct', 0):.1f}%"
+                f" | {ep.get('catalyst_quality', '?')}"
+            )
+            if ep.get("claude_analysis"):
+                lines.append(f"  {ep['claude_analysis'][:120]}")
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_themes_detail(self, request: AgentRequest) -> AgentResponse:
+        """Inline keyboard detail: /themes_detail {stage|SUMMARY}"""
+        from agents.market_intelligence.briefing import _compute_scored_themes, STAGE_EMOJI, _conviction_suffix
+
+        parts = request.task.strip().split()
+        stage_filter = parts[1] if len(parts) > 1 else "All"
+
+        today_str = et_today().isoformat()
+        themes = await get_today_themes(today_str)
+
+        if not themes:
+            return self._ok(request, result="No theme data yet.")
+
+        if stage_filter == "SUMMARY":
+            accel = sum(1 for t in themes if t.get("stage") == "Accelerating")
+            nascent = sum(1 for t in themes if t.get("stage") == "Nascent")
+            fading = sum(1 for t in themes if t.get("stage") == "Fading")
+            return self._ok(
+                request,
+                result=(
+                    f"🗂 *Themes — {today_str}*\n"
+                    f"{len(themes)} active · {accel} accelerating · {nascent} nascent · {fading} fading"
+                ),
+            )
+
+        all_tickers = list({tk for t in themes for tk in (t.get("tickers") or [])})
+        theme_rs_data, prior_scores = await asyncio.gather(
+            get_rs_for_tickers(today_str, all_tickers) if all_tickers else asyncio.sleep(0),
+            get_prior_theme_scores(today_str),
+        )
+        if theme_rs_data is None:
+            theme_rs_data = {}
+
+        scored_themes, _ = _compute_scored_themes(themes, theme_rs_data, prior_scores or {})
+
+        if stage_filter != "All":
+            scored_themes = [t for t in scored_themes if t.get("stage") == stage_filter]
+
+        if not scored_themes:
+            return self._ok(request, result=f"No {stage_filter} themes.")
+
+        lines = [f"*{stage_filter} Themes* ({len(scored_themes)})"]
+        for st in scored_themes[:15]:
+            emoji = STAGE_EMOJI.get(st["stage"], "")
+            conviction = _conviction_suffix(st)
+            lines.append(f"\n{emoji}*{st['name']}*{conviction}")
+            tickers = " · ".join((st.get("tickers") or [])[:4])
+            lines.append(f"  RS {int(st['comp'])}  {tickers}")
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
+        """Inline keyboard detail: /trades_detail {view} [{date}]"""
+        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+
+        parts = request.task.strip().split()
+        view = parts[1].lower() if len(parts) > 1 else "summary"
+        date_str = parts[2] if len(parts) > 2 else et_today().isoformat()
+
+        pool = await get_pool()
+
+        if view == "summary":
+            # Summary counts for both live and paper
+            async with pool.acquire() as conn:
+                live_open = await conn.fetchval(
+                    "SELECT COUNT(*) FROM mi_live_trades WHERE status = 'filled' AND remaining_shares > 0"
+                )
+                paper_open = await conn.fetchval(
+                    "SELECT COUNT(*) FROM mi_paper_trades WHERE status = 'open'"
+                )
+                live_pnl = await conn.fetchval(
+                    "SELECT COALESCE(SUM(total_pnl),0) FROM mi_live_trades WHERE status='filled' AND remaining_shares>0"
+                )
+            lines = [
+                f"📊 *Positions — {date_str}*",
+                f"{live_open} live open · {paper_open} paper open · ${live_pnl:+,.0f} unrealized (live)",
+            ]
+            return self._ok(request, result="\n".join(lines))
+
+        if view == "live":
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, alert_date, entry_price, remaining_shares,
+                           stop_price, total_pnl, hold_days, catalyst_quality
+                    FROM mi_live_trades
+                    WHERE status = 'filled' AND remaining_shares > 0
+                    ORDER BY alert_date ASC
+                """)
+            if not rows:
+                return self._ok(request, result="No open live positions.")
+            lines = [f"📊 *Live Positions* ({len(rows)})"]
+            for r in rows:
+                pnl = f"${r['total_pnl']:+,.0f}" if r['total_pnl'] else "—"
+                lines.append(
+                    f"\n• *{r['ticker']}* entry ${r['entry_price']:.2f} · "
+                    f"stop ${r['stop_price']:.2f} · {r['remaining_shares']} sh · P&L {pnl}"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        if view == "paper":
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, alert_date, last_entry_price, status, total_pnl, catalyst_quality
+                    FROM mi_paper_trades
+                    WHERE status != 'skipped'
+                    ORDER BY alert_date DESC LIMIT 15
+                """)
+            if not rows:
+                return self._ok(request, result="No paper trades recorded yet.")
+            lines = ["📋 *Paper Trades* (last 15)"]
+            for r in rows:
+                pnl_str = f"  P&L ${r['total_pnl']:+,.0f}" if r['status'] == 'closed' and r['total_pnl'] else ""
+                lines.append(
+                    f"  {r['alert_date']}  *{r['ticker']}*  {r['status']}{pnl_str}"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        if view == "closed":
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, total_pnl, hold_days, closed_at
+                    FROM mi_live_trades
+                    WHERE status = 'closed' AND closed_at::date = $1::date
+                    ORDER BY closed_at DESC
+                """, date_str)
+            if not rows:
+                return self._ok(request, result=f"No closed trades on {date_str}.")
+            total = sum(r["total_pnl"] or 0 for r in rows)
+            lines = [f"📊 *Closed {date_str}* — net ${total:+,.0f}"]
+            for r in rows:
+                lines.append(f"  *{r['ticker']}*  ${r['total_pnl']:+,.0f}  {r['hold_days']}d")
+            return self._ok(request, result="\n".join(lines))
+
+        return self._ok(request, result=f"Unknown view: {view}")
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
         import re as _re
@@ -2725,6 +2912,81 @@ class MarketIntelligenceAgent(BaseAgent):
             }],
         )
         return self._ok(request, result=response.content[0].text)
+
+
+async def _build_hud_text() -> str:
+    """Standalone HUD text builder — returns a plain str. Shared by _handle_hud and _hud_refresh_job."""
+    import asyncio as _aio
+    from agents.market_intelligence.db import (
+        get_active_themes,
+        get_today_9m_ep_alerts,
+        get_pending_9m_sugar_babies,
+    )
+    from agents.market_intelligence.collector import et_today, prev_trading_days
+    from agents.market_intelligence.scheduler import get_scheduler_status
+
+    today = et_today()
+    today_str = today.isoformat()
+    yesterday = prev_trading_days(1, from_date=today)[0]
+
+    regime, ep_alerts, ninem_alerts, sugar_babies, themes, clusters = await _aio.gather(
+        get_latest_regime(),
+        get_today_ep_alerts(today_str),
+        get_today_9m_ep_alerts(today_str),
+        get_pending_9m_sugar_babies(yesterday),
+        get_active_themes(),
+        get_correlation_clusters(today_str),
+        return_exceptions=True,
+    )
+
+    r = regime if isinstance(regime, dict) else {}
+    regime_name = r.get("regime", "Unknown")
+    qqq_ok = r.get("qqq_ema_bullish")
+    qqq_icon = "✅" if qqq_ok else ("❌" if qqq_ok is False else "❓")
+    ep_bar = r.get("ep_threshold", "?")
+    regime_date = r.get("regime_date")
+    data_age = f" · data {regime_date}" if regime_date else ""
+    regime_line = f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}{data_age}"
+
+    if isinstance(ep_alerts, list):
+        high_ct = sum(1 for a in ep_alerts if a.get("score_tier") == "HIGH")
+        mod_ct  = sum(1 for a in ep_alerts if a.get("score_tier") == "MODERATE")
+        ep_line = f"🎯 MAGNA53: *{high_ct} HIGH* · {mod_ct} MODERATE"
+    else:
+        ep_line = "🎯 MAGNA53: unavailable"
+
+    ninem_today = len(ninem_alerts) if isinstance(ninem_alerts, list) else "?"
+    ninem_d2    = len(sugar_babies)  if isinstance(sugar_babies, list)  else "?"
+    ninem_line  = f"🏦 9M EP: {ninem_today} intraday · {ninem_d2} Day 2 pending"
+
+    if isinstance(themes, list):
+        active_ct = len(themes)
+        accel_ct  = sum(1 for t in themes if t.get("stage") == "Accelerating")
+        fading_ct = sum(1 for t in themes if t.get("stage") == "Fading")
+        theme_line = f"🗂 Themes: {active_ct} active ({accel_ct} accelerating · {fading_ct} fading)"
+    else:
+        theme_line = "🗂 Themes: unavailable"
+
+    cluster_ct = len(clusters) if isinstance(clusters, list) else "?"
+    cluster_line = f"📊 Clusters: {cluster_ct} today"
+
+    sched = get_scheduler_status()
+    health_line = "⚙️ System: scheduler running" if sched.get("scheduler_running") else "⚠️ System: scheduler NOT running"
+
+    sep = "━━━━━━━━━━━━━━━━━━━━━"
+    now_et = today.strftime("%a %b %-d")
+    return "\n".join([
+        f"📡 *Apollo HUD* — {now_et}",
+        sep,
+        regime_line,
+        sep,
+        ep_line,
+        ninem_line,
+        theme_line,
+        cluster_line,
+        sep,
+        health_line,
+    ])
 
 
 # FastAPI app entry point

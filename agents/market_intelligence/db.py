@@ -527,6 +527,15 @@ async def initialize_schema() -> None:
                 WHERE NOT bypassed;
         """)
 
+        # ── HUD state — pinned message IDs for auto-refresh ──────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_hud_state (
+                key        TEXT PRIMARY KEY,
+                value      TEXT NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -3009,3 +3018,26 @@ async def get_paper_trade_stats() -> list[dict[str, Any]]:
             ORDER BY t.alert_date DESC
         """)
     return [dict(r) for r in rows]
+
+
+# ── HUD state ──────────────────────────────────────────────────────────────────
+
+async def get_hud_state(key: str) -> str | None:
+    """Return a stored HUD state value, or None if not set."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        val = await conn.fetchval(
+            "SELECT value FROM mi_hud_state WHERE key = $1", key
+        )
+    return val or None
+
+
+async def set_hud_state(key: str, value: str) -> None:
+    """Upsert a HUD state key/value pair."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_hud_state (key, value, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
+        """, key, value)

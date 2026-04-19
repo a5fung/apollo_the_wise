@@ -9,7 +9,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Optional
 
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -767,6 +767,194 @@ class TelegramChannel:
 
         await self._reply(update, result)
 
+    async def _handle_eps_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """/eps — compact summary with [View HIGH] [View MODERATE] drill-down buttons."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        import httpx
+        from datetime import date
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        today_str = date.today().isoformat()
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task=f"/eps_detail SUMMARY {today_str}",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                summary_text = resp.json().get("result") or "No EP data."
+        except Exception as e:
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("View HIGH", callback_data=f"eps:HIGH:{today_str}"),
+                InlineKeyboardButton("View MODERATE", callback_data=f"eps:MODERATE:{today_str}"),
+            ]
+        ])
+        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+
+    async def _handle_themes_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """/themes — compact summary with stage drill-down buttons."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task="/themes_detail SUMMARY",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                summary_text = resp.json().get("result") or "No theme data."
+        except Exception as e:
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Accelerating", callback_data="themes:Accelerating"),
+                InlineKeyboardButton("Nascent", callback_data="themes:Nascent"),
+                InlineKeyboardButton("All Active", callback_data="themes:All"),
+            ]
+        ])
+        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+
+    async def _handle_trades_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """/trades — compact summary with [Live Positions] [Paper Trades] [Closed Today] buttons."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        import httpx
+        from datetime import date
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        today_str = date.today().isoformat()
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task=f"/trades_detail summary {today_str}",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                summary_text = resp.json().get("result") or "No trade data."
+        except Exception as e:
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Live Positions", callback_data="trades:live"),
+                InlineKeyboardButton("Paper Trades", callback_data="trades:paper"),
+                InlineKeyboardButton("Closed Today", callback_data=f"trades:closed:{today_str}"),
+            ]
+        ])
+        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+
+    async def _handle_hud_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """/hud — sends HUD, pins it, and stores the message ID for hourly auto-refresh."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        import uuid, httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task="/hud",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json().get("result") or "No response."
+        except Exception as e:
+            logger.error(f"/hud failed: {e}")
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        sent_msg = await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+
+        # Pin the message (shows system notification in chat — expected)
+        try:
+            await self._app.bot.pin_chat_message(
+                update.effective_chat.id, sent_msg.message_id, disable_notification=True
+            )
+        except Exception as e:
+            logger.warning(f"/hud pin failed (non-fatal): {e}")
+
+        # Store IDs in market agent so hourly job can edit the message
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                await client.post(
+                    f"{url}/hud/pin",
+                    json={"chat_id": update.effective_chat.id, "message_id": sent_msg.message_id},
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+        except Exception as e:
+            logger.warning(f"/hud/pin store failed (non-fatal): {e}")
+
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -946,7 +1134,6 @@ class TelegramChannel:
                 result = await handle_callback(callback_data, user_id=user_id)
                 action = result.get("action", result.get("error", "unknown"))
                 await query.answer(f"Trade {action}")
-                # Edit the original message to show the result
                 if "confirm" in callback_data:
                     await query.edit_message_reply_markup(reply_markup=None)
                 elif "skip" in callback_data:
@@ -954,8 +1141,75 @@ class TelegramChannel:
             except Exception as e:
                 logger.error(f"Callback handling failed: {e}")
                 await query.answer(f"Error: {e}")
+
+        elif callback_data.startswith(("eps:", "themes:", "trades:")):
+            await query.answer()
+            await self._handle_drill_down_callback(query, callback_data)
+
         else:
             await query.answer("Unknown action")
+
+    # ── Inline keyboard drill-down callbacks ──────────────────────────────────
+
+    async def _handle_drill_down_callback(self, query, callback_data: str) -> None:
+        """Handle eps:/themes:/trades: drill-down button presses."""
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await query.edit_message_text("Market agent not available.")
+            return
+
+        parts = callback_data.split(":", 2)
+        prefix = parts[0]  # eps, themes, trades
+
+        # Determine the sub-command task to send to the market agent
+        if prefix == "eps":
+            tier = parts[1] if len(parts) > 1 else "HIGH"
+            date_str = parts[2] if len(parts) > 2 else ""
+            task = f"/eps_detail {tier} {date_str}".strip()
+        elif prefix == "themes":
+            stage = parts[1] if len(parts) > 1 else "All"
+            task = f"/themes_detail {stage}"
+        else:  # trades
+            view = parts[1] if len(parts) > 1 else "summary"
+            date_str = parts[2] if len(parts) > 2 else ""
+            task = f"/trades_detail {view} {date_str}".strip()
+
+        user_id = query.from_user.id if query.from_user else 0
+        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json().get("result") or "No data."
+        except Exception as e:
+            logger.error(f"Drill-down callback failed: {e}")
+            result = f"Error: {e}"
+
+        # Back button returns to summary
+        if prefix == "eps" and parts[1] != "SUMMARY":
+            date_str = parts[2] if len(parts) > 2 else ""
+            back_data = f"eps:SUMMARY:{date_str}"
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("← Summary", callback_data=back_data)]])
+        elif prefix == "themes" and parts[1] != "All":
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("← All Themes", callback_data="themes:All")]])
+        elif prefix == "trades" and parts[1] != "summary":
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("← Summary", callback_data="trades:summary")]])
+        else:
+            markup = None
+
+        try:
+            await query.edit_message_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+        except Exception as e:
+            logger.warning(f"edit_message_text failed, sending new: {e}")
+            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
@@ -1091,9 +1345,14 @@ class TelegramChannel:
         app.add_handler(CommandHandler("status", self._handle_status))
         app.add_handler(CommandHandler("spend", self._handle_spend))
         app.add_handler(CommandHandler("rules", self._handle_rules))
-        app.add_handler(CommandHandler("trades", self._handle_trades))
-        # Market-intelligence slash commands — bypass orchestrator LLM
-        for _cmd in ("hud", "eps", "9m", "themes", "clusters", "regime", "positions"):
+        app.add_handler(CommandHandler("trades", self._handle_trades_command))
+        # /hud gets a specialized handler — it pins the message and stores the ID
+        app.add_handler(CommandHandler("hud", self._handle_hud_command))
+        # /eps and /themes send compact summary + drill-down buttons
+        app.add_handler(CommandHandler("eps", self._handle_eps_command))
+        app.add_handler(CommandHandler("themes", self._handle_themes_command))
+        # All other market-intelligence slash commands — bypass orchestrator LLM
+        for _cmd in ("9m", "clusters", "regime", "positions", "pregame"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1119,13 +1378,14 @@ class TelegramChannel:
         from telegram import BotCommand
         commands = [
             BotCommand("hud",       "Status snapshot: regime, EPs, 9M, themes, clusters"),
-            BotCommand("eps",       "Today's EP alerts (MAGNA53)"),
+            BotCommand("pregame",   "Trade shortlist: regime, hot themes, HIGH EPs, watchlist MAs"),
+            BotCommand("eps",       "Today's EP alerts (MAGNA53) — tap to drill down"),
             BotCommand("9m",        "9M EP alerts and Day 2 sugar babies"),
-            BotCommand("themes",    "Active theme summary"),
+            BotCommand("themes",    "Active theme summary — tap to drill down by stage"),
             BotCommand("clusters",  "Correlation clusters (beta-adjusted)"),
             BotCommand("regime",    "Current market regime and breadth"),
             BotCommand("positions", "Watchlist and tracked positions"),
-            BotCommand("trades",    "Paper & live trade positions + P&L"),
+            BotCommand("trades",    "Trade positions + P&L — tap to drill down"),
             BotCommand("status",    "System health, agents, market pipeline"),
             BotCommand("spend",     "API spend today & this month"),
             BotCommand("rules",     "EP trading rules (Qullamaggie v2)"),

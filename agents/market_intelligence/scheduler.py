@@ -775,6 +775,28 @@ async def check_missed_jobs() -> None:
             await _evening_briefing_job()
 
 
+async def _hud_refresh_job() -> None:
+    """Edit the pinned HUD message in-place with fresh data (market hours only)."""
+    from agents.market_intelligence.db import get_hud_state, set_hud_state
+    from agents.market_intelligence.briefing import edit_telegram_message
+    from agents.market_intelligence.agent import _build_hud_text
+
+    chat_id_str = await get_hud_state("hud_chat_id")
+    message_id_str = await get_hud_state("hud_message_id")
+    if not chat_id_str or not message_id_str:
+        return
+
+    try:
+        text = await _build_hud_text()
+        ok = await edit_telegram_message(int(chat_id_str), int(message_id_str), text)
+        if not ok:
+            # Message was deleted — clear stored IDs so next /hud command re-pins
+            await set_hud_state("hud_chat_id", "")
+            await set_hud_state("hud_message_id", "")
+    except Exception as e:
+        logger.error(f"HUD refresh failed: {e}", exc_info=True)
+
+
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
@@ -942,6 +964,15 @@ def start_scheduler() -> AsyncIOScheduler:
         _9m_day2_orb_job,
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="9m_day2_orb",
+        replace_existing=True,
+    )
+
+    # HUD auto-refresh: hourly during market hours — edits the pinned message in-place.
+    # Weekdays only; outside market hours /hud works on-demand but the scheduler doesn't push.
+    _scheduler.add_job(
+        _hud_refresh_job,
+        CronTrigger(hour="9-15", minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="hud_refresh",
         replace_existing=True,
     )
 

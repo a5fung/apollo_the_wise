@@ -1416,6 +1416,33 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
         return False
 
 
+async def edit_telegram_message(
+    chat_id: int, message_id: int, text: str, parse_mode: str = "Markdown"
+) -> bool:
+    """Edit an existing Telegram message in-place. Returns False if the message was deleted."""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        logger.error("TELEGRAM_BOT_TOKEN not set")
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/editMessageText",
+                json={
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "text": text[:4096],
+                    "parse_mode": parse_mode,
+                    "disable_web_page_preview": True,
+                },
+            )
+            r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Telegram edit failed (chat={chat_id} msg={message_id}): {e}")
+        return False
+
+
 async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     """Send an immediate EP alert to Telegram."""
     tier_e = TIER_EMOJI.get(ep.get("score_tier", ""), "")
