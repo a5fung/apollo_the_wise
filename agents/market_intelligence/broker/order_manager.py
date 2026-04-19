@@ -843,6 +843,18 @@ async def prepare_9m_day2_orb_order(
         return None
 
     risk_per_share = orb_high - prior_day_low
+
+    # Opening auction can print an orb_high very close to prior_day_low, making
+    # risk_per_share near-zero. Without a floor, shares = risk_dollars / ~0 → huge
+    # number that silently hits the 20% equity cap — wrong size for a 0-risk stop.
+    min_risk = orb_high * 0.02
+    if risk_per_share < min_risk:
+        logger.warning(
+            f"9M Day2 {ticker}: risk_per_share ${risk_per_share:.2f} below 2% floor "
+            f"(${min_risk:.2f}) — enforcing floor to prevent oversizing"
+        )
+        risk_per_share = min_risk
+
     if (risk_per_share / orb_high) > 0.15:
         logger.warning(
             f"9M Day2 {ticker}: stop distance {risk_per_share/orb_high:.1%} > 15% — too wide, skipping"
