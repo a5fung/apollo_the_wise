@@ -2509,6 +2509,22 @@ async def get_open_live_trades() -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+async def get_9m_live_trades(days: int = 90) -> list[dict[str, Any]]:
+    """Fetch live trades placed via the 9M Day 2 ORB system (catalyst_quality='9m_volume')."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, status, entry_price, entry_shares,
+                   stop_price, orb_high, orb_low, total_pnl, gap_pct,
+                   remaining_shares, filled_at, closed_at, created_at
+            FROM mi_live_trades
+            WHERE catalyst_quality = '9m_volume'
+              AND created_at >= NOW() - ($1 || ' days')::interval
+            ORDER BY created_at DESC
+        """, str(days))
+    return [dict(r) for r in rows]
+
+
 async def get_live_trading_summary() -> dict[str, Any]:
     """Get summary of all live trades for reporting."""
     pool = await get_pool()

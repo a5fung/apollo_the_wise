@@ -58,6 +58,14 @@ async def run_outcome_tracker(trade_date: date | None = None) -> dict:
     except Exception as e:
         logger.error(f"Theme outcomes failed: {e}")
 
+    try:
+        n = await _compute_9m_ep_outcomes(today)
+        total += n
+        if n:
+            logger.info(f"Outcome tracker: {n} 9M EP outcomes computed")
+    except Exception as e:
+        logger.error(f"9M EP outcomes failed: {e}")
+
     return {"total": total, "trade_date": today.isoformat()}
 
 
@@ -329,6 +337,81 @@ async def _compute_theme_outcomes(today: date) -> int:
             }
             await upsert_signal_outcome(record)
             count += 1
+
+    return count
+
+
+async def _compute_9m_ep_outcomes(today: date) -> int:
+    """
+    For confirmed 9M sugar babies at various ages, compute forward returns.
+    1D: babies from yesterday. 1W: ~7 days ago. 1M: ~30 days ago.
+    Writes to mi_signal_outcomes with signal_type='9m_ep'.
+    """
+    pool = await get_pool()
+    count = 0
+
+    async with pool.acquire() as conn:
+        for offset_days, fwd_field in [
+            (_1D_OFFSET, "fwd_1d_pct"),
+            (_1W_OFFSET, "fwd_1w_pct"),
+            (_1M_OFFSET, "fwd_1m_pct"),
+        ]:
+            baby_date_approx = today - timedelta(days=offset_days)
+
+            babies = await conn.fetch("""
+                SELECT ticker, alert_date, volume, close_in_range_pct, gap_pct
+                FROM mi_9m_sugar_babies
+                WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '3 days'
+            """, baby_date_approx)
+            if not babies:
+                continue
+
+            for baby in babies:
+                ticker = baby["ticker"]
+                alert_date = baby["alert_date"]
+
+                existing = await conn.fetchrow("""
+                    SELECT {fwd} FROM mi_signal_outcomes
+                    WHERE signal_type = '9m_ep' AND signal_date = $1
+                      AND identifier = $2 AND {fwd} IS NOT NULL
+                """.format(fwd=fwd_field), alert_date, ticker)
+                if existing:
+                    continue
+
+                alert_close = await conn.fetchval("""
+                    SELECT close FROM mi_daily_closes
+                    WHERE trade_date = $1 AND ticker = $2 AND close > 0
+                """, alert_date, ticker)
+                if not alert_close:
+                    continue
+
+                today_close_row = await conn.fetchrow("""
+                    SELECT close FROM mi_daily_closes
+                    WHERE ticker = $1 AND trade_date <= $2
+                      AND trade_date >= $2 - INTERVAL '3 days'
+                      AND close > 0
+                    ORDER BY trade_date DESC LIMIT 1
+                """, ticker, today)
+                if not today_close_row:
+                    continue
+
+                fwd_pct = round(
+                    (today_close_row["close"] - alert_close) / alert_close * 100, 2
+                )
+
+                record = {
+                    "signal_type": "9m_ep",
+                    "signal_date": alert_date,
+                    "identifier": ticker,
+                    "detail": {
+                        "volume": baby["volume"],
+                        "close_in_range_pct": baby["close_in_range_pct"],
+                        "gap_pct": baby.get("gap_pct"),
+                    },
+                    fwd_field: fwd_pct,
+                }
+                await upsert_signal_outcome(record)
+                count += 1
 
     return count
 

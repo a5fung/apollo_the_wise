@@ -24,6 +24,7 @@ from agents.market_intelligence.db import (
     get_today_9m_ep_alerts,  # noqa: F401 — re-exported for agent.py convenience
     insert_9m_ep_alert,
     insert_9m_sugar_baby,
+    log_audit_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,6 +147,11 @@ async def run_9m_scan() -> list[dict]:
         msg = f"{label}: `{ticker}` — Vol: {vol_str} | ${current_price:.2f} | +{gap_pct:.1f}%"
         await send_telegram_message(msg)
         logger.info(f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f}")
+        await log_audit_event(
+            "9m_ep_detected",
+            f"{ticker} vol={today_volume/1_000_000:.1f}M price=${current_price:.2f} gap={gap_pct:.1f}%",
+            f"is_anticipation={is_anticipation} projected={projected_vol}",
+        )
 
     return new_alerts
 
@@ -199,6 +205,11 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
         count += 1
 
     logger.info(f"9M EOD sweep {trade_date_str}: {count} sugar babies confirmed")
+    if count:
+        await log_audit_event(
+            "9m_sugar_babies_confirmed",
+            f"{count} sugar babies on {trade_date_str}",
+        )
     return count
 
 

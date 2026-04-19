@@ -500,6 +500,10 @@ class MarketIntelligenceAgent(BaseAgent):
                                     "9m track", "sugar outcome"]):
             return await self._handle_9m_ep_outcomes(request)
 
+        # 9M trades — live/paper trade log for 9M system
+        if any(k in task for k in ["9m trade", "9m position", "trade 9m", "show 9m trade"]):
+            return await self._handle_9m_trades(request)
+
         # 9M EP query — specific phrases avoid false match on e.g. "9 months of history"
         if (
             any(k in task for k in ["9m ep", "sugar baby", "sugar babies", "nine million"])
@@ -971,6 +975,80 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append(
                 f"{status_icon} `{b['ticker']}` {b['alert_date']} — "
                 f"Vol {vol_m:.1f}M | Range {rp}% | {b.get('day2_status', 'unknown')}"
+            )
+
+        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+
+    async def _handle_9m_trades(self, request: AgentRequest) -> AgentResponse:
+        """
+        Show 9M Day 2 ORB trade log, or manually trigger a Day 2 trade for a ticker.
+        Commands:
+          '9m trades [Nd]'    — show recent 9M trades
+          'trade 9m TICKER'   — manually queue Day 2 ORB for TICKER
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_9m_live_trades
+
+        task = request.task.lower()
+
+        # Manual trigger: 'trade 9m TICKER'
+        manual_match = _re.search(r'trade\s+9m\s+([A-Z]{1,5})', request.task.upper())
+        if manual_match:
+            ticker = manual_match.group(1)
+            from agents.market_intelligence.db import get_pending_9m_sugar_babies
+            from agents.market_intelligence.collector import et_today, prev_trading_days
+            from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
+
+            today = et_today()
+            yesterday = prev_trading_days(1, from_date=today)[0]
+            candidates = await get_pending_9m_sugar_babies(yesterday)
+            match = next((c for c in candidates if c["ticker"] == ticker), None)
+            if not match:
+                return AgentResponse(
+                    task_id=request.task_id,
+                    result=f"No pending 9M sugar baby for {ticker} from {yesterday}. "
+                           f"Check 'show 9m' for available candidates.",
+                )
+            result = await submit_9m_day2_trade(match)
+            action = result.get("action", "unknown")
+            return AgentResponse(
+                task_id=request.task_id,
+                result=f"9M Day2 `{ticker}`: {action}" + (
+                    f" (trade_id={result['trade_id']})" if result.get("trade_id") else ""
+                ),
+            )
+
+        # Trade log view
+        m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
+        days = min(int(m.group(1)), 180) if m else 30
+
+        trades = await get_9m_live_trades(days=days)
+
+        if not trades:
+            return AgentResponse(
+                task_id=request.task_id,
+                result=f"No 9M EP trades in the last {days}d.",
+            )
+
+        open_t = [t for t in trades if t["status"] == "filled"]
+        closed_t = [t for t in trades if t["status"] == "closed"]
+        total_pnl = sum(t["total_pnl"] or 0 for t in closed_t)
+        winners = sum(1 for t in closed_t if (t["total_pnl"] or 0) > 0)
+
+        lines = [f"*9M EP Trades — last {days}d*\n"]
+        lines.append(
+            f"Total: {len(trades)} | Open: {len(open_t)} | Closed: {len(closed_t)} | "
+            f"Winners: {winners} | P&L: ${total_pnl:+.0f}\n"
+        )
+
+        for t in trades[:20]:
+            status_icon = {"filled": "🟢", "closed": "⚪", "skipped": "⏭️",
+                           "cancelled": "❌"}.get(t["status"], "❓")
+            pnl_str = f" P&L: ${t['total_pnl']:+.0f}" if t.get("total_pnl") else ""
+            lines.append(
+                f"{status_icon} `{t['ticker']}` {t['alert_date']} — "
+                f"Entry ${t['entry_price'] or 0:.2f} | Stop ${t['stop_price'] or 0:.2f}"
+                f"{pnl_str} | {t['status']}"
             )
 
         return AgentResponse(task_id=request.task_id, result="\n".join(lines))
