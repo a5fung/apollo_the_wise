@@ -63,6 +63,9 @@ shared/        models.py, registry.py, secrets.py
 Order matters — first match wins:
 1. watchlist / 2. theme engine rerun / 3. refresh / 4. history
 5. EP outcomes ("ep outcome", "ep performance", "ep returns", "ep results")
+5a. **9M EP outcomes** ("9m outcome", "9m performance", "9m result", "sugar outcome") — before 9M query
+5b. **9M trades** ("9m trade", "9m position", "trade 9m", "show 9m trade")
+5c. **9M EP query** ("9m ep", "sugar baby", "sugar babies", "nine million", "show 9m", bare "9m")
 6. EP ("ep", "episodic", "gap", "pivot", "gapper")
 7. journal add ("journal:", "log trade") / journal query ("show journal", "my journal")
 8. theme ("theme", "sector", "industry") — before regime/RS
@@ -98,6 +101,16 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
 - HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
+
+### 9M EP Detection (Parallel Track)
+- **No LLM, no gap requirement** — volume ≥ 8.9M = institutional repositioning confirmed
+- **Projection gate**: same 15-min rule as MAGNA53 — projected vol only computed after 9:45 AM
+- **Sugar Baby** = 9M day + green (close > open) + close in top 25% of range → Day 2 ORB candidate
+- **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_sugar_babies` (EOD confirmed)
+- **`mi_daily_closes`** now has `open_price`, `high_price`, `low_price` — required for sugar baby filter
+- **`ingest_daily_closes()`** stores o/h/l from Polygon grouped daily payload with COALESCE guard
+- Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
 ### Error Alerting
 - Silent failures in theme engine now write to `mi_audit_log` with event types: `validation_error`, `assignment_error`, `discovery_error`
@@ -143,6 +156,42 @@ ANTHROPIC_API_KEY, POLYGON_API_KEY, GEMINI_API_KEY, TAVILY_API_KEY
 ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 ```
+
+## Changes Made 2026-04-19
+
+### 9M EP System (Pradeep Bonde "9M" tactic)
+
+Completely parallel EP track — zero changes to existing MAGNA53 logic.
+
+**New file:** `agents/market_intelligence/ninem_detector.py` — intraday scan (`run_9m_scan()`) + EOD sweep (`run_9m_eod_sweep()`)
+
+**DB additions (`db.py`):**
+- `mi_daily_closes` gains `open_price`, `high_price`, `low_price` (ALTER TABLE, COALESCE-guarded upsert)
+- `mi_9m_ep_alerts` — intraday detection log; `UNIQUE (ticker, alert_date)`
+- `mi_9m_sugar_babies` — EOD Day 2 watchlist; `UNIQUE (ticker, alert_date)`; `day2_status`: pending/traded/skipped
+- New functions: `insert_9m_ep_alert`, `get_today_9m_ep_alerts`, `insert_9m_sugar_baby`, `get_eod_9m_sugar_babies`, `get_pending_9m_sugar_babies`, `update_9m_sugar_baby_status`, `get_9m_ep_history`, `get_9m_live_trades`
+
+**Broker (new functions only, no modifications to existing):**
+- `order_manager.py`: `prepare_9m_day2_orb_order()` — stop = prior day's low (not ATR-based)
+- `live_tracker.py`: `submit_9m_day2_trade()` — auto-enters paper, proposes in live
+
+**Scheduler:** `9m_ep_scan` (every 5 min 9:30–4 PM), `9m_day2_orb` (9:31 AM). EOD sweep inside `_nightly_data_pull()`.
+
+**Agent routing:** `_handle_9m_ep_query`, `_handle_9m_ep_outcomes`, `_handle_9m_trades` (includes "trade 9m TICKER" manual trigger)
+
+**Outcome tracking:** `_compute_9m_ep_outcomes()` in `outcome_tracker.py` — 1D/1W/1M returns → `mi_signal_outcomes` with `signal_type='9m_ep'`
+
+**Scripts:** `scripts/backtest_9m_ep.py` (D1/D5/D10/D21 by vol/range bucket), `scripts/test_9m_ep_e2e.py` (e2e test)
+
+**Key rules:**
+- Volume ≥ 8.9M (actual) or ≥ 12M projected (after 15 min) = signal
+- Sugar Baby = 9M day + green + close top 25% of range
+- Stop = prior day's low; shared 4-position cap with MAGNA53
+
+### Files Changed
+`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/backtest_9m_ep.py` (new), `scripts/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `CLAUDE.md`
+
+---
 
 ## Changes Made 2026-04-17
 

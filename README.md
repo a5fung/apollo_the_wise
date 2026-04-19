@@ -17,6 +17,9 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "Send evening briefing" | Regime + RS leaders + active themes + MA pullbacks |
 | "Send morning briefing" | EP alerts recap + regime context (pre-market) |
 | "Any EPs today?" | EP alerts with MAGNA53 score, catalyst quality, Gemini cross-validation |
+| "9m" / "show 9m" | 9M EP intraday detections + today's sugar babies (Day 2 ORB watchlist) |
+| "9m trades" | Day 2 ORB trade log with P&L for 9M entries |
+| "9m performance" | Sugar baby history: volume, range quality, Day 2 outcome |
 | "What's the market regime?" | Bull/Choppy/Correcting/Crisis + VIX + breadth + MA context |
 | "Top RS stocks" | Momentum leaders ranked by 1M/3M/6M composite RS |
 | "What themes are active?" | Persistent themes with lifecycle stage + constituent stocks |
@@ -29,28 +32,31 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | Any stock/investment question | Apollo consults market agent before answering |
 
 **Two daily briefings (automatic):**
-- **5:00 PM PT (8 PM ET)** — Evening briefing: full EOD review package. Sent after close when you sit down to review charts.
+- **5:00 PM PT (8 PM ET)** — Evening briefing: full EOD review package. Sent after close when you sit down to review charts. Includes 🍭 Sugar Babies section if any confirmed 9M days.
 - **6:00 AM PT (9 AM ET)** — Morning briefing: EP recap + regime context, 30 min before open.
 - HIGH EP alerts fire in real-time during pre-market scan (4–6:30 AM PT). No waiting for briefing.
+- 🏦 9M EP alerts fire in real-time during market hours when a stock crosses the 9M share threshold.
 
 ### Paper Trading (Alpaca)
 
-Apollo runs semi-automated paper trading via Alpaca to validate EP signals with real market execution.
+Apollo runs semi-automated paper trading via Alpaca. Two independent systems share the same position limits and safeguards.
 
 | Feature | How it works |
 |---|---|
-| ORB entry (pre-market HIGHs) | Pre-market HIGH alerts subscribe to Alpaca bar WebSocket. First bar close at 9:30:59 → order placed at 9:31:00 |
+| **MAGNA53 EP entries** | Pre-market HIGH alerts subscribe to Alpaca bar WebSocket. First bar close at 9:30:59 → order placed at 9:31:00 |
 | ORB entry (post-open HIGHs) | 9:31 AM scan finds new HIGHs → ORB order placed inline |
 | ORB fallback | If bar stream misses a pre-market HIGH, 9:31 scan fires `_orb_monitor_job` as safety net |
-| Stop width validation | `validate_orb_entry(orb_high, orb_low, atr_14)` — single shared rule used by both EOD sim and live Alpaca path. ORB range must be ≤ 1.5x ATR-14. |
-| M&A hard filter | Definitive agreement / tender offer / going-private catalysts classified as `mna` → hard skip before scoring |
-| 11 AM cutoff | Re-entry after stop-out only before 11 AM ET — after that, the trade is closed |
-| Auto-confirm | Paper mode bypasses Telegram confirmation — trades execute automatically |
+| Stop width validation | `validate_orb_entry(orb_high, orb_low, atr_14)` — single shared rule. ORB range must be ≤ 1.5x ATR-14. |
+| M&A hard filter | Definitive agreement / tender offer → classified `mna` → hard skip before scoring |
+| 11 AM cutoff | Re-entry after stop-out only before 11 AM ET |
+| **9M EP Day 2 entries** | Sugar babies from the prior day → ORB entry at 9:31 AM. Stop = prior day's low (institutional wall), not ATR. Auto-enters in paper mode. |
+| Auto-confirm | Paper mode bypasses Telegram confirmation — both systems execute automatically |
 | Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
-| Position tracking | `/trades` command — entry/stop once + per-attempt timestamps (`#1 09:31 → 10:00 (stop_hit) P&L $-635`) |
-| Safeguards | Max 4 positions, 2% daily loss limit, 3-loss circuit breaker |
+| Position tracking | `9m trades` / `trades` command — log with P&L per trade |
+| Safeguards | Max 4 positions (shared across both systems), 2% daily loss limit, 3-loss circuit breaker |
 | Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions |
 | EOD cleanup | 4:05 PM — cancel unfilled entries, sync positions with Alpaca |
+| Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS` in `constants.py` |
 
 **Status:** Paper trading live on Alpaca paper account ($100K). Collecting data to validate before real money.
 
@@ -148,7 +154,35 @@ List exclusions                                     → see all active bans
 Remove exclusion CAR from [theme name]              → undo ban
 ```
 
-### EP Detection
+### 9M EP Detection
+
+A parallel, LLM-free EP track based on Pradeep Bonde's "9M" tactic. Volume is the catalyst — ≥8.9M shares on a single day signals institutional repositioning confirmed, no news needed.
+
+**Two signals:**
+- **9M actual** — today's volume crosses 8.9M shares → Telegram `🏦 9M EP` alert fires immediately
+- **9M pace** — projected volume ≥ 12M based on rate (only after 15 min since open, avoids opening-minute noise)
+
+**Sugar Babies** — stocks completing a 9M day with a strong close:
+- Volume ≥ 9M shares
+- Close > Open (green day)
+- Close in top 25% of daily range: `(close - low) / (high - low) ≥ 0.75`
+- Price ≥ $3.00
+
+Sugar Babies appear in the evening briefing as Day 2 ORB candidates. At 9:31 AM next morning, Apollo automatically places ORB entries for each one (paper mode). Stop = prior day's low (the institutional volume wall), not ATR-based.
+
+**From Telegram:**
+```
+9m                   → today's intraday detections + pending Day 2 watchlist
+9m performance       → sugar baby history + Day 2 outcome rates
+9m trades [30d]      → Day 2 ORB trade log with P&L
+trade 9m TICKER      → manually queue a Day 2 entry for a specific ticker
+```
+
+**Scan schedule:** Every 5 minutes, 9:30 AM – 4:00 PM ET.
+
+---
+
+### EP Detection (MAGNA53)
 
 MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 
@@ -240,6 +274,8 @@ Critical engine events are written to `mi_audit_log` and queryable from Telegram
 | `orb_triggered` | ORB order placed for an EP alert |
 | `orb_filtered` | ORB skipped (stop too wide, ADV too low, etc.) |
 | `orb_no_bar` | Bar data unavailable at entry time |
+| `9m_ep_detected` | Intraday 9M volume threshold crossed — ticker, volume, price |
+| `9m_sugar_babies_confirmed` | EOD sweep confirmed N sugar babies for Day 2 watchlist |
 
 **From Telegram:**
 ```
@@ -257,16 +293,18 @@ Show logs excluded → exclusion events
 
 | Time (ET) | Time (PT) | What |
 |---|---|---|
-| 7:00 AM | 4:00 AM | EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions |
+| 7:00 AM | 4:00 AM | MAGNA53 EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
-| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs |
+| 9:30 AM | 6:30 AM | 9M EP intraday scan starts (every 5 min) |
+| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs; 9M Day 2 ORB entries placed |
 | 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions |
 | 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
-| 10:00 AM | 7:00 AM | EP scan stops |
+| 10:00 AM | 7:00 AM | MAGNA53 EP scan stops |
+| 4:00 PM | 1:00 PM | 9M EP intraday scan stops |
 | 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
-| 4:30 PM | 1:30 PM | Data pull — RS engine + regime + themes (right after close) |
+| 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
-| 8:00 PM | 5:00 PM | Evening briefing → Telegram |
+| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies section if any) |
 
 ---
 
@@ -307,11 +345,13 @@ Apollo_Assistant/
 │       ├── constants.py             # Shared constants (skip lists, sector filters, trimmed_mean)
 │       ├── rs_engine.py             # RS scoring + MA computation + single-ticker score
 │       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Gemini
+│       ├── ninem_detector.py        # 9M EP scanner + EOD sugar baby sweep
 │       ├── regime.py                # Market regime engine
 │       ├── briefing.py              # Evening + morning briefing formatters
 │       ├── theme_engine.py          # Theme discovery + deduplication + lifecycle
 │       ├── scheduler.py             # APScheduler jobs (4:30pm data, 8pm evening, 9am morning)
 │       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
+│       ├── outcome_tracker.py       # Nightly forward return computation (RS/EP/9M → mi_signal_outcomes)
 │       ├── screener.py              # Composite screener (RS + theme + fundamentals)
 │       ├── universe.py              # Curated universe with company descriptions
 │       ├── trading_calendar.py      # NYSE holiday calendar (exchange-calendars lib, offline)
@@ -338,6 +378,9 @@ Apollo_Assistant/
 │   ├── secrets.py                   # Secrets access
 │   └── registry.py                  # Agent URL registry
 ├── integrations.yaml                # Agent URL config
+├── scripts/
+│   ├── backtest_9m_ep.py            # 9M EP historical backtest (D1/D5/D10/D21 returns by vol/range bucket)
+│   └── backtest_clusters.py         # Correlation cluster precision/recall backtest
 ├── start.sh                         # Start Apollo locally
 └── start_market.sh                  # Start market agent locally
 ```
@@ -410,6 +453,9 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 ## Backlog / Upgrade Path
 
 ### Recently completed (April 2026)
+- ✅ **9M EP system** — parallel LLM-free EP track (Pradeep Bonde "9M" tactic). Intraday scan, sugar baby EOD sweep, Day 2 ORB auto-entry, evening briefing section, outcome tracking, backtest script (`scripts/backtest_9m_ep.py`)
+- ✅ Correlation clustering — BFS connected components on beta-adjusted returns, fed into theme discovery as early signals (`show clusters`)
+- ✅ Validation cooldowns — 14-day re-assignment ban after validation removal; `show cooldowns`, `bypass cooldown TICKER`
 - ✅ Real-time ORB entry via Alpaca bar WebSocket (pre-market HIGH → subscribed → order at 9:30:59)
 - ✅ Single shared ORB stop-width rule (`validate_orb_entry`) — EOD sim and live path structurally identical
 - ✅ M&A hard filter — definitive agreement / tender offer → skip before scoring

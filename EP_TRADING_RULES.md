@@ -202,6 +202,82 @@ Files: `agents/market_intelligence/backtester/`
 
 ---
 
+---
+
+## Part G — 9M EP System (Pradeep Bonde)
+
+A parallel, LLM-free EP track. Volume alone is the catalyst — no gap minimum, no news requirement.
+
+### G1. Premise
+
+Pradeep Bonde's "9M" tactic: if a stock trades ≥ 9 million shares in a single day, institutional repositioning is confirmed. This replaces catalyst scoring — volume IS the signal.
+
+### G2. Intraday Detection Thresholds
+
+| Signal | Threshold | Notes |
+|--------|-----------|-------|
+| Actual | Volume ≥ 8.9M shares | Fires immediately |
+| Anticipation (Pace) | Projected ≥ 12M shares | Only after 15 min since open (avoids opening-minute noise) |
+| Min price | $3.00 | Skip sub-$3 tickers |
+| Gap direction | Gap ≥ 0% | Declining gaps excluded |
+
+Projection formula: `projected = today_volume × (390 / minutes_since_open)`
+
+### G3. Sugar Baby Criteria (EOD)
+
+A Sugar Baby is a stock completing a 9M day with a strong close — indicating buyers held control through the close:
+
+| Criterion | Rule |
+|-----------|------|
+| Volume | ≥ 9M shares (confirmed, not projected) |
+| Close | ≥ $3.00 |
+| Direction | Close > Open (green day) |
+| Range quality | `(close - low) / (high - low) ≥ 0.75` (close in upper 25% of range) |
+
+Sugar Babies appear in the evening briefing as Day 2 ORB candidates. EOD sweep runs after the nightly data pull (~5 PM ET).
+
+### G4. Day 2 ORB Entry
+
+- **Entry trigger:** Next day's opening range high (first bar high, same as MAGNA53 B1)
+- **Stop:** Prior day's low (the 9M breakout day's low) — this is the institutional accumulation wall
+- **Stop width:** If `(orb_high - prior_day_low) / orb_high > 15%`, skip the trade (stop too wide)
+- **Position sizing:** Same 1% account risk formula as MAGNA53 (B7); half risk if QQQ 10 EMA < 20 EMA
+- **Max position size:** 20% of account
+- **Auto-execution:** 9:31 AM (paper mode auto-enters; live mode sends proposal)
+- **Priority:** Highest-volume sugar baby gets first slot if multiple candidates compete for the last position
+
+### G5. What's Different From MAGNA53
+
+| Dimension | MAGNA53 EP | 9M EP |
+|-----------|-----------|-------|
+| Catalyst detection | LLM (Claude + Gemini) | Pure volume threshold |
+| Gap requirement | ≥ 8% | None (gap ≥ 0%) |
+| Score gating | EP score ≥ 70 | No scoring — volume is the gate |
+| Entry timing | Day 1 ORB (9:31 AM same day) | Day 2 ORB (next morning) |
+| Stop anchor | Day 1 ORB low (intraday) | Prior day's low (EOD low of breakout day) |
+| Min price | $5.00 | $3.00 |
+| ADV/market cap filters | Yes | No (volume itself is the filter) |
+
+### G6. Safeguards
+
+Same shared pool as MAGNA53:
+- Max 4 concurrent positions (configurable via `MAX_CONCURRENT_LIVE_POSITIONS` in `constants.py`)
+- 2% daily loss limit
+- 3-loss circuit breaker
+
+### G7. Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `ninem_detector.py` | `run_9m_scan()` — intraday scan every 5 min; `run_9m_eod_sweep()` — EOD sugar baby confirmation |
+| `db.py` | Tables: `mi_9m_ep_alerts`, `mi_9m_sugar_babies`; functions: `insert_9m_ep_alert`, `get_pending_9m_sugar_babies`, etc. |
+| `broker/live_tracker.py` | `submit_9m_day2_trade()` — Day 2 ORB execution |
+| `broker/order_manager.py` | `prepare_9m_day2_orb_order()` — order spec with prior-day-low stop |
+| `outcome_tracker.py` | `_compute_9m_ep_outcomes()` — nightly forward returns (1D/1W/1M) → `mi_signal_outcomes` |
+| `scripts/backtest_9m_ep.py` | Historical backtest: D1/D5/D10/D21 returns by volume bucket + range quality bucket |
+
+---
+
 ## Version History
 
 | Date | Change |
