@@ -260,3 +260,19 @@ Dec 2025 → Feb 2026: precision 0.5%, recall 8.2%. **Statistically inconclusive
 
 ### Files Changed
 `correlation_engine.py` (new), `db.py`, `theme_engine.py`, `scheduler.py`, `agent.py`, `scripts/backtest_clusters.py` (new)
+
+## Changes Made 2026-04-19 (session 5)
+
+### Features Added
+- **P7 — `/pregame`**: Compact trade-ready shortlist (Accelerating themes, HIGH EPs, watchlist MA pullbacks, 9M sugar babies). No LLM, instant. Added to `/pregame` slash command and `_handle_slash_command` dispatch.
+- **Pinned HUD auto-refresh**: `/hud` now pins the message and stores `chat_id`/`message_id` via `POST /hud/pin`. `_hud_refresh_job` in scheduler edits the pinned message hourly during market hours (mon-fri 9 AM – 3 PM ET). On edit failure (message deleted), clears stored IDs so next `/hud` re-pins.
+- **Inline keyboards**: `/eps`, `/themes`, `/trades` now send compact summary + drill-down buttons. Callbacks route through `_handle_drill_down_callback` → POST `/task` with sub-commands `/eps_detail`, `/themes_detail`, `/trades_detail`. Back button returns to summary.
+- `edit_telegram_message(chat_id, message_id, text, parse_mode="Markdown")` added to `briefing.py`.
+- `mi_hud_state` table + `get_hud_state()` / `set_hud_state()` in `db.py`.
+- `_build_hud_text() -> str` extracted as standalone module-level function (not a method) — shared by `_handle_hud()` and `_hud_refresh_job`.
+
+### New DB Table
+`mi_hud_state` (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ) — stores `hud_chat_id` and `hud_message_id`.
+
+### Files Changed
+`db.py`, `briefing.py`, `agent.py`, `scheduler.py`, `channels/telegram.py`
