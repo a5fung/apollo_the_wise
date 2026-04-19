@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 PASS = "✅"
 FAIL = "❌"
 SKIP = "⏭️"
-_TEST_DATE = "2099-01-01"
+_TEST_DATE = date(2099, 1, 1)   # date object — asyncpg requires this for DATE columns
 _TEST_TICKER = "ZZZZ"
 
 
