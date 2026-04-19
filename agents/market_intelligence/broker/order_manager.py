@@ -811,6 +811,83 @@ async def sync_positions() -> list[str]:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
+async def prepare_9m_day2_orb_order(
+    sugar_baby: dict,
+    orb_bar: dict,
+    regime_record: dict | None = None,
+) -> dict | None:
+    """
+    Compute entry/stop/shares for a 9M sugar baby Day 2 ORB entry.
+
+    Key difference from prepare_orb_order(): stop = prior day's low (the 9M breakout
+    day low), not today's ORB low. This anchors risk to the institutional "wall."
+
+    sugar_baby: dict from get_pending_9m_sugar_babies() — must have ticker, low_price.
+    orb_bar: dict with 'high' and 'low' from alpaca.get_first_bar().
+    regime_record: optional, used to halve risk in bearish QQQ regime.
+
+    Returns order spec dict or None if sizing fails.
+    """
+    ticker = sugar_baby["ticker"]
+    orb_high = orb_bar["high"]
+    prior_day_low = sugar_baby["low_price"]
+
+    if not orb_high or not prior_day_low:
+        logger.warning(f"9M Day2 {ticker}: missing orb_high or prior_day_low")
+        return None
+
+    if prior_day_low >= orb_high:
+        logger.warning(
+            f"9M Day2 {ticker}: prior_day_low ${prior_day_low:.2f} >= orb_high ${orb_high:.2f} — invalid"
+        )
+        return None
+
+    risk_per_share = orb_high - prior_day_low
+    if (risk_per_share / orb_high) > 0.15:
+        logger.warning(
+            f"9M Day2 {ticker}: stop distance {risk_per_share/orb_high:.1%} > 15% — too wide, skipping"
+        )
+        return None
+
+    try:
+        account = await alpaca.get_account()
+        equity = account["equity"]
+    except Exception as e:
+        logger.error(f"9M Day2 {ticker}: cannot get account equity — {e}")
+        return None
+
+    risk_pct = 0.01
+    if regime_record and regime_record.get("qqq_ema_bullish") is False:
+        risk_pct *= 0.5
+
+    risk_dollars = equity * risk_pct
+    shares = math.floor(risk_dollars / risk_per_share)
+
+    max_position = equity * 0.20
+    if shares * orb_high > max_position:
+        shares = math.floor(max_position / orb_high)
+
+    if shares < 1:
+        logger.warning(f"9M Day2 {ticker}: computed 0 shares — skipping")
+        return None
+
+    return {
+        "ticker": ticker,
+        "entry_price": orb_high,
+        "limit_price": round(orb_high * 1.001, 2),
+        "stop_loss_price": round(prior_day_low, 2),
+        "orb_high": orb_high,
+        "orb_low": orb_bar["low"],
+        "shares": shares,
+        "risk_dollars": round(shares * risk_per_share, 2),
+        "risk_per_share": round(risk_per_share, 2),
+        "position_size": round(shares * orb_high, 2),
+        "equity": equity,
+        "trade_type": "9m_ep_day2",
+        "sugar_baby_date": str(sugar_baby["alert_date"]),
+    }
+
+
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:
     logger.info(f"Trade {trade_id} → status={status}" + (f" reason={skip_reason}" if skip_reason else ""))
     pool = await get_pool()

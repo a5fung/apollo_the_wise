@@ -709,3 +709,117 @@ async def _insert_skipped_trade(
             regime_record.get("regime") if regime_record else None,
             skip_reason,
         )
+
+
+# ── 9M EP Day 2 ORB ──────────────────────────────────────────────────────────
+
+
+async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
+    """
+    Place a Day 2 ORB entry for a confirmed 9M sugar baby.
+
+    Called at 9:31 AM ET. Shares the same 4-position cap / daily-loss safeguards
+    as MAGNA53 trades via _check_safeguards().
+
+    sugar_baby: row from get_pending_9m_sugar_babies() — must have ticker, alert_date, low_price.
+    Returns status dict for logging.
+    """
+    from agents.market_intelligence.broker.order_manager import (
+        prepare_9m_day2_orb_order,
+        submit_entry,
+    )
+    from agents.market_intelligence.db import (
+        get_latest_regime,
+        update_9m_sugar_baby_status,
+    )
+
+    ticker = sugar_baby["ticker"]
+    alert_date = sugar_baby["alert_date"]
+    today = et_today()
+
+    ok, sg_reason = await _check_safeguards()
+    if not ok:
+        logger.info(f"9M Day2 {ticker}: blocked by safeguard — {sg_reason}")
+        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
+
+    orb_bar = await alpaca.get_first_bar(ticker, today)
+    if not orb_bar:
+        logger.warning(f"9M Day2 {ticker}: no ORB bar available")
+        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        return {"ticker": ticker, "action": "skipped", "reason": "no_orb_bar"}
+
+    regime_record = await get_latest_regime()
+    order_spec = await prepare_9m_day2_orb_order(sugar_baby, orb_bar, regime_record)
+
+    if not order_spec:
+        logger.info(f"9M Day2 {ticker}: order spec failed (stop too wide or invalid)")
+        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        await send_telegram_message(
+            f"⏭️ *9M Day2 {ticker}* skipped: stop distance invalid"
+        )
+        return {"ticker": ticker, "action": "skipped", "reason": "order_spec_failed"}
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade_id = await conn.fetchval("""
+            INSERT INTO mi_live_trades
+                (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
+                 status, orb_high, orb_low, atr_14,
+                 entry_price, entry_shares, stop_price, hard_stop,
+                 position_size, risk_dollars, proposed_at)
+            VALUES ($1,$2,0,'9m_volume',$3,$4,'pending_confirmation',$5,$6,NULL,
+                    $7,$8,$9,$9,$10,$11,NOW())
+            ON CONFLICT (ticker, alert_date) DO NOTHING
+            RETURNING id
+        """,
+            ticker, today,
+            sugar_baby.get("gap_pct"),
+            regime_record.get("regime") if regime_record else None,
+            order_spec["orb_high"], order_spec["orb_low"],
+            order_spec["entry_price"], float(order_spec["shares"]),
+            order_spec["stop_loss_price"],
+            order_spec["position_size"], order_spec["risk_dollars"],
+        )
+
+    if not trade_id:
+        logger.debug(f"9M Day2 {ticker}: trade row already exists, skipping")
+        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        return {"ticker": ticker, "action": "skipped", "reason": "already_exists"}
+
+    is_paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
+
+    if is_paper:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE mi_live_trades SET status = 'confirmed', confirmed_at = NOW() WHERE id = $1",
+                trade_id,
+            )
+        order = await submit_entry(trade_id)
+        if order:
+            await update_9m_sugar_baby_status(ticker, alert_date, "traded")
+            await send_telegram_message(
+                f"🍬 *9M Day2 entered:* {ticker}\n"
+                f"Entry: ${order_spec['entry_price']:.2f} | "
+                f"Stop: ${order_spec['stop_loss_price']:.2f} (prev day low)\n"
+                f"Shares: {order_spec['shares']} | Risk: ${order_spec['risk_dollars']:.0f}"
+            )
+            return {"ticker": ticker, "action": "auto_entered", "trade_id": trade_id}
+        else:
+            await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+            await send_telegram_message(
+                f"⚠️ *9M Day2 auto-enter failed:* {ticker} (trade_id={trade_id})"
+            )
+            return {"ticker": ticker, "action": "auto_enter_failed"}
+    else:
+        # Live mode: propose for manual confirmation (same flow as MAGNA53)
+        alert_stub = {
+            "ep_score": 0, "catalyst_quality": "9m_volume",
+            "gap_pct": sugar_baby.get("gap_pct"), "ticker": ticker,
+        }
+        sent = await send_trade_proposal(alert_stub, order_spec, trade_id)
+        if sent:
+            await update_9m_sugar_baby_status(ticker, alert_date, "traded")
+            return {"ticker": ticker, "action": "proposed", "trade_id": trade_id}
+        else:
+            return {"ticker": ticker, "action": "proposal_send_failed"}

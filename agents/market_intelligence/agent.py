@@ -495,6 +495,19 @@ class MarketIntelligenceAgent(BaseAgent):
                                      "paper report", "ep validation"]):
             return await self._handle_validation_report(request)
 
+        # 9M EP outcomes — must come before 9M query and before general "ep" route
+        if any(k in task for k in ["9m outcome", "9m performance", "9m result",
+                                    "9m track", "sugar outcome"]):
+            return await self._handle_9m_ep_outcomes(request)
+
+        # 9M EP query — specific phrases avoid false match on e.g. "9 months of history"
+        if (
+            any(k in task for k in ["9m ep", "sugar baby", "sugar babies", "nine million"])
+            or task.strip() == "9m"
+            or "show 9m" in task
+        ):
+            return await self._handle_9m_ep_query(request)
+
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
                                      "ep returns", "ep results", "ep track"]):
@@ -870,6 +883,97 @@ class MarketIntelligenceAgent(BaseAgent):
                     lines.append(f"_{verdict}_")
 
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_9m_ep_query(self, request: AgentRequest) -> AgentResponse:
+        """Show today's 9M EP intraday detections and pending Day 2 sugar babies."""
+        import asyncio as _asyncio
+        from datetime import timedelta
+        from agents.market_intelligence.db import (
+            get_today_9m_ep_alerts,
+            get_pending_9m_sugar_babies,
+            get_eod_9m_sugar_babies,
+        )
+        from agents.market_intelligence.collector import et_today, prev_trading_days
+
+        today = et_today()
+        today_str = today.isoformat()
+        yesterday = prev_trading_days(1, from_date=today)[0]
+
+        alerts, pending_day2, today_babies = await _asyncio.gather(
+            get_today_9m_ep_alerts(today_str),
+            get_pending_9m_sugar_babies(yesterday),
+            get_eod_9m_sugar_babies(today_str),
+        )
+
+        lines = [f"*9M EP — {today_str}*\n"]
+
+        if alerts:
+            lines.append(f"*Intraday Detections ({len(alerts)})*")
+            for a in alerts:
+                vol_m = a["today_volume"] / 1_000_000
+                proj = f" (proj {a['projected_vol']/1_000_000:.1f}M)" if a.get("projected_vol") else ""
+                kind = " _(pace)_" if a.get("is_anticipation") else ""
+                lines.append(
+                    f"  🏦 `{a['ticker']}` — {vol_m:.1f}M{proj}{kind} | "
+                    f"${a['current_price']:.2f} | +{a['gap_pct']:.1f}%"
+                )
+        else:
+            lines.append("No 9M EP detections today.")
+
+        if today_babies:
+            lines.append(f"\n*Today's Sugar Babies — Day 2 ORB Candidates ({len(today_babies)})*")
+            for b in today_babies:
+                vol_m = b["volume"] / 1_000_000
+                rp = int(b["close_in_range_pct"] * 100)
+                lines.append(
+                    f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | "
+                    f"Close ${b['close_price']:.2f} | Range {rp}% | Stop ${b['low_price']:.2f}"
+                )
+        elif pending_day2:
+            lines.append(f"\n*Yesterday's Pending Day 2 ({len(pending_day2)})*")
+            for b in pending_day2:
+                vol_m = b["volume"] / 1_000_000
+                lines.append(
+                    f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | Stop ${b['low_price']:.2f}"
+                )
+
+        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+
+    async def _handle_9m_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
+        """Show 9M sugar baby history and Day 2 trade status."""
+        import re as _re
+        from agents.market_intelligence.db import get_9m_ep_history
+
+        task = request.task.lower()
+        m = _re.search(r'(\d+)\s*d(?:ay)?s?', task)
+        days = min(int(m.group(1)), 180) if m else 90
+
+        babies = await get_9m_ep_history(days=days)
+
+        if not babies:
+            return AgentResponse(
+                task_id=request.task_id,
+                result=f"No 9M EP sugar baby records in the last {days}d.",
+            )
+
+        traded = [b for b in babies if b.get("day2_status") == "traded"]
+        pending = [b for b in babies if b.get("day2_status") == "pending"]
+
+        lines = [f"*9M EP Sugar Babies — last {days}d*\n"]
+        lines.append(f"Total: {len(babies)} | Traded: {len(traded)} | Pending: {len(pending)}\n")
+
+        for b in babies[:25]:
+            status_icon = {"traded": "✅", "pending": "⏳", "skipped": "⏭️"}.get(
+                b.get("day2_status", ""), "❓"
+            )
+            vol_m = b["volume"] / 1_000_000
+            rp = int(b["close_in_range_pct"] * 100)
+            lines.append(
+                f"{status_icon} `{b['ticker']}` {b['alert_date']} — "
+                f"Vol {vol_m:.1f}M | Range {rp}% | {b.get('day2_status', 'unknown')}"
+            )
+
+        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
 
     async def _handle_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
         """

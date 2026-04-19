@@ -722,6 +722,7 @@ def _format_evening_briefing(
     quality_warnings: list[str] | None = None,
     signal_quality_summary: dict | None = None,
     cooldowns: list[dict] | None = None,
+    sugar_babies: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -788,6 +789,13 @@ def _format_evening_briefing(
         sections.append(cooldown_footer)
         sections.append("")
 
+    if sugar_babies:
+        from agents.market_intelligence.ninem_detector import format_sugar_babies_section
+        sb_section = format_sugar_babies_section(sugar_babies)
+        if sb_section:
+            sections.append(sb_section)
+            sections.append("")
+
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -844,6 +852,14 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         except Exception as e:
             logger.warning(f"Signal quality summary failed: {e}")
 
+    # 9M Sugar Babies — fetched separately to avoid disrupting the positional gather tuple
+    sugar_babies: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_eod_9m_sugar_babies
+        sugar_babies = await get_eod_9m_sugar_babies(today_str)
+    except Exception as e:
+        logger.warning(f"9M sugar babies fetch failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -858,6 +874,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         quality_warnings=warnings,
         signal_quality_summary=signal_quality_summary,
         cooldowns=cooldowns,
+        sugar_babies=sugar_babies,
     )
 
     success = await send_telegram_message(text, chat_id)

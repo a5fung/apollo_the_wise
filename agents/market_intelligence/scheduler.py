@@ -322,6 +322,15 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.warning(f"Correlation clustering failed (non-fatal): {e}")
 
+    # 4.5. 9M EP EOD sweep — runs after data ingestion, before theme engine
+    try:
+        from agents.market_intelligence.ninem_detector import run_9m_eod_sweep
+        _9m_count = await run_9m_eod_sweep(_today)
+        if _9m_count:
+            summary_parts.append(f"{_9m_count} 9M sugar babies")
+    except Exception as e:
+        logger.warning(f"9M EOD sweep failed (non-fatal): {e}")
+
     # 5. Theme engine
     theme_changelog: list[dict] = []
     try:
@@ -676,6 +685,42 @@ async def _ep_scan_watchdog():
         logger.error(f"EP scan watchdog failed: {e}")
 
 
+async def _9m_scan_job() -> None:
+    """Run every 5 min, 9:30 AM – 4:00 PM ET. Detect 9M EP volume events."""
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
+    if not get_market_status(today).is_trading_day:
+        return
+    try:
+        from agents.market_intelligence.ninem_detector import run_9m_scan
+        alerts = await run_9m_scan()
+        if alerts:
+            logger.info(f"9M scan: {len(alerts)} new alert(s)")
+    except Exception as e:
+        logger.error(f"9M EP scan error: {e}")
+
+
+async def _9m_day2_orb_job() -> None:
+    """Run at 9:31 AM ET. Place Day 2 ORB entries for yesterday's confirmed 9M sugar babies."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
+    if not get_market_status(today).is_trading_day:
+        return
+    try:
+        from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
+        from agents.market_intelligence.db import get_pending_9m_sugar_babies
+        from agents.market_intelligence.collector import prev_trading_days
+        yesterday = prev_trading_days(1, from_date=today)[0]
+        candidates = await get_pending_9m_sugar_babies(yesterday)
+        for candidate in candidates:
+            await submit_9m_day2_trade(candidate)
+    except Exception as e:
+        logger.error(f"9M Day2 ORB job error: {e}")
+
+
 async def check_missed_jobs() -> None:
     """
     On startup, send any briefings that were missed while the machine was off.
@@ -881,6 +926,22 @@ def start_scheduler() -> AsyncIOScheduler:
         _live_position_update_job,
         CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
         id="live_position_update",
+        replace_existing=True,
+    )
+
+    # 9M EP intraday scan: every 5 min, 9:30 AM – 4:00 PM ET (regular session)
+    _scheduler.add_job(
+        _9m_scan_job,
+        CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
+        id="9m_ep_scan",
+        replace_existing=True,
+    )
+
+    # 9M Day 2 ORB: 9:31 AM ET — place ORB entries for yesterday's sugar babies
+    _scheduler.add_job(
+        _9m_day2_orb_job,
+        CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
+        id="9m_day2_orb",
         replace_existing=True,
     )
 

@@ -231,7 +231,41 @@ async def initialize_schema() -> None:
                 volume BIGINT,
                 PRIMARY KEY (trade_date, ticker)
             );
+            ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS open_price FLOAT;
+            ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS high_price FLOAT;
+            ALTER TABLE mi_daily_closes ADD COLUMN IF NOT EXISTS low_price FLOAT;
             CREATE INDEX IF NOT EXISTS idx_daily_closes_ticker ON mi_daily_closes(ticker);
+
+            CREATE TABLE IF NOT EXISTS mi_9m_ep_alerts (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                detection_time TIMESTAMPTZ NOT NULL,
+                today_volume BIGINT NOT NULL,
+                projected_vol BIGINT,
+                current_price FLOAT NOT NULL,
+                gap_pct FLOAT NOT NULL,
+                is_anticipation BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_9m_ep_alerts_date ON mi_9m_ep_alerts(alert_date);
+
+            CREATE TABLE IF NOT EXISTS mi_9m_sugar_babies (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                open_price FLOAT NOT NULL,
+                close_price FLOAT NOT NULL,
+                high_price FLOAT NOT NULL,
+                low_price FLOAT NOT NULL,
+                volume BIGINT NOT NULL,
+                close_in_range_pct FLOAT NOT NULL,
+                day2_status TEXT NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_9m_sugar_babies_date ON mi_9m_sugar_babies(alert_date);
 
             CREATE TABLE IF NOT EXISTS mi_data_quality (
                 run_date DATE NOT NULL,
@@ -704,6 +738,163 @@ async def delete_historical_alerts(from_date: date, to_date: date) -> int:
               AND alert_date >= $1 AND alert_date <= $2
         """, from_date, to_date)
         return int(result.split()[-1])  # "DELETE N"
+
+
+# ── 9M EP System ───────────────────────────────────────────────────────────────
+
+
+async def insert_9m_ep_alert(record: dict[str, Any]) -> bool:
+    """
+    Insert intraday 9M EP detection.
+    Returns True if newly inserted, False if ticker already alerted today (UNIQUE constraint).
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("""
+            INSERT INTO mi_9m_ep_alerts
+                (ticker, alert_date, detection_time, today_volume, projected_vol,
+                 current_price, gap_pct, is_anticipation)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (ticker, alert_date) DO NOTHING
+        """,
+            record["ticker"],
+            record["alert_date"] if isinstance(record["alert_date"], date) else date.fromisoformat(record["alert_date"]),
+            record["detection_time"],
+            record["today_volume"],
+            record.get("projected_vol"),
+            record["current_price"],
+            record["gap_pct"],
+            record.get("is_anticipation", False),
+        )
+    return result.split()[-1] != "0"  # "INSERT 0 0" vs "INSERT 0 1"
+
+
+async def get_today_9m_ep_alerts(d: "str | date") -> list[dict]:
+    """Fetch all 9M EP alerts for a given date, ordered by volume desc."""
+    pool = await get_pool()
+    if isinstance(d, str):
+        d = date.fromisoformat(d)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, alert_date, detection_time, today_volume, projected_vol,
+                   current_price, gap_pct, is_anticipation, created_at
+            FROM mi_9m_ep_alerts
+            WHERE alert_date = $1
+            ORDER BY today_volume DESC
+        """, d)
+    return [dict(r) for r in rows]
+
+
+async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
+    """Upsert a confirmed 9M sugar baby (EOD sweep result)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_9m_sugar_babies
+                (ticker, alert_date, open_price, close_price, high_price, low_price,
+                 volume, close_in_range_pct)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (ticker, alert_date) DO UPDATE SET
+                open_price        = EXCLUDED.open_price,
+                close_price       = EXCLUDED.close_price,
+                high_price        = EXCLUDED.high_price,
+                low_price         = EXCLUDED.low_price,
+                volume            = EXCLUDED.volume,
+                close_in_range_pct = EXCLUDED.close_in_range_pct
+        """,
+            record["ticker"],
+            record["alert_date"] if isinstance(record["alert_date"], date) else date.fromisoformat(record["alert_date"]),
+            record["open_price"],
+            record["close_price"],
+            record["high_price"],
+            record["low_price"],
+            record["volume"],
+            record["close_in_range_pct"],
+        )
+
+
+async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
+    """
+    Fetch stocks from mi_daily_closes that qualify as 9M sugar babies for a given date.
+    Criteria: volume >= 9M, close >= $3, open/high/low present, close > open,
+              (close - low) / (high - low) >= 0.75.
+    Returns up to 20, ordered by volume desc.
+    """
+    pool = await get_pool()
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, close AS close_price, open_price, high_price, low_price, volume,
+                   CASE WHEN (high_price - low_price) > 0
+                        THEN (close - low_price) / (high_price - low_price)
+                        ELSE NULL END AS close_in_range_pct
+            FROM mi_daily_closes
+            WHERE trade_date = $1
+              AND volume >= 9000000
+              AND close >= 3.0
+              AND open_price IS NOT NULL
+              AND high_price IS NOT NULL
+              AND low_price IS NOT NULL
+              AND close > open_price
+              AND (high_price - low_price) > 0
+              AND (close - low_price) / (high_price - low_price) >= 0.75
+            ORDER BY volume DESC
+            LIMIT 20
+        """, trade_date)
+    return [dict(r) for r in rows]
+
+
+async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
+    """
+    Fetch confirmed sugar babies from a given date with day2_status='pending'.
+    Used at 9:31 AM to populate the Day 2 ORB watchlist.
+    Returns ticker, low_price (= stop for Day 2 entry), and all OHLCV fields.
+    """
+    pool = await get_pool()
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, open_price, close_price, high_price,
+                   low_price, volume, close_in_range_pct
+            FROM mi_9m_sugar_babies
+            WHERE alert_date = $1 AND day2_status = 'pending'
+            ORDER BY volume DESC
+        """, trade_date)
+    return [dict(r) for r in rows]
+
+
+async def update_9m_sugar_baby_status(ticker: str, alert_date: "str | date", status: str) -> None:
+    """Update day2_status for a sugar baby ('traded' or 'skipped')."""
+    pool = await get_pool()
+    if isinstance(alert_date, str):
+        alert_date = date.fromisoformat(alert_date)
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_9m_sugar_babies SET day2_status = $1
+            WHERE ticker = $2 AND alert_date = $3
+        """, status, ticker, alert_date)
+
+
+async def get_9m_ep_history(days: int = 14) -> list[dict]:
+    """
+    Recent 9M sugar baby records for the agent query handler.
+    Returns alert + sugar baby data joined, ordered by date desc then volume desc.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT sb.ticker, sb.alert_date, sb.volume, sb.close_price,
+                   sb.low_price, sb.close_in_range_pct, sb.day2_status,
+                   a.today_volume AS intraday_volume, a.gap_pct
+            FROM mi_9m_sugar_babies sb
+            LEFT JOIN mi_9m_ep_alerts a
+                ON a.ticker = sb.ticker AND a.alert_date = sb.alert_date
+            WHERE sb.alert_date >= CURRENT_DATE - $1
+            ORDER BY sb.alert_date DESC, sb.volume DESC
+        """, days)
+    return [dict(r) for r in rows]
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:
@@ -1668,6 +1859,8 @@ async def purge_old_data() -> dict[str, int]:
             "mi_data_quality": today - timedelta(days=90),
             "mi_signal_outcomes": today - timedelta(days=365),
             "mi_intraday_bars": today - timedelta(days=120),
+            "mi_9m_ep_alerts":   today - timedelta(days=90),
+            "mi_9m_sugar_babies": today - timedelta(days=90),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
@@ -1678,6 +1871,8 @@ async def purge_old_data() -> dict[str, int]:
             "mi_data_quality": "run_date",
             "mi_signal_outcomes": "signal_date",
             "mi_intraday_bars": "bar_time",
+            "mi_9m_ep_alerts":   "alert_date",
+            "mi_9m_sugar_babies": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())
@@ -1835,15 +2030,22 @@ async def ingest_daily_closes(trade_date: date, bars: dict[str, dict]) -> int:
         return 0
     pool = await get_pool()
     records = [
-        (trade_date, ticker, b["c"], int(b.get("v", 0)))
+        (
+            trade_date, ticker,
+            b["c"], int(b.get("v", 0)),
+            b.get("o"), b.get("h"), b.get("l"),
+        )
         for ticker, b in bars.items()
         if "c" in b and len(ticker) <= 5 and "." not in ticker
     ]
     async with pool.acquire() as conn:
         await conn.executemany("""
-            INSERT INTO mi_daily_closes (trade_date, ticker, close, volume)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (trade_date, ticker) DO NOTHING
+            INSERT INTO mi_daily_closes (trade_date, ticker, close, volume, open_price, high_price, low_price)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (trade_date, ticker) DO UPDATE SET
+                open_price = COALESCE(EXCLUDED.open_price, mi_daily_closes.open_price),
+                high_price = COALESCE(EXCLUDED.high_price, mi_daily_closes.high_price),
+                low_price  = COALESCE(EXCLUDED.low_price,  mi_daily_closes.low_price)
         """, records)
     return len(records)
 
