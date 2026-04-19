@@ -1125,6 +1125,9 @@ class TelegramChannel:
             await query.answer("Unauthorized")
             return
 
+        # Acknowledge immediately — Telegram times out the spinner after ~5s
+        await query.answer()
+
         callback_data = query.data
 
         # Forward trade callbacks to market agent
@@ -1132,22 +1135,16 @@ class TelegramChannel:
             try:
                 from agents.market_intelligence.broker.telegram_confirm import handle_callback
                 result = await handle_callback(callback_data, user_id=user_id)
-                action = result.get("action", result.get("error", "unknown"))
-                await query.answer(f"Trade {action}")
-                if "confirm" in callback_data:
-                    await query.edit_message_reply_markup(reply_markup=None)
-                elif "skip" in callback_data:
+                if "confirm" in callback_data or "skip" in callback_data:
                     await query.edit_message_reply_markup(reply_markup=None)
             except Exception as e:
                 logger.error(f"Callback handling failed: {e}")
-                await query.answer(f"Error: {e}")
 
         elif callback_data.startswith(("eps:", "themes:", "trades:")):
-            await query.answer()
             await self._handle_drill_down_callback(query, callback_data)
 
         else:
-            await query.answer("Unknown action")
+            pass  # query already answered above
 
     # ── Inline keyboard drill-down callbacks ──────────────────────────────────
 

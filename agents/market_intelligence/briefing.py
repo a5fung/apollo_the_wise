@@ -1436,6 +1436,9 @@ async def edit_telegram_message(
                     "disable_web_page_preview": True,
                 },
             )
+            # "Message is not modified" means content identical — not an error
+            if r.status_code == 400 and "not modified" in r.text.lower():
+                return True
             r.raise_for_status()
         return True
     except Exception as e:
