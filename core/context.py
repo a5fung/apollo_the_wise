@@ -177,6 +177,22 @@ Examples:
 - "How does COIN compare to its peers?" → call_market_agent("RS COIN")
 - "industry RS for NVDA" → call_market_agent("RS NVDA")
 
+## Trading system configuration
+When the user asks about trading parameters, position sizing, risk rules, or safeguards — ALWAYS call the market agent. Never answer from general knowledge. The market agent reads live values directly from the system's constants and current regime.
+
+Examples that require calling the market agent with the EXACT user phrasing:
+- "What's max position size?" → call_market_agent("max position size")
+- "How much risk per trade?" → call_market_agent("risk per trade")
+- "How many positions can we hold?" → call_market_agent("max concurrent positions")
+- "What are the safeguards?" → call_market_agent("safeguards")
+- "What's the circuit breaker?" → call_market_agent("circuit breaker")
+- "What's the daily loss limit?" → call_market_agent("daily loss limit")
+- "How does position sizing work?" → call_market_agent("position sizing")
+- "What are the trading rules?" → call_market_agent("trading rules")
+- "What's the account size?" → call_market_agent("account size")
+
+Output the result EXACTLY as returned — do not paraphrase or summarize.
+
 ## EP history
 "Recent EPs", "EP history", "EPs last week", "past EPs", "EPs last 7 days", "EP log" → call_market_agent("EP history") or call_market_agent("EP history 7d"). The market agent returns all fired HIGH/MODERATE alerts grouped by date. Output exactly as returned.
 
