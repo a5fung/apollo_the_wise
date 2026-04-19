@@ -429,6 +429,10 @@ class MarketIntelligenceAgent(BaseAgent):
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
         task = request.task.lower()
 
+        # Slash command fast-path — exact dispatch, bypasses NLP substring matching
+        if task.strip().startswith("/"):
+            return await self._handle_slash_command(request)
+
         # Route by intent
         # Data refresh must be checked first — combined requests like "refresh then send brief"
         # would otherwise match "brief" and skip the refresh entirely.
@@ -2559,6 +2563,104 @@ class MarketIntelligenceAgent(BaseAgent):
         results = await run_screener(filters)
         text = format_screener_results(results, filters)
         return self._ok(request, result=text)
+
+    async def _handle_slash_command(self, request: AgentRequest) -> AgentResponse:
+        cmd = request.task.strip().split()[0].lower()
+        dispatch = {
+            "/hud":       self._handle_hud,
+            "/eps":       self._handle_ep_query,
+            "/9m":        self._handle_9m_ep_query,
+            "/themes":    self._handle_theme_query,
+            "/clusters":  self._handle_correlation_clusters,
+            "/regime":    self._handle_regime_query,
+            "/positions": self._handle_watchlist,
+        }
+        handler = dispatch.get(cmd)
+        if handler:
+            return await handler(request)
+        available = "  ".join(sorted(dispatch.keys()))
+        return self._ok(request, result=f"Unknown command: `{cmd}`\n\nAvailable:\n`{available}`")
+
+    async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
+        """Single-shot status snapshot across all parallel engines."""
+        import asyncio as _aio
+        from agents.market_intelligence.db import (
+            get_active_themes,
+            get_today_9m_ep_alerts,
+            get_pending_9m_sugar_babies,
+        )
+        from agents.market_intelligence.collector import et_today, prev_trading_days
+        from agents.market_intelligence.scheduler import get_scheduler_status
+
+        today = et_today()
+        today_str = today.isoformat()
+        yesterday = prev_trading_days(1, from_date=today)[0]
+
+        regime, ep_alerts, ninem_alerts, sugar_babies, themes, clusters = await _aio.gather(
+            get_latest_regime(),
+            get_today_ep_alerts(today_str),
+            get_today_9m_ep_alerts(today_str),
+            get_pending_9m_sugar_babies(yesterday),
+            get_active_themes(),
+            get_correlation_clusters(today_str),
+            return_exceptions=True,
+        )
+
+        # Regime line
+        r = regime if isinstance(regime, dict) else {}
+        regime_name = r.get("regime", "Unknown")
+        qqq_ok = r.get("qqq_ema_bullish")
+        qqq_icon = "✅" if qqq_ok else ("❌" if qqq_ok is False else "❓")
+        ep_bar = r.get("ep_threshold", "?")
+        regime_date = r.get("regime_date")
+        data_age = f" · data {regime_date}" if regime_date else ""
+        regime_line = f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}{data_age}"
+
+        # MAGNA53 EP counts
+        if isinstance(ep_alerts, list):
+            high_ct = sum(1 for a in ep_alerts if a.get("score_tier") == "HIGH")
+            mod_ct  = sum(1 for a in ep_alerts if a.get("score_tier") == "MODERATE")
+            ep_line = f"🎯 MAGNA53: *{high_ct} HIGH* · {mod_ct} MODERATE"
+        else:
+            ep_line = "🎯 MAGNA53: unavailable"
+
+        # 9M EP counts
+        ninem_today = len(ninem_alerts) if isinstance(ninem_alerts, list) else "?"
+        ninem_d2    = len(sugar_babies)  if isinstance(sugar_babies, list)  else "?"
+        ninem_line  = f"🏦 9M EP: {ninem_today} intraday · {ninem_d2} Day 2 pending"
+
+        # Theme counts
+        if isinstance(themes, list):
+            active_ct = len(themes)
+            accel_ct  = sum(1 for t in themes if t.get("stage") == "Accelerating")
+            fading_ct = sum(1 for t in themes if t.get("stage") == "Fading")
+            theme_line = f"🗂 Themes: {active_ct} active ({accel_ct} accelerating · {fading_ct} fading)"
+        else:
+            theme_line = "🗂 Themes: unavailable"
+
+        # Cluster count
+        cluster_ct = len(clusters) if isinstance(clusters, list) else "?"
+        cluster_line = f"📊 Clusters: {cluster_ct} today"
+
+        # System health
+        sched = get_scheduler_status()
+        health_line = "⚙️ System: scheduler running" if sched.get("scheduler_running") else "⚠️ System: scheduler NOT running"
+
+        sep = "━━━━━━━━━━━━━━━━━━━━━"
+        now_et = today.strftime("%a %b %-d")
+        msg = "\n".join([
+            f"📡 *Apollo HUD* — {now_et}",
+            sep,
+            regime_line,
+            sep,
+            ep_line,
+            ninem_line,
+            theme_line,
+            cluster_line,
+            sep,
+            health_line,
+        ])
+        return self._ok(request, result=msg)
 
     async def _handle_general(self, request: AgentRequest) -> AgentResponse:
         import re as _re
