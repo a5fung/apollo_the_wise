@@ -659,7 +659,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "  Max stop width:     15% of entry price",
             "  Sugar baby gate:    close in top 25% of range + green",
         ]
-        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+        return self._ok(request, "\n".join(lines))
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""
@@ -1009,7 +1009,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | Stop ${b['low_price']:.2f}"
                 )
 
-        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_9m_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
         """Show 9M sugar baby history and Day 2 trade status."""
@@ -1023,10 +1023,7 @@ class MarketIntelligenceAgent(BaseAgent):
         babies = await get_9m_ep_history(days=days)
 
         if not babies:
-            return AgentResponse(
-                task_id=request.task_id,
-                result=f"No 9M EP sugar baby records in the last {days}d.",
-            )
+            return self._ok(request, f"No 9M EP sugar baby records in the last {days}d.")
 
         traded = [b for b in babies if b.get("day2_status") == "traded"]
         pending = [b for b in babies if b.get("day2_status") == "pending"]
@@ -1045,7 +1042,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"Vol {vol_m:.1f}M | Range {rp}% | {b.get('day2_status', 'unknown')}"
             )
 
-        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_9m_trades(self, request: AgentRequest) -> AgentResponse:
         """
@@ -1072,16 +1069,16 @@ class MarketIntelligenceAgent(BaseAgent):
             candidates = await get_pending_9m_sugar_babies(yesterday)
             match = next((c for c in candidates if c["ticker"] == ticker), None)
             if not match:
-                return AgentResponse(
-                    task_id=request.task_id,
-                    result=f"No pending 9M sugar baby for {ticker} from {yesterday}. "
-                           f"Check 'show 9m' for available candidates.",
+                return self._ok(
+                    request,
+                    f"No pending 9M sugar baby for {ticker} from {yesterday}. "
+                    f"Check 'show 9m' for available candidates.",
                 )
             result = await submit_9m_day2_trade(match)
             action = result.get("action", "unknown")
-            return AgentResponse(
-                task_id=request.task_id,
-                result=f"9M Day2 `{ticker}`: {action}" + (
+            return self._ok(
+                request,
+                f"9M Day2 `{ticker}`: {action}" + (
                     f" (trade_id={result['trade_id']})" if result.get("trade_id") else ""
                 ),
             )
@@ -1093,10 +1090,7 @@ class MarketIntelligenceAgent(BaseAgent):
         trades = await get_9m_live_trades(days=days)
 
         if not trades:
-            return AgentResponse(
-                task_id=request.task_id,
-                result=f"No 9M EP trades in the last {days}d.",
-            )
+            return self._ok(request, f"No 9M EP trades in the last {days}d.")
 
         open_t = [t for t in trades if t["status"] == "filled"]
         closed_t = [t for t in trades if t["status"] == "closed"]
@@ -1119,7 +1113,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"{pnl_str} | {t['status']}"
             )
 
-        return AgentResponse(task_id=request.task_id, result="\n".join(lines))
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
         """
