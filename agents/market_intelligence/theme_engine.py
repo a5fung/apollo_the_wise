@@ -137,6 +137,43 @@ _GARBAGE_SIGNALS = [
 ]
 
 
+def _extract_json_object(text: str) -> str:
+    """
+    Extract the first well-formed JSON object from text by tracking brace depth.
+
+    The naive r'\{[^{}]*\}' regex breaks when Haiku adds nested objects such as
+    {"remove": [], "notes": {"why": "..."}} because [^{}] stops at the inner brace.
+    Brace-depth tracking handles arbitrary nesting and ignores braces inside strings.
+    Returns the extracted substring, or the original text if no object is found
+    (letting json.loads produce a clear error).
+    """
+    in_string = False
+    escape_next = False
+    depth = 0
+    start = -1
+    for i, ch in enumerate(text):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\" and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start != -1:
+                return text[start : i + 1]
+    return text  # no balanced object found — let caller's json.loads raise
+
+
 def _is_garbage(text: str) -> bool:
     """Return True if the text is a known bad/garbage description."""
     if not text:
@@ -508,19 +545,22 @@ async def _validate_theme_membership(
         client = _get_anthropic_client()
         resp = await client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=200,
+            max_tokens=400,
+            system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
             messages=[{"role": "user", "content": prompt}],
         )
         raw = resp.content[0].text.strip()
         # Strip code fences if present
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
-        # Always extract just the JSON object — Haiku often appends explanation text
-        # after a valid JSON block, causing json.loads to fail with "Extra data".
-        m = re.search(r'\{[^{}]*\}', raw, re.DOTALL)
-        raw = m.group(0) if m else raw
+        # Extract the outermost JSON object by tracking brace depth.
+        # The naive r'\{[^{}]*\}' regex fails when Haiku adds nested objects
+        # (e.g. {"remove": [], "notes": {"why": "..."}}) because [^{}] stops
+        # at the inner brace. Brace-depth tracking handles arbitrary nesting.
+        raw = _extract_json_object(raw)
         result = json.loads(raw)
-        to_remove = {tk.upper() for tk in result.get("remove", []) if isinstance(tk, str)}
+        remove_val = result.get("remove") or []  # guard against "remove": null
+        to_remove = {tk.upper() for tk in remove_val if isinstance(tk, str)}
 
         # Never remove so many that the theme drops below minimum
         survivable = [t for t in tickers if t not in to_remove]
