@@ -36,7 +36,9 @@ _9M_ACTUAL_THRESHOLD = 8_900_000       # shares — fire "actual" alert
 _9M_PROJECTED_THRESHOLD = 12_000_000   # projected shares — fire "anticipation" alert
 _MIN_PRICE = 3.00                       # skip sub-$3 tickers
 _PROJECTION_MIN_MINUTES = 15            # don't project volume before 9:45 AM
-_MIN_RVOL = 2.0                         # require 2x normal volume to signal
+_MAX_ADV = 4_500_000                    # Pradeep anomaly gate: 9M shares must be ≥2x the stock's
+                                        # normal daily volume. Stocks with ADV > 4.5M (AAPL, NVDA,
+                                        # SPY, etc.) are not anomalous at 9M — skip them.
 
 # In-memory dedup: prevents duplicate Telegram alerts within the same calendar day.
 # A process restart clears this; the DB UNIQUE constraint on (ticker, alert_date)
@@ -161,19 +163,17 @@ async def run_9m_scan() -> list[dict]:
         if not (is_9m_actual or is_9m_anticipation):
             continue
 
-        # Require elevated relative volume — filters mega-caps (AAPL, NVDA) that
-        # routinely trade 9M+ shares without any unusual institutional activity.
+        # Pradeep anomaly gate: 9M shares must represent an actual volume anomaly.
+        # Stocks with ADV > 4.5M trade that volume every day — skip them.
+        # Unknown ADV (not yet in RS universe) → pass through conservatively.
         adv = adv_map.get(ticker)
-        if adv and adv > 0:
-            effective_vol = projected_vol if (is_9m_anticipation and projected_vol) else today_volume
-            rvol = effective_vol / adv
-            if rvol < _MIN_RVOL:
-                continue
+        if adv and adv > _MAX_ADV:
+            continue
 
         if is_9m_anticipation:
             is_anticipation = True
 
-        rvol_display = round(rvol, 1) if (adv and adv > 0) else None  # type: ignore[possibly-undefined]
+        rvol_display = round(today_volume / adv, 1) if (adv and adv > 0) else None
 
         alert = {
             "ticker": ticker,

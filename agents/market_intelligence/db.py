@@ -826,7 +826,7 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     """
     Fetch stocks from mi_daily_closes that qualify as 9M sugar babies for a given date.
     Criteria: volume >= 9M, close >= $3, open/high/low present, close > open,
-              (close - low) / (high - low) >= 0.75.
+              (close - low) / (high - low) >= 0.75, ADV <= 4.5M (Pradeep anomaly gate).
     Returns up to 20, ordered by volume desc.
     """
     pool = await get_pool()
@@ -834,21 +834,25 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
         trade_date = date.fromisoformat(trade_date)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT ticker, close AS close_price, open_price, high_price, low_price, volume,
-                   CASE WHEN (high_price - low_price) > 0
-                        THEN (close - low_price) / (high_price - low_price)
+            SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
+                   CASE WHEN (d.high_price - d.low_price) > 0
+                        THEN (d.close - d.low_price) / (d.high_price - d.low_price)
                         ELSE NULL END AS close_in_range_pct
-            FROM mi_daily_closes
-            WHERE trade_date = $1
-              AND volume >= 9000000
-              AND close >= 3.0
-              AND open_price IS NOT NULL
-              AND high_price IS NOT NULL
-              AND low_price IS NOT NULL
-              AND close > open_price
-              AND (high_price - low_price) > 0
-              AND (close - low_price) / (high_price - low_price) >= 0.75
-            ORDER BY volume DESC
+            FROM mi_daily_closes d
+            LEFT JOIN mi_stock_scores s
+                ON s.ticker = d.ticker
+                AND s.score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            WHERE d.trade_date = $1
+              AND d.volume >= 9000000
+              AND d.close >= 3.0
+              AND d.open_price IS NOT NULL
+              AND d.high_price IS NOT NULL
+              AND d.low_price IS NOT NULL
+              AND d.close > d.open_price
+              AND (d.high_price - d.low_price) > 0
+              AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
+              AND COALESCE(s.adv_20, 0) <= 4500000
+            ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)
     return [dict(r) for r in rows]
