@@ -195,6 +195,34 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 
 ## Changes Made 2026-04-20
 
+### Bugs Fixed — Theme Validation (20 silent parse errors)
+
+**Root cause: regex broke on Haiku's new nested-JSON responses.**
+Old regex `r'\{[^{}]*\}'` scans for `{` then chars that are NOT `{` or `}`. Haiku now
+returns extra fields alongside `remove`, e.g. `{"remove": [], "reasoning": {"fit": "..."}}`.
+The regex hits the inner `{` of the nested object and gives up — `m` is `None`, so the full
+raw prose is passed to `json.loads`, which raises `JSONDecodeError`. All 20 themes failed
+the same night because it's a model behavior shift, not a theme-specific issue.
+
+Fix (`theme_engine.py`):
+- `_extract_json_object()` — replaces regex with proper brace-depth + string-escape-aware
+  parser that correctly extracts the outermost `{...}` regardless of nesting depth.
+- `result.get("remove") or []` — guards against Haiku returning `"remove": null` instead
+  of `[]`; the old `.get("remove", [])` default only fires when key is absent, not null.
+- `max_tokens` 200 → 400 to avoid mid-JSON truncation.
+- Added `system` prompt: `"Respond with valid JSON only. No prose, no markdown."` to
+  reduce likelihood of extra fields in the first place.
+
+**⚠️ MUST-VALIDATE after next Mon/Wed/Fri nightly run:**
+1. Check audit log for any remaining validation errors:
+   - In Telegram: `show errors 1d`
+   - Should show 0 `validation_error` events
+2. Confirm validation is actually running and making decisions (not just silently passing):
+   - In Telegram: `show errors 7d` — look for `ticker_revalidated_out` events to confirm
+     Haiku is successfully removing wrong-sector stocks
+3. If errors still appear, check the `detail` field — it contains `{ErrorType}: {msg} | raw={snippet}`
+   which reveals exactly what Haiku returned and why parsing failed
+
 ### Bugs Fixed — Broker / Live Trading
 
 **Partial exit blocked by stop order (KURA case):**
