@@ -481,10 +481,13 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
 
             if take_partial:
                 partial_shares = int(remaining) // 3
-                await execute_partial_exit(trade["id"], partial_shares)
-                partial_taken = True
-                breakeven_active = True
-                remaining -= partial_shares
+                partial_ok = await execute_partial_exit(trade["id"], partial_shares)
+                if partial_ok:
+                    partial_taken = True
+                    breakeven_active = True
+                    remaining -= partial_shares
+                # On failure: leave partial_taken/remaining unchanged so the next
+                # daily run retries. execute_partial_exit already sent a Telegram alert.
 
         # 4. Effective stop = max(hard_stop, active_sma, breakeven)
         effective_stop = hard_stop or 0
