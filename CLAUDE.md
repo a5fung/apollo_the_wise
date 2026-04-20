@@ -276,3 +276,17 @@ Dec 2025 → Feb 2026: precision 0.5%, recall 8.2%. **Statistically inconclusive
 
 ### Files Changed
 `db.py`, `briefing.py`, `agent.py`, `scheduler.py`, `channels/telegram.py`
+
+## Changes Made 2026-04-19 (session 6)
+
+### Bugs Fixed
+- **9M EP flood (ETFs + mega-caps)**: `ninem_detector.py` had no ETF filter. Fixed with three layers: (1) `SKIP_TICKERS` check (same as EP detector), (2) `mi_security_types` non-common-stock filter (drops ETFs, leveraged products, warrants), (3) RVOL >= 2x ADV gate so AAPL/NVDA trading routine 9M+ volume don't trigger. Both the non-stock set and ADV map are cached per trading day to avoid per-scan DB overhead.
+- **EP detector ETF leakage**: Hardcoded `SKIP_TICKERS` list was missing some leveraged ETFs. Added `mi_security_types` lookup at scan start as authoritative secondary gate — any ticker classified as non-CS/ADRC in reference data is skipped.
+- **Catchup ORB order after ORB window**: On late restart (e.g., 11 AM), APScheduler fired the 9:31 AM EP scan which placed bracket orders past the ORB window. Fixed: `within_orb_window = market_open and now_et.hour < 10` gates all ORB order placement in `_ep_scan_job()`. Also added `misfire_grace_time=300` to EP scan jobs so APScheduler skips them entirely when restarting >5 min past their scheduled time.
+
+### Key Rules Updated
+- **9M EP RVOL threshold**: `_MIN_RVOL = 2.0` — stock must trade ≥ 2x its 20-day median volume on the day to qualify. If ADV is unknown (ticker not in RS universe), threshold is bypassed (conservative — don't filter unknowns).
+- **ORB window**: `within_orb_window = market_open and now_et.hour < 10`. EP scans running outside this (catchup, stale fires) send alerts but never place orders.
+
+### Files Changed
+`ninem_detector.py`, `ep_detector.py`, `scheduler.py`
