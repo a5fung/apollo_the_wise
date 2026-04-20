@@ -213,10 +213,16 @@ Fix (`broker/order_manager.py: execute_partial_exit`):
 **Caller ignored execute_partial_exit return value (`broker/live_tracker.py`):**
 Even on failure the caller set `partial_taken=True` and decremented `remaining_shares`, so the partial was marked done and never retried. Fix: only advance `partial_taken / breakeven_active / remaining` if the call returns `True`. On failure, DB state is unchanged and the next 4:45 PM run retries automatically.
 
-**KURA manual remediation needed (one-time):**
+**⚠️ MUST-RUN before next 4:45 PM position update — DB is wrong for KURA:**
+The failed partial on 2026-04-20 wrote `partial_taken=TRUE` and `remaining_shares≈1394`
+to the DB even though no shares were sold. Without this fix, KURA's partial will never
+be retried and the share count/stop will be based on incorrect data.
 ```sql
+-- Run on production DB before deploying or before 4:45 PM ET
 UPDATE mi_live_trades
-SET partial_taken = FALSE, breakeven_active = FALSE, remaining_shares = 2092
+SET partial_taken = FALSE,
+    breakeven_active = FALSE,
+    remaining_shares = 2092
 WHERE ticker = 'KURA' AND status = 'filled';
 ```
 
