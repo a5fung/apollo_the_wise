@@ -400,6 +400,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Get stored ADV map (from last RS run)
     adv_map = await get_adv_map(prev_date)
 
+    # Authoritative ETF/non-stock filter from security_types table.
+    # _SKIP_TICKERS catches known leveraged ETFs fast; this catches anything
+    # classified as non-common-stock in our reference data (ETF, ETP, ETPT, etc.).
+    _non_stock_tickers: set[str] = set()
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT ticker FROM mi_security_types WHERE security_type NOT IN ('CS', 'ADRC')"
+            )
+        _non_stock_tickers = {r["ticker"] for r in rows}
+        logger.info(f"EP scan: {len(_non_stock_tickers)} non-stock tickers loaded from security_types")
+    except Exception as e:
+        logger.warning(f"EP scan: could not load security_types ({e}) — relying on SKIP_TICKERS only")
+
     logger.info(f"EP scan: regime={regime_label}, threshold={ep_threshold}")
 
     # Minutes since market open — used for projected volume calculation post-open
@@ -421,8 +436,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     candidates = []
     for ticker, snap in snapshots.items():
         try:
-            # Skip warrants, units, non-standard symbols, and ETFs
+            # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
             if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS or "." in ticker:
+                continue
+            if ticker in _non_stock_tickers:
                 continue
 
             prev_close = snap.get("prevDay", {}).get("c", 0)

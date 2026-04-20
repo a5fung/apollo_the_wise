@@ -456,6 +456,9 @@ async def _ep_scan_job():
 
         now_et = datetime.now(_ET)
         market_open = now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 31)
+        # ORB bracket orders are only valid during the ORB window (9:31–9:59 AM ET).
+        # After 10 AM (or on a catchup fire from a late restart), skip order placement.
+        within_orb_window = market_open and now_et.hour < 10
         new_highs_post_open = []
 
         for ep in eps:
@@ -473,17 +476,19 @@ async def _ep_scan_job():
                 except Exception:
                     pass
 
-                if market_open:
+                if within_orb_window:
                     # First bar already closed — trigger ORB inline, no bar stream needed
                     new_highs_post_open.append(ep["ticker"])
-                else:
+                elif not market_open:
                     # Pre-market — subscribe to bar stream; ORB fires when first bar closes
                     bar_stream.subscribe_ep_candidate(ep["ticker"])
+                else:
+                    logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
 
         if new_highs_post_open:
             logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry inline")
             await _orb_monitor_job(trigger="post_open_new_high")
-        elif market_open and now_et.minute == 31:
+        elif within_orb_window and now_et.minute == 31:
             # 9:31 open scan: always run ORB as fallback for pre-market HIGHs
             # bar_stream handles them in real-time, but if stream was unhealthy or missed
             # a subscription, process_new_alerts_live skips already-processed tickers safely.
@@ -843,6 +848,7 @@ def start_scheduler() -> AsyncIOScheduler:
         ),
         id="ep_scan",
         replace_existing=True,
+        misfire_grace_time=300,  # skip if restart fires this >5 min late
     )
 
     # EP scan at 9:31 AM — first complete bar just closed, catches at-open volume upgrades
@@ -851,6 +857,7 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_open",
         replace_existing=True,
+        misfire_grace_time=300,
     )
 
     # Unsubscribe bar stream at 9:35 AM — ORB window closed

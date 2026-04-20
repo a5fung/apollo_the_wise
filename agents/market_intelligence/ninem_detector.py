@@ -19,8 +19,10 @@ from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.collector import get_snapshot_all
+from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import (
     get_eod_9m_sugar_babies,
+    get_pool,
     get_today_9m_ep_alerts,  # noqa: F401 — re-exported for agent.py convenience
     insert_9m_ep_alert,
     insert_9m_sugar_baby,
@@ -34,6 +36,7 @@ _9M_ACTUAL_THRESHOLD = 8_900_000       # shares — fire "actual" alert
 _9M_PROJECTED_THRESHOLD = 12_000_000   # projected shares — fire "anticipation" alert
 _MIN_PRICE = 3.00                       # skip sub-$3 tickers
 _PROJECTION_MIN_MINUTES = 15            # don't project volume before 9:45 AM
+_MIN_RVOL = 2.0                         # require 2x normal volume to signal
 
 # In-memory dedup: prevents duplicate Telegram alerts within the same calendar day.
 # A process restart clears this; the DB UNIQUE constraint on (ticker, alert_date)
@@ -41,7 +44,45 @@ _PROJECTION_MIN_MINUTES = 15            # don't project volume before 9:45 AM
 _alerted_today: set[str] = set()
 _alerted_date: str = ""
 
+# Per-day caches — refreshed once per trading day (DB data doesn't change intraday)
+_non_stock_cache: set[str] = set()
+_non_stock_cache_date: str = ""
+_adv_cache: dict[str, float] = {}
+_adv_cache_date: str = ""
+
 _ET = ZoneInfo("America/New_York")
+
+
+async def _get_non_stock_tickers(today_str: str) -> set[str]:
+    """Return tickers classified as non-common-stock (ETFs, warrants, etc.) in mi_security_types."""
+    global _non_stock_cache, _non_stock_cache_date
+    if _non_stock_cache_date == today_str:
+        return _non_stock_cache
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker FROM mi_security_types WHERE security_type NOT IN ('CS', 'ADRC')"
+        )
+    _non_stock_cache = {r["ticker"] for r in rows}
+    _non_stock_cache_date = today_str
+    logger.info(f"9M non-stock cache refreshed: {len(_non_stock_cache)} tickers")
+    return _non_stock_cache
+
+
+async def _get_adv_map(today_str: str) -> dict[str, float]:
+    """Return most-recent ADV map from mi_stock_scores (20-day median volume)."""
+    global _adv_cache, _adv_cache_date
+    if _adv_cache_date == today_str:
+        return _adv_cache
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, adv_20 FROM mi_stock_scores WHERE score_date = (SELECT MAX(score_date) FROM mi_stock_scores)"
+        )
+    _adv_cache = {r["ticker"]: r["adv_20"] for r in rows if r["adv_20"]}
+    _adv_cache_date = today_str
+    logger.info(f"9M ADV cache refreshed: {len(_adv_cache)} tickers")
+    return _adv_cache
 
 
 async def run_9m_scan() -> list[dict]:
@@ -72,10 +113,15 @@ async def run_9m_scan() -> list[dict]:
     if not snaps:
         return []
 
+    non_stocks = await _get_non_stock_tickers(today_str)
+    adv_map = await _get_adv_map(today_str)
+
     new_alerts: list[dict] = []
 
     for ticker, snap in snaps.items():
         if len(ticker) > 5 or "." in ticker:
+            continue
+        if ticker in SKIP_TICKERS or ticker in non_stocks:
             continue
         if ticker in _alerted_today:
             continue
@@ -115,8 +161,19 @@ async def run_9m_scan() -> list[dict]:
         if not (is_9m_actual or is_9m_anticipation):
             continue
 
+        # Require elevated relative volume — filters mega-caps (AAPL, NVDA) that
+        # routinely trade 9M+ shares without any unusual institutional activity.
+        adv = adv_map.get(ticker)
+        if adv and adv > 0:
+            effective_vol = projected_vol if (is_9m_anticipation and projected_vol) else today_volume
+            rvol = effective_vol / adv
+            if rvol < _MIN_RVOL:
+                continue
+
         if is_9m_anticipation:
             is_anticipation = True
+
+        rvol_display = round(rvol, 1) if (adv and adv > 0) else None  # type: ignore[possibly-undefined]
 
         alert = {
             "ticker": ticker,
@@ -144,7 +201,8 @@ async def run_9m_scan() -> list[dict]:
             vol_str = f"~{projected_vol / 1_000_000:.1f}M proj"  # type: ignore[operator]
             label = "🏦 *9M EP (Pace)*"
 
-        msg = f"{label}: `{ticker}` — Vol: {vol_str} | ${current_price:.2f} | +{gap_pct:.1f}%"
+        rvol_str = f" | RVOL: {rvol_display:.1f}x" if rvol_display else ""
+        msg = f"{label}: `{ticker}` — Vol: {vol_str}{rvol_str} | ${current_price:.2f} | +{gap_pct:.1f}%"
         await send_telegram_message(msg)
         logger.info(f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f}")
         await log_audit_event(
