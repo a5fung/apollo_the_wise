@@ -111,11 +111,21 @@ async def _submit_orb_trade(
     """Build order spec, check safeguards, and submit trade for a single alert."""
     ticker = alert["ticker"]
 
-    order_spec = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
+    order_spec, spec_reason = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
     if not order_spec:
-        await _insert_skipped_trade(ticker, today, alert, regime_record, "Order spec failed")
-        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: stop too wide or no valid entry (ORB range too large)")
-        return {"ticker": ticker, "action": "skipped", "reason": "Order spec failed"}
+        skip_msg = spec_reason or "order spec failed"
+        await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
+        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: {skip_msg}")
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            atr_str = f"{atr_14:.2f}" if atr_14 else "n/a"
+            await log_audit_event(
+                "orb_skipped",
+                f"{ticker} — {skip_msg} | ORB H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} ATR={atr_str}",
+            )
+        except Exception:
+            pass
+        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
 
     ok, sg_reason = await _check_safeguards()
     if not ok:
@@ -470,11 +480,14 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                 take_partial = True
 
             if take_partial:
-                partial_shares = remaining / 3
-                await execute_partial_exit(trade["id"], partial_shares)
-                partial_taken = True
-                breakeven_active = True
-                remaining -= partial_shares
+                partial_shares = int(remaining) // 3
+                partial_ok = await execute_partial_exit(trade["id"], partial_shares)
+                if partial_ok:
+                    partial_taken = True
+                    breakeven_active = True
+                    remaining -= partial_shares
+                # On failure: leave partial_taken/remaining unchanged so the next
+                # daily run retries. execute_partial_exit already sent a Telegram alert.
 
         # 4. Effective stop = max(hard_stop, active_sma, breakeven)
         effective_stop = hard_stop or 0

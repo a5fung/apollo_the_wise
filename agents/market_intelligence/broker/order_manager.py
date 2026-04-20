@@ -28,27 +28,31 @@ async def prepare_orb_order(
     orb_bar: dict,
     atr_14: float,
     regime_record: dict | None,
-) -> dict | None:
+) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares/risk from ORB bar and account equity.
-    Returns order spec dict or None if the trade fails validation.
+    Returns (spec, None) on success or (None, reason) on any rejection.
     """
     orb_high = orb_bar["high"]
     orb_low = orb_bar["low"]
+    ticker = alert["ticker"]
 
     # Single shared entry validation rule (same as EOD sim via validate_orb_entry)
     valid, skip_reason = validate_orb_entry(orb_high, orb_low, atr_14)
     if not valid:
-        logger.info(f"{alert['ticker']}: ORB entry rejected — {skip_reason}")
-        return None
+        logger.info(f"{ticker}: ORB entry rejected — {skip_reason}")
+        if skip_reason and "stop_too_wide" in skip_reason:
+            orb_range = orb_high - orb_low
+            return None, f"stop too wide: ORB range ${orb_range:.2f} vs 1.5× ATR ${atr_14 * 1.5:.2f}"
+        return None, f"ORB range invalid (H={orb_high:.2f} L={orb_low:.2f})"
 
     # Get actual account equity from Alpaca
     try:
         account = await alpaca.get_account()
         equity = account["equity"]
     except Exception as e:
-        logger.error(f"Cannot get account equity for {alert['ticker']}, aborting order prep: {e}")
-        return None
+        logger.error(f"Cannot get account equity for {ticker}, aborting order prep: {e}")
+        return None, f"account fetch failed: {e}"
 
     # Position sizing: 1% risk, halved if QQQ EMA bearish
     risk_pct = 0.01
@@ -60,8 +64,8 @@ async def prepare_orb_order(
     shares = math.floor(risk_dollars / risk_per_share)
 
     if shares <= 0:
-        logger.warning(f"{alert['ticker']}: computed 0 shares, skipping")
-        return None
+        logger.warning(f"{ticker}: computed 0 shares, skipping")
+        return None, f"0 shares computed (risk ${risk_dollars:.0f} / spread ${risk_per_share:.2f})"
 
     # Max 20% of account in one position
     max_position = equity * 0.20
@@ -69,15 +73,15 @@ async def prepare_orb_order(
         shares = math.floor(max_position / orb_high)
 
     if shares <= 0:
-        logger.warning(f"{alert['ticker']}: 0 shares after max-position cap (max=${max_position:.0f}, price=${orb_high:.2f})")
-        return None
+        logger.warning(f"{ticker}: 0 shares after max-position cap (max=${max_position:.0f}, price=${orb_high:.2f})")
+        return None, f"0 shares after 20% cap (max ${max_position:.0f}, price ${orb_high:.2f})"
 
     position_size = shares * orb_high
     # Limit price: ORB high + 0.1% slippage buffer
     limit_price = round(orb_high * 1.001, 2)
 
     spec = {
-        "ticker": alert["ticker"],
+        "ticker": ticker,
         "entry_price": orb_high,
         "limit_price": limit_price,
         "stop_loss_price": orb_low,
@@ -95,11 +99,11 @@ async def prepare_orb_order(
         "regime": regime_record.get("regime") if regime_record else None,
     }
     logger.info(
-        f"Order spec: {alert['ticker']} entry=${orb_high:.2f} stop=${orb_low:.2f} "
+        f"Order spec: {ticker} entry=${orb_high:.2f} stop=${orb_low:.2f} "
         f"shares={shares} risk=${risk_dollars:.2f} position=${position_size:.2f} "
         f"risk_pct={risk_pct:.2%} equity=${equity:.0f}"
     )
-    return spec
+    return spec, None
 
 
 # ── Order Submission ─────────────────────────────────────────────────────────
@@ -556,8 +560,12 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     return True
 
 
-async def execute_partial_exit(trade_id: int, shares: float) -> bool:
-    """Market sell for partial exit (1/3 position)."""
+async def execute_partial_exit(trade_id: int, shares: int) -> bool:
+    """
+    Partial exit (1/3 sell). Replaces stop for remaining 2/3 first so the
+    position is always protected. On sell failure, rolls the stop back to
+    the full original qty.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         trade = await conn.fetchrow(
@@ -568,15 +576,91 @@ async def execute_partial_exit(trade_id: int, shares: float) -> bool:
         return False
 
     ticker = trade["ticker"]
-    logger.info(f"Partial exit: {ticker} selling {shares:.0f} shares (trade_id={trade_id})")
+    shares = int(shares)
+    full_remaining = int(trade["remaining_shares"])
+    new_remaining = full_remaining - shares
+    stop_price = trade["stop_price"] or trade.get("hard_stop")
+    old_stop_id = trade.get("stop_order_id")
+
+    logger.info(
+        f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
+        f"(new_remaining={new_remaining}, trade_id={trade_id})"
+    )
+
+    # Step 1: Replace stop order for new_remaining before unlocking shares.
+    # Cancelling the full-qty stop frees shares held-for-orders; the new
+    # smaller stop immediately re-establishes protection for what we keep.
+    new_stop_id = None
+    if old_stop_id and stop_price and new_remaining > 0:
+        cancelled = await alpaca.cancel_order(old_stop_id)
+        if not cancelled:
+            # Old stop still live — all shares held-for-orders, sell will fail.
+            # Abort cleanly; morning_stop_refresh will retry tomorrow.
+            logger.error(
+                f"execute_partial_exit: cancel failed for stop {old_stop_id} on {ticker} — aborting"
+            )
+            await send_telegram_message(
+                f"⚠️ Partial exit ABORTED for {ticker}: "
+                f"could not cancel existing stop (order {old_stop_id}). "
+                f"Will retry next position update."
+            )
+            return False
+
+        try:
+            new_stop_order = await alpaca.place_stop_order(ticker, new_remaining, float(stop_price))
+            new_stop_id = new_stop_order["id"]
+            # Persist immediately — if we crash after this, sync_positions sees correct qty.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
+                    trade_id, new_stop_id,
+                )
+            logger.info(
+                f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
+                f"@${stop_price:.2f} (order {new_stop_id})"
+            )
+        except Exception as e:
+            # Old stop cancelled but new one failed — position momentarily unprotected.
+            logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
+            await send_telegram_message(
+                f"🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
+                f"Old stop cancelled but new stop failed: {e}\n"
+                f"*Position unprotected — place a manual stop immediately!*"
+            )
+            return False
+
+    # Step 2: Market sell the partial (shares are now free from the stop).
     try:
         order = await alpaca.place_market_sell(ticker, shares)
     except Exception as e:
-        logger.error(f"Partial exit failed for {ticker}: {e}")
-        await send_telegram_message(f"⚠️ Partial exit FAILED for {ticker}: {e}")
+        logger.error(f"Partial exit sell failed for {ticker} after stop replaced: {e}")
+        # Rollback: restore stop for full original qty so nothing sits unprotected.
+        if new_stop_id:
+            await alpaca.cancel_order(new_stop_id)
+        try:
+            rollback = await alpaca.place_stop_order(ticker, full_remaining, float(stop_price))
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
+                    trade_id, rollback["id"],
+                )
+            await send_telegram_message(
+                f"⚠️ Partial exit FAILED for {ticker}: {e}\n"
+                f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
+            )
+            logger.warning(
+                f"Partial exit {ticker}: sell failed, stop rolled back to {full_remaining} shares"
+            )
+        except Exception as e2:
+            logger.error(f"Partial exit rollback ALSO failed for {ticker}: {e2}")
+            await send_telegram_message(
+                f"🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
+                f"Sell error: {e}\nRollback error: {e2}\n"
+                f"*Position may have NO stop — manual intervention required!*"
+            )
         return False
 
-    # Update DB
+    # Step 3: Update DB on successful sell.
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
     fill_price = order.get("filled_avg_price") or trade["entry_price"]
     pnl = (fill_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
@@ -589,8 +673,6 @@ async def execute_partial_exit(trade_id: int, shares: float) -> bool:
         "pnl": pnl,
         "order_id": order["id"],
     })
-
-    remaining = trade["remaining_shares"] - shares
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
     async with pool.acquire() as conn:
@@ -602,16 +684,12 @@ async def execute_partial_exit(trade_id: int, shares: float) -> bool:
                 partial_taken = TRUE,
                 breakeven_active = TRUE
             WHERE id = $1
-        """, trade_id, json.dumps(exits), remaining, total_pnl)
-
-    # Update stop order quantity to match remaining shares
-    if trade.get("stop_order_id") and remaining > 0:
-        await update_stop(trade_id, trade["stop_price"])
+        """, trade_id, json.dumps(exits), new_remaining, total_pnl)
 
     await send_telegram_message(
         f"📤 *Partial exit:* {ticker}\n"
-        f"Sold {shares:.0f} shares @${fill_price:.2f}\n"
-        f"P&L: ${pnl:+,.2f} | Remaining: {remaining:.0f}"
+        f"Sold {shares} shares @${fill_price:.2f}\n"
+        f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
     )
     return True
 

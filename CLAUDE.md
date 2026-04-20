@@ -193,6 +193,45 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 
 ---
 
+## Changes Made 2026-04-20
+
+### Bugs Fixed — Broker / Live Trading
+
+**Partial exit blocked by stop order (KURA case):**
+All shares were `heldfororders` by the Alpaca stop-loss bracket, making `available=0`. Selling any shares was rejected.
+
+Fix (`broker/order_manager.py: execute_partial_exit`):
+- Step 1: cancel old full-qty stop → place new stop for `new_remaining` (2/3) → DB updated immediately
+- Step 2: market sell `partial_shares` (1/3) — now available since stop no longer holds them
+- On sell failure: cancel new stop, restore original-qty stop, send Telegram alert with confirmation
+- On stop-cancel failure: abort cleanly (old stop still live), alert, retry next cycle
+- On replacement stop failure: 🚨 urgent alert, abort
+
+**Fractional qty rejection:**
+`remaining / 3` (Python float) produced `697.333...` which Alpaca rejects. Fixed to `int(remaining) // 3`.
+
+**Caller ignored execute_partial_exit return value (`broker/live_tracker.py`):**
+Even on failure the caller set `partial_taken=True` and decremented `remaining_shares`, so the partial was marked done and never retried. Fix: only advance `partial_taken / breakeven_active / remaining` if the call returns `True`. On failure, DB state is unchanged and the next 4:45 PM run retries automatically.
+
+**KURA manual remediation needed (one-time):**
+```sql
+UPDATE mi_live_trades
+SET partial_taken = FALSE, breakeven_active = FALSE, remaining_shares = 2092
+WHERE ticker = 'KURA' AND status = 'filled';
+```
+
+**Order skip reason opaque ("Order spec failed"):**
+`prepare_orb_order` returned `None` with no reason. Changed return type to `tuple[dict|None, str|None]` — every rejection path now returns a specific human-readable string (e.g. `"stop too wide: ORB range $1.24 vs 1.5× ATR $0.83"`). The reason is shown in Telegram, stored in `mi_live_trades.skip_reason`, and written to `mi_audit_log` with ORB H/L/ATR for system evaluation.
+
+### Key Rules Added
+- **Partial exit is always stop-protected**: stop for remaining shares is placed *before* the sell order, not after.
+- **SMA trailing stop timing**: runs once daily at 4:45 PM ET (EOD close-based). Activates on Day 10+ (needs 10 daily closes). Before Day 10: only ORB hard stop + breakeven (if partial taken) apply.
+
+### Files Changed
+`broker/order_manager.py`, `broker/live_tracker.py`
+
+---
+
 ## Changes Made 2026-04-17
 
 ### Bugs Fixed
