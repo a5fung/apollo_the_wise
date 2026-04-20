@@ -234,7 +234,23 @@ WHERE ticker = 'KURA' AND status = 'filled';
 - **SMA trailing stop timing**: runs once daily at 4:45 PM ET (EOD close-based). Activates on Day 10+ (needs 10 daily closes). Before Day 10: only ORB hard stop + breakeven (if partial taken) apply.
 
 ### Files Changed
-`broker/order_manager.py`, `broker/live_tracker.py`
+`broker/order_manager.py`, `broker/live_tracker.py`, `scripts/cleanup_9m_false_alerts.py` (new)
+
+**⚠️ MUST-RUN on production before deploy — 100+ false 9M EP alerts in DB:**
+The 9M ETF/non-stock filter was added on 2026-04-20 (session 6), but alerts fired before
+that fix are still in `mi_9m_ep_alerts` and `mi_9m_sugar_babies`. Run the cleanup script
+on the server after `git pull`:
+```bash
+# Dry run first — review output carefully
+docker compose -f docker/docker-compose.prod.yml exec market-agent \
+  python scripts/cleanup_9m_false_alerts.py
+
+# Then delete if output looks right
+docker compose -f docker/docker-compose.prod.yml exec market-agent \
+  python scripts/cleanup_9m_false_alerts.py --delete
+```
+Script checks three criteria: SKIP_TICKERS list, non-CS/ADRC in `mi_security_types`,
+and bad ticker format (>5 chars or contains `.`). Also cleans derived sugar baby rows.
 
 ---
 
