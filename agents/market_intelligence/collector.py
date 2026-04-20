@@ -416,7 +416,10 @@ async def get_overnight_snapshot(watchlist: list[dict]) -> list[dict]:
                     pass
             return results
 
-        return await loop.run_in_executor(None, _fetch)
+        return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=30)
+    except asyncio.TimeoutError:
+        logger.warning("Overnight snapshot timed out after 30s — skipping")
+        return []
     except Exception as e:
         logger.warning(f"Overnight snapshot failed: {e}")
         return []
