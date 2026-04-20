@@ -223,6 +223,26 @@ Fix (`theme_engine.py`):
 3. If errors still appear, check the `detail` field — it contains `{ErrorType}: {msg} | raw={snippet}`
    which reveals exactly what Haiku returned and why parsing failed
 
+### Bugs Fixed — Theme Assignment Cross-Sector Hallucinations (LRCX/ICHR in Oil theme)
+
+**Root cause: sector gate had a blind spot when theme members all show "Unknown" sector.**
+Oil theme stocks (XOM, CVX, OXY) often fall outside the top-300 RS leaders so they have
+no sector in `stocks_by_ticker`. This made `known_sectors = []`, which bypassed the
+`if known_sectors and stock_sector not in known_sectors` check entirely — even when the
+incoming stock's sector (e.g. LRCX = "Electronic Technology") was perfectly clear.
+Result: Claude's LLM assignments were validated only by Haiku post-assignment, which
+correctly removed them but left 14-day cooldowns that pollute the briefing.
+
+Fix (`theme_engine.py`): added `elif not known_sectors` branch — when theme sectors are
+all unknown, cross-check the stock's sector against the theme name + description via
+keyword overlap (4+ letter words). "Electronic Technology" shares zero words with
+"Crude Oil Price Momentum ETFs & Pure-Play E&P" → rejected before reaching Haiku or DB.
+Preserved the existing `else` fallback (description overlap) for when the stock's own
+sector is also unknown.
+
+**Existing bad cooldowns (LRCX/ICHR/AMPX/DOW on crude oil):** cosmetic only, expire in
+~13 days. No manual cleanup needed. Fix prevents new wrong assignments going forward.
+
 ### Bugs Fixed — Broker / Live Trading
 
 **Partial exit blocked by stop order (KURA case):**

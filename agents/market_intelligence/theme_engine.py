@@ -1044,10 +1044,22 @@ If none of these apply, call assign_stocks_to_themes directly."""
             if known_sectors and stock_sector not in known_sectors:
                 logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
                 continue
+            elif not known_sectors:
+                # Theme members all have unknown sectors (e.g. oil stocks outside top-300 RS).
+                # The normal sector gate is blind — fall back to keyword overlap between the
+                # stock's sector and the theme name+description. Zero overlap = obvious
+                # cross-sector hallucination (e.g. "Electronic Technology" → "Crude Oil E&P").
+                sector_words = set(re.findall(r'\b\w{4,}\b', stock_sector.lower()))
+                theme_text = (theme_name + " " + (theme.get("description") or "")).lower()
+                theme_words = set(re.findall(r'\b\w{4,}\b', theme_text))
+                if sector_words and theme_words and not sector_words.intersection(theme_words):
+                    logger.info(
+                        f"Assignment skipped: {ticker} sector '{stock_sector}' has zero keyword "
+                        f"overlap with theme '{theme_name}' — likely cross-sector hallucination"
+                    )
+                    continue
         else:
-            # No sector data — fall back to description keyword overlap as a sanity check.
-            # If zero 4+ letter words overlap between the stock description and theme description,
-            # the assignment is almost certainly wrong and we block it.
+            # Stock sector unknown — fall back to description keyword overlap as a sanity check.
             stock_desc = (TICKER_DESC.get(ticker) or "").lower()
             theme_desc = (theme.get("description") or "").lower()
             if stock_desc and theme_desc:
