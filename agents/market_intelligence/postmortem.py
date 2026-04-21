@@ -110,7 +110,8 @@ async def build_postmortem_context(
         """, ad, ticker)
 
         regime = await conn.fetchrow("""
-            SELECT regime, ep_threshold, qqq_ema_bullish, spy_trend
+            SELECT regime, ep_threshold, qqq_ema_bullish, spy_vs_50ma,
+                   breadth_pct_above_40ma, vix, description
             FROM mi_market_regime
             WHERE regime_date <= $1
             ORDER BY regime_date DESC
