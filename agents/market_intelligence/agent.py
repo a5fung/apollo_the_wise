@@ -2866,7 +2866,9 @@ class MarketIntelligenceAgent(BaseAgent):
             exits = _parse_exits(r.get("exits"))
             last = exits[-1] if exits else {}
             exit_price = last.get("price")
-            reason = last.get("reason", "?")
+            # Underscores in reason (stop_hit, partial_profit, sma_trail_stop) break
+            # Telegram Markdown V1 italic parsing — swap to spaces for display.
+            reason = (last.get("reason") or "?").replace("_", " ")
             entry = r.get("entry_price")
             hold = r.get("hold_days") or 0
             score = r.get("ep_score") or 0

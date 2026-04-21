@@ -899,7 +899,14 @@ class TelegramChannel:
                 InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
             ],
         ])
-        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        try:
+            await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        except Exception as markdown_err:
+            # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
+            # makes Telegram reject the whole message. Fall back to plain text so the user
+            # always sees something instead of silence.
+            logger.warning(f"/trades markdown send failed, retrying as plain text: {markdown_err}")
+            await update.message.reply_text(summary_text, reply_markup=keyboard)
 
     async def _handle_hud_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1219,7 +1226,12 @@ class TelegramChannel:
             await query.edit_message_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
         except Exception as e:
             logger.warning(f"edit_message_text failed, sending new: {e}")
-            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+            # Fallback without Markdown — covers both edit-failed (message deleted/old)
+            # and parse-error cases. Plain text is better than silence.
+            try:
+                await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+            except Exception:
+                await query.message.reply_text(result, reply_markup=markup)
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
