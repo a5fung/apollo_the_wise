@@ -3049,52 +3049,30 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._ok(request, result="\n".join(lines))
 
         if view == "closed":
-            # Richer closed-trade view: today's closed + last 15 overall for context.
+            # Show the last 20 closed trades — simpler than splitting today vs older,
+            # and sidesteps any UTC/ET date-compare edge cases.
             async with pool.acquire() as conn:
-                today_rows = await conn.fetch("""
-                    SELECT ticker, entry_price, total_pnl, hold_days,
-                           exits, ep_score, closed_at
-                    FROM mi_live_trades
-                    WHERE status = 'closed'
-                      AND (closed_at AT TIME ZONE 'America/New_York')::date = $1::date
-                    ORDER BY closed_at DESC
-                """, date_str)
-                recent_rows = await conn.fetch("""
+                rows = await conn.fetch("""
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed'
                     ORDER BY closed_at DESC NULLS LAST
-                    LIMIT 15
+                    LIMIT 20
                 """)
-
-            lines: list[str] = []
-
-            if today_rows:
-                net = sum(float(r["total_pnl"] or 0) for r in today_rows)
-                lines.append(f"📊 *Closed {date_str}* ({len(today_rows)}) — net ${net:+,.0f}")
-                for r in today_rows:
-                    lines += _fmt_closed_line(dict(r))
-            else:
-                lines.append(f"📊 *Closed {date_str}* — none today")
-
-            # Filter recent to exclude today's entries so we don't double-list.
-            # closed_at from asyncpg is tz-aware UTC; convert to ET before date compare
-            # so the cutover matches the SQL above.
-            from agents.market_intelligence.collector import _ET
-            older = [
-                r for r in recent_rows
-                if not r["closed_at"]
-                or r["closed_at"].astimezone(_ET).date().isoformat() != date_str
-            ]
-            if older:
-                lines.append("")
-                lines.append(f"*Recent Closed* (last {len(older)})")
-                for r in older:
-                    lines += _fmt_closed_line(dict(r))
-
-            if not today_rows and not older:
+            if not rows:
                 return self._ok(request, result="No closed trades recorded yet.")
+
+            net = sum(float(r["total_pnl"] or 0) for r in rows)
+            wins = sum(1 for r in rows if float(r["total_pnl"] or 0) > 0)
+            losses = len(rows) - wins
+            lines = [
+                f"📊 *Closed Trades* (last {len(rows)})",
+                f"  W/L {wins}/{losses} · net ${net:+,.0f}",
+                "",
+            ]
+            for r in rows:
+                lines += _fmt_closed_line(dict(r))
 
             return self._ok(request, result="\n".join(lines))
 
