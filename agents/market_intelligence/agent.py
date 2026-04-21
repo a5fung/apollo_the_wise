@@ -476,6 +476,11 @@ class MarketIntelligenceAgent(BaseAgent):
                                      "journal today", "journal last", "journal entries"]):
             return await self._handle_journal_query(request)
 
+        # Trade postmortem — joined narrative (EP alert + execution + fwd returns + theme + regime).
+        # Must come before trades_query (which grabs any "trade" substring).
+        if any(k in task for k in ["postmortem", "post mortem", "post-mortem", "trade review"]):
+            return await self._handle_postmortem(request)
+
         if any(k in task for k in ["audit log", "show logs", "recent logs", "advisor log", "what happened", "engine log", "orb log", "show orb"]):
             return await self._handle_audit_log(request)
 
@@ -2180,6 +2185,59 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append(f"\n🔻 _Fading: {fading_names}_")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
+
+    async def _handle_postmortem(self, request: AgentRequest) -> AgentResponse:
+        """
+        Trade postmortem — joins EP alert, execution, forward returns, theme, regime
+        into an LLM-synthesized recap per ticker.
+          `postmortem TICKER`            → most recent closed trade
+          `postmortem TICKER YYYY-MM-DD` → specific alert date
+        No ticker → list 5 most recent closed trades as hints.
+        """
+        import re as _re
+        from datetime import date as _date
+        from agents.market_intelligence.postmortem import generate_postmortem_narrative
+
+        task = request.task
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', task.upper())
+        skip = _PREPOSITION_SKIP | {
+            "POSTMORTEM", "POST", "MORTEM", "TRADE", "REVIEW",
+            "FOR", "THE", "WITH", "AND", "WHAT",
+        }
+        ticker = next((t for t in cands if t not in skip), None)
+
+        if not ticker:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, alert_date, total_pnl
+                    FROM mi_live_trades
+                    WHERE status = 'closed'
+                    ORDER BY closed_at DESC NULLS LAST LIMIT 5
+                """)
+                if not rows:
+                    rows = await conn.fetch("""
+                        SELECT ticker, alert_date, total_pnl
+                        FROM mi_paper_trades
+                        WHERE status = 'closed'
+                        ORDER BY alert_date DESC LIMIT 5
+                    """)
+            if not rows:
+                return self._ok(
+                    request,
+                    result="No closed trades yet. Use `postmortem TICKER` after a trade closes.",
+                )
+            lines = ["*Recent closed trades — use `postmortem TICKER`:*"]
+            for r in rows:
+                pnl = f"${r['total_pnl']:+,.0f}" if r['total_pnl'] is not None else "—"
+                lines.append(f"• *{r['ticker']}* {r['alert_date']} {pnl}")
+            return self._ok(request, result="\n".join(lines))
+
+        date_m = _re.search(r'(\d{4}-\d{2}-\d{2})', task)
+        alert_date = _date.fromisoformat(date_m.group(1)) if date_m else None
+
+        narrative = await generate_postmortem_narrative(ticker, alert_date)
+        return self._ok(request, result=narrative)
 
     async def _handle_history_query(self, request: AgentRequest) -> AgentResponse:
         """Handle historical RS and theme queries — 'when did metals peak?', 'RS history CIEN'."""

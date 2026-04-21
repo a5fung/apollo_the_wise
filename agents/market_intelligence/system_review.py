@@ -64,6 +64,7 @@ Rules:
 - Max 350 words total.
 - Every bullet must cite a number from the metrics JSON.
 - Keep Telegram Markdown: *bold*, `code`, no tables.
+- When `postmortem_best` or `postmortem_worst` is present, weave one concrete insight from each into the ✅/⚠️ sections (e.g. "{ticker}'s exit followed through {pnl}…"). Do not paste the full postmortem — extract the takeaway.
 """
 
 
@@ -111,6 +112,7 @@ async def _gather_and_aggregate(
     cooldowns = await _aggregate_cooldowns(window_start)
     clusters = await _aggregate_clusters(today)
     regime = await _aggregate_regime(window_days)
+    postmortems = await _aggregate_trade_postmortems(window_start)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -122,7 +124,65 @@ async def _gather_and_aggregate(
         "cooldowns": cooldowns,
         "clusters": clusters,
         "regime": regime,
+        "postmortem_best": postmortems.get("best"),
+        "postmortem_worst": postmortems.get("worst"),
     }
+
+
+async def _aggregate_trade_postmortems(window_start: date) -> dict:
+    """
+    Pick the window's best and worst closed trade (by total_pnl) and generate
+    one-paragraph postmortem narratives. Sources mi_live_trades when available,
+    falls back to mi_paper_trades. Returns {} if neither has closed trades.
+    """
+    from agents.market_intelligence.db import get_pool
+    from agents.market_intelligence.postmortem import generate_postmortem_narrative
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, alert_date, total_pnl FROM mi_live_trades
+            WHERE status = 'closed' AND alert_date >= $1 AND total_pnl IS NOT NULL
+            ORDER BY alert_date DESC
+        """, window_start)
+        if not rows:
+            rows = await conn.fetch("""
+                SELECT ticker, alert_date, total_pnl FROM mi_paper_trades
+                WHERE status = 'closed' AND alert_date >= $1 AND total_pnl IS NOT NULL
+                ORDER BY alert_date DESC
+            """, window_start)
+
+    if not rows:
+        return {}
+
+    best = max(rows, key=lambda r: float(r["total_pnl"]))
+    worst = min(rows, key=lambda r: float(r["total_pnl"]))
+
+    out: dict = {}
+    try:
+        out["best"] = {
+            "ticker": best["ticker"],
+            "alert_date": best["alert_date"].isoformat(),
+            "pnl": round(float(best["total_pnl"]), 2),
+            "narrative": await generate_postmortem_narrative(
+                best["ticker"], best["alert_date"]
+            ),
+        }
+    except Exception as e:
+        logger.warning(f"Weekly postmortem (best) failed: {e}")
+    if worst["ticker"] != best["ticker"] or worst["alert_date"] != best["alert_date"]:
+        try:
+            out["worst"] = {
+                "ticker": worst["ticker"],
+                "alert_date": worst["alert_date"].isoformat(),
+                "pnl": round(float(worst["total_pnl"]), 2),
+                "narrative": await generate_postmortem_narrative(
+                    worst["ticker"], worst["alert_date"]
+                ),
+            }
+        except Exception as e:
+            logger.warning(f"Weekly postmortem (worst) failed: {e}")
+    return out
 
 
 async def _aggregate_ep_outcomes(days: int) -> dict:
