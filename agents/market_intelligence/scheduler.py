@@ -646,6 +646,22 @@ async def _weekly_cleanup():
         await notify_job_failure("weekly_cleanup", str(e))
 
 
+async def _weekly_system_review_job():
+    """Sunday 8:00 AM ET. Synthesize last 7 days of system metrics via Claude + Telegram digest."""
+    from agents.market_intelligence.system_review import run_weekly_review
+    logger.info("Weekly system review starting...")
+    try:
+        review = await run_weekly_review(window_days=7)
+        suggestion_count = len(review.get("suggestions") or [])
+        await notify_job_success(
+            "weekly_system_review",
+            f"review sent (regime={review.get('regime')}, suggestions={suggestion_count})",
+        )
+    except Exception as e:
+        logger.exception(f"Weekly system review failed: {e}")
+        await notify_job_failure("weekly_system_review", str(e))
+
+
 async def _start_ep_scanning():
     """Kept for /status display. Scanning is controlled by cron window, not this flag."""
     global _ep_scans_completed_today
@@ -911,6 +927,15 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(day_of_week="sun", hour=2, minute=0, timezone="America/New_York"),
         id="weekly_cleanup",
         replace_existing=True,
+    )
+
+    # Weekly system review: Sunday 8:00 AM ET — self-audit digest via Claude
+    _scheduler.add_job(
+        _weekly_system_review_job,
+        CronTrigger(day_of_week="sun", hour=8, minute=0, timezone="America/New_York"),
+        id="weekly_system_review",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────

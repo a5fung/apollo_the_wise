@@ -466,6 +466,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["refresh", "data pull", "nightly pull", "rerun", "re-run", "repull"]):
             return await self._handle_data_refresh(request)
 
+        if any(k in task for k in ["weekly review", "system review", "self audit", "self-audit"]):
+            return await self._handle_system_review(request)
+
         # Journal — add (colon disambiguates from query) or query
         if any(k in task for k in ["journal:", "log trade", "note trade", "add journal"]):
             return await self._handle_journal_add(request)
@@ -679,6 +682,21 @@ class MarketIntelligenceAgent(BaseAgent):
             "  Sugar baby gate:    close in top 25% of range + green",
         ]
         return self._ok(request, "\n".join(lines))
+
+    async def _handle_system_review(self, request: AgentRequest) -> AgentResponse:
+        """Run the weekly self-audit on demand. Sends Telegram digest + persists row."""
+        from agents.market_intelligence.system_review import run_weekly_review
+        try:
+            review = await run_weekly_review(window_days=7)
+            suggestions = review.get("suggestions") or []
+            summary = (
+                f"System review sent — regime={review.get('regime')}, "
+                f"{len(suggestions)} suggestion(s). See Telegram for full digest."
+            )
+            return self._ok(request, result=summary)
+        except Exception as e:
+            logger.exception(f"System review failed: {e}")
+            return self._error(request, f"System review failed: {e}")
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""

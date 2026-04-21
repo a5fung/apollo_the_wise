@@ -70,7 +70,7 @@ Order matters — first match wins:
 7. journal add ("journal:", "log trade") / journal query ("show journal", "my journal")
 8. theme ("theme", "sector", "industry") — before regime/RS
 9. regime / 10. RS/score / 11. briefing / 12. pullback / 13. fundamentals
-14. screener / 15. audit log ("audit log", "show logs", "show errors") / 16. fallback
+14. screener / 15. audit log ("audit log", "show logs", "show errors") / 16. weekly review ("weekly review", "system review", "self audit") / 17. fallback
 
 ## Ticker Extraction
 ```python
@@ -147,6 +147,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 5:00 PM | Data pull — RS + regime + themes + error check |
 | 4:45 PM | Position update |
 | 8:00 PM | Evening briefing |
+| Sun 8:00 AM | Weekly system self-audit (7d metrics → Claude synthesis → Telegram digest; persists `mi_system_reviews`) |
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
@@ -349,6 +350,26 @@ After first session with new filters:
 3. Sugar babies count in `mi_9m_sugar_babies` for today should be ≤ 5.
 4. Mid-ADV genuine catalysts (e.g. a 4M ADV name doing 15M+ shares on news) must appear
    in **both** intraday alerts **and** EOD sugar-baby query.
+
+---
+
+## Changes Made 2026-04-20 (session 3) — Weekly system self-audit
+
+### Features Added
+- **Sunday 8 AM ET weekly review** — `system_review.py` pulls 7d from every tracking
+  table, aggregates to summary stats in Python/SQL (LLM never sees raw rows — token
+  trap), hands to Sonnet for synthesis, sends Telegram digest, persists to
+  `mi_system_reviews` (JSONB metrics + suggestions) so next week's run grades prior
+  suggestions. Four-section output: ✅ Working / ⚠️ Broken / 💡 Proposed changes / 🔁 Last week.
+- On-demand trigger via Telegram: `weekly review`, `system review`, `self audit`.
+- Follow-up framed as metric deltas (not "did it ship?") — LLM has no deploy visibility.
+
+### New DB
+- `mi_system_reviews` (review_date, window_days, regime, summary, metrics JSONB, suggestions JSONB) — UNIQUE (review_date, window_days).
+- `get_weekly_theme_churn(days)` in `db.py` — LAG() over `mi_themes.tickers` arrays; returns high-churn (ticker, theme) pairs.
+
+### Files Changed
+`system_review.py` (new), `db.py`, `scheduler.py`, `agent.py`, `CLAUDE.md`
 
 ---
 

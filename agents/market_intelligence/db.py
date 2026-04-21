@@ -536,6 +536,23 @@ async def initialize_schema() -> None:
             );
         """)
 
+        # ── System self-audit reviews (weekly + future monthly/quarterly) ─
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_system_reviews (
+                id           SERIAL PRIMARY KEY,
+                review_date  DATE NOT NULL,
+                window_days  INT NOT NULL DEFAULT 7,
+                regime       TEXT,
+                summary      TEXT NOT NULL,
+                metrics      JSONB,
+                suggestions  JSONB,
+                created_at   TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (review_date, window_days)
+            );
+            CREATE INDEX IF NOT EXISTS idx_system_reviews_date
+                ON mi_system_reviews(review_date DESC);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -3059,3 +3076,116 @@ async def set_hud_state(key: str, value: str) -> None:
             VALUES ($1, $2, NOW())
             ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()
         """, key, value)
+
+
+async def insert_system_review(review: dict) -> bool:
+    """
+    Upsert a weekly/monthly system review row.
+    Expected keys: review_date, window_days, regime, summary, metrics, suggestions.
+    Same (review_date, window_days) replaces prior row (supports mid-week reruns).
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_system_reviews
+                (review_date, window_days, regime, summary, metrics, suggestions)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (review_date, window_days) DO UPDATE SET
+                regime      = EXCLUDED.regime,
+                summary     = EXCLUDED.summary,
+                metrics     = EXCLUDED.metrics,
+                suggestions = EXCLUDED.suggestions,
+                created_at  = NOW()
+        """,
+            _to_date(review["review_date"]),
+            int(review.get("window_days", 7)),
+            review.get("regime"),
+            review["summary"],
+            review.get("metrics"),
+            review.get("suggestions"),
+        )
+    return True
+
+
+async def get_latest_system_review(window_days: int = 7) -> Optional[dict]:
+    """Return the most recent review for the given window, or None."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
+            FROM mi_system_reviews
+            WHERE window_days = $1
+            ORDER BY review_date DESC
+            LIMIT 1
+        """, window_days)
+    if not row:
+        return None
+    return {
+        "review_date": row["review_date"].isoformat(),
+        "window_days": row["window_days"],
+        "regime": row["regime"],
+        "summary": row["summary"],
+        "metrics": row["metrics"],
+        "suggestions": row["suggestions"],
+        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+async def get_weekly_theme_churn(days: int = 7) -> list[dict]:
+    """
+    Detect tickers entering/exiting a theme ≥2× in the last `days` days.
+    Computes adds/removes from consecutive daily snapshots in `mi_themes.tickers`.
+    Returns rows ordered by total event_count desc, LIMIT 20.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH snapshots AS (
+                SELECT theme_date, name, tickers
+                FROM mi_themes
+                WHERE theme_date >= CURRENT_DATE - ($1::int + 1)
+            ),
+            with_prev AS (
+                SELECT theme_date, name, tickers,
+                       LAG(tickers) OVER (PARTITION BY name ORDER BY theme_date) AS prev_tickers
+                FROM snapshots
+            ),
+            adds AS (
+                SELECT theme_date, name, unnest(tickers) AS ticker, 'added' AS event
+                FROM with_prev
+                WHERE prev_tickers IS NOT NULL
+                  AND theme_date >= CURRENT_DATE - $1::int
+            ),
+            add_events AS (
+                SELECT a.theme_date, a.name, a.ticker, a.event
+                FROM adds a
+                JOIN with_prev wp ON wp.theme_date = a.theme_date AND wp.name = a.name
+                WHERE NOT (a.ticker = ANY(wp.prev_tickers))
+            ),
+            removes AS (
+                SELECT theme_date, name, unnest(prev_tickers) AS ticker, 'removed' AS event
+                FROM with_prev
+                WHERE prev_tickers IS NOT NULL
+                  AND theme_date >= CURRENT_DATE - $1::int
+            ),
+            remove_events AS (
+                SELECT r.theme_date, r.name, r.ticker, r.event
+                FROM removes r
+                JOIN with_prev wp ON wp.theme_date = r.theme_date AND wp.name = r.name
+                WHERE NOT (r.ticker = ANY(wp.tickers))
+            ),
+            all_events AS (
+                SELECT * FROM add_events UNION ALL SELECT * FROM remove_events
+            )
+            SELECT ticker,
+                   name AS theme_name,
+                   COUNT(*) FILTER (WHERE event = 'added')   AS add_count,
+                   COUNT(*) FILTER (WHERE event = 'removed') AS remove_count,
+                   COUNT(*) AS event_count
+            FROM all_events
+            GROUP BY ticker, name
+            HAVING COUNT(*) >= 2
+            ORDER BY event_count DESC
+            LIMIT 20
+        """, days)
+    return [dict(r) for r in rows]
