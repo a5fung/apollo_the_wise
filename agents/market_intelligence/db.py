@@ -828,6 +828,9 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     Criteria mirror intraday ninem_detector gates so both paths agree:
       volume >= 9M, close >= $5, dollar_volume >= $50M, open/high/low present,
       close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV.
+    ADV is computed from mi_daily_closes (all 8K+ tickers) — same source as intraday scanner.
+    Unknown ADV (< 10 days history) → pass conservatively (new listings).
+    Unknown security type (not yet classified) → pass (same as intraday scanner).
     Returns up to 20, ordered by volume desc.
     """
     pool = await get_pool()
@@ -835,17 +838,25 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
         trade_date = date.fromisoformat(trade_date)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
+            WITH adv AS (
+                SELECT ticker,
+                       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+                FROM mi_daily_closes
+                WHERE trade_date < $1
+                  AND trade_date >= $1 - INTERVAL '30 days'
+                  AND volume > 0
+                GROUP BY ticker
+                HAVING COUNT(*) >= 10
+            )
             SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
                    CASE WHEN (d.high_price - d.low_price) > 0
                         THEN (d.close - d.low_price) / (d.high_price - d.low_price)
                         ELSE NULL END AS close_in_range_pct
             FROM mi_daily_closes d
-            LEFT JOIN mi_stock_scores s
-                ON s.ticker = d.ticker
-                AND s.score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
-            JOIN mi_security_types st
-                ON st.ticker = d.ticker AND st.security_type IN ('CS', 'ADRC')
+            LEFT JOIN mi_security_types st ON st.ticker = d.ticker
+            LEFT JOIN adv a ON a.ticker = d.ticker
             WHERE d.trade_date = $1
+              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
               AND d.volume >= 9000000
               AND d.close >= 5.0
               AND (d.volume * d.close) >= 50000000
@@ -855,7 +866,7 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND d.close > d.open_price
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
-              AND d.volume >= (COALESCE(s.adv_20, 0) * 3)
+              AND d.volume >= (COALESCE(a.adv_20, 0) * 3)
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)

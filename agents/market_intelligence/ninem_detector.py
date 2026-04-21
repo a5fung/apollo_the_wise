@@ -75,18 +75,15 @@ async def _get_non_stock_tickers(today_str: str) -> set[str]:
 
 
 async def _get_adv_map(today_str: str) -> dict[str, float]:
-    """Return most-recent ADV map from mi_stock_scores (20-day median volume)."""
+    """20-day median ADV from mi_daily_closes — covers all tickers, not just RS universe."""
     global _adv_cache, _adv_cache_date
     if _adv_cache_date == today_str:
         return _adv_cache
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT ticker, adv_20 FROM mi_stock_scores WHERE score_date = (SELECT MAX(score_date) FROM mi_stock_scores)"
-        )
-    _adv_cache = {r["ticker"]: r["adv_20"] for r in rows if r["adv_20"]}
+    from agents.market_intelligence.db import get_adv_from_daily_closes
+    trade_date = date.fromisoformat(today_str)
+    _adv_cache = await get_adv_from_daily_closes(trade_date)
     _adv_cache_date = today_str
-    logger.info(f"9M ADV cache refreshed: {len(_adv_cache)} tickers")
+    logger.info(f"9M ADV cache refreshed from daily_closes: {len(_adv_cache)} tickers")
     return _adv_cache
 
 
