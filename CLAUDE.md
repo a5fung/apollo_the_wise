@@ -353,6 +353,23 @@ After first session with new filters:
 
 ---
 
+## Changes Made 2026-04-20 (session 4) — Hardening triage from architecture review
+
+### Hardening
+- **LLM rate-limit guard in `ep_detector`**: switched `_get_claude()` to `AsyncAnthropic`, added module-level `asyncio.Semaphore(5)` + one-level retry on `RateLimitError` (2–5s jitter). Earnings days with 30+ simultaneous gaps no longer silently degrade catalyst classification via 429s. Audit event `anthropic_rate_limited` on retry.
+- **Correlation matrix off the event loop**: `correlation_engine.run_correlation_clustering` now wraps the `np.corrcoef` + BFS block in `asyncio.to_thread()` via new `_compute_tight_clusters_sync()`. The 2800×2800 float64 matrix no longer blocks Telegram / EP scans during nightly pull.
+
+### Features Added
+- **Theme breadth decay (`pct_above_20sma`)**: new column on `mi_themes`; computed nightly for every active theme via `get_ticker_breadth_above_sma20()` (reads `mi_stock_scores.close > sma_20`). When breadth < 40% for 2 consecutive days, theme is forced to `Fading` regardless of RS smoothed delta — catches themes where members have rolled over even while RS still looks healthy. Surfaces in briefing theme line as `brdXX%` next to `d{N}` and `🔥×{N}`. Audit event `theme_breadth_fade`.
+
+### Backlog Added
+P18 (+3R/72h partial), P19 (VIX-scaled risk), P20 (earnings IV pre-pass — blocked on data), P21 (cross-asset thematic validation). Rejected: stat-arb residual mean-reversion, dark-pool block-print integration.
+
+### Files Changed
+`ep_detector.py`, `correlation_engine.py`, `theme_engine.py`, `db.py`, `briefing.py`, `CLAUDE.md`
+
+---
+
 ## Changes Made 2026-04-20 (session 3) — Weekly system self-audit
 
 ### Features Added

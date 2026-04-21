@@ -565,6 +565,8 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS days_active INT NOT NULL DEFAULT 0;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS consecutive_accelerating INT NOT NULL DEFAULT 0;
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS pct_above_20sma REAL;
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides
@@ -3189,3 +3191,28 @@ async def get_weekly_theme_churn(days: int = 7) -> list[dict]:
             LIMIT 20
         """, days)
     return [dict(r) for r in rows]
+
+
+async def get_ticker_breadth_above_sma20(
+    tickers: list[str], trade_date: "str | date"
+) -> float | None:
+    """Fraction of tickers with close > sma_20 on trade_date. None if no data.
+
+    Leading decay indicator for theme health — a theme can score well on RS
+    while most members have rolled over below their 20-day trend. Reads from
+    mi_stock_scores (populated nightly for all RS-universe tickers)."""
+    if not tickers:
+        return None
+    pool = await get_pool()
+    d = _to_date(trade_date)
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT
+                COUNT(*) FILTER (WHERE close > sma_20) AS above,
+                COUNT(*) FILTER (WHERE sma_20 IS NOT NULL AND close IS NOT NULL) AS total
+            FROM mi_stock_scores
+            WHERE ticker = ANY($1) AND score_date = $2
+        """, tickers, d)
+    if not row or not row["total"]:
+        return None
+    return round(row["above"] / row["total"], 3)

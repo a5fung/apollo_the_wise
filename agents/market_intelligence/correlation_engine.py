@@ -11,6 +11,7 @@ statistical signals — stocks moving together before any narrative crystallizes
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from datetime import date, timedelta
@@ -165,6 +166,24 @@ def _dedup_against_themes(
     return result
 
 
+def _compute_tight_clusters_sync(
+    closes: dict[str, list[float]], tickers: list[str]
+) -> list[dict]:
+    """Pure-CPU pipeline: returns → residual corrs → BFS → chaining filter. Runs in worker thread."""
+    close_matrix = np.array([closes[t] for t in tickers], dtype=np.float64)
+    spy_closes = np.array(closes["SPY"], dtype=np.float64)
+    r_matrix = close_matrix[:, 1:] / close_matrix[:, :-1] - 1.0
+    r_spy = spy_closes[1:] / spy_closes[:-1] - 1.0
+
+    corr_matrix, filtered_tickers = _compute_residual_correlations(r_matrix, r_spy, tickers)
+    if corr_matrix.size == 0:
+        return []
+
+    raw = _extract_clusters(corr_matrix, filtered_tickers)
+    logger.info(f"Correlation clustering: {len(raw)} raw clusters before chaining filter")
+    return [c for c in raw if c["mean_corr"] >= _MEAN_CORR_MIN]
+
+
 async def run_correlation_clustering(today: date) -> list[dict]:
     """
     Main entry point. Returns filtered clusters ready for theme engine injection
@@ -198,26 +217,12 @@ async def run_correlation_clustering(today: date) -> list[dict]:
 
     logger.info(f"Correlation clustering: {len(tickers)} tickers, {n_days} days")
 
-    # Build return matrices (slice off first close to get n_days-1 returns)
-    all_tickers = tickers
-    close_matrix = np.array([closes[t] for t in all_tickers], dtype=np.float64)
-    spy_closes = np.array(closes["SPY"], dtype=np.float64)
-
-    # Daily returns: r_t = close_t / close_{t-1} - 1
-    r_matrix = close_matrix[:, 1:] / close_matrix[:, :-1] - 1.0
-    r_spy = spy_closes[1:] / spy_closes[:-1] - 1.0
-
-    corr_matrix, filtered_tickers = _compute_residual_correlations(r_matrix, r_spy, all_tickers)
-
-    if corr_matrix.size == 0:
-        logger.warning("Correlation clustering: empty correlation matrix after filtering")
-        return []
-
-    raw_clusters = _extract_clusters(corr_matrix, filtered_tickers)
-    logger.info(f"Correlation clustering: {len(raw_clusters)} raw clusters before filtering")
-
-    # Chaining filter: drop clusters where mean pairwise corr < 0.80
-    tight = [c for c in raw_clusters if c["mean_corr"] >= _MEAN_CORR_MIN]
+    # Heavy numpy work — N×N corrcoef on ~2800 tickers blocks the event loop
+    # for seconds. Push it onto a worker thread so Telegram commands, EP scans,
+    # and paper-trade polls keep flowing.
+    tight = await asyncio.to_thread(
+        _compute_tight_clusters_sync, closes, tickers
+    )
     logger.info(f"Correlation clustering: {len(tight)} tight clusters after chaining filter")
 
     # Theme dedup

@@ -32,6 +32,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import random
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
@@ -77,12 +78,15 @@ _catalyst_cache: dict[str, tuple[str, float, str, str]] = {}
 _catalyst_cache_date: "date | None" = None
 
 _claude = None
+# Cap concurrent Anthropic calls — earnings days can gap 30+ stocks simultaneously,
+# and unbounded parallel requests → 429s → degraded catalyst classification.
+_ANTHROPIC_SEMAPHORE = asyncio.Semaphore(5)
 
 
 def _get_claude():
     global _claude
     if _claude is None:
-        _claude = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        _claude = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     return _claude
 
 
@@ -178,13 +182,23 @@ In your analysis, state the SPECIFIC catalyst clearly. If you cannot identify a 
 catalyst, say so explicitly."""
 
     try:
-        response = _get_claude().messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=300,
-            tools=[_CATALYST_TOOL],
-            tool_choice={"type": "tool", "name": "classify_catalyst"},
-            messages=[{"role": "user", "content": prompt}],
-        )
+        async with _ANTHROPIC_SEMAPHORE:
+            for attempt in range(2):
+                try:
+                    response = await _get_claude().messages.create(
+                        model="claude-haiku-4-5-20251001",
+                        max_tokens=300,
+                        tools=[_CATALYST_TOOL],
+                        tool_choice={"type": "tool", "name": "classify_catalyst"},
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    break
+                except anthropic.RateLimitError:
+                    if attempt == 1:
+                        raise
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event("anthropic_rate_limited", ticker, "retrying ep catalyst")
+                    await asyncio.sleep(2 + random.random() * 3)
         tool_block = next(b for b in response.content if b.type == "tool_use")
         result = tool_block.input
         return result["quality"], result["analysis"]

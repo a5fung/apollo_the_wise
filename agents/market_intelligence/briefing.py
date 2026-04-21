@@ -66,14 +66,17 @@ STAGE_EMOJI = {
 
 
 def _conviction_suffix(theme: dict) -> str:
-    """Return conviction display suffix, e.g. '  d14 🔥×3' or ''."""
+    """Return conviction display suffix, e.g. '  d14 🔥×3 brd42%' or ''."""
     days = theme.get("days_active") or 0
     consec = theme.get("consecutive_accelerating") or 0
+    breadth = theme.get("pct_above_20sma")
     parts = []
     if days > 1:
         parts.append(f"d{days}")
     if consec >= 2:
         parts.append(f"🔥×{consec}")
+    if breadth is not None:
+        parts.append(f"brd{int(breadth * 100)}%")
     return ("  " + " ".join(parts)) if parts else ""
 
 

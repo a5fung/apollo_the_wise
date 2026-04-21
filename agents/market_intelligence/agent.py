@@ -2849,6 +2849,31 @@ class MarketIntelligenceAgent(BaseAgent):
                 )
             return self._ok(request, result="\n".join(lines))
 
+        if view == "skipped":
+            async with pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality,
+                           status, skip_reason, orb_high, orb_low, atr_14
+                    FROM mi_live_trades
+                    WHERE status IN ('skipped', 'cancelled', 'order_failed')
+                    ORDER BY alert_date DESC, ticker
+                    LIMIT 15
+                """)
+            if not rows:
+                return self._ok(request, result="No skipped trades recorded.")
+            lines = [f"⊘ *Skipped Trades* (last {len(rows)})"]
+            for r in rows:
+                date_str = r["alert_date"].strftime("%b %d")
+                gap = f" gap={r['gap_pct']:.1f}%" if r['gap_pct'] else ""
+                score = f" score={r['ep_score']:.0f}" if r['ep_score'] else ""
+                reason = r['skip_reason'] or "unknown"
+                orb_hint = ""
+                if r['orb_high'] and r['orb_low']:
+                    orb_hint = f"  ORB H=${r['orb_high']:.2f} L=${r['orb_low']:.2f}"
+                lines.append(f"\n*{r['ticker']}* {date_str}{gap}{score}")
+                lines.append(f"  {reason}{orb_hint}")
+            return self._ok(request, result="\n".join(lines))
+
         if view == "closed":
             async with pool.acquire() as conn:
                 rows = await conn.fetch("""

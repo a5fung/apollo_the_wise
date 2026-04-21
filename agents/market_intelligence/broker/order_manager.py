@@ -41,10 +41,18 @@ async def prepare_orb_order(
     valid, skip_reason = validate_orb_entry(orb_high, orb_low, atr_14)
     if not valid:
         logger.info(f"{ticker}: ORB entry rejected — {skip_reason}")
+        orb_range = orb_high - orb_low
         if skip_reason and "stop_too_wide" in skip_reason:
-            orb_range = orb_high - orb_low
-            return None, f"stop too wide: ORB range ${orb_range:.2f} vs 1.5× ATR ${atr_14 * 1.5:.2f}"
-        return None, f"ORB range invalid (H={orb_high:.2f} L={orb_low:.2f})"
+            orb_pct = (orb_range / orb_low * 100) if orb_low > 0 else 0
+            return None, (
+                f"stop too wide — ORB range ${orb_range:.2f} ({orb_pct:.1f}%) "
+                f"exceeds 1.5× ATR ${atr_14 * 1.5:.2f}; risk per share too large"
+            )
+        # orb_range_zero: open == high == low in the first 1-min bar
+        return None, (
+            f"zero ORB range — open=high=low=${orb_high:.2f}; "
+            f"illiquid or locked opening minute, no breakout level to buy above"
+        )
 
     # Get actual account equity from Alpaca
     try:
@@ -65,7 +73,10 @@ async def prepare_orb_order(
 
     if shares <= 0:
         logger.warning(f"{ticker}: computed 0 shares, skipping")
-        return None, f"0 shares computed (risk ${risk_dollars:.0f} / spread ${risk_per_share:.2f})"
+        return None, (
+            f"position too small — ${risk_dollars:.0f} risk budget / "
+            f"${risk_per_share:.2f} per-share stop distance < 1 share"
+        )
 
     # Max 20% of account in one position
     max_position = equity * 0.20
@@ -74,7 +85,10 @@ async def prepare_orb_order(
 
     if shares <= 0:
         logger.warning(f"{ticker}: 0 shares after max-position cap (max=${max_position:.0f}, price=${orb_high:.2f})")
-        return None, f"0 shares after 20% cap (max ${max_position:.0f}, price ${orb_high:.2f})"
+        return None, (
+            f"price exceeds 20% position cap — ${orb_high:.2f}/share > max "
+            f"position ${max_position:.0f} (20% of ${equity:.0f} equity)"
+        )
 
     position_size = shares * orb_high
     # Limit price: ORB high + 0.1% slippage buffer

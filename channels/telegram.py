@@ -894,8 +894,11 @@ class TelegramChannel:
             [
                 InlineKeyboardButton("Live Positions", callback_data="trades:live"),
                 InlineKeyboardButton("Paper Trades", callback_data="trades:paper"),
+            ],
+            [
                 InlineKeyboardButton("Closed Today", callback_data=f"trades:closed:{today_str}"),
-            ]
+                InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
+            ],
         ])
         await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
 

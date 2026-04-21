@@ -43,8 +43,13 @@ from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
-    add_validation_cooldown, get_cooldown_set,
+    add_validation_cooldown, get_cooldown_set, get_ticker_breadth_above_sma20,
 )
+
+# Theme breadth decay — force Fading when fewer than 40% of members trade
+# above their 20-day SMA for 2 consecutive days. Lifecycle otherwise reacts
+# to RS smoothed delta, which can lag member-level rollover.
+_BREADTH_DECAY_THRESHOLD = 0.40
 
 logger = logging.getLogger(__name__)
 
@@ -477,8 +482,8 @@ async def _save_themes(themes: list[dict]) -> None:
             await conn.execute("""
                 INSERT INTO mi_themes
                     (theme_date, name, stage, score, rs_avg, description, tickers,
-                     parent_theme, days_active, consecutive_accelerating)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                     parent_theme, days_active, consecutive_accelerating, pct_above_20sma)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 ON CONFLICT (theme_date, name) DO UPDATE SET
                     stage = EXCLUDED.stage,
                     score = EXCLUDED.score,
@@ -487,10 +492,11 @@ async def _save_themes(themes: list[dict]) -> None:
                     tickers = EXCLUDED.tickers,
                     parent_theme = EXCLUDED.parent_theme,
                     days_active = EXCLUDED.days_active,
-                    consecutive_accelerating = EXCLUDED.consecutive_accelerating
+                    consecutive_accelerating = EXCLUDED.consecutive_accelerating,
+                    pct_above_20sma = EXCLUDED.pct_above_20sma
             """, t["theme_date"], t["name"], t["stage"],
                 t["score"], t.get("rs_avg"), t["description"], t["tickers"],
-                t.get("parent_theme"), days_active, consec_acc)
+                t.get("parent_theme"), days_active, consec_acc, t.get("pct_above_20sma"))
 
         # Remove themes that were merged/retired — not in the final list
         final_names = [t["name"] for t in themes]
@@ -743,6 +749,7 @@ async def _rescore_existing_theme(
             logger.info(f"Theme '{name}' retired after {fading_days} fading days")
             return None, changelog  # retire it
 
+        pct_breadth = await get_ticker_breadth_above_sma20(tickers, today)
         return {
             "theme_date": today,
             "name": name,
@@ -751,6 +758,7 @@ async def _rescore_existing_theme(
             "rs_avg": None,
             "description": existing_desc,
             "tickers": tickers,
+            "pct_above_20sma": pct_breadth,
         }, changelog
 
     # Momentum score (50%): trimmed mean RS composite of strong constituents
@@ -811,6 +819,25 @@ async def _rescore_existing_theme(
         if stage == "Fading" and smooth_delta > 5:   # require real recovery, not noise
             stage = "Accelerating"
 
+    # Breadth decay override — two days below threshold forces Fading regardless
+    # of RS signal. Catches themes where members have rolled over even though
+    # smoothed score still looks healthy.
+    pct_breadth = await get_ticker_breadth_above_sma20(tickers, today)
+    if (
+        pct_breadth is not None
+        and pct_breadth < _BREADTH_DECAY_THRESHOLD
+        and (theme.get("pct_above_20sma") or 1.0) < _BREADTH_DECAY_THRESHOLD
+        and stage != "Fading"
+    ):
+        logger.info(
+            f"Theme '{name}': breadth decay {pct_breadth:.0%} (prev {theme.get('pct_above_20sma'):.0%}) — forcing Fading"
+        )
+        await log_audit_event(
+            "theme_breadth_fade",
+            f"{name}: breadth {pct_breadth:.0%}, members {len(tickers)}",
+        )
+        stage = "Fading"
+
     if stage != prev_stage:
         changelog.append({
             "type": "stage_change",
@@ -829,6 +856,7 @@ async def _rescore_existing_theme(
         "rs_avg": round(momentum, 1),
         "description": description,
         "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
+        "pct_above_20sma": pct_breadth,
     }, changelog
 
 
