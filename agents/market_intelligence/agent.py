@@ -2667,6 +2667,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/regime":         self._handle_regime_query,
             "/positions":      self._handle_watchlist,
             "/pregame":        self._handle_pregame,
+            "/trades":         self._handle_trades_detail,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
