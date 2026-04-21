@@ -487,3 +487,33 @@ Dec 2025 → Feb 2026: precision 0.5%, recall 8.2%. **Statistically inconclusive
 
 ### Files Changed
 `ninem_detector.py`, `ep_detector.py`, `scheduler.py`
+
+---
+
+## Changes Made 2026-04-21 — `/trades` richer summary
+
+### Problem
+`/trades` default view rendered as a single unhelpful line (`0 live open · 0 paper open · $0 unrealized`).
+When KURA stopped out, the user had no way to see the closed trade — "Live Positions" button showed
+"nothing", "Closed Today" said "no data" until the stop fill propagated. And paper-trade counts were
+misleading since the EOD sim was disabled when live Alpaca trading turned on.
+
+### Changes (`agents/market_intelligence/agent.py` — `_handle_trades_detail`)
+- **`summary` view** now shows:
+  - All open live positions with **entry → current → stop**, shares, market value, hold days,
+    unrealized P&L, and partial/breakeven flags. Current price comes from Alpaca `get_position`
+    (silent fallback on failure, so a dead API doesn't break the summary).
+  - **Last 5 closed** trades inline (entry → exit price, exit reason, score, P&L, hold days).
+  - **Totals** row: W/L count, win rate, realized P&L (all-time).
+  - Paper-trade stats intentionally dropped — sim is no longer live.
+- **`closed` view** now shows today's closed + last 15 recent closed for context, each with full
+  entry/exit/reason/score detail instead of just ticker + $P&L.
+- **`live` view** kept as a silent alias of `summary` so older pinned messages keep working.
+
+### Changes (`channels/telegram.py`)
+- Removed "Live Positions" button (folded into summary).
+- New button layout: row 1 = [Closed Trades] [Skipped], row 2 = [Paper (legacy)].
+- Applied in both the initial `/trades` send and the drill-down re-render.
+
+### Files Changed
+`agents/market_intelligence/agent.py`, `channels/telegram.py`

@@ -2843,7 +2843,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
-        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+        import json as _json
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
@@ -2851,43 +2851,153 @@ class MarketIntelligenceAgent(BaseAgent):
 
         pool = await get_pool()
 
-        if view == "summary":
-            # Summary counts for both live and paper
-            async with pool.acquire() as conn:
-                live_open = await conn.fetchval(
-                    "SELECT COUNT(*) FROM mi_live_trades WHERE status = 'filled' AND remaining_shares > 0"
-                )
-                paper_open = await conn.fetchval(
-                    "SELECT COUNT(*) FROM mi_paper_trades WHERE status = 'open'"
-                )
-                live_pnl = await conn.fetchval(
-                    "SELECT COALESCE(SUM(total_pnl),0) FROM mi_live_trades WHERE status='filled' AND remaining_shares>0"
-                )
-            lines = [
-                f"📊 *Positions — {date_str}*",
-                f"{live_open} live open · {paper_open} paper open · ${live_pnl:+,.0f} unrealized (live)",
-            ]
-            return self._ok(request, result="\n".join(lines))
+        def _parse_exits(raw) -> list:
+            if isinstance(raw, list):
+                return raw
+            try:
+                return _json.loads(raw or "[]")
+            except Exception:
+                return []
 
-        if view == "live":
+        def _fmt_closed_line(r: dict) -> list[str]:
+            pnl = float(r.get("total_pnl") or 0)
+            emoji = "✅" if pnl > 0 else "❌"
+            exits = _parse_exits(r.get("exits"))
+            last = exits[-1] if exits else {}
+            exit_price = last.get("price")
+            reason = last.get("reason", "?")
+            entry = r.get("entry_price")
+            hold = r.get("hold_days") or 0
+            score = r.get("ep_score") or 0
+            entry_str = f"${entry:.2f}" if entry else "?"
+            exit_str = f"${exit_price:.2f}" if exit_price else "?"
+            closed_at = r.get("closed_at")
+            date_suffix = f" · {closed_at.strftime('%b %d')}" if closed_at else ""
+            return [
+                f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}",
+                f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
+            ]
+
+        async def _build_summary() -> str:
+            """Open positions (with live Alpaca prices) + last 5 closed + totals."""
+            from agents.market_intelligence.broker import alpaca_client as alpaca
+
             async with pool.acquire() as conn:
-                rows = await conn.fetch("""
+                open_rows = await conn.fetch("""
                     SELECT ticker, alert_date, entry_price, remaining_shares,
-                           stop_price, total_pnl, hold_days, catalyst_quality
+                           stop_price, hard_stop, total_pnl, hold_days,
+                           partial_taken, breakeven_active, ep_score,
+                           catalyst_quality
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
                     ORDER BY alert_date ASC
                 """)
-            if not rows:
-                return self._ok(request, result="No open live positions.")
-            lines = [f"📊 *Live Positions* ({len(rows)})"]
-            for r in rows:
-                pnl = f"${r['total_pnl']:+,.0f}" if r['total_pnl'] else "—"
+                closed_rows = await conn.fetch("""
+                    SELECT ticker, entry_price, total_pnl, hold_days,
+                           exits, ep_score, closed_at
+                    FROM mi_live_trades
+                    WHERE status = 'closed'
+                    ORDER BY closed_at DESC NULLS LAST
+                    LIMIT 5
+                """)
+                stats = await conn.fetchrow("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl > 0) AS winners,
+                        COUNT(*) FILTER (WHERE status = 'closed' AND total_pnl <= 0) AS losers,
+                        COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
+                    FROM mi_live_trades
+                """)
+
+            # Fetch live prices per position (fire-and-forget fallback on failure)
+            enriched = []
+            unreal_total = 0.0
+            for r in open_rows:
+                d = dict(r)
+                try:
+                    pos = await alpaca.get_position(d["ticker"])
+                except Exception:
+                    pos = None
+                if pos:
+                    d["current_price"] = pos.get("current_price")
+                    d["unrealized_pnl"] = pos.get("unrealized_pl") or 0
+                    d["market_value"] = pos.get("market_value") or 0
+                else:
+                    d["current_price"] = None
+                    d["unrealized_pnl"] = 0
+                    d["market_value"] = 0
+                unreal_total += float(d["unrealized_pnl"] or 0)
+                enriched.append(d)
+
+            lines: list[str] = []
+            lines.append(f"📊 *Positions — {date_str}*")
+
+            if enriched:
+                lines.append("")
+                lines.append(f"*Open ({len(enriched)})* · unreal ${unreal_total:+,.0f}")
+                for p in enriched:
+                    ticker = p["ticker"]
+                    entry = p.get("entry_price")
+                    current = p.get("current_price")
+                    stop = p.get("stop_price")
+                    shares = p.get("remaining_shares") or 0
+                    hold = p.get("hold_days") or 0
+                    unreal = float(p.get("unrealized_pnl") or 0)
+                    mkt_val = float(p.get("market_value") or 0)
+                    realized = float(p.get("total_pnl") or 0)
+                    pnl_emoji = "🟢" if unreal > 0 else "🔴" if unreal < 0 else "⚪"
+                    flags = []
+                    if p.get("partial_taken"):
+                        flags.append("partial")
+                    if p.get("breakeven_active"):
+                        flags.append("BE")
+                    flag_str = f" ({', '.join(flags)})" if flags else ""
+
+                    entry_str = f"${entry:.2f}" if entry else "?"
+                    current_str = f"${current:.2f}" if current else "?"
+                    stop_str = f"${stop:.2f}" if stop else "?"
+                    pct_str = ""
+                    if entry and current:
+                        pct = (current - entry) / entry * 100
+                        pct_str = f" ({pct:+.1f}%)"
+
+                    lines.append(
+                        f"  {pnl_emoji} *{ticker}* · {hold}d{flag_str}\n"
+                        f"      Entry {entry_str} → Now {current_str}{pct_str}\n"
+                        f"      {shares:.0f} sh · ${mkt_val:,.0f} · Stop {stop_str}\n"
+                        f"      Unreal ${unreal:+,.0f}"
+                        + (f" · Real ${realized:+,.0f}" if realized else "")
+                    )
+            else:
+                lines.append("")
+                lines.append("_No open positions._")
+
+            if closed_rows:
+                lines.append("")
+                lines.append(f"*Last {len(closed_rows)} Closed*")
+                for r in closed_rows:
+                    lines += _fmt_closed_line(dict(r))
+
+            winners = stats["winners"] or 0
+            losers = stats["losers"] or 0
+            realized = float(stats["realized"] or 0)
+            closed_count = winners + losers
+            if closed_count > 0:
+                win_rate = winners / closed_count * 100
+                lines.append("")
+                lines.append("*Totals*")
                 lines.append(
-                    f"\n• *{r['ticker']}* entry ${r['entry_price']:.2f} · "
-                    f"stop ${r['stop_price']:.2f} · {r['remaining_shares']} sh · P&L {pnl}"
+                    f"  W/L {winners}/{losers} ({win_rate:.0f}%) · Realized ${realized:+,.0f}"
                 )
-            return self._ok(request, result="\n".join(lines))
+
+            return "\n".join(lines)
+
+        if view == "summary":
+            return self._ok(request, result=await _build_summary())
+
+        # Retained for backwards compat — callback no longer surfaces this button,
+        # but the route remains so older pinned messages still work.
+        if view == "live":
+            return self._ok(request, result=await _build_summary())
 
         if view == "paper":
             async with pool.acquire() as conn:
@@ -2899,7 +3009,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 """)
             if not rows:
                 return self._ok(request, result="No paper trades recorded yet.")
-            lines = ["📋 *Paper Trades* (last 15)"]
+            lines = [
+                "📋 *Paper Trades* (legacy EOD sim — not updating; live trading is on Alpaca)",
+                "",
+            ]
             for r in rows:
                 pnl_str = f"  P&L ${r['total_pnl']:+,.0f}" if r['status'] == 'closed' and r['total_pnl'] else ""
                 lines.append(
@@ -2921,31 +3034,60 @@ class MarketIntelligenceAgent(BaseAgent):
                 return self._ok(request, result="No skipped trades recorded.")
             lines = [f"⊘ *Skipped Trades* (last {len(rows)})"]
             for r in rows:
-                date_str = r["alert_date"].strftime("%b %d")
+                d_str = r["alert_date"].strftime("%b %d")
                 gap = f" gap={r['gap_pct']:.1f}%" if r['gap_pct'] else ""
                 score = f" score={r['ep_score']:.0f}" if r['ep_score'] else ""
                 reason = r['skip_reason'] or "unknown"
                 orb_hint = ""
                 if r['orb_high'] and r['orb_low']:
                     orb_hint = f"  ORB H=${r['orb_high']:.2f} L=${r['orb_low']:.2f}"
-                lines.append(f"\n*{r['ticker']}* {date_str}{gap}{score}")
+                lines.append(f"\n*{r['ticker']}* {d_str}{gap}{score}")
                 lines.append(f"  {reason}{orb_hint}")
             return self._ok(request, result="\n".join(lines))
 
         if view == "closed":
+            # Richer closed-trade view: today's closed + last 15 overall for context.
             async with pool.acquire() as conn:
-                rows = await conn.fetch("""
-                    SELECT ticker, total_pnl, hold_days, closed_at
+                today_rows = await conn.fetch("""
+                    SELECT ticker, entry_price, total_pnl, hold_days,
+                           exits, ep_score, closed_at
                     FROM mi_live_trades
                     WHERE status = 'closed' AND closed_at::date = $1::date
                     ORDER BY closed_at DESC
                 """, date_str)
-            if not rows:
-                return self._ok(request, result=f"No closed trades on {date_str}.")
-            total = sum(r["total_pnl"] or 0 for r in rows)
-            lines = [f"📊 *Closed {date_str}* — net ${total:+,.0f}"]
-            for r in rows:
-                lines.append(f"  *{r['ticker']}*  ${r['total_pnl']:+,.0f}  {r['hold_days']}d")
+                recent_rows = await conn.fetch("""
+                    SELECT ticker, entry_price, total_pnl, hold_days,
+                           exits, ep_score, closed_at
+                    FROM mi_live_trades
+                    WHERE status = 'closed'
+                    ORDER BY closed_at DESC NULLS LAST
+                    LIMIT 15
+                """)
+
+            lines: list[str] = []
+
+            if today_rows:
+                net = sum(float(r["total_pnl"] or 0) for r in today_rows)
+                lines.append(f"📊 *Closed {date_str}* ({len(today_rows)}) — net ${net:+,.0f}")
+                for r in today_rows:
+                    lines += _fmt_closed_line(dict(r))
+            else:
+                lines.append(f"📊 *Closed {date_str}* — none today")
+
+            # Filter recent to exclude today's entries so we don't double-list
+            older = [
+                r for r in recent_rows
+                if not r["closed_at"] or r["closed_at"].date().isoformat() != date_str
+            ]
+            if older:
+                lines.append("")
+                lines.append(f"*Recent Closed* (last {len(older)})")
+                for r in older:
+                    lines += _fmt_closed_line(dict(r))
+
+            if not today_rows and not older:
+                return self._ok(request, result="No closed trades recorded yet.")
+
             return self._ok(request, result="\n".join(lines))
 
         return self._ok(request, result=f"Unknown view: {view}")

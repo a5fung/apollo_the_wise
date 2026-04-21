@@ -892,12 +892,11 @@ class TelegramChannel:
 
         keyboard = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("Live Positions", callback_data="trades:live"),
-                InlineKeyboardButton("Paper Trades", callback_data="trades:paper"),
+                InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}"),
+                InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
             ],
             [
-                InlineKeyboardButton("Closed Today", callback_data=f"trades:closed:{today_str}"),
-                InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
+                InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
             ],
         ])
         await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
@@ -1199,12 +1198,11 @@ class TelegramChannel:
             today_str = _date.today().isoformat()
             markup = InlineKeyboardMarkup([
                 [
-                    InlineKeyboardButton("Live Positions", callback_data="trades:live"),
-                    InlineKeyboardButton("Paper Trades", callback_data="trades:paper"),
+                    InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}"),
+                    InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
                 ],
                 [
-                    InlineKeyboardButton("Closed Today", callback_data=f"trades:closed:{today_str}"),
-                    InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
+                    InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
                 ],
                 [InlineKeyboardButton("← Summary", callback_data="trades:summary")],
             ])
