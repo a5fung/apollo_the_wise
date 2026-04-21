@@ -843,6 +843,8 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
             LEFT JOIN mi_stock_scores s
                 ON s.ticker = d.ticker
                 AND s.score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            JOIN mi_security_types st
+                ON st.ticker = d.ticker AND st.security_type IN ('CS', 'ADRC')
             WHERE d.trade_date = $1
               AND d.volume >= 9000000
               AND d.close >= 5.0
