@@ -1193,15 +1193,27 @@ class TelegramChannel:
             logger.error(f"Drill-down callback failed: {e}")
             result = f"Error: {e}"
 
-        # Back button returns to summary
-        if prefix == "eps" and parts[1] != "SUMMARY":
+        # Keep full button set on drill-downs so user can switch views in-place.
+        if prefix == "trades":
+            from datetime import date as _date
+            today_str = _date.today().isoformat()
+            markup = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("Live Positions", callback_data="trades:live"),
+                    InlineKeyboardButton("Paper Trades", callback_data="trades:paper"),
+                ],
+                [
+                    InlineKeyboardButton("Closed Today", callback_data=f"trades:closed:{today_str}"),
+                    InlineKeyboardButton("Skipped", callback_data="trades:skipped"),
+                ],
+                [InlineKeyboardButton("← Summary", callback_data="trades:summary")],
+            ])
+        elif prefix == "eps" and parts[1] != "SUMMARY":
             date_str = parts[2] if len(parts) > 2 else ""
             back_data = f"eps:SUMMARY:{date_str}"
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("← Summary", callback_data=back_data)]])
         elif prefix == "themes" and parts[1] != "All":
             markup = InlineKeyboardMarkup([[InlineKeyboardButton("← All Themes", callback_data="themes:All")]])
-        elif prefix == "trades" and parts[1] != "summary":
-            markup = InlineKeyboardMarkup([[InlineKeyboardButton("← Summary", callback_data="trades:summary")]])
         else:
             markup = None
 
