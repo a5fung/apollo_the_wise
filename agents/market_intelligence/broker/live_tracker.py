@@ -610,7 +610,8 @@ async def send_live_trade_summary() -> None:
         todays_closes = await conn.fetch("""
             SELECT ticker, total_pnl, hold_days
             FROM mi_live_trades
-            WHERE status = 'closed' AND closed_at::date = $1
+            WHERE status = 'closed'
+              AND (closed_at AT TIME ZONE 'America/New_York')::date = $1
         """, today)
         todays_entries = await conn.fetch("""
             SELECT ticker, entry_price, entry_shares
