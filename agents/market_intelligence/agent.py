@@ -3052,7 +3052,8 @@ class MarketIntelligenceAgent(BaseAgent):
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at
                     FROM mi_live_trades
-                    WHERE status = 'closed' AND closed_at::date = $1::date
+                    WHERE status = 'closed'
+                      AND (closed_at AT TIME ZONE 'America/New_York')::date = $1::date
                     ORDER BY closed_at DESC
                 """, date_str)
                 recent_rows = await conn.fetch("""
@@ -3074,10 +3075,14 @@ class MarketIntelligenceAgent(BaseAgent):
             else:
                 lines.append(f"📊 *Closed {date_str}* — none today")
 
-            # Filter recent to exclude today's entries so we don't double-list
+            # Filter recent to exclude today's entries so we don't double-list.
+            # closed_at from asyncpg is tz-aware UTC; convert to ET before date compare
+            # so the cutover matches the SQL above.
+            from agents.market_intelligence.collector import _ET
             older = [
                 r for r in recent_rows
-                if not r["closed_at"] or r["closed_at"].date().isoformat() != date_str
+                if not r["closed_at"]
+                or r["closed_at"].astimezone(_ET).date().isoformat() != date_str
             ]
             if older:
                 lines.append("")

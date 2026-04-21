@@ -517,3 +517,18 @@ misleading since the EOD sim was disabled when live Alpaca trading turned on.
 
 ### Files Changed
 `agents/market_intelligence/agent.py`, `channels/telegram.py`
+
+### Bug Fixed — UTC/ET boundary hid today's closed trades
+`closed_at::date = $1::date` used Postgres session TZ (UTC). After 8 PM ET the UTC date
+rolls to tomorrow while `et_today()` is still today → `/trades_detail closed` and the
+evening-briefing today's-closes query both returned empty even though the trade was
+properly marked `status='closed'`. This is why KURA's stop-out alert fired but the
+Closed Today button said "no data" afterwards.
+
+Fix: cast via `(closed_at AT TIME ZONE 'America/New_York')::date` so the date comparison
+is always evaluated in trading-floor time. Applied in:
+- `agents/market_intelligence/agent.py` (`_handle_trades_detail` closed view)
+- `agents/market_intelligence/broker/live_tracker.py` (evening briefing `todays_closes`)
+
+Also converted the python-side filter that dedups today's rows from the "recent closed"
+list to use `astimezone(_ET).date()` instead of the tz-naive `.date()`.
