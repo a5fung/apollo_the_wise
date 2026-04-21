@@ -103,8 +103,13 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
 
 ### 9M EP Detection (Parallel Track)
-- **No LLM, no gap requirement** — volume ≥ 8.9M = institutional repositioning confirmed
-- **Projection gate**: same 15-min rule as MAGNA53 — projected vol only computed after 9:45 AM
+- **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde)
+- **Quality gates** (target 2–5 alerts/day):
+  - Price ≥ $5, dollar volume ≥ $50M (actual) / ≥ $30M already traded (anticipation)
+  - Directional: gap ≥ 3% OR intraday gain ≥ 4%
+  - Anomaly: effective_vol ≥ 3× ADV (unknown ADV passes; ratio — NOT a flat ADV ceiling)
+  - Anticipation: ≥ 30 min elapsed, ≥ 3M shares already traded, projects to ≥ 12M
+- **Intraday and EOD use identical filters** — both apply 3× ADV ratio, $50M turnover, $5 price, directional conviction. Any divergence creates phantom sugar babies.
 - **Sugar Baby** = 9M day + green (close > open) + close in top 25% of range → Day 2 ORB candidate
 - **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based
 - **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_sugar_babies` (EOD confirmed)
@@ -299,6 +304,51 @@ docker compose -f docker/docker-compose.prod.yml exec market-agent \
 ```
 Script checks three criteria: SKIP_TICKERS list, non-CS/ADRC in `mi_security_types`,
 and bad ticker format (>5 chars or contains `.`). Also cleans derived sugar baby rows.
+
+---
+
+## Changes Made 2026-04-20 (session 2) — 9M quality filters (74 → 2–5/day)
+
+### Problem
+First production day of post-ETF-filter 9M detector produced **74 alerts** — unworkable
+as a signal and as a Day 2 ORB candidate pool (4-position cap). Existing filters
+(ETF gate, ADV ≤ 4.5M ceiling, gap ≥ 0%, price ≥ $3) let through low-dollar stocks,
+flat/red tapes, and stocks doing merely 2× their normal volume.
+
+### Fix — structural filters in `ninem_detector.py` + matching EOD SQL
+
+Four new gates applied to both intraday `run_9m_scan()` and EOD `get_eod_9m_sugar_babies()`:
+
+1. **Price ≥ $5.00** (was $3) — sub-$5 rarely institutional.
+2. **Dollar-volume floor:**
+   - Actual alert: `today_volume × current_price ≥ $50M`
+   - Anticipation: `≥ $30M` already traded (self-regulates low-priced false positives)
+3. **Directional conviction:** `gap ≥ 3% OR intraday_gain ≥ 4%` — catches both
+   "gapped and held" and "opened flat but trending hard." Previous `gap ≥ 0%` was a no-op.
+4. **Virgin 9M anomaly (ratio, not ceiling):** `effective_vol ≥ 3 × adv_20`
+   - Actual uses `today_volume`; anticipation uses `projected_vol`
+   - **Critical**: replaces old flat `_MAX_ADV = 4.5M` ceiling. Flat ceiling would have
+     silently blocked mid-ADV genuine catalysts (4M ADV × 20M shares = $100M+ day) while
+     the EOD SQL (which already used a 3× ratio) would have surfaced them as phantom
+     sugar babies the next morning. Both paths now use identical ratio logic.
+5. **Anticipation tightened:** min-elapsed 15 min → 30 min; require ≥ 3M shares already
+   traded before projecting (prevents projection off 1–2M of open-auction flow).
+
+### Telegram message format
+Now includes dollar-volume: `9M EP: TICKER — Vol: 12.3M ($87M) | RVOL: 4.1x | $7.15 | +8.2%`.
+Gap display auto-switches to intraday_gain when the intraday leg is what qualified.
+
+### Files Changed
+`ninem_detector.py` (constants + filter logic + docstrings + message), `db.py`
+(`get_eod_9m_sugar_babies` WHERE clause + docstring), `CLAUDE.md`
+
+### ⚠️ Post-deploy verification
+After first session with new filters:
+1. Alert count should land in 2–5 on a typical day, 6–10 on a risk-on day.
+2. Spot-check `mi_9m_ep_alerts` for today: no flat/red tapes, no sub-$5, no mega-caps.
+3. Sugar babies count in `mi_9m_sugar_babies` for today should be ≤ 5.
+4. Mid-ADV genuine catalysts (e.g. a 4M ADV name doing 15M+ shares on news) must appear
+   in **both** intraday alerts **and** EOD sugar-baby query.
 
 ---
 

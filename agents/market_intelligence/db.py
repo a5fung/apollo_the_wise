@@ -825,8 +825,9 @@ async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
 async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     """
     Fetch stocks from mi_daily_closes that qualify as 9M sugar babies for a given date.
-    Criteria: volume >= 9M, close >= $3, open/high/low present, close > open,
-              (close - low) / (high - low) >= 0.75, ADV <= 4.5M (Pradeep anomaly gate).
+    Criteria mirror intraday ninem_detector gates so both paths agree:
+      volume >= 9M, close >= $5, dollar_volume >= $50M, open/high/low present,
+      close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV.
     Returns up to 20, ordered by volume desc.
     """
     pool = await get_pool()
@@ -844,14 +845,15 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                 AND s.score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
             WHERE d.trade_date = $1
               AND d.volume >= 9000000
-              AND d.close >= 3.0
+              AND d.close >= 5.0
+              AND (d.volume * d.close) >= 50000000
               AND d.open_price IS NOT NULL
               AND d.high_price IS NOT NULL
               AND d.low_price IS NOT NULL
               AND d.close > d.open_price
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
-              AND COALESCE(s.adv_20, 0) <= 4500000
+              AND d.volume >= (COALESCE(s.adv_20, 0) * 3)
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)

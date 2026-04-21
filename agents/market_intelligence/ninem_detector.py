@@ -32,13 +32,16 @@ from agents.market_intelligence.db import (
 logger = logging.getLogger(__name__)
 
 _SESSION_MINUTES = 390
-_9M_ACTUAL_THRESHOLD = 8_900_000       # shares — fire "actual" alert
-_9M_PROJECTED_THRESHOLD = 12_000_000   # projected shares — fire "anticipation" alert
-_MIN_PRICE = 3.00                       # skip sub-$3 tickers
-_PROJECTION_MIN_MINUTES = 15            # don't project volume before 9:45 AM
-_MAX_ADV = 4_500_000                    # Pradeep anomaly gate: 9M shares must be ≥2x the stock's
-                                        # normal daily volume. Stocks with ADV > 4.5M (AAPL, NVDA,
-                                        # SPY, etc.) are not anomalous at 9M — skip them.
+_9M_ACTUAL_THRESHOLD = 8_900_000           # shares — fire "actual" alert
+_9M_PROJECTED_THRESHOLD = 12_000_000       # projected shares — fire "anticipation" alert
+_MIN_PRICE = 5.00                          # sub-$5 rarely institutional
+_MIN_DOLLAR_VOL_ACTUAL = 50_000_000        # $50M turnover floor for actual alert
+_MIN_DOLLAR_VOL_ANTICIPATION = 30_000_000  # $30M already traded for anticipation
+_MIN_VOL_ANTICIPATION = 3_000_000          # 3M shares already traded before pace alert
+_PROJECTION_MIN_MINUTES = 30               # projection math garbage pre-10 AM
+_ADV_ANOMALY_MULTIPLIER = 3                # effective_vol ≥ 3× ADV (virgin 9M)
+_MIN_GAP_PCT = 3.0                         # gap-up commitment
+_MIN_INTRADAY_GAIN_PCT = 4.0               # OR intraday trend
 
 # In-memory dedup: prevents duplicate Telegram alerts within the same calendar day.
 # A process restart clears this; the DB UNIQUE constraint on (ticker, alert_date)
@@ -92,10 +95,13 @@ async def run_9m_scan() -> list[dict]:
     Intraday scan for stocks crossing the 9M volume threshold.
     Called every 5 minutes, 9:30 AM – 4:00 PM ET.
 
-    Detection rules:
-    - actual volume >= 8.9M shares (immediate threshold), OR
-    - projected volume >= 12M shares (pace-based, only after 15 min since open)
-    - price >= $3.00, gap >= 0%
+    Detection rules (virgin 9M — Pradeep Bonde):
+    - price >= $5.00
+    - gap >= 3% OR intraday gain >= 4% (directional conviction)
+    - actual: volume >= 8.9M AND dollar_volume >= $50M, OR
+    - anticipation: >=30 min elapsed, >=3M shares traded, >=$30M turnover,
+      and projected volume >= 12M
+    - effective_vol >= 3× ADV (unknown ADV → pass)
 
     Fires one Telegram alert per ticker per day.
     Returns list of newly inserted alert dicts.
@@ -141,40 +147,50 @@ async def run_9m_scan() -> list[dict]:
         if not current_price or current_price < _MIN_PRICE:
             continue
 
-        gap_pct = (current_price - prev_close) / prev_close * 100
-        if gap_pct < 0:
+        # Directional conviction: gapped up 3%+ OR trending up 4%+ intraday.
+        day_open = snap.get("day", {}).get("o") or 0
+        gap_pct = ((day_open - prev_close) / prev_close * 100) if day_open > 0 else 0.0
+        intraday_gain_pct = (current_price - prev_close) / prev_close * 100
+        if gap_pct < _MIN_GAP_PCT and intraday_gain_pct < _MIN_INTRADAY_GAIN_PCT:
             continue
 
         today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
+        dollar_volume = today_volume * current_price
+
+        is_9m_actual = (
+            today_volume >= _9M_ACTUAL_THRESHOLD
+            and dollar_volume >= _MIN_DOLLAR_VOL_ACTUAL
+        )
 
         projected_vol: int | None = None
-        is_anticipation = False
-
-        if minutes_since_open >= _PROJECTION_MIN_MINUTES and today_volume > 0:
+        is_9m_anticipation = False
+        if (
+            not is_9m_actual
+            and minutes_since_open >= _PROJECTION_MIN_MINUTES
+            and today_volume >= _MIN_VOL_ANTICIPATION
+            and dollar_volume >= _MIN_DOLLAR_VOL_ANTICIPATION
+        ):
             projected_vol = int(today_volume * (_SESSION_MINUTES / minutes_since_open))
-
-        is_9m_actual = today_volume >= _9M_ACTUAL_THRESHOLD
-        is_9m_anticipation = (
-            projected_vol is not None
-            and projected_vol >= _9M_PROJECTED_THRESHOLD
-            and not is_9m_actual
-        )
+            is_9m_anticipation = projected_vol >= _9M_PROJECTED_THRESHOLD
 
         if not (is_9m_actual or is_9m_anticipation):
             continue
 
-        # Pradeep anomaly gate: 9M shares must represent an actual volume anomaly.
-        # Stocks with ADV > 4.5M trade that volume every day — skip them.
-        # Unknown ADV (not yet in RS universe) → pass through conservatively.
+        # Virgin 9M gate: effective volume must be ≥3× normal ADV.
+        # Actual path uses today_volume; anticipation uses projected_vol.
+        # Matches EOD SQL (d.volume >= adv_20 * 3) so intraday/EOD agree.
+        # Unknown ADV → pass conservatively (ticker not in RS universe).
         adv = adv_map.get(ticker)
-        if adv and adv > _MAX_ADV:
-            continue
+        if adv:
+            effective_vol = projected_vol if is_9m_anticipation else today_volume
+            if effective_vol < adv * _ADV_ANOMALY_MULTIPLIER:
+                continue
 
-        if is_9m_anticipation:
-            is_anticipation = True
-
+        is_anticipation = is_9m_anticipation
         rvol_display = round(today_volume / adv, 1) if (adv and adv > 0) else None
 
+        # Display leg: gap if it qualified, otherwise the intraday trend that did.
+        display_pct = gap_pct if gap_pct >= _MIN_GAP_PCT else intraday_gain_pct
         alert = {
             "ticker": ticker,
             "alert_date": today_str,
@@ -182,7 +198,7 @@ async def run_9m_scan() -> list[dict]:
             "today_volume": today_volume,
             "projected_vol": projected_vol,
             "current_price": current_price,
-            "gap_pct": round(gap_pct, 2),
+            "gap_pct": round(display_pct, 2),
             "is_anticipation": is_anticipation,
         }
 
@@ -202,7 +218,8 @@ async def run_9m_scan() -> list[dict]:
             label = "🏦 *9M EP (Pace)*"
 
         rvol_str = f" | RVOL: {rvol_display:.1f}x" if rvol_display else ""
-        msg = f"{label}: `{ticker}` — Vol: {vol_str}{rvol_str} | ${current_price:.2f} | +{gap_pct:.1f}%"
+        dv_str = f"${dollar_volume/1_000_000:.0f}M"
+        msg = f"{label}: `{ticker}` — Vol: {vol_str} ({dv_str}){rvol_str} | ${current_price:.2f} | +{display_pct:.1f}%"
         await send_telegram_message(msg)
         logger.info(f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f}")
         await log_audit_event(
@@ -219,12 +236,13 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
     EOD sweep: identify stocks that completed a confirmed 9M day with a strong close.
     Called once after the nightly data pull (~5:30 PM ET).
 
-    Sugar Baby criteria (queried directly from mi_daily_closes):
+    Sugar Baby criteria (mirrors intraday gates — queried from mi_daily_closes):
     - volume >= 9M shares
-    - close >= $3.00
-    - open_price present (column added by schema migration)
-    - close > open (green day)
+    - close >= $5.00
+    - dollar_volume (volume * close) >= $50M
+    - open_price present, close > open (green day)
     - (close - low) / (high - low) >= 0.75 (close in upper 25% of range)
+    - volume >= 3× adv_20 (virgin 9M; unknown ADV → pass)
 
     Inserts qualifying stocks into mi_9m_sugar_babies for Day 2 ORB.
     Returns count of sugar babies stored.
