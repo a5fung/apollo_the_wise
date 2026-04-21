@@ -828,9 +828,8 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     Criteria mirror intraday ninem_detector gates so both paths agree:
       volume >= 9M, close >= $5, dollar_volume >= $50M, open/high/low present,
       close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV.
-    ADV is computed from mi_daily_closes (all 8K+ tickers) — same source as intraday scanner.
-    Unknown ADV (< 10 days history) → pass conservatively (new listings).
-    Unknown security type (not yet classified) → pass (same as intraday scanner).
+    Unknown ADV (new listing, < 10 sessions) or unknown security type pass
+    conservatively so they are not silently dropped.
     Returns up to 20, ordered by volume desc.
     """
     pool = await get_pool()

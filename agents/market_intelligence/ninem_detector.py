@@ -21,6 +21,7 @@ from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.collector import get_snapshot_all
 from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import (
+    get_adv_from_daily_closes,
     get_eod_9m_sugar_babies,
     get_pool,
     get_today_9m_ep_alerts,  # noqa: F401 — re-exported for agent.py convenience
@@ -75,15 +76,14 @@ async def _get_non_stock_tickers(today_str: str) -> set[str]:
 
 
 async def _get_adv_map(today_str: str) -> dict[str, float]:
-    """20-day median ADV from mi_daily_closes — covers all tickers, not just RS universe."""
+    """20-day median ADV from mi_daily_closes for every ticker with ≥10 sessions of history."""
     global _adv_cache, _adv_cache_date
     if _adv_cache_date == today_str:
         return _adv_cache
-    from agents.market_intelligence.db import get_adv_from_daily_closes
     trade_date = date.fromisoformat(today_str)
     _adv_cache = await get_adv_from_daily_closes(trade_date)
     _adv_cache_date = today_str
-    logger.info(f"9M ADV cache refreshed from daily_closes: {len(_adv_cache)} tickers")
+    logger.info(f"9M ADV cache refreshed: {len(_adv_cache)} tickers")
     return _adv_cache
 
 
