@@ -46,6 +46,23 @@ from agents.market_intelligence.theme_engine import get_today_themes
 
 logger = logging.getLogger(__name__)
 
+
+def _truncate_sentence(text: str, max_len: int) -> str:
+    """Truncate at last sentence/word boundary within max_len — never mid-word."""
+    if not text or len(text) <= max_len:
+        return text
+    cut = text[:max_len]
+    # Prefer last sentence terminator
+    for sep in (". ", "! ", "? "):
+        idx = cut.rfind(sep)
+        if idx >= max_len * 0.5:
+            return cut[: idx + 1]
+    # Else fall back to last word boundary
+    idx = cut.rfind(" ")
+    if idx >= max_len * 0.5:
+        return cut[:idx].rstrip(",;:") + "…"
+    return cut.rstrip(",;:") + "…"
+
 TIER_EMOJI = {
     "HIGH": "🔥",
     "MODERATE": "⚡",
@@ -239,14 +256,14 @@ def _format_ep_section(
                 f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
             )
             if ep.get("claude_analysis"):
-                lines.append(f"    _{ep['claude_analysis'][:120]}_")
+                lines.append(f"    _{_truncate_sentence(ep['claude_analysis'], 180)}_")
         else:
             lines.append(
                 f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
                 f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e}"
             )
             if ep.get("claude_analysis"):
-                lines.append(f"    _{ep['claude_analysis'][:120]}_")
+                lines.append(f"    _{_truncate_sentence(ep['claude_analysis'], 180)}_")
 
     # Near-miss line — compact, one per line max 5, skip top-20-cap noise
     near_misses = [
@@ -257,9 +274,9 @@ def _format_ep_section(
         parts = []
         for r in near_misses:
             reason = r.get("filter_reason", "")
-            # Shorten common reasons
+            # Shorten common reasons — keep full words, never cut mid-token
             if "price" in reason and "<" in reason:
-                short = reason.split("—")[0].strip() if "—" in reason else reason[:30]
+                short = reason.split("—")[0].strip() if "—" in reason else reason
             elif "cooldown" in reason:
                 short = "cooldown"
             elif "extended" in reason:
@@ -270,8 +287,13 @@ def _format_ep_section(
                 short = "routine catalyst"
             elif "low rel volume" in reason:
                 short = "low rel vol"
+            elif reason.startswith("score ") and "catalyst=" in reason:
+                # "score 48 < 50 (catalyst=speculative)" → "s48 cat=spec"
+                import re as _re
+                m = _re.match(r"score (\d+) < 50 \(catalyst=(\w+)\)", reason)
+                short = f"s{m.group(1)} cat={m.group(2)[:4]}" if m else reason
             else:
-                short = reason[:25]
+                short = reason
             parts.append(f"`{r['ticker']}` {short}")
         lines.append(f"  _Near misses: {',  '.join(parts)}_")
 
@@ -1202,11 +1224,20 @@ def _format_morning_briefing(
 
     # Engine errors from overnight run — shown prominently so nothing is missed
     if overnight_errors:
+        # Collapse validation parse errors into one line — they're non-breaking
+        # (tickers kept unchanged) and otherwise flood the banner on Mon/Wed/Fri.
+        validation_errs = [r for r in overnight_errors if r.get("event_type") == "validation_error"]
+        other_errs = [r for r in overnight_errors if r.get("event_type") != "validation_error"]
         err_lines = [f"⚠️ *{len(overnight_errors)} engine error(s) overnight* — type 'show errors' for detail"]
-        for r in overnight_errors[:3]:
+        if validation_errs:
+            err_lines.append(
+                f"  🟡 {len(validation_errs)} theme validation parse error(s) "
+                f"— tickers unchanged"
+            )
+        for r in other_errs[:3]:
             err_lines.append(f"  🔴 {r['summary']}")
-        if len(overnight_errors) > 3:
-            err_lines.append(f"  ... and {len(overnight_errors) - 3} more")
+        if len(other_errs) > 3:
+            err_lines.append(f"  ... and {len(other_errs) - 3} more")
         sections.append("\n".join(err_lines))
 
     # Data quality warnings

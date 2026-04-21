@@ -555,10 +555,18 @@ async def _validate_theme_membership(
             system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = resp.content[0].text.strip()
+        # Defensive extraction — Haiku occasionally returns non-text blocks
+        # or empty content, which previously surfaced as cryptic parse errors.
+        if not resp.content:
+            raise ValueError("empty Haiku response")
+        raw_block = resp.content[0]
+        raw = (getattr(raw_block, "text", "") or "").strip()
+        if not raw:
+            raise ValueError(f"Haiku returned no text (stop_reason={resp.stop_reason})")
         # Strip code fences if present
         if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rstrip("` \n").strip()
+            parts = raw.split("\n", 1)
+            raw = parts[1].rstrip("` \n").strip() if len(parts) > 1 else raw.strip("` ")
         # Extract the outermost JSON object by tracking brace depth.
         # The naive r'\{[^{}]*\}' regex fails when Haiku adds nested objects
         # (e.g. {"remove": [], "notes": {"why": "..."}}) because [^{}] stops
