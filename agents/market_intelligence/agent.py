@@ -2700,15 +2700,20 @@ class MarketIntelligenceAgent(BaseAgent):
         watchlist_rows = await get_overnight_watchlist()
         watchlist_tickers = [r["symbol"] for r in watchlist_rows]
 
-        regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_babies = await _aio.gather(
+        # Sugar babies for the next open: if today's EOD sweep has already run,
+        # today's confirmed babies are what we'll trade tomorrow. Otherwise fall
+        # back to yesterday's pending (standard pre-open path).
+        regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_today, sugar_yday = await _aio.gather(
             get_latest_regime(),
             get_today_ep_alerts(today_str),
             get_active_themes(),
             get_ma_pullbacks(today_str, tickers=watchlist_tickers or None),
             get_today_9m_ep_alerts(today_str),
+            get_pending_9m_sugar_babies(today),
             get_pending_9m_sugar_babies(yesterday),
             return_exceptions=True,
         )
+        sugar_babies = sugar_today if isinstance(sugar_today, list) and sugar_today else sugar_yday
 
         sep = "━━━━━━━━━━━━━━━━━━━━━"
         now_et = today.strftime("%a %b %-d %I:%M %p ET").lstrip("0")
