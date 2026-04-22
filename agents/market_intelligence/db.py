@@ -851,8 +851,11 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
       prev_close <= 1.20× prior 10d SMA (rejects day-N+ chase runners like BB;
         measured at yesterday's close, not today's, so fresh breakouts like VELO
         still qualify — going-into-the-9M-day extension, not today's move).
-    Unknown ADV or MA10 (new listing, < 10 sessions) or unknown security type pass
-    conservatively so they are not silently dropped.
+    Requires at least 10 prior sessions of history — rejects Day-1 IPOs
+    (NHP case 2026-04-22) where there is no ADV reference, no 10d SMA for the
+    extension gate, and no stable prior-day low to anchor a Day 2 ORB stop.
+    Unknown security type still passes conservatively (ticker not yet ingested
+    into mi_security_types but otherwise has ≥10 sessions of price history).
     Returns up to 20, ordered by volume desc.
     """
     pool = await get_pool()
@@ -910,13 +913,19 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND d.close > d.open_price
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
-              AND d.volume >= (COALESCE(a.adv_20, 0) * 3)
+              -- Require ≥10 prior sessions — rejects Day-1 IPOs (NHP 2026-04-22).
+              -- Without 10+ sessions, the ADV ratio is meaningless and the 10d SMA
+              -- for extension doesn't exist. The prior-day low (Day 2 ORB stop
+              -- anchor) is also the IPO-day low, which is structurally unstable.
+              AND a.adv_20 IS NOT NULL
+              AND m.sma_10 IS NOT NULL
+              AND m.prev_close IS NOT NULL
+              AND d.volume >= (a.adv_20 * 3)
               -- Intraday range must be ≥ 2% of close (rejects merger-arb pins)
               AND (d.high_price - d.low_price) >= (d.close * 0.02)
               -- Extension gate: prev_close ≤ 1.20× prior 10d SMA (measures how extended
               -- the stock was going INTO the 9M day, not after it). Fresh breakouts pass.
-              -- Unknown MA (new listing) passes conservatively.
-              AND (m.sma_10 IS NULL OR m.prev_close IS NULL OR m.prev_close <= m.sma_10 * 1.20)
+              AND m.prev_close <= m.sma_10 * 1.20
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)

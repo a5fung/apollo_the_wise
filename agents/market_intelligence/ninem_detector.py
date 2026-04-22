@@ -201,9 +201,13 @@ async def run_9m_scan() -> list[dict]:
         # Extension gate: measure extension at YESTERDAY's close, not today's.
         # A stock flat for 10d then ripping +30% today should PASS (fresh breakout).
         # A stock that already ran for 5 days (BB-style chase) had prev_close
-        # well above MA10 going in and should fail. Unknown MA → pass.
+        # well above MA10 going in and should fail.
+        # Unknown MA → skip (Day-1/2 IPO has no structural Day 2 ORB: no stable
+        # prior-day low anchor, no anomaly ratio reference). NHP 2026-04-22 case.
         ma10 = ma10_map.get(ticker)
-        if ma10 and prev_close > ma10 * _MAX_EXTENSION_FROM_MA10:
+        if not ma10:
+            continue
+        if prev_close > ma10 * _MAX_EXTENSION_FROM_MA10:
             continue
 
         today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
@@ -231,12 +235,13 @@ async def run_9m_scan() -> list[dict]:
         # Virgin 9M gate: effective volume must be ≥3× normal ADV.
         # Actual path uses today_volume; anticipation uses projected_vol.
         # Matches EOD SQL (d.volume >= adv_20 * 3) so intraday/EOD agree.
-        # Unknown ADV → pass conservatively (ticker not in RS universe).
+        # Unknown ADV → skip (< 10 prior sessions → no anomaly reference; IPO case).
         adv = adv_map.get(ticker)
-        if adv:
-            effective_vol = projected_vol if is_9m_anticipation else today_volume
-            if effective_vol < adv * _ADV_ANOMALY_MULTIPLIER:
-                continue
+        if not adv:
+            continue
+        effective_vol = projected_vol if is_9m_anticipation else today_volume
+        if effective_vol < adv * _ADV_ANOMALY_MULTIPLIER:
+            continue
 
         is_anticipation = is_9m_anticipation
         rvol_display = round(today_volume / adv, 1) if (adv and adv > 0) else None
