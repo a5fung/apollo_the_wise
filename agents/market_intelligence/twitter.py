@@ -88,7 +88,9 @@ def format_thread(rs_leaders: list[dict], regime: dict, briefing_date: str) -> l
     header += "\n\n"
 
     stock_lines = [_stock_line(s, get_description) for s in rs_leaders[:_MAX_STOCKS]]
-    return _pack_tweets(stock_lines, prefix=header, suffix="\n\n#momentum #trading #RS #stocks")
+    # Trimmed hashtag set — X duplicate-content filter and hashtag-spam heuristics
+    # were rejecting the old 4-tag suffix with 403 Forbidden. #RS is too short.
+    return _pack_tweets(stock_lines, prefix=header, suffix="\n\n#momentum #stocks")
 
 
 def format_ep_tweet(ep: dict) -> list[str]:
@@ -161,7 +163,20 @@ async def post_to_twitter(
     try:
         return await asyncio.to_thread(_post_thread)
     except Exception as e:
-        logger.error(f"Twitter post failed: {e}")
+        # Capture tweepy response body so we can see *why* X rejected (duplicate,
+        # hashtag spam, rate limit, etc.) instead of just a bare 403.
+        detail = ""
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            try:
+                detail = f" | body={resp.text[:400]}"
+            except Exception:
+                pass
+        api_codes = getattr(e, "api_codes", None)
+        api_messages = getattr(e, "api_messages", None)
+        if api_codes or api_messages:
+            detail += f" | api_codes={api_codes} api_messages={api_messages}"
+        logger.error(f"Twitter post failed: {type(e).__name__}: {e}{detail}")
         return False
 
 
