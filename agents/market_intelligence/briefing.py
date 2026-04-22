@@ -760,13 +760,10 @@ def _format_ep_outcomes_section(outcomes: list[dict], section_num: int = 6) -> s
             entry_str = f"@${float(entry):.2f}" if entry else "entered"
             fwd_str = f" {float(fwd):+.1f}%" if fwd is not None else ""
             lines.append(f"  • `{o['ticker']}` ({entry_str}{fwd_str})")
+        from agents.market_intelligence.broker.skip_reasons import humanize
         for o in missed[:8]:
-            reason = (o.get("skip_reason") or "no_attempt").split(":", 1)[0]
-            # show full prefix (category:code) if present
-            full = o.get("skip_reason") or "no_attempt"
-            code = full.split(":", 2)
-            label = ":".join(code[:2]) if len(code) >= 2 else reason
-            lines.append(f"  • `{o['ticker']}` (missed: {label})")
+            label = humanize(o.get("skip_reason"))
+            lines.append(f"  • `{o['ticker']}` — {label}")
         dropped = max(0, len(missed) - 8)
         if dropped:
             lines.append(f"  • …{dropped} more missed")
@@ -1322,11 +1319,16 @@ def _format_morning_briefing(
 
     # Engine errors from overnight run — shown prominently so nothing is missed
     if overnight_errors:
-        # Collapse validation parse errors into one line — they're non-breaking
-        # (tickers kept unchanged) and otherwise flood the banner on Mon/Wed/Fri.
+        # Collapse validation parse / rate-limit rows into one line each — they
+        # share the same root cause and otherwise flood the banner on Mon/Wed/Fri.
         validation_errs = [r for r in overnight_errors if r.get("event_type") == "validation_error"]
-        other_errs = [r for r in overnight_errors if r.get("event_type") != "validation_error"]
-        err_lines = [f"⚠️ *{len(overnight_errors)} engine error(s) overnight* — type 'show errors' for detail"]
+        rate_limited   = [r for r in overnight_errors if r.get("event_type") == "validation_rate_limited"]
+        other_errs     = [r for r in overnight_errors if r.get("event_type") not in ("validation_error", "validation_rate_limited")]
+        err_lines = [f"⚠️ *{len(overnight_errors)} engine event(s) overnight* — type 'show errors' for detail"]
+        if rate_limited:
+            err_lines.append(
+                f"  🟠 {len(rate_limited)} theme validations hit Anthropic 50 rpm — tickers unchanged"
+            )
         if validation_errs:
             err_lines.append(
                 f"  🟡 {len(validation_errs)} theme validation parse error(s) "

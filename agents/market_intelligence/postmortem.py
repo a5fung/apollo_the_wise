@@ -218,7 +218,8 @@ def _fallback_narrative(ctx: dict) -> str:
         f"Held {_fmt(trade.get('hold_days'), 0)}d",
     ]
     if trade.get("skip_reason"):
-        lines.append(f"• Skip reason: {trade['skip_reason']}")
+        from agents.market_intelligence.broker.skip_reasons import humanize
+        lines.append(f"• Skip reason: {humanize(trade['skip_reason'])}")
 
     pnl = trade.get("total_pnl")
     pnl_str = f"${pnl:+,.2f}" if isinstance(pnl, (int, float)) else "n/a"

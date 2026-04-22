@@ -42,3 +42,57 @@ WINDOW_DUPLICATE    = "window:duplicate"
 
 # Convenience: valid category prefixes (for sanity-check asserts)
 VALID_CATEGORIES = frozenset({"filter", "setup", "block", "infra", "window"})
+
+
+# ── Human-readable labels for Telegram ──────────────────────────────────────
+# DB stores raw "category:code: detail"; Telegram shows the phrase + detail.
+# Keep phrases short (≤ 5 words) so they read cleanly in a bullet list.
+_HUMAN_LABELS: dict[str, str] = {
+    FILTER_ADV_NO_DATA:         "No average volume data",
+    FILTER_ADV_TOO_LOW:         "Average volume too low",
+    FILTER_ATR_TOO_HIGH:        "Volatility too high",
+    FILTER_MCAP_TOO_SMALL:      "Market cap too small",
+    SETUP_STOP_TOO_WIDE:        "Stop too wide for risk budget",
+    SETUP_ZERO_RANGE:           "Zero opening range",
+    SETUP_SIZE_TOO_SMALL:       "Position size too small",
+    SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
+    SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
+    BLOCK_MAX_POSITIONS:        "Max open positions reached",
+    BLOCK_DAILY_LOSS:           "Daily loss limit hit",
+    BLOCK_CIRCUIT_BREAKER:      "3-loss circuit breaker tripped",
+    INFRA_NO_BAR:               "No opening bar from data feed",
+    INFRA_SUBSCRIBE_TIMEOUT:    "Bar subscribe timed out",
+    INFRA_SUBSCRIBE_FAILED:     "Bar subscribe failed",
+    INFRA_ORDER_SUBMIT_FAILED:  "Order submission to Alpaca failed",
+    WINDOW_OUT_OF_ORB:          "Arrived after ORB window closed",
+    WINDOW_DUPLICATE:           "Duplicate — trade already exists",
+}
+
+
+def humanize(reason: str | None) -> str:
+    """Translate a stored `category:code: detail` skip_reason into a Telegram-friendly phrase.
+
+    Examples:
+        "infra:subscribe_timeout: 5s SDK lock stuck"
+          → "Bar subscribe timed out (5s SDK lock stuck)"
+        "setup:stop_too_wide: ORB $1.24 vs 1.5x ATR $0.83"
+          → "Stop too wide for risk budget (ORB $1.24 vs 1.5x ATR $0.83)"
+        "window:out_of_orb: detected 10:14 ET"
+          → "Arrived after ORB window closed (detected 10:14 ET)"
+
+    Unknown prefixes and legacy free-form strings fall back to the original
+    text so nothing is ever hidden.
+    """
+    if not reason:
+        return "no attempt"
+    parts = reason.split(":", 2)
+    if len(parts) < 2 or parts[0] not in VALID_CATEGORIES:
+        return reason.strip()
+    prefix = f"{parts[0]}:{parts[1]}"
+    label = _HUMAN_LABELS.get(prefix)
+    if not label:
+        return reason.strip()
+    detail = parts[2].strip() if len(parts) == 3 else ""
+    if detail:
+        return f"{label} ({detail})"
+    return label

@@ -671,3 +671,73 @@ summary of today's HIGH outcomes. Silent when no HIGHs detected today.
 `broker/skip_reasons.py` (new), `broker/live_tracker.py`, `broker/bar_stream.py`,
 `broker/order_manager.py`, `backtester/filters.py`, `scheduler.py`, `briefing.py`,
 `agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `CLAUDE.md`
+
+---
+
+## Changes Made 2026-04-22 (session 2) — Humanize skip reasons + theme validation rate-limit
+
+### Problem
+Two user-visible issues after the EP diagnostics deploy:
+1. **Raw prefix leak into Telegram.** EOD EP recap, Live Trade Updates, `/why`,
+   `/trades_detail skipped`, etc. rendered `infra:subscribe_timeout: 5s SDK lock stuck`
+   directly to the user. Machine vocabulary is great for SQL aggregation and terrible
+   for reading on a phone.
+2. **"20 parse errors" per validation run were actually Anthropic 429s.**
+   `mi_audit_log.validation_error` rows showed
+   `RateLimitError: Error code: 429 ... rate limit of 50 requests per minute`. The
+   nightly `_validate_theme_membership()` fan-outs `asyncio.gather` across every
+   active theme simultaneously — 20 themes × 1 Haiku call each blew the org-level
+   rate cap and every one was caught by `except Exception` and mislabeled as a
+   "parse error."
+
+### A. `humanize(reason)` — single translator (`broker/skip_reasons.py`)
+One `_HUMAN_LABELS` dict maps every `category:code` prefix to a short phrase
+(e.g. `infra:subscribe_timeout` → `"Bar subscribe timed out"`). `humanize()`
+preserves the free-form detail after the second colon as a parenthetical, and
+falls through unchanged on `None`, empty, unknown prefix, or legacy free-form
+strings. **Machine prefixes stay in the DB; humans see prose.**
+
+Applied to every Telegram-facing display site:
+- `broker/live_tracker.py` — ORB-skipped alert, filtered-today evening section
+- `broker/bar_stream.py` — subscribe-failure Telegram
+- `scheduler.py` — EOD EP recap
+- `briefing.py` — evening brief EP outcomes section
+- `agent.py` — `/why` outcome line, `/trades_detail skipped`, history "Filtered:"
+  line, performance-report skip-reason column (widened 20 → 30 chars)
+- `postmortem.py` — single-trade recap
+
+Internal logs and `mi_audit_log` keep the raw `category:code: detail` string so
+monthly `split_part()` aggregation still works.
+
+### B. Theme validation rate-limit — root cause of "parse errors"
+- New `_VALIDATION_SEMAPHORE = asyncio.Semaphore(2)` in `theme_engine.py` caps
+  concurrent Haiku calls at 2 (fan-in for the nightly `asyncio.gather` of 20+
+  themes). With Anthropic's 50-rpm org cap and 2–3s response time per call,
+  2 concurrent × 20 themes completes in ~30s well under the cap.
+- Retry-once on 429 with 8–12s jitter before giving up.
+- **Split exception handling**: `RateLimitError` now writes an
+  `anthropic_rate_limited` audit event during the retry and a
+  `validation_rate_limited` event if the retry also fails. Non-429 exceptions
+  still write `validation_error`. The morning-brief banner and nightly error
+  banner now show three separate buckets (🔴 errors / 🟠 rate-limited /
+  🟡 parse errors) so the user can tell at a glance which class of failure
+  happened.
+
+### ⚠️ Post-deploy verification
+1. Trigger a Telegram display of any skipped trade (`/trades_detail skipped` or
+   wait for next EOD recap). Output should read as English prose — no `infra:`,
+   `filter:`, `window:` prefixes visible anywhere in user-facing Telegram
+   messages.
+2. Watch tomorrow's overnight error banner after the nightly theme validation
+   run. Previous "20× parse error" collapse should no longer appear; if any
+   validation failed, it should show as 🟠 rate-limited (rare) with the count,
+   not 🟡 parse error.
+3. DB invariant unchanged: `skip_reason` values in `mi_live_trades` still match
+   the bounded-prefix regex — check with `SELECT DISTINCT split_part(skip_reason, ':', 1)
+   FROM mi_live_trades WHERE status='skipped'` — categories must all be in
+   `{filter, setup, block, infra, window}`.
+
+### Files Changed
+`broker/skip_reasons.py`, `broker/live_tracker.py`, `broker/bar_stream.py`,
+`theme_engine.py`, `scheduler.py`, `briefing.py`, `agent.py`, `postmortem.py`,
+`CLAUDE.md`

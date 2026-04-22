@@ -1244,13 +1244,14 @@ class MarketIntelligenceAgent(BaseAgent):
         if not filtered:
             lines.append("None in this window.")
         else:
+            from agents.market_intelligence.broker.skip_reasons import humanize
             lines.append("```")
-            lines.append("Ticker  Date        Skip reason           D1      D5")
-            lines.append("------  ----------  --------------------  ------  ------")
+            lines.append("Ticker  Date        Skip reason                     D1      D5")
+            lines.append("------  ----------  ------------------------------  ------  ------")
             for r in filtered:
                 ticker_s = r["ticker"].ljust(6)
                 dt       = str(r["alert_date"])[:10]
-                reason_s = (r.get("skip_reason") or "?")[:20].ljust(20)
+                reason_s = (humanize(r.get("skip_reason")) or "?")[:30].ljust(30)
                 d1       = _pct(r.get("fwd_1d_pct"))
                 d5       = _pct(r.get("fwd_1w_pct"))
                 lines.append(f"{ticker_s}  {dt}  {reason_s}  {d1}  {d5}")
@@ -1685,7 +1686,8 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append(header)
 
             if is_skipped(r):
-                lines.append(f"  Filtered: {r['skip_reason'] or 'unknown'}")
+                from agents.market_intelligence.broker.skip_reasons import humanize
+                lines.append(f"  Filtered: {humanize(r['skip_reason']) or 'unknown'}")
                 continue
 
             lines += format_trade_attempts(r.get("entries"), r.get("exits"), prefix="  ")
@@ -2762,10 +2764,11 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("*Detected:* (no mi_ep_alerts row — not a recognised EP)")
 
         if trade:
+            from agents.market_intelligence.broker.skip_reasons import humanize
             status = trade.get("status") or "?"
             reason = trade.get("skip_reason")
             if status == "skipped" and reason:
-                lines.append(f"*Outcome:* missed — `{reason}`")
+                lines.append(f"*Outcome:* missed — {humanize(reason)}")
             elif status == "closed":
                 pnl = float(trade.get("total_pnl") or 0)
                 lines.append(
@@ -2778,7 +2781,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"stop ${float(trade.get('stop_price') or 0):.2f}"
                 )
             else:
-                lines.append(f"*Outcome:* {status}{' — ' + reason if reason else ''}")
+                lines.append(f"*Outcome:* {status}{' — ' + humanize(reason) if reason else ''}")
         else:
             lines.append("*Outcome:* no mi_live_trades row (silent drop — check events below)")
 
@@ -3160,12 +3163,13 @@ class MarketIntelligenceAgent(BaseAgent):
                 """)
             if not rows:
                 return self._ok(request, result="No skipped trades recorded.")
+            from agents.market_intelligence.broker.skip_reasons import humanize
             lines = [f"⊘ *Skipped Trades* (last {len(rows)})"]
             for r in rows:
                 d_str = r["alert_date"].strftime("%b %d")
                 gap = f" gap={r['gap_pct']:.1f}%" if r['gap_pct'] else ""
                 score = f" score={r['ep_score']:.0f}" if r['ep_score'] else ""
-                reason = r['skip_reason'] or "unknown"
+                reason = humanize(r['skip_reason']) or "unknown"
                 orb_hint = ""
                 if r['orb_high'] and r['orb_low']:
                     orb_hint = f"  ORB H=${r['orb_high']:.2f} L=${r['orb_low']:.2f}"

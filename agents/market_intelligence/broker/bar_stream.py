@@ -176,8 +176,9 @@ async def _record_subscribe_failure(ticker: str, reason: str) -> None:
         pass
     try:
         from agents.market_intelligence.briefing import send_telegram_message
+        from agents.market_intelligence.broker.skip_reasons import humanize
         await send_telegram_message(
-            f"⚠️ *{ticker}* bar subscribe failed ({reason}) — 9:31 cron fallback will run"
+            f"⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
         )
     except Exception:
         pass

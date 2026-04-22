@@ -383,14 +383,39 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"State alerts failed: {e}")
 
-    # Check for silent engine errors (parse failures, API errors that didn't hard-fail)
+    # Check for silent engine errors (parse failures, API errors that didn't hard-fail).
+    # Collapse validation parse/rate-limit rows into one line each — they all share
+    # the same root cause and otherwise flood the banner on Mon/Wed/Fri (20 themes).
     try:
-        error_rows = await get_audit_log(limit=20, event_type_like="%error%", since_hours=2)
-        if error_rows:
-            error_lines = "\n".join(f"  • {r['summary']}" for r in error_rows)
-            error_msg = f"⚠️ *{len(error_rows)} silent error(s) during nightly run:*\n{error_lines}\nType 'show errors' for details."
-            await send_telegram_message(error_msg)
-            logger.warning(f"Nightly run had {len(error_rows)} silent errors — alerted via Telegram")
+        error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=2)
+        rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=2)
+        buckets: dict[str, list] = {"validation_error": [], "validation_rate_limited": [], "other": []}
+        for r in (error_rows + rate_rows):
+            evt = r.get("event_type") or ""
+            if evt == "validation_error":
+                buckets["validation_error"].append(r)
+            elif evt == "validation_rate_limited":
+                buckets["validation_rate_limited"].append(r)
+            elif "error" in evt:
+                buckets["other"].append(r)
+        total = sum(len(v) for v in buckets.values())
+        if total:
+            lines = [f"⚠️ *{total} engine event(s) during nightly run:*"]
+            if buckets["validation_rate_limited"]:
+                lines.append(
+                    f"  🟠 {len(buckets['validation_rate_limited'])} theme validations hit Anthropic 50 rpm — tickers unchanged"
+                )
+            if buckets["validation_error"]:
+                lines.append(
+                    f"  🟡 {len(buckets['validation_error'])} theme validation parse error(s) — tickers unchanged"
+                )
+            for r in buckets["other"][:5]:
+                lines.append(f"  🔴 {r['summary']}")
+            if len(buckets["other"]) > 5:
+                lines.append(f"  …{len(buckets['other']) - 5} more")
+            lines.append("Type 'show errors' for details.")
+            await send_telegram_message("\n".join(lines))
+            logger.warning(f"Nightly run had {total} silent events — alerted via Telegram")
     except Exception as e:
         logger.error(f"Error check after nightly run failed: {e}")
 
@@ -686,10 +711,9 @@ async def _eod_ep_recap_job():
             pnl = o.get("total_pnl")
             pnl_str = f" ${float(pnl):+,.0f}" if pnl is not None else ""
             lines.append(f"  • `{o['ticker']}` entered{pnl_str}")
+        from agents.market_intelligence.broker.skip_reasons import humanize
         for o in missed[:8]:
-            reason = o.get("skip_reason") or "no_attempt"
-            code = ":".join(reason.split(":", 2)[:2])
-            lines.append(f"  • `{o['ticker']}` — {code}")
+            lines.append(f"  • `{o['ticker']}` — {humanize(o.get('skip_reason'))}")
         dropped = max(0, len(missed) - 8)
         if dropped:
             lines.append(f"  • …{dropped} more missed")

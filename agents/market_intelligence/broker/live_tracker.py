@@ -33,6 +33,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_ACCOUNT_FETCH_FAILED,
     WINDOW_DUPLICATE,
     WINDOW_OUT_OF_ORB,
+    humanize,
 )
 from agents.market_intelligence.broker.telegram_confirm import send_trade_proposal
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
@@ -300,7 +301,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
             except Exception:
                 pass
-            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: {skip_reason}")
+            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_reason)}")
             results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
             continue
 
@@ -658,7 +659,7 @@ async def send_live_trade_summary() -> None:
     if todays_skipped:
         lines.append("*Filtered today:*")
         for t in todays_skipped:
-            lines.append(f"  ⊘ {t['ticker']}: {t['skip_reason']}")
+            lines.append(f"  ⊘ {t['ticker']}: {humanize(t['skip_reason'])}")
         lines.append("")
 
     if todays_closes:

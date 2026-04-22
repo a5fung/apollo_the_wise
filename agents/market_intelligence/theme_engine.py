@@ -29,6 +29,13 @@ import anthropic
 # Reused across all Haiku calls in this module — avoids rebuilding the HTTP client per call.
 _anthropic_client: anthropic.AsyncAnthropic | None = None
 
+# Anthropic org limit is 50 requests/min. The nightly rescore fans out ~20 themes
+# via asyncio.gather; without a semaphore this blew past 50 rpm and every call
+# returned 429 — which our except-Exception caught and mislabeled as "parse error".
+# Semaphore(2) serialises enough to stay under budget (~2 req/sec × 60 = 120 rpm
+# worst case, but Haiku responses take 1–2s so effective rate is ~30 rpm).
+_VALIDATION_SEMAPHORE = asyncio.Semaphore(2)
+
 
 def _get_anthropic_client() -> anthropic.AsyncAnthropic:
     global _anthropic_client
@@ -549,12 +556,28 @@ async def _validate_theme_membership(
 
     try:
         client = _get_anthropic_client()
-        resp = await client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=400,
-            system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
-            messages=[{"role": "user", "content": prompt}],
-        )
+        # Semaphore + single retry on 429 — matches the ep_detector pattern and
+        # stops the asyncio.gather fan-out from detonating the 50 rpm org limit.
+        import random
+        async with _VALIDATION_SEMAPHORE:
+            for attempt in range(2):
+                try:
+                    resp = await client.messages.create(
+                        model="claude-haiku-4-5-20251001",
+                        max_tokens=400,
+                        system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    break
+                except anthropic.RateLimitError:
+                    if attempt == 1:
+                        raise
+                    await log_audit_event(
+                        "anthropic_rate_limited",
+                        summary=f"Validation rate-limited for '{theme_name}' — retrying",
+                        detail="429 on claude-haiku-4-5 — will retry once",
+                    )
+                    await asyncio.sleep(8 + random.random() * 4)
         # Defensive extraction — Haiku occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -625,6 +648,16 @@ async def _validate_theme_membership(
         logger.debug(f"Theme '{theme_name}': validation kept all {len(tickers)} tickers")
         return tickers
 
+    except anthropic.RateLimitError as e:
+        # Retry already exhausted — this is a rate-limit failure, NOT a parse error.
+        # Mislabeling as "parse error" sent us down a days-long wrong-cause chase; be explicit.
+        logger.error(f"Theme '{theme_name}': validation rate-limited (final) — keeping all tickers")
+        await log_audit_event(
+            "validation_rate_limited",
+            summary=f"Validation rate-limited for '{theme_name}' — tickers unchanged",
+            detail=f"RateLimitError after retry: {e}",
+        )
+        return tickers
     except Exception as e:
         # Log the raw response so silent failures are diagnosable — this bug cost days of work
         raw_snippet = locals().get("raw", "<not set>")[:200]
