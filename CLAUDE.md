@@ -741,3 +741,97 @@ monthly `split_part()` aggregation still works.
 `broker/skip_reasons.py`, `broker/live_tracker.py`, `broker/bar_stream.py`,
 `theme_engine.py`, `scheduler.py`, `briefing.py`, `agent.py`, `postmortem.py`,
 `CLAUDE.md`
+
+---
+
+## Changes Made 2026-04-22 (session 3) — 9M Sugar Baby going-in shape capture
+
+### Problem
+Tonight's sugar baby watchlist (FRMI, BSX, SIRI, TLRY) surfaced a gap: the
+detector greenlights on intraday geometry (9M day + green close + top 25% of
+range + 3× ADV) but captures nothing about **what the chart looked like going
+in**. Pradeep's 9M edge assumes a stock is in an uptrend or bottoming
+reversal — a falling-knife bounce and a quiet-consolidation breakout score
+identically in the DB today, even though their Day 2 outcomes differ wildly.
+FRMI is the canonical failure mode: down ~75% since Oct 2025 IPO, single
+green day triggers, no structural basis for continuation.
+
+**Decision:** don't tighten the filter yet — capture the metrics, bucket at
+query time, build 30+ outcome dataset, then gate. Telemetry-first.
+
+### A. New columns on `mi_9m_sugar_babies`
+Six idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` in `initialize_schema`:
+
+| Column | Meaning |
+|---|---|
+| `prev_5d_pct` | % change prev_close vs close_5d_ago — short-term pre-9M move |
+| `prev_20d_pct` | % change prev_close vs close_20d_ago — mid-term trend |
+| `prev_vs_sma10` | prev_close / SMA-10 — ratio, <1 = below, >1 = above |
+| `prev_vs_sma50` | prev_close / SMA-50 — mid-term structural position |
+| `sma50_slope_pct` | % change SMA-50 vs SMA-50-5d-ago — trend direction |
+| `prior_sessions` | Count of prior daily closes available (sub-30 = recent IPO) |
+
+All computed at YESTERDAY's state (prev_close and its prior windows), not
+today's close. This is the "shape going into the 9M day" measurement — a
++30% 9M day on a stock that was already extended before is a chase; a +30%
+9M day on a quiet consolidation is a breakout. Distinguishable now.
+
+### B. SQL changes — `get_eod_9m_sugar_babies`
+Replaced the single-purpose `ma10` CTE with:
+- `ranked` CTE: prior 60 sessions windowed by `ROW_NUMBER() OVER (PARTITION
+  BY ticker ORDER BY trade_date DESC)`. Single scan.
+- `ctx` CTE: `FILTER (WHERE rn = N)` picks individual prior closes (rn=1 =
+  prev, rn=6 = 5d ago, rn=21 = 20d ago). `AVG(close) FILTER (WHERE rn <= N)`
+  picks rolling SMAs. `HAVING COUNT(*) >= 10` keeps the IPO-reject invariant.
+
+Six computed columns now flow through SELECT with existing NULL-safe
+`CASE WHEN` divisors.
+
+### C. Data plumbing
+- `insert_9m_sugar_baby()` — `INSERT` expanded from 8 → 14 columns;
+  `ON CONFLICT DO UPDATE` mirrors; `record.get("...")` pattern so legacy
+  callers without shape metrics silently write NULLs.
+- `run_9m_eod_sweep()` — passes all 6 metrics from the SQL dict through to
+  the insert.
+- `get_pending_9m_sugar_babies()` and `get_9m_ep_history()` — SELECT
+  extended to return the new columns so read-side handlers can surface them.
+
+### D. Shape tag + display
+`ninem_detector._shape_tag()` — deterministic bucket from the raw metrics:
+
+| Tag | Condition |
+|---|---|
+| `uptrend` | `prev_vs_sma50 ≥ 1.0 AND sma50_slope ≥ 0` |
+| `pullback` | uptrend + `prev_5d_pct < 0` (healthy pullback in uptrend) |
+| `extended` | uptrend + `prev_vs_sma10 ≥ 1.15 AND prev_5d_pct ≥ 15` (chase) |
+| `bounce` | `prev_vs_sma50 < 0.95 AND prev_20d_pct ≤ -5 AND prev_5d_pct ≥ 10` |
+| `downtrend` | `prev_vs_sma50 < 0.95 AND prev_20d_pct ≤ -5` |
+| `flat` | everything else |
+
+Surfaced in:
+- Evening briefing sugar babies section: `5d +X% / 20d +Y% / tag`
+- `/9m` today's candidates and yesterday's-pending listings
+- `9m outcomes` history rows get `20d X% / tag` suffix
+
+Bucket definitions live in code so they can evolve without re-migrating
+historical rows — raw metrics are the source of truth on disk.
+
+### ⚠️ Post-deploy verification
+1. After next nightly `_nightly_data_pull` (5 PM ET), query
+   `SELECT ticker, prev_5d_pct, prev_20d_pct, prev_vs_sma50, sma50_slope_pct,
+   prior_sessions FROM mi_9m_sugar_babies WHERE alert_date = CURRENT_DATE` —
+   all six columns populated for every row.
+2. Evening brief 🍭 section shows `5d / 20d / tag` suffix on each ticker.
+3. Historical rows (pre-deploy): columns are NULL, tag is empty, raw
+   pre-shape layout still renders (backward-compatible).
+4. After ~30 sugar babies tracked: run
+   `SELECT CASE …_shape_tag logic… AS tag, AVG(day2_gain_pct), COUNT(*)
+   GROUP BY tag` against `mi_signal_outcomes` join to see which shape
+   buckets actually produce Day 2 edge. Use that to inform whether to
+   add a hard filter or keep telemetry-only.
+
+### Files Changed
+`db.py` (schema ALTERs, get_eod_9m_sugar_babies SQL rewrite, insert +
+read-side columns), `ninem_detector.py` (pass-through in run_9m_eod_sweep,
+new `_shape_tag` helper, evening briefing section updated), `agent.py`
+(`/9m` + `9m outcomes` handlers render shape), `CLAUDE.md`

@@ -347,6 +347,12 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
             "low_price": l,
             "volume": row["volume"],
             "close_in_range_pct": round(close_in_range, 3),
+            "prev_5d_pct": row.get("prev_5d_pct"),
+            "prev_20d_pct": row.get("prev_20d_pct"),
+            "prev_vs_sma10": row.get("prev_vs_sma10"),
+            "prev_vs_sma50": row.get("prev_vs_sma50"),
+            "sma50_slope_pct": row.get("sma50_slope_pct"),
+            "prior_sessions": row.get("prior_sessions"),
         })
         count += 1
 
@@ -357,6 +363,33 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
             f"{count} sugar babies on {trade_date_str}",
         )
     return count
+
+
+def _shape_tag(s: dict) -> str:
+    """Compact going-in shape tag for sugar baby rows.
+
+    Flags the setup quality from a Pradeep lens — we want uptrend going in,
+    not a chase and not a downtrend-bounce. Returns one of:
+      uptrend / pullback / bounce / downtrend / extended / flat — or '' if unknown.
+    """
+    vs50 = s.get("prev_vs_sma50")
+    slope = s.get("sma50_slope_pct")
+    p5 = s.get("prev_5d_pct")
+    p20 = s.get("prev_20d_pct")
+    vs10 = s.get("prev_vs_sma10")
+    if vs50 is None or slope is None or p20 is None:
+        return ""
+    if vs50 >= 1.0 and slope >= 0:
+        if vs10 is not None and vs10 >= 1.15 and p5 is not None and p5 >= 15:
+            return "extended"
+        if p5 is not None and p5 < 0:
+            return "pullback"
+        return "uptrend"
+    if vs50 < 0.95 and p20 <= -5:
+        if p5 is not None and p5 >= 10:
+            return "bounce"
+        return "downtrend"
+    return "flat"
 
 
 def format_sugar_babies_section(babies: list[dict]) -> str:
@@ -370,8 +403,19 @@ def format_sugar_babies_section(babies: list[dict]) -> str:
         vol_m = s["volume"] / 1_000_000
         close = s["close_price"]
         stop = s["low_price"]
+        p5 = s.get("prev_5d_pct")
+        p20 = s.get("prev_20d_pct")
+        tag = _shape_tag(s)
+        shape_bits = []
+        if p5 is not None:
+            shape_bits.append(f"5d {p5:+.0f}%")
+        if p20 is not None:
+            shape_bits.append(f"20d {p20:+.0f}%")
+        if tag:
+            shape_bits.append(tag)
+        shape = f" | {' / '.join(shape_bits)}" if shape_bits else ""
         lines.append(
             f"`{ticker:<5}` Vol: {vol_m:.1f}M | Close: ${close:.2f} | "
-            f"Range: {range_pct}% | Stop: ${stop:.2f}"
+            f"Range: {range_pct}% | Stop: ${stop:.2f}{shape}"
         )
     return "\n".join(lines)

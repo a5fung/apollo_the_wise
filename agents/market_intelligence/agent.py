@@ -1039,6 +1039,21 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append("No 9M EP detections today.")
 
+        from agents.market_intelligence.ninem_detector import _shape_tag
+
+        def _shape_suffix(b: dict) -> str:
+            p5 = b.get("prev_5d_pct")
+            p20 = b.get("prev_20d_pct")
+            tag = _shape_tag(b)
+            parts = []
+            if p5 is not None:
+                parts.append(f"5d {p5:+.0f}%")
+            if p20 is not None:
+                parts.append(f"20d {p20:+.0f}%")
+            if tag:
+                parts.append(tag)
+            return f" | {' / '.join(parts)}" if parts else ""
+
         if today_babies:
             lines.append(f"\n*Today's Sugar Babies — Day 2 ORB Candidates ({len(today_babies)})*")
             for b in today_babies:
@@ -1047,6 +1062,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(
                     f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | "
                     f"Close ${b['close_price']:.2f} | Range {rp}% | Stop ${b['low_price']:.2f}"
+                    f"{_shape_suffix(b)}"
                 )
         elif pending_day2:
             lines.append(f"\n*Yesterday's Pending Day 2 ({len(pending_day2)})*")
@@ -1054,6 +1070,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 vol_m = b["volume"] / 1_000_000
                 lines.append(
                     f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | Stop ${b['low_price']:.2f}"
+                    f"{_shape_suffix(b)}"
                 )
 
         return self._ok(request, result="\n".join(lines))
@@ -1078,15 +1095,25 @@ class MarketIntelligenceAgent(BaseAgent):
         lines = [f"*9M EP Sugar Babies — last {days}d*\n"]
         lines.append(f"Total: {len(babies)} | Traded: {len(traded)} | Pending: {len(pending)}\n")
 
+        from agents.market_intelligence.ninem_detector import _shape_tag
+
         for b in babies[:25]:
             status_icon = {"traded": "✅", "pending": "⏳", "skipped": "⏭️"}.get(
                 b.get("day2_status", ""), "❓"
             )
             vol_m = b["volume"] / 1_000_000
             rp = int(b["close_in_range_pct"] * 100)
+            tag = _shape_tag(b)
+            p20 = b.get("prev_20d_pct")
+            extra_bits = []
+            if p20 is not None:
+                extra_bits.append(f"20d {p20:+.0f}%")
+            if tag:
+                extra_bits.append(tag)
+            extra = f" | {' / '.join(extra_bits)}" if extra_bits else ""
             lines.append(
                 f"{status_icon} `{b['ticker']}` {b['alert_date']} — "
-                f"Vol {vol_m:.1f}M | Range {rp}% | {b.get('day2_status', 'unknown')}"
+                f"Vol {vol_m:.1f}M | Range {rp}% | {b.get('day2_status', 'unknown')}{extra}"
             )
 
         return self._ok(request, result="\n".join(lines))

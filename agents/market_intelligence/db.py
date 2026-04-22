@@ -266,6 +266,16 @@ async def initialize_schema() -> None:
                 UNIQUE (ticker, alert_date)
             );
             CREATE INDEX IF NOT EXISTS idx_9m_sugar_babies_date ON mi_9m_sugar_babies(alert_date);
+            -- Going-in shape: captured at EOD sweep so weekly review can slice
+            -- outcomes by setup geometry (quiet breakout vs pullback reversal
+            -- vs falling knife vs extended continuation). Bucketing is derived
+            -- at query time from raw metrics so definitions can evolve.
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_5d_pct FLOAT;
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_20d_pct FLOAT;
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_vs_sma10 FLOAT;
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_vs_sma50 FLOAT;
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS sma50_slope_pct FLOAT;
+            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prior_sessions INT;
 
             CREATE TABLE IF NOT EXISTS mi_data_quality (
                 run_date DATE NOT NULL,
@@ -814,21 +824,34 @@ async def get_today_9m_ep_alerts(d: "str | date") -> list[dict]:
 
 
 async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
-    """Upsert a confirmed 9M sugar baby (EOD sweep result)."""
+    """Upsert a confirmed 9M sugar baby (EOD sweep result).
+
+    Going-in shape metrics (prev_5d_pct … prior_sessions) are optional — legacy
+    callers that only pass the 8 base fields get NULLs. get_eod_9m_sugar_babies
+    populates them from the SQL CTEs.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_9m_sugar_babies
                 (ticker, alert_date, open_price, close_price, high_price, low_price,
-                 volume, close_in_range_pct)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 volume, close_in_range_pct,
+                 prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
+                 sma50_slope_pct, prior_sessions)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             ON CONFLICT (ticker, alert_date) DO UPDATE SET
-                open_price        = EXCLUDED.open_price,
-                close_price       = EXCLUDED.close_price,
-                high_price        = EXCLUDED.high_price,
-                low_price         = EXCLUDED.low_price,
-                volume            = EXCLUDED.volume,
-                close_in_range_pct = EXCLUDED.close_in_range_pct
+                open_price         = EXCLUDED.open_price,
+                close_price        = EXCLUDED.close_price,
+                high_price         = EXCLUDED.high_price,
+                low_price          = EXCLUDED.low_price,
+                volume             = EXCLUDED.volume,
+                close_in_range_pct = EXCLUDED.close_in_range_pct,
+                prev_5d_pct        = EXCLUDED.prev_5d_pct,
+                prev_20d_pct       = EXCLUDED.prev_20d_pct,
+                prev_vs_sma10      = EXCLUDED.prev_vs_sma10,
+                prev_vs_sma50      = EXCLUDED.prev_vs_sma50,
+                sma50_slope_pct    = EXCLUDED.sma50_slope_pct,
+                prior_sessions     = EXCLUDED.prior_sessions
         """,
             record["ticker"],
             record["alert_date"] if isinstance(record["alert_date"], date) else date.fromisoformat(record["alert_date"]),
@@ -838,6 +861,12 @@ async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
             record["low_price"],
             record["volume"],
             record["close_in_range_pct"],
+            record.get("prev_5d_pct"),
+            record.get("prev_20d_pct"),
+            record.get("prev_vs_sma10"),
+            record.get("prev_vs_sma50"),
+            record.get("sma50_slope_pct"),
+            record.get("prior_sessions"),
         )
 
 
@@ -873,35 +902,55 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                 GROUP BY ticker
                 HAVING COUNT(*) >= 10
             ),
-            ma10 AS (
-                -- 10-session SMA of close using the most recent 10 sessions STRICTLY BEFORE $1,
-                -- plus prev_close (most-recent prior close) for the extension ratio.
-                -- Extension is measured at YESTERDAY's close (prev_close / ma10), not today's,
-                -- so a stock flat for 10d then ripping +30% today still passes — it's the
-                -- fresh breakout we want. Chase-runners like BB fail because yesterday's
-                -- close was already extended going in.
+            -- Prior 60 sessions of closes ranked by recency. Used for:
+            --   rn=1  → prev_close
+            --   rn=6  → close_5d_ago (prev_close_5d_pct)
+            --   rn=21 → close_20d_ago (prev_close_20d_pct)
+            --   rn 1-10 → sma_10
+            --   rn 1-50 → sma_50
+            --   rn 6-55 → sma_50_5d_ago (for slope)
+            --   COUNT(*) → prior_sessions (catches sub-30d IPOs)
+            ranked AS (
+                SELECT ticker, close, trade_date,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE trade_date < $1
+                  AND trade_date >= $1 - INTERVAL '90 days'
+            ),
+            ctx AS (
                 SELECT ticker,
-                       AVG(close) AS sma_10,
-                       (ARRAY_AGG(close ORDER BY trade_date DESC))[1] AS prev_close
-                FROM (
-                    SELECT ticker, close, trade_date,
-                           ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
-                    FROM mi_daily_closes
-                    WHERE trade_date < $1
-                      AND trade_date >= $1 - INTERVAL '20 days'
-                ) t
-                WHERE rn <= 10
+                       COUNT(*) AS prior_sessions,
+                       MAX(close) FILTER (WHERE rn = 1)  AS prev_close,
+                       MAX(close) FILTER (WHERE rn = 6)  AS close_5d_ago,
+                       MAX(close) FILTER (WHERE rn = 21) AS close_20d_ago,
+                       AVG(close) FILTER (WHERE rn <= 10) AS sma_10,
+                       AVG(close) FILTER (WHERE rn <= 50) AS sma_50,
+                       AVG(close) FILTER (WHERE rn BETWEEN 6 AND 55) AS sma_50_5d_ago
+                FROM ranked
                 GROUP BY ticker
                 HAVING COUNT(*) >= 10
             )
             SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
                    CASE WHEN (d.high_price - d.low_price) > 0
                         THEN (d.close - d.low_price) / (d.high_price - d.low_price)
-                        ELSE NULL END AS close_in_range_pct
+                        ELSE NULL END AS close_in_range_pct,
+                   -- Going-in shape metrics (prev_close vs prior windows)
+                   CASE WHEN m.close_5d_ago IS NOT NULL AND m.close_5d_ago > 0
+                        THEN (m.prev_close - m.close_5d_ago) / m.close_5d_ago * 100.0
+                        ELSE NULL END AS prev_5d_pct,
+                   CASE WHEN m.close_20d_ago IS NOT NULL AND m.close_20d_ago > 0
+                        THEN (m.prev_close - m.close_20d_ago) / m.close_20d_ago * 100.0
+                        ELSE NULL END AS prev_20d_pct,
+                   CASE WHEN m.sma_10 > 0 THEN m.prev_close / m.sma_10 ELSE NULL END AS prev_vs_sma10,
+                   CASE WHEN m.sma_50 > 0 THEN m.prev_close / m.sma_50 ELSE NULL END AS prev_vs_sma50,
+                   CASE WHEN m.sma_50_5d_ago IS NOT NULL AND m.sma_50_5d_ago > 0
+                        THEN (m.sma_50 - m.sma_50_5d_ago) / m.sma_50_5d_ago * 100.0
+                        ELSE NULL END AS sma50_slope_pct,
+                   m.prior_sessions
             FROM mi_daily_closes d
             LEFT JOIN mi_security_types st ON st.ticker = d.ticker
             LEFT JOIN adv a ON a.ticker = d.ticker
-            LEFT JOIN ma10 m ON m.ticker = d.ticker
+            LEFT JOIN ctx m ON m.ticker = d.ticker
             WHERE d.trade_date = $1
               AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
               AND d.volume >= 9000000
@@ -944,7 +993,9 @@ async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT id, ticker, alert_date, open_price, close_price, high_price,
-                   low_price, volume, close_in_range_pct
+                   low_price, volume, close_in_range_pct,
+                   prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
+                   sma50_slope_pct, prior_sessions
             FROM mi_9m_sugar_babies
             WHERE alert_date = $1 AND day2_status = 'pending'
             ORDER BY volume DESC
@@ -974,6 +1025,8 @@ async def get_9m_ep_history(days: int = 14) -> list[dict]:
         rows = await conn.fetch("""
             SELECT sb.ticker, sb.alert_date, sb.volume, sb.close_price,
                    sb.low_price, sb.close_in_range_pct, sb.day2_status,
+                   sb.prev_5d_pct, sb.prev_20d_pct, sb.prev_vs_sma10,
+                   sb.prev_vs_sma50, sb.sma50_slope_pct, sb.prior_sessions,
                    a.today_volume AS intraday_volume, a.gap_pct
             FROM mi_9m_sugar_babies sb
             LEFT JOIN mi_9m_ep_alerts a
