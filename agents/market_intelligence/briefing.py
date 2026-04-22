@@ -748,6 +748,7 @@ def _format_evening_briefing(
     signal_quality_summary: dict | None = None,
     cooldowns: list[dict] | None = None,
     sugar_babies: list[dict] | None = None,
+    ninem_anticipations: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -821,6 +822,14 @@ def _format_evening_briefing(
             sections.append(sb_section)
             sections.append("")
 
+    if ninem_anticipations:
+        tks = ", ".join(f"`{a['ticker']}`" for a in ninem_anticipations[:20])
+        extra = "" if len(ninem_anticipations) <= 20 else f" (+{len(ninem_anticipations) - 20})"
+        sections.append(
+            f"🔍 *Anticipation-only today ({len(ninem_anticipations)})*: {tks}{extra}"
+        )
+        sections.append("")
+
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -885,6 +894,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"9M sugar babies fetch failed: {e}")
 
+    # 9M anticipation-only alerts — surface silent pace-projected alerts so nothing goes unseen
+    ninem_anticipations: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_today_9m_ep_alerts
+        all_9m = await get_today_9m_ep_alerts(today_str)
+        ninem_anticipations = [a for a in all_9m if a.get("is_anticipation")]
+    except Exception as e:
+        logger.warning(f"9M anticipation fetch failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -900,6 +918,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         signal_quality_summary=signal_quality_summary,
         cooldowns=cooldowns,
         sugar_babies=sugar_babies,
+        ninem_anticipations=ninem_anticipations,
     )
 
     success = await send_telegram_message(text, chat_id)
