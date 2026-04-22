@@ -114,27 +114,48 @@ async def _run_stream() -> None:
 # ── Subscription management ──────────────────────────────────────────────────
 
 
-def subscribe_ep_candidate(ticker: str) -> None:
+async def subscribe_ep_candidate(ticker: str) -> None:
     """Subscribe to minute bars for a pre-market HIGH EP candidate.
-    Called from _ep_scan_job() when a new HIGH is detected pre-market."""
+    Called from _ep_scan_job() when a new HIGH is detected pre-market.
+
+    The Alpaca SDK's subscribe_bars is synchronous and can block on the
+    websocket's internal lock when called from the same asyncio thread that
+    is running the stream. On 2026-04-22 this deadlocked the event loop for
+    ~3 hours. Offload to a worker thread with a hard timeout.
+    """
     if not _data_stream or ticker in _subscribed or ticker in _processed_today:
         return
     try:
-        _data_stream.subscribe_bars(_handle_bar, ticker)
+        await asyncio.wait_for(
+            asyncio.to_thread(_data_stream.subscribe_bars, _handle_bar, ticker),
+            timeout=5,
+        )
         _subscribed.add(ticker)
         logger.info(f"Bar stream: subscribed to {ticker} for ORB entry")
+    except asyncio.TimeoutError:
+        logger.error(f"Bar stream: subscribe to {ticker} timed out after 5s — SDK lock stuck")
     except Exception as e:
         logger.error(f"Bar stream: failed to subscribe to {ticker}: {e}")
 
 
-def unsubscribe_all() -> None:
-    """Unsubscribe all tickers after ORB window closes (called at 9:35 AM)."""
+async def unsubscribe_all() -> None:
+    """Unsubscribe all tickers after ORB window closes (called at 9:35 AM).
+
+    Offloaded to a worker thread for the same deadlock-avoidance reason as
+    subscribe_ep_candidate.
+    """
     global _subscribed
     if not _data_stream or not _subscribed:
         return
+    tickers = tuple(_subscribed)
     try:
-        _data_stream.unsubscribe_bars(*_subscribed)
-        logger.info(f"Bar stream: unsubscribed {len(_subscribed)} tickers after ORB window")
+        await asyncio.wait_for(
+            asyncio.to_thread(_data_stream.unsubscribe_bars, *tickers),
+            timeout=5,
+        )
+        logger.info(f"Bar stream: unsubscribed {len(tickers)} tickers after ORB window")
+    except asyncio.TimeoutError:
+        logger.error(f"Bar stream: unsubscribe timed out after 5s — SDK lock stuck")
     except Exception as e:
         logger.error(f"Bar stream: unsubscribe failed: {e}")
     _subscribed.clear()

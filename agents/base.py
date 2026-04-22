@@ -61,6 +61,12 @@ class BaseAgent(ABC):
         async def health(_: str = Depends(verify_internal_secret)):
             return {"status": "ok", "agent": self.agent_name.value}
 
+        # Unauthenticated liveness probe for Docker HEALTHCHECK. Reveals nothing
+        # sensitive; a response at all means the event loop isn't deadlocked.
+        @self.app.get("/live")
+        async def live():
+            return {"status": "ok"}
+
         @self.app.post("/task", response_model=AgentResponse)
         async def handle_task(
             request: AgentRequest,

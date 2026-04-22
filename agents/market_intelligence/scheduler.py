@@ -481,7 +481,7 @@ async def _ep_scan_job():
                     new_highs_post_open.append(ep["ticker"])
                 elif not market_open:
                     # Pre-market — subscribe to bar stream; ORB fires when first bar closes
-                    bar_stream.subscribe_ep_candidate(ep["ticker"])
+                    await bar_stream.subscribe_ep_candidate(ep["ticker"])
                 else:
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
 
@@ -879,7 +879,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Unsubscribe bar stream at 9:35 AM — ORB window closed
     async def _bar_stream_cleanup():
         from agents.market_intelligence.broker import bar_stream
-        bar_stream.unsubscribe_all()
+        await bar_stream.unsubscribe_all()
 
     _scheduler.add_job(
         _bar_stream_cleanup,
