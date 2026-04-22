@@ -532,3 +532,39 @@ is always evaluated in trading-floor time. Applied in:
 
 Also converted the python-side filter that dedups today's rows from the "recent closed"
 list to use `astimezone(_ET).date()` instead of the tz-naive `.date()`.
+
+---
+
+## Changes Made 2026-04-21 (session 2) — Briefing fixes, 9M quality + cadence
+
+### Briefing hygiene
+- **Truncated EP writeups** (`briefing.py`): new `_truncate_sentence()` helper cuts at sentence/word boundaries. MODERATE near-miss reasons compacted (`score 48 < 50 (catalyst=speculative)` → `s48 cat=spec`). `claude_analysis` cut raised 120 → 180 chars at sentence boundary.
+- **Validation parse-error noise** (`briefing.py`): morning brief collapses N parse errors into a single yellow line "🟡 N theme validation parse error(s) — tickers unchanged" instead of one row each.
+- **Haiku response hardening** (`theme_engine.py`): empty-content and stop_reason guard, strip ```` ``` ```` code fences, raise explicit `ValueError` with raw snippet so audit log captures actionable detail.
+
+### Twitter 403 diagnostic
+- **`twitter.py`**: disproved earlier "media_upload 403" theory (theme tweet with image posts fine; text-only RS-leaders tweet is what 403s). Added response-body capture on exception (`e.response.text`, `api_codes`, `api_messages`) to get real diagnostic on next fire. Trimmed hashtag suffix `#momentum #trading #RS #stocks` → `#momentum #stocks`.
+
+### /pregame fixes
+- **`agent.py::_handle_pregame`**: sugar babies fallback to yesterday when today's list is empty (EOD sweep writes after market close, so during the session only yesterday's babies are actionable). Parallel fetch via `asyncio.gather`.
+- Accelerating themes now sorted by `rs_avg` desc (was effectively alphabetical). RS shown inline: `{theme_name} RS{avg}  TKR TKR TKR`.
+
+### 9M quality filters — range + extension
+- **Intraday range gate** (`ninem_detector.py`): `(day_high - day_low) / current_price ≥ 2%`. Rejects merger-arb pins (e.g. DBRG 0.26% range pinned to a cash deal close).
+- **Extension gate — measured at prev_close, not today's close**: `prev_close ≤ 1.20 × 10d SMA`. Caught BB chase (`5.50 / 3.97 = 1.39×`) while passing fresh breakouts like VELO (`11.67 / 10.93 = 1.07×`) even when today is +30%. Measuring at today's close would wrongly reject the fresh breakout.
+- **MA10 cache**: `_get_ma10_map()` once-per-day SQL over `mi_daily_closes` with `ROW_NUMBER()` window. Same gates applied in `db.py::get_eod_9m_sugar_babies` so intraday and EOD agree.
+
+### 9M alert cadence — high-conviction anticipation carve-out
+Context: 21 alerts on 2026-04-21 (5 actual + 16 anticipation) → unworkable noise floor. Cadence is a red herring — DB `UNIQUE (ticker, alert_date)` + in-memory dedup mean each ticker pings once/day regardless of scan frequency.
+
+**Fix** (`ninem_detector.py`):
+- New constants: `_ANTICIPATION_PING_GAP_PCT = 10.0`, `_ANTICIPATION_PING_PROJ_VOL = 25_000_000`.
+- Gate: `should_ping = is_9m_actual or (is_9m_anticipation and (gap_pct ≥ 10 OR projected_vol ≥ 25M))`.
+- Silent anticipations still hit the DB and audit log (`pinged=True/False` in detail) — `/9m` unchanged.
+
+**Evening brief** (`briefing.py`): new `🔍 Anticipation-only today (N): TKR, TKR, ...` line below sugar babies, fed by `get_today_9m_ep_alerts(today_str)` filtered to `is_anticipation=true`.
+
+Expected pings: ~6–7/day on typical sessions (was ~21).
+
+### Files Changed
+`briefing.py`, `theme_engine.py`, `twitter.py`, `agent.py`, `ninem_detector.py`, `db.py`, `README.md`, `CLAUDE.md`

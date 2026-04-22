@@ -160,13 +160,15 @@ A parallel, LLM-free EP track based on Pradeep Bonde's "9M" tactic. Volume is th
 
 **Two signals:**
 - **9M actual** — today's volume crosses 8.9M shares → Telegram `🏦 9M EP` alert fires immediately
-- **9M pace** — projected volume ≥ 12M based on rate (only after 15 min since open, avoids opening-minute noise)
+- **9M pace** — projected volume ≥ 12M based on rate (only after 30 min elapsed, ≥3M shares already traded). Pings Telegram **only if** `gap ≥ 10%` or projected volume ≥ 25M (high-conviction carve-out). Lower-conviction anticipations still write to DB and surface via `/9m` and the evening-brief `🔍 Anticipation-only today` roundup.
+
+**Quality gates (intraday + EOD):** price ≥ $5, dollar-volume ≥ $50M (actual) / ≥ $30M (anticipation), gap ≥ 3% OR intraday gain ≥ 4%, effective volume ≥ 3× 20-day ADV, intraday range ≥ 2% of price, `prev_close ≤ 1.20× 10-day SMA` (rejects already-extended chases).
 
 **Sugar Babies** — stocks completing a 9M day with a strong close:
 - Volume ≥ 9M shares
 - Close > Open (green day)
 - Close in top 25% of daily range: `(close - low) / (high - low) ≥ 0.75`
-- Price ≥ $3.00
+- Price ≥ $5.00, dollar-volume ≥ $50M, virgin 9M (≥ 3× ADV), range ≥ 2%, not extended vs 10d SMA
 
 Sugar Babies appear in the evening briefing as Day 2 ORB candidates. At 9:31 AM next morning, Apollo automatically places ORB entries for each one (paper mode). Stop = prior day's low (the institutional volume wall), not ATR-based.
 
