@@ -2727,15 +2727,18 @@ class MarketIntelligenceAgent(BaseAgent):
         ep_bar = r.get("ep_threshold", "?")
         lines.append(f"📈 Regime: *{regime_name}* | QQQ {qqq_icon} | EP bar: {ep_bar}")
 
-        # Accelerating themes only
+        # Accelerating themes only — sort by rs_avg desc (was alphabetical from DB)
         if isinstance(themes, list):
             accel = [t for t in themes if t.get("stage") == "Accelerating"]
+            accel.sort(key=lambda t: t.get("rs_avg") or 0, reverse=True)
             if accel:
                 lines.append("")
                 lines.append("🔥 *Accelerating Themes:*")
                 for t in accel[:5]:
                     tks = " ".join((t.get("tickers") or [])[:4])
-                    lines.append(f"  {t['name']}  {tks}")
+                    rs = t.get("rs_avg")
+                    rs_str = f" (RS {rs:.0f})" if rs is not None else ""
+                    lines.append(f"  {t['name']}{rs_str}  {tks}")
 
         # HIGH EPs only
         if isinstance(ep_alerts, list):
