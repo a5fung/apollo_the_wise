@@ -48,7 +48,9 @@ def _stock_line(s: dict, get_desc) -> str:
     ticker = s["ticker"]
     rs = int(s.get("rs_composite") or 0)
     desc = get_desc(ticker) or s.get("sector") or ""
-    return f"${ticker} RS {rs} — {desc}" if desc else f"${ticker} RS {rs}"
+    # X Basic tier caps posts at one $cashtag. A leaders list has 15+ tickers,
+    # so we drop $ across the board. EP alerts (single ticker) keep $ elsewhere.
+    return f"{ticker} RS {rs} — {desc}" if desc else f"{ticker} RS {rs}"
 
 
 def _pack_tweets(lines: list[str], prefix: str = "", suffix: str = "") -> list[str]:
