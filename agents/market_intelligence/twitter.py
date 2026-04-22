@@ -44,13 +44,14 @@ def _get_client() -> tuple[Any, Any] | None:
     return client, tweepy.API(auth)
 
 
-def _stock_line(s: dict, get_desc) -> str:
+def _stock_line(s: dict, get_desc, cashtag: bool = False) -> str:
     ticker = s["ticker"]
     rs = int(s.get("rs_composite") or 0)
     desc = get_desc(ticker) or s.get("sector") or ""
-    # X Basic tier caps posts at one $cashtag. A leaders list has 15+ tickers,
-    # so we drop $ across the board. EP alerts (single ticker) keep $ elsewhere.
-    return f"{ticker} RS {rs} — {desc}" if desc else f"{ticker} RS {rs}"
+    # X Basic tier caps posts at one $cashtag. Caller sets cashtag=True for
+    # the first ticker only; remaining lines render plain.
+    sym = f"${ticker}" if cashtag else ticker
+    return f"{sym} RS {rs} — {desc}" if desc else f"{sym} RS {rs}"
 
 
 def _pack_tweets(lines: list[str], prefix: str = "", suffix: str = "") -> list[str]:
@@ -89,7 +90,10 @@ def format_thread(rs_leaders: list[dict], regime: dict, briefing_date: str) -> l
         header += f" | VIX {vix:.1f}"
     header += "\n\n"
 
-    stock_lines = [_stock_line(s, get_description) for s in rs_leaders[:_MAX_STOCKS]]
+    stock_lines = [
+        _stock_line(s, get_description, cashtag=(i == 0))
+        for i, s in enumerate(rs_leaders[:_MAX_STOCKS])
+    ]
     # Trimmed hashtag set — X duplicate-content filter and hashtag-spam heuristics
     # were rejecting the old 4-tag suffix with 403 Forbidden. #RS is too short.
     return _pack_tweets(stock_lines, prefix=header, suffix="\n\n#momentum #stocks")
