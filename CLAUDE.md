@@ -568,3 +568,106 @@ Expected pings: ~6–7/day on typical sessions (was ~21).
 
 ### Files Changed
 `briefing.py`, `theme_engine.py`, `twitter.py`, `agent.py`, `ninem_detector.py`, `db.py`, `README.md`, `CLAUDE.md`
+
+---
+
+## Changes Made 2026-04-22 — EP entry diagnostics & performance traceability
+
+Root: 2026-04-22 morning, event loop hung ~3h. 4 HIGH EPs detected, 0 orders placed,
+2 tickers tagged `ORB window closed at 9:59 AM ET` — a string that lived only in logs,
+not in any queryable table. Monthly perf review was a guessing game.
+
+**Principle:** every HIGH EP alert has a durable, queryable terminal state by 4:10 PM ET
+(post-`eod_cleanup` settlement; the EOD recap job reads it at 4:10).
+
+### A. Bounded-vocabulary skip reasons — `broker/skip_reasons.py` (new)
+18 constants in 5 categories: `filter:*` (ADV/ATR/mcap), `setup:*` (stop too wide,
+size too small, account fetch), `block:*` (max positions, daily loss, circuit breaker),
+`infra:*` (no_bar, subscribe_timeout/failed, order_submit_failed), `window:*`
+(out_of_orb, duplicate). Prefix is machine-readable; free-form detail after `: ` preserves
+human context. `split_part(skip_reason, ':', 1)` → category for monthly aggregation.
+
+### B. Silent drops filled — every decision writes `mi_live_trades`
+- `_insert_skipped_trade` now tolerates `alert=None`/`regime=None` — bar-stream
+  timeout path can write a skip row without a DB join during a stuck lock.
+  `/why` LEFT-JOINs `mi_ep_alerts` to recover score/catalyst/gap.
+- New call sites:
+  - `bar_stream.subscribe_ep_candidate` timeout → `INFRA_SUBSCRIBE_TIMEOUT`
+  - `bar_stream.subscribe_ep_candidate` failure → `INFRA_SUBSCRIBE_FAILED`
+  - `scheduler._ep_scan_job` post-9:59 HIGH → `WINDOW_OUT_OF_ORB`
+  - `live_tracker.submit_9m_day2_trade` spec failure / no-bar / safeguard blocks
+  - `order_manager.submit_entry` retry-exhausted → `INFRA_ORDER_SUBMIT_FAILED`
+  - `live_tracker` ORB no-bar-after-retries → `INFRA_NO_BAR`
+- `prepare_9m_day2_orb_order` refactored from `dict | None` to
+  `tuple[dict | None, str | None]` — matches `prepare_orb_order` signature so skip
+  reason propagates through caller to DB.
+- `_check_safeguards` return strings migrated to `BLOCK_MAX_POSITIONS /
+  BLOCK_DAILY_LOSS / BLOCK_CIRCUIT_BREAKER / SETUP_ACCOUNT_FETCH_FAILED`.
+- Dedup path at `live_tracker.py:269` now writes `orb_duplicate` audit event
+  (no DB write — row already exists).
+
+### C. Alert hygiene — Telegram reserved for terminal events
+- Bar-stream retries 1 & 2 now **audit-log only** (`bar_stream_disconnect`).
+  Micro-drops at 9:30 AM are routine data-feed behaviour; alerting on
+  self-healing retries creates fatigue. Telegram still fires on terminal
+  3rd-retry (existing behaviour). Encoded as memory:
+  `feedback_alert_vs_audit.md`.
+- Post-9:59 HIGH and subscribe-failed both Telegram *once* with `⏰` / `⚠️`.
+
+### D. Evening brief — new "📊 EP OUTCOMES TODAY" section
+`briefing._format_ep_outcomes_section` — HIGH: N detected → M entered · K missed,
+with entry price + fwd_1d% for entered and skip-reason prefix for missed.
+MODERATE shows count + auto-enter status. `get_ep_outcomes()` extended with
+`use_live` flag (auto-detected from `LIVE_TRADING_ENABLED`) — joins
+`mi_live_trades` in live mode, `mi_paper_trades` in paper mode. Same CASE
+logic, same return shape.
+
+### E. `/why TICKER [YYYY-MM-DD]` — lifecycle timeline
+New slash command + `trace TICKER` / `why didn't we enter` keyword routes.
+Joins `mi_ep_alerts` + `mi_live_trades` + `mi_audit_log`. Audit query bounded
+to the trading-day window via
+`created_at >= ($1::date AT TIME ZONE 'America/New_York')` to avoid pulling
+unrelated events from prior setups on the same ticker. Shows detection →
+outcome → lifecycle event list.
+
+### F. 4:10 PM EOD EP recap Telegram
+New `_eod_ep_recap_job` at 16:10 ET (after 16:05 EOD cleanup settles). One-shot
+summary of today's HIGH outcomes. Silent when no HIGHs detected today.
+
+### ⚠️ Post-deploy verification
+
+1. **Reason coverage invariant — zero silent drops.** On any trading day post-deploy:
+   ```sql
+   SELECT a.ticker, a.score_tier, lt.status, lt.skip_reason
+   FROM mi_ep_alerts a
+   LEFT JOIN mi_live_trades lt
+     ON lt.ticker=a.ticker AND lt.alert_date=a.alert_date
+   WHERE a.alert_date = CURRENT_DATE AND a.score_tier='HIGH';
+   ```
+   Every HIGH row must have a status in
+   `('filled','closed','order_placed','pending_confirmation')` **or** a
+   non-null `skip_reason` with one of the bounded prefixes. Zero rows with
+   `(status IS NULL AND skip_reason IS NULL)`.
+2. `/why TICKER` round-trip: known-entered shows entry; known-skipped shows
+   skip reason; unknown shows "no EP alert, trade row, or audit events".
+3. Evening brief counts must tie to query (1).
+4. **Retro-fit 2026-04-22:** run the backfill script on the server so the EOD
+   recap and `get_ep_outcomes` are clean for the hang day:
+   ```bash
+   # dry run
+   docker compose -f docker/docker-compose.prod.yml exec market-agent \
+     python scripts/backfill_orphan_ep_alerts.py 2026-04-22
+   # apply
+   docker compose -f docker/docker-compose.prod.yml exec market-agent \
+     python scripts/backfill_orphan_ep_alerts.py 2026-04-22 --apply
+   ```
+   Inserts one skipped row per orphan HIGH with reason
+   `infra:subscribe_timeout: event-loop hang — retro-fit`.
+5. **Monthly aggregation:** `SELECT split_part(skip_reason, ':', 1),
+   split_part(skip_reason, ':', 2), COUNT(*) FROM mi_live_trades WHERE
+   status='skipped' GROUP BY 1,2` — stable vocabulary, not free-form prose.
+
+### Files Changed
+`broker/skip_reasons.py` (new), `broker/live_tracker.py`, `broker/bar_stream.py`,
+`broker/order_manager.py`, `backtester/filters.py`, `scheduler.py`, `briefing.py`,
+`agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `CLAUDE.md`

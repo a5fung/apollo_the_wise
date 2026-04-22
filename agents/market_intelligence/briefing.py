@@ -718,6 +718,68 @@ def _format_pullbacks_section(pullbacks: list[dict], section_num: int = 5) -> st
     return "\n".join(lines)
 
 
+def _format_ep_outcomes_section(outcomes: list[dict], section_num: int = 6) -> str:
+    """
+    Summary of today's EP alerts and their terminal states.
+
+    outcomes: rows from get_ep_outcomes(days_back=1, ...) filtered to today.
+    Shows HIGH breakdown (entered vs missed with skip-reason prefix) and a
+    compact MODERATE tally. Omits the section entirely if no EPs today.
+    """
+    if not outcomes:
+        return ""
+
+    high = [o for o in outcomes if o.get("score_tier") == "HIGH"]
+    moderate = [o for o in outcomes if o.get("score_tier") == "MODERATE"]
+
+    if not high and not moderate:
+        return ""
+
+    entered_states = {"filled", "closed", "order_placed", "pending_confirmation", "confirmed", "submitting"}
+
+    def _bucket(row: dict) -> str:
+        st = row.get("trade_status")
+        pt = row.get("pt_status")
+        if st == "traded" and pt in entered_states:
+            return "entered"
+        if st == "filtered":
+            return "missed"
+        if st == "no_attempt":
+            return "no_attempt"
+        return "missed"
+
+    lines = [f"*{section_num}. 📊 EP OUTCOMES TODAY*"]
+
+    if high:
+        entered = [o for o in high if _bucket(o) == "entered"]
+        missed = [o for o in high if _bucket(o) != "entered"]
+        lines.append(f"HIGH: {len(high)} detected → {len(entered)} entered · {len(missed)} missed")
+        for o in entered[:5]:
+            entry = o.get("last_entry_price")
+            fwd = o.get("fwd_1d_pct")
+            entry_str = f"@${float(entry):.2f}" if entry else "entered"
+            fwd_str = f" {float(fwd):+.1f}%" if fwd is not None else ""
+            lines.append(f"  • `{o['ticker']}` ({entry_str}{fwd_str})")
+        for o in missed[:8]:
+            reason = (o.get("skip_reason") or "no_attempt").split(":", 1)[0]
+            # show full prefix (category:code) if present
+            full = o.get("skip_reason") or "no_attempt"
+            code = full.split(":", 2)
+            label = ":".join(code[:2]) if len(code) >= 2 else reason
+            lines.append(f"  • `{o['ticker']}` (missed: {label})")
+        dropped = max(0, len(missed) - 8)
+        if dropped:
+            lines.append(f"  • …{dropped} more missed")
+
+    if moderate:
+        entered = [o for o in moderate if _bucket(o) == "entered"]
+        lines.append(
+            f"MODERATE: {len(moderate)} detected · {len(entered)} auto-entered (manual only)"
+        )
+
+    return "\n".join(lines)
+
+
 # ── Evening briefing ───────────────────────────────────────────────────────────
 
 def _format_cooldown_footer(cooldowns: list[dict]) -> str:
@@ -749,6 +811,7 @@ def _format_evening_briefing(
     cooldowns: list[dict] | None = None,
     sugar_babies: list[dict] | None = None,
     ninem_anticipations: list[dict] | None = None,
+    ep_outcomes: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -801,6 +864,12 @@ def _format_evening_briefing(
         _format_pullbacks_section(pullbacks, section_num=next_num),
         "",
     ]
+
+    # EP Outcomes — today's HIGH EP terminal states
+    ep_outcomes_section = _format_ep_outcomes_section(ep_outcomes or [], section_num=next_num + 1)
+    if ep_outcomes_section:
+        next_num += 1
+        sections += [ep_outcomes_section, ""]
 
     # Weekly signal quality section (Fridays only)
     if signal_quality_summary:
@@ -903,6 +972,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"9M anticipation fetch failed: {e}")
 
+    # EP outcomes for today — every HIGH detected should have a terminal state
+    ep_outcomes: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_ep_outcomes
+        all_outcomes = await get_ep_outcomes(days_back=1)
+        ep_outcomes = [o for o in all_outcomes if str(o.get("alert_date")) == today_str]
+    except Exception as e:
+        logger.warning(f"EP outcomes fetch failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -919,6 +997,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         cooldowns=cooldowns,
         sugar_babies=sugar_babies,
         ninem_anticipations=ninem_anticipations,
+        ep_outcomes=ep_outcomes,
     )
 
     success = await send_telegram_message(text, chat_id)

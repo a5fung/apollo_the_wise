@@ -544,6 +544,11 @@ class MarketIntelligenceAgent(BaseAgent):
                                      "ep returns", "ep results", "ep track"]):
             return await self._handle_ep_outcomes(request)
 
+        # Lifecycle trace: "trace TICKER" or "why didn't we enter TICKER" — execution-side diagnostic.
+        # Distinct from `_handle_ep_diagnostic` (detection-side: "why wasn't X an EP at all?").
+        if "trace " in task or "why didn't we enter" in task or "why didn't we trade" in task:
+            return await self._handle_why_query(request)
+
         # "why not EP / why wasn't X flagged" — diagnostic must come before general EP route
         if any(k in task for k in ["why not ep", "why no ep", "why wasn't", "why was not", "not flagged", "not an ep", "missed ep", "why didn't", "why did not"]):
             import re as _re
@@ -2668,6 +2673,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/positions":      self._handle_watchlist,
             "/pregame":        self._handle_pregame,
             "/trades":         self._handle_trades_detail,
+            "/why":            self._handle_why_query,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
@@ -2677,6 +2683,117 @@ class MarketIntelligenceAgent(BaseAgent):
             return await handler(request)
         available = "  ".join(sorted(k for k in dispatch if not k.endswith("_detail")))
         return self._ok(request, result=f"Unknown command: `{cmd}`\n\nAvailable:\n`{available}`")
+
+    async def _handle_why_query(self, request: AgentRequest) -> AgentResponse:
+        """`/why TICKER [YYYY-MM-DD]` — per-ticker lifecycle timeline.
+
+        Joins mi_ep_alerts (detection) + mi_live_trades (execution) +
+        mi_audit_log (lifecycle events, bounded to the trading-day window in
+        America/New_York to avoid pulling unrelated prior-setup events).
+        """
+        import re as _re
+        from datetime import date as _date
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import get_pool
+
+        raw = request.task.strip()
+        tokens = raw.split()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', raw.upper())
+        skip = _PREPOSITION_SKIP | {"WHY", "TRACE", "THE", "FOR", "AND", "WHAT",
+                                     "ENTRY", "EXIT", "TRADE", "EP", "ORB", "WE", "DID"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(request, result="Usage: `/why TICKER [YYYY-MM-DD]` — shows the lifecycle timeline for a HIGH EP alert.")
+
+        target_date = et_today()
+        for tok in tokens[1:]:
+            try:
+                target_date = _date.fromisoformat(tok)
+                break
+            except ValueError:
+                continue
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            alert = await conn.fetchrow("""
+                SELECT ticker, alert_date, score_tier, ep_score, gap_pct,
+                       catalyst, catalyst_quality, rel_volume
+                FROM mi_ep_alerts
+                WHERE ticker = $1 AND alert_date = $2
+                ORDER BY ep_score DESC
+                LIMIT 1
+            """, ticker, target_date)
+            trade = await conn.fetchrow("""
+                SELECT status, skip_reason, orb_high, orb_low, entry_price,
+                       stop_price, entry_shares, total_pnl, proposed_at,
+                       confirmed_at, closed_at
+                FROM mi_live_trades
+                WHERE ticker = $1 AND alert_date = $2
+            """, ticker, target_date)
+            events = await conn.fetch("""
+                SELECT created_at, event_type, summary, detail
+                FROM mi_audit_log
+                WHERE created_at >= ($1::date AT TIME ZONE 'America/New_York')
+                  AND created_at <  (($1::date + INTERVAL '1 day') AT TIME ZONE 'America/New_York')
+                  AND summary ILIKE '%' || $2 || '%'
+                ORDER BY created_at ASC
+            """, target_date, ticker)
+
+        if not alert and not trade and not events:
+            return self._ok(
+                request,
+                result=f"No EP alert, trade row, or audit events for `{ticker}` on {target_date}.",
+            )
+
+        from agents.market_intelligence.collector import _ET
+        lines = [f"📋 *{ticker}* ({target_date})"]
+
+        if alert:
+            cat = alert.get("catalyst") or ""
+            cat_short = (cat[:60] + "…") if len(cat) > 60 else cat
+            lines.append(
+                f"*Detected:* {alert['score_tier']} (score {int(alert['ep_score'] or 0)}, "
+                f"gap {float(alert.get('gap_pct') or 0):+.1f}%, "
+                f"cat={alert.get('catalyst_quality') or 'n/a'})"
+            )
+            if cat_short:
+                lines.append(f"   _{cat_short}_")
+        else:
+            lines.append("*Detected:* (no mi_ep_alerts row — not a recognised EP)")
+
+        if trade:
+            status = trade.get("status") or "?"
+            reason = trade.get("skip_reason")
+            if status == "skipped" and reason:
+                lines.append(f"*Outcome:* missed — `{reason}`")
+            elif status == "closed":
+                pnl = float(trade.get("total_pnl") or 0)
+                lines.append(
+                    f"*Outcome:* closed (entry ${float(trade.get('entry_price') or 0):.2f} → "
+                    f"P&L ${pnl:+,.2f})"
+                )
+            elif status in ("filled", "order_placed", "pending_confirmation", "confirmed"):
+                lines.append(
+                    f"*Outcome:* {status} @${float(trade.get('entry_price') or 0):.2f}, "
+                    f"stop ${float(trade.get('stop_price') or 0):.2f}"
+                )
+            else:
+                lines.append(f"*Outcome:* {status}{' — ' + reason if reason else ''}")
+        else:
+            lines.append("*Outcome:* no mi_live_trades row (silent drop — check events below)")
+
+        if events:
+            lines.append("*Lifecycle:*")
+            for ev in events[:20]:
+                ts = ev["created_at"].astimezone(_ET).strftime("%H:%M:%S")
+                summary = ev["summary"][:120]
+                lines.append(f"  `{ts}`  {ev['event_type']} — {summary}")
+            if len(events) > 20:
+                lines.append(f"  …{len(events) - 20} more events")
+        else:
+            lines.append("*Lifecycle:* (no audit events for this ticker on this date)")
+
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
         msg = await _build_hud_text()

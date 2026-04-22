@@ -4,6 +4,14 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 
+from agents.market_intelligence.broker.skip_reasons import (
+    FILTER_ADV_NO_DATA,
+    FILTER_ADV_TOO_LOW,
+    FILTER_ATR_TOO_HIGH,
+    FILTER_MCAP_TOO_SMALL,
+    SETUP_STOP_TOO_WIDE,
+    SETUP_ZERO_RANGE,
+)
 from agents.market_intelligence.collector import get_fmp_profile
 from agents.market_intelligence.db import get_pool
 
@@ -63,11 +71,11 @@ async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
         """, ticker, trade_date)
 
     if not row or row["adv_dollar"] is None:
-        return "ADV no data"
+        return FILTER_ADV_NO_DATA
 
     adv_dollar = float(row["adv_dollar"])
     if adv_dollar < MIN_ADV_DOLLAR_VOLUME:
-        return f"ADV too low (${adv_dollar:,.0f})"
+        return f"{FILTER_ADV_TOO_LOW}: ${adv_dollar:,.0f}"
 
     return None
 
@@ -115,7 +123,7 @@ async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
         return None  # not enough data — let it through
 
     if atr_pct > MAX_ATR_PCT:
-        return f"ATR too high ({atr_pct:.1f}%)"
+        return f"{FILTER_ATR_TOO_HIGH}: {atr_pct:.1f}% > {MAX_ATR_PCT}%"
 
     return None
 
@@ -132,9 +140,9 @@ def validate_orb_entry(
     """
     orb_range = orb_high - orb_low
     if orb_range <= 0:
-        return False, "orb_range_zero"
+        return False, SETUP_ZERO_RANGE
     if atr_14 and atr_14 > 0 and orb_range > 1.5 * atr_14:
-        return False, f"stop_too_wide ({orb_range:.2f} > 1.5x ATR {atr_14:.2f})"
+        return False, f"{SETUP_STOP_TOO_WIDE}: {orb_range:.2f} > 1.5x ATR {atr_14:.2f}"
     return True, None
 
 
@@ -156,6 +164,6 @@ async def _check_market_cap(ticker: str) -> str | None:
         return None  # no data — let it through
 
     if mcap < MIN_MARKET_CAP:
-        return f"Market cap too low (${mcap / 1e6:.0f}M)"
+        return f"{FILTER_MCAP_TOO_SMALL}: ${mcap / 1e6:.0f}M < ${MIN_MARKET_CAP / 1e6:.0f}M"
 
     return None

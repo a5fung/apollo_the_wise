@@ -24,6 +24,16 @@ from agents.market_intelligence.broker.order_manager import (
     execute_full_exit,
     update_stop,
 )
+from agents.market_intelligence.broker.skip_reasons import (
+    BLOCK_CIRCUIT_BREAKER,
+    BLOCK_DAILY_LOSS,
+    BLOCK_MAX_POSITIONS,
+    INFRA_NO_BAR,
+    INFRA_ORDER_SUBMIT_FAILED,
+    SETUP_ACCOUNT_FETCH_FAILED,
+    WINDOW_DUPLICATE,
+    WINDOW_OUT_OF_ORB,
+)
 from agents.market_intelligence.broker.telegram_confirm import send_trade_proposal
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
@@ -60,7 +70,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         """)
         if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
             logger.info(f"Safeguard blocked: max positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})")
-            return False, f"max_positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})"
+            return False, f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS}"
 
         # Daily loss limit
         try:
@@ -68,7 +78,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
             equity = account["equity"]
         except Exception as e:
             logger.error(f"Safeguard: cannot get account equity: {e}")
-            return False, "cannot_get_account"
+            return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
         today = et_today()
         today_losses = await conn.fetchval("""
@@ -79,7 +89,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
             logger.info(f"Safeguard blocked: daily loss limit (${today_losses:+,.0f} >= ${daily_limit:.0f})")
-            return False, f"daily_loss_limit (${today_losses:+,.0f} >= ${daily_limit:.0f})"
+            return False, f"{BLOCK_DAILY_LOSS}: ${today_losses:+,.0f} >= ${daily_limit:.0f}"
 
         # Circuit breaker: N consecutive losses
         recent_closed = await conn.fetch("""
@@ -92,7 +102,7 @@ async def _check_safeguards() -> tuple[bool, str | None]:
             all_losses = all(r["total_pnl"] <= 0 for r in recent_closed)
             if all_losses:
                 logger.info(f"Safeguard blocked: circuit breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)")
-                return False, f"circuit_breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)"
+                return False, f"{BLOCK_CIRCUIT_BREAKER}: {CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses"
 
     return True, None
 
@@ -130,6 +140,11 @@ async def _submit_orb_trade(
     ok, sg_reason = await _check_safeguards()
     if not ok:
         await _insert_skipped_trade(ticker, today, alert, regime_record, sg_reason)
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("orb_blocked", f"{ticker} — {sg_reason}")
+        except Exception:
+            pass
         await send_telegram_message(f"🚫 *{ticker}* blocked by safeguard: {sg_reason}")
         return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
 
@@ -268,6 +283,11 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
             )
         if exists:
             logger.debug(f"Live trade already exists for {ticker} on {today}")
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_duplicate", f"{ticker} [{trigger}] — {WINDOW_DUPLICATE}")
+            except Exception:
+                pass
             continue
 
         # Pre-trade filters (ADV, ATR% — skip mcap for small account)
@@ -342,9 +362,10 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     # Any tickers still without an ORB bar after retries — mark as skipped
     for alert, atr_14 in pending_orb:
         ticker = alert["ticker"]
-        await _insert_skipped_trade(ticker, today, alert, regime_record, "No ORB bar")
+        skip_msg = f"{INFRA_NO_BAR}: {MAX_ORB_RETRIES} retries exhausted"
+        await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
         results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
-        results.append({"ticker": ticker, "action": "skipped", "reason": "No ORB bar"})
+        results.append({"ticker": ticker, "action": "skipped", "reason": skip_msg})
         logger.warning(f"No ORB bar for {ticker} after {MAX_ORB_RETRIES} retries")
         await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: no first bar after {MAX_ORB_RETRIES} retries")
         try:
@@ -704,12 +725,22 @@ async def send_live_trade_summary() -> None:
 async def _insert_skipped_trade(
     ticker: str,
     today: date,
-    alert: dict,
+    alert: dict | None,
     regime_record: dict | None,
     skip_reason: str,
 ) -> None:
-    """Insert a skipped live trade record."""
+    """Insert a skipped live trade record.
+
+    alert / regime_record may be None — the bar-stream timeout path cannot
+    hydrate them without a DB join during a stuck lock. The invariant is that
+    (ticker, alert_date, status='skipped', skip_reason) lands in mi_live_trades;
+    score/catalyst/gap/regime can be LEFT-JOINed from mi_ep_alerts by /why.
+    """
     pool = await get_pool()
+    ep_score = alert.get("ep_score") if alert else None
+    catalyst_quality = alert.get("catalyst_quality") if alert else None
+    gap_pct = alert.get("gap_pct") if alert else None
+    regime = regime_record.get("regime") if regime_record else None
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_live_trades
@@ -718,9 +749,7 @@ async def _insert_skipped_trade(
             VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7)
             ON CONFLICT (ticker, alert_date) DO NOTHING
         """,
-            ticker, today, alert["ep_score"],
-            alert.get("catalyst_quality"), alert.get("gap_pct"),
-            regime_record.get("regime") if regime_record else None,
+            ticker, today, ep_score, catalyst_quality, gap_pct, regime,
             skip_reason,
         )
 
@@ -755,24 +784,48 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
     if not ok:
         logger.info(f"9M Day2 {ticker}: blocked by safeguard — {sg_reason}")
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        await _insert_skipped_trade(
+            ticker, today,
+            {"ep_score": 0, "catalyst_quality": "9m_volume",
+             "gap_pct": sugar_baby.get("gap_pct")},
+            None, sg_reason,
+        )
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event("orb_blocked", f"9M {ticker} — {sg_reason}")
+        except Exception:
+            pass
         return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
 
     orb_bar = await alpaca.get_first_bar(ticker, today)
     if not orb_bar:
         logger.warning(f"9M Day2 {ticker}: no ORB bar available")
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        return {"ticker": ticker, "action": "skipped", "reason": "no_orb_bar"}
+        await _insert_skipped_trade(
+            ticker, today,
+            {"ep_score": 0, "catalyst_quality": "9m_volume",
+             "gap_pct": sugar_baby.get("gap_pct")},
+            None, INFRA_NO_BAR,
+        )
+        return {"ticker": ticker, "action": "skipped", "reason": INFRA_NO_BAR}
 
     regime_record = await get_latest_regime()
-    order_spec = await prepare_9m_day2_orb_order(sugar_baby, orb_bar, regime_record)
+    order_spec, spec_reason = await prepare_9m_day2_orb_order(sugar_baby, orb_bar, regime_record)
 
     if not order_spec:
-        logger.info(f"9M Day2 {ticker}: order spec failed (stop too wide or invalid)")
+        skip_msg = spec_reason or "order spec failed"
+        logger.info(f"9M Day2 {ticker}: {skip_msg}")
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        await send_telegram_message(
-            f"⏭️ *9M Day2 {ticker}* skipped: stop distance invalid"
+        await _insert_skipped_trade(
+            ticker, today,
+            {"ep_score": 0, "catalyst_quality": "9m_volume",
+             "gap_pct": sugar_baby.get("gap_pct")},
+            regime_record, skip_msg,
         )
-        return {"ticker": ticker, "action": "skipped", "reason": "order_spec_failed"}
+        await send_telegram_message(
+            f"⏭️ *9M Day2 {ticker}* skipped: {skip_msg}"
+        )
+        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
 
     pool = await get_pool()
     async with pool.acquire() as conn:

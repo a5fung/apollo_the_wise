@@ -2970,19 +2970,32 @@ async def get_ep_outcomes(
     days_back: int = 90,
     tier: str | None = None,
     include_unknown: bool = False,
+    use_live: bool | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Return each EP alert enriched with paper trade data and forward returns.
+    Return each EP alert enriched with trade data and forward returns.
 
-    Joins mi_paper_trades (the active paper trading table — mi_live_trades is for
-    Alpaca live mode which is currently off). Derives trade_status:
-      'traded'    — paper trade row exists with no skip_reason (actual entry attempted)
-      'filtered'  — paper trade skip_reason set (ORB too wide, ADV too low, etc.)
-      'no_attempt'— no paper trade row (alert fired outside ORB window, or similar)
+    Joins mi_live_trades when LIVE_TRADING_ENABLED (or use_live=True is passed);
+    otherwise joins mi_paper_trades. `last_entry_price` is derived as entry_price
+    for live mode (column is named differently in the two tables).
 
-    Deduplicated via DISTINCT ON (ticker, alert_date) — mi_ep_alerts has no UNIQUE constraint.
-    Excludes catalyst_quality='unknown' by default (pre-Claude early records with no value).
+    Derives trade_status:
+      'traded'    — row exists with no skip_reason (entry attempted/filled/closed)
+      'filtered'  — skip_reason set (ORB too wide, ADV too low, infra, etc.)
+      'no_attempt'— no trade row (pre-diagnostics era; should be zero post-deploy)
+
+    Deduplicated via DISTINCT ON (ticker, alert_date). Excludes
+    catalyst_quality='unknown' by default (pre-Claude early records).
     """
+    if use_live is None:
+        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+        use_live = LIVE_TRADING_ENABLED
+    if use_live:
+        trade_table = "mi_live_trades"
+        entry_col = "entry_price"
+    else:
+        trade_table = "mi_paper_trades"
+        entry_col = "last_entry_price"
     pool = await get_pool()
     async with pool.acquire() as conn:
         params: list[Any] = [days_back]
@@ -3010,14 +3023,14 @@ async def get_ep_outcomes(
                     o.fwd_1d_pct, o.fwd_1w_pct,
                     pt.status           AS pt_status,
                     pt.skip_reason      AS skip_reason,
-                    pt.last_entry_price AS last_entry_price,
+                    pt.{entry_col}      AS last_entry_price,
                     pt.total_pnl        AS total_pnl
                 FROM mi_ep_alerts a
                 LEFT JOIN mi_signal_outcomes o
                     ON o.signal_type = 'ep_alert'
                    AND o.signal_date = a.alert_date
                    AND o.identifier = a.ticker
-                LEFT JOIN mi_paper_trades pt
+                LEFT JOIN {trade_table} pt
                     ON pt.ticker = a.ticker
                    AND pt.alert_date = a.alert_date
                 WHERE {where}

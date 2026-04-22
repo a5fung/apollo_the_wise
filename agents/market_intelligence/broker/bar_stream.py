@@ -22,6 +22,11 @@ import logging
 import os
 from datetime import datetime, time
 
+from agents.market_intelligence.broker.skip_reasons import (
+    INFRA_SUBSCRIBE_FAILED,
+    INFRA_SUBSCRIBE_TIMEOUT,
+)
+
 logger = logging.getLogger(__name__)
 
 # ── Module state ────────────────────────────────────────────────────────────
@@ -102,6 +107,17 @@ async def _run_stream() -> None:
             logger.error(f"Bar stream died: {e} (retry {retries}/{MAX_RETRIES})")
             if _subscribed:
                 logger.warning(f"Bar stream died with active subscriptions: {sorted(_subscribed)}")
+            # Retries 1 and 2: audit-log only. WebSocket micro-drops at 9:30 AM are
+            # normal data-feed behaviour; alerting the user on self-healing retries
+            # creates alert fatigue. Telegram only fires on terminal 3rd-retry.
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "bar_stream_disconnect",
+                    f"retry {retries}/{MAX_RETRIES} — {e} | subscribed={sorted(_subscribed)}",
+                )
+            except Exception:
+                pass
             if retries < MAX_RETRIES:
                 await asyncio.sleep(min(5 * retries, 30))
 
@@ -134,8 +150,37 @@ async def subscribe_ep_candidate(ticker: str) -> None:
         logger.info(f"Bar stream: subscribed to {ticker} for ORB entry")
     except asyncio.TimeoutError:
         logger.error(f"Bar stream: subscribe to {ticker} timed out after 5s — SDK lock stuck")
+        await _record_subscribe_failure(
+            ticker, f"{INFRA_SUBSCRIBE_TIMEOUT}: 5s SDK lock stuck",
+        )
     except Exception as e:
         logger.error(f"Bar stream: failed to subscribe to {ticker}: {e}")
+        await _record_subscribe_failure(
+            ticker, f"{INFRA_SUBSCRIBE_FAILED}: {e}",
+        )
+
+
+async def _record_subscribe_failure(ticker: str, reason: str) -> None:
+    """Telegram + audit-log a subscribe failure. Do NOT write mi_live_trades here.
+
+    The 9:31 cron fallback (process_new_alerts_live) is an independent REST-based
+    recovery path — writing a skipped row from the WebSocket side would dedup-
+    block it via live_tracker.py's EXISTS check. The cron owns the terminal
+    mi_live_trades state (via INFRA_NO_BAR or a successful entry); /why can still
+    surface this subscribe-failure via the audit log entry below.
+    """
+    try:
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event("orb_subscribe_failed", f"{ticker} — {reason}")
+    except Exception:
+        pass
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(
+            f"⚠️ *{ticker}* bar subscribe failed ({reason}) — 9:31 cron fallback will run"
+        )
+    except Exception:
+        pass
 
 
 async def unsubscribe_all() -> None:

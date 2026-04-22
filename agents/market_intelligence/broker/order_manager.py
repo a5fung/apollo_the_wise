@@ -14,6 +14,14 @@ from datetime import date, datetime
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
 from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.broker.skip_reasons import (
+    INFRA_ORDER_SUBMIT_FAILED,
+    SETUP_ACCOUNT_FETCH_FAILED,
+    SETUP_PRICE_EXCEEDS_CAP,
+    SETUP_SIZE_TOO_SMALL,
+    SETUP_STOP_TOO_WIDE,
+    SETUP_ZERO_RANGE,
+)
 from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.db import get_pool
 
@@ -42,17 +50,13 @@ async def prepare_orb_order(
     if not valid:
         logger.info(f"{ticker}: ORB entry rejected — {skip_reason}")
         orb_range = orb_high - orb_low
-        if skip_reason and "stop_too_wide" in skip_reason:
+        if skip_reason and SETUP_STOP_TOO_WIDE in skip_reason:
             orb_pct = (orb_range / orb_low * 100) if orb_low > 0 else 0
             return None, (
-                f"stop too wide — ORB range ${orb_range:.2f} ({orb_pct:.1f}%) "
-                f"exceeds 1.5× ATR ${atr_14 * 1.5:.2f}; risk per share too large"
+                f"{SETUP_STOP_TOO_WIDE}: ORB range ${orb_range:.2f} ({orb_pct:.1f}%) "
+                f"> 1.5x ATR ${atr_14 * 1.5:.2f}"
             )
-        # orb_range_zero: open == high == low in the first 1-min bar
-        return None, (
-            f"zero ORB range — open=high=low=${orb_high:.2f}; "
-            f"illiquid or locked opening minute, no breakout level to buy above"
-        )
+        return None, f"{SETUP_ZERO_RANGE}: open=high=low=${orb_high:.2f}"
 
     # Get actual account equity from Alpaca
     try:
@@ -60,7 +64,7 @@ async def prepare_orb_order(
         equity = account["equity"]
     except Exception as e:
         logger.error(f"Cannot get account equity for {ticker}, aborting order prep: {e}")
-        return None, f"account fetch failed: {e}"
+        return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
     # Position sizing: 1% risk, halved if QQQ EMA bearish
     risk_pct = 0.01
@@ -74,8 +78,8 @@ async def prepare_orb_order(
     if shares <= 0:
         logger.warning(f"{ticker}: computed 0 shares, skipping")
         return None, (
-            f"position too small — ${risk_dollars:.0f} risk budget / "
-            f"${risk_per_share:.2f} per-share stop distance < 1 share"
+            f"{SETUP_SIZE_TOO_SMALL}: ${risk_dollars:.0f} risk / "
+            f"${risk_per_share:.2f} per-share < 1 share"
         )
 
     # Max 20% of account in one position
@@ -86,8 +90,8 @@ async def prepare_orb_order(
     if shares <= 0:
         logger.warning(f"{ticker}: 0 shares after max-position cap (max=${max_position:.0f}, price=${orb_high:.2f})")
         return None, (
-            f"price exceeds 20% position cap — ${orb_high:.2f}/share > max "
-            f"position ${max_position:.0f} (20% of ${equity:.0f} equity)"
+            f"{SETUP_PRICE_EXCEEDS_CAP}: ${orb_high:.2f}/share > "
+            f"${max_position:.0f} (20% of ${equity:.0f})"
         )
 
     position_size = shares * orb_high
@@ -166,7 +170,10 @@ async def submit_entry(trade_id: int) -> dict | None:
             )
         except Exception as e2:
             logger.error(f"Entry order failed after retry for {ticker}: {e2}")
-            await _update_trade_status(trade_id, "order_failed", skip_reason=str(e2))
+            await _update_trade_status(
+                trade_id, "order_failed",
+                skip_reason=f"{INFRA_ORDER_SUBMIT_FAILED}: {e2}",
+            )
             await send_telegram_message(f"⚠️ Order FAILED for {ticker}: {e2}")
             return None
 
@@ -907,7 +914,7 @@ async def prepare_9m_day2_orb_order(
     sugar_baby: dict,
     orb_bar: dict,
     regime_record: dict | None = None,
-) -> dict | None:
+) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares for a 9M sugar baby Day 2 ORB entry.
 
@@ -918,7 +925,9 @@ async def prepare_9m_day2_orb_order(
     orb_bar: dict with 'high' and 'low' from alpaca.get_first_bar().
     regime_record: optional, used to halve risk in bearish QQQ regime.
 
-    Returns order spec dict or None if sizing fails.
+    Returns (spec, None) on success or (None, reason) on any rejection. Reasons
+    use the bounded vocabulary from skip_reasons.py so callers can write to
+    mi_live_trades.skip_reason without post-processing.
     """
     ticker = sugar_baby["ticker"]
     orb_high = orb_bar["high"]
@@ -926,13 +935,16 @@ async def prepare_9m_day2_orb_order(
 
     if not orb_high or not prior_day_low:
         logger.warning(f"9M Day2 {ticker}: missing orb_high or prior_day_low")
-        return None
+        return None, f"{SETUP_ZERO_RANGE}: missing orb_high or prior_day_low"
 
     if prior_day_low >= orb_high:
         logger.warning(
             f"9M Day2 {ticker}: prior_day_low ${prior_day_low:.2f} >= orb_high ${orb_high:.2f} — invalid"
         )
-        return None
+        return None, (
+            f"{SETUP_ZERO_RANGE}: prior_day_low ${prior_day_low:.2f} "
+            f">= orb_high ${orb_high:.2f}"
+        )
 
     risk_per_share = orb_high - prior_day_low
 
@@ -951,14 +963,16 @@ async def prepare_9m_day2_orb_order(
         logger.warning(
             f"9M Day2 {ticker}: stop distance {risk_per_share/orb_high:.1%} > 15% — too wide, skipping"
         )
-        return None
+        return None, (
+            f"{SETUP_STOP_TOO_WIDE}: stop distance {risk_per_share/orb_high:.1%} > 15%"
+        )
 
     try:
         account = await alpaca.get_account()
         equity = account["equity"]
     except Exception as e:
         logger.error(f"9M Day2 {ticker}: cannot get account equity — {e}")
-        return None
+        return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
     risk_pct = 0.01
     if regime_record and regime_record.get("qqq_ema_bullish") is False:
@@ -973,9 +987,12 @@ async def prepare_9m_day2_orb_order(
 
     if shares < 1:
         logger.warning(f"9M Day2 {ticker}: computed 0 shares — skipping")
-        return None
+        return None, (
+            f"{SETUP_SIZE_TOO_SMALL}: ${risk_dollars:.0f} risk / "
+            f"${risk_per_share:.2f} per-share < 1 share"
+        )
 
-    return {
+    spec = {
         "ticker": ticker,
         "entry_price": orb_high,
         "limit_price": round(orb_high * 1.001, 2),
@@ -990,6 +1007,7 @@ async def prepare_9m_day2_orb_order(
         "trade_type": "9m_ep_day2",
         "sugar_baby_date": str(sugar_baby["alert_date"]),
     }
+    return spec, None
 
 
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:

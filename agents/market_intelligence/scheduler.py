@@ -483,6 +483,28 @@ async def _ep_scan_job():
                     # Pre-market — subscribe to bar stream; ORB fires when first bar closes
                     await bar_stream.subscribe_ep_candidate(ep["ticker"])
                 else:
+                    # HIGH arrived after ORB window closed — no order possible. Persist a
+                    # skipped-trade row + audit event + Telegram so every HIGH alert has a
+                    # durable terminal state for evening brief / `/why`.
+                    from agents.market_intelligence.broker.live_tracker import _insert_skipped_trade
+                    from agents.market_intelligence.broker.skip_reasons import WINDOW_OUT_OF_ORB
+                    from agents.market_intelligence.collector import et_today
+                    skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
+                    try:
+                        await _insert_skipped_trade(
+                            ep["ticker"], et_today(), ep, None, skip_msg,
+                        )
+                    except Exception as ins_e:
+                        logger.error(f"Could not insert out-of-ORB skip for {ep['ticker']}: {ins_e}")
+                    try:
+                        from agents.market_intelligence.db import log_audit_event
+                        await log_audit_event("orb_out_of_window", f"{ep['ticker']} — {skip_msg}")
+                    except Exception:
+                        pass
+                    await send_telegram_message(
+                        f"⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
+                        f"ORB window closed, no order"
+                    )
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
 
         if new_highs_post_open:
@@ -632,6 +654,51 @@ async def _eod_cleanup_job():
     except Exception as e:
         logger.error(f"EOD cleanup failed: {e}")
         await notify_job_failure("eod_cleanup", str(e))
+
+
+async def _eod_ep_recap_job():
+    """Run at 4:10 PM ET. One-shot Telegram summary of today's HIGH EP outcomes.
+
+    Fires after _eod_cleanup_job (4:05 PM) so trade rows reflect the settled state.
+    Silent when no HIGH alerts today.
+    """
+    logger.info("EOD EP recap starting...")
+    try:
+        from agents.market_intelligence.db import get_ep_outcomes
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+        today_str = str(today)
+        outcomes = await get_ep_outcomes(days_back=1, tier="HIGH")
+        today_outcomes = [o for o in outcomes if str(o.get("alert_date")) == today_str]
+        if not today_outcomes:
+            logger.info("EOD EP recap: no HIGH EPs today")
+            return
+
+        entered_states = {"filled", "closed", "order_placed", "pending_confirmation", "confirmed", "submitting"}
+        entered = [o for o in today_outcomes if o.get("pt_status") in entered_states]
+        missed = [o for o in today_outcomes if o not in entered]
+
+        lines = [
+            f"📊 *EP EOD Recap — {today_str}*",
+            f"HIGH: {len(today_outcomes)} detected → {len(entered)} entered · {len(missed)} missed",
+        ]
+        for o in entered[:5]:
+            pnl = o.get("total_pnl")
+            pnl_str = f" ${float(pnl):+,.0f}" if pnl is not None else ""
+            lines.append(f"  • `{o['ticker']}` entered{pnl_str}")
+        for o in missed[:8]:
+            reason = o.get("skip_reason") or "no_attempt"
+            code = ":".join(reason.split(":", 2)[:2])
+            lines.append(f"  • `{o['ticker']}` — {code}")
+        dropped = max(0, len(missed) - 8)
+        if dropped:
+            lines.append(f"  • …{dropped} more missed")
+
+        await send_telegram_message("\n".join(lines))
+        logger.info("EOD EP recap sent")
+    except Exception as e:
+        logger.error(f"EOD EP recap failed: {e}")
+        await notify_job_failure("eod_ep_recap", str(e))
 
 
 async def _weekly_cleanup():
@@ -972,6 +1039,15 @@ def start_scheduler() -> AsyncIOScheduler:
         _eod_cleanup_job,
         CronTrigger(hour=16, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_cleanup",
+        replace_existing=True,
+    )
+
+    # EOD EP recap: 4:10 PM ET — one-line Telegram summary of today's HIGH outcomes.
+    # Fires after eod_cleanup so trade rows have settled (cancel unfilled, sync fills).
+    _scheduler.add_job(
+        _eod_ep_recap_job,
+        CronTrigger(hour=16, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
+        id="eod_ep_recap",
         replace_existing=True,
     )
 
