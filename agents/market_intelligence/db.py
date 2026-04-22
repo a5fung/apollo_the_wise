@@ -846,8 +846,10 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     Fetch stocks from mi_daily_closes that qualify as 9M sugar babies for a given date.
     Criteria mirror intraday ninem_detector gates so both paths agree:
       volume >= 9M, close >= $5, dollar_volume >= $50M, open/high/low present,
-      close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV.
-    Unknown ADV (new listing, < 10 sessions) or unknown security type pass
+      close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV,
+      intraday range >= 2% of close (rejects merger-arb pins like DBRG),
+      close <= 1.20× 10d SMA (rejects extended runners like BB on day 5+).
+    Unknown ADV or MA10 (new listing, < 10 sessions) or unknown security type pass
     conservatively so they are not silently dropped.
     Returns up to 20, ordered by volume desc.
     """
@@ -865,6 +867,21 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                   AND volume > 0
                 GROUP BY ticker
                 HAVING COUNT(*) >= 10
+            ),
+            ma10 AS (
+                -- 10-session SMA of close using the most recent 10 sessions STRICTLY BEFORE $1.
+                -- Used as extension gate: current close must not exceed 1.20× this SMA.
+                SELECT ticker, AVG(close) AS sma_10
+                FROM (
+                    SELECT ticker, close,
+                           ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                    FROM mi_daily_closes
+                    WHERE trade_date < $1
+                      AND trade_date >= $1 - INTERVAL '20 days'
+                ) t
+                WHERE rn <= 10
+                GROUP BY ticker
+                HAVING COUNT(*) >= 10
             )
             SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
                    CASE WHEN (d.high_price - d.low_price) > 0
@@ -873,6 +890,7 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
             FROM mi_daily_closes d
             LEFT JOIN mi_security_types st ON st.ticker = d.ticker
             LEFT JOIN adv a ON a.ticker = d.ticker
+            LEFT JOIN ma10 m ON m.ticker = d.ticker
             WHERE d.trade_date = $1
               AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
               AND d.volume >= 9000000
@@ -885,6 +903,11 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
               AND d.volume >= (COALESCE(a.adv_20, 0) * 3)
+              -- Intraday range must be ≥ 2% of close (rejects merger-arb pins)
+              AND (d.high_price - d.low_price) >= (d.close * 0.02)
+              -- Extension gate: close ≤ 1.20× 10d SMA (rejects chasing day-5+ runners).
+              -- Unknown MA (new listing) passes conservatively.
+              AND (m.sma_10 IS NULL OR d.close <= m.sma_10 * 1.20)
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)

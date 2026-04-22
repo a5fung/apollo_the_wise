@@ -55,6 +55,11 @@ _non_stock_cache: set[str] = set()
 _non_stock_cache_date: str = ""
 _adv_cache: dict[str, float] = {}
 _adv_cache_date: str = ""
+_ma10_cache: dict[str, float] = {}
+_ma10_cache_date: str = ""
+
+_MIN_RANGE_PCT = 0.02                # intraday range ≥ 2% of current price
+_MAX_EXTENSION_FROM_MA10 = 1.20      # current price ≤ 1.20× 10d SMA
 
 _ET = ZoneInfo("America/New_York")
 
@@ -85,6 +90,33 @@ async def _get_adv_map(today_str: str) -> dict[str, float]:
     _adv_cache_date = today_str
     logger.info(f"9M ADV cache refreshed: {len(_adv_cache)} tickers")
     return _adv_cache
+
+
+async def _get_ma10_map(today_str: str) -> dict[str, float]:
+    """10-session SMA of close from mi_daily_closes for extension gate."""
+    global _ma10_cache, _ma10_cache_date
+    if _ma10_cache_date == today_str:
+        return _ma10_cache
+    trade_date = date.fromisoformat(today_str)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, AVG(close) AS sma_10
+            FROM (
+                SELECT ticker, close,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE trade_date < $1
+                  AND trade_date >= $1 - INTERVAL '20 days'
+            ) t
+            WHERE rn <= 10
+            GROUP BY ticker
+            HAVING COUNT(*) >= 10
+        """, trade_date)
+    _ma10_cache = {r["ticker"]: float(r["sma_10"]) for r in rows}
+    _ma10_cache_date = today_str
+    logger.info(f"9M MA10 cache refreshed: {len(_ma10_cache)} tickers")
+    return _ma10_cache
 
 
 async def run_9m_scan() -> list[dict]:
@@ -120,6 +152,7 @@ async def run_9m_scan() -> list[dict]:
 
     non_stocks = await _get_non_stock_tickers(today_str)
     adv_map = await _get_adv_map(today_str)
+    ma10_map = await _get_ma10_map(today_str)
 
     new_alerts: list[dict] = []
 
@@ -149,6 +182,21 @@ async def run_9m_scan() -> list[dict]:
         gap_pct = ((day_open - prev_close) / prev_close * 100) if day_open > 0 else 0.0
         intraday_gain_pct = (current_price - prev_close) / prev_close * 100
         if gap_pct < _MIN_GAP_PCT and intraday_gain_pct < _MIN_INTRADAY_GAIN_PCT:
+            continue
+
+        # Intraday range ≥ 2% of price — rejects merger-arb pins (e.g. DBRG at 0.26%
+        # range pinned to a cash deal close). A real 9M day has meaningful range.
+        day_high = snap.get("day", {}).get("h") or 0
+        day_low = snap.get("day", {}).get("l") or 0
+        if day_high > 0 and day_low > 0:
+            range_pct = (day_high - day_low) / current_price
+            if range_pct < _MIN_RANGE_PCT:
+                continue
+
+        # Extension gate: current price ≤ 1.20× 10d SMA. Rejects day-5+ parabolic
+        # runners where buying Day 2 ORB = chasing. Unknown MA → pass.
+        ma10 = ma10_map.get(ticker)
+        if ma10 and current_price > ma10 * _MAX_EXTENSION_FROM_MA10:
             continue
 
         today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
