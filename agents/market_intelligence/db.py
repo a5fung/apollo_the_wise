@@ -848,7 +848,9 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
       volume >= 9M, close >= $5, dollar_volume >= $50M, open/high/low present,
       close > open, (close - low) / (high - low) >= 0.75, volume >= 3× ADV,
       intraday range >= 2% of close (rejects merger-arb pins like DBRG),
-      close <= 1.20× 10d SMA (rejects extended runners like BB on day 5+).
+      prev_close <= 1.20× prior 10d SMA (rejects day-N+ chase runners like BB;
+        measured at yesterday's close, not today's, so fresh breakouts like VELO
+        still qualify — going-into-the-9M-day extension, not today's move).
     Unknown ADV or MA10 (new listing, < 10 sessions) or unknown security type pass
     conservatively so they are not silently dropped.
     Returns up to 20, ordered by volume desc.
@@ -869,11 +871,17 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                 HAVING COUNT(*) >= 10
             ),
             ma10 AS (
-                -- 10-session SMA of close using the most recent 10 sessions STRICTLY BEFORE $1.
-                -- Used as extension gate: current close must not exceed 1.20× this SMA.
-                SELECT ticker, AVG(close) AS sma_10
+                -- 10-session SMA of close using the most recent 10 sessions STRICTLY BEFORE $1,
+                -- plus prev_close (most-recent prior close) for the extension ratio.
+                -- Extension is measured at YESTERDAY's close (prev_close / ma10), not today's,
+                -- so a stock flat for 10d then ripping +30% today still passes — it's the
+                -- fresh breakout we want. Chase-runners like BB fail because yesterday's
+                -- close was already extended going in.
+                SELECT ticker,
+                       AVG(close) AS sma_10,
+                       (ARRAY_AGG(close ORDER BY trade_date DESC))[1] AS prev_close
                 FROM (
-                    SELECT ticker, close,
+                    SELECT ticker, close, trade_date,
                            ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
                     FROM mi_daily_closes
                     WHERE trade_date < $1
@@ -905,9 +913,10 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND d.volume >= (COALESCE(a.adv_20, 0) * 3)
               -- Intraday range must be ≥ 2% of close (rejects merger-arb pins)
               AND (d.high_price - d.low_price) >= (d.close * 0.02)
-              -- Extension gate: close ≤ 1.20× 10d SMA (rejects chasing day-5+ runners).
+              -- Extension gate: prev_close ≤ 1.20× prior 10d SMA (measures how extended
+              -- the stock was going INTO the 9M day, not after it). Fresh breakouts pass.
               -- Unknown MA (new listing) passes conservatively.
-              AND (m.sma_10 IS NULL OR d.close <= m.sma_10 * 1.20)
+              AND (m.sma_10 IS NULL OR m.prev_close IS NULL OR m.prev_close <= m.sma_10 * 1.20)
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)

@@ -193,10 +193,12 @@ async def run_9m_scan() -> list[dict]:
             if range_pct < _MIN_RANGE_PCT:
                 continue
 
-        # Extension gate: current price ≤ 1.20× 10d SMA. Rejects day-5+ parabolic
-        # runners where buying Day 2 ORB = chasing. Unknown MA → pass.
+        # Extension gate: measure extension at YESTERDAY's close, not today's.
+        # A stock flat for 10d then ripping +30% today should PASS (fresh breakout).
+        # A stock that already ran for 5 days (BB-style chase) had prev_close
+        # well above MA10 going in and should fail. Unknown MA → pass.
         ma10 = ma10_map.get(ticker)
-        if ma10 and current_price > ma10 * _MAX_EXTENSION_FROM_MA10:
+        if ma10 and prev_close > ma10 * _MAX_EXTENSION_FROM_MA10:
             continue
 
         today_volume = snap.get("day", {}).get("v", 0) or snap.get("min", {}).get("av", 0) or 0
