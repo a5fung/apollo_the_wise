@@ -27,6 +27,24 @@ from alpaca.data.enums import DataFeed
 
 logger = logging.getLogger(__name__)
 
+# ── Data feed selection ──────────────────────────────────────────────────────
+# Gated on ALPACA_DATA_FEED env var so the SIP cutover is a single env flip
+# (plus Alpaca dashboard subscription), not a code deploy. See
+# `Changes Made 2026-04-23` in CLAUDE.md for the full rollout rationale.
+#
+#   unset / "iex"  → DataFeed.IEX  (default; free; single exchange, ~2-3% volume)
+#   "sip"          → DataFeed.SIP  (requires Algo Trader Plus $99/mo subscription)
+
+
+def get_data_feed() -> DataFeed:
+    raw = os.environ.get("ALPACA_DATA_FEED", "iex").strip().lower()
+    if raw == "sip":
+        return DataFeed.SIP
+    if raw and raw != "iex":
+        logger.warning(f"ALPACA_DATA_FEED={raw!r} not recognized; falling back to IEX")
+    return DataFeed.IEX
+
+
 # ── Singleton clients ────────────────────────────────────────────────────────
 
 _trading_client: TradingClient | None = None
@@ -284,7 +302,7 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             timeframe=TimeFrame.Minute,
             start=start,
             end=end,
-            feed=DataFeed.IEX,  # IEX feed is free; SIP requires paid subscription
+            feed=get_data_feed(),
         )
         bars = client.get_stock_bars(request)
         bar_data = bars.data if hasattr(bars, 'data') else bars

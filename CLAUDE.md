@@ -157,6 +157,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
 ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
 ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
+ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 ```
 
@@ -997,3 +998,86 @@ was taken.
 `agents/{finance,calendar,research,browser,travel}/` (recursive),
 `docker/Dockerfile.{finance,calendar,research,browser,travel}`,
 `tests/test_ibkr.py`
+
+---
+
+## Changes Made 2026-04-23 (session 2) — Env-var-gated SIP feed for ORB entry
+
+### Rationale
+URI ORB miss on 2026-04-22 was the symptom; the underlying issue is that
+Apollo's live entry runs on Alpaca's **IEX feed** (~2–3% of US
+consolidated volume). For mid-liquidity tickers in the 9:30–9:31 ET
+window, IEX can show a handful of ticks at a single price → zero-range
+first-minute bar → `setup:zero_range` reject even though the
+consolidated tape shows a real tradable range. See
+`~/.claude/plans/shiny-mapping-locket.md` for the full goal/vendor
+evaluation.
+
+**Decision:** Phase 1 = Alpaca Algo Trader Plus ($99/mo) giving realtime
+**CTA/UTP SIP consolidated tape**. Two-line enum change in theory;
+env-var-gated in practice so the code can ship inert and the
+subscription activates it.
+
+### Rollout model
+The feed choice is resolved at call time from `ALPACA_DATA_FEED`:
+
+- unset / `iex` → `DataFeed.IEX` (current behavior, no subscription needed)
+- `sip` → `DataFeed.SIP` (requires active Algo Trader Plus in Alpaca dashboard)
+
+So the deploy is safe even before the subscription is active — set
+`ALPACA_DATA_FEED=iex` (or leave unset) and behavior is identical to
+pre-deploy. Flip to `sip` only after (a) subscribing in the Alpaca
+dashboard and (b) running `scripts/verify_sip_parity.py` and getting a
+clean pass. Rollback is one env flip + restart; no git revert needed.
+
+### Files Changed
+- `agents/market_intelligence/broker/alpaca_client.py` — new
+  `get_data_feed()` helper (single source of truth); `get_first_bar()`
+  now reads it instead of hardcoded `DataFeed.IEX`.
+- `agents/market_intelligence/broker/bar_stream.py` — `start_bar_stream`
+  uses `get_data_feed()`; startup log now includes the resolved feed.
+- `.env.example` — restored Alpaca section (was lost in session 4
+  cleanup) + new `ALPACA_DATA_FEED=iex` with subscription note.
+- `CLAUDE.md` — this entry + env vars table.
+- `scripts/verify_sip_parity.py` (new) — one-off verification script
+  that hard-wires `DataFeed.SIP` independent of the env var. Runs the
+  four pre-flip checks (subscription gate, AAPL IEX-vs-SIP parity, URI
+  2026-04-22 non-zero-range confirmation, 90-day zero-range replay
+  recovery count) so we can validate the subscription without touching
+  live trading.
+
+### Intentionally NOT touched
+- `broker/trade_stream.py`, `broker/order_manager.py`,
+  `broker/live_tracker.py` — unchanged.
+- `backtester/intraday.py` — stays on Polygon for historical 1-min
+  bars. G5 (backtest-live parity) is measured in verification, not
+  swapped at this stage.
+- Polygon subscription — stays. Alpaca SIP does not replace it.
+  Polygon provides grouped-daily (RS universe), VIX index data, ticker
+  reference (security_type filter for ETFs), and backtester historical
+  bars. $29 Polygon + $99 Alpaca Algo Trader Plus = $128/mo total,
+  each vendor covering what the other can't.
+
+### Rollout sequence (recap)
+1. Deploy this commit with `ALPACA_DATA_FEED` unset or `=iex`.
+   Identical behavior to pre-deploy.
+2. User subscribes to Algo Trader Plus in Alpaca dashboard.
+3. Run `scripts/verify_sip_parity.py` against the live subscription.
+   Must pass all four checks (the URI 2026-04-22 non-zero-range check
+   is the critical one — if SIP also shows zero range, the diagnosis
+   was wrong, stop).
+4. Set `ALPACA_DATA_FEED=sip` in prod `.env`, restart market-agent.
+5. Paper smoke test: confirm bar stream connects to SIP endpoint and
+   first-bar fires at 9:30:XX ET on subscribed tickers.
+6. Monitor `mi_audit_log` for `orb_bar_fetched` with `range=0.00` over
+   the next 30 days — expect a sharp drop vs pre-flip baseline.
+
+### Phase 2 triggers (explicit — revisit only on these)
+- Book size grows 5–10× (G6 coupling risk scales).
+- Alpaca has a data-feed incident during live trading.
+- 10-day backtest-live OHLC reconciliation shows > 0.2% divergence.
+- A second broker enters scope.
+
+If any fire: move to **Polygon Advanced ($199)** as primary realtime
+source and keep Alpaca Algo Trader Plus as a $99 fallback (dual-feed
+consensus). That's a separate plan when the trigger fires.
