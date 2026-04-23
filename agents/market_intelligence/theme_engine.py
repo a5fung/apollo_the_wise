@@ -30,11 +30,12 @@ import anthropic
 _anthropic_client: anthropic.AsyncAnthropic | None = None
 
 # Anthropic org limit is 50 requests/min. The nightly rescore fans out ~20 themes
-# via asyncio.gather; without a semaphore this blew past 50 rpm and every call
-# returned 429 — which our except-Exception caught and mislabeled as "parse error".
-# Semaphore(2) serialises enough to stay under budget (~2 req/sec × 60 = 120 rpm
-# worst case, but Haiku responses take 1–2s so effective rate is ~30 rpm).
-_VALIDATION_SEMAPHORE = asyncio.Semaphore(2)
+# via asyncio.gather; at Semaphore(2) the theme pipeline still contends with
+# _ensure_descriptions / _discover_new_themes / _assign_uncovered_to_themes at
+# the 5 PM pull, and production still logs 20+ 429s per run. Serialise fully —
+# validation is not latency-sensitive (the nightly pull has plenty of headroom)
+# and a fully serial call rate of ~30 rpm leaves budget for the other callers.
+_VALIDATION_SEMAPHORE = asyncio.Semaphore(1)
 
 
 def _get_anthropic_client() -> anthropic.AsyncAnthropic:
@@ -560,7 +561,12 @@ async def _validate_theme_membership(
         # stops the asyncio.gather fan-out from detonating the 50 rpm org limit.
         import random
         async with _VALIDATION_SEMAPHORE:
-            for attempt in range(2):
+            # Three attempts with escalating backoff: 30–45s, then 60–90s.
+            # 50 rpm org limit refills continuously, so even a single long wait
+            # frees budget reliably — previous 8–12s waits were too short when
+            # other pipeline callers (descriptions, discovery) were also active.
+            backoffs = [(30, 15), (60, 30)]
+            for attempt in range(3):
                 try:
                     resp = await client.messages.create(
                         model="claude-haiku-4-5-20251001",
@@ -570,14 +576,16 @@ async def _validate_theme_membership(
                     )
                     break
                 except anthropic.RateLimitError:
-                    if attempt == 1:
+                    if attempt == len(backoffs):
                         raise
+                    base, jitter = backoffs[attempt]
+                    wait = base + random.random() * jitter
                     await log_audit_event(
                         "anthropic_rate_limited",
-                        summary=f"Validation rate-limited for '{theme_name}' — retrying",
-                        detail="429 on claude-haiku-4-5 — will retry once",
+                        summary=f"Validation rate-limited for '{theme_name}' — retry {attempt+1}/{len(backoffs)} in {wait:.0f}s",
+                        detail="429 on claude-haiku-4-5",
                     )
-                    await asyncio.sleep(8 + random.random() * 4)
+                    await asyncio.sleep(wait)
         # Defensive extraction — Haiku occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -659,6 +667,18 @@ async def _validate_theme_membership(
         )
         return tickers
     except Exception as e:
+        # Defensive: some anthropic SDK versions raise subclasses or proxies that
+        # escape the anthropic.RateLimitError clause above. Route any rate-limit
+        # error here so the audit log gives the correct cause — mislabeling 429s
+        # as "parse errors" previously cost days of wrong-cause debugging.
+        if isinstance(e, anthropic.RateLimitError) or type(e).__name__ == "RateLimitError":
+            logger.error(f"Theme '{theme_name}': validation rate-limited (fell through to Exception) — keeping all tickers")
+            await log_audit_event(
+                "validation_rate_limited",
+                summary=f"Validation rate-limited for '{theme_name}' — tickers unchanged",
+                detail=f"RateLimitError after retry (caught via Exception fallback): {e}",
+            )
+            return tickers
         # Log the raw response so silent failures are diagnosable — this bug cost days of work
         raw_snippet = locals().get("raw", "<not set>")[:200]
         logger.error(
