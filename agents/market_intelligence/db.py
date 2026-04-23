@@ -1010,6 +1010,28 @@ async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_all_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
+    """
+    All sugar babies from a given date regardless of day2_status — used by
+    /9m and /pregame so Day 2 candidates remain visible after their ORB orders
+    fire (status flips pending→traded and they'd otherwise vanish).
+    """
+    pool = await get_pool()
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, open_price, close_price, high_price,
+                   low_price, volume, close_in_range_pct, day2_status,
+                   prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
+                   sma50_slope_pct, prior_sessions
+            FROM mi_9m_sugar_babies
+            WHERE alert_date = $1
+            ORDER BY volume DESC
+        """, trade_date)
+    return [dict(r) for r in rows]
+
+
 async def update_9m_sugar_baby_status(ticker: str, alert_date: "str | date", status: str) -> None:
     """Update day2_status for a sugar baby ('traded' or 'skipped')."""
     pool = await get_pool()

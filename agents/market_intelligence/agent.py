@@ -1009,7 +1009,7 @@ class MarketIntelligenceAgent(BaseAgent):
         from datetime import timedelta
         from agents.market_intelligence.db import (
             get_today_9m_ep_alerts,
-            get_pending_9m_sugar_babies,
+            get_all_9m_sugar_babies,
             get_eod_9m_sugar_babies,
         )
         from agents.market_intelligence.collector import et_today, prev_trading_days
@@ -1018,9 +1018,9 @@ class MarketIntelligenceAgent(BaseAgent):
         today_str = today.isoformat()
         yesterday = prev_trading_days(1, from_date=today)[0]
 
-        alerts, pending_day2, today_babies = await _asyncio.gather(
+        alerts, yday_day2, today_babies = await _asyncio.gather(
             get_today_9m_ep_alerts(today_str),
-            get_pending_9m_sugar_babies(yesterday),
+            get_all_9m_sugar_babies(yesterday),
             get_eod_9m_sugar_babies(today_str),
         )
 
@@ -1064,13 +1064,16 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"Close ${b['close_price']:.2f} | Range {rp}% | Stop ${b['low_price']:.2f}"
                     f"{_shape_suffix(b)}"
                 )
-        elif pending_day2:
-            lines.append(f"\n*Yesterday's Pending Day 2 ({len(pending_day2)})*")
-            for b in pending_day2:
+
+        if yday_day2:
+            status_icon = {"pending": "⏳", "traded": "✅", "skipped": "⏭️"}
+            lines.append(f"\n*Yesterday's Day 2 Sugar Babies ({len(yday_day2)})*")
+            for b in yday_day2:
                 vol_m = b["volume"] / 1_000_000
+                icon = status_icon.get(b.get("day2_status") or "", "❓")
                 lines.append(
-                    f"  🍬 `{b['ticker']}` Vol {vol_m:.1f}M | Stop ${b['low_price']:.2f}"
-                    f"{_shape_suffix(b)}"
+                    f"  🍬 {icon} `{b['ticker']}` Vol {vol_m:.1f}M | "
+                    f"Stop ${b['low_price']:.2f}{_shape_suffix(b)}"
                 )
 
         return self._ok(request, result="\n".join(lines))
@@ -2836,7 +2839,7 @@ class MarketIntelligenceAgent(BaseAgent):
             get_active_themes,
             get_overnight_watchlist,
             get_today_9m_ep_alerts,
-            get_pending_9m_sugar_babies,
+            get_all_9m_sugar_babies,
         )
         from agents.market_intelligence.collector import et_today, prev_trading_days
 
@@ -2849,15 +2852,16 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # Sugar babies for the next open: if today's EOD sweep has already run,
         # today's confirmed babies are what we'll trade tomorrow. Otherwise fall
-        # back to yesterday's pending (standard pre-open path).
+        # back to yesterday's (regardless of day2_status — so traded ones stay
+        # visible after their ORB orders fire).
         regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_today, sugar_yday = await _aio.gather(
             get_latest_regime(),
             get_today_ep_alerts(today_str),
             get_active_themes(),
             get_ma_pullbacks(today_str, tickers=watchlist_tickers or None),
             get_today_9m_ep_alerts(today_str),
-            get_pending_9m_sugar_babies(today),
-            get_pending_9m_sugar_babies(yesterday),
+            get_all_9m_sugar_babies(today),
+            get_all_9m_sugar_babies(yesterday),
             return_exceptions=True,
         )
         sugar_babies = sugar_today if isinstance(sugar_today, list) and sugar_today else sugar_yday
@@ -2911,12 +2915,14 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # 9M sugar babies
         if isinstance(sugar_babies, list) and sugar_babies:
+            icon = {"pending": "⏳", "traded": "✅", "skipped": "⏭️"}
             lines.append("")
-            lines.append(f"🏦 *9M Day 2 pending ({len(sugar_babies)}):* " +
-                         " ".join(b["ticker"] for b in sugar_babies[:4]))
+            lines.append(f"🏦 *9M Day 2 ({len(sugar_babies)}):* " +
+                         " ".join(f"{icon.get(b.get('day2_status') or '', '❓')}{b['ticker']}"
+                                  for b in sugar_babies[:4]))
         else:
             lines.append("")
-            lines.append("🏦 No 9M sugar babies pending.")
+            lines.append("🏦 No 9M sugar babies.")
 
         return self._ok(request, result="\n".join(lines))
 
@@ -3305,7 +3311,7 @@ async def _build_hud_text() -> str:
     from agents.market_intelligence.db import (
         get_active_themes,
         get_today_9m_ep_alerts,
-        get_pending_9m_sugar_babies,
+        get_all_9m_sugar_babies,
     )
     from agents.market_intelligence.collector import et_today, prev_trading_days
     from agents.market_intelligence.scheduler import get_scheduler_status
@@ -3318,7 +3324,7 @@ async def _build_hud_text() -> str:
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_today_9m_ep_alerts(today_str),
-        get_pending_9m_sugar_babies(yesterday),
+        get_all_9m_sugar_babies(yesterday),
         get_active_themes(),
         get_correlation_clusters(today_str),
         return_exceptions=True,
