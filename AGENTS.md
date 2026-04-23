@@ -1,4 +1,4 @@
-# Apollo the Wise — Claude Context
+# Apollo the Wise — Codex Context
 
 ## Session Sync Protocol
 At the start of every session: `git pull origin main`
@@ -6,13 +6,13 @@ Read "Changes Made" sections to understand prior sessions.
 
 At the end (if code changed):
 ```bash
-git add CLAUDE.md <changed files>
+git add AGENTS.md <changed files>
 git commit -m "Brief description"
 git push origin main
 ```
 
 ## What This Is
-Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Routes to specialized sub-agents.
+Telegram-based trading assistant for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Orchestrator routes all trading/market tasks to the Market Intelligence agent.
 
 ## Running Locally
 ```bash
@@ -25,14 +25,14 @@ bash start_market.sh   # Terminal 2 — market agent
 ```
 User (Telegram)
       │
-Apollo Orchestrator (port 8000)   ← claude-sonnet-4-6, tool-use loop
+Apollo Orchestrator (port 8000)   ← Codex-sonnet-4-6, tool-use loop
       │  POST /task  +  X-Apollo-Secret header
       ▼
-Market Intelligence agent (Docker, :8006)
+Market Intelligence Agent :8006   ← Docker, owns all market/trading logic
       │
 PostgreSQL (pgvector) + Redis
 ```
-**Key rule:** Only the market agent is exposed as a sub-agent. All trading/market features live inside it.
+The orchestrator is kept as a thin routing layer for future expansion; currently it delegates every task to the market agent.
 
 ## Code Layout
 ```
@@ -42,7 +42,7 @@ agents/
     agent.py           # execute_task() routes by keyword
     db.py              # All DB queries — single source of truth for schema
     rs_engine.py       # RS scoring (~9700 stocks)
-    ep_detector.py     # MAGNA53 EP scoring + Claude + Perplexity validation
+    ep_detector.py     # MAGNA53 EP scoring + Codex + Gemini
     theme_engine.py    # Theme discovery, dedup, lifecycle
     briefing.py        # Briefing formatters + send_telegram_message
     scheduler.py       # APScheduler jobs
@@ -54,7 +54,7 @@ shared/        models.py, registry.py, secrets.py
 ## Adding an Orchestrator Tool
 1. Tool schema → `core/router.py` → `get_orchestrator_tools()`
 2. Dispatch → `core/orchestrator.py` → `_dispatch_tool()`
-3. Handler → inline in orchestrator OR delegate to market agent's `execute_task()`
+3. Handle → `agents/market_intelligence/agent.py` → `execute_task()`
 
 ## Market Agent Routing (`execute_task`)
 Order matters — first match wins:
@@ -144,7 +144,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 5:00 PM | Data pull — RS + regime + themes + error check |
 | 4:45 PM | Position update |
 | 8:00 PM | Evening briefing |
-| Sun 8:00 AM | Weekly system self-audit (7d metrics → Claude synthesis → Telegram digest; persists `mi_system_reviews`) |
+| Sun 8:00 AM | Weekly system self-audit (7d metrics → Codex synthesis → Telegram digest; persists `mi_system_reviews`) |
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
@@ -192,7 +192,7 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 - Stop = prior day's low; shared 4-position cap with MAGNA53
 
 ### Files Changed
-`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/backtest_9m_ep.py` (new), `scripts/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `CLAUDE.md`
+`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/backtest_9m_ep.py` (new), `scripts/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `AGENTS.md`
 
 ---
 
@@ -233,7 +233,7 @@ Oil theme stocks (XOM, CVX, OXY) often fall outside the top-300 RS leaders so th
 no sector in `stocks_by_ticker`. This made `known_sectors = []`, which bypassed the
 `if known_sectors and stock_sector not in known_sectors` check entirely — even when the
 incoming stock's sector (e.g. LRCX = "Electronic Technology") was perfectly clear.
-Result: Claude's LLM assignments were validated only by Haiku post-assignment, which
+Result: Codex's LLM assignments were validated only by Haiku post-assignment, which
 correctly removed them but left 14-day cooldowns that pollute the briefing.
 
 Fix (`theme_engine.py`): added `elif not known_sectors` branch — when theme sectors are
@@ -338,7 +338,7 @@ Gap display auto-switches to intraday_gain when the intraday leg is what qualifi
 
 ### Files Changed
 `ninem_detector.py` (constants + filter logic + docstrings + message), `db.py`
-(`get_eod_9m_sugar_babies` WHERE clause + docstring), `CLAUDE.md`
+(`get_eod_9m_sugar_babies` WHERE clause + docstring), `AGENTS.md`
 
 ### ⚠️ Post-deploy verification
 After first session with new filters:
@@ -363,7 +363,7 @@ After first session with new filters:
 P18 (+3R/72h partial), P19 (VIX-scaled risk), P20 (earnings IV pre-pass — blocked on data), P21 (cross-asset thematic validation). Rejected: stat-arb residual mean-reversion, dark-pool block-print integration.
 
 ### Files Changed
-`ep_detector.py`, `correlation_engine.py`, `theme_engine.py`, `db.py`, `briefing.py`, `CLAUDE.md`
+`ep_detector.py`, `correlation_engine.py`, `theme_engine.py`, `db.py`, `briefing.py`, `AGENTS.md`
 
 ---
 
@@ -383,7 +383,7 @@ P18 (+3R/72h partial), P19 (VIX-scaled risk), P20 (earnings IV pre-pass — bloc
 - `get_weekly_theme_churn(days)` in `db.py` — LAG() over `mi_themes.tickers` arrays; returns high-churn (ticker, theme) pairs.
 
 ### Files Changed
-`system_review.py` (new), `db.py`, `scheduler.py`, `agent.py`, `CLAUDE.md`
+`system_review.py` (new), `db.py`, `scheduler.py`, `agent.py`, `AGENTS.md`
 
 ---
 
@@ -424,7 +424,7 @@ P18 (+3R/72h partial), P19 (VIX-scaled risk), P20 (earnings IV pre-pass — bloc
 ## Changes Made 2026-04-17 (session 3)
 
 ### Features Added
-- **Validation cooldown**: When validation removes a stock from a theme, writes a 14-day cooldown to `mi_validation_cooldowns`. Prevents re-assignment during cooldown via: (1) Claude prompt context injection, (2) post-assignment hard filter. Full audit trail (`validation_cooldown_triggered`, `cooldown_blocked_assignment`, `validation_cooldown_bypassed`). Commands: `show cooldowns`, `bypass cooldown TICKER [theme] [reason]`. Evening briefing shows compact `🧊 Cooldowns:` footer if any active. Fixes the CAR-in-Data-Center churn bug.
+- **Validation cooldown**: When validation removes a stock from a theme, writes a 14-day cooldown to `mi_validation_cooldowns`. Prevents re-assignment during cooldown via: (1) Codex prompt context injection, (2) post-assignment hard filter. Full audit trail (`validation_cooldown_triggered`, `cooldown_blocked_assignment`, `validation_cooldown_bypassed`). Commands: `show cooldowns`, `bypass cooldown TICKER [theme] [reason]`. Evening briefing shows compact `🧊 Cooldowns:` footer if any active. Fixes the CAR-in-Data-Center churn bug.
 
 ### New DB Table
 `mi_validation_cooldowns` (ticker, theme_name, cooldown_until, removal_count, bypassed, bypassed_reason)
@@ -564,7 +564,7 @@ Context: 21 alerts on 2026-04-21 (5 actual + 16 anticipation) → unworkable noi
 Expected pings: ~6–7/day on typical sessions (was ~21).
 
 ### Files Changed
-`briefing.py`, `theme_engine.py`, `twitter.py`, `agent.py`, `ninem_detector.py`, `db.py`, `README.md`, `CLAUDE.md`
+`briefing.py`, `theme_engine.py`, `twitter.py`, `agent.py`, `ninem_detector.py`, `db.py`, `README.md`, `AGENTS.md`
 
 ---
 
@@ -667,7 +667,7 @@ summary of today's HIGH outcomes. Silent when no HIGHs detected today.
 ### Files Changed
 `broker/skip_reasons.py` (new), `broker/live_tracker.py`, `broker/bar_stream.py`,
 `broker/order_manager.py`, `backtester/filters.py`, `scheduler.py`, `briefing.py`,
-`agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `CLAUDE.md`
+`agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `AGENTS.md`
 
 ---
 
@@ -737,7 +737,7 @@ monthly `split_part()` aggregation still works.
 ### Files Changed
 `broker/skip_reasons.py`, `broker/live_tracker.py`, `broker/bar_stream.py`,
 `theme_engine.py`, `scheduler.py`, `briefing.py`, `agent.py`, `postmortem.py`,
-`CLAUDE.md`
+`AGENTS.md`
 
 ---
 
@@ -831,102 +831,4 @@ historical rows — raw metrics are the source of truth on disk.
 `db.py` (schema ALTERs, get_eod_9m_sugar_babies SQL rewrite, insert +
 read-side columns), `ninem_detector.py` (pass-through in run_9m_eod_sweep,
 new `_shape_tag` helper, evening briefing section updated), `agent.py`
-(`/9m` + `9m outcomes` handlers render shape), `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-22 (session 4) — Strip to market/trading focus
-
-### Rationale
-Every P&L-relevant feature, every bug surfaced in production for months,
-every live-traded dollar was in the market agent. The 5 generic sub-
-agents (finance / calendar / research / browser / travel) were rotting:
-Dockerfiles existed, containers were defined in compose, tool schemas
-lived in `core/router.py`, but `start.sh` didn't start most of them,
-`integrations.yaml` had 4 of 5 marked `enabled: false`, and recent code
-review surfaced real latent bugs in calendar routing and webhook
-handlers that nobody hit because nobody used them. They were
-maintenance drag and deploy surface (the orchestrator's `audit.log`
-volume-mount issue was noticed only because the scaffolding tripped it)
-with zero offsetting benefit.
-
-### What was deleted
-- `agents/{finance,calendar,research,browser,travel}/` directories
-- `docker/Dockerfile.{finance,calendar,research,browser,travel}`
-- 5 sub-agent service blocks in both `docker-compose.yml` and
-  `docker-compose.prod.yml`
-- 5 tool schemas (`call_finance_agent` / `call_calendar_agent` /
-  `call_research_agent` / `call_browser_agent` / `call_travel_agent`)
-  from `core/router.py::get_orchestrator_tools()`
-- 5 corresponding dispatch branches in
-  `core/orchestrator.py::_dispatch_tool` (`agent_tool_map`)
-- 5 values from `AgentName` enum in `shared/models.py` (kept
-  `ORCHESTRATOR`, `MARKET_INTELLIGENCE`)
-- 4 dead provider getters in `shared/registry.py`
-  (`get_calendar_providers`, `get_finance_providers`,
-  `get_research_providers`, `get_credit_cards`)
-- 9 dead secret getters in `shared/secrets.py` (IBKR × 2, Google × 3,
-  Apple × 3, Tavily, Gemini). Moved `perplexity_api_key` getter from
-  "Research" section into "Market Intelligence" section (comment only)
-- `tests/test_ibkr.py` (referenced `agents.finance.ibkr`)
-- Research agent launch block in `start.sh`
-- `calendar:`/`finance:`/`research:`/`travel:` top-level blocks and
-  stale agents list in `integrations.yaml`
-- Dead hints dict entries in `channels/telegram.py::_build_status`
-- Obsolete sub-agent bullets in `core/context.py` system prompt
-
-### Env var changes (canonical list in this file is updated)
-- **Dropped:** `GEMINI_API_KEY` (never used at runtime — `gemini_validation`
-  is a legacy DB column populated by Perplexity output),
-  `TAVILY_API_KEY` (only used by top-level `backtest_ep.py`, not by any
-  runtime path), `IBKR_*`, `GOOGLE_*`, `APPLE_CALDAV_*`
-- **Added to canonical list:** `PERPLEXITY_API_KEY` (was already used
-  by market agent via `collector.py::search_news_perplexity` but never
-  documented), `FMP_API_KEY` (was already required, previously omitted)
-
-### What stayed (explicitly)
-Orchestrator is kept for future expansion. `core/` + `channels/` +
-`shared/` scaffolding still route via orchestrator → market agent.
-`agents/base.py` is still imported by
-`agents/market_intelligence/agent.py` — it stays. Only the 5 dead
-sub-agents and their wiring were removed; no consolidation (option B)
-was taken.
-
-### Post-deploy verification
-1. Static check on server after pull:
-   ```bash
-   grep -rn "from agents\.\(finance\|calendar\|research\|browser\|travel\)" \
-     --include="*.py" .          # expect: 0
-   grep -rn "AgentName\.\(FINANCE\|CALENDAR\|RESEARCH\|BROWSER\|TRAVEL\)" \
-     --include="*.py" .          # expect: 0
-   grep -rn "call_\(finance\|calendar\|research\|browser\|travel\)_agent" \
-     --include="*.py" .          # expect: 0
-   ```
-2. Deploy cadence:
-   ```bash
-   git pull origin main
-   docker compose -f docker/docker-compose.prod.yml rm -sf \
-     finance-agent calendar-agent research-agent browser-agent travel-agent \
-     2>/dev/null || true
-   docker compose -f docker/docker-compose.prod.yml build --no-cache \
-     orchestrator market-agent
-   docker compose -f docker/docker-compose.prod.yml up -d \
-     orchestrator market-agent
-   ```
-3. `docker compose ps` shows only `postgres`, `redis`, `orchestrator`,
-   `market-agent`, `uptime-kuma`.
-4. `/status` in Telegram lists only `market_intelligence`.
-5. All slash commands (`/pregame`, `/9m`, `/eps`, `/themes`, `/trades`,
-   `/why`, morning/evening brief) round-trip unchanged.
-
-### Files Changed
-`core/router.py`, `core/orchestrator.py`, `core/context.py`,
-`channels/telegram.py`, `shared/models.py`, `shared/registry.py`,
-`shared/secrets.py`, `docker/docker-compose.yml`,
-`docker/docker-compose.prod.yml`, `integrations.yaml`, `start.sh`,
-`.env.example`, `tests/test_confirmation_gate.py`, `CLAUDE.md`
-
-### Files/Directories Deleted
-`agents/{finance,calendar,research,browser,travel}/` (recursive),
-`docker/Dockerfile.{finance,calendar,research,browser,travel}`,
-`tests/test_ibkr.py`
+(`/9m` + `9m outcomes` handlers render shape), `AGENTS.md`

@@ -33,27 +33,6 @@ def reload_registry() -> dict[str, Any]:
     return load_registry()
 
 
-def get_calendar_providers() -> list[dict[str, Any]]:
-    """Return active calendar provider configs."""
-    registry = load_registry()
-    providers = registry.get("calendar", [])
-    return [p for p in providers if p.get("enabled", True)]
-
-
-def get_finance_providers() -> list[dict[str, Any]]:
-    """Return active finance provider configs."""
-    registry = load_registry()
-    providers = registry.get("finance", [])
-    return [p for p in providers if p.get("enabled", True)]
-
-
-def get_research_providers() -> list[dict[str, Any]]:
-    """Return active research provider configs."""
-    registry = load_registry()
-    providers = registry.get("research", [])
-    return [p for p in providers if p.get("enabled", True)]
-
-
 def get_agent_url(agent_name: str) -> Optional[str]:
     """Get the HTTP URL for a sub-agent by name."""
     registry = load_registry()
@@ -62,12 +41,6 @@ def get_agent_url(agent_name: str) -> Optional[str]:
     if not agent_config.get("enabled", True):
         return None
     return agent_config.get("url")
-
-
-def get_credit_cards() -> list[dict[str, Any]]:
-    """Return configured credit cards for travel optimization."""
-    registry = load_registry()
-    return registry.get("travel", {}).get("credit_cards", [])
 
 
 def get_active_agents() -> list[str]:

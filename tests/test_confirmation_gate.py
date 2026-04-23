@@ -50,7 +50,7 @@ async def test_confirmation_approved():
                 result = await request_confirmation(
                     user_id=123456789,
                     conversation_id="test-conv",
-                    agent=AgentName.CALENDAR,
+                    agent=AgentName.MARKET_INTELLIGENCE,
                     action_description="Create event: Dentist Tuesday 2pm",
                     action_payload={"action": "create_event"},
                     send_telegram_message=mock_send,
@@ -97,7 +97,7 @@ async def test_confirmation_rejected():
                 return await request_confirmation(
                     user_id=123456789,
                     conversation_id="test-conv",
-                    agent=AgentName.CALENDAR,
+                    agent=AgentName.MARKET_INTELLIGENCE,
                     action_description="Delete event: Team meeting",
                     action_payload={"action": "delete_event"},
                     send_telegram_message=mock_send,

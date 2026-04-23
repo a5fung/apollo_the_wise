@@ -129,123 +129,6 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
     """
     return [
         {
-            "name": "call_finance_agent",
-            "description": (
-                "Delegate a task to the Finance Agent. Use for: "
-                "IBKR portfolio/positions/P&L, TradingView market data (quotes, charts, fundamentals), "
-                "stock screener, watchlist management, price alerts. "
-                "For read-only operations only — no trading."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Clear description of what financial data or action is needed",
-                    },
-                    "context": {
-                        "type": "object",
-                        "description": "Any relevant context (symbols, date ranges, etc.)",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-        {
-            "name": "call_calendar_agent",
-            "description": (
-                "Delegate a task to the Calendar Agent. Use for: "
-                "reading events, creating/updating/deleting events across Google Calendar and iCloud. "
-                "IMPORTANT: creating or modifying events requires user confirmation."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Clear description of the calendar task",
-                    },
-                    "context": {
-                        "type": "object",
-                        "description": "Event details (title, date, time, location, etc.)",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-        {
-            "name": "call_research_agent",
-            "description": (
-                "Delegate a research task to the Research Agent. Use for: "
-                "web search, article summarization, news lookup, topic research, "
-                "factual questions requiring up-to-date information."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Research question or topic to investigate",
-                    },
-                    "context": {
-                        "type": "object",
-                        "description": "Any guiding context (focus areas, date ranges, etc.)",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-        {
-            "name": "call_browser_agent",
-            "description": (
-                "Delegate a task requiring browser automation to the Browser Agent. "
-                "Use for: tasks that require navigating websites, filling forms, or extracting "
-                "data from pages that require JavaScript rendering. Prefer Research Agent for "
-                "pure information lookup."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Browser automation task description",
-                    },
-                    "url": {
-                        "type": "string",
-                        "description": "Starting URL if known",
-                    },
-                    "context": {
-                        "type": "object",
-                        "description": "Additional context for the browser task",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-        {
-            "name": "call_travel_agent",
-            "description": (
-                "Delegate a travel planning task to the Travel Agent. Use for: "
-                "flight search, hotel research, trip itinerary planning, "
-                "credit card perks optimization (Amex Platinum, etc.), "
-                "lounge access, booking recommendations."
-            ),
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Travel planning task",
-                    },
-                    "context": {
-                        "type": "object",
-                        "description": "Trip details (dates, origin, destination, preferences, budget, etc.)",
-                    },
-                },
-                "required": ["task"],
-            },
-        },
-        {
             "name": "call_market_agent",
             "description": (
                 "Delegate a task to the Market Intelligence Agent. "
@@ -262,7 +145,7 @@ def get_orchestrator_tools() -> list[dict[str, Any]]:
                 "ORB events, advisor calls, theme changes — NOT IBKR trades), paper trade history "
                 "('show my trades', 'entry/exit for TVTX', 'paper trading P&L', 'what trades did we take'), "
                 "'what's the market doing?', 'any good setups?', 'RS history for CIEN'. "
-                "IMPORTANT: 'audit log' and 'show logs' always go here — never to the finance agent. "
+                "IMPORTANT: 'audit log' and 'show logs' always go here. "
                 "For history queries, pass from_date/to_date and optional theme_name in the context object. "
                 "Ground every investment answer in this live data."
             ),

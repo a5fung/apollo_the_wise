@@ -1004,11 +1004,6 @@ class TelegramChannel:
         lines.append("\n*Agents*")
         agent_hints = {
             "market_intelligence": "restart: bash start.sh",
-            "finance": "start with: uvicorn agents.finance.agent:app --port 8001",
-            "calendar": "start with: uvicorn agents.calendar.agent:app --port 8002",
-            "research": "start with: uvicorn agents.research.agent:app --port 8003",
-            "browser": "start with: uvicorn agents.browser.agent:app --port 8004",
-            "travel": "start with: uvicorn agents.travel.agent:app --port 8005",
         }
         for agent_name, (is_healthy, reason) in agent_health.items():
             display = agent_name.replace("_", " ").title()

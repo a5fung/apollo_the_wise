@@ -92,50 +92,6 @@ class Secrets:
     def tradingview_webhook_secret(self) -> str:
         return _require("TRADINGVIEW_WEBHOOK_SECRET")
 
-    # IBKR
-    @property
-    def ibkr_client_portal_url(self) -> str:
-        return _optional("IBKR_CLIENT_PORTAL_URL", "https://localhost:5000")
-
-    @property
-    def ibkr_account_id(self) -> Optional[str]:
-        return _optional("IBKR_ACCOUNT_ID")
-
-    # Google Calendar
-    @property
-    def google_client_id(self) -> Optional[str]:
-        return _optional("GOOGLE_CLIENT_ID")
-
-    @property
-    def google_client_secret(self) -> Optional[str]:
-        return _optional("GOOGLE_CLIENT_SECRET")
-
-    @property
-    def google_cal_token(self) -> Optional[str]:
-        return _optional("GOOGLE_CAL_TOKEN")
-
-    # Apple CalDAV
-    @property
-    def apple_caldav_url(self) -> str:
-        return _optional("APPLE_CALDAV_URL", "https://caldav.icloud.com")
-
-    @property
-    def apple_caldav_user(self) -> Optional[str]:
-        return _optional("APPLE_CALDAV_USER")
-
-    @property
-    def apple_caldav_token(self) -> Optional[str]:
-        return _optional("APPLE_CALDAV_TOKEN")
-
-    # Research
-    @property
-    def tavily_api_key(self) -> Optional[str]:
-        return _optional("TAVILY_API_KEY")
-
-    @property
-    def perplexity_api_key(self) -> Optional[str]:
-        return _optional("PERPLEXITY_API_KEY")
-
     # Market Intelligence
     @property
     def polygon_api_key(self) -> Optional[str]:
@@ -146,8 +102,8 @@ class Secrets:
         return _optional("FMP_API_KEY")
 
     @property
-    def gemini_api_key(self) -> Optional[str]:
-        return _optional("GEMINI_API_KEY")
+    def perplexity_api_key(self) -> Optional[str]:
+        return _optional("PERPLEXITY_API_KEY")
 
     # Misc
     @property

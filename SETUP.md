@@ -13,7 +13,7 @@ bash setup.sh   # one-time setup: installs deps, prompts for credentials, starts
 bash start.sh   # every time after that: starts Docker + Apollo in one command
 ```
 
-The rest of this guide explains what each step does and covers optional integrations (calendar, IBKR, TradingView).
+The rest of this guide explains what each step does and covers optional integrations (TradingView, Alpaca).
 
 ---
 
@@ -55,12 +55,23 @@ You'll need accounts/keys from four services. All are free or low-cost.
 2. API Keys → Create Key
 3. Save it — starts with `sk-ant-...`
 
-### 1c. Tavily API Key (for web search — free tier)
+### 1c. Perplexity API Key (catalyst news search)
 
-1. Go to [tavily.com](https://tavily.com) → Sign up free
+1. Go to [perplexity.ai/api](https://perplexity.ai/api) → Sign up
+2. Dashboard → API Keys → copy your key (starts with `pplx-`)
+
+### 1d. Polygon.io API Key (market data)
+
+1. Go to [polygon.io](https://polygon.io) → sign up for Starter ($29/mo)
 2. Dashboard → API Keys → copy your key
 
-### 1d. Generate random secrets
+### 1e. Alpaca API Key (paper/live trading)
+
+1. Go to [alpaca.markets](https://alpaca.markets) → sign up
+2. Dashboard → Paper Trading → Generate API keys
+3. Save both `API Key` and `Secret Key`
+
+### 1f. Generate random secrets
 
 You need two random strings for internal security. Run this in your terminal:
 
@@ -96,13 +107,16 @@ REDIS_PASSWORD=pick_another_password
 INTERNAL_API_SECRET=<first random string>
 TRADINGVIEW_WEBHOOK_SECRET=<second random string>
 
-# Research / news search (primary)
-PERPLEXITY_API_KEY=pplx-...                # Required — get from perplexity.ai/api
+# Market data + catalyst research
+POLYGON_API_KEY=...                        # Required
+PERPLEXITY_API_KEY=pplx-...                # Required — catalyst news + cross-validation
+FMP_API_KEY=...                            # Optional — fundamentals fallback
 
-# Optional (needed for full agent functionality)
-TAVILY_API_KEY=tvly-...                    # Legacy fallback only — not used in main pipeline
-GOOGLE_CAL_TOKEN=...                       # See Step 8 for calendar setup
-IBKR_CLIENT_PORTAL_URL=https://localhost:5000
+# Paper/live trading (Alpaca)
+ALPACA_API_KEY=...
+ALPACA_SECRET_KEY=...
+ALPACA_PAPER=true                          # Paper trading (safe default)
+LIVE_TRADING_ENABLED=false                 # Master kill switch
 ```
 
 ---
@@ -250,11 +264,12 @@ See the [Production Deploy](#production-deploy) section below.
 **Try these:**
 ```
 What can you do?
-Show me my calendar for this week
-Research the best ETFs for long-term investing
-What's my IBKR portfolio worth?
-Plan a 4-day trip to Tokyo in October
-Which lounge can I use at JFK with my Amex Platinum?
+What's the market doing today?
+Show top RS leaders
+EP alerts today
+Themes and stages
+RS for CIEN
+/trades
 ```
 
 ---
@@ -272,41 +287,6 @@ Which lounge can I use at JFK with my Amex Platinum?
    {"ticker": "{{ticker}}", "exchange": "{{exchange}}", "price": "{{close}}", "alert_name": "{{plot_0}}", "message": "Your custom message"}
    ```
 5. Fire the alert — Apollo pushes a notification to your Telegram instantly
-
----
-
-## Step 8 — Connect Google Calendar (optional)
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project → Enable **Google Calendar API**
-3. OAuth 2.0 → Create credentials (Desktop app type)
-4. Download `credentials.json` — place it in the **project root** (`Apollo_Assistant/credentials.json`)
-5. Run the auth flow from the project root:
-   ```bash
-   pip install google-auth-oauthlib
-   python -c "
-from google_auth_oauthlib.flow import InstalledAppFlow
-flow = InstalledAppFlow.from_client_secrets_file('credentials.json', ['https://www.googleapis.com/auth/calendar'])
-creds = flow.run_local_server(port=0)
-import json; print(json.dumps(json.loads(creds.to_json())))
-   "
-   ```
-   A browser window will open — log in and grant access. The terminal will then print a JSON blob.
-6. Copy the entire JSON output and set it as `GOOGLE_CAL_TOKEN` in `.env` (on one line, in quotes if it contains spaces)
-
----
-
-## Step 9 — Connect IBKR (optional)
-
-1. Download and install [IBKR Client Portal Gateway](https://www.interactivebrokers.com/en/trading/ib-api.php)
-2. Start the gateway: runs on `https://localhost:5000`
-3. Log in via the IBKR mobile app when prompted
-4. Set in `.env`:
-   ```env
-   IBKR_CLIENT_PORTAL_URL=https://localhost:5000
-   IBKR_ACCOUNT_ID=your_account_id
-   ```
-5. Test: `python tests/test_ibkr.py`
 
 ---
 
@@ -339,9 +319,9 @@ Once running, type `/` in Telegram to see the full command menu:
 - Make sure `docker compose up -d postgres` is running and healthy
 - Check `POSTGRES_PASSWORD` matches in `.env`
 
-**Sub-agents show 🔴 in `/agents`**
-- In local dev, only the orchestrator runs by default — agents show offline until you start them individually or use `docker compose up -d`
-- Run a specific agent: `uvicorn agents.research.agent:app --port 8003`
+**Market agent shows 🔴 in `/agents`**
+- In local dev, start the market agent in a second terminal: `bash start_market.sh`
+- Or run directly: `uvicorn agents.market_intelligence.agent:app --port 8006`
 
 **TradingView webhook returning 401**
 - Verify the `?token=` in your TradingView webhook URL matches `TRADINGVIEW_WEBHOOK_SECRET` in `.env`
@@ -412,9 +392,8 @@ nano /opt/apollo/.env   # paste your filled-in .env here
 | Postgres | 2 GB |
 | Redis | 512 MB |
 | Orchestrator | 1 GB |
-| Finance / Calendar / Research / Travel agents | 512 MB each |
-| Browser agent | 2 GB (Playwright) |
-| **Total** | ~7 GB (use an 8 GB+ VPS) |
+| Market Intelligence agent | 1 GB |
+| **Total** | ~4.5 GB (CPX21 4 GB VPS works) |
 
 ### Re-deploying after code changes
 

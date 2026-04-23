@@ -300,11 +300,6 @@ class Apollo:
     ) -> str:
         """Map tool name to its handler."""
         agent_tool_map = {
-            "call_finance_agent": AgentName.FINANCE,
-            "call_calendar_agent": AgentName.CALENDAR,
-            "call_research_agent": AgentName.RESEARCH,
-            "call_browser_agent": AgentName.BROWSER,
-            "call_travel_agent": AgentName.TRAVEL,
             "call_market_agent": AgentName.MARKET_INTELLIGENCE,
         }
 

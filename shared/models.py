@@ -15,11 +15,6 @@ from pydantic import BaseModel, Field
 
 class AgentName(str, Enum):
     ORCHESTRATOR = "orchestrator"
-    FINANCE = "finance"
-    CALENDAR = "calendar"
-    RESEARCH = "research"
-    BROWSER = "browser"
-    TRAVEL = "travel"
     MARKET_INTELLIGENCE = "market_intelligence"
 
 

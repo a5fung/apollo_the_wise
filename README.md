@@ -1,6 +1,6 @@
 # Apollo Assistant
 
-A Telegram-based personal assistant that acts as a "chief of staff" — it plans, reasons, and delegates to specialized sub-agents. Built around market intelligence as its core capability, with calendar, research, travel, and browser automation alongside.
+A Telegram-based trading assistant for momentum / episodic-pivot (EP) methodology (Qullamaggie, Pradeep Bonde, Marios Stamatoudis). Full RS + EP + theme engine + paper/live Alpaca ORB trading.
 
 ---
 
@@ -16,7 +16,7 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 |---|---|
 | "Send evening briefing" | Regime + RS leaders + active themes + MA pullbacks |
 | "Send morning briefing" | EP alerts recap + regime context (pre-market) |
-| "Any EPs today?" | EP alerts with MAGNA53 score, catalyst quality, Gemini cross-validation |
+| "Any EPs today?" | EP alerts with MAGNA53 score, catalyst quality, Perplexity cross-validation |
 | "9m" / "show 9m" | 9M EP intraday detections + today's sugar babies (Day 2 ORB watchlist) |
 | "9m trades" | Day 2 ORB trade log with P&L for 9M entries |
 | "9m performance" | Sugar baby history: volume, range quality, Day 2 outcome |
@@ -60,14 +60,6 @@ Apollo runs semi-automated paper trading via Alpaca. Two independent systems sha
 
 **Status:** Paper trading live on Alpaca paper account ($100K). Collecting data to validate before real money.
 
-### General capabilities
-
-- **Finance** — IBKR portfolio/P&L (read-only), TradingView price alerts pushed to Telegram
-- **Calendar** — Google Calendar + iCloud events, create/reschedule/cancel (with confirmation)
-- **Research** — Web search with synthesized answers, article summarization
-- **Travel** — Flight/hotel research, trip itineraries, Amex Platinum perks optimizer
-- **Browser** — General website automation via Playwright
-
 ---
 
 ## Architecture
@@ -79,21 +71,9 @@ User (Telegram)
 Apollo Orchestrator (port 8000)     ← Claude Sonnet — plans, reasons, delegates
       │ internal REST API
       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Sub-agents (each isolated in Docker)                           │
-│                                                                 │
-│  Market Intelligence :8006    Finance Agent :8001               │
-│  RS engine, EP detection,     IBKR read-only,                   │
-│  theme clustering, regime,    TradingView webhooks              │
-│  Alpaca paper trading                                           │
-│                                                                 │
-│  Calendar Agent :8002         Research Agent :8003              │
-│  Google + iCloud CalDAV       Tavily web search                 │
-│                                                                 │
-│  Travel Agent :8005           Browser Agent :8004               │
-│  Flights, hotels,             Playwright automation             │
-│  Amex Platinum perks                                            │
-└─────────────────────────────────────────────────────────────────┘
+Market Intelligence :8006
+  RS engine, EP detection, theme clustering, regime,
+  Alpaca paper + live ORB trading, TradingView webhooks
       │
       ▼
 PostgreSQL (pgvector)  +  Redis
@@ -191,7 +171,7 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 - **Inputs:** Gap %, relative volume, catalyst quality (Claude), neglect factor, float, regime multiplier
 - **HIGH (≥85):** Immediate Telegram alert during pre-market scan
 - **MODERATE (≥65):** Shown in morning briefing
-- **Gemini cross-validation:** When Claude + Gemini agree on catalyst → 1.2x confidence multiplier
+- **Perplexity cross-validation:** When Claude + Perplexity agree on catalyst → 1.2x confidence multiplier
 - **M&A hard filter:** Definitive agreement / tender offer / going-private → classified `mna` → hard skip before scoring. Buyouts don't trade like EPs.
 - **Game-changer floor:** Gap ≥10% + `game_changer` catalyst → minimum score 60 (MODERATE), ensuring high-quality mid-gap moves aren't invisible
 - **Open intensity metric:** Post-open volume shown as intensity (`raw_rvol × 390 / minutes_since_open`) rather than projected daily RVOL — honest label, not extrapolated noise
@@ -316,9 +296,8 @@ Show logs excluded → exclusion events
 |---|---|---|
 | Polygon.io | Price history, RS engine, EP gap data | Starter ($29/mo) |
 | yfinance | Company profile, sector, analyst ratings, news | Free |
-| Tavily | EP catalyst news search, theme confirmation | Free/Pro |
+| Perplexity | EP catalyst news search + cross-validation | Pay-per-use |
 | Anthropic | Orchestrator, catalyst classification, theme clustering | Pay-per-use |
-| Gemini | EP catalyst cross-validation | Free (gemini-1.5-flash-8b) |
 | Alpaca | Paper/live trading, real-time market data (ORB bars) | Free (paper) |
 | Telegram | Bot delivery | Free |
 
@@ -343,10 +322,10 @@ Apollo_Assistant/
 │   └── market_intelligence/
 │       ├── agent.py                 # FastAPI app on port 8006
 │       ├── db.py                    # Schema + all DB queries
-│       ├── collector.py             # Polygon + yfinance + Tavily data fetching
+│       ├── collector.py             # Polygon + yfinance + Perplexity data fetching
 │       ├── constants.py             # Shared constants (skip lists, sector filters, trimmed_mean)
 │       ├── rs_engine.py             # RS scoring + MA computation + single-ticker score
-│       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Gemini
+│       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Perplexity
 │       ├── ninem_detector.py        # 9M EP scanner + EOD sugar baby sweep
 │       ├── regime.py                # Market regime engine
 │       ├── briefing.py              # Evening + morning briefing formatters
@@ -409,8 +388,8 @@ bash start_market.sh
 - `TELEGRAM_ALLOWED_USER_IDS` — your Telegram user ID
 - `ANTHROPIC_API_KEY`
 - `POLYGON_API_KEY`
-- `GEMINI_API_KEY`
-- `TAVILY_API_KEY`
+- `PERPLEXITY_API_KEY`
+- `FMP_API_KEY`
 - `ALPACA_API_KEY`, `ALPACA_SECRET_KEY` — from Alpaca dashboard
 - `ALPACA_PAPER=true` — paper trading mode (default safe)
 - `LIVE_TRADING_ENABLED=false` — master kill switch
@@ -439,12 +418,10 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 | Concern | Mitigation |
 |---|---|
 | Telegram access | Allowlist — only configured user IDs can interact |
-| IBKR | Read-only API — no trade execution implemented |
 | Alpaca trading | Master kill switch (`LIVE_TRADING_ENABLED`), paper/live toggle (`ALPACA_PAPER`), confirmation timeout (5 min), atomic status transitions prevent duplicate orders |
 | Trade data integrity | DB DELETE triggers block accidental deletion on trade tables; startup row count logging detects data loss |
 | Account info | Account equity never shown in Telegram messages (% of account only) |
 | Irreversible actions | YES/NO confirmation gate before execution |
-| Sub-agent isolation | Each container has only its own secrets |
 | TradingView webhooks | Verified via shared secret header; delivered via nginx reverse proxy on port 80 |
 | Single ORB rule | `validate_orb_entry()` in `backtester/filters.py` — shared by EOD sim and live Alpaca path, structural divergence impossible |
 | Audit trail | `mi_audit_log` DB table — advisor calls, theme changes, exclusions, ORB events; queryable from Telegram |
