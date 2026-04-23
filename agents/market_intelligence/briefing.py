@@ -39,6 +39,7 @@ from agents.market_intelligence.db import (
     get_fundamental_flags,
     get_rs_for_tickers,
     get_prior_theme_scores,
+    log_audit_event,
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
 from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI
@@ -1531,22 +1532,56 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
         if remaining:
             chunks.append(remaining)
 
+    async def _post(client: httpx.AsyncClient, chunk: str, use_markdown: bool) -> httpx.Response:
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": chunk,
+            "disable_web_page_preview": True,
+        }
+        if use_markdown:
+            payload["parse_mode"] = "Markdown"
+        return await client.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
+        )
+
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             for chunk in chunks:
-                r = await client.post(
-                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                    json={
-                        "chat_id": chat_id,
-                        "text": chunk,
-                        "parse_mode": "Markdown",
-                        "disable_web_page_preview": True,
-                    },
-                )
-                r.raise_for_status()
+                r = await _post(client, chunk, use_markdown=True)
+                if r.status_code == 400:
+                    # Likely malformed Markdown — retry as plain text so the alert
+                    # still lands. Markdown failures otherwise vanish silently.
+                    body = r.text[:500]
+                    logger.warning(
+                        f"Telegram 400 with Markdown — retrying plain text. body={body}"
+                    )
+                    r2 = await _post(client, chunk, use_markdown=False)
+                    if r2.status_code >= 400:
+                        await log_audit_event(
+                            "telegram_send_failed",
+                            "Telegram send failed after plain-text retry",
+                            f"md_body={body} | plain_status={r2.status_code} | plain_body={r2.text[:400]} | chunk={chunk[:300]}",
+                        )
+                        r2.raise_for_status()
+                    else:
+                        await log_audit_event(
+                            "telegram_markdown_fallback",
+                            "Markdown parse failed — delivered as plain text",
+                            f"md_body={body} | chunk={chunk[:300]}",
+                        )
+                else:
+                    r.raise_for_status()
         return True
     except Exception as e:
         logger.error(f"Telegram send failed: {e}")
+        try:
+            await log_audit_event(
+                "telegram_send_failed",
+                "Telegram send exception",
+                f"{type(e).__name__}: {e} | chat={chat_id} | first_chunk={chunks[0][:300] if chunks else ''}",
+            )
+        except Exception:
+            pass
         return False
 
 
