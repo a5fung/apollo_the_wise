@@ -755,6 +755,70 @@ async def _eod_ep_recap_job():
         await notify_job_failure("eod_ep_recap", str(e))
 
 
+async def _post_validation_check_job():
+    """Run Sat 8:00 AM ET. Recap Friday's theme validation run.
+
+    Theme validation fans out Mon/Wed/Fri nightly. The 2026-04-22 session-2
+    fix (semaphore + split exception handling) should route 429s to the
+    `validation_rate_limited` bucket instead of mislabeling them as
+    `validation_error`. This job confirms the fix is holding: it counts
+    yesterday's validation_error / validation_rate_limited / anthropic_rate_limited /
+    ticker_revalidated_out events and sends a single Telegram line. Silent when
+    yesterday was zero-activity (e.g. the validation job didn't run).
+    """
+    logger.info("Post-validation check starting...")
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import get_pool
+        from datetime import timedelta
+
+        yesterday = et_today() - timedelta(days=1)
+        y_str = str(yesterday)
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                  COUNT(*) FILTER (WHERE event_type = 'validation_error')         AS errors,
+                  COUNT(*) FILTER (WHERE event_type = 'validation_rate_limited')  AS rate_limited,
+                  COUNT(*) FILTER (WHERE event_type = 'anthropic_rate_limited')   AS retries,
+                  COUNT(*) FILTER (WHERE event_type = 'ticker_revalidated_out')   AS removals
+                FROM mi_audit_log
+                WHERE created_at >= ($1::date AT TIME ZONE 'America/New_York')
+                  AND created_at <  (($1::date + INTERVAL '1 day')::date AT TIME ZONE 'America/New_York')
+                """,
+                yesterday,
+            )
+        errors = int(row["errors"] or 0)
+        rate_limited = int(row["rate_limited"] or 0)
+        retries = int(row["retries"] or 0)
+        removals = int(row["removals"] or 0)
+
+        if errors + rate_limited + retries + removals == 0:
+            logger.info("Post-validation check: no validation activity yesterday")
+            return
+
+        if errors > 0:
+            icon = "🔴"
+            verdict = f"{errors} validation_error"
+        elif rate_limited > 0:
+            icon = "🟠"
+            verdict = f"{rate_limited} rate-limited (fix working — correctly classified)"
+        else:
+            icon = "✅"
+            verdict = "clean"
+
+        await send_telegram_message(
+            f"{icon} *Post-validation check — {y_str}*\n"
+            f"{verdict}\n"
+            f"retries: {retries} · removals: {removals}"
+        )
+        logger.info("Post-validation check sent")
+    except Exception as e:
+        logger.error(f"Post-validation check failed: {e}")
+        await notify_job_failure("post_validation_check", str(e))
+
+
 async def _weekly_cleanup():
     """Run Sunday 2:00 AM ET. Purge old rows per retention policy."""
     logger.info("Weekly DB cleanup starting...")
@@ -1055,6 +1119,15 @@ def start_scheduler() -> AsyncIOScheduler:
         _weekly_system_review_job,
         CronTrigger(day_of_week="sun", hour=8, minute=0, timezone="America/New_York"),
         id="weekly_system_review",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # Post-validation check: Saturday 8:00 AM ET — recap Fri's theme validation run
+    _scheduler.add_job(
+        _post_validation_check_job,
+        CronTrigger(day_of_week="sat", hour=8, minute=0, timezone="America/New_York"),
+        id="post_validation_check",
         replace_existing=True,
         misfire_grace_time=3600,
     )
