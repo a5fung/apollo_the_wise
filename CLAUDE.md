@@ -835,6 +835,73 @@ new `_shape_tag` helper, evening briefing section updated), `agent.py`
 
 ---
 
+## Changes Made 2026-04-23 — Broker alert gaps + bracket-order hardening
+
+### Problem
+Two operational gaps surfaced after recent live-trading days:
+1. **Naked positions.** BSX/GSHD/SIRI entered without stop legs. Root cause:
+   `StopLimitOrderRequest(..., stop_loss=StopLossRequest(...))` submitted
+   without `order_class=OrderClass.OTO` — alpaca-py silently drops the
+   `stop_loss` kwarg on a bare stop-limit and the order fills with no
+   protective stop.
+2. **Silent state changes.** User saw order cancellations and manual exits
+   in Alpaca with no Telegram. `_handle_cancel_or_reject` only alerted on
+   `event == "rejected"`, and unmatched fills (direct Alpaca actions /
+   `close_position` / partial/full exits not yet written to
+   `mi_live_orders`) were logged and discarded.
+
+### Fixes
+
+**`broker/alpaca_client.py::place_bracket_order`** — submit with
+`order_class=OrderClass.OTO` + `StopLossRequest`, then verify the returned
+order has a stop leg; if missing, cancel the naked bracket and raise so
+`submit_entry` never records an unprotected position.
+
+**`broker/trade_stream.py`**
+- `_handle_cancel_or_reject` — three branches: (1) entry order
+  cancelled/expired/rejected → update `mi_live_trades.status='cancelled'`
+  + Telegram `🚫/🗑 Entry {event}`; (2) stop-loss leg cancelled →
+  clear `stop_order_id`, Telegram `⚠️ Stop order CANCELLED — position
+  unprotected, remediation at 4:05 PM`; (3) untracked reject → Telegram
+  `⚠️ Order REJECTED`.
+- `_handle_fill` untracked-sell branch — parses asyncpg `UPDATE N`
+  rowcount via `result.split()[-1]`; if 0 rows affected, fires
+  `💱 Untracked SELL/BUY` alert (catches manual `close_position` and
+  other direct Alpaca actions).
+- `_process_entry_fill` — belt-and-suspenders: if entry fills with no
+  `stop_order_id`, place a standalone stop at `orb_low` (`🛡 Protective
+  stop placed`) or alert `🚨 UNPROTECTED POSITION` if `orb_low` is NULL.
+
+**`broker/order_manager.py`** — `execute_partial_exit` (replacement stop,
+market sell, rollback stop) and `execute_full_exit` (`close_position`)
+all now `INSERT INTO mi_live_orders ... ON CONFLICT DO NOTHING` before
+returning. Without this the new untracked-fill alert would double-fire
+on every managed exit.
+
+### Files Changed
+`broker/alpaca_client.py`, `broker/trade_stream.py`, `broker/order_manager.py`,
+`CLAUDE.md`
+
+### ⚠️ Post-deploy verification
+1. Smoke-test bracket: submit a paper-trade entry, confirm the Alpaca
+   order page shows BOTH buy-stop-limit and sell-stop legs. If
+   `place_bracket_order` ever raises `Bracket order ... returned no
+   stop_loss leg`, the entry correctly aborts with no position opened.
+2. Cancel a pending entry in the Alpaca UI → Telegram must fire
+   `🗑 Entry CANCELLED: TICKER`.
+3. On next live partial/full exit: confirm the managed exit alert
+   (`📤 Partial exit` / `✅/❌ Closed`) fires exactly once — no
+   `💱 Untracked SELL` double-alert.
+4. Monthly audit:
+   ```sql
+   SELECT COUNT(*) FROM mi_live_trades
+   WHERE status='filled' AND stop_order_id IS NULL;
+   ```
+   Must be 0 outside the <1s window between entry fill and stop
+   placement.
+
+---
+
 ## Changes Made 2026-04-22 (session 4) — Strip to market/trading focus
 
 ### Rationale

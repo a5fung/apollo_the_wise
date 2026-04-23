@@ -212,14 +212,31 @@ async def _handle_fill(data) -> None:
         await _process_stop_fill(dict(stop_trade), filled_price, pool)
         return
 
-    # 3. Unmatched — likely a managed exit (partial/full) already handled by our code
-    logger.info(f"Fill for unmatched order {order_id} ({symbol}) — likely a managed exit")
+    # 3. Unmatched — likely a managed exit (partial/full) already handled by our code,
+    # OR a direct/manual Alpaca action that bypassed our tracking. If the order is in
+    # mi_live_orders, the submitting path already sent its own Telegram; stay silent.
+    # If NOT in mi_live_orders, the fill is a surprise — alert.
     async with pool.acquire() as conn:
-        await conn.execute("""
+        result = await conn.execute("""
             UPDATE mi_live_orders SET
                 status = 'filled', filled_qty = $2, filled_avg_price = $3, filled_at = NOW()
             WHERE alpaca_order_id = $1
         """, order_id, filled_qty, filled_price)
+    # asyncpg returns "UPDATE N" — parse the row count
+    try:
+        updated_rows = int(result.split()[-1]) if result else 0
+    except (ValueError, AttributeError):
+        updated_rows = 0
+    if updated_rows == 0 and filled_qty > 0:
+        side = str(getattr(order, "side", "")).lower()
+        side_label = "SELL" if "sell" in side else ("BUY" if "buy" in side else "FILL")
+        await send_telegram_message(
+            f"💱 *Untracked {side_label}:* {symbol} @${filled_price:.2f} x {filled_qty:.0f}\n"
+            f"Order {order_id[:8]} not in our records — direct Alpaca action."
+        )
+        logger.warning(f"Untracked fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
+    else:
+        logger.info(f"Managed exit fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
 
 
 async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qty: float, pool) -> None:
@@ -250,6 +267,38 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
             if str(getattr(leg, "type", "")) == "stop":
                 stop_order_id = str(leg.id)
                 break
+
+    # Fill-path stop remediation — fire immediately instead of waiting for 4:05 PM sync
+    # if no stop leg came back (bracket order_class validation in alpaca_client should
+    # prevent this, but defensive).
+    if not stop_order_id:
+        stop_target = float(trade["orb_low"]) if trade.get("orb_low") else None
+        ticker_name = trade["ticker"]
+        if stop_target:
+            try:
+                new_stop = await alpaca.place_stop_order(ticker_name, filled_qty, stop_target)
+                stop_order_id = new_stop["id"]
+                logger.warning(
+                    f"Fill-path stop remediation: {ticker_name} qty={filled_qty} "
+                    f"stop=${stop_target:.2f} order_id={stop_order_id}"
+                )
+                await send_telegram_message(
+                    f"🛡 *Protective stop placed:* {ticker_name}\n"
+                    f"Bracket leg missing — standalone stop at ${stop_target:.2f}"
+                )
+            except Exception as e:
+                logger.error(f"Fill-path stop remediation FAILED for {ticker_name}: {e}")
+                await send_telegram_message(
+                    f"🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                    f"Entry filled but stop placement failed: {e}\n"
+                    f"Manual intervention required."
+                )
+        else:
+            logger.error(f"Fill-path stop remediation impossible for {ticker_name}: no orb_low")
+            await send_telegram_message(
+                f"🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                f"Entry filled, no stop order, no orb_low in DB. Manual intervention required."
+            )
 
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -339,20 +388,55 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
     order = data.order
     order_id = str(order.id)
     symbol = order.symbol
+    event_norm = "cancelled" if event in ("canceled", "cancelled") else event
 
     pool = await get_pool()
+
+    # 1. Entry order?
     async with pool.acquire() as conn:
-        trade = await conn.fetchrow("""
+        entry_trade = await conn.fetchrow("""
             SELECT id, ticker FROM mi_live_trades
-            WHERE entry_order_id = $1 AND status IN ('order_placed', 'submitting')
+            WHERE entry_order_id = $1 AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
         """, order_id)
 
-    if trade:
+    if entry_trade:
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE mi_live_trades SET status = 'cancelled', skip_reason = $2 WHERE id = $1",
-                trade["id"], event,
+                entry_trade["id"], event_norm,
             )
-        logger.info(f"WS: entry order {event}: {symbol}")
-        if event == "rejected":
-            await send_telegram_message(f"⚠️ *Order REJECTED:* {symbol}\nCheck logs for details.")
+        icon = "🚫" if event_norm == "rejected" else "🗑"
+        await send_telegram_message(
+            f"{icon} *Entry {event_norm.upper()}:* {symbol}\nOrder {order_id[:8]} — no position opened."
+        )
+        logger.info(f"WS: entry order {event_norm}: {symbol}")
+        return
+
+    # 2. Stop-loss leg cancellation — signals open position is now unprotected
+    async with pool.acquire() as conn:
+        stop_trade = await conn.fetchrow("""
+            SELECT id, ticker, remaining_shares, stop_price FROM mi_live_trades
+            WHERE stop_order_id = $1 AND status = 'filled'
+        """, order_id)
+
+    if stop_trade:
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
+                stop_trade["id"],
+            )
+        await send_telegram_message(
+            f"⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+            f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
+            f"Remediation runs at 4:05 PM ET — monitor."
+        )
+        logger.warning(f"WS: stop-loss {event_norm}: {symbol} trade_id={stop_trade['id']}")
+        return
+
+    # 3. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
+    # to surface account-level issues (margin/PDT/etc.); stay quieter on expiry.
+    if event_norm == "rejected":
+        await send_telegram_message(f"⚠️ *Order REJECTED:* {symbol}\nOrder {order_id[:8]} — check logs.")
+        logger.warning(f"WS: untracked rejection: {symbol} order={order_id}")
+    else:
+        logger.info(f"WS: untracked {event_norm}: {symbol} order={order_id}")

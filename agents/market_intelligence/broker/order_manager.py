@@ -636,6 +636,14 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                     "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
                     trade_id, new_stop_id,
                 )
+                await conn.execute("""
+                    INSERT INTO mi_live_orders
+                        (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                         stop_price, status, raw_response)
+                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+                    ON CONFLICT (alpaca_order_id) DO NOTHING
+                """, trade_id, new_stop_id, ticker, float(new_remaining),
+                    float(stop_price), new_stop_order["status"], json.dumps(new_stop_order))
             logger.info(
                 f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
                 f"@${stop_price:.2f} (order {new_stop_id})"
@@ -653,6 +661,14 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
     # Step 2: Market sell the partial (shares are now free from the stop).
     try:
         order = await alpaca.place_market_sell(ticker, shares)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO mi_live_orders
+                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status, raw_response)
+                VALUES ($1, $2, $3, 'sell', 'market', $4, $5, $6::jsonb)
+                ON CONFLICT (alpaca_order_id) DO NOTHING
+            """, trade_id, order["id"], ticker, float(shares),
+                order.get("status", "new"), json.dumps(order))
     except Exception as e:
         logger.error(f"Partial exit sell failed for {ticker} after stop replaced: {e}")
         # Rollback: restore stop for full original qty so nothing sits unprotected.
@@ -665,6 +681,14 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                     "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
                     trade_id, rollback["id"],
                 )
+                await conn.execute("""
+                    INSERT INTO mi_live_orders
+                        (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                         stop_price, status, raw_response)
+                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+                    ON CONFLICT (alpaca_order_id) DO NOTHING
+                """, trade_id, rollback["id"], ticker, float(full_remaining),
+                    float(stop_price), rollback.get("status", "new"), json.dumps(rollback))
             await send_telegram_message(
                 f"⚠️ Partial exit FAILED for {ticker}: {e}\n"
                 f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
@@ -741,8 +765,17 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         await send_telegram_message(f"⚠️ Full exit FAILED for {ticker}: {e}")
         return False
 
-    fill_price = order.get("filled_avg_price") or trade.get("entry_price", 0)
     remaining = trade["remaining_shares"]
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_live_orders
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'market', $4, $5, $6::jsonb)
+            ON CONFLICT (alpaca_order_id) DO NOTHING
+        """, trade_id, order["id"], ticker, float(remaining),
+            order.get("status", "new"), json.dumps(order))
+
+    fill_price = order.get("filled_avg_price") or trade.get("entry_price", 0)
     pnl = (fill_price - trade["entry_price"]) * remaining if trade["entry_price"] else 0
 
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")

@@ -16,9 +16,10 @@ from alpaca.trading.requests import (
     LimitOrderRequest,
     MarketOrderRequest,
     StopLimitOrderRequest,
+    StopLossRequest,
     StopOrderRequest,
 )
-from alpaca.trading.enums import OrderSide, OrderType, TimeInForce, QueryOrderStatus
+from alpaca.trading.enums import OrderClass, OrderSide, OrderType, TimeInForce, QueryOrderStatus
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
@@ -102,13 +103,34 @@ async def place_bracket_order(
                 time_in_force=TimeInForce.DAY,
                 stop_price=round(stop_price, 2),
                 limit_price=round(limit_price, 2),
-                stop_loss={"stop_price": round(stop_loss_price, 2)},
+                order_class=OrderClass.OTO,
+                stop_loss=StopLossRequest(stop_price=round(stop_loss_price, 2)),
             )
         )
+        # Safety: Alpaca must accept the stop_loss leg, otherwise the position is
+        # unprotected on fill. alpaca-py silently drops invalid fields; verify legs
+        # came back before we trust this order.
+        legs = getattr(order, "legs", None) or []
+        has_stop_leg = any(
+            (hasattr(leg, "stop_price") and leg.stop_price)
+            or str(getattr(leg, "type", "")).lower() == "stop"
+            for leg in legs
+        )
+        if not has_stop_leg:
+            # Abort: cancel the entry order so we don't fill naked, then raise so
+            # the caller's retry fires (or the trade fails cleanly).
+            try:
+                client.cancel_order_by_id(order.id)
+            except Exception as cancel_err:
+                logger.error(f"Failed to cancel naked bracket {ticker} {order.id}: {cancel_err}")
+            raise RuntimeError(
+                f"Bracket order {order.id} for {ticker} returned no stop_loss leg — "
+                f"Alpaca rejected the stop. Entry cancelled."
+            )
         logger.info(
             f"Bracket order placed: {ticker} qty={qty} "
             f"stop={stop_price:.2f} limit={limit_price:.2f} SL={stop_loss_price:.2f} "
-            f"order_id={order.id}"
+            f"order_id={order.id} legs={len(legs)}"
         )
         return _order_to_dict(order)
     except Exception as e:
