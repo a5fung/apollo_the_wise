@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional
 
 import asyncpg
 
 from shared.models import ConversationMessage, MemoryEntry, MessageRole
-from shared.secrets import get_secrets
 
 logger = logging.getLogger(__name__)
 
@@ -20,24 +20,22 @@ _pool: Optional[asyncpg.Pool] = None
 
 
 async def get_pool() -> asyncpg.Pool:
+    """
+    Build an asyncpg pool from the discrete POSTGRES_* env vars, not a parsed DSN.
+
+    secrets.postgres_dsn_sync is composed via f-string, so any URL-reserved
+    character in POSTGRES_PASSWORD (@, :, /, #, ?, %) produces a DSN that
+    cannot be reliably split back into components. Read the raw env vars
+    instead — same source of truth, no round-trip through a URL.
+    """
     global _pool
     if _pool is None:
-        secrets = get_secrets()
-        # asyncpg uses a different DSN format
-        host = secrets.postgres_dsn_sync.split("@")[1].split("/")[0].split(":")[0]
-        port_db = secrets.postgres_dsn_sync.split("@")[1].split("/")
-        port = int(port_db[0].split(":")[1]) if ":" in port_db[0] else 5432
-        db = port_db[1] if len(port_db) > 1 else "apollo"
-        user_pass = secrets.postgres_dsn_sync.split("://")[1].split("@")[0]
-        user = user_pass.split(":")[0]
-        password = user_pass.split(":")[1] if ":" in user_pass else ""
-
         _pool = await asyncpg.create_pool(
-            host=host,
-            port=port,
-            database=db,
-            user=user,
-            password=password,
+            host=os.environ.get("POSTGRES_HOST", "localhost"),
+            port=int(os.environ.get("POSTGRES_PORT", "5432")),
+            database=os.environ.get("POSTGRES_DB", "apollo"),
+            user=os.environ.get("POSTGRES_USER", "apollo"),
+            password=os.environ["POSTGRES_PASSWORD"],
             min_size=2,
             max_size=10,
         )

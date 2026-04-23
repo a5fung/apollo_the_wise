@@ -925,7 +925,14 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                        MAX(close) FILTER (WHERE rn = 21) AS close_20d_ago,
                        AVG(close) FILTER (WHERE rn <= 10) AS sma_10,
                        AVG(close) FILTER (WHERE rn <= 50) AS sma_50,
-                       AVG(close) FILTER (WHERE rn BETWEEN 6 AND 55) AS sma_50_5d_ago
+                       -- Slope requires a TRUE 50-session window at both t and t-5.
+                       -- Only compute when the ticker has ≥55 prior sessions so
+                       -- sma_50_5d_ago = AVG over rn 6..55 is a full 50-close window.
+                       -- Otherwise we'd compare a 50-close avg to a 45-49-close avg
+                       -- and mislabel newly-listed names via sma50_slope_pct.
+                       CASE WHEN COUNT(*) >= 55
+                            THEN AVG(close) FILTER (WHERE rn BETWEEN 6 AND 55)
+                            ELSE NULL END AS sma_50_5d_ago
                 FROM ranked
                 GROUP BY ticker
                 HAVING COUNT(*) >= 10
@@ -1031,7 +1038,7 @@ async def get_9m_ep_history(days: int = 14) -> list[dict]:
             FROM mi_9m_sugar_babies sb
             LEFT JOIN mi_9m_ep_alerts a
                 ON a.ticker = sb.ticker AND a.alert_date = sb.alert_date
-            WHERE sb.alert_date >= CURRENT_DATE - $1
+            WHERE sb.alert_date >= (now() AT TIME ZONE 'America/New_York')::date - $1::int
             ORDER BY sb.alert_date DESC, sb.volume DESC
         """, days)
     return [dict(r) for r in rows]

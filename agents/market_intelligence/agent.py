@@ -118,7 +118,7 @@ class ScreenerRequest(BaseModel):
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
-        self._claude = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+        self._claude = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
         self._refresh_lock = asyncio.Lock()
         self._register_extra_routes()
 
@@ -3282,7 +3282,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 if isinstance(fund_result, dict) and "error" not in fund_result:
                     context += format_fundamentals(fund_result) + "\n"
 
-        response = self._claude.messages.create(
+        response = await self._claude.messages.create(
             model=MARKET_AGENT_MODEL,
             max_tokens=1024,
             system=(
