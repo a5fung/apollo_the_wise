@@ -432,9 +432,27 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 ## Backlog / Upgrade Path
 
 ### Recently completed (April 2026)
-- ✅ **9M EP system** — parallel LLM-free EP track (Pradeep Bonde "9M" tactic). Intraday scan, sugar baby EOD sweep, Day 2 ORB auto-entry, evening briefing section, outcome tracking, backtest script (`scripts/backtest_9m_ep.py`)
-- ✅ Correlation clustering — BFS connected components on beta-adjusted returns, fed into theme discovery as early signals (`show clusters`)
-- ✅ Validation cooldowns — 14-day re-assignment ban after validation removal; `show cooldowns`, `bypass cooldown TICKER`
+- ✅ **Apollo strip to market/trading focus** — deleted 5 unused sub-agents (finance/calendar/research/browser/travel) + Dockerfiles + compose blocks + tool schemas + enum values + 9 dead secrets; orchestrator kept for future expansion
+- ✅ **9M Sugar Baby going-in shape telemetry** — 6 new columns (prev_5d, prev_20d, prev_vs_sma10/50, sma50 slope, prior_sessions); bucket tags (uptrend/pullback/extended/bounce/downtrend/flat) surfaced in evening brief + `/9m` + `9m outcomes`. Telemetry-only — promote to filter after 30+ outcomes
+- ✅ **EP entry diagnostics & performance traceability** — `broker/skip_reasons.py` (18 bounded constants); every HIGH EP has durable terminal state by 4:10 PM ET; `/why TICKER [date]` lifecycle timeline; 4:10 PM EOD EP recap; evening-brief "EP OUTCOMES TODAY" section
+- ✅ **Humanize skip reasons** — Telegram shows English prose; DB keeps machine prefixes for `split_part()` aggregation
+- ✅ **Theme validation rate-limit handling** — `_VALIDATION_SEMAPHORE(2)` caps concurrent Haiku; retry-once on 429; three-bucket error banner (🔴 errors / 🟠 rate-limited / 🟡 parse errors)
+- ✅ **9M quality filters + cadence carve-out** — price ≥ $5, dollar-vol ≥ $50M actual / $30M anticipation, directional conviction (gap ≥ 3% OR intraday ≥ 4%), 3× ADV ratio (not flat ceiling), range ≥ 2%, extension gate (prev_close ≤ 1.20× SMA-10); silent anticipations unless gap ≥ 10% OR proj_vol ≥ 25M. Target ~6–7 pings/day
+- ✅ **Haiku JSON parse hardening** — depth-aware brace parser replaces naive regex (fixed 20-error nightly breakage); `max_tokens` 200→400
+- ✅ **Theme breadth decay** — `pct_above_20sma` forces Fading when breadth < 40% for 2 consecutive days
+- ✅ **LLM rate-limit guard + correlation off-loop** — `ep_detector` `AsyncAnthropic` + `Semaphore(5)` + retry; `correlation_engine` 2800×2800 matrix wrapped in `asyncio.to_thread()`
+- ✅ **Weekly system self-audit** — Sunday 8 AM ET; 7d aggregates → Sonnet synthesis → Telegram 4-section digest; persists `mi_system_reviews`; grades prior week's suggestions
+- ✅ **Broker partial-exit hardening** — stop-first ordering (cancel old stop → place new for 2/3 → then sell 1/3); fractional qty fix; caller honors return value; skip-reason propagation through tuple return
+- ✅ **Orphaned stop remediation** — auto-places protective stop if filled trade has no `stop_order_id`; yfinance 30s timeout wrapper
+- ✅ **`/trades` richer summary** — open positions with entry→current→stop, last 5 closed inline, totals row; UTC/ET boundary fix for `closed_at`
+- ✅ **P9 — Trade postmortem** `postmortem TICKER [YYYY-MM-DD]`; Sonnet 4-section recap (Setup/Execution/Outcome/Lesson); weekly review auto-narrates best+worst
+- ✅ **P7 — `/pregame`** compact trade shortlist (Accelerating themes, HIGH EPs, watchlist MAs, 9M sugar babies); no LLM
+- ✅ **Slash commands + pinned HUD** — `/hud`, `/eps`, `/9m`, `/themes`, `/clusters`, `/regime`, `/positions`, `/trades`; hourly auto-refresh of pinned HUD during market hours; inline-keyboard drill-downs
+- ✅ **P2 — MODERATE EP recap** in morning briefing (rel_volume + claude_analysis)
+- ✅ **P3 — Paper trade validation report** scaffold (`validation report` / `paper performance`); upgrades to full report at 10+ closed trades
+- ✅ **9M EP system** — parallel LLM-free EP track (Pradeep Bonde "9M" tactic); intraday scan, sugar baby EOD sweep, Day 2 ORB auto-entry, outcome tracking, backtest script
+- ✅ **P15 — Correlation clustering** — BFS connected components on beta-adjusted SPY-residual returns; feeds theme discovery; `show clusters`; revalidate once theme history reaches 6+ months (~June 2026)
+- ✅ **Validation cooldowns** — 14-day re-assignment ban after validation removal; `show cooldowns`, `bypass cooldown TICKER`
 - ✅ Real-time ORB entry via Alpaca bar WebSocket (pre-market HIGH → subscribed → order at 9:30:59)
 - ✅ Single shared ORB stop-width rule (`validate_orb_entry`) — EOD sim and live path structurally identical
 - ✅ M&A hard filter — definitive agreement / tender offer → skip before scoring
@@ -446,6 +464,9 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 - ✅ EP diagnostic — "why not EP TICKER?" runs filter checks, stops at first failure, fetches news
 - ✅ Trade audit trail — per-attempt entry/exit timestamps on every trade display
 - ✅ Audit log — all engine decisions queryable from Telegram (advisor calls, theme events, ORB events)
+- ✅ **P4** EP outcome table (`ep outcomes 30d`)
+- ✅ **P5** Theme conviction display (days active + consecutive Accelerating)
+- ✅ **P6** Trading journal (`journal: <note>`, `show journal`)
 
 ### Previously completed
 - ✅ Full Pradeep Market Monitor (T2108, breadth counts, 4% ratio, consecutive breakdown tracking)
@@ -462,23 +483,17 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 
 ### Priority backlog
 
-The critical path to live trading: **P2 → P3 → P4 → P6 → live**. Everything else adds independent value.
+The critical path to live trading: **P3 data accumulation → P16 live**. Flip when regime improves from Crisis and ~10 closed paper trades are on record.
 
 | # | Item | Why now |
 |---|---|---|
-| P1 | **Fix X/Twitter RS leaders tweet** | Broken — half of nightly distribution silently failing |
-| P2 | **MODERATE EP recap in morning briefing** | HIGHs fire real-time; MODERATEs vanish. One could be the best trade of the day. Single DB query. |
-| P3 | **Paper trading validation report** | Gate before real money — win rate / avg-R by regime, catalyst type, theme stage over full history |
-| P4 | **EP outcome table** | "How did last week's EPs do?" Already have `mi_signal_outcomes` — mostly a formatter. Makes scoring calibration visible. |
-| P5 | **Theme conviction display** | Days active + consecutive Accelerating days on every theme line. Tells you "3-week run" vs. "flipped yesterday." One column addition. |
-| P6 | **Trading journal** | Log your own trades ("Bought NVDA at 142"). Win rate by regime/setup accumulates over time — start now so data builds. |
-| P7 | **"What to watch today" pregame** | On-demand morning synthesis: regime + Accelerating themes + open EPs + tracked stocks near MAs. More compact than the scheduled brief, available after open when the brief is stale. |
-| P8 | **Earnings calendar** | Flag when RS leaders / theme stocks report that week. Holding through earnings unknowingly is a real risk. yfinance has next earnings date already. |
-| P9 | **Trade postmortem command** | `postmortem TICKER` — joins EP score/catalyst, entry/stop timeline, regime, theme context, and news into one narrative. Turns failed (and winning) trades into structured learning. Most data already in DB; hardest part is intraday news for past dates. Most useful after P4 surfaces which trades to review. |
-| P10 | **Watchlist price alerts** | "Alert me when NVDA breaks 140." Scheduled price check, high daily utility. |
-| P11 | **EPS estimates** | Forward consensus + surprise%. Data source TBD (Alpha Vantage free tier). Lower priority than earnings date. |
-| P12 | **Sector rotation view** | 4-week RS trend by sector/theme — "is money rotating from semis to defense?" Query against existing `mi_stock_scores.sector`. |
-| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days — oscillating members that need permanent exclusion. |
-| P14 | **Weekend "what to watch this week" briefing** | Saturday morning synthesis: regime trend + momentum themes + EP setups to watch. Lower urgency — already queryable on demand. |
-| P15 | **Correlation clustering** | Early sub-theme discovery before RS leaders emerge. Highest alpha, highest complexity. Build after feedback loop is working. |
-| P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation report is solid and regime improves from Crisis. |
+| P10 | **Conditional auto-entry alerts** | Not standalone price alerts (TradingView handles those). Becomes valuable only when fused: trigger AND ticker has Accelerating/Mainstream theme AND RS ≥ threshold AND permissive regime → auto-prepare/propose trade. Defer until live trading is on. |
+| P13 | **Theme constituent churn detection** | Flag stocks entering/exiting a theme 2+ times in 10 days. Auto-suggest permanent exclusion. Query `mi_theme_history`. |
+| P16 | **Live trading** | Flip `LIVE_TRADING_ENABLED=true` after P3 validation data is solid and regime improves from Crisis. |
+| P17 | **Monthly & quarterly system reviews** | Weekly review ships already. Add monthly (1st Sun, 30d window, Opus) + quarterly (regime-conditional stats) after weekly has 3+ cycles and is trusted. |
+| P18 | **+3R / 72h partial-profit path** | Current partial is hold-day based. Add R-multiple trigger (`price ≥ entry + 3×initial_risk → sell 1/3`) as additional path. Needs 10+ closed trades of data first. |
+| P19 | **VIX-scaled continuous risk sizing** | Binary today (`RISK_PCT=0.01`, halved when QQQ EMA bearish). Continuous `risk = base × max(0, 1 - (VIX-15)/20)` is cleaner but needs VIX ingest. Revisit after 3+ months live. |
+| P20 | **Earnings-week IV pre-pass** | Blocked: Polygon free tier has no IV. |
+| P21 | **Cross-asset thematic validation** | Parallel RS on commodity/futures ETFs (CPER, URA, HG). Equity theme + commodity RS alignment → boost theme conviction ×1.2. |
+| P22 | **Wick-fill shadow tracking (telemetry-only)** | 9M days closing mid-range with long upper wick + green body (Kristjan/Bonde "negated shooting star"). Sugar Baby filter correctly rejects these — but they capture alpha via different mechanism. Build `mi_wick_candidates` table; answer 3 questions after 30+ candidates before promoting to execution. |
+| — | **MAGNA53 simulator** | Interactive frontend: slider over gap/RVOL/catalyst/float/regime → shows final score + component breakdown. Needs web UI. |
