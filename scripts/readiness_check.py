@@ -14,7 +14,7 @@ Checks (every check prints ✅ / ❌ and a number):
   3. Silent audit errors       — mi_audit_log '*_error' events in the window.
   4. Paper trade sample size   — closed mi_live_trades rows in the window.
   5. Regime check              — current mi_market_regime must not be Crisis.
-  6. Feed health               — yesterday's orb_subscribe_failed count.
+  6. Feed health               — orb_subscribe_failed count in the last 24h.
 
 Usage:
     python scripts/readiness_check.py                  # default 30-day window
@@ -26,8 +26,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import date, timedelta
+from datetime import timedelta
 
+from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import get_pool
 
 
@@ -64,7 +65,7 @@ async def check_naked_positions(conn, verbose: bool) -> bool:
     return ok
 
 
-async def check_reason_coverage(conn, since: date, verbose: bool) -> bool:
+async def check_reason_coverage(conn, since, verbose: bool) -> bool:
     # Reason-coverage invariant: every row either has a terminal status or a
     # bounded skip_reason. A row with both NULL is a silent drop.
     rows = await conn.fetch(
@@ -86,7 +87,7 @@ async def check_reason_coverage(conn, since: date, verbose: bool) -> bool:
     return ok
 
 
-async def check_audit_errors(conn, since: date, verbose: bool) -> bool:
+async def check_audit_errors(conn, since, verbose: bool) -> bool:
     # Any error bucket in the window is a reason to investigate before flipping.
     # This check is lenient on count but strict on 0-known failures at cutover.
     rows = await conn.fetch(
@@ -110,7 +111,7 @@ async def check_audit_errors(conn, since: date, verbose: bool) -> bool:
     return ok
 
 
-async def check_closed_trade_sample(conn, since: date) -> bool:
+async def check_closed_trade_sample(conn, since) -> bool:
     row = await conn.fetchrow(
         """
         SELECT COUNT(*) AS n
@@ -143,9 +144,9 @@ async def check_regime(conn) -> bool:
 
 
 async def check_feed_health(conn) -> bool:
-    # Yesterday's subscribe failures are the most actionable feed-health signal.
-    # Zero-range events are informational on IEX and warning on SIP, but a
-    # subscribe failure means the SDK couldn't even register the ticker.
+    # Rolling 24h subscribe failures — the most actionable feed-health signal.
+    # A subscribe failure means the SDK couldn't even register the ticker;
+    # zero-range is informational on IEX and only meaningful on SIP.
     row = await conn.fetchrow(
         """
         SELECT
@@ -163,7 +164,7 @@ async def check_feed_health(conn) -> bool:
 
 
 async def main(days: int, verbose: bool) -> int:
-    since = date.today() - timedelta(days=days)
+    since = et_today() - timedelta(days=days)
     print(f"\n── Readiness check · window: {days}d (since {since}) ──\n")
 
     pool = await get_pool()

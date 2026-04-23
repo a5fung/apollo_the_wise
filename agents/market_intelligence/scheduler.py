@@ -692,17 +692,16 @@ async def _eod_ep_recap_job():
     """
     logger.info("EOD EP recap starting...")
     try:
-        import os
         from agents.market_intelligence.db import get_ep_outcomes, get_sip_feed_telemetry
         from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.broker.alpaca_client import get_data_feed
         today = et_today()
         today_str = str(today)
         outcomes = await get_ep_outcomes(days_back=1, tier="HIGH")
         today_outcomes = [o for o in outcomes if str(o.get("alert_date")) == today_str]
 
-        # Feed telemetry — surfaces silent SIP degradation even on zero-HIGH days.
         feed_tel = await get_sip_feed_telemetry(today)
-        feed = os.environ.get("ALPACA_DATA_FEED", "iex").lower()
+        feed = get_data_feed().value.lower()
         feed_line = (
             f"📡 Feed ({feed}): {feed_tel['bars_fetched']} bars · "
             f"{feed_tel['zero_range']} zero-range · "
