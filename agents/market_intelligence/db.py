@@ -2820,6 +2820,39 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
         logger.warning(f"audit log write failed ({event_type}): {e}")
 
 
+async def get_sip_feed_telemetry(trade_date: date) -> dict[str, int]:
+    """Summarize today's bar-stream / REST-backfill feed events for SIP monitoring.
+
+    Returns counts for `orb_bar_fetched`, zero-range bars, subscribe failures,
+    and bar-stream disconnects in the trading-day window (ET). Used by the
+    4:10 PM EOD recap to surface silent feed degradation — if the Alpaca
+    subscription lapses or SIP endpoint rejects our creds on a slow EP day,
+    we otherwise have no HIGH-tier row to signal the problem.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT
+              COUNT(*) FILTER (WHERE event_type = 'orb_bar_fetched') AS bars_fetched,
+              COUNT(*) FILTER (WHERE event_type = 'orb_bar_fetched'
+                               AND detail LIKE '%range=0.00%')       AS zero_range,
+              COUNT(*) FILTER (WHERE event_type = 'orb_subscribe_failed') AS subscribe_failed,
+              COUNT(*) FILTER (WHERE event_type = 'bar_stream_disconnect') AS stream_disconnect
+            FROM mi_audit_log
+            WHERE created_at >= ($1::date AT TIME ZONE 'America/New_York')
+              AND created_at <  (($1::date + INTERVAL '1 day')::date AT TIME ZONE 'America/New_York')
+            """,
+            trade_date,
+        )
+    return {
+        "bars_fetched":      int(row["bars_fetched"] or 0),
+        "zero_range":        int(row["zero_range"] or 0),
+        "subscribe_failed":  int(row["subscribe_failed"] or 0),
+        "stream_disconnect": int(row["stream_disconnect"] or 0),
+    }
+
+
 # ── Validation cooldowns ───────────────────────────────────────────────────────
 
 async def add_validation_cooldown(

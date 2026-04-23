@@ -18,6 +18,7 @@ COPY agents/market_intelligence/ agents/market_intelligence/
 COPY shared/ shared/
 COPY core/notifications.py core/notifications.py
 COPY integrations.yaml integrations.yaml
+COPY scripts/ scripts/
 
 RUN useradd -m -u 1000 apollo && chown -R apollo:apollo /app
 USER apollo

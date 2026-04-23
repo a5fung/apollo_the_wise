@@ -685,17 +685,43 @@ async def _eod_ep_recap_job():
     """Run at 4:10 PM ET. One-shot Telegram summary of today's HIGH EP outcomes.
 
     Fires after _eod_cleanup_job (4:05 PM) so trade rows reflect the settled state.
-    Silent when no HIGH alerts today.
+    On zero-HIGH days: still posts a short feed-telemetry recap when any
+    bar-fetch or feed-failure events occurred, so silent SIP degradation
+    (subscription lapse, auth failure) surfaces even without HIGH activity.
+    Fully silent only when the day had zero HIGH alerts AND zero feed events.
     """
     logger.info("EOD EP recap starting...")
     try:
-        from agents.market_intelligence.db import get_ep_outcomes
+        import os
+        from agents.market_intelligence.db import get_ep_outcomes, get_sip_feed_telemetry
         from agents.market_intelligence.collector import et_today
         today = et_today()
         today_str = str(today)
         outcomes = await get_ep_outcomes(days_back=1, tier="HIGH")
         today_outcomes = [o for o in outcomes if str(o.get("alert_date")) == today_str]
+
+        # Feed telemetry — surfaces silent SIP degradation even on zero-HIGH days.
+        feed_tel = await get_sip_feed_telemetry(today)
+        feed = os.environ.get("ALPACA_DATA_FEED", "iex").lower()
+        feed_line = (
+            f"📡 Feed ({feed}): {feed_tel['bars_fetched']} bars · "
+            f"{feed_tel['zero_range']} zero-range · "
+            f"{feed_tel['subscribe_failed']} subscribe-fail · "
+            f"{feed_tel['stream_disconnect']} disconnect"
+        )
+        feed_alert = (
+            feed_tel["subscribe_failed"] > 0
+            or (feed == "sip" and feed_tel["zero_range"] > 0 and feed_tel["bars_fetched"] > 0)
+        )
+
         if not today_outcomes:
+            # Still report feed health — the silent-feed case is exactly why this exists.
+            if feed_alert or feed_tel["bars_fetched"] > 0:
+                prefix = "⚠️ " if feed_alert else ""
+                await send_telegram_message(
+                    f"{prefix}*EP EOD Recap — {today_str}*\n"
+                    f"No HIGH EPs today.\n{feed_line}"
+                )
             logger.info("EOD EP recap: no HIGH EPs today")
             return
 
@@ -717,6 +743,10 @@ async def _eod_ep_recap_job():
         dropped = max(0, len(missed) - 8)
         if dropped:
             lines.append(f"  • …{dropped} more missed")
+
+        lines.append(feed_line)
+        if feed_alert:
+            lines.insert(0, "⚠️ *Feed health flagged — see 📡 line below*")
 
         await send_telegram_message("\n".join(lines))
         logger.info("EOD EP recap sent")

@@ -1081,3 +1081,51 @@ clean pass. Rollback is one env flip + restart; no git revert needed.
 If any fire: move to **Polygon Advanced ($199)** as primary realtime
 source and keep Alpaca Algo Trader Plus as a $99 fallback (dual-feed
 consensus). That's a separate plan when the trigger fires.
+
+---
+
+## Changes Made 2026-04-23 (session 3) — Validation-window hardening
+
+Three follow-ups identified post-SIP-flip to make the 3-4 week paper
+validation window (target 2026-05-23 cutover) robust against silent
+failure modes.
+
+### A. Dockerfile fix — scripts survive container rebuilds
+`docker/Dockerfile.market` now `COPY scripts/ scripts/`. Recovery
+scripts (`verify_sip_parity.py`, `backfill_orphan_ep_alerts.py`,
+`cleanup_9m_false_alerts.py`, `readiness_check.py`) no longer disappear
+on container rebuild. Previously a healthcheck restart mid-incident
+would have stranded us without the recovery tooling.
+
+### B. SIP daily telemetry in EOD EP recap
+`scheduler._eod_ep_recap_job` now queries `mi_audit_log` for today's
+bar-fetch events and appends one line to the 4:10 PM Telegram recap:
+`📡 Feed (sip): N bars · M zero-range · K subscribe-fail · D disconnect`.
+The recap now fires even on zero-HIGH days if any feed events occurred,
+with a ⚠️ prefix when subscribe-failed > 0 or (on SIP) zero-range > 0.
+This catches silent subscription lapses / SIP auth issues on slow EP
+days where no HIGH-tier row would otherwise surface the problem. New
+helper `get_sip_feed_telemetry(trade_date)` in `db.py`.
+
+### C. Readiness check script
+`scripts/readiness_check.py` encodes the six cutover gating criteria
+from `project_live_money_cutover_target.md` as concrete SQL that
+returns pass/fail with counts:
+
+| Check | Gate |
+|---|---|
+| Naked positions | `status='filled' AND stop_order_id IS NULL` past 60s grace → must be 0 |
+| Reason-coverage invariant | rows with both `status` and `skip_reason` NULL → must be 0 |
+| Silent audit errors | `event_type LIKE '%_error'` in window → must be 0 |
+| Paper trade sample | closed rows with stop_price in window → must be ≥ 10 |
+| Regime check | latest `mi_market_regime.regime` must not be Crisis |
+| Feed health (24h) | `orb_subscribe_failed` events → must be 0 |
+
+Usage: `python scripts/readiness_check.py [--days 30] [--verbose]`.
+Run weekly during the validation window; run deliberately at
+~2026-05-23 as the formal go/no-go gate.
+
+### Files Changed
+`docker/Dockerfile.market`, `agents/market_intelligence/db.py`,
+`agents/market_intelligence/scheduler.py`,
+`scripts/readiness_check.py` (new), `CLAUDE.md`
