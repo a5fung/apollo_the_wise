@@ -68,7 +68,6 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - audit_log:/app/audit.log
       - /etc/ssl/certs:/etc/ssl/certs:ro  # System CA certs
     restart: always
     logging:
@@ -132,7 +131,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  audit_log:
   uptime_kuma_data:
 
 networks:
