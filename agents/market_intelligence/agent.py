@@ -3056,6 +3056,13 @@ class MarketIntelligenceAgent(BaseAgent):
                     WHERE status = 'filled' AND remaining_shares > 0
                     ORDER BY alert_date ASC
                 """)
+                pending_rows = await conn.fetch("""
+                    SELECT ticker, alert_date, status, entry_shares, orb_high,
+                           orb_low, stop_price, ep_score, catalyst_quality
+                    FROM mi_live_trades
+                    WHERE status IN ('order_placed', 'pending_confirmation')
+                    ORDER BY alert_date ASC, ticker
+                """)
                 closed_rows = await conn.fetch("""
                     SELECT ticker, entry_price, total_pnl, hold_days,
                            exits, ep_score, closed_at
@@ -3134,6 +3141,22 @@ class MarketIntelligenceAgent(BaseAgent):
             else:
                 lines.append("")
                 lines.append("_No open positions._")
+
+            if pending_rows:
+                lines.append("")
+                lines.append(f"*Pending Entry ({len(pending_rows)})*")
+                for pr in pending_rows:
+                    shares = pr.get("entry_shares") or 0
+                    buy_at = pr.get("orb_high")
+                    stop_at = pr.get("orb_low") or pr.get("stop_price")
+                    buy_str = f"${buy_at:.2f}" if buy_at else "?"
+                    stop_str = f"${stop_at:.2f}" if stop_at else "?"
+                    state_icon = "⏳" if pr["status"] == "order_placed" else "📝"
+                    state_label = "order placed" if pr["status"] == "order_placed" else "awaiting confirm"
+                    lines.append(
+                        f"  {state_icon} *{pr['ticker']}* · {state_label}\n"
+                        f"      Buy stop {buy_str} · Stop {stop_str} · {shares:.0f} sh"
+                    )
 
             if closed_rows:
                 lines.append("")
