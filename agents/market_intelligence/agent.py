@@ -2100,16 +2100,16 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines).strip(), data={"ep_alerts": alerts})
 
     async def _handle_regime_query(self, request: AgentRequest) -> AgentResponse:
-        regime = await get_current_regime()
-        label = regime.get("regime", "Unknown")
-        desc = regime.get("description", "")
-        threshold = regime.get("ep_threshold", 70)
+        from agents.market_intelligence.briefing import _format_regime_section
 
-        result = (
-            f"Market Regime: *{label}*\n"
-            f"EP threshold: {threshold}+\n\n"
-            f"{desc}"
-        )
+        regime = await get_current_regime()
+        # Use the same rich traffic-light formatter as the evening brief —
+        # SPY/QQQ MAs, VIX context, Stockbee breadth (primary + secondary),
+        # momentum counts, T2108, EP filter. One source of truth for regime
+        # display across briefings and on-demand queries.
+        body = _format_regime_section(regime, section_num=1)
+        desc = (regime.get("description") or "").strip()
+        result = body + (f"\n\n_{desc}_" if desc else "")
         return self._ok(request, result=result, data=regime)
 
     async def _handle_rs_query(self, request: AgentRequest) -> AgentResponse:

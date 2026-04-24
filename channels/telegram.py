@@ -423,57 +423,55 @@ class TelegramChannel:
         text = (
             f"*{assistant_name} — Quick Reference*\n"
             "\n"
-            "*Market Intelligence*\n"
-            "📊 `Send evening briefing` — RS leaders + theme scorecard + EPS flags\n"
-            "☀️ `Send morning briefing` — pre-market + overnight news + EPs\n"
-            "⚡ `Run theme engine` — refresh themes now (returns full scorecard)\n"
-            "🔄 `Run data refresh` — full nightly pull (RS + regime + themes + fundamentals)\n"
+            "*Daily commands*\n"
+            "/hud — pinned snapshot; buttons for Regime/Themes/9M/Clusters/Watchlist\n"
+            "/pregame — trade-ready shortlist (themes, HIGH EPs, MA pullbacks, sugar babies)\n"
+            "/ep — EP alerts today (MAGNA53) · buttons: [HIGH] [MODERATE]\n"
+            "/trades — positions + P&L · buttons: [Closed] [Skipped] [Paper]\n"
+            "/status — system health + API spend\n"
+            "/help — this reference\n"
             "\n"
-            "Ask naturally:\n"
-            '• "Any EPs today?" · "Market regime?"\n'
-            '• "Top RS stocks" · "Active themes?"\n'
-            '• "Score AXTI" · "Fundamentals on CIEN"\n'
-            '• "Optical stocks near 20MA?"\n'
-            '• "Screen RS > 70 with EPS growth > 25%"\n'
+            "*Diagnostics*\n"
+            "`/why TICKER [YYYY-MM-DD]` — full lifecycle trace (alert → entry/skip → events)\n"
+            "`show errors 7d` — recent engine errors (validation, broker, feed)\n"
+            "`weekly review` — on-demand system self-audit (also Sun 8 AM)\n"
             "\n"
-            "*History*\n"
-            '🕐 "RS history CIEN, LITE, COHR" — weekly RS over 90 days\n'
-            '📈 "When did metals/miners theme peak?"\n'
-            '📉 "How has optical networking theme evolved?"\n'
+            "*Ask naturally*\n"
+            '• "EPs today" · "9M alerts" · "sugar babies"\n'
+            '• "Market regime" · "top RS stocks" · "active themes"\n'
+            '• "Score AXTI" · "Fundamentals CIEN" · "RS history LITE COHR"\n'
+            '• "Optical stocks near 20MA" · "Screen RS>70 EPS growth>25"\n'
             "\n"
-            "*Teach & Update*\n"
-            '📌 "AXTI is working, track it" — add stocks + seed themes\n'
-            '📝 "GLW got a Meta deal for optical" — updates company description\n'
-            '   _(Apollo recognizes business pivots and asks to confirm)_\n'
+            "*Briefings & jobs*\n"
+            '📊 `Send evening briefing` — regime + RS + themes + pullbacks\n'
+            '☀️ `Send morning briefing` — EPs + overnight + regime\n'
+            '🔄 `Run data refresh` — nightly pull (RS, regime, themes, 9M EOD)\n'
+            '⚡ `Run theme engine` — themes only (no RS/regime recompute)\n'
             "\n"
-            "*Theme Management*\n"
-            '🚫 `Exclude CAR from [exact theme name]` — permanently ban ticker from theme\n'
-            '📋 `List exclusions` — show all active theme bans\n'
-            '↩️ `Remove exclusion CAR from [theme name]` — undo a ban\n'
+            "*Trading journal*\n"
+            '📝 `journal: <note>` — log a trade observation\n'
+            '📖 `show journal` / `journal this week`\n'
             "\n"
-            "*Audit & Diagnostics*\n"
-            '🔍 `Audit log` — last 20 engine events (48h)\n'
-            '🤖 `Advisor log` — Opus advisor calls + full verdicts\n'
-            '📅 `Show logs 7d` — extend window to 7 days\n'
-            '   _Filter: "show logs advisor/discover/retired/excluded"_\n'
+            "*Theme management*\n"
+            '🚫 `exclude CAR from [exact theme name]` — permanent ban\n'
+            '📋 `list exclusions` · ↩️ `remove exclusion CAR from [theme]`\n'
+            '🧊 `show cooldowns` — 14d soft blocks from validation removals\n'
+            '   `bypass cooldown TICKER [theme] [reason]` — override\n'
             "\n"
-            "*Overnight Watchlist*\n"
-            '🔔 `Show watchlist` — tracked instruments\n'
-            '📌 `Track bitcoin with 5%` — add instrument\n'
-            '❌ `Drop oil` — remove instrument\n'
+            "*Overnight watchlist* (macro instruments — oil, BTC, gold, VIX…)\n"
+            '🔔 `show watchlist` · 📌 `track bitcoin with 5%` · ❌ `drop oil`\n'
             "\n"
             "*EP Trading Rules (Qullamaggie v2)*\n"
-            "• Filters: EP >= 70 (HIGH) · ADV >= $1M · ATR% <= 15% · MCap >= $500M\n"
-            "• Entry: ORB High breakout (9:30-9:35) · Stop: ORB Low\n"
-            "• Skip if ORB range > 1.5x ATR-14 or ORB High never broken\n"
-            "• Day 1: hold full; Day 2+: trail 10/20-SMA; stop floor = Day 1 low\n"
+            "• Filters: score >= 70 (HIGH) · ADV >= $1M · ATR% <= 15% · MCap >= $500M\n"
+            "• Entry: 1-min ORB at 9:31 ET · Stop = ORB low · bracket auto-submitted\n"
+            "• Skip if ORB range > 1.5x ATR-14 or ORB high never broken\n"
+            "• Day 1: hold full · Day 2+: trail 10/20-SMA · stop floor = Day 1 low\n"
             "• Partial 1/3 Day 3-5; stop → breakeven after partial\n"
+            "• 9M Day 2: prior-day-low stop; shape-tag filter (uptrend/pullback)\n"
+            "• Safeguards: max 4 open · 2% daily loss · 3-loss circuit breaker\n"
             "_Full doc: EP_TRADING_RULES.md_\n"
             "\n"
-            "*Commands*\n"
-            "/hud /pregame /ep /trades — daily drivers\n"
-            "/status — system + spend · /help — this reference\n"
-            "_Hidden but working: /9m /themes /clusters /regime /spend /rules /setup_"
+            "_Still-working but off-menu: /9m /themes /clusters /regime /spend /rules /setup /eps_"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
