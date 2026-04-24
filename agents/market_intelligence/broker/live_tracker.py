@@ -31,6 +31,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_ACCOUNT_FETCH_FAILED,
+    SETUP_FADED_FROM_ORB,
     WINDOW_DUPLICATE,
     WINDOW_OUT_OF_ORB,
     humanize,
@@ -121,6 +122,34 @@ async def _submit_orb_trade(
 ) -> dict:
     """Build order spec, check safeguards, and submit trade for a single alert."""
     ticker = alert["ticker"]
+
+    # Fade guard: if price has already dropped below the ORB midpoint by the time
+    # we're submitting, the gap-and-go has failed its own support. A stop-limit buy
+    # at ORB high would still fill on a dead-cat-bounce retest hours later, with
+    # the stock in an intraday downtrend — not the momentum pattern we're trading.
+    # Skipped when latest-trade lookup fails (conservative: don't block on data
+    # flakiness mid-morning).
+    orb_high = orb_bar["high"]
+    orb_low = orb_bar["low"]
+    orb_midpoint = (orb_high + orb_low) / 2.0
+    latest = await alpaca.get_latest_trade(ticker)
+    if latest and latest.get("price"):
+        last_price = float(latest["price"])
+        if last_price < orb_midpoint:
+            fade_pct = (orb_high - last_price) / orb_high * 100 if orb_high > 0 else 0
+            skip_msg = (
+                f"{SETUP_FADED_FROM_ORB}: last ${last_price:.2f} < midpoint "
+                f"${orb_midpoint:.2f} (ORB H=${orb_high:.2f} L=${orb_low:.2f}, "
+                f"faded {fade_pct:.1f}%)"
+            )
+            await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event("orb_faded", f"{ticker} — {skip_msg}")
+            except Exception:
+                pass
+            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_msg)}")
+            return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
 
     order_spec, spec_reason = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
     if not order_spec:

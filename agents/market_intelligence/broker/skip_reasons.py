@@ -24,6 +24,7 @@ SETUP_ZERO_RANGE           = "setup:zero_range"
 SETUP_SIZE_TOO_SMALL       = "setup:size_too_small"
 SETUP_PRICE_EXCEEDS_CAP    = "setup:price_exceeds_cap"
 SETUP_ACCOUNT_FETCH_FAILED = "setup:account_fetch_failed"
+SETUP_FADED_FROM_ORB       = "setup:faded_from_orb"
 
 # ── block: safeguards (circuit breakers, position limits) ───────────────────
 BLOCK_MAX_POSITIONS   = "block:max_positions"
@@ -57,6 +58,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_SIZE_TOO_SMALL:       "Position size too small",
     SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
+    SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
     BLOCK_MAX_POSITIONS:        "Max open positions reached",
     BLOCK_DAILY_LOSS:           "Daily loss limit hit",
     BLOCK_CIRCUIT_BREAKER:      "3-loss circuit breaker tripped",

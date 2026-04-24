@@ -1129,3 +1129,193 @@ Run weekly during the validation window; run deliberately at
 `docker/Dockerfile.market`, `agents/market_intelligence/db.py`,
 `agents/market_intelligence/scheduler.py`,
 `scripts/readiness_check.py` (new), `CLAUDE.md`
+
+---
+
+## Changes Made 2026-04-24 — OTO bracket stop-leg ID capture
+
+### Problem (INTC, 2026-04-24)
+1. INTC entered, 🚨 UNPROTECTED alert fired with Alpaca error
+   `heldForOrders:'237'` — meaning all 237 shares were already locked by
+   an existing sell order. So the OTO child stop WAS placed at Alpaca;
+   our remediation stop attempt was the false alarm.
+2. Stop eventually fired at $82.01 → reported as `💱 Untracked SELL`
+   instead of `❌ Stopped out`. `/trades` still showed the position open.
+3. No Day 1 re-entry was attempted.
+
+### Root cause
+Four different implementations of "find the stop leg in a bracket
+response," only one of them robust. The submission path
+(`order_manager.submit_entry`) used a strict `leg.get("type") == "stop"`
+equality check. Under Python 3.12 (market-agent image),
+`str(OrderType.STOP)` returns `"OrderType.STOP"`, not `"stop"` — so the
+check silently fails and `stop_order_id` is written as NULL to
+`mi_live_trades`.
+
+Cascade from there:
+- WS fill handler (`trade_stream._process_entry_fill`) has its own leg
+  extraction which is more robust but depends on `order.legs` being
+  populated on the WS event. For OTO parents this payload is sometimes
+  empty. It falls into the remediation branch, which tries to place a
+  standalone stop for all 237 shares and is rejected with
+  `insufficient qty / heldForOrders:237` (because the OTO child is
+  already live).
+- When the OTO child later fires at the stop price, the WS fill event
+  can't match on `stop_order_id` (NULL in DB) → routes to "Untracked
+  SELL", never updates `mi_live_trades.status`, never triggers
+  `_process_stop_fill` → no Day 1 re-entry fires.
+
+### Fix — single canonical extraction
+New `alpaca_client.extract_stop_leg_id(order)` helper that:
+- Works with both alpaca-py Order objects and `_order_to_dict` dicts.
+- Uses `stop_price` as the primary signal.
+- Falls back to case-insensitive `"stop" in type_str` — robust against
+  Python 3.11+ Enum stringification.
+
+Applied everywhere a leg is extracted, replacing all four ad-hoc loops:
+- `alpaca_client.place_bracket_order` (naked-order guard)
+- `order_manager.submit_entry` (submission-time capture)
+- `order_manager.check_fills` (polling path)
+- `order_manager.attempt_day1_reentry` (re-entry capture)
+- `trade_stream._process_entry_fill` (WS fill path)
+
+### Defense-in-depth layers
+`submit_entry` now refetches via REST when the submission response
+omits `legs` — REST always returns them populated. `_process_entry_fill`
+now checks three sources before firing remediation:
+1. WS event's `order.legs`
+2. `mi_live_trades.stop_order_id` (submit_entry wrote it pre-fill)
+3. REST refetch of the parent order
+
+Only if all three are empty does it attempt to place a standalone
+remediation stop — which is the true last-resort behavior the branch
+was written for. This also eliminates the false-alarm
+UNPROTECTED alert in the OTO-capture-failure case.
+
+### Files Changed
+`agents/market_intelligence/broker/alpaca_client.py`,
+`agents/market_intelligence/broker/order_manager.py`,
+`agents/market_intelligence/broker/trade_stream.py`, `CLAUDE.md`
+
+### ⚠️ Post-deploy verification
+1. Next live-traded entry: confirm the
+   `🛡 Protective stop placed` / `🚨 UNPROTECTED POSITION` messages do
+   NOT fire for an OTO bracket whose child stop is healthy. Fill
+   sequence should be `✅ FILLED` only, no intervening 🚨.
+2. `SELECT ticker, stop_order_id FROM mi_live_trades WHERE status='filled'`
+   — every filled row must have a non-NULL `stop_order_id`.
+3. When the next stop fires, it should produce `❌ Stopped out:` (not
+   `💱 Untracked SELL:`) and the trade row should move to `status='closed'`
+   with `total_pnl` populated.
+
+### ⚠️ INTC manual cleanup (2026-04-24)
+DB row for INTC today is stuck `status='filled'` / `remaining_shares=237`
+even though the position is closed at Alpaca. Run on prod (adjust
+`closed_at` / stop-fill time if needed):
+
+```sql
+-- Dry-run first
+SELECT id, ticker, alert_date, status, entry_price, remaining_shares,
+       stop_price, stop_order_id, total_pnl
+FROM mi_live_trades
+WHERE ticker = 'INTC' AND alert_date = CURRENT_DATE;
+
+-- Apply (entry $84.04 × 237, stop fired $82.01)
+UPDATE mi_live_trades
+SET status = 'closed',
+    remaining_shares = 0,
+    stop_order_id = NULL,
+    closed_at = NOW(),
+    total_pnl = ROUND((82.01 - entry_price)::numeric * 237, 2),
+    exits = jsonb_build_array(jsonb_build_object(
+        'time',   NOW()::text,
+        'price',  82.01,
+        'reason', 'stop_hit',
+        'shares', 237,
+        'pnl',    ROUND((82.01 - entry_price)::numeric * 237, 2),
+        'attempt', 1,
+        'source', 'manual_cleanup_2026-04-24_oto_id_bug'
+    ))
+WHERE ticker = 'INTC'
+  AND alert_date = CURRENT_DATE
+  AND status = 'filled';
+```
+
+---
+
+## Changes Made 2026-04-24 (session 2) — ORB late-entry & fade guard
+
+### Problem (CHE, 2026-04-24)
+CHE gapped +17.9%, first crossed HIGH threshold at 9:55 ET. The
+`post_open_new_high` code path placed a stop-limit buy at ORB high
+($444.60) with stop at ORB low ($438.84), but by 9:55 the tape had
+already faded from the open-minute high. The order sat pending —
+any subsequent fill would be a dead-cat-bounce retest hours later,
+not a continuation breakout. Two orthogonal gaps:
+1. Submission window ran to 10:00 ET (`now_et.hour < 10`) — too
+   lenient. A HIGH first surfacing at 9:55 against a 9:30–9:31 ORB
+   is a stale setup by construction.
+2. No fade check — even at 9:31, a bar closing with a long upper
+   wick and price already back near the low would still get a
+   bracket placed at the wick high.
+
+### Fixes
+
+**1. Fade guard in `_submit_orb_trade`** (`broker/live_tracker.py`)
+Before `prepare_orb_order` runs, fetch latest trade via
+`alpaca.get_latest_trade(ticker)`. If `last_price < (orb_high + orb_low) / 2`
+(below ORB midpoint), skip with `SETUP_FADED_FROM_ORB`. Rationale:
+a gap-and-go that's giving back more than half the open-minute
+range has lost its momentum edge. Below midpoint = breakout is
+already into stop territory.
+
+Silent-on-failure: if `get_latest_trade` returns None or 0
+(feed flake), the check is skipped and the bracket goes through —
+don't block trading on data hiccups mid-morning.
+
+**2. Tightened submission window** (`scheduler.py:486`)
+`within_orb_window = market_open and now_et.hour == 9 and now_et.minute < 45`
+(was `now_et.hour < 10`). Matches the 15-min gate already used for
+EP projection. HIGHs arriving 9:45–9:59 ET fall into the existing
+`WINDOW_OUT_OF_ORB` branch (Telegram alert, skip row, no order).
+
+**3. 10:00 AM ET unfilled-entry cancel job** (`scheduler.py`)
+New `_orb_window_cleanup_job` at 10:00 ET reuses
+`cancel_unfilled_entries`. Anything still `order_placed` by 10:00
+means the ORB high wasn't broken during the window — stops it
+from sitting 6 more hours waiting for a failed-gap-reclaim
+bounce. Complements the existing 4:05 PM EOD cancel.
+
+**4. Skip-reason humanization** (`broker/skip_reasons.py`)
+New `SETUP_FADED_FROM_ORB = "setup:faded_from_orb"` +
+`_HUMAN_LABELS` entry "Price faded below ORB midpoint". Flows
+through every Telegram surface (immediate skip alert, `/why`,
+`/trades_detail skipped`, evening brief, EOD EP recap) via the
+existing `humanize()` pipeline — no per-surface wiring.
+
+### Files Changed
+`broker/skip_reasons.py`, `broker/live_tracker.py`, `scheduler.py`,
+`CLAUDE.md`
+
+### Manual cleanup applied
+- **CHE** (today): Alpaca order `e6127c07-7a9e-4245-b6d2-9a8d7b2a0452`
+  cancelled, trade row marked `status='cancelled'` (trade_stream
+  picked up the cancel event).
+- **INTC** (today): DB row was stuck `status='filled'` from the
+  OTO-id bug. Applied the cleanup SQL — now `status='closed'`,
+  `total_pnl=-477.34`, stop-hit exit recorded.
+
+### ⚠️ Post-deploy verification
+1. Next HIGH EP arriving 9:45–9:59 ET: should generate a
+   `⏰ TICKER HIGH EP arrived HH:MM ET — ORB window closed, no order`
+   alert and a skipped trade row with prefix `window:out_of_orb`.
+2. A HIGH at 9:31–9:44 where the tape is already faded: should
+   generate `⏭️ TICKER ORB skipped — Price faded below ORB midpoint (...)`
+   and a skip row with prefix `setup:faded_from_orb`.
+3. At 10:00 ET the next trading day: any `order_placed` entries
+   from that morning must be cancelled (or already filled) — query
+   ```sql
+   SELECT ticker, status FROM mi_live_trades
+   WHERE alert_date = CURRENT_DATE AND status = 'order_placed';
+   ```
+   should return 0 rows at 10:01 ET.

@@ -179,12 +179,20 @@ async def submit_entry(trade_id: int) -> dict | None:
 
     # Store order in DB
     entry_order_id = order["id"]
-    stop_order_id = None
-    if order.get("legs"):
-        for leg in order["legs"]:
-            if leg.get("type") == "stop":
-                stop_order_id = leg["id"]
-                break
+    stop_order_id = alpaca.extract_stop_leg_id(order)
+
+    # Submission response occasionally omits `legs` for OTO parents even when
+    # the child stop was placed. A REST refetch always returns populated legs,
+    # so one extra call here closes the gap that triggers the fill-path
+    # remediation false alarm.
+    if not stop_order_id:
+        refetched = await alpaca.get_order(entry_order_id)
+        stop_order_id = alpaca.extract_stop_leg_id(refetched)
+        if not stop_order_id:
+            logger.warning(
+                f"{ticker} bracket {entry_order_id}: no stop leg after REST refetch — "
+                f"fill handler will remediate"
+            )
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -253,11 +261,7 @@ async def check_fills() -> list[dict]:
                 continue
 
             # Find the stop-loss order leg
-            stop_order_id = None
-            for leg in order.get("legs", []):
-                if leg.get("type") == "stop" or leg.get("stop_price"):
-                    stop_order_id = leg["id"]
-                    break
+            stop_order_id = alpaca.extract_stop_leg_id(order)
 
             async with pool.acquire() as conn:
                 await conn.execute("""
@@ -423,11 +427,10 @@ async def attempt_day1_reentry(
 
     # Update trade for re-entry
     new_entry_order_id = new_order["id"]
-    new_stop_order_id = None
-    for leg in new_order.get("legs", []):
-        if leg.get("type") == "stop" or leg.get("stop_price"):
-            new_stop_order_id = leg["id"]
-            break
+    new_stop_order_id = alpaca.extract_stop_leg_id(new_order)
+    if not new_stop_order_id:
+        refetched = await alpaca.get_order(new_entry_order_id)
+        new_stop_order_id = alpaca.extract_stop_leg_id(refetched)
 
     async with pool.acquire() as conn:
         await conn.execute("""

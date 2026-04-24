@@ -257,16 +257,28 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
             )
         return
 
-    # Extract stop-loss leg ID
-    stop_order_id = None
-    if order.legs:
-        for leg in order.legs:
-            if hasattr(leg, "stop_price") and leg.stop_price:
-                stop_order_id = str(leg.id)
-                break
-            if str(getattr(leg, "type", "")) == "stop":
-                stop_order_id = str(leg.id)
-                break
+    # Extract stop-loss leg ID. Multiple sources in priority order so one
+    # failure mode can't silently produce an untracked stop:
+    #   1. The WS fill-event payload (often populated, sometimes empty for OTO parents).
+    #   2. The DB value submit_entry already wrote at order-placement time.
+    #   3. A REST refetch of the parent order — legs are always populated there.
+    # Without #2/#3 we previously attempted a standalone remediation stop that
+    # Alpaca rejected with `heldForOrders` — false-alarming UNPROTECTED while
+    # the OTO child was actually live (see 2026-04-24 INTC incident).
+    stop_order_id = alpaca.extract_stop_leg_id(order)
+
+    if not stop_order_id:
+        async with pool.acquire() as conn:
+            stop_order_id = await conn.fetchval(
+                "SELECT stop_order_id FROM mi_live_trades WHERE id = $1", trade["id"]
+            )
+
+    if not stop_order_id:
+        try:
+            refetched = await alpaca.get_order(str(order.id))
+            stop_order_id = alpaca.extract_stop_leg_id(refetched)
+        except Exception as e:
+            logger.warning(f"Could not refetch order {order.id} for leg extraction: {e}")
 
     # Fill-path stop remediation — fire immediately instead of waiting for 4:05 PM sync
     # if no stop leg came back (bracket order_class validation in alpaca_client should

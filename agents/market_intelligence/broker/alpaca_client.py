@@ -45,6 +45,33 @@ def get_data_feed() -> DataFeed:
     return DataFeed.IEX
 
 
+def extract_stop_leg_id(order) -> str | None:
+    """Return the stop-loss leg's order ID from a bracket/OTO parent order.
+
+    Works with alpaca-py Order objects (WS events, live API returns) and
+    dicts produced by _order_to_dict. Uses `stop_price` as primary signal
+    and falls back to case-insensitive type substring — Python 3.11+
+    changed `str(Enum)` to "ClassName.MEMBER", which broke the older
+    `== "stop"` equality check and left submit-time IDs uncaptured.
+    """
+    if order is None:
+        return None
+
+    def _get(obj, key, default=None):
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+
+    for leg in (_get(order, "legs") or []):
+        has_stop_price = bool(_get(leg, "stop_price"))
+        type_str = str(_get(leg, "type", "") or "").lower()
+        if has_stop_price or "stop" in type_str:
+            lid = _get(leg, "id")
+            if lid:
+                return str(lid)
+    return None
+
+
 # ── Singleton clients ────────────────────────────────────────────────────────
 
 _trading_client: TradingClient | None = None
@@ -129,12 +156,7 @@ async def place_bracket_order(
         # unprotected on fill. alpaca-py silently drops invalid fields; verify legs
         # came back before we trust this order.
         legs = getattr(order, "legs", None) or []
-        has_stop_leg = any(
-            (hasattr(leg, "stop_price") and leg.stop_price)
-            or str(getattr(leg, "type", "")).lower() == "stop"
-            for leg in legs
-        )
-        if not has_stop_leg:
+        if not extract_stop_leg_id(order):
             # Abort: cancel the entry order so we don't fill naked, then raise so
             # the caller's retry fires (or the trade fails cleanly).
             try:

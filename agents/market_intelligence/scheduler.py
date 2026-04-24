@@ -481,9 +481,12 @@ async def _ep_scan_job():
 
         now_et = datetime.now(_ET)
         market_open = now_et.hour > 9 or (now_et.hour == 9 and now_et.minute >= 31)
-        # ORB bracket orders are only valid during the ORB window (9:31–9:59 AM ET).
-        # After 10 AM (or on a catchup fire from a late restart), skip order placement.
-        within_orb_window = market_open and now_et.hour < 10
+        # ORB bracket orders are only valid in the first 14 min of the session
+        # (9:31–9:44 AM ET). A HIGH first surfacing at 9:55 against a 9:30–9:31
+        # ORB bar is typically placing a stop-limit buy at a level the tape has
+        # already faded from; fills come hours later on dead-cat-bounce retests.
+        # Matches the 15-min gate already used for EP projection.
+        within_orb_window = market_open and now_et.hour == 9 and now_et.minute < 45
         new_highs_post_open = []
 
         for ep in eps:
@@ -679,6 +682,24 @@ async def _eod_cleanup_job():
     except Exception as e:
         logger.error(f"EOD cleanup failed: {e}")
         await notify_job_failure("eod_cleanup", str(e))
+
+
+async def _orb_window_cleanup_job():
+    """Run at 10:00 AM ET. Cancel unfilled ORB entries that haven't triggered.
+    If the stop-limit buy hasn't filled in the first 29 min, the ORB high wasn't
+    broken during the window — the setup is invalid and the pending order should
+    not sit for six more hours waiting for a failed-gap-reclaim bounce."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("ORB window cleanup starting (10:00 AM cancel)...")
+    try:
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries
+        cancelled = await cancel_unfilled_entries()
+        logger.info(f"ORB window cleanup: {cancelled} cancelled")
+    except Exception as e:
+        logger.error(f"ORB window cleanup failed: {e}")
+        await notify_job_failure("orb_window_cleanup", str(e))
 
 
 async def _eod_ep_recap_job():
@@ -1157,6 +1178,16 @@ def start_scheduler() -> AsyncIOScheduler:
         _morning_stop_refresh_job,
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="morning_stop_refresh",
+        replace_existing=True,
+    )
+
+    # ORB window cleanup: 10:00 AM ET — cancel unfilled entries once ORB window
+    # closes. Prevents stop-limit buys sitting for hours and filling on
+    # dead-cat-bounce retests well outside the setup's validity window.
+    _scheduler.add_job(
+        _orb_window_cleanup_job,
+        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="orb_window_cleanup",
         replace_existing=True,
     )
 
