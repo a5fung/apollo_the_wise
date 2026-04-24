@@ -462,13 +462,18 @@ class TelegramChannel:
             '📌 `Track bitcoin with 5%` — add instrument\n'
             '❌ `Drop oil` — remove instrument\n'
             "\n"
-            "*Other*\n"
-            "💰 Portfolio · Quotes · TradingView alerts\n"
-            "📅 Calendar · Events · Scheduling\n"
-            "🔍 Web search · Summarization\n"
-            "✈️ Travel · Flights · Hotels · Amex perks\n"
+            "*EP Trading Rules (Qullamaggie v2)*\n"
+            "• Filters: EP >= 70 (HIGH) · ADV >= $1M · ATR% <= 15% · MCap >= $500M\n"
+            "• Entry: ORB High breakout (9:30-9:35) · Stop: ORB Low\n"
+            "• Skip if ORB range > 1.5x ATR-14 or ORB High never broken\n"
+            "• Day 1: hold full; Day 2+: trail 10/20-SMA; stop floor = Day 1 low\n"
+            "• Partial 1/3 Day 3-5; stop → breakeven after partial\n"
+            "_Full doc: EP_TRADING_RULES.md_\n"
             "\n"
-            "/agents · /status · /spend · /trades · /rules · /setup"
+            "*Commands*\n"
+            "/hud /pregame /ep /trades — daily drivers\n"
+            "/status — system + spend · /help — this reference\n"
+            "_Hidden but working: /9m /themes /clusters /regime /spend /rules /setup_"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -725,7 +730,7 @@ class TelegramChannel:
     # ── Market-intelligence slash commands ───────────────────────────────────
 
     _MARKET_SLASH_COMMANDS = {
-        "/hud", "/eps", "/9m", "/themes", "/clusters", "/regime", "/positions",
+        "/hud", "/ep", "/eps", "/9m", "/themes", "/clusters", "/regime",
     }
 
     async def _dispatch_market_slash(
@@ -767,10 +772,11 @@ class TelegramChannel:
 
         await self._reply(update, result)
 
-    async def _handle_eps_command(
+    async def _handle_ep_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """/eps — compact summary with [View HIGH] [View MODERATE] drill-down buttons."""
+        """/ep — compact summary with [View HIGH] [View MODERATE] drill-down buttons.
+        (/eps routes here too as a silent alias for back-compat with pinned messages.)"""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
@@ -943,7 +949,23 @@ class TelegramChannel:
             await update.message.reply_text(f"Error: {e}")
             return
 
-        sent_msg = await update.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+        # Drill-down buttons: one tap per /hud section. Survive the hourly
+        # refresh because editMessageText without reply_markup leaves the
+        # existing keyboard intact.
+        hud_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Regime",    callback_data="hud:regime"),
+                InlineKeyboardButton("Themes",    callback_data="hud:themes"),
+                InlineKeyboardButton("9M",        callback_data="hud:9m"),
+            ],
+            [
+                InlineKeyboardButton("Clusters",  callback_data="hud:clusters"),
+                InlineKeyboardButton("Watchlist", callback_data="hud:watchlist"),
+            ],
+        ])
+        sent_msg = await update.message.reply_text(
+            result, parse_mode=ParseMode.MARKDOWN, reply_markup=hud_keyboard
+        )
 
         # Pin the message (shows system notification in chat — expected)
         try:
@@ -1017,6 +1039,16 @@ class TelegramChannel:
         if market_status:
             lines.append("")
             lines.append(_format_market_pipeline(market_status))
+
+        # API spend (merged from retired /spend)
+        try:
+            from core.spend import get_spend_summary
+            spend_text = await get_spend_summary()
+            if spend_text:
+                lines.append("")
+                lines.append(spend_text)
+        except Exception as e:
+            logger.warning(f"Spend section in /status failed (non-fatal): {e}")
 
         await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
 
@@ -1147,6 +1179,9 @@ class TelegramChannel:
         elif callback_data.startswith(("eps:", "themes:", "trades:")):
             await self._handle_drill_down_callback(query, callback_data)
 
+        elif callback_data.startswith("hud:"):
+            await self._handle_hud_drill_down(query, callback_data)
+
         else:
             pass  # query already answered above
 
@@ -1227,6 +1262,51 @@ class TelegramChannel:
                 await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
             except Exception:
                 await query.message.reply_text(result, reply_markup=markup)
+
+    async def _handle_hud_drill_down(self, query, callback_data: str) -> None:
+        """Handle hud: drill-down button presses — sends a new message per section
+        so the pinned /hud snapshot stays intact and auto-refreshes."""
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await query.message.reply_text("Market agent not available.")
+            return
+
+        section = callback_data.split(":", 1)[1]
+        task_map = {
+            "regime":    "/regime",
+            "themes":    "/themes_detail All",
+            "9m":        "/9m",
+            "clusters":  "/clusters",
+            "watchlist": "show watchlist",
+        }
+        task = task_map.get(section)
+        if not task:
+            return
+
+        user_id = query.from_user.id if query.from_user else 0
+        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json().get("result") or "No data."
+        except Exception as e:
+            logger.error(f"HUD drill-down ({section}) failed: {e}")
+            result = f"Error: {e}"
+
+        try:
+            await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN)
+        except Exception as markdown_err:
+            logger.warning(f"HUD drill-down markdown send failed, retrying plain: {markdown_err}")
+            await query.message.reply_text(result)
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
@@ -1365,11 +1445,14 @@ class TelegramChannel:
         app.add_handler(CommandHandler("trades", self._handle_trades_command))
         # /hud gets a specialized handler — it pins the message and stores the ID
         app.add_handler(CommandHandler("hud", self._handle_hud_command))
-        # /eps and /themes send compact summary + drill-down buttons
-        app.add_handler(CommandHandler("eps", self._handle_eps_command))
+        # /ep (primary) + /eps (silent alias for back-compat) and /themes send summary + drill-down
+        app.add_handler(CommandHandler("ep", self._handle_ep_command))
+        app.add_handler(CommandHandler("eps", self._handle_ep_command))
         app.add_handler(CommandHandler("themes", self._handle_themes_command))
-        # All other market-intelligence slash commands — bypass orchestrator LLM
-        for _cmd in ("9m", "clusters", "regime", "positions", "pregame"):
+        # Other market-intelligence slash commands — bypass orchestrator LLM.
+        # Kept as handlers so old pinned messages and muscle memory still work,
+        # but removed from the bot menu to keep the command surface lean.
+        for _cmd in ("9m", "clusters", "regime", "pregame"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1393,22 +1476,17 @@ class TelegramChannel:
     async def _register_commands(self) -> None:
         """Register bot commands with BotFather so they appear in the / menu."""
         from telegram import BotCommand
+        # Lean 7-command menu. Hidden but still-working commands (kept as handlers
+        # for back-compat / muscle memory): /eps, /9m, /themes, /clusters, /regime,
+        # /pregame, /spend, /rules, /setup, /agents.
         commands = [
-            BotCommand("hud",       "Status snapshot: regime, EPs, 9M, themes, clusters"),
-            BotCommand("pregame",   "Trade shortlist: regime, hot themes, HIGH EPs, watchlist MAs"),
-            BotCommand("eps",       "Today's EP alerts (MAGNA53) — tap to drill down"),
-            BotCommand("9m",        "9M EP alerts and Day 2 sugar babies"),
-            BotCommand("themes",    "Active theme summary — tap to drill down by stage"),
-            BotCommand("clusters",  "Correlation clusters (beta-adjusted)"),
-            BotCommand("regime",    "Current market regime and breadth"),
-            BotCommand("positions", "Watchlist and tracked positions"),
-            BotCommand("trades",    "Trade positions + P&L — tap to drill down"),
-            BotCommand("status",    "System health, agents, market pipeline"),
-            BotCommand("spend",     "API spend today & this month"),
-            BotCommand("rules",     "EP trading rules (Qullamaggie v2)"),
-            BotCommand("help",      "Capabilities & command reference"),
-            BotCommand("setup",     "Change assistant name or personality"),
-            BotCommand("start",     "Restart / re-introduce"),
+            BotCommand("hud",     "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
+            BotCommand("pregame", "Daily trade shortlist"),
+            BotCommand("ep",      "EP alerts (MAGNA53 + 9M) — tap to drill down"),
+            BotCommand("trades",  "Positions + P&L — tap to drill down"),
+            BotCommand("status",  "System health + API spend"),
+            BotCommand("help",    "Capabilities, rules, command reference"),
+            BotCommand("start",   "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)
         logger.info("Bot commands registered with Telegram")
