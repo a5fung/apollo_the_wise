@@ -780,17 +780,30 @@ def _format_ep_outcomes_section(outcomes: list[dict], section_num: int = 6) -> s
 
 # ── Evening briefing ───────────────────────────────────────────────────────────
 
+_COOLDOWN_FOOTER_CAP = 8
+
+
 def _format_cooldown_footer(cooldowns: list[dict]) -> str:
+    """Compact cooldown footer: chronic (≥3 removals) + soonest-to-expire.
+    `get_active_cooldowns()` already orders by removal_count DESC, cooldown_until ASC,
+    so the top _COOLDOWN_FOOTER_CAP entries are the highest-signal ones. Overflow
+    collapses to '+N more' — use `show cooldowns` for the full list.
+    """
     if not cooldowns:
         return ""
     from datetime import datetime, timezone
     now = datetime.now(tz=timezone.utc)
+    visible = cooldowns[:_COOLDOWN_FOOTER_CAP]
+    overflow = len(cooldowns) - len(visible)
     parts = []
-    for c in cooldowns:
+    for c in visible:
         days_left = max(0, (c["cooldown_until"] - now).days)
         chronic = " ⚠️" if c["removal_count"] >= 3 else ""
         parts.append(f"`{c['ticker']}` → {c['theme_name']} {days_left}d{chronic}")
-    return "🧊 *Cooldowns:* " + "  •  ".join(parts)
+    footer = "🧊 *Cooldowns:* " + "  •  ".join(parts)
+    if overflow > 0:
+        footer += f"  •  +{overflow} more (`show cooldowns`)"
+    return footer
 
 
 def _format_evening_briefing(

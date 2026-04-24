@@ -827,17 +827,40 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
             pass
         return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
 
-    orb_bar = await alpaca.get_first_bar(ticker, today)
+    # Bar fetch with retry — matches process_new_alerts_live behavior. The
+    # 1-min bar closes at 9:31:00 but needs a few seconds to become queryable
+    # via REST; without retry, a fire at 9:31:00.x silently misses every
+    # sugar baby in the same second. 3 retries × 60s = latest attempt at 9:33.
+    orb_bar = None
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        orb_bar = await alpaca.get_first_bar(ticker, today)
+        if orb_bar:
+            break
+        if attempt < max_retries:
+            logger.info(
+                f"9M Day2 {ticker}: no bar on attempt {attempt}/{max_retries}, waiting 60s"
+            )
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "orb_bar_miss",
+                    f"9M {ticker} attempt {attempt}/{max_retries} — bar not available, retrying",
+                )
+            except Exception:
+                pass
+            await asyncio.sleep(60)
     if not orb_bar:
-        logger.warning(f"9M Day2 {ticker}: no ORB bar available")
+        logger.warning(f"9M Day2 {ticker}: no ORB bar after {max_retries} retries")
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
+        skip_msg = f"{INFRA_NO_BAR}: {max_retries} retries exhausted"
         await _insert_skipped_trade(
             ticker, today,
             {"ep_score": 0, "catalyst_quality": "9m_volume",
              "gap_pct": sugar_baby.get("gap_pct")},
-            None, INFRA_NO_BAR,
+            None, skip_msg,
         )
-        return {"ticker": ticker, "action": "skipped", "reason": INFRA_NO_BAR}
+        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
 
     regime_record = await get_latest_regime()
     order_spec, spec_reason = await prepare_9m_day2_orb_order(sugar_baby, orb_bar, regime_record)
