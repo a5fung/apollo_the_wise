@@ -14,10 +14,18 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, time
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
+from agents.market_intelligence.broker.entry_pipeline import (
+    ACTION_AUTO_ENTERED,
+    ACTION_AUTO_ENTER_FAILED,
+    ACTION_BLOCKED,
+    ACTION_PROPOSAL_SEND_FAILED,
+    ACTION_PROPOSED,
+    ACTION_SKIPPED,
+    submit_trade_entry,
+)
 from agents.market_intelligence.broker.order_manager import (
     prepare_orb_order,
     execute_partial_exit,
@@ -28,15 +36,9 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
     BLOCK_DAILY_LOSS,
     BLOCK_MAX_POSITIONS,
-    INFRA_NO_BAR,
-    INFRA_ORDER_SUBMIT_FAILED,
     SETUP_ACCOUNT_FETCH_FAILED,
-    SETUP_FADED_FROM_ORB,
-    WINDOW_DUPLICATE,
-    WINDOW_OUT_OF_ORB,
     humanize,
 )
-from agents.market_intelligence.broker.telegram_confirm import send_trade_proposal
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
@@ -112,153 +114,17 @@ async def _check_safeguards() -> tuple[bool, str | None]:
 # ── New Alerts (Day 1) ───────────────────────────────────────────────────────
 
 
-async def _submit_orb_trade(
-    alert: dict,
-    orb_bar: dict,
-    atr_14: float | None,
-    today: date,
-    regime_record: dict | None,
-    pool,
-) -> dict:
-    """Build order spec, check safeguards, and submit trade for a single alert."""
-    ticker = alert["ticker"]
-
-    # Fade guard: if price has already dropped below the ORB midpoint by the time
-    # we're submitting, the gap-and-go has failed its own support. A stop-limit buy
-    # at ORB high would still fill on a dead-cat-bounce retest hours later, with
-    # the stock in an intraday downtrend — not the momentum pattern we're trading.
-    # Skipped when latest-trade lookup fails (conservative: don't block on data
-    # flakiness mid-morning).
-    orb_high = orb_bar["high"]
-    orb_low = orb_bar["low"]
-    orb_midpoint = (orb_high + orb_low) / 2.0
-    latest = await alpaca.get_latest_trade(ticker)
-    if latest and latest.get("price"):
-        last_price = float(latest["price"])
-        if last_price < orb_midpoint:
-            fade_pct = (orb_high - last_price) / orb_high * 100 if orb_high > 0 else 0
-            skip_msg = (
-                f"{SETUP_FADED_FROM_ORB}: last ${last_price:.2f} < midpoint "
-                f"${orb_midpoint:.2f} (ORB H=${orb_high:.2f} L=${orb_low:.2f}, "
-                f"faded {fade_pct:.1f}%)"
-            )
-            await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_faded", f"{ticker} — {skip_msg}")
-            except Exception:
-                pass
-            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_msg)}")
-            return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
-
-    order_spec, spec_reason = await prepare_orb_order(alert, orb_bar, atr_14 or 0, regime_record)
-    if not order_spec:
-        skip_msg = spec_reason or "order spec failed"
-        await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
-        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: {skip_msg}")
-        try:
-            from agents.market_intelligence.db import log_audit_event
-            atr_str = f"{atr_14:.2f}" if atr_14 else "n/a"
-            await log_audit_event(
-                "orb_skipped",
-                f"{ticker} — {skip_msg} | ORB H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} ATR={atr_str}",
-            )
-        except Exception:
-            pass
-        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
-
-    ok, sg_reason = await _check_safeguards()
-    if not ok:
-        await _insert_skipped_trade(ticker, today, alert, regime_record, sg_reason)
-        try:
-            from agents.market_intelligence.db import log_audit_event
-            await log_audit_event("orb_blocked", f"{ticker} — {sg_reason}")
-        except Exception:
-            pass
-        await send_telegram_message(f"🚫 *{ticker}* blocked by safeguard: {sg_reason}")
-        return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
-
-    async with pool.acquire() as conn:
-        trade_id = await conn.fetchval("""
-            INSERT INTO mi_live_trades
-                (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
-                 status, orb_high, orb_low, atr_14,
-                 entry_price, entry_shares, stop_price, hard_stop,
-                 position_size, risk_dollars, proposed_at)
-            VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
-                    $10,$11,$12,$13,$14,$15,NOW())
-            ON CONFLICT (ticker, alert_date) DO NOTHING
-            RETURNING id
-        """,
-            ticker, today, alert["ep_score"],
-            alert.get("catalyst_quality"), alert.get("gap_pct"),
-            order_spec.get("regime"),
-            order_spec["orb_high"], order_spec["orb_low"], atr_14,
-            order_spec["entry_price"], float(order_spec["shares"]),
-            order_spec["stop_loss_price"], order_spec["stop_loss_price"],
-            order_spec["position_size"], order_spec["risk_dollars"],
-        )
-
-    if not trade_id:
-        logger.debug(f"Trade already exists for {ticker}, skipping proposal")
-        return {"ticker": ticker, "action": "skipped", "reason": "already_exists"}
-
-    is_paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
-
-    if is_paper:
-        logger.info(f"Paper auto-confirm: {ticker} (trade_id={trade_id})")
-        from agents.market_intelligence.broker.order_manager import submit_entry
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                UPDATE mi_live_trades SET status = 'confirmed', confirmed_at = NOW()
-                WHERE id = $1
-            """, trade_id)
-        order = await submit_entry(trade_id)
-        if order:
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event(
-                    "orb_order_placed",
-                    f"{ticker} entry=${order_spec['entry_price']:.2f} stop=${order_spec['stop_loss_price']:.2f} shares={order_spec['shares']} risk=${order_spec['risk_dollars']:.0f} trade_id={trade_id}",
-                )
-            except Exception:
-                pass
-            await send_telegram_message(
-                f"📊 *Paper trade auto-entered:* {ticker}\n"
-                f"Entry: ${order_spec['entry_price']:.2f} | Stop: ${order_spec['stop_loss_price']:.2f}\n"
-                f"Shares: {order_spec['shares']} | Risk: ${order_spec['risk_dollars']:.0f}"
-            )
-            return {"ticker": ticker, "action": "auto_entered", "trade_id": trade_id}
-        else:
-            logger.error(f"submit_entry returned None for {ticker} (trade_id={trade_id}) — order placement failed, check order_failed status in DB")
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_order_failed", f"{ticker} — submit_entry returned None (trade_id={trade_id}), check mi_live_trades.skip_reason")
-            except Exception:
-                pass
-            await send_telegram_message(f"⚠️ *Paper auto-enter failed:* {ticker} — check logs (trade_id={trade_id})")
-            return {"ticker": ticker, "action": "auto_enter_failed"}
-    else:
-        sent = await send_trade_proposal(alert, order_spec, trade_id)
-        if sent:
-            logger.info(f"Trade proposal sent: {ticker} (id={trade_id})")
-            return {"ticker": ticker, "action": "proposed", "trade_id": trade_id}
-        else:
-            return {"ticker": ticker, "action": "proposal_send_failed"}
-
-
 async def process_new_alerts_live(today: date | None = None, trigger: str = "cron") -> list[dict]:
     """
-    For each HIGH EP alert today:
-    1. Pre-trade filters (ADV, ATR)
-    2. Fetch first 1-min bar from Alpaca
-    3. ATR validation
-    4. Build order spec
-    5. Check safeguards
-    6. Send Telegram proposal with inline keyboard
-    7. Store pending proposal in DB
+    For each HIGH EP alert today, run the unified entry pipeline.
 
-    trigger: "bar_stream" | "cron_9_31" | "cron_fallback" | "cron" — logged for debugging
+    Pre-pipeline work (MAGNA53-specific): check_filters (ADV/ATR%) and
+    compute ATR14. Pipeline then handles: duplicate check, safeguards,
+    bar fetch with retry, fade guard, spec build, DB insert, Alpaca submit
+    (paper auto-confirm or live proposal), and terminal-state Telegram on
+    every failure branch.
+
+    trigger: "bar_stream" | "cron_9_31" | "cron_fallback" | "cron"
     """
     if today is None:
         today = et_today()
@@ -267,7 +133,8 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         logger.info("Live trading disabled, skipping")
         return []
 
-    # Get today's HIGH EP alerts
+    from agents.market_intelligence.db import log_audit_event
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         alerts = await conn.fetch("""
@@ -284,14 +151,12 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         logger.info("No HIGH EP alerts today for live trading")
         return []
 
-    logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts to process: {[a['ticker'] for a in alerts]}")
+    logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts: {[a['ticker'] for a in alerts]}")
     try:
-        from agents.market_intelligence.db import log_audit_event
         await log_audit_event("orb_triggered", f"[{trigger}] {len(alerts)} alerts: {[a['ticker'] for a in alerts]}")
     except Exception:
         pass
 
-    # Get regime
     async with pool.acquire() as conn:
         regime_record = await conn.fetchrow(
             "SELECT * FROM mi_market_regime WHERE regime_date <= $1 ORDER BY regime_date DESC LIMIT 1",
@@ -299,116 +164,92 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         )
     regime_record = dict(regime_record) if regime_record else None
 
-    results = []
-    pending_orb: list[tuple[dict, float | None]] = []  # (alert, atr_14) awaiting ORB bar
+    # Per-alert concurrency. Bar-fetch retry can block up to 3 × 60s on a
+    # single ticker; serial would stack past the 5-min cron interval on
+    # any morning where multiple alerts miss the first bar. Semaphore
+    # caps Alpaca-bound work to keep us under per-account rate limits.
+    sem = asyncio.Semaphore(5)
 
-    for alert in alerts:
+    async def _process_alert(alert: dict) -> dict | None:
         ticker = alert["ticker"]
+        async with sem:
+            async with pool.acquire() as conn:
+                exists = await conn.fetchval(
+                    "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
+                    ticker, today,
+                )
+            if exists:
+                logger.debug(f"Live trade already exists for {ticker} on {today}")
+                return None
 
-        # Skip if already processed today
-        async with pool.acquire() as conn:
-            exists = await conn.fetchval(
-                "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
-                ticker, today,
-            )
-        if exists:
-            logger.debug(f"Live trade already exists for {ticker} on {today}")
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_duplicate", f"{ticker} [{trigger}] — {WINDOW_DUPLICATE}")
-            except Exception:
-                pass
-            continue
-
-        # Pre-trade filters (ADV, ATR% — skip mcap for small account)
-        passed, skip_reason = await check_filters(ticker, today)
-        if not passed:
-            await _insert_skipped_trade(ticker, today, alert, regime_record, skip_reason)
-            logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
-            except Exception:
-                pass
-            await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_reason)}")
-            results.append({"ticker": ticker, "action": "filtered", "reason": skip_reason})
-            continue
-
-        # Compute ATR
-        atr_14, _atr_pct = await compute_atr_14(ticker, today)
-
-        # Fetch first 1-min bar from Alpaca — retry every 60s until 9:35 ET
-        orb_bar = await alpaca.get_first_bar(ticker, today)
-        if not orb_bar:
-            logger.warning(f"ORB bar not available yet for {ticker} [{trigger}] — queuing for retry")
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_bar_miss", f"{ticker} [{trigger}] attempt 1 — bar not available, queuing retry")
-            except Exception:
-                pass
-            pending_orb.append((alert, atr_14))
-            results.append({"ticker": ticker, "action": "pending_orb"})
-            continue
-
-        try:
-            from agents.market_intelligence.db import log_audit_event
-            await log_audit_event("orb_bar_fetched", f"{ticker} [{trigger}] O={orb_bar['open']:.2f} H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} range={orb_bar['high']-orb_bar['low']:.2f}")
-        except Exception:
-            pass
-        result = await _submit_orb_trade(alert, orb_bar, atr_14, today, regime_record, pool)
-        results.append(result)
-
-    # Retry pending ORB bars every 60s until 9:35 ET (max 3 retries)
-    MAX_ORB_RETRIES = 3
-    retry = 0
-    while pending_orb and retry < MAX_ORB_RETRIES:
-        retry += 1
-        logger.info(f"ORB retry {retry}/{MAX_ORB_RETRIES}: waiting 60s for {[a['ticker'] for a, _ in pending_orb]}")
-        await asyncio.sleep(60)
-        still_pending = []
-        for alert, atr_14 in pending_orb:
-            ticker = alert["ticker"]
-            orb_bar = await alpaca.get_first_bar(ticker, today)
-            if not orb_bar:
-                logger.warning(f"ORB bar still unavailable for {ticker} [{trigger}] (retry {retry}/{MAX_ORB_RETRIES})")
+            passed, skip_reason = await check_filters(ticker, today)
+            if not passed:
+                await _insert_skipped_trade(ticker, today, alert, regime_record, skip_reason)
+                logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
                 try:
-                    from agents.market_intelligence.db import log_audit_event
-                    await log_audit_event("orb_bar_miss", f"{ticker} [{trigger}] retry {retry}/{MAX_ORB_RETRIES} — still no bar")
+                    await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
                 except Exception:
                     pass
-                still_pending.append((alert, atr_14))
-                continue
+                await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_reason)}")
+                return {"ticker": ticker, "action": "filtered", "reason": skip_reason}
+
+            atr_14, _atr_pct = await compute_atr_14(ticker, today)
+
+            async def _magna_spec_builder(
+                alert_ctx: dict,
+                orb_bar: dict,
+                regime: dict | None,
+                _atr=atr_14,
+            ) -> tuple[dict | None, str | None]:
+                return await prepare_orb_order(alert_ctx, orb_bar, _atr or 0, regime)
+
+            return await submit_trade_entry(
+                alert_context=alert,
+                spec_builder=_magna_spec_builder,
+                regime_record=regime_record,
+                strategy_label="ORB",
+                today=today,
+                atr_14=atr_14,
+            )
+
+    raw = await asyncio.gather(
+        *(_process_alert(a) for a in alerts), return_exceptions=True,
+    )
+    results: list[dict] = []
+    for alert, r in zip(alerts, raw):
+        if r is None:
+            continue
+        if isinstance(r, BaseException):
+            tkr = alert["ticker"]
+            logger.exception(
+                f"ORB monitor [{trigger}] {tkr}: per-alert task raised — {r}"
+            )
+            # Always write the crash to the audit log first — this is the
+            # durable record. If Telegram is also down we'd otherwise lose all
+            # trace of the failure.
             try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event("orb_bar_fetched", f"{ticker} [{trigger}] retry {retry} O={orb_bar['open']:.2f} H={orb_bar['high']:.2f} L={orb_bar['low']:.2f} range={orb_bar['high']-orb_bar['low']:.2f}")
+                await log_audit_event(
+                    "orb_pipeline_crash",
+                    f"{tkr} [{trigger}] — {type(r).__name__}: {r}",
+                )
             except Exception:
-                pass
-            result = await _submit_orb_trade(alert, orb_bar, atr_14, today, regime_record, pool)
-            # Remove the pending_orb placeholder from results
-            results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
-            results.append(result)
-        pending_orb = still_pending
+                logger.exception(f"ORB crash audit_log write also failed for {tkr}")
+            try:
+                await send_telegram_message(
+                    f"🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
+                )
+            except Exception:
+                logger.exception(
+                    f"ORB crash Telegram alert ALSO failed for {tkr} — "
+                    f"check audit log event 'orb_pipeline_crash'"
+                )
+            results.append({"ticker": tkr, "action": "crashed", "reason": str(r)})
+            continue
+        results.append(r)
 
-    # Any tickers still without an ORB bar after retries — mark as skipped
-    for alert, atr_14 in pending_orb:
-        ticker = alert["ticker"]
-        skip_msg = f"{INFRA_NO_BAR}: {MAX_ORB_RETRIES} retries exhausted"
-        await _insert_skipped_trade(ticker, today, alert, regime_record, skip_msg)
-        results = [r for r in results if not (r.get("ticker") == ticker and r.get("action") == "pending_orb")]
-        results.append({"ticker": ticker, "action": "skipped", "reason": skip_msg})
-        logger.warning(f"No ORB bar for {ticker} after {MAX_ORB_RETRIES} retries")
-        await send_telegram_message(f"⏭️ *{ticker}* ORB skipped: no first bar after {MAX_ORB_RETRIES} retries")
-        try:
-            from agents.market_intelligence.db import log_audit_event
-            await log_audit_event("orb_no_bar", f"{ticker} — bar never available after {MAX_ORB_RETRIES} retries, trade skipped")
-        except Exception:
-            pass
-
-    if results:
-        entered = sum(1 for r in results if r.get("action") in ("auto_entered", "proposed"))
-        skipped = sum(1 for r in results if r.get("action") in ("filtered", "skipped", "blocked"))
-        logger.info(f"ORB monitor: {entered} entered, {skipped} skipped out of {len(alerts)} alerts")
-
+    entered = sum(1 for r in results if r.get("action") in (ACTION_AUTO_ENTERED, ACTION_PROPOSED))
+    skipped = sum(1 for r in results if r.get("action") in ("filtered", ACTION_SKIPPED, ACTION_BLOCKED))
+    logger.info(f"ORB monitor: {entered} entered, {skipped} skipped out of {len(alerts)} alerts")
     return results
 
 
@@ -789,157 +630,76 @@ async def _insert_skipped_trade(
 
 async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
     """
-    Place a Day 2 ORB entry for a confirmed 9M sugar baby.
+    Place a Day 2 ORB entry for a confirmed 9M sugar baby via the unified
+    trade-entry pipeline.
 
-    Called at 9:31 AM ET. Shares the same 4-position cap / daily-loss safeguards
-    as MAGNA53 trades via _check_safeguards().
+    Called at 9:31 AM ET. Shares the same 4-position cap / daily-loss
+    safeguards, bar-fetch retry, fade guard, and terminal-state Telegram
+    contract as MAGNA53 trades (single code path — see entry_pipeline.py).
 
-    sugar_baby: row from get_pending_9m_sugar_babies() — must have ticker, alert_date, low_price.
-    Returns status dict for logging.
+    sugar_baby: row from get_pending_9m_sugar_babies() — must have ticker,
+    alert_date, low_price. Returns status dict for logging.
     """
-    from agents.market_intelligence.broker.order_manager import (
-        prepare_9m_day2_orb_order,
-        submit_entry,
-    )
-    from agents.market_intelligence.db import (
-        get_latest_regime,
-        update_9m_sugar_baby_status,
-    )
+    from agents.market_intelligence.broker.order_manager import prepare_9m_day2_orb_order
+    from agents.market_intelligence.db import get_latest_regime, update_9m_sugar_baby_status
 
     ticker = sugar_baby["ticker"]
     alert_date = sugar_baby["alert_date"]
     today = et_today()
 
-    ok, sg_reason = await _check_safeguards()
-    if not ok:
-        logger.info(f"9M Day2 {ticker}: blocked by safeguard — {sg_reason}")
-        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        await _insert_skipped_trade(
-            ticker, today,
-            {"ep_score": 0, "catalyst_quality": "9m_volume",
-             "gap_pct": sugar_baby.get("gap_pct")},
-            None, sg_reason,
-        )
-        try:
-            from agents.market_intelligence.db import log_audit_event
-            await log_audit_event("orb_blocked", f"9M {ticker} — {sg_reason}")
-        except Exception:
-            pass
-        return {"ticker": ticker, "action": "blocked", "reason": sg_reason}
-
-    # Bar fetch with retry — matches process_new_alerts_live behavior. The
-    # 1-min bar closes at 9:31:00 but needs a few seconds to become queryable
-    # via REST; without retry, a fire at 9:31:00.x silently misses every
-    # sugar baby in the same second. 3 retries × 60s = latest attempt at 9:33.
-    orb_bar = None
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        orb_bar = await alpaca.get_first_bar(ticker, today)
-        if orb_bar:
-            break
-        if attempt < max_retries:
-            logger.info(
-                f"9M Day2 {ticker}: no bar on attempt {attempt}/{max_retries}, waiting 60s"
-            )
-            try:
-                from agents.market_intelligence.db import log_audit_event
-                await log_audit_event(
-                    "orb_bar_miss",
-                    f"9M {ticker} attempt {attempt}/{max_retries} — bar not available, retrying",
-                )
-            except Exception:
-                pass
-            await asyncio.sleep(60)
-    if not orb_bar:
-        logger.warning(f"9M Day2 {ticker}: no ORB bar after {max_retries} retries")
-        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        skip_msg = f"{INFRA_NO_BAR}: {max_retries} retries exhausted"
-        await _insert_skipped_trade(
-            ticker, today,
-            {"ep_score": 0, "catalyst_quality": "9m_volume",
-             "gap_pct": sugar_baby.get("gap_pct")},
-            None, skip_msg,
-        )
-        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
-
     regime_record = await get_latest_regime()
-    order_spec, spec_reason = await prepare_9m_day2_orb_order(sugar_baby, orb_bar, regime_record)
 
-    if not order_spec:
-        skip_msg = spec_reason or "order spec failed"
-        logger.info(f"9M Day2 {ticker}: {skip_msg}")
+    # Pipeline spec_builder signature is (alert_ctx, orb_bar, regime) — the
+    # sugar_baby row IS the alert_context, so we just pass it through.
+    async def _ninem_spec_builder(
+        alert_ctx: dict, orb_bar: dict, regime: dict | None,
+    ) -> tuple[dict | None, str | None]:
+        return await prepare_9m_day2_orb_order(alert_ctx, orb_bar, regime)
+
+    # on_skip fires for every terminal skip (safeguard, no-bar, fade, spec fail).
+    # Sugar baby row must mirror the skip so /9m doesn't show it as "pending" forever.
+    async def _on_skip(_reason: str) -> None:
         await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        await _insert_skipped_trade(
-            ticker, today,
-            {"ep_score": 0, "catalyst_quality": "9m_volume",
-             "gap_pct": sugar_baby.get("gap_pct")},
-            regime_record, skip_msg,
-        )
-        await send_telegram_message(
-            f"⏭️ *9M Day2 {ticker}* skipped: {skip_msg}"
-        )
-        return {"ticker": ticker, "action": "skipped", "reason": skip_msg}
 
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        trade_id = await conn.fetchval("""
-            INSERT INTO mi_live_trades
-                (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
-                 status, orb_high, orb_low, atr_14,
-                 entry_price, entry_shares, stop_price, hard_stop,
-                 position_size, risk_dollars, proposed_at)
-            VALUES ($1,$2,0,'9m_volume',$3,$4,'pending_confirmation',$5,$6,NULL,
-                    $7,$8,$9,$9,$10,$11,NOW())
-            ON CONFLICT (ticker, alert_date) DO NOTHING
-            RETURNING id
-        """,
-            ticker, today,
-            sugar_baby.get("gap_pct"),
-            regime_record.get("regime") if regime_record else None,
-            order_spec["orb_high"], order_spec["orb_low"],
-            order_spec["entry_price"], float(order_spec["shares"]),
-            order_spec["stop_loss_price"],
-            order_spec["position_size"], order_spec["risk_dollars"],
-        )
+    # alert_context must include the keys prepare_9m_day2_orb_order needs
+    # (low_price etc.) plus the common EP fields the pipeline passes to DB insert.
+    alert_context = {
+        **sugar_baby,
+        "ticker": ticker,
+        "ep_score": 0,
+        "catalyst_quality": "9m_volume",
+        "gap_pct": sugar_baby.get("gap_pct"),
+    }
 
-    if not trade_id:
-        logger.debug(f"9M Day2 {ticker}: trade row already exists, skipping")
-        await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-        return {"ticker": ticker, "action": "skipped", "reason": "already_exists"}
+    result = await submit_trade_entry(
+        alert_context=alert_context,
+        spec_builder=_ninem_spec_builder,
+        regime_record=regime_record,
+        strategy_label="9M Day2",
+        today=today,
+        atr_14=None,
+        success_icon="🍬",
+        success_title="9M Day2 entered",
+        stop_label="Stop (prev day low)",
+        on_skip=_on_skip,
+    )
 
-    is_paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
+    # Mirror pipeline outcome onto sugar baby row so /9m reflects reality.
+    # Successful entry → traded. Post-insert submit/proposal failures bypass
+    # _on_skip (they happen after DB insert) so mark skipped explicitly here.
+    action = result.get("action")
+    status_update: str | None = None
+    if action in (ACTION_AUTO_ENTERED, ACTION_PROPOSED):
+        status_update = "traded"
+    elif action in (ACTION_AUTO_ENTER_FAILED, ACTION_PROPOSAL_SEND_FAILED):
+        status_update = "skipped"
 
-    if is_paper:
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE mi_live_trades SET status = 'confirmed', confirmed_at = NOW() WHERE id = $1",
-                trade_id,
+    if status_update:
+        try:
+            await update_9m_sugar_baby_status(ticker, alert_date, status_update)
+        except Exception as e:
+            logger.warning(
+                f"9M Day2 {ticker}: sugar baby status update to '{status_update}' failed — {e}"
             )
-        order = await submit_entry(trade_id)
-        if order:
-            await update_9m_sugar_baby_status(ticker, alert_date, "traded")
-            await send_telegram_message(
-                f"🍬 *9M Day2 entered:* {ticker}\n"
-                f"Entry: ${order_spec['entry_price']:.2f} | "
-                f"Stop: ${order_spec['stop_loss_price']:.2f} (prev day low)\n"
-                f"Shares: {order_spec['shares']} | Risk: ${order_spec['risk_dollars']:.0f}"
-            )
-            return {"ticker": ticker, "action": "auto_entered", "trade_id": trade_id}
-        else:
-            await update_9m_sugar_baby_status(ticker, alert_date, "skipped")
-            await send_telegram_message(
-                f"⚠️ *9M Day2 auto-enter failed:* {ticker} (trade_id={trade_id})"
-            )
-            return {"ticker": ticker, "action": "auto_enter_failed"}
-    else:
-        # Live mode: propose for manual confirmation (same flow as MAGNA53)
-        alert_stub = {
-            "ep_score": 0, "catalyst_quality": "9m_volume",
-            "gap_pct": sugar_baby.get("gap_pct"), "ticker": ticker,
-        }
-        sent = await send_trade_proposal(alert_stub, order_spec, trade_id)
-        if sent:
-            await update_9m_sugar_baby_status(ticker, alert_date, "traded")
-            return {"ticker": ticker, "action": "proposed", "trade_id": trade_id}
-        else:
-            return {"ticker": ticker, "action": "proposal_send_failed"}
+
+    return result

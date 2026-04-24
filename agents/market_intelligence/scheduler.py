@@ -775,6 +775,76 @@ async def _eod_ep_recap_job():
         await notify_job_failure("eod_ep_recap", str(e))
 
 
+async def _kuma_heartbeat(env_var: str) -> None:
+    """POST a heartbeat to uptime-kuma. Silent on failure — Kuma alerts on absence."""
+    import os
+    url = os.getenv(env_var)
+    if not url:
+        return
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.get(url)
+    except Exception as e:
+        logger.warning(f"Kuma heartbeat {env_var} failed: {e}")
+
+
+async def _post_eod_audit_job():
+    """Run at 4:15 PM ET. Trade-side invariants + metrics scan post-EOD cleanup.
+
+    Reads settled `mi_live_trades` rows after 4:05 EOD cleanup and 4:10 recap.
+    L1 invariant breaches and L2 metric anomalies fire Telegram immediately;
+    L3 drift is silent (rolled up in Sunday digest).
+    """
+    logger.info("Post-EOD audit starting...")
+    try:
+        from agents.market_intelligence.system_audit import run_post_eod_audit
+        result = await run_post_eod_audit()
+        logger.info(f"Post-EOD audit: {result}")
+    except Exception as e:
+        logger.error(f"Post-EOD audit failed: {e}", exc_info=True)
+        await notify_job_failure("post_eod_audit", str(e))
+    finally:
+        await _kuma_heartbeat("KUMA_AUDIT_EOD_URL")
+
+
+async def _post_nightly_audit_job():
+    """Run at 5:30 PM ET. Theme/cooldown/regime invariants + metrics scan post-data-pull.
+
+    Fires after _nightly_data_pull (5:00 PM) so themes/cooldowns/regime reflect
+    tonight's run. Critical for catching zombie themes, cooldown floods,
+    9M alert regressions before the next morning's briefing.
+    """
+    logger.info("Post-nightly audit starting...")
+    try:
+        from agents.market_intelligence.system_audit import run_post_nightly_audit
+        result = await run_post_nightly_audit()
+        logger.info(f"Post-nightly audit: {result}")
+    except Exception as e:
+        logger.error(f"Post-nightly audit failed: {e}", exc_info=True)
+        await notify_job_failure("post_nightly_audit", str(e))
+    finally:
+        await _kuma_heartbeat("KUMA_AUDIT_NIGHTLY_URL")
+
+
+async def _baseline_refresh_job():
+    """Run at 2:00 AM ET daily. Recompute mi_metric_baselines from trailing 30d.
+
+    Trimmed median + MAD per metric; respects mi_baseline_resets epochs so
+    deploy/fix points correctly invalidate pre-fix history.
+    """
+    logger.info("Baseline refresh starting...")
+    try:
+        from agents.market_intelligence.system_audit import run_baseline_refresh
+        await run_baseline_refresh()
+        logger.info("Baseline refresh complete")
+    except Exception as e:
+        logger.error(f"Baseline refresh failed: {e}", exc_info=True)
+        await notify_job_failure("baseline_refresh", str(e))
+    finally:
+        await _kuma_heartbeat("KUMA_AUDIT_BASELINE_URL")
+
+
 async def _post_validation_check_job():
     """Run Sat 8:00 AM ET. Recap Friday's theme validation run.
 
@@ -923,7 +993,9 @@ async def _9m_scan_job() -> None:
         if alerts:
             logger.info(f"9M scan: {len(alerts)} new alert(s)")
     except Exception as e:
-        logger.error(f"9M EP scan error: {e}")
+        import traceback
+        logger.error(f"9M EP scan error: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("9m_scan", str(e))
 
 
 async def _9m_day2_orb_job() -> None:
@@ -941,10 +1013,31 @@ async def _9m_day2_orb_job() -> None:
         from agents.market_intelligence.collector import prev_trading_days
         yesterday = prev_trading_days(1, from_date=today)[0]
         candidates = await get_pending_9m_sugar_babies(yesterday)
+        # Per-candidate try/except so one ticker's crash never silently strands
+        # the rest of the watchlist. submit_9m_day2_trade itself Telegrams every
+        # terminal state via the unified pipeline; this guard catches everything
+        # outside that envelope (DB pool, network, programmer error).
         for candidate in candidates:
-            await submit_9m_day2_trade(candidate)
+            try:
+                await submit_9m_day2_trade(candidate)
+            except Exception as ce:
+                tkr = candidate.get("ticker", "<unknown>")
+                logger.exception(f"9M Day2 {tkr}: per-candidate crash — {ce}")
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "9m_day2_pipeline_crash",
+                        f"{tkr} — {type(ce).__name__}: {ce}",
+                    )
+                except Exception:
+                    logger.exception(f"9M Day2 {tkr}: audit_log write also failed")
+                await send_telegram_message(
+                    f"🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
+                )
     except Exception as e:
-        logger.error(f"9M Day2 ORB job error: {e}")
+        import traceback
+        logger.error(f"9M Day2 ORB job error: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("9m_day2_orb", str(e))
 
 
 async def check_missed_jobs() -> None:
@@ -1206,6 +1299,36 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_ep_recap",
         replace_existing=True,
+    )
+
+    # Post-EOD audit: 4:15 PM ET — trade-side invariants + metrics, runs after
+    # 4:05 cleanup and 4:10 recap so trade rows reflect settled state.
+    _scheduler.add_job(
+        _post_eod_audit_job,
+        CronTrigger(hour=16, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
+        id="post_eod_audit",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Post-nightly audit: 5:30 PM ET — theme/cooldown/regime invariants + metrics,
+    # after 5:00 nightly data pull so tonight's themes/cooldowns are visible.
+    _scheduler.add_job(
+        _post_nightly_audit_job,
+        CronTrigger(hour=17, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
+        id="post_nightly_audit",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    # Baseline refresh: 2:00 AM ET daily — rebuild mi_metric_baselines from
+    # trailing 30 days. Idempotent; loss → next refresh recomputes from scratch.
+    _scheduler.add_job(
+        _baseline_refresh_job,
+        CronTrigger(hour=2, minute=0, timezone="America/New_York"),
+        id="baseline_refresh",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Live position update: 4:45 PM ET — SMA trail, partials, stop updates

@@ -65,6 +65,8 @@ Rules:
 - Every bullet must cite a number from the metrics JSON.
 - Keep Telegram Markdown: *bold*, `code`, no tables.
 - When `postmortem_best` or `postmortem_worst` is present, weave one concrete insight from each into the ✅/⚠️ sections (e.g. "{ticker}'s exit followed through {pnl}…"). Do not paste the full postmortem — extract the takeaway.
+- When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. Do not invent transitions if the count is 0; omit the line entirely.
+- `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Broken* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 """
 
 
@@ -113,6 +115,7 @@ async def _gather_and_aggregate(
     clusters = await _aggregate_clusters(today)
     regime = await _aggregate_regime(window_days)
     postmortems = await _aggregate_trade_postmortems(window_start)
+    anomalies = await _aggregate_anomalies(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -124,8 +127,66 @@ async def _gather_and_aggregate(
         "cooldowns": cooldowns,
         "clusters": clusters,
         "regime": regime,
+        "anomalies": anomalies,
         "postmortem_best": postmortems.get("best"),
         "postmortem_worst": postmortems.get("worst"),
+    }
+
+
+async def _aggregate_anomalies(days: int) -> dict:
+    """Roll up the week's L1/L2/L3 anomaly_detected audit rows.
+
+    L1/L2 already pinged Telegram during the week. L3 drift was silent —
+    Sunday digest is the only place it surfaces. Body shape mirrors what
+    system_audit._emit_l1/l2/l3 writes.
+    """
+    since_hours = days * 24
+    rows = await get_audit_log(
+        limit=500, since_hours=since_hours, event_type="anomaly_detected"
+    )
+    by_level: dict[int, list[dict]] = {1: [], 2: [], 3: []}
+    for r in rows:
+        raw = r.get("detail") or "{}"
+        try:
+            body = json.loads(raw) if isinstance(raw, str) else raw
+        except (json.JSONDecodeError, TypeError):
+            continue
+        lvl = int(body.get("level") or 0)
+        if lvl not in by_level:
+            continue
+        by_level[lvl].append({
+            "key": body.get("key"),
+            "current": body.get("current"),
+            "p50": body.get("baseline_p50"),
+            "from_band": body.get("from_band"),
+            "to_band": body.get("to_band"),
+        })
+
+    def _summarize(items: list[dict]) -> dict:
+        keys = Counter(i["key"] for i in items if i.get("key"))
+        return {
+            "count": len(items),
+            "by_key": [{"key": k, "count": c} for k, c in keys.most_common(8)],
+        }
+
+    l3_drifts = [
+        {
+            "key": i["key"],
+            "from_band": i.get("from_band"),
+            "to_band": i.get("to_band"),
+            "current": i.get("current"),
+            "p50": i.get("p50"),
+        }
+        for i in by_level[3]
+        if i.get("from_band") != i.get("to_band")
+    ]
+    return {
+        "l1_invariants": _summarize(by_level[1]),
+        "l2_anomalies": _summarize(by_level[2]),
+        "l3_drifts": {
+            "count": len(l3_drifts),
+            "transitions": l3_drifts[:10],
+        },
     }
 
 

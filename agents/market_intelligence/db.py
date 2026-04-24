@@ -563,6 +563,36 @@ async def initialize_schema() -> None:
                 ON mi_system_reviews(review_date DESC);
         """)
 
+        # ── Audit metric baselines (system_audit.py L2 anomaly detection) ─
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_metric_baselines (
+                metric_name  TEXT NOT NULL,
+                as_of_date   DATE NOT NULL,
+                p50          DOUBLE PRECISION,
+                p95          DOUBLE PRECISION,
+                mad          DOUBLE PRECISION,
+                sample_n     INT NOT NULL DEFAULT 0,
+                updated_at   TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (metric_name, as_of_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_metric_baselines_name_date
+                ON mi_metric_baselines(metric_name, as_of_date DESC);
+        """)
+
+        # Manual epoch markers — a fix that changes a metric's distribution
+        # writes one row here so the baseline refresh job ignores history
+        # older than the reset.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_baseline_resets (
+                id           SERIAL PRIMARY KEY,
+                metric_name  TEXT NOT NULL,
+                reset_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                reason       TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_baseline_resets_name
+                ON mi_baseline_resets(metric_name, reset_at DESC);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -2823,7 +2853,7 @@ async def log_audit_event(event_type: str, summary: str, detail: str = "") -> No
         async with pool.acquire() as conn:
             await conn.execute(
                 "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ($1, $2, $3)",
-                event_type, summary[:500], detail[:2000],
+                event_type, summary[:500], detail[:8000],
             )
     except Exception as e:
         logger.warning(f"audit log write failed ({event_type}): {e}")
@@ -2860,6 +2890,114 @@ async def get_sip_feed_telemetry(trade_date: date) -> dict[str, int]:
         "subscribe_failed":  int(row["subscribe_failed"] or 0),
         "stream_disconnect": int(row["stream_disconnect"] or 0),
     }
+
+
+# ── Audit metric baselines (L2 anomaly detection) ──────────────────────────────
+
+async def upsert_metric_baseline(
+    metric_name: str,
+    as_of_date: date,
+    *,
+    p50: float | None,
+    p95: float | None,
+    mad: float | None,
+    sample_n: int,
+) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO mi_metric_baselines (metric_name, as_of_date, p50, p95, mad, sample_n)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (metric_name, as_of_date) DO UPDATE SET
+                p50 = EXCLUDED.p50,
+                p95 = EXCLUDED.p95,
+                mad = EXCLUDED.mad,
+                sample_n = EXCLUDED.sample_n,
+                updated_at = NOW()
+            """,
+            metric_name, as_of_date, p50, p95, mad, sample_n,
+        )
+
+
+async def get_metric_baseline(metric_name: str, as_of_date: date | None = None) -> dict | None:
+    """Latest baseline ≤ as_of_date (defaults to today). None if none exists."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if as_of_date is None:
+            row = await conn.fetchrow(
+                """
+                SELECT metric_name, as_of_date, p50, p95, mad, sample_n
+                FROM mi_metric_baselines
+                WHERE metric_name = $1
+                ORDER BY as_of_date DESC LIMIT 1
+                """,
+                metric_name,
+            )
+        else:
+            row = await conn.fetchrow(
+                """
+                SELECT metric_name, as_of_date, p50, p95, mad, sample_n
+                FROM mi_metric_baselines
+                WHERE metric_name = $1 AND as_of_date <= $2
+                ORDER BY as_of_date DESC LIMIT 1
+                """,
+                metric_name, as_of_date,
+            )
+    return dict(row) if row else None
+
+
+async def get_baseline_reset(metric_name: str) -> datetime | None:
+    """Most recent epoch reset for `metric_name`. Baseline computation must
+    drop any history older than this timestamp."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT reset_at FROM mi_baseline_resets
+            WHERE metric_name = $1 ORDER BY reset_at DESC LIMIT 1
+            """,
+            metric_name,
+        )
+    return row["reset_at"] if row else None
+
+
+async def add_baseline_reset(metric_name: str, reason: str) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO mi_baseline_resets (metric_name, reason) VALUES ($1, $2)",
+            metric_name, reason,
+        )
+
+
+async def count_today_anomalies(audit_key: str, on_date: date | None = None) -> int:
+    """Dedup helper for L1/L2: have we already written an `anomaly_detected`
+    row for this `(audit_key, date)` pair? `audit_key` is the invariant
+    name or metric name, encoded into the detail JSON as `key`."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if on_date is None:
+            row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS n FROM mi_audit_log
+                WHERE event_type = 'anomaly_detected'
+                  AND detail LIKE $1
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = (NOW() AT TIME ZONE 'America/New_York')::date
+                """,
+                f'%"key": "{audit_key}"%',
+            )
+        else:
+            row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS n FROM mi_audit_log
+                WHERE event_type = 'anomaly_detected'
+                  AND detail LIKE $1
+                  AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+                """,
+                f'%"key": "{audit_key}"%', on_date,
+            )
+    return int(row["n"] or 0)
 
 
 # ── Validation cooldowns ───────────────────────────────────────────────────────

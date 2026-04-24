@@ -6,15 +6,19 @@ as concrete SQL. Run any time during the validation window to see where the
 system stands; run it deliberately at the cutover decision point (~2026-05-23)
 as the final go/no-go.
 
+Implementation note: invariant SQL is owned by
+`agents/market_intelligence/audit_invariants.py` so the CLI here and the
+scheduled `system_audit.py` scanner cannot drift apart. The "Closed paper
+trades" check is local — it's a sample-size threshold, not a correctness
+invariant, so it doesn't belong in the shared library.
+
 Checks (every check prints ✅ / ❌ and a number):
-  1. Naked positions          — mi_live_trades filled rows with no stop_order_id
-                                outside a 60s placement grace window.
-  2. Reason-coverage invariant — every mi_live_trades row has a terminal status
-                                 or a bounded skip_reason.
-  3. Silent audit errors       — mi_audit_log '*_error' events in the window.
-  4. Paper trade sample size   — closed mi_live_trades rows in the window.
-  5. Regime check              — current mi_market_regime must not be Crisis.
-  6. Feed health               — orb_subscribe_failed count in the last 24h.
+  1. Naked positions          — filled rows with no stop_order_id past 60s.
+  2. Reason-coverage invariant — every row has a status or skip_reason.
+  3. Silent audit errors       — '*_error' events in the window.
+  4. Paper trade sample size   — closed rows in the window.
+  5. Regime check              — current regime must not be Crisis.
+  6. Feed health               — orb_subscribe_failed count in last 24h.
 
 Usage:
     python scripts/readiness_check.py                  # default 30-day window
@@ -26,8 +30,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+from agents.market_intelligence.audit_invariants import (
+    check_audit_error_window,
+    check_feed_health_24h,
+    check_naked_position,
+    check_reason_coverage,
+    check_regime_stuck_crisis,
+)
 from agents.market_intelligence.collector import et_today
 from agents.market_intelligence.db import get_pool
 
@@ -43,75 +54,14 @@ def _fmt(ok: bool, label: str, detail: str) -> str:
     return f"  {mark} {label:<32} {detail}"
 
 
-async def check_naked_positions(conn, verbose: bool) -> bool:
-    # Any row in a live state with no protective stop is a naked position.
-    # The 60s grace accounts for the brief window between entry fill and the
-    # stop-placement response from Alpaca.
-    rows = await conn.fetch(
-        """
-        SELECT ticker, alert_date, status, stop_order_id, filled_at
-        FROM mi_live_trades
-        WHERE status = 'filled'
-          AND stop_order_id IS NULL
-          AND (filled_at IS NULL OR filled_at < NOW() - INTERVAL '60 seconds')
-        ORDER BY alert_date DESC
-        """
-    )
-    ok = len(rows) == 0
-    print(_fmt(ok, "Naked positions", f"{len(rows)} filled rows w/o stop"))
-    if verbose and rows:
-        for r in rows:
-            print(f"      • {r['ticker']} {r['alert_date']} filled_at={r['filled_at']}")
-    return ok
+def _print_invariant(ok: bool, label: str, body: dict, verbose: bool) -> None:
+    print(_fmt(ok, label, body.get("summary", "")))
+    if verbose and body.get("offending"):
+        for line in body["offending"]:
+            print(f"      • {line}")
 
 
-async def check_reason_coverage(conn, since, verbose: bool) -> bool:
-    # Reason-coverage invariant: every row either has a terminal status or a
-    # bounded skip_reason. A row with both NULL is a silent drop.
-    rows = await conn.fetch(
-        """
-        SELECT ticker, alert_date, status, skip_reason
-        FROM mi_live_trades
-        WHERE alert_date >= $1
-          AND status IS NULL
-          AND skip_reason IS NULL
-        ORDER BY alert_date DESC
-        """,
-        since,
-    )
-    ok = len(rows) == 0
-    print(_fmt(ok, "Reason-coverage invariant", f"{len(rows)} silent-drop rows"))
-    if verbose and rows:
-        for r in rows:
-            print(f"      • {r['ticker']} {r['alert_date']}")
-    return ok
-
-
-async def check_audit_errors(conn, since, verbose: bool) -> bool:
-    # Any error bucket in the window is a reason to investigate before flipping.
-    # This check is lenient on count but strict on 0-known failures at cutover.
-    rows = await conn.fetch(
-        """
-        SELECT event_type, COUNT(*) AS n
-        FROM mi_audit_log
-        WHERE event_type LIKE '%_error'
-          AND created_at >= $1
-        GROUP BY event_type
-        ORDER BY n DESC
-        """,
-        since,
-    )
-    total = sum(int(r["n"]) for r in rows)
-    ok = total == 0
-    detail = f"{total} events" if total else "clean"
-    print(_fmt(ok, "Silent audit errors", detail))
-    if verbose and rows:
-        for r in rows:
-            print(f"      • {r['event_type']}: {r['n']}")
-    return ok
-
-
-async def check_closed_trade_sample(conn, since) -> bool:
+async def _check_closed_trade_sample(conn, since) -> bool:
     row = await conn.fetchrow(
         """
         SELECT COUNT(*) AS n
@@ -128,57 +78,37 @@ async def check_closed_trade_sample(conn, since) -> bool:
     return ok
 
 
-async def check_regime(conn) -> bool:
-    row = await conn.fetchrow(
-        """
-        SELECT regime
-        FROM mi_market_regime
-        ORDER BY regime_date DESC
-        LIMIT 1
-        """
-    )
-    regime = (row["regime"] if row else "Unknown") or "Unknown"
-    ok = regime.lower() != "crisis"
-    print(_fmt(ok, "Market regime", f"{regime}"))
-    return ok
-
-
-async def check_feed_health(conn) -> bool:
-    # Rolling 24h subscribe failures — the most actionable feed-health signal.
-    # A subscribe failure means the SDK couldn't even register the ticker;
-    # zero-range is informational on IEX and only meaningful on SIP.
-    row = await conn.fetchrow(
-        """
-        SELECT
-          COUNT(*) FILTER (WHERE event_type = 'orb_subscribe_failed') AS subscribe_fail,
-          COUNT(*) FILTER (WHERE event_type = 'bar_stream_disconnect') AS disconnect
-        FROM mi_audit_log
-        WHERE created_at >= NOW() - INTERVAL '24 hours'
-        """
-    )
-    fails = int(row["subscribe_fail"] or 0)
-    drops = int(row["disconnect"] or 0)
-    ok = fails == 0
-    print(_fmt(ok, "Feed health (24h)", f"{fails} subscribe-fail · {drops} disconnect"))
-    return ok
-
-
 async def main(days: int, verbose: bool) -> int:
     since = et_today() - timedelta(days=days)
+    since_dt = datetime.combine(since, datetime.min.time())
     print(f"\n── Readiness check · window: {days}d (since {since}) ──\n")
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        results = [
-            await check_naked_positions(conn, verbose),
-            await check_reason_coverage(conn, since, verbose),
-            await check_audit_errors(conn, since, verbose),
-            await check_closed_trade_sample(conn, since),
-            await check_regime(conn),
-            await check_feed_health(conn),
-        ]
+        ok_naked, body_naked = await check_naked_position(conn)
+        _print_invariant(ok_naked, "Naked positions", body_naked, verbose)
+
+        ok_reason, body_reason = await check_reason_coverage(conn, since=since)
+        _print_invariant(ok_reason, "Reason-coverage invariant", body_reason, verbose)
+
+        ok_errors, body_errors = await check_audit_error_window(conn, since=since_dt)
+        _print_invariant(ok_errors, "Silent audit errors", body_errors, verbose)
+
+        ok_sample = await _check_closed_trade_sample(conn, since)
+
+        _, body_regime = await check_regime_stuck_crisis(conn)
+        # Readiness CLI uses a stricter "must not be Crisis right now" gate
+        # than the 30-day stuck check; the invariant body exposes the latest
+        # regime as a structured field.
+        latest_regime = body_regime.get("latest_regime", "Unknown")
+        ok_regime = latest_regime.lower() != "crisis"
+        print(_fmt(ok_regime, "Market regime", latest_regime))
+
+        ok_feed, body_feed = await check_feed_health_24h(conn)
+        _print_invariant(ok_feed, "Feed health (24h)", body_feed, verbose=False)
 
     print()
+    results = [ok_naked, ok_reason, ok_errors, ok_sample, ok_regime, ok_feed]
     passed = sum(1 for r in results if r)
     total = len(results)
     if passed == total:

@@ -182,7 +182,12 @@ async def _record_subscribe_failure(ticker: str, reason: str) -> None:
             f"⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
         )
     except Exception:
-        pass
+        # Audit row above is already written; log the alert-channel failure
+        # so it's at least visible in container output rather than silent.
+        logger.exception(
+            f"Bar stream subscribe-failure Telegram alert ALSO failed for {ticker} — "
+            f"audit event 'orb_subscribe_failed' is the durable record."
+        )
 
 
 async def unsubscribe_all() -> None:
@@ -254,9 +259,12 @@ async def _handle_bar(bar) -> None:
     )
 
     try:
+        from agents.market_intelligence.broker.entry_pipeline import (
+            ACTION_AUTO_ENTERED, ACTION_PROPOSED,
+        )
         from agents.market_intelligence.broker.live_tracker import process_new_alerts_live
         results = await process_new_alerts_live(trigger="bar_stream")
-        entered = [r["ticker"] for r in results if r.get("action") in ("auto_entered", "proposed")]
+        entered = [r["ticker"] for r in results if r.get("action") in (ACTION_AUTO_ENTERED, ACTION_PROPOSED)]
         if entered:
             logger.info(f"Bar stream ORB entry: {entered}")
         else:

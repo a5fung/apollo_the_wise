@@ -469,6 +469,12 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["weekly review", "system review", "self audit", "self-audit"]):
             return await self._handle_system_review(request)
 
+        # On-demand audit scan — `audit cooldowns`, `audit themes`, `audit all`, etc.
+        # Bare "audit" (no topic) treated as `audit all`. "audit log" stays
+        # routed to _handle_audit_log below (different feature).
+        if (task.startswith("audit ") or task == "audit") and "audit log" not in task:
+            return await self._handle_audit_topic(request)
+
         # Journal — add (colon disambiguates from query) or query
         if any(k in task for k in ["journal:", "log trade", "note trade", "add journal"]):
             return await self._handle_journal_add(request)
@@ -707,6 +713,37 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.exception(f"System review failed: {e}")
             return self._error(request, f"System review failed: {e}")
+
+    async def _handle_audit_topic(self, request: AgentRequest) -> AgentResponse:
+        """`/audit <topic>` — on-demand invariant + metric scan for a slice.
+
+        Topics: `cooldowns`, `themes`, `skips`, `positions`, `feed`, `9m`, `all`.
+        Bare `/audit` defaults to `all`. Same diagnostic body as the scheduled
+        scans; results emit Telegram on L1/L2 breach, audit-only on L3.
+        """
+        from agents.market_intelligence.system_audit import run_topic_audit
+        raw = request.task.strip()
+        parts = raw.split(maxsplit=1)
+        topic = parts[1].strip().lower() if len(parts) == 2 else "all"
+        try:
+            result = await run_topic_audit(topic)
+            if result.get("error"):
+                valid = ", ".join(result.get("valid") or [])
+                return self._ok(
+                    request,
+                    result=f"Unknown audit topic `{topic}`. Valid topics: `{valid}`.",
+                )
+            l1 = result.get("l1", 0)
+            l2 = result.get("l2", 0)
+            l3 = result.get("l3", 0)
+            summary = (
+                f"Audit `{topic}` complete — {l1} L1 / {l2} L2 / {l3} L3 drift. "
+                f"L1/L2 alerts (if any) sent to Telegram."
+            )
+            return self._ok(request, result=summary)
+        except Exception as e:
+            logger.exception(f"Audit topic failed: {e}")
+            return self._error(request, f"Audit failed: {e}")
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""
@@ -2706,6 +2743,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/pregame":        self._handle_pregame,
             "/trades":         self._handle_trades_detail,
             "/why":            self._handle_why_query,
+            "/audit":          self._handle_audit_topic,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,

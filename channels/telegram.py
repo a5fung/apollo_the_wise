@@ -1116,18 +1116,6 @@ class TelegramChannel:
             logger.error(f"/memory command failed: {e}")
             await update.message.reply_text(f"Error loading memories: {e}")
 
-    async def _handle_audit(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
-        """Handle /audit command — show recent audit log entries."""
-        if not update.effective_user or not self._is_allowed(update.effective_user.id):
-            return
-
-        await update.message.reply_text(
-            "The /audit command has been retired.\n"
-            "Use /trades for trading activity or check Docker logs for system events."
-        )
-
     async def _handle_spend(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -1450,7 +1438,7 @@ class TelegramChannel:
         # Other market-intelligence slash commands — bypass orchestrator LLM.
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
-        for _cmd in ("9m", "clusters", "regime", "pregame"):
+        for _cmd in ("9m", "clusters", "regime", "pregame", "audit"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
