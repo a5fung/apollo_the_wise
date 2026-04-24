@@ -1721,10 +1721,18 @@ async def mark_tracked_stock_weak(ticker: str, today: "date", retire_after: int 
         """, ticker, today, retire_after)
 
 
-async def get_active_themes() -> list[dict]:
+async def get_active_themes(stale_after_days: int = 7) -> list[dict]:
     """
-    Get the most recent snapshot of each active theme (stage != 'Retired').
-    Used by the theme engine as the base for daily re-scoring.
+    Get the most recent snapshot of each active theme (stage != 'Retired')
+    seen within the last `stale_after_days` calendar days.
+
+    The recency cap is the de-facto retirement mechanism: when a theme stops
+    appearing in daily snapshots (merged away during dedup, dropped during
+    discovery, renamed, etc.) it falls out of "active" once the window passes.
+    Without this, zombie themes from weeks ago keep getting re-validated every
+    Mon/Wed/Fri against stale ticker lists and generate spurious cooldowns
+    (135 cooldowns on 2026-04-24 traced to ~60 zombies last seen 2-4 weeks
+    prior). 7 days covers normal weekend/holiday gaps with margin.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1732,8 +1740,9 @@ async def get_active_themes() -> list[dict]:
             SELECT DISTINCT ON (name) *
             FROM mi_themes
             WHERE stage != 'Retired'
+              AND theme_date >= CURRENT_DATE - ($1 || ' days')::INTERVAL
             ORDER BY name, theme_date DESC
-        """)
+        """, str(stale_after_days))
         return [dict(r) for r in rows]
 
 

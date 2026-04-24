@@ -1319,3 +1319,132 @@ existing `humanize()` pipeline — no per-surface wiring.
    WHERE alert_date = CURRENT_DATE AND status = 'order_placed';
    ```
    should return 0 rows at 10:01 ET.
+
+---
+
+## Changes Made 2026-04-24 (session 3) — Unified entry pipeline + silent-failure hardening
+
+### One code path for every ORB bracket entry
+New `broker/entry_pipeline.py::submit_trade_entry` is the single funnel for
+both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source,
+position sizing) inject via a `spec_builder` callback. Everything else —
+duplicate check → safeguards → bar-fetch retry → fade guard → spec build →
+DB insert → Alpaca submit → audit log → Telegram — lives in the pipeline
+exactly once. **Contract: every terminal failure state Telegrams via
+`humanize()`.** No silent skips.
+
+`live_tracker._submit_orb_trade` deleted (~130 lines). `submit_9m_day2_trade`
+shrunk from ~150 to ~50 lines (thin wrapper around the pipeline with
+`prepare_9m_day2_orb_order` as spec_builder, `update_9m_sugar_baby_status`
+as `on_skip` hook). `process_new_alerts_live` shrunk from ~170 to ~80 lines.
+
+### Concurrency fix in `process_new_alerts_live`
+Per-alert work now runs in `asyncio.gather` with `Semaphore(5)`. Was strictly
+serial — bar-fetch retry can block 3×60s per ticker, so 20 alerts could stack
+60 min past the 5-min cron. Per-task exceptions captured via
+`return_exceptions=True` and Telegrammed individually as
+`🚨 TICKER ORB pipeline crashed`.
+
+### Bounded action vocabulary
+`entry_pipeline.py` exports `ACTION_AUTO_ENTERED / ACTION_PROPOSED /
+ACTION_AUTO_ENTER_FAILED / ACTION_PROPOSAL_SEND_FAILED / ACTION_SKIPPED /
+ACTION_BLOCKED`. Used in `live_tracker.py` and `bar_stream.py` instead of raw
+strings. Pattern parallel to `skip_reasons.py` for skip categories.
+
+### Silent-failure audit (rule: every trading failure must Telegram + audit-log)
+Findings + fixes from a sweep of `broker/` and trading scheduler jobs:
+
+1. **`live_tracker._process_alert` gather crash handler** — Telegram fail was
+   `except: pass`. Now writes `orb_pipeline_crash` audit event FIRST
+   (durable record), then attempts Telegram. If Telegram also fails,
+   `logger.exception` surfaces the failure in container logs.
+2. **`bar_stream._record_subscribe_failure`** — Telegram fail was silent.
+   Audit row already written; now Telegram failure also `logger.exception`.
+3. **`scheduler._9m_scan_job`** — `except: logger.error(...)` only. Now
+   wraps `notify_job_failure("9m_scan", ...)` so the user sees a 🚨 alert.
+4. **`scheduler._9m_day2_orb_job`** — same fix on outer wrap, PLUS new
+   per-candidate try/except inside the loop. One sugar baby's crash no
+   longer silently strands the rest of the watchlist; each crash writes a
+   `9m_day2_pipeline_crash` audit row and a 🚨 Telegram.
+
+### 9M sugar baby state mismatch fixed
+`submit_9m_day2_trade` post-call mapping now writes `skipped` on
+`auto_enter_failed` / `proposal_send_failed` (those bypass `_on_skip`
+because they happen after DB insert). Sugar baby row no longer stays
+`pending` forever after a post-insert failure.
+
+### Files Changed
+`broker/entry_pipeline.py` (new), `broker/live_tracker.py` (major rewrite),
+`broker/bar_stream.py`, `scheduler.py`, `CLAUDE.md`
+
+### ⚠️ Post-deploy verification
+1. **Reason-coverage invariant** unchanged — `scripts/readiness_check.py`
+   should still pass. Every HIGH EP gets `status` or `skip_reason`.
+2. **Concurrency**: on the next morning with ≥3 alerts, log line
+   `ORB monitor: N entered, M skipped out of K alerts` should appear within
+   ~1 min of 9:31 ET, not stack to 5+ min.
+3. **9M crash visibility**: synthetic test — kill the DB connection mid
+   `submit_9m_day2_trade` and confirm a `🚨 TICKER 9M Day2 pipeline crashed`
+   alert lands AND `mi_audit_log` has a `9m_day2_pipeline_crash` row.
+4. **No silent terminal states**: query against today's HIGH alerts should
+   show every one with a non-null `skip_reason` OR a live status; the new
+   `crashed` action also writes a `mi_live_trades` row via the pipeline
+   `_skip` helper when applicable, or surfaces only via the audit log when
+   the crash happens before the DB insert (audit is then the queryable
+   record).
+
+---
+
+## Changes Made 2026-04-24 (session 4) — Zombie theme cooldown flood
+
+### Problem
+2026-04-24 nightly theme validation wrote **135 cooldowns** to
+`mi_validation_cooldowns` (vs ~1/day baseline). Spot-check of the list
+showed semiconductor and electronics names appearing under oil/satellite
+themes — at first glance the same shape as the April 20 cross-sector
+hallucination bug, but that fix was verified working. Real cause was
+upstream of validation entirely.
+
+### Root cause
+`db.py::get_active_themes()` had no recency filter. The query returned
+the most-recent snapshot of **every theme name ever written** with
+`stage != 'Retired'`. Since `_save_themes` only writes the current day
+and there is no mechanism that flips dropped themes to `Retired`, any
+theme that stopped appearing in daily snapshots (merged away during
+dedup, renamed, dropped during discovery) lingered forever as a "zombie"
+with its last-known ticker list.
+
+98 themes were loaded for tonight's run; only ~37 were in today's
+snapshot. Examples: "Crude Oil Price Momentum ETFs & Pure-Play E&P"
+last seen 2026-03-31 (24 days stale) was still being re-validated
+against a frozen ticker list that included LRCX from a weeks-old
+hallucination → Haiku correctly removes LRCX from oil → cooldown row
+written → repeat across ~60 zombies.
+
+### Fix
+`get_active_themes(stale_after_days=7)` now filters
+`theme_date >= CURRENT_DATE - 7 days`. The recency cap acts as the
+de-facto retirement mechanism: a theme that stops appearing in daily
+snapshots naturally ages out of "active" after a week (covers normal
+weekend/holiday gaps with margin). All four call sites (theme_engine,
+correlation_engine, scheduler, agent) want current themes — default
+parameter, no signature break.
+
+### Manual cleanup applied (prod)
+`DELETE FROM mi_validation_cooldowns WHERE removed_at::date = CURRENT_DATE`
+on 2026-04-24 — 135 spurious rows removed. Future flooding prevented
+by the recency filter at the source.
+
+### Files Changed
+`agents/market_intelligence/db.py`, `CLAUDE.md`
+
+### ⚠️ Post-deploy verification
+1. Next nightly theme engine run (Mon/Wed/Fri 5 PM ET) — log line
+   `Re-scoring N existing themes` should show ~37, not 98.
+2. `mi_validation_cooldowns` rows added the next validation night
+   should be ≤ ~5 (baseline). If > 20, the dedup or hallucination
+   guard has regressed and needs separate investigation.
+3. Zombie themes that legitimately should still be active (e.g.
+   theme briefly absent due to a one-day discovery anomaly) will
+   re-emerge next time they appear in a snapshot. No data loss —
+   `mi_themes` history is preserved; only the read query is filtered.
