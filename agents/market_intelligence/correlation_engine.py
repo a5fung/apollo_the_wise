@@ -193,7 +193,7 @@ async def run_correlation_clustering(today: date) -> list[dict]:
         get_closes_for_correlation,
         upsert_correlation_clusters,
         get_active_themes,
-        get_rs_leaders,
+        get_rs_for_tickers,
     )
 
     from_date = today - timedelta(days=_LOOKBACK_DAYS)
@@ -230,10 +230,21 @@ async def run_correlation_clustering(today: date) -> list[dict]:
     clean = _dedup_against_themes(tight, active_themes)
     logger.info(f"Correlation clustering: {len(clean)} clusters after theme dedup")
 
-    # avg_rs enrichment from today's RS scores
+    # avg_rs enrichment — targeted lookup on cluster members, not a truncated
+    # leaders list. Defensive clusters (utilities, mortgage REITs, insurance)
+    # fall outside the top 500 by RS but still have real scores in
+    # mi_stock_scores; using get_rs_for_tickers avoids silently storing
+    # avg_rs=0 for them and polluting the theme-discovery prompt.
     today_str = today.strftime("%Y-%m-%d")
-    leaders = await get_rs_leaders(today_str, limit=500)
-    rs_by_ticker = {s["ticker"]: s.get("rs_composite", 0.0) for s in leaders}
+    cluster_tickers = sorted({tk for c in clean for tk in c["tickers"]})
+    rs_rows = await get_rs_for_tickers(today_str, cluster_tickers)
+    rs_by_ticker = {tk: (r.get("rs_composite") or 0.0) for tk, r in rs_rows.items()}
+    missing = [tk for tk in cluster_tickers if tk not in rs_by_ticker]
+    if missing:
+        logger.warning(
+            "Correlation clustering: %d cluster tickers have no RS score for %s: %s",
+            len(missing), today_str, missing[:10],
+        )
     clean = _enrich_avg_rs(clean, rs_by_ticker)
 
     # Persist

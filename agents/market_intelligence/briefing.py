@@ -1068,7 +1068,19 @@ def _ep_composite_key(ep: dict, theme_stage_by_ticker: dict[str, str]) -> float:
     """
     theme_stage = theme_stage_by_ticker.get(ep["ticker"], "")
     theme_bonus = _THEME_BONUS.get(theme_stage, 0)
-    rs_bonus = min((ep.get("rs_composite") or 0) / 10, 10)
+    rs = ep.get("rs_composite")
+    if rs is None:
+        # NULL indicates the ticker dropped from the RS universe (delisted,
+        # sub-$10, non-CS) between scoring and EP detection. Log as a
+        # universe-drift signal and use a neutral bonus so we neither promote
+        # nor bury the alert purely because of the missing score.
+        logger.warning(
+            "EP alert with no RS score — universe drift: ticker=%s alert_date=%s",
+            ep.get("ticker"), ep.get("alert_date"),
+        )
+        rs_bonus = 5.0
+    else:
+        rs_bonus = min(rs / 10, 10)
     return ep["ep_score"] + theme_bonus + rs_bonus
 
 
