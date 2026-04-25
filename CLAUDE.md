@@ -2,7 +2,8 @@
 
 ## Session Sync Protocol
 At the start of every session: `git pull origin main`
-Read "Changes Made" sections to understand prior sessions.
+Read "Changes Made — Recent" sections to understand prior sessions.
+Older session details live in git history; see compressed log below for a roadmap.
 
 At the end (if code changed):
 ```bash
@@ -46,7 +47,11 @@ agents/
     theme_engine.py    # Theme discovery, dedup, lifecycle
     briefing.py        # Briefing formatters + send_telegram_message
     scheduler.py       # APScheduler jobs
-    broker/            # Alpaca ORB trading
+    system_audit.py    # L1/L2/L3 anomaly + invariant scans
+    audit_invariants.py # Shared invariant library (used by readiness_check.py)
+    broker/
+      entry_pipeline.py # Single funnel for ORB bracket entries (MAGNA53 + 9M Day 2)
+      ...
 channels/      telegram.py, webhooks.py
 shared/        models.py, registry.py, secrets.py
 ```
@@ -67,7 +72,7 @@ Order matters — first match wins:
 7. journal add ("journal:", "log trade") / journal query ("show journal", "my journal")
 8. theme ("theme", "sector", "industry") — before regime/RS
 9. regime / 10. RS/score / 11. briefing / 12. pullback / 13. fundamentals
-14. screener / 15. audit log ("audit log", "show logs", "show errors") / 16. weekly review ("weekly review", "system review", "self audit") / 17. fallback
+14. screener / 15. audit log ("audit log", "show logs", "show errors") / 16. weekly review ("weekly review", "system review", "self audit") / 17. /audit topic ("audit <topic>") / 18. fallback
 
 ## Ticker Extraction
 ```python
@@ -85,19 +90,22 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ### Theme Engine
 - Bottom-up from price action — themes emerge from RS, not hypotheses
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
-- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. Parse Haiku response with regex to extract JSON — Haiku appends explanation text that breaks `json.loads` directly.
+- **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — bad descriptions caused TSEM to be permanently banned from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
 - **Post-assignment validation**: immediately validates newly assigned stocks (don't wait for Mon/Wed/Fri).
 - **Tool schemas**: all three tools (assignment, discovery, split) have `analysis_scratchpad` as required first field — forces reasoning before JSON output.
 - **Unknown sector fallback**: when sector is "Unknown", checks description keyword overlap (4+ letter words) before allowing assignment.
 - **Description chunking**: `_ensure_descriptions()` sends max 15 tickers per Haiku call.
+- **`get_active_themes(stale_after_days=7)`**: recency cap is the de-facto retirement mechanism — themes that stop appearing in daily snapshots age out after a week.
 
 ### EP Detection (MAGNA53)
-- Alpaca bars use **IEX feed** (free), not SIP (paid) — critical for `get_first_bar()`
+- Alpaca bars use feed selected by `ALPACA_DATA_FEED` env var (`iex` default; `sip` requires Algo Trader Plus subscription) — resolved by `alpaca_client.get_data_feed()`.
 - **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
 - HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
+- **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`.
+- **Fade guard**: before placing ORB bracket, fetch latest trade. If `last_price < (orb_high+orb_low)/2`, skip with `SETUP_FADED_FROM_ORB`.
 
 ### 9M EP Detection (Parallel Track)
 - **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde)
@@ -106,24 +114,44 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
   - Directional: gap ≥ 3% OR intraday gain ≥ 4%
   - Anomaly: effective_vol ≥ 3× ADV (unknown ADV passes; ratio — NOT a flat ADV ceiling)
   - Anticipation: ≥ 30 min elapsed, ≥ 3M shares already traded, projects to ≥ 12M
+  - Range ≥ 2% intraday; prev_close ≤ 1.20× SMA-10 extension gate
 - **Intraday and EOD use identical filters** — both apply 3× ADV ratio, $50M turnover, $5 price, directional conviction. Any divergence creates phantom sugar babies.
-- **Sugar Baby** = 9M day + green (close > open) + close in top 25% of range → Day 2 ORB candidate
+- **Sugar Baby** = 9M day + net up ≥ 3% vs prev_close + close > open + close in top 25% of range → Day 2 ORB candidate. "Green" means net up on the day (matches intraday `_MIN_GAP_PCT` floor), NOT just close > open — the latter alone admits gap-down wick-fills (e.g. WU 2026-04-24: gap −10%, recovered to net −4.6%, close > open ✓ but categorically not a breakout).
 - **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based
-- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_sugar_babies` (EOD confirmed)
-- **`mi_daily_closes`** now has `open_price`, `high_price`, `low_price` — required for sugar baby filter
-- **`ingest_daily_closes()`** stores o/h/l from Polygon grouped daily payload with COALESCE guard
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_sugar_babies` (EOD confirmed; carries 6 going-in shape columns + `_shape_tag()` bucket)
+- **`mi_daily_closes`** has `open_price`, `high_price`, `low_price` — required for sugar baby filter
+- **Anticipation cadence carve-out**: silent anticipations hit DB/audit only; Telegram only when gap ≥ 10% OR proj_vol ≥ 25M.
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
+### Entry Pipeline
+- **`broker/entry_pipeline.py::submit_trade_entry`** — single funnel for both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback. Pipeline owns: dedup → safeguards → bar-fetch retry → fade guard → spec build → DB insert → Alpaca submit → audit log → Telegram. **Contract: every terminal failure Telegrams via `humanize()`.**
+- Bounded action vocabulary: `ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`.
+- Bounded skip-reason vocabulary in `broker/skip_reasons.py` — 18 constants across `filter:* / setup:* / block:* / infra:* / window:*`. Aggregate via `split_part(skip_reason, ':', 1)`.
+
+### Stop-Leg ID Capture
+- `alpaca_client.extract_stop_leg_id(order)` is the canonical helper — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Robust against Python 3.11+ Enum stringification (`str(OrderType.STOP)` → `"OrderType.STOP"`).
+- Used in: `place_bracket_order` (naked-order guard), `submit_entry`, `check_fills`, `attempt_day1_reentry`, `_process_entry_fill`. Never re-implement the loop.
+- `_process_entry_fill` checks 3 sources before remediation: WS event legs, DB `stop_order_id`, REST refetch.
+
+### Self-Audit System (L1/L2/L3)
+- **L1** invariant breach (hard SQL guard fails) → immediate Telegram + audit row.
+- **L2** anomaly (metric outside 30d trimmed median ± 3 MAD OR > 5× median) → immediate Telegram with Sonnet hypothesis.
+- **L3** drift (band transition) → audit row only, surfaces in Sunday weekly digest.
+- Jobs: `_post_eod_audit_job` 16:15 ET, `_post_nightly_audit_job` 17:30 ET, `_baseline_refresh_job` 02:00 ET. Each ends with kuma heartbeat (`KUMA_AUDIT_*_URL` env).
+- On-demand: `/audit <topic>` (cooldowns/themes/skips/positions/feed/9m/all).
+- Cold-start tiers: `sample_n < 7` → hardcoded `_COLD_START_CEILINGS` only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
+- Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.
+
 ### Error Alerting
-- Silent failures in theme engine now write to `mi_audit_log` with event types: `validation_error`, `assignment_error`, `discovery_error`
-- After nightly run: if any `*_error` events in last 2h → immediate Telegram alert
-- Morning briefing: shows overnight error count at top if any
-- Telegram: `show errors 7d` pulls all error events for the period
+- Silent failures in theme engine write to `mi_audit_log`: `validation_error`, `assignment_error`, `discovery_error`, plus `validation_rate_limited` / `anthropic_rate_limited` for 429s.
+- After nightly run: if any `*_error` events in last 2h → immediate Telegram alert.
+- Morning briefing: 3-bucket banner (🔴 errors / 🟠 rate-limited / 🟡 parse errors).
+- Telegram: `show errors 7d` pulls all error events for the period.
 
 ### Paper Trading (Alpaca)
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
-- ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, stop at ORB low
+- ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
 - Safeguards: max 4 positions, 2% daily loss limit, 3-loss circuit breaker
 - Kill switch: `LIVE_TRADING_ENABLED=false`
 
@@ -131,6 +159,8 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - NEVER use pipe tables — Telegram can't render them. Use monospace code blocks.
 - `send_telegram_message` in `briefing.py`. Returns False on failure (never raises).
 - Escape dynamic strings before passing with Markdown mode.
+- Skip-reason machine prefixes (`infra:subscribe_timeout: ...`) → run through `humanize()` before user display. DB keeps machine prefix; user sees prose.
+- Reserve Telegram for terminal/actionable events. Self-healing/transient → `mi_audit_log` only.
 
 ## Daily Schedule (ET)
 | Time | Job |
@@ -139,18 +169,22 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 9:00 AM | Morning briefing |
 | 9:31 AM | ORB monitor — bracket orders |
 | 9:35 AM | Stop refresh Day 2+ |
-| 10:00 AM | EP scan stops |
+| 10:00 AM | EP scan stops + ORB unfilled-entry cleanup |
 | 4:05 PM | EOD cleanup |
-| 5:00 PM | Data pull — RS + regime + themes + error check |
+| 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
+| 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
 | 4:45 PM | Position update |
+| 5:00 PM | Data pull — RS + regime + themes + error check |
+| 5:30 PM | **Post-nightly audit** (theme/cooldown/regime L2/L3) |
 | 8:00 PM | Evening briefing |
-| Sun 8:00 AM | Weekly system self-audit (7d metrics → Claude synthesis → Telegram digest; persists `mi_system_reviews`) |
+| 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
+| Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up → Telegram digest) |
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
 - Market agent only: `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent && docker compose -f docker/docker-compose.prod.yml up -d market-agent`
 - Both services: same but add `orchestrator` to build/up commands
-- Service names: `orchestrator`, `market-agent`, `postgres`, `redis`
+- Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 
 ## Required Env Vars
 ```
@@ -159,1292 +193,90 @@ ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
 ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
 ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
-```
-
-## Changes Made 2026-04-19
-
-### 9M EP System (Pradeep Bonde "9M" tactic)
-
-Completely parallel EP track — zero changes to existing MAGNA53 logic.
-
-**New file:** `agents/market_intelligence/ninem_detector.py` — intraday scan (`run_9m_scan()`) + EOD sweep (`run_9m_eod_sweep()`)
-
-**DB additions (`db.py`):**
-- `mi_daily_closes` gains `open_price`, `high_price`, `low_price` (ALTER TABLE, COALESCE-guarded upsert)
-- `mi_9m_ep_alerts` — intraday detection log; `UNIQUE (ticker, alert_date)`
-- `mi_9m_sugar_babies` — EOD Day 2 watchlist; `UNIQUE (ticker, alert_date)`; `day2_status`: pending/traded/skipped
-- New functions: `insert_9m_ep_alert`, `get_today_9m_ep_alerts`, `insert_9m_sugar_baby`, `get_eod_9m_sugar_babies`, `get_pending_9m_sugar_babies`, `update_9m_sugar_baby_status`, `get_9m_ep_history`, `get_9m_live_trades`
-
-**Broker (new functions only, no modifications to existing):**
-- `order_manager.py`: `prepare_9m_day2_orb_order()` — stop = prior day's low (not ATR-based)
-- `live_tracker.py`: `submit_9m_day2_trade()` — auto-enters paper, proposes in live
-
-**Scheduler:** `9m_ep_scan` (every 5 min 9:30–4 PM), `9m_day2_orb` (9:31 AM). EOD sweep inside `_nightly_data_pull()`.
-
-**Agent routing:** `_handle_9m_ep_query`, `_handle_9m_ep_outcomes`, `_handle_9m_trades` (includes "trade 9m TICKER" manual trigger)
-
-**Outcome tracking:** `_compute_9m_ep_outcomes()` in `outcome_tracker.py` — 1D/1W/1M returns → `mi_signal_outcomes` with `signal_type='9m_ep'`
-
-**Scripts:** `scripts/backtest_9m_ep.py` (D1/D5/D10/D21 by vol/range bucket), `scripts/test_9m_ep_e2e.py` (e2e test)
-
-**Key rules:**
-- Volume ≥ 8.9M (actual) or ≥ 12M projected (after 15 min) = signal
-- Sugar Baby = 9M day + green + close top 25% of range
-- Stop = prior day's low; shared 4-position cap with MAGNA53
-
-### Files Changed
-`ninem_detector.py` (new), `db.py`, `briefing.py`, `scheduler.py`, `agent.py`, `broker/order_manager.py`, `broker/live_tracker.py`, `outcome_tracker.py`, `scripts/backtest_9m_ep.py` (new), `scripts/test_9m_ep_e2e.py` (new), `README.md`, `EP_TRADING_RULES.md`, `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-20
-
-### Bugs Fixed — Theme Validation (20 silent parse errors)
-
-**Root cause: regex broke on Haiku's new nested-JSON responses.**
-Old regex `r'\{[^{}]*\}'` scans for `{` then chars that are NOT `{` or `}`. Haiku now
-returns extra fields alongside `remove`, e.g. `{"remove": [], "reasoning": {"fit": "..."}}`.
-The regex hits the inner `{` of the nested object and gives up — `m` is `None`, so the full
-raw prose is passed to `json.loads`, which raises `JSONDecodeError`. All 20 themes failed
-the same night because it's a model behavior shift, not a theme-specific issue.
-
-Fix (`theme_engine.py`):
-- `_extract_json_object()` — replaces regex with proper brace-depth + string-escape-aware
-  parser that correctly extracts the outermost `{...}` regardless of nesting depth.
-- `result.get("remove") or []` — guards against Haiku returning `"remove": null` instead
-  of `[]`; the old `.get("remove", [])` default only fires when key is absent, not null.
-- `max_tokens` 200 → 400 to avoid mid-JSON truncation.
-- Added `system` prompt: `"Respond with valid JSON only. No prose, no markdown."` to
-  reduce likelihood of extra fields in the first place.
-
-**⚠️ MUST-VALIDATE after next Mon/Wed/Fri nightly run:**
-1. Check audit log for any remaining validation errors:
-   - In Telegram: `show errors 1d`
-   - Should show 0 `validation_error` events
-2. Confirm validation is actually running and making decisions (not just silently passing):
-   - In Telegram: `show errors 7d` — look for `ticker_revalidated_out` events to confirm
-     Haiku is successfully removing wrong-sector stocks
-3. If errors still appear, check the `detail` field — it contains `{ErrorType}: {msg} | raw={snippet}`
-   which reveals exactly what Haiku returned and why parsing failed
-
-### Bugs Fixed — Theme Assignment Cross-Sector Hallucinations (LRCX/ICHR in Oil theme)
-
-**Root cause: sector gate had a blind spot when theme members all show "Unknown" sector.**
-Oil theme stocks (XOM, CVX, OXY) often fall outside the top-300 RS leaders so they have
-no sector in `stocks_by_ticker`. This made `known_sectors = []`, which bypassed the
-`if known_sectors and stock_sector not in known_sectors` check entirely — even when the
-incoming stock's sector (e.g. LRCX = "Electronic Technology") was perfectly clear.
-Result: Claude's LLM assignments were validated only by Haiku post-assignment, which
-correctly removed them but left 14-day cooldowns that pollute the briefing.
-
-Fix (`theme_engine.py`): added `elif not known_sectors` branch — when theme sectors are
-all unknown, cross-check the stock's sector against the theme name + description via
-keyword overlap (4+ letter words). "Electronic Technology" shares zero words with
-"Crude Oil Price Momentum ETFs & Pure-Play E&P" → rejected before reaching Haiku or DB.
-Preserved the existing `else` fallback (description overlap) for when the stock's own
-sector is also unknown.
-
-**Existing bad cooldowns (LRCX/ICHR/AMPX/DOW on crude oil):** cosmetic only, expire in
-~13 days. No manual cleanup needed. Fix prevents new wrong assignments going forward.
-
-### Bugs Fixed — Broker / Live Trading
-
-**Partial exit blocked by stop order (KURA case):**
-All shares were `heldfororders` by the Alpaca stop-loss bracket, making `available=0`. Selling any shares was rejected.
-
-Fix (`broker/order_manager.py: execute_partial_exit`):
-- Step 1: cancel old full-qty stop → place new stop for `new_remaining` (2/3) → DB updated immediately
-- Step 2: market sell `partial_shares` (1/3) — now available since stop no longer holds them
-- On sell failure: cancel new stop, restore original-qty stop, send Telegram alert with confirmation
-- On stop-cancel failure: abort cleanly (old stop still live), alert, retry next cycle
-- On replacement stop failure: 🚨 urgent alert, abort
-
-**Fractional qty rejection:**
-`remaining / 3` (Python float) produced `697.333...` which Alpaca rejects. Fixed to `int(remaining) // 3`.
-
-**Caller ignored execute_partial_exit return value (`broker/live_tracker.py`):**
-Even on failure the caller set `partial_taken=True` and decremented `remaining_shares`, so the partial was marked done and never retried. Fix: only advance `partial_taken / breakeven_active / remaining` if the call returns `True`. On failure, DB state is unchanged and the next 4:45 PM run retries automatically.
-
-**⚠️ MUST-RUN before next 4:45 PM position update — DB is wrong for KURA:**
-The failed partial on 2026-04-20 wrote `partial_taken=TRUE` and `remaining_shares≈1394`
-to the DB even though no shares were sold. Without this fix, KURA's partial will never
-be retried and the share count/stop will be based on incorrect data.
-```sql
--- Run on production DB before deploying or before 4:45 PM ET
-UPDATE mi_live_trades
-SET partial_taken = FALSE,
-    breakeven_active = FALSE,
-    remaining_shares = 2092
-WHERE ticker = 'KURA' AND status = 'filled';
-```
-
-**Order skip reason opaque ("Order spec failed"):**
-`prepare_orb_order` returned `None` with no reason. Changed return type to `tuple[dict|None, str|None]` — every rejection path now returns a specific human-readable string (e.g. `"stop too wide: ORB range $1.24 vs 1.5× ATR $0.83"`). The reason is shown in Telegram, stored in `mi_live_trades.skip_reason`, and written to `mi_audit_log` with ORB H/L/ATR for system evaluation.
-
-### Key Rules Added
-- **Partial exit is always stop-protected**: stop for remaining shares is placed *before* the sell order, not after.
-- **SMA trailing stop timing**: runs once daily at 4:45 PM ET (EOD close-based). Activates on Day 10+ (needs 10 daily closes). Before Day 10: only ORB hard stop + breakeven (if partial taken) apply.
-
-### Files Changed
-`broker/order_manager.py`, `broker/live_tracker.py`, `scripts/cleanup_9m_false_alerts.py` (new)
-
-**⚠️ MUST-RUN on production before deploy — 100+ false 9M EP alerts in DB:**
-The 9M ETF/non-stock filter was added on 2026-04-20 (session 6), but alerts fired before
-that fix are still in `mi_9m_ep_alerts` and `mi_9m_sugar_babies`. Run the cleanup script
-on the server after `git pull`:
-```bash
-# Dry run first — review output carefully
-docker compose -f docker/docker-compose.prod.yml exec market-agent \
-  python scripts/cleanup_9m_false_alerts.py
-
-# Then delete if output looks right
-docker compose -f docker/docker-compose.prod.yml exec market-agent \
-  python scripts/cleanup_9m_false_alerts.py --delete
-```
-Script checks three criteria: SKIP_TICKERS list, non-CS/ADRC in `mi_security_types`,
-and bad ticker format (>5 chars or contains `.`). Also cleans derived sugar baby rows.
-
----
-
-## Changes Made 2026-04-20 (session 2) — 9M quality filters (74 → 2–5/day)
-
-### Problem
-First production day of post-ETF-filter 9M detector produced **74 alerts** — unworkable
-as a signal and as a Day 2 ORB candidate pool (4-position cap). Existing filters
-(ETF gate, ADV ≤ 4.5M ceiling, gap ≥ 0%, price ≥ $3) let through low-dollar stocks,
-flat/red tapes, and stocks doing merely 2× their normal volume.
-
-### Fix — structural filters in `ninem_detector.py` + matching EOD SQL
-
-Four new gates applied to both intraday `run_9m_scan()` and EOD `get_eod_9m_sugar_babies()`:
-
-1. **Price ≥ $5.00** (was $3) — sub-$5 rarely institutional.
-2. **Dollar-volume floor:**
-   - Actual alert: `today_volume × current_price ≥ $50M`
-   - Anticipation: `≥ $30M` already traded (self-regulates low-priced false positives)
-3. **Directional conviction:** `gap ≥ 3% OR intraday_gain ≥ 4%` — catches both
-   "gapped and held" and "opened flat but trending hard." Previous `gap ≥ 0%` was a no-op.
-4. **Virgin 9M anomaly (ratio, not ceiling):** `effective_vol ≥ 3 × adv_20`
-   - Actual uses `today_volume`; anticipation uses `projected_vol`
-   - **Critical**: replaces old flat `_MAX_ADV = 4.5M` ceiling. Flat ceiling would have
-     silently blocked mid-ADV genuine catalysts (4M ADV × 20M shares = $100M+ day) while
-     the EOD SQL (which already used a 3× ratio) would have surfaced them as phantom
-     sugar babies the next morning. Both paths now use identical ratio logic.
-5. **Anticipation tightened:** min-elapsed 15 min → 30 min; require ≥ 3M shares already
-   traded before projecting (prevents projection off 1–2M of open-auction flow).
-
-### Telegram message format
-Now includes dollar-volume: `9M EP: TICKER — Vol: 12.3M ($87M) | RVOL: 4.1x | $7.15 | +8.2%`.
-Gap display auto-switches to intraday_gain when the intraday leg is what qualified.
-
-### Files Changed
-`ninem_detector.py` (constants + filter logic + docstrings + message), `db.py`
-(`get_eod_9m_sugar_babies` WHERE clause + docstring), `CLAUDE.md`
-
-### ⚠️ Post-deploy verification
-After first session with new filters:
-1. Alert count should land in 2–5 on a typical day, 6–10 on a risk-on day.
-2. Spot-check `mi_9m_ep_alerts` for today: no flat/red tapes, no sub-$5, no mega-caps.
-3. Sugar babies count in `mi_9m_sugar_babies` for today should be ≤ 5.
-4. Mid-ADV genuine catalysts (e.g. a 4M ADV name doing 15M+ shares on news) must appear
-   in **both** intraday alerts **and** EOD sugar-baby query.
-
----
-
-## Changes Made 2026-04-20 (session 4) — Hardening triage from architecture review
-
-### Hardening
-- **LLM rate-limit guard in `ep_detector`**: switched `_get_claude()` to `AsyncAnthropic`, added module-level `asyncio.Semaphore(5)` + one-level retry on `RateLimitError` (2–5s jitter). Earnings days with 30+ simultaneous gaps no longer silently degrade catalyst classification via 429s. Audit event `anthropic_rate_limited` on retry.
-- **Correlation matrix off the event loop**: `correlation_engine.run_correlation_clustering` now wraps the `np.corrcoef` + BFS block in `asyncio.to_thread()` via new `_compute_tight_clusters_sync()`. The 2800×2800 float64 matrix no longer blocks Telegram / EP scans during nightly pull.
-
-### Features Added
-- **Theme breadth decay (`pct_above_20sma`)**: new column on `mi_themes`; computed nightly for every active theme via `get_ticker_breadth_above_sma20()` (reads `mi_stock_scores.close > sma_20`). When breadth < 40% for 2 consecutive days, theme is forced to `Fading` regardless of RS smoothed delta — catches themes where members have rolled over even while RS still looks healthy. Surfaces in briefing theme line as `brdXX%` next to `d{N}` and `🔥×{N}`. Audit event `theme_breadth_fade`.
-
-### Backlog Added
-P18 (+3R/72h partial), P19 (VIX-scaled risk), P20 (earnings IV pre-pass — blocked on data), P21 (cross-asset thematic validation). Rejected: stat-arb residual mean-reversion, dark-pool block-print integration.
-
-### Files Changed
-`ep_detector.py`, `correlation_engine.py`, `theme_engine.py`, `db.py`, `briefing.py`, `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-20 (session 3) — Weekly system self-audit
-
-### Features Added
-- **Sunday 8 AM ET weekly review** — `system_review.py` pulls 7d from every tracking
-  table, aggregates to summary stats in Python/SQL (LLM never sees raw rows — token
-  trap), hands to Sonnet for synthesis, sends Telegram digest, persists to
-  `mi_system_reviews` (JSONB metrics + suggestions) so next week's run grades prior
-  suggestions. Four-section output: ✅ Working / ⚠️ Broken / 💡 Proposed changes / 🔁 Last week.
-- On-demand trigger via Telegram: `weekly review`, `system review`, `self audit`.
-- Follow-up framed as metric deltas (not "did it ship?") — LLM has no deploy visibility.
-
-### New DB
-- `mi_system_reviews` (review_date, window_days, regime, summary, metrics JSONB, suggestions JSONB) — UNIQUE (review_date, window_days).
-- `get_weekly_theme_churn(days)` in `db.py` — LAG() over `mi_themes.tickers` arrays; returns high-churn (ticker, theme) pairs.
-
-### Files Changed
-`system_review.py` (new), `db.py`, `scheduler.py`, `agent.py`, `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-17
-
-### Bugs Fixed
-- **Validation silently failing** (root cause of CAR bug): Haiku returns valid JSON then appends explanation text. `json.loads` failed with "Extra data" — `except` block kept all tickers. Fix: always extract JSON object via regex before parsing.
-- **Sector always "Unknown" for fallback stocks**: Theme tickers outside top-60 RS leaders got `sector="Unknown"` hardcoded, bypassing the sector outlier check. Fix: `get_sectors_batch()` reads from `mi_ticker_overrides` (persistent cache).
-- **EP projection false positives in first 15 min**: Linear extrapolation at 9:31 AM produces absurd 30-40x projected RVOL. Fix: 15-minute gate — projection only after 9:45 AM.
-- **Extension check using single stale point**: Used close from exactly 5 days ago. Fix: `MIN(close)` over last ~5 trading days.
-- **Auto-persist validation removals**: Re-introduced dangerous code (reverted April 10 for good reason — caused TSEM permanent ban). Reverted again.
-
-### Features Added
-- **Proactive error alerting**: Nightly Telegram alert if `*_error` audit events; morning briefing error section; `show errors Nd` command.
-- **Theme engine architectural hardening**: Scratchpad in all tool schemas; Unknown sector description-overlap fallback; immediate post-assignment validation; description chunking (15/batch).
-- **P4**: EP outcome table (`ep outcomes 30d`)
-- **P5**: Theme conviction display (days_active, consecutive_accelerating on theme lines)
-- **P6**: Trading journal (`journal: <note>`, `show journal`)
-
-### Files Changed
-`theme_engine.py`, `ep_detector.py`, `db.py`, `agent.py`, `briefing.py`, `scheduler.py`
-
-## Changes Made 2026-04-17 (session 2)
-
-### Hardening (live trading prep)
-- **Orphaned stop remediation**: `sync_positions()` now detects filled trades with no `stop_order_id` and auto-places a protective stop using stored `stop_price`/`orb_low`. Alerts via Telegram.
-- **yfinance timeout**: All 6 executor calls in `get_fundamentals()` wrapped with `asyncio.wait_for(30s)` — prevents thread pool starvation if Yahoo hangs.
-- **Data pull timing**: 4:30 PM → 5:00 PM ET so volume/print data has settled before RS scoring.
-- **RS leaders tweet**: Dropped `media_upload` (v1.1 API, 403 on free tier) — posts text-only thread now.
-
-### Features Added
-- **P2**: MODERATE EP alerts in morning briefing now show `rel_volume` + `claude_analysis` summary line. Previously showed only gap% and score.
-- **P3 scaffold**: `validation report` / `paper performance` command. Scaffold mode (N < 10 trades) shows raw list. Full report at N ≥ 10: win rate, avg P&L, breakdowns by regime/catalyst/gap bucket.
-
-### Files Changed
-`broker/order_manager.py`, `fundamentals.py`, `scheduler.py`, `twitter.py`, `briefing.py`, `db.py`, `agent.py`
-
-## Changes Made 2026-04-17 (session 3)
-
-### Features Added
-- **Validation cooldown**: When validation removes a stock from a theme, writes a 14-day cooldown to `mi_validation_cooldowns`. Prevents re-assignment during cooldown via: (1) Claude prompt context injection, (2) post-assignment hard filter. Full audit trail (`validation_cooldown_triggered`, `cooldown_blocked_assignment`, `validation_cooldown_bypassed`). Commands: `show cooldowns`, `bypass cooldown TICKER [theme] [reason]`. Evening briefing shows compact `🧊 Cooldowns:` footer if any active. Fixes the CAR-in-Data-Center churn bug.
-
-### New DB Table
-`mi_validation_cooldowns` (ticker, theme_name, cooldown_until, removal_count, bypassed, bypassed_reason)
-
-### Files Changed
-`db.py`, `theme_engine.py`, `agent.py`, `briefing.py`
-
-## Changes Made 2026-04-17 (session 4)
-
-### Features Added
-- **P15 — Correlation clustering**: New `correlation_engine.py` computes beta-adjusted (SPY-residual) Pearson correlations over 20 trading days on the full liquid universe (~4–6K tickers). BFS connected components ≥ 4 stocks at pairwise corr ≥ 0.85. Two filters: chaining filter (mean_corr ≥ 0.80 on sub-matrix), theme dedup (skip if ≥ 50% members already in same theme). Clusters fed into `_discover_new_themes()` prompt as early statistical signals.
-- Key correctness patches: zero-variance stocks stripped before `np.corrcoef` (halted/flat tickers → NaN rows); `ddof=1` used consistently for both `np.var` and `np.cov` (population/sample mismatch = invalid beta); chaining filter via sub-matrix `mean_corr`; prompt guardrail against "Cluster A/B" names.
-- `show clusters` command in Telegram
-- `scripts/backtest_clusters.py`: precision + recall metrics on historical data (target: precision ≥ 30%, recall ≥ 60%)
-
-### New DB Table
-`mi_correlation_clusters` (cluster_date, cluster_hash, ticker, member_count, mean_corr, avg_rs)
-
-### Bugs Fixed (post-backtest)
-- **ETF contamination**: Full universe included leveraged ETFs (TSLZ, TQQQ, GLD, GBTC) that cluster by construction. Fixed: JOIN `mi_security_types` WHERE `security_type IN ('CS', 'ADRC')`, with explicit SPY exemption for beta adjustment.
-- **OOM on 5K universe**: 5K×5K float64 ≈ 400MB → container OOM kill (exit 137). Fixed: `min_avg_dollar_volume=$20M` default → ~2800 tickers, ~133MB total — fits 512MB container.
-- **Holiday months short of 21 days**: December/January holidays → only 19–20 trading days in 30-day calendar window. Fixed: `_LOOKBACK_DAYS = 35`.
-- **Backtest look-ahead cap**: `if before > to_date: continue` prevented any cluster from reaching future theme data. Removed. Recall query also extended to `to_date + 6 weeks`.
-
-### Backtest Results
-Dec 2025 → Feb 2026: precision 0.5%, recall 8.2%. **Statistically inconclusive** — theme data only starts 2026-03-19, so most cluster look-ahead windows land in a data gap. Qualitative check (2026-04-17) shows 10 coherent sector clusters (quantum computing, tankers, insurance, storage REITs, paint/coatings). Re-backtest when theme history reaches 6+ months (~June 2026).
-
-### Files Changed
-`correlation_engine.py` (new), `db.py`, `theme_engine.py`, `scheduler.py`, `agent.py`, `scripts/backtest_clusters.py` (new)
-
-## Changes Made 2026-04-19 (session 5)
-
-### Features Added
-- **P7 — `/pregame`**: Compact trade-ready shortlist (Accelerating themes, HIGH EPs, watchlist MA pullbacks, 9M sugar babies). No LLM, instant. Added to `/pregame` slash command and `_handle_slash_command` dispatch.
-- **Pinned HUD auto-refresh**: `/hud` now pins the message and stores `chat_id`/`message_id` via `POST /hud/pin`. `_hud_refresh_job` in scheduler edits the pinned message hourly during market hours (mon-fri 9 AM – 3 PM ET). On edit failure (message deleted), clears stored IDs so next `/hud` re-pins.
-- **Inline keyboards**: `/eps`, `/themes`, `/trades` now send compact summary + drill-down buttons. Callbacks route through `_handle_drill_down_callback` → POST `/task` with sub-commands `/eps_detail`, `/themes_detail`, `/trades_detail`. Back button returns to summary.
-- `edit_telegram_message(chat_id, message_id, text, parse_mode="Markdown")` added to `briefing.py`.
-- `mi_hud_state` table + `get_hud_state()` / `set_hud_state()` in `db.py`.
-- `_build_hud_text() -> str` extracted as standalone module-level function (not a method) — shared by `_handle_hud()` and `_hud_refresh_job`.
-
-### New DB Table
-`mi_hud_state` (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ) — stores `hud_chat_id` and `hud_message_id`.
-
-### Files Changed
-`db.py`, `briefing.py`, `agent.py`, `scheduler.py`, `channels/telegram.py`
-
-## Changes Made 2026-04-19 (session 6)
-
-### Bugs Fixed
-- **9M EP flood (ETFs + mega-caps)**: `ninem_detector.py` had no ETF filter. Fixed with three layers: (1) `SKIP_TICKERS` check (same as EP detector), (2) `mi_security_types` non-common-stock filter (drops ETFs, leveraged products, warrants), (3) RVOL >= 2x ADV gate so AAPL/NVDA trading routine 9M+ volume don't trigger. Both the non-stock set and ADV map are cached per trading day to avoid per-scan DB overhead.
-- **EP detector ETF leakage**: Hardcoded `SKIP_TICKERS` list was missing some leveraged ETFs. Added `mi_security_types` lookup at scan start as authoritative secondary gate — any ticker classified as non-CS/ADRC in reference data is skipped.
-- **Catchup ORB order after ORB window**: On late restart (e.g., 11 AM), APScheduler fired the 9:31 AM EP scan which placed bracket orders past the ORB window. Fixed: `within_orb_window = market_open and now_et.hour < 10` gates all ORB order placement in `_ep_scan_job()`. Also added `misfire_grace_time=300` to EP scan jobs so APScheduler skips them entirely when restarting >5 min past their scheduled time.
-
-### Key Rules Updated
-- **9M EP RVOL threshold**: `_MIN_RVOL = 2.0` — stock must trade ≥ 2x its 20-day median volume on the day to qualify. If ADV is unknown (ticker not in RS universe), threshold is bypassed (conservative — don't filter unknowns).
-- **ORB window**: `within_orb_window = market_open and now_et.hour < 10`. EP scans running outside this (catchup, stale fires) send alerts but never place orders.
-
-### Files Changed
-`ninem_detector.py`, `ep_detector.py`, `scheduler.py`
-
----
-
-## Changes Made 2026-04-21 — `/trades` richer summary
-
-### Problem
-`/trades` default view rendered as a single unhelpful line (`0 live open · 0 paper open · $0 unrealized`).
-When KURA stopped out, the user had no way to see the closed trade — "Live Positions" button showed
-"nothing", "Closed Today" said "no data" until the stop fill propagated. And paper-trade counts were
-misleading since the EOD sim was disabled when live Alpaca trading turned on.
-
-### Changes (`agents/market_intelligence/agent.py` — `_handle_trades_detail`)
-- **`summary` view** now shows:
-  - All open live positions with **entry → current → stop**, shares, market value, hold days,
-    unrealized P&L, and partial/breakeven flags. Current price comes from Alpaca `get_position`
-    (silent fallback on failure, so a dead API doesn't break the summary).
-  - **Last 5 closed** trades inline (entry → exit price, exit reason, score, P&L, hold days).
-  - **Totals** row: W/L count, win rate, realized P&L (all-time).
-  - Paper-trade stats intentionally dropped — sim is no longer live.
-- **`closed` view** now shows today's closed + last 15 recent closed for context, each with full
-  entry/exit/reason/score detail instead of just ticker + $P&L.
-- **`live` view** kept as a silent alias of `summary` so older pinned messages keep working.
-
-### Changes (`channels/telegram.py`)
-- Removed "Live Positions" button (folded into summary).
-- New button layout: row 1 = [Closed Trades] [Skipped], row 2 = [Paper (legacy)].
-- Applied in both the initial `/trades` send and the drill-down re-render.
-
-### Files Changed
-`agents/market_intelligence/agent.py`, `channels/telegram.py`
-
-### Bug Fixed — UTC/ET boundary hid today's closed trades
-`closed_at::date = $1::date` used Postgres session TZ (UTC). After 8 PM ET the UTC date
-rolls to tomorrow while `et_today()` is still today → `/trades_detail closed` and the
-evening-briefing today's-closes query both returned empty even though the trade was
-properly marked `status='closed'`. This is why KURA's stop-out alert fired but the
-Closed Today button said "no data" afterwards.
-
-Fix: cast via `(closed_at AT TIME ZONE 'America/New_York')::date` so the date comparison
-is always evaluated in trading-floor time. Applied in:
-- `agents/market_intelligence/agent.py` (`_handle_trades_detail` closed view)
-- `agents/market_intelligence/broker/live_tracker.py` (evening briefing `todays_closes`)
-
-Also converted the python-side filter that dedups today's rows from the "recent closed"
-list to use `astimezone(_ET).date()` instead of the tz-naive `.date()`.
-
----
-
-## Changes Made 2026-04-21 (session 2) — Briefing fixes, 9M quality + cadence
-
-### Briefing hygiene
-- **Truncated EP writeups** (`briefing.py`): new `_truncate_sentence()` helper cuts at sentence/word boundaries. MODERATE near-miss reasons compacted (`score 48 < 50 (catalyst=speculative)` → `s48 cat=spec`). `claude_analysis` cut raised 120 → 180 chars at sentence boundary.
-- **Validation parse-error noise** (`briefing.py`): morning brief collapses N parse errors into a single yellow line "🟡 N theme validation parse error(s) — tickers unchanged" instead of one row each.
-- **Haiku response hardening** (`theme_engine.py`): empty-content and stop_reason guard, strip ```` ``` ```` code fences, raise explicit `ValueError` with raw snippet so audit log captures actionable detail.
-
-### Twitter 403 diagnostic
-- **`twitter.py`**: disproved earlier "media_upload 403" theory (theme tweet with image posts fine; text-only RS-leaders tweet is what 403s). Added response-body capture on exception (`e.response.text`, `api_codes`, `api_messages`) to get real diagnostic on next fire. Trimmed hashtag suffix `#momentum #trading #RS #stocks` → `#momentum #stocks`.
-
-### /pregame fixes
-- **`agent.py::_handle_pregame`**: sugar babies fallback to yesterday when today's list is empty (EOD sweep writes after market close, so during the session only yesterday's babies are actionable). Parallel fetch via `asyncio.gather`.
-- Accelerating themes now sorted by `rs_avg` desc (was effectively alphabetical). RS shown inline: `{theme_name} RS{avg}  TKR TKR TKR`.
-
-### 9M quality filters — range + extension
-- **Intraday range gate** (`ninem_detector.py`): `(day_high - day_low) / current_price ≥ 2%`. Rejects merger-arb pins (e.g. DBRG 0.26% range pinned to a cash deal close).
-- **Extension gate — measured at prev_close, not today's close**: `prev_close ≤ 1.20 × 10d SMA`. Caught BB chase (`5.50 / 3.97 = 1.39×`) while passing fresh breakouts like VELO (`11.67 / 10.93 = 1.07×`) even when today is +30%. Measuring at today's close would wrongly reject the fresh breakout.
-- **MA10 cache**: `_get_ma10_map()` once-per-day SQL over `mi_daily_closes` with `ROW_NUMBER()` window. Same gates applied in `db.py::get_eod_9m_sugar_babies` so intraday and EOD agree.
-
-### 9M alert cadence — high-conviction anticipation carve-out
-Context: 21 alerts on 2026-04-21 (5 actual + 16 anticipation) → unworkable noise floor. Cadence is a red herring — DB `UNIQUE (ticker, alert_date)` + in-memory dedup mean each ticker pings once/day regardless of scan frequency.
-
-**Fix** (`ninem_detector.py`):
-- New constants: `_ANTICIPATION_PING_GAP_PCT = 10.0`, `_ANTICIPATION_PING_PROJ_VOL = 25_000_000`.
-- Gate: `should_ping = is_9m_actual or (is_9m_anticipation and (gap_pct ≥ 10 OR projected_vol ≥ 25M))`.
-- Silent anticipations still hit the DB and audit log (`pinged=True/False` in detail) — `/9m` unchanged.
-
-**Evening brief** (`briefing.py`): new `🔍 Anticipation-only today (N): TKR, TKR, ...` line below sugar babies, fed by `get_today_9m_ep_alerts(today_str)` filtered to `is_anticipation=true`.
-
-Expected pings: ~6–7/day on typical sessions (was ~21).
-
-### Files Changed
-`briefing.py`, `theme_engine.py`, `twitter.py`, `agent.py`, `ninem_detector.py`, `db.py`, `README.md`, `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-22 — EP entry diagnostics & performance traceability
-
-Root: 2026-04-22 morning, event loop hung ~3h. 4 HIGH EPs detected, 0 orders placed,
-2 tickers tagged `ORB window closed at 9:59 AM ET` — a string that lived only in logs,
-not in any queryable table. Monthly perf review was a guessing game.
-
-**Principle:** every HIGH EP alert has a durable, queryable terminal state by 4:10 PM ET
-(post-`eod_cleanup` settlement; the EOD recap job reads it at 4:10).
-
-### A. Bounded-vocabulary skip reasons — `broker/skip_reasons.py` (new)
-18 constants in 5 categories: `filter:*` (ADV/ATR/mcap), `setup:*` (stop too wide,
-size too small, account fetch), `block:*` (max positions, daily loss, circuit breaker),
-`infra:*` (no_bar, subscribe_timeout/failed, order_submit_failed), `window:*`
-(out_of_orb, duplicate). Prefix is machine-readable; free-form detail after `: ` preserves
-human context. `split_part(skip_reason, ':', 1)` → category for monthly aggregation.
-
-### B. Silent drops filled — every decision writes `mi_live_trades`
-- `_insert_skipped_trade` now tolerates `alert=None`/`regime=None` — bar-stream
-  timeout path can write a skip row without a DB join during a stuck lock.
-  `/why` LEFT-JOINs `mi_ep_alerts` to recover score/catalyst/gap.
-- New call sites:
-  - `bar_stream.subscribe_ep_candidate` timeout → `INFRA_SUBSCRIBE_TIMEOUT`
-  - `bar_stream.subscribe_ep_candidate` failure → `INFRA_SUBSCRIBE_FAILED`
-  - `scheduler._ep_scan_job` post-9:59 HIGH → `WINDOW_OUT_OF_ORB`
-  - `live_tracker.submit_9m_day2_trade` spec failure / no-bar / safeguard blocks
-  - `order_manager.submit_entry` retry-exhausted → `INFRA_ORDER_SUBMIT_FAILED`
-  - `live_tracker` ORB no-bar-after-retries → `INFRA_NO_BAR`
-- `prepare_9m_day2_orb_order` refactored from `dict | None` to
-  `tuple[dict | None, str | None]` — matches `prepare_orb_order` signature so skip
-  reason propagates through caller to DB.
-- `_check_safeguards` return strings migrated to `BLOCK_MAX_POSITIONS /
-  BLOCK_DAILY_LOSS / BLOCK_CIRCUIT_BREAKER / SETUP_ACCOUNT_FETCH_FAILED`.
-- Dedup path at `live_tracker.py:269` now writes `orb_duplicate` audit event
-  (no DB write — row already exists).
-
-### C. Alert hygiene — Telegram reserved for terminal events
-- Bar-stream retries 1 & 2 now **audit-log only** (`bar_stream_disconnect`).
-  Micro-drops at 9:30 AM are routine data-feed behaviour; alerting on
-  self-healing retries creates fatigue. Telegram still fires on terminal
-  3rd-retry (existing behaviour). Encoded as memory:
-  `feedback_alert_vs_audit.md`.
-- Post-9:59 HIGH and subscribe-failed both Telegram *once* with `⏰` / `⚠️`.
-
-### D. Evening brief — new "📊 EP OUTCOMES TODAY" section
-`briefing._format_ep_outcomes_section` — HIGH: N detected → M entered · K missed,
-with entry price + fwd_1d% for entered and skip-reason prefix for missed.
-MODERATE shows count + auto-enter status. `get_ep_outcomes()` extended with
-`use_live` flag (auto-detected from `LIVE_TRADING_ENABLED`) — joins
-`mi_live_trades` in live mode, `mi_paper_trades` in paper mode. Same CASE
-logic, same return shape.
-
-### E. `/why TICKER [YYYY-MM-DD]` — lifecycle timeline
-New slash command + `trace TICKER` / `why didn't we enter` keyword routes.
-Joins `mi_ep_alerts` + `mi_live_trades` + `mi_audit_log`. Audit query bounded
-to the trading-day window via
-`created_at >= ($1::date AT TIME ZONE 'America/New_York')` to avoid pulling
-unrelated events from prior setups on the same ticker. Shows detection →
-outcome → lifecycle event list.
-
-### F. 4:10 PM EOD EP recap Telegram
-New `_eod_ep_recap_job` at 16:10 ET (after 16:05 EOD cleanup settles). One-shot
-summary of today's HIGH outcomes. Silent when no HIGHs detected today.
-
-### ⚠️ Post-deploy verification
-
-1. **Reason coverage invariant — zero silent drops.** On any trading day post-deploy:
-   ```sql
-   SELECT a.ticker, a.score_tier, lt.status, lt.skip_reason
-   FROM mi_ep_alerts a
-   LEFT JOIN mi_live_trades lt
-     ON lt.ticker=a.ticker AND lt.alert_date=a.alert_date
-   WHERE a.alert_date = CURRENT_DATE AND a.score_tier='HIGH';
-   ```
-   Every HIGH row must have a status in
-   `('filled','closed','order_placed','pending_confirmation')` **or** a
-   non-null `skip_reason` with one of the bounded prefixes. Zero rows with
-   `(status IS NULL AND skip_reason IS NULL)`.
-2. `/why TICKER` round-trip: known-entered shows entry; known-skipped shows
-   skip reason; unknown shows "no EP alert, trade row, or audit events".
-3. Evening brief counts must tie to query (1).
-4. **Retro-fit 2026-04-22:** run the backfill script on the server so the EOD
-   recap and `get_ep_outcomes` are clean for the hang day:
-   ```bash
-   # dry run
-   docker compose -f docker/docker-compose.prod.yml exec market-agent \
-     python scripts/backfill_orphan_ep_alerts.py 2026-04-22
-   # apply
-   docker compose -f docker/docker-compose.prod.yml exec market-agent \
-     python scripts/backfill_orphan_ep_alerts.py 2026-04-22 --apply
-   ```
-   Inserts one skipped row per orphan HIGH with reason
-   `infra:subscribe_timeout: event-loop hang — retro-fit`.
-5. **Monthly aggregation:** `SELECT split_part(skip_reason, ':', 1),
-   split_part(skip_reason, ':', 2), COUNT(*) FROM mi_live_trades WHERE
-   status='skipped' GROUP BY 1,2` — stable vocabulary, not free-form prose.
-
-### Files Changed
-`broker/skip_reasons.py` (new), `broker/live_tracker.py`, `broker/bar_stream.py`,
-`broker/order_manager.py`, `backtester/filters.py`, `scheduler.py`, `briefing.py`,
-`agent.py`, `db.py`, `scripts/backfill_orphan_ep_alerts.py` (new), `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-22 (session 2) — Humanize skip reasons + theme validation rate-limit
-
-### Problem
-Two user-visible issues after the EP diagnostics deploy:
-1. **Raw prefix leak into Telegram.** EOD EP recap, Live Trade Updates, `/why`,
-   `/trades_detail skipped`, etc. rendered `infra:subscribe_timeout: 5s SDK lock stuck`
-   directly to the user. Machine vocabulary is great for SQL aggregation and terrible
-   for reading on a phone.
-2. **"20 parse errors" per validation run were actually Anthropic 429s.**
-   `mi_audit_log.validation_error` rows showed
-   `RateLimitError: Error code: 429 ... rate limit of 50 requests per minute`. The
-   nightly `_validate_theme_membership()` fan-outs `asyncio.gather` across every
-   active theme simultaneously — 20 themes × 1 Haiku call each blew the org-level
-   rate cap and every one was caught by `except Exception` and mislabeled as a
-   "parse error."
-
-### A. `humanize(reason)` — single translator (`broker/skip_reasons.py`)
-One `_HUMAN_LABELS` dict maps every `category:code` prefix to a short phrase
-(e.g. `infra:subscribe_timeout` → `"Bar subscribe timed out"`). `humanize()`
-preserves the free-form detail after the second colon as a parenthetical, and
-falls through unchanged on `None`, empty, unknown prefix, or legacy free-form
-strings. **Machine prefixes stay in the DB; humans see prose.**
-
-Applied to every Telegram-facing display site:
-- `broker/live_tracker.py` — ORB-skipped alert, filtered-today evening section
-- `broker/bar_stream.py` — subscribe-failure Telegram
-- `scheduler.py` — EOD EP recap
-- `briefing.py` — evening brief EP outcomes section
-- `agent.py` — `/why` outcome line, `/trades_detail skipped`, history "Filtered:"
-  line, performance-report skip-reason column (widened 20 → 30 chars)
-- `postmortem.py` — single-trade recap
-
-Internal logs and `mi_audit_log` keep the raw `category:code: detail` string so
-monthly `split_part()` aggregation still works.
-
-### B. Theme validation rate-limit — root cause of "parse errors"
-- New `_VALIDATION_SEMAPHORE = asyncio.Semaphore(2)` in `theme_engine.py` caps
-  concurrent Haiku calls at 2 (fan-in for the nightly `asyncio.gather` of 20+
-  themes). With Anthropic's 50-rpm org cap and 2–3s response time per call,
-  2 concurrent × 20 themes completes in ~30s well under the cap.
-- Retry-once on 429 with 8–12s jitter before giving up.
-- **Split exception handling**: `RateLimitError` now writes an
-  `anthropic_rate_limited` audit event during the retry and a
-  `validation_rate_limited` event if the retry also fails. Non-429 exceptions
-  still write `validation_error`. The morning-brief banner and nightly error
-  banner now show three separate buckets (🔴 errors / 🟠 rate-limited /
-  🟡 parse errors) so the user can tell at a glance which class of failure
-  happened.
-
-### ⚠️ Post-deploy verification
-1. Trigger a Telegram display of any skipped trade (`/trades_detail skipped` or
-   wait for next EOD recap). Output should read as English prose — no `infra:`,
-   `filter:`, `window:` prefixes visible anywhere in user-facing Telegram
-   messages.
-2. Watch tomorrow's overnight error banner after the nightly theme validation
-   run. Previous "20× parse error" collapse should no longer appear; if any
-   validation failed, it should show as 🟠 rate-limited (rare) with the count,
-   not 🟡 parse error.
-3. DB invariant unchanged: `skip_reason` values in `mi_live_trades` still match
-   the bounded-prefix regex — check with `SELECT DISTINCT split_part(skip_reason, ':', 1)
-   FROM mi_live_trades WHERE status='skipped'` — categories must all be in
-   `{filter, setup, block, infra, window}`.
-
-### Files Changed
-`broker/skip_reasons.py`, `broker/live_tracker.py`, `broker/bar_stream.py`,
-`theme_engine.py`, `scheduler.py`, `briefing.py`, `agent.py`, `postmortem.py`,
-`CLAUDE.md`
-
----
-
-## Changes Made 2026-04-22 (session 3) — 9M Sugar Baby going-in shape capture
-
-### Problem
-Tonight's sugar baby watchlist (FRMI, BSX, SIRI, TLRY) surfaced a gap: the
-detector greenlights on intraday geometry (9M day + green close + top 25% of
-range + 3× ADV) but captures nothing about **what the chart looked like going
-in**. Pradeep's 9M edge assumes a stock is in an uptrend or bottoming
-reversal — a falling-knife bounce and a quiet-consolidation breakout score
-identically in the DB today, even though their Day 2 outcomes differ wildly.
-FRMI is the canonical failure mode: down ~75% since Oct 2025 IPO, single
-green day triggers, no structural basis for continuation.
-
-**Decision:** don't tighten the filter yet — capture the metrics, bucket at
-query time, build 30+ outcome dataset, then gate. Telemetry-first.
-
-### A. New columns on `mi_9m_sugar_babies`
-Six idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` in `initialize_schema`:
-
-| Column | Meaning |
-|---|---|
-| `prev_5d_pct` | % change prev_close vs close_5d_ago — short-term pre-9M move |
-| `prev_20d_pct` | % change prev_close vs close_20d_ago — mid-term trend |
-| `prev_vs_sma10` | prev_close / SMA-10 — ratio, <1 = below, >1 = above |
-| `prev_vs_sma50` | prev_close / SMA-50 — mid-term structural position |
-| `sma50_slope_pct` | % change SMA-50 vs SMA-50-5d-ago — trend direction |
-| `prior_sessions` | Count of prior daily closes available (sub-30 = recent IPO) |
-
-All computed at YESTERDAY's state (prev_close and its prior windows), not
-today's close. This is the "shape going into the 9M day" measurement — a
-+30% 9M day on a stock that was already extended before is a chase; a +30%
-9M day on a quiet consolidation is a breakout. Distinguishable now.
-
-### B. SQL changes — `get_eod_9m_sugar_babies`
-Replaced the single-purpose `ma10` CTE with:
-- `ranked` CTE: prior 60 sessions windowed by `ROW_NUMBER() OVER (PARTITION
-  BY ticker ORDER BY trade_date DESC)`. Single scan.
-- `ctx` CTE: `FILTER (WHERE rn = N)` picks individual prior closes (rn=1 =
-  prev, rn=6 = 5d ago, rn=21 = 20d ago). `AVG(close) FILTER (WHERE rn <= N)`
-  picks rolling SMAs. `HAVING COUNT(*) >= 10` keeps the IPO-reject invariant.
-
-Six computed columns now flow through SELECT with existing NULL-safe
-`CASE WHEN` divisors.
-
-### C. Data plumbing
-- `insert_9m_sugar_baby()` — `INSERT` expanded from 8 → 14 columns;
-  `ON CONFLICT DO UPDATE` mirrors; `record.get("...")` pattern so legacy
-  callers without shape metrics silently write NULLs.
-- `run_9m_eod_sweep()` — passes all 6 metrics from the SQL dict through to
-  the insert.
-- `get_pending_9m_sugar_babies()` and `get_9m_ep_history()` — SELECT
-  extended to return the new columns so read-side handlers can surface them.
-
-### D. Shape tag + display
-`ninem_detector._shape_tag()` — deterministic bucket from the raw metrics:
-
-| Tag | Condition |
-|---|---|
-| `uptrend` | `prev_vs_sma50 ≥ 1.0 AND sma50_slope ≥ 0` |
-| `pullback` | uptrend + `prev_5d_pct < 0` (healthy pullback in uptrend) |
-| `extended` | uptrend + `prev_vs_sma10 ≥ 1.15 AND prev_5d_pct ≥ 15` (chase) |
-| `bounce` | `prev_vs_sma50 < 0.95 AND prev_20d_pct ≤ -5 AND prev_5d_pct ≥ 10` |
-| `downtrend` | `prev_vs_sma50 < 0.95 AND prev_20d_pct ≤ -5` |
-| `flat` | everything else |
-
-Surfaced in:
-- Evening briefing sugar babies section: `5d +X% / 20d +Y% / tag`
-- `/9m` today's candidates and yesterday's-pending listings
-- `9m outcomes` history rows get `20d X% / tag` suffix
-
-Bucket definitions live in code so they can evolve without re-migrating
-historical rows — raw metrics are the source of truth on disk.
-
-### ⚠️ Post-deploy verification
-1. After next nightly `_nightly_data_pull` (5 PM ET), query
-   `SELECT ticker, prev_5d_pct, prev_20d_pct, prev_vs_sma50, sma50_slope_pct,
-   prior_sessions FROM mi_9m_sugar_babies WHERE alert_date = CURRENT_DATE` —
-   all six columns populated for every row.
-2. Evening brief 🍭 section shows `5d / 20d / tag` suffix on each ticker.
-3. Historical rows (pre-deploy): columns are NULL, tag is empty, raw
-   pre-shape layout still renders (backward-compatible).
-4. After ~30 sugar babies tracked: run
-   `SELECT CASE …_shape_tag logic… AS tag, AVG(day2_gain_pct), COUNT(*)
-   GROUP BY tag` against `mi_signal_outcomes` join to see which shape
-   buckets actually produce Day 2 edge. Use that to inform whether to
-   add a hard filter or keep telemetry-only.
-
-### Files Changed
-`db.py` (schema ALTERs, get_eod_9m_sugar_babies SQL rewrite, insert +
-read-side columns), `ninem_detector.py` (pass-through in run_9m_eod_sweep,
-new `_shape_tag` helper, evening briefing section updated), `agent.py`
-(`/9m` + `9m outcomes` handlers render shape), `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-23 — Broker alert gaps + bracket-order hardening
-
-### Problem
-Two operational gaps surfaced after recent live-trading days:
-1. **Naked positions.** BSX/GSHD/SIRI entered without stop legs. Root cause:
-   `StopLimitOrderRequest(..., stop_loss=StopLossRequest(...))` submitted
-   without `order_class=OrderClass.OTO` — alpaca-py silently drops the
-   `stop_loss` kwarg on a bare stop-limit and the order fills with no
-   protective stop.
-2. **Silent state changes.** User saw order cancellations and manual exits
-   in Alpaca with no Telegram. `_handle_cancel_or_reject` only alerted on
-   `event == "rejected"`, and unmatched fills (direct Alpaca actions /
-   `close_position` / partial/full exits not yet written to
-   `mi_live_orders`) were logged and discarded.
-
-### Fixes
-
-**`broker/alpaca_client.py::place_bracket_order`** — submit with
-`order_class=OrderClass.OTO` + `StopLossRequest`, then verify the returned
-order has a stop leg; if missing, cancel the naked bracket and raise so
-`submit_entry` never records an unprotected position.
-
-**`broker/trade_stream.py`**
-- `_handle_cancel_or_reject` — three branches: (1) entry order
-  cancelled/expired/rejected → update `mi_live_trades.status='cancelled'`
-  + Telegram `🚫/🗑 Entry {event}`; (2) stop-loss leg cancelled →
-  clear `stop_order_id`, Telegram `⚠️ Stop order CANCELLED — position
-  unprotected, remediation at 4:05 PM`; (3) untracked reject → Telegram
-  `⚠️ Order REJECTED`.
-- `_handle_fill` untracked-sell branch — parses asyncpg `UPDATE N`
-  rowcount via `result.split()[-1]`; if 0 rows affected, fires
-  `💱 Untracked SELL/BUY` alert (catches manual `close_position` and
-  other direct Alpaca actions).
-- `_process_entry_fill` — belt-and-suspenders: if entry fills with no
-  `stop_order_id`, place a standalone stop at `orb_low` (`🛡 Protective
-  stop placed`) or alert `🚨 UNPROTECTED POSITION` if `orb_low` is NULL.
-
-**`broker/order_manager.py`** — `execute_partial_exit` (replacement stop,
-market sell, rollback stop) and `execute_full_exit` (`close_position`)
-all now `INSERT INTO mi_live_orders ... ON CONFLICT DO NOTHING` before
-returning. Without this the new untracked-fill alert would double-fire
-on every managed exit.
-
-### Files Changed
-`broker/alpaca_client.py`, `broker/trade_stream.py`, `broker/order_manager.py`,
-`CLAUDE.md`
-
-### ⚠️ Post-deploy verification
-1. Smoke-test bracket: submit a paper-trade entry, confirm the Alpaca
-   order page shows BOTH buy-stop-limit and sell-stop legs. If
-   `place_bracket_order` ever raises `Bracket order ... returned no
-   stop_loss leg`, the entry correctly aborts with no position opened.
-2. Cancel a pending entry in the Alpaca UI → Telegram must fire
-   `🗑 Entry CANCELLED: TICKER`.
-3. On next live partial/full exit: confirm the managed exit alert
-   (`📤 Partial exit` / `✅/❌ Closed`) fires exactly once — no
-   `💱 Untracked SELL` double-alert.
-4. Monthly audit:
-   ```sql
-   SELECT COUNT(*) FROM mi_live_trades
-   WHERE status='filled' AND stop_order_id IS NULL;
-   ```
-   Must be 0 outside the <1s window between entry fill and stop
-   placement.
-
----
-
-## Changes Made 2026-04-22 (session 4) — Strip to market/trading focus
-
-### Rationale
-Every P&L-relevant feature, every bug surfaced in production for months,
-every live-traded dollar was in the market agent. The 5 generic sub-
-agents (finance / calendar / research / browser / travel) were rotting:
-Dockerfiles existed, containers were defined in compose, tool schemas
-lived in `core/router.py`, but `start.sh` didn't start most of them,
-`integrations.yaml` had 4 of 5 marked `enabled: false`, and recent code
-review surfaced real latent bugs in calendar routing and webhook
-handlers that nobody hit because nobody used them. They were
-maintenance drag and deploy surface (the orchestrator's `audit.log`
-volume-mount issue was noticed only because the scaffolding tripped it)
-with zero offsetting benefit.
-
-### What was deleted
-- `agents/{finance,calendar,research,browser,travel}/` directories
-- `docker/Dockerfile.{finance,calendar,research,browser,travel}`
-- 5 sub-agent service blocks in both `docker-compose.yml` and
-  `docker-compose.prod.yml`
-- 5 tool schemas (`call_finance_agent` / `call_calendar_agent` /
-  `call_research_agent` / `call_browser_agent` / `call_travel_agent`)
-  from `core/router.py::get_orchestrator_tools()`
-- 5 corresponding dispatch branches in
-  `core/orchestrator.py::_dispatch_tool` (`agent_tool_map`)
-- 5 values from `AgentName` enum in `shared/models.py` (kept
-  `ORCHESTRATOR`, `MARKET_INTELLIGENCE`)
-- 4 dead provider getters in `shared/registry.py`
-  (`get_calendar_providers`, `get_finance_providers`,
-  `get_research_providers`, `get_credit_cards`)
-- 9 dead secret getters in `shared/secrets.py` (IBKR × 2, Google × 3,
-  Apple × 3, Tavily, Gemini). Moved `perplexity_api_key` getter from
-  "Research" section into "Market Intelligence" section (comment only)
-- `tests/test_ibkr.py` (referenced `agents.finance.ibkr`)
-- Research agent launch block in `start.sh`
-- `calendar:`/`finance:`/`research:`/`travel:` top-level blocks and
-  stale agents list in `integrations.yaml`
-- Dead hints dict entries in `channels/telegram.py::_build_status`
-- Obsolete sub-agent bullets in `core/context.py` system prompt
-
-### Env var changes (canonical list in this file is updated)
-- **Dropped:** `GEMINI_API_KEY` (never used at runtime — `gemini_validation`
-  is a legacy DB column populated by Perplexity output),
-  `TAVILY_API_KEY` (only used by top-level `backtest_ep.py`, not by any
-  runtime path), `IBKR_*`, `GOOGLE_*`, `APPLE_CALDAV_*`
-- **Added to canonical list:** `PERPLEXITY_API_KEY` (was already used
-  by market agent via `collector.py::search_news_perplexity` but never
-  documented), `FMP_API_KEY` (was already required, previously omitted)
-
-### What stayed (explicitly)
-Orchestrator is kept for future expansion. `core/` + `channels/` +
-`shared/` scaffolding still route via orchestrator → market agent.
-`agents/base.py` is still imported by
-`agents/market_intelligence/agent.py` — it stays. Only the 5 dead
-sub-agents and their wiring were removed; no consolidation (option B)
-was taken.
-
-### Post-deploy verification
-1. Static check on server after pull:
-   ```bash
-   grep -rn "from agents\.\(finance\|calendar\|research\|browser\|travel\)" \
-     --include="*.py" .          # expect: 0
-   grep -rn "AgentName\.\(FINANCE\|CALENDAR\|RESEARCH\|BROWSER\|TRAVEL\)" \
-     --include="*.py" .          # expect: 0
-   grep -rn "call_\(finance\|calendar\|research\|browser\|travel\)_agent" \
-     --include="*.py" .          # expect: 0
-   ```
-2. Deploy cadence:
-   ```bash
-   git pull origin main
-   docker compose -f docker/docker-compose.prod.yml rm -sf \
-     finance-agent calendar-agent research-agent browser-agent travel-agent \
-     2>/dev/null || true
-   docker compose -f docker/docker-compose.prod.yml build --no-cache \
-     orchestrator market-agent
-   docker compose -f docker/docker-compose.prod.yml up -d \
-     orchestrator market-agent
-   ```
-3. `docker compose ps` shows only `postgres`, `redis`, `orchestrator`,
-   `market-agent`, `uptime-kuma`.
-4. `/status` in Telegram lists only `market_intelligence`.
-5. All slash commands (`/pregame`, `/9m`, `/eps`, `/themes`, `/trades`,
-   `/why`, morning/evening brief) round-trip unchanged.
-
-### Files Changed
-`core/router.py`, `core/orchestrator.py`, `core/context.py`,
-`channels/telegram.py`, `shared/models.py`, `shared/registry.py`,
-`shared/secrets.py`, `docker/docker-compose.yml`,
-`docker/docker-compose.prod.yml`, `integrations.yaml`, `start.sh`,
-`.env.example`, `tests/test_confirmation_gate.py`, `CLAUDE.md`
-
-### Files/Directories Deleted
-`agents/{finance,calendar,research,browser,travel}/` (recursive),
-`docker/Dockerfile.{finance,calendar,research,browser,travel}`,
-`tests/test_ibkr.py`
-
----
-
-## Changes Made 2026-04-23 (session 2) — Env-var-gated SIP feed for ORB entry
-
-### Rationale
-URI ORB miss on 2026-04-22 was the symptom; the underlying issue is that
-Apollo's live entry runs on Alpaca's **IEX feed** (~2–3% of US
-consolidated volume). For mid-liquidity tickers in the 9:30–9:31 ET
-window, IEX can show a handful of ticks at a single price → zero-range
-first-minute bar → `setup:zero_range` reject even though the
-consolidated tape shows a real tradable range. See
-`~/.claude/plans/shiny-mapping-locket.md` for the full goal/vendor
-evaluation.
-
-**Decision:** Phase 1 = Alpaca Algo Trader Plus ($99/mo) giving realtime
-**CTA/UTP SIP consolidated tape**. Two-line enum change in theory;
-env-var-gated in practice so the code can ship inert and the
-subscription activates it.
-
-### Rollout model
-The feed choice is resolved at call time from `ALPACA_DATA_FEED`:
-
-- unset / `iex` → `DataFeed.IEX` (current behavior, no subscription needed)
-- `sip` → `DataFeed.SIP` (requires active Algo Trader Plus in Alpaca dashboard)
-
-So the deploy is safe even before the subscription is active — set
-`ALPACA_DATA_FEED=iex` (or leave unset) and behavior is identical to
-pre-deploy. Flip to `sip` only after (a) subscribing in the Alpaca
-dashboard and (b) running `scripts/verify_sip_parity.py` and getting a
-clean pass. Rollback is one env flip + restart; no git revert needed.
-
-### Files Changed
-- `agents/market_intelligence/broker/alpaca_client.py` — new
-  `get_data_feed()` helper (single source of truth); `get_first_bar()`
-  now reads it instead of hardcoded `DataFeed.IEX`.
-- `agents/market_intelligence/broker/bar_stream.py` — `start_bar_stream`
-  uses `get_data_feed()`; startup log now includes the resolved feed.
-- `.env.example` — restored Alpaca section (was lost in session 4
-  cleanup) + new `ALPACA_DATA_FEED=iex` with subscription note.
-- `CLAUDE.md` — this entry + env vars table.
-- `scripts/verify_sip_parity.py` (new) — one-off verification script
-  that hard-wires `DataFeed.SIP` independent of the env var. Runs the
-  four pre-flip checks (subscription gate, AAPL IEX-vs-SIP parity, URI
-  2026-04-22 non-zero-range confirmation, 90-day zero-range replay
-  recovery count) so we can validate the subscription without touching
-  live trading.
-
-### Intentionally NOT touched
-- `broker/trade_stream.py`, `broker/order_manager.py`,
-  `broker/live_tracker.py` — unchanged.
-- `backtester/intraday.py` — stays on Polygon for historical 1-min
-  bars. G5 (backtest-live parity) is measured in verification, not
-  swapped at this stage.
-- Polygon subscription — stays. Alpaca SIP does not replace it.
-  Polygon provides grouped-daily (RS universe), VIX index data, ticker
-  reference (security_type filter for ETFs), and backtester historical
-  bars. $29 Polygon + $99 Alpaca Algo Trader Plus = $128/mo total,
-  each vendor covering what the other can't.
-
-### Rollout sequence (recap)
-1. Deploy this commit with `ALPACA_DATA_FEED` unset or `=iex`.
-   Identical behavior to pre-deploy.
-2. User subscribes to Algo Trader Plus in Alpaca dashboard.
-3. Run `scripts/verify_sip_parity.py` against the live subscription.
-   Must pass all four checks (the URI 2026-04-22 non-zero-range check
-   is the critical one — if SIP also shows zero range, the diagnosis
-   was wrong, stop).
-4. Set `ALPACA_DATA_FEED=sip` in prod `.env`, restart market-agent.
-5. Paper smoke test: confirm bar stream connects to SIP endpoint and
-   first-bar fires at 9:30:XX ET on subscribed tickers.
-6. Monitor `mi_audit_log` for `orb_bar_fetched` with `range=0.00` over
-   the next 30 days — expect a sharp drop vs pre-flip baseline.
-
-### Phase 2 triggers (explicit — revisit only on these)
-- Book size grows 5–10× (G6 coupling risk scales).
-- Alpaca has a data-feed incident during live trading.
-- 10-day backtest-live OHLC reconciliation shows > 0.2% divergence.
-- A second broker enters scope.
-
-If any fire: move to **Polygon Advanced ($199)** as primary realtime
-source and keep Alpaca Algo Trader Plus as a $99 fallback (dual-feed
-consensus). That's a separate plan when the trigger fires.
-
----
-
-## Changes Made 2026-04-23 (session 3) — Validation-window hardening
-
-Three follow-ups identified post-SIP-flip to make the 3-4 week paper
-validation window (target 2026-05-23 cutover) robust against silent
-failure modes.
-
-### A. Dockerfile fix — scripts survive container rebuilds
-`docker/Dockerfile.market` now `COPY scripts/ scripts/`. Recovery
-scripts (`verify_sip_parity.py`, `backfill_orphan_ep_alerts.py`,
-`cleanup_9m_false_alerts.py`, `readiness_check.py`) no longer disappear
-on container rebuild. Previously a healthcheck restart mid-incident
-would have stranded us without the recovery tooling.
-
-### B. SIP daily telemetry in EOD EP recap
-`scheduler._eod_ep_recap_job` now queries `mi_audit_log` for today's
-bar-fetch events and appends one line to the 4:10 PM Telegram recap:
-`📡 Feed (sip): N bars · M zero-range · K subscribe-fail · D disconnect`.
-The recap now fires even on zero-HIGH days if any feed events occurred,
-with a ⚠️ prefix when subscribe-failed > 0 or (on SIP) zero-range > 0.
-This catches silent subscription lapses / SIP auth issues on slow EP
-days where no HIGH-tier row would otherwise surface the problem. New
-helper `get_sip_feed_telemetry(trade_date)` in `db.py`.
-
-### C. Readiness check script
-`scripts/readiness_check.py` encodes the six cutover gating criteria
-from `project_live_money_cutover_target.md` as concrete SQL that
-returns pass/fail with counts:
-
-| Check | Gate |
-|---|---|
-| Naked positions | `status='filled' AND stop_order_id IS NULL` past 60s grace → must be 0 |
-| Reason-coverage invariant | rows with both `status` and `skip_reason` NULL → must be 0 |
-| Silent audit errors | `event_type LIKE '%_error'` in window → must be 0 |
-| Paper trade sample | closed rows with stop_price in window → must be ≥ 10 |
-| Regime check | latest `mi_market_regime.regime` must not be Crisis |
-| Feed health (24h) | `orb_subscribe_failed` events → must be 0 |
-
-Usage: `python scripts/readiness_check.py [--days 30] [--verbose]`.
-Run weekly during the validation window; run deliberately at
-~2026-05-23 as the formal go/no-go gate.
-
-### Files Changed
-`docker/Dockerfile.market`, `agents/market_intelligence/db.py`,
-`agents/market_intelligence/scheduler.py`,
-`scripts/readiness_check.py` (new), `CLAUDE.md`
-
----
-
-## Changes Made 2026-04-24 — OTO bracket stop-leg ID capture
-
-### Problem (INTC, 2026-04-24)
-1. INTC entered, 🚨 UNPROTECTED alert fired with Alpaca error
-   `heldForOrders:'237'` — meaning all 237 shares were already locked by
-   an existing sell order. So the OTO child stop WAS placed at Alpaca;
-   our remediation stop attempt was the false alarm.
-2. Stop eventually fired at $82.01 → reported as `💱 Untracked SELL`
-   instead of `❌ Stopped out`. `/trades` still showed the position open.
-3. No Day 1 re-entry was attempted.
-
-### Root cause
-Four different implementations of "find the stop leg in a bracket
-response," only one of them robust. The submission path
-(`order_manager.submit_entry`) used a strict `leg.get("type") == "stop"`
-equality check. Under Python 3.12 (market-agent image),
-`str(OrderType.STOP)` returns `"OrderType.STOP"`, not `"stop"` — so the
-check silently fails and `stop_order_id` is written as NULL to
-`mi_live_trades`.
-
-Cascade from there:
-- WS fill handler (`trade_stream._process_entry_fill`) has its own leg
-  extraction which is more robust but depends on `order.legs` being
-  populated on the WS event. For OTO parents this payload is sometimes
-  empty. It falls into the remediation branch, which tries to place a
-  standalone stop for all 237 shares and is rejected with
-  `insufficient qty / heldForOrders:237` (because the OTO child is
-  already live).
-- When the OTO child later fires at the stop price, the WS fill event
-  can't match on `stop_order_id` (NULL in DB) → routes to "Untracked
-  SELL", never updates `mi_live_trades.status`, never triggers
-  `_process_stop_fill` → no Day 1 re-entry fires.
-
-### Fix — single canonical extraction
-New `alpaca_client.extract_stop_leg_id(order)` helper that:
-- Works with both alpaca-py Order objects and `_order_to_dict` dicts.
-- Uses `stop_price` as the primary signal.
-- Falls back to case-insensitive `"stop" in type_str` — robust against
-  Python 3.11+ Enum stringification.
-
-Applied everywhere a leg is extracted, replacing all four ad-hoc loops:
-- `alpaca_client.place_bracket_order` (naked-order guard)
-- `order_manager.submit_entry` (submission-time capture)
-- `order_manager.check_fills` (polling path)
-- `order_manager.attempt_day1_reentry` (re-entry capture)
-- `trade_stream._process_entry_fill` (WS fill path)
-
-### Defense-in-depth layers
-`submit_entry` now refetches via REST when the submission response
-omits `legs` — REST always returns them populated. `_process_entry_fill`
-now checks three sources before firing remediation:
-1. WS event's `order.legs`
-2. `mi_live_trades.stop_order_id` (submit_entry wrote it pre-fill)
-3. REST refetch of the parent order
-
-Only if all three are empty does it attempt to place a standalone
-remediation stop — which is the true last-resort behavior the branch
-was written for. This also eliminates the false-alarm
-UNPROTECTED alert in the OTO-capture-failure case.
-
-### Files Changed
-`agents/market_intelligence/broker/alpaca_client.py`,
-`agents/market_intelligence/broker/order_manager.py`,
-`agents/market_intelligence/broker/trade_stream.py`, `CLAUDE.md`
-
-### ⚠️ Post-deploy verification
-1. Next live-traded entry: confirm the
-   `🛡 Protective stop placed` / `🚨 UNPROTECTED POSITION` messages do
-   NOT fire for an OTO bracket whose child stop is healthy. Fill
-   sequence should be `✅ FILLED` only, no intervening 🚨.
-2. `SELECT ticker, stop_order_id FROM mi_live_trades WHERE status='filled'`
-   — every filled row must have a non-NULL `stop_order_id`.
-3. When the next stop fires, it should produce `❌ Stopped out:` (not
-   `💱 Untracked SELL:`) and the trade row should move to `status='closed'`
-   with `total_pnl` populated.
-
-### ⚠️ INTC manual cleanup (2026-04-24)
-DB row for INTC today is stuck `status='filled'` / `remaining_shares=237`
-even though the position is closed at Alpaca. Run on prod (adjust
-`closed_at` / stop-fill time if needed):
-
-```sql
--- Dry-run first
-SELECT id, ticker, alert_date, status, entry_price, remaining_shares,
-       stop_price, stop_order_id, total_pnl
-FROM mi_live_trades
-WHERE ticker = 'INTC' AND alert_date = CURRENT_DATE;
-
--- Apply (entry $84.04 × 237, stop fired $82.01)
-UPDATE mi_live_trades
-SET status = 'closed',
-    remaining_shares = 0,
-    stop_order_id = NULL,
-    closed_at = NOW(),
-    total_pnl = ROUND((82.01 - entry_price)::numeric * 237, 2),
-    exits = jsonb_build_array(jsonb_build_object(
-        'time',   NOW()::text,
-        'price',  82.01,
-        'reason', 'stop_hit',
-        'shares', 237,
-        'pnl',    ROUND((82.01 - entry_price)::numeric * 237, 2),
-        'attempt', 1,
-        'source', 'manual_cleanup_2026-04-24_oto_id_bug'
-    ))
-WHERE ticker = 'INTC'
-  AND alert_date = CURRENT_DATE
-  AND status = 'filled';
+KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional heartbeats
 ```
 
 ---
 
-## Changes Made 2026-04-24 (session 2) — ORB late-entry & fade guard
+## Changes Made — Recent
 
-### Problem (CHE, 2026-04-24)
-CHE gapped +17.9%, first crossed HIGH threshold at 9:55 ET. The
-`post_open_new_high` code path placed a stop-limit buy at ORB high
-($444.60) with stop at ORB low ($438.84), but by 9:55 the tape had
-already faded from the open-minute high. The order sat pending —
-any subsequent fill would be a dead-cat-bounce retest hours later,
-not a continuation breakout. Two orthogonal gaps:
-1. Submission window ran to 10:00 ET (`now_et.hour < 10`) — too
-   lenient. A HIGH first surfacing at 9:55 against a 9:30–9:31 ORB
-   is a stale setup by construction.
-2. No fade check — even at 9:31, a bar closing with a long upper
-   wick and price already back near the low would still get a
-   bracket placed at the wick high.
+### 2026-04-24 (session 6) — Sugar baby intraday/EOD direction parity
+WU 2026-04-24 surfaced as a Day-2 ORB sugar baby despite being net −4.6% on the day (gapped −10%, recovered to close > open). Diagnosis: intraday filter (`ninem_detector.py:187-189`) gates on **net direction** vs prev_close (`gap_pct ≥ 3 OR intraday_gain_pct ≥ 4`), correctly rejecting WU all session — `mi_9m_ep_alerts` had 0 rows. EOD filter (`db.py:999`, `get_eod_9m_sugar_babies`) gated on **intraday recovery** (`close > open`) — different concept entirely. Wick-fill on a gap-down passes recovery but fails direction, so EOD wrote a sugar baby that intraday had unanimously rejected. Single-source-of-truth violation per `feedback_single_source_of_truth.md`.
 
-### Fixes
+**Fix:** added `AND (d.close - m.prev_close) / m.prev_close >= 0.03` to the EOD SQL alongside the existing `close > open` (kept as a clean-close follow-through filter; both gates now coexist). The CTE already computes `m.prev_close` so no schema/JOIN change. Manual cleanup: deleted WU's row from `mi_9m_sugar_babies`. CLAUDE.md key rule updated: "green" = net up ≥ 3% vs prev_close, NOT just close > open.
 
-**1. Fade guard in `_submit_orb_trade`** (`broker/live_tracker.py`)
-Before `prepare_orb_order` runs, fetch latest trade via
-`alpaca.get_latest_trade(ticker)`. If `last_price < (orb_high + orb_low) / 2`
-(below ORB midpoint), skip with `SETUP_FADED_FROM_ORB`. Rationale:
-a gap-and-go that's giving back more than half the open-minute
-range has lost its momentum edge. Below midpoint = breakout is
-already into stop territory.
+### 2026-04-24 (session 5) — Apollo Resilience & Self-Audit System + advisor cleanups
+Plan: `~/.claude/plans/shiny-mapping-locket.md`. Goal: Apollo surfaces invariant breaches and metric anomalies itself instead of the user pattern-matching daily output. Workflow: Apollo detect → Telegram → user judges → paste alert into Claude Code → Opus mitigates → commit. Auto-remediation explicitly OFF.
 
-Silent-on-failure: if `get_latest_trade` returns None or 0
-(feed flake), the check is skipped and the bracket goes through —
-don't block trading on data hiccups mid-morning.
+**New files:** `agents/market_intelligence/system_audit.py` (L1/L2/L3 ladder, post-EOD/post-nightly/baseline-refresh entry points, `run_topic_audit` for `/audit <topic>`, `_compute_anomalies` with cold-start tiers + MAD<1 fallback + regime-conditional baselines for trade-throughput metrics, `_synthesize_hypothesis` with CLAUDE.md+audit-event context injection, threshold-crossing L3 dedup), `agents/market_intelligence/audit_invariants.py` (11 shared invariant functions; `readiness_check.py` refactored to import from it — single source of truth).
 
-**2. Tightened submission window** (`scheduler.py:486`)
-`within_orb_window = market_open and now_et.hour == 9 and now_et.minute < 45`
-(was `now_et.hour < 10`). Matches the 15-min gate already used for
-EP projection. HIGHs arriving 9:45–9:59 ET fall into the existing
-`WINDOW_OUT_OF_ORB` branch (Telegram alert, skip row, no order).
+**Schemas:** `mi_metric_baselines (metric_name, as_of_date, p50, p95, mad, sample_n)`, `mi_baseline_resets (metric_name, reset_at, reason)`.
 
-**3. 10:00 AM ET unfilled-entry cancel job** (`scheduler.py`)
-New `_orb_window_cleanup_job` at 10:00 ET reuses
-`cancel_unfilled_entries`. Anything still `order_placed` by 10:00
-means the ORB high wasn't broken during the window — stops it
-from sitting 6 more hours waiting for a failed-gap-reclaim
-bounce. Complements the existing 4:05 PM EOD cancel.
+**Scheduler:** registered three jobs (16:15 / 17:30 / 02:00 ET) each ending with `_kuma_heartbeat()` ping (env-gated). Three new env vars: `KUMA_AUDIT_EOD_URL`, `KUMA_AUDIT_NIGHTLY_URL`, `KUMA_AUDIT_BASELINE_URL`.
 
-**4. Skip-reason humanization** (`broker/skip_reasons.py`)
-New `SETUP_FADED_FROM_ORB = "setup:faded_from_orb"` +
-`_HUMAN_LABELS` entry "Price faded below ORB midpoint". Flows
-through every Telegram surface (immediate skip alert, `/why`,
-`/trades_detail skipped`, evening brief, EOD EP recap) via the
-existing `humanize()` pipeline — no per-surface wiring.
+**Weekly review (`system_review.py`):** new `_aggregate_anomalies()` pulls 7d `anomaly_detected` rows, buckets by level, filters L3 to band transitions (`from_band != to_band`). System prompt updated to append "📉 *Drift:*" line + cite L1/L2 in ⚠️ Broken section.
 
-### Files Changed
-`broker/skip_reasons.py`, `broker/live_tracker.py`, `scheduler.py`,
-`CLAUDE.md`
+**Agent / Telegram:** `/audit <topic>` slash command (cooldowns/themes/skips/positions/feed/9m/all); keyword route `audit <topic>` excludes pre-existing `audit log` handler. CommandHandler binding for `audit` in `channels/telegram.py`. Stale `_handle_audit` retired-stub deleted. Defensive prefix-strip in `_handle_audit_topic` removed (advisor flagged dead code).
 
-### Manual cleanup applied
-- **CHE** (today): Alpaca order `e6127c07-7a9e-4245-b6d2-9a8d7b2a0452`
-  cancelled, trade row marked `status='cancelled'` (trade_stream
-  picked up the cancel event).
-- **INTC** (today): DB row was stuck `status='filled'` from the
-  OTO-id bug. Applied the cleanup SQL — now `status='closed'`,
-  `total_pnl=-477.34`, stop-hit exit recorded.
+**⚠️ Backfill verification deferred** to backlog P24 — needs ≥30 days of `mi_metric_baselines` history. Earliest run ~2026-05-24. Without it the system has the same blind spot it was built to close — must run before declaring the audit layer trusted.
 
-### ⚠️ Post-deploy verification
-1. Next HIGH EP arriving 9:45–9:59 ET: should generate a
-   `⏰ TICKER HIGH EP arrived HH:MM ET — ORB window closed, no order`
-   alert and a skipped trade row with prefix `window:out_of_orb`.
-2. A HIGH at 9:31–9:44 where the tape is already faded: should
-   generate `⏭️ TICKER ORB skipped — Price faded below ORB midpoint (...)`
-   and a skip row with prefix `setup:faded_from_orb`.
-3. At 10:00 ET the next trading day: any `order_placed` entries
-   from that morning must be cancelled (or already filled) — query
-   ```sql
-   SELECT ticker, status FROM mi_live_trades
-   WHERE alert_date = CURRENT_DATE AND status = 'order_placed';
-   ```
-   should return 0 rows at 10:01 ET.
+### 2026-04-24 (session 4) — Zombie theme cooldown flood
+Nightly validation wrote 135 cooldowns (vs ~1/day baseline). Root cause: `db.py::get_active_themes()` had no recency filter — returned every theme name ever written with `stage != 'Retired'`. 98 themes loaded vs ~37 in today's snapshot; weeks-old hallucinations (e.g. LRCX in oil) re-triggered cooldown removal repeatedly. Fix: `get_active_themes(stale_after_days=7)` filters `theme_date >= CURRENT_DATE - 7 days`. Recency cap is the de-facto retirement mechanism — covers normal weekend/holiday gaps with margin. Manual cleanup applied in prod.
+
+### 2026-04-24 (session 3) — Unified entry pipeline + silent-failure hardening
+New `broker/entry_pipeline.py::submit_trade_entry` is the single funnel for MAGNA53 EP + 9M Day 2 ORB entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback; everything else lives in the pipeline once. **Contract: every terminal failure Telegrams via `humanize()`.** `live_tracker._submit_orb_trade` deleted (~130 lines); `submit_9m_day2_trade` shrunk 150→50 lines; `process_new_alerts_live` shrunk 170→80 lines. Per-alert work now in `asyncio.gather` with `Semaphore(5)` (was strictly serial — 20 alerts × 3×60s bar-fetch retry could stack 60 min past cron). Bounded action vocabulary: `ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`. Silent-failure sweep: `_process_alert` crash handler now writes audit row first then attempts Telegram; `_record_subscribe_failure` Telegram-fail now logs; scheduler `_9m_scan_job` and `_9m_day2_orb_job` wrap with `notify_job_failure()` + per-candidate try/except; sugar baby state mismatch fixed (`auto_enter_failed` / `proposal_send_failed` now write `skipped` since they bypass `_on_skip`).
+
+### 2026-04-24 (session 2) — ORB late-entry & fade guard
+CHE gapped +17.9%, first crossed HIGH at 9:55 ET. Bracket placed at ORB high but tape had already faded — order would only fill on dead-cat retest hours later. Two fixes: (1) **Fade guard** in `_submit_orb_trade` — fetch latest trade before order; if `last_price < (orb_high + orb_low) / 2` skip with `SETUP_FADED_FROM_ORB`. Silent-on-feed-failure (don't block on data hiccup). (2) **Tightened submission window**: `now_et.hour == 9 and now_et.minute < 45` (was `< 10:00`). HIGHs at 9:45–9:59 → existing `WINDOW_OUT_OF_ORB` branch. (3) **10:00 AM ET cleanup job** `_orb_window_cleanup_job` cancels any `order_placed` still pending. New `SETUP_FADED_FROM_ORB` constant + `humanize()` entry. CHE order cancelled, INTC stuck-`filled` row cleaned up.
+
+### 2026-04-24 (session 1) — OTO bracket stop-leg ID capture
+INTC entered, 🚨 UNPROTECTED alert fired falsely, stop fired as `💱 Untracked SELL` not `❌ Stopped out`, no Day 1 re-entry. Root cause: four separate "find the stop leg" implementations, only one robust. `submit_entry` used strict `leg.get("type") == "stop"` — under Python 3.12 `str(OrderType.STOP)` returns `"OrderType.STOP"`, check silently fails, `stop_order_id` written as NULL. Cascade: WS fill handler can't match on NULL → routes to Untracked SELL → no `_process_stop_fill` → no re-entry. Fix: single canonical `alpaca_client.extract_stop_leg_id(order)` — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Applied to all 5 sites. Defense-in-depth in `_process_entry_fill`: checks 3 sources (WS legs, DB stop_order_id, REST refetch) before standalone-stop remediation. Eliminates false UNPROTECTED alerts.
+
+### 2026-04-23 (session 3) — Validation-window hardening
+Three follow-ups for the 3-4 week paper validation window (target cutover 2026-05-23). (A) `Dockerfile.market` now `COPY scripts/ scripts/` so recovery scripts survive container rebuilds. (B) `_eod_ep_recap_job` now appends `📡 Feed (sip): N bars · M zero-range · K subscribe-fail · D disconnect`. Recap fires even on zero-HIGH days if any feed events occurred (catches silent SIP auth lapses). (C) New `scripts/readiness_check.py` encodes the 6 cutover gates as concrete SQL pass/fail (naked positions, reason-coverage invariant, silent audit errors, paper trade sample ≥ 10, regime not Crisis, feed health 24h).
+
+### 2026-04-23 (session 2) — Env-var-gated SIP feed for ORB entry
+URI ORB miss on 2026-04-22 traced to IEX feed (~2-3% of US consolidated volume) showing zero-range first-minute bars on mid-liquidity tickers. Phase 1: Alpaca Algo Trader Plus ($99/mo) → realtime CTA/UTP SIP consolidated tape. Env-var-gated via `ALPACA_DATA_FEED` (unset/`iex`/`sip`); resolved by new `alpaca_client.get_data_feed()` helper used by `get_first_bar()` and `start_bar_stream`. Code ships inert; flip activates when subscription is live. `scripts/verify_sip_parity.py` (hard-wires SIP independent of env) runs 4 pre-flip checks. **Validated: AAPL parity 0.037%, URI 2026-04-22 IEX=$0 → SIP=$4.20, 90d replay 1/1 recovered.** `ALPACA_DATA_FEED=sip` set in prod 2026-04-23. Polygon stays for grouped-daily/VIX/reference/backtester. Phase 2 trigger (Polygon Advanced $199 dual-feed): book size 5–10×, feed incident, OHLC reconciliation > 0.2% divergence, or second broker.
+
+### 2026-04-23 (session 1) — Broker alert gaps + bracket-order hardening
+**Naked positions (BSX/GSHD/SIRI):** `StopLimitOrderRequest(...stop_loss=...)` was submitted without `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it. Fix: `place_bracket_order` always uses `OTO` + verifies returned order has stop leg, cancels naked bracket if missing. **Silent state changes:** `_handle_cancel_or_reject` only alerted on `rejected`; manual Alpaca actions / `close_position` were logged and discarded. Three branches now: entry cancel/expire/reject, stop-leg cancel (clears `stop_order_id`, alert), untracked reject. `_handle_fill` untracked-sell branch parses `UPDATE N` rowcount → fires `💱 Untracked SELL/BUY` if 0 affected. `_process_entry_fill` belt-and-suspenders: places standalone stop or alerts UNPROTECTED. Managed exits in `order_manager` now `INSERT INTO mi_live_orders ON CONFLICT DO NOTHING` to avoid double-fire on the new untracked-sell alert.
 
 ---
 
-## Changes Made 2026-04-24 (session 3) — Unified entry pipeline + silent-failure hardening
+## Changes Made — Historical (compressed log)
 
-### One code path for every ORB bracket entry
-New `broker/entry_pipeline.py::submit_trade_entry` is the single funnel for
-both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source,
-position sizing) inject via a `spec_builder` callback. Everything else —
-duplicate check → safeguards → bar-fetch retry → fade guard → spec build →
-DB insert → Alpaca submit → audit log → Telegram — lives in the pipeline
-exactly once. **Contract: every terminal failure state Telegrams via
-`humanize()`.** No silent skips.
+Full prose lives in git history at the listed commits. Each line is "topic — key change & lesson."
 
-`live_tracker._submit_orb_trade` deleted (~130 lines). `submit_9m_day2_trade`
-shrunk from ~150 to ~50 lines (thin wrapper around the pipeline with
-`prepare_9m_day2_orb_order` as spec_builder, `update_9m_sugar_baby_status`
-as `on_skip` hook). `process_new_alerts_live` shrunk from ~170 to ~80 lines.
+### 2026-04-22
+- **session 4 — Strip to market/trading focus** (commit before `cb39045` lineage): deleted 5 unused sub-agents (finance/calendar/research/browser/travel), Dockerfiles, compose blocks, tool schemas, AgentName enum values, 4 provider getters, 9 dead secrets, `tests/test_ibkr.py`. Orchestrator kept for future expansion. Env vars dropped: `GEMINI_API_KEY`, `TAVILY_API_KEY`, `IBKR_*`, `GOOGLE_*`, `APPLE_CALDAV_*`. Added to canonical: `PERPLEXITY_API_KEY`, `FMP_API_KEY`. Lesson: rotting scaffolding is deploy surface — delete dead code aggressively.
+- **session 3 — 9M Sugar Baby going-in shape telemetry**: 6 new columns on `mi_9m_sugar_babies` (prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50, sma50_slope_pct, prior_sessions); `_shape_tag()` bucket (uptrend/pullback/extended/bounce/downtrend/flat). Telemetry-only — promote to filter after 30+ outcomes. Lesson: capture metrics first, gate later.
+- **session 2 — Humanize skip reasons + theme validation rate-limit**: `humanize(reason)` translator (machine prefixes in DB, prose in Telegram). `_VALIDATION_SEMAPHORE(2)` caps concurrent Haiku; retry-once on 429. Three-bucket error banner (🔴/🟠/🟡). Lesson: "20 parse errors" turned out to be 20 rate-limit errors — split exception handlers.
+- **session 1 — EP entry diagnostics & performance traceability**: `broker/skip_reasons.py` (18 bounded constants); every HIGH EP gets durable terminal state by 4:10 PM ET; `/why TICKER [date]` lifecycle timeline; 4:10 PM EOD EP recap; evening brief "EP OUTCOMES TODAY". Lesson: free-form skip reasons broke monthly aggregation — bounded vocabulary.
 
-### Concurrency fix in `process_new_alerts_live`
-Per-alert work now runs in `asyncio.gather` with `Semaphore(5)`. Was strictly
-serial — bar-fetch retry can block 3×60s per ticker, so 20 alerts could stack
-60 min past the 5-min cron. Per-task exceptions captured via
-`return_exceptions=True` and Telegrammed individually as
-`🚨 TICKER ORB pipeline crashed`.
+### 2026-04-21
+- **session 2 — Briefing fixes, 9M quality + cadence**: truncate EP writeups at sentence boundaries, parse-error noise collapsed, Haiku response hardening, /pregame yesterday-fallback for sugar babies, 9M intraday range gate (≥ 2%) + extension gate (prev_close ≤ 1.20× SMA-10 measured at prev_close not today), high-conviction anticipation carve-out (gap ≥ 10% OR proj_vol ≥ 25M).
+- **session 1 — `/trades` richer summary**: open positions with entry→current→stop, last 5 closed inline, totals row. UTC/ET boundary fix for `closed_at` (after 8 PM ET UTC date rolls but `et_today()` still today; cast via `AT TIME ZONE 'America/New_York'`).
 
-### Bounded action vocabulary
-`entry_pipeline.py` exports `ACTION_AUTO_ENTERED / ACTION_PROPOSED /
-ACTION_AUTO_ENTER_FAILED / ACTION_PROPOSAL_SEND_FAILED / ACTION_SKIPPED /
-ACTION_BLOCKED`. Used in `live_tracker.py` and `bar_stream.py` instead of raw
-strings. Pattern parallel to `skip_reasons.py` for skip categories.
+### 2026-04-20
+- **session 4 — Hardening triage**: LLM rate-limit guard in `ep_detector` (`AsyncAnthropic` + `Semaphore(5)` + retry); correlation matrix off event loop (`asyncio.to_thread()`); theme breadth decay (`pct_above_20sma` < 40% × 2d → forced Fading).
+- **session 3 — Weekly system self-audit**: `system_review.py` — Sunday 8 AM ET 7d aggregation → Sonnet synthesis → 4-section Telegram digest; persists `mi_system_reviews` (JSONB metrics + suggestions). Follow-up framed as metric deltas.
+- **session 2 — 9M quality filters (74 → 2-5/day)**: price ≥ $5, dollar-vol ≥ $50M actual / $30M anticipation, directional conviction (gap ≥ 3% OR intraday ≥ 4%), 3× ADV ratio (not flat ceiling). Lesson: flat ceilings silently block mid-ADV genuine catalysts.
+- **session 1 — Theme validation parse errors + cross-sector hallucinations + broker partials**: `_extract_json_object()` brace-depth-aware (replaces regex broken by Haiku nested JSON); `max_tokens` 200→400; "Respond with valid JSON only" system prompt. Cross-sector gate Unknown-sector fallback (keyword overlap 4+ letter). KURA partial-exit blocked-by-stop bug: stop-first ordering (cancel full-qty stop → place 2/3 stop → market sell 1/3); fractional qty fix (`int(remaining)//3`); caller honors return value.
 
-### Silent-failure audit (rule: every trading failure must Telegram + audit-log)
-Findings + fixes from a sweep of `broker/` and trading scheduler jobs:
+### 2026-04-19
+- **session 6 — 9M ETF flood + EP ETF leakage + catchup ORB orders**: 3-layer 9M ETF filter (SKIP_TICKERS / `mi_security_types` non-CS/ADRC / RVOL ≥ 2× ADV with caching); EP detector secondary `mi_security_types` gate; ORB window `now_et.hour < 10` + `misfire_grace_time=300` so APScheduler skips stale fires.
+- **session 5 — `/pregame` + pinned HUD + inline keyboards**: compact trade-ready shortlist (no LLM); HUD auto-refresh hourly via `editMessageText` (`mi_hud_state` table); `/eps`, `/themes`, `/trades` summary + drill-down buttons.
+- **session 1 — 9M EP system (Pradeep Bonde "9M" tactic)**: parallel EP track, zero changes to MAGNA53. New `ninem_detector.py`, `mi_9m_ep_alerts`, `mi_9m_sugar_babies` (UNIQUE per ticker/date), Day 2 ORB at 9:31, outcome tracking `signal_type='9m_ep'`. Sugar Baby = 9M day + green + close top 25% range. Stop = prior day's low. Backtest + e2e scripts.
 
-1. **`live_tracker._process_alert` gather crash handler** — Telegram fail was
-   `except: pass`. Now writes `orb_pipeline_crash` audit event FIRST
-   (durable record), then attempts Telegram. If Telegram also fails,
-   `logger.exception` surfaces the failure in container logs.
-2. **`bar_stream._record_subscribe_failure`** — Telegram fail was silent.
-   Audit row already written; now Telegram failure also `logger.exception`.
-3. **`scheduler._9m_scan_job`** — `except: logger.error(...)` only. Now
-   wraps `notify_job_failure("9m_scan", ...)` so the user sees a 🚨 alert.
-4. **`scheduler._9m_day2_orb_job`** — same fix on outer wrap, PLUS new
-   per-candidate try/except inside the loop. One sugar baby's crash no
-   longer silently strands the rest of the watchlist; each crash writes a
-   `9m_day2_pipeline_crash` audit row and a 🚨 Telegram.
-
-### 9M sugar baby state mismatch fixed
-`submit_9m_day2_trade` post-call mapping now writes `skipped` on
-`auto_enter_failed` / `proposal_send_failed` (those bypass `_on_skip`
-because they happen after DB insert). Sugar baby row no longer stays
-`pending` forever after a post-insert failure.
-
-### Files Changed
-`broker/entry_pipeline.py` (new), `broker/live_tracker.py` (major rewrite),
-`broker/bar_stream.py`, `scheduler.py`, `CLAUDE.md`
-
-### ⚠️ Post-deploy verification
-1. **Reason-coverage invariant** unchanged — `scripts/readiness_check.py`
-   should still pass. Every HIGH EP gets `status` or `skip_reason`.
-2. **Concurrency**: on the next morning with ≥3 alerts, log line
-   `ORB monitor: N entered, M skipped out of K alerts` should appear within
-   ~1 min of 9:31 ET, not stack to 5+ min.
-3. **9M crash visibility**: synthetic test — kill the DB connection mid
-   `submit_9m_day2_trade` and confirm a `🚨 TICKER 9M Day2 pipeline crashed`
-   alert lands AND `mi_audit_log` has a `9m_day2_pipeline_crash` row.
-4. **No silent terminal states**: query against today's HIGH alerts should
-   show every one with a non-null `skip_reason` OR a live status; the new
-   `crashed` action also writes a `mi_live_trades` row via the pipeline
-   `_skip` helper when applicable, or surfaces only via the audit log when
-   the crash happens before the DB insert (audit is then the queryable
-   record).
+### 2026-04-17
+- **session 4 — P15 Correlation clustering**: `correlation_engine.py` — beta-adjusted SPY-residual Pearson 20d on liquid universe; BFS components ≥ 4 stocks at corr ≥ 0.85; chaining filter (sub-matrix mean_corr ≥ 0.80); theme dedup. Backtest precision 0.5% / recall 8.2% — statistically inconclusive (theme history < 6 months); revalidate ~June 2026. Bug fixes: ETF contamination (CS/ADRC filter), OOM at 5K universe ($20M dollar-vol filter → 2800 tickers), holiday-month 21-day shortfall (`_LOOKBACK_DAYS = 35`).
+- **session 3 — Validation cooldown**: `mi_validation_cooldowns` (14-day cooldown on validation removal); Claude prompt context injection + post-assignment hard filter; `show cooldowns`, `bypass cooldown TICKER`. Fixes the CAR-in-Data-Center churn bug.
+- **session 2 — Hardening for live trading prep**: orphaned stop remediation in `sync_positions()`; yfinance 30s `asyncio.wait_for` wrapper; data pull 4:30 → 5:00 PM ET; RS leaders tweet text-only (dropped `media_upload` 403). Features: P2 (MODERATE EP recap), P3 (validation report scaffold).
+- **session 1 — Theme engine architectural hardening + EP detector fixes**: scratchpad in all tool schemas; Unknown sector keyword-overlap fallback; immediate post-assignment validation; 15-ticker description chunking. EP: 15-min projection gate (≥ 9:45 AM); extension via `MIN(close)` over 5d; reverted dangerous auto-persist. P4-P6 (EP outcomes, theme conviction display, journal).
 
 ---
 
-## Changes Made 2026-04-24 (session 4) — Zombie theme cooldown flood
+## Adding a "Changes Made" entry
+Keep new entries in **Recent** section. After ~2 weeks, compress to **Historical** — keep one bullet (date / topic / key change & lesson). Drop "Files Changed" lists (git tells you that), drop "Post-deploy verification" once verified, drop manual cleanup SQL once applied.
 
-### Problem
-2026-04-24 nightly theme validation wrote **135 cooldowns** to
-`mi_validation_cooldowns` (vs ~1/day baseline). Spot-check of the list
-showed semiconductor and electronics names appearing under oil/satellite
-themes — at first glance the same shape as the April 20 cross-sector
-hallucination bug, but that fix was verified working. Real cause was
-upstream of validation entirely.
-
-### Root cause
-`db.py::get_active_themes()` had no recency filter. The query returned
-the most-recent snapshot of **every theme name ever written** with
-`stage != 'Retired'`. Since `_save_themes` only writes the current day
-and there is no mechanism that flips dropped themes to `Retired`, any
-theme that stopped appearing in daily snapshots (merged away during
-dedup, renamed, dropped during discovery) lingered forever as a "zombie"
-with its last-known ticker list.
-
-98 themes were loaded for tonight's run; only ~37 were in today's
-snapshot. Examples: "Crude Oil Price Momentum ETFs & Pure-Play E&P"
-last seen 2026-03-31 (24 days stale) was still being re-validated
-against a frozen ticker list that included LRCX from a weeks-old
-hallucination → Haiku correctly removes LRCX from oil → cooldown row
-written → repeat across ~60 zombies.
-
-### Fix
-`get_active_themes(stale_after_days=7)` now filters
-`theme_date >= CURRENT_DATE - 7 days`. The recency cap acts as the
-de-facto retirement mechanism: a theme that stops appearing in daily
-snapshots naturally ages out of "active" after a week (covers normal
-weekend/holiday gaps with margin). All four call sites (theme_engine,
-correlation_engine, scheduler, agent) want current themes — default
-parameter, no signature break.
-
-### Manual cleanup applied (prod)
-`DELETE FROM mi_validation_cooldowns WHERE removed_at::date = CURRENT_DATE`
-on 2026-04-24 — 135 spurious rows removed. Future flooding prevented
-by the recency filter at the source.
-
-### Files Changed
-`agents/market_intelligence/db.py`, `CLAUDE.md`
-
-### ⚠️ Post-deploy verification
-1. Next nightly theme engine run (Mon/Wed/Fri 5 PM ET) — log line
-   `Re-scoring N existing themes` should show ~37, not 98.
-2. `mi_validation_cooldowns` rows added the next validation night
-   should be ≤ ~5 (baseline). If > 20, the dedup or hallucination
-   guard has regressed and needs separate investigation.
-3. Zombie themes that legitimately should still be active (e.g.
-   theme briefly absent due to a one-day discovery anomaly) will
-   re-emerge next time they appear in a snapshot. No data loss —
-   `mi_themes` history is preserved; only the read query is filtered.
+Target file size: under 30k chars. Hard ceiling: 40k (warning threshold).

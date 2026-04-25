@@ -997,6 +997,12 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND d.high_price IS NOT NULL
               AND d.low_price IS NOT NULL
               AND d.close > d.open_price
+              -- Net up ≥ 3% vs prev_close. Mirrors intraday _MIN_GAP_PCT floor in
+              -- ninem_detector.py; without this, gap-down wick-fills (close > open
+              -- but net red on the day, e.g. WU 2026-04-24: -10% gap, recovered to
+              -- -4.6% net) pass the EOD gate even though the intraday gate already
+              -- rejected them all session. Single-source-of-truth on direction.
+              AND (d.close - m.prev_close) / m.prev_close >= 0.03
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
               -- Require ≥10 prior sessions — rejects Day-1 IPOs (NHP 2026-04-22).
