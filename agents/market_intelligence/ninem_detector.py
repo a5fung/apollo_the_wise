@@ -44,6 +44,33 @@ _ADV_ANOMALY_MULTIPLIER = 3                # effective_vol ≥ 3× ADV (virgin 9
 _MIN_GAP_PCT = 3.0                         # gap-up commitment
 _MIN_INTRADAY_GAIN_PCT = 4.0               # OR intraday trend
 
+
+def is_9m_directional(prev_close: float, day_open: float, current_price: float) -> bool:
+    """Canonical 9M directional gate. SINGLE SOURCE OF TRUTH — used by both the
+    intraday alerter (ninem_detector) and the EOD sugar baby filter (db.py).
+    Never re-implement this rule inline or in SQL.
+
+    Pass if EITHER `gap_pct >= _MIN_GAP_PCT` OR `net_pct >= _MIN_INTRADAY_GAIN_PCT`,
+    where both percentages are measured against prev_close. `current_price` is
+    the live price intraday or `close` at EOD.
+    """
+    if prev_close <= 0:
+        return False
+    gap_pct = ((day_open - prev_close) / prev_close * 100) if day_open > 0 else 0.0
+    net_pct = (current_price - prev_close) / prev_close * 100
+    return gap_pct >= _MIN_GAP_PCT or net_pct >= _MIN_INTRADAY_GAIN_PCT
+
+
+def is_green_close(prev_close: float, close: float) -> bool:
+    """Sugar-baby green-close gate. SINGLE SOURCE OF TRUTH — referenced by db.py
+    EOD filter. Net up ≥ `_MIN_GAP_PCT` vs prev_close on the day; tighter than
+    `is_9m_directional` (which permits gap-and-fade names). Rejects gap-down
+    wick-fills like WU 2026-04-24 (gap −10%, recovered to net −4.6%).
+    """
+    if prev_close <= 0:
+        return False
+    return (close - prev_close) / prev_close * 100 >= _MIN_GAP_PCT
+
 # In-memory dedup: prevents duplicate Telegram alerts within the same calendar day.
 # A process restart clears this; the DB UNIQUE constraint on (ticker, alert_date)
 # ensures insert_9m_ep_alert() returns False for duplicates so no repeat is sent.
@@ -182,11 +209,8 @@ async def run_9m_scan() -> list[dict]:
         if not current_price or current_price < _MIN_PRICE:
             continue
 
-        # Directional conviction: gapped up 3%+ OR trending up 4%+ intraday.
         day_open = snap.get("day", {}).get("o") or 0
-        gap_pct = ((day_open - prev_close) / prev_close * 100) if day_open > 0 else 0.0
-        intraday_gain_pct = (current_price - prev_close) / prev_close * 100
-        if gap_pct < _MIN_GAP_PCT and intraday_gain_pct < _MIN_INTRADAY_GAIN_PCT:
+        if not is_9m_directional(prev_close, day_open, current_price):
             continue
 
         # Intraday range ≥ 2% of price — rejects merger-arb pins (e.g. DBRG at 0.26%
@@ -246,8 +270,10 @@ async def run_9m_scan() -> list[dict]:
         is_anticipation = is_9m_anticipation
         rvol_display = round(today_volume / adv, 1) if (adv and adv > 0) else None
 
-        # Display leg: gap if it qualified, otherwise the intraday trend that did.
-        display_pct = gap_pct if gap_pct >= _MIN_GAP_PCT else intraday_gain_pct
+        # Display leg: gap if it qualified the directional gate, otherwise net move.
+        gap_pct = ((day_open - prev_close) / prev_close * 100) if day_open > 0 else 0.0
+        net_pct = (current_price - prev_close) / prev_close * 100
+        display_pct = gap_pct if gap_pct >= _MIN_GAP_PCT else net_pct
         alert = {
             "ticker": ticker,
             "alert_date": today_str,

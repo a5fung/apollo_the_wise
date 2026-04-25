@@ -968,6 +968,7 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                 HAVING COUNT(*) >= 10
             )
             SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
+                   m.prev_close,
                    CASE WHEN (d.high_price - d.low_price) > 0
                         THEN (d.close - d.low_price) / (d.high_price - d.low_price)
                         ELSE NULL END AS close_in_range_pct,
@@ -997,12 +998,9 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
               AND d.high_price IS NOT NULL
               AND d.low_price IS NOT NULL
               AND d.close > d.open_price
-              -- Net up ≥ 3% vs prev_close. Mirrors intraday _MIN_GAP_PCT floor in
-              -- ninem_detector.py; without this, gap-down wick-fills (close > open
-              -- but net red on the day, e.g. WU 2026-04-24: -10% gap, recovered to
-              -- -4.6% net) pass the EOD gate even though the intraday gate already
-              -- rejected them all session. Single-source-of-truth on direction.
-              AND (d.close - m.prev_close) / m.prev_close >= 0.03
+              -- Directional gates (`is_9m_directional`, `is_green_close`) applied
+              -- in Python after fetch — do NOT inline them here. Single source of
+              -- truth lives in ninem_detector.py.
               AND (d.high_price - d.low_price) > 0
               AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.75
               -- Require ≥10 prior sessions — rejects Day-1 IPOs (NHP 2026-04-22).
@@ -1021,7 +1019,15 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)
-    return [dict(r) for r in rows]
+    # Apply canonical directional gates from ninem_detector — single source of
+    # truth shared with the intraday alerter. Imported lazily to avoid circular
+    # imports (ninem_detector imports from db).
+    from agents.market_intelligence.ninem_detector import is_9m_directional, is_green_close
+    return [
+        dict(r) for r in rows
+        if is_9m_directional(float(r["prev_close"]), float(r["open_price"]), float(r["close_price"]))
+        and is_green_close(float(r["prev_close"]), float(r["close_price"]))
+    ]
 
 
 async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
