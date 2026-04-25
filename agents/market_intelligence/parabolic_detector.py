@@ -434,7 +434,7 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
     async def _score(ticker: str) -> Optional[dict]:
         async with sem:
             try:
-                history = await db.get_recent_daily_history(ticker, _HISTORY_DAYS)
+                history = await db.get_recent_daily_history(ticker, _HISTORY_DAYS, end_date=trade_date)
                 if not history or len(history) < 60:
                     return None
                 cap = await _get_or_fetch_market_cap(ticker)

@@ -1176,21 +1176,34 @@ async def upsert_market_cap(ticker: str, market_cap: Optional[int]) -> None:
         """, ticker, market_cap)
 
 
-async def get_recent_daily_history(ticker: str, days: int) -> list[dict]:
-    """Last N trading sessions of OHLCV for one ticker, oldest first.
+async def get_recent_daily_history(
+    ticker: str, days: int, end_date: "date | None" = None,
+) -> list[dict]:
+    """Last N calendar days of OHLCV for one ticker, oldest first.
 
-    Used by the parabolic detector and the CAR backfill verification script.
+    `end_date` defaults to today ET — pass a historical date to replay the
+    scan against an earlier snapshot (essential for backfill validation).
     Returns [] if ticker has no rows.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT trade_date, open_price, high_price, low_price, close, volume
-            FROM mi_daily_closes
-            WHERE ticker = $1
-              AND trade_date >= (now() AT TIME ZONE 'America/New_York')::date - $2::int
-            ORDER BY trade_date ASC
-        """, ticker, days)
+        if end_date is None:
+            rows = await conn.fetch("""
+                SELECT trade_date, open_price, high_price, low_price, close, volume
+                FROM mi_daily_closes
+                WHERE ticker = $1
+                  AND trade_date >= (now() AT TIME ZONE 'America/New_York')::date - $2::int
+                ORDER BY trade_date ASC
+            """, ticker, days)
+        else:
+            rows = await conn.fetch("""
+                SELECT trade_date, open_price, high_price, low_price, close, volume
+                FROM mi_daily_closes
+                WHERE ticker = $1
+                  AND trade_date <= $2
+                  AND trade_date >= $2 - $3::int
+                ORDER BY trade_date ASC
+            """, ticker, end_date, days)
     return [dict(r) for r in rows]
 
 
