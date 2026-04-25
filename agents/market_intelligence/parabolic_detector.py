@@ -44,10 +44,17 @@ _MIN_EXT_VS_SMA50      = 1.50        # close >= 1.5 × SMA-50 (Uncharted Territo
 _MAX_PULLBACK_COUNT_20D = 6          # < 6 down days in last 20 (parabolic, not linear)
 
 # ── Velocity-delta gate (parabolic curve, not linear) ───────────────────────
-# A stock is parabolic when >50% of its 20d move happened in the last 5d.
-# Linear 45° grinders fail this; CAR-style vertical walls pass even with
-# 1-2 day micro-pullbacks inside the run (where day-over-day Δroc would break).
-_VELOCITY_RATIO_MIN    = 0.50
+# Compare daily compound rates, not raw ROCs: in a sustained exponential
+# parabola, 20d ROC structurally dwarfs 5d ROC (the 5d window IS part of
+# the 20d window) — a raw-ROC threshold is mathematically infeasible for
+# stocks already weeks into a run. Daily-rate comparison stays stable as
+# the run lengthens — it asks "is recent daily velocity faster than
+# medium-term daily velocity?", which is the actual definition of acceleration.
+#
+# Threshold 1.10 is sticky enough to hold a name on the radar during the
+# final 1-2 day consolidation right before the climax gap (CAR 4/20 had
+# daily-ratio 1.11, just clears 1.10 — drops out of 1.15).
+_VELOCITY_DAILY_RATIO_MIN = 1.10
 
 # ── Burst checklist thresholds (final 3-5 days) ──────────────────────────────
 _MIN_DAYS_UP_STREAK    = 3
@@ -132,24 +139,29 @@ def _roc(rows: list[dict], end_idx: int, window: int) -> Optional[float]:
 def _compute_velocity_delta(
     rows: list[dict], today_idx: int
 ) -> tuple[Optional[float], Optional[float], Optional[bool]]:
-    """Velocity-delta gate: roc_5d > 0.5 × roc_20d.
+    """Velocity-delta gate: daily_compound_rate_5d > 1.10 × daily_compound_rate_20d.
 
-    Replaces day-over-day slope_accel — discrete second derivatives are too
-    noisy on closing prices (one inside day breaks the math even when the
-    chart is a vertical wall). Velocity-delta proves the curve is *bending*:
-    if more than half the trailing 4-week move printed in the last week,
-    we're parabolic, not linear.
+    Daily compound rates: (1 + roc_n) ^ (1/n) − 1. Comparing these (not raw
+    ROCs) keeps the test stable as a parabola lengthens — raw 5d ROC is a
+    structurally-bounded fraction of raw 20d ROC once the run is weeks deep,
+    but the daily compound rate is the per-day rate of price change and is
+    directly comparable across windows of any length.
 
     Returns (roc_5d, roc_20d, passes). `passes` is None if either ROC is
-    incomputable, False if 20d isn't positive (no parabola without an uptrend).
+    incomputable, False if 20d isn't positive (no parabola without an uptrend)
+    or if 5d collapsed to ≤ -100% (math undefined).
     """
     roc_5d = _roc(rows, today_idx, _ROC_SHORT_DAYS)
     roc_20d = _roc(rows, today_idx, _ROC_LONG_DAYS)
     if roc_5d is None or roc_20d is None:
         return (roc_5d, roc_20d, None)
-    if roc_20d <= 0:
+    if roc_20d <= 0 or roc_5d <= -1:
         return (roc_5d, roc_20d, False)
-    return (roc_5d, roc_20d, roc_5d > roc_20d * _VELOCITY_RATIO_MIN)
+    daily_5d = (1.0 + roc_5d) ** (1.0 / _ROC_SHORT_DAYS) - 1.0
+    daily_20d = (1.0 + roc_20d) ** (1.0 / _ROC_LONG_DAYS) - 1.0
+    if daily_20d <= 0:
+        return (roc_5d, roc_20d, False)
+    return (roc_5d, roc_20d, daily_5d > daily_20d * _VELOCITY_DAILY_RATIO_MIN)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -258,8 +270,11 @@ def compute_parabolic_metrics(
         base_record["reason"] = "insufficient_roc_history"
         return base_record
     if not velocity_pass:
+        # Surface the daily-rate comparison the gate actually uses.
+        daily_5d = ((1 + roc_5d) ** (1/_ROC_SHORT_DAYS) - 1) * 100 if roc_5d is not None and roc_5d > -1 else 0
+        daily_20d = ((1 + roc_20d) ** (1/_ROC_LONG_DAYS) - 1) * 100 if roc_20d is not None and roc_20d > 0 else 0
         base_record["reason"] = (
-            f"linear_trend_5d_{(roc_5d or 0)*100:.0f}%_vs_20d_{(roc_20d or 0)*100:.0f}%"
+            f"not_accelerating_daily5_{daily_5d:.1f}%_vs_daily20_{daily_20d:.1f}%"
         )
         return base_record
 
