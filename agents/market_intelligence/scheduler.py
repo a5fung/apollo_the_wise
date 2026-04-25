@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 JOB_NIGHTLY_DATA_PULL = "nightly_data_pull"
 JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
+JOB_PARABOLIC_SCAN = "parabolic_scan"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -808,6 +809,28 @@ async def _post_eod_audit_job():
         await _kuma_heartbeat("KUMA_AUDIT_EOD_URL")
 
 
+async def _parabolic_scan_job():
+    """Run at 5:15 PM ET. Scan universe for parabolic-short candidates.
+
+    Slots between 5:00 PM nightly_data_pull (which refreshes mi_daily_closes)
+    and 5:30 PM post_nightly_audit. Persists every scored ticker (incl.
+    `unqualified`) to mi_parabolic_candidates so thresholds can be tuned
+    against historical scans. Telegram digest only fires on non-empty results
+    (parabolas are rare — silence is the expected daily state).
+    """
+    logger.info("Parabolic scan starting...")
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.parabolic_detector import (
+            run_parabolic_scan, send_parabolic_digest,
+        )
+        by_stage = await run_parabolic_scan(et_today())
+        await send_parabolic_digest(by_stage)
+    except Exception as e:
+        logger.error(f"Parabolic scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
+
+
 async def _post_nightly_audit_job():
     """Run at 5:30 PM ET. Theme/cooldown/regime invariants + metrics scan post-data-pull.
 
@@ -1309,6 +1332,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id="post_eod_audit",
         replace_existing=True,
         misfire_grace_time=600,
+    )
+
+    # Parabolic-short scan: 5:15 PM ET — slots after 5:00 nightly_data_pull
+    # (fresh mi_daily_closes) and before 5:30 post_nightly_audit. Telemetry-only
+    # per TI1; persists all stages, Telegrams only anticipation/climax.
+    _scheduler.add_job(
+        _parabolic_scan_job,
+        CronTrigger(hour=17, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_PARABOLIC_SCAN,
+        replace_existing=True,
+        misfire_grace_time=900,
     )
 
     # Post-nightly audit: 5:30 PM ET — theme/cooldown/regime invariants + metrics,

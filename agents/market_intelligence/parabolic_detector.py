@@ -22,12 +22,18 @@ persistence, Telegram digest) gets wired up.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
-import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# Bound concurrency for the per-ticker compute loop. Each ticker may trigger
+# an FMP profile fetch (cap-tier classification) — same rate-limit envelope as
+# the rest of the system uses for FMP.
+_SCAN_CONCURRENCY = 10
+_HISTORY_DAYS = 120  # 60d base anchor walk + 50d SMA + buffer
 
 
 # ── Cap-tier prior-move thresholds (Qullamaggie / TradeZella) ────────────────
@@ -396,3 +402,107 @@ async def _get_or_fetch_market_cap(ticker: str) -> Optional[int]:
     cap_int = int(cap) if cap else None
     await db.upsert_market_cap(ticker, cap_int)
     return cap_int
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Nightly scan orchestrator (Step 3 — persistence) + Telegram digest (Step 4)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
+    """Nightly scan: SQL pre-filter → per-ticker compute → persist all rows.
+
+    Every scored ticker gets persisted to `mi_parabolic_candidates` (including
+    `unqualified` so we can tune thresholds against historical scans). Returns
+    results grouped by stage, used by the Telegram digest.
+
+    Bounded concurrency so the FMP cap-tier fetch (called once per ticker on
+    cache miss) doesn't burst the rate limit.
+    """
+    from agents.market_intelligence import db
+
+    universe = await db.get_parabolic_universe(trade_date)
+    by_stage: dict[str, list[dict]] = {
+        "climax": [], "anticipation": [], "watch": [], "unqualified": [],
+    }
+    if not universe:
+        logger.info(f"parabolic_scan {trade_date}: empty universe (no tickers passed pre-filter)")
+        return by_stage
+
+    logger.info(f"parabolic_scan {trade_date}: scoring {len(universe)} candidates")
+    sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
+
+    async def _score(ticker: str) -> Optional[dict]:
+        async with sem:
+            try:
+                history = await db.get_recent_daily_history(ticker, _HISTORY_DAYS)
+                if not history or len(history) < 60:
+                    return None
+                cap = await _get_or_fetch_market_cap(ticker)
+                metrics = compute_parabolic_metrics(history, market_cap=cap)
+                metrics["ticker"] = ticker
+                await db.insert_parabolic_candidate(metrics)
+                return metrics
+            except Exception as e:
+                logger.error(f"parabolic_scan: {ticker} failed: {e}", exc_info=True)
+                return None
+
+    results = await asyncio.gather(*(_score(t) for t in universe))
+    for r in results:
+        if r is None:
+            continue
+        by_stage.setdefault(r["stage"], []).append(r)
+
+    logger.info(
+        f"parabolic_scan {trade_date}: "
+        f"{len(by_stage['climax'])} climax, "
+        f"{len(by_stage['anticipation'])} anticipation, "
+        f"{len(by_stage['watch'])} watch, "
+        f"{len(by_stage['unqualified'])} unqualified"
+    )
+    return by_stage
+
+
+def _fmt_candidate(r: dict) -> str:
+    """One-line formatter for digest entries."""
+    ticker = r["ticker"]
+    prior = (r.get("prior_move_pct") or 0) * 100
+    ext50 = r.get("ext_vs_sma50") or 0
+    cap_tier = r.get("cap_tier") or "?"
+    score = r.get("score") or 0
+    return f"  • `{ticker}` +{prior:.0f}% from base · {ext50:.1f}× SMA50 · {cap_tier}-cap · burst {score}/4"
+
+
+async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
+    """Two-section Telegram digest. Suppressed entirely when nothing fired —
+    parabolas are rare (Stamatoudis: ~1/month), so silence is the expected
+    daily state. Per `feedback_alert_vs_audit`, only ping for terminal/actionable.
+    """
+    from agents.market_intelligence.briefing import send_telegram_message
+
+    climaxes = sorted(
+        by_stage.get("climax", []),
+        key=lambda r: r.get("prior_move_pct") or 0,
+        reverse=True,
+    )
+    anticipations = sorted(
+        by_stage.get("anticipation", []),
+        key=lambda r: r.get("prior_move_pct") or 0,
+        reverse=True,
+    )
+    if not climaxes and not anticipations:
+        logger.info("parabolic_scan: zero anticipation, zero climax — digest suppressed")
+        return
+
+    lines = ["📉 *Parabolic-short scan*"]
+    if climaxes:
+        lines.append("")
+        lines.append("🔥 *CLIMAX (entry trigger)*")
+        for r in climaxes[:5]:
+            lines.append(_fmt_candidate(r))
+    if anticipations:
+        lines.append("")
+        lines.append("👀 *ANTICIPATION (watchlist)*")
+        for r in anticipations[:10]:
+            lines.append(_fmt_candidate(r))
+
+    await send_telegram_message("\n".join(lines))

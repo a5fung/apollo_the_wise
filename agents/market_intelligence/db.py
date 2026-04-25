@@ -1194,6 +1194,59 @@ async def get_recent_daily_history(ticker: str, days: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_parabolic_universe(trade_date: "str | date") -> list[str]:
+    """Cheap pre-filter for the parabolic-short scan: returns tickers that COULD
+    pass the full compute. Real gating happens per-ticker in Python.
+
+    Filters applied in SQL (intentionally permissive — false positives are fine,
+    they hit the per-ticker compute and resolve to `unqualified`):
+      - CS/ADRC only (or unknown — rejects ETFs/funds via mi_security_types)
+      - close ≥ $5, dollar_vol ≥ $10M today (matches detector Gate 1)
+      - close ≥ 1.5 × SMA-50 (matches detector Gate 3 exactly)
+      - close ≥ 1.5 × MIN(low) over last 60d (loose proxy for Gate 2 — even
+        large-cap 50% threshold passes; small-cap 200% will be rejected per-ticker)
+      - prior_sessions ≥ 60 (need history for SMA-50 + base anchor walk)
+
+    Returns ticker list. Typical day: ~50-200 candidates from ~9000 universe.
+    """
+    pool = await get_pool()
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH ranked AS (
+                SELECT ticker, close, low_price,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE trade_date <= $1
+                  AND trade_date >= $1 - INTERVAL '120 days'
+            ),
+            ctx AS (
+                SELECT ticker,
+                       AVG(close)      FILTER (WHERE rn <= 50) AS sma_50,
+                       MIN(low_price)  FILTER (WHERE rn <= 60) AS low_60d,
+                       COUNT(*)        AS prior_sessions
+                FROM ranked
+                GROUP BY ticker
+                HAVING COUNT(*) >= 60
+            )
+            SELECT d.ticker
+            FROM mi_daily_closes d
+            LEFT JOIN mi_security_types st ON st.ticker = d.ticker
+            INNER JOIN ctx m ON m.ticker = d.ticker
+            WHERE d.trade_date = $1
+              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
+              AND d.close >= 5.0
+              AND (d.volume * d.close) >= 10000000
+              AND m.sma_50 > 0
+              AND d.close / m.sma_50 >= 1.5
+              AND m.low_60d > 0
+              AND d.close / m.low_60d >= 1.5
+            ORDER BY d.close / m.sma_50 DESC
+        """, trade_date)
+    return [r["ticker"] for r in rows]
+
+
 async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
     """Upsert a parabolic-short scan result. Persists every metric (not just the
     boolean stage) so thresholds can be re-tuned against historical scans.
