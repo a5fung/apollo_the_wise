@@ -161,6 +161,14 @@ def compute_parabolic_metrics(
     scan_date = today["trade_date"]
     cap_tier, prior_move_threshold = _classify_cap_tier(market_cap)
 
+    # OHLC + volume must all be present for today's scoring row.
+    if any(today.get(k) is None for k in ("open_price", "high_price", "low_price", "close", "volume")):
+        return {
+            "ticker": None, "scan_date": scan_date, "market_cap": market_cap,
+            "cap_tier": cap_tier, "stage": "unqualified", "reason": "missing_ohlcv_today",
+            "score": 0,
+        }
+
     base_record: dict[str, Any] = {
         "ticker": None,                    # caller fills in
         "scan_date": scan_date,

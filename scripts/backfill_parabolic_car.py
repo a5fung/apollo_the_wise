@@ -34,6 +34,35 @@ from agents.market_intelligence.parabolic_detector import (
 )
 
 
+async def _fetch_yf_history(ticker: str, days: int) -> list[dict]:
+    """Pull OHLCV from yfinance directly — `mi_daily_closes` is close-only for
+    historical rows (OHLC columns added recently and not backfilled), which
+    breaks the parabolic detector. yfinance gives us a clean ground-truth feed
+    for the CAR verification.
+    """
+    import asyncio
+    import yfinance as yf
+
+    def _fetch():
+        # Pull a bit more than `days` calendar days to be safe against weekends.
+        period = f"{max(days + 30, 120)}d"
+        df = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+        out = []
+        for ts, row in df.iterrows():
+            out.append({
+                "trade_date": ts.date(),
+                "open_price": float(row["Open"]),
+                "high_price": float(row["High"]),
+                "low_price":  float(row["Low"]),
+                "close":      float(row["Close"]),
+                "volume":     int(row["Volume"]) if row["Volume"] else 0,
+            })
+        return out[-days:] if len(out) > days else out
+
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _fetch)
+
+
 GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
@@ -67,12 +96,17 @@ def _fmt_bool(v) -> str:
     return "Y" if v else "n"
 
 
-async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Optional[int]) -> int:
-    rows = await get_recent_daily_history(ticker, history_days)
+async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Optional[int], use_yf: bool) -> int:
+    if use_yf:
+        rows = await _fetch_yf_history(ticker, history_days)
+        source = "yfinance"
+    else:
+        rows = await get_recent_daily_history(ticker, history_days)
+        source = "mi_daily_closes"
     if not rows:
-        print(f"{RED}No rows in mi_daily_closes for {ticker}.{RESET}")
+        print(f"{RED}No rows for {ticker} via {source}.{RESET}")
         return 1
-    print(f"Pulled {len(rows)} sessions for {ticker} "
+    print(f"Pulled {len(rows)} sessions for {ticker} from {source} "
           f"({rows[0]['trade_date']} → {rows[-1]['trade_date']}).")
 
     if override_cap is not None:
@@ -141,8 +175,10 @@ def main() -> int:
                    help="Trailing days to score with the sliding window (default 30)")
     p.add_argument("--market-cap", type=int, default=None,
                    help="Override market cap in dollars (e.g. 4000000000)")
+    p.add_argument("--source", choices=("yf", "db"), default="yf",
+                   help="OHLCV source: 'yf' (yfinance, ground truth) or 'db' (mi_daily_closes — likely close-only for old rows)")
     args = p.parse_args()
-    return asyncio.run(_run(args.ticker, args.days, args.scan_days, args.market_cap))
+    return asyncio.run(_run(args.ticker, args.days, args.scan_days, args.market_cap, use_yf=(args.source == "yf")))
 
 
 if __name__ == "__main__":
