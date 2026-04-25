@@ -195,6 +195,11 @@ def compute_parabolic_metrics(
 
     today_idx = len(rows) - 1
     today = rows[today_idx]
+    # scan_date is derived from rows[-1]["trade_date"] — the caller is responsible
+    # for slicing `rows` so its last row matches the intended scan date. Historical
+    # replay must use `get_recent_daily_history(..., end_date=...)`; passing today's
+    # full history with a scan_date arg would silently disagree (persistence-bug
+    # source — see CLAUDE.md 2026-04-25 session 1).
     scan_date = today["trade_date"]
     cap_tier, prior_move_threshold = _classify_cap_tier(market_cap)
 
