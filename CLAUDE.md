@@ -200,6 +200,23 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-25 (session 1) — Parabolic short detector (TI1 Stage 1) deployed
+Plan: `~/.claude/plans/shiny-mapping-locket.md`. New telemetry-only detector for the Stamatoudis/Qullamaggie textbook short setup (TI1 in trading-ideas backlog). Three-tier state machine: `watch` (qualifying gates pass) → `anticipation` (burst checklist 4/4) → `climax` (anticipation + climax candle 2/2). Velocity-delta gate (daily-compound `roc_5d` ≥ 1.10× `roc_20d`) is the canonical "parabolic vs linear" discriminator — pullback count is telemetry-only, not a gate.
+
+**Backfill verification (CAR / GME / NVDA):** all three case studies via `scripts/backfill_parabolic_car.py --source yf --end-date YYYY-MM-DD`. CAR ✅ (2 climaxes 4/7+4/21), GME ✅ (3 anticipations 1/25-1/27 Robinhood squeeze), NVDA ✅ correctly rejected (uptrend ~0.8%/day, not parabolic). User scope: hunt CAR/GME-class only.
+
+**New files:** `agents/market_intelligence/parabolic_detector.py` (compute + `run_parabolic_scan` orchestrator + `send_parabolic_digest` 2-section Telegram with zero-suppression), `scripts/backfill_parabolic_car.py` (verification tool), `scripts/backfill_ohlc.py` (one-time OHLC backfill — see below).
+
+**Schema:** `mi_parabolic_candidates` (UNIQUE ticker+scan_date, persists ALL stages incl. `unqualified` so thresholds re-tune offline), `mi_market_caps` (30-day-stale FMP cache).
+
+**Scheduler:** `_parabolic_scan_job` cron 17:15 ET mon-fri, slots between 17:00 nightly_data_pull and 17:30 post_nightly_audit. `notify_job_failure()` wrapped, `misfire_grace_time=900`.
+
+**OHLC backfill blocker:** older `mi_daily_closes` rows were close+volume only — `open/high/low` columns added later, never backfilled. Detector needs 60+ sessions of full OHLC. Polygon grouped-daily 1 call per date × 58 dates = ~57 sec, 683K rows upserted via existing `ingest_daily_closes()` (its ON CONFLICT COALESCE leaves close/volume untouched, fills NULL OHLC). One-time, but `scripts/backfill_ohlc.py` is idempotent and safe to re-run.
+
+**Bug found and fixed mid-deploy:** `get_recent_daily_history(ticker, days)` always returned rows ending today, not bounded by scan_date. For prod (scan_date=today) fine, but historical replay was broken — CAR on 2026-04-21 came back as `unqualified` because the window's "today" row was 2026-04-24 (post-crash $204). Added `end_date` kwarg (default `None` → today) so replay works. Production cron unaffected.
+
+**Production sanity check (2026-04-24 scan):** 4 climax (ARM, INTC, AMD, RMBS — large-cap semi cluster, ~80-98% prior move), 1 anticipation (MRVL). CAR/MXL replay on 4/21 also correct. Worth observing whether large-cap semi sweep is sector beta vs CAR/GME-class parabola — tunable from telemetry. Stage 1 is telemetry only; promote to paper after 2-3 months of shadow data.
+
 ### 2026-04-24 (session 6) — Sugar baby intraday/EOD direction parity
 WU 2026-04-24 surfaced as a Day-2 ORB sugar baby despite being net −4.6% on the day (gapped −10%, recovered to close > open). Diagnosis: intraday filter (`ninem_detector.py:187-189`) gates on **net direction** vs prev_close (`gap_pct ≥ 3 OR intraday_gain_pct ≥ 4`), correctly rejecting WU all session — `mi_9m_ep_alerts` had 0 rows. EOD filter (`db.py:999`, `get_eod_9m_sugar_babies`) gated on **intraday recovery** (`close > open`) — different concept entirely. Wick-fill on a gap-down passes recovery but fails direction, so EOD wrote a sugar baby that intraday had unanimously rejected. Single-source-of-truth violation per `feedback_single_source_of_truth.md`.
 
