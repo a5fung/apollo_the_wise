@@ -779,11 +779,11 @@ class TelegramChannel:
             return
 
         import httpx
-        from datetime import date
+        from agents.market_intelligence.collector import last_trading_day
         from shared.models import AgentRequest
         from shared.registry import get_agent_url
 
-        today_str = date.today().isoformat()
+        today_str = last_trading_day().isoformat()
         url = get_agent_url("market_intelligence")
         if not url:
             await update.message.reply_text("Market agent not available.")
@@ -866,11 +866,11 @@ class TelegramChannel:
             return
 
         import httpx
-        from datetime import date
+        from agents.market_intelligence.collector import last_trading_day
         from shared.models import AgentRequest
         from shared.registry import get_agent_url
 
-        today_str = date.today().isoformat()
+        today_str = last_trading_day().isoformat()
         url = get_agent_url("market_intelligence")
         if not url:
             await update.message.reply_text("Market agent not available.")
@@ -954,9 +954,10 @@ class TelegramChannel:
             [
                 InlineKeyboardButton("Regime",    callback_data="hud:regime"),
                 InlineKeyboardButton("Themes",    callback_data="hud:themes"),
-                InlineKeyboardButton("9M",        callback_data="hud:9m"),
+                InlineKeyboardButton("EP",        callback_data="hud:ep"),
             ],
             [
+                InlineKeyboardButton("9M",        callback_data="hud:9m"),
                 InlineKeyboardButton("Clusters",  callback_data="hud:clusters"),
                 InlineKeyboardButton("Watchlist", callback_data="hud:watchlist"),
             ],
@@ -1265,6 +1266,7 @@ class TelegramChannel:
         task_map = {
             "regime":    "/regime",
             "themes":    "/themes_detail All",
+            "ep":        "/eps",
             "9m":        "/9m",
             "clusters":  "/clusters",
             "watchlist": "show watchlist",

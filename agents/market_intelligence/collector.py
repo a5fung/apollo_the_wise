@@ -240,6 +240,19 @@ def prev_trading_days(n: int, from_date: date | None = None) -> list[date]:
     return days
 
 
+def last_trading_day(from_date: date | None = None) -> date:
+    """
+    Return the most recent trading day on or before from_date (default: today ET).
+    On Saturday/Sunday this returns the prior Friday so query handlers fall back
+    to the last available data instead of returning empty results all weekend.
+    Approximation: weekends only (not holidays) — matches prev_trading_days.
+    """
+    d = from_date or et_today()
+    while d.weekday() >= 5:  # Saturday=5, Sunday=6
+        d -= timedelta(days=1)
+    return d
+
+
 def trading_date_n_months_ago(months: int) -> str:
     """Approximate trading date n months ago (skip weekends)."""
     d = et_today() - timedelta(days=months * 21)  # ~21 trading days/month

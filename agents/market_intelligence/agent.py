@@ -1049,11 +1049,13 @@ class MarketIntelligenceAgent(BaseAgent):
             get_all_9m_sugar_babies,
             get_eod_9m_sugar_babies,
         )
-        from agents.market_intelligence.collector import et_today, prev_trading_days
+        from agents.market_intelligence.collector import et_today, prev_trading_days, last_trading_day
 
         today = et_today()
-        today_str = today.isoformat()
-        yesterday = prev_trading_days(1, from_date=today)[0]
+        query_date = last_trading_day(today)
+        today_str = query_date.isoformat()
+        yesterday = prev_trading_days(1, from_date=query_date)[0]
+        weekend_note = "" if query_date == today else f"  _(last trading day)_"
 
         alerts, yday_day2, today_babies = await _asyncio.gather(
             get_today_9m_ep_alerts(today_str),
@@ -1061,7 +1063,7 @@ class MarketIntelligenceAgent(BaseAgent):
             get_eod_9m_sugar_babies(today_str),
         )
 
-        lines = [f"*9M EP — {today_str}*\n"]
+        lines = [f"*9M EP — {today_str}*{weekend_note}\n"]
 
         if alerts:
             lines.append(f"*Intraday Detections ({len(alerts)})*")
@@ -1074,7 +1076,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"${a['current_price']:.2f} | +{a['gap_pct']:.1f}%"
                 )
         else:
-            lines.append("No 9M EP detections today.")
+            lines.append(f"No 9M EP detections for {today_str}.")
 
         from agents.market_intelligence.ninem_detector import _shape_tag
 
@@ -1349,14 +1351,18 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_correlation_clusters(self, request: AgentRequest) -> AgentResponse:
         """Show today's correlation clusters."""
-        today_str = et_today().strftime("%Y-%m-%d")
+        from agents.market_intelligence.collector import last_trading_day
+        today = et_today()
+        query_date = last_trading_day(today)
+        today_str = query_date.strftime("%Y-%m-%d")
+        weekend_note = "" if query_date == today else f"  _(last trading day)_"
         clusters = await get_correlation_clusters(today_str)
         if not clusters:
             return self._ok(
                 request,
-                result=f"No correlation clusters for {today_str} — run nightly pipeline first, or no groups of 4+ stocks hit the 0.85 residual threshold today.",
+                result=f"No correlation clusters for {today_str}{weekend_note} — run nightly pipeline first, or no groups of 4+ stocks hit the 0.85 residual threshold today.",
             )
-        lines = [f"*Correlation Clusters — {today_str}*", f"{len(clusters)} clusters  •  20d beta-adjusted window", "```"]
+        lines = [f"*Correlation Clusters — {today_str}*{weekend_note}", f"{len(clusters)} clusters  •  20d beta-adjusted window", "```"]
         for i, c in enumerate(clusters):
             label = chr(65 + i)
             tickers_str = "  ".join(c["tickers"])
@@ -1875,20 +1881,24 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, error=f"Theme engine failed: {e}")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
-        today_str = et_today().strftime("%Y-%m-%d")
+        from agents.market_intelligence.collector import last_trading_day
+        today = et_today()
+        query_date = last_trading_day(today)
+        today_str = query_date.strftime("%Y-%m-%d")
+        weekend_note = "" if query_date == today else f" _(showing last trading day — {today.strftime('%a %b %-d')} is a non-trading day)_"
         alerts = await get_today_ep_alerts(today_str)
         regime = await get_current_regime()
 
         if not alerts:
             result = (
-                f"No EP alerts for {today_str}.\n"
+                f"No EP alerts for {today_str}.{weekend_note}\n"
                 f"Market regime: {regime.get('regime')} (EP bar: {regime.get('ep_threshold')}+).\n"
                 f"EP scanning runs every 5 min from 7:00–9:30 AM ET."
             )
         else:
             high = [e for e in alerts if e.get("score_tier") == "HIGH"]
             moderate = [e for e in alerts if e.get("score_tier") == "MODERATE"]
-            lines = [f"EP alerts for {today_str}: {len(high)} HIGH, {len(moderate)} MODERATE\n"]
+            lines = [f"EP alerts for {today_str}:{weekend_note} {len(high)} HIGH, {len(moderate)} MODERATE\n"]
             for ep in alerts:
                 lines.append(
                     f"• *{ep['ticker']}* — {ep['score_tier']} (score {ep['ep_score']:.0f}) "
@@ -2966,10 +2976,11 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_eps_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /eps_detail {tier} {date_str}"""
+        from agents.market_intelligence.collector import last_trading_day
         parts = request.task.strip().split()
         # parts: ['/eps_detail', tier, date_str]
         tier = parts[1].upper() if len(parts) > 1 else "HIGH"
-        date_str = parts[2] if len(parts) > 2 else et_today().isoformat()
+        date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
 
         alerts = await get_today_ep_alerts(date_str)
         if tier == "SUMMARY":
@@ -3044,10 +3055,11 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
         import json as _json
+        from agents.market_intelligence.collector import last_trading_day
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
-        date_str = parts[2] if len(parts) > 2 else et_today().isoformat()
+        date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
 
         pool = await get_pool()
 
@@ -3374,20 +3386,21 @@ async def _build_hud_text() -> str:
         get_today_9m_ep_alerts,
         get_all_9m_sugar_babies,
     )
-    from agents.market_intelligence.collector import et_today, prev_trading_days
+    from agents.market_intelligence.collector import et_today, prev_trading_days, last_trading_day
     from agents.market_intelligence.scheduler import get_scheduler_status
 
     today = et_today()
-    today_str = today.isoformat()
-    yesterday = prev_trading_days(1, from_date=today)[0]
+    query_date = last_trading_day(today)
+    query_str = query_date.isoformat()
+    yesterday = prev_trading_days(1, from_date=query_date)[0]
 
     regime, ep_alerts, ninem_alerts, sugar_babies, themes, clusters = await _aio.gather(
         get_latest_regime(),
-        get_today_ep_alerts(today_str),
-        get_today_9m_ep_alerts(today_str),
+        get_today_ep_alerts(query_str),
+        get_today_9m_ep_alerts(query_str),
         get_all_9m_sugar_babies(yesterday),
         get_active_themes(),
-        get_correlation_clusters(today_str),
+        get_correlation_clusters(query_str),
         return_exceptions=True,
     )
 
@@ -3427,8 +3440,12 @@ async def _build_hud_text() -> str:
 
     sep = "━━━━━━━━━━━━━━━━━━━━━"
     now_et = today.strftime("%a %b %-d")
+    if query_date != today:
+        header = f"📡 *Apollo HUD* — {now_et} · data {query_date.strftime('%a %b %-d')}"
+    else:
+        header = f"📡 *Apollo HUD* — {now_et}"
     return "\n".join([
-        f"📡 *Apollo HUD* — {now_et}",
+        header,
         sep,
         regime_line,
         sep,

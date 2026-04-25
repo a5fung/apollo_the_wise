@@ -200,6 +200,9 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-25 (session 2) — Weekend data fallback + HUD EP button
+On Saturday all `/eps`, `/9m`, `/clusters`, `/trades`, and `/hud` queries returned "no data today" because handlers used `et_today()` which yielded a non-trading date. Fix: new `collector.last_trading_day(from_date=None)` helper (skips Sat/Sun back to Friday — matches `prev_trading_days` weekend-only approximation; holidays not handled). Wired into `_build_hud_text`, `_handle_ep_query`, `_handle_9m_ep_query`, `_handle_correlation_clusters`, and the default branches of `_handle_eps_detail` / `_handle_trades_detail`. Telegram-side `/ep` and `/trades` commands also switched from `date.today().isoformat()` to `last_trading_day().isoformat()` so the date in the task string + drill-down callback_data lines up. HUD header now shows "Sat Apr 25 · data Fri Apr 24" when query date != today; per-handler messages get a `_(last trading day)_` suffix. Also added an **EP** button back to the HUD inline keyboard (was missing) — keyboard reflowed to 3+3 rows: `[Regime, Themes, EP] / [9M, Clusters, Watchlist]`. Routes via `task_map["ep"] = "/eps"` in `_handle_hud_drill_down`.
+
 ### 2026-04-25 (session 1) — Parabolic short detector (TI1 Stage 1) deployed
 Plan: `~/.claude/plans/shiny-mapping-locket.md`. New telemetry-only detector for the Stamatoudis/Qullamaggie textbook short setup (TI1 in trading-ideas backlog). Three-tier state machine: `watch` (qualifying gates pass) → `anticipation` (burst checklist 4/4) → `climax` (anticipation + climax candle 2/2). Velocity-delta gate (daily-compound `roc_5d` ≥ 1.10× `roc_20d`) is the canonical "parabolic vs linear" discriminator — pullback count is telemetry-only, not a gate.
 
