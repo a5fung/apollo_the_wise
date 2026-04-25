@@ -278,17 +278,19 @@ def compute_parabolic_metrics(
         )
         return base_record
 
-    if today_idx + 1 < 21:                  # need 20 prior closes
-        base_record["reason"] = "insufficient_pullback_history"
-        return base_record
-    pullback_count_20d = 0
-    for i in range(today_idx - 19, today_idx + 1):
-        if float(rows[i]["close"]) < float(rows[i - 1]["close"]):
-            pullback_count_20d += 1
-    base_record["pullback_count_20d"] = pullback_count_20d
-    if pullback_count_20d >= _MAX_PULLBACK_COUNT_20D:
-        base_record["reason"] = f"linear_ascent_{pullback_count_20d}_pullbacks_in_20d"
-        return base_record
+    # Pullback count is telemetry-only (NOT a gate). Velocity-delta is the
+    # canonical "parabolic vs linear" discriminator — measuring acceleration
+    # of compounding directly. The pullback-count gate was a heuristic from
+    # before velocity-delta existed; the two contradicted each other on
+    # short-duration parabolas (GME 1/27: velocity ratio 3.6× said screaming
+    # parabolic, pullback count said linear because the 20d window straddled
+    # the pre-runup chop).
+    if today_idx + 1 >= 21:
+        pullback_count_20d = 0
+        for i in range(today_idx - 19, today_idx + 1):
+            if float(rows[i]["close"]) < float(rows[i - 1]["close"]):
+                pullback_count_20d += 1
+        base_record["pullback_count_20d"] = pullback_count_20d
 
     # ── Burst checklist (final 3-5d) ────────────────────────────────────
     # 1. days_up_streak (consecutive close > prior close, ending today)
