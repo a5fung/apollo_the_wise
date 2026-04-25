@@ -164,6 +164,38 @@ trade 9m TICKER      → manually queue a Day 2 entry for a specific ticker
 
 ---
 
+### Parabolic Short Detection (TI1 — telemetry only)
+
+A nightly scan for the Stamatoudis / Qullamaggie parabolic-exhaustion setup. **Telemetry-only** — surfaces candidates to a Telegram digest, no entries placed. Promotion path (paper → live) requires 2-3 months of shadow data per `memory/project_trading_ideas_backlog.md` (TI1).
+
+**Three-tier state machine** per (ticker, scan_date):
+- `unqualified` — any qualifying gate fails. Persisted, no alert.
+- `watch` — all qualifying gates pass; burst checklist not yet aligned. Silent DB row.
+- `anticipation` — watch + burst score ≥ 3/4 (gaps, range expansion, volume expansion, up-day streak). Telegram watchlist.
+- `climax` — anticipation + `gapped_today` + `climax_volume_flag`. Telegram trigger.
+
+**Qualifying gates:**
+- Liquidity: today's dollar volume ≥ $10M
+- Prior move (cap-tier): Large ≥$10B → 50% · Mid $2-10B → 100% · Small <$2B → 200%
+- Extension: `close / SMA-50 ≥ 1.50`
+- Velocity: daily-compound `roc_5d ≥ 1.10× roc_20d` (parabolic, not linear)
+- Pullback count last 20d (telemetry only — not a hard gate)
+
+**Dual-use framing:** even when the climax cluster is a strong-RS leadership group (e.g. semi-cap sweep), the flags are actionable as profit-take signals on existing longs in the same name, or as hedge candidates (e.g. SOXS) when multiple cluster within one sector. Not just short candidates.
+
+**Telegram digest:** 2-section format, suppressed entirely on zero candidates per audit-vs-alert rule.
+
+**Scan schedule:** 5:15 PM ET, mon-fri (between nightly data pull and post-nightly audit).
+
+**Verification tooling:**
+```
+python scripts/backfill_parabolic_car.py --source yf --end-date 2026-04-21
+python scripts/backfill_parabolic_car.py --ticker GME --end-date 2021-02-05
+python scripts/backfill_parabolic_car.py --ticker NVDA --end-date 2024-03-15  # should reject
+```
+
+---
+
 ### EP Detection (MAGNA53)
 
 MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
@@ -285,6 +317,7 @@ Show logs excluded → exclusion events
 | 4:00 PM | 1:00 PM | 9M EP intraday scan stops |
 | 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
 | 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed |
+| 5:15 PM | 2:15 PM | Parabolic-short scan (TI1 telemetry) → anticipation/climax digest if any |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
 | 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies section if any) |
 
@@ -327,6 +360,7 @@ Apollo_Assistant/
 │       ├── rs_engine.py             # RS scoring + MA computation + single-ticker score
 │       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Perplexity
 │       ├── ninem_detector.py        # 9M EP scanner + EOD sugar baby sweep
+│       ├── parabolic_detector.py    # Parabolic-short scan (TI1 telemetry, 5:15 PM ET)
 │       ├── regime.py                # Market regime engine
 │       ├── briefing.py              # Evening + morning briefing formatters
 │       ├── theme_engine.py          # Theme discovery + deduplication + lifecycle
@@ -361,7 +395,9 @@ Apollo_Assistant/
 ├── integrations.yaml                # Agent URL config
 ├── scripts/
 │   ├── backtest_9m_ep.py            # 9M EP historical backtest (D1/D5/D10/D21 returns by vol/range bucket)
-│   └── backtest_clusters.py         # Correlation cluster precision/recall backtest
+│   ├── backtest_clusters.py         # Correlation cluster precision/recall backtest
+│   ├── backfill_parabolic_car.py    # CAR/GME/NVDA verification tool for parabolic detector
+│   └── backfill_ohlc.py             # One-time OHLC backfill (mi_daily_closes via Polygon grouped-daily)
 ├── start.sh                         # Start Apollo locally
 └── start_market.sh                  # Start market agent locally
 ```
