@@ -34,19 +34,36 @@ from agents.market_intelligence.parabolic_detector import (
 )
 
 
-async def _fetch_yf_history(ticker: str, days: int) -> list[dict]:
+async def _fetch_yf_history(ticker: str, days: int, end_date: Optional[str] = None) -> list[dict]:
     """Pull OHLCV from yfinance directly — `mi_daily_closes` is close-only for
     historical rows (OHLC columns added recently and not backfilled), which
     breaks the parabolic detector. yfinance gives us a clean ground-truth feed
-    for the CAR verification.
+    for the verification.
+
+    If `end_date` is provided (YYYY-MM-DD), pull a window ending on that date
+    so we can stress-test against historical events (e.g. GME Jan-2021,
+    NVDA Mar-2024). Otherwise pull the most recent `days` sessions.
     """
     import asyncio
+    from datetime import datetime as _dt, timedelta as _td
     import yfinance as yf
 
     def _fetch():
-        # Pull a bit more than `days` calendar days to be safe against weekends.
-        period = f"{max(days + 30, 120)}d"
-        df = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+        if end_date:
+            end_dt = _dt.strptime(end_date, "%Y-%m-%d").date()
+            # Calendar buffer: pull (days × 1.6) calendar days to comfortably
+            # cover that many trading sessions (weekends/holidays).
+            calendar_span = max(int(days * 1.6) + 30, 180)
+            start_dt = end_dt - _td(days=calendar_span)
+            # yfinance end is exclusive — pad +1 to include end_date itself.
+            df = yf.Ticker(ticker).history(
+                start=start_dt.isoformat(),
+                end=(end_dt + _td(days=1)).isoformat(),
+                auto_adjust=False,
+            )
+        else:
+            period = f"{max(days + 30, 120)}d"
+            df = yf.Ticker(ticker).history(period=period, auto_adjust=False)
         out = []
         for ts, row in df.iterrows():
             out.append({
@@ -98,10 +115,13 @@ def _fmt_bool(v) -> str:
     return "Y" if v else "n"
 
 
-async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Optional[int], use_yf: bool) -> int:
+async def _run(
+    ticker: str, history_days: int, scan_days: int,
+    override_cap: Optional[int], use_yf: bool, end_date: Optional[str],
+) -> int:
     if use_yf:
-        rows = await _fetch_yf_history(ticker, history_days)
-        source = "yfinance"
+        rows = await _fetch_yf_history(ticker, history_days, end_date=end_date)
+        source = f"yfinance{' (end='+end_date+')' if end_date else ''}"
     else:
         rows = await get_recent_daily_history(ticker, history_days)
         source = "mi_daily_closes"
@@ -180,8 +200,13 @@ def main() -> int:
                    help="Override market cap in dollars (e.g. 4000000000)")
     p.add_argument("--source", choices=("yf", "db"), default="yf",
                    help="OHLCV source: 'yf' (yfinance, ground truth) or 'db' (mi_daily_closes — likely close-only for old rows)")
+    p.add_argument("--end-date", default=None,
+                   help="YYYY-MM-DD — pull window ending on this date for historical-event backfills (GME 2021-02-05, NVDA 2024-03-15, etc.)")
     args = p.parse_args()
-    return asyncio.run(_run(args.ticker, args.days, args.scan_days, args.market_cap, use_yf=(args.source == "yf")))
+    return asyncio.run(_run(
+        args.ticker, args.days, args.scan_days, args.market_cap,
+        use_yf=(args.source == "yf"), end_date=args.end_date,
+    ))
 
 
 if __name__ == "__main__":
