@@ -593,6 +593,49 @@ async def initialize_schema() -> None:
                 ON mi_baseline_resets(metric_name, reset_at DESC);
         """)
 
+        # Market cap cache for parabolic-short detector cap-tier classification.
+        # Stable enough that we refresh once per ticker every 30d via FMP.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_market_caps (
+                ticker      TEXT PRIMARY KEY,
+                market_cap  BIGINT,
+                fetched_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+
+        # Parabolic-short candidate scan results. Persists EVERY metric, not
+        # just the boolean stage, so thresholds can be re-tuned against
+        # historical scans without re-running.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_parabolic_candidates (
+                id                          SERIAL PRIMARY KEY,
+                ticker                      TEXT NOT NULL,
+                scan_date                   DATE NOT NULL,
+                market_cap                  BIGINT,
+                cap_tier                    TEXT,
+                prior_move_pct              FLOAT,
+                base_date                   DATE,
+                ext_vs_sma20                FLOAT,
+                ext_vs_sma50                FLOAT,
+                slope_accel                 FLOAT,
+                pullback_count_20d          INT,
+                days_up_streak              INT,
+                gap_count_3d                INT,
+                range_expansion_count_3d    INT,
+                vol_expansion_count_3d      INT,
+                gapped_today                BOOLEAN,
+                climax_volume_flag          BOOLEAN,
+                score                       INT,
+                stage                       TEXT NOT NULL,
+                created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, scan_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_parabolic_candidates_date
+                ON mi_parabolic_candidates(scan_date);
+            CREATE INDEX IF NOT EXISTS idx_parabolic_candidates_stage
+                ON mi_parabolic_candidates(stage, scan_date DESC);
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -1106,6 +1149,102 @@ async def get_9m_ep_history(days: int = 14) -> list[dict]:
             ORDER BY sb.alert_date DESC, sb.volume DESC
         """, days)
     return [dict(r) for r in rows]
+
+
+async def get_market_cap(ticker: str) -> Optional[dict[str, Any]]:
+    """Read cached market cap. Returns {market_cap, fetched_at} or None."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT market_cap, fetched_at FROM mi_market_caps WHERE ticker = $1",
+            ticker,
+        )
+    return dict(row) if row else None
+
+
+async def upsert_market_cap(ticker: str, market_cap: Optional[int]) -> None:
+    """Write/refresh cached market cap. NULL is a valid value (FMP didn't return one)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_market_caps (ticker, market_cap, fetched_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (ticker) DO UPDATE SET
+                market_cap = EXCLUDED.market_cap,
+                fetched_at = EXCLUDED.fetched_at
+        """, ticker, market_cap)
+
+
+async def get_recent_daily_history(ticker: str, days: int) -> list[dict]:
+    """Last N trading sessions of OHLCV for one ticker, oldest first.
+
+    Used by the parabolic detector and the CAR backfill verification script.
+    Returns [] if ticker has no rows.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT trade_date, open_price, high_price, low_price, close, volume
+            FROM mi_daily_closes
+            WHERE ticker = $1
+              AND trade_date >= (now() AT TIME ZONE 'America/New_York')::date - $2::int
+            ORDER BY trade_date ASC
+        """, ticker, days)
+    return [dict(r) for r in rows]
+
+
+async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
+    """Upsert a parabolic-short scan result. Persists every metric (not just the
+    boolean stage) so thresholds can be re-tuned against historical scans.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_parabolic_candidates
+                (ticker, scan_date, market_cap, cap_tier, prior_move_pct, base_date,
+                 ext_vs_sma20, ext_vs_sma50, slope_accel, pullback_count_20d,
+                 days_up_streak, gap_count_3d, range_expansion_count_3d,
+                 vol_expansion_count_3d, gapped_today, climax_volume_flag,
+                 score, stage)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                    $15, $16, $17, $18)
+            ON CONFLICT (ticker, scan_date) DO UPDATE SET
+                market_cap                = EXCLUDED.market_cap,
+                cap_tier                  = EXCLUDED.cap_tier,
+                prior_move_pct            = EXCLUDED.prior_move_pct,
+                base_date                 = EXCLUDED.base_date,
+                ext_vs_sma20              = EXCLUDED.ext_vs_sma20,
+                ext_vs_sma50              = EXCLUDED.ext_vs_sma50,
+                slope_accel               = EXCLUDED.slope_accel,
+                pullback_count_20d        = EXCLUDED.pullback_count_20d,
+                days_up_streak            = EXCLUDED.days_up_streak,
+                gap_count_3d              = EXCLUDED.gap_count_3d,
+                range_expansion_count_3d  = EXCLUDED.range_expansion_count_3d,
+                vol_expansion_count_3d    = EXCLUDED.vol_expansion_count_3d,
+                gapped_today              = EXCLUDED.gapped_today,
+                climax_volume_flag        = EXCLUDED.climax_volume_flag,
+                score                     = EXCLUDED.score,
+                stage                     = EXCLUDED.stage
+        """,
+            record["ticker"],
+            record["scan_date"] if isinstance(record["scan_date"], date) else date.fromisoformat(record["scan_date"]),
+            record.get("market_cap"),
+            record.get("cap_tier"),
+            record.get("prior_move_pct"),
+            record.get("base_date"),
+            record.get("ext_vs_sma20"),
+            record.get("ext_vs_sma50"),
+            record.get("slope_accel"),
+            record.get("pullback_count_20d"),
+            record.get("days_up_streak"),
+            record.get("gap_count_3d"),
+            record.get("range_expansion_count_3d"),
+            record.get("vol_expansion_count_3d"),
+            record.get("gapped_today"),
+            record.get("climax_volume_flag"),
+            record.get("score"),
+            record["stage"],
+        )
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:
