@@ -75,6 +75,8 @@ def _fmt_stage(stage: str) -> str:
         return f"{RED}climax      {RESET}"
     if stage == "anticipation":
         return f"{YELLOW}anticipation{RESET}"
+    if stage == "watch":
+        return f"{GREEN}watch       {RESET}"
     return f"{DIM}unqualified {RESET}"
 
 
@@ -123,7 +125,7 @@ async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Opt
     header = (
         f"{'date':<11}  {'stage':<12}  "
         f"{'close':>7}  {'prior%':>7}  "
-        f"{'sma20×':>6}  {'sma50×':>6}  {'slope':>7}  {'pull20':>6}  "
+        f"{'sma50×':>6}  {'r5d':>6}  {'r20d':>6}  {'pull20':>6}  "
         f"{'streak':>6}  {'gap3d':>5}  {'rng3d':>5}  {'vol3d':>5}  "
         f"{'gap?':>4}  {'climaxV?':>8}  {'score':>5}  reason"
     )
@@ -133,21 +135,22 @@ async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Opt
     # Sliding window: for each day in trailing scan_days, run with rows[:i+1]
     # and need at least 50+ sessions of history to compute SMA-50.
     start_idx = max(50, len(rows) - scan_days)
-    last_n_per_stage = {"climax": 0, "anticipation": 0, "unqualified": 0}
+    last_n_per_stage = {"climax": 0, "anticipation": 0, "watch": 0, "unqualified": 0}
     for i in range(start_idx, len(rows)):
         window = rows[: i + 1]
         m = compute_parabolic_metrics(window, market_cap=market_cap)
         last_n_per_stage[m["stage"]] = last_n_per_stage.get(m["stage"], 0) + 1
         d = window[-1]
         prior_pct = (m["prior_move_pct"] * 100) if m["prior_move_pct"] is not None else None
-        slope = (m["slope_accel"] * 100) if m["slope_accel"] is not None else None
+        r5d = (m["roc_5d"] * 100) if m["roc_5d"] is not None else None
+        r20d = (m["roc_20d"] * 100) if m["roc_20d"] is not None else None
         print(
             f"{str(d['trade_date']):<11}  {_fmt_stage(m['stage'])}  "
             f"{_fmt_num(float(d['close']), 7, '.2f')}  "
             f"{_fmt_num(prior_pct, 6, '.0f') + '%' if prior_pct is not None else _fmt_num(None, 7)}  "
-            f"{_fmt_num(m['ext_vs_sma20'], 6, '.2f')}  "
             f"{_fmt_num(m['ext_vs_sma50'], 6, '.2f')}  "
-            f"{_fmt_num(slope, 6, '.1f') + '%' if slope is not None else _fmt_num(None, 7)}  "
+            f"{_fmt_num(r5d, 5, '.0f') + '%' if r5d is not None else _fmt_num(None, 6)}  "
+            f"{_fmt_num(r20d, 5, '.0f') + '%' if r20d is not None else _fmt_num(None, 6)}  "
             f"{_fmt_int(m['pullback_count_20d'], 6)}  "
             f"{_fmt_int(m['days_up_streak'], 6)}  "
             f"{_fmt_int(m['gap_count_3d'], 5)}  "
@@ -161,7 +164,7 @@ async def _run(ticker: str, history_days: int, scan_days: int, override_cap: Opt
 
     print()
     print(f"Stage counts over {len(rows) - start_idx} scanned days:")
-    for stage in ("climax", "anticipation", "unqualified"):
+    for stage in ("climax", "anticipation", "watch", "unqualified"):
         print(f"  {stage:<12}  {last_n_per_stage.get(stage, 0)}")
     return 0
 

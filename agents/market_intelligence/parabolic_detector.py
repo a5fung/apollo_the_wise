@@ -6,12 +6,14 @@ nightly scan. Sources synthesised in `~/.claude/plans/shiny-mapping-locket.md`
 (rule citations live there); promotion path lives in
 `memory/project_trading_ideas_backlog.md` (TI1).
 
-Three stages emitted per (ticker, scan_date):
+Four stages emitted per (ticker, scan_date):
   * unqualified  — any qualifying gate fails. Persisted, no alert.
-  * anticipation — all gates pass; final-3-5d burst criteria 1-4 satisfied;
-                   `gapped_today` not yet. Telegram watchlist.
-  * climax       — all gates pass; `gapped_today` true; burst+aux score >= 4/6.
-                   Telegram trigger list.
+  * watch        — all qualifying gates pass; burst checklist not yet aligned.
+                   Silent DB row — proves the structural setup caught early.
+  * anticipation — watch + burst_score >= 3/4 (gaps, range, vol, streak).
+                   Telegram watchlist — "the pot is boiling."
+  * climax       — anticipation + `gapped_today` + `climax_volume_flag`.
+                   Telegram trigger — "the snap." Intraday VWAP failure live.
 
 The compute function is pure (`compute_parabolic_metrics(rows, market_cap)`)
 so it can be unit-validated against historical CAR data via
@@ -41,6 +43,12 @@ _MIN_DOLLAR_VOL_TODAY  = 10_000_000  # $10M today, so we can borrow + short
 _MIN_EXT_VS_SMA50      = 1.50        # close >= 1.5 × SMA-50 (Uncharted Territory)
 _MAX_PULLBACK_COUNT_20D = 6          # < 6 down days in last 20 (parabolic, not linear)
 
+# ── Velocity-delta gate (parabolic curve, not linear) ───────────────────────
+# A stock is parabolic when >50% of its 20d move happened in the last 5d.
+# Linear 45° grinders fail this; CAR-style vertical walls pass even with
+# 1-2 day micro-pullbacks inside the run (where day-over-day Δroc would break).
+_VELOCITY_RATIO_MIN    = 0.50
+
 # ── Burst checklist thresholds (final 3-5 days) ──────────────────────────────
 _MIN_DAYS_UP_STREAK    = 3
 _MIN_GAP_COUNT_3D      = 2
@@ -49,14 +57,15 @@ _MIN_RANGE_EXP_3D      = 2
 _MIN_VOL_EXP_3D        = 2
 _GAPPED_TODAY_PCT      = 0.02        # today's open > yesterday's close × 1.02
 
-# ── Climax score (burst items 1-5 + climax_volume_flag = 6 total) ────────────
-_MIN_CLIMAX_SCORE      = 4
+# ── Anticipation promotion: burst items 1-4, need ≥ this many ────────────────
+_MIN_ANTICIPATION_SCORE = 3          # 3 of 4 burst items
 
 # ── Lookback windows ─────────────────────────────────────────────────────────
 _BASE_LOOKBACK_DAYS    = 60
 _SMA20_DAYS            = 20
 _SMA50_DAYS            = 50
-_SLOPE_WINDOW_DAYS     = 5           # roc_5d_today vs roc_5d_ending_5d_ago
+_ROC_SHORT_DAYS        = 5
+_ROC_LONG_DAYS         = 20
 
 # ── Market cap cache TTL ─────────────────────────────────────────────────────
 _MARKET_CAP_TTL_DAYS   = 30
@@ -109,28 +118,38 @@ def _compute_base_low(rows: list[dict], today_idx: int) -> tuple[Optional[date],
     return (None, None)
 
 
-def _roc_5d(rows: list[dict], end_idx: int) -> Optional[float]:
-    """5-day ROC ending at end_idx. (close[end_idx] / close[end_idx-5]) - 1."""
-    if end_idx - _SLOPE_WINDOW_DAYS < 0:
+def _roc(rows: list[dict], end_idx: int, window: int) -> Optional[float]:
+    """N-day ROC ending at end_idx. (close[end_idx] / close[end_idx-window]) - 1."""
+    if end_idx - window < 0:
         return None
     c_now = float(rows[end_idx]["close"])
-    c_then = float(rows[end_idx - _SLOPE_WINDOW_DAYS]["close"])
+    c_then = float(rows[end_idx - window]["close"])
     if c_then <= 0:
         return None
     return (c_now / c_then) - 1.0
 
 
-def _compute_slope_accel(rows: list[dict], today_idx: int) -> Optional[float]:
-    """slope_accel = roc_5d_today - roc_5d_ending_5d_ago.
+def _compute_velocity_delta(
+    rows: list[dict], today_idx: int
+) -> tuple[Optional[float], Optional[float], Optional[bool]]:
+    """Velocity-delta gate: roc_5d > 0.5 × roc_20d.
 
-    Positive → recent 5-day move is steeper than the 5-day move before it
-    (acceleration). Negative → decelerating, parabola is unwinding.
+    Replaces day-over-day slope_accel — discrete second derivatives are too
+    noisy on closing prices (one inside day breaks the math even when the
+    chart is a vertical wall). Velocity-delta proves the curve is *bending*:
+    if more than half the trailing 4-week move printed in the last week,
+    we're parabolic, not linear.
+
+    Returns (roc_5d, roc_20d, passes). `passes` is None if either ROC is
+    incomputable, False if 20d isn't positive (no parabola without an uptrend).
     """
-    recent = _roc_5d(rows, today_idx)
-    earlier = _roc_5d(rows, today_idx - _SLOPE_WINDOW_DAYS)
-    if recent is None or earlier is None:
-        return None
-    return recent - earlier
+    roc_5d = _roc(rows, today_idx, _ROC_SHORT_DAYS)
+    roc_20d = _roc(rows, today_idx, _ROC_LONG_DAYS)
+    if roc_5d is None or roc_20d is None:
+        return (roc_5d, roc_20d, None)
+    if roc_20d <= 0:
+        return (roc_5d, roc_20d, False)
+    return (roc_5d, roc_20d, roc_5d > roc_20d * _VELOCITY_RATIO_MIN)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -178,7 +197,8 @@ def compute_parabolic_metrics(
         "base_date": None,
         "ext_vs_sma20": None,
         "ext_vs_sma50": None,
-        "slope_accel": None,
+        "roc_5d": None,
+        "roc_20d": None,
         "pullback_count_20d": None,
         "days_up_streak": None,
         "gap_count_3d": None,
@@ -230,11 +250,17 @@ def compute_parabolic_metrics(
         base_record["reason"] = f"ext_sma50_{ext_vs_sma50:.2f}_below_1.5"
         return base_record
 
-    # ── Gate 4: parabolic curve (acceleration + few pullbacks) ───────────
-    slope_accel = _compute_slope_accel(rows, today_idx)
-    base_record["slope_accel"] = slope_accel
-    if slope_accel is None or slope_accel <= 0:
-        base_record["reason"] = "slope_not_accelerating"
+    # ── Gate 4: parabolic curve (velocity-delta + few pullbacks) ─────────
+    roc_5d, roc_20d, velocity_pass = _compute_velocity_delta(rows, today_idx)
+    base_record["roc_5d"] = roc_5d
+    base_record["roc_20d"] = roc_20d
+    if velocity_pass is None:
+        base_record["reason"] = "insufficient_roc_history"
+        return base_record
+    if not velocity_pass:
+        base_record["reason"] = (
+            f"linear_trend_5d_{(roc_5d or 0)*100:.0f}%_vs_20d_{(roc_20d or 0)*100:.0f}%"
+        )
         return base_record
 
     if today_idx + 1 < 21:                  # need 20 prior closes
@@ -307,31 +333,23 @@ def compute_parabolic_metrics(
         climax_volume_flag = False
     base_record["climax_volume_flag"] = climax_volume_flag
 
-    # ── Stage assignment ─────────────────────────────────────────────────
-    burst_1_4_pass = (
-        days_up_streak >= _MIN_DAYS_UP_STREAK
-        and gap_count_3d >= _MIN_GAP_COUNT_3D
-        and range_expansion_count_3d >= _MIN_RANGE_EXP_3D
-        and vol_expansion_count_3d >= _MIN_VOL_EXP_3D
-    )
-    score = sum([
+    # ── Stage assignment (3-tier: watch / anticipation / climax) ─────────
+    # All qualifying gates passed by the time we get here. Burst checklist
+    # promotes the candidate up the ladder.
+    burst_score = sum([
         days_up_streak >= _MIN_DAYS_UP_STREAK,
         gap_count_3d >= _MIN_GAP_COUNT_3D,
         range_expansion_count_3d >= _MIN_RANGE_EXP_3D,
         vol_expansion_count_3d >= _MIN_VOL_EXP_3D,
-        gapped_today,
-        climax_volume_flag,
     ])
-    base_record["score"] = score
+    base_record["score"] = burst_score
 
-    if gapped_today and score >= _MIN_CLIMAX_SCORE:
+    if burst_score >= _MIN_ANTICIPATION_SCORE and gapped_today and climax_volume_flag:
         base_record["stage"] = "climax"
-    elif burst_1_4_pass and not gapped_today:
+    elif burst_score >= _MIN_ANTICIPATION_SCORE:
         base_record["stage"] = "anticipation"
     else:
-        base_record["reason"] = (
-            f"burst_score_{score}/6_gapped_{gapped_today}_burst1_4_{burst_1_4_pass}"
-        )
+        base_record["stage"] = "watch"
 
     return base_record
 

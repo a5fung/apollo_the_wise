@@ -617,7 +617,8 @@ async def initialize_schema() -> None:
                 base_date                   DATE,
                 ext_vs_sma20                FLOAT,
                 ext_vs_sma50                FLOAT,
-                slope_accel                 FLOAT,
+                roc_5d                      FLOAT,
+                roc_20d                     FLOAT,
                 pullback_count_20d          INT,
                 days_up_streak              INT,
                 gap_count_3d                INT,
@@ -1202,12 +1203,12 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_parabolic_candidates
                 (ticker, scan_date, market_cap, cap_tier, prior_move_pct, base_date,
-                 ext_vs_sma20, ext_vs_sma50, slope_accel, pullback_count_20d,
+                 ext_vs_sma20, ext_vs_sma50, roc_5d, roc_20d, pullback_count_20d,
                  days_up_streak, gap_count_3d, range_expansion_count_3d,
                  vol_expansion_count_3d, gapped_today, climax_volume_flag,
                  score, stage)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                    $15, $16, $17, $18)
+                    $15, $16, $17, $18, $19)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 market_cap                = EXCLUDED.market_cap,
                 cap_tier                  = EXCLUDED.cap_tier,
@@ -1215,7 +1216,8 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
                 base_date                 = EXCLUDED.base_date,
                 ext_vs_sma20              = EXCLUDED.ext_vs_sma20,
                 ext_vs_sma50              = EXCLUDED.ext_vs_sma50,
-                slope_accel               = EXCLUDED.slope_accel,
+                roc_5d                    = EXCLUDED.roc_5d,
+                roc_20d                   = EXCLUDED.roc_20d,
                 pullback_count_20d        = EXCLUDED.pullback_count_20d,
                 days_up_streak            = EXCLUDED.days_up_streak,
                 gap_count_3d              = EXCLUDED.gap_count_3d,
@@ -1234,7 +1236,8 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
             record.get("base_date"),
             record.get("ext_vs_sma20"),
             record.get("ext_vs_sma50"),
-            record.get("slope_accel"),
+            record.get("roc_5d"),
+            record.get("roc_20d"),
             record.get("pullback_count_20d"),
             record.get("days_up_streak"),
             record.get("gap_count_3d"),
