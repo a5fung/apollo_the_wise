@@ -809,6 +809,23 @@ async def _post_eod_audit_job():
         await _kuma_heartbeat("KUMA_AUDIT_EOD_URL")
 
 
+async def _crypto_nightly_ingest_job():
+    """Run at 6:00 PM ET. Crypto RS shadow-mode ingest pipeline.
+
+    See agents/market_intelligence/crypto/ingest.py::run_nightly for details.
+    Always-on data collection regardless of CRYPTO_RS_ENABLED flag — the flag
+    only gates Telegram surfaces, not ingest itself.
+    """
+    logger.info("Crypto RS nightly ingest starting...")
+    try:
+        from agents.market_intelligence.crypto.ingest import run_nightly
+        result = await run_nightly()
+        logger.info(f"Crypto RS ingest: {result}")
+    except Exception as e:
+        logger.error(f"Crypto RS ingest failed: {e}", exc_info=True)
+        await notify_job_failure("crypto_nightly_ingest", str(e))
+
+
 async def _parabolic_scan_job():
     """Run at 5:15 PM ET. Scan universe for parabolic-short candidates.
 
@@ -1387,6 +1404,19 @@ def start_scheduler() -> AsyncIOScheduler:
         id="baseline_refresh",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+
+    # Crypto RS nightly ingest: 6:00 PM ET mon-sun (crypto trades 24/7; daily
+    # cadence is sufficient for our RS surveillance use case). Slots after
+    # post_nightly_audit (17:30) so equity ingestion is settled first.
+    # Shadow mode (CRYPTO_RS_ENABLED=false) by default — pipeline runs and
+    # collects data, but Telegram surfaces stay quiet.
+    _scheduler.add_job(
+        _crypto_nightly_ingest_job,
+        CronTrigger(hour=18, minute=0, timezone="America/New_York"),
+        id="crypto_nightly_ingest",
+        replace_existing=True,
+        misfire_grace_time=3600,  # 1h: history fetch + RS + macro can take 20+ min
     )
 
     # Minute volume curves refresh: 6:30 PM ET — rebuild RVOL@T baselines for

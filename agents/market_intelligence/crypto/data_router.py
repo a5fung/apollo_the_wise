@@ -77,6 +77,7 @@ async def fetch_daily_history(
                         "close_usd": b["close"],
                         "volume_usd": b["volume"] * b["close"],  # Kraken returns base volume
                         "mcap_usd": None,  # Kraken doesn't supply mcap
+                        "source": "kraken",
                     }
                     for b in bars
                 ]
@@ -86,7 +87,10 @@ async def fetch_daily_history(
     if coin_id and not coin_id.startswith("_unresolved_"):
         try:
             chart = await cg.get_market_chart(coin_id, days=days)
-            return cg.market_chart_to_daily_bars(chart)
+            bars = cg.market_chart_to_daily_bars(chart)
+            for b in bars:
+                b["source"] = "coingecko"
+            return bars
         except Exception:
             logger.exception("CoinGecko history failed for %s (%s)", symbol, coin_id)
 

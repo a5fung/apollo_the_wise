@@ -584,6 +584,12 @@ class MarketIntelligenceAgent(BaseAgent):
             logger.info(f"Routing to theme handler: {task[:80]}")
             return await self._handle_theme_query(request)
 
+        # Crypto routing must precede regime/RS — keywords like "btc dominance"
+        # contain "btc" which would otherwise be ticker-extracted in _handle_single_score.
+        if any(k in task for k in ["crypto", "altseason", "alt season", "btc dominance",
+                                    "btc.d", "stablecoin flow", "total3", "/crypto", "/altseason"]):
+            return await self._handle_crypto_query(request)
+
         if any(k in task for k in ["regime", "market condition", "spy", "breadth", "vix", "risk"]):
             return await self._handle_regime_query(request)
 
@@ -2145,6 +2151,47 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("")
 
         return self._ok(request, result="\n".join(lines).strip(), data={"ep_alerts": alerts})
+
+    async def _handle_crypto_query(self, request: AgentRequest) -> AgentResponse:
+        """Route crypto sub-commands. Telegram surfaces are gated by CRYPTO_RS_ENABLED."""
+        from agents.market_intelligence.crypto.briefing import (
+            render_crypto_top, render_alt_season_status,
+        )
+
+        task = (request.task or "").strip().lower()
+
+        # /altseason or "alt season" -> trigger status
+        if "altseason" in task or "alt season" in task or "btc dominance" in task \
+                or "btc.d" in task or "stablecoin flow" in task or "total3" in task:
+            body = await render_alt_season_status()
+            return self._ok(request, result=body, data={})
+
+        # /crypto <category> -> top RS within category
+        # /crypto -> top 10 overall
+        category: str | None = None
+        cleaned = (
+            task.replace("/crypto", "")
+                .replace("crypto", "")
+                .strip()
+        )
+        if cleaned:
+            # Map common phrasings to CG category slugs.
+            cleaned = cleaned.split()[0]  # first remaining word
+            slug_aliases = {
+                "ai": "artificial-intelligence",
+                "memes": "meme-token",
+                "meme": "meme-token",
+                "privacy": "privacy-coins",
+                "defi": "decentralized-finance-defi",
+                "depin": "depin",
+                "rwa": "real-world-assets-rwa",
+                "solana": "solana-ecosystem",
+                "base": "base-ecosystem",
+            }
+            category = slug_aliases.get(cleaned, cleaned)
+
+        body = await render_crypto_top(category=category, limit=10)
+        return self._ok(request, result=body, data={"category": category})
 
     async def _handle_regime_query(self, request: AgentRequest) -> AgentResponse:
         from agents.market_intelligence.briefing import _format_regime_section
