@@ -9,6 +9,12 @@ ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 # ── Live trading ─────────────────────────────────────────────────────────────
 import os
 LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+
+# ── Crypto RS shadow flag ────────────────────────────────────────────────────
+# false (default): nightly ingest runs, RS computed, audit-only on trigger fire,
+#   /crypto + /altseason commands return shadow-mode message.
+# true: full alt-season Telegram alerts + briefing surfaces enabled.
+CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "true"
 MAX_CONCURRENT_LIVE_POSITIONS = 4
 CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit

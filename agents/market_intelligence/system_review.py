@@ -67,6 +67,7 @@ Rules:
 - When `postmortem_best` or `postmortem_worst` is present, weave one concrete insight from each into the ✅/⚠️ sections (e.g. "{ticker}'s exit followed through {pnl}…"). Do not paste the full postmortem — extract the takeaway.
 - When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. Do not invent transitions if the count is 0; omit the line entirely.
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Broken* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
+- The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
 """
 
 
@@ -93,6 +94,14 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     header = f"🧠 *Weekly System Review — {window_start.strftime('%b')} {window_start.day}–{today.day}*"
     regime_label = metrics.get("regime", {}).get("current") or "Unknown"
     message = f"{header}\n*Regime:* {regime_label}\n\n{summary}"
+
+    # Crypto RS readiness — deterministic appendix (not LLM-interpreted).
+    # Surfaces "ready to flip" verdict so the user doesn't forget about
+    # the shadow-mode module accumulating in the background.
+    crypto_section = _format_crypto_section(metrics.get("crypto") or {})
+    if crypto_section:
+        message = f"{message}\n\n{crypto_section}"
+
     await send_telegram_message(message)
 
     logger.info(f"Weekly review complete: {window_start}..{today}")
@@ -116,6 +125,7 @@ async def _gather_and_aggregate(
     regime = await _aggregate_regime(window_days)
     postmortems = await _aggregate_trade_postmortems(window_start)
     anomalies = await _aggregate_anomalies(window_days)
+    crypto = await _aggregate_crypto_readiness(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -130,6 +140,7 @@ async def _gather_and_aggregate(
         "anomalies": anomalies,
         "postmortem_best": postmortems.get("best"),
         "postmortem_worst": postmortems.get("worst"),
+        "crypto": crypto,
     }
 
 
@@ -391,6 +402,169 @@ async def _aggregate_regime(days: int) -> dict:
         "ep_threshold": (current or {}).get("ep_threshold"),
         "transitions_this_week": len(transitions),
     }
+
+
+async def _aggregate_crypto_readiness(window_days: int) -> dict:
+    """Deterministic readiness audit of the crypto RS shadow-mode module.
+
+    Returns a dict consumed by both Sonnet (for context) and the deterministic
+    `_format_crypto_section` appendix. Verdict computed here, not by the LLM —
+    "ready to flip" is binary; LLM judgment would muddy it.
+
+    Returns empty dict if crypto schema isn't installed (graceful degradation
+    for environments where the module hasn't been deployed yet).
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            schema_check = await conn.fetchval(
+                "SELECT to_regclass('public.crypto_universe')"
+            )
+            if schema_check is None:
+                return {}
+
+            from agents.market_intelligence.constants import CRYPTO_RS_ENABLED
+
+            universe_size = await conn.fetchval("SELECT COUNT(*) FROM crypto_universe")
+            watchlist_total = await conn.fetchval("SELECT COUNT(*) FROM crypto_watchlist")
+            watchlist_unresolved = await conn.fetchval(
+                "SELECT COUNT(*) FROM crypto_watchlist WHERE coin_id LIKE '_unresolved_%'"
+            )
+            categories_pairs = await conn.fetchval("SELECT COUNT(*) FROM crypto_categories")
+            rs_history_days = await conn.fetchval(
+                "SELECT COUNT(DISTINCT score_date) FROM crypto_rs_scores"
+            ) or 0
+            macro_history_days = await conn.fetchval(
+                "SELECT COUNT(DISTINCT date) FROM crypto_total3"
+            ) or 0
+            stablecoin_history_days = await conn.fetchval(
+                "SELECT COUNT(DISTINCT date) FROM crypto_stablecoin_flows"
+            ) or 0
+
+            ingest_attempts_7d = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM mi_audit_log
+                WHERE event_type = 'crypto_ingest_completed'
+                  AND created_at >= NOW() - INTERVAL '7 days'
+                """
+            ) or 0
+            ingest_errors_7d = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM mi_audit_log
+                WHERE event_type = 'crypto_ingest_error'
+                  AND created_at >= NOW() - INTERVAL '7 days'
+                """
+            ) or 0
+            last_trigger_row = await conn.fetchrow(
+                """
+                SELECT triggered_at, alert_type FROM crypto_dominance_alerts
+                ORDER BY triggered_at DESC LIMIT 1
+                """
+            )
+            pre_arm_7d = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM mi_audit_log
+                WHERE event_type = 'crypto_trigger_pre_arm'
+                  AND created_at >= NOW() - INTERVAL '7 days'
+                """
+            ) or 0
+    except Exception as e:
+        logger.exception("crypto readiness audit failed")
+        # Write to mi_audit_log so the daily error-check surface picks it up;
+        # otherwise a dropped table or schema rename makes this section silently
+        # disappear from weekly digests forever.
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "crypto_readiness_audit_error",
+                f"weekly review crypto aggregator crashed: {type(e).__name__}",
+                str(e)[:4000],
+            )
+        except Exception:
+            pass  # double-failure: nothing more we can do
+        return {}
+
+    # Hard gates for "ready to flip"
+    blockers: list[str] = []
+    if rs_history_days < 30:
+        blockers.append(f"need {30 - rs_history_days} more days of RS history (have {rs_history_days}d)")
+    if macro_history_days < 90:
+        blockers.append(f"need {90 - macro_history_days} more days of macro history for trigger SMA90 (have {macro_history_days}d)")
+    if watchlist_unresolved and watchlist_unresolved > 0:
+        blockers.append(f"{watchlist_unresolved} watchlist coin(s) still unresolved")
+    if categories_pairs == 0:
+        blockers.append("crypto_categories empty (Sunday refresh hasn't populated yet)")
+    if ingest_errors_7d > 0:
+        blockers.append(f"{ingest_errors_7d} crypto_ingest_error events in last 7d")
+    if ingest_attempts_7d < 6:
+        blockers.append(f"only {ingest_attempts_7d}/7 nightly ingests succeeded (job may not be registered or running)")
+
+    is_live = bool(CRYPTO_RS_ENABLED)
+    if blockers:
+        verdict_emoji = "⚠️" if (ingest_errors_7d > 0 or watchlist_unresolved > 0) else "⏳"
+        verdict = f"{verdict_emoji} not ready: " + "; ".join(blockers)
+    elif is_live:
+        # Already flipped; gates clean = ongoing health, not a call to action.
+        verdict = "✅ live; gates clean"
+    else:
+        verdict = "✅ ready to flip CRYPTO_RS_ENABLED=true"
+
+    return {
+        "shadow_mode": not CRYPTO_RS_ENABLED,
+        "universe_size": universe_size,
+        "watchlist_total": watchlist_total,
+        "watchlist_unresolved": watchlist_unresolved,
+        "categories_pairs": categories_pairs,
+        "rs_history_days": rs_history_days,
+        "macro_history_days": macro_history_days,
+        "stablecoin_history_days": stablecoin_history_days,
+        "ingest_attempts_7d": ingest_attempts_7d,
+        "ingest_errors_7d": ingest_errors_7d,
+        "pre_arm_7d": pre_arm_7d,
+        "last_trigger_at": last_trigger_row["triggered_at"].isoformat() if last_trigger_row else None,
+        "blockers": blockers,
+        "verdict": verdict,
+    }
+
+
+def _format_crypto_section(crypto: dict) -> str:
+    """Render the deterministic crypto-readiness appendix for the weekly digest.
+
+    Returns empty string if the module isn't installed (skips the section
+    entirely rather than emitting a misleading "0 days" line).
+    """
+    if not crypto:
+        return ""
+
+    # Telegram parse_mode="Markdown" (legacy) does NOT support `**bold**` — use
+    # single asterisks. Unbalanced ** would also break the whole appendix.
+    mode = "shadow mode" if crypto.get("shadow_mode") else "LIVE"
+    universe = crypto.get("universe_size") or 0
+    wl_total = crypto.get("watchlist_total") or 0
+    wl_unresolved = crypto.get("watchlist_unresolved") or 0
+    wl_marker = "all resolved ✓" if wl_unresolved == 0 else f"{wl_unresolved} unresolved ⚠"
+    cats = crypto.get("categories_pairs") or 0
+    cats_marker = "" if cats > 0 else " ⚠"
+    rs_days = crypto.get("rs_history_days") or 0
+    macro_days = crypto.get("macro_history_days") or 0
+    attempts = crypto.get("ingest_attempts_7d") or 0
+    errors = crypto.get("ingest_errors_7d") or 0
+    pre_arm = crypto.get("pre_arm_7d") or 0
+
+    lines = [
+        f"🪙 *Crypto RS — {mode}*",
+        f"History: {rs_days}d RS · {macro_days}d macro",
+        f"Universe: {universe} coins · {wl_total} watchlist ({wl_marker})",
+        f"Categories: {cats} pairs{cats_marker}",
+        f"Last 7d: {attempts}/7 ingests · {errors} errors",
+    ]
+    if pre_arm > 0:
+        lines.append(f"Pre-arm: stables flowing in but alts not rotating ({pre_arm} of last 7 days)")
+    if crypto.get("last_trigger_at"):
+        lines.append(f"Last trigger fire: {crypto['last_trigger_at'][:10]}")
+    lines.append(f"Verdict: {crypto.get('verdict') or '(unknown)'}")
+    return "\n".join(lines)
 
 
 def _finalize_bucket(b: dict) -> dict:

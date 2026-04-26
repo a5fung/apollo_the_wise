@@ -737,8 +737,14 @@ class TelegramChannel:
         """Generic handler for all market-intelligence slash commands."""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
-        cmd_raw = (update.message.text or "").strip().split()[0]
-        cmd = cmd_raw.split("@")[0].lower()  # strip @botname suffix if present
+        # Extract command + any trailing args. e.g. "/crypto AI" -> task="/crypto AI"
+        # so handlers like _handle_crypto_query can route on the category arg.
+        # Strip the @botname suffix from the command token only.
+        full = (update.message.text or "").strip()
+        parts = full.split(maxsplit=1)
+        cmd = parts[0].split("@")[0].lower()
+        args = parts[1] if len(parts) > 1 else ""
+        task = (cmd + " " + args).strip() if args else cmd
 
         import uuid, httpx
         from shared.models import AgentRequest
@@ -750,7 +756,7 @@ class TelegramChannel:
             return
 
         req = AgentRequest(
-            task=cmd,
+            task=task,
             user_id=update.effective_user.id,
             conversation_id=str(update.effective_user.id),
         )
@@ -1440,7 +1446,7 @@ class TelegramChannel:
         # Other market-intelligence slash commands — bypass orchestrator LLM.
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
-        for _cmd in ("9m", "clusters", "regime", "pregame", "audit"):
+        for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)

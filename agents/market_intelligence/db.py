@@ -705,6 +705,15 @@ async def initialize_schema() -> None:
 
     logger.info("Market Intelligence DB schema initialized")
 
+    # Crypto RS module owns its own schema (crypto_* tables) — kept isolated
+    # from mi_* equity tables. Idempotent.
+    try:
+        from agents.market_intelligence.crypto.db import initialize_crypto_schema
+        await initialize_crypto_schema()
+        logger.info("Crypto RS schema initialized")
+    except Exception:
+        logger.exception("Crypto RS schema init failed (non-fatal)")
+
 
 async def upsert_stock_score(record: dict[str, Any]) -> None:
     pool = await get_pool()
