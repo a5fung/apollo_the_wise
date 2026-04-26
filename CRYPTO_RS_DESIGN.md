@@ -266,3 +266,171 @@ User-provided 2026-04-26. To be inserted into `crypto_watchlist` on first migrat
 - Add intraday OHLC for setup detection
 - Consider EP-equivalent for crypto (24/7 model design needed)
 - Possibly broker integration (Coinbase Advanced / Kraken API)
+
+---
+
+## Deployment Runbook
+
+Branch: `claude/crypto-rs-analysis-qjCDl`. Code is ready; nothing is running yet.
+
+### Step 1 — Local validation (optional but recommended)
+
+```bash
+git checkout claude/crypto-rs-analysis-qjCDl
+git pull origin claude/crypto-rs-analysis-qjCDl
+bash start.sh         # Terminal 1: orchestrator + Postgres + Redis
+bash start_market.sh  # Terminal 2: market agent
+```
+
+Watch market agent logs for:
+- `Crypto RS schema initialized` (on startup, confirms `crypto_*` tables created + watchlist seeded)
+- At 18:00 ET: `Crypto RS nightly ingest starting...` followed by `Crypto RS ingest: {...stats...}`
+
+If you want to invoke the ingest manually without waiting for cron:
+```bash
+python3 -c "
+import asyncio
+from agents.market_intelligence.crypto.ingest import run_nightly
+print(asyncio.run(run_nightly()))
+"
+```
+
+### Step 2 — Smoke-test data sources
+
+```bash
+PYTHONPATH=. python3 scripts/verify_crypto_sources.py
+```
+
+All four (Kraken / CoinGecko / DefiLlama / DexScreener) must PASS. Fix any FAIL before merging — typically an upstream API contract change.
+
+### Step 3 — Merge to main
+
+```bash
+git checkout main
+git pull origin main
+git merge claude/crypto-rs-analysis-qjCDl
+git push origin main
+```
+
+(Optional: open a PR first via `gh pr create` for self-review.)
+
+### Step 4 — Prod deploy
+
+Per `CLAUDE.md` "Production Deploy" section:
+
+```bash
+ssh apollo@87.99.134.162
+cd /home/apollo/apollo_the_wise/
+git pull origin main
+docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent
+docker compose -f docker/docker-compose.prod.yml up -d market-agent
+```
+
+Confirm `CRYPTO_RS_ENABLED=false` in prod `.env` (this is the default if missing — shadow mode).
+
+### Step 5 — Post-deploy verification
+
+```bash
+docker logs market-agent --tail 50 | grep -i crypto
+```
+
+Expect:
+- `Crypto RS schema initialized` on startup
+- `crypto_watchlist seeded with 27 entries` (first run only)
+- After 18:00 ET: `Crypto RS nightly ingest starting...` and stats line
+
+DB sanity (psql in the postgres container):
+```sql
+SELECT COUNT(*) FROM crypto_universe;       -- should be ~250 after first run
+SELECT COUNT(*) FROM crypto_daily_closes;   -- ~50000 after first run (250 coins × 200 days)
+SELECT COUNT(*) FROM crypto_rs_scores WHERE score_date = CURRENT_DATE;  -- ~250
+SELECT * FROM crypto_btc_dominance ORDER BY date DESC LIMIT 5;
+SELECT * FROM crypto_total3 ORDER BY date DESC LIMIT 5;
+SELECT coin_id, source FROM crypto_watchlist WHERE coin_id LIKE '_unresolved_%';
+-- ^ KNX, COPPERINU, ASTER should resolve within a few daily cycles
+```
+
+---
+
+## Activation Runbook (shadow → live)
+
+### Prerequisites before flipping `CRYPTO_RS_ENABLED=true`
+
+1. **At least 30 days of nightly ingest** — `rs_1m` requires ~30d history per coin. Without it, the `/crypto` briefing surfaces lots of `None` scores.
+2. **Categories populated** — first Sunday after deploy runs `_crypto_category_refresh_job`. Before that, `/crypto AI` returns empty.
+3. **Trigger evaluator can't fire for ~90 days** — TOTAL3 needs 90d SMA. Cooldown logic is fine (no last alert), but the breakout gate is structurally unsatisfiable until enough macro history accumulates. This is the longest wait. **Acceptable** because alt season is months away; the trigger only matters at the inflection.
+4. **Spot-check sanity**:
+   - `SELECT symbol, rs_overall FROM crypto_rs_scores s JOIN crypto_universe u USING (coin_id) WHERE score_date = CURRENT_DATE ORDER BY rs_overall DESC LIMIT 10;` — should show recognizable winners
+   - BTC.D should match TradingView ± 1-2%
+   - Watchlist resolution: `SELECT symbol, coin_id, chain, contract_address FROM crypto_watchlist;` — none should still be `_unresolved_*`
+
+### Flipping the flag
+
+In prod `.env`:
+```bash
+CRYPTO_RS_ENABLED=true
+```
+
+Then:
+```bash
+docker compose -f docker/docker-compose.prod.yml restart market-agent
+```
+
+Test in Telegram:
+- `/crypto` → should now return a real top-10 list (not "shadow mode" message)
+- `/altseason` → should return three-signal status
+- `/crypto AI` → top RS in AI category
+
+### Rollback
+
+If anything looks wrong:
+```bash
+# In prod .env:
+CRYPTO_RS_ENABLED=false
+docker compose ... restart market-agent
+```
+
+Data already collected stays; only Telegram surfaces re-quiet.
+
+---
+
+## Backlog (post-launch, pre-alt-season)
+
+### P0 — Verify before relying on the system
+- **Watchlist resolver verification**: After first ingest, confirm KNX, COPPERINU, ASTER actually resolved. If any stayed `_unresolved_*`, manually inspect — may need DexScreener contract address hardcoded.
+- **TOTAL3 vs TradingView spot-check**: derived from CG `/global` (`total_mcap × (1 − btc_pct/100 − eth_pct/100)`). Compare to TradingView TOTAL3 chart on the same day. If divergence > 5%, the derivation has a bug.
+- **First-Sunday category refresh smoke**: confirm `_crypto_category_refresh_job` actually populates `crypto_categories` (~250 coin × ~3 categories ≈ 750 rows expected). If empty, the per-coin `/coins/{id}` calls likely failed silently.
+
+### P1 — Holes in current implementation
+- **Macro history backfill**: `crypto_btc_dominance`, `crypto_total3`, `crypto_stablecoin_flows` only accumulate forward from day 1. Trigger needs 30d slope + 90d SMA — system is structurally unable to fire for ~90 days. To shorten: backfill from CG `/coins/markets` historical or DefiLlama `/stablecoincharts/all` (already used for stables). For BTC.D + total mcap, no free historical endpoint exists — would need to compute from per-coin mcap series, expensive.
+- **`/crypto add <symbol>` not implemented**: routing accepts the keyword but no handler logic. Currently watchlist is seed-only. Add when needed.
+- **`/crypto <symbol>` per-coin profile not implemented**: same — routing exists, handler returns empty. Would show 1m/3m/6m RS, categories, mcap bucket, RS-in-bucket rank for one coin.
+- **DexScreener wash-trade gate not actually applied to long-tail discovery**: only the watchlist + top-250 mcap path runs through `_persist_universe`'s gate. If we ever expand universe-discovery via DS search, gate must be re-applied there.
+
+### P2 — Worth doing eventually
+- **Per-source verification scripts**: split `verify_crypto_sources.py` into `verify_kraken.py` / `verify_coingecko.py` / etc. for triage when one source breaks.
+- **Outcome tracker for alt-season trigger**: when trigger fires, snapshot the universe RS state. Months later, did the rotation actually happen? Capture the answer to tune thresholds (BTC.D ceiling, slope persistence days).
+- **Top-N RS movers in `/crypto`**: 24h delta in `rs_overall` rank surfaces accelerating coins faster than the static top-10.
+- **Sparklines in briefings**: 30d RS chart per coin in `/crypto SOL` profile output (use `charts.py` pattern from equity side).
+- **DefiLlama for capital-flow detail**: `/protocols` could add "money flowing into AI tokens" or "money leaving DeFi" signals beyond the binary trigger.
+- **Cross-source price-divergence monitor**: when a coin is on Kraken AND DexScreener and prices diverge > 5%, audit-log it. Catches arbitrage / data lag / DS quote staleness.
+
+### P3 — Future cycle features (post-trigger)
+- **Intraday setup detection** — 24/7 market needs a different model than equity ORB. Defer until alt season fires and we know what setups matter.
+- **EP-equivalent for crypto** — climax/parabolic detection adapted for crypto's intraday dynamics.
+- **Broker integration** — Coinbase Advanced or Kraken API for actual execution. Only after the surveillance proves itself.
+- **On-chain metrics** — Glassnode (paid) for whale flows, exchange in/outflows.
+- **Social sentiment** — LunarCrush (paid) for the meme-coin band where price-action lags hype.
+- **Multi-quote pairs** — currently RS is strictly vs BTC. Adding ETH/BTC ratio surfaces ETH-strong vs ETH-weak rotations within alts.
+- **Orchestrator tool integration** — let Apollo answer "how's crypto?" via tool-call when crypto becomes mainline-relevant.
+- **CoinGecko Pro upgrade** ($129/mo) — when budget needed for higher rate limits, intraday cadence, deeper history.
+
+---
+
+## Known limitations (acknowledged, not bugs)
+
+- **Day 1 has zero history**. RS scores will all be `None` for the first ~30 days as the daily ingest accumulates bars. By design — backfill is implicit in `_pull_daily_bars` which fetches 200 days per coin on each run, so within 1-2 nights of first deploy, every coin should have 200 days.
+- **Trigger can't fire for first ~90 days**. TOTAL3 90d SMA is mathematically unsatisfiable until 90 daily snapshots exist. This is the structural limit. Acceptable since alt season is months away.
+- **CG free-tier rate limits** can briefly stall ingest. The 3-attempt exponential backoff handles transient 429s; sustained 429s mean we need to consider Pro.
+- **DexScreener data noise**: wash trades, impostor contracts, bridge versions. Mitigated by trusted-chain whitelist + watchlist hardcoding, but not zero. Cross-source divergence monitor (P2) would close this gap.
+- **Kraken doesn't list every alt**. ~50 majors covered; long-tail goes through CG. If CG also doesn't have a coin (rare for top-250), it falls to DexScreener current-quote-only — no historical depth, RS uncomputable.
