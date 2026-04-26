@@ -200,6 +200,9 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-26 (session 2) — Theme merge: min-shared-ticker gate
+rs-theme-dash dashboard surfaced Single-Cell Genomics (1 ticker) and IT Infrastructure (2 tickers) being absorbed into Satellite Imagery via a single coincidental shared ticker. `_merge_overlapping_themes` Pass 1 had three trigger conditions (`jaccard ≥ 0.6`, `is_subset`, `overlap_ratio ≥ 0.6`) — `is_subset` and `overlap_ratio` both collapse to noise on tiny themes (1/1 = 100%, 1/2 = 50% overlap). New constant `MIN_SHARED_FOR_MERGE = 3` (theme_engine.py:211) gates Pass 1 with `len(intersection) < MIN_SHARED_FOR_MERGE: continue` before the trigger conditions evaluate. Pass 1.5 (small-theme absorption) intentionally targets ≤3-ticker themes and stays unchanged — it's a separate cleanup path with different semantics. Same gate principle implemented in `rs-theme-dash/data.py::dedup_themes` (min_shared=3 default); cross-referenced via comment so the two implementations stay in sync conceptually without sharing a module across repos.
+
 ### 2026-04-26 (session 1) — RVOL@T pre-open gate (closes INTC-class entry leak)
 Apr 19–26 weekly self-audit flagged INTC entered at `rel_volume = 0.09` — institutional conviction visibly absent pre-open. Root cause: legacy `today_volume / 20d_daily_ADV` mismatches numerator (thin pre-market slice) against denominator (full-session total). Pre-9:30 the only gate was `MIN_PREMARKET_SHARES = 25_000` (absolute floor, not ratio); INTC trivially cleared 25k pre-market.
 

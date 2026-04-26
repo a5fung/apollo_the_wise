@@ -208,6 +208,8 @@ PRUNE_RS_HARD = 25.0     # RS below this → prune after 1 day (crash/scandal)
 PRUNE_RS_SOFT = 35.0     # RS below this → prune after 3 consecutive days (slow decay)
 PRUNE_MIN_TICKERS = 2    # Never prune a theme below this many stocks
 MAX_THEMES_PER_STOCK = 2 # A stock can belong to at most 2 themes (primary + sub-theme)
+MIN_SHARED_FOR_MERGE = 3 # Min |intersection| before two themes can be merged on overlap.
+                         # Same gate as rs-theme-dash dedup — kills tiny-alias false positives.
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -1925,6 +1927,13 @@ def _merge_overlapping_themes(
             is_subset = tickers_j <= tickers_i or tickers_i <= tickers_j
             smaller_size = min(len(tickers_i), len(tickers_j))
             overlap_ratio = len(intersection) / smaller_size if smaller_size else 0
+
+            # Floor on absolute intersection size — overlap_ratio and is_subset both
+            # collapse to noise on tiny themes (a 1-ticker theme sharing its 1 ticker
+            # is 100% overlap AND a subset, but says nothing about thematic kinship).
+            # Mirror of `min_shared` gate in rs-theme-dash/data.py::dedup_themes.
+            if len(intersection) < MIN_SHARED_FOR_MERGE:
+                continue
 
             if jaccard >= 0.6 or is_subset or overlap_ratio >= 0.6:
                 # Sub-theme coexistence: a sub-theme is allowed to overlap with its parent
