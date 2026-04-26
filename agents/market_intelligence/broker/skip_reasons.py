@@ -13,10 +13,12 @@ Monthly / quarterly performance review splits on the prefix:
 from __future__ import annotations
 
 # ── filter: pre-trade quality filters (ADV, ATR, market cap) ────────────────
-FILTER_ADV_NO_DATA    = "filter:adv_no_data"
-FILTER_ADV_TOO_LOW    = "filter:adv_too_low"
-FILTER_ATR_TOO_HIGH   = "filter:atr_too_high"
-FILTER_MCAP_TOO_SMALL = "filter:mcap_too_small"
+FILTER_ADV_NO_DATA           = "filter:adv_no_data"
+FILTER_ADV_TOO_LOW           = "filter:adv_too_low"
+FILTER_ATR_TOO_HIGH          = "filter:atr_too_high"
+FILTER_MCAP_TOO_SMALL        = "filter:mcap_too_small"
+FILTER_PM_RVOL_TOO_LOW       = "filter:pm_rvol_too_low"
+FILTER_SESSION_RVOL_TOO_LOW  = "filter:session_rvol_too_low"
 
 # ── setup: order-prep rejections (prepare_orb_order / prepare_9m_day2_orb_order) ─
 SETUP_STOP_TOO_WIDE        = "setup:stop_too_wide"
@@ -49,10 +51,12 @@ VALID_CATEGORIES = frozenset({"filter", "setup", "block", "infra", "window"})
 # DB stores raw "category:code: detail"; Telegram shows the phrase + detail.
 # Keep phrases short (≤ 5 words) so they read cleanly in a bullet list.
 _HUMAN_LABELS: dict[str, str] = {
-    FILTER_ADV_NO_DATA:         "No average volume data",
-    FILTER_ADV_TOO_LOW:         "Average volume too low",
-    FILTER_ATR_TOO_HIGH:        "Volatility too high",
-    FILTER_MCAP_TOO_SMALL:      "Market cap too small",
+    FILTER_ADV_NO_DATA:          "No average volume data",
+    FILTER_ADV_TOO_LOW:          "Average volume too low",
+    FILTER_ATR_TOO_HIGH:         "Volatility too high",
+    FILTER_MCAP_TOO_SMALL:       "Market cap too small",
+    FILTER_PM_RVOL_TOO_LOW:      "Pre-market pace below normal",
+    FILTER_SESSION_RVOL_TOO_LOW: "Session pace below normal",
     SETUP_STOP_TOO_WIDE:        "Stop too wide for risk budget",
     SETUP_ZERO_RANGE:           "Zero opening range",
     SETUP_SIZE_TOO_SMALL:       "Position size too small",

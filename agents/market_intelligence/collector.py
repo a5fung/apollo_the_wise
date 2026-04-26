@@ -180,6 +180,29 @@ async def get_index_history(ticker: str, from_date: str, to_date: str) -> list[d
         return []
 
 
+async def get_minute_bars(ticker: str, from_date: str, to_date: str) -> list[dict]:
+    """
+    Fetch 1-minute aggregate bars for `ticker` over [from_date, to_date].
+
+    Polygon returns extended-hours bars (pre/post-market) when present, which
+    is required for our pre-market RVOL@T baselines. Each bar dict has at
+    minimum {t: epoch_ms, v: volume}; we don't need OHLC for volume curves.
+
+    Date strings are ISO YYYY-MM-DD. Returns up to 50,000 bars in one call —
+    enough for ~30 trading days of minute data per ticker. Empty list on
+    error so the caller can skip a ticker without aborting the batch.
+    """
+    try:
+        data = await _polygon_get(
+            f"/v2/aggs/ticker/{ticker}/range/1/minute/{from_date}/{to_date}",
+            {"adjusted": "true", "sort": "asc", "limit": 50000},
+        )
+        return data.get("results", []) or []
+    except Exception as e:
+        logger.warning(f"Minute bars failed for {ticker} {from_date}..{to_date}: {e}")
+        return []
+
+
 async def get_vix_history(from_date: str, to_date: str) -> list[dict]:
     """
     Get actual VIX daily closes. Tries Polygon I:VIX first (Indices plan),

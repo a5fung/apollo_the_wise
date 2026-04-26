@@ -868,6 +868,30 @@ async def _baseline_refresh_job():
         await _kuma_heartbeat("KUMA_AUDIT_BASELINE_URL")
 
 
+async def _minute_volume_curves_refresh_job():
+    """Run at 6:30 PM ET. Rebuild per-minute cumulative-volume baselines for
+    the top-dollar-volume universe. Powers the RVOL@T pre-9:45 gate in
+    `ep_detector` — a like-for-like comparison of today's minute-cumulative
+    volume against the 20-day mean at the same clock-time, replacing the
+    apples-to-oranges raw_vol/daily_ADV ratio for early-session entries.
+
+    Slot: after 18:00 evening_briefing so its DB writes don't contend, well
+    before midnight. Lookback ends at yesterday so we only baseline closed
+    sessions. Polygon minute-bar fetch is gated by the global `_polygon_lock`
+    so runtime scales linearly with universe size — ~500 tickers × ~0.2s
+    courtesy delay ≈ 100s typical, +misfire_grace_time of 30 min for restart
+    overlap. No Telegram on success; failures notify via job_failure path.
+    """
+    logger.info("Minute volume curves refresh starting...")
+    try:
+        from agents.market_intelligence.minute_volume import refresh_curves
+        summary = await refresh_curves()
+        logger.info(f"Minute volume curves refresh complete: {summary}")
+    except Exception as e:
+        logger.error(f"Minute volume curves refresh failed: {e}", exc_info=True)
+        await notify_job_failure("minute_volume_curves_refresh", str(e))
+
+
 async def _post_validation_check_job():
     """Run Sat 8:00 AM ET. Recap Friday's theme validation run.
 
@@ -1363,6 +1387,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id="baseline_refresh",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+
+    # Minute volume curves refresh: 6:30 PM ET — rebuild RVOL@T baselines for
+    # the top-500 dollar-volume universe. Slots after 6:00 evening briefing.
+    # Idempotent; if missed, next run recomputes from scratch.
+    _scheduler.add_job(
+        _minute_volume_curves_refresh_job,
+        CronTrigger(hour=18, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
+        id="minute_volume_curves_refresh",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Live position update: 4:45 PM ET — SMA trail, partials, stop updates

@@ -49,8 +49,18 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event
 from agents.market_intelligence.backtester.filters import check_filters
+from agents.market_intelligence.minute_volume import (
+    compute_rvol_at_time,
+    MIN_PM_RVOL,
+    MIN_SESSION_RVOL,
+    MIN_BASELINE_N_FOR_GATE,
+)
+from agents.market_intelligence.broker.skip_reasons import (
+    FILTER_PM_RVOL_TOO_LOW,
+    FILTER_SESSION_RVOL_TOO_LOW,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -617,6 +627,55 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
 
+        # ── RVOL@T pre-open gate ──────────────────────────────────────────
+        # Compares today's pre-market cumulative volume at this clock-time
+        # against the 20-day mean cumulative pre-market volume at the same
+        # clock-time (per-ticker baseline in mi_minute_volume_curves).
+        #
+        # Replaces the structurally-flawed `today_vol / daily_ADV` ratio for
+        # pre-9:30 alerts — that mismatch let INTC (rel_volume=0.09) through
+        # on 2026-04-24 because the numerator samples a thin slice of the
+        # intraday curve while the denominator is the full-session total.
+        # RVOL@T sidesteps the U-curve entirely by anchoring to time-of-day.
+        #
+        # Silent fallback: if the ticker has no baseline (outside top-500
+        # universe, or curves not yet refreshed), pass through to the
+        # existing absolute-share floor below. This keeps the gate safe to
+        # ship before the universe-wide baseline accumulates history.
+        if _minutes_since_open is None:  # pre-market scan
+            try:
+                rvol_info = await compute_rvol_at_time(
+                    ticker=ticker,
+                    now_et=now_et,
+                    today_premkt_vol=c["today_volume"],
+                    today_session_vol=0,
+                )
+            except Exception as e:
+                logger.warning(f"RVOL@T lookup failed for {ticker}: {e}")
+                rvol_info = None
+            if rvol_info:
+                c["pm_rvol"] = rvol_info["rvol_at_time"]
+                c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
+                if (
+                    rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                    and rvol_info["rvol_at_time"] < MIN_PM_RVOL
+                ):
+                    detail = (
+                        f"pm_rvol={rvol_info['rvol_at_time']:.2f}x "
+                        f"(today {rvol_info['today_cum_vol']:,} / "
+                        f"baseline {rvol_info['baseline_mean']:,.0f} "
+                        f"n={rvol_info['baseline_n']}) < {MIN_PM_RVOL}x"
+                    )
+                    reason = f"{FILTER_PM_RVOL_TOO_LOW}: {detail}"
+                    logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
+                    _log_filtered(c, reason)
+                    await log_audit_event(
+                        "ep_filter_pm_rvol",
+                        f"{ticker} pre-open pace below normal",
+                        f"{detail} | gap={c['gap_pct']:.1f}%",
+                    )
+                    continue
+
         # Hard filter: rel volume — post-open only.
         # Use open_intensity (projected full-day vol) if available — raw rel_vol at 9:35 AM
         # is structurally tiny even on a record volume day (0.26x raw = 4x projected at 25min in).
@@ -821,10 +880,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
+            "pm_rvol": c.get("pm_rvol"),
+            "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
         })
 
         proj = c.get("projected_vol_multiple")
-        vol_str = f"rvol={rel_volume:.1f}x proj={proj:.0f}x" if proj else f"rvol={rel_volume:.1f}x"
+        pm_rvol_val = c.get("pm_rvol")
+        vol_parts = [f"rvol={rel_volume:.1f}x"]
+        if proj:
+            vol_parts.append(f"proj={proj:.0f}x")
+        if pm_rvol_val is not None:
+            vol_parts.append(f"pm_rvol@t={pm_rvol_val:.2f}x")
+        vol_str = " ".join(vol_parts)
         logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% {vol_str} score={ep_score} tier={tier}")
 
     results.sort(key=lambda r: r["ep_score"], reverse=True)

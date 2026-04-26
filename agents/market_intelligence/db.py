@@ -110,6 +110,8 @@ async def initialize_schema() -> None:
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
+            ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS pm_rvol FLOAT;
+            ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS pm_rvol_baseline_n INT;
 
             CREATE TABLE IF NOT EXISTS mi_market_regime (
                 regime_date DATE PRIMARY KEY,
@@ -603,6 +605,28 @@ async def initialize_schema() -> None:
             );
         """)
 
+        # ── Per-minute cumulative volume curves (RVOL@T baselines) ──────────
+        # Stores 20-day mean cumulative volume at each ET clock-minute, anchored
+        # either to pre-market open (4:00) or regular session open (9:30). Used
+        # by ep_detector to gate pre-9:45 entries against a like-for-like
+        # baseline ("is today's pace above normal at THIS minute?") instead of
+        # the apples-to-oranges raw_vol/daily_ADV ratio that's structurally
+        # tiny pre-open. See agents/market_intelligence/minute_volume.py.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_minute_volume_curves (
+                ticker          TEXT NOT NULL,
+                anchor          TEXT NOT NULL,         -- 'pm' or 'session'
+                et_clock_minute SMALLINT NOT NULL,     -- 0..1439, ET minutes from 00:00
+                mean_cum_vol    DOUBLE PRECISION NOT NULL,
+                stddev_cum_vol  DOUBLE PRECISION,
+                sample_n        INT NOT NULL,
+                refreshed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, anchor, et_clock_minute)
+            );
+            CREATE INDEX IF NOT EXISTS idx_minute_vol_curves_ticker_anchor
+                ON mi_minute_volume_curves(ticker, anchor);
+        """)
+
         # Parabolic-short candidate scan results. Persists EVERY metric, not
         # just the boolean stage, so thresholds can be re-tuned against
         # historical scans without re-running.
@@ -823,8 +847,9 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
                  catalyst, catalyst_quality, claude_analysis, gemini_validation,
-                 confidence_multiplier, vol_percentile, source)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                 confidence_multiplier, vol_percentile, source,
+                 pm_rvol, pm_rvol_baseline_n)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -833,6 +858,8 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("confidence_multiplier", 1.0),
             record.get("vol_percentile"),
             record.get("source", "live"),
+            record.get("pm_rvol"),
+            record.get("pm_rvol_baseline_n"),
         )
 
 
@@ -1886,6 +1913,94 @@ async def get_ep_scan_log(d: "str | date") -> list[dict[str, Any]]:
             _to_date(d),
         )
     return [dict(r) for r in rows]
+
+
+async def upsert_minute_volume_curves(records: list[dict]) -> int:
+    """Batch-upsert per-minute cumulative-volume baselines.
+
+    Each record: {ticker, anchor ('pm'|'session'), et_clock_minute,
+                  mean_cum_vol, stddev_cum_vol, sample_n}.
+    Returns the number of rows written. Never raises — refresh job tolerates
+    partial writes.
+    """
+    if not records:
+        return 0
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            await conn.executemany("""
+                INSERT INTO mi_minute_volume_curves
+                    (ticker, anchor, et_clock_minute,
+                     mean_cum_vol, stddev_cum_vol, sample_n, refreshed_at)
+                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                ON CONFLICT (ticker, anchor, et_clock_minute) DO UPDATE SET
+                    mean_cum_vol   = EXCLUDED.mean_cum_vol,
+                    stddev_cum_vol = EXCLUDED.stddev_cum_vol,
+                    sample_n       = EXCLUDED.sample_n,
+                    refreshed_at   = NOW()
+            """, [
+                (
+                    r["ticker"], r["anchor"], int(r["et_clock_minute"]),
+                    float(r["mean_cum_vol"]),
+                    float(r["stddev_cum_vol"]) if r.get("stddev_cum_vol") is not None else None,
+                    int(r["sample_n"]),
+                )
+                for r in records
+            ])
+        return len(records)
+    except Exception as e:
+        logger.warning(f"minute volume curves upsert failed: {e}")
+        return 0
+
+
+async def get_minute_volume_baseline(
+    ticker: str, anchor: str, et_clock_minute: int
+) -> dict | None:
+    """Look up the (mean, stddev, sample_n) baseline for a single
+    (ticker, anchor, minute). Returns None if no row.
+    """
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT mean_cum_vol, stddev_cum_vol, sample_n, refreshed_at
+                   FROM mi_minute_volume_curves
+                   WHERE ticker = $1 AND anchor = $2 AND et_clock_minute = $3""",
+                ticker, anchor, et_clock_minute,
+            )
+        return dict(row) if row else None
+    except Exception as e:
+        logger.warning(f"minute volume baseline lookup failed ({ticker}, {anchor}, {et_clock_minute}): {e}")
+        return None
+
+
+async def get_top_dollar_volume_universe(limit: int = 500) -> list[str]:
+    """Return top N tickers by 20d dollar volume from the most recent score date.
+
+    Used by the minute-volume curves refresh job to scope the universe — we
+    only need baselines for stocks likely to surface as EP candidates, and
+    top-by-dollar-volume covers the realistic gap universe (megacaps + liquid
+    mid-caps). Smaller stocks fall back to the absolute-share floor at gate
+    time.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        latest = await conn.fetchval(
+            "SELECT MAX(score_date) FROM mi_stock_scores"
+        )
+        if latest is None:
+            return []
+        rows = await conn.fetch(
+            """SELECT ticker
+               FROM mi_stock_scores
+               WHERE score_date = $1
+                 AND adv_20 IS NOT NULL
+                 AND close IS NOT NULL
+               ORDER BY (adv_20 * close) DESC NULLS LAST
+               LIMIT $2""",
+            latest, limit,
+        )
+    return [r["ticker"] for r in rows]
 
 
 async def get_ep_scan_log_history(days: int = 14) -> dict[str, list[dict]]:

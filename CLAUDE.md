@@ -200,6 +200,31 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-26 (session 1) — RVOL@T pre-open gate (closes INTC-class entry leak)
+Apr 19–26 weekly self-audit flagged INTC entered at `rel_volume = 0.09` — institutional conviction visibly absent pre-open. Root cause: legacy `today_volume / 20d_daily_ADV` mismatches numerator (thin pre-market slice) against denominator (full-session total). Pre-9:30 the only gate was `MIN_PREMARKET_SHARES = 25_000` (absolute floor, not ratio); INTC trivially cleared 25k pre-market.
+
+**Fix: Relative Volume at Time (RVOL@T)** — canonical TradingView/MarketChameleon/VWAP-execution primitive. Compares today's cumulative volume at the current ET clock-minute against the 20-day mean cumulative volume *at the same clock-minute* (per-ticker). U-shaped intraday volume curve auto-baked into the denominator → 0.09 rejected, 2.0× stays interpretable.
+
+**Schema:** `mi_minute_volume_curves (ticker, anchor, et_clock_minute, mean_cum_vol, stddev_cum_vol, sample_n)`. Two anchors per ticker: `pm` (cumulative from 4:00 ET, minutes 240..569) and `session` (from 9:30 ET, minutes 570..959). New columns on `mi_ep_alerts`: `pm_rvol`, `pm_rvol_baseline_n` so passing alerts also persist their volume signal.
+
+**New module: `agents/market_intelligence/minute_volume.py`**
+- `refresh_curves(today, universe_limit=500, lookback_days=30)` — nightly job. Fetches Polygon `/v2/aggs/ticker/{T}/range/1/minute/{from}/{to}` for top-500-by-dollar-volume universe (from `mi_stock_scores`), bucketizes by ET clock-minute, computes mean/stddev per (anchor, minute). Concurrency `Semaphore(8)` outside the global `_polygon_lock`. Lookback ends at yesterday — only closed sessions baselined.
+- `compute_rvol_at_time(ticker, now_et, today_premkt_vol, today_session_vol)` — runtime lookup. Returns `None` if before 4:00 ET, at/past 9:45 ET, or no baseline row. Past 9:45 the existing `projected_vol_multiple` extrapolation handles full-day RVOL — RVOL@T window is intentionally 4:00–9:44 ET to avoid double-gating.
+
+**Constants:** `MIN_PM_RVOL = 1.0`, `MIN_SESSION_RVOL = 1.0` (today's pace ≥ normal pace at this minute), `MIN_BASELINE_N_FOR_GATE = 10` (don't gate against shaky baselines), `MIN_SAMPLE_N = 5` (don't publish curves with < 5 days history).
+
+**Gate placement (`ep_detector.py`):** pre-9:30 only. The 9:30–9:44 window is left to the existing rel_volume check (over-gates if anything, not the audit's complaint). Rejected candidates write `filter:pm_rvol_too_low: pm_rvol=0.18x (today 12,400 / baseline 67,500 n=18) < 1.0x` to `mi_ep_scan_log.filter_reason` AND fire `log_audit_event('ep_filter_pm_rvol', ...)` for L2/L3 visibility.
+
+**New skip reasons:** `FILTER_PM_RVOL_TOO_LOW`, `FILTER_SESSION_RVOL_TOO_LOW` in `broker/skip_reasons.py` with humanize labels "Pre-market pace below normal" / "Session pace below normal".
+
+**New scheduler job:** `_minute_volume_curves_refresh_job` cron 18:30 ET mon-fri (after 18:00 evening_briefing, before midnight). `notify_job_failure` wrapped, `misfire_grace_time=1800`. Idempotent — loss → next run rebuilds.
+
+**Graceful degradation:** ticker not in top-500 universe → no baseline → gate silently skipped, falls through to existing 25k absolute floor. Curves can be missing on first run / after deploy / for halt-suspended tickers without breaking the scan. Sample-n threshold (≥10 days) prevents gating on shaky baselines.
+
+**Logging on alerts:** alerts that PASS the gate now log `pm_rvol@t=2.34x` alongside existing `rvol=` and `proj=` in the EP alert info line. Persisted to `mi_ep_alerts.pm_rvol` / `pm_rvol_baseline_n`.
+
+**Out of scope (deliberately):** outcome-tracker date/tz fix (`outcome_tracker.py:223-226` — separate audit follow-up), 154 validation_error mislabel diagnosis (separate), `_process_entry_fill` remediation hard-close escalation (judgment call, not pulling the trigger without explicit ask). Audit's Proposal #1 (OTO bracket hard block) was already shipped 2026-04-23/24 — confirmed in code review.
+
 ### 2026-04-25 (session 2) — Weekend data fallback + HUD EP button
 On Saturday all `/eps`, `/9m`, `/clusters`, `/trades`, and `/hud` queries returned "no data today" because handlers used `et_today()` which yielded a non-trading date. Fix: new `collector.last_trading_day(from_date=None)` helper (skips Sat/Sun back to Friday — matches `prev_trading_days` weekend-only approximation; holidays not handled). Wired into `_build_hud_text`, `_handle_ep_query`, `_handle_9m_ep_query`, `_handle_correlation_clusters`, and the default branches of `_handle_eps_detail` / `_handle_trades_detail`. Telegram-side `/ep` and `/trades` commands also switched from `date.today().isoformat()` to `last_trading_day().isoformat()` so the date in the task string + drill-down callback_data lines up. HUD header now shows "Sat Apr 25 · data Fri Apr 24" when query date != today; per-handler messages get a `_(last trading day)_` suffix. Also added an **EP** button back to the HUD inline keyboard (was missing) — keyboard reflowed to 3+3 rows: `[Regime, Themes, EP] / [9M, Clusters, Watchlist]`. Routes via `task_map["ep"] = "/eps"` in `_handle_hud_drill_down`.
 
