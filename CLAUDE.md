@@ -200,6 +200,43 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-26 (session 2) — Crypto RS surveillance (shadow-mode launch)
+Full design + decisions in `CRYPTO_RS_DESIGN.md`. Parallel crypto RS layer that accumulates history during dormancy + fires high-conviction wake-up when capital rotates to alts. **Shadow-mode default** (`CRYPTO_RS_ENABLED=false`): nightly ingest + RS + trigger eval all run, Telegram surfaces gated by flag.
+
+**Module**: `agents/market_intelligence/crypto/` — 11 files: 4 source clients (kraken/dexscreener/coingecko/defillama) + `data_router.py`, `rs_engine.py`, `triggers.py`, `categories.py`, `resolver.py`, `ingest.py`, `briefing.py`, `watchlist_seed.py`, `db.py`. Reuses `_percentile_ranks` / `_pct_return` from equity `rs_engine.py`.
+
+**Data sources (US-VPS-safe, $0)** — Binance public REST 403s on US IPs:
+- Kraken `/0/public/OHLC` → ~50 majors
+- DexScreener `/tokens/v1/{chain}/{addr}` → long-tail current snapshot ($15M-$500M on-chain)
+- CoinGecko → universe + historical OHLC + categories + `/global` (BTC.D + total mcap → derive TOTAL3)
+- DefiLlama `/stablecoins` → stablecoin total mcap ONLY (does NOT expose BTC.D — caught and corrected mid-design)
+- Rejected: Polygon Crypto (separate sub, long-tail gap), CoinMarketCap (no historical OHLCV on free tier)
+
+**Three-signal alt-season trigger** (`triggers.py`) — each answers distinct question; ALL must hold + 30d cooldown:
+1. Stablecoin 30d slope > 0 ← capital entering
+2. BTC.D 30d slope < 0 for 5+ days AND BTC.D < 55% ← rotating out of core
+3. TOTAL3 30d slope > 0 for 5+ days AND TOTAL3 > 90d SMA ← reaching long tail
+
+**RS**: 40/30/30 1m/3m/6m vs `close_btc` ratio (NOT raw USD — that's the whole point). `rs_overall` + `rs_in_bucket` (mega/large/mid/micro). Wash gate: vol/mcap ∈ [0.01, 5.0], 7d median vol ≥ $10M, age ≥ 90d. $15M universe floor; watchlist exempt.
+
+**Watchlist seed (27 coins)** — AI/DePIN cluster heaviest (TAO, RENDER, AKT, FET, VIRTUAL, VVV). KNX, COPPERINU, ASTER seeded as `_unresolved_<symbol>` placeholders; resolver fills chain+contract on first ingest via CG search → DexScreener fallback within trusted chains.
+
+**Schema**: 11 `crypto_*` tables. `crypto/db.py::initialize_crypto_schema()` called from main `initialize_schema()` in try/except.
+
+**Scheduler**:
+- `_crypto_nightly_ingest_job` cron 18:00 ET daily (crypto 24/7), grace=3600s
+- `_crypto_category_refresh_job` cron Sun 19:00 ET (weekly CG taxonomy)
+
+**Telegram**: `/crypto [<category>]`, `/altseason`. **Slash dispatcher fix**: was dropping args (`/audit cooldowns` lost topic too); now preserves full message text.
+
+**Date convention**: ET via `ZoneInfo("America/New_York")` everywhere — matches `et_today()`. Source UTC bars converted: 00:00 UTC = 8 PM ET prior day → tagged as prior-day bar (equity "after the close" semantics).
+
+**Two advisor passes (general-purpose subagent)** caught: CG `market_chart` silent volume/mcap join loss on ms drift, 3× N+1 patterns in ingest (~50k stmts/run → ~3), `source` provenance lie, TIMESTAMPTZ→ET miss in cooldown, resolver per-coin universe redundancy, deprecated `asyncio.get_event_loop().time()`, DexScreener input mutation + URL injection, DefiLlama field-name lie.
+
+**Verify pre-flip**: `scripts/verify_crypto_sources.py` smoke-tests all 4 sources end-to-end with sane-range assertions.
+
+**Out of scope** (defer until alt season fires): intraday setup, on-chain, social, execution, orchestrator tool integration, multi-quote pairs.
+
 ### 2026-04-26 (session 1) — RVOL@T pre-open gate (closes INTC-class entry leak)
 Apr 19–26 weekly self-audit flagged INTC entered at `rel_volume = 0.09` — institutional conviction visibly absent pre-open. Root cause: legacy `today_volume / 20d_daily_ADV` mismatches numerator (thin pre-market slice) against denominator (full-session total). Pre-9:30 the only gate was `MIN_PREMARKET_SHARES = 25_000` (absolute floor, not ratio); INTC trivially cleared 25k pre-market.
 
@@ -277,18 +314,14 @@ CHE gapped +17.9%, first crossed HIGH at 9:55 ET. Bracket placed at ORB high but
 ### 2026-04-24 (session 1) — OTO bracket stop-leg ID capture
 INTC entered, 🚨 UNPROTECTED alert fired falsely, stop fired as `💱 Untracked SELL` not `❌ Stopped out`, no Day 1 re-entry. Root cause: four separate "find the stop leg" implementations, only one robust. `submit_entry` used strict `leg.get("type") == "stop"` — under Python 3.12 `str(OrderType.STOP)` returns `"OrderType.STOP"`, check silently fails, `stop_order_id` written as NULL. Cascade: WS fill handler can't match on NULL → routes to Untracked SELL → no `_process_stop_fill` → no re-entry. Fix: single canonical `alpaca_client.extract_stop_leg_id(order)` — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Applied to all 5 sites. Defense-in-depth in `_process_entry_fill`: checks 3 sources (WS legs, DB stop_order_id, REST refetch) before standalone-stop remediation. Eliminates false UNPROTECTED alerts.
 
-### 2026-04-23 (session 3) — Validation-window hardening
-Three follow-ups for the 3-4 week paper validation window (target cutover 2026-05-23). (A) `Dockerfile.market` now `COPY scripts/ scripts/` so recovery scripts survive container rebuilds. (B) `_eod_ep_recap_job` now appends `📡 Feed (sip): N bars · M zero-range · K subscribe-fail · D disconnect`. Recap fires even on zero-HIGH days if any feed events occurred (catches silent SIP auth lapses). (C) New `scripts/readiness_check.py` encodes the 6 cutover gates as concrete SQL pass/fail (naked positions, reason-coverage invariant, silent audit errors, paper trade sample ≥ 10, regime not Crisis, feed health 24h).
-
-### 2026-04-23 (session 2) — Env-var-gated SIP feed for ORB entry
-URI ORB miss on 2026-04-22 traced to IEX feed (~2-3% of US consolidated volume) showing zero-range first-minute bars on mid-liquidity tickers. Phase 1: Alpaca Algo Trader Plus ($99/mo) → realtime CTA/UTP SIP consolidated tape. Env-var-gated via `ALPACA_DATA_FEED` (unset/`iex`/`sip`); resolved by new `alpaca_client.get_data_feed()` helper used by `get_first_bar()` and `start_bar_stream`. Code ships inert; flip activates when subscription is live. `scripts/verify_sip_parity.py` (hard-wires SIP independent of env) runs 4 pre-flip checks. **Validated: AAPL parity 0.037%, URI 2026-04-22 IEX=$0 → SIP=$4.20, 90d replay 1/1 recovered.** `ALPACA_DATA_FEED=sip` set in prod 2026-04-23. Polygon stays for grouped-daily/VIX/reference/backtester. Phase 2 trigger (Polygon Advanced $199 dual-feed): book size 5–10×, feed incident, OHLC reconciliation > 0.2% divergence, or second broker.
-
-### 2026-04-23 (session 1) — Broker alert gaps + bracket-order hardening
-**Naked positions (BSX/GSHD/SIRI):** `StopLimitOrderRequest(...stop_loss=...)` was submitted without `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it. Fix: `place_bracket_order` always uses `OTO` + verifies returned order has stop leg, cancels naked bracket if missing. **Silent state changes:** `_handle_cancel_or_reject` only alerted on `rejected`; manual Alpaca actions / `close_position` were logged and discarded. Three branches now: entry cancel/expire/reject, stop-leg cancel (clears `stop_order_id`, alert), untracked reject. `_handle_fill` untracked-sell branch parses `UPDATE N` rowcount → fires `💱 Untracked SELL/BUY` if 0 affected. `_process_entry_fill` belt-and-suspenders: places standalone stop or alerts UNPROTECTED. Managed exits in `order_manager` now `INSERT INTO mi_live_orders ON CONFLICT DO NOTHING` to avoid double-fire on the new untracked-sell alert.
-
 ---
 
 ## Changes Made — Historical (compressed log)
+
+### 2026-04-23
+- **session 3 — Validation-window hardening**: `Dockerfile.market` now COPYs `scripts/`; `_eod_ep_recap_job` appends `📡 Feed (sip)` line + fires on zero-HIGH days when feed events present; new `scripts/readiness_check.py` encodes 6 SQL cutover gates. Cutover target 2026-05-23.
+- **session 2 — Env-var-gated SIP feed**: URI ORB miss traced to IEX zero-range first-minute bars on mid-liquidity. `ALPACA_DATA_FEED` env (iex/sip), resolved by `alpaca_client.get_data_feed()`. Validated AAPL parity 0.037%, URI 4/22 IEX=$0 → SIP=$4.20. `ALPACA_DATA_FEED=sip` set in prod. Phase 2 (Polygon Advanced dual-feed) trigger: book 5–10×, feed incident, OHLC divergence > 0.2%, or 2nd broker.
+- **session 1 — Broker alert gaps + bracket hardening**: BSX/GSHD/SIRI naked positions traced to `StopLimitOrderRequest(stop_loss=...)` without `order_class=OTO` — alpaca-py silently drops kwarg. Fix: always OTO + verify stop leg, cancel naked bracket. Silent state changes: 3 branches in `_handle_cancel_or_reject` (was rejected-only); untracked-sell rowcount alert; UNPROTECTED escalation in `_process_entry_fill`. Lesson: silent-drop kwargs are catastrophic — verify what came back.
 
 Full prose lives in git history at the listed commits. Each line is "topic — key change & lesson."
 

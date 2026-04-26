@@ -826,6 +826,30 @@ async def _crypto_nightly_ingest_job():
         await notify_job_failure("crypto_nightly_ingest", str(e))
 
 
+async def _crypto_category_refresh_job():
+    """Run Sundays at 19:00 ET. Refresh CG category membership for all
+    universe coins -> crypto_categories table.
+
+    Heavy CG fanout (~250 /coins/{id} calls); rate-limited to 30/min.
+    Daily would burn the budget for no benefit since taxonomy is low-churn.
+    """
+    logger.info("Crypto category refresh starting...")
+    try:
+        from agents.market_intelligence.crypto.categories import refresh_category_membership
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT coin_id FROM crypto_universe ORDER BY mcap_rank NULLS LAST LIMIT 250"
+            )
+        coin_ids = [r["coin_id"] for r in rows]
+        n = await refresh_category_membership(coin_ids)
+        logger.info(f"Crypto category refresh: {n} (coin, category) pairs")
+    except Exception as e:
+        logger.error(f"Crypto category refresh failed: {e}", exc_info=True)
+        await notify_job_failure("crypto_category_refresh", str(e))
+
+
 async def _parabolic_scan_job():
     """Run at 5:15 PM ET. Scan universe for parabolic-short candidates.
 
@@ -1417,6 +1441,18 @@ def start_scheduler() -> AsyncIOScheduler:
         id="crypto_nightly_ingest",
         replace_existing=True,
         misfire_grace_time=3600,  # 1h: history fetch + RS + macro can take 20+ min
+    )
+
+    # Crypto category-membership refresh: Sundays 19:00 ET. Hits CG /coins/{id}
+    # per universe coin to pull `categories` array — ~250 calls throttled to
+    # 30/min = ~10 min of work. Low churn (categories rarely change), so weekly
+    # is plenty. Slots after the Sunday nightly_ingest at 18:00.
+    _scheduler.add_job(
+        _crypto_category_refresh_job,
+        CronTrigger(hour=19, minute=0, day_of_week="sun", timezone="America/New_York"),
+        id="crypto_category_refresh",
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Minute volume curves refresh: 6:30 PM ET — rebuild RVOL@T baselines for
