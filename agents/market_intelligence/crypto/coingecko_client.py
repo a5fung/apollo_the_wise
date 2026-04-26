@@ -16,10 +16,13 @@ import asyncio
 import logging
 import os
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import httpx
+
+_ET = ZoneInfo("America/New_York")
 
 logger = logging.getLogger(__name__)
 
@@ -95,15 +98,22 @@ async def get_market_chart(coin_id: str, days: int = 365) -> dict:
     return result if isinstance(result, dict) else {}
 
 
-def _bucket_by_utc_date(series: list[list]) -> dict[date, float]:
-    """CG returns [[ts_ms, value], ...]. Bucket by UTC date; last entry wins."""
+def _bucket_by_et_date(series: list[list]) -> dict[date, float]:
+    """CG returns [[ts_ms, value], ...]. Bucket by ET date; last entry wins.
+
+    ET (not UTC) keeps daily-bar dates aligned with the equity codebase
+    convention — `et_today()` is the canonical "today" everywhere else.
+    Net effect: a CG bar timestamped at 00:00 UTC of April 26 (8 PM ET
+    April 25) gets stored as April 25's bar, matching the equity "after the
+    close" semantics.
+    """
     out: dict[date, float] = {}
     for entry in series or []:
         if not isinstance(entry, list) or len(entry) < 2:
             continue
         ts_ms, value = entry[0], entry[1]
         try:
-            d = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).date()
+            d = datetime.fromtimestamp(int(ts_ms) / 1000, tz=_ET).date()
             out[d] = float(value) if value is not None else None
         except (ValueError, TypeError):
             continue
@@ -113,13 +123,13 @@ def _bucket_by_utc_date(series: list[list]) -> dict[date, float]:
 def market_chart_to_daily_bars(chart: dict) -> list[dict]:
     """Convert CG market_chart payload to list of {date, close_usd, volume_usd, mcap_usd}.
 
-    All three CG series (prices, total_volumes, market_caps) are bucketed by UTC
+    All three CG series (prices, total_volumes, market_caps) are bucketed by ET
     date independently, then joined on date. Joining by raw ms timestamp would
     silently drop volume/mcap because CG occasionally has off-by-ms drift.
     """
-    prices_by_date = _bucket_by_utc_date(chart.get("prices") or [])
-    volumes_by_date = _bucket_by_utc_date(chart.get("total_volumes") or [])
-    mcaps_by_date = _bucket_by_utc_date(chart.get("market_caps") or [])
+    prices_by_date = _bucket_by_et_date(chart.get("prices") or [])
+    volumes_by_date = _bucket_by_et_date(chart.get("total_volumes") or [])
+    mcaps_by_date = _bucket_by_et_date(chart.get("market_caps") or [])
 
     # Sanity: if days requested implies daily granularity, the price-series row
     # count should be close to the day count. Excess rows mean CG returned hourly

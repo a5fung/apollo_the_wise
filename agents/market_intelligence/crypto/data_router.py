@@ -13,8 +13,11 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo("America/New_York")
 
 from agents.market_intelligence.crypto import (
     coingecko_client as cg,
@@ -156,5 +159,5 @@ async def fetch_macro_indicators() -> dict:
     except Exception:
         logger.exception("DefiLlama /stablecoins failed")
 
-    out["snapshot_date"] = datetime.now(timezone.utc).date()
+    out["snapshot_date"] = datetime.now(_ET).date()
     return out

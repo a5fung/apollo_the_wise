@@ -16,10 +16,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import httpx
+
+_ET = ZoneInfo("America/New_York")
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +120,7 @@ async def get_stablecoin_history(days: int = 90) -> list[dict]:
             ts = int(ts_raw)
         except (ValueError, TypeError):
             continue
-        bar_date = datetime.fromtimestamp(ts, tz=timezone.utc).date()
+        bar_date = datetime.fromtimestamp(ts, tz=_ET).date()
         total_circ = entry.get("totalCirculatingUSD") or {}
         total_usd = 0.0
         for v in total_circ.values():

@@ -18,10 +18,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import httpx
+
+_ET = ZoneInfo("America/New_York")
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +99,8 @@ async def get_daily_ohlc(
     pair = _pair_code(base, quote)
     params = {"pair": pair, "interval": 1440}  # 1440 min = daily
     if since is not None:
-        # Kraken expects unix seconds.
-        ts = int(datetime(since.year, since.month, since.day, tzinfo=timezone.utc).timestamp())
+        # Kraken expects unix seconds. Use ET midnight to match codebase convention.
+        ts = int(datetime(since.year, since.month, since.day, tzinfo=_ET).timestamp())
         params["since"] = ts
 
     try:
@@ -125,7 +128,7 @@ async def get_daily_ohlc(
         try:
             ts = int(row[0])
             bars.append({
-                "date": datetime.fromtimestamp(ts, tz=timezone.utc).date(),
+                "date": datetime.fromtimestamp(ts, tz=_ET).date(),
                 "open": float(row[1]),
                 "high": float(row[2]),
                 "low": float(row[3]),
