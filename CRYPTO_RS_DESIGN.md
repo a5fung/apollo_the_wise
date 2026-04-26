@@ -87,19 +87,39 @@ Per-category daily metric: **median RS of members** (resistant to 1-coin outlier
 
 ---
 
-## BTC dominance trigger (the wake-up signal)
+## Alt-season trigger — dual signal (BTC.D + TOTAL3)
 
-Daily compute. Three conditions ALL true to fire:
+BTC.D alone is a muddy signal: it can drop purely from BTC → ETH rotation (e.g., BTC.D 55→50% while ETH.D goes 18→23%), with zero capital flowing into the long tail. **TOTAL3** (total crypto market cap minus BTC and ETH) eliminates this false positive — it only rises when capital actually flows into alts beyond ETH.
 
-1. 30d slope of BTC.D is negative for **5+ consecutive sessions**
-2. Absolute BTC.D drops below threshold (start at **55%** — historically the alt-season-confirm level; configurable)
-3. Last alert ≥ **30 days ago** (cooldown — prevent flapping at the threshold)
+Daily compute. **All five conditions must hold** to fire:
+
+1. **(A)** BTC.D 30d slope negative for 5+ consecutive sessions
+2. **(B)** BTC.D absolute < 55% (last cycle's alt-season-confirm level; configurable)
+3. **(C)** TOTAL3 30d slope positive for 5+ consecutive sessions
+4. **(D)** TOTAL3 > 90d SMA (operational definition of "broken out of multi-month base")
+5. **(E)** Last alert ≥ 30 days ago (cooldown — prevent flapping)
+
+C+D together encode the breakout cleanly: positive momentum AND already above the 3-month average. C alone fires too early on noise; D alone fires at the top of a base about to roll over. Both = real capital rotation.
 
 On fire:
 - Telegram alert
 - Auto-attach current top-10 RS-vs-BTC list
 - Auto-attach top 3 categories by median RS
 - System flips into "alt rotation watch" state — could later promote to higher cadence (weekly digest) automatically.
+
+**New schema for TOTAL3:** `crypto_total3(date, total3_mcap_usd, slope_30d, sma_90d)` alongside `crypto_btc_dominance`. One row/day, computed at nightly ingest from `sum(top_250_mcap) - btc_mcap - eth_mcap`.
+
+---
+
+## Wash-trade gate (with $15M micro floor)
+
+The original $50M floor was tightened to **$15M** to natively catch user's smaller tracked coins. Lowering the floor opens the door to wash-traded scams that fake volume to game RS rankings. Three filters in order, all cheap:
+
+1. **Volume-to-mcap ratio sanity**: `0.01 < vol_24h / mcap < 5.0`. Real coins live in 0.05–1.0 range; wash trades show 5x+ (volume exceeds market cap repeatedly = mathematically impossible without churn).
+2. **Trading age ≥ 90 days**: kills new-launch pumps. CoinGecko returns `genesis_date` / first-listed date.
+3. **7d median volume ≥ $10M**: point-in-time $15M can be a single-day pump. Median over 7d removes flash-volume tokens.
+
+**Watchlist coins bypass all three** (manual override = trust the user). Sub-$15M watchlist coins are tracked but flagged "below universe floor" in surfaces.
 
 ---
 
@@ -145,12 +165,65 @@ On fire:
 
 ---
 
-## Open questions before build
+## Watchlist seed (27 coins)
 
-1. **Polygon crypto coverage check** — if it covers top 250 coins with daily OHLC, drop CoinGecko price calls entirely (Polygon already paid). Cheap one-shot verification.
-2. **Watchlist seed** — paste currently-tracked coins; include a seed script so day-one isn't empty.
-3. **Dominance threshold** — 55% is opening bid (last cycle's alt-season-confirm). User may have a different prior — e.g., some traders combine BTC.D with ETH/BTC ratio.
-4. **Bucket boundaries** — $50M floor for non-watchlist may be too high if "very tiny" picks are sub-$50M. Adjustable. Where do current tiny ones sit?
+User-provided 2026-04-26. To be inserted into `crypto_watchlist` on first migration. All meme/Solana ecosystem tickers pinned by **CoinGecko ID** (not symbol match) to prevent impostor-token collisions.
+
+| Symbol | Name | Theme(s) | Bucket | Notes |
+|---|---|---|---|---|
+| BNB | Binance Coin | Layer 1 / CEX | Mega | |
+| SOL | Solana | Layer 1 / Solana | Mega | |
+| ADA | Cardano | Layer 1 | Large |  |
+| DOT | Polkadot | Layer 1 | Large |  |
+| LINK | Chainlink | Oracle / DeFi infra | Large |  |
+| HYPE | Hyperliquid | DeFi (perp DEX) | Large |  |
+| ATOM | Cosmos | Layer 1 | Mid |  |
+| SUI | SUI | Layer 1 | Mid |  |
+| TAO | Bittensor | AI / L1 | Mid |  |
+| RENDER | Render | AI / DePIN | Mid |  |
+| FET | ASI Alliance | AI | Mid | Formerly Fetch.ai (merged AGIX + OCEAN) |
+| ENA | Ethena | DeFi (synth-yield) | Mid |  |
+| AERO | Aerodrome | DeFi / Base L2 | Mid |  |
+| VIRTUAL | Virtuals Protocol | AI (agent infra) | Mid |  |
+| PEPE | Pepe | Meme / ETH | Mid | Pin by CG id |
+| BONK | Bonk | Meme / Solana | Mid | Pin by CG id |
+| AKT | Akash Network | AI / DePIN | Mid–Micro |  |
+| ASTER | Aster | DeFi | Mid | User's ticker showed perp (`.P`); spot RS uses CG id |
+| SYRUP | Maple Finance | DeFi / RWA-yield | Micro |  |
+| CAKE | PancakeSwap | DeFi / BSC | Micro |  |
+| PUMP | Pump.fun | Solana / launchpad | Micro |  |
+| MOG | MOG Coin | Meme / ETH | Micro | Pin by CG id |
+| FARTCOIN | Fartcoin | Meme / Solana | Micro | Pin by CG id |
+| VVV | Venice Token | AI (inference) | Micro–below floor |  |
+| KTA | Keeta | Layer 1 (newer) | Below floor | New L1, watchlist override |
+| COPPERINU | Copper Inu | Meme | Below floor | Watchlist override |
+| KNX | KnoxNet | Unclassified | Below floor / DEX-only | **May not be on CoinGecko** — needs DexScreener fallback or manual tracking |
+
+**Theme distribution:**
+- **AI / DePIN (7):** TAO, RENDER, AKT, FET, VIRTUAL, VVV, (KTA?) — heaviest cluster
+- **Layer 1 (6):** BNB, SOL, ADA, DOT, ATOM, SUI
+- **DeFi (7):** ENA, AERO, SYRUP, CAKE, HYPE, ASTER, LINK
+- **Memes (6):** PEPE, PUMP, BONK, MOG, FARTCOIN, COPPERINU
+- **Solana ecosystem cross-tag (4):** SOL, PUMP, BONK, FARTCOIN — deliberate cycle bet
+
+**Data-sourcing risks** (verify on first ingest):
+- KNX (KnoxNet) — DEX-only Ethereum pair; likely not on CoinGecko. If missing → DexScreener fallback or drop from automation.
+- COPPERINU — may not be on CoinGecko. Same fallback path.
+- KTA, VVV — newer; CoinGecko may have them but verify.
+- ASTER ticker disambiguation — user's source showed perpetual contract (`ASTERUSDT.P`); we want spot.
+
+---
+
+## Closed design questions
+
+1. ~~**Polygon crypto coverage check**~~ → **Resolved 2026-04-26**: Polygon Crypto is a separate subscription (not bundled with Stocks). Free tier = 5 req/min, EOD only. Coverage gap on Solana ecosystem / DEX-only / new launches makes it unfit for the long-tail tracking goal. **Decision: stick with Binance + CoinGecko free combo.**
+2. ~~**Watchlist seed**~~ → **Resolved 2026-04-26**: 29 coins provided (table above).
+3. ~~**Dominance threshold**~~ → **Resolved 2026-04-26**: BTC.D 55% retained, AUGMENTED with TOTAL3 dual-trigger (see "Alt-season trigger" section above) to eliminate BTC→ETH rotation false positives.
+4. ~~**Bucket boundaries**~~ → **Resolved 2026-04-26**: Micro floor lowered $50M → **$15M**, paired with three-filter wash-trade gate (vol/mcap ratio, 90d age, 7d median vol). Watchlist coins exempt from all gates.
+
+## CoinMarketCap evaluation (closed)
+
+**Rejected 2026-04-26.** Free Basic tier (10K credits/month, 30 req/min) explicitly excludes historical OHLCV — only Startup tier ($79/mo) unlocks it. Without historical bars, multi-timeframe RS (1m/3m/6m) is impossible. Categories endpoint IS in free tier (could substitute for CoinGecko's), but not enough on its own to justify the dual-source complexity.
 
 ---
 
