@@ -61,6 +61,21 @@ shared/        models.py, registry.py, secrets.py
 2. Dispatch → `core/orchestrator.py` → `_dispatch_tool()`
 3. Handler → inline in orchestrator OR delegate to market agent's `execute_task()`
 
+## Logging Discipline (always-on rule)
+**Every new action, filter, gate, or failure mode MUST be observable from the data alone.** Apollo surfaces problems by querying its own tables; if a code path is silent, the weekly self-audit can't see it. Apply this whenever you ship code:
+
+1. **New filter / gate (no-trade reason)** — write a structured reason to the relevant scan/skip table:
+   - EP path: `mi_ep_scan_log.filter_reason` using a bounded prefix from `broker/skip_reasons.py` (`category:code: detail`). Add a new constant if no existing one fits, plus its `_HUMAN_LABELS` entry. Never invent free-form prefixes — they break monthly aggregation (`split_part(skip_reason, ':', 1)`).
+   - Broker path: `mi_live_trades.skip_reason` with the same bounded vocabulary.
+2. **New action (trade attempt, entry, cancel, remediation)** — use the bounded action vocabulary in the entry pipeline (`ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`). Don't add a 7th without explicit discussion.
+3. **New trade-passing telemetry** — when an alert/trade carries a *new* signal value (e.g. `pm_rvol`), persist it as a column on the relevant table (`mi_ep_alerts`, `mi_live_trades`, `mi_9m_sugar_babies`) so it's queryable later, not just stuffed into a log line.
+4. **New failure mode (silent until now)** — fire `log_audit_event(event_type, summary, detail)`. Use a stable `event_type` string that the system audit can aggregate (existing examples: `validation_error`, `ep_filter_pm_rvol`, `assignment_error`). Never let a try/except swallow an exception with only a `logger.warning` — the audit table needs the row.
+5. **Telegram or audit-only?** — terminal/actionable events (entry submitted, position blocked, naked stop) get Telegram via `briefing.send_telegram_message`. Self-healing/transient/per-candidate filter rejections stay in `mi_audit_log` only. Reserve Telegram for things the user must act on; everything else is observable but quiet.
+6. **Translate machine prefixes for users** — when surfacing skip reasons in Telegram, run them through `broker/skip_reasons.humanize()`. DB keeps the machine prefix; user sees prose.
+7. **Log the value, not just the verdict** — `Skip TICKER: pm_rvol=0.18x (today 12,400 / baseline 67,500 n=18) < 1.0x` is debuggable; `Skip TICKER: low volume` is not. Include the inputs that drove the decision.
+
+If you ship a feature that *can't* answer "why did/didn't this fire?" from `psql` alone, it's incomplete.
+
 ## Market Agent Routing (`execute_task`)
 Order matters — first match wins:
 1. watchlist / 2. theme engine rerun / 3. refresh / 4. history
