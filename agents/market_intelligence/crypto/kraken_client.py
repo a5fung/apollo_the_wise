@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -45,12 +46,12 @@ def _pair_code(base: str, quote: str = "USD") -> str:
 async def _throttle() -> None:
     global _last_call_at
     async with _THROTTLE_LOCK:
-        now = asyncio.get_event_loop().time()
+        now = time.monotonic()
         if _last_call_at is not None:
             elapsed = now - _last_call_at
             if elapsed < _MIN_INTERVAL_SEC:
                 await asyncio.sleep(_MIN_INTERVAL_SEC - elapsed)
-        _last_call_at = asyncio.get_event_loop().time()
+        _last_call_at = time.monotonic()
 
 
 async def _get(path: str, params: Optional[dict] = None) -> dict:
@@ -103,7 +104,7 @@ async def get_daily_ohlc(
         result = await _get("/0/public/OHLC", params)
     except RuntimeError as e:
         msg = str(e)
-        if "Unknown asset pair" in msg or "EQuery:Unknown" in msg:
+        if "Unknown asset pair" in msg:
             logger.info("Kraken: pair %s not supported, skipping", pair)
             return []
         raise
