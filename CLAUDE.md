@@ -200,6 +200,19 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-27 (session 3) — Parabolic-short M&A / news exclusion
+OGN parabolic-short alert was a false positive — buyout-driven price spike, not parabolic momentum. Stock pinned to deal price, won't mean-revert. Detector was purely price-action; same shape applies to FDA approvals, lawsuit wins, earnings beats. Two-layer fix:
+
+**1. `mi_parabolic_exclusions` table** (composite PK `ticker, source`) — manual operator overrides AND auto LLM verdicts coexist. Manual: permanent, no TTL. News-check: 14-day TTL so deals-fall-through / news-ages get re-checked. New columns on `mi_parabolic_candidates`: `excluded_reason` / `excluded_source` / `excluded_detail` — preserve the price-action stage so OGN-class filters are reviewable historically (`SELECT ... WHERE excluded_reason IS NOT NULL`).
+
+**2. Perplexity news check** in `parabolic_detector.py::_apply_exclusions` — runs on **climax + anticipation only** (watch stage skipped, not alert-worthy + API spend). Cache hits via `mi_parabolic_exclusions` short-circuit before the API call. Prompt asks specifically for buyout/acquisition/merger/FDA/lawsuit/earnings catalysts → Perplexity returns JSON `{is_event_driven, event_type, reason}`. Verdicts persisted with TTL + raw response for review. Concurrency `Semaphore(3)`, fail-open on parse / API errors.
+
+**Telegram surface**: `/parabolic exclude OGN buyout by Bidder Inc` (manual, permanent), `/parabolic include OGN` (drop ALL rows for ticker — both manual + news), `/parabolic exclusions` (list). Routing: slash command in `agent.py::_handle_slash_command` + NLP route checked before generic theme-exclusion (both share "exclude" keyword).
+
+**Digest formatting**: 🚫 *FILTERED (N)* footer in `send_parabolic_digest` lists what was excluded and why — operator sees the system worked, didn't silently eat alerts. Empty-after-filter case shows "_No parabolic-short setups today after filtering._" rather than suppressing the digest entirely.
+
+**Lesson**: price-action detectors need a news/context layer for one-shot catalysts. The two layers protect against different failure modes — manual exclusion is the operator's "I know more than the model" override; news-check is the recurring noise reducer.
+
 ### 2026-04-27 (session 2) — Audit-noise reduction: validation/zombie/job-no-show
 Apollo fired four L1/L2 alerts in one batch today — three of them noise. Diagnosis below; in each case the underlying telemetry was correct but the alerting threshold confused operator. **Fix theme: align invariant semantics with the codebase's actual definitions; differentiate transient failures from real bugs.**
 

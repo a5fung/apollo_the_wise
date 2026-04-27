@@ -684,6 +684,26 @@ async def initialize_schema() -> None:
                 ON mi_parabolic_candidates(stage, scan_date DESC);
         """)
 
+        # Parabolic exclusions — manual operator overrides + auto LLM news verdicts.
+        # Composite PK on (ticker, source) lets a manual permanent ban coexist
+        # with an auto news_check verdict for the same ticker (different concerns).
+        # `excluded_until = NULL` means permanent (manual only); auto-verdicts
+        # carry a TTL so they re-check after deals fall through / news ages out.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_parabolic_exclusions (
+                ticker          TEXT NOT NULL,
+                source          TEXT NOT NULL,
+                reason          TEXT NOT NULL,
+                detail          TEXT,
+                excluded_until  DATE,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, source)
+            );
+            CREATE INDEX IF NOT EXISTS idx_parabolic_exclusions_active
+                ON mi_parabolic_exclusions(ticker)
+                WHERE excluded_until IS NULL OR excluded_until >= CURRENT_DATE;
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
@@ -702,6 +722,12 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS industry TEXT;
+            ALTER TABLE mi_parabolic_candidates
+                ADD COLUMN IF NOT EXISTS excluded_reason TEXT;
+            ALTER TABLE mi_parabolic_candidates
+                ADD COLUMN IF NOT EXISTS excluded_source TEXT;
+            ALTER TABLE mi_parabolic_candidates
+                ADD COLUMN IF NOT EXISTS excluded_detail TEXT;
         """)
 
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
@@ -1373,6 +1399,118 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
             record.get("score"),
             record["stage"],
         )
+
+
+async def update_parabolic_exclusion(
+    ticker: str,
+    scan_date: "date",
+    *,
+    excluded_reason: str,
+    excluded_source: str,
+    excluded_detail: str | None = None,
+) -> None:
+    """Mark today's parabolic candidate as excluded — preserves the price-action
+    stage so the row remains queryable as historical evidence (e.g. for review:
+    'OGN climax 2026-04-27 was filtered out because of M&A')."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE mi_parabolic_candidates
+            SET excluded_reason = $3,
+                excluded_source = $4,
+                excluded_detail = $5
+            WHERE ticker = $1 AND scan_date = $2
+            """,
+            ticker, scan_date, excluded_reason, excluded_source, excluded_detail,
+        )
+
+
+async def add_parabolic_exclusion(
+    ticker: str,
+    *,
+    source: str,
+    reason: str,
+    detail: str | None = None,
+    excluded_until: "date | None" = None,
+) -> None:
+    """Upsert a parabolic exclusion. Manual exclusions use source='manual'
+    with `excluded_until=None` (permanent). Auto news verdicts use
+    source='news_check' with a TTL so the verdict re-checks after news ages."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO mi_parabolic_exclusions
+                (ticker, source, reason, detail, excluded_until)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (ticker, source) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                detail = EXCLUDED.detail,
+                excluded_until = EXCLUDED.excluded_until,
+                created_at = NOW()
+            """,
+            ticker.upper(), source, reason, detail, excluded_until,
+        )
+
+
+async def remove_parabolic_exclusion(ticker: str, source: str | None = None) -> int:
+    """Delete exclusion rows for `ticker`. If `source` is given, only that
+    source's row is removed (so removing a manual exclusion doesn't drop a
+    still-valid news_check verdict)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if source:
+            res = await conn.execute(
+                "DELETE FROM mi_parabolic_exclusions WHERE ticker = $1 AND source = $2",
+                ticker.upper(), source,
+            )
+        else:
+            res = await conn.execute(
+                "DELETE FROM mi_parabolic_exclusions WHERE ticker = $1",
+                ticker.upper(),
+            )
+        try:
+            return int(res.split()[-1])
+        except Exception:
+            return 0
+
+
+async def get_active_parabolic_exclusions() -> dict[str, dict[str, Any]]:
+    """Return active exclusions keyed by ticker. If a ticker has both a manual
+    and a news_check row, the manual row wins (operator override). Expired
+    auto-verdicts (excluded_until < today) are filtered out."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, source, reason, detail, excluded_until, created_at
+            FROM mi_parabolic_exclusions
+            WHERE excluded_until IS NULL
+               OR excluded_until >= CURRENT_DATE
+            """
+        )
+    out: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        ticker = r["ticker"]
+        # Manual takes precedence over news_check.
+        if ticker not in out or r["source"] == "manual":
+            out[ticker] = dict(r)
+    return out
+
+
+async def list_parabolic_exclusions() -> list[dict[str, Any]]:
+    """List ALL parabolic exclusions (active + expired) for `/parabolic exclusions`."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, source, reason, detail, excluded_until, created_at
+            FROM mi_parabolic_exclusions
+            ORDER BY created_at DESC
+            """
+        )
+    return [dict(r) for r in rows]
 
 
 async def upsert_regime(record: dict[str, Any]) -> None:

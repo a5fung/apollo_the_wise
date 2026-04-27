@@ -23,7 +23,9 @@ persistence, Telegram digest) gets wired up.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -34,6 +36,18 @@ logger = logging.getLogger(__name__)
 # the rest of the system uses for FMP.
 _SCAN_CONCURRENCY = 10
 _HISTORY_DAYS = 120  # 60d base anchor walk + 50d SMA + buffer
+
+# ── News-check exclusion (M&A / FDA / single-news pop) ──────────────────────
+# Parabolic-short setups need ongoing momentum; a single one-shot news event
+# (buyout announcement, FDA approval, lawsuit win) produces a parabolic-shaped
+# spike that won't mean-revert — the stock is now pinned to the deal price or
+# new fundamental level. Rather than try to detect this from price action alone
+# (M&A and textbook climax candles look similar on day 1), we ask Perplexity
+# for context on each climax / anticipation candidate and exclude if positive.
+# Watch-stage candidates skip the check — too many to be worth the API spend,
+# and they're not yet alert-worthy anyway.
+_NEWS_CHECK_CONCURRENCY = 3                # Perplexity is paid per call; cap fan-out
+_NEWS_CHECK_TTL_DAYS    = 14               # Re-check after 2 weeks (deals fall through)
 
 
 # ── Cap-tier prior-move thresholds (Qullamaggie / TradeZella) ────────────────
@@ -410,6 +424,166 @@ async def _get_or_fetch_market_cap(ticker: str) -> Optional[int]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# News-check exclusion (Perplexity)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_NEWS_CHECK_PROMPT = (
+    "Recent news for ${TICKER}: has there been a buyout, acquisition, merger, "
+    "take-private, or other one-shot news event (FDA approval, lawsuit ruling, "
+    "earnings surprise) in the last 30 days that drove the share price sharply "
+    "higher? "
+    "Reply with valid JSON only, no prose:\n"
+    "{\"is_event_driven\": true|false, "
+    "\"event_type\": \"buyout|acquisition|merger|fda|lawsuit|earnings|other|none\", "
+    "\"reason\": \"<one short sentence citing the catalyst>\"}"
+)
+
+
+def _parse_news_verdict(raw: str) -> Optional[dict]:
+    """Extract `{is_event_driven, event_type, reason}` from a Perplexity reply.
+    Returns None if parsing fails — caller treats that as "no verdict, don't
+    exclude" (fail-open). Handles markdown code fences + nested objects."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if s.startswith("```"):
+        parts = s.split("\n", 1)
+        s = parts[1].rstrip("` \n").strip() if len(parts) > 1 else s.strip("` ")
+    # Brace-depth-aware extraction (same trick as theme_engine._extract_json_object).
+    depth = 0
+    start = -1
+    for i, ch in enumerate(s):
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start >= 0:
+                s = s[start:i + 1]
+                break
+    try:
+        obj = json.loads(s)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(obj, dict):
+        return None
+    return {
+        "is_event_driven": bool(obj.get("is_event_driven")),
+        "event_type": str(obj.get("event_type") or "other"),
+        "reason": str(obj.get("reason") or "")[:300],
+    }
+
+
+async def _news_check_for_exclusion(ticker: str) -> Optional[dict]:
+    """Ask Perplexity whether `ticker`'s recent move is news-driven. Returns
+    `{event_type, reason}` if yes (caller persists exclusion), None if no /
+    failed. Errors are swallowed — fail-open is the right default since news
+    check is a noise reducer, not a safety gate."""
+    from agents.market_intelligence.collector import search_news_perplexity
+
+    query = _NEWS_CHECK_PROMPT.replace("${TICKER}", ticker)
+    try:
+        raw = await search_news_perplexity(query, recency="month")
+    except Exception as e:
+        logger.warning(f"parabolic news-check: {ticker} Perplexity call failed: {e}")
+        return None
+    verdict = _parse_news_verdict(raw)
+    if verdict is None:
+        logger.warning(f"parabolic news-check: {ticker} unparseable verdict (raw len={len(raw)})")
+        return None
+    if not verdict["is_event_driven"]:
+        return None
+    return {
+        "event_type": verdict["event_type"],
+        "reason": verdict["reason"] or "Event-driven price move per news search",
+        "raw": raw[:1000],
+    }
+
+
+async def _apply_exclusions(
+    candidates: list[dict],
+    trade_date: date,
+) -> tuple[list[dict], list[dict]]:
+    """For each climax/anticipation candidate, apply manual exclusions first,
+    then run a news check on what's left. Returns `(kept, excluded)`. Excluded
+    rows have `excluded_reason` / `excluded_source` / `excluded_detail` set;
+    `mi_parabolic_candidates` is updated to persist the verdict. Active news
+    verdicts are also written to `mi_parabolic_exclusions` with TTL so the
+    next scan can short-circuit without another Perplexity call."""
+    from agents.market_intelligence import db
+
+    if not candidates:
+        return [], []
+
+    active = await db.get_active_parabolic_exclusions()
+    sem = asyncio.Semaphore(_NEWS_CHECK_CONCURRENCY)
+
+    async def _check(c: dict) -> tuple[dict, Optional[dict]]:
+        ticker = c["ticker"]
+        # Cache hit — manual or in-TTL news verdict.
+        if ticker in active:
+            row = active[ticker]
+            return c, {
+                "source": row["source"],
+                "reason": row["reason"],
+                "detail": row.get("detail"),
+            }
+        # Cache miss — call Perplexity (climax / anticipation only).
+        async with sem:
+            verdict = await _news_check_for_exclusion(ticker)
+        if not verdict:
+            return c, None
+        # Persist verdict so the next scan reuses it without another call.
+        until = trade_date + timedelta(days=_NEWS_CHECK_TTL_DAYS)
+        try:
+            await db.add_parabolic_exclusion(
+                ticker,
+                source="news_check",
+                reason=f"{verdict['event_type']}: {verdict['reason']}",
+                detail=verdict["raw"],
+                excluded_until=until,
+            )
+        except Exception as e:
+            logger.warning(f"parabolic news-check: {ticker} persist failed: {e}")
+        return c, {
+            "source": "news_check",
+            "reason": f"{verdict['event_type']}: {verdict['reason']}",
+            "detail": verdict["raw"],
+        }
+
+    results = await asyncio.gather(*[_check(c) for c in candidates])
+
+    kept: list[dict] = []
+    excluded: list[dict] = []
+    for c, verdict in results:
+        if verdict is None:
+            kept.append(c)
+            continue
+        c["excluded_reason"] = verdict["reason"]
+        c["excluded_source"] = verdict["source"]
+        c["excluded_detail"] = verdict.get("detail")
+        excluded.append(c)
+        # Update the persisted candidate row for review-trail.
+        try:
+            await db.update_parabolic_exclusion(
+                c["ticker"], trade_date,
+                excluded_reason=verdict["reason"],
+                excluded_source=verdict["source"],
+                excluded_detail=verdict.get("detail"),
+            )
+        except Exception as e:
+            logger.warning(
+                f"parabolic news-check: {c['ticker']} candidate update failed: {e}"
+            )
+        logger.info(
+            f"parabolic_scan: filtered {c['ticker']} ({c.get('stage')}) "
+            f"— {verdict['source']}: {verdict['reason']}"
+        )
+    return kept, excluded
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Nightly scan orchestrator (Step 3 — persistence) + Telegram digest (Step 4)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -457,12 +631,26 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
             continue
         by_stage.setdefault(r["stage"], []).append(r)
 
+    # Apply M&A / one-shot-news exclusions to alert-worthy stages only. Watch
+    # stage stays untouched (no Telegram alert, no API spend justified). The
+    # candidate row persists with `excluded_reason` set, so OGN-class filters
+    # are reviewable in `mi_parabolic_candidates` after the fact.
+    alert_candidates = by_stage["climax"] + by_stage["anticipation"]
+    if alert_candidates:
+        kept, excluded = await _apply_exclusions(alert_candidates, trade_date)
+        kept_set = {id(c) for c in kept}
+        by_stage["climax"] = [c for c in by_stage["climax"] if id(c) in kept_set]
+        by_stage["anticipation"] = [c for c in by_stage["anticipation"] if id(c) in kept_set]
+        if excluded:
+            by_stage["excluded"] = excluded
+
     logger.info(
         f"parabolic_scan {trade_date}: "
         f"{len(by_stage['climax'])} climax, "
         f"{len(by_stage['anticipation'])} anticipation, "
         f"{len(by_stage['watch'])} watch, "
-        f"{len(by_stage['unqualified'])} unqualified"
+        f"{len(by_stage['unqualified'])} unqualified, "
+        f"{len(by_stage.get('excluded', []))} excluded (M&A/news)"
     )
     return by_stage
 
@@ -481,6 +669,9 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
     """Two-section Telegram digest. Suppressed entirely when nothing fired —
     parabolas are rare (Stamatoudis: ~1/month), so silence is the expected
     daily state. Per `feedback_alert_vs_audit`, only ping for terminal/actionable.
+
+    Excluded candidates (M&A, news events, manual bans) are appended as a
+    transparency footer so the operator can see what was filtered and why.
     """
     from agents.market_intelligence.briefing import send_telegram_message
 
@@ -494,8 +685,9 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
         key=lambda r: r.get("prior_move_pct") or 0,
         reverse=True,
     )
-    if not climaxes and not anticipations:
-        logger.info("parabolic_scan: zero anticipation, zero climax — digest suppressed")
+    excluded = by_stage.get("excluded", [])
+    if not climaxes and not anticipations and not excluded:
+        logger.info("parabolic_scan: zero anticipation, zero climax, zero excluded — digest suppressed")
         return
 
     lines = ["📉 *Parabolic-short scan*"]
@@ -509,5 +701,21 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
         lines.append("👀 *ANTICIPATION (watchlist)*")
         for r in anticipations[:10]:
             lines.append(_fmt_candidate(r))
-
+    if excluded:
+        lines.append("")
+        lines.append(f"🚫 *FILTERED ({len(excluded)})* — excluded as event-driven")
+        for r in excluded[:5]:
+            ticker = r["ticker"]
+            stage = r.get("stage", "?")
+            source = r.get("excluded_source") or "?"
+            reason = (r.get("excluded_reason") or "").strip()
+            lines.append(f"  • `{ticker}` ({stage}) — {source}: {reason[:120]}")
+        if len(excluded) > 5:
+            lines.append(f"  …{len(excluded) - 5} more")
+    # If everything got filtered there's no actionable signal, but we still
+    # send the footer so the operator sees the system worked (didn't silently
+    # eat OGN-class alerts).
+    if not climaxes and not anticipations:
+        lines.append("")
+        lines.append("_No parabolic-short setups today after filtering._")
     await send_telegram_message("\n".join(lines))

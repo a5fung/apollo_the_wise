@@ -42,6 +42,9 @@ from agents.market_intelligence.db import (
     add_theme_exclusion,
     remove_theme_exclusion,
     list_theme_exclusions,
+    add_parabolic_exclusion,
+    remove_parabolic_exclusion,
+    list_parabolic_exclusions,
     get_audit_log,
     get_ticker_sector,
     upsert_ticker_sectors_batch,
@@ -453,6 +456,13 @@ class MarketIntelligenceAgent(BaseAgent):
         # would otherwise match "brief" and skip the refresh entirely.
         if any(k in task for k in ["track ", "untrack ", "drop ", "watchlist", "overnight watch"]):
             return await self._handle_watchlist(request)
+
+        # Parabolic exclusions — must come before generic theme-exclusion route
+        # because both share the "exclude " keyword.
+        if "parabolic" in task and any(k in task for k in [
+            "exclude", "include", "unexclude", "exclusions", "remove",
+        ]):
+            return await self._handle_parabolic_exclusion(request)
 
         if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
             return await self._handle_theme_exclusion(request)
@@ -933,6 +943,80 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"To undo: 'remove exclusion {ticker} from {theme_name}'"
                 ),
             )
+
+    async def _handle_parabolic_exclusion(self, request: AgentRequest) -> AgentResponse:
+        """Manage parabolic-short exclusions (manual operator overrides).
+
+        Commands (slash or natural):
+          /parabolic exclude OGN buyout
+          /parabolic include OGN
+          /parabolic exclusions
+          parabolic exclude OGN buyout
+        """
+        import re as _re
+        task_orig = request.task
+        # Strip leading slash command if present.
+        body = _re.sub(r'^\s*/?parabolic\s*', '', task_orig, count=1, flags=_re.IGNORECASE).strip()
+        body_lower = body.lower()
+
+        # List
+        if not body_lower or body_lower in {"exclusions", "list", "list exclusions", "show exclusions"}:
+            rows = await list_parabolic_exclusions()
+            if not rows:
+                return self._ok(request, result="No parabolic-short exclusions set.")
+            from datetime import date as _date
+            today = _date.today()
+            lines = ["*Parabolic-short Exclusions*"]
+            for r in rows:
+                until = r.get("excluded_until")
+                if until is None:
+                    status = "permanent"
+                elif until < today:
+                    status = f"expired {until.isoformat()}"
+                else:
+                    status = f"until {until.isoformat()}"
+                lines.append(
+                    f"• `{r['ticker']}` [{r['source']}] — {r['reason']} _({status})_"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        is_removal = body_lower.startswith(("include ", "unexclude ", "remove "))
+        if is_removal:
+            cands = _re.findall(r'\b([A-Z]{2,5})\b', body.upper())
+            skip = _PREPOSITION_SKIP | {"INCLUDE", "UNEXCLUDE", "REMOVE", "EXCLUSION"}
+            ticker = next((t for t in cands if t not in skip), None)
+            if not ticker:
+                return self._ok(request, result="Usage: `/parabolic include TICKER`")
+            removed = await remove_parabolic_exclusion(ticker)
+            if removed:
+                return self._ok(request, result=f"Removed `{ticker}` from parabolic exclusions.")
+            return self._ok(request, result=f"No exclusion found for `{ticker}`.")
+
+        # Add — first uppercase ticker, rest of message is the reason
+        if body_lower.startswith("exclude "):
+            body = body[len("exclude "):].strip()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', body.upper())
+        skip = _PREPOSITION_SKIP | {"EXCLUDE", "PARABOLIC"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(
+                request,
+                result="Usage: `/parabolic exclude TICKER reason` (e.g. `/parabolic exclude OGN buyout by Bidder Inc`)",
+            )
+        # Reason = body with the ticker token stripped
+        reason = _re.sub(rf'\b{ticker}\b', '', body, flags=_re.IGNORECASE).strip()
+        reason = reason or "manual exclusion"
+        await add_parabolic_exclusion(
+            ticker, source="manual", reason=reason, excluded_until=None,
+        )
+        return self._ok(
+            request,
+            result=(
+                f"Excluded `{ticker}` from parabolic-short scans (permanent).\n"
+                f"Reason: {reason}\n"
+                f"To undo: `/parabolic include {ticker}`"
+            ),
+        )
 
     async def _handle_restore_themes(self, request: AgentRequest) -> AgentResponse:
         """
@@ -2807,6 +2891,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/trades":         self._handle_trades_detail,
             "/why":            self._handle_why_query,
             "/audit":          self._handle_audit_topic,
+            "/parabolic":      self._handle_parabolic_exclusion,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
