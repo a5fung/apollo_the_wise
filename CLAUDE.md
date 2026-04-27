@@ -105,7 +105,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
 - HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
 - **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`.
-- **Fade guard**: before placing ORB bracket, fetch latest trade. If `last_price < (orb_high+orb_low)/2`, skip with `SETUP_FADED_FROM_ORB`.
+- **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered by strategy. MAGNA53 HIGH passes `fade_midpoint_ratio=None` (skipped — Sonnet+Perplexity + ATR stop width + 10:00 cleanup cover dead-cat fills). 9M Day 2 passes `0.25` (skip only if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
 
 ### 9M EP Detection (Parallel Track)
 - **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde)
@@ -199,6 +199,11 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 ---
 
 ## Changes Made — Recent
+
+### 2026-04-27 — Tiered ORB fade guard by EP type
+Today's HIGH EPs all blocked by the midpoint rule (`last_price < (orb_high+orb_low)/2`) despite looking fine to the user. OGN (double-gap-up, textbook "too extended" Pradeep skip) was also blocked by midpoint — but the principled 15% stop-width gate (`order_manager.py:998`) would have caught it on R/R math regardless. Diagnosis: midpoint pre-check is stricter than Qullamaggie/Pradeep methodology and redundant with the `_orb_window_cleanup_job` 10:00 ET cancel that already handles CHE-class dead-cat fills.
+
+**Fix** (`entry_pipeline.py::check_fade_guard`): added `ratio: float | None`; `None` skips the check. MAGNA53 HIGH (`live_tracker.py:206`) now passes `None` (Sonnet + Perplexity + ATR 1.5× stop-width is enough). 9M Day 2 (`live_tracker.py:674`) passes `0.25` — pure quant, no LLM, keep protection but only skip on real weakness. The 15% stop-width gate is the R/R backstop. Lesson: stacked guardrails should each protect a distinct failure mode; redundant pre-checks are overhead, not safety.
 
 ### 2026-04-26 (session 3) — Job-run telemetry + `/audit job_runs`
 Plan: `~/.claude/plans/audit-job-runs.md`. Closes the gap between `notify_job_failure` (hard crashes) and the data-layer audit (table invariants): **slow runs** (no exception, ran 8× normal) and **silent zeroes** (clean exit, wrote 0 rows) had no signal. Crypto nightly's CG 429 backoffs were the trigger.

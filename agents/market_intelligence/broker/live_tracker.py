@@ -210,6 +210,10 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 strategy_label="ORB",
                 today=today,
                 atr_14=atr_14,
+                # MAGNA53 HIGH: Sonnet+Perplexity validation + ATR stop
+                # width + 10:00 ET cleanup already cover dead-cat fills.
+                # Midpoint check was over-strict; drop it.
+                fade_midpoint_ratio=None,
             )
 
     raw = await asyncio.gather(
@@ -682,6 +686,9 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
         success_title="9M Day2 entered",
         stop_label="Stop (prev day low)",
         on_skip=_on_skip,
+        # 9M is pure quant (no LLM validation); keep some fade protection
+        # but loose — only skip on real weakness (lower 25% of ORB).
+        fade_midpoint_ratio=0.25,
     )
 
     # Mirror pipeline outcome onto sugar baby row so /9m reflects reality.

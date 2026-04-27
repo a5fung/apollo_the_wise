@@ -83,15 +83,25 @@ async def fetch_orb_bar_with_retry(
 
 # ── Fade guard ───────────────────────────────────────────────────────────────
 
-async def check_fade_guard(ticker: str, orb_bar: dict) -> tuple[bool, str | None]:
-    """Return (ok, skip_reason). If the latest trade is below the ORB midpoint,
-    the gap-and-go has lost momentum and a retest fill hours later is not the
-    pattern we want. Silent-on-data-failure: if `get_latest_trade` returns
-    None, we let the bracket through — don't block on feed flakiness.
+async def check_fade_guard(
+    ticker: str, orb_bar: dict, ratio: float | None = FADE_MIDPOINT_RATIO,
+) -> tuple[bool, str | None]:
+    """Return (ok, skip_reason). If the latest trade is below
+    `orb_low + (orb_high - orb_low) * ratio`, the gap-and-go has lost
+    momentum. Silent-on-data-failure: if `get_latest_trade` returns None,
+    we let the bracket through — don't block on feed flakiness.
+
+    `ratio=None` skips the check entirely. MAGNA53 EP HIGH passes None
+    because Sonnet+Perplexity validation + ATR stop width + 10:00 ET
+    cleanup already cover the dead-cat-fill case. 9M Day 2 (no LLM) passes
+    a smaller ratio (e.g. 0.25) to keep some fade protection.
     """
+    if ratio is None:
+        return True, None
+
     orb_high = orb_bar["high"]
     orb_low = orb_bar["low"]
-    orb_midpoint = orb_low + (orb_high - orb_low) * FADE_MIDPOINT_RATIO
+    orb_midpoint = orb_low + (orb_high - orb_low) * ratio
 
     latest = await alpaca.get_latest_trade(ticker)
     if not latest or not latest.get("price"):
@@ -103,9 +113,9 @@ async def check_fade_guard(ticker: str, orb_bar: dict) -> tuple[bool, str | None
 
     fade_pct = (orb_high - last_price) / orb_high * 100 if orb_high > 0 else 0
     reason = (
-        f"{SETUP_FADED_FROM_ORB}: last ${last_price:.2f} < midpoint "
-        f"${orb_midpoint:.2f} (ORB H=${orb_high:.2f} L=${orb_low:.2f}, "
-        f"faded {fade_pct:.1f}%)"
+        f"{SETUP_FADED_FROM_ORB}: last ${last_price:.2f} < threshold "
+        f"${orb_midpoint:.2f} (ratio={ratio:.2f}, ORB H=${orb_high:.2f} "
+        f"L=${orb_low:.2f}, faded {fade_pct:.1f}%)"
     )
     return False, reason
 
@@ -130,6 +140,7 @@ async def submit_trade_entry(
     success_title: str = "Paper trade auto-entered",
     stop_label: str = "Stop",
     on_skip: SkipHook | None = None,
+    fade_midpoint_ratio: float | None = FADE_MIDPOINT_RATIO,
 ) -> dict:
     """Single entry-submission pipeline.
 
@@ -221,7 +232,7 @@ async def submit_trade_entry(
         pass
 
     # 4. Fade guard.
-    fade_ok, fade_reason = await check_fade_guard(ticker, orb_bar)
+    fade_ok, fade_reason = await check_fade_guard(ticker, orb_bar, fade_midpoint_ratio)
     if not fade_ok:
         return await _skip(fade_reason, audit_event="orb_faded")
 
