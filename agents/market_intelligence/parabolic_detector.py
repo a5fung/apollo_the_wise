@@ -516,14 +516,28 @@ async def _apply_exclusions(
     if not candidates:
         return [], []
 
+    # Dedupe by ticker — a stock that promotes anticipation→climax in the same
+    # scan would otherwise hit Perplexity twice (gather races past the cache
+    # write). Climax wins because it's the higher-priority alert.
+    by_ticker: dict[str, dict] = {}
+    for c in candidates:
+        existing = by_ticker.get(c["ticker"])
+        if existing is None or (existing.get("stage") != "climax" and c.get("stage") == "climax"):
+            by_ticker[c["ticker"]] = c
+    unique_candidates = list(by_ticker.values())
+
     active = await db.get_active_parabolic_exclusions()
     sem = asyncio.Semaphore(_NEWS_CHECK_CONCURRENCY)
 
     async def _check(c: dict) -> tuple[dict, Optional[dict]]:
         ticker = c["ticker"]
-        # Cache hit — manual or in-TTL news verdict.
+        # Cache hit. `manual_keep` is the operator's "trust me, don't auto-
+        # exclude this" sentinel — short-circuit without calling Perplexity
+        # AND without excluding the candidate.
         if ticker in active:
             row = active[ticker]
+            if row["source"] == "manual_keep":
+                return c, None
             return c, {
                 "source": row["source"],
                 "reason": row["reason"],
@@ -552,11 +566,15 @@ async def _apply_exclusions(
             "detail": verdict["raw"],
         }
 
-    results = await asyncio.gather(*[_check(c) for c in candidates])
+    results = await asyncio.gather(*[_check(c) for c in unique_candidates])
 
+    verdict_by_ticker = {c["ticker"]: v for c, v in results if v is not None}
     kept: list[dict] = []
     excluded: list[dict] = []
-    for c, verdict in results:
+    # Walk the original list (not unique_candidates) so a ticker present in
+    # both climax and anticipation gets the same verdict applied to both rows.
+    for c in candidates:
+        verdict = verdict_by_ticker.get(c["ticker"])
         if verdict is None:
             kept.append(c)
             continue

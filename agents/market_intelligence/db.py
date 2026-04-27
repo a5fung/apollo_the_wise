@@ -1477,9 +1477,18 @@ async def remove_parabolic_exclusion(ticker: str, source: str | None = None) -> 
 
 
 async def get_active_parabolic_exclusions() -> dict[str, dict[str, Any]]:
-    """Return active exclusions keyed by ticker. If a ticker has both a manual
-    and a news_check row, the manual row wins (operator override). Expired
-    auto-verdicts (excluded_until < today) are filtered out."""
+    """Return active exclusion entries keyed by ticker. Three sources, in
+    precedence order:
+      - 'manual_keep' — sticky allowlist; ticker is NEVER auto-excluded.
+        Written by `/parabolic include` so the next news_check skips the
+        ticker entirely instead of re-running Perplexity.
+      - 'manual'      — operator-set permanent ban.
+      - 'news_check'  — auto LLM verdict with TTL.
+    Higher-precedence rows shadow lower ones for the same ticker. Expired
+    auto-verdicts (`excluded_until < today`) are filtered out by the SQL.
+    Callers interpret `source == 'manual_keep'` as "no exclusion, skip the
+    Perplexity call too" — see `_apply_exclusions` in parabolic_detector.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -1490,11 +1499,14 @@ async def get_active_parabolic_exclusions() -> dict[str, dict[str, Any]]:
                OR excluded_until >= CURRENT_DATE
             """
         )
+    _PRECEDENCE = {"manual_keep": 2, "manual": 1, "news_check": 0}
     out: dict[str, dict[str, Any]] = {}
     for r in rows:
         ticker = r["ticker"]
-        # Manual takes precedence over news_check.
-        if ticker not in out or r["source"] == "manual":
+        existing = out.get(ticker)
+        new_rank = _PRECEDENCE.get(r["source"], -1)
+        old_rank = _PRECEDENCE.get((existing or {}).get("source"), -1)
+        if existing is None or new_rank > old_rank:
             out[ticker] = dict(r)
     return out
 

@@ -980,7 +980,12 @@ class MarketIntelligenceAgent(BaseAgent):
                 )
             return self._ok(request, result="\n".join(lines))
 
-        is_removal = body_lower.startswith(("include ", "unexclude ", "remove "))
+        # Match "include" / "unexclude" / "remove" as either bare keyword or
+        # prefix-with-args. `startswith("include ")` alone misses bare-form.
+        is_removal = (
+            body_lower in {"include", "unexclude", "remove"}
+            or body_lower.startswith(("include ", "unexclude ", "remove "))
+        )
         if is_removal:
             cands = _re.findall(r'\b([A-Z]{2,5})\b', body.upper())
             skip = _PREPOSITION_SKIP | {"INCLUDE", "UNEXCLUDE", "REMOVE", "EXCLUSION"}
@@ -988,9 +993,25 @@ class MarketIntelligenceAgent(BaseAgent):
             if not ticker:
                 return self._ok(request, result="Usage: `/parabolic include TICKER`")
             removed = await remove_parabolic_exclusion(ticker)
-            if removed:
-                return self._ok(request, result=f"Removed `{ticker}` from parabolic exclusions.")
-            return self._ok(request, result=f"No exclusion found for `{ticker}`.")
+            # Write a `manual_keep` sentinel so the next news_check skips this
+            # ticker entirely instead of re-running Perplexity and re-excluding
+            # under `news_check`. Without this, `/parabolic include` would only
+            # silence the alert until the next nightly scan.
+            await add_parabolic_exclusion(
+                ticker, source="manual_keep",
+                reason="operator override — do not auto-exclude",
+                excluded_until=None,
+            )
+            base = f"Removed `{ticker}` from parabolic exclusions." if removed \
+                else f"No active exclusion was set for `{ticker}`."
+            return self._ok(
+                request,
+                result=(
+                    f"{base}\n"
+                    f"Future news-checks will skip `{ticker}` (manual override).\n"
+                    f"To re-enable auto-exclusion: `/parabolic exclude {ticker} <reason>`"
+                ),
+            )
 
         # Add — first uppercase ticker, rest of message is the reason
         if body_lower.startswith("exclude "):
@@ -1006,6 +1027,9 @@ class MarketIntelligenceAgent(BaseAgent):
         # Reason = body with the ticker token stripped
         reason = _re.sub(rf'\b{ticker}\b', '', body, flags=_re.IGNORECASE).strip()
         reason = reason or "manual exclusion"
+        # Clear any prior `manual_keep` so this manual ban actually takes effect
+        # (manual_keep has higher precedence than manual in the active lookup).
+        await remove_parabolic_exclusion(ticker, source="manual_keep")
         await add_parabolic_exclusion(
             ticker, source="manual", reason=reason, excluded_until=None,
         )
