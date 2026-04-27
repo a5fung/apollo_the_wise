@@ -17,6 +17,7 @@ COPY agents/__init__.py agents/__init__.py
 COPY agents/market_intelligence/ agents/market_intelligence/
 COPY shared/ shared/
 COPY core/notifications.py core/notifications.py
+COPY core/job_audit.py core/job_audit.py
 COPY integrations.yaml integrations.yaml
 COPY scripts/ scripts/
 
