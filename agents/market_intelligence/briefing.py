@@ -1345,15 +1345,27 @@ def _format_morning_briefing(
 
     # Engine errors from overnight run — shown prominently so nothing is missed
     if overnight_errors:
-        # Collapse validation parse / rate-limit rows into one line each — they
-        # share the same root cause and otherwise flood the banner on Mon/Wed/Fri.
-        validation_errs = [r for r in overnight_errors if r.get("event_type") == "validation_error"]
-        rate_limited   = [r for r in overnight_errors if r.get("event_type") == "validation_rate_limited"]
-        other_errs     = [r for r in overnight_errors if r.get("event_type") not in ("validation_error", "validation_rate_limited")]
+        # Bucket into rate-limited / transient API / parse / other so a flood
+        # of one category (e.g. Anthropic 5xx burst) collapses to a single line.
+        rate_limited_types  = {"validation_rate_limited", "anthropic_rate_limited",
+                                "assignment_rate_limited", "discovery_rate_limited"}
+        api_failure_types   = {"validation_api_failure", "assignment_api_failure",
+                                "discovery_api_failure"}
+        parse_error_types   = {"validation_error"}
+        rate_limited = [r for r in overnight_errors if r.get("event_type") in rate_limited_types]
+        api_failures = [r for r in overnight_errors if r.get("event_type") in api_failure_types]
+        validation_errs = [r for r in overnight_errors if r.get("event_type") in parse_error_types]
+        other_errs = [r for r in overnight_errors if r.get("event_type") not in
+                      (rate_limited_types | api_failure_types | parse_error_types)]
         err_lines = [f"⚠️ *{len(overnight_errors)} engine event(s) overnight* — type 'show errors' for detail"]
         if rate_limited:
             err_lines.append(
-                f"  🟠 {len(rate_limited)} theme validations hit Anthropic 50 rpm — tickers unchanged"
+                f"  🟠 {len(rate_limited)} Anthropic rate-limited call(s) — tickers unchanged"
+            )
+        if api_failures:
+            err_lines.append(
+                f"  🔵 {len(api_failures)} transient Anthropic API failure(s) "
+                f"— will retry next run"
             )
         if validation_errs:
             err_lines.append(
@@ -1434,7 +1446,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     cache = _perplexity_cache.get(today_str, {})
 
     from agents.market_intelligence.db import get_audit_log as _get_audit_log
-    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log, overnight_errors = await asyncio.gather(
+    regime, ep_alerts, premarket, themes, watchlist, warnings, fund_flags, ep_scan_log, overnight_err_rows, overnight_api_rows, overnight_rate_rows = await asyncio.gather(
         get_latest_regime(),
         get_today_ep_alerts(today_str),
         get_premarket_snapshot(),
@@ -1444,7 +1456,20 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         get_fundamental_flags(today_str),
         get_ep_scan_log(today_str),
         _get_audit_log(limit=10, event_type_like="%error%", since_hours=18),
+        _get_audit_log(limit=10, event_type_like="%api_failure%", since_hours=18),
+        _get_audit_log(limit=10, event_type_like="%rate_limited%", since_hours=18),
     )
+    # Merge + dedup by id — pattern overlap (e.g. validation_error matches both
+    # %error%) won't double-count.
+    seen: set = set()
+    overnight_errors: list[dict] = []
+    for r in (overnight_err_rows or []) + (overnight_api_rows or []) + (overnight_rate_rows or []):
+        rid = r.get("id")
+        if rid is not None and rid in seen:
+            continue
+        if rid is not None:
+            seen.add(rid)
+        overnight_errors.append(r)
     regime = regime or {"regime": "Unknown", "ep_threshold": 70}
 
     # Earnings calendar — get RS scores for tickers with earnings data

@@ -200,6 +200,19 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-27 (session 2) — Audit-noise reduction: validation/zombie/job-no-show
+Apollo fired four L1/L2 alerts in one batch today — three of them noise. Diagnosis below; in each case the underlying telemetry was correct but the alerting threshold confused operator. **Fix theme: align invariant semantics with the codebase's actual definitions; differentiate transient failures from real bugs.**
+
+**1. 228 `validation_error` events since 2026-03-28** — single audit bucket lumped together: rate-limited 429s (mostly fixed 2026-04-23), Anthropic 5xx/network blips, and genuine JSON parse errors. The `silent_audit_error_window` invariant uses `LIKE '%_error'` so transient API noise tripped it. Fix: split exception handlers in `theme_engine.py::_validate_theme_membership`, `_assign_uncovered_to_themes`, `_discover_new_themes` into three event_types — `*_rate_limited` (existing), `*_api_failure` (new — `anthropic.APIError` + `asyncio.TimeoutError`, no `_error` suffix → not flagged), `*_error` (real bugs only — JSONDecodeError, ValueError, unexpected exceptions). Banner logic in `briefing.py` + `scheduler.py` updated for the 4-bucket view (🟠 RL / 🔵 transient / 🟡 parse / 🔴 other).
+
+**2. 31 zombie themes "stale > 7d but not Retired"** — `check_zombie_theme` queried `WHERE stage != 'Retired' GROUP BY name HAVING (CURRENT_DATE - MAX(theme_date)) > 7`. But the codebase intentionally NEVER writes `'Retired'` rows — recency cap IS retirement (per `get_active_themes(stale_after_days=7)`). So the invariant was always-fires-by-design. Fix: rewrote query as CTE picking LATEST row per theme + excluded `'Fading'` from the alert (Fading → drop is the de-facto retirement path). Now only catches genuine zombies — Mainstream/Accelerating/Nascent themes that stopped appearing without going through the lifecycle.
+
+**3. `silent_audit_error_window` lookback was 30 days** — coupled to `_BASELINE_LOOKBACK_DAYS` in `system_audit.py`. Meant once an error fired, it kept tripping the L1 alert for 30 days even after the fix landed — poor operator UX, trains dismissal. Fix: hardcoded `_RECENT_ERROR_WINDOW_HOURS = 24` inside `check_audit_error_window`. `since` kwarg kept for signature compat with `all_invariants(...)` but ignored.
+
+**4. `nightly_data_pull` flagged missing at 17:30** — `_EXPECTED_JOBS["nightly_data_pull"] = time(17, 30)` was 30 min after the 17:00 cron, but Polygon sector + Claude description calls can stretch the run past 17:30. Worse: `mi_job_log` row only writes after `notify_job_success` at the END, so a slow run looks identical to a no-show. Fix in `audit_invariants.py::check_job_no_show`: bumped deadline to 18:30, added `mi_job_runs` cross-check (`status = 'running'` today → "still running" not "missing"). Summary now reports both states distinctly.
+
+**Lesson:** L1 invariants must model the system's actual semantics, not a textbook ideal. The codebase's "active theme" definition is recency-based, not stage-based; the codebase's "job ran" definition needs to handle in-progress (per `mi_job_runs`), not just completed (per `mi_job_log`). Same for "error" — transient vendor blips aren't bugs and shouldn't share an event_type with parse failures.
+
 ### 2026-04-27 — Tiered ORB fade guard by EP type
 Today's HIGH EPs all blocked by the midpoint rule (`last_price < (orb_high+orb_low)/2`) despite looking fine to the user. OGN (double-gap-up, textbook "too extended" Pradeep skip) was also blocked by midpoint — but the principled 15% stop-width gate (`order_manager.py:998`) would have caught it on R/R math regardless. Diagnosis: midpoint pre-check is stricter than Qullamaggie/Pradeep methodology and redundant with the `_orb_window_cleanup_job` 10:00 ET cancel that already handles CHE-class dead-cat fills.
 

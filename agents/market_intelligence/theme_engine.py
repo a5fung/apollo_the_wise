@@ -681,8 +681,23 @@ async def _validate_theme_membership(
                 detail=f"RateLimitError after retry (caught via Exception fallback): {e}",
             )
             return tickers
-        # Log the raw response so silent failures are diagnosable — this bug cost days of work
+        # Transient failures — Anthropic 5xx, network blips, timeouts. These resolve
+        # by themselves on the next Mon/Wed/Fri rerun, so route to a non-`_error`
+        # event_type that doesn't trip the L1 silent_audit_error_window invariant.
+        # Real bugs (parse errors, unexpected schema) still hit `validation_error`.
         raw_snippet = locals().get("raw", "<not set>")[:200]
+        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)):
+            logger.warning(
+                f"Theme '{theme_name}': validation transient failure "
+                f"({type(e).__name__}: {e}) — keeping all tickers, will retry next run."
+            )
+            await log_audit_event(
+                "validation_api_failure",
+                summary=f"Validation API failure for '{theme_name}' — tickers unchanged",
+                detail=f"{type(e).__name__}: {e}",
+            )
+            return tickers
+        # Log the raw response so silent failures are diagnosable — this bug cost days of work
         logger.error(
             f"Theme '{theme_name}': re-validation FAILED ({type(e).__name__}: {e}) — "
             f"keeping all tickers. Raw Haiku response: {raw_snippet!r}"
@@ -1093,11 +1108,31 @@ If none of these apply, call assign_stocks_to_themes directly."""
             messages.append({"role": "user", "content": tool_results})
 
     except Exception as e:
+        # Transient Anthropic failures (5xx, network, timeout) resolve next run —
+        # route to a non-`_error` event_type so they don't trip the L1 invariant.
+        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)) and not isinstance(e, anthropic.RateLimitError):
+            logger.warning(
+                f"Claude theme assignment transient failure ({type(e).__name__}: {e}) — no assignments made, will retry next run."
+            )
+            await log_audit_event(
+                "assignment_api_failure",
+                summary="Theme assignment API failure — no stocks assigned this run",
+                detail=f"{type(e).__name__}: {e}",
+            )
+            return uncovered_stocks, []
+        if isinstance(e, anthropic.RateLimitError):
+            logger.error(f"Claude theme assignment rate-limited — no assignments made")
+            await log_audit_event(
+                "assignment_rate_limited",
+                summary="Theme assignment rate-limited — no stocks assigned this run",
+                detail=str(e),
+            )
+            return uncovered_stocks, []
         logger.error(f"Claude theme assignment FAILED ({type(e).__name__}: {e}) — no assignments made")
         await log_audit_event(
             "assignment_error",
             summary="Theme assignment error — no stocks assigned this run",
-            detail=str(e),
+            detail=f"{type(e).__name__}: {e}",
         )
         return uncovered_stocks, []
 
@@ -1773,11 +1808,31 @@ If none of these apply, call report_themes directly — advisor consultation is 
             messages.append({"role": "user", "content": tool_results})
 
     except Exception as e:
+        # Transient Anthropic failures (5xx, network, timeout) resolve next run —
+        # route to a non-`_error` event_type so they don't trip the L1 invariant.
+        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)) and not isinstance(e, anthropic.RateLimitError):
+            logger.warning(
+                f"Claude new theme discovery transient failure ({type(e).__name__}: {e}) — no new themes this run, will retry next run."
+            )
+            await log_audit_event(
+                "discovery_api_failure",
+                summary="Theme discovery API failure — no new themes discovered this run",
+                detail=f"{type(e).__name__}: {e}",
+            )
+            return []
+        if isinstance(e, anthropic.RateLimitError):
+            logger.error("Claude new theme discovery rate-limited — no new themes this run")
+            await log_audit_event(
+                "discovery_rate_limited",
+                summary="Theme discovery rate-limited — no new themes discovered this run",
+                detail=str(e),
+            )
+            return []
         logger.error(f"Claude new theme discovery FAILED ({type(e).__name__}: {e}) — no new themes this run")
         await log_audit_event(
             "discovery_error",
             summary="Theme discovery error — no new themes discovered this run",
-            detail=str(e),
+            detail=f"{type(e).__name__}: {e}",
         )
         return []
 

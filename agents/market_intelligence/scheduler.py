@@ -386,26 +386,44 @@ async def _nightly_data_pull():
         logger.error(f"State alerts failed: {e}")
 
     # Check for silent engine errors (parse failures, API errors that didn't hard-fail).
-    # Collapse validation parse/rate-limit rows into one line each — they all share
-    # the same root cause and otherwise flood the banner on Mon/Wed/Fri (20 themes).
+    # Bucket by category so a flood of one type (e.g. Anthropic 5xx burst) collapses
+    # to a single line and doesn't drown out genuinely novel errors.
     try:
         error_rows = await get_audit_log(limit=40, event_type_like="%error%", since_hours=2)
         rate_rows = await get_audit_log(limit=40, event_type_like="%rate_limited%", since_hours=2)
-        buckets: dict[str, list] = {"validation_error": [], "validation_rate_limited": [], "other": []}
-        for r in (error_rows + rate_rows):
+        api_rows = await get_audit_log(limit=40, event_type_like="%api_failure%", since_hours=2)
+        rate_limited_types = {"validation_rate_limited", "anthropic_rate_limited",
+                              "assignment_rate_limited", "discovery_rate_limited"}
+        api_failure_types  = {"validation_api_failure", "assignment_api_failure",
+                              "discovery_api_failure"}
+        parse_error_types  = {"validation_error"}
+        buckets: dict[str, list] = {"rate_limited": [], "api_failure": [],
+                                     "validation_error": [], "other": []}
+        seen_ids: set = set()
+        for r in (error_rows + rate_rows + api_rows):
+            row_id = r.get("id") or id(r)
+            if row_id in seen_ids:
+                continue
+            seen_ids.add(row_id)
             evt = r.get("event_type") or ""
-            if evt == "validation_error":
+            if evt in rate_limited_types:
+                buckets["rate_limited"].append(r)
+            elif evt in api_failure_types:
+                buckets["api_failure"].append(r)
+            elif evt in parse_error_types:
                 buckets["validation_error"].append(r)
-            elif evt == "validation_rate_limited":
-                buckets["validation_rate_limited"].append(r)
             elif "error" in evt:
                 buckets["other"].append(r)
         total = sum(len(v) for v in buckets.values())
         if total:
             lines = [f"⚠️ *{total} engine event(s) during nightly run:*"]
-            if buckets["validation_rate_limited"]:
+            if buckets["rate_limited"]:
                 lines.append(
-                    f"  🟠 {len(buckets['validation_rate_limited'])} theme validations hit Anthropic 50 rpm — tickers unchanged"
+                    f"  🟠 {len(buckets['rate_limited'])} Anthropic rate-limited call(s) — tickers unchanged"
+                )
+            if buckets["api_failure"]:
+                lines.append(
+                    f"  🔵 {len(buckets['api_failure'])} transient Anthropic API failure(s) — will retry next run"
                 )
             if buckets["validation_error"]:
                 lines.append(

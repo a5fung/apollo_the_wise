@@ -107,27 +107,43 @@ async def check_reason_coverage(conn, *, since: date) -> tuple[bool, dict]:
     })
 
 
+# Recent-error window for the silent_audit_error_window invariant. Decoupled
+# from the 30d baseline lookback that drives metric anomaly detection: a 30d
+# window means a single bad day takes 30 days to clear, which is poor UX and
+# trains the operator to dismiss the alert. 24h is a "are errors happening
+# right now?" cadence — fix lands, alert clears the next audit run.
+_RECENT_ERROR_WINDOW_HOURS = 24
+
+
 async def check_audit_error_window(conn, *, since: datetime) -> tuple[bool, dict]:
+    """Count `*_error` rows in the recent window. `since` kwarg accepted for
+    signature compatibility with `all_invariants(...)` but the actual window
+    is hardcoded to `_RECENT_ERROR_WINDOW_HOURS` so historical errors don't
+    keep tripping the alert forever after a fix lands."""
     rows = await conn.fetch(
         """
         SELECT event_type, COUNT(*) AS n
         FROM mi_audit_log
         WHERE event_type LIKE '%_error'
-          AND created_at >= $1
+          AND created_at >= NOW() - ($1 || ' hours')::INTERVAL
         GROUP BY event_type
         ORDER BY n DESC
         """,
-        since,
+        str(_RECENT_ERROR_WINDOW_HOURS),
     )
     total = sum(int(r["n"]) for r in rows)
     return (total == 0, {
         "name": INV_AUDIT_ERROR_WINDOW,
         "count": total,
-        "summary": f"{total} '*_error' events since {since:%Y-%m-%d %H:%M}" if total else "clean",
+        "summary": (
+            f"{total} '*_error' events in last {_RECENT_ERROR_WINDOW_HOURS}h"
+            if total else "clean"
+        ),
         "offending": [f"{r['event_type']}: {r['n']}" for r in rows[:10]],
         "drill_sql": (
             f"SELECT event_type, summary, detail, created_at FROM mi_audit_log\n"
-            f"WHERE event_type LIKE '%_error' AND created_at >= '{since.isoformat()}'\n"
+            f"WHERE event_type LIKE '%_error'\n"
+            f"  AND created_at >= NOW() - INTERVAL '{_RECENT_ERROR_WINDOW_HOURS} hours'\n"
             f"ORDER BY created_at DESC LIMIT 50;"
         ),
         "code_pointers": [],
@@ -249,15 +265,36 @@ async def check_stuck_filled_row(conn) -> tuple[bool, dict]:
 
 
 async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, dict]:
-    """Theme name last seen > N days but never marked Retired — 135-cooldown class."""
+    """Theme whose latest snapshot stuck in a non-terminal stage > N days ago.
+
+    The codebase's de-facto retirement is recency-based (`get_active_themes`
+    filters by 7-day window) — Fading themes that age out without an explicit
+    'Retired' row are expected and harmless. The bug worth surfacing is when a
+    theme's LATEST row is in an active stage (Nascent / Accelerating /
+    Mainstream) and then stops appearing entirely: that means the theme
+    silently dropped from the snapshot without going through the lifecycle.
+
+    Two semantics changes vs the old query:
+    1. CTE picks the LATEST row per name, then filters; the old query filtered
+       rows first and aggregated. Same result today (no Retired rows exist),
+       but correct once explicit retirement lands.
+    2. Excludes 'Fading' from the alert — Fading is a terminal stage in the
+       lifecycle (`Fading → Retired after 5 days`), so a Fading theme that
+       drops out is the de-facto retirement path, not a zombie.
+    """
     rows = await conn.fetch(
         """
-        SELECT name, MAX(theme_date) AS last_seen,
-               (CURRENT_DATE - MAX(theme_date)) AS days_stale
-        FROM mi_themes
-        WHERE stage != 'Retired'
-        GROUP BY name
-        HAVING (CURRENT_DATE - MAX(theme_date)) > $1
+        WITH latest AS (
+            SELECT DISTINCT ON (name)
+                name, theme_date AS last_seen, stage AS latest_stage
+            FROM mi_themes
+            ORDER BY name, theme_date DESC
+        )
+        SELECT name, last_seen, latest_stage,
+               (CURRENT_DATE - last_seen) AS days_stale
+        FROM latest
+        WHERE latest_stage NOT IN ('Retired', 'Fading')
+          AND (CURRENT_DATE - last_seen) > $1
         ORDER BY days_stale DESC
         """,
         stale_after_days,
@@ -265,16 +302,21 @@ async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, 
     return (len(rows) == 0, {
         "name": INV_ZOMBIE_THEME,
         "count": len(rows),
-        "summary": f"{len(rows)} themes last seen > {stale_after_days}d but not Retired",
+        "summary": f"{len(rows)} themes stuck in non-terminal stage > {stale_after_days}d stale",
         "offending": [
-            f"{r['name']} last_seen={r['last_seen']} ({r['days_stale']}d stale)"
+            f"{r['name']} stage={r['latest_stage']} last_seen={r['last_seen']} ({r['days_stale']}d stale)"
             for r in rows[:10]
         ],
         "drill_sql": (
-            "SELECT name, MAX(theme_date) AS last_seen,\n"
-            "       (CURRENT_DATE - MAX(theme_date)) AS days_stale\n"
-            "FROM mi_themes WHERE stage != 'Retired'\n"
-            f"GROUP BY name HAVING (CURRENT_DATE - MAX(theme_date)) > {stale_after_days}\n"
+            "WITH latest AS (\n"
+            "  SELECT DISTINCT ON (name) name, theme_date AS last_seen, stage AS latest_stage\n"
+            "  FROM mi_themes ORDER BY name, theme_date DESC\n"
+            ")\n"
+            "SELECT name, last_seen, latest_stage,\n"
+            "       (CURRENT_DATE - last_seen) AS days_stale\n"
+            "FROM latest\n"
+            f"WHERE latest_stage NOT IN ('Retired', 'Fading')\n"
+            f"  AND (CURRENT_DATE - last_seen) > {stale_after_days}\n"
             "ORDER BY days_stale DESC;"
         ),
         "code_pointers": [
@@ -404,10 +446,12 @@ async def check_high_no_terminal(conn) -> tuple[bool, dict]:
 
 
 # Job-name → "expected by HH:MM ET on weekdays". Only weekdays — Apollo doesn't
-# run weekend market jobs.
+# run weekend market jobs. nightly_data_pull starts at 17:00 ET; sector/desc
+# enrichment + Claude calls can stretch the run past 17:30, so the deadline
+# sits at 18:30 to avoid flagging mid-flight runs as missing.
 _EXPECTED_JOBS: dict[str, time] = {
     "morning_briefing": time(9, 30),
-    "nightly_data_pull": time(17, 30),
+    "nightly_data_pull": time(18, 30),
     "evening_briefing": time(20, 30),
 }
 
@@ -416,7 +460,10 @@ async def check_job_no_show(conn, *, now_et: datetime | None = None) -> tuple[bo
     """Jobs that should have run by `now_et` today have no `mi_job_log` row.
 
     Only checks the three durably-logged daily jobs. Weekends are exempt
-    (US equity market closed → jobs intentionally skip).
+    (US equity market closed → jobs intentionally skip). A job with an
+    in-progress `mi_job_runs` row (status='running') today is treated as
+    "running" rather than missing — `mi_job_log` is only written at job
+    end, so a slow run would otherwise look identical to a no-show.
     """
     now_et = now_et or datetime.now(_ET)
     if now_et.weekday() >= 5:  # Sat/Sun
@@ -449,15 +496,37 @@ async def check_job_no_show(conn, *, now_et: datetime | None = None) -> tuple[bo
         today, expected_now,
     )
     ran = {r["job_name"] for r in rows}
-    missing = sorted(set(expected_now) - ran)
+    # Also count jobs currently running per `mi_job_runs` — slow runs that
+    # haven't yet logged completion shouldn't fire a "missing" alert.
+    running_rows = await conn.fetch(
+        """
+        SELECT DISTINCT job_id FROM mi_job_runs
+        WHERE started_at >= $1::date AT TIME ZONE 'America/New_York'
+          AND status = 'running'
+          AND job_id = ANY($2::text[])
+        """,
+        today, expected_now,
+    )
+    in_progress = {r["job_id"] for r in running_rows}
+    missing = sorted(set(expected_now) - ran - in_progress)
+    summary_parts = []
+    if missing:
+        summary_parts.append(f"{len(missing)} missing: {', '.join(missing)}")
+    if in_progress:
+        summary_parts.append(f"{len(in_progress)} still running: {', '.join(sorted(in_progress))}")
+    summary = "; ".join(summary_parts) if summary_parts else "all expected jobs ran"
     return (not missing, {
         "name": INV_JOB_NO_SHOW,
         "count": len(missing),
-        "summary": f"{len(missing)} expected jobs missing today: {', '.join(missing) or 'none'}",
+        "summary": summary,
         "offending": missing,
         "drill_sql": (
             f"SELECT job_name, ran_at FROM mi_job_log\n"
-            f"WHERE run_date = '{today}' ORDER BY ran_at;"
+            f"WHERE run_date = '{today}' ORDER BY ran_at;\n"
+            f"-- in-progress check:\n"
+            f"SELECT job_id, started_at, status FROM mi_job_runs\n"
+            f"WHERE started_at >= '{today}'::date AT TIME ZONE 'America/New_York'\n"
+            f"  AND status = 'running' ORDER BY started_at;"
         ),
         "code_pointers": [
             "agents/market_intelligence/scheduler.py",

@@ -997,6 +997,9 @@ class MarketIntelligenceAgent(BaseAgent):
         event_type_like = None
         if "error" in task or "fail" in task:
             event_type_like = "%error%"  # matches validation_error, assignment_error, discovery_error
+        # Transient API failures (validation_api_failure / assignment_api_failure /
+        # discovery_api_failure) don't end in `_error` so they don't match above —
+        # they're visible in the morning-briefing 4-bucket banner instead.
 
         rows = await get_audit_log(limit=25, event_type=event_type, event_type_like=event_type_like, since_hours=since_hours)
 
