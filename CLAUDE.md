@@ -200,6 +200,17 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-26 (session 3) — Job-run telemetry + `/audit job_runs`
+Plan: `~/.claude/plans/audit-job-runs.md`. Closes the gap between `notify_job_failure` (hard crashes) and the data-layer audit (table invariants): **slow runs** (no exception, ran 8× normal) and **silent zeroes** (clean exit, wrote 0 rows) had no signal. Crypto nightly's CG 429 backoffs were the trigger.
+
+**New table `mi_job_runs`** + new module `core/job_audit.py`: `audit_run` asynccontextmanager + `audit_wrap(fn, job_id, expected_min_rows=N)` registration-site sugar. On exception → status='failed', re-raises. On clean exit with `rows_written < expected_min_rows` → status='empty_result' + Telegram. Conventions: `rows_written is None` = opt-out; `bool` excluded from `isinstance(int)` so True/False can't silently set rows_written=1.
+
+**Scheduler wired** (~30 jobs): expected_min_rows declared on data-writing jobs only (nightly_data_pull 5000, crypto_nightly_ingest 10, crypto_category_refresh 50, minute_volume_curves_refresh 50000). Five jobs return their row count. `check_fills` uses single audit id (not per-HHMM) so 7 fires/day aggregate to one baseline.
+
+**`/audit job_runs` topic**: last 24h status counts + problem rows + slowest 5 vs 30d p95. Surfaced via `report` shortcut in `_handle_audit_topic`.
+
+**Correctness fix from simplify pass**: 3 jobs with inline `notify_job_failure → return 0` would have double-Telegrammed (crash + spurious "empty_result"). Switched to `return None` so wrapper sees opt-out. Lesson: a wrapper that interprets return values must agree with the wrapped function's failure semantics.
+
 ### 2026-04-26 (session 2b) — Theme merge: min-shared-ticker gate
 rs-theme-dash dashboard surfaced Single-Cell Genomics (1 ticker) and IT Infrastructure (2 tickers) being absorbed into Satellite Imagery via a single coincidental shared ticker. `_merge_overlapping_themes` Pass 1 had three trigger conditions (`jaccard ≥ 0.6`, `is_subset`, `overlap_ratio ≥ 0.6`) — `is_subset` and `overlap_ratio` both collapse to noise on tiny themes (1/1 = 100%, 1/2 = 50% overlap). New constant `MIN_SHARED_FOR_MERGE = 3` (theme_engine.py:211) gates Pass 1 with `len(intersection) < MIN_SHARED_FOR_MERGE: continue` before the trigger conditions evaluate. Pass 1.5 (small-theme absorption) intentionally targets ≤3-ticker themes and stays unchanged — it's a separate cleanup path with different semantics. Same gate principle implemented in `rs-theme-dash/data.py::dedup_themes` (min_shared=3 default); cross-referenced via comment so the two implementations stay in sync conceptually without sharing a module across repos.
 
@@ -308,18 +319,14 @@ Plan: `~/.claude/plans/shiny-mapping-locket.md`. Goal: Apollo surfaces invariant
 ### 2026-04-24 (session 4) — Zombie theme cooldown flood
 Nightly validation wrote 135 cooldowns (vs ~1/day baseline). Root cause: `db.py::get_active_themes()` had no recency filter — returned every theme name ever written with `stage != 'Retired'`. 98 themes loaded vs ~37 in today's snapshot; weeks-old hallucinations (e.g. LRCX in oil) re-triggered cooldown removal repeatedly. Fix: `get_active_themes(stale_after_days=7)` filters `theme_date >= CURRENT_DATE - 7 days`. Recency cap is the de-facto retirement mechanism — covers normal weekend/holiday gaps with margin. Manual cleanup applied in prod.
 
-### 2026-04-24 (session 3) — Unified entry pipeline + silent-failure hardening
-New `broker/entry_pipeline.py::submit_trade_entry` is the single funnel for MAGNA53 EP + 9M Day 2 ORB entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback; everything else lives in the pipeline once. **Contract: every terminal failure Telegrams via `humanize()`.** `live_tracker._submit_orb_trade` deleted (~130 lines); `submit_9m_day2_trade` shrunk 150→50 lines; `process_new_alerts_live` shrunk 170→80 lines. Per-alert work now in `asyncio.gather` with `Semaphore(5)` (was strictly serial — 20 alerts × 3×60s bar-fetch retry could stack 60 min past cron). Bounded action vocabulary: `ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`. Silent-failure sweep: `_process_alert` crash handler now writes audit row first then attempts Telegram; `_record_subscribe_failure` Telegram-fail now logs; scheduler `_9m_scan_job` and `_9m_day2_orb_job` wrap with `notify_job_failure()` + per-candidate try/except; sugar baby state mismatch fixed (`auto_enter_failed` / `proposal_send_failed` now write `skipped` since they bypass `_on_skip`).
-
-### 2026-04-24 (session 2) — ORB late-entry & fade guard
-CHE gapped +17.9%, first crossed HIGH at 9:55 ET. Bracket placed at ORB high but tape had already faded — order would only fill on dead-cat retest hours later. Two fixes: (1) **Fade guard** in `_submit_orb_trade` — fetch latest trade before order; if `last_price < (orb_high + orb_low) / 2` skip with `SETUP_FADED_FROM_ORB`. Silent-on-feed-failure (don't block on data hiccup). (2) **Tightened submission window**: `now_et.hour == 9 and now_et.minute < 45` (was `< 10:00`). HIGHs at 9:45–9:59 → existing `WINDOW_OUT_OF_ORB` branch. (3) **10:00 AM ET cleanup job** `_orb_window_cleanup_job` cancels any `order_placed` still pending. New `SETUP_FADED_FROM_ORB` constant + `humanize()` entry. CHE order cancelled, INTC stuck-`filled` row cleaned up.
-
-### 2026-04-24 (session 1) — OTO bracket stop-leg ID capture
-INTC entered, 🚨 UNPROTECTED alert fired falsely, stop fired as `💱 Untracked SELL` not `❌ Stopped out`, no Day 1 re-entry. Root cause: four separate "find the stop leg" implementations, only one robust. `submit_entry` used strict `leg.get("type") == "stop"` — under Python 3.12 `str(OrderType.STOP)` returns `"OrderType.STOP"`, check silently fails, `stop_order_id` written as NULL. Cascade: WS fill handler can't match on NULL → routes to Untracked SELL → no `_process_stop_fill` → no re-entry. Fix: single canonical `alpaca_client.extract_stop_leg_id(order)` — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Applied to all 5 sites. Defense-in-depth in `_process_entry_fill`: checks 3 sources (WS legs, DB stop_order_id, REST refetch) before standalone-stop remediation. Eliminates false UNPROTECTED alerts.
-
 ---
 
 ## Changes Made — Historical (compressed log)
+
+### 2026-04-24
+- **session 3 — Unified entry pipeline**: `broker/entry_pipeline.py::submit_trade_entry` is the single funnel for MAGNA53 EP + 9M Day 2 ORB. Strategy diffs (stop, sizing) inject via `spec_builder` callback. Bounded action vocabulary (AUTO_ENTERED/PROPOSED/etc). Per-alert work `asyncio.gather` with `Semaphore(5)`. Lesson: two near-identical entry paths drift in opposite directions; one funnel + injection is the fix.
+- **session 2 — ORB late-entry & fade guard**: CHE gapped +17.9%, HIGH at 9:55 ET, bracket placed but tape had faded. Fade guard in `_submit_orb_trade`: skip if `last_price < (orb_high+orb_low)/2`. Tightened window `hour==9 and minute<45`. 10:00 ET cleanup job cancels stuck `order_placed`. Lesson: wide intraday windows let dead-cat orders linger.
+- **session 1 — OTO bracket stop-leg ID capture**: INTC false UNPROTECTED + Untracked SELL traced to 4 separate "find stop leg" impls; one used strict `==`, broken under Py3.12 `str(OrderType.STOP)` → `"OrderType.STOP"`. Single canonical `alpaca_client.extract_stop_leg_id(order)` (stop_price primary, case-insensitive type fallback) at all 5 sites. Lesson: same conceptual operation in N places drifts; centralize.
 
 ### 2026-04-23
 - **session 3 — Validation-window hardening**: `Dockerfile.market` now COPYs `scripts/`; `_eod_ep_recap_job` appends `📡 Feed (sip)` line + fires on zero-HIGH days when feed events present; new `scripts/readiness_check.py` encodes 6 SQL cutover gates. Cutover target 2026-05-23.

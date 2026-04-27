@@ -45,13 +45,13 @@ COINS = [
     # (cg_id, expected_bucket_hint)
     ("bitcoin", "mega"),
     ("ethereum", "mega"),
-    ("solana", "large"),
-    ("binancecoin", "large"),
+    ("solana", "mega"),          # $50B+ — escaped large bucket
+    ("binancecoin", "mega"),     # $80B+ — escaped large bucket
     ("chainlink", "large"),
     ("hyperliquid", "large"),
     ("avalanche-2", "mid"),
     ("render-token", "mid"),
-    ("fetch-ai", "mid"),         # ASI Alliance
+    ("fetch-ai", "micro"),       # ASI Alliance — sub-$500M, in micro by design
     ("dogecoin", "large"),
     ("pepe", "mid"),
     ("akash-network", "micro"),
@@ -127,7 +127,7 @@ async def main() -> int:
         # denominator so it can't outperform itself; ranking comes from
         # tied-zero returns vs other coins' actual returns.
         rs = btc_score["rs_overall"]
-        print(f"  BTC rs_overall = {rs:.1f}  (expect ~30-70 range; far outside = bug)")
+        print(f"  BTC rs_overall = {rs:.1f}  (expect ~10-90 range; BTC's flat 0% return ranks high in BTC-dominant regimes, low when alts rip)")
     none_count = sum(1 for s in scores if s.get("rs_overall") is None)
     print(f"  Coins with None rs_overall: {none_count}/{len(scores)}  (expect 0; >0 means insufficient history)")
     buckets = {s["mcap_bucket"] for s in scores}

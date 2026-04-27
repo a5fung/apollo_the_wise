@@ -400,11 +400,13 @@ async def _record_metric_sample(metric_name: str, value: float) -> None:
     )
 
 
-async def run_baseline_refresh() -> None:
+async def run_baseline_refresh() -> int:
     """02:00 ET nightly job. Rebuilds `mi_metric_baselines` from trailing
-    samples. Idempotent — safe to re-run.
+    samples. Idempotent — safe to re-run. Returns count of baselines refreshed
+    so the audit_wrap empty-result invariant can fire if zero are written.
     """
     today = et_today()
+    refreshed = 0
     pool = await get_pool()
     async with pool.acquire() as conn:
         for metric in _ALL_METRICS:
@@ -414,7 +416,9 @@ async def run_baseline_refresh() -> None:
                 metric.name, today,
                 p50=p50, p95=p95, mad=mad, sample_n=n,
             )
-    logger.info(f"system_audit: baselines refreshed for {len(_ALL_METRICS)} metrics")
+            refreshed += 1
+    logger.info(f"system_audit: baselines refreshed for {refreshed} metrics")
+    return refreshed
 
 
 async def _regime_conditional_baseline(conn, metric: MetricSpec, current_regime: str) -> tuple[float, float, float, int] | None:
@@ -946,11 +950,98 @@ async def run_post_nightly_audit(*, baseline_as_of: date | None = None) -> dict:
     return summary
 
 
+async def _run_job_runs_report(window_hours: int = 24) -> str:
+    """Build the `/audit job_runs` text report from `mi_job_runs`.
+
+    Sections: status counts, empty_result/failed details, slowest 5 jobs vs
+    their 30d p95. Returns plain text; caller wraps for Telegram.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        status_counts = await conn.fetch(
+            """
+            SELECT status, COUNT(*) AS n
+            FROM mi_job_runs
+            WHERE started_at >= NOW() - ($1 || ' hours')::INTERVAL
+            GROUP BY status ORDER BY status
+            """,
+            str(window_hours),
+        )
+        problem_rows = await conn.fetch(
+            """
+            SELECT job_id, started_at, status, rows_written,
+                   expected_min_rows, error_message
+            FROM mi_job_runs
+            WHERE started_at >= NOW() - ($1 || ' hours')::INTERVAL
+              AND status IN ('failed', 'empty_result')
+            ORDER BY started_at DESC LIMIT 20
+            """,
+            str(window_hours),
+        )
+        slowest = await conn.fetch(
+            """
+            WITH recent AS (
+                SELECT job_id, duration_s
+                FROM mi_job_runs
+                WHERE started_at >= NOW() - ($1 || ' hours')::INTERVAL
+                  AND duration_s IS NOT NULL AND status = 'success'
+            ),
+            baseline AS (
+                SELECT job_id,
+                       PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_s) AS p95_30d
+                FROM mi_job_runs
+                WHERE started_at >= NOW() - INTERVAL '30 days'
+                  AND duration_s IS NOT NULL AND status = 'success'
+                GROUP BY job_id
+            )
+            SELECT r.job_id, r.duration_s, b.p95_30d
+            FROM recent r LEFT JOIN baseline b USING (job_id)
+            ORDER BY r.duration_s DESC LIMIT 5
+            """,
+            str(window_hours),
+        )
+
+    counts = {r["status"]: r["n"] for r in status_counts}
+    total = sum(counts.values())
+    parts = [f"Job runs (last {window_hours}h): {total} total"]
+    if total:
+        parts.append("  " + " / ".join(f"{n} {s}" for s, n in counts.items()))
+    if problem_rows:
+        parts.append("")
+        parts.append("⚠️ Problem runs:")
+        for r in problem_rows:
+            ts = r["started_at"].strftime("%m-%d %H:%M")
+            if r["status"] == "empty_result":
+                parts.append(
+                    f"  {ts} {r['job_id']}: {r['rows_written'] or 0} rows "
+                    f"(expected ≥ {r['expected_min_rows']})"
+                )
+            else:
+                err = (r["error_message"] or "")[:120]
+                parts.append(f"  {ts} {r['job_id']} FAILED: {err}")
+    if slowest:
+        parts.append("")
+        parts.append("Slowest runs:")
+        for r in slowest:
+            d = float(r["duration_s"] or 0)
+            p95 = r["p95_30d"]
+            if p95:
+                parts.append(f"  {r['job_id']}: {d:.1f}s vs p95 {float(p95):.1f}s")
+            else:
+                parts.append(f"  {r['job_id']}: {d:.1f}s (no 30d baseline yet)")
+    return "\n".join(parts)
+
+
 async def run_topic_audit(topic: str, *, baseline_as_of: date | None = None) -> dict:
     """`/audit <topic>` ad-hoc entry. Same scan logic, scoped to topic."""
-    metrics = _TOPIC_MAP.get(topic.lower())
+    topic_lower = topic.lower()
+    if topic_lower == "job_runs":
+        report = await _run_job_runs_report()
+        return {"job": "topic:job_runs", "report": report, "l1": 0, "l2": 0, "l3": 0}
+    metrics = _TOPIC_MAP.get(topic_lower)
     if metrics is None:
-        return {"error": f"unknown topic '{topic}'", "valid": sorted(_TOPIC_MAP.keys())}
+        valid = sorted(list(_TOPIC_MAP.keys()) + ["job_runs"])
+        return {"error": f"unknown topic '{topic}'", "valid": valid}
     today = et_today()
     since = today - timedelta(days=_BASELINE_LOOKBACK_DAYS)
     since_dt = datetime.combine(since, datetime.min.time())

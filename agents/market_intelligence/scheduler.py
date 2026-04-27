@@ -46,6 +46,7 @@ from agents.market_intelligence.backtester.tracker import (
     format_tracker_telegram,
 )
 from core.notifications import notify_job_failure, notify_job_success
+from core.job_audit import audit_wrap
 
 logger = logging.getLogger(__name__)
 
@@ -427,6 +428,7 @@ async def _nightly_data_pull():
         await notify_job_success(JOB_NIGHTLY_DATA_PULL, ", ".join(summary_parts))
 
     logger.info("Nightly data pull complete")
+    return int(scored or 0)
 
 
 async def _evening_briefing_job():
@@ -821,9 +823,11 @@ async def _crypto_nightly_ingest_job():
         from agents.market_intelligence.crypto.ingest import run_nightly
         result = await run_nightly()
         logger.info(f"Crypto RS ingest: {result}")
+        return int(result.get("coins_scored") or 0)
     except Exception as e:
         logger.error(f"Crypto RS ingest failed: {e}", exc_info=True)
         await notify_job_failure("crypto_nightly_ingest", str(e))
+        return None
 
 
 async def _crypto_category_refresh_job():
@@ -845,9 +849,11 @@ async def _crypto_category_refresh_job():
         coin_ids = [r["coin_id"] for r in rows]
         n = await refresh_category_membership(coin_ids)
         logger.info(f"Crypto category refresh: {n} (coin, category) pairs")
+        return int(n or 0)
     except Exception as e:
         logger.error(f"Crypto category refresh failed: {e}", exc_info=True)
         await notify_job_failure("crypto_category_refresh", str(e))
+        return None
 
 
 async def _parabolic_scan_job():
@@ -898,15 +904,17 @@ async def _baseline_refresh_job():
     deploy/fix points correctly invalidate pre-fix history.
     """
     logger.info("Baseline refresh starting...")
+    refreshed = 0
     try:
         from agents.market_intelligence.system_audit import run_baseline_refresh
-        await run_baseline_refresh()
-        logger.info("Baseline refresh complete")
+        refreshed = await run_baseline_refresh()
+        logger.info(f"Baseline refresh complete: {refreshed} metrics")
     except Exception as e:
         logger.error(f"Baseline refresh failed: {e}", exc_info=True)
         await notify_job_failure("baseline_refresh", str(e))
     finally:
         await _kuma_heartbeat("KUMA_AUDIT_BASELINE_URL")
+    return refreshed
 
 
 async def _minute_volume_curves_refresh_job():
@@ -928,9 +936,11 @@ async def _minute_volume_curves_refresh_job():
         from agents.market_intelligence.minute_volume import refresh_curves
         summary = await refresh_curves()
         logger.info(f"Minute volume curves refresh complete: {summary}")
+        return int(summary.get("rows_written") or 0)
     except Exception as e:
         logger.error(f"Minute volume curves refresh failed: {e}", exc_info=True)
         await notify_job_failure("minute_volume_curves_refresh", str(e))
+        return None
 
 
 async def _post_validation_check_job():
@@ -1210,7 +1220,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri
     _scheduler.add_job(
-        _nightly_data_pull,
+        audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=5000),
         CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
         replace_existing=True,
@@ -1218,7 +1228,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Evening briefing: 6:00 PM ET (3:00 PM PT), Mon-Fri
     _scheduler.add_job(
-        _evening_briefing_job,
+        audit_wrap(_evening_briefing_job, JOB_EVENING_BRIEFING),
         CronTrigger(hour=18, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_EVENING_BRIEFING,
         replace_existing=True,
@@ -1231,7 +1241,7 @@ def start_scheduler() -> AsyncIOScheduler:
         await _start_ep_scanning()
 
     _scheduler.add_job(
-        _ep_scan_start_job,
+        audit_wrap(_ep_scan_start_job, "ep_scan_start"),
         CronTrigger(hour=7, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_start",
         replace_existing=True,
@@ -1241,7 +1251,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Pre-market HIGHs → bar stream subscription (ORB fires on first bar close)
     # Post-open HIGHs  → ORB entry inline immediately after scan
     _scheduler.add_job(
-        _ep_scan_job,
+        audit_wrap(_ep_scan_job, "ep_scan"),
         CronTrigger(
             hour="7-9",
             minute="*/5",
@@ -1255,7 +1265,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # EP scan at 9:31 AM — first complete bar just closed, catches at-open volume upgrades
     _scheduler.add_job(
-        _ep_scan_job,
+        audit_wrap(_ep_scan_job, "ep_scan_open"),
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_open",
         replace_existing=True,
@@ -1268,7 +1278,7 @@ def start_scheduler() -> AsyncIOScheduler:
         await bar_stream.unsubscribe_all()
 
     _scheduler.add_job(
-        _bar_stream_cleanup,
+        audit_wrap(_bar_stream_cleanup, "bar_stream_cleanup"),
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="bar_stream_cleanup",
         replace_existing=True,
@@ -1276,7 +1286,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Morning briefing: 9:00 AM ET (6:00 AM PT), 30 min before open
     _scheduler.add_job(
-        _morning_briefing_job,
+        audit_wrap(_morning_briefing_job, JOB_MORNING_BRIEFING),
         CronTrigger(hour=9, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_MORNING_BRIEFING,
         replace_existing=True,
@@ -1285,7 +1295,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Stop EP scanning at 10:00 AM ET (7:00 AM PT) — extended past open to catch
     # at-open gaps with 15-min delayed data (Polygon Starter)
     _scheduler.add_job(
-        _stop_ep_scanning,
+        audit_wrap(_stop_ep_scanning, "ep_scan_stop"),
         CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_stop",
         replace_existing=True,
@@ -1293,7 +1303,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # EP scan watchdog: 10:05 AM ET — alert if no scan ran today
     _scheduler.add_job(
-        _ep_scan_watchdog,
+        audit_wrap(_ep_scan_watchdog, "ep_scan_watchdog"),
         CronTrigger(hour=10, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
         id="ep_scan_watchdog",
         replace_existing=True,
@@ -1301,7 +1311,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Paper trade tracker: 4:45 PM ET — after nightly data pull, simulate new EPs + update stops
     _scheduler.add_job(
-        _paper_trade_tracker_job,
+        audit_wrap(_paper_trade_tracker_job, "paper_trade_tracker"),
         CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
         id="paper_trade_tracker",
         replace_existing=True,
@@ -1309,7 +1319,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Weekly cleanup: Sunday 2:00 AM ET
     _scheduler.add_job(
-        _weekly_cleanup,
+        audit_wrap(_weekly_cleanup, "weekly_cleanup"),
         CronTrigger(day_of_week="sun", hour=2, minute=0, timezone="America/New_York"),
         id="weekly_cleanup",
         replace_existing=True,
@@ -1317,7 +1327,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Weekly system review: Sunday 8:00 AM ET — self-audit digest via Claude
     _scheduler.add_job(
-        _weekly_system_review_job,
+        audit_wrap(_weekly_system_review_job, "weekly_system_review"),
         CronTrigger(day_of_week="sun", hour=8, minute=0, timezone="America/New_York"),
         id="weekly_system_review",
         replace_existing=True,
@@ -1326,7 +1336,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Post-validation check: Saturday 8:00 AM ET — recap Fri's theme validation run
     _scheduler.add_job(
-        _post_validation_check_job,
+        audit_wrap(_post_validation_check_job, "post_validation_check"),
         CronTrigger(day_of_week="sat", hour=8, minute=0, timezone="America/New_York"),
         id="post_validation_check",
         replace_existing=True,
@@ -1339,16 +1349,20 @@ def start_scheduler() -> AsyncIOScheduler:
     # Runs every 30 min; skips if WebSocket stream is healthy
     fill_check_times = [(10, 0), (10, 30), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0)]
     for hour, minute in fill_check_times:
+        check_id = f"check_fills_{hour:02d}{minute:02d}"
         _scheduler.add_job(
-            _check_fills_job,
+            # Single audit job_id "check_fills" (not per-time) so all 7 fires/day
+            # aggregate into one baseline — fragmenting per HHMM gives only 30
+            # samples/month per id, too thin for L2 detection.
+            audit_wrap(_check_fills_job, "check_fills"),
             CronTrigger(hour=hour, minute=minute, day_of_week="mon-fri", timezone="America/New_York"),
-            id=f"check_fills_{hour:02d}{minute:02d}",
+            id=check_id,
             replace_existing=True,
         )
 
     # Stream health watchdog: every 5 min during market hours
     _scheduler.add_job(
-        _stream_health_watchdog,
+        audit_wrap(_stream_health_watchdog, "stream_health_watchdog"),
         CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
         id="stream_health_watchdog",
         replace_existing=True,
@@ -1356,7 +1370,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Morning stop refresh: 9:35 AM ET — re-place stops for Day 2+ positions
     _scheduler.add_job(
-        _morning_stop_refresh_job,
+        audit_wrap(_morning_stop_refresh_job, "morning_stop_refresh"),
         CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="morning_stop_refresh",
         replace_existing=True,
@@ -1366,7 +1380,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # closes. Prevents stop-limit buys sitting for hours and filling on
     # dead-cat-bounce retests well outside the setup's validity window.
     _scheduler.add_job(
-        _orb_window_cleanup_job,
+        audit_wrap(_orb_window_cleanup_job, "orb_window_cleanup"),
         CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="orb_window_cleanup",
         replace_existing=True,
@@ -1374,7 +1388,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # EOD cleanup: 4:05 PM ET — cancel unfilled, sync positions
     _scheduler.add_job(
-        _eod_cleanup_job,
+        audit_wrap(_eod_cleanup_job, "eod_cleanup"),
         CronTrigger(hour=16, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_cleanup",
         replace_existing=True,
@@ -1383,7 +1397,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # EOD EP recap: 4:10 PM ET — one-line Telegram summary of today's HIGH outcomes.
     # Fires after eod_cleanup so trade rows have settled (cancel unfilled, sync fills).
     _scheduler.add_job(
-        _eod_ep_recap_job,
+        audit_wrap(_eod_ep_recap_job, "eod_ep_recap"),
         CronTrigger(hour=16, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_ep_recap",
         replace_existing=True,
@@ -1392,7 +1406,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Post-EOD audit: 4:15 PM ET — trade-side invariants + metrics, runs after
     # 4:05 cleanup and 4:10 recap so trade rows reflect settled state.
     _scheduler.add_job(
-        _post_eod_audit_job,
+        audit_wrap(_post_eod_audit_job, "post_eod_audit"),
         CronTrigger(hour=16, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
         id="post_eod_audit",
         replace_existing=True,
@@ -1403,7 +1417,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # (fresh mi_daily_closes) and before 5:30 post_nightly_audit. Telemetry-only
     # per TI1; persists all stages, Telegrams only anticipation/climax.
     _scheduler.add_job(
-        _parabolic_scan_job,
+        audit_wrap(_parabolic_scan_job, JOB_PARABOLIC_SCAN),
         CronTrigger(hour=17, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_PARABOLIC_SCAN,
         replace_existing=True,
@@ -1413,7 +1427,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Post-nightly audit: 5:30 PM ET — theme/cooldown/regime invariants + metrics,
     # after 5:00 nightly data pull so tonight's themes/cooldowns are visible.
     _scheduler.add_job(
-        _post_nightly_audit_job,
+        audit_wrap(_post_nightly_audit_job, "post_nightly_audit"),
         CronTrigger(hour=17, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
         id="post_nightly_audit",
         replace_existing=True,
@@ -1423,7 +1437,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Baseline refresh: 2:00 AM ET daily — rebuild mi_metric_baselines from
     # trailing 30 days. Idempotent; loss → next refresh recomputes from scratch.
     _scheduler.add_job(
-        _baseline_refresh_job,
+        audit_wrap(_baseline_refresh_job, "baseline_refresh"),
         CronTrigger(hour=2, minute=0, timezone="America/New_York"),
         id="baseline_refresh",
         replace_existing=True,
@@ -1436,7 +1450,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # Shadow mode (CRYPTO_RS_ENABLED=false) by default — pipeline runs and
     # collects data, but Telegram surfaces stay quiet.
     _scheduler.add_job(
-        _crypto_nightly_ingest_job,
+        audit_wrap(_crypto_nightly_ingest_job, "crypto_nightly_ingest", expected_min_rows=10),
         CronTrigger(hour=18, minute=0, timezone="America/New_York"),
         id="crypto_nightly_ingest",
         replace_existing=True,
@@ -1448,7 +1462,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # 30/min = ~10 min of work. Low churn (categories rarely change), so weekly
     # is plenty. Slots after the Sunday nightly_ingest at 18:00.
     _scheduler.add_job(
-        _crypto_category_refresh_job,
+        audit_wrap(_crypto_category_refresh_job, "crypto_category_refresh", expected_min_rows=50),
         CronTrigger(hour=19, minute=0, day_of_week="sun", timezone="America/New_York"),
         id="crypto_category_refresh",
         replace_existing=True,
@@ -1459,7 +1473,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # the top-500 dollar-volume universe. Slots after 6:00 evening briefing.
     # Idempotent; if missed, next run recomputes from scratch.
     _scheduler.add_job(
-        _minute_volume_curves_refresh_job,
+        audit_wrap(_minute_volume_curves_refresh_job, "minute_volume_curves_refresh", expected_min_rows=50000),
         CronTrigger(hour=18, minute=30, day_of_week="mon-fri", timezone="America/New_York"),
         id="minute_volume_curves_refresh",
         replace_existing=True,
@@ -1468,7 +1482,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Live position update: 4:45 PM ET — SMA trail, partials, stop updates
     _scheduler.add_job(
-        _live_position_update_job,
+        audit_wrap(_live_position_update_job, "live_position_update"),
         CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
         id="live_position_update",
         replace_existing=True,
@@ -1476,7 +1490,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 9M EP intraday scan: every 5 min, 9:30 AM – 4:00 PM ET (regular session)
     _scheduler.add_job(
-        _9m_scan_job,
+        audit_wrap(_9m_scan_job, "9m_ep_scan"),
         CronTrigger(hour="9-15", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
         id="9m_ep_scan",
         replace_existing=True,
@@ -1484,7 +1498,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 9M Day 2 ORB: 9:31 AM ET — place ORB entries for yesterday's sugar babies
     _scheduler.add_job(
-        _9m_day2_orb_job,
+        audit_wrap(_9m_day2_orb_job, "9m_day2_orb"),
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="9m_day2_orb",
         replace_existing=True,
@@ -1493,7 +1507,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # HUD auto-refresh: hourly during market hours — edits the pinned message in-place.
     # Weekdays only; outside market hours /hud works on-demand but the scheduler doesn't push.
     _scheduler.add_job(
-        _hud_refresh_job,
+        audit_wrap(_hud_refresh_job, "hud_refresh"),
         CronTrigger(hour="9-15", minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="hud_refresh",
         replace_existing=True,

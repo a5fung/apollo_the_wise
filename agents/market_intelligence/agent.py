@@ -723,9 +723,10 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_audit_topic(self, request: AgentRequest) -> AgentResponse:
         """`/audit <topic>` — on-demand invariant + metric scan for a slice.
 
-        Topics: `cooldowns`, `themes`, `skips`, `positions`, `feed`, `9m`, `all`.
-        Bare `/audit` defaults to `all`. Same diagnostic body as the scheduled
-        scans; results emit Telegram on L1/L2 breach, audit-only on L3.
+        Topics: `cooldowns`, `themes`, `skips`, `positions`, `feed`, `9m`,
+        `job_runs`, `all`. Bare `/audit` defaults to `all`. Same diagnostic
+        body as the scheduled scans; results emit Telegram on L1/L2 breach,
+        audit-only on L3. `job_runs` returns a text report (no L1/L2 emission).
         """
         from agents.market_intelligence.system_audit import run_topic_audit
         raw = request.task.strip()
@@ -739,6 +740,8 @@ class MarketIntelligenceAgent(BaseAgent):
                     request,
                     result=f"Unknown audit topic `{topic}`. Valid topics: `{valid}`.",
                 )
+            if result.get("report"):
+                return self._ok(request, result=result["report"])
             l1 = result.get("l1", 0)
             l2 = result.get("l2", 0)
             l3 = result.get("l3", 0)

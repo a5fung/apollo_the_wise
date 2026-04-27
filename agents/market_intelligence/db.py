@@ -595,6 +595,29 @@ async def initialize_schema() -> None:
                 ON mi_baseline_resets(metric_name, reset_at DESC);
         """)
 
+        # ── Job-run telemetry (core.job_audit context manager) ─
+        # One row per scheduled-job invocation. Catches degraded-but-not-broken
+        # runs that notify_job_failure misses: slow runs, silent zero-rows.
+        # status: 'success' | 'failed' | 'empty_result'
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_job_runs (
+                id BIGSERIAL PRIMARY KEY,
+                job_id TEXT NOT NULL,
+                started_at TIMESTAMPTZ NOT NULL,
+                finished_at TIMESTAMPTZ,
+                duration_s NUMERIC,
+                status TEXT NOT NULL,
+                rows_written INTEGER,
+                expected_min_rows INTEGER,
+                error_message TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_job_runs_job_started
+                ON mi_job_runs(job_id, started_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_job_runs_status
+                ON mi_job_runs(status, started_at DESC);
+        """)
+
         # Market cap cache for parabolic-short detector cap-tier classification.
         # Stable enough that we refresh once per ticker every 30d via FMP.
         await conn.execute("""
