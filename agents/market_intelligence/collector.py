@@ -263,17 +263,9 @@ def prev_trading_days(n: int, from_date: date | None = None) -> list[date]:
     return days
 
 
-def last_trading_day(from_date: date | None = None) -> date:
-    """
-    Return the most recent trading day on or before from_date (default: today ET).
-    On Saturday/Sunday this returns the prior Friday so query handlers fall back
-    to the last available data instead of returning empty results all weekend.
-    Approximation: weekends only (not holidays) — matches prev_trading_days.
-    """
-    d = from_date or et_today()
-    while d.weekday() >= 5:  # Saturday=5, Sunday=6
-        d -= timedelta(days=1)
-    return d
+# last_trading_day moved to shared/dates.py so the orchestrator container
+# (which has no agents/market_intelligence/) can import it for slash commands.
+from shared.dates import last_trading_day  # noqa: F401, E402
 
 
 def trading_date_n_months_ago(months: int) -> str:
@@ -284,12 +276,9 @@ def trading_date_n_months_ago(months: int) -> str:
     return d.strftime("%Y-%m-%d")
 
 
-_ET = pytz.timezone("US/Eastern")
-
-
-def et_today() -> date:
-    """Return today's date in US/Eastern timezone."""
-    return datetime.now(_ET).date()
+# et_today moved to shared/dates.py — kept as re-export here so the 20+
+# market-side modules importing it from collector keep working.
+from shared.dates import et_today  # noqa: F401, E402
 
 
 # ── yfinance — company profile, analyst ratings (free, no API key) ────────────

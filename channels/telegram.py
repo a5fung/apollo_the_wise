@@ -785,7 +785,7 @@ class TelegramChannel:
             return
 
         import httpx
-        from agents.market_intelligence.collector import last_trading_day
+        from shared.dates import last_trading_day
         from shared.models import AgentRequest
         from shared.registry import get_agent_url
 
@@ -872,7 +872,7 @@ class TelegramChannel:
             return
 
         import httpx
-        from agents.market_intelligence.collector import last_trading_day
+        from shared.dates import last_trading_day
         from shared.models import AgentRequest
         from shared.registry import get_agent_url
 
