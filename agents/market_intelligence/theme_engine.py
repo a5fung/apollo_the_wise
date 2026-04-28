@@ -51,8 +51,15 @@ from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
-    add_validation_cooldown, get_cooldown_set, get_ticker_breadth_above_sma20,
+    add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
+    get_ticker_breadth_above_sma20,
 )
+
+# Global ticker ban — fires when a ticker has been validation-removed from
+# ≥ N distinct themes in the last D days. Closes the per-(theme, ticker)
+# cooldown leak when a hallucinated name spreads across fragmented themes.
+_GLOBAL_BAN_THRESHOLD = 3
+_GLOBAL_BAN_LOOKBACK_DAYS = 30
 
 # Theme breadth decay — force Fading when fewer than 40% of members trade
 # above their 20-day SMA for 2 consecutive days. Lifecycle otherwise reacts
@@ -977,11 +984,14 @@ async def _assign_uncovered_to_themes(
     existing_themes: list[dict],
     stocks_by_ticker: dict[str, dict],
     theme_exclusions: dict[str, set[str]] | None = None,
+    globally_banned: set[str] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
     Returns (remaining_uncovered, changelog_entries).
     theme_exclusions: mapping of theme_name → set of tickers permanently excluded from it.
+    globally_banned: tickers that have been validation-removed from ≥ N distinct themes
+        in the lookback window — filtered out before reaching the LLM.
     """
     if not uncovered_stocks or not existing_themes:
         return uncovered_stocks, []
@@ -998,6 +1008,16 @@ async def _assign_uncovered_to_themes(
             f"Check _ensure_descriptions — yfinance may have returned no data for these tickers."
         )
     uncovered_stocks = [s for s in uncovered_stocks if TICKER_DESC.get(s["ticker"])]
+
+    # Global ban filter — keeps untrusted tickers out of the prompt entirely.
+    if globally_banned:
+        banned_in_pool = [s["ticker"] for s in uncovered_stocks if s["ticker"] in globally_banned]
+        if banned_in_pool:
+            logger.info(
+                f"[theme assign] Globally banned tickers excluded from assignment: {banned_in_pool}"
+            )
+        uncovered_stocks = [s for s in uncovered_stocks if s["ticker"] not in globally_banned]
+
     if not uncovered_stocks:
         return [], []
 
@@ -1570,6 +1590,7 @@ async def _discover_new_themes(
     elite_covered: list[dict] | None = None,
     theme_exclusions: dict[str, set[str]] | None = None,
     correlation_clusters: list[dict] | None = None,
+    globally_banned: set[str] | None = None,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
@@ -1593,6 +1614,26 @@ async def _discover_new_themes(
             f"Check _ensure_descriptions — yfinance may have returned no data for these tickers."
         )
     uncovered_stocks = [s for s in uncovered_stocks if TICKER_DESC.get(s["ticker"])]
+
+    # Global ban filter — strip untrusted tickers from every input pool the prompt sees.
+    # Velocity/turner pools come from separate data paths, so banned tickers can re-enter
+    # discovery even when assignment already filtered them out of `uncovered`.
+    if globally_banned:
+        def _drop_banned(pool: list[dict] | None, label: str) -> list[dict]:
+            if not pool:
+                return pool or []
+            banned_hit = [s["ticker"] for s in pool if s["ticker"] in globally_banned]
+            if banned_hit:
+                logger.info(
+                    f"[theme discover] Globally banned tickers excluded from {label}: {banned_hit}"
+                )
+            return [s for s in pool if s["ticker"] not in globally_banned]
+
+        uncovered_stocks = _drop_banned(uncovered_stocks, "uncovered")
+        velocity_leaders = _drop_banned(velocity_leaders, "velocity")
+        turners = _drop_banned(turners, "turners")
+        # elite_covered is "stocks already in themes" — they passed historical validation,
+        # don't strip them; sub-theme analysis on existing assignments stays useful.
 
     def _stock_line(s: dict, theme_label: str = "") -> str:
         ticker = s["ticker"]
@@ -1763,6 +1804,17 @@ If none of these apply, call report_themes directly — advisor consultation is 
                 result_themes = []
                 for t in valid:
                     t = _strip_sector_outliers(t, stocks_by_ticker)
+                    # Post-LLM ban filter — catches banned tickers reintroduced via
+                    # correlation_clusters or LLM ignoring the absent input.
+                    if globally_banned:
+                        tickers_in = t.get("tickers", [])
+                        banned_hit = [tk for tk in tickers_in if tk in globally_banned]
+                        if banned_hit:
+                            logger.info(
+                                f"Discovery post-filter: stripped globally-banned {banned_hit} "
+                                f"from new theme '{t.get('name')}'"
+                            )
+                            t = {**t, "tickers": [tk for tk in tickers_in if tk not in globally_banned]}
                     # Post-filter: strip tickers that are excluded from any semantically
                     # related theme — catches CAR sneaking into a renamed data-center theme
                     if theme_exclusions:
@@ -2333,11 +2385,40 @@ async def run_theme_engine(
                 "sector": s.get("sector", "Unknown"),
             })
 
+    # Global ticker ban — pulled once and reused for both assignment + discovery.
+    # Tickers that have been validation-removed from ≥ N distinct themes in the
+    # last D days are treated as untrusted: their description has been pattern-
+    # matching into hallucinated themes faster than per-(theme, ticker) cooldowns
+    # can fence them off.
+    globally_banned_map = await get_globally_banned_tickers(
+        min_distinct_themes=_GLOBAL_BAN_THRESHOLD,
+        lookback_days=_GLOBAL_BAN_LOOKBACK_DAYS,
+    )
+    globally_banned: set[str] = set(globally_banned_map.keys())
+    if globally_banned:
+        logger.info(
+            f"Theme engine: {len(globally_banned)} globally-banned tickers "
+            f"(≥{_GLOBAL_BAN_THRESHOLD} theme rejections in {_GLOBAL_BAN_LOOKBACK_DAYS}d): "
+            f"{sorted(globally_banned)}"
+        )
+        # One roll-up audit row per run, not one per ticker — banned set changes slowly
+        # and per-ticker rows would balloon mi_audit_log without adding signal.
+        detail_lines = [
+            f"{tk}: {', '.join(sorted(themes))}"
+            for tk, themes in sorted(globally_banned_map.items())
+        ]
+        await log_audit_event(
+            "global_ticker_ban_active",
+            summary=f"{len(globally_banned)} tickers globally banned from theme assignment",
+            detail="\n".join(detail_lines),
+        )
+
     # --- Step 2b: Assign uncovered stocks to existing themes ---
     if uncovered and updated_themes:
         uncovered, assign_log = await _assign_uncovered_to_themes(
             uncovered, updated_themes, stocks_by_ticker,
             theme_exclusions=theme_exclusions,
+            globally_banned=globally_banned,
         )
         changelog.extend(assign_log)
         logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")
@@ -2354,6 +2435,7 @@ async def run_theme_engine(
             velocity_leaders, turners, elite_covered,
             theme_exclusions=theme_exclusions,
             correlation_clusters=clusters,
+            globally_banned=globally_banned,
         )
         logger.info(f"Theme engine: {len(new_raw)} new themes discovered")
 

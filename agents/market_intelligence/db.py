@@ -3563,6 +3563,34 @@ async def get_cooldown_set() -> set[tuple[str, str]]:
     return {(r["ticker"], r["theme_name"]) for r in rows}
 
 
+async def get_globally_banned_tickers(
+    min_distinct_themes: int = 3, lookback_days: int = 30
+) -> dict[str, list[str]]:
+    """Return {ticker: [theme names rejected from]} for tickers validation-removed
+    from ≥ min_distinct_themes distinct themes within the last lookback_days.
+
+    Per-(theme, ticker) cooldowns leak when a hallucinated ticker spreads across
+    fragmented themes (DELL banned from "Satellite Imagery" can still land in
+    "Satellite Mobile"). This is a global theme-assignment hard ban — once a
+    ticker has been removed from N distinct themes, the theme engine treats
+    its descriptions as untrusted for the lookback window.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, array_agg(DISTINCT theme_name) AS themes
+            FROM mi_validation_cooldowns
+            WHERE NOT bypassed
+              AND removed_at >= NOW() - ($1 || ' days')::INTERVAL
+            GROUP BY ticker
+            HAVING COUNT(DISTINCT theme_name) >= $2
+            """,
+            str(lookback_days), min_distinct_themes,
+        )
+    return {r["ticker"]: list(r["themes"]) for r in rows}
+
+
 async def bypass_cooldown(ticker: str, theme_name: str | None = None, reason: str = "") -> int:
     """
     Set bypassed=True for matching rows. theme_name=None bypasses all themes for ticker.
