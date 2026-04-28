@@ -699,9 +699,8 @@ async def initialize_schema() -> None:
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 PRIMARY KEY (ticker, source)
             );
-            CREATE INDEX IF NOT EXISTS idx_parabolic_exclusions_active
-                ON mi_parabolic_exclusions(ticker)
-                WHERE excluded_until IS NULL OR excluded_until >= CURRENT_DATE;
+            CREATE INDEX IF NOT EXISTS idx_parabolic_exclusions_ticker
+                ON mi_parabolic_exclusions(ticker);
         """)
 
         # ── Migrations ───────────────────────────────────────────────────
