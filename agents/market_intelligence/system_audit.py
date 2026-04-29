@@ -32,6 +32,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Awaitable, Callable
+from zoneinfo import ZoneInfo
+
+_ET = ZoneInfo("America/New_York")
 
 import anthropic
 
@@ -1075,7 +1078,7 @@ async def run_post_eod_audit(*, baseline_as_of: date | None = None) -> dict:
     since_dt = datetime.combine(since, datetime.min.time())
     pool = await get_pool()
     async with pool.acquire() as conn:
-        l1 = await _check_invariants(conn, since=since, since_dt=since_dt, now_et=datetime.now())
+        l1 = await _check_invariants(conn, since=since, since_dt=since_dt, now_et=datetime.now(_ET))
         regime = await _current_regime(conn)
         _, l2, l3 = await _scan_metrics(conn, _TRADE_METRICS, regime, as_of=baseline_as_of)
     summary = {"job": "post_eod", "l1": l1, "l2": l2, "l3": l3}
@@ -1198,7 +1201,7 @@ async def run_topic_audit(topic: str, *, baseline_as_of: date | None = None) -> 
     async with pool.acquire() as conn:
         l1 = 0
         if topic == "all":
-            l1 = await _check_invariants(conn, since=since, since_dt=since_dt, now_et=datetime.now())
+            l1 = await _check_invariants(conn, since=since, since_dt=since_dt, now_et=datetime.now(_ET))
         regime = await _current_regime(conn)
         _, l2, l3 = await _scan_metrics(conn, metrics, regime, as_of=baseline_as_of)
     return {"job": f"topic:{topic}", "l1": l1, "l2": l2, "l3": l3}

@@ -15,6 +15,26 @@ git push origin main
 ## What This Is
 Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Routes to specialized sub-agents.
 
+## ⏰ Time Handling — ALWAYS ET
+**Rule:** every datetime/time comparison in this codebase is in America/New_York (ET). The container runs UTC; **naive `datetime.now()` returns UTC clock values with no tzinfo and silently breaks every ET-keyed comparison.** This bug class has recurred many times.
+
+**Do:**
+- `from zoneinfo import ZoneInfo; _ET = ZoneInfo("America/New_York")` — already imported at the top of `system_audit.py`, `audit_invariants.py`, `scheduler.py`, `crypto/ingest.py`, etc.
+- `datetime.now(_ET)` for "now" comparisons (job deadlines, market hours, ORB windows).
+- `et_today()` from `collector.py` for "today's date" (handles DST + container UTC).
+- `last_trading_day()` for queries that must skip weekends/holidays.
+- SQL: `AT TIME ZONE 'America/New_York'` when comparing TIMESTAMPTZ columns to ET date constants. Cast `TIMESTAMPTZ → DATE` only after the AT TIME ZONE conversion.
+- APScheduler: `CronTrigger(..., timezone=ZoneInfo("America/New_York"))` — never UTC cron times.
+
+**Don't:**
+- ❌ `datetime.now()` — naive UTC, defeats `or datetime.now(_ET)` defensive defaults downstream.
+- ❌ `datetime.utcnow()` — same problem, naive.
+- ❌ `date.today()` — returns container's UTC date; after 8 PM ET it's already tomorrow. Use `et_today()`.
+- ❌ Mixing tz-aware and tz-naive datetimes in the same comparison — Python raises, but only at runtime.
+- ❌ Hardcoding UTC offsets — DST breaks them twice a year.
+
+**Cautionary tale:** 2026-04-29 false L1 alert. `system_audit.py` passed naive `datetime.now()` (= UTC clock 20:15) to `check_job_no_show`, which compared `now_et.time() == 20:15 >= 18:30` and false-flagged `nightly_data_pull` as missing **2 hours before its actual ET deadline**. Fix was a one-line change to `datetime.now(_ET)`. Cost: one Telegram alert, ten minutes of triage. The defensive `or datetime.now(_ET)` default in the invariant didn't fire — naive dt is not None.
+
 ## Running Locally
 ```bash
 bash start.sh          # Terminal 1 — orchestrator + Postgres + Redis
