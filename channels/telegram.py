@@ -468,7 +468,7 @@ class TelegramChannel:
             "• Day 1: hold full · Day 2+: trail 10/20-SMA · stop floor = Day 1 low\n"
             "• Partial 1/3 Day 3-5; stop → breakeven after partial\n"
             "• 9M Day 2: prior-day-low stop; shape-tag filter (uptrend/pullback)\n"
-            "• Safeguards: max 4 open · 2% daily loss · 3-loss circuit breaker\n"
+            "• Safeguards: max 4 open · 2% daily loss · 5-loss circuit breaker\n"
             "_Full doc: EP_TRADING_RULES.md_\n"
             "\n"
             "_Still-working but off-menu: /9m /themes /clusters /regime /spend /rules /setup /eps_"

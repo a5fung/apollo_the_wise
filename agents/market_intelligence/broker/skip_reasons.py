@@ -68,7 +68,7 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
     BLOCK_MAX_POSITIONS:           "Max open positions reached",
     BLOCK_DAILY_LOSS:              "Daily loss limit hit",
-    BLOCK_CIRCUIT_BREAKER:         "3-loss circuit breaker tripped",
+    BLOCK_CIRCUIT_BREAKER:         "5-loss circuit breaker tripped",
     BLOCK_STRATEGY_DISABLED:       "Strategy disabled in registry",
     BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
     BLOCK_PAPER_STRATEGY_ON_LIVE:  "Paper-phase strategy can't run on live account",

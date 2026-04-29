@@ -18,7 +18,8 @@ CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "tru
 MAX_CONCURRENT_LIVE_POSITIONS = 4
 CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
-CIRCUIT_BREAKER_CONSEC_LOSSES = 3    # Pause after N consecutive losses
+CIRCUIT_BREAKER_CONSEC_LOSSES = 5    # Pause after N consecutive losses (EP win rate ~20s% → P(5 consec) ≈ 33%)
+CIRCUIT_BREAKER_COOLDOWN_DAYS = 1    # Block resumes after this window past last loss
 
 REGIME_EMOJI = {
     "Bull": "🟢",

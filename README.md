@@ -53,7 +53,7 @@ Apollo runs semi-automated paper trading via Alpaca. Two independent systems sha
 | Auto-confirm | Paper mode bypasses Telegram confirmation — both systems execute automatically |
 | Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
 | Position tracking | `9m trades` / `trades` command — log with P&L per trade |
-| Safeguards | Max 4 positions (shared across both systems), 2% daily loss limit, 3-loss circuit breaker |
+| Safeguards | Max 4 positions (shared across both systems), 2% daily loss limit, 5-loss circuit breaker (1-day cooldown auto-release) |
 | Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions |
 | EOD cleanup | 4:05 PM — cancel unfilled entries, sync positions with Alpaca |
 | Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS` in `constants.py` |

@@ -124,7 +124,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, stop at ORB low
-- Safeguards: max 4 positions, 2% daily loss limit, 3-loss circuit breaker
+- Safeguards: max 4 positions, 2% daily loss limit, 5-loss circuit breaker (1-day cooldown)
 - Kill switch: `LIVE_TRADING_ENABLED=false`
 
 ### Telegram Formatting

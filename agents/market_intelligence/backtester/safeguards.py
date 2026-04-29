@@ -5,6 +5,10 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from agents.market_intelligence.backtester.models import BacktestTrade
+from agents.market_intelligence.constants import (
+    CIRCUIT_BREAKER_CONSEC_LOSSES,
+    CIRCUIT_BREAKER_COOLDOWN_DAYS,
+)
 
 
 @dataclass
@@ -13,8 +17,8 @@ class RiskConfig:
     max_concurrent_positions: int = 4
     max_position_pct: float = 0.10  # 10% of account
     max_same_sector: int = 2
-    circuit_breaker_consecutive_losses: int = 3
-    circuit_breaker_cooldown_days: int = 1
+    circuit_breaker_consecutive_losses: int = CIRCUIT_BREAKER_CONSEC_LOSSES
+    circuit_breaker_cooldown_days: int = CIRCUIT_BREAKER_COOLDOWN_DAYS
 
 
 @dataclass

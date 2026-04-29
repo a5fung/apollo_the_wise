@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.entry_pipeline import (
@@ -49,6 +49,7 @@ from agents.market_intelligence.constants import (
     MAX_CONCURRENT_LIVE_POSITIONS,
     DAILY_LOSS_LIMIT_PCT,
     CIRCUIT_BREAKER_CONSEC_LOSSES,
+    CIRCUIT_BREAKER_COOLDOWN_DAYS,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,9 +97,13 @@ async def _check_safeguards() -> tuple[bool, str | None]:
             logger.info(f"Safeguard blocked: daily loss limit (${today_losses:+,.0f} >= ${daily_limit:.0f})")
             return False, f"{BLOCK_DAILY_LOSS}: ${today_losses:+,.0f} >= ${daily_limit:.0f}"
 
-        # Circuit breaker: N consecutive losses
+        # Circuit breaker: N consecutive losses, then auto-release after cooldown.
+        # Time-based escape valve mirrors backtester semantics — without it, once N
+        # losses close, no new entries can ever fire (the trailing-N window is
+        # permanently all-losses until a winner ages into it, which can't happen
+        # if entries are blocked).
         recent_closed = await conn.fetch("""
-            SELECT total_pnl FROM mi_live_trades
+            SELECT total_pnl, closed_at FROM mi_live_trades
             WHERE status = 'closed' AND total_pnl IS NOT NULL
             ORDER BY closed_at DESC LIMIT $1
         """, CIRCUIT_BREAKER_CONSEC_LOSSES)
@@ -106,8 +111,19 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         if len(recent_closed) >= CIRCUIT_BREAKER_CONSEC_LOSSES:
             all_losses = all(r["total_pnl"] <= 0 for r in recent_closed)
             if all_losses:
-                logger.info(f"Safeguard blocked: circuit breaker ({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses)")
-                return False, f"{BLOCK_CIRCUIT_BREAKER}: {CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses"
+                latest_loss_at = recent_closed[0]["closed_at"]
+                cooldown_until = latest_loss_at + timedelta(days=CIRCUIT_BREAKER_COOLDOWN_DAYS)
+                now = datetime.now(timezone.utc)
+                if now < cooldown_until:
+                    logger.info(
+                        f"Safeguard blocked: circuit breaker "
+                        f"({CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses, "
+                        f"cooldown until {cooldown_until.isoformat()})"
+                    )
+                    return False, (
+                        f"{BLOCK_CIRCUIT_BREAKER}: cooldown until "
+                        f"{cooldown_until.isoformat()}"
+                    )
 
     return True, None
 

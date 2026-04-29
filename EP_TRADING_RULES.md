@@ -263,7 +263,7 @@ Sugar Babies appear in the evening briefing as Day 2 ORB candidates. EOD sweep r
 Same shared pool as MAGNA53:
 - Max 4 concurrent positions (configurable via `MAX_CONCURRENT_LIVE_POSITIONS` in `constants.py`)
 - 2% daily loss limit
-- 3-loss circuit breaker
+- 5-loss circuit breaker (1-day cooldown auto-release)
 
 ### G7. Implementation Files
 
