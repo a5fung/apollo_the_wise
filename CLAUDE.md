@@ -200,6 +200,15 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-28 (session 2) — Theme Pass 1.5 protected-theme relief valve
+Two near-duplicate themes ("AI Datacenter Silicon" {ARM, AMD, MRVL} Nascent + "Custom AI Silicon & Chip Architecture Licensing" {ARM, MRVL} Accelerating) couldn't consolidate. Root cause: only 2 shared tickers → blocked by Pass 1's `MIN_SHARED_FOR_MERGE = 3` gate (added 2026-04-26 to fix Single-Cell Genomics over-merge). Pass 1.5 (small-theme absorption) would have caught it via subset overlap, but its `protected_names` exemption (line 2087) bailed out for any theme already in DB — making existing-vs-existing consolidation impossible once a duplicate slipped in.
+
+**Fix in `theme_engine.py::_merge_overlapping_themes` Pass 1.5:** removed the blanket protection skip; replaced with two narrower gates inside the target-finding loop: (1) **direction guard** — `target.score >= t.score` ensures the more-established theme survives regardless of iteration order (without it, processing-order made the higher-scored theme absorb into the lower-scored one when it landed as `t` first); (2) **protection contract preserved** — when t is protected, target must also be protected, so new clusters still cannot dissolve existing themes (the original Single-Cell Genomics protection contract). Existing small protected themes (size ≤ 3, ≤ 1 unique ticker) can now consolidate into a higher-scored existing peer; new clusters → existing remains untouched. AI Datacenter Silicon now absorbs into Custom AI Silicon → {ARM, MRVL, AMD}.
+
+**Followup (separate):** "Chip Architecture Licensing & CPU/GPU Compute Revival" name-persistence-after-membership-drift bug (name set when constituents were ARM+AMD; now contains INFQ/STM, name stuck). Not addressed here — different mechanism.
+
+**Lesson:** the original protection mechanism implicitly assumed existing themes are mutually distinct. Once two near-duplicates coexist in DB, there's no remediation path without a relief valve. Score-direction + protected-target gates are the minimum-invasive fix that preserves the original protection contract.
+
 ### 2026-04-28 — 5-min Shadow ORB tracker (telemetry)
 Plan: `~/.claude/plans/shiny-mapping-locket.md`. Apollo's live ORB is hard-coded to a 1-min bar. Added a shadow tracker that records would-be 5-min ORB entries + outcomes alongside live 1-min trades — same alert universe, same gates, same exit logic; only the bar size differs. Pure telemetry, no real orders, no new alerts. After ≥30 closed paired trades, weekly digest will surface "5m beats 1m by X R for {bounce/pullback}" type findings; promotion to live is an explicit follow-up.
 

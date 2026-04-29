@@ -2075,7 +2075,11 @@ def _merge_overlapping_themes(
     # --- Pass 1.5: Small-theme absorption ---
     # A theme with <= 3 stocks where only 0-1 are unique (not in any other theme)
     # is not a distinct theme — absorb into the highest-scoring overlapping theme.
-    # Protected existing themes are exempt from this absorption.
+    # Protected existing themes were originally exempt; now allowed to absorb when
+    # they're small + non-unique, but only into a higher-scored protected target —
+    # this lets two near-duplicate existing themes consolidate (e.g. AI Datacenter
+    # Silicon ⊃ Custom AI Silicon) without letting new clusters dissolve established
+    # themes.
     from collections import Counter
     ticker_membership = Counter()
     for t in after_overlap:
@@ -2084,8 +2088,6 @@ def _merge_overlapping_themes(
 
     absorbed = set()
     for idx, t in enumerate(after_overlap):
-        if protected_names and t["name"] in protected_names:
-            continue  # never absorb an existing theme in pass 1.5
         if sub_theme_parents and t["name"] in sub_theme_parents:
             continue  # never absorb a sub-theme in pass 1.5
         tickers = set(t.get("tickers") or [])
@@ -2094,19 +2096,37 @@ def _merge_overlapping_themes(
         unique_count = sum(1 for tk in tickers if ticker_membership[tk] == 1)
         if unique_count > 1:
             continue
+
+        t_protected = bool(protected_names and t["name"] in protected_names)
+        t_score = t.get("score", 0)
+
         # Find highest-scoring overlapping theme to absorb into
         for target in after_overlap:
             if target["name"] == t["name"] or target["name"] in absorbed:
                 continue
             target_tickers = set(target.get("tickers") or [])
-            if tickers & target_tickers:  # any overlap
-                target["tickers"] = list(target_tickers | tickers)
-                absorbed.add(t["name"])
-                logger.info(
-                    f"Theme merge (small-theme absorption): '{t['name']}' → '{target['name']}' "
-                    f"({len(tickers)} stocks, {unique_count} unique)"
-                )
-                break
+            if not (tickers & target_tickers):
+                continue
+            # Direction guard: keep the more established theme. Without this,
+            # processing order (score desc) absorbs the higher-scored theme
+            # into the lower-scored one when it lands as `t` first.
+            if target.get("score", 0) < t_score:
+                continue
+            # When t is an existing protected theme, only dissolve it into
+            # another existing protected theme. New clusters must not absorb
+            # established themes (the original protection contract).
+            if t_protected and not (
+                protected_names and target["name"] in protected_names
+            ):
+                continue
+            target["tickers"] = list(target_tickers | tickers)
+            absorbed.add(t["name"])
+            logger.info(
+                f"Theme merge (small-theme absorption): '{t['name']}' → '{target['name']}' "
+                f"({len(tickers)} stocks, {unique_count} unique"
+                f"{', protected' if t_protected else ''})"
+            )
+            break
 
     if absorbed:
         after_overlap = [t for t in after_overlap if t["name"] not in absorbed]
