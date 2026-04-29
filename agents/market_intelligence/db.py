@@ -59,6 +59,104 @@ async def get_pool() -> asyncpg.Pool:
     return _pool
 
 
+async def _seed_strategies_registry(conn) -> None:
+    """Insert one row per strategy if not already present.
+
+    Re-runs are safe — `ON CONFLICT (strategy_id) DO NOTHING`. To change a
+    strategy's phase or thresholds after seed, edit `mi_strategies` directly
+    or via `/strategy <id> {enable|disable|promote|demote}`.
+    """
+    import json as _json
+
+    seeds = [
+        {
+            "strategy_id": "magna53",
+            "name": "MAGNA53 EP",
+            "family": "orb_long",
+            "phase": "live",
+            "signal_type": "magna53",
+            "outcomes_table": "mi_live_trades",
+            "promotion_model": "unpaired_r",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "min_closed": 30, "min_median_r": 0.0,
+                    "max_drawdown_pct": 0.30,
+                },
+                "paper_to_live": {
+                    "min_closed": 30, "min_median_r": 0.5,
+                    "min_win_rate": 0.40, "max_drawdown_dollars": 5000,
+                },
+            },
+        },
+        {
+            "strategy_id": "9m_day2",
+            "name": "9M Day 2 ORB",
+            "family": "orb_long",
+            "phase": "live",
+            "signal_type": "9m_day2",
+            "outcomes_table": "mi_live_trades",
+            "promotion_model": "unpaired_r",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "min_closed": 30, "min_median_r": 0.0,
+                    "max_drawdown_pct": 0.30,
+                },
+                "paper_to_live": {
+                    "min_closed": 30, "min_median_r": 0.5,
+                    "min_win_rate": 0.40, "max_drawdown_dollars": 5000,
+                },
+            },
+        },
+        {
+            "strategy_id": "shadow_orb_5m",
+            "name": "Shadow ORB 5-min",
+            "family": "orb_long",
+            "phase": "shadow",
+            "signal_type": "shadow_orb_5m",
+            "outcomes_table": "mi_orb_shadow_trades",
+            "promotion_model": "paired_r",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "min_paired_closed": 30,
+                    "min_median_r_delta": 0.0,
+                    "min_win_rate": 0.40,
+                },
+            },
+        },
+        {
+            "strategy_id": "parabolic_short",
+            "name": "Parabolic Short",
+            "family": "short",
+            "phase": "shadow",
+            "signal_type": "parabolic_short",
+            "outcomes_table": "mi_parabolic_candidates",
+            "promotion_model": "telemetry_review",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "min_climax_alerts": 20,
+                    "min_review_passed_pct": 0.60,
+                    "min_forward_5d_neg_rate": 0.50,
+                },
+            },
+        },
+    ]
+    await conn.executemany(
+        """
+        INSERT INTO mi_strategies
+            (strategy_id, name, family, phase, signal_type,
+             outcomes_table, promotion_model, promotion_thresholds)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        ON CONFLICT (strategy_id) DO NOTHING
+        """,
+        [
+            (s["strategy_id"], s["name"], s["family"], s["phase"],
+             s["signal_type"], s["outcomes_table"], s["promotion_model"],
+             _json.dumps(s["promotion_thresholds"]))
+            for s in seeds
+        ],
+    )
+
+
 async def initialize_schema() -> None:
     """Create MI tables if they don't exist. Called at agent startup."""
     pool = await get_pool()
@@ -743,10 +841,39 @@ async def initialize_schema() -> None:
                 ON mi_parabolic_exclusions(ticker);
         """)
 
+        # ── Strategy maturity registry ───────────────────────────────────
+        # One row per strategy. `phase` controls whether entries are allowed
+        # via the global gate; `enabled` is the user-facing on/off toggle.
+        # `promotion_model` discriminates the verdict shape: paired_r (shadow
+        # vs live counterpart), unpaired_r (R-based on own outcomes),
+        # telemetry_review (no PnL — false-positive review).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_strategies (
+                strategy_id          TEXT PRIMARY KEY,
+                name                 TEXT NOT NULL,
+                family               TEXT NOT NULL,
+                phase                TEXT NOT NULL,
+                enabled              BOOLEAN NOT NULL DEFAULT TRUE,
+                signal_type          TEXT NOT NULL,
+                outcomes_table       TEXT NOT NULL,
+                promotion_model      TEXT NOT NULL,
+                promotion_thresholds JSONB NOT NULL,
+                notes                TEXT,
+                created_at           TIMESTAMPTZ DEFAULT NOW(),
+                updated_at           TIMESTAMPTZ DEFAULT NOW(),
+                CHECK (phase IN ('shadow','paper','live')),
+                CHECK (promotion_model IN ('paired_r','unpaired_r','telemetry_review'))
+            );
+        """)
+
         # ── Migrations ───────────────────────────────────────────────────
         await conn.execute("""
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS entry_attempt INT NOT NULL DEFAULT 1;
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS signal_type TEXT;
+            CREATE INDEX IF NOT EXISTS idx_live_trades_signal_type
+                ON mi_live_trades(signal_type);
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes
@@ -785,6 +912,28 @@ async def initialize_schema() -> None:
             static_tickers_to_clean,
         )
         logger.info(f"Migration: cleared bad auto-generated descriptions for {static_tickers_to_clean}")
+
+        # ── Backfill mi_live_trades.signal_type (one-shot; idempotent) ────
+        # Pre-framework rows lack signal_type. Classify by alert provenance:
+        # row appearing in mi_9m_sugar_babies for the same (ticker, date) is
+        # 9M Day 2; everything else is MAGNA53. After this runs once, new
+        # inserts via entry_pipeline.submit_trade_entry write signal_type
+        # directly — no further backfill needed.
+        await conn.execute("""
+            UPDATE mi_live_trades lt
+            SET signal_type = CASE
+                WHEN EXISTS (
+                    SELECT 1 FROM mi_9m_sugar_babies sb
+                    WHERE sb.ticker = lt.ticker
+                      AND sb.alert_date = lt.alert_date
+                ) THEN '9m_day2'
+                ELSE 'magna53'
+            END
+            WHERE signal_type IS NULL
+        """)
+
+        # ── Seed mi_strategies registry (idempotent on strategy_id) ───────
+        await _seed_strategies_registry(conn)
 
         # ── Log row counts on startup for early data-loss detection ───────
         for tbl in ("mi_paper_trades", "mi_live_trades"):

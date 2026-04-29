@@ -485,6 +485,11 @@ class MarketIntelligenceAgent(BaseAgent):
         if (task.startswith("audit ") or task == "audit") and "audit log" not in task:
             return await self._handle_audit_topic(request)
 
+        # Strategy maturity registry — list, detail, enable/disable/promote/demote.
+        # Match `/strategies`, `strategies`, `/strategy <id>...`, `strategy <id>...`.
+        if task in ("strategies", "/strategies") or task.startswith(("strategy ", "/strategy ", "strategy:")):
+            return await self._handle_strategy_command(request)
+
         # Journal — add (colon disambiguates from query) or query
         if any(k in task for k in ["journal:", "log trade", "note trade", "add journal"]):
             return await self._handle_journal_add(request)
@@ -763,6 +768,31 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.exception(f"Audit topic failed: {e}")
             return self._error(request, f"Audit failed: {e}")
+
+    async def _handle_strategy_command(self, request: AgentRequest) -> AgentResponse:
+        """`/strategies` (list) or `/strategy <id> [action]` (detail / mutate).
+
+        Actions: enable, disable, promote, demote. Promote enforces
+        verdict.eligible — see strategies/telegram.py.
+        """
+        from agents.market_intelligence.strategies.telegram import (
+            handle_strategies_command,
+            handle_strategy_action,
+        )
+        import re as _re
+        raw = request.task.strip()
+        # `/strategies`, bare `strategies`, or bare `/strategy` (no args) → list.
+        # Note: `_re.fullmatch(r'/?strategies?')` would over-match `/strategy <id>`
+        # via partial match — we explicitly check the no-args forms.
+        if _re.fullmatch(r'/?strategies?', raw, flags=_re.IGNORECASE):
+            return self._ok(request, result=await handle_strategies_command())
+        # Strip leading `/strategy` or `strategy` (colon or whitespace) and dispatch on body
+        body = _re.sub(r'^\s*/?strategy(?:[:\s]+|$)', '', raw, count=1, flags=_re.IGNORECASE).strip()
+        try:
+            return self._ok(request, result=await handle_strategy_action(body))
+        except Exception as e:
+            logger.exception(f"Strategy command failed: {e}")
+            return self._error(request, f"Strategy command failed: {e}")
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""
@@ -2916,6 +2946,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/why":            self._handle_why_query,
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
+            "/strategies":     self._handle_strategy_command,
+            "/strategy":       self._handle_strategy_command,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,

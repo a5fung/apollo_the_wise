@@ -68,6 +68,7 @@ Rules:
 - When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. Do not invent transitions if the count is 0; omit the line entirely.
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Broken* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 - The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
+- When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 """
 
@@ -128,6 +129,7 @@ async def _gather_and_aggregate(
     anomalies = await _aggregate_anomalies(window_days)
     crypto = await _aggregate_crypto_readiness(window_days)
     shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
+    strategy_promotions = await _aggregate_promotion_checks()
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -144,7 +146,36 @@ async def _gather_and_aggregate(
         "postmortem_worst": postmortems.get("worst"),
         "crypto": crypto,
         "shadow_orb": shadow_orb,
+        "strategy_promotions": strategy_promotions,
     }
+
+
+async def _aggregate_promotion_checks() -> dict:
+    """Per-strategy promotion eligibility snapshot for the weekly digest.
+
+    Returns one entry per registered strategy with current phase, model,
+    eligibility, headline metric, and blocking reasons (if any). The
+    weekly review prompt cites this so the user sees which strategies
+    are accumulating signal vs ready to graduate.
+    """
+    try:
+        from agents.market_intelligence.strategies.promotion import check_all_strategies
+        verdicts = await check_all_strategies()
+    except Exception:
+        logger.exception("promotion aggregator failed")
+        return {"checks": []}
+    out: list[dict] = []
+    for v in verdicts:
+        out.append({
+            "strategy_id": v.strategy_id,
+            "current_phase": v.current_phase,
+            "next_phase": v.next_phase,
+            "model": v.model,
+            "eligible": v.eligible,
+            "metrics": v.metrics,
+            "blocking_reasons": v.blocking_reasons[:3],
+        })
+    return {"checks": out}
 
 
 async def _aggregate_anomalies(days: int) -> dict:

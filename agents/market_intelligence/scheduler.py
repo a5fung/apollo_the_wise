@@ -542,6 +542,7 @@ async def _ep_scan_job():
                     try:
                         await _insert_skipped_trade(
                             ep["ticker"], et_today(), ep, None, skip_msg,
+                            signal_type="magna53",
                         )
                     except Exception as ins_e:
                         logger.error(f"Could not insert out-of-ORB skip for {ep['ticker']}: {ins_e}")

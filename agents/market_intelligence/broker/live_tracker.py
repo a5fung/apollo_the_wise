@@ -185,7 +185,10 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
 
             passed, skip_reason = await check_filters(ticker, today)
             if not passed:
-                await _insert_skipped_trade(ticker, today, alert, regime_record, skip_reason)
+                await _insert_skipped_trade(
+                    ticker, today, alert, regime_record, skip_reason,
+                    signal_type="magna53",
+                )
                 logger.info(f"ORB filter [{trigger}]: {ticker} skipped — {skip_reason}")
                 try:
                     await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
@@ -209,6 +212,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 spec_builder=_magna_spec_builder,
                 regime_record=regime_record,
                 strategy_label="ORB",
+                signal_type="magna53",
                 today=today,
                 atr_14=atr_14,
                 # MAGNA53 HIGH: Sonnet+Perplexity validation + ATR stop
@@ -580,6 +584,7 @@ async def _insert_skipped_trade(
     alert: dict | None,
     regime_record: dict | None,
     skip_reason: str,
+    signal_type: str | None = None,
 ) -> None:
     """Insert a skipped live trade record.
 
@@ -597,12 +602,12 @@ async def _insert_skipped_trade(
         await conn.execute("""
             INSERT INTO mi_live_trades
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct,
-                 regime, status, skip_reason)
-            VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7)
+                 regime, status, skip_reason, signal_type)
+            VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7, $8)
             ON CONFLICT (ticker, alert_date) DO NOTHING
         """,
             ticker, today, ep_score, catalyst_quality, gap_pct, regime,
-            skip_reason,
+            skip_reason, signal_type,
         )
 
 
@@ -657,6 +662,7 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
         spec_builder=_ninem_spec_builder,
         regime_record=regime_record,
         strategy_label="9M Day2",
+        signal_type="9m_day2",
         today=today,
         atr_14=None,
         success_icon="🍬",

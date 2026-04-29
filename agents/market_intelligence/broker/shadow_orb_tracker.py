@@ -65,6 +65,17 @@ async def run_shadow_pass(today: date) -> dict[str, int]:
     Writes one mi_orb_shadow_trades row per candidate with status
     open / no_entry / gate_blocked / infra:no_bar.
     """
+    from agents.market_intelligence.db import log_audit_event
+    from agents.market_intelligence.strategies.registry import should_run
+    if not await should_run("shadow_orb_5m"):
+        await log_audit_event(
+            "strategy_disabled_skip",
+            "shadow_orb_5m disabled — skipping shadow pass",
+        )
+        return {"open": 0, "no_entry": 0, "gate_blocked": 0,
+                "infra:no_bar": 0, "duplicate": 0, "error": 0,
+                "strategy_disabled": 1}
+
     magna_alerts = await _fetch_magna53_high_pre_open(today)
     yesterday = prev_trading_days(1, from_date=today)[0]
     sugar_babies = await get_all_9m_sugar_babies(yesterday)

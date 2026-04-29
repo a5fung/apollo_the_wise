@@ -21,6 +21,9 @@ from typing import Any, Awaitable, Callable
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import (
+    BLOCK_PAPER_STRATEGY_ON_LIVE,
+    BLOCK_STRATEGY_DISABLED,
+    BLOCK_STRATEGY_IN_SHADOW,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
@@ -134,6 +137,7 @@ async def submit_trade_entry(
     spec_builder: SpecBuilder,
     regime_record: dict | None,
     strategy_label: str,
+    signal_type: str,
     today: date,
     atr_14: float | None = None,
     success_icon: str = "📊",
@@ -177,6 +181,7 @@ async def submit_trade_entry(
         try:
             await _insert_skipped_trade(
                 ticker, today, alert_context, regime_record, reason,
+                signal_type=signal_type,
             )
         except Exception as e:
             logger.error(f"{strategy_label} {ticker}: _insert_skipped_trade raised — {e}")
@@ -208,6 +213,28 @@ async def submit_trade_entry(
             pass
         # Not a failure — silent is correct here. It's already been handled once.
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
+
+    # 1a. Strategy phase gate. Fail-open if the strategy isn't in the registry
+    # (legacy code path / pre-deploy state). Once seeded, the gate is the
+    # single per-strategy enable/disable surface.
+    from agents.market_intelligence.strategies.registry import get_strategy
+    strategy = await get_strategy(signal_type)
+    if strategy is not None:
+        if not strategy.enabled:
+            return await _skip(
+                BLOCK_STRATEGY_DISABLED, icon="🚫",
+                audit_event="orb_blocked", action=ACTION_BLOCKED,
+            )
+        if strategy.phase == "shadow":
+            return await _skip(
+                BLOCK_STRATEGY_IN_SHADOW, icon="🚫",
+                audit_event="orb_blocked", action=ACTION_BLOCKED,
+            )
+        if strategy.phase == "paper" and os.environ.get("ALPACA_PAPER", "true").lower() != "true":
+            return await _skip(
+                BLOCK_PAPER_STRATEGY_ON_LIVE, icon="🚫",
+                audit_event="orb_blocked", action=ACTION_BLOCKED,
+            )
 
     # 2. Safeguards — position cap / daily loss / circuit breaker.
     ok, sg_reason = await _check_safeguards()
@@ -250,9 +277,9 @@ async def submit_trade_entry(
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
                  status, orb_high, orb_low, atr_14,
                  entry_price, entry_shares, stop_price, hard_stop,
-                 position_size, risk_dollars, proposed_at)
+                 position_size, risk_dollars, signal_type, proposed_at)
             VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
-                    $10,$11,$12,$12,$13,$14,NOW())
+                    $10,$11,$12,$12,$13,$14,$15,NOW())
             ON CONFLICT (ticker, alert_date) DO NOTHING
             RETURNING id
             """,
@@ -265,6 +292,7 @@ async def submit_trade_entry(
             order_spec["entry_price"], float(order_spec["shares"]),
             order_spec["stop_loss_price"],
             order_spec["position_size"], order_spec["risk_dollars"],
+            signal_type,
         )
     if not trade_id:
         logger.debug(f"{strategy_label} {ticker}: trade row insert hit unique conflict")

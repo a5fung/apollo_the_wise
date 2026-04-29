@@ -616,6 +616,14 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
     cache miss) doesn't burst the rate limit.
     """
     from agents.market_intelligence import db
+    from agents.market_intelligence.strategies.registry import should_run
+
+    if not await should_run("parabolic_short"):
+        await db.log_audit_event(
+            "strategy_disabled_skip",
+            "parabolic_short disabled — skipping nightly scan",
+        )
+        return {"climax": [], "anticipation": [], "watch": [], "unqualified": []}
 
     universe = await db.get_parabolic_universe(trade_date)
     by_stage: dict[str, list[dict]] = {

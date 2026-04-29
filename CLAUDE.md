@@ -200,6 +200,38 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-28 (session 3) — Strategy Maturity Framework (Option A)
+Plan: `~/.claude/plans/shiny-mapping-locket.md`. Five strategies (MAGNA53, 9M Day 2, Shadow ORB 5m, Parabolic Short, P22 backlog) were each wired ad-hoc — own outcomes table, own scheduler hooks, own audit topic, own weekly aggregator, own Telegram routes. Adding strategy #6 = copy-paste across 5 subsystems. Built a thin overlay registry: each strategy declares phase (shadow → paper → live), KPI promotion thresholds, enable flag. Per-strategy outcome tables stay as-is; adapter pattern layers on top.
+
+**New package `agents/market_intelligence/strategies/`** — registry.py (Strategy dataclass + `_CACHE` + `should_run()` enable-gate helper), adapters.py (per-strategy `OutcomeRow` adapters; `magna53`/`9m_day2` collapsed via `functools.partial`), promotion.py (3 evaluators: `unpaired_r` / `paired_r` / `telemetry_review`; verdict shape dispatches on `promotion_model`), telegram.py (`/strategies` table + `/strategy <id> [enable|disable|promote|demote]`).
+
+**Schema additions** (additive only): `mi_strategies` table; `mi_live_trades.signal_type TEXT` column + `idx_live_trades_signal_type`. **Backfill** classifies pre-framework rows: row in `mi_9m_sugar_babies` for same (ticker, alert_date) → `9m_day2`, else `magna53`. Backfill is `WHERE signal_type IS NULL` so subsequent startups are no-ops. Adapters then filter `WHERE signal_type = ?` — no joins, no ambiguity.
+
+**Phase gate at three entry points** (without all three the registry is a no-op for half the strategies):
+1. `broker/entry_pipeline.py::submit_trade_entry` — full enabled / shadow / paper-on-live check; returns BLOCK_STRATEGY_DISABLED / BLOCK_STRATEGY_IN_SHADOW / BLOCK_PAPER_STRATEGY_ON_LIVE via `_skip` (Telegram + audit row). Pipeline contract preserved.
+2. `broker/shadow_orb_tracker.py::run_shadow_pass` — `should_run("shadow_orb_5m")` at top, logs `strategy_disabled_skip` and returns 0-row counts.
+3. `parabolic_detector.py::run_parabolic_scan` — same pattern for `parabolic_short`.
+
+**Promotion check is manual** — verdict flags eligibility, user runs `/strategy <id> promote`. Promote refuses if `verdict.eligible == False`. All phase transitions write `strategy_phase_change` to `mi_audit_log` with JSON-encoded `detail` (matches `system_audit._emit_l*` convention).
+
+**Weekly review integration** (`system_review.py`): new `_aggregate_promotion_checks()` rolls up per-strategy verdicts; system prompt appends "📈 *Strategy promotion check:*" line citing each non-top-of-ladder strategy.
+
+**Seed rows (idempotent)** at startup via `_seed_strategies_registry` (`executemany` + `ON CONFLICT DO NOTHING`):
+| strategy_id | phase | model |
+|---|---|---|
+| `magna53` | live | `unpaired_r` |
+| `9m_day2` | live | `unpaired_r` |
+| `shadow_orb_5m` | shadow | `paired_r` |
+| `parabolic_short` | shadow | `telemetry_review` |
+
+**Three-pass review during build:** advisor flagged bare `/strategy` (no args) regex bug — fixed before commit. Two simplify passes landed: (1) `executemany` for seed loop, `partial` for adapter wrappers, `should_run` shared helper, `update_strategy` raises on no-args, audit `detail` JSON-encoded; (2) `render_strategy_detail` fetches 90d once and slices 30d (was 2 separate roundtrips), dropped dead `_DEMOTE_BACK["shadow"]: None`.
+
+**Verification deferred to Hetzner deploy** — 6-step suite: signal_type backfill row-count parity (highest blast radius — if EXISTS classifier is wrong, every adapter produces wrong numbers from day one), adapter parity vs existing aggregators, phase gate fires across all 4 strategies (disable/re-enable for each), promotion verdict dispatch (paired vs unpaired vs telemetry shapes), seed migration idempotency, backwards compat (`/eps`, `/9m`, `/trades`, `/audit`).
+
+**Out of scope** (deliberately): auto-promotion, cross-strategy risk pooling, schema unification, P22 build (P22 is the first strategy to *use* the framework once it ships).
+
+**Lesson:** thin overlay over per-strategy outcome tables is the right factoring when each strategy has materially different telemetry semantics (R-based vs paired vs telemetry-only). Forcing schema unification first would have blocked the framework on a backfill exercise that doesn't pay off until you have ≥6 strategies. The registry + adapter pattern lets you add strategy #5 with a config row + adapter function instead of plumbing across 5 subsystems.
+
 ### 2026-04-28 (session 2) — Theme Pass 1.5 protected-theme relief valve
 Two near-duplicate themes ("AI Datacenter Silicon" {ARM, AMD, MRVL} Nascent + "Custom AI Silicon & Chip Architecture Licensing" {ARM, MRVL} Accelerating) couldn't consolidate. Root cause: only 2 shared tickers → blocked by Pass 1's `MIN_SHARED_FOR_MERGE = 3` gate (added 2026-04-26 to fix Single-Cell Genomics over-merge). Pass 1.5 (small-theme absorption) would have caught it via subset overlap, but its `protected_names` exemption (line 2087) bailed out for any theme already in DB — making existing-vs-existing consolidation impossible once a duplicate slipped in.
 

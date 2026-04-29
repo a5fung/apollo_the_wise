@@ -28,10 +28,13 @@ SETUP_PRICE_EXCEEDS_CAP    = "setup:price_exceeds_cap"
 SETUP_ACCOUNT_FETCH_FAILED = "setup:account_fetch_failed"
 SETUP_FADED_FROM_ORB       = "setup:faded_from_orb"
 
-# ── block: safeguards (circuit breakers, position limits) ───────────────────
-BLOCK_MAX_POSITIONS   = "block:max_positions"
-BLOCK_DAILY_LOSS      = "block:daily_loss"
-BLOCK_CIRCUIT_BREAKER = "block:circuit_breaker"
+# ── block: safeguards (circuit breakers, position limits, strategy gate) ──
+BLOCK_MAX_POSITIONS              = "block:max_positions"
+BLOCK_DAILY_LOSS                 = "block:daily_loss"
+BLOCK_CIRCUIT_BREAKER            = "block:circuit_breaker"
+BLOCK_STRATEGY_DISABLED          = "block:strategy_disabled"
+BLOCK_STRATEGY_IN_SHADOW         = "block:strategy_in_shadow"
+BLOCK_PAPER_STRATEGY_ON_LIVE     = "block:paper_strategy_on_live"
 
 # ── infra: infrastructure / connectivity failures ───────────────────────────
 INFRA_NO_BAR              = "infra:no_bar"
@@ -63,9 +66,12 @@ _HUMAN_LABELS: dict[str, str] = {
     SETUP_PRICE_EXCEEDS_CAP:    "Price exceeds per-share cap",
     SETUP_ACCOUNT_FETCH_FAILED: "Couldn't fetch Alpaca account",
     SETUP_FADED_FROM_ORB:       "Price faded below ORB midpoint",
-    BLOCK_MAX_POSITIONS:        "Max open positions reached",
-    BLOCK_DAILY_LOSS:           "Daily loss limit hit",
-    BLOCK_CIRCUIT_BREAKER:      "3-loss circuit breaker tripped",
+    BLOCK_MAX_POSITIONS:           "Max open positions reached",
+    BLOCK_DAILY_LOSS:              "Daily loss limit hit",
+    BLOCK_CIRCUIT_BREAKER:         "3-loss circuit breaker tripped",
+    BLOCK_STRATEGY_DISABLED:       "Strategy disabled in registry",
+    BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
+    BLOCK_PAPER_STRATEGY_ON_LIVE:  "Paper-phase strategy can't run on live account",
     INFRA_NO_BAR:               "No opening bar from data feed",
     INFRA_SUBSCRIBE_TIMEOUT:    "Bar subscribe timed out",
     INFRA_SUBSCRIBE_FAILED:     "Bar subscribe failed",
