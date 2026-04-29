@@ -278,7 +278,7 @@ def trading_date_n_months_ago(months: int) -> str:
 
 # et_today moved to shared/dates.py — kept as re-export here so the 20+
 # market-side modules importing it from collector keep working.
-from shared.dates import et_today  # noqa: F401, E402
+from shared.dates import _ET, et_today  # noqa: F401, E402
 
 
 # ── yfinance — company profile, analyst ratings (free, no API key) ────────────
