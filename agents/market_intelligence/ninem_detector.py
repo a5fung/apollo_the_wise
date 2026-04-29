@@ -14,7 +14,7 @@ mi_9m_sugar_babies and surfaced in the evening briefing as Day 2 ORB candidates.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.briefing import send_telegram_message
@@ -221,6 +221,16 @@ async def run_9m_scan() -> list[dict]:
             range_pct = (day_high - day_low) / current_price
             if range_pct < _MIN_RANGE_PCT:
                 continue
+        else:
+            # Pre-open / stale snapshot — log for tomorrow's diagnosis. KALV 2026-04-29
+            # passed the directional gate pre-open with day.h/day.l = 0. Want to see
+            # what Polygon actually returns at the moment of bypass.
+            if now_et.time() < time(9, 30):
+                logger.info(
+                    f"9M pre-open range bypass: {ticker} day_h={day_high} day_l={day_low} "
+                    f"day_o={snap.get('day', {}).get('o')} px={current_price} "
+                    f"prev_close={prev_close} t={now_et.time().isoformat()}"
+                )
 
         # Extension gate: measure extension at YESTERDAY's close, not today's.
         # A stock flat for 10d then ripping +30% today should PASS (fresh breakout).
@@ -241,6 +251,13 @@ async def run_9m_scan() -> list[dict]:
             today_volume >= _9M_ACTUAL_THRESHOLD
             and dollar_volume >= _MIN_DOLLAR_VOL_ACTUAL
         )
+        # Confirmed-tier requires market open. Pre-open Polygon `day` snapshots
+        # are unreliable — stale OHLC and prior-session volume can pass the
+        # actual thresholds spuriously (KALV 2026-04-29 cash-deal pin fired at
+        # 09:00 ET). Anticipation tier already enforces minutes_since_open >= 30
+        # which is post-open by construction.
+        if is_9m_actual and now_et.time() < time(9, 30):
+            is_9m_actual = False
 
         projected_vol: int | None = None
         is_9m_anticipation = False
