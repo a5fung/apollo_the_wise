@@ -61,7 +61,7 @@ async def _adapter_live_trades(window_days: int, *, signal_type: str) -> list[Ou
         rows = await conn.fetch(
             """
             SELECT ticker, alert_date, status, total_pnl, risk_dollars,
-                   hold_days, closed_at, score_tier, catalyst_quality, skip_reason
+                   hold_days, closed_at, catalyst_quality, skip_reason
             FROM mi_live_trades
             WHERE signal_type = $1
               AND alert_date >= CURRENT_DATE - $2::int
@@ -83,7 +83,6 @@ async def _adapter_live_trades(window_days: int, *, signal_type: str) -> list[Ou
             hold_days=r["hold_days"],
             closed_at=r["closed_at"],
             extras={
-                "score_tier": r["score_tier"],
                 "catalyst_quality": r["catalyst_quality"],
                 "skip_reason": r["skip_reason"],
             },
