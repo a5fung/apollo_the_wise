@@ -1451,10 +1451,16 @@ async def get_eod_9m_wick_candidates(trade_date: "str | date") -> list[dict]:
               AND (d.close - d.low_price) / (d.high_price - d.low_price) <  0.75
               AND a.adv_20 IS NOT NULL
               AND m.sma_10 IS NOT NULL
+              AND m.sma_50 IS NOT NULL
               AND m.prev_close IS NOT NULL
               AND d.volume >= (a.adv_20 * 3)
               AND (d.high_price - d.low_price) >= (d.close * 0.02)
               AND m.prev_close <= m.sma_10 * 1.20
+              -- Trend floor: reject crash-recovery candidates. A wick-trap
+              -- needs a structurally intact uptrend so shorts entered on the
+              -- upper wick are actually trapped. VISN 4/29 (post -50% gap)
+              -- passed every single-bar gate but had prev_vs_sma50=0.55.
+              AND m.prev_close >= m.sma_50 * 0.85
             ORDER BY d.volume DESC
             LIMIT 20
         """, trade_date)
