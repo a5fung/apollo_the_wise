@@ -164,6 +164,30 @@ trade 9m TICKER      → manually queue a Day 2 entry for a specific ticker
 
 ---
 
+### Wick-Fill Shadow Tracking (TI2 / P22 — telemetry only)
+
+A nightly EOD branch off the 9M sugar-baby selection. **Telemetry-only** — no entries, no orders. Promotion to paper gated on 30+ candidates AND fill rate ≥ 50%.
+
+The "negated shooting star" setup (Kristjan / Pradeep Bonde): when a 9M day closes mid-range with a green body, shorts are trapped at the upper wick. Day 2+ break of `prior_high` is the canonical short-cover impulse.
+
+**Three-way EOD branch off the shared 9M context CTE:**
+- `close_in_range_pct ≥ 0.75` → sugar baby (existing Day-2 ORB path)
+- `close_in_range_pct ∈ [0.50, 0.75)` → **wick candidate** (new — telemetry row only)
+- `close_in_range_pct < 0.50` → distribution, ignored
+
+Wick candidates inherit all sugar baby gates (price ≥ $5, dollar-vol ≥ $50M, ≥ 3× ADV, range ≥ 2%, extension cap, **and the same net-up ≥ 3% directional gate**). Only the range-position branch differs — single source of truth via shared `_NINEM_CONTEXT_CTE` + `is_9m_directional` / `is_green_close` predicates.
+
+**Forward-returns measurement** (10-session horizon): two anchors deliberately — `fwd_{1,3,10}d_from_high_pct` (conditional on fill — measures the actual short-cover impulse) and `fwd_{1,3,10}d_from_close_pct` (unconditional drift baseline). The gap between them is the strategy's edge.
+
+**From Telegram:**
+```
+/wick                → today's candidates + 30d telemetry footer (n_settled · n_filled / fill_rate)
+```
+
+**Schedule:** EOD sweep at 5:00 PM ET writes wick rows alongside sugar babies. New `_wick_forward_returns_job` 5:35 PM ET walks unsettled rows once the 10-session horizon elapses.
+
+---
+
 ### Parabolic Short Detection (TI1 — telemetry only)
 
 A nightly scan for the Stamatoudis / Qullamaggie parabolic-exhaustion setup. **Telemetry-only** — surfaces candidates to a Telegram digest, no entries placed. Promotion path (paper → live) requires 2-3 months of shadow data per `memory/project_trading_ideas_backlog.md` (TI1).
@@ -318,8 +342,9 @@ Show logs excluded → exclusion events
 | 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
 | 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed |
 | 5:15 PM | 2:15 PM | Parabolic-short scan (TI1 telemetry) → anticipation/climax digest if any |
+| 5:35 PM | 2:35 PM | Wick-fill forward-returns (TI2/P22 telemetry) — settles unsettled wick candidates |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
-| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies section if any) |
+| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies + wick watch sections if any) |
 
 ---
 
@@ -397,6 +422,7 @@ Apollo_Assistant/
 │   ├── backtest_9m_ep.py            # 9M EP historical backtest (D1/D5/D10/D21 returns by vol/range bucket)
 │   ├── backtest_clusters.py         # Correlation cluster precision/recall backtest
 │   ├── backfill_parabolic_car.py    # CAR/GME/NVDA verification tool for parabolic detector
+│   ├── backfill_wick_replay.py      # POET-class wick-fill verification (yfinance, no DB)
 │   └── backfill_ohlc.py             # One-time OHLC backfill (mi_daily_closes via Polygon grouped-daily)
 ├── start.sh                         # Start Apollo locally
 └── start_market.sh                  # Start market agent locally
@@ -468,6 +494,8 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 ## Backlog / Upgrade Path
 
 ### Recently completed (April 2026)
+- ✅ **P22 — Wick-Fill shadow tracker (telemetry-only)** — 9M days closing mid-range with green body (Kristjan/Bonde "negated shooting star"). Three-way EOD branching off shared 9M CTE: `≥ 0.75` → sugar baby, `[0.50, 0.75)` → wick, `< 0.50` → ignored. Same gates as sugar babies (incl. net-up ≥ 3% via shared `is_green_close` predicate); only range-position differs. Forward-returns measured from two anchors (prior_high conditional on fill, prior_close unconditional baseline) — gap between them is the edge. `/wick` command, evening-brief Wick Watch line, weekly review drift-gap citation. POET 2026-04-21 verified via `scripts/backfill_wick_replay.py`. First strategy shipped through the Strategy Maturity Framework
+- ✅ **Strategy Maturity Framework (Option A)** — thin overlay registry (`mi_strategies`); each strategy declares phase (shadow → paper → live) + KPI promotion thresholds + enable flag. Three promotion models: `paired_r` (Shadow ORB), `unpaired_r` (MAGNA53, 9M Day 2), `telemetry_review` (parabolic_short, wick_fill). Per-strategy outcome tables stay; adapter pattern layers on top. Phase gate at three entry points (entry_pipeline + shadow_orb_tracker + parabolic_detector). `/strategies` table + `/strategy <id> [enable|disable|promote|demote]`. Manual promotion only — verdict flags eligibility, user runs the action
 - ✅ **Apollo strip to market/trading focus** — deleted 5 unused sub-agents (finance/calendar/research/browser/travel) + Dockerfiles + compose blocks + tool schemas + enum values + 9 dead secrets; orchestrator kept for future expansion
 - ✅ **9M Sugar Baby going-in shape telemetry** — 6 new columns (prev_5d, prev_20d, prev_vs_sma10/50, sma50 slope, prior_sessions); bucket tags (uptrend/pullback/extended/bounce/downtrend/flat) surfaced in evening brief + `/9m` + `9m outcomes`. Telemetry-only — promote to filter after 30+ outcomes
 - ✅ **EP entry diagnostics & performance traceability** — `broker/skip_reasons.py` (18 bounded constants); every HIGH EP has durable terminal state by 4:10 PM ET; `/why TICKER [date]` lifecycle timeline; 4:10 PM EOD EP recap; evening-brief "EP OUTCOMES TODAY" section
@@ -531,5 +559,4 @@ The critical path to live trading: **P3 data accumulation → P16 live**. Flip w
 | P19 | **VIX-scaled continuous risk sizing** | Binary today (`RISK_PCT=0.01`, halved when QQQ EMA bearish). Continuous `risk = base × max(0, 1 - (VIX-15)/20)` is cleaner but needs VIX ingest. Revisit after 3+ months live. |
 | P20 | **Earnings-week IV pre-pass** | Blocked: Polygon free tier has no IV. |
 | P21 | **Cross-asset thematic validation** | Parallel RS on commodity/futures ETFs (CPER, URA, HG). Equity theme + commodity RS alignment → boost theme conviction ×1.2. |
-| P22 | **Wick-fill shadow tracking (telemetry-only)** | 9M days closing mid-range with long upper wick + green body (Kristjan/Bonde "negated shooting star"). Sugar Baby filter correctly rejects these — but they capture alpha via different mechanism. Build `mi_wick_candidates` table; answer 3 questions after 30+ candidates before promoting to execution. |
 | — | **MAGNA53 simulator** | Interactive frontend: slider over gap/RVOL/catalyst/float/regime → shows final score + component breakdown. Needs web UI. |
