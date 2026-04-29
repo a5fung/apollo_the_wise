@@ -26,6 +26,7 @@ from agents.market_intelligence.broker.entry_pipeline import (
     ACTION_SKIPPED,
     submit_trade_entry,
 )
+from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.broker.order_manager import (
     prepare_orb_order,
     execute_partial_exit,
@@ -288,57 +289,47 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         trade = dict(trade)
         ticker = trade["ticker"]
         alert_date = trade["alert_date"]
-        remaining = trade["remaining_shares"]
-        entry_price = trade["entry_price"]
+        running_closes_in = trade.get("running_closes", [])
+        if isinstance(running_closes_in, str):
+            running_closes_in = json.loads(running_closes_in or "[]")
+        exits_in = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
         hard_stop = trade.get("hard_stop") or trade["stop_price"]
-        partial_taken = trade.get("partial_taken", False)
-        breakeven_active = trade.get("breakeven_active", False)
-        exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
-        running_closes = trade.get("running_closes", [])
-        if isinstance(running_closes, str):
-            running_closes = json.loads(running_closes or "[]")
 
-        if remaining <= 0 or today <= alert_date:
+        if trade["remaining_shares"] <= 0 or today <= alert_date:
             continue
 
-        # Fetch today's daily bar
         today_str = today.strftime("%Y-%m-%d")
         daily_bars = await get_index_history(ticker, today_str, today_str)
-
         if not daily_bars:
             logger.debug(f"No daily bar for {ticker} on {today}")
             results.append({"ticker": ticker, "action": "no_data"})
             continue
 
-        bar = daily_bars[0]
-        bar_low = bar.get("l", 0)
-        bar_close = bar.get("c", 0)
-        hold_days = (today - alert_date).days
+        state = {
+            "alert_date": alert_date,
+            "remaining_shares": trade["remaining_shares"],
+            "entry_price": trade["entry_price"],
+            "hard_stop": hard_stop,
+            "partial_taken": trade.get("partial_taken", False),
+            "breakeven_active": trade.get("breakeven_active", False),
+            "exits": exits_in,
+            "running_closes": running_closes_in,
+        }
 
-        # Append today's close
-        running_closes.append(float(bar_close))
+        step = apply_daily_exit_step(state, daily_bars[0], today,
+                                     integer_partial_shares=True)
 
         logger.info(
-            f"Processing {ticker}: day={hold_days} close=${bar_close:.2f} low=${bar_low:.2f} "
-            f"stop=${hard_stop:.2f} shares={remaining:.0f} partial={partial_taken}"
+            f"Processing {ticker}: day={step.hold_days} close=${step.bar_close:.2f} "
+            f"low=${step.bar_low:.2f} stop=${hard_stop:.2f} "
+            f"shares={trade['remaining_shares']:.0f} partial={state['partial_taken']}"
         )
 
-        # 1. Hard stop check — Alpaca's stop order should catch this,
-        #    but verify and update DB if it triggered
-        if hard_stop and bar_low <= hard_stop:
-            # Check if Alpaca already closed the position
+        # 1. Hard-stop verification: re-call without hard_stop if Alpaca says
+        # position is still open (stop didn't actually trigger yet).
+        if step.action == "stopped_out":
             pos = await alpaca.get_position(ticker)
             if not pos or pos["qty"] <= 0:
-                # Stop already triggered on Alpaca
-                pnl = (hard_stop - entry_price) * remaining if entry_price else 0
-                exits.append({
-                    "time": datetime.combine(today, time(16, 0)).isoformat(),
-                    "price": hard_stop,
-                    "reason": "stop_hit",
-                    "shares": remaining,
-                    "pnl": pnl,
-                })
-                total_pnl = sum(e.get("pnl", 0) for e in exits)
                 async with pool.acquire() as conn:
                     await conn.execute("""
                         UPDATE mi_live_trades SET
@@ -348,74 +339,53 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                             stop_order_id = NULL,
                             running_closes = $5::jsonb
                         WHERE id = $1
-                    """, trade["id"], json.dumps(exits), total_pnl, hold_days,
-                        json.dumps(running_closes))
+                    """, trade["id"], json.dumps(step.new_exits),
+                        step.new_total_pnl, step.hold_days,
+                        json.dumps(step.new_running_closes))
                 await send_telegram_message(
-                    f"❌ *Stop hit:* {ticker} @${hard_stop:.2f}\n"
-                    f"P&L: ${total_pnl:+,.2f} ({hold_days}d)"
+                    f"❌ *Stop hit:* {ticker} @${step.close_price:.2f}\n"
+                    f"P&L: ${step.new_total_pnl:+,.2f} ({step.hold_days}d)"
                 )
-                results.append({"ticker": ticker, "action": "stopped_out", "pnl": total_pnl})
+                results.append({"ticker": ticker, "action": "stopped_out", "pnl": step.new_total_pnl})
                 continue
-            # If Alpaca still has position, stop didn't trigger yet — let it ride
+            # Alpaca still holds — re-run skipping the close branch.
+            # hard_stop stays in state so effective_stop still floors at it.
+            step = apply_daily_exit_step(state, daily_bars[0], today,
+                                         integer_partial_shares=True,
+                                         skip_hard_stop_close=True)
 
-        # 2. Compute SMAs
-        active_sma = None
-        if len(running_closes) >= 20:
-            sma_10 = sum(running_closes[-10:]) / 10
-            sma_20 = sum(running_closes[-20:]) / 20
-            active_sma = sma_10 if sma_10 > sma_20 else sma_20
-        elif len(running_closes) >= 10:
-            active_sma = sum(running_closes[-10:]) / 10
+        # 2. Partial profit branch — execute via helper, fall through on failure
+        if step.partial_fired:
+            partial_ok = await execute_partial_exit(trade["id"], int(step.partial_shares))
+            if not partial_ok:
+                # Helper failed (e.g. cancel-stop blocked). Re-run skipping
+                # partial decision so the rest of the ladder runs against
+                # original remaining; partial_taken/breakeven_active stay
+                # at their pre-step values. Next day retries.
+                step = apply_daily_exit_step(
+                    state, daily_bars[0], today,
+                    integer_partial_shares=True,
+                    skip_partial_decision=True,
+                )
 
-        # 3. Partial profit on Day 3-5
-        if hold_days >= 3 and not partial_taken and entry_price:
-            take_partial = False
-            if hold_days <= 4 and bar_close > entry_price:
-                take_partial = True
-            elif hold_days >= 5:
-                take_partial = True
-
-            if take_partial:
-                partial_shares = int(remaining) // 3
-                partial_ok = await execute_partial_exit(trade["id"], partial_shares)
-                if partial_ok:
-                    partial_taken = True
-                    breakeven_active = True
-                    remaining -= partial_shares
-                # On failure: leave partial_taken/remaining unchanged so the next
-                # daily run retries. execute_partial_exit already sent a Telegram alert.
-
-        # 4. Effective stop = max(hard_stop, active_sma, breakeven)
-        effective_stop = hard_stop or 0
-        if active_sma and active_sma > effective_stop:
-            effective_stop = active_sma
-        if breakeven_active and entry_price and entry_price > effective_stop:
-            effective_stop = entry_price
-
-        logger.info(
-            f"{ticker}: effective_stop=${effective_stop:.2f} "
-            f"(hard=${hard_stop or 0:.2f} sma={active_sma or 0:.2f} be={'yes' if breakeven_active else 'no'})"
-        )
-
-        # 5. SMA trail check (close-based)
-        if bar_close < effective_stop and remaining > 0:
+        # 3. SMA trail close
+        if step.action == "sma_stopped":
             await execute_full_exit(trade["id"], "sma_trail_stop")
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_live_trades SET
                         hold_days = $2, running_closes = $3::jsonb
                     WHERE id = $1
-                """, trade["id"], hold_days, json.dumps(running_closes))
-            results.append({"ticker": ticker, "action": "sma_stopped", "hold_days": hold_days})
+                """, trade["id"], step.hold_days,
+                    json.dumps(step.new_running_closes))
+            results.append({"ticker": ticker, "action": "sma_stopped", "hold_days": step.hold_days})
             continue
 
-        # 6. Still open — update stop on Alpaca if it changed
+        # 4. Still open — update Alpaca stop if effective_stop rose
         current_stop = trade["stop_price"] or 0
-        if effective_stop > current_stop + 0.01 and remaining > 0:
-            await update_stop(trade["id"], round(effective_stop, 2))
+        if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
+            await update_stop(trade["id"], round(step.effective_stop, 2))
 
-        # Update DB state
-        total_pnl = sum(e.get("pnl", 0) for e in exits)
         async with pool.acquire() as conn:
             await conn.execute("""
                 UPDATE mi_live_trades SET
@@ -424,13 +394,20 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                     running_closes = $7::jsonb,
                     remaining_shares = $8
                 WHERE id = $1
-            """, trade["id"], effective_stop, hold_days, total_pnl,
-                partial_taken, breakeven_active,
-                json.dumps(running_closes), remaining)
+            """, trade["id"], step.effective_stop, step.hold_days,
+                step.new_total_pnl, step.new_partial_taken,
+                step.new_breakeven_active,
+                json.dumps(step.new_running_closes), step.new_remaining)
+
+        logger.info(
+            f"{ticker}: effective_stop=${step.effective_stop:.2f} "
+            f"(hard=${hard_stop or 0:.2f} sma={step.active_sma or 0:.2f} "
+            f"be={'yes' if step.new_breakeven_active else 'no'})"
+        )
 
         results.append({
             "ticker": ticker, "action": "updated",
-            "effective_stop": effective_stop, "hold_days": hold_days,
+            "effective_stop": step.effective_stop, "hold_days": step.hold_days,
         })
 
     return results

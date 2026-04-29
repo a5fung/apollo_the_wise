@@ -347,6 +347,53 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
         return None
 
 
+async def get_minute_bars_window(
+    ticker: str, trade_date: date, start_minute: int, end_minute: int,
+) -> list[dict]:
+    """Fetch 1-minute bars between [start_minute, end_minute) from market open.
+
+    start_minute/end_minute are minutes from 9:30 ET (so 0..30 = 9:30–10:00).
+    Used by shadow_orb_tracker to compute the 5-min ORB and scan for trigger
+    in the 9:35–10:00 window.
+    """
+    try:
+        from zoneinfo import ZoneInfo
+        client = _get_data_client()
+        et = ZoneInfo("America/New_York")
+        open_dt = datetime.combine(
+            trade_date, datetime.min.time().replace(hour=9, minute=30), tzinfo=et,
+        )
+        start = open_dt + timedelta(minutes=start_minute)
+        end = open_dt + timedelta(minutes=end_minute)
+        request = StockBarsRequest(
+            symbol_or_symbols=ticker,
+            timeframe=TimeFrame.Minute,
+            start=start,
+            end=end,
+            feed=get_data_feed(),
+        )
+        bars = client.get_stock_bars(request)
+        bar_data = bars.data if hasattr(bars, 'data') else bars
+        bar_set = bar_data.get(ticker, []) or []
+        return [
+            {
+                "open": float(b.open),
+                "high": float(b.high),
+                "low": float(b.low),
+                "close": float(b.close),
+                "volume": int(b.volume),
+                "timestamp": b.timestamp.astimezone(et) if b.timestamp else None,
+            }
+            for b in bar_set
+        ]
+    except Exception as e:
+        logger.error(
+            f"Failed to get minute-bar window for {ticker} on {trade_date} "
+            f"[{start_minute}..{end_minute}): {e}"
+        )
+        return []
+
+
 # ── Price Data ──────────────────────────────────────────────────────────────
 
 

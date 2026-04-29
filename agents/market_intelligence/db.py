@@ -410,6 +410,45 @@ async def initialize_schema() -> None:
                 cancelled_at TIMESTAMPTZ,
                 raw_response JSONB
             );
+
+            CREATE TABLE IF NOT EXISTS mi_orb_shadow_trades (
+                id               SERIAL PRIMARY KEY,
+                ticker           TEXT NOT NULL,
+                alert_date       DATE NOT NULL,
+                bar_size_minutes INT NOT NULL,
+                signal_type      TEXT NOT NULL,
+                shape_tag        TEXT,
+                score_tier       TEXT,
+
+                orb_high         NUMERIC,
+                orb_low          NUMERIC,
+                atr_14           NUMERIC,
+
+                trigger_minute_et TIME,
+                entry_price      NUMERIC,
+                stop_price       NUMERIC,
+                hard_stop        NUMERIC,
+                risk_dollars     NUMERIC,
+                entry_shares     NUMERIC,
+
+                status           TEXT NOT NULL,
+                skip_reason      TEXT,
+                exits            JSONB DEFAULT '[]'::jsonb,
+                remaining_shares NUMERIC DEFAULT 0,
+                partial_taken    BOOLEAN DEFAULT FALSE,
+                breakeven_active BOOLEAN DEFAULT FALSE,
+                running_closes   JSONB DEFAULT '[]'::jsonb,
+                total_pnl        NUMERIC,
+                hold_days        INT,
+
+                created_at       TIMESTAMPTZ DEFAULT NOW(),
+                closed_at        TIMESTAMPTZ,
+                UNIQUE (ticker, alert_date, bar_size_minutes)
+            );
+            CREATE INDEX IF NOT EXISTS idx_shadow_status
+                ON mi_orb_shadow_trades(status);
+            CREATE INDEX IF NOT EXISTS idx_shadow_alert_date
+                ON mi_orb_shadow_trades(alert_date);
         """)
 
         # Migrations — add columns to existing tables
@@ -431,7 +470,8 @@ async def initialize_schema() -> None:
             END;
             $$ LANGUAGE plpgsql;
         """)
-        for tbl in ("mi_paper_trades", "mi_live_trades", "mi_live_orders"):
+        for tbl in ("mi_paper_trades", "mi_live_trades", "mi_live_orders",
+                    "mi_orb_shadow_trades"):
             await conn.execute(f"""
                 DROP TRIGGER IF EXISTS prevent_delete_{tbl} ON {tbl};
                 CREATE TRIGGER prevent_delete_{tbl}
@@ -3286,6 +3326,124 @@ async def get_live_trading_summary() -> dict[str, Any]:
         "skipped": stats["skipped"] or 0,
         "open_details": [dict(r) for r in open_positions],
     }
+
+
+# ── Shadow ORB telemetry (mi_orb_shadow_trades) ───────────────────────────────
+
+
+async def insert_shadow_trade(row: dict[str, Any]) -> int | None:
+    """Insert one shadow row. Returns id, or None on UNIQUE conflict.
+
+    Required keys: ticker, alert_date, bar_size_minutes, signal_type, status.
+    Optional: shape_tag, score_tier, orb_high, orb_low, atr_14,
+    trigger_minute_et, entry_price, stop_price, hard_stop, risk_dollars,
+    entry_shares, skip_reason, remaining_shares.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rec = await conn.fetchrow("""
+            INSERT INTO mi_orb_shadow_trades (
+                ticker, alert_date, bar_size_minutes, signal_type, shape_tag,
+                score_tier, orb_high, orb_low, atr_14, trigger_minute_et,
+                entry_price, stop_price, hard_stop, risk_dollars, entry_shares,
+                status, skip_reason, remaining_shares
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                $11, $12, $13, $14, $15, $16, $17, $18
+            )
+            ON CONFLICT (ticker, alert_date, bar_size_minutes) DO NOTHING
+            RETURNING id
+        """,
+            row["ticker"], row["alert_date"], row["bar_size_minutes"],
+            row["signal_type"], row.get("shape_tag"), row.get("score_tier"),
+            row.get("orb_high"), row.get("orb_low"), row.get("atr_14"),
+            row.get("trigger_minute_et"),
+            row.get("entry_price"), row.get("stop_price"),
+            row.get("hard_stop"), row.get("risk_dollars"),
+            row.get("entry_shares"), row["status"],
+            row.get("skip_reason"), row.get("remaining_shares") or 0,
+        )
+    return rec["id"] if rec else None
+
+
+async def get_open_shadow_trades(bar_size_minutes: int | None = None
+                                ) -> list[dict[str, Any]]:
+    """Open shadow trades, optionally filtered by bar size."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if bar_size_minutes is None:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_orb_shadow_trades
+                WHERE status = 'open' AND remaining_shares > 0
+                ORDER BY alert_date ASC
+            """)
+        else:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_orb_shadow_trades
+                WHERE status = 'open' AND remaining_shares > 0
+                  AND bar_size_minutes = $1
+                ORDER BY alert_date ASC
+            """, bar_size_minutes)
+    return [dict(r) for r in rows]
+
+
+async def update_shadow_trade(trade_id: int, fields: dict[str, Any]) -> None:
+    """Partial update on a shadow row. fields keys must be safe column names."""
+    if not fields:
+        return
+    allowed = {
+        "status", "exits", "remaining_shares", "stop_price", "total_pnl",
+        "hold_days", "partial_taken", "breakeven_active", "running_closes",
+        "closed_at", "skip_reason",
+    }
+    set_clauses, values = [], []
+    for i, (key, val) in enumerate(fields.items(), start=2):
+        if key not in allowed:
+            continue
+        if key in ("exits", "running_closes"):
+            set_clauses.append(f"{key} = ${i}::jsonb")
+            values.append(json.dumps(val) if not isinstance(val, str) else val)
+        else:
+            set_clauses.append(f"{key} = ${i}")
+            values.append(val)
+    if not set_clauses:
+        return
+    sql = f"UPDATE mi_orb_shadow_trades SET {', '.join(set_clauses)} WHERE id = $1"
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(sql, trade_id, *values)
+
+
+async def get_shadow_outcomes_window(window_days: int = 30,
+                                     bar_size_minutes: int = 5
+                                    ) -> list[dict[str, Any]]:
+    """Per-alert paired comparison: shadow vs live, joined on (ticker, alert_date).
+
+    Returns rows for downstream weekly-review aggregation. R is computed
+    inline as total_pnl / NULLIF(risk_dollars, 0); neither side stores it.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT
+              shadow.ticker, shadow.alert_date,
+              shadow.signal_type, shadow.shape_tag,
+              live.total_pnl   / NULLIF(live.risk_dollars,   0) AS r_1m,
+              shadow.total_pnl / NULLIF(shadow.risk_dollars, 0) AS r_5m,
+              live.status   AS status_1m,
+              shadow.status AS status_5m,
+              live.total_pnl   AS pnl_1m,
+              shadow.total_pnl AS pnl_5m
+            FROM mi_orb_shadow_trades shadow
+            LEFT JOIN mi_live_trades live
+              ON live.ticker = shadow.ticker
+             AND live.alert_date = shadow.alert_date
+            WHERE shadow.bar_size_minutes = $1
+              AND shadow.alert_date >= CURRENT_DATE - ($2 || ' days')::interval
+              AND shadow.status IN ('closed', 'no_entry', 'gate_blocked')
+            ORDER BY shadow.alert_date DESC
+        """, bar_size_minutes, str(window_days))
+    return [dict(r) for r in rows]
 
 
 # ── Theme exclusions ──────────────────────────────────────────────────────────

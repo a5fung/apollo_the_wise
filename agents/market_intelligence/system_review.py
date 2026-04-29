@@ -68,6 +68,7 @@ Rules:
 - When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. Do not invent transitions if the count is 0; omit the line entirely.
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Broken* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 - The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
+- When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 """
 
 
@@ -126,6 +127,7 @@ async def _gather_and_aggregate(
     postmortems = await _aggregate_trade_postmortems(window_start)
     anomalies = await _aggregate_anomalies(window_days)
     crypto = await _aggregate_crypto_readiness(window_days)
+    shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -141,6 +143,7 @@ async def _gather_and_aggregate(
         "postmortem_best": postmortems.get("best"),
         "postmortem_worst": postmortems.get("worst"),
         "crypto": crypto,
+        "shadow_orb": shadow_orb,
     }
 
 
@@ -525,6 +528,106 @@ async def _aggregate_crypto_readiness(window_days: int) -> dict:
         "last_trigger_at": last_trigger_row["triggered_at"].isoformat() if last_trigger_row else None,
         "blockers": blockers,
         "verdict": verdict,
+    }
+
+
+async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
+    """Compare 5-min shadow ORB outcomes to live 1-min ORB on the same alerts.
+
+    Joins `mi_orb_shadow_trades` (5m ORB, telemetry-only) to `mi_live_trades`
+    on `(ticker, alert_date)` so per-alert R deltas surface — population
+    averages would mask "5m wins on bounce, loses on extended" because
+    bucket-level dilutes the per-alert truth.
+
+    Returns empty dict if `mi_orb_shadow_trades` doesn't exist (graceful
+    degradation for environments where the schema migration hasn't run).
+
+    Slice caveat: `shape_tag` is populated only on `signal_type='9m_day2'`
+    rows. MAGNA53 rows store NULL — by-shape deltas are 9M-cohort only.
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            schema_check = await conn.fetchval(
+                "SELECT to_regclass('public.mi_orb_shadow_trades')"
+            )
+            if schema_check is None:
+                return {}
+
+            counts = await conn.fetchrow(
+                """
+                SELECT
+                  COUNT(*) FILTER (WHERE status='open' OR status='closed') AS entered,
+                  COUNT(*) FILTER (WHERE status='no_entry')                AS no_entry,
+                  COUNT(*) FILTER (WHERE status='gate_blocked')            AS gate_blocked
+                FROM mi_orb_shadow_trades
+                WHERE bar_size_minutes = 5
+                  AND alert_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+                """,
+                window_days,
+            )
+
+            paired = await conn.fetch(
+                """
+                WITH paired AS (
+                  SELECT
+                    shadow.ticker,
+                    shadow.alert_date,
+                    shadow.signal_type,
+                    shadow.shape_tag,
+                    live.total_pnl   / NULLIF(live.risk_dollars,   0) AS r_1m,
+                    shadow.total_pnl / NULLIF(shadow.risk_dollars, 0) AS r_5m
+                  FROM mi_orb_shadow_trades shadow
+                  JOIN mi_live_trades live
+                    ON live.ticker = shadow.ticker
+                   AND live.alert_date = shadow.alert_date
+                  WHERE shadow.bar_size_minutes = 5
+                    AND shadow.alert_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+                    AND shadow.status = 'closed'
+                    AND live.status   = 'closed'
+                    AND shadow.risk_dollars > 0
+                    AND live.risk_dollars > 0
+                )
+                SELECT
+                  signal_type,
+                  shape_tag,
+                  COUNT(*)            AS n_paired,
+                  AVG(r_1m)           AS avg_r_1m,
+                  AVG(r_5m)           AS avg_r_5m,
+                  AVG(r_5m - r_1m)    AS per_alert_delta
+                FROM paired
+                GROUP BY signal_type, shape_tag
+                ORDER BY per_alert_delta DESC NULLS LAST
+                """,
+                window_days,
+            )
+    except Exception:
+        logger.exception("shadow_orb aggregator failed")
+        return {}
+
+    paired_rows = [dict(r) for r in paired]
+    total_paired = sum(int(r["n_paired"] or 0) for r in paired_rows)
+
+    by_shape = [
+        {
+            "signal_type": r["signal_type"],
+            "shape_tag": r["shape_tag"],
+            "n": int(r["n_paired"] or 0),
+            "avg_r_1m": round(float(r["avg_r_1m"] or 0), 2),
+            "avg_r_5m": round(float(r["avg_r_5m"] or 0), 2),
+            "per_alert_delta": round(float(r["per_alert_delta"] or 0), 2),
+        }
+        for r in paired_rows
+        if (r["n_paired"] or 0) >= 5
+    ]
+
+    return {
+        "entered": int(counts["entered"] or 0),
+        "no_entry": int(counts["no_entry"] or 0),
+        "gate_blocked": int(counts["gate_blocked"] or 0),
+        "paired_closed_total": total_paired,
+        "by_shape": by_shape[:5],
     }
 
 

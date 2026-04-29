@@ -285,6 +285,99 @@ _TRADE_METRICS: list[MetricSpec] = [
     ),
 ]
 
+async def _today_shadow_orb_entries(conn) -> float:
+    row = await conn.fetchrow(
+        "SELECT COUNT(*) AS n FROM mi_orb_shadow_trades "
+        "WHERE alert_date = CURRENT_DATE AND status IN ('open', 'closed')"
+    )
+    return float(row["n"] or 0)
+
+
+async def _today_shadow_orb_no_entry_rate(conn) -> float:
+    """Share of today's shadow rows that never triggered (no 1-min bar high
+    >= 5-min ORB high in the 9:35-10:00 window). Steady state should sit
+    well below 100% — if it spikes, the 5-min ORB is too wide vs price
+    action that day, or the bar fetch is silently failing."""
+    row = await conn.fetchrow(
+        """
+        SELECT
+          COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE status = 'no_entry') AS no_entry
+        FROM mi_orb_shadow_trades
+        WHERE alert_date = CURRENT_DATE
+        """
+    )
+    total = int(row["total"] or 0)
+    no_entry = int(row["no_entry"] or 0)
+    if total == 0:
+        return 0.0
+    return no_entry / total
+
+
+async def _shadow_vs_live_r_delta_30d(conn) -> float:
+    """Mean (r_5m - r_1m) over the last 30 days, on alert_dates where both
+    a closed shadow row and a closed live trade exist for the same ticker.
+    Positive → 5-min ORB beating 1-min on average; negative → live wins.
+    Returns 0 when fewer than 5 paired closed trades exist (not enough
+    signal to form a baseline)."""
+    row = await conn.fetchrow(
+        """
+        WITH paired AS (
+          SELECT
+            shadow.total_pnl   / NULLIF(shadow.risk_dollars, 0) AS r_5m,
+            live.total_pnl     / NULLIF(live.risk_dollars,   0) AS r_1m
+          FROM mi_orb_shadow_trades shadow
+          JOIN mi_live_trades live
+            ON live.ticker = shadow.ticker
+           AND live.alert_date = shadow.alert_date
+          WHERE shadow.bar_size_minutes = 5
+            AND shadow.alert_date >= CURRENT_DATE - INTERVAL '30 days'
+            AND shadow.status = 'closed'
+            AND live.status   = 'closed'
+            AND shadow.risk_dollars > 0
+            AND live.risk_dollars > 0
+        )
+        SELECT COUNT(*) AS n, AVG(r_5m - r_1m) AS delta FROM paired
+        """
+    )
+    n = int(row["n"] or 0)
+    if n < 5:
+        return 0.0
+    return float(row["delta"] or 0)
+
+
+_SHADOW_ORB_METRICS: list[MetricSpec] = [
+    MetricSpec(
+        "shadow_orb_entries_per_day", _today_shadow_orb_entries,
+        "SELECT ticker, signal_type, status, trigger_minute_et, orb_high, orb_low "
+        "FROM mi_orb_shadow_trades WHERE alert_date = CURRENT_DATE "
+        "ORDER BY status, ticker;",
+        ["agents/market_intelligence/broker/shadow_orb_tracker.py::run_shadow_pass"],
+    ),
+    MetricSpec(
+        "shadow_orb_no_entry_rate", _today_shadow_orb_no_entry_rate,
+        "SELECT status, COUNT(*) FROM mi_orb_shadow_trades "
+        "WHERE alert_date=CURRENT_DATE GROUP BY 1 ORDER BY 2 DESC;",
+        ["agents/market_intelligence/broker/shadow_orb_tracker.py::_process_candidate"],
+    ),
+    MetricSpec(
+        "shadow_vs_live_r_delta_30d", _shadow_vs_live_r_delta_30d,
+        "WITH paired AS ( "
+        "  SELECT shadow.ticker, shadow.alert_date, "
+        "    shadow.total_pnl / NULLIF(shadow.risk_dollars, 0) AS r_5m, "
+        "    live.total_pnl   / NULLIF(live.risk_dollars,   0) AS r_1m "
+        "  FROM mi_orb_shadow_trades shadow "
+        "  JOIN mi_live_trades live ON live.ticker=shadow.ticker "
+        "    AND live.alert_date=shadow.alert_date "
+        "  WHERE shadow.bar_size_minutes=5 "
+        "    AND shadow.alert_date >= CURRENT_DATE - INTERVAL '30 days' "
+        "    AND shadow.status='closed' AND live.status='closed') "
+        "SELECT * FROM paired ORDER BY alert_date DESC;",
+        ["agents/market_intelligence/broker/exit_logic.py::apply_daily_exit_step"],
+    ),
+]
+
+
 _NIGHTLY_METRICS: list[MetricSpec] = [
     MetricSpec(
         "cooldowns_per_day", _today_cooldowns,
@@ -308,16 +401,17 @@ _NIGHTLY_METRICS: list[MetricSpec] = [
     ),
 ]
 
-_ALL_METRICS = _TRADE_METRICS + _NIGHTLY_METRICS
+_ALL_METRICS = _TRADE_METRICS + _NIGHTLY_METRICS + _SHADOW_ORB_METRICS
 
 _TOPIC_MAP: dict[str, list[MetricSpec]] = {
-    "cooldowns": [m for m in _ALL_METRICS if m.name == "cooldowns_per_day"],
-    "themes":    [m for m in _ALL_METRICS if m.name in {"theme_count_active", "cooldowns_per_day"}],
-    "skips":     [m for m in _ALL_METRICS if m.name.startswith("skip_count_")],
-    "positions": [m for m in _ALL_METRICS if m.name in {"HIGH_ep_entry_rate"}],
-    "feed":      [m for m in _ALL_METRICS if m.name in {"bar_stream_disconnect_count_24h", "skip_count_infra"}],
-    "9m":        [m for m in _ALL_METRICS if m.name == "9m_alerts_per_day"],
-    "all":       _ALL_METRICS,
+    "cooldowns":  [m for m in _ALL_METRICS if m.name == "cooldowns_per_day"],
+    "themes":     [m for m in _ALL_METRICS if m.name in {"theme_count_active", "cooldowns_per_day"}],
+    "skips":      [m for m in _ALL_METRICS if m.name.startswith("skip_count_")],
+    "positions":  [m for m in _ALL_METRICS if m.name in {"HIGH_ep_entry_rate"}],
+    "feed":       [m for m in _ALL_METRICS if m.name in {"bar_stream_disconnect_count_24h", "skip_count_infra"}],
+    "9m":         [m for m in _ALL_METRICS if m.name == "9m_alerts_per_day"],
+    "shadow_orb": _SHADOW_ORB_METRICS,
+    "all":        _ALL_METRICS,
 }
 
 

@@ -200,6 +200,25 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-28 — 5-min Shadow ORB tracker (telemetry)
+Plan: `~/.claude/plans/shiny-mapping-locket.md`. Apollo's live ORB is hard-coded to a 1-min bar. Added a shadow tracker that records would-be 5-min ORB entries + outcomes alongside live 1-min trades — same alert universe, same gates, same exit logic; only the bar size differs. Pure telemetry, no real orders, no new alerts. After ≥30 closed paired trades, weekly digest will surface "5m beats 1m by X R for {bounce/pullback}" type findings; promotion to live is an explicit follow-up.
+
+**Step 1 — `broker/exit_logic.py` extraction (SSOT for daily exit step).** Pure function `apply_daily_exit_step(state, daily_bar, today)` extracted from the two existing copies in `backtester/tracker.py` and `broker/live_tracker.py`. Implements hard-stop → SMA10/20 → Day 3-5 partial → effective_stop max → SMA trail close ladder. `skip_partial_decision` / `skip_hard_stop_close` flags accommodate live-side divergences (Alpaca side-effects sequenced separately at the call site). 16 unit tests (`tests/test_exit_logic.py`) covering every branch — all passing. Mocked-Alpaca parity test confirmed the live call site's recorded order sequence is unchanged after refactor.
+
+**Step 2 — `mi_orb_shadow_trades` schema.** UNIQUE (ticker, alert_date, bar_size_minutes) so 5m and future 30m coexist. Mirrors `mi_paper_trades` exit-state columns (so exit_logic.py operates on both via column-name contract) plus shadow-specific fields: bar_size_minutes, signal_type, shape_tag, score_tier, trigger_minute_et, status (no_entry/open/closed/gate_blocked). Helpers: `insert_shadow_trade`, `update_shadow_trade`, `get_open_shadow_trades`, `get_shadow_outcomes_window`.
+
+**Step 3 — `broker/shadow_orb_tracker.py`.** `run_shadow_pass(today)` at 10:00 ET: fetches HIGH MAGNA53 alerts (filtered `created_at::time < 09:31 ET` — race-correct, mirrors live's submission window) + yesterday's 9M Day-2 sugar babies (all statuses — by 10:00 ET live's 9:31 job has already flipped pending→traded/skipped, so filtering 'pending' would yield the inverse universe). For each: fetch 9:30-10:00 1-min bars via new `alpaca_client.get_minute_bars_window`, compute 5-min ORB from bars[0:5], scan bars[5:30] for first `b['high'] >= orb_high` (symmetric stop-buy semantics — wick-fills count, matches live bracket fill mechanics). Apply identical fade guard (None for magna53 HIGH, 0.25 for 9m_day2) + 15% stop-width gate via shared `prepare_*_orb_order` spec builders. `update_shadow_positions(today)` at 4:50 PM ET walks open shadow rows, fetches today's daily bar, calls `exit_logic.apply_daily_exit_step`, persists.
+
+**Step 4 — Scheduler.** `_shadow_orb_entry_job` at 10:00 ET mon-fri (`misfire_grace_time=600`); `_shadow_orb_exit_job` at **4:50 PM ET** mon-fri (after `live_position_update` 4:45 — Polygon daily aggregate must be settled; running pre-aggregate sees partial/zero data). Both `audit_wrap`'d with `expected_min_rows=None` (telemetry opt-out — return int counts but no empty_result alerts).
+
+**Step 5 — `/audit shadow_orb` topic.** Three metrics: `shadow_orb_entries_per_day`, `shadow_orb_no_entry_rate`, `shadow_vs_live_r_delta_30d` (returns 0 if paired n<5 — cold-start protection). Standard MetricSpec → `_TOPIC_MAP["shadow_orb"]` plumbing.
+
+**Step 6 — Weekly review.** `_aggregate_shadow_orb_outcomes(window_days=30)` — INNER JOIN `mi_orb_shadow_trades` (5m) ↔ `mi_live_trades` (1m) on (ticker, alert_date) so per-alert deltas surface (population averages mask "5m wins on bounce, loses on extended"). R computed inline as `total_pnl / NULLIF(risk_dollars, 0)` — neither table stores r_multiple. Slice by signal_type × shape_tag (NULL for MAGNA53 — system prompt notes "by-shape deltas only available for 9M cohort"). Sonnet cites top by_shape entry's per_alert_delta in 📐 *Shadow ORB:* line when paired_closed_total ≥ 10. Graceful degradation via `to_regclass` schema check.
+
+**Verification deferred to Hetzner deploy:** first 10:00 ET shadow pass writes rows; lookahead spot-check (no 1-min close above 5m ORB high in 'no_entry' rows); fade-guard gate parity; daily exit pass closes rows correctly. Step 1 backtest parity gate (`diff backtest_results.csv` before/after extraction) deferred to deploy time — local has no DB.
+
+**Lesson:** the highest-risk step in the plan was the exit_logic extraction; mishandled state mutation would silently drift trade outcomes. Two parity gates (deterministic backtest + mocked-Alpaca call sequence) caught what the unit tests can't — the live call site's I/O ordering with cancel/replace/sell sequences is independent of the pure-function output.
+
 ### 2026-04-27 (session 3) — Parabolic-short M&A / news exclusion
 OGN parabolic-short alert was a false positive — buyout-driven price spike, not parabolic momentum. Stock pinned to deal price, won't mean-revert. Detector was purely price-action; same shape applies to FDA approvals, lawsuit wins, earnings beats. Two-layer fix:
 

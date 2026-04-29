@@ -705,6 +705,47 @@ async def _eod_cleanup_job():
         await notify_job_failure("eod_cleanup", str(e))
 
 
+async def _shadow_orb_entry_job():
+    """Run at 10:00 AM ET. 5-min shadow ORB entry pass — telemetry only.
+
+    Records would-be 5-min ORB entries for every live MAGNA53 HIGH + 9M
+    Day-2 candidate so we can compare 1m vs 5m bar-size outcomes. No
+    Alpaca submits, no new alerts.
+    """
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.broker.shadow_orb_tracker import run_shadow_pass
+    today = et_today()
+    if not get_market_status(today).is_trading_day:
+        return None
+    logger.info("Shadow ORB entry pass starting...")
+    try:
+        counts = await run_shadow_pass(today)
+        logger.info(f"Shadow ORB entry pass complete: {counts}")
+        return counts.get("open", 0)
+    except Exception as e:
+        logger.error(f"Shadow ORB entry pass failed: {e}")
+        await notify_job_failure("shadow_orb_entry", str(e))
+        return None
+
+
+async def _shadow_orb_exit_job():
+    """Run at 4:30 PM ET. Apply daily exit step to every open shadow row."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.broker.shadow_orb_tracker import update_shadow_positions
+    today = et_today()
+    if not get_market_status(today).is_trading_day:
+        return None
+    logger.info("Shadow ORB exit pass starting...")
+    try:
+        counts = await update_shadow_positions(today)
+        logger.info(f"Shadow ORB exit pass complete: {counts}")
+        return counts.get("closed", 0) + counts.get("updated", 0)
+    except Exception as e:
+        logger.error(f"Shadow ORB exit pass failed: {e}")
+        await notify_job_failure("shadow_orb_exit", str(e))
+        return None
+
+
 async def _orb_window_cleanup_job():
     """Run at 10:00 AM ET. Cancel unfilled ORB entries that haven't triggered.
     If the stop-limit buy hasn't filled in the first 29 min, the ORB high wasn't
@@ -1402,6 +1443,29 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="orb_window_cleanup",
         replace_existing=True,
+    )
+
+    # Shadow ORB entry: 10:00 AM ET — 5-min ORB telemetry. Shares the slot
+    # with orb_window_cleanup (distinct job_id). Reads 9:30-10:00 1-min bars,
+    # writes mi_orb_shadow_trades rows. No Alpaca submits.
+    _scheduler.add_job(
+        audit_wrap(_shadow_orb_entry_job, "shadow_orb_entry"),
+        CronTrigger(hour=10, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="shadow_orb_entry",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Shadow ORB exit: 4:30 PM ET — daily exit step on every open shadow row.
+    # 4:50 PM ET — after live_position_update (4:45) which already chose
+    # this slot to let Polygon daily aggregate settle. Exit logic walks
+    # daily bars; pre-aggregate run would see partial/zero data.
+    _scheduler.add_job(
+        audit_wrap(_shadow_orb_exit_job, "shadow_orb_exit"),
+        CronTrigger(hour=16, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
+        id="shadow_orb_exit",
+        replace_existing=True,
+        misfire_grace_time=900,
     )
 
     # EOD cleanup: 4:05 PM ET — cancel unfilled, sync positions

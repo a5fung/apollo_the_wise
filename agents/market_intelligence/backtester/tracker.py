@@ -17,6 +17,7 @@ from agents.market_intelligence.backtester.filters import check_filters, compute
 from agents.market_intelligence.backtester.intraday import ensure_intraday_table, get_intraday_bars
 from agents.market_intelligence.backtester.models import BacktestTrade, TradeEntry, TradeExit
 from agents.market_intelligence.backtester.engine import _simulate_day1, _bar_date
+from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.db import get_pool
 
@@ -453,155 +454,102 @@ async def update_open_positions(today: date) -> list[dict]:
     for pt in open_trades:
         ticker = pt["ticker"]
         alert_date = pt["alert_date"]
-        remaining = pt["remaining_shares"]
-        entry_price = pt["last_entry_price"]
-        hard_stop = pt.get("day1_low") or pt["stop_price"]
-        partial_taken = pt.get("partial_taken", False)
-        breakeven_active = pt.get("breakeven_active", False)
-        exits = pt["exits"] if isinstance(pt["exits"], list) else json.loads(pt["exits"] or "[]")
-        running_closes = pt.get("running_closes", [])
-        if isinstance(running_closes, str):
-            running_closes = json.loads(running_closes or "[]")
+        running_closes_in = pt.get("running_closes", [])
+        if isinstance(running_closes_in, str):
+            running_closes_in = json.loads(running_closes_in or "[]")
 
-        if remaining <= 0:
+        if pt["remaining_shares"] <= 0 or today <= alert_date:
             continue
 
-        # Skip Day 1 — intraday simulation already handled it
-        if today <= alert_date:
-            continue
-
-        # Fetch today's daily bar
         today_str = today.strftime("%Y-%m-%d")
         daily_bars = await get_index_history(ticker, today_str, today_str)
-
         if not daily_bars:
             logger.debug(f"No daily bar for {ticker} on {today}")
             results.append({"ticker": ticker, "action": "no_data"})
             continue
 
-        bar = daily_bars[0]
-        bar_low = bar.get("l", 0)
-        bar_close = bar.get("c", 0)
-        hold_days = (today - alert_date).days
+        state = {
+            "alert_date": alert_date,
+            "remaining_shares": pt["remaining_shares"],
+            "entry_price": pt["last_entry_price"],
+            "hard_stop": pt.get("day1_low") or pt["stop_price"],
+            "partial_taken": pt.get("partial_taken", False),
+            "breakeven_active": pt.get("breakeven_active", False),
+            "exits": pt["exits"] if isinstance(pt["exits"], list)
+                     else json.loads(pt["exits"] or "[]"),
+            "running_closes": running_closes_in,
+        }
 
-        # Append today's close to running list
-        running_closes.append(float(bar_close))
+        step = apply_daily_exit_step(state, daily_bars[0], today,
+                                     integer_partial_shares=False)
 
-        # 1. Hard stop check (intraday low breaches hard stop)
-        if hard_stop and bar_low <= hard_stop:
-            pnl = (hard_stop - entry_price) * remaining if entry_price else 0
-            exits.append({
-                "time": datetime.combine(today, time(16, 0)).isoformat(),
-                "price": hard_stop,
-                "reason": "stop_hit",
-                "shares": remaining,
-                "pnl": pnl,
-            })
-            total_pnl = sum(e.get("pnl", 0) for e in exits)
-
+        if step.action == "stopped_out":
             await _update_paper_trade(pt["id"], {
                 "status": "closed",
-                "exits": exits,
+                "exits": step.new_exits,
                 "remaining_shares": 0,
                 "stop_price": None,
-                "total_pnl": total_pnl,
-                "hold_days": hold_days,
+                "total_pnl": step.new_total_pnl,
+                "hold_days": step.hold_days,
                 "closed_at": datetime.utcnow(),
             })
-            logger.info(f"Hard stop hit: {ticker} @${hard_stop:.2f} P&L=${pnl:+,.2f}")
+            logger.info(f"Hard stop hit: {ticker} @${step.close_price:.2f} P&L=${step.close_pnl:+,.2f}")
             results.append({
                 "ticker": ticker, "action": "stopped_out",
-                "stop_price": hard_stop, "pnl": pnl,
-                "total_pnl": total_pnl, "hold_days": hold_days,
+                "stop_price": step.close_price, "pnl": step.close_pnl,
+                "total_pnl": step.new_total_pnl, "hold_days": step.hold_days,
             })
             continue
 
-        # 2. Compute SMAs
-        active_sma = None
-        if len(running_closes) >= 20:
-            sma_10 = sum(running_closes[-10:]) / 10
-            sma_20 = sum(running_closes[-20:]) / 20
-            active_sma = sma_10 if sma_10 > sma_20 else sma_20
-        elif len(running_closes) >= 10:
-            active_sma = sum(running_closes[-10:]) / 10
+        if step.partial_fired:
+            logger.info(
+                f"Partial profit: {ticker} sold {step.partial_shares:.1f} shares "
+                f"@${step.partial_price:.2f} P&L=${step.partial_pnl:+,.2f}"
+            )
 
-        # 3. Partial profit on Day 3-5
-        if hold_days >= 3 and not partial_taken and entry_price:
-            take_partial = False
-            if hold_days <= 4 and bar_close > entry_price:
-                take_partial = True
-            elif hold_days >= 5:
-                take_partial = True
-
-            if take_partial:
-                partial_shares = remaining / 3
-                remaining -= partial_shares
-                pnl = (bar_close - entry_price) * partial_shares
-                exits.append({
-                    "time": datetime.combine(today, time(16, 0)).isoformat(),
-                    "price": bar_close,
-                    "reason": "partial_profit",
-                    "shares": partial_shares,
-                    "pnl": pnl,
-                })
-                partial_taken = True
-                breakeven_active = True
-                logger.info(f"Partial profit: {ticker} sold {partial_shares:.1f} shares @${bar_close:.2f} P&L=${pnl:+,.2f}")
-
-        # 4. SMA trail check (close-based)
-        effective_stop = hard_stop or 0
-        if active_sma and active_sma > effective_stop:
-            effective_stop = active_sma
-        if breakeven_active and entry_price and entry_price > effective_stop:
-            effective_stop = entry_price
-
-        if bar_close < effective_stop:
-            pnl = (bar_close - entry_price) * remaining if entry_price else 0
-            exits.append({
-                "time": datetime.combine(today, time(16, 0)).isoformat(),
-                "price": bar_close,
-                "reason": "sma_trail_stop",
-                "shares": remaining,
-                "pnl": pnl,
-            })
-            total_pnl = sum(e.get("pnl", 0) for e in exits)
-
+        if step.action == "sma_stopped":
             await _update_paper_trade(pt["id"], {
                 "status": "closed",
-                "exits": exits,
+                "exits": step.new_exits,
                 "remaining_shares": 0,
                 "stop_price": None,
-                "total_pnl": total_pnl,
-                "hold_days": hold_days,
+                "total_pnl": step.new_total_pnl,
+                "hold_days": step.hold_days,
                 "closed_at": datetime.utcnow(),
             })
-            await _update_paper_trade_extras(pt["id"], partial_taken, breakeven_active, running_closes)
-            logger.info(f"SMA trail stop: {ticker} @${bar_close:.2f} P&L=${pnl:+,.2f}")
+            await _update_paper_trade_extras(pt["id"], step.new_partial_taken,
+                                             step.new_breakeven_active,
+                                             step.new_running_closes)
+            logger.info(f"SMA trail stop: {ticker} @${step.close_price:.2f} P&L=${step.close_pnl:+,.2f}")
             results.append({
                 "ticker": ticker, "action": "sma_stopped",
-                "stop_price": effective_stop, "pnl": pnl,
-                "total_pnl": total_pnl, "hold_days": hold_days,
+                "stop_price": step.effective_stop, "pnl": step.close_pnl,
+                "total_pnl": step.new_total_pnl, "hold_days": step.hold_days,
             })
             continue
 
-        # 5. Still open — update state
-        total_pnl = sum(e.get("pnl", 0) for e in exits)
+        # Still open (action in {'updated','partial_only'})
         await _update_paper_trade(pt["id"], {
             "status": "open",
-            "exits": exits,
-            "remaining_shares": remaining,
-            "stop_price": effective_stop,
-            "total_pnl": total_pnl,
-            "hold_days": hold_days,
+            "exits": step.new_exits,
+            "remaining_shares": step.new_remaining,
+            "stop_price": step.effective_stop,
+            "total_pnl": step.new_total_pnl,
+            "hold_days": step.hold_days,
         })
-        await _update_paper_trade_extras(pt["id"], partial_taken, breakeven_active, running_closes)
+        await _update_paper_trade_extras(pt["id"], step.new_partial_taken,
+                                         step.new_breakeven_active,
+                                         step.new_running_closes)
 
-        logger.debug(f"Updated {ticker}: eff_stop=${effective_stop:.2f}, day {hold_days}, sma={active_sma}")
+        logger.debug(
+            f"Updated {ticker}: eff_stop=${step.effective_stop:.2f}, "
+            f"day {step.hold_days}, sma={step.active_sma}"
+        )
         results.append({
             "ticker": ticker, "action": "updated",
-            "effective_stop": effective_stop,
-            "hold_days": hold_days,
-            "partial_taken": partial_taken,
+            "effective_stop": step.effective_stop,
+            "hold_days": step.hold_days,
+            "partial_taken": step.new_partial_taken,
         })
 
     return results
