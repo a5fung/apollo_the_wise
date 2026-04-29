@@ -264,23 +264,25 @@ async def check_stuck_filled_row(conn) -> tuple[bool, dict]:
     })
 
 
-async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, dict]:
-    """Theme whose latest snapshot stuck in a non-terminal stage > N days ago.
+async def check_zombie_theme(conn, *, stale_after_days: int = 10) -> tuple[bool, dict]:
+    """Mainstream theme whose latest snapshot stopped appearing > N days ago.
 
-    The codebase's de-facto retirement is recency-based (`get_active_themes`
-    filters by 7-day window) — Fading themes that age out without an explicit
-    'Retired' row are expected and harmless. The bug worth surfacing is when a
-    theme's LATEST row is in an active stage (Nascent / Accelerating /
-    Mainstream) and then stops appearing entirely: that means the theme
-    silently dropped from the snapshot without going through the lifecycle.
+    Recency-based retirement (`get_active_themes` 7-day window) means *any*
+    stage can age out silently — that's the design, not a bug. So the only
+    drop-out worth alerting on is **Mainstream**: by the time a theme reaches
+    Mainstream it's load-bearing for the brief and trade surfaces, and a
+    silent disappearance there means upstream RS/scoring stopped producing
+    the expected signal.
 
-    Two semantics changes vs the old query:
-    1. CTE picks the LATEST row per name, then filters; the old query filtered
-       rows first and aggregated. Same result today (no Retired rows exist),
-       but correct once explicit retirement lands.
-    2. Excludes 'Fading' from the alert — Fading is a terminal stage in the
-       lifecycle (`Fading → Retired after 5 days`), so a Fading theme that
-       drops out is the de-facto retirement path, not a zombie.
+    Second-iteration narrowing (2026-04-28): the 2026-04-27 fix excluded
+    'Fading' but kept Nascent/Accelerating, which still fires every time a
+    short-lived theme blips Accelerating for a day or two and rolls off.
+    Today's breach was 18 Nascent + 11 Accelerating + 0 Mainstream — all
+    by-design lifecycle drop-outs. Accelerating-drop-out churn is potentially
+    interesting as L2 telemetry, but it's not an invariant violation.
+
+    Threshold bumped 7 → 10d so a Mainstream theme that misses a holiday-
+    shortened week doesn't false-fire on the next business day.
     """
     rows = await conn.fetch(
         """
@@ -293,7 +295,7 @@ async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, 
         SELECT name, last_seen, latest_stage,
                (CURRENT_DATE - last_seen) AS days_stale
         FROM latest
-        WHERE latest_stage NOT IN ('Retired', 'Fading')
+        WHERE latest_stage = 'Mainstream'
           AND (CURRENT_DATE - last_seen) > $1
         ORDER BY days_stale DESC
         """,
@@ -302,7 +304,7 @@ async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, 
     return (len(rows) == 0, {
         "name": INV_ZOMBIE_THEME,
         "count": len(rows),
-        "summary": f"{len(rows)} themes stuck in non-terminal stage > {stale_after_days}d stale",
+        "summary": f"{len(rows)} Mainstream themes stopped appearing > {stale_after_days}d ago",
         "offending": [
             f"{r['name']} stage={r['latest_stage']} last_seen={r['last_seen']} ({r['days_stale']}d stale)"
             for r in rows[:10]
@@ -315,7 +317,7 @@ async def check_zombie_theme(conn, *, stale_after_days: int = 7) -> tuple[bool, 
             "SELECT name, last_seen, latest_stage,\n"
             "       (CURRENT_DATE - last_seen) AS days_stale\n"
             "FROM latest\n"
-            f"WHERE latest_stage NOT IN ('Retired', 'Fading')\n"
+            f"WHERE latest_stage = 'Mainstream'\n"
             f"  AND (CURRENT_DATE - last_seen) > {stale_after_days}\n"
             "ORDER BY days_stale DESC;"
         ),
