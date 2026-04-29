@@ -824,6 +824,7 @@ def _format_evening_briefing(
     ninem_anticipations: list[dict] | None = None,
     ep_outcomes: list[dict] | None = None,
     wick_today_count: int = 0,
+    wick_today_tickers: list[str] | None = None,
     wick_fill_rate_30d: float | None = None,
     wick_settled_30d: int = 0,
 ) -> str:
@@ -917,7 +918,13 @@ def _format_evening_briefing(
     # visible while the framework accumulates a promotion-eligible sample.
     # Fill rate published only when ≥10 30d candidates have settled.
     if wick_today_count or wick_settled_30d >= 10:
-        parts = [f"🔥 *Wick Watch:* {wick_today_count} today"]
+        head = f"🔥 *Wick Watch:* {wick_today_count} today"
+        if wick_today_tickers:
+            tks = ", ".join(f"`{t}`" for t in wick_today_tickers[:10])
+            if len(wick_today_tickers) > 10:
+                tks += f" (+{len(wick_today_tickers) - 10})"
+            head += f": {tks}"
+        parts = [head]
         if wick_settled_30d >= 10 and wick_fill_rate_30d is not None:
             parts.append(f"30d fill {wick_fill_rate_30d:.0%} (n={wick_settled_30d})")
         sections.append(" · ".join(parts))
@@ -1007,12 +1014,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
     # Wick Watch (P22) — today's count + 30d fill rate
     wick_today_count = 0
+    wick_today_tickers: list[str] = []
     wick_fill_rate_30d: float | None = None
     wick_settled_30d = 0
     try:
         from agents.market_intelligence.db import get_wick_candidates_window
         wick_30d = await get_wick_candidates_window(30)
-        wick_today_count = sum(1 for r in wick_30d if str(r.get("alert_date")) == today_str)
+        today_rows = [r for r in wick_30d if str(r.get("alert_date")) == today_str]
+        wick_today_count = len(today_rows)
+        wick_today_tickers = [r["ticker"] for r in today_rows if r.get("ticker")]
         settled = [r for r in wick_30d if r.get("filled_wick") is not None]
         wick_settled_30d = len(settled)
         if settled:
@@ -1039,6 +1049,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         ninem_anticipations=ninem_anticipations,
         ep_outcomes=ep_outcomes,
         wick_today_count=wick_today_count,
+        wick_today_tickers=wick_today_tickers,
         wick_fill_rate_30d=wick_fill_rate_30d,
         wick_settled_30d=wick_settled_30d,
     )
