@@ -560,6 +560,10 @@ class MarketIntelligenceAgent(BaseAgent):
         ):
             return await self._handle_9m_ep_query(request)
 
+        # Wick-fill (P22) — telemetry candidates listing.
+        if any(k in task for k in ["wick watch", "wick fill", "wick-fill"]) or task.strip() == "wick":
+            return await self._handle_wick_query(request)
+
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
                                      "ep returns", "ep results", "ep track"]):
@@ -1264,6 +1268,60 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"  🍬 {icon} `{b['ticker']}` Vol {vol_m:.1f}M | "
                     f"Stop ${b['low_price']:.2f}{_shape_suffix(b)}"
                 )
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_wick_query(self, request: AgentRequest) -> AgentResponse:
+        """Show today's wick-fill candidates plus 30d telemetry roll-up.
+
+        Wick-fill is telemetry-only (P22 shadow-phase). No entries, no orders.
+        We're answering: of 9M days closing in the [0.50, 0.75) wick zone,
+        what fraction break prior_high in the next 10 sessions, and what's
+        the forward drift after that?
+        """
+        from agents.market_intelligence.db import get_wick_candidates_window
+        from agents.market_intelligence.collector import et_today, last_trading_day
+        from agents.market_intelligence.ninem_detector import _shape_tag
+
+        today = et_today()
+        query_date = last_trading_day(today)
+        weekend_note = "" if query_date == today else "  _(last trading day)_"
+        rows = await get_wick_candidates_window(30)
+
+        today_rows = [r for r in rows if r["alert_date"] == query_date]
+        settled = [r for r in rows if r.get("fwd_10d_from_close_pct") is not None]
+        n_filled = sum(1 for r in settled if r.get("filled_wick"))
+
+        lines = [f"🪝 *Wick-Fill — {query_date.isoformat()}*{weekend_note}\n"]
+        if today_rows:
+            lines.append(f"*Today's Candidates ({len(today_rows)})*")
+            for r in today_rows:
+                vol_m = float(r["volume"]) / 1_000_000
+                rp = int(float(r["close_in_range_pct"]) * 100)
+                tag = _shape_tag(r)
+                tag_suffix = f" | {tag}" if tag else ""
+                lines.append(
+                    f"  🪝 `{r['ticker']}` Vol {vol_m:.1f}M | "
+                    f"Close ${float(r['close_price']):.2f} | Range {rp}% | "
+                    f"Prior high ${float(r['prior_high']):.2f}{tag_suffix}"
+                )
+        else:
+            lines.append("_No wick candidates on this date._")
+
+        if settled:
+            fill_rate = n_filled / len(settled)
+            lines.append("")
+            lines.append(
+                f"*30d Telemetry:* {len(rows)} candidates · "
+                f"{len(settled)} settled · {n_filled} filled ({fill_rate*100:.0f}%)"
+            )
+            lines.append("_Phase: shadow. Promotion gate: n≥30 AND fill_rate≥0.50._")
+        else:
+            lines.append("")
+            lines.append(
+                f"*30d Telemetry:* {len(rows)} candidates · 0 settled "
+                f"(forward returns need 10 trading sessions)"
+            )
 
         return self._ok(request, result="\n".join(lines))
 
@@ -2946,6 +3004,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/why":            self._handle_why_query,
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
+            "/wick":           self._handle_wick_query,
             "/strategies":     self._handle_strategy_command,
             "/strategy":       self._handle_strategy_command,
             "/eps_detail":     self._handle_eps_detail,

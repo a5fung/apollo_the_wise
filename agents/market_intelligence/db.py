@@ -18,6 +18,46 @@ logger = logging.getLogger(__name__)
 # CS = Common Stock, ADRC = ADR Common (foreign stocks traded on US exchanges).
 COMMON_STOCK_TYPES = ('CS', 'ADRC')
 
+# Shared CTE block for 9M-context EOD selection queries. Both
+# get_eod_9m_sugar_babies (close ≥ 75% range) and get_eod_9m_wick_candidates
+# (close ∈ [0.50, 0.75)) build their context (ADV, prev_close, prior closes,
+# SMAs, slope, prior_sessions) from this same CTE so the two cohorts are
+# defined off identical going-in metrics. Parameter $1 = trade_date.
+_NINEM_CONTEXT_CTE = """
+WITH adv AS (
+    SELECT ticker,
+           PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+    FROM mi_daily_closes
+    WHERE trade_date < $1
+      AND trade_date >= $1 - INTERVAL '30 days'
+      AND volume > 0
+    GROUP BY ticker
+    HAVING COUNT(*) >= 10
+),
+ranked AS (
+    SELECT ticker, close, trade_date,
+           ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+    FROM mi_daily_closes
+    WHERE trade_date < $1
+      AND trade_date >= $1 - INTERVAL '90 days'
+),
+ctx AS (
+    SELECT ticker,
+           COUNT(*) AS prior_sessions,
+           MAX(close) FILTER (WHERE rn = 1)  AS prev_close,
+           MAX(close) FILTER (WHERE rn = 6)  AS close_5d_ago,
+           MAX(close) FILTER (WHERE rn = 21) AS close_20d_ago,
+           AVG(close) FILTER (WHERE rn <= 10) AS sma_10,
+           AVG(close) FILTER (WHERE rn <= 50) AS sma_50,
+           CASE WHEN COUNT(*) >= 55
+                THEN AVG(close) FILTER (WHERE rn BETWEEN 6 AND 55)
+                ELSE NULL END AS sma_50_5d_ago
+    FROM ranked
+    GROUP BY ticker
+    HAVING COUNT(*) >= 10
+)
+"""
+
 _pool: Optional[asyncpg.Pool] = None
 
 
@@ -136,6 +176,23 @@ async def _seed_strategies_registry(conn) -> None:
                     "min_climax_alerts": 20,
                     "min_review_passed_pct": 0.60,
                     "min_forward_5d_neg_rate": 0.50,
+                },
+            },
+        },
+        {
+            "strategy_id": "wick_fill",
+            "name": "Wick-Fill (Negated Shooting Star)",
+            "family": "orb_long",
+            "phase": "shadow",
+            "signal_type": "wick_fill",
+            "outcomes_table": "mi_wick_candidates",
+            "promotion_model": "telemetry_review",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "metric_key": "n_candidates",
+                    "min_count": 30,
+                    "min_fill_rate": 0.50,
+                    "review_required": False,
                 },
             },
         },
@@ -841,6 +898,47 @@ async def initialize_schema() -> None:
                 ON mi_parabolic_exclusions(ticker);
         """)
 
+        # Wick-fill candidates (P22, telemetry-only). 9M days closing mid-range
+        # ([0.50, 0.75)) with green body and ≥3× ADV — Bonde / Kristjan
+        # "negated shooting star": Day 1 traps shorts on the upper-wick close,
+        # Day 2 break of prior_high covers them. Forward returns are measured
+        # from TWO anchors so the weekly review can disambiguate filled vs
+        # not-filled cohorts:
+        #   from_high_pct  → measured from prior_high; NULL when filled_wick=false
+        #   from_close_pct → measured from Day 1 close; unconditional drift baseline
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_wick_candidates (
+                id                       SERIAL PRIMARY KEY,
+                ticker                   TEXT NOT NULL,
+                alert_date               DATE NOT NULL,
+                open_price               FLOAT NOT NULL,
+                close_price              FLOAT NOT NULL,
+                high_price               FLOAT NOT NULL,
+                low_price                FLOAT NOT NULL,
+                volume                   BIGINT NOT NULL,
+                close_in_range_pct       FLOAT NOT NULL,
+                prior_high               FLOAT NOT NULL,
+                prev_5d_pct              FLOAT,
+                prev_20d_pct             FLOAT,
+                prev_vs_sma10            FLOAT,
+                prev_vs_sma50            FLOAT,
+                sma50_slope_pct          FLOAT,
+                prior_sessions           INT,
+                filled_wick              BOOLEAN,
+                fill_date                DATE,
+                fwd_1d_from_high_pct     FLOAT,
+                fwd_3d_from_high_pct     FLOAT,
+                fwd_10d_from_high_pct    FLOAT,
+                fwd_1d_from_close_pct    FLOAT,
+                fwd_3d_from_close_pct    FLOAT,
+                fwd_10d_from_close_pct   FLOAT,
+                created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_wick_candidates_date
+                ON mi_wick_candidates(alert_date);
+        """)
+
         # ── Strategy maturity registry ───────────────────────────────────
         # One row per strategy. `phase` controls whether entries are allowed
         # via the global gate; `enabled` is the user-facing on/off toggle.
@@ -1238,52 +1336,7 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     if isinstance(trade_date, str):
         trade_date = date.fromisoformat(trade_date)
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            WITH adv AS (
-                SELECT ticker,
-                       PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
-                FROM mi_daily_closes
-                WHERE trade_date < $1
-                  AND trade_date >= $1 - INTERVAL '30 days'
-                  AND volume > 0
-                GROUP BY ticker
-                HAVING COUNT(*) >= 10
-            ),
-            -- Prior 60 sessions of closes ranked by recency. Used for:
-            --   rn=1  → prev_close
-            --   rn=6  → close_5d_ago (prev_close_5d_pct)
-            --   rn=21 → close_20d_ago (prev_close_20d_pct)
-            --   rn 1-10 → sma_10
-            --   rn 1-50 → sma_50
-            --   rn 6-55 → sma_50_5d_ago (for slope)
-            --   COUNT(*) → prior_sessions (catches sub-30d IPOs)
-            ranked AS (
-                SELECT ticker, close, trade_date,
-                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
-                FROM mi_daily_closes
-                WHERE trade_date < $1
-                  AND trade_date >= $1 - INTERVAL '90 days'
-            ),
-            ctx AS (
-                SELECT ticker,
-                       COUNT(*) AS prior_sessions,
-                       MAX(close) FILTER (WHERE rn = 1)  AS prev_close,
-                       MAX(close) FILTER (WHERE rn = 6)  AS close_5d_ago,
-                       MAX(close) FILTER (WHERE rn = 21) AS close_20d_ago,
-                       AVG(close) FILTER (WHERE rn <= 10) AS sma_10,
-                       AVG(close) FILTER (WHERE rn <= 50) AS sma_50,
-                       -- Slope requires a TRUE 50-session window at both t and t-5.
-                       -- Only compute when the ticker has ≥55 prior sessions so
-                       -- sma_50_5d_ago = AVG over rn 6..55 is a full 50-close window.
-                       -- Otherwise we'd compare a 50-close avg to a 45-49-close avg
-                       -- and mislabel newly-listed names via sma50_slope_pct.
-                       CASE WHEN COUNT(*) >= 55
-                            THEN AVG(close) FILTER (WHERE rn BETWEEN 6 AND 55)
-                            ELSE NULL END AS sma_50_5d_ago
-                FROM ranked
-                GROUP BY ticker
-                HAVING COUNT(*) >= 10
-            )
+        rows = await conn.fetch(_NINEM_CONTEXT_CTE + """
             SELECT d.ticker, d.close AS close_price, d.open_price, d.high_price, d.low_price, d.volume,
                    m.prev_close,
                    CASE WHEN (d.high_price - d.low_price) > 0
@@ -1345,6 +1398,191 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
         if is_9m_directional(float(r["prev_close"]), float(r["open_price"]), float(r["close_price"]))
         and is_green_close(float(r["prev_close"]), float(r["close_price"]))
     ]
+
+
+async def get_eod_9m_wick_candidates(trade_date: "str | date") -> list[dict]:
+    """Wick-fill candidates (P22): 9M day, green body, close in [0.50, 0.75)
+    of intraday range. Same gates as sugar babies — only the range-position
+    branch differs. Telemetry-only; Day 2 break of prior_high is the
+    canonical short-trap fill (Bonde / Kristjan negated shooting star).
+    Returns up to 20, ordered by volume desc.
+    """
+    pool = await get_pool()
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_NINEM_CONTEXT_CTE + """
+            SELECT d.ticker, d.close AS close_price, d.open_price,
+                   d.high_price, d.low_price, d.volume,
+                   d.high_price AS prior_high,
+                   m.prev_close,
+                   CASE WHEN (d.high_price - d.low_price) > 0
+                        THEN (d.close - d.low_price) / (d.high_price - d.low_price)
+                        ELSE NULL END AS close_in_range_pct,
+                   CASE WHEN m.close_5d_ago IS NOT NULL AND m.close_5d_ago > 0
+                        THEN (m.prev_close - m.close_5d_ago) / m.close_5d_ago * 100.0
+                        ELSE NULL END AS prev_5d_pct,
+                   CASE WHEN m.close_20d_ago IS NOT NULL AND m.close_20d_ago > 0
+                        THEN (m.prev_close - m.close_20d_ago) / m.close_20d_ago * 100.0
+                        ELSE NULL END AS prev_20d_pct,
+                   CASE WHEN m.sma_10 > 0 THEN m.prev_close / m.sma_10 ELSE NULL END AS prev_vs_sma10,
+                   CASE WHEN m.sma_50 > 0 THEN m.prev_close / m.sma_50 ELSE NULL END AS prev_vs_sma50,
+                   CASE WHEN m.sma_50_5d_ago IS NOT NULL AND m.sma_50_5d_ago > 0
+                        THEN (m.sma_50 - m.sma_50_5d_ago) / m.sma_50_5d_ago * 100.0
+                        ELSE NULL END AS sma50_slope_pct,
+                   m.prior_sessions
+            FROM mi_daily_closes d
+            LEFT JOIN mi_security_types st ON st.ticker = d.ticker
+            LEFT JOIN adv a ON a.ticker = d.ticker
+            LEFT JOIN ctx m ON m.ticker = d.ticker
+            WHERE d.trade_date = $1
+              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
+              AND d.volume >= 9000000
+              AND d.close >= 5.0
+              AND (d.volume * d.close) >= 50000000
+              AND d.open_price IS NOT NULL
+              AND d.high_price IS NOT NULL
+              AND d.low_price IS NOT NULL
+              AND d.close > d.open_price
+              AND (d.high_price - d.low_price) > 0
+              -- Mid-range upper-wick close. Three-way EOD branch:
+              --   ≥ 0.75 → sugar baby; [0.50, 0.75) → wick; < 0.50 → distribution.
+              AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.50
+              AND (d.close - d.low_price) / (d.high_price - d.low_price) <  0.75
+              AND a.adv_20 IS NOT NULL
+              AND m.sma_10 IS NOT NULL
+              AND m.prev_close IS NOT NULL
+              AND d.volume >= (a.adv_20 * 3)
+              AND (d.high_price - d.low_price) >= (d.close * 0.02)
+              AND m.prev_close <= m.sma_10 * 1.20
+            ORDER BY d.volume DESC
+            LIMIT 20
+        """, trade_date)
+    from agents.market_intelligence.ninem_detector import is_9m_directional, is_green_close
+    return [
+        dict(r) for r in rows
+        if is_9m_directional(float(r["prev_close"]), float(r["open_price"]), float(r["close_price"]))
+        and is_green_close(float(r["prev_close"]), float(r["close_price"]))
+    ]
+
+
+async def insert_wick_candidate(record: dict[str, Any]) -> None:
+    """Upsert a wick candidate from EOD sweep. Forward-return fields stay
+    NULL — populated later by wick_tracker.update_forward_returns once
+    the 10d horizon has settled.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_wick_candidates
+                (ticker, alert_date, open_price, close_price, high_price, low_price,
+                 volume, close_in_range_pct, prior_high,
+                 prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
+                 sma50_slope_pct, prior_sessions)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            ON CONFLICT (ticker, alert_date) DO UPDATE SET
+                open_price         = EXCLUDED.open_price,
+                close_price        = EXCLUDED.close_price,
+                high_price         = EXCLUDED.high_price,
+                low_price          = EXCLUDED.low_price,
+                volume             = EXCLUDED.volume,
+                close_in_range_pct = EXCLUDED.close_in_range_pct,
+                prior_high         = EXCLUDED.prior_high,
+                prev_5d_pct        = EXCLUDED.prev_5d_pct,
+                prev_20d_pct       = EXCLUDED.prev_20d_pct,
+                prev_vs_sma10      = EXCLUDED.prev_vs_sma10,
+                prev_vs_sma50      = EXCLUDED.prev_vs_sma50,
+                sma50_slope_pct    = EXCLUDED.sma50_slope_pct,
+                prior_sessions     = EXCLUDED.prior_sessions
+        """,
+            record["ticker"],
+            record["alert_date"] if isinstance(record["alert_date"], date) else date.fromisoformat(record["alert_date"]),
+            record["open_price"],
+            record["close_price"],
+            record["high_price"],
+            record["low_price"],
+            record["volume"],
+            record["close_in_range_pct"],
+            record["prior_high"],
+            record.get("prev_5d_pct"),
+            record.get("prev_20d_pct"),
+            record.get("prev_vs_sma10"),
+            record.get("prev_vs_sma50"),
+            record.get("sma50_slope_pct"),
+            record.get("prior_sessions"),
+        )
+
+
+async def get_unsettled_wick_candidates(today: "str | date") -> list[dict]:
+    """Wick rows whose 10d forward return isn't measured yet. Sweep job
+    retries each day until the horizon settles. Bounded 20-day lookback
+    so we don't re-scan ancient rows that never got their fwd window
+    (early-table data, manual deletions).
+    """
+    pool = await get_pool()
+    if isinstance(today, str):
+        today = date.fromisoformat(today)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, prior_high, close_price
+            FROM mi_wick_candidates
+            WHERE alert_date < $1
+              AND fwd_10d_from_close_pct IS NULL
+              AND alert_date >= $1 - INTERVAL '20 days'
+            ORDER BY alert_date ASC
+        """, today)
+    return [dict(r) for r in rows]
+
+
+async def update_wick_forward_returns(
+    candidate_id: int,
+    *,
+    filled_wick: bool | None,
+    fill_date: "date | None",
+    fwd_1d_from_high_pct: float | None,
+    fwd_3d_from_high_pct: float | None,
+    fwd_10d_from_high_pct: float | None,
+    fwd_1d_from_close_pct: float | None,
+    fwd_3d_from_close_pct: float | None,
+    fwd_10d_from_close_pct: float | None,
+) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_wick_candidates
+               SET filled_wick            = $1,
+                   fill_date              = $2,
+                   fwd_1d_from_high_pct   = $3,
+                   fwd_3d_from_high_pct   = $4,
+                   fwd_10d_from_high_pct  = $5,
+                   fwd_1d_from_close_pct  = $6,
+                   fwd_3d_from_close_pct  = $7,
+                   fwd_10d_from_close_pct = $8
+             WHERE id = $9
+        """, filled_wick, fill_date,
+             fwd_1d_from_high_pct, fwd_3d_from_high_pct, fwd_10d_from_high_pct,
+             fwd_1d_from_close_pct, fwd_3d_from_close_pct, fwd_10d_from_close_pct,
+             candidate_id)
+
+
+async def get_wick_candidates_window(window_days: int) -> list[dict]:
+    """Wick candidates with all stored fields, used by the strategy adapter
+    and `/wick` Telegram surface."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, alert_date, open_price, close_price, high_price,
+                   low_price, volume, close_in_range_pct, prior_high,
+                   prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
+                   sma50_slope_pct, prior_sessions,
+                   filled_wick, fill_date,
+                   fwd_1d_from_high_pct, fwd_3d_from_high_pct, fwd_10d_from_high_pct,
+                   fwd_1d_from_close_pct, fwd_3d_from_close_pct, fwd_10d_from_close_pct
+            FROM mi_wick_candidates
+            WHERE alert_date >= CURRENT_DATE - $1::int
+            ORDER BY alert_date DESC, volume DESC
+        """, window_days)
+    return [dict(r) for r in rows]
 
 
 async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:

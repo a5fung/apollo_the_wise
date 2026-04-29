@@ -200,6 +200,27 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-28 (session 4) — P22 Wick-Fill shadow tracker (telemetry-only)
+First strategy shipped *through* the Strategy Maturity Framework. Negated shooting star setup (Bonde / Kristjan): 9M day closes mid-range with green body — close_in_range_pct ∈ [0.50, 0.75) — trapping shorts on the upper-wick close. Day 2+ break of `prior_high` is the canonical short-trap fill. Three-way EOD branching off the shared 9M context CTE: `≥ 0.75 →` sugar baby (existing), `[0.50, 0.75) →` wick (new), `< 0.50 →` distribution (ignored).
+
+**New table `mi_wick_candidates`** mirrors sugar baby shape columns + adds `filled_wick BOOL`, `fill_date`, `fwd_{1,3,10}d_from_high_pct` (conditional on fill — measures the actual short-cover impulse), `fwd_{1,3,10}d_from_close_pct` (unconditional drift baseline). Two anchors are load-bearing: the gap between them is the strategy's edge.
+
+**Single source of truth** — wick query reuses `_NINEM_CONTEXT_CTE` and the `is_9m_directional` + `is_green_close` Python post-filter from `ninem_detector.py`. So the WU 2026-04-24 fix (net up ≥ 3% vs prev_close, NOT just `close > open`) is enforced for wicks too without re-implementing the rule. Range-position branch is the *only* difference vs sugar baby selection.
+
+**New module `wick_tracker.py`**: `run_wick_sweep(today)` (gated by `should_run('wick_fill')`, wired into `ninem_detector` EOD branch alongside sugar baby write) + `update_forward_returns(today)` (NOT gated — disabling mid-cycle would orphan in-flight measurements; sweep gate halts new candidates, fwd-returns gate would only lose telemetry). Forward-returns walks `mi_daily_closes` for ≤10 trailing sessions; rows without enough horizon left untouched.
+
+**Promotion model `telemetry_review`** — generalized from parabolic_short to also handle wick_fill via `_eval_telemetry_review`. Wick gates: `n_candidates >= 30 AND fill_rate >= 0.50`. No R, no PnL — strategy is signal-quality validation, not P&L tracking. Adapter `_adapter_wick_fill` maps each row to `OutcomeRow(status='settled'|'pending', extras={fill_rate, median_fwd_3d_from_high, ...})`.
+
+**Telegram surface**: `/wick` lists today's candidates + 30d telemetry footer (n_total · n_settled · n_filled / fill_rate). Evening brief 🪝 *Wick Watch:* line surfaces today's count + intraday tags. Weekly review 🪝 *Wick:* line cites n_total + fill_rate + post-fill drift vs baseline drift gap (the strategy's edge in one number) when n_settled ≥ 10; omits when too sparse.
+
+**Scheduler**: existing EOD ninem cron writes wick rows alongside sugar babies (zero new entry-point job). New `_wick_forward_returns_job` 17:35 ET mon-fri walks unsettled rows.
+
+**POET 2026-04-21 verification PASSED** via `scripts/backfill_wick_replay.py` (yfinance, no DB): cirp=0.602 ∈ [0.50, 0.75) ✓, green ✓, net +19.3% ✓, vol_ratio 4.7× ✓, dollar_vol $606M ✓. Day 2 (4/22) high $12.95 broke prior_high $11.09 — wick filled day 1. Continued +40% by 4/24, then pulled back. Full 10-session replay deferred (only 5 fwd sessions elapsed by 4/28 — exercises organically).
+
+**Promotion gate semantics** — when n=30 AND fill_rate ≥ 0.50, eligibility flags; user manually `/strategy wick_fill promote shadow→paper`. No auto-promotion. Telemetry phase is open-ended; strategy stays in shadow until eligibility + manual review of the post-fill drift gap.
+
+**Lesson:** the framework worked as designed — adding strategy #5 = config row in `strategies.py` seed list + adapter function + a sweep call site, no plumbing across system_review / agent / telegram / audit topics. The single-source-of-truth pattern (CTE reuse + Python predicate reuse) prevented re-introducing the exact WU bug fixed on the parallel cohort 4 days earlier. Three-way EOD branching off one shared filter is much cleaner than two parallel detectors with their own gates.
+
 ### 2026-04-28 (session 3) — Strategy Maturity Framework (Option A)
 Plan: `~/.claude/plans/shiny-mapping-locket.md`. Five strategies (MAGNA53, 9M Day 2, Shadow ORB 5m, Parabolic Short, P22 backlog) were each wired ad-hoc — own outcomes table, own scheduler hooks, own audit topic, own weekly aggregator, own Telegram routes. Adding strategy #6 = copy-paste across 5 subsystems. Built a thin overlay registry: each strategy declares phase (shadow → paper → live), KPI promotion thresholds, enable flag. Per-strategy outcome tables stay as-is; adapter pattern layers on top.
 

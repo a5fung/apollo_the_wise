@@ -159,17 +159,35 @@ async def _eval_paired_r(strategy_id: str, rows: list[OutcomeRow], thresholds: d
 
 
 def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[dict, list[str]]:
-    """Telemetry-only strategies don't have R/PnL. Promotion is gated on
-    raw alert volume + manual review (review fields aren't tracked yet —
-    blocked until that data exists).
+    """Telemetry-only strategies. Configurable via thresholds:
+
+        metric_key:      output metric name (default "n_climax_alerts")
+        min_count:       minimum rows to clear (legacy "min_climax_alerts"
+                         key still honored; default 20)
+        min_fill_rate:   optional fill-rate gate; counts `extras.filled_wick`
+                         truthy rows. Skipped when absent.
+        review_required: append "manual review deferred" blocker (default True)
     """
     n = len(rows)
-    metrics = {"n_climax_alerts": n}
+    metric_key = thresholds.get("metric_key", "n_climax_alerts")
+    metrics: dict = {metric_key: n}
     blocking: list[str] = []
-    min_climax = thresholds.get("min_climax_alerts", 20)
-    if n < min_climax:
-        blocking.append(f"need {min_climax} climax alerts (have {n})")
-    blocking.append("manual review fields not yet captured — eligibility deferred")
+
+    min_count = thresholds.get("min_count", thresholds.get("min_climax_alerts", 20))
+    if n < min_count:
+        label = metric_key[2:] if metric_key.startswith("n_") else metric_key
+        blocking.append(f"need {min_count} {label} (have {n})")
+
+    min_fill = thresholds.get("min_fill_rate")
+    if min_fill is not None and n > 0:
+        filled = sum(1 for r in rows if (r.extras or {}).get("filled_wick"))
+        fill_rate = filled / n
+        metrics["fill_rate"] = round(fill_rate, 3)
+        if fill_rate < min_fill:
+            blocking.append(f"fill rate {fill_rate:.2f} < {min_fill}")
+
+    if thresholds.get("review_required", True):
+        blocking.append("manual review fields not yet captured — eligibility deferred")
     return metrics, blocking
 
 

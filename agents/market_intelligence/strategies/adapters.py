@@ -172,11 +172,64 @@ async def _adapter_parabolic(window_days: int) -> list[OutcomeRow]:
     return out
 
 
+async def _adapter_wick_fill(window_days: int) -> list[OutcomeRow]:
+    """Wick-fill (P22) is telemetry-only — no PnL, no R. Each row is a
+    candidate; `extras.filled_wick` drives the promotion fill-rate gate.
+    Status maps every row to 'closed' (the candidate IS the outcome unit)
+    so the n_candidates counter matches what the telemetry_review evaluator
+    expects.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, alert_date, close_in_range_pct, prior_high,
+                   prev_5d_pct, prev_vs_sma10, prev_vs_sma50, sma50_slope_pct,
+                   filled_wick, fill_date,
+                   fwd_1d_from_high_pct, fwd_3d_from_high_pct, fwd_10d_from_high_pct,
+                   fwd_1d_from_close_pct, fwd_3d_from_close_pct, fwd_10d_from_close_pct
+            FROM mi_wick_candidates
+            WHERE alert_date >= CURRENT_DATE - $1::int
+            """,
+            window_days,
+        )
+    out: list[OutcomeRow] = []
+    for r in rows:
+        out.append(OutcomeRow(
+            strategy_id="wick_fill",
+            ticker=r["ticker"],
+            alert_date=r["alert_date"],
+            status="closed",
+            r_multiple=None,
+            pnl=None,
+            hold_days=None,
+            closed_at=None,
+            extras={
+                "close_in_range_pct": float(r["close_in_range_pct"]) if r["close_in_range_pct"] is not None else None,
+                "prior_high": float(r["prior_high"]) if r["prior_high"] is not None else None,
+                "prev_5d_pct": float(r["prev_5d_pct"]) if r["prev_5d_pct"] is not None else None,
+                "prev_vs_sma10": float(r["prev_vs_sma10"]) if r["prev_vs_sma10"] is not None else None,
+                "prev_vs_sma50": float(r["prev_vs_sma50"]) if r["prev_vs_sma50"] is not None else None,
+                "sma50_slope_pct": float(r["sma50_slope_pct"]) if r["sma50_slope_pct"] is not None else None,
+                "filled_wick": r["filled_wick"],
+                "fill_date": r["fill_date"],
+                "fwd_1d_from_high_pct": float(r["fwd_1d_from_high_pct"]) if r["fwd_1d_from_high_pct"] is not None else None,
+                "fwd_3d_from_high_pct": float(r["fwd_3d_from_high_pct"]) if r["fwd_3d_from_high_pct"] is not None else None,
+                "fwd_10d_from_high_pct": float(r["fwd_10d_from_high_pct"]) if r["fwd_10d_from_high_pct"] is not None else None,
+                "fwd_1d_from_close_pct": float(r["fwd_1d_from_close_pct"]) if r["fwd_1d_from_close_pct"] is not None else None,
+                "fwd_3d_from_close_pct": float(r["fwd_3d_from_close_pct"]) if r["fwd_3d_from_close_pct"] is not None else None,
+                "fwd_10d_from_close_pct": float(r["fwd_10d_from_close_pct"]) if r["fwd_10d_from_close_pct"] is not None else None,
+            },
+        ))
+    return out
+
+
 _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     "magna53":         partial(_adapter_live_trades, signal_type="magna53"),
     "9m_day2":         partial(_adapter_live_trades, signal_type="9m_day2"),
     "shadow_orb_5m":   _adapter_shadow_orb_5m,
     "parabolic_short": _adapter_parabolic,
+    "wick_fill":       _adapter_wick_fill,
 }
 
 

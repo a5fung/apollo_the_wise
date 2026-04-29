@@ -55,6 +55,7 @@ JOB_NIGHTLY_DATA_PULL = "nightly_data_pull"
 JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
+JOB_WICK_FORWARD_RETURNS = "wick_forward_returns"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -332,6 +333,15 @@ async def _nightly_data_pull():
             summary_parts.append(f"{_9m_count} 9M sugar babies")
     except Exception as e:
         logger.warning(f"9M EOD sweep failed (non-fatal): {e}")
+
+    # 4.6. Wick-fill (P22) EOD sweep — same 9M data, mid-range close branch
+    try:
+        from agents.market_intelligence.wick_tracker import run_wick_sweep
+        _wick_count = await run_wick_sweep(_today)
+        if _wick_count:
+            summary_parts.append(f"{_wick_count} wick candidates")
+    except Exception as e:
+        logger.warning(f"Wick EOD sweep failed (non-fatal): {e}")
 
     # 5. Theme engine
     theme_changelog: list[dict] = []
@@ -938,6 +948,27 @@ async def _parabolic_scan_job():
         await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
 
 
+async def _wick_forward_returns_job():
+    """Run at 5:45 PM ET. Walk unsettled wick rows whose 10-trading-session
+    horizon has elapsed and write filled_wick + fwd_Nd_from_{high,close}.
+
+    Slots after 5:30 post_nightly_audit so the audit window doesn't collide.
+    Idempotent — `get_unsettled_wick_candidates` returns only rows with
+    fwd_10d_from_close_pct IS NULL within a bounded 20-day lookback.
+    """
+    logger.info("Wick forward-returns starting...")
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.wick_tracker import update_forward_returns
+        n = await update_forward_returns(et_today())
+        logger.info(f"Wick forward-returns: settled {n} rows")
+        return None
+    except Exception as e:
+        logger.error(f"Wick forward-returns failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_WICK_FORWARD_RETURNS, str(e))
+        return None
+
+
 async def _post_nightly_audit_job():
     """Run at 5:30 PM ET. Theme/cooldown/regime invariants + metrics scan post-data-pull.
 
@@ -1503,6 +1534,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_parabolic_scan_job, JOB_PARABOLIC_SCAN),
         CronTrigger(hour=17, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_PARABOLIC_SCAN,
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # Wick-fill forward returns: 5:45 PM ET — slots after post_nightly_audit
+    # (5:30) so it doesn't collide with the audit window. Telemetry-only
+    # (expected_min_rows=None — empty days are normal during shadow phase).
+    _scheduler.add_job(
+        audit_wrap(_wick_forward_returns_job, JOB_WICK_FORWARD_RETURNS),
+        CronTrigger(hour=17, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_WICK_FORWARD_RETURNS,
         replace_existing=True,
         misfire_grace_time=900,
     )

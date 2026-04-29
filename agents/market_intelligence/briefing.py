@@ -823,6 +823,9 @@ def _format_evening_briefing(
     sugar_babies: list[dict] | None = None,
     ninem_anticipations: list[dict] | None = None,
     ep_outcomes: list[dict] | None = None,
+    wick_today_count: int = 0,
+    wick_fill_rate_30d: float | None = None,
+    wick_settled_30d: int = 0,
 ) -> str:
     next_num = 4
 
@@ -910,6 +913,16 @@ def _format_evening_briefing(
         )
         sections.append("")
 
+    # Wick Watch (P22, telemetry-only): one-line summary so the cohort is
+    # visible while the framework accumulates a promotion-eligible sample.
+    # Fill rate published only when ≥10 30d candidates have settled.
+    if wick_today_count or wick_settled_30d >= 10:
+        parts = [f"🔥 *Wick Watch:* {wick_today_count} today"]
+        if wick_settled_30d >= 10 and wick_fill_rate_30d is not None:
+            parts.append(f"30d fill {wick_fill_rate_30d:.0%} (n={wick_settled_30d})")
+        sections.append(" · ".join(parts))
+        sections.append("")
+
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -992,6 +1005,22 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"EP outcomes fetch failed: {e}")
 
+    # Wick Watch (P22) — today's count + 30d fill rate
+    wick_today_count = 0
+    wick_fill_rate_30d: float | None = None
+    wick_settled_30d = 0
+    try:
+        from agents.market_intelligence.db import get_wick_candidates_window
+        wick_30d = await get_wick_candidates_window(30)
+        wick_today_count = sum(1 for r in wick_30d if str(r.get("alert_date")) == today_str)
+        settled = [r for r in wick_30d if r.get("filled_wick") is not None]
+        wick_settled_30d = len(settled)
+        if settled:
+            filled_n = sum(1 for r in settled if r["filled_wick"])
+            wick_fill_rate_30d = filled_n / wick_settled_30d
+    except Exception as e:
+        logger.warning(f"Wick candidates fetch failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -1009,6 +1038,9 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         sugar_babies=sugar_babies,
         ninem_anticipations=ninem_anticipations,
         ep_outcomes=ep_outcomes,
+        wick_today_count=wick_today_count,
+        wick_fill_rate_30d=wick_fill_rate_30d,
+        wick_settled_30d=wick_settled_30d,
     )
 
     success = await send_telegram_message(text, chat_id)
