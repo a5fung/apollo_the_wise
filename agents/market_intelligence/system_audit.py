@@ -194,6 +194,46 @@ async def _today_9m_alerts(conn) -> float:
     return float(row["n"] or 0)
 
 
+async def _accel_dropout_count_7d(conn) -> float:
+    """Themes whose latest snapshot was 'Accelerating' AND last appeared 3–7
+    days ago AND had ≥5 days at 'Accelerating' in their history. Captures
+    "real" Accelerating themes that vanished without graduating to
+    Mainstream — potential theme-engine quality signal (over-promotion to
+    Accelerating, or genuine market churn).
+
+    L1 doesn't fire on this (recency-cap design doesn't promise these
+    survive); L2 alerts when count > p95 + 3 MAD."""
+    row = await conn.fetchrow(
+        """
+        WITH latest AS (
+            SELECT name, MAX(theme_date) AS last_seen
+            FROM mi_themes
+            GROUP BY name
+        ),
+        latest_stage AS (
+            SELECT t.name, t.theme_date AS last_seen, t.stage
+            FROM mi_themes t
+            JOIN latest l
+              ON t.name = l.name AND t.theme_date = l.last_seen
+        ),
+        accel_days AS (
+            SELECT name, COUNT(DISTINCT theme_date) AS n_accel
+            FROM mi_themes
+            WHERE stage = 'Accelerating'
+            GROUP BY name
+        )
+        SELECT COUNT(*) AS n
+        FROM latest_stage ls
+        JOIN accel_days ad ON ad.name = ls.name
+        WHERE ls.stage = 'Accelerating'
+          AND ls.last_seen <= CURRENT_DATE - INTERVAL '3 days'
+          AND ls.last_seen >= CURRENT_DATE - INTERVAL '7 days'
+          AND ad.n_accel  >= 5
+        """
+    )
+    return float(row["n"] or 0)
+
+
 async def _today_validation_rate_limited(conn) -> float:
     row = await conn.fetchrow(
         """
@@ -399,13 +439,28 @@ _NIGHTLY_METRICS: list[MetricSpec] = [
         "  AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE;",
         ["agents/market_intelligence/theme_engine.py::_validate_theme_membership"],
     ),
+    MetricSpec(
+        "accel_dropout_count_7d", _accel_dropout_count_7d,
+        "WITH latest AS (SELECT name, MAX(theme_date) AS last_seen FROM mi_themes GROUP BY name), "
+        "accel_days AS (SELECT name, COUNT(DISTINCT theme_date) AS n_accel FROM mi_themes "
+        "  WHERE stage='Accelerating' GROUP BY name) "
+        "SELECT t.name, l.last_seen, ad.n_accel FROM mi_themes t "
+        "  JOIN latest l ON t.name=l.name AND t.theme_date=l.last_seen "
+        "  JOIN accel_days ad ON ad.name=t.name "
+        "  WHERE t.stage='Accelerating' "
+        "    AND l.last_seen BETWEEN CURRENT_DATE - INTERVAL '7 days' AND CURRENT_DATE - INTERVAL '3 days' "
+        "    AND ad.n_accel >= 5 "
+        "  ORDER BY ad.n_accel DESC;",
+        ["agents/market_intelligence/theme_engine.py::_promote_to_accelerating",
+         "agents/market_intelligence/db.py::get_active_themes"],
+    ),
 ]
 
 _ALL_METRICS = _TRADE_METRICS + _NIGHTLY_METRICS + _SHADOW_ORB_METRICS
 
 _TOPIC_MAP: dict[str, list[MetricSpec]] = {
     "cooldowns":  [m for m in _ALL_METRICS if m.name == "cooldowns_per_day"],
-    "themes":     [m for m in _ALL_METRICS if m.name in {"theme_count_active", "cooldowns_per_day"}],
+    "themes":     [m for m in _ALL_METRICS if m.name in {"theme_count_active", "cooldowns_per_day", "accel_dropout_count_7d"}],
     "skips":      [m for m in _ALL_METRICS if m.name.startswith("skip_count_")],
     "positions":  [m for m in _ALL_METRICS if m.name in {"HIGH_ep_entry_rate"}],
     "feed":       [m for m in _ALL_METRICS if m.name in {"bar_stream_disconnect_count_24h", "skip_count_infra"}],
