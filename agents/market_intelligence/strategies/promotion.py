@@ -166,9 +166,14 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
                          key still honored; default 20)
         min_fill_rate:   optional fill-rate gate; counts `extras.filled_wick`
                          truthy rows. Skipped when absent.
+        min_median_r:    optional median R-multiple gate over rows with
+                         non-null r_multiple. Skipped when absent.
+        min_hit_rate:    optional hit-rate gate (fraction of rows with
+                         r_multiple > 0). Skipped when absent.
         review_required: append "manual review deferred" blocker (default True)
     """
-    n = len(rows)
+    closed = [r for r in rows if r.status == "closed"]
+    n = len(closed)
     metric_key = thresholds.get("metric_key", "n_climax_alerts")
     metrics: dict = {metric_key: n}
     blocking: list[str] = []
@@ -180,11 +185,27 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
 
     min_fill = thresholds.get("min_fill_rate")
     if min_fill is not None and n > 0:
-        filled = sum(1 for r in rows if (r.extras or {}).get("filled_wick"))
+        filled = sum(1 for r in closed if (r.extras or {}).get("filled_wick"))
         fill_rate = filled / n
         metrics["fill_rate"] = round(fill_rate, 3)
         if fill_rate < min_fill:
             blocking.append(f"fill rate {fill_rate:.2f} < {min_fill}")
+
+    rs = [r.r_multiple for r in closed if r.r_multiple is not None]
+    min_med = thresholds.get("min_median_r")
+    if min_med is not None:
+        median_r = _median(rs)
+        metrics["median_r"] = round(median_r, 2) if median_r is not None else None
+        if median_r is None or median_r < min_med:
+            blocking.append(f"median R {median_r} < {min_med}")
+
+    min_hit = thresholds.get("min_hit_rate")
+    if min_hit is not None:
+        hits = sum(1 for r in rs if r > 0)
+        hit_rate = (hits / len(rs)) if rs else None
+        metrics["hit_rate"] = round(hit_rate, 3) if hit_rate is not None else None
+        if hit_rate is None or hit_rate < min_hit:
+            blocking.append(f"hit rate {hit_rate} < {min_hit}")
 
     if thresholds.get("review_required", True):
         blocking.append("manual review fields not yet captured — eligibility deferred")

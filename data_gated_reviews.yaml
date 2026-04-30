@@ -304,6 +304,89 @@ reviews:
     status: pending
     added_on: 2026-04-30
 
+  - review_id: fishhook_v3_first_eod_pass_verify
+    title: "Fishhook V3 first EOD pass smoke test"
+    question: |
+      After 2026-04-30 fishhook V3 deploy, did the first scheduled EOD pass
+      (17:20 ET) actually fire? Confirm: (1) mi_fishhook_anchors has
+      pending rows for the first trading day, (2) mi_audit_log has a
+      fishhook_eod_pass event for that day, (3) mi_strategies has the
+      fishhook_v3 row seeded with phase='shadow'.
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-05-01
+    action_when_ready: |
+      On Hetzner, run in psql:
+
+        -- (1) anchors written
+        SELECT COUNT(*) FROM mi_fishhook_anchors
+         WHERE anchor_date >= CURRENT_DATE - 3;
+        -- expect: > 0 on a trading day
+
+        -- (2) EOD audit event
+        SELECT created_at, summary FROM mi_audit_log
+         WHERE event_type = 'fishhook_eod_pass'
+         ORDER BY created_at DESC LIMIT 5;
+
+        -- (3) registry seeded
+        SELECT strategy_id, phase, promotion_model
+        FROM mi_strategies WHERE strategy_id = 'fishhook_v3';
+        -- expect: 1 row, phase='shadow', model='telemetry_review'
+
+      If (1) is 0 on a trading day, tail apollo-market logs for
+      _fishhook_eod_job at 17:20 ET. If (3) is missing, _seed_strategies
+      didn't run on startup — restart the market service.
+      Origin: 2026-04-30 fishhook V3 deploy.
+    status: pending
+    added_on: 2026-04-30
+
+  - review_id: fishhook_v3_first_telemetry_review
+    title: "Fishhook V3 first telemetry sanity (n_settled >= 10)"
+    question: |
+      Once 10 anchors have settled, does the observed median R_5d / hit_rate
+      match the Stage-0 explorer cohort (R~1.1, hit_rate ~13-19%)? If
+      observed is materially worse, the live state-machine path drifted
+      from the explorer SQL — investigate before letting the promotion
+      clock continue toward n_settled=60.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_fishhook_anchors
+       WHERE state IN ('settled', 'invalidated')
+    threshold: 10
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Run /fishhook to view 60d state distribution + median R + hit rate.
+      Compare to explorer cohort: median R_5d ~1.1, hit_rate ~13-19%.
+      If observed median R < 0.5 OR hit_rate < 8%, suspect drift between
+      explorer SQL and detector._fetch_today_anchors / _advance_state.
+      Diff scripts/fishhook_v3_explorer.py against
+      agents/market_intelligence/fishhook_detector.py and reconcile
+      before declaring the shadow telemetry trustworthy.
+      Origin: 2026-04-30 fishhook V3 deploy.
+    status: pending
+    added_on: 2026-04-30
+
+  - review_id: fishhook_v3_promotion_check
+    title: "Fishhook V3 promotion eligibility (shadow → paper)"
+    question: |
+      Has fishhook_v3 cleared its promotion gates (n_settled >= 60,
+      median R_5d >= 1.0, hit_rate >= 0.13)? If yes, decide whether to
+      promote shadow → paper.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_fishhook_anchors
+       WHERE state IN ('settled', 'invalidated')
+    threshold: 60
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Run check_promotion_eligibility('fishhook_v3') via /strategy
+      fishhook_v3 in Telegram. If verdict.eligible == True, decide:
+      promote shadow → paper (`/strategy fishhook_v3 promote`) only
+      after confirming the first-telemetry-review sanity check passed.
+      If hit_rate or median R is borderline, defer 30 days for more data.
+      Origin: 2026-04-30 fishhook V3 deploy. Promotion thresholds in
+      mi_strategies.promotion_thresholds.shadow_to_paper.
+    status: pending
+    added_on: 2026-04-30
+
   - review_id: minute_volume_curves_baseline
     title: "RVOL@T baseline depth (top-500 universe)"
     question: |

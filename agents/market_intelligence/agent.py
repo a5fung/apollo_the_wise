@@ -564,6 +564,10 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["wick watch", "wick fill", "wick-fill"]) or task.strip() == "wick":
             return await self._handle_wick_query(request)
 
+        # Fishhook V3 (TI3) — gap-up undercut & reclaim shadow telemetry.
+        if any(k in task for k in ["fishhook", "fish hook", "undercut reclaim", "undercut & reclaim"]) or task.strip() == "fishhook":
+            return await self._handle_fishhook_query(request)
+
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
                                      "ep returns", "ep results", "ep track"]):
@@ -1322,6 +1326,79 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"*30d Telemetry:* {len(rows)} candidates · 0 settled "
                 f"(forward returns need 10 trading sessions)"
             )
+
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_fishhook_query(self, request: AgentRequest) -> AgentResponse:
+        """Fishhook V3 (gap-up undercut & reclaim) — shadow-phase telemetry.
+
+        Reframed post-Stage-0 as a base-rate harvester (R≈1.1, hit≈13-19%).
+        Shows today's open anchors + 30d state distribution + median R on
+        settled rows. Promotion gate is n_settled ≥ 60, median R ≥ 1.0,
+        hit rate ≥ 0.13.
+        """
+        from datetime import timedelta
+        from agents.market_intelligence.collector import et_today, last_trading_day
+        from agents.market_intelligence.db import get_fishhook_outcomes_window
+
+        today = et_today()
+        query_date = last_trading_day(today)
+        weekend_note = "" if query_date == today else "  _(last trading day)_"
+        rows = await get_fishhook_outcomes_window(window_days=60)
+
+        by_state: dict[str, list] = {}
+        for r in rows:
+            by_state.setdefault(r["state"], []).append(r)
+
+        recent_cutoff = query_date - timedelta(days=25)
+        active_today = [
+            r for r in rows
+            if r["state"] in ("pending", "promoted", "reclaimed")
+            and r["anchor_date"] >= recent_cutoff
+        ]
+
+        settled = [r for r in rows if r["state"] in ("settled", "invalidated")]
+        n_settled = len(settled)
+        rs = [float(r["r_5d"]) for r in settled if r["r_5d"] is not None]
+        rs.sort()
+        median_r = rs[len(rs) // 2] if rs else None
+        hit_rate = (sum(1 for r in rs if r > 0) / len(rs)) if rs else None
+
+        lines = [f"🪝 *Fishhook V3 — {query_date.isoformat()}*{weekend_note}\n"]
+
+        if active_today:
+            lines.append(f"*Open Anchors ({len(active_today)})*")
+            for r in active_today[:25]:
+                gap_pct = float(r["gap_pct"]) * 100
+                drift = r.get("drift_pct_max")
+                drift_str = f"drift {float(drift)*100:+.1f}%" if drift is not None else "no drift yet"
+                lines.append(
+                    f"  🪝 `{r['ticker']}` {r['anchor_date']} | "
+                    f"gap {gap_pct:+.1f}% | {r['state']} | {drift_str}"
+                )
+            if len(active_today) > 25:
+                lines.append(f"  _…{len(active_today) - 25} more._")
+        else:
+            lines.append("_No open anchors — recent gap-up universe is quiet._")
+
+        lines.append("")
+        lines.append("*60d State Distribution*")
+        order = ["pending", "promoted", "reclaimed", "settled", "invalidated",
+                 "expired_no_promotion", "expired_no_reclaim"]
+        for s in order:
+            n = len(by_state.get(s, []))
+            if n:
+                lines.append(f"  {s}: {n}")
+
+        lines.append("")
+        if rs:
+            lines.append(
+                f"*60d Telemetry:* {n_settled} settled · "
+                f"median R {median_r:.2f} · hit rate {hit_rate*100:.0f}%"
+            )
+            lines.append("_Phase: shadow. Promotion gate: n≥60, R≥1.0, hit≥13%._")
+        else:
+            lines.append(f"*60d Telemetry:* {n_settled} settled · awaiting forward window")
 
         return self._ok(request, result="\n".join(lines))
 
@@ -3005,6 +3082,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
             "/wick":           self._handle_wick_query,
+            "/fishhook":       self._handle_fishhook_query,
             "/strategies":     self._handle_strategy_command,
             "/strategy":       self._handle_strategy_command,
             "/eps_detail":     self._handle_eps_detail,

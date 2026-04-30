@@ -223,12 +223,64 @@ async def _adapter_wick_fill(window_days: int) -> list[OutcomeRow]:
     return out
 
 
+async def _adapter_fishhook_v3(window_days: int) -> list[OutcomeRow]:
+    """Fishhook V3 (TI3) — telemetry_review with R. Settled anchors carry
+    r_5d → r_multiple so the promotion gate can evaluate median R + hit
+    rate. Pre-settled rows (pending/promoted/reclaimed) emit status='open'
+    so they show in /fishhook detail but don't count toward gates.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, anchor_date, state, gap_pct, drift_pct_max,
+                   washout_low, anchor_open, actual_entry_price,
+                   reclaim_session_offset, fwd_5d_high_pct, r_5d,
+                   invalidated_within_5d, in_top2000, in_ep_alerts,
+                   updated_at
+            FROM mi_fishhook_anchors
+            WHERE anchor_date >= CURRENT_DATE - $1::int
+            """,
+            window_days,
+        )
+    out: list[OutcomeRow] = []
+    for r in rows:
+        state = r["state"]
+        if state in ("settled", "invalidated"):
+            status = "closed"
+        elif state in ("expired_no_promotion", "expired_no_reclaim"):
+            status = "no_entry"
+        else:
+            status = "open"
+        out.append(OutcomeRow(
+            strategy_id="fishhook_v3",
+            ticker=r["ticker"],
+            alert_date=r["anchor_date"],
+            status=status,
+            r_multiple=float(r["r_5d"]) if r["r_5d"] is not None else None,
+            pnl=None,
+            hold_days=r["reclaim_session_offset"],
+            closed_at=r["updated_at"] if state in ("settled", "invalidated") else None,
+            extras={
+                "state": state,
+                "gap_pct": float(r["gap_pct"]) if r["gap_pct"] is not None else None,
+                "drift_pct_max": float(r["drift_pct_max"]) if r["drift_pct_max"] is not None else None,
+                "fwd_5d_high_pct": float(r["fwd_5d_high_pct"]) if r["fwd_5d_high_pct"] is not None else None,
+                "invalidated": r["invalidated_within_5d"],
+                "in_top2000": r["in_top2000"],
+                "in_ep_alerts": r["in_ep_alerts"],
+            },
+        ))
+    return out
+
+
 _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     "magna53":         partial(_adapter_live_trades, signal_type="magna53"),
     "9m_day2":         partial(_adapter_live_trades, signal_type="9m_day2"),
     "shadow_orb_5m":   _adapter_shadow_orb_5m,
     "parabolic_short": _adapter_parabolic,
     "wick_fill":       _adapter_wick_fill,
+    "fishhook_v3":     _adapter_fishhook_v3,
 }
 
 

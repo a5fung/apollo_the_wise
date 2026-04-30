@@ -421,6 +421,89 @@ _SHADOW_ORB_METRICS: list[MetricSpec] = [
 ]
 
 
+async def _today_fishhook_anchors(conn) -> float:
+    row = await conn.fetchrow(
+        "SELECT COUNT(*) AS n FROM mi_fishhook_anchors WHERE anchor_date = CURRENT_DATE"
+    )
+    return float(row["n"] or 0)
+
+
+async def _fishhook_promotion_rate_30d(conn) -> float:
+    """Share of anchors with anchor_date ≥ T-25 that escaped 'pending' (i.e.
+    drifted below anchor in the watch window). Bounded to 30d so steady
+    state is interpretable; cold-start returns 0 when n < 5."""
+    row = await conn.fetchrow(
+        """
+        WITH eligible AS (
+          SELECT state FROM mi_fishhook_anchors
+          WHERE anchor_date BETWEEN CURRENT_DATE - INTERVAL '30 days'
+                              AND CURRENT_DATE - INTERVAL '11 days'
+        )
+        SELECT
+          COUNT(*) AS n_total,
+          COUNT(*) FILTER (WHERE state IN ('promoted','reclaimed','settled',
+                                            'invalidated','expired_no_reclaim')) AS n_promoted
+        FROM eligible
+        """
+    )
+    n_total = int(row["n_total"] or 0)
+    if n_total < 5:
+        return 0.0
+    return float(row["n_promoted"] or 0) / n_total
+
+
+async def _fishhook_reclaim_rate_30d(conn) -> float:
+    """Share of promoted anchors (anchor_date ≥ T-26) that reached reclaim
+    within T+25 — i.e. escaped both the watch window and the reclaim
+    window. Cold-start returns 0 when n_promoted < 5."""
+    row = await conn.fetchrow(
+        """
+        WITH eligible AS (
+          SELECT state FROM mi_fishhook_anchors
+          WHERE anchor_date BETWEEN CURRENT_DATE - INTERVAL '30 days'
+                              AND CURRENT_DATE - INTERVAL '26 days'
+            AND state IN ('promoted','reclaimed','settled',
+                           'invalidated','expired_no_reclaim')
+        )
+        SELECT
+          COUNT(*) AS n_promoted,
+          COUNT(*) FILTER (WHERE state IN ('reclaimed','settled','invalidated')) AS n_reclaimed
+        FROM eligible
+        """
+    )
+    n_promoted = int(row["n_promoted"] or 0)
+    if n_promoted < 5:
+        return 0.0
+    return float(row["n_reclaimed"] or 0) / n_promoted
+
+
+_FISHHOOK_METRICS: list[MetricSpec] = [
+    MetricSpec(
+        "fishhook_anchors_per_day", _today_fishhook_anchors,
+        "SELECT ticker, gap_pct, in_top2000, in_ep_alerts FROM mi_fishhook_anchors "
+        "WHERE anchor_date = CURRENT_DATE ORDER BY gap_pct DESC;",
+        ["agents/market_intelligence/fishhook_detector.py::_fetch_today_anchors"],
+    ),
+    MetricSpec(
+        "fishhook_promotion_rate_30d", _fishhook_promotion_rate_30d,
+        "SELECT state, COUNT(*) FROM mi_fishhook_anchors "
+        "WHERE anchor_date BETWEEN CURRENT_DATE - INTERVAL '30 days' "
+        "                    AND CURRENT_DATE - INTERVAL '11 days' "
+        "GROUP BY 1 ORDER BY 2 DESC;",
+        ["agents/market_intelligence/fishhook_detector.py::_advance_state"],
+    ),
+    MetricSpec(
+        "fishhook_reclaim_rate_30d", _fishhook_reclaim_rate_30d,
+        "SELECT state, COUNT(*) FROM mi_fishhook_anchors "
+        "WHERE anchor_date BETWEEN CURRENT_DATE - INTERVAL '30 days' "
+        "                    AND CURRENT_DATE - INTERVAL '26 days' "
+        "  AND state IN ('promoted','reclaimed','settled','invalidated','expired_no_reclaim') "
+        "GROUP BY 1 ORDER BY 2 DESC;",
+        ["agents/market_intelligence/fishhook_detector.py::_advance_state"],
+    ),
+]
+
+
 _NIGHTLY_METRICS: list[MetricSpec] = [
     MetricSpec(
         "cooldowns_per_day", _today_cooldowns,
@@ -459,7 +542,7 @@ _NIGHTLY_METRICS: list[MetricSpec] = [
     ),
 ]
 
-_ALL_METRICS = _TRADE_METRICS + _NIGHTLY_METRICS + _SHADOW_ORB_METRICS
+_ALL_METRICS = _TRADE_METRICS + _NIGHTLY_METRICS + _SHADOW_ORB_METRICS + _FISHHOOK_METRICS
 
 _TOPIC_MAP: dict[str, list[MetricSpec]] = {
     "cooldowns":  [m for m in _ALL_METRICS if m.name == "cooldowns_per_day"],
@@ -469,6 +552,7 @@ _TOPIC_MAP: dict[str, list[MetricSpec]] = {
     "feed":       [m for m in _ALL_METRICS if m.name in {"bar_stream_disconnect_count_24h", "skip_count_infra"}],
     "9m":         [m for m in _ALL_METRICS if m.name == "9m_alerts_per_day"],
     "shadow_orb": _SHADOW_ORB_METRICS,
+    "fishhook":   _FISHHOOK_METRICS,
     "all":        _ALL_METRICS,
 }
 

@@ -827,6 +827,11 @@ def _format_evening_briefing(
     wick_today_tickers: list[str] | None = None,
     wick_fill_rate_30d: float | None = None,
     wick_settled_30d: int = 0,
+    fishhook_open_count: int = 0,
+    fishhook_open_tickers: list[str] | None = None,
+    fishhook_settled_60d: int = 0,
+    fishhook_median_r_60d: float | None = None,
+    fishhook_hit_rate_60d: float | None = None,
 ) -> str:
     next_num = 4
 
@@ -927,6 +932,24 @@ def _format_evening_briefing(
         parts = [head]
         if wick_settled_30d >= 10 and wick_fill_rate_30d is not None:
             parts.append(f"30d fill {wick_fill_rate_30d:.0%} (n={wick_settled_30d})")
+        sections.append(" · ".join(parts))
+        sections.append("")
+
+    # Fishhook V3 (TI3, shadow telemetry): open anchors today + 60d roll-up.
+    # R + hit rate published only after ≥10 settled rows accumulate.
+    if fishhook_open_count or fishhook_settled_60d >= 10:
+        head = f"🪝 *Fishhook:* {fishhook_open_count} open"
+        if fishhook_open_tickers:
+            tks = ", ".join(f"`{t}`" for t in fishhook_open_tickers[:10])
+            if len(fishhook_open_tickers) > 10:
+                tks += f" (+{len(fishhook_open_tickers) - 10})"
+            head += f": {tks}"
+        parts = [head]
+        if fishhook_settled_60d >= 10 and fishhook_median_r_60d is not None:
+            tail = f"60d R {fishhook_median_r_60d:.2f} (n={fishhook_settled_60d})"
+            if fishhook_hit_rate_60d is not None:
+                tail += f", hit {fishhook_hit_rate_60d:.0%}"
+            parts.append(tail)
         sections.append(" · ".join(parts))
         sections.append("")
 
@@ -1031,6 +1054,27 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"Wick candidates fetch failed: {e}")
 
+    # Fishhook V3 (TI3) — open anchors today + 60d telemetry
+    fishhook_open_count = 0
+    fishhook_open_tickers: list[str] = []
+    fishhook_median_r_60d: float | None = None
+    fishhook_hit_rate_60d: float | None = None
+    fishhook_settled_60d = 0
+    try:
+        from agents.market_intelligence.db import get_fishhook_outcomes_window
+        fh_60d = await get_fishhook_outcomes_window(60)
+        open_rows = [r for r in fh_60d if r["state"] in ("pending", "promoted", "reclaimed")]
+        fishhook_open_count = len(open_rows)
+        fishhook_open_tickers = [r["ticker"] for r in open_rows[:30]]
+        settled_fh = [r for r in fh_60d if r["state"] in ("settled", "invalidated") and r.get("r_5d") is not None]
+        fishhook_settled_60d = len(settled_fh)
+        if settled_fh:
+            rs_sorted = sorted(float(r["r_5d"]) for r in settled_fh)
+            fishhook_median_r_60d = rs_sorted[len(rs_sorted) // 2]
+            fishhook_hit_rate_60d = sum(1 for r in rs_sorted if r > 0) / len(rs_sorted)
+    except Exception as e:
+        logger.warning(f"Fishhook outcomes fetch failed: {e}")
+
     text = _format_evening_briefing(
         regime=regime,
         rs_leaders=rs_leaders,
@@ -1052,6 +1096,11 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         wick_today_tickers=wick_today_tickers,
         wick_fill_rate_30d=wick_fill_rate_30d,
         wick_settled_30d=wick_settled_30d,
+        fishhook_open_count=fishhook_open_count,
+        fishhook_open_tickers=fishhook_open_tickers,
+        fishhook_settled_60d=fishhook_settled_60d,
+        fishhook_median_r_60d=fishhook_median_r_60d,
+        fishhook_hit_rate_60d=fishhook_hit_rate_60d,
     )
 
     success = await send_telegram_message(text, chat_id)
