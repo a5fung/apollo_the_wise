@@ -30,6 +30,7 @@ Thresholds: ≥ ep_threshold (regime-dependent) = HIGH, 50-69 = MODERATE, <50 = 
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import random
@@ -889,6 +890,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "pm_rvol": c.get("pm_rvol"),
             "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
         })
+
+        # Telemetry for `conviction_floor_extension` review (data_gated_reviews.yaml).
+        # Cell under evaluation: gap∈[10,15) + catalyst='strong'. Logs whether the
+        # candidate would have been promoted to HIGH at floors 55/58/60.
+        if catalyst_quality == "strong" and 10 <= c["gap_pct"] < 15:
+            await log_audit_event(
+                "conviction_floor_eligible",
+                f"{ticker} gap={c['gap_pct']:.1f}% score={ep_score:.0f} tier={tier}",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": today.isoformat(),
+                    "gap_pct": round(c["gap_pct"], 2),
+                    "ep_score": round(ep_score, 1),
+                    "ep_threshold": ep_threshold,
+                    "actual_tier": tier,
+                    "would_be_high_at_55": max(ep_score, 55) >= ep_threshold,
+                    "would_be_high_at_58": max(ep_score, 58) >= ep_threshold,
+                    "would_be_high_at_60": max(ep_score, 60) >= ep_threshold,
+                }),
+            )
 
         proj = c.get("projected_vol_multiple")
         pm_rvol_val = c.get("pm_rvol")
