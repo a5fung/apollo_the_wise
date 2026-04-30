@@ -1,18 +1,31 @@
 """
-Fishhook Stage 0 — pick the consolidation metric (one-off explorer).
+Cohort/metric-separation explorer (originally TI3 Fishhook Stage 0).
 
-Pulls the failed-Day-1 HIGH EP cohort over the trailing 90 days, computes
-three candidate consolidation metrics on each candidate's hourly base
-window (T+3..T+4), labels each by forward 5d return ≥ 10%, and emits a
-CSV. Eyeball the matrix → pick the metric + threshold with the cleanest
-positive/negative separation → that becomes the gate in TI3 Stage 1.
+Pulls a HIGH-EP cohort over a trailing window, computes three candidate
+consolidation metrics on a fixed hourly base window (T+3..T+4), labels by
+forward 5d return >= threshold, emits a CSV + median-separation summary.
+Read-only against prod data; no new tables, no production code edits.
 
-Read-only against prod data. No new tables, no production code edits.
+== TI3 Fishhook outcome (2026-04-29) ==
+Pass 1 (90d, broad cohort): 216 unique candidates, only `range_over_atr14`
+showed any separation (pos median 1.275 vs neg 1.697); threshold sweep
+maxed at 2x precision lift over base rate, dropping back to base rate at
+recall >= 50%. Pass 2 (180d, strict cohort = closed AND total_pnl<0)
+collapsed: only 2 unique tuples — Apollo's pre-trade filter (catalyst
+quality + ATR stop sizing + 10:00 ET unfilled-cancel) leaves ~1 real
+Day-1 stop-out per quarter, so the cohort TI3 needs doesn't exist in
+this system. TI3 deferred — see `project_trading_ideas_backlog.md`.
 
-Usage (run on prod, after 16:00 ET or before 07:00 ET to avoid contending
-with live EP scans on the global Polygon lock):
+This script is kept as a reusable feasibility tool. CLI flags
+(`--days`, `--strict-cohort`, `--min-price`, `--label-threshold`) make
+it usable for future "is this idea cardinality-feasible?" checks before
+investing detector-build effort.
+
+Run on prod after 16:00 ET or before 07:00 ET (the global `_polygon_lock`
+is shared with live EP scans):
     docker exec apollo-market python -m scripts.fishhook_explorer
-    docker exec apollo-market python -m scripts.fishhook_explorer --days 90 --out /tmp/fishhook.csv
+    docker exec apollo-market python -m scripts.fishhook_explorer --days 180 \\
+        --strict-cohort --min-price 10 --label-threshold 0.15
 """
 from __future__ import annotations
 
@@ -43,12 +56,34 @@ CSV_COLS = [
 ]
 
 
-async def fetch_cohort(window_days: int) -> list[dict]:
+async def fetch_cohort(window_days: int, strict_cohort: bool) -> list[dict]:
+    """`strict_cohort=True` restricts to real Day-1 failures only — the
+    alert had to enter via ORB and be stopped out (`closed AND total_pnl<0`).
+    Excludes `no_entry` (Apollo's quality gate already rejected) and
+    `cancelled` (never filled). Pass-2 uses strict; Pass-1 (broad) does not.
+    The query also dedupes per (ticker, alert_date) — a single failed-Day-1
+    candidate spawns multiple `mi_ep_alerts` rows (one per scan tick), but
+    only ONE downstream Fishhook can form.
+    """
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT a.ticker, a.alert_date, a.score_tier, a.gap_pct,
+    if strict_cohort:
+        sql = """
+            SELECT DISTINCT ON (a.ticker, a.alert_date)
+                   a.ticker, a.alert_date, a.score_tier, a.gap_pct,
+                   lt.status AS d1_status, lt.total_pnl AS d1_pnl
+            FROM mi_ep_alerts a
+            JOIN mi_live_trades lt
+              ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+            WHERE a.alert_date >= CURRENT_DATE - $1::int
+              AND a.score_tier = 'HIGH'
+              AND lt.status = 'closed'
+              AND COALESCE(lt.total_pnl, 0) < 0
+            ORDER BY a.ticker, a.alert_date, a.id ASC
+        """
+    else:
+        sql = """
+            SELECT DISTINCT ON (a.ticker, a.alert_date)
+                   a.ticker, a.alert_date, a.score_tier, a.gap_pct,
                    lt.status AS d1_status, lt.total_pnl AS d1_pnl
             FROM mi_ep_alerts a
             LEFT JOIN mi_live_trades lt
@@ -60,10 +95,10 @@ async def fetch_cohort(window_days: int) -> list[dict]:
                  OR lt.status = 'cancelled'
                  OR (lt.status = 'closed' AND COALESCE(lt.total_pnl, 0) < 0)
               )
-            ORDER BY a.alert_date DESC
-            """,
-            window_days,
-        )
+            ORDER BY a.ticker, a.alert_date, a.id ASC
+        """
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(sql, window_days)
     return [dict(r) for r in rows]
 
 
@@ -198,7 +233,7 @@ def _drop(c: dict, reason: str) -> dict:
     return row
 
 
-async def process_candidate(c: dict) -> dict:
+async def process_candidate(c: dict, min_price: float, label_threshold: float) -> dict:
     ticker = c["ticker"]
     t0 = c["alert_date"]
 
@@ -211,6 +246,11 @@ async def process_candidate(c: dict) -> dict:
     atr14 = compute_pre_gap_atr14(before)
     if atr14 is None:
         return _drop(c, "ohlc_pre_gap_missing")
+
+    # Price gate uses prior-day close (T-1) — institutional liquidity proxy
+    prior_close = float(before[-1]["close"]) if before else 0.0
+    if prior_close < min_price:
+        return _drop(c, f"price_below_{min_price:g}")
 
     t_plus = {i + 1: after[i]["trade_date"] for i in range(len(after))}
     base_dates = {t_plus[3], t_plus[4]}
@@ -246,7 +286,7 @@ async def process_candidate(c: dict) -> dict:
     fwd_max = max(fwd_closes)
     fwd_5d_return = (fwd_max / trigger_close) - 1 if trigger_close else None
 
-    label = "positive" if (fwd_5d_return is not None and fwd_5d_return >= 0.10) else "negative"
+    label = "positive" if (fwd_5d_return is not None and fwd_5d_return >= label_threshold) else "negative"
 
     return {
         "ticker": ticker,
@@ -275,9 +315,14 @@ async def process_candidate(c: dict) -> dict:
     }
 
 
-async def run(window_days: int, out_path: str) -> None:
-    cohort = await fetch_cohort(window_days)
-    logger.info(f"Cohort size: {len(cohort)} failed-Day-1 HIGH alerts (last {window_days}d)")
+async def run(window_days: int, out_path: str, *, strict_cohort: bool,
+              min_price: float, label_threshold: float) -> None:
+    cohort = await fetch_cohort(window_days, strict_cohort)
+    cohort_kind = "strict (closed/pnl<0)" if strict_cohort else "broad (no_entry|cancelled|closed_loss)"
+    logger.info(
+        f"Cohort: {len(cohort)} HIGH alerts, last {window_days}d, "
+        f"kind={cohort_kind}, min_price=${min_price:g}, label≥{label_threshold:.0%}"
+    )
     if not cohort:
         logger.warning("Empty cohort — nothing to write.")
         return
@@ -290,7 +335,7 @@ async def run(window_days: int, out_path: str) -> None:
 
     for i, c in enumerate(cohort, 1):
         try:
-            r = await process_candidate(c)
+            r = await process_candidate(c, min_price, label_threshold)
         except Exception as e:
             logger.exception(f"[{i}/{len(cohort)}] {c['ticker']} {c['alert_date']}: {e}")
             r = _drop(c, f"error:{type(e).__name__}")
@@ -339,8 +384,20 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     p.add_argument("--days", type=int, default=90, help="Trailing window for cohort (default 90)")
     p.add_argument("--out", default="/tmp/fishhook_explorer.csv", help="Output CSV path")
+    p.add_argument("--strict-cohort", action="store_true",
+                   help="Restrict to real Day-1 failures (closed AND total_pnl<0). "
+                        "Excludes no_entry and cancelled.")
+    p.add_argument("--min-price", type=float, default=0.0,
+                   help="Min prior-day close in dollars (drops penny-stock noise). Default 0.")
+    p.add_argument("--label-threshold", type=float, default=0.10,
+                   help="Forward 5d return required for positive label. Default 0.10 (10%%).")
     args = p.parse_args()
-    asyncio.run(run(args.days, args.out))
+    asyncio.run(run(
+        args.days, args.out,
+        strict_cohort=args.strict_cohort,
+        min_price=args.min_price,
+        label_threshold=args.label_threshold,
+    ))
 
 
 if __name__ == "__main__":
