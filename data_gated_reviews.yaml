@@ -43,6 +43,15 @@ reviews:
       Eyeball positive-label rate. If ≥ 35% pick the level (55/58/60) with the
       cleanest precision and promote to live conviction floor in ep_detector.py.
       Telemetry origin: fishhook_explorer 2026-04-29 cohort had n=1 eligible.
+
+      ⚠ Dead-zone dependency (2026-04-29): gap[10,15)+strong stocks with thin
+      pre-market shares (<25K floor) are systematically dead-zoned by the
+      9:30-9:44 raw rel_volume ≥ 2x ADV gate, then projected only after 9:45
+      (out of ORB window). FTAI/PI/GKOS this morning are this exact shape.
+      Until the dead zone is resolved (see scripts/backfill_dead_zone.py
+      step in next session), this cohort under-counts. If predicate hits
+      threshold before dead-zone fix lands, prefer waiting another 30d to
+      re-eval after gate calibration.
     status: pending
     added_on: 2026-04-29
 

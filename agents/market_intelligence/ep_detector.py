@@ -784,14 +784,31 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             ]
             analysis_low = claude_analysis.lower()
             catalyst_low = news_summary.lower() if news_summary else ""
-            is_mna = (
-                catalyst_quality == "mna"
-                or any(kw in analysis_low or kw in catalyst_low for kw in _MNA_KEYWORDS)
+            matched_kw = next(
+                (kw for kw in _MNA_KEYWORDS if kw in analysis_low or kw in catalyst_low),
+                None,
             )
+            is_mna = (catalyst_quality == "mna") or (matched_kw is not None)
             if is_mna:
                 pplx_task.cancel()
                 reason = "M&A/buyout catalyst — no momentum trade"
                 logger.info(f"Skip {ticker}: {reason}")
+                matched_in = None
+                if matched_kw is not None:
+                    matched_in = "analysis" if matched_kw in analysis_low else "summary"
+                await log_audit_event(
+                    "mna_filter_fired",
+                    f"{ticker} via {'claude' if catalyst_quality == 'mna' else f'kw:{matched_kw}@{matched_in}'}",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "catalyst_quality": catalyst_quality,
+                        "matched_keyword": matched_kw,
+                        "matched_in": matched_in,
+                        "claude_branch": catalyst_quality == "mna",
+                        "news_summary": (news_summary or "")[:200],
+                    }),
+                )
                 _log_filtered(c, reason)
                 continue
 
