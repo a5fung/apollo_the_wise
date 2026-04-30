@@ -816,8 +816,14 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
 # ── EOD Cleanup ──────────────────────────────────────────────────────────────
 
 
-async def cancel_unfilled_entries() -> int:
-    """Cancel all unfilled entry orders at EOD. Returns count cancelled."""
+async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
+    """Cancel all unfilled entry orders. Returns count cancelled.
+
+    Called from two distinct cleanup paths — passing the right reason keeps
+    skip_reason and Telegram copy honest:
+    - 10:00 ET ORB-window cleanup → reason="ORB window unfilled"
+    - 4:05 PM EOD cleanup         → reason="EOD unfilled" (default)
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
@@ -827,18 +833,18 @@ async def cancel_unfilled_entries() -> int:
         """)
 
     cancelled = 0
-    logger.info(f"EOD cleanup: {len(pending)} unfilled entries to cancel")
+    logger.info(f"{reason}: {len(pending)} unfilled entries to cancel")
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
-            await _update_trade_status(trade["id"], "cancelled", skip_reason="EOD unfilled")
+            await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
             cancelled += 1
-            logger.info(f"EOD cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
+            logger.info(f"{reason} cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
         else:
-            logger.warning(f"EOD cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
+            logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
 
     if cancelled:
-        await send_telegram_message(f"🕓 EOD: cancelled {cancelled} unfilled order(s)")
+        await send_telegram_message(f"🕓 {reason}: cancelled {cancelled} unfilled order(s)")
     return cancelled
 
 

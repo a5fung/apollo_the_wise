@@ -768,7 +768,7 @@ async def _orb_window_cleanup_job():
     logger.info("ORB window cleanup starting (10:00 AM cancel)...")
     try:
         from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries
-        cancelled = await cancel_unfilled_entries()
+        cancelled = await cancel_unfilled_entries(reason="ORB window unfilled")
         logger.info(f"ORB window cleanup: {cancelled} cancelled")
     except Exception as e:
         logger.error(f"ORB window cleanup failed: {e}")
