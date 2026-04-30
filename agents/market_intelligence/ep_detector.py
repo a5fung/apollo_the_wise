@@ -728,8 +728,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _log_filtered(c, reason)
             continue
 
-        # Volume conviction percentile
-        vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
+        # Volume conviction percentile — only valid pre-open (compares cumulative
+        # to full-day ADV history). Post-open the partial-day cumulative would
+        # falsely rank near 0 against full-day distributions, so return neutral.
+        # Post-open conviction is captured via projected_vol_multiple (rel_volume slot).
+        if _minutes_since_open is None:
+            vol_pct = _volume_percentile(c["today_volume"], vol_history_map.get(ticker, []))
+        else:
+            vol_pct = 50.0
 
         # Catalyst cache check — skip FMP/Claude/Perplexity if already evaluated today.
         # A stock oscillating near the 15% threshold gets re-scored every 5 min;
