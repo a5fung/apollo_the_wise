@@ -1174,6 +1174,36 @@ async def _rescore_existing_theme(
         if stage == "Fading" and smooth_delta > 5:   # require real recovery, not noise
             stage = "Accelerating"
 
+    # Hysteresis: require yesterday's smooth_delta to also flag the same
+    # flip direction. Suppresses 1-run noise spikes — observed 5 themes
+    # oscillating ≥2× in 7d. Mainstream is age-driven, not smooth_delta-driven,
+    # so it's exempt. The Fading→Accelerating recovery special case (>5) is
+    # also gated for symmetry. history is DESC-ordered (newest first), so
+    # history[0] is yesterday's row. The shift between today's and yesterday's
+    # smoothed_prev windows is one day at the tail — close enough to use today's
+    # smoothed_prev as the reference for yesterday too.
+    if (
+        stage != prev_stage
+        and stage in ("Accelerating", "Fading")
+        and len(history) >= 1
+    ):
+        y_score = history[0].get("score") or 0
+        y_delta = y_score - smoothed_prev
+        confirmed = (
+            (stage == "Accelerating" and y_delta > 5)
+            or (stage == "Fading" and y_delta < -8)
+        )
+        if not confirmed:
+            logger.info(
+                f"Theme '{name}': flip to {stage} unconfirmed by yesterday "
+                f"(y_Δ={y_delta:+.1f}); holding {prev_stage}"
+            )
+            await log_audit_event(
+                "theme_stage_flip_held",
+                f"{name}: {prev_stage}→{stage} held; y_Δ={y_delta:+.1f}",
+            )
+            stage = prev_stage
+
     # Breadth decay override — two days below threshold forces Fading regardless
     # of RS signal. Catches themes where members have rolled over even though
     # smoothed score still looks healthy.
@@ -2294,8 +2324,11 @@ async def _merge_overlapping_themes(
     ]
     logger.info(f"[theme merge input] {json.dumps(merge_input, separators=(',', ':'))}")
 
-    # Sort by score descending — higher-scored themes absorb lower ones
-    themes = sorted(themes, key=lambda t: t.get("score", 0), reverse=True)
+    # Sort by score desc, name asc as deterministic tiebreaker. Without the
+    # secondary key, ties resolve by Python sort stability against insertion
+    # order, which differs run-to-run when DB returns rows in non-deterministic
+    # order — caused 5+3 score-tie groups in 24h post-pipeline-diagnostic.
+    themes = sorted(themes, key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
 
     # --- Pass 1: Ticker overlap merge ---
     merged_into: dict[int, int] = {}
@@ -2905,7 +2938,7 @@ async def run_theme_engine(
         sub_theme_parents=prior_sub_parents,
     )
     await _emit_pipeline_diagnostic(all_themes, "after_merge_1", sub_theme_parents=prior_sub_parents)
-    all_themes.sort(key=lambda t: t["score"], reverse=True)
+    all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
     all_themes = await _enforce_max_themes_per_stock(all_themes)
     await _emit_pipeline_diagnostic(all_themes, "after_cap_1", sub_theme_parents=prior_sub_parents)
 
@@ -2965,7 +2998,7 @@ async def run_theme_engine(
             sub_theme_parents=combined_sub_parents,
         )
         await _emit_pipeline_diagnostic(all_themes, "after_merge_2", sub_theme_parents=combined_sub_parents)
-        all_themes.sort(key=lambda t: t["score"], reverse=True)
+        all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
         all_themes = await _enforce_max_themes_per_stock(all_themes)
         await _emit_pipeline_diagnostic(all_themes, "after_cap_2", sub_theme_parents=combined_sub_parents)
 

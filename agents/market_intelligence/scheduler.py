@@ -899,6 +899,8 @@ async def _crypto_nightly_ingest_job():
         logger.error(f"Crypto RS ingest failed: {e}", exc_info=True)
         await notify_job_failure("crypto_nightly_ingest", str(e))
         return None
+    finally:
+        await _kuma_heartbeat("KUMA_CRYPTO_INGEST_URL")
 
 
 async def _crypto_category_refresh_job():
