@@ -157,7 +157,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - **L1** invariant breach (hard SQL guard fails) → immediate Telegram + audit row.
 - **L2** anomaly (metric outside 30d trimmed median ± 3 MAD OR > 5× median) → immediate Telegram with Sonnet hypothesis.
 - **L3** drift (band transition) → audit row only, surfaces in Sunday weekly digest.
-- Jobs: `_post_eod_audit_job` 16:15 ET, `_post_nightly_audit_job` 17:30 ET, `_baseline_refresh_job` 02:00 ET. Each ends with kuma heartbeat (`KUMA_AUDIT_*_URL` env).
+- Jobs: `_post_eod_audit_job` 16:15 ET, `_post_nightly_audit_job` 17:30 ET, `_baseline_refresh_job` 02:00 ET.
 - On-demand: `/audit <topic>` (cooldowns/themes/skips/positions/feed/9m/all).
 - Cold-start tiers: `sample_n < 7` → hardcoded `_COLD_START_CEILINGS` only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
 - Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.
@@ -213,7 +213,6 @@ ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
 ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
 ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
-KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional heartbeats
 ```
 
 ---
@@ -457,7 +456,7 @@ Plan: `~/.claude/plans/shiny-mapping-locket.md`. Goal: Apollo surfaces invariant
 
 **Schemas:** `mi_metric_baselines (metric_name, as_of_date, p50, p95, mad, sample_n)`, `mi_baseline_resets (metric_name, reset_at, reason)`.
 
-**Scheduler:** registered three jobs (16:15 / 17:30 / 02:00 ET) each ending with `_kuma_heartbeat()` ping (env-gated). Three new env vars: `KUMA_AUDIT_EOD_URL`, `KUMA_AUDIT_NIGHTLY_URL`, `KUMA_AUDIT_BASELINE_URL`.
+**Scheduler:** registered three jobs (16:15 / 17:30 / 02:00 ET).
 
 **Weekly review (`system_review.py`):** new `_aggregate_anomalies()` pulls 7d `anomaly_detected` rows, buckets by level, filters L3 to band transitions (`from_band != to_band`). System prompt updated to append "📉 *Drift:*" line + cite L1/L2 in ⚠️ Broken section.
 

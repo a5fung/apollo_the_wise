@@ -849,20 +849,6 @@ async def _eod_ep_recap_job():
         await notify_job_failure("eod_ep_recap", str(e))
 
 
-async def _kuma_heartbeat(env_var: str) -> None:
-    """POST a heartbeat to uptime-kuma. Silent on failure — Kuma alerts on absence."""
-    import os
-    url = os.getenv(env_var)
-    if not url:
-        return
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.get(url)
-    except Exception as e:
-        logger.warning(f"Kuma heartbeat {env_var} failed: {e}")
-
-
 async def _post_eod_audit_job():
     """Run at 4:15 PM ET. Trade-side invariants + metrics scan post-EOD cleanup.
 
@@ -878,8 +864,6 @@ async def _post_eod_audit_job():
     except Exception as e:
         logger.error(f"Post-EOD audit failed: {e}", exc_info=True)
         await notify_job_failure("post_eod_audit", str(e))
-    finally:
-        await _kuma_heartbeat("KUMA_AUDIT_EOD_URL")
 
 
 async def _crypto_nightly_ingest_job():
@@ -899,8 +883,6 @@ async def _crypto_nightly_ingest_job():
         logger.error(f"Crypto RS ingest failed: {e}", exc_info=True)
         await notify_job_failure("crypto_nightly_ingest", str(e))
         return None
-    finally:
-        await _kuma_heartbeat("KUMA_CRYPTO_INGEST_URL")
 
 
 async def _crypto_category_refresh_job():
@@ -1009,8 +991,6 @@ async def _post_nightly_audit_job():
     except Exception as e:
         logger.error(f"Post-nightly audit failed: {e}", exc_info=True)
         await notify_job_failure("post_nightly_audit", str(e))
-    finally:
-        await _kuma_heartbeat("KUMA_AUDIT_NIGHTLY_URL")
 
 
 async def _baseline_refresh_job():
@@ -1028,8 +1008,6 @@ async def _baseline_refresh_job():
     except Exception as e:
         logger.error(f"Baseline refresh failed: {e}", exc_info=True)
         await notify_job_failure("baseline_refresh", str(e))
-    finally:
-        await _kuma_heartbeat("KUMA_AUDIT_BASELINE_URL")
     return refreshed
 
 
