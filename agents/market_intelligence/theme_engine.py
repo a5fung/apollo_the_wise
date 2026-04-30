@@ -463,6 +463,229 @@ async def _count_consecutive_fading(name: str, tickers: list[str] | None = None)
     return count
 
 
+async def _emit_pipeline_diagnostic(
+    themes: list[dict],
+    stage_label: str,
+    *,
+    sub_theme_parents: dict[str, str] | None = None,
+) -> dict:
+    """Stage-boundary diagnostic: emit audit rows for any pipeline-state invariant
+    violations after the named stage. Non-mutating — answers "what is the state
+    of the pipeline at this checkpoint?" so the next prod incident has evidence
+    naming the stage and mechanism.
+
+    Captures:
+      - duplicate ticker sets (two themes with identical members)
+      - score-tie groups (≥2 themes at same score → sort non-deterministic)
+      - empty themes (tickers list empty after a strip/cap mutation)
+      - orphan sub-themes (parent_theme refers to a name not in the current list)
+
+    Each violation gets its own event_type so `show errors` / topic queries can
+    filter cleanly.
+    """
+    findings: dict = {}
+
+    # 1. Duplicate ticker sets
+    dup_groups: dict[frozenset, list[str]] = {}
+    for t in themes:
+        tk = frozenset(t.get("tickers") or [])
+        if not tk:
+            continue
+        dup_groups.setdefault(tk, []).append(t["name"])
+    dups = [(tk, names) for tk, names in dup_groups.items() if len(names) > 1]
+    findings["dup_ticker_sets"] = len(dups)
+    if dups:
+        logger.error(
+            f"[invariant] stage='{stage_label}': {len(dups)} duplicate ticker set(s) — "
+            f"{[(sorted(tk), names) for tk, names in dups]}"
+        )
+        detail = "\n".join(f"tickers={sorted(tk)} -> themes={names}" for tk, names in dups)
+        await log_audit_event(
+            "theme_dup_ticker_sets",
+            summary=f"{len(dups)} duplicate ticker set(s) after stage '{stage_label}'",
+            detail=f"stage={stage_label}\n{detail}",
+        )
+
+    # 2. Score-tie groups (sort order non-deterministic at ties)
+    score_groups: dict[float, list[str]] = {}
+    for t in themes:
+        score = round(float(t.get("score") or 0), 1)
+        score_groups.setdefault(score, []).append(t["name"])
+    ties = [(s, names) for s, names in score_groups.items() if len(names) > 1]
+    findings["score_ties"] = len(ties)
+    if ties:
+        detail = "\n".join(f"score={s}: {names}" for s, names in sorted(ties, reverse=True))
+        await log_audit_event(
+            "theme_score_ties",
+            summary=f"{len(ties)} score-tie group(s) after stage '{stage_label}'",
+            detail=f"stage={stage_label}\n{detail}",
+        )
+
+    # 3. Empty themes (tickers stripped to []; should have been pruned)
+    empties = [t["name"] for t in themes if not (t.get("tickers") or [])]
+    findings["empty_themes"] = len(empties)
+    if empties:
+        await log_audit_event(
+            "theme_empty_tickers",
+            summary=f"{len(empties)} theme(s) with empty ticker list after '{stage_label}'",
+            detail=f"stage={stage_label}\nempties={empties}",
+        )
+
+    # 4. Orphan sub-themes (parent not in this list — relationship snapped)
+    if sub_theme_parents:
+        names_in_list = {t["name"] for t in themes}
+        orphans = [
+            (child, parent)
+            for child, parent in sub_theme_parents.items()
+            if child in names_in_list and parent not in names_in_list
+        ]
+        findings["orphan_sub_themes"] = len(orphans)
+        if orphans:
+            detail = "\n".join(f"sub='{c}' parent='{p}' (parent not in list)" for c, p in orphans)
+            await log_audit_event(
+                "theme_orphan_sub",
+                summary=f"{len(orphans)} orphan sub-theme(s) after stage '{stage_label}'",
+                detail=f"stage={stage_label}\n{detail}",
+            )
+
+    return findings
+
+
+# Back-compat alias — older call sites used this name. New code should call
+# `_emit_pipeline_diagnostic` directly.
+async def _check_unique_ticker_sets(themes: list[dict], stage_label: str) -> int:
+    findings = await _emit_pipeline_diagnostic(themes, stage_label)
+    return findings.get("dup_ticker_sets", 0)
+
+
+async def _emit_load_diagnostic(existing: list[dict], today) -> None:
+    """Run-start diagnostic: snapshot the `existing` themes loaded from DB.
+
+    Captures:
+      - stage distribution (Nascent/Accelerating/Mainstream/Fading counts)
+      - theme_date distribution (any rows older than today? cohort mixing?)
+      - duplicate ticker sets ALREADY PRESENT in the loaded snapshot
+        (cross-run dups that bypassed save-time dedup historically)
+      - sub-theme parent integrity (each `parent_theme` reference exists in `existing`)
+
+    Always emits one summary row so we have a daily heartbeat of the load state.
+    """
+    if not existing:
+        return
+
+    stage_counts: dict[str, int] = {}
+    date_counts: dict[str, int] = {}
+    for t in existing:
+        stage_counts[t.get("stage") or "?"] = stage_counts.get(t.get("stage") or "?", 0) + 1
+        td = t.get("theme_date")
+        td_str = td.isoformat() if hasattr(td, "isoformat") else str(td)
+        date_counts[td_str] = date_counts.get(td_str, 0) + 1
+
+    # Duplicate ticker sets in the loaded snapshot — would indicate cross-run
+    # duplicates that survived save-time dedup historically.
+    dup_groups: dict[frozenset, list[str]] = {}
+    for t in existing:
+        tk = frozenset(t.get("tickers") or [])
+        if not tk:
+            continue
+        dup_groups.setdefault(tk, []).append(t["name"])
+    dups = [(tk, names) for tk, names in dup_groups.items() if len(names) > 1]
+
+    # Sub-theme parent integrity
+    names_in_snapshot = {t["name"] for t in existing}
+    orphans: list[tuple[str, str]] = []
+    for t in existing:
+        parent = t.get("parent_theme")
+        if parent and parent not in names_in_snapshot:
+            orphans.append((t["name"], parent))
+
+    summary_parts = [
+        f"n={len(existing)}",
+        f"stages={stage_counts}",
+        f"dates={len(date_counts)}",
+    ]
+    if dups:
+        summary_parts.append(f"DUPS_AT_LOAD={len(dups)}")
+    if orphans:
+        summary_parts.append(f"ORPHAN_SUBS={len(orphans)}")
+
+    detail_lines = [
+        f"today={today}",
+        f"stages={stage_counts}",
+        f"date_counts={date_counts}",
+    ]
+    if dups:
+        detail_lines.append("DUPLICATE TICKER SETS at load (cross-run survivors):")
+        for tk, names in dups:
+            detail_lines.append(f"  tickers={sorted(tk)} themes={names}")
+    if orphans:
+        detail_lines.append("ORPHAN SUB-THEMES (parent not in snapshot):")
+        for child, parent in orphans:
+            detail_lines.append(f"  sub='{child}' missing_parent='{parent}'")
+
+    await log_audit_event(
+        "theme_load_state",
+        summary="theme_load_state " + " ".join(summary_parts),
+        detail="\n".join(detail_lines),
+    )
+
+
+async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
+    """For each theme being saved, query the last 14 days of mi_themes for rows
+    with the same ticker set under a DIFFERENT name. Catches the cross-run dup
+    pattern where two themes are created on different days and never co-enter
+    a single merge call.
+
+    Diagnostic only — emits audit rows so the next prod incident can be traced
+    to a specific (today_name, prior_name, ticker_set, prior_date) tuple.
+    """
+    today_names = {t["name"] for t in themes}
+    today_sets: dict[frozenset, str] = {}  # frozenset -> our theme name
+    for t in themes:
+        tk = frozenset(t.get("tickers") or [])
+        if tk:
+            today_sets[tk] = t["name"]
+    if not today_sets:
+        return
+
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT ON (name) name, theme_date, tickers
+        FROM mi_themes
+        WHERE theme_date >= $1::date - 14
+          AND theme_date < $1::date
+        ORDER BY name, theme_date DESC
+        """,
+        today,
+    )
+
+    findings: list[tuple[str, frozenset, str, str]] = []  # (today_name, tk, prior_name, prior_date)
+    for row in rows:
+        prior_name = row["name"]
+        if prior_name in today_names:
+            continue  # same theme name — not a cross-run dup, that's normal continuity
+        prior_tk = frozenset(row["tickers"] or [])
+        if not prior_tk:
+            continue
+        match_today_name = today_sets.get(prior_tk)
+        if match_today_name and match_today_name != prior_name:
+            findings.append((match_today_name, prior_tk, prior_name, str(row["theme_date"])))
+
+    if findings:
+        detail = "\n".join(
+            f"today='{tn}' tickers={sorted(tk)} matches prior='{pn}' last_seen={pd}"
+            for tn, tk, pn, pd in findings
+        )
+        await log_audit_event(
+            "theme_cross_run_dup_candidate",
+            summary=(
+                f"{len(findings)} theme(s) match a different prior name with same ticker set "
+                f"(last 14d) — possible cross-run dup"
+            ),
+            detail=detail,
+        )
+
+
 async def _save_themes(themes: list[dict]) -> None:
     """
     Persist today's theme snapshot.  Uses upsert by (theme_date, name)
@@ -483,6 +706,53 @@ async def _save_themes(themes: list[dict]) -> None:
             ORDER BY name, theme_date DESC
         """, [t["name"] for t in themes], today)
         prior_map = {r["name"]: dict(r) for r in prior_rows}
+
+        # Cross-run uniqueness probe: query the last 14 days of `mi_themes` for
+        # rows with the same ticker set as anything we're about to save BUT under
+        # a DIFFERENT name. This catches the cross-run dup hypothesis — two themes
+        # created on different days that never co-entered a single merge call.
+        # Diagnostic only; does not mutate.
+        await _emit_cross_run_dup_probe(conn, themes, today)
+
+        # Safety net: themes with identical ticker sets are by definition the
+        # same theme. Merge passes should have collapsed these upstream — when
+        # this fires, an audit row is written so we can diagnose the merge gap.
+        groups: dict[frozenset, list[int]] = {}
+        for idx, t in enumerate(themes):
+            tk = frozenset(t.get("tickers") or [])
+            if not tk:
+                continue
+            groups.setdefault(tk, []).append(idx)
+
+        drop_indices: set[int] = set()
+        for tk_set, idxs in groups.items():
+            if len(idxs) <= 1:
+                continue
+            # Survivor: highest prior days_active → highest score → alphabetic
+            def _key(i: int) -> tuple:
+                t = themes[i]
+                prior = prior_map.get(t["name"]) or {}
+                return (
+                    -(prior.get("days_active") or 0),
+                    -float(t.get("score") or 0),
+                    t["name"],
+                )
+            ranked = sorted(idxs, key=_key)
+            survivor = themes[ranked[0]]["name"]
+            losers = [themes[i]["name"] for i in ranked[1:]]
+            drop_indices.update(ranked[1:])
+            logger.warning(
+                f"[save dedup] identical ticker set {sorted(tk_set)} — "
+                f"keeping '{survivor}', dropping {losers}"
+            )
+            await log_audit_event(
+                "theme_save_dedup",
+                summary=f"Duplicate ticker sets at save: kept '{survivor}' over {losers}",
+                detail=f"tickers={sorted(tk_set)} survivor={survivor} dropped={losers}",
+            )
+
+        if drop_indices:
+            themes = [t for i, t in enumerate(themes) if i not in drop_indices]
 
         # Upsert each theme
         for t in themes:
@@ -1986,7 +2256,7 @@ def _strip_commodity_contradictions(themes: list[dict]) -> list[dict]:
     return themes
 
 
-def _merge_overlapping_themes(
+async def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
     protected_names: set[str] | None = None,
@@ -2006,6 +2276,20 @@ def _merge_overlapping_themes(
     """
     if len(themes) <= 1:
         return themes
+
+    # Diagnostic snapshot of merge inputs — logged for every merge call so
+    # save-time dedup fires can be traced back to the merge state.
+    merge_input = [
+        {
+            "name": t["name"],
+            "n": len(t.get("tickers") or []),
+            "tickers": sorted(t.get("tickers") or []),
+            "score": round(float(t.get("score") or 0), 1),
+            "protected": bool(protected_names and t["name"] in protected_names),
+        }
+        for t in themes
+    ]
+    logger.info(f"[theme merge input] {json.dumps(merge_input, separators=(',', ':'))}")
 
     # Sort by score descending — higher-scored themes absorb lower ones
     themes = sorted(themes, key=lambda t: t.get("score", 0), reverse=True)
@@ -2055,11 +2339,29 @@ def _merge_overlapping_themes(
                 if j_protected:
                     # Protected existing theme (j) would be absorbed by new cluster (i).
                     # Reverse: strip the overlap from the new cluster to preserve identity.
+                    pre_size = len(tickers_i)
                     tickers_i = tickers_i - intersection
                     themes[i]["tickers"] = list(tickers_i)
+                    post_size = len(tickers_i)
+                    i_protected = bool(protected_names and themes[i]["name"] in protected_names)
                     logger.info(
                         f"Theme protect: stripped {sorted(intersection)} from new cluster "
                         f"'{themes[i]['name']}' to preserve existing '{themes[j]['name']}'"
+                    )
+                    await log_audit_event(
+                        "theme_pass1_protect_strip",
+                        summary=(
+                            f"Pass1: stripped {len(intersection)} ticker(s) from "
+                            f"'{themes[i]['name']}' (protect '{themes[j]['name']}')"
+                        ),
+                        detail=(
+                            f"i='{themes[i]['name']}' i_protected={i_protected} "
+                            f"j='{themes[j]['name']}' j_protected=True "
+                            f"intersection={sorted(intersection)} "
+                            f"i_size {pre_size}->{post_size}"
+                            + (" EMPTY_AFTER_STRIP" if post_size == 0 else "")
+                            + (" BOTH_PROTECTED" if i_protected else "")
+                        ),
                     )
                 else:
                     logger.info(
@@ -2100,6 +2402,11 @@ def _merge_overlapping_themes(
         t_protected = bool(protected_names and t["name"] in protected_names)
         t_score = t.get("score", 0)
 
+        # Track skipped candidates so we can audit "would-have-merged-but-for-guard"
+        # cases — the strongest signal for diagnosing why two near-duplicate themes
+        # survived a merge call.
+        skipped_targets: list[tuple[str, str]] = []  # (target_name, reason)
+
         # Find highest-scoring overlapping theme to absorb into
         for target in after_overlap:
             if target["name"] == t["name"] or target["name"] in absorbed:
@@ -2111,6 +2418,7 @@ def _merge_overlapping_themes(
             # processing order (score desc) absorbs the higher-scored theme
             # into the lower-scored one when it lands as `t` first.
             if target.get("score", 0) < t_score:
+                skipped_targets.append((target["name"], f"direction:target_score={target.get('score',0)}<t_score={t_score}"))
                 continue
             # When t is an existing protected theme, only dissolve it into
             # another existing protected theme. New clusters must not absorb
@@ -2118,6 +2426,7 @@ def _merge_overlapping_themes(
             if t_protected and not (
                 protected_names and target["name"] in protected_names
             ):
+                skipped_targets.append((target["name"], "protection:t_protected_target_not"))
                 continue
             target["tickers"] = list(target_tickers | tickers)
             absorbed.add(t["name"])
@@ -2126,7 +2435,33 @@ def _merge_overlapping_themes(
                 f"({len(tickers)} stocks, {unique_count} unique"
                 f"{', protected' if t_protected else ''})"
             )
+            await log_audit_event(
+                "theme_pass1_5_absorption",
+                summary=f"Pass1.5: '{t['name']}' -> '{target['name']}'",
+                detail=(
+                    f"t='{t['name']}' t_score={t_score} t_protected={t_protected} "
+                    f"t_size={len(tickers)} unique_count={unique_count} "
+                    f"target='{target['name']}' target_score={target.get('score', 0)} "
+                    f"target_protected={bool(protected_names and target['name'] in protected_names)}"
+                ),
+            )
             break
+        else:
+            # No target passed all guards — log if there were rejected candidates
+            # (silent "skip" is the failure mode that lets duplicates survive).
+            if skipped_targets:
+                await log_audit_event(
+                    "theme_pass1_5_skip",
+                    summary=(
+                        f"Pass1.5: '{t['name']}' eligible but no target passed "
+                        f"({len(skipped_targets)} candidate(s) skipped)"
+                    ),
+                    detail=(
+                        f"t='{t['name']}' t_score={t_score} t_protected={t_protected} "
+                        f"t_size={len(tickers)} unique_count={unique_count}\n"
+                        + "\n".join(f"  skip target='{n}' reason={r}" for n, r in skipped_targets)
+                    ),
+                )
 
     if absorbed:
         after_overlap = [t for t in after_overlap if t["name"] not in absorbed]
@@ -2166,23 +2501,27 @@ def _merge_overlapping_themes(
     return final
 
 
-def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
+async def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
     """
     Hard cap: a stock can appear in at most MAX_THEMES_PER_STOCK themes.
     Themes must be sorted by score descending (highest-scored = primary).
     Removes stocks from lower-scored themes when they exceed the cap.
     Drops themes that fall below PRUNE_MIN_TICKERS after removals.
+
+    Each strip + drop emits an audit row so post-cap state changes are
+    reconstructable from `mi_audit_log` alone.
     """
     from collections import defaultdict
 
     ticker_assignments: dict[str, list[str]] = defaultdict(list)
     theme_by_name = {t["name"]: t for t in themes}
+    pre_sizes = {t["name"]: len(t.get("tickers") or []) for t in themes}
 
     for t in themes:  # iterate in score order (already sorted)
         for tk in (t.get("tickers") or []):
             ticker_assignments[tk].append(t["name"])
 
-    removals = 0
+    strip_events: list[tuple[str, str, int, int]] = []  # (ticker, theme, pre, post)
     for tk, assigned_themes in ticker_assignments.items():
         if len(assigned_themes) <= MAX_THEMES_PER_STOCK:
             continue
@@ -2190,24 +2529,47 @@ def _enforce_max_themes_per_stock(themes: list[dict]) -> list[dict]:
         excess = assigned_themes[MAX_THEMES_PER_STOCK:]
         for theme_name in excess:
             theme = theme_by_name[theme_name]
+            pre = len(theme["tickers"])
             theme["tickers"] = [t for t in theme["tickers"] if t != tk]
+            post = len(theme["tickers"])
             logger.info(
                 f"Theme cap: removed {tk} from '{theme_name}' "
                 f"(was in {len(assigned_themes)} themes, keeping top {MAX_THEMES_PER_STOCK})"
             )
-            removals += 1
+            strip_events.append((tk, theme_name, pre, post))
 
-    if removals:
-        logger.info(f"Theme cap enforced: {removals} ticker-theme removals")
+    if strip_events:
+        logger.info(f"Theme cap enforced: {len(strip_events)} ticker-theme removals")
+        detail = "\n".join(
+            f"removed {tk} from '{tn}' size {pre}->{post}"
+            + (" EMPTY_AFTER_CAP" if post == 0 else "")
+            for tk, tn, pre, post in strip_events
+        )
+        await log_audit_event(
+            "theme_cap_strip",
+            summary=f"Cap: {len(strip_events)} ticker-theme removal(s)",
+            detail=detail,
+        )
 
     # Drop themes that fell below minimum
     result = []
+    drops: list[tuple[str, int, int]] = []  # (name, pre_size, post_size)
     for t in themes:
         tickers = t.get("tickers") or []
         if len(tickers) >= PRUNE_MIN_TICKERS:
             result.append(t)
         else:
+            drops.append((t["name"], pre_sizes.get(t["name"], 0), len(tickers)))
             logger.info(f"Theme '{t['name']}' dropped: only {len(tickers)} ticker(s) after cap enforcement")
+    if drops:
+        detail = "\n".join(
+            f"dropped '{n}' size {pre}->{post}" for n, pre, post in drops
+        )
+        await log_audit_event(
+            "theme_cap_drop",
+            summary=f"Cap: {len(drops)} theme(s) dropped below PRUNE_MIN_TICKERS={PRUNE_MIN_TICKERS}",
+            detail=detail,
+        )
     return result
 
 
@@ -2284,6 +2646,7 @@ async def run_theme_engine(
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
+    await _emit_load_diagnostic(existing, today)
 
     # --- Step 1.1: Ensure existing theme members also have descriptions ---
     # _ensure_descriptions above only covers top RS leaders. Stocks already in themes
@@ -2521,14 +2884,16 @@ async def run_theme_engine(
         if pt:
             prior_sub_parents[t["name"]] = pt
 
-    all_themes = _merge_overlapping_themes(
+    all_themes = await _merge_overlapping_themes(
         updated_themes + new_themes,
         stocks_by_ticker,
         protected_names=existing_names,
         sub_theme_parents=prior_sub_parents,
     )
+    await _emit_pipeline_diagnostic(all_themes, "after_merge_1", sub_theme_parents=prior_sub_parents)
     all_themes.sort(key=lambda t: t["score"], reverse=True)
-    all_themes = _enforce_max_themes_per_stock(all_themes)
+    all_themes = await _enforce_max_themes_per_stock(all_themes)
+    await _emit_pipeline_diagnostic(all_themes, "after_cap_1", sub_theme_parents=prior_sub_parents)
 
     # --- Step 4b: Fat-theme sub-theme splitting ---
     # For themes that grew too broad, ask Sonnet (+ optional Opus) to split off one sub-group.
@@ -2574,16 +2939,21 @@ async def run_theme_engine(
         )
 
     if new_sub_themes:
-        # Merge sub-themes into all_themes, protecting them from re-absorption
         combined_sub_parents = {**prior_sub_parents, **this_run_sub_parents}
-        all_themes = _merge_overlapping_themes(
+        await _emit_pipeline_diagnostic(
+            all_themes + new_sub_themes, "after_split", sub_theme_parents=combined_sub_parents
+        )
+        # Merge sub-themes into all_themes, protecting them from re-absorption
+        all_themes = await _merge_overlapping_themes(
             all_themes + new_sub_themes,
             stocks_by_ticker,
             protected_names=existing_names | set(this_run_sub_parents.keys()),
             sub_theme_parents=combined_sub_parents,
         )
+        await _emit_pipeline_diagnostic(all_themes, "after_merge_2", sub_theme_parents=combined_sub_parents)
         all_themes.sort(key=lambda t: t["score"], reverse=True)
-        all_themes = _enforce_max_themes_per_stock(all_themes)
+        all_themes = await _enforce_max_themes_per_stock(all_themes)
+        await _emit_pipeline_diagnostic(all_themes, "after_cap_2", sub_theme_parents=combined_sub_parents)
 
     if all_themes:
         await _save_themes(all_themes)
