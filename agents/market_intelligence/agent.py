@@ -1924,6 +1924,128 @@ class MarketIntelligenceAgent(BaseAgent):
 
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_filtered_trades_grouped(self, request: AgentRequest) -> AgentResponse:
+        """Filtered trades grouped by strategy → skip-reason category → tickers.
+
+        Default scope: today (last_trading_day). Override with `Nd` in task
+        ("filtered trades 7d"). Live path uses mi_live_trades.signal_type;
+        the EOD-sim path falls back to bucketing every row under magna53
+        (mi_paper_trades pre-dates the strategy framework).
+        """
+        import re as _re
+        from collections import defaultdict
+        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+        from agents.market_intelligence.collector import last_trading_day, et_today
+        from agents.market_intelligence.broker.skip_reasons import humanize
+
+        task = request.task.lower()
+        m = _re.search(r"\b(\d+)d\b", task)
+        window_days = int(m.group(1)) if m else 1
+
+        today = last_trading_day(et_today())
+        start = today if window_days == 1 else (
+            today.fromordinal(today.toordinal() - (window_days - 1))
+        )
+
+        if LIVE_TRADING_ENABLED:
+            sql = """
+                SELECT ticker, alert_date, signal_type, skip_reason
+                FROM mi_live_trades
+                WHERE alert_date BETWEEN $1 AND $2
+                  AND status IN ('skipped', 'cancelled', 'order_failed')
+                ORDER BY alert_date DESC, ticker
+            """
+        else:
+            sql = """
+                SELECT ticker, alert_date, NULL::text AS signal_type, skip_reason
+                FROM mi_paper_trades
+                WHERE alert_date BETWEEN $1 AND $2
+                  AND status = 'skipped'
+                ORDER BY alert_date DESC, ticker
+            """
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, start, today)
+
+        scope_label = today.strftime("%b %d") if window_days == 1 else f"last {window_days}d"
+        if not rows:
+            return self._ok(
+                request,
+                result=f"*Filtered Trades — {scope_label}*\n\nNo filtered trades.",
+            )
+
+        # Group: signal_type → category → list[(ticker, code)]
+        strategy_emoji = {
+            "magna53": "📈",
+            "9m_day2": "🍬",
+            "shadow_orb_5m": "📐",
+            "parabolic_short": "🔻",
+            "wick_fill": "🔥",
+            "fishhook_v3": "🪝",
+        }
+        strategy_label = {
+            "magna53": "MAGNA53 EP",
+            "9m_day2": "9M Day 2",
+            "shadow_orb_5m": "Shadow ORB 5m",
+            "parabolic_short": "Parabolic Short",
+            "wick_fill": "Wick Fill",
+            "fishhook_v3": "Fishhook V3",
+        }
+        # signal_type → category → list[(ticker, reason_code)]
+        grouped: dict[str, dict[str, list[tuple[str, str]]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for r in rows:
+            sig = r["signal_type"] or "magna53"
+            reason = r["skip_reason"] or ""
+            parts = reason.split(":", 2)
+            category = parts[0] if len(parts) >= 2 else "other"
+            code = parts[1] if len(parts) >= 2 else (reason or "unknown")
+            grouped[sig][category].append((r["ticker"], code))
+
+        total = len(rows)
+        collapsed = total >= 6  # threshold for compact rendering
+
+        lines = [f"*Filtered Trades — {scope_label} ({total})*"]
+        sig_order = ["magna53", "9m_day2", "shadow_orb_5m",
+                     "parabolic_short", "wick_fill", "fishhook_v3"]
+        seen = list(grouped.keys())
+        for sig in sig_order + [s for s in seen if s not in sig_order]:
+            buckets = grouped.get(sig)
+            if not buckets:
+                continue
+            n = sum(len(v) for v in buckets.values())
+            emoji = strategy_emoji.get(sig, "•")
+            label = strategy_label.get(sig, sig)
+            lines.append(f"\n{emoji} *{label}* ({n})")
+            for category in ("filter", "setup", "block", "infra", "window", "other"):
+                items = buckets.get(category)
+                if not items:
+                    continue
+                if collapsed:
+                    by_code: dict[str, list[str]] = defaultdict(list)
+                    for tk, code in items:
+                        by_code[code].append(tk)
+                    bits = [
+                        f"{code} ({len(tks)}): {', '.join(tks)}" if len(tks) > 1
+                        else f"{code}: {tks[0]}"
+                        for code, tks in by_code.items()
+                    ]
+                    lines.append(f"  • _{category}_ — {' · '.join(bits)}")
+                else:
+                    for tk, _code in items:
+                        # Find original row to humanize the full reason
+                        full = next(
+                            (r["skip_reason"] for r in rows
+                             if r["ticker"] == tk and (r["signal_type"] or "magna53") == sig),
+                            None,
+                        )
+                        lines.append(f"  • `{tk}` — {humanize(full)}")
+
+        lines.append("\n_Use `/why TICKER` for the full reason + lifecycle._")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_trades_query(self, request: AgentRequest, ticker: str | None = None) -> AgentResponse:
         """
         Show paper trade history with entry/exit prices, P&L, stops.
@@ -1939,6 +2061,13 @@ class MarketIntelligenceAgent(BaseAgent):
         from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
         task = request.task.lower()
         pool = await get_pool()
+
+        # Structured grouped view for "filtered/skipped trades" — by strategy
+        # then by skip_reason category. Single-ticker drill-downs still use
+        # the per-row view below.
+        if (("filtered" in task or "skipped" in task) and ticker is None
+                and "open" not in task and "closed" not in task):
+            return await self._handle_filtered_trades_grouped(request)
 
         where_clauses = ["1=1"]
         params: list = []
