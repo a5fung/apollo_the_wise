@@ -66,6 +66,14 @@ async def run_outcome_tracker(trade_date: date | None = None) -> dict:
     except Exception as e:
         logger.error(f"9M EP outcomes failed: {e}")
 
+    try:
+        n = await _compute_ep_scan_outcomes(today)
+        total += n
+        if n:
+            logger.info(f"Outcome tracker: {n} EP scan outcomes computed")
+    except Exception as e:
+        logger.error(f"EP scan outcomes failed: {e}")
+
     return {"total": total, "trade_date": today.isoformat()}
 
 
@@ -414,6 +422,95 @@ async def _compute_9m_ep_outcomes(today: date) -> int:
                 count += 1
 
     return count
+
+
+async def _compute_ep_scan_outcomes(today: date) -> int:
+    """Compute fwd_5d / fwd_10d high-watermark returns for every (ticker, scan_date)
+    in mi_ep_scan_log. Lets us answer 'did the filter throw away winners?'
+
+    Single batch UPSERT per run. Window: scan_date in [today-15, today-5] —
+    upper bound ensures ≥5 forward sessions exist; lower bound lets 10d-window
+    rows accrue more sessions on subsequent runs (each upsert overwrites).
+    Uses MAX(high) over forward sessions vs scan_date close (matches dead-zone
+    analysis convention). Rows missing OHLC high get fwd=NULL — telemetry-honest.
+    """
+    pool = await get_pool()
+    end = today - timedelta(days=5)
+    start = today - timedelta(days=15)
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            WITH scan_pairs AS (
+                SELECT DISTINCT ticker, scan_date
+                FROM mi_ep_scan_log
+                WHERE scan_date BETWEEN $1 AND $2
+            ),
+            baseline AS (
+                SELECT sp.ticker, sp.scan_date, dc.close AS baseline_close
+                FROM scan_pairs sp
+                JOIN mi_daily_closes dc
+                  ON dc.ticker = sp.ticker AND dc.trade_date = sp.scan_date
+                WHERE dc.close > 0
+            ),
+            forward AS (
+                SELECT b.ticker, b.scan_date, b.baseline_close,
+                       dc.high,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY b.ticker, b.scan_date
+                           ORDER BY dc.trade_date
+                       ) AS sess
+                FROM baseline b
+                JOIN mi_daily_closes dc
+                  ON dc.ticker = b.ticker
+                 AND dc.trade_date > b.scan_date
+                 AND dc.trade_date <= b.scan_date + 20
+            )
+            SELECT
+                ticker, scan_date, baseline_close,
+                MAX(CASE WHEN sess <= 5  THEN high END) AS max_high_5d,
+                COUNT(CASE WHEN sess <= 5  AND high IS NOT NULL THEN 1 END) AS n_5d,
+                MAX(CASE WHEN sess <= 10 THEN high END) AS max_high_10d,
+                COUNT(CASE WHEN sess <= 10 AND high IS NOT NULL THEN 1 END) AS n_10d
+            FROM forward
+            GROUP BY ticker, scan_date, baseline_close
+            """,
+            start, end,
+        )
+
+        if not rows:
+            return 0
+
+        records = []
+        for r in rows:
+            base = r["baseline_close"]
+            mh5 = r["max_high_5d"]
+            mh10 = r["max_high_10d"]
+            fwd5 = round((mh5 - base) / base * 100, 2) if mh5 and base else None
+            fwd10 = round((mh10 - base) / base * 100, 2) if mh10 and base else None
+            records.append((
+                r["ticker"], r["scan_date"], base, fwd5, fwd10,
+                int(r["n_5d"] or 0), int(r["n_10d"] or 0),
+            ))
+
+        await conn.executemany(
+            """
+            INSERT INTO mi_ep_scan_outcomes
+                (ticker, scan_date, baseline_close, fwd_5d_pct, fwd_10d_pct,
+                 n_sessions_5d, n_sessions_10d, computed_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (ticker, scan_date) DO UPDATE SET
+                baseline_close = EXCLUDED.baseline_close,
+                fwd_5d_pct     = EXCLUDED.fwd_5d_pct,
+                fwd_10d_pct    = EXCLUDED.fwd_10d_pct,
+                n_sessions_5d  = EXCLUDED.n_sessions_5d,
+                n_sessions_10d = EXCLUDED.n_sessions_10d,
+                computed_at    = NOW()
+            """,
+            records,
+        )
+
+    return len(records)
 
 
 async def get_weekly_signal_summary(lookback_days: int = 30) -> dict:

@@ -220,6 +220,23 @@ KUMA_AUDIT_EOD_URL, KUMA_AUDIT_NIGHTLY_URL, KUMA_AUDIT_BASELINE_URL  # optional 
 
 ## Changes Made — Recent
 
+### 2026-04-30 — EP scan dead-zone telemetry beef-up (C1/C2/C3 + Option B ADV probe)
+Dead-zone post-mortem (analyze_late_detection_v3.py) showed `mi_ep_scan_log` carried only the *last seen* state per (ticker, scan_date) due to the UNIQUE constraint, so candidates that flipped through filter/pass/filter trajectories during the morning were unrecoverable. Augmented in place rather than forking a new table (single-source-of-truth) — re-evaluation queries the same log with `DISTINCT ON (ticker) ORDER BY ticker, scan_time_et DESC NULLS LAST, id DESC`.
+
+**Schema migrations on `mi_ep_scan_log`:** name-agnostic UNIQUE drop via `DO $ ... pg_constraint loop` (auto-generated names drift), then `ADD COLUMN IF NOT EXISTS scan_time_et TIMESTAMPTZ`, `rank_by_gap INT`, `projected_vol_multiple FLOAT`, `pm_rvol FLOAT`, `adv FLOAT`, `adv_source TEXT`, `minutes_since_open INT`. Index `idx_ep_scan_log_scan_time` on `scan_time_et DESC`. Plus `mi_ep_alerts.detected_at TIMESTAMPTZ` (insert with `COALESCE($16::TIMESTAMPTZ, NOW())` — explicit cast required, asyncpg can't infer parameter type through COALESCE).
+
+**New table `mi_ep_scan_outcomes`** (UNIQUE ticker+scan_date) caches forward 5d/10d max-high % from baseline close + n_sessions per horizon. Computed nightly in `outcome_tracker._compute_ep_scan_outcomes(today)` via single batched SQL with ROW_NUMBER() window over forward sessions ≤ 20d. Lookback `today - 15` to `today - 5` so 5d horizon has at least 5 settled sessions before snapshot.
+
+**Writers (`ep_detector.py`):** after `candidates.sort(key=gap, reverse=True)` build `rank_by_gap` dict; new `_scan_row(c, filter_reason)` closure captures all 7 new fields per row. `_log_filtered` simplified to `_scan_row(c, reason)`. Two passing-row append sites swapped to `_scan_row(c, None)`. Added explicit `_log_filtered(c, "already scored earlier today")` for the previously-silent `already_today` skip path. `log_ep_scan_candidates` is now plain INSERT (16 fields), not UPSERT — every scan appends a row; reader applies DISTINCT ON.
+
+**Option B ADV probe** — bumped non-universe ADV synthesis from `candidates[:20]` to `candidates[:50]` and emit `ep_adv_probe_synthesized` audit event for ranks 21-50 (~400-1000 events/day, intentional volume — telemetry to assess whether tier 2 ranks would have surfaced the dead-zone misses). Retirement gated on data volume — see registry.
+
+**Followups registered in `data_gated_reviews.yaml`** (Sunday weekly review auto-surfaces when ready):
+- `dead_zone_reevaluation` — earliest 2026-06-15, threshold n≥20 trustworthy timestamps in window. Re-run analyze_late_detection_v3 against `scan_time_et` instead of broken `created_at`.
+- `adv_probe_retirement` — earliest 2026-06-01, threshold ≥1 dead-zone case. Decide: keep [:50] tier or revert to [:20].
+
+**Lesson:** UNIQUE on (scan_date, ticker) collapsed temporal trajectories silently. UPSERT looked correct but erased exactly the data needed to reconstruct dead-zone events. The fix is append-only writes + DISTINCT ON for "current state" reads — readers and writers diverge on cardinality and that's fine. Asyncpg type inference also can't see through COALESCE wrappers — explicit `::TYPE` casts are non-optional for nullable TIMESTAMPTZ params.
+
 ### 2026-04-28 (session 4) — P22 Wick-Fill shadow tracker (telemetry-only)
 First strategy shipped *through* the Strategy Maturity Framework. Negated shooting star setup (Bonde / Kristjan): 9M day closes mid-range with green body — close_in_range_pct ∈ [0.50, 0.75) — trapping shorts on the upper-wick close. Day 2+ break of `prior_high` is the canonical short-trap fill. Three-way EOD branching off the shared 9M context CTE: `≥ 0.75 →` sugar baby (existing), `[0.50, 0.75) →` wick (new), `< 0.50 →` distribution (ignored).
 

@@ -526,6 +526,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # Sort by gap size descending — score the biggest movers first
     candidates.sort(key=lambda c: c["gap_pct"], reverse=True)
+    rank_by_gap = {c["ticker"]: i + 1 for i, c in enumerate(candidates)}
     logger.info(f"Gap candidates ≥{MIN_GAP_PCT}%: {len(candidates)}"
                 + (f" (top: {candidates[0]['ticker']} {candidates[0]['gap_pct']:.1f}%)" if candidates else ""))
     if not candidates:
@@ -551,11 +552,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     except Exception as e:
         logger.warning(f"Failed to fetch 3-month closes for prior momentum: {e}")
 
-    # Compute proper 20-day ADV for non-universe candidates (top 20 only)
-    # These stocks aren't in mi_stock_scores, so we fetch bars from Polygon
-    non_universe = [c for c in candidates[:20] if c["adv_source"] == "pending"]
+    # Compute proper 20-day ADV for non-universe candidates.
+    # Top 20 are the scored cohort. Ranks 21-50 are a telemetry-only probe
+    # (Option 2): synthesize ADV → rel_volume so we can detect "did rank
+    # 21-50 candidates with high rel_volume turn into winners?" Without
+    # ADV those rows hit mi_ep_scan_log with placeholder prevDay.v which
+    # is useless for outcome analysis. Probe-stage results emit an
+    # `ep_adv_probe_synthesized` audit event — `data_gated_reviews.yaml`
+    # entry `adv_probe_retirement` triggers a manual review at 30 days.
+    non_universe = [c for c in candidates[:50] if c["adv_source"] == "pending"]
     if non_universe:
-        logger.info(f"Fetching 20-day ADV for {len(non_universe)} non-universe candidates...")
+        logger.info(f"Fetching 20-day ADV for {len(non_universe)} non-universe candidates (incl. rank 21-50 probe)...")
         adv_tasks = [_compute_adv_from_polygon(c["ticker"], today) for c in non_universe]
         adv_results = await asyncio.gather(*adv_tasks)
         for c, computed_adv in zip(non_universe, adv_results):
@@ -566,6 +573,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if c["rel_volume"] and _minutes_since_open and _minutes_since_open >= 15:
                     c["projected_vol_multiple"] = round(c["rel_volume"] * (_SESSION_MINUTES / _minutes_since_open), 1)
                 logger.info(f"  {c['ticker']}: ADV={computed_adv:,.0f} → rel_vol={c.get('rel_volume')}x")
+                # Probe-only event for ranks 21-50. The top-20 cohort is the
+                # canonical scored set and doesn't need a separate event.
+                gap_rank = rank_by_gap.get(c["ticker"])
+                if gap_rank and gap_rank > 20:
+                    await log_audit_event(
+                        "ep_adv_probe_synthesized",
+                        f"{c['ticker']} rank={gap_rank} gap={c['gap_pct']:.1f}% rel_vol={c['rel_volume']}x",
+                        json.dumps({
+                            "ticker": c["ticker"],
+                            "scan_date": today.isoformat(),
+                            "rank_by_gap": gap_rank,
+                            "gap_pct": round(c["gap_pct"], 2),
+                            "adv_polygon_20d": int(computed_adv),
+                            "rel_volume": c.get("rel_volume"),
+                            "projected_vol_multiple": c.get("projected_vol_multiple"),
+                            "today_volume": int(c["today_volume"]),
+                        }),
+                    )
 
     # Batch-fetch MIN close over last 5 trading days for extension check.
     # Using MIN (not the close from exactly 5 days ago) catches stocks that surged
@@ -607,18 +632,31 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     results = []
     scan_log: list[dict] = []  # accumulated for batch DB write at end
 
-    def _log_filtered(c: dict, reason: str) -> None:
-        scan_log.append({
+    def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
+                  tier: str | None, catalyst_quality: str | None) -> dict:
+        return {
             "scan_date": today,
             "ticker": c["ticker"],
             "gap_pct": c.get("gap_pct"),
             "prev_close": c.get("prev_close"),
             "rel_volume": c.get("rel_volume"),
             "filter_reason": reason,
-            "ep_score": None,
-            "score_tier": None,
-            "catalyst_quality": None,
-        })
+            "ep_score": ep_score,
+            "score_tier": tier,
+            "catalyst_quality": catalyst_quality,
+            "scan_time_et": now_et,
+            "rank_by_gap": rank_by_gap.get(c["ticker"]),
+            "projected_vol_multiple": c.get("projected_vol_multiple"),
+            "pm_rvol": c.get("pm_rvol"),
+            "adv": c.get("adv"),
+            "adv_source": c.get("adv_source"),
+            "minutes_since_open": _minutes_since_open,
+        }
+
+    def _log_filtered(c: dict, reason: str) -> None:
+        scan_log.append(_scan_row(
+            c, reason=reason, ep_score=None, tier=None, catalyst_quality=None,
+        ))
 
     # Log candidates beyond top-20 cap
     for c in candidates[20:]:
@@ -708,6 +746,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # Skip if already scored in an earlier scan run today
         if ticker in already_today:
             logger.debug(f"Skip {ticker}: already scored today")
+            _log_filtered(c, "already scored earlier today")
             continue
 
         # Hard filter: extension — skip if already up 50%+ before today's gap
@@ -855,13 +894,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if ep_score < 50:
             reason = f"score {ep_score:.0f} < 50 (catalyst={catalyst_quality})"
             logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}% breakdown={breakdown})")
-            scan_log.append({
-                "scan_date": today, "ticker": ticker,
-                "gap_pct": c.get("gap_pct"), "prev_close": c.get("prev_close"),
-                "rel_volume": rel_volume, "filter_reason": reason,
-                "ep_score": ep_score, "score_tier": None,
-                "catalyst_quality": catalyst_quality,
-            })
+            scan_log.append(_scan_row(
+                c, reason=reason, ep_score=ep_score, tier=None,
+                catalyst_quality=catalyst_quality,
+            ))
             continue
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"
@@ -882,13 +918,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         results.append(result)
 
         # Log to scan log as passed
-        scan_log.append({
-            "scan_date": today, "ticker": ticker,
-            "gap_pct": c.get("gap_pct"), "prev_close": c.get("prev_close"),
-            "rel_volume": rel_volume, "filter_reason": None,
-            "ep_score": ep_score, "score_tier": tier,
-            "catalyst_quality": catalyst_quality,
-        })
+        scan_log.append(_scan_row(
+            c, reason=None, ep_score=ep_score, tier=tier,
+            catalyst_quality=catalyst_quality,
+        ))
 
         # Store in DB
         await insert_ep_alert({
@@ -906,6 +939,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "vol_percentile": vol_pct,
             "pm_rvol": c.get("pm_rvol"),
             "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
+            "detected_at": now_et,
         })
 
         # Telemetry for `conviction_floor_extension` review (data_gated_reviews.yaml).

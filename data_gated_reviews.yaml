@@ -163,6 +163,66 @@ reviews:
       Origin: project_rs_theme_dash_backlog.md.
     status: pending
 
+  - review_id: dead_zone_reevaluation
+    title: "Dead-zone analysis re-eval (post-2026-03-20 cohort)"
+    question: |
+      2026-04-30 dead-zone v3 analysis on trustworthy timestamps (post-2026-03-20)
+      yielded 8 missed winners across 29 unique HIGH_missed tuples. ORB extension
+      to 10:00 had NEGATIVE EV (12.5% precision vs ~20% baseline). Re-run with
+      a fatter cohort to confirm the conclusion holds.
+    predicate_sql: |
+      SELECT COUNT(*) FROM (
+        SELECT DISTINCT a.ticker, a.alert_date
+        FROM mi_ep_alerts a
+        LEFT JOIN mi_live_trades lt
+          ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+        JOIN mi_daily_closes dc_alert
+          ON dc_alert.ticker = a.ticker AND dc_alert.trade_date = a.alert_date
+        JOIN mi_daily_closes dc_fwd
+          ON dc_fwd.ticker = a.ticker
+         AND dc_fwd.trade_date BETWEEN a.alert_date + 1 AND a.alert_date + 5
+        WHERE a.alert_date >= '2026-03-20'
+          AND a.score_tier = 'HIGH'
+          AND (lt.id IS NULL OR lt.status IN ('cancelled', 'skipped'))
+          AND (dc_fwd.high - dc_alert.close) / dc_alert.close >= 0.10
+      ) t
+    threshold: 20
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Run scripts/analyze_late_detection_v3.py on Hetzner against current
+      dead_zone_v2.csv. Confirm: (a) ORB-window extension still has < 20% precision
+      OR (b) bar_fetch_fail/cancelled_unfilled cohorts remain sparse post-SIP-flip.
+      If precision crosses 20%, reopen the entry-path question. If not, close
+      this review and accept the residual ~1 winner / quarter as catchable-only-
+      with-policy-change.
+      Origin: 2026-04-30 dead-zone investigation, advisor priority A.
+    status: pending
+    added_on: 2026-04-30
+
+  - review_id: adv_probe_retirement
+    title: "ADV top-50 probe — retire or promote (Option 2)"
+    question: |
+      Option 2 logged-only probe bumps non-universe ADV-from-Polygon from top-20
+      to top-50, persisting would-be rel_volume for ranks 21-50 to mi_audit_log.
+      After 30 days, did ≥1 winning HIGH-class alert get its rel_volume from
+      synthesized rank 21-50 ADV inside the 9:30-9:44 ORB submission window?
+      If zero, retire the probe (extra Polygon calls for nothing).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'ep_adv_probe_synthesized'
+        AND created_at > NOW() - INTERVAL '30 days'
+    threshold: 1
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      Pull the matching mi_audit_log rows + cross-reference each ticker against
+      mi_ep_alerts for HIGH tier inside 9:30-9:44 ET. If ≥1 match AND fwd_5d_pct
+      ≥ 10% on that match, promote the cap to 50 in ep_detector.py
+      (line ~556) and remove the probe instrumentation. If zero matches OR no
+      winners, retire by reverting the cap to 20.
+      Origin: 2026-04-30 dead-zone investigation, advisor priority B.
+    status: pending
+    added_on: 2026-04-30
+
   - review_id: minute_volume_curves_baseline
     title: "RVOL@T baseline depth (top-500 universe)"
     question: |

@@ -267,6 +267,11 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS vol_percentile FLOAT;
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS pm_rvol FLOAT;
             ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS pm_rvol_baseline_n INT;
+            -- detected_at: actual moment the EP detector emitted the alert.
+            -- Distinct from created_at so future migrations can backfill rows
+            -- without poisoning the timeline (FLY/YSS migration artifact set
+            -- created_at=2026-03-28 13:26 on every pre-2026-03-20 row).
+            ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS detected_at TIMESTAMPTZ;
 
             CREATE TABLE IF NOT EXISTS mi_market_regime (
                 regime_date DATE PRIMARY KEY,
@@ -649,6 +654,9 @@ async def initialize_schema() -> None:
         """)
 
         # ── EP scan log — every gap candidate + filter outcome ───────────
+        # Every scan invocation appends a fresh row per ticker (no UPSERT) so
+        # the trajectory across the day is preserved. Last-seen reads use
+        # SELECT DISTINCT ON (ticker) ORDER BY scan_time_et DESC.
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_ep_scan_log (
                 id SERIAL PRIMARY KEY,
@@ -666,6 +674,48 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_ep_scan_log_date
                 ON mi_ep_scan_log(scan_date DESC);
+            -- Drop the (scan_date, ticker) UNIQUE constraint by name-agnostic
+            -- lookup — auto-generated names can drift across migrations.
+            DO $$
+            DECLARE c TEXT;
+            BEGIN
+                FOR c IN
+                    SELECT conname FROM pg_constraint
+                    WHERE conrelid = 'mi_ep_scan_log'::regclass AND contype = 'u'
+                LOOP
+                    EXECUTE format('ALTER TABLE mi_ep_scan_log DROP CONSTRAINT %I', c);
+                END LOOP;
+            END $$;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS scan_time_et TIMESTAMPTZ;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS rank_by_gap INT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS projected_vol_multiple FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS pm_rvol FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS adv FLOAT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS adv_source TEXT;
+            ALTER TABLE mi_ep_scan_log ADD COLUMN IF NOT EXISTS minutes_since_open INT;
+            CREATE INDEX IF NOT EXISTS idx_ep_scan_log_scan_time
+                ON mi_ep_scan_log(scan_time_et DESC);
+        """)
+
+        # ── EP scan outcomes — forward returns on every scan candidate ────
+        # One row per (ticker, scan_date). Recomputed nightly as forward
+        # sessions accrue. Lets us answer "did the filter throw away winners?"
+        # by joining mi_ep_scan_log → mi_ep_scan_outcomes on (ticker, scan_date).
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ep_scan_outcomes (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                scan_date DATE NOT NULL,
+                baseline_close FLOAT,
+                fwd_5d_pct FLOAT,
+                fwd_10d_pct FLOAT,
+                n_sessions_5d INT,
+                n_sessions_10d INT,
+                computed_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, scan_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_scan_outcomes_scan_date
+                ON mi_ep_scan_outcomes(scan_date DESC);
         """)
 
         # ── Audit log — critical events queryable from Telegram ──────────
@@ -1192,8 +1242,9 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
                  catalyst, catalyst_quality, claude_analysis, gemini_validation,
                  confidence_multiplier, vol_percentile, source,
-                 pm_rvol, pm_rvol_baseline_n)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                 pm_rvol, pm_rvol_baseline_n, detected_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                    COALESCE($16::TIMESTAMPTZ, NOW()))
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -1204,6 +1255,7 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("source", "live"),
             record.get("pm_rvol"),
             record.get("pm_rvol_baseline_n"),
+            record.get("detected_at"),
         )
 
 
@@ -2478,9 +2530,11 @@ async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:
 
 async def log_ep_scan_candidates(records: list[dict]) -> None:
     """
-    Batch-upsert EP scan candidates for a given scan date.
+    Append EP scan candidates — one row per (scan invocation, ticker).
     Each record: {scan_date, ticker, gap_pct, prev_close, rel_volume,
-                  filter_reason (or None if scored), ep_score, score_tier, catalyst_quality}
+                  filter_reason, ep_score, score_tier, catalyst_quality,
+                  scan_time_et, rank_by_gap, projected_vol_multiple, pm_rvol,
+                  adv, adv_source, minutes_since_open}.
     Never raises — scan must not be blocked by logging failures.
     """
     if not records:
@@ -2491,21 +2545,21 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
             await conn.executemany("""
                 INSERT INTO mi_ep_scan_log
                     (scan_date, ticker, gap_pct, prev_close, rel_volume,
-                     filter_reason, ep_score, score_tier, catalyst_quality)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                ON CONFLICT (scan_date, ticker) DO UPDATE SET
-                    gap_pct          = EXCLUDED.gap_pct,
-                    rel_volume       = EXCLUDED.rel_volume,
-                    filter_reason    = EXCLUDED.filter_reason,
-                    ep_score         = EXCLUDED.ep_score,
-                    score_tier       = EXCLUDED.score_tier,
-                    catalyst_quality = EXCLUDED.catalyst_quality
+                     filter_reason, ep_score, score_tier, catalyst_quality,
+                     scan_time_et, rank_by_gap, projected_vol_multiple,
+                     pm_rvol, adv, adv_source, minutes_since_open)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+                        $10, $11, $12, $13, $14, $15, $16)
             """, [
                 (
                     r["scan_date"], r["ticker"], r.get("gap_pct"),
                     r.get("prev_close"), r.get("rel_volume"),
                     r.get("filter_reason"), r.get("ep_score"),
                     r.get("score_tier"), r.get("catalyst_quality"),
+                    r.get("scan_time_et"), r.get("rank_by_gap"),
+                    r.get("projected_vol_multiple"), r.get("pm_rvol"),
+                    r.get("adv"), r.get("adv_source"),
+                    r.get("minutes_since_open"),
                 )
                 for r in records
             ])
@@ -2515,14 +2569,25 @@ async def log_ep_scan_candidates(records: list[dict]) -> None:
 
 
 async def get_ep_scan_log(d: "str | date") -> list[dict[str, Any]]:
-    """Return all gap candidates evaluated on a given date, scored + filtered."""
+    """Return all gap candidates evaluated on a given date — last-seen state per ticker.
+
+    Multiple rows per (scan_date, ticker) exist after C1 (one per scan
+    invocation). Use DISTINCT ON to collapse to the most recent state.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT ticker, gap_pct, prev_close, rel_volume,
                       filter_reason, ep_score, score_tier, catalyst_quality
-               FROM mi_ep_scan_log
-               WHERE scan_date = $1
+               FROM (
+                   SELECT DISTINCT ON (ticker)
+                          ticker, gap_pct, prev_close, rel_volume,
+                          filter_reason, ep_score, score_tier, catalyst_quality,
+                          scan_time_et
+                   FROM mi_ep_scan_log
+                   WHERE scan_date = $1
+                   ORDER BY ticker, scan_time_et DESC NULLS LAST, id DESC
+               ) latest
                ORDER BY ep_score DESC NULLS LAST, gap_pct DESC""",
             _to_date(d),
         )
@@ -2618,14 +2683,21 @@ async def get_top_dollar_volume_universe(limit: int = 500) -> list[str]:
 
 
 async def get_ep_scan_log_history(days: int = 14) -> dict[str, list[dict]]:
-    """Return scan log grouped by date for the past N days."""
+    """Return scan log grouped by date for the past N days — last-seen per ticker per day."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT scan_date, ticker, gap_pct, prev_close, rel_volume,
                       filter_reason, ep_score, score_tier, catalyst_quality
-               FROM mi_ep_scan_log
-               WHERE scan_date >= CURRENT_DATE - $1::int
+               FROM (
+                   SELECT DISTINCT ON (scan_date, ticker)
+                          scan_date, ticker, gap_pct, prev_close, rel_volume,
+                          filter_reason, ep_score, score_tier, catalyst_quality,
+                          scan_time_et
+                   FROM mi_ep_scan_log
+                   WHERE scan_date >= CURRENT_DATE - $1::int
+                   ORDER BY scan_date, ticker, scan_time_et DESC NULLS LAST, id DESC
+               ) latest
                ORDER BY scan_date DESC, ep_score DESC NULLS LAST, gap_pct DESC""",
             days,
         )
