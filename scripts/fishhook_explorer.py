@@ -56,16 +56,42 @@ CSV_COLS = [
 ]
 
 
-async def fetch_cohort(window_days: int, strict_cohort: bool) -> list[dict]:
+async def fetch_cohort(window_days: int, strict_cohort: bool,
+                       moderate_band_eval: bool = False) -> list[dict]:
     """`strict_cohort=True` restricts to real Day-1 failures only — the
     alert had to enter via ORB and be stopped out (`closed AND total_pnl<0`).
     Excludes `no_entry` (Apollo's quality gate already rejected) and
     `cancelled` (never filled). Pass-2 uses strict; Pass-1 (broad) does not.
-    The query also dedupes per (ticker, alert_date) — a single failed-Day-1
-    candidate spawns multiple `mi_ep_alerts` rows (one per scan tick), but
-    only ONE downstream Fishhook can form.
+
+    `moderate_band_eval=True` swaps the cohort for the conviction-floor
+    extension question: would lifting MODERATE alerts in the gap∈[10,15)
+    + strong-catalyst cell to a conviction floor produce edge? Pulls all
+    HIGH+MODERATE alerts in that cell regardless of Day-1 outcome (we want
+    forward-return distribution, not failure-conditional). Mutually
+    exclusive with `strict_cohort`.
+
+    The query also dedupes per (ticker, alert_date) — a single candidate
+    spawns multiple `mi_ep_alerts` rows (one per scan tick), but only ONE
+    downstream measurement can form.
     """
     pool = await get_pool()
+    if moderate_band_eval:
+        sql = """
+            SELECT DISTINCT ON (a.ticker, a.alert_date)
+                   a.ticker, a.alert_date, a.score_tier, a.gap_pct,
+                   lt.status AS d1_status, lt.total_pnl AS d1_pnl
+            FROM mi_ep_alerts a
+            LEFT JOIN mi_live_trades lt
+              ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+            WHERE a.alert_date >= CURRENT_DATE - $1::int
+              AND a.score_tier IN ('HIGH','MODERATE')
+              AND a.gap_pct >= 10 AND a.gap_pct < 15
+              AND a.catalyst_quality = 'strong'
+            ORDER BY a.ticker, a.alert_date, a.id ASC
+        """
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(sql, window_days)
+        return [dict(r) for r in rows]
     if strict_cohort:
         sql = """
             SELECT DISTINCT ON (a.ticker, a.alert_date)
@@ -316,9 +342,15 @@ async def process_candidate(c: dict, min_price: float, label_threshold: float) -
 
 
 async def run(window_days: int, out_path: str, *, strict_cohort: bool,
-              min_price: float, label_threshold: float) -> None:
-    cohort = await fetch_cohort(window_days, strict_cohort)
-    cohort_kind = "strict (closed/pnl<0)" if strict_cohort else "broad (no_entry|cancelled|closed_loss)"
+              min_price: float, label_threshold: float,
+              moderate_band_eval: bool = False) -> None:
+    cohort = await fetch_cohort(window_days, strict_cohort, moderate_band_eval)
+    if moderate_band_eval:
+        cohort_kind = "moderate-band-eval (HIGH|MODERATE, gap[10,15), strong)"
+    elif strict_cohort:
+        cohort_kind = "strict (closed/pnl<0)"
+    else:
+        cohort_kind = "broad (no_entry|cancelled|closed_loss)"
     logger.info(
         f"Cohort: {len(cohort)} HIGH alerts, last {window_days}d, "
         f"kind={cohort_kind}, min_price=${min_price:g}, label≥{label_threshold:.0%}"
@@ -387,16 +419,23 @@ def main() -> None:
     p.add_argument("--strict-cohort", action="store_true",
                    help="Restrict to real Day-1 failures (closed AND total_pnl<0). "
                         "Excludes no_entry and cancelled.")
+    p.add_argument("--moderate-band-eval", action="store_true",
+                   help="Conviction-floor extension cohort: HIGH+MODERATE alerts in "
+                        "gap[10,15) + catalyst='strong' cell, all Day-1 outcomes. "
+                        "Mutually exclusive with --strict-cohort.")
     p.add_argument("--min-price", type=float, default=0.0,
                    help="Min prior-day close in dollars (drops penny-stock noise). Default 0.")
     p.add_argument("--label-threshold", type=float, default=0.10,
                    help="Forward 5d return required for positive label. Default 0.10 (10%%).")
     args = p.parse_args()
+    if args.strict_cohort and args.moderate_band_eval:
+        p.error("--strict-cohort and --moderate-band-eval are mutually exclusive")
     asyncio.run(run(
         args.days, args.out,
         strict_cohort=args.strict_cohort,
         min_price=args.min_price,
         label_threshold=args.label_threshold,
+        moderate_band_eval=args.moderate_band_eval,
     ))
 
 
