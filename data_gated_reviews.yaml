@@ -1,0 +1,180 @@
+# Data-gated reviews registry
+#
+# Items here are pending reviews that require data accumulation (n alerts, days
+# elapsed, etc.) before they can be answered. The Sunday weekly system review
+# auto-surfaces items whose predicate has flipped to ready.
+#
+# Schema per entry:
+#   review_id: short unique id (snake_case)
+#   title: 1-line summary surfaced in Telegram
+#   question: what we're trying to answer
+#   predicate_sql: must return single integer count; ready when count >= threshold
+#                  OR set predicate_sql=null and rely on earliest_review_date alone
+#   threshold: int — predicate must reach this for ready=true
+#   earliest_review_date: ISO date — never surface as ready before this
+#   action_when_ready: what the user should do when surfaced
+#   status: pending | ready | done — flip to done after action taken
+#   added_on: ISO date when entry was created (for audit)
+#
+# Update flow:
+#   - New item: append entry, set status=pending
+#   - When Sunday digest surfaces ready: act, then set status=done
+#   - Done entries are kept (audit trail); parser skips them
+
+reviews:
+
+  - review_id: conviction_floor_extension
+    title: "Conviction floor extension to gap[10,15)+strong band"
+    question: |
+      Does the gap∈[10,15) + catalyst='strong' cell carry enough forward edge
+      to justify lifting MODERATE alerts in this band to a HIGH conviction
+      floor at 55, 58, or 60?
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'conviction_floor_eligible'
+        AND created_at > NOW() - INTERVAL '90 days'
+        AND created_at < NOW() - INTERVAL '10 days'
+    threshold: 15
+    earliest_review_date: 2026-06-28
+    action_when_ready: |
+      docker exec apollo-market python -m scripts.fishhook_explorer
+        --moderate-band-eval --days 90 --label-threshold 0.10
+        --out /tmp/fishhook_moderate_band.csv
+      Eyeball positive-label rate. If ≥ 35% pick the level (55/58/60) with the
+      cleanest precision and promote to live conviction floor in ep_detector.py.
+      Telemetry origin: fishhook_explorer 2026-04-29 cohort had n=1 eligible.
+    status: pending
+    added_on: 2026-04-29
+
+  - review_id: theme_engine_dup_incident
+    title: "Theme engine duplicate-theme mechanism diagnosis"
+    question: |
+      After ≥2 dup-theme incidents fire with full audit data, which mechanism
+      (cross-run, protected-strip, Pass 1.5 skip, score-tie, orphan-sub) is
+      the dominant cause? Pick the mechanism cited by audit rows in BOTH
+      incidents and write the targeted fix.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
+      FROM mi_audit_log
+      WHERE event_type IN ('theme_dup_ticker_sets', 'theme_cross_run_dup_candidate')
+        AND created_at > NOW() - INTERVAL '60 days'
+    threshold: 2
+    earliest_review_date: 2026-04-30
+    action_when_ready: |
+      Pull last 60d of theme_* audit rows for the affected days, cross-reference
+      mechanisms, pick the one cited in BOTH incidents. See
+      project_theme_engine_diagnostic_followups.md for triage workflow.
+      Hard rule from that memo: no semantic fix until ≥2 incidents agree.
+    status: pending
+    added_on: 2026-04-29
+
+  - review_id: system_audit_baseline_validation
+    title: "L2/L3 audit baseline trust window"
+    question: |
+      mi_metric_baselines table needs ≥30 days of history before L2/L3
+      anomaly detection is statistically trustworthy. Prior to that, threshold
+      crossings are noise. Verify baseline depth and audit-event volume;
+      if healthy, declare audit layer trusted.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT as_of_date) FROM mi_metric_baselines
+      WHERE as_of_date > CURRENT_DATE - 60
+    threshold: 30
+    earliest_review_date: 2026-05-24
+    action_when_ready: |
+      Spot-check 5 random metrics: query mi_metric_baselines for sample_n,
+      verify ≥ 14 across all 5. Cross-check that 7d L2/L3 alert rate is
+      < 5/week (false-positive sanity). If both pass, post a CLAUDE.md
+      Recent entry confirming the audit layer is now load-bearing.
+      Origin: 2026-04-24 session 5, deferred per backlog P24.
+    status: pending
+    added_on: 2026-04-29
+
+  - review_id: correlation_engine_revalidation
+    title: "Correlation clustering precision/recall revalidation"
+    question: |
+      2026-04-17 backtest gave 0.5% precision / 8.2% recall — statistically
+      inconclusive due to thin theme history. With ≥6 months of theme data
+      now available, recompute and decide if correlation_engine.py earns its
+      keep or gets retired.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT theme_date) FROM mi_themes
+      WHERE theme_date > CURRENT_DATE - 200
+    threshold: 120
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      Rerun the 2026-04-17 backtest pipeline with the larger theme window.
+      Compare precision/recall vs prior 0.5%/8.2%. If precision still < 5%,
+      retire correlation_engine and remove /clusters surface. If improved,
+      gate on alerting (HIGH-precision clusters trigger Telegram).
+      Origin: CLAUDE.md historical 2026-04-17 session 4.
+    status: pending
+    added_on: 2026-04-29
+
+  - review_id: fishhook_TI3_revisit
+    title: "TI3 Fishhook detector cohort feasibility"
+    question: |
+      2026-04-29 deferred TI3: strict cohort had only 2 unique tuples in
+      180d (Apollo's pre-trade filter is too good — ~1 real Day-1 stop-out
+      per quarter). Revisit at 365d window: does the cohort cross n=20 with
+      Apollo's current filter set?
+    predicate_sql: |
+      SELECT COUNT(DISTINCT (a.ticker, a.alert_date))
+      FROM mi_ep_alerts a
+      JOIN mi_live_trades lt ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+      WHERE a.alert_date > CURRENT_DATE - 365
+        AND a.score_tier = 'HIGH'
+        AND lt.status = 'closed'
+        AND COALESCE(lt.total_pnl, 0) < 0
+    threshold: 20
+    earliest_review_date: 2026-10-29
+    action_when_ready: |
+      docker exec apollo-market python -m scripts.fishhook_explorer
+        --strict-cohort --days 365 --label-threshold 0.10
+      If range_over_atr14 still shows the cleanest separation AND threshold
+      sweep yields > 2x precision lift at recall ≥ 50%, build TI3 Stage 1
+      detector. Otherwise close TI3 permanently.
+      Origin: fishhook_explorer.py docstring + project_trading_ideas_backlog.md.
+    status: pending
+    added_on: 2026-04-29
+
+  - review_id: rs_theme_dash_forward_returns
+    title: "RS theme dashboard forward-returns column (R4)"
+    question: |
+      Backlog item R4: add forward-return column to themes table. Requires
+      ≥6 months of theme history with stable name canonicalization to be
+      meaningful. Re-evaluate scope after canonicalization (R3) ships.
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-10-01
+    added_on: 2026-04-29
+    action_when_ready: |
+      Verify R3 (canonicalization) is shipped first. Then build R4 in
+      rs-theme-dash repo: per-theme median forward 5d/20d return computed
+      from mi_themes ticker membership joined to mi_daily_closes.
+      Origin: project_rs_theme_dash_backlog.md.
+    status: pending
+
+  - review_id: minute_volume_curves_baseline
+    title: "RVOL@T baseline depth (top-500 universe)"
+    question: |
+      mi_minute_volume_curves needs ≥10 sessions of history per (ticker,
+      anchor) before pre-9:30 RVOL@T gating is trustworthy. Verify median
+      sample_n across the top-500 universe before declaring the gate
+      load-bearing for live trading.
+    predicate_sql: |
+      SELECT COUNT(*) FROM (
+        SELECT ticker, MIN(sample_n) AS min_n
+        FROM mi_minute_volume_curves
+        GROUP BY ticker
+        HAVING MIN(sample_n) >= 10
+      ) t
+    threshold: 400
+    earliest_review_date: 2026-05-15
+    action_when_ready: |
+      Confirm 400+ tickers have all-anchor sample_n >= 10. Then run the
+      pm_rvol gate in shadow for 2 weeks via mi_audit_log
+      ep_filter_pm_rvol events; if false-rejection rate (alerts that would
+      have been HIGH but were gated) is < 5%, the gate is trusted.
+      Origin: CLAUDE.md 2026-04-26 session 1.
+    status: pending
+    added_on: 2026-04-29

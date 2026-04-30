@@ -71,6 +71,7 @@ Rules:
 - When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
+- When `pending_reviews.ready` is non-empty, append a "📅 *Reviews ready:*" section after 🔁 listing each ready entry on its own line: `<title> — <action_when_ready first sentence>`. These are data-gated reviews from `data_gated_reviews.yaml` whose threshold flipped this week — the user needs to act. If `pending_reviews.ready` is empty, omit the section entirely.
 """
 
 
@@ -132,6 +133,7 @@ async def _gather_and_aggregate(
     shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
     wick = await _aggregate_wick_outcomes(window_days)
     strategy_promotions = await _aggregate_promotion_checks()
+    pending_reviews = await _aggregate_pending_reviews(today)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -150,7 +152,19 @@ async def _gather_and_aggregate(
         "shadow_orb": shadow_orb,
         "wick": wick,
         "strategy_promotions": strategy_promotions,
+        "pending_reviews": pending_reviews,
     }
+
+
+async def _aggregate_pending_reviews(today: date) -> dict:
+    """Walk data_gated_reviews.yaml; surface entries whose data threshold
+    has flipped to ready. Surfaces in the Sunday digest as a 📅 line."""
+    try:
+        from agents.market_intelligence.data_gated_reviews import check_pending_reviews
+        return await check_pending_reviews(today)
+    except Exception:
+        logger.exception("pending_reviews aggregator failed")
+        return {"ready": [], "pending_count": 0, "pending_summary": []}
 
 
 async def _aggregate_promotion_checks() -> dict:
