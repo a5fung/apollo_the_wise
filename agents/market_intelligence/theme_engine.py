@@ -1200,6 +1200,9 @@ async def _rescore_existing_theme(
             "old_stage": prev_stage,
             "new_stage": stage,
             "score": total_score,
+            "smooth_delta": smooth_delta,
+            "age_days": age_days,
+            "ticker_count": len(tickers),
         })
         logger.info(f"Theme '{name}': {prev_stage} → {stage} (score {total_score:.1f}, Δ {smooth_delta:+.1f})")
 
@@ -2861,13 +2864,24 @@ async def run_theme_engine(
                 detail=f"Last tickers: {', '.join(entry.get('tickers') or [])}",
             )
 
-    # Write stage changes to audit log
+    # Write stage changes to audit log — enriched detail enables oscillation analysis
+    # (transitions per theme, days_between_transitions, score-Δ at flip) via SQL tomorrow.
     for entry in changelog:
         if entry.get("type") == "stage_change":
+            score = entry.get("score")
+            smooth_delta = entry.get("smooth_delta")
+            age_days = entry.get("age_days")
+            ticker_count = entry.get("ticker_count")
+            detail_parts = [
+                f"score={score:.1f}" if isinstance(score, (int, float)) else f"score={score}",
+                f"Δ={smooth_delta:+.1f}" if isinstance(smooth_delta, (int, float)) else None,
+                f"age_days={age_days}" if age_days is not None else None,
+                f"tickers={ticker_count}" if ticker_count is not None else None,
+            ]
             await log_audit_event(
                 "stage_change",
                 summary=f"{entry['theme']}: {entry.get('old_stage')} → {entry.get('new_stage')}",
-                detail=f"Score: {entry.get('score', '?')}",
+                detail=", ".join(p for p in detail_parts if p),
             )
 
     # --- Step 4: Deduplicate overlapping themes, merge, cap, sort, persist ---

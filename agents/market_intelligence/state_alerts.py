@@ -398,6 +398,38 @@ async def send_state_alerts(
     retired_themes = [c for c in theme_changelog if c["type"] == "theme_retired"
                       and c.get("theme") not in renamed_themes.values()]
 
+    # Suppress same-run round-trips: when a (theme, ticker) appears in BOTH assigned and
+    # pruned within one run (post-assignment validation reverses the LLM's call), the net
+    # DB state is unchanged. Surfacing both lines is pure noise.
+    assigned_keys = {(c["theme"], c["ticker"]) for c in assigned}
+    pruned_keys = {(c["theme"], c["ticker"]) for c in pruned}
+    round_trip_keys = assigned_keys & pruned_keys
+    if round_trip_keys:
+        assigned = [c for c in assigned if (c["theme"], c["ticker"]) not in round_trip_keys]
+        pruned = [c for c in pruned if (c["theme"], c["ticker"]) not in round_trip_keys]
+        logger.info(f"State alerts: suppressed {len(round_trip_keys)} same-run round-trip(s)")
+
+    # Stage-gate: surface itemized changes only for Mainstream/Accelerating themes —
+    # these are tradeable. Nascent membership churn is expected and non-actionable; it
+    # rolls up to a single footer line below. theme_new/theme_retired stay unfiltered
+    # (creation/retirement of any theme is signal regardless of stage).
+    today_stage_map = {t["name"]: t.get("stage") for t in (today_themes or [])}
+    _SURFACE_STAGES = {"Mainstream", "Accelerating"}
+
+    def _is_actionable(theme_name: str) -> bool:
+        # Default to True when we don't know the stage (stay safe — surface the change).
+        stage = today_stage_map.get(theme_name)
+        if stage is None:
+            return True
+        return stage in _SURFACE_STAGES
+
+    nascent_pruned_count = sum(1 for c in pruned if not _is_actionable(c["theme"]))
+    nascent_assigned_count = sum(1 for c in assigned if not _is_actionable(c["theme"]))
+    pruned = [c for c in pruned if _is_actionable(c["theme"])]
+    assigned = [c for c in assigned if _is_actionable(c["theme"])]
+    theme_alerts = [a for a in theme_alerts if _is_actionable(a["theme"])]
+    comp_alerts = [a for a in comp_alerts if _is_actionable(a["theme"])]
+
     # Dedup: remove tickers from composition alerts already in changelog
     changelog_tickers = set()
     for c in pruned:
@@ -488,6 +520,15 @@ async def send_state_alerts(
             if a["removed"]:
                 parts.append("-" + " -".join(a["removed"]))
             lines.append(f"  {a['theme']}: {' '.join(parts)}")
+
+    # Roll-up footer for Nascent churn (gated out above) — signal that the engine
+    # is doing work without itemizing each non-actionable change.
+    if nascent_pruned_count or nascent_assigned_count:
+        lines.append("")
+        lines.append(
+            f"_Nascent churn: +{nascent_assigned_count} added, "
+            f"-{nascent_pruned_count} pruned (suppressed)_"
+        )
 
     # Only send if there's actual content beyond the header
     if len(lines) <= 1:
