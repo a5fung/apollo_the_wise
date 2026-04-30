@@ -223,6 +223,87 @@ reviews:
     status: pending
     added_on: 2026-04-30
 
+  - review_id: dead_zone_telemetry_smoke
+    title: "Dead-zone telemetry deploy — writer smoke test"
+    question: |
+      After 2026-04-30 dead-zone telemetry deploy, did all three writers
+      populate as designed? (1) mi_ep_scan_log.scan_time_et + new columns
+      from ep_detector._scan_row, (2) mi_ep_alerts.detected_at from
+      insert_ep_alert COALESCE($16::TIMESTAMPTZ, NOW()), (3)
+      mi_ep_scan_outcomes from outcome_tracker._compute_ep_scan_outcomes.
+      If any are empty/NULL on first Monday after deploy, a writer is
+      silently broken.
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-05-03
+    action_when_ready: |
+      On Hetzner, run all four checks in psql:
+
+        -- (1) scan_log new columns populated
+        SELECT COUNT(*) AS rows_with_scan_time
+        FROM mi_ep_scan_log WHERE scan_time_et IS NOT NULL;
+        -- expect: > 0
+
+        -- (2) append-only behavior confirmed (multi rows per ticker/date)
+        SELECT COUNT(*) AS multi_row_pairs FROM (
+          SELECT ticker, scan_date FROM mi_ep_scan_log
+          WHERE scan_date >= CURRENT_DATE - 7
+          GROUP BY 1,2 HAVING COUNT(*) > 1
+        ) t;
+        -- expect: > 0 (some tickers re-scanned within a day)
+
+        -- (3) detected_at populating on new alerts
+        SELECT COUNT(*) AS alerts_with_detected_at FROM mi_ep_alerts
+        WHERE alert_date >= '2026-05-01' AND detected_at IS NOT NULL;
+        -- expect: matches HIGH alert count for the period
+
+        -- (4) outcomes job ran nightly
+        SELECT COUNT(*) AS outcome_rows FROM mi_ep_scan_outcomes;
+        -- expect: > 0 after first nightly run
+
+      If any check returns 0 unexpectedly: tail apollo-market logs for the
+      affected job (`run_outcome_tracker` for #4, `_log_ep_scan` writes
+      for #1/#2, alert insert path for #3) and trace the silent failure.
+      Origin: 2026-04-30 dead-zone telemetry deploy verification.
+    status: pending
+    added_on: 2026-04-30
+
+  - review_id: ep_adv_probe_volume_sanity
+    title: "ADV probe event volume sanity (rank 21-50 audit firing)"
+    question: |
+      Option B promoted ADV-from-Polygon synthesis from top-20 to top-50
+      with audit logging on ranks 21-50. Expected volume: ~400-1000
+      ep_adv_probe_synthesized events/day. If after 5 trading days the
+      rate is < 50/day, the audit-emit code path inside ep_detector.py
+      isn't running for those ranks (silent telemetry hole — would defeat
+      the Option B retirement decision later).
+    predicate_sql: |
+      SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
+      FROM mi_audit_log
+      WHERE event_type = 'ep_adv_probe_synthesized'
+        AND created_at > NOW() - INTERVAL '14 days'
+    threshold: 5
+    earliest_review_date: 2026-05-08
+    action_when_ready: |
+      Verify daily emission rate:
+        SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day,
+               COUNT(*) AS n
+        FROM mi_audit_log
+        WHERE event_type = 'ep_adv_probe_synthesized'
+          AND created_at > NOW() - INTERVAL '14 days'
+        GROUP BY 1 ORDER BY 1;
+      Expected: 400-1000/day on trading days. If < 50/day on multiple
+      days, the rank>20 branch in ep_detector.py is unreachable —
+      check that candidates list reaches len>=21 in pre-market scans
+      AND that the gap_rank>20 conditional fires before the
+      log_audit_event call. If 0/day, the pre-9:30 universe is too thin
+      and Option B can't be evaluated; revert to top-20 early.
+      Origin: 2026-04-30 deploy. Failure mode: silent under-emission
+      would let adv_probe_retirement (review_id above) misjudge "no
+      winners → retire" when reality is "no telemetry → can't tell".
+    status: pending
+    added_on: 2026-04-30
+
   - review_id: minute_volume_curves_baseline
     title: "RVOL@T baseline depth (top-500 universe)"
     question: |
