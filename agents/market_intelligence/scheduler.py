@@ -89,6 +89,23 @@ async def _nightly_data_pull():
         )
         return
 
+    # 0b. Splits ingest — fetch new Polygon split records + re-fetch affected
+    # tickers' history with adjusted=true so cached close/volume reflect the
+    # post-split denomination BEFORE today's grouped daily writes new bars.
+    # Failure here is logged but non-fatal — the heuristic-free RS engine will
+    # still score, and unapplied splits stay queued for the next run.
+    try:
+        from agents.market_intelligence.splits_ingest import run_splits_ingest
+        splits_summary = await run_splits_ingest()
+        if splits_summary["splits_applied_ok"] or splits_summary["splits_detected_new"]:
+            summary_parts.append(
+                f"splits new={splits_summary['splits_detected_new']} "
+                f"applied={splits_summary['splits_applied_ok']}"
+            )
+    except Exception as e:
+        logger.error(f"Splits ingest failed: {e}")
+        failures.append(f"Splits ingest: {e}")
+
     # 1. Ingest today's daily closes
     # Try grouped daily first; if it fails/returns 0 (Polygon same-day restriction),
     # fall back to snapshot endpoint which works on Starter plan.

@@ -1149,6 +1149,20 @@ async def initialize_schema() -> None:
                 CHECK (promotion_model IN ('paired_r','unpaired_r','telemetry_review'))
             );
 
+            CREATE TABLE IF NOT EXISTS mi_splits (
+                ticker              TEXT NOT NULL,
+                execution_date      DATE NOT NULL,
+                split_from          INT  NOT NULL,
+                split_to            INT  NOT NULL,
+                polygon_id          TEXT,
+                fetched_at          TIMESTAMPTZ DEFAULT NOW(),
+                applied_at          TIMESTAMPTZ,
+                adjustment_applied  BOOLEAN NOT NULL DEFAULT FALSE,
+                PRIMARY KEY (ticker, execution_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_splits_unapplied
+                ON mi_splits (execution_date DESC) WHERE adjustment_applied = FALSE;
+
             CREATE TABLE IF NOT EXISTS mi_weekly_watchlists (
                 week_ending          DATE NOT NULL,
                 ticker               TEXT NOT NULL,
@@ -3711,6 +3725,128 @@ async def get_adv_map(d: "str | date") -> dict[str, float]:
             _to_date(d),
         )
         return {r["ticker"]: r["adv_20"] for r in rows if r["adv_20"]}
+
+
+# ── Splits (authoritative source — supersedes the rs_engine heuristics) ──
+
+
+async def upsert_split(
+    ticker: str,
+    execution_date: date,
+    split_from: int,
+    split_to: int,
+    polygon_id: str | None = None,
+) -> bool:
+    """Insert a Polygon split record. Returns True if newly inserted (re-fetch
+    needed), False if already known. Idempotent — does not flip adjustment_applied."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """
+            INSERT INTO mi_splits (ticker, execution_date, split_from, split_to, polygon_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (ticker, execution_date) DO NOTHING
+            """,
+            ticker, execution_date, split_from, split_to, polygon_id,
+        )
+        return result.endswith(" 1")
+
+
+async def get_unapplied_splits(since: date | None = None) -> list[dict]:
+    """All split rows where adjustment_applied = FALSE. Ordered by execution_date asc
+    so multiple splits on one ticker apply in chronological order."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if since is None:
+            rows = await conn.fetch(
+                """
+                SELECT ticker, execution_date, split_from, split_to
+                FROM mi_splits
+                WHERE adjustment_applied = FALSE
+                ORDER BY execution_date ASC, ticker ASC
+                """
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT ticker, execution_date, split_from, split_to
+                FROM mi_splits
+                WHERE adjustment_applied = FALSE AND execution_date >= $1
+                ORDER BY execution_date ASC, ticker ASC
+                """,
+                since,
+            )
+        return [dict(r) for r in rows]
+
+
+async def mark_split_applied(ticker: str, execution_date: date) -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE mi_splits
+            SET adjustment_applied = TRUE, applied_at = NOW()
+            WHERE ticker = $1 AND execution_date = $2
+            """,
+            ticker, execution_date,
+        )
+
+
+async def reset_split_applied(ticker: str, execution_date: date) -> None:
+    """Used by backfill_splits.py to force a re-apply of an already-applied row."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            UPDATE mi_splits
+            SET adjustment_applied = FALSE, applied_at = NULL
+            WHERE ticker = $1 AND execution_date = $2
+            """,
+            ticker, execution_date,
+        )
+
+
+async def upsert_ticker_history(
+    ticker: str,
+    bars: list[dict],
+) -> int:
+    """Overwrite a ticker's daily history with split-adjusted bars from Polygon.
+
+    Unlike `ingest_daily_closes`, this DOES update close + volume on conflict —
+    it's the SSoT writer for split adjustments. `bars` items are Polygon
+    `/v2/aggs/.../range/1/day` results (keys: t [epoch ms], o, h, l, c, v).
+    """
+    if not bars:
+        return 0
+    from datetime import datetime, timezone
+    records = []
+    for b in bars:
+        if "c" not in b or "t" not in b:
+            continue
+        ts = datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date()
+        records.append((
+            ts, ticker,
+            b["c"], int(b.get("v", 0)),
+            b.get("o"), b.get("h"), b.get("l"),
+        ))
+    if not records:
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(
+            """
+            INSERT INTO mi_daily_closes (trade_date, ticker, close, volume, open_price, high_price, low_price)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (trade_date, ticker) DO UPDATE SET
+                close      = EXCLUDED.close,
+                volume     = EXCLUDED.volume,
+                open_price = COALESCE(EXCLUDED.open_price, mi_daily_closes.open_price),
+                high_price = COALESCE(EXCLUDED.high_price, mi_daily_closes.high_price),
+                low_price  = COALESCE(EXCLUDED.low_price,  mi_daily_closes.low_price)
+            """,
+            records,
+        )
+    return len(records)
 
 
 # ── Daily closes (full universe) ───────────────────────────────────────────────

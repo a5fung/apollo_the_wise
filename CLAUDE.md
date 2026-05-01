@@ -222,6 +222,22 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-01 (session 4) — Authoritative split handling, drop RS heuristic
+XNDU (#1 RS for multiple days) disappeared from RS list on a +24% gap-up. Root cause: `MAX_PERIOD_RETURN=300` heuristic in `rs_engine.py`. XNDU listed 2026-03-27 (25 sessions of history); 1M reference close was $7.50, today $36.12 → raw_1m=+381% > 300% cap. Heuristic was designed for stale-history reverse splits (e.g. FUBO), false-positives on recently-listed verticals.
+
+**Pre-coding verification**: confirmed Polygon `adjusted=true` adjusts BOTH price and volume on `/v2/aggs/.../range/1/day`. TOUR (10:1 reverse 2026-04-22): pre-split adjusted close $0.65→$6.51 (×10), volume 235,767→23,576 (÷10). Post-split bars identical in both modes. No volume-handling code needed.
+
+**Implementation (Option B — authoritative ingest, drop heuristic)**:
+- `mi_splits` table (PRIMARY KEY ticker+execution_date, idempotent `adjustment_applied` flag).
+- `splits_ingest.py` — Phase 0 of nightly_data_pull. Fetches `/v3/reference/splits` (paginated via `next_url`) since `today-60d`, upserts new rows, then for each unapplied row: re-fetches ~250d daily aggs with `adjusted=true`, overwrites `mi_daily_closes` via new `upsert_ticker_history` (close + volume overwritten, OHLC COALESCEd), `mark_split_applied`. Concurrency `Semaphore(5)`. Audit events: `split_detected`, `split_applied`, `split_apply_failed`, `splits_ingest_summary`.
+- `rs_engine.py` — `MAX_1D_RETURN`/`MAX_PERIOD_RETURN` skip blocks **deleted**. Replaced with non-blocking `rs_extreme_return` audit event when a ticker clears 100% 1d or 300% period — surfaces splits-ingest regressions without dropping the ticker.
+- `scripts/backfill_splits.py` — one-shot reconciliation, `--days N --reset --ticker TOUR`. TOUR is the positive-control verification target.
+- `db.py` — five new helpers (`upsert_split`, `get_unapplied_splits`, `mark_split_applied`, `reset_split_applied`, `upsert_ticker_history`).
+
+**Pipeline order**: splits_ingest runs BEFORE `ingest_daily` so cached history is post-split-adjusted before today's grouped daily lands. Failure is non-fatal — RS still scores; unapplied rows queue for next night.
+
+**Lesson**: heuristic stand-ins for missing data sources eventually misfire on the exact pattern the system was built to catch. The 300% cap was indistinguishable from "recently-listed momentum vertical" — the very signal Apollo's RS engine exists to surface. Fix is always the authoritative source (Polygon splits API), not a tighter threshold.
+
 ### 2026-05-01 (session 3) — Stop-remediation hardening + fishhook EOD pass fix
 
 **Fishhook EOD fix** (`db.py:1840`): `operator does not exist: date >= interval` — Postgres inferred `$1` as interval. Fix: `$1::date - INTERVAL '60 days'`.

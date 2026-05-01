@@ -53,13 +53,15 @@ RS_LEADER_CUTOFF = 50
 MIN_PRICE = 5.0
 # Maximum ticker length — filters warrants/units
 MAX_TICKER_LEN = 5
-# Max 1-day return before flagging as corporate action (reverse split, etc.)
-# Real stocks rarely move >100% in a day; reverse splits create 200-5000% phantom jumps
-MAX_1D_RETURN = 1.0  # 100%
-# Max multi-month return (in %) before flagging as reverse split with stale history.
-# Real stocks rarely 4x in 6 months; reverse splits create phantom 500-5000% returns
-# because Polygon adjusts recent prices but older history may lag.
-MAX_PERIOD_RETURN = 300.0  # 300% (i.e., 4x price increase)
+# Observability thresholds — extreme returns no longer block scoring (the
+# splits-ingest pipeline overwrites cached history with adjusted bars before
+# RS runs, so genuine vertical runups on recently-listed tickers like XNDU
+# 2026-05-01 score correctly). We still emit a non-blocking audit event when
+# returns clear these legacy ceilings, so a regression in the splits pipeline
+# (failed re-fetch, missing Polygon record) surfaces as `rs_extreme_return`
+# events instead of phantom RS scores.
+EXTREME_1D_RETURN_PCT = 100.0   # > 100% in a day
+EXTREME_PERIOD_RETURN_PCT = 300.0  # > 300% over the 1m/3m/6m lookback
 
 # Tickers to exclude from RS scoring entirely (manual overrides).
 RS_EXCLUDE_TICKERS: set[str] = set()
@@ -281,6 +283,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
     # Compute RS for each ticker
     stock_data: list[dict] = []
+    extreme_tickers: list[dict] = []
     for ticker, closes in all_closes.items():
         # Skip excluded tickers (M&A targets, etc.)
         if ticker in RS_EXCLUDE_TICKERS:
@@ -296,28 +299,34 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
         if not current or current < MIN_PRICE:
             continue
 
-        # Detect reverse splits: if today's close is >100% above yesterday's,
-        # the price history is inconsistent (Polygon adjusts latest day only).
-        # Skip these tickers entirely — they'll re-enter once history normalizes.
         sorted_dates = sorted(closes.keys(), reverse=True)
+        day_return_pct: Optional[float] = None
         if len(sorted_dates) >= 2:
             prev_close = closes[sorted_dates[1]]
             if prev_close and prev_close > 0:
-                day_return = (current / prev_close) - 1.0
-                if day_return > MAX_1D_RETURN:
-                    continue
+                day_return_pct = ((current / prev_close) - 1.0) * 100.0
 
         price_1m = _closest_close(closes, date_1m)
         price_3m = _closest_close(closes, date_3m)
         price_6m = _closest_close(closes, date_6m)
-
-        # Detect reverse splits with stale history: if any period return is absurdly high,
-        # the price history is inconsistent (e.g., FUBO reverse split makes 6M look +500%).
         raw_1m = _pct_return(current, price_1m)
         raw_3m = _pct_return(current, price_3m)
         raw_6m = _pct_return(current, price_6m)
-        if any(r is not None and r > MAX_PERIOD_RETURN for r in (raw_1m, raw_3m, raw_6m)):
-            continue
+
+        # Observability: emit (don't block) when returns clear the legacy
+        # reverse-split heuristic ceilings. Surfaces splits-ingest regressions.
+        extreme_1d = day_return_pct is not None and day_return_pct > EXTREME_1D_RETURN_PCT
+        extreme_period = any(
+            r is not None and r > EXTREME_PERIOD_RETURN_PCT for r in (raw_1m, raw_3m, raw_6m)
+        )
+        if extreme_1d or extreme_period:
+            extreme_tickers.append({
+                "ticker": ticker,
+                "day_return_pct": day_return_pct,
+                "raw_1m": raw_1m,
+                "raw_3m": raw_3m,
+                "raw_6m": raw_6m,
+            })
 
         stock_data.append({
             "ticker": ticker,
@@ -334,6 +343,15 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
     if not stock_data:
         return {"stocks_scored": 0, "date": today_str, "error": "No valid stock data"}
+
+    if extreme_tickers:
+        from agents.market_intelligence.db import log_audit_event
+        sample = ", ".join(t["ticker"] for t in extreme_tickers[:10])
+        await log_audit_event(
+            "rs_extreme_return",
+            f"{len(extreme_tickers)} tickers cleared legacy heuristic ceilings — sample: {sample}",
+            detail=str(extreme_tickers[:30]),
+        )
 
     # Clear stale scores for this date before writing new ones.
     # Prevents filtered-out stocks (reverse splits, non-CS) from persisting.
