@@ -576,6 +576,19 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["fishhook", "fish hook", "undercut reclaim", "undercut & reclaim"]) or task.strip() == "fishhook":
             return await self._handle_fishhook_query(request)
 
+        # Continuation Flag detector — must come BEFORE the generic theme route
+        # because "coiled" / "flag" are unique enough to skip the theme keyword
+        # net. Routes /flags slash, NLP variants, and bare 'flags'/'coiled'.
+        if (
+            any(k in task for k in [
+                "show flags", "flag candidate", "flag scanner",
+                "coiled stock", "coiled setup", "tightening flag",
+                "continuation flag",
+            ])
+            or task.strip() in ("flags", "flag", "coiled")
+        ):
+            return await self._handle_flag_query(request)
+
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
                                      "ep returns", "ep results", "ep track"]):
@@ -1408,6 +1421,121 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append(f"*60d Telemetry:* {n_settled} settled · awaiting forward window")
 
+        return self._ok(request, result="\n".join(lines))
+
+    async def _handle_flag_query(self, request: AgentRequest) -> AgentResponse:
+        """Continuation Flag detector — daily TRIGGERED + COILED + WATCH lists.
+
+        Three modes:
+          /flags             → today's TRIGGERED + COILED (compact)
+          /flags watch       → today's full WATCH + TIGHTENING drill-down
+          /flags TICKER      → 14-day stage history for one ticker
+
+        Trade-idea radar — does NOT auto-enter. User charts and decides.
+        """
+        import re as _re
+        from agents.market_intelligence.collector import et_today, last_trading_day
+        from agents.market_intelligence.db import (
+            get_flag_candidates_window, get_ticker_flag_history,
+        )
+
+        task = request.task.lower()
+        # Single-ticker history mode: `/flags XNDU` or `flags XNDU`
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"FLAGS", "FLAG", "COILED", "WATCH",
+                                     "SHOW", "TIGHTENING", "TIGHT"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if ticker:
+            rows = await get_ticker_flag_history(ticker, days=14)
+            if not rows:
+                return self._ok(request, result=f"No flag-detector rows for `{ticker}` in last 14d.")
+            lines = [f"🚩 *{ticker} — Flag History (14d)*\n"]
+            for r in rows:
+                rr = r.get("range_contraction_ratio")
+                vr = r.get("vol_contraction_ratio")
+                rr_s = f"r{rr:.2f}" if rr is not None else "r—"
+                vr_s = f"v{vr:.2f}" if vr is not None else "v—"
+                held = f" (held from {r['held_from_stage']})" if r.get("held_from_stage") else ""
+                lines.append(
+                    f"  {r['scan_date']}  `{r['stage']:<11}` "
+                    f"age {r.get('base_age') or '—':<3}  {rr_s} {vr_s}{held}"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        today = et_today()
+        query_date = last_trading_day(today)
+        weekend_note = "" if query_date == today else "  _(last trading day)_"
+
+        # Watch drill-down mode
+        watch_mode = "watch" in task or "tightening" in task
+        if watch_mode:
+            rows = await get_flag_candidates_window(query_date, stages=["WATCH", "TIGHTENING"])
+            if not rows:
+                return self._ok(request, result=f"_No watch/tightening flags on {query_date.isoformat()}._")
+            lines = [f"🚩 *Flag Watch + Tightening — {query_date.isoformat()}*{weekend_note}\n"]
+            tightening = [r for r in rows if r["stage"] == "TIGHTENING"]
+            watch = [r for r in rows if r["stage"] == "WATCH"]
+            if tightening:
+                lines.append(f"*TIGHTENING ({len(tightening)})*")
+                for r in tightening[:30]:
+                    rr = r.get("range_contraction_ratio")
+                    vr = r.get("vol_contraction_ratio")
+                    rr_s = f"r{rr:.2f}" if rr is not None else "r—"
+                    vr_s = f"v{vr:.2f}" if vr is not None else "v—"
+                    lines.append(f"  • `{r['ticker']}` age {r.get('base_age')}d · {rr_s} {vr_s}")
+                if len(tightening) > 30:
+                    lines.append(f"  …{len(tightening) - 30} more")
+            if watch:
+                names = ", ".join(r["ticker"] for r in watch[:30])
+                more = f" …+{len(watch) - 30}" if len(watch) > 30 else ""
+                lines.append("")
+                lines.append(f"*WATCH ({len(watch)})*")
+                lines.append(f"  {names}{more}")
+            return self._ok(request, result="\n".join(lines))
+
+        # Default: TRIGGERED + COILED only
+        rows = await get_flag_candidates_window(query_date, stages=["TRIGGERED", "COILED"])
+        triggered = [r for r in rows if r["stage"] == "TRIGGERED"]
+        coiled = [r for r in rows if r["stage"] == "COILED"]
+        if not (triggered or coiled):
+            return self._ok(
+                request,
+                result=f"_No triggered or coiled flags on {query_date.isoformat()}.{weekend_note}_\n"
+                       f"For watch + tightening drill-down: `/flags watch`",
+            )
+        lines = [f"🚩 *Flag Scanner — {query_date.isoformat()}*{weekend_note}\n"]
+        if triggered:
+            lines.append(f"🎯 *TRIGGERED ({len(triggered)})*")
+            for r in triggered:
+                age = r.get("base_age")
+                runup = r.get("runup_pct")
+                bvr = r.get("breakout_volume_ratio")
+                close = r.get("breakout_close")
+                bh = r.get("base_high")
+                ru_s = f"{float(runup)*100:+.0f}%" if runup is not None else "—"
+                if close is not None and bh is not None:
+                    lines.append(
+                        f"  • `{r['ticker']}` — base {age}d · runup {ru_s} · "
+                        f"vol {float(bvr):.2f}× · close ${float(close):.2f} > ${float(bh):.2f}"
+                    )
+                else:
+                    lines.append(f"  • `{r['ticker']}` — base {age}d · runup {ru_s}")
+        if coiled:
+            lines.append("")
+            lines.append(f"🌀 *COILED — actionable setup ({len(coiled)})*")
+            for r in coiled[:15]:
+                age = r.get("base_age")
+                rr = r.get("range_contraction_ratio")
+                vr = r.get("vol_contraction_ratio")
+                rr_s = f"{float(rr):.2f}" if rr is not None else "—"
+                vr_s = f"{float(vr):.2f}" if vr is not None else "—"
+                lines.append(
+                    f"  • `{r['ticker']}` — base {age}d · range {rr_s} · vol {vr_s}"
+                )
+            if len(coiled) > 15:
+                lines.append(f"  …{len(coiled) - 15} more")
+        lines.append("")
+        lines.append("_Drill-down: `/flags watch` · `/flags TICKER`_")
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_9m_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
@@ -3220,6 +3348,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/parabolic":      self._handle_parabolic_exclusion,
             "/wick":           self._handle_wick_query,
             "/fishhook":       self._handle_fishhook_query,
+            "/flags":          self._handle_flag_query,
+            "/flag":           self._handle_flag_query,
             "/strategies":     self._handle_strategy_command,
             "/strategy":       self._handle_strategy_command,
             "/watchlist":      self._handle_friday_watchlist,

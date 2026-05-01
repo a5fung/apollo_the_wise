@@ -197,6 +197,23 @@ async def _seed_strategies_registry(conn) -> None:
             },
         },
         {
+            "strategy_id": "flag_continuation",
+            "name": "Continuation Flag (post-runup tightening)",
+            "family": "long_setup",
+            "phase": "shadow",
+            "signal_type": "flag_continuation",
+            "outcomes_table": "mi_flag_candidates",
+            "promotion_model": "telemetry_review",
+            "promotion_thresholds": {
+                "shadow_to_paper": {
+                    "metric_key": "n_triggers",
+                    "min_count": 30,
+                    "min_fwd_5d_pos_rate": 0.50,
+                    "review_required": False,
+                },
+            },
+        },
+        {
             "strategy_id": "fishhook_v3",
             "name": "Fishhook (Gap-Up Undercut & Reclaim)",
             "family": "long",
@@ -1065,6 +1082,49 @@ async def initialize_schema() -> None:
                 ON mi_fishhook_anchors(anchor_date);
         """)
 
+        # Continuation-flag detector candidates (post-runup VCP / Qullamaggie
+        # tightening flag). One row per (ticker, scan_date), persists every
+        # stage including `unqualified` so thresholds re-tune offline. Mirrors
+        # mi_parabolic_candidates' flat-table architecture.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_flag_candidates (
+                id                          SERIAL PRIMARY KEY,
+                ticker                      TEXT NOT NULL,
+                scan_date                   DATE NOT NULL,
+                pivot_high_date             DATE,
+                pivot_high_price            FLOAT,
+                base_age                    INT,
+                base_high                   FLOAT,
+                base_low                    FLOAT,
+                runup_pct                   FLOAT,
+                runup_start_date            DATE,
+                range_contraction_ratio     FLOAT,
+                vol_contraction_ratio       FLOAT,
+                last_body_pct               FLOAT,
+                prev_body_pct               FLOAT,
+                atr_14                      FLOAT,
+                sma_10                      FLOAT,
+                sma_20                      FLOAT,
+                breakout_close              FLOAT,
+                breakout_volume_ratio       FLOAT,
+                rs_rank                     INT,
+                rs_composite                FLOAT,
+                sector                      TEXT,
+                stage                       TEXT NOT NULL,
+                reason                      TEXT,
+                score                       INT,
+                held_from_stage             TEXT,
+                created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, scan_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_flag_candidates_scan_date
+                ON mi_flag_candidates(scan_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_flag_candidates_stage
+                ON mi_flag_candidates(stage, scan_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_flag_candidates_ticker
+                ON mi_flag_candidates(ticker, scan_date DESC);
+        """)
+
         # ── Strategy maturity registry ───────────────────────────────────
         # One row per strategy. `phase` controls whether entries are allowed
         # via the global gate; `enabled` is the user-facing on/off toggle.
@@ -1777,7 +1837,7 @@ async def get_open_fishhook_anchors(today: "str | date") -> list[dict]:
                    actual_entry_price
             FROM mi_fishhook_anchors
             WHERE state IN ('pending', 'promoted', 'reclaimed')
-              AND anchor_date >= $1 - INTERVAL '60 days'
+              AND anchor_date >= $1::date - INTERVAL '60 days'
             ORDER BY anchor_date ASC
         """, today)
     return [dict(r) for r in rows]
@@ -2085,6 +2145,213 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
         )
 
 
+async def get_flag_universe(scan_date: "str | date") -> list[str]:
+    """Pre-filter for the continuation-flag scan: top-200 RS common stock
+    with usable liquidity and ≥60 sessions of history. Per-ticker pivot
+    walk + state machine runs in Python on the survivors (~150-200/day).
+
+    Filters (per `~/.claude/plans/shiny-mapping-locket.md`):
+      - rs_rank ≤ 200 on scan_date (top-RS universe — Qullamaggie thesis is
+        trading leaders; misses on rank 250 are acceptable v1)
+      - CS/ADRC only (rejects ETFs/funds via mi_security_types)
+      - close ≥ $5 (avoid microcaps where bar noise dominates)
+      - 20d dollar volume ≥ $5M (lower than parabolic's $10M because flags
+        often dry up to thin volume; we want names that *had* liquidity)
+      - prior_sessions ≥ 60 (need history for runup math)
+    """
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH ranked AS (
+                SELECT ticker, close, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE trade_date <= $1
+                  AND trade_date >= $1 - INTERVAL '90 days'
+            ),
+            ctx AS (
+                SELECT ticker,
+                       AVG(close * volume) FILTER (WHERE rn <= 20) AS dollar_vol_20d,
+                       COUNT(*)            AS prior_sessions
+                FROM ranked
+                GROUP BY ticker
+                HAVING COUNT(*) >= 60
+            )
+            SELECT s.ticker
+            FROM mi_stock_scores s
+            LEFT JOIN mi_security_types st ON st.ticker = s.ticker
+            INNER JOIN ctx m ON m.ticker = s.ticker
+            INNER JOIN mi_daily_closes d ON d.ticker = s.ticker AND d.trade_date = $1
+            WHERE s.score_date = (
+                    SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1
+                  )
+              AND s.rs_rank IS NOT NULL
+              AND s.rs_rank <= 200
+              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
+              AND d.close >= 5.0
+              AND m.dollar_vol_20d >= 5000000
+            ORDER BY s.rs_rank ASC
+        """, scan_date)
+    return [r["ticker"] for r in rows]
+
+
+async def insert_flag_candidate(record: dict[str, Any]) -> None:
+    """Upsert a continuation-flag scan result. Persists every metric
+    (including unqualified rows) so thresholds re-tune offline against
+    historical scans without re-running."""
+    pool = await get_pool()
+    scan_date = record["scan_date"]
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_flag_candidates
+                (ticker, scan_date, pivot_high_date, pivot_high_price, base_age,
+                 base_high, base_low, runup_pct, runup_start_date,
+                 range_contraction_ratio, vol_contraction_ratio,
+                 last_body_pct, prev_body_pct, atr_14, sma_10, sma_20,
+                 breakout_close, breakout_volume_ratio,
+                 rs_rank, rs_composite, sector,
+                 stage, reason, score, held_from_stage)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                    $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
+                    $23, $24, $25)
+            ON CONFLICT (ticker, scan_date) DO UPDATE SET
+                pivot_high_date         = EXCLUDED.pivot_high_date,
+                pivot_high_price        = EXCLUDED.pivot_high_price,
+                base_age                = EXCLUDED.base_age,
+                base_high               = EXCLUDED.base_high,
+                base_low                = EXCLUDED.base_low,
+                runup_pct               = EXCLUDED.runup_pct,
+                runup_start_date        = EXCLUDED.runup_start_date,
+                range_contraction_ratio = EXCLUDED.range_contraction_ratio,
+                vol_contraction_ratio   = EXCLUDED.vol_contraction_ratio,
+                last_body_pct           = EXCLUDED.last_body_pct,
+                prev_body_pct           = EXCLUDED.prev_body_pct,
+                atr_14                  = EXCLUDED.atr_14,
+                sma_10                  = EXCLUDED.sma_10,
+                sma_20                  = EXCLUDED.sma_20,
+                breakout_close          = EXCLUDED.breakout_close,
+                breakout_volume_ratio   = EXCLUDED.breakout_volume_ratio,
+                rs_rank                 = EXCLUDED.rs_rank,
+                rs_composite            = EXCLUDED.rs_composite,
+                sector                  = EXCLUDED.sector,
+                stage                   = EXCLUDED.stage,
+                reason                  = EXCLUDED.reason,
+                score                   = EXCLUDED.score,
+                held_from_stage         = EXCLUDED.held_from_stage
+        """,
+            record["ticker"],
+            scan_date,
+            record.get("pivot_high_date"),
+            record.get("pivot_high_price"),
+            record.get("base_age"),
+            record.get("base_high"),
+            record.get("base_low"),
+            record.get("runup_pct"),
+            record.get("runup_start_date"),
+            record.get("range_contraction_ratio"),
+            record.get("vol_contraction_ratio"),
+            record.get("last_body_pct"),
+            record.get("prev_body_pct"),
+            record.get("atr_14"),
+            record.get("sma_10"),
+            record.get("sma_20"),
+            record.get("breakout_close"),
+            record.get("breakout_volume_ratio"),
+            record.get("rs_rank"),
+            record.get("rs_composite"),
+            record.get("sector"),
+            record["stage"],
+            record.get("reason"),
+            record.get("score"),
+            record.get("held_from_stage"),
+        )
+
+
+async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
+    """Map ticker → most recent prior stage, for hysteresis carry-forward.
+    Looks back up to 5 sessions so weekend/holiday gaps don't reset stage
+    state. Returns {} if no prior rows."""
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (ticker) ticker, stage
+            FROM mi_flag_candidates
+            WHERE scan_date < $1
+              AND scan_date >= $1 - INTERVAL '5 days'
+            ORDER BY ticker, scan_date DESC
+        """, scan_date)
+    return {r["ticker"]: r["stage"] for r in rows}
+
+
+async def get_recent_flag_stages(scan_date: "str | date", lookback_days: int = 5) -> dict[str, list[str]]:
+    """Per-ticker stage history (most recent last) over the last
+    `lookback_days` scans before `scan_date`. Used for the TRIGGERED gate
+    ("was COILED in the last 5 days") so a 1-day relapse to TIGHTENING
+    doesn't disqualify a clean breakout."""
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, stage, scan_date
+            FROM mi_flag_candidates
+            WHERE scan_date < $1
+              AND scan_date >= $1 - ($2::int || ' days')::interval
+            ORDER BY ticker, scan_date ASC
+        """, scan_date, lookback_days)
+    out: dict[str, list[str]] = {}
+    for r in rows:
+        out.setdefault(r["ticker"], []).append(r["stage"])
+    return out
+
+
+async def get_flag_candidates_window(
+    scan_date: "str | date",
+    stages: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Fetch all flag rows for `scan_date`, optionally filtered by stage.
+    Used by the Telegram digest + on-demand `/flags` query."""
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        if stages:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_flag_candidates
+                WHERE scan_date = $1 AND stage = ANY($2)
+                ORDER BY rs_rank NULLS LAST, ticker
+            """, scan_date, stages)
+        else:
+            rows = await conn.fetch("""
+                SELECT * FROM mi_flag_candidates
+                WHERE scan_date = $1
+                ORDER BY rs_rank NULLS LAST, ticker
+            """, scan_date)
+    return [dict(r) for r in rows]
+
+
+async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str, Any]]:
+    """Stage history for one ticker over the last `days` scans. Powers
+    `/flags TICKER` ("is XNDU still in the system?")."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT scan_date, stage, base_age, range_contraction_ratio,
+                   vol_contraction_ratio, reason, held_from_stage
+            FROM mi_flag_candidates
+            WHERE ticker = $1
+              AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY scan_date DESC
+        """, ticker.upper(), days)
+    return [dict(r) for r in rows]
+
+
 async def update_parabolic_exclusion(
     ticker: str,
     scan_date: "date",
@@ -2342,7 +2609,7 @@ async def get_rs_for_tickers(
     async with pool.acquire() as conn:
         score_date = await _resolve_score_date(conn, _to_date(d))
         rows = await conn.fetch("""
-            SELECT ticker, rs_composite, rs_1m, rs_3m, rs_6m
+            SELECT ticker, rs_composite, rs_1m, rs_3m, rs_6m, rs_rank
             FROM mi_stock_scores
             WHERE score_date = $1 AND ticker = ANY($2)
         """, score_date, tickers)

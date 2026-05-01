@@ -437,12 +437,19 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                 "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
                 stop_trade["id"],
             )
-        await send_telegram_message(
-            f"⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
-            f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
-            f"Remediation runs at 4:05 PM ET — monitor."
-        )
-        logger.warning(f"WS: stop-loss {event_norm}: {symbol} trade_id={stop_trade['id']}")
+        if event_norm == "expired":
+            await send_telegram_message(
+                f"ℹ️ *EOD stop expired (expected):* {symbol}\n"
+                f"{stop_trade['remaining_shares']:.0f} sh — GTC re-issue at 4:05 PM ET."
+            )
+            logger.info(f"WS: EOD stop expired (expected): {symbol} trade_id={stop_trade['id']}")
+        else:
+            await send_telegram_message(
+                f"⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+                f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
+                f"Remediation runs at 4:05 PM ET — monitor."
+            )
+            logger.warning(f"WS: stop-loss {event_norm}: {symbol} trade_id={stop_trade['id']}")
         return
 
     # 3. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection

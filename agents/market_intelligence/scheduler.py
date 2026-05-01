@@ -57,6 +57,7 @@ JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
 JOB_WICK_FORWARD_RETURNS = "wick_forward_returns"
 JOB_FISHHOOK_EOD = "fishhook_eod_pass"
+JOB_FLAG_SCAN = "flag_continuation_scan"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -717,6 +718,23 @@ async def _eod_cleanup_job():
         await notify_job_failure("eod_cleanup", str(e))
 
 
+async def _evening_position_backstop_job():
+    """Run at 9:00 PM ET. Backstop sync_positions catching late EXPIRED events
+    or earlier remediation failures — market closed, no other jobs running, so
+    a fresh orphan scan + retry costs nothing and closes the gap before next day's open."""
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("Evening position backstop starting...")
+    try:
+        from agents.market_intelligence.broker.order_manager import sync_positions
+        discrepancies = await sync_positions()
+        logger.info(f"Evening backstop: {len(discrepancies)} discrepancies")
+    except Exception as e:
+        logger.error(f"Evening position backstop failed: {e}")
+        await notify_job_failure("evening_position_backstop", str(e))
+
+
 async def _shadow_orb_entry_job():
     """Run at 10:00 AM ET. 5-min shadow ORB entry pass — telemetry only.
 
@@ -931,6 +949,31 @@ async def _parabolic_scan_job():
     except Exception as e:
         logger.error(f"Parabolic scan failed: {e}", exc_info=True)
         await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
+
+
+async def _flag_scan_job():
+    """Run at 5:25 PM ET. Continuation-flag detector daily pass.
+
+    Slots between 5:20 fishhook_eod and 5:30 post_nightly_audit. Persists
+    every scored ticker (incl. `unqualified`) to mi_flag_candidates so
+    thresholds can be retuned offline. TRIGGERED rows fire single-ticker
+    Telegram alerts as found; daily digest summarizes the rest with
+    zero-suppression on quiet days.
+    """
+    logger.info("Flag scan starting...")
+    try:
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.flag_detector import run_flag_scan
+        by_stage = await run_flag_scan(et_today())
+        # send_flag_digest is invoked from within run_flag_scan (same pattern
+        # as parabolic_detector — keeps the per-ticker TRIGGERED alerts
+        # ordered before the digest).
+        n_total = sum(len(v) for v in by_stage.values())
+        return int(n_total)
+    except Exception as e:
+        logger.error(f"Flag scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_FLAG_SCAN, str(e))
+        return None
 
 
 async def _wick_forward_returns_job():
@@ -1535,6 +1578,17 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
+    # Evening position backstop: 9:00 PM ET — second sync_positions pass after
+    # extended hours close (8 PM) and all nightly jobs are done. Catches late
+    # WS EXPIRED events and earlier remediation failures before next-day open.
+    _scheduler.add_job(
+        audit_wrap(_evening_position_backstop_job, "evening_position_backstop"),
+        CronTrigger(hour=21, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="evening_position_backstop",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
     # EOD EP recap: 4:10 PM ET — one-line Telegram summary of today's HIGH outcomes.
     # Fires after eod_cleanup so trade rows have settled (cancel unfilled, sync fills).
     _scheduler.add_job(
@@ -1572,6 +1626,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_fishhook_eod_job, JOB_FISHHOOK_EOD),
         CronTrigger(hour=17, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_FISHHOOK_EOD,
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # Continuation-flag scan: 5:25 PM ET — slots between 5:20 fishhook_eod and
+    # 5:30 post_nightly_audit. Telemetry-only (phase=shadow); persists all
+    # stages, Telegrams TRIGGERED + COILED + new-tightening on non-empty days.
+    _scheduler.add_job(
+        audit_wrap(_flag_scan_job, JOB_FLAG_SCAN),
+        CronTrigger(hour=17, minute=25, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_FLAG_SCAN,
         replace_existing=True,
         misfire_grace_time=900,
     )

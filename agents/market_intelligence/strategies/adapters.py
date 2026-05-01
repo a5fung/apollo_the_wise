@@ -274,13 +274,66 @@ async def _adapter_fishhook_v3(window_days: int) -> list[OutcomeRow]:
     return out
 
 
+async def _adapter_flag_continuation(window_days: int) -> list[OutcomeRow]:
+    """Continuation Flag — telemetry-only. Each TRIGGERED row maps to a
+    'closed' outcome (the trigger IS the outcome unit); non-triggered
+    stages (WATCH/TIGHTENING/COILED) emit status='open' so they show in
+    `/flags` detail without counting toward promotion gates. unqualified
+    rows are filtered out — they're stored for offline retuning, not for
+    telemetry surfaces.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, scan_date, stage, score, base_age, runup_pct,
+                   range_contraction_ratio, vol_contraction_ratio,
+                   breakout_volume_ratio, sector
+            FROM mi_flag_candidates
+            WHERE scan_date >= CURRENT_DATE - $1::int
+              AND stage <> 'unqualified'
+            """,
+            window_days,
+        )
+    out: list[OutcomeRow] = []
+    for r in rows:
+        stage = r["stage"]
+        if stage == "TRIGGERED":
+            status = "closed"
+        elif stage == "INVALIDATED":
+            status = "no_entry"
+        else:
+            status = "open"
+        out.append(OutcomeRow(
+            strategy_id="flag_continuation",
+            ticker=r["ticker"],
+            alert_date=r["scan_date"],
+            status=status,
+            r_multiple=None,
+            pnl=None,
+            hold_days=r["base_age"],
+            closed_at=None,
+            extras={
+                "stage": stage,
+                "score": r["score"],
+                "runup_pct": float(r["runup_pct"]) if r["runup_pct"] is not None else None,
+                "range_contraction_ratio": float(r["range_contraction_ratio"]) if r["range_contraction_ratio"] is not None else None,
+                "vol_contraction_ratio": float(r["vol_contraction_ratio"]) if r["vol_contraction_ratio"] is not None else None,
+                "breakout_volume_ratio": float(r["breakout_volume_ratio"]) if r["breakout_volume_ratio"] is not None else None,
+                "sector": r["sector"],
+            },
+        ))
+    return out
+
+
 _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
-    "magna53":         partial(_adapter_live_trades, signal_type="magna53"),
-    "9m_day2":         partial(_adapter_live_trades, signal_type="9m_day2"),
-    "shadow_orb_5m":   _adapter_shadow_orb_5m,
-    "parabolic_short": _adapter_parabolic,
-    "wick_fill":       _adapter_wick_fill,
-    "fishhook_v3":     _adapter_fishhook_v3,
+    "magna53":            partial(_adapter_live_trades, signal_type="magna53"),
+    "9m_day2":            partial(_adapter_live_trades, signal_type="9m_day2"),
+    "shadow_orb_5m":      _adapter_shadow_orb_5m,
+    "parabolic_short":    _adapter_parabolic,
+    "wick_fill":          _adapter_wick_fill,
+    "fishhook_v3":        _adapter_fishhook_v3,
+    "flag_continuation":  _adapter_flag_continuation,
 }
 
 

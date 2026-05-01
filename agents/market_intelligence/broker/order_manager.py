@@ -928,9 +928,19 @@ async def sync_positions() -> list[str]:
             discrepancies.append(msg)
             logger.error(f"sync_positions: orphaned {ticker} trade_id={trade['id']} — no stop_price to remediate")
             continue
-        try:
-            qty = float(trade["remaining_shares"])
-            new_order = await alpaca.place_stop_order(ticker, qty, float(stop))
+        qty = float(trade["remaining_shares"])
+        new_order = None
+        last_err: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                new_order = await alpaca.place_stop_order(ticker, qty, float(stop))
+                break
+            except Exception as e:
+                last_err = e
+                logger.warning(f"sync_positions: stop remediation attempt {attempt}/3 failed for {ticker}: {e}")
+                if attempt < 3:
+                    await asyncio.sleep(2 ** attempt)  # 2s, 4s
+        if new_order:
             async with pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
@@ -939,10 +949,10 @@ async def sync_positions() -> list[str]:
             msg = f"🛡 Orphaned stop remediated: {ticker} qty={qty:.0f} stop=${stop:.2f}"
             discrepancies.append(msg)
             logger.warning(f"sync_positions: placed remediation stop for {ticker} trade_id={trade['id']} stop={stop:.2f}")
-        except Exception as e:
-            msg = f"⚠️ Failed to remediate orphaned stop for {ticker}: {e}"
+        else:
+            msg = f"⚠️ Failed to remediate orphaned stop for {ticker} after 3 attempts: {last_err}"
             discrepancies.append(msg)
-            logger.error(f"sync_positions: stop remediation failed for {ticker}: {e}")
+            logger.error(f"sync_positions: stop remediation failed for {ticker}: {last_err}")
 
     if discrepancies:
         msg = "⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)
