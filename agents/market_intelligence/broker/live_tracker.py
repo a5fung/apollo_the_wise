@@ -231,6 +231,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 signal_type="magna53",
                 today=today,
                 atr_14=atr_14,
+                success_title="EP entered",
                 # MAGNA53 HIGH: Sonnet+Perplexity validation + ATR stop
                 # width + 10:00 ET cleanup already cover dead-cat fills.
                 # Midpoint check was over-strict; drop it.
@@ -451,6 +452,7 @@ async def morning_stop_refresh() -> int:
         """)
 
     refreshed = 0
+    refreshed_tickers: list[str] = []
     for trade in trades:
         ticker = trade["ticker"]
         stop_price = trade["stop_price"]
@@ -469,10 +471,13 @@ async def morning_stop_refresh() -> int:
         success = await update_stop(trade["id"], stop_price)
         if success:
             refreshed += 1
+            refreshed_tickers.append(ticker)
             logger.info(f"Morning stop refreshed: {ticker} @${stop_price:.2f}")
 
     if refreshed:
-        await send_telegram_message(f"🔄 Morning: refreshed {refreshed} stop order(s)")
+        await send_telegram_message(
+            f"🔄 Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
+        )
     return refreshed
 
 

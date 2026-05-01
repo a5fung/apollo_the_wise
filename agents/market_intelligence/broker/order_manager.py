@@ -833,18 +833,22 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
         """)
 
     cancelled = 0
+    cancelled_tickers: list[str] = []
     logger.info(f"{reason}: {len(pending)} unfilled entries to cancel")
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
             await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
             cancelled += 1
+            cancelled_tickers.append(trade["ticker"])
             logger.info(f"{reason} cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
         else:
             logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
 
     if cancelled:
-        await send_telegram_message(f"🕓 {reason}: cancelled {cancelled} unfilled order(s)")
+        await send_telegram_message(
+            f"🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
+        )
     return cancelled
 
 
