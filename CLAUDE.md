@@ -196,6 +196,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:45 PM | Position update |
 | 5:00 PM | Data pull — RS + regime + themes + error check |
 | 5:30 PM | **Post-nightly audit** (theme/cooldown/regime L2/L3) |
+| 6:00 PM (Fri) | **Friday watchlist** (curated chart-review aggregator + TV import block) |
 | 8:00 PM | Evening briefing |
 | 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
 | Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up → Telegram digest) |
@@ -219,7 +220,36 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
-### 2026-04-30 — EP scan dead-zone telemetry beef-up (C1/C2/C3 + Option B ADV probe)
+### 2026-04-30 (session 2) — Friday Curated Watchlist + entry-tag consistency
+Plan: `~/.claude/plans/shiny-mapping-locket.md`. Goal: Apollo curates a weekly chart-review list combining the best ideas from EP/9M/themes/wick/parabolic/RS into a single Friday 6:00 PM ET Telegram digest with a TradingView import block + per-ticker chart-link buttons. **Trade-idea radar — does NOT trigger entries**, separate from auto-trading flow.
+
+**New module `agents/market_intelligence/friday_watchlist.py`** (~470 lines): six per-source curators (`_fetch_ep_high` / `_fetch_9m_sugar` / `_fetch_themes` / `_fetch_wick` / `_fetch_parabolic` / `_fetch_rs_ambient`) reuse existing helpers (`get_ep_outcomes`, `get_eod_9m_sugar_babies`, `get_active_themes` + `get_rs_for_tickers`, `get_wick_candidates_window`, `get_rs_leaders`). Custom SQL only for parabolic week-window query (`mi_parabolic_candidates`). All buckets gated by `should_run()` where applicable (parabolic_short, wick_fill).
+
+**Cross-source dedup with priority hierarchy** (EP > theme > 9M > wick > parabolic > RS): `_merge_sources` collapses by ticker; primary = lowest-priority source seen. Single bullet per ticker with bracketed reason chips: `• NVDA — [EP HIGH Mon $128 (entered +210)] | [Theme: AI Datacenter Silicon (RS 91)] | [RS rank 3 · sector: Semiconductors]`. Top 25 by composite priority.
+
+**TradingView integration (two depths)**:
+1. **Text import block** — `EXCHANGE:TICKER` comma-separated for paste into TV mobile Watchlist Import. MIC mapping (XNYS→NYSE, XNAS→NASDAQ, ARCX→AMEX, BATS, IEXG→IEX). Sourced from `mi_security_types.exchange` via new `get_security_exchange_map(tickers)` helper. Empty/unknown MIC → omit prefix (TV resolves US equities).
+2. **Per-ticker chart-link inline keyboard** — top 8 by composite priority, 4×2 layout, `url=` deep-links to `https://www.tradingview.com/chart/?symbol={prefix}:{ticker}`. Single-tap on phone opens TV chart.
+
+**TV import atomicity (critical)**: import string must arrive in one Telegram message — splitting `NASDAQ:NVDA,NYSE:TWLO,...` mid-block forces double paste. Strategy: build `body_text` + `tv_block` separately. If `len(body) + len(tv) ≤ 3900` → single message. Else → body via `send_telegram_message` (auto-splits at section boundaries), tv_block as a separate atomic message. Inline keyboard attaches to whichever message holds the TV block. New `_send_with_keyboard()` posts directly to Bot API since `send_telegram_message` doesn't accept `reply_markup`.
+
+**Schema**: `mi_weekly_watchlists (week_ending, ticker, sources jsonb, composite_priority, reason_chip, generated_at)` PRIMARY KEY (week_ending, ticker). New helpers `insert_weekly_watchlist(week_ending, rows)` (DELETE+INSERT atomic, supports mid-week reruns), `get_security_exchange_map(tickers)` (single-batch MIC lookup).
+
+**Scheduler**: `_friday_watchlist_job` cron Fri 18:00 ET, `audit_wrap`'d, `misfire_grace_time=3600`. Sits between 17:30 post_nightly_audit and 20:00 evening_briefing. Detects partial-RS state via `mi_job_runs.status='running' AND job_id='nightly_data_pull'` → footer "_RS data refreshing — partial watchlist_".
+
+**Telegram surface**: `/watchlist` slash command (specific NLP routes `weekly watchlist` / `friday watchlist` / `curated watchlist` / `show watchlist` checked **before** the existing overnight-tracker watchlist route which shares the keyword). On-demand persists=False; cron persists=True.
+
+**Curation rules**: EP HIGH 5 by ep_score; 9M Sugar Baby 5 by volume (close_in_range_pct ≥ 0.85); Themes top 3 Accelerating × top 2 RS tickers each; Wick 3 settled with `fwd_3d_from_high_pct ≤ -0.03` (real short-trap edge); Parabolic 3 climax-stage; RS Leaders 5 net-new (excludes tickers from other buckets). Total cap 25 tickers.
+
+**Quiet-week handling**: rcount < 3 → compact "_Quiet week — minimal high-conviction setups._" footer, no TV block, no keyboard.
+
+**Strategy-disabled gate**: `should_run('parabolic_short')` and `should_run('wick_fill')` checked at bucket entry — disabled strategies omitted entirely (not partial).
+
+**Verification deferred to deploy**: 8-step suite per plan — on-demand `/watchlist` sanity, per-bucket parity vs source tables, TV import format paste test, TV chart button deep-link, Friday 18:00 cron run, holiday handling (Thursday fallback via `last_trading_day()`), strategy-disabled gate (`/strategy wick_fill disable` → empty wick bucket), cross-source dedup (NVDA-class).
+
+**Lesson**: TradingView's no-write-API ceiling for third parties means text-import + chart-link buttons is the highest reachable integration depth. The two depths protect against different friction modes — text import is mass-add-once (low-friction batch), chart buttons are single-tap-per-ticker (mobile-friendly). Cross-source dedup priority hierarchy prevents the same ticker dominating multiple sections while preserving every source tag in the reason chip.
+
+### 2026-04-30 (session 1) — EP scan dead-zone telemetry beef-up (C1/C2/C3 + Option B ADV probe)
 Dead-zone post-mortem (analyze_late_detection_v3.py) showed `mi_ep_scan_log` carried only the *last seen* state per (ticker, scan_date) due to the UNIQUE constraint, so candidates that flipped through filter/pass/filter trajectories during the morning were unrecoverable. Augmented in place rather than forking a new table (single-source-of-truth) — re-evaluation queries the same log with `DISTINCT ON (ticker) ORDER BY ticker, scan_time_et DESC NULLS LAST, id DESC`.
 
 **Schema migrations on `mi_ep_scan_log`:** name-agnostic UNIQUE drop via `DO $ ... pg_constraint loop` (auto-generated names drift), then `ADD COLUMN IF NOT EXISTS scan_time_et TIMESTAMPTZ`, `rank_by_gap INT`, `projected_vol_multiple FLOAT`, `pm_rvol FLOAT`, `adv FLOAT`, `adv_source TEXT`, `minutes_since_open INT`. Index `idx_ep_scan_log_scan_time` on `scan_time_et DESC`. Plus `mi_ep_alerts.detected_at TIMESTAMPTZ` (insert with `COALESCE($16::TIMESTAMPTZ, NOW())` — explicit cast required, asyncpg can't infer parameter type through COALESCE).

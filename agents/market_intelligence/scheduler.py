@@ -1113,6 +1113,21 @@ async def _weekly_cleanup():
         await notify_job_failure("weekly_cleanup", str(e))
 
 
+async def _friday_watchlist_job():
+    """Friday 6:00 PM ET. Curated weekly watchlist for chart-review."""
+    from agents.market_intelligence.friday_watchlist import run_friday_watchlist
+    logger.info("Friday watchlist starting...")
+    try:
+        result = await run_friday_watchlist(window_days=7, persist=True)
+        await notify_job_success(
+            "friday_watchlist",
+            f"watchlist sent ({result['row_count']} tickers, delivered={result['delivered']})",
+        )
+    except Exception as e:
+        logger.exception(f"Friday watchlist failed: {e}")
+        await notify_job_failure("friday_watchlist", str(e))
+
+
 async def _weekly_system_review_job():
     """Sunday 8:00 AM ET. Synthesize last 7 days of system metrics via Claude + Telegram digest."""
     from agents.market_intelligence.system_review import run_weekly_review
@@ -1424,6 +1439,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_weekly_system_review_job, "weekly_system_review"),
         CronTrigger(day_of_week="sun", hour=8, minute=0, timezone="America/New_York"),
         id="weekly_system_review",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # Friday watchlist: Friday 6:00 PM ET — curated chart-review aggregator
+    _scheduler.add_job(
+        audit_wrap(_friday_watchlist_job, "friday_watchlist"),
+        CronTrigger(day_of_week="fri", hour=18, minute=0, timezone="America/New_York"),
+        id="friday_watchlist",
         replace_existing=True,
         misfire_grace_time=3600,
     )

@@ -452,6 +452,14 @@ class MarketIntelligenceAgent(BaseAgent):
             return await self._handle_slash_command(request)
 
         # Route by intent
+        # Friday curated watchlist — must come before generic "watchlist" overnight-tracker
+        # route since both share the keyword. Specific NLP terms only.
+        if any(k in task for k in [
+            "weekly watchlist", "friday watchlist", "curated watchlist",
+            "show watchlist", "weekend watchlist",
+        ]):
+            return await self._handle_friday_watchlist(request)
+
         # Data refresh must be checked first — combined requests like "refresh then send brief"
         # would otherwise match "brief" and skip the refresh entirely.
         if any(k in task for k in ["track ", "untrack ", "drop ", "watchlist", "overnight watch"]):
@@ -3214,6 +3222,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/fishhook":       self._handle_fishhook_query,
             "/strategies":     self._handle_strategy_command,
             "/strategy":       self._handle_strategy_command,
+            "/watchlist":      self._handle_friday_watchlist,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
@@ -3339,6 +3348,23 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
         msg = await _build_hud_text()
         return self._ok(request, result=msg)
+
+    async def _handle_friday_watchlist(self, request: AgentRequest) -> AgentResponse:
+        """Curated weekly watchlist — sends Telegram digest, returns ack."""
+        from agents.market_intelligence.friday_watchlist import run_friday_watchlist
+        try:
+            result = await run_friday_watchlist(window_days=7, persist=False)
+        except Exception as e:
+            return self._ok(request, result=f"Friday watchlist failed: `{e}`")
+        if result["delivered"]:
+            return self._ok(
+                request,
+                result=f"📬 Watchlist sent — {result['row_count']} tickers.",
+            )
+        return self._ok(
+            request,
+            result=f"Watchlist generated ({result['row_count']} tickers) but Telegram delivery failed — check logs.",
+        )
 
     async def _handle_pregame(self, request: AgentRequest) -> AgentResponse:
         """Compact trade-ready shortlist: regime, Accelerating themes, HIGH EPs, watchlist MAs, 9M."""

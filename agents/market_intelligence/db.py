@@ -1088,6 +1088,18 @@ async def initialize_schema() -> None:
                 CHECK (phase IN ('shadow','paper','live')),
                 CHECK (promotion_model IN ('paired_r','unpaired_r','telemetry_review'))
             );
+
+            CREATE TABLE IF NOT EXISTS mi_weekly_watchlists (
+                week_ending          DATE NOT NULL,
+                ticker               TEXT NOT NULL,
+                sources              JSONB NOT NULL,
+                composite_priority   INT NOT NULL,
+                reason_chip          TEXT NOT NULL,
+                generated_at         TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (week_ending, ticker)
+            );
+            CREATE INDEX IF NOT EXISTS idx_weekly_watchlists_ticker
+                ON mi_weekly_watchlists (ticker, week_ending DESC);
         """)
 
         # ── Migrations ───────────────────────────────────────────────────
@@ -4802,6 +4814,57 @@ async def get_latest_system_review(window_days: int = 7) -> Optional[dict]:
         "suggestions": row["suggestions"],
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
     }
+
+
+async def insert_weekly_watchlist(week_ending: "date", rows: list[dict]) -> int:
+    """Replace the watchlist for a given week-ending date.
+
+    Each row: {ticker, sources (list), composite_priority (int), reason_chip (str)}.
+    Atomic: deletes existing rows for the week, then inserts the new set.
+    Returns the number of rows inserted.
+    """
+    if not rows:
+        return 0
+    import json
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM mi_weekly_watchlists WHERE week_ending = $1",
+                _to_date(week_ending),
+            )
+            await conn.executemany("""
+                INSERT INTO mi_weekly_watchlists
+                    (week_ending, ticker, sources, composite_priority, reason_chip)
+                VALUES ($1, $2, $3::jsonb, $4, $5)
+            """, [
+                (
+                    _to_date(week_ending),
+                    r["ticker"],
+                    json.dumps(r["sources"]),
+                    int(r["composite_priority"]),
+                    r["reason_chip"],
+                )
+                for r in rows
+            ])
+    return len(rows)
+
+
+async def get_security_exchange_map(tickers: list[str]) -> dict[str, str]:
+    """Return {ticker: exchange (MIC code)} for the given tickers.
+
+    Tickers without a row in mi_security_types map to ''.
+    """
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, exchange
+            FROM mi_security_types
+            WHERE ticker = ANY($1)
+        """, list(tickers))
+    return {r["ticker"]: (r["exchange"] or "") for r in rows}
 
 
 async def get_weekly_theme_churn(days: int = 7) -> list[dict]:
