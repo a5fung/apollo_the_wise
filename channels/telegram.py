@@ -1447,7 +1447,7 @@ class TelegramChannel:
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
-                     "strategy", "wick"):
+                     "strategy", "watchlist", "wick"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1475,14 +1475,15 @@ class TelegramChannel:
         # for back-compat / muscle memory): /eps, /9m, /themes, /clusters, /regime,
         # /pregame, /spend, /rules, /setup, /agents.
         commands = [
-            BotCommand("hud",      "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
-            BotCommand("pregame",  "Daily trade shortlist"),
-            BotCommand("ep",       "EP alerts (MAGNA53 + 9M) — tap to drill down"),
-            BotCommand("trades",   "Positions + P&L — tap to drill down"),
-            BotCommand("strategy", "Strategy registry — phases, KPIs, enable/disable/promote"),
-            BotCommand("status",   "System health + API spend"),
-            BotCommand("help",     "Capabilities, rules, command reference"),
-            BotCommand("start",    "Restart / re-introduce"),
+            BotCommand("hud",       "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
+            BotCommand("pregame",   "Daily trade shortlist"),
+            BotCommand("ep",        "EP alerts (MAGNA53 + 9M) — tap to drill down"),
+            BotCommand("trades",    "Positions + P&L — tap to drill down"),
+            BotCommand("watchlist", "Friday curated chart-review list (cross-source aggregator)"),
+            BotCommand("strategy",  "Strategy registry — phases, KPIs, enable/disable/promote"),
+            BotCommand("status",    "System health + API spend"),
+            BotCommand("help",      "Capabilities, rules, command reference"),
+            BotCommand("start",     "Restart / re-introduce"),
         ]
         await self._app.bot.set_my_commands(commands)
         logger.info("Bot commands registered with Telegram")
