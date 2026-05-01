@@ -494,8 +494,8 @@ class MarketIntelligenceAgent(BaseAgent):
             return await self._handle_audit_topic(request)
 
         # Strategy maturity registry — list, detail, enable/disable/promote/demote.
-        # Match `/strategies`, `strategies`, `/strategy <id>...`, `strategy <id>...`.
-        if task in ("strategies", "/strategies") or task.startswith(("strategy ", "/strategy ", "strategy:")):
+        # Bare `/strategy` → list. `/strategy <id> [action]` → detail/mutate.
+        if task in ("strategy", "/strategy") or task.startswith(("strategy ", "/strategy ", "strategy:")):
             return await self._handle_strategy_command(request)
 
         # Journal — add (colon disambiguates from query) or query
@@ -799,7 +799,7 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, f"Audit failed: {e}")
 
     async def _handle_strategy_command(self, request: AgentRequest) -> AgentResponse:
-        """`/strategies` (list) or `/strategy <id> [action]` (detail / mutate).
+        """`/strategy` (list) or `/strategy <id> [action]` (detail / mutate).
 
         Actions: enable, disable, promote, demote. Promote enforces
         verdict.eligible — see strategies/telegram.py.
@@ -810,14 +810,12 @@ class MarketIntelligenceAgent(BaseAgent):
         )
         import re as _re
         raw = request.task.strip()
-        # `/strategies`, bare `strategies`, or bare `/strategy` (no args) → list.
-        # Note: `_re.fullmatch(r'/?strategies?')` would over-match `/strategy <id>`
-        # via partial match — we explicitly check the no-args forms.
-        if _re.fullmatch(r'/?strategies?', raw, flags=_re.IGNORECASE):
-            return self._ok(request, result=await handle_strategies_command())
-        # Strip leading `/strategy` or `strategy` (colon or whitespace) and dispatch on body
+        # Strip leading `/strategy` or `strategy` (colon or whitespace) and dispatch on body.
+        # Empty body → list view; otherwise → detail/mutate.
         body = _re.sub(r'^\s*/?strategy(?:[:\s]+|$)', '', raw, count=1, flags=_re.IGNORECASE).strip()
         try:
+            if not body:
+                return self._ok(request, result=await handle_strategies_command())
             return self._ok(request, result=await handle_strategy_action(body))
         except Exception as e:
             logger.exception(f"Strategy command failed: {e}")
@@ -3350,7 +3348,6 @@ class MarketIntelligenceAgent(BaseAgent):
             "/fishhook":       self._handle_fishhook_query,
             "/flags":          self._handle_flag_query,
             "/flag":           self._handle_flag_query,
-            "/strategies":     self._handle_strategy_command,
             "/strategy":       self._handle_strategy_command,
             "/watchlist":      self._handle_friday_watchlist,
             "/eps_detail":     self._handle_eps_detail,

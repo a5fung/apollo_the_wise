@@ -1,7 +1,7 @@
 """Telegram surface for the strategy maturity framework.
 
 Commands:
-    /strategies                       — list table (phase / on / 30d KPI / eligible)
+    /strategy                         — list table (phase / on / 30d KPI / eligible)
     /strategy <id>                    — detail view (KPIs by model, blocking reasons)
     /strategy <id> enable             — set enabled = TRUE
     /strategy <id> disable            — set enabled = FALSE
@@ -68,7 +68,7 @@ def _fmt_eligible(verdict) -> str:
 
 
 async def render_strategies_table() -> str:
-    """`/strategies` listing — monospace table per CLAUDE.md Telegram rules."""
+    """`/strategy` listing — monospace table per CLAUDE.md Telegram rules."""
     by_id = await load_strategies()
     if not by_id:
         return "No strategies registered."
@@ -91,7 +91,7 @@ async def render_strategies_table() -> str:
 async def render_strategy_detail(strategy_id: str) -> str:
     s = await get_strategy(strategy_id)
     if s is None:
-        return f"Unknown strategy `{strategy_id}`. See `/strategies`."
+        return f"Unknown strategy `{strategy_id}`. See `/strategy`."
 
     # Fetch the wider promotion window once and reuse — promotion needs 90d
     # for eligibility, the "Recent closed" list slices to 30d below.
@@ -205,7 +205,7 @@ async def _do_demote(strategy_id: str) -> str:
 
 
 async def handle_strategies_command() -> str:
-    """`/strategies` — list table."""
+    """`/strategy` (no args) — list table."""
     return await render_strategies_table()
 
 
