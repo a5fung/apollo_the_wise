@@ -220,6 +220,15 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-01 — 9M Day 2 stop clobber bug (critical)
+GOOGL 9M Day 2 entry today: announced stop $365.82 (prev day low) but Alpaca received **$379.43** (today's ORB low). Trade ran on a 0.8% stop instead of intended 4.3%. Root cause: `broker/order_manager.py::submit_entry`, `check_fills`, `attempt_day1_reentry`, `check_day1_stopouts` all hardcoded `stop_loss_price = trade["orb_low"]` — single-source-of-truth violation introduced when 9M Day 2 was funneled through the unified entry pipeline (2026-04-24 session 3). MAGNA53 doesn't manifest because for it `stop_price == orb_low`; 9M Day 2 spec writes `stop_price = prior_day_low ≠ orb_low`.
+
+**Fix:** every site now reads `trade["stop_price"]` (the spec-authored stop, persisted at INSERT in `entry_pipeline.py:293`). 9 sites patched: bracket submission (×2 incl. retry), check_fills SELECT + post-fill UPDATE + Telegram fill message, attempt_day1_reentry SELECT + new `stop_loss_price` local var + 2 reentry-bracket calls, check_day1_stopouts SELECT + stop_fill_price fallback.
+
+**GOOGL today** left running at $379.43 stop — user opted not to manually adjust. Code fix prevents recurrence on tomorrow's 9M Day 2 candidates.
+
+**Lesson:** the unified entry pipeline (2026-04-24) preserved spec-authored stop_price at INSERT but the downstream order_manager paths still pulled `orb_low` per the original MAGNA53 assumption. Two strategies sharing one funnel must read the strategy-authored stop column, not a per-strategy alias.
+
 ### 2026-04-30 (session 2) — Friday Curated Watchlist + entry-tag consistency
 Plan: `~/.claude/plans/shiny-mapping-locket.md`. Goal: Apollo curates a weekly chart-review list combining the best ideas from EP/9M/themes/wick/parabolic/RS into a single Friday 6:00 PM ET Telegram digest with a TradingView import block + per-ticker chart-link buttons. **Trade-idea radar — does NOT trigger entries**, separate from auto-trading flow.
 

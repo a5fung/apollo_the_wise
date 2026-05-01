@@ -154,7 +154,7 @@ async def submit_entry(trade_id: int) -> dict | None:
             qty=trade["entry_shares"],
             stop_price=trade["orb_high"],
             limit_price=round(trade["orb_high"] * 1.001, 2),
-            stop_loss_price=trade["orb_low"],
+            stop_loss_price=trade["stop_price"],
         )
     except Exception as e:
         # 1 retry after 5s for transient errors
@@ -166,7 +166,7 @@ async def submit_entry(trade_id: int) -> dict | None:
                 qty=trade["entry_shares"],
                 stop_price=trade["orb_high"],
                 limit_price=round(trade["orb_high"] * 1.001, 2),
-                stop_loss_price=trade["orb_low"],
+                stop_loss_price=trade["stop_price"],
             )
         except Exception as e2:
             logger.error(f"Entry order failed after retry for {ticker}: {e2}")
@@ -231,7 +231,7 @@ async def check_fills() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id, entry_shares, orb_low, entry_attempt
+            SELECT id, ticker, entry_order_id, entry_shares, orb_low, stop_price, entry_attempt
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
@@ -275,7 +275,7 @@ async def check_fills() -> list[dict]:
                         filled_at = NOW(),
                         stop_order_id = COALESCE($5, stop_order_id)
                     WHERE id = $1
-                """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
+                """, trade["id"], filled_price, filled_qty, float(trade["stop_price"]), stop_order_id)
 
                 # Update order audit trail
                 await conn.execute("""
@@ -290,7 +290,7 @@ async def check_fills() -> list[dict]:
             await send_telegram_message(
                 f"✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
                 f"Entry: ${filled_price:.2f} × {filled_qty:.0f} shares\n"
-                f"Stop: ${trade['orb_low']:.2f}"
+                f"Stop: ${trade['stop_price']:.2f}"
             )
             logger.info(f"Fill: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
             results.append({"ticker": ticker, "action": "filled", "price": filled_price})
@@ -328,7 +328,7 @@ async def attempt_day1_reentry(
     async with pool.acquire() as conn:
         trade = await conn.fetchrow("""
             SELECT id, ticker, entry_price, entry_shares, remaining_shares,
-                   orb_high, orb_low, atr_14, stop_order_id, entry_attempt,
+                   orb_high, orb_low, stop_price, atr_14, stop_order_id, entry_attempt,
                    exits, ep_score, catalyst_quality, gap_pct, regime, alert_date
             FROM mi_live_trades WHERE id = $1
         """, trade_id)
@@ -342,6 +342,7 @@ async def attempt_day1_reentry(
     shares = trade["remaining_shares"]
     orb_high = trade["orb_high"]
     orb_low = trade["orb_low"]
+    stop_loss_price = trade["stop_price"]
 
     # Record the stop-out exit
     pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
@@ -394,7 +395,7 @@ async def attempt_day1_reentry(
                 ticker=ticker,
                 qty=trade["entry_shares"],
                 limit_price=limit_price,
-                stop_loss_price=orb_low,
+                stop_loss_price=stop_loss_price,
             )
             order_type = "limit"
         else:
@@ -404,7 +405,7 @@ async def attempt_day1_reentry(
                 qty=trade["entry_shares"],
                 stop_price=orb_high,
                 limit_price=round(orb_high * 1.001, 2),
-                stop_loss_price=orb_low,
+                stop_loss_price=stop_loss_price,
             )
             order_type = "stop_limit"
     except Exception as e:
@@ -486,7 +487,7 @@ async def _check_day1_reentry() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         trades = await conn.fetch("""
-            SELECT id, ticker, stop_order_id, orb_low
+            SELECT id, ticker, stop_order_id, stop_price
             FROM mi_live_trades
             WHERE alert_date = $1
               AND status = 'filled'
@@ -502,7 +503,7 @@ async def _check_day1_reentry() -> list[dict]:
         if not stop_order or stop_order["status"] != "filled":
             continue
 
-        stop_fill_price = stop_order.get("filled_avg_price") or trade["orb_low"]
+        stop_fill_price = stop_order.get("filled_avg_price") or trade["stop_price"]
         result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="polling")
         results.append(result)
 
