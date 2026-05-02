@@ -1549,8 +1549,7 @@ class MarketIntelligenceAgent(BaseAgent):
         """
         import re as _re
         from agents.market_intelligence.db import (
-            get_ticker_setup_timeline, get_security_exchange_map,
-            get_sectors_batch,
+            get_ticker_setup_timeline, get_security_exchange_map, get_pool,
         )
         from agents.market_intelligence.friday_watchlist import (
             _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
@@ -1642,10 +1641,21 @@ class MarketIntelligenceAgent(BaseAgent):
         # names, prev_5d, etc.) routinely contains underscores/asterisks that
         # unbalance Telegram Markdown and force a fallback that prints raw `*`
         # and `_`. Emojis + indentation already provide the visual structure.
-        sector = (rs_ctx.get("sector") if rs_ctx else None) or None
-        if not sector:
-            sec_map = await get_sectors_batch([ticker])
-            sector = sec_map.get(ticker) or "—"
+
+        # Prefer the LLM-generated description from mi_ticker_overrides; fall
+        # back to sector from mi_stock_scores or mi_ticker_overrides; omit the
+        # blurb entirely when neither exists (LAC-class names that aren't in
+        # any theme universe yet).
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            ov = await conn.fetchrow(
+                "SELECT description, sector FROM mi_ticker_overrides WHERE ticker = $1",
+                ticker,
+            )
+        ov_desc = (ov["description"] if ov else None) or None
+        ov_sector = (ov["sector"] if ov else None) or None
+        score_sector = rs_ctx.get("sector") if rs_ctx else None
+        blurb = ov_desc or ov_sector or score_sector  # description preferred
 
         lines = [f"🔍 {ticker} — last {days}d"]
         if rs_ctx:
@@ -1653,11 +1663,12 @@ class MarketIntelligenceAgent(BaseAgent):
             ctx_bits = []
             if rank is not None:
                 ctx_bits.append(f"RS #{rank}")
-            ctx_bits.append(f"sector {sector}")
             ctx_bits.append(f"{raw_count} events")
             lines.append(" · ".join(ctx_bits))
         else:
             lines.append(f"{raw_count} events")
+        if blurb:
+            lines.append(blurb)
 
         # Group events by date so the reader sees daily clusters at a glance.
         # Events are already date-DESC sorted.
