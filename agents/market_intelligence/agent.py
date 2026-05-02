@@ -3884,7 +3884,10 @@ class MarketIntelligenceAgent(BaseAgent):
             exit_str = f"${exit_price:.2f}" if exit_price else "?"
             closed_at = r.get("closed_at")
             date_suffix = f" · {closed_at.strftime('%b %d')}" if closed_at else ""
-            attempts_suffix = f" · {attempts} attempts" if attempts > 1 else ""
+            # Always show attempt count — even '1 attempt' tells the reader
+            # this is a fresh name and not a multi-try grind.
+            attempts_label = "attempt" if attempts == 1 else "attempts"
+            attempts_suffix = f" · {attempts} {attempts_label}" if attempts else ""
             return [
                 f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}{attempts_suffix}",
                 f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
