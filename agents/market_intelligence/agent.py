@@ -1594,8 +1594,22 @@ class MarketIntelligenceAgent(BaseAgent):
                        f"Try `/setup {ticker} 365`.",
             )
 
+        # Compact source tags with emoji for visual scan.
+        SRC_TAG = {
+            "TRADE-LIVE":  "💰 LIVE",
+            "TRADE-PAPER": "📝 PAPER",
+            "FLAG":        "🏁 FLAG",
+            "EP-MAGNA":    "🎯 EP",
+            "9M-INTRADAY": "⚡ 9M",
+            "9M-SUGAR":    "🍬 SUGAR",
+            "WICK":        "🕯 WICK",
+            "PARABOLIC":   "📈 PARA",
+            "THEME":       "🎨 THEME",
+            "WATCHLIST":   "📋 WATCH",
+        }
+
         # Header + RS context line.
-        lines = [f"🔍 *{ticker} — Setup Timeline ({days}d)*"]
+        lines = [f"🔍 *{ticker}* · _last {days}d_"]
         if rs_ctx:
             rank = rs_ctx.get("rs_rank")
             comp = rs_ctx.get("rs_composite")
@@ -1610,12 +1624,19 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append(f"_{' · '.join(ctx_bits)}_")
         else:
             lines.append(f"_{raw_count} events_")
-        lines.append("")
 
+        # Group events by date so the reader sees daily clusters at a glance,
+        # not a flat ribbon of dates. Events are already date-DESC sorted.
+        current_date = None
         for ev in events:
             d = ev["date"]
             ds = d.isoformat() if hasattr(d, "isoformat") else str(d)
-            lines.append(f"`{ds}` *{ev['source']}* {ev['summary']}")
+            if ds != current_date:
+                lines.append("")
+                lines.append(f"*{ds}*")
+                current_date = ds
+            tag = SRC_TAG.get(ev["source"], ev["source"])
+            lines.append(f"  {tag} · {ev['summary']}")
 
         if raw_count > cap:
             lines.append("")
