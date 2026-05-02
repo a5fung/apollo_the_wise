@@ -3868,7 +3868,7 @@ class MarketIntelligenceAgent(BaseAgent):
             except Exception:
                 return []
 
-        def _fmt_closed_line(r: dict) -> list[str]:
+        def _fmt_closed_line(r: dict, attempts: int = 0) -> list[str]:
             pnl = float(r.get("total_pnl") or 0)
             emoji = "✅" if pnl > 0 else "❌"
             exits = _parse_exits(r.get("exits"))
@@ -3884,8 +3884,9 @@ class MarketIntelligenceAgent(BaseAgent):
             exit_str = f"${exit_price:.2f}" if exit_price else "?"
             closed_at = r.get("closed_at")
             date_suffix = f" · {closed_at.strftime('%b %d')}" if closed_at else ""
+            attempts_suffix = f" · {attempts} attempts" if attempts > 1 else ""
             return [
-                f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}",
+                f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}{attempts_suffix}",
                 f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
             ]
 
@@ -3925,6 +3926,22 @@ class MarketIntelligenceAgent(BaseAgent):
                         COALESCE(SUM(total_pnl) FILTER (WHERE status = 'closed'), 0) AS realized
                     FROM mi_live_trades
                 """)
+                # Per-ticker closed-attempt history — feeds open-row "prior
+                # P&L" and closed-row "N attempts" suffixes. Bounded query
+                # over the union of currently-relevant tickers.
+                relevant_tickers = list({r["ticker"] for r in open_rows} |
+                                         {r["ticker"] for r in closed_rows})
+                ticker_history: dict[str, dict] = {}
+                if relevant_tickers:
+                    hist_rows = await conn.fetch("""
+                        SELECT ticker,
+                               COUNT(*) AS attempts,
+                               COALESCE(SUM(total_pnl), 0) AS realized
+                        FROM mi_live_trades
+                        WHERE status = 'closed' AND ticker = ANY($1)
+                        GROUP BY ticker
+                    """, relevant_tickers)
+                    ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
 
             # Fetch live prices per position (fire-and-forget fallback on failure)
             enriched = []
@@ -3978,12 +3995,20 @@ class MarketIntelligenceAgent(BaseAgent):
                         pct = (current - entry) / entry * 100
                         pct_str = f" ({pct:+.1f}%)"
 
+                    hist = ticker_history.get(ticker)
+                    prior_str = ""
+                    if hist and hist["attempts"]:
+                        prior_str = (
+                            f" · prior {hist['attempts']} closed "
+                            f"${float(hist['realized']):+,.0f}"
+                        )
                     lines.append(
                         f"  {pnl_emoji} *{ticker}* · {hold}d{flag_str}\n"
                         f"      Entry {entry_str} → Now {current_str}{pct_str}\n"
                         f"      {shares:.0f} sh · ${mkt_val:,.0f} · Stop {stop_str}\n"
                         f"      Unreal ${unreal:+,.0f}"
                         + (f" · Real ${realized:+,.0f}" if realized else "")
+                        + prior_str
                     )
             else:
                 lines.append("")
@@ -4009,7 +4034,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("")
                 lines.append(f"*Last {len(closed_rows)} Closed*")
                 for r in closed_rows:
-                    lines += _fmt_closed_line(dict(r))
+                    rd = dict(r)
+                    hist = ticker_history.get(rd["ticker"])
+                    attempts = int(hist["attempts"]) if hist else 0
+                    lines += _fmt_closed_line(rd, attempts=attempts)
 
             winners = stats["winners"] or 0
             losers = stats["losers"] or 0
