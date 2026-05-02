@@ -3902,7 +3902,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,
                            partial_taken, breakeven_active, ep_score,
-                           catalyst_quality
+                           catalyst_quality, exits
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
                     ORDER BY alert_date ASC
@@ -3999,12 +3999,32 @@ class MarketIntelligenceAgent(BaseAgent):
                         pct_str = f" ({pct:+.1f}%)"
 
                     hist = ticker_history.get(ticker)
-                    prior_str = ""
+                    prior_bits: list[str] = []
+                    # Day 1 re-entry pattern: prior-attempt stop-outs live in
+                    # this row's `exits` JSONB (same trade_id), not as separate
+                    # closed rows. Sum stop_hit exits — those belong to closed
+                    # prior attempts since the current attempt is still open.
+                    in_row_exits = _parse_exits(p.get("exits"))
+                    in_row_prior_pnl = sum(
+                        float(e.get("pnl") or 0)
+                        for e in in_row_exits
+                        if (e.get("reason") or "").lower() == "stop_hit"
+                    )
+                    in_row_prior_n = sum(
+                        1 for e in in_row_exits
+                        if (e.get("reason") or "").lower() == "stop_hit"
+                    )
+                    if in_row_prior_n:
+                        prior_bits.append(
+                            f"in-trade {in_row_prior_n} prior "
+                            f"${in_row_prior_pnl:+,.0f}"
+                        )
                     if hist and hist["attempts"]:
-                        prior_str = (
-                            f" · prior {hist['attempts']} closed "
+                        prior_bits.append(
+                            f"prior {hist['attempts']} closed "
                             f"${float(hist['realized']):+,.0f}"
                         )
+                    prior_str = (" · " + " · ".join(prior_bits)) if prior_bits else ""
                     lines.append(
                         f"  {pnl_emoji} *{ticker}* · {hold}d{flag_str}\n"
                         f"      Entry {entry_str} → Now {current_str}{pct_str}\n"
