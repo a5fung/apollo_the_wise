@@ -1681,13 +1681,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"📅 {ds}")
                 current_date = ds
             tag = SRC_TAG.get(ev["source"], ev["source"])
-            summary = ev["summary"]
-            # Strip the parenthetical detail from humanized skip reasons —
-            # internals like "(ratio=0.25, ORB H=...)" are noise in a digest.
-            if ev["source"] == "TRADE-LIVE" and "(" in summary:
-                paren = summary.find("(")
-                summary = summary[:paren].rstrip(" ·")
-            lines.append(f"  {tag} · {summary}")
+            lines.append(f"  {tag} · {ev['summary']}")
 
         if raw_count > cap:
             lines.append("")

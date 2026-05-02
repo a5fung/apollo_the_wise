@@ -2589,7 +2589,13 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         if pnl: bits.append(f"P&L ${float(pnl):+,.0f}")
         if r["status"] == "skipped" and r["skip_reason"]:
             from agents.market_intelligence.broker.skip_reasons import humanize
-            bits.append(f"({humanize(r['skip_reason'])})")
+            label = humanize(r["skip_reason"])
+            # Keep the human-readable label only; humanize wraps verbose
+            # internals (ratio=, ORB H=, faded x%) in parens that drown the
+            # digest. Strip from the first '(' to drop them.
+            if "(" in label:
+                label = label[:label.find("(")].rstrip()
+            bits.append(label)
         _push(r["alert_date"], "TRADE-LIVE", " · ".join(bits))
 
     for r in _rows("paper"):
@@ -2598,6 +2604,9 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         _push(r["alert_date"], "TRADE-PAPER", f"status={r['status']}{pnl_s}")
 
     for r in _rows("watchlist"):
+        # composite_priority is an internal source-precedence integer
+        # (1=EP_HIGH, 2=THEME, 3=9M_SUGAR, 4=WICK, 5=PARABOLIC, 6=RS) — not
+        # meaningful to humans. The source list tells the actual story.
         srcs = r["sources"]
         if isinstance(srcs, str):
             import json as _json
@@ -2606,8 +2615,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
             except (ValueError, TypeError):
                 srcs = []
         srcs_s = ", ".join(srcs) if srcs else "?"
-        _push(r["week_ending"], "WATCHLIST",
-              f"priority {r['composite_priority']} (sources: {srcs_s})")
+        _push(r["week_ending"], "WATCHLIST", f"sources: {srcs_s}")
 
     # Sort: date DESC, then priority ASC (TRADE first within a day).
     events.sort(key=lambda e: (e["date"], -e["priority"]), reverse=True)
