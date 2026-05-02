@@ -589,6 +589,11 @@ class MarketIntelligenceAgent(BaseAgent):
         ):
             return await self._handle_flag_query(request)
 
+        # /setup TICKER — reverse-lookup detector chronology across ~10 tables.
+        # Slash-prefixed gate avoids "setup order" / "setup complete" collisions.
+        if task.startswith("/setup ") or task.startswith("setup ") or task.strip() == "/setup":
+            return await self._handle_setup_query(request)
+
         # EP outcome table — forward returns per alert; before general "ep" route
         if any(k in task for k in ["ep outcome", "ep performance", "how are my ep",
                                      "ep returns", "ep results", "ep track"]):
@@ -1535,6 +1540,118 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("")
         lines.append("_Drill-down: `/flags watch` · `/flags TICKER`_")
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_setup_query(self, request: AgentRequest) -> AgentResponse:
+        """`/setup TICKER [days]` — reverse-lookup detector chronology.
+
+        Merges every detector hit (EP/9M/wick/parabolic/flag/themes/trades/
+        watchlist) into a single dated timeline. Read-only.
+        """
+        import re as _re
+        from agents.market_intelligence.db import (
+            get_ticker_setup_timeline, get_security_exchange_map,
+        )
+        from agents.market_intelligence.friday_watchlist import (
+            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT, _send_with_keyboard,
+        )
+        from agents.market_intelligence.briefing import send_telegram_message
+
+        raw = request.task.strip()
+        # Strip leading slash command if present.
+        if raw.lower().startswith("/setup"):
+            raw_args = raw[len("/setup"):].strip()
+        elif raw.lower().startswith("setup"):
+            raw_args = raw[len("setup"):].strip()
+        else:
+            raw_args = raw
+
+        tokens = raw_args.split()
+        skip = _PREPOSITION_SKIP | {"SETUP", "SHOW", "FOR", "THE"}
+        ticker: str | None = None
+        days = 180
+        for tok in tokens:
+            up = tok.upper()
+            if tok.isdigit():
+                days = max(1, min(int(tok), 730))
+            elif up in skip:
+                continue
+            elif up.replace(".", "").isalpha() and 1 <= len(up) <= 8:
+                if ticker is None:
+                    ticker = up
+        if not ticker:
+            return self._ok(request, result="Usage: `/setup TICKER [days]`")
+
+        result = await get_ticker_setup_timeline(ticker, days=days)
+        events = result["events"]
+        rs_ctx = result["rs_context"]
+        raw_count = result["raw_count"]
+        cap = result["cap"]
+
+        if not events and not rs_ctx:
+            return self._ok(
+                request,
+                result=f"🔍 *{ticker}* — no detector hits in last {days}d. "
+                       f"Try `/setup {ticker} 365`.",
+            )
+
+        # Header + RS context line.
+        lines = [f"🔍 *{ticker} — Setup Timeline ({days}d)*"]
+        if rs_ctx:
+            rank = rs_ctx.get("rs_rank")
+            comp = rs_ctx.get("rs_composite")
+            sect = rs_ctx.get("sector") or "—"
+            ctx_bits = []
+            if rank is not None:
+                ctx_bits.append(f"RS #{rank}")
+            if comp is not None:
+                ctx_bits.append(f"composite {float(comp):.1f}")
+            ctx_bits.append(f"sector {sect}")
+            ctx_bits.append(f"{raw_count} events")
+            lines.append(f"_{' · '.join(ctx_bits)}_")
+        else:
+            lines.append(f"_{raw_count} events_")
+        lines.append("")
+
+        for ev in events:
+            d = ev["date"]
+            ds = d.isoformat() if hasattr(d, "isoformat") else str(d)
+            lines.append(f"`{ds}` *{ev['source']}* {ev['summary']}")
+
+        if raw_count > cap:
+            lines.append("")
+            lines.append(
+                f"_…{raw_count - cap} more events truncated — "
+                f"narrow with `/setup {ticker} 30`._"
+            )
+
+        body_text = "\n".join(lines)
+
+        # TradingView chart button — single button since digest is ticker-scoped.
+        try:
+            ex_map = await get_security_exchange_map([ticker])
+            tv_prefix = _TV_EXCHANGE_MAP.get(ex_map.get(ticker, ""), "NASDAQ")
+            tv_url = f"https://www.tradingview.com/chart/?symbol={tv_prefix}:{ticker}"
+            keyboard = [[{"text": f"📈 {ticker} chart", "url": tv_url}]]
+
+            # _send_with_keyboard is a single Bot API POST (no auto-split);
+            # send_telegram_message auto-splits at 4000 chars but can't attach
+            # reply_markup. If the body fits, send body+keyboard in one shot;
+            # otherwise send body via the auto-splitter and trail a tiny
+            # button-only message.
+            if len(body_text) <= _TG_SAFE_LIMIT:
+                delivered = await _send_with_keyboard(body_text, keyboard)
+            else:
+                body_ok = await send_telegram_message(body_text)
+                btn_ok = await _send_with_keyboard(f"📈 {ticker} chart →", keyboard)
+                delivered = bool(body_ok and btn_ok)
+
+            if delivered:
+                return self._ok(request, result=f"📬 Setup timeline for {ticker} sent.")
+            logger.warning(f"setup delivery returned False for {ticker}")
+            return self._ok(request, result=body_text)
+        except Exception as e:
+            logger.warning(f"setup keyboard send failed for {ticker}: {e}")
+            return self._ok(request, result=body_text)
 
     async def _handle_9m_ep_outcomes(self, request: AgentRequest) -> AgentResponse:
         """Show 9M sugar baby history and Day 2 trade status."""
@@ -3348,6 +3465,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/fishhook":       self._handle_fishhook_query,
             "/flags":          self._handle_flag_query,
             "/flag":           self._handle_flag_query,
+            "/setup":          self._handle_setup_query,
             "/strategy":       self._handle_strategy_command,
             "/watchlist":      self._handle_friday_watchlist,
             "/eps_detail":     self._handle_eps_detail,

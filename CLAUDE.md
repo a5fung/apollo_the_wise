@@ -88,6 +88,8 @@ Order matters — first match wins:
 5a. **9M EP outcomes** ("9m outcome", "9m performance", "9m result", "sugar outcome") — before 9M query
 5b. **9M trades** ("9m trade", "9m position", "trade 9m", "show 9m trade")
 5c. **9M EP query** ("9m ep", "sugar baby", "sugar babies", "nine million", "show 9m", bare "9m")
+5d. **Continuation flag** ("/flags", "coiled", "tightening flag", bare "flags") — see _handle_flag_query
+5e. **/setup TICKER** — reverse-lookup detector chronology across ~10 detector tables
 6. EP ("ep", "episodic", "gap", "pivot", "gapper")
 7. journal add ("journal:", "log trade") / journal query ("show journal", "my journal")
 8. theme ("theme", "sector", "industry") — before regime/RS
@@ -221,6 +223,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 ---
 
 ## Changes Made — Recent
+
+### 2026-05-01 (session 5) — `/setup TICKER` reverse-lookup detector chronology
+Apollo writes per-ticker rows to ~10 detector tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) but no read-only surface to ask "*what did we see in $XNDU?*" The `/why TICKER` lifecycle handler covers 3 tables; `/setup TICKER [days]` covers all 10.
+
+**Implementation**: `db.py::get_ticker_setup_timeline(ticker, days=180)` fans out 10 small per-table SELECTs in parallel via `asyncio.gather` — each subquery wrapped in its own `async with pool.acquire()` block (asyncpg refuses concurrent queries on a single Connection). Each row normalized to `{date, source, summary, priority}`; merged list sorted by date DESC then source priority (TRADE > FLAG > EP > 9M > WICK > PARABOLIC > THEME > WATCHLIST). Per-table LIMIT 50 is the safety net; **post-merge top-60 cap** is the actual digest ceiling. Latest `mi_stock_scores` row pulled separately for the RS context line at top.
+
+**Handler** `_handle_setup_query` mirrors `/flags` ticker mode but adds: (a) `.isdigit()` token-discrimination guard so `/setup XNDU 30` parses 30 as `days` not as a ticker named `30` (clamped 1–730); (b) TradingView chart inline-keyboard button via `_send_with_keyboard` from `friday_watchlist.py` (single button since digest is ticker-scoped) — exchange resolution via `get_security_exchange_map` + `_TV_EXCHANGE_MAP`. Routing slash-prefixed (`task.startswith("/setup ")` or `"setup "`) to avoid "setup order" / "setup complete" collisions.
+
+**Files**: `db.py` (+1 helper, ~220 LOC), `agent.py` (+1 handler ~95 LOC, +routing block, +slash dispatch entry).
+
+**Verification**: `/setup XNDU` should show FLAG arc (4/16 WATCH → 4/30 COILED → 5/1 TRIGGERED) + WATCHLIST entry + RS context line. `/setup AAPL` → "no detector hits". `/setup XNDU 30` → 30d window. `/setup XNDU 9999` → silently clamped to 730.
+
+**Lesson**: parallel async DB fanout in asyncpg requires per-call connection acquisition — using `async with pool.acquire() as conn:` once and gathering 10 `conn.fetch` calls raises `another operation is in progress`. Either use the per-call pattern (this PR) or call `pool.fetch(...)` directly (asyncpg shortcut, but unused elsewhere in the repo).
 
 ### 2026-05-01 (session 4) — Authoritative split handling, drop RS heuristic
 XNDU (#1 RS for multiple days) disappeared from RS list on a +24% gap-up. Root cause: `MAX_PERIOD_RETURN=300` heuristic in `rs_engine.py`. XNDU listed 2026-03-27 (25 sessions of history); 1M reference close was $7.50, today $36.12 → raw_1m=+381% > 300% cap. Heuristic was designed for stale-history reverse splits (e.g. FUBO), false-positives on recently-listed verticals.

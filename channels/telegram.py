@@ -283,12 +283,50 @@ class TelegramChannel:
     async def _handle_setup(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """Handle /setup — redo the name/persona setup."""
+        """`/setup TICKER [days]` — reverse-lookup detector chronology.
+
+        Forwards to the market agent, which sends the timeline directly via
+        Bot API and returns a status ack.
+        """
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
-        user_id = update.effective_user.id
-        await self._clear_onboarding_state(user_id)
-        await self._start_onboarding(update, user_id)
+
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        args = " ".join(context.args) if context.args else ""
+        if not args.strip():
+            await update.message.reply_text("Usage: `/setup TICKER [days]`", parse_mode=ParseMode.MARKDOWN)
+            return
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task=f"/setup {args}",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                ack = resp.json().get("result") or "(no response)"
+        except Exception as e:
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        # Market agent sends the timeline itself; only echo the ack if it's
+        # a fallback body (delivery failed) or a usage hint.
+        if not ack.startswith("📬"):
+            await update.message.reply_text(ack, parse_mode=ParseMode.MARKDOWN)
 
     # ── Onboarding helpers ────────────────────────────────────────────────────
 
@@ -471,7 +509,7 @@ class TelegramChannel:
             "• Safeguards: max 4 open · 2% daily loss · 5-loss circuit breaker\n"
             "_Full doc: EP_TRADING_RULES.md_\n"
             "\n"
-            "_Still-working but off-menu: /9m /themes /clusters /regime /spend /rules /setup /eps_"
+            "_Still-working but off-menu: /9m /themes /clusters /regime /spend /rules /eps_"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 

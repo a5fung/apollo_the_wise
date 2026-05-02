@@ -2366,6 +2366,265 @@ async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str,
     return [dict(r) for r in rows]
 
 
+async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, Any]:
+    """Reverse-lookup chronology — every detector hit for one ticker.
+
+    Powers `/setup TICKER`. Fans out 10 small per-table SELECTs in parallel
+    via `asyncio.gather`. Each subquery acquires its own pool connection
+    (asyncpg refuses concurrent queries on a single Connection), so total
+    roundtrip ≈ slowest subquery.
+
+    Tables covered: mi_ep_alerts, mi_9m_ep_alerts, mi_9m_sugar_babies,
+    mi_wick_candidates, mi_parabolic_candidates, mi_flag_candidates,
+    mi_themes (array containment), mi_live_trades, mi_paper_trades,
+    mi_weekly_watchlists. Plus latest mi_stock_scores row for context.
+
+    Returns:
+        {"ticker", "rs_context": {...}|None, "events": [{date, source, summary,
+        priority}, ...], "raw_count": int, "cap": 60}
+    """
+    import asyncio
+
+    t = ticker.upper()
+    pool = await get_pool()
+
+    # Source priority for tie-breaking when multiple events land on the same
+    # date. TRADE > FLAG > EP > 9M > WICK > PARABOLIC > THEME > WATCHLIST.
+    PRIO = {
+        "TRADE-LIVE": 0, "TRADE-PAPER": 1, "FLAG": 2, "EP-MAGNA": 3,
+        "9M-INTRADAY": 4, "9M-SUGAR": 5, "WICK": 6, "PARABOLIC": 7,
+        "THEME": 8, "WATCHLIST": 9, "RS": 10,
+    }
+    POST_MERGE_CAP = 60
+
+    async def _q(sql: str, *args):
+        async with pool.acquire() as conn:
+            return await conn.fetch(sql, *args)
+
+    async def _qrow(sql: str, *args):
+        async with pool.acquire() as conn:
+            return await conn.fetchrow(sql, *args)
+
+    # Per-table coroutines — all return list[Record] except rs_context (single row).
+    coros = {
+        "ep": _q("""
+            SELECT alert_date, score_tier, ep_score, gap_pct,
+                   catalyst_quality, catalyst
+            FROM mi_ep_alerts
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "9m_intra": _q("""
+            SELECT alert_date, gap_pct, projected_vol, is_anticipation,
+                   current_price
+            FROM mi_9m_ep_alerts
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "9m_sugar": _q("""
+            SELECT alert_date, day2_status, close_in_range_pct, prev_5d_pct,
+                   prev_20d_pct, volume
+            FROM mi_9m_sugar_babies
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "wick": _q("""
+            SELECT alert_date, filled_wick, fill_date, close_in_range_pct,
+                   fwd_3d_from_high_pct
+            FROM mi_wick_candidates
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "parabolic": _q("""
+            SELECT scan_date, stage, score, prior_move_pct
+            FROM mi_parabolic_candidates
+            WHERE ticker = $1 AND stage <> 'unqualified'
+              AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY scan_date DESC LIMIT 50
+        """, t, days),
+        "flag": _q("""
+            SELECT scan_date, stage, base_age, range_contraction_ratio,
+                   vol_contraction_ratio, breakout_volume_ratio,
+                   breakout_close, base_high, held_from_stage
+            FROM mi_flag_candidates
+            WHERE ticker = $1 AND stage <> 'unqualified'
+              AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY scan_date DESC LIMIT 50
+        """, t, days),
+        "theme": _q("""
+            SELECT theme_date, name, stage
+            FROM mi_themes
+            WHERE $1 = ANY(tickers)
+              AND theme_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY theme_date DESC LIMIT 50
+        """, t, days),
+        "live": _q("""
+            SELECT alert_date, status, entry_price, stop_price, total_pnl,
+                   skip_reason, closed_at
+            FROM mi_live_trades
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "paper": _q("""
+            SELECT alert_date, status, total_pnl
+            FROM mi_paper_trades
+            WHERE ticker = $1
+              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY alert_date DESC LIMIT 50
+        """, t, days),
+        "watchlist": _q("""
+            SELECT week_ending, composite_priority, sources, reason_chip
+            FROM mi_weekly_watchlists
+            WHERE ticker = $1
+              AND week_ending >= CURRENT_DATE - ($2::int || ' days')::interval
+            ORDER BY week_ending DESC LIMIT 50
+        """, t, days),
+        "rs_ctx": _qrow("""
+            SELECT score_date, rs_rank, rs_composite, sector
+            FROM mi_stock_scores
+            WHERE ticker = $1
+            ORDER BY score_date DESC LIMIT 1
+        """, t),
+    }
+
+    keys = list(coros.keys())
+    results = await asyncio.gather(*coros.values(), return_exceptions=True)
+    by_key = {k: r for k, r in zip(keys, results)}
+
+    events: list[dict[str, Any]] = []
+
+    def _push(d, source, summary):
+        events.append({"date": d, "source": source, "summary": summary,
+                        "priority": PRIO.get(source, 99)})
+
+    def _rows(key):
+        v = by_key.get(key)
+        if isinstance(v, Exception):
+            logger.warning(f"setup_timeline {key} failed for {t}: {v}")
+            return []
+        return v or []
+
+    for r in _rows("ep"):
+        cat = (r["catalyst"] or "")[:40]
+        cat_s = f", {cat}" if cat else ""
+        _push(r["alert_date"], "EP-MAGNA",
+              f"{r['score_tier']} score {int(r['ep_score'] or 0)} "
+              f"(gap {float(r['gap_pct'] or 0):+.1f}%, "
+              f"cat={r['catalyst_quality'] or 'n/a'}{cat_s})")
+
+    for r in _rows("9m_intra"):
+        proj = r["projected_vol"]
+        proj_s = f", proj {proj/1_000_000:.0f}M" if proj else ""
+        ant = " · anticipation" if r["is_anticipation"] else ""
+        _push(r["alert_date"], "9M-INTRADAY",
+              f"gap {float(r['gap_pct'] or 0):+.1f}%{proj_s}{ant}")
+
+    for r in _rows("9m_sugar"):
+        rp = int((r["close_in_range_pct"] or 0) * 100)
+        p5 = r["prev_5d_pct"]
+        p5_s = f", prev_5d {float(p5)*100:+.0f}%" if p5 is not None else ""
+        _push(r["alert_date"], "9M-SUGAR",
+              f"day2={r['day2_status']}, close top {rp}%{p5_s}")
+
+    for r in _rows("wick"):
+        fwd = r["fwd_3d_from_high_pct"]
+        fwd_s = f", fwd3d {float(fwd)*100:+.1f}%" if fwd is not None else ""
+        fill_s = "filled" if r["filled_wick"] else "unfilled"
+        _push(r["alert_date"], "WICK", f"{fill_s}{fwd_s}")
+
+    for r in _rows("parabolic"):
+        pm = r["prior_move_pct"]
+        pm_s = f", prior {float(pm)*100:+.0f}%" if pm is not None else ""
+        _push(r["scan_date"], "PARABOLIC",
+              f"{r['stage']} score {r['score']}{pm_s}")
+
+    for r in _rows("flag"):
+        bvr = r["breakout_volume_ratio"]
+        rcr = r["range_contraction_ratio"]
+        vcr = r["vol_contraction_ratio"]
+        if r["stage"] == "TRIGGERED" and bvr is not None and r["breakout_close"]:
+            _push(r["scan_date"], "FLAG",
+                  f"TRIGGERED — base {r['base_age']}d, vol {float(bvr):.2f}× "
+                  f"close ${float(r['breakout_close']):.2f}")
+        else:
+            rs_s = f"r{float(rcr):.2f}" if rcr is not None else "r—"
+            vs_s = f"v{float(vcr):.2f}" if vcr is not None else "v—"
+            held = f" (held {r['held_from_stage']})" if r["held_from_stage"] else ""
+            _push(r["scan_date"], "FLAG",
+                  f"{r['stage']} — base {r['base_age']}d {rs_s} {vs_s}{held}")
+
+    # Theme rows repeat daily — collapse runs of identical (name, stage) into
+    # a date-range span so 30 consecutive "AI Infrastructure (Accelerating)"
+    # snapshots don't dominate the post-merge cap.
+    theme_rows = sorted(
+        _rows("theme"),
+        key=lambda r: (r["name"], r["stage"], r["theme_date"]),
+    )
+    spans: list[tuple[str, str, Any, Any]] = []  # (name, stage, first, last)
+    for r in theme_rows:
+        if spans and spans[-1][0] == r["name"] and spans[-1][1] == r["stage"]:
+            spans[-1] = (spans[-1][0], spans[-1][1], spans[-1][2], r["theme_date"])
+        else:
+            spans.append((r["name"], r["stage"], r["theme_date"], r["theme_date"]))
+    for name, stage, first, last in spans:
+        if first == last:
+            _push(last, "THEME", f"\"{name}\" ({stage})")
+        else:
+            _push(last, "THEME",
+                  f"\"{name}\" ({stage}) — span {first}→{last}")
+
+    for r in _rows("live"):
+        ep = r["entry_price"]; sp = r["stop_price"]; pnl = r["total_pnl"]
+        bits = [f"status={r['status']}"]
+        if ep: bits.append(f"entry ${float(ep):.2f}")
+        if sp: bits.append(f"stop ${float(sp):.2f}")
+        if pnl: bits.append(f"P&L ${float(pnl):+,.0f}")
+        if r["status"] == "skipped" and r["skip_reason"]:
+            from agents.market_intelligence.broker.skip_reasons import humanize
+            bits.append(f"({humanize(r['skip_reason'])})")
+        _push(r["alert_date"], "TRADE-LIVE", " · ".join(bits))
+
+    for r in _rows("paper"):
+        pnl = r["total_pnl"]
+        pnl_s = f", P&L ${float(pnl):+,.0f}" if pnl else ""
+        _push(r["alert_date"], "TRADE-PAPER", f"status={r['status']}{pnl_s}")
+
+    for r in _rows("watchlist"):
+        srcs = r["sources"]
+        if isinstance(srcs, str):
+            import json as _json
+            try:
+                srcs = _json.loads(srcs)
+            except (ValueError, TypeError):
+                srcs = []
+        srcs_s = ", ".join(srcs) if srcs else "?"
+        _push(r["week_ending"], "WATCHLIST",
+              f"priority {r['composite_priority']} (sources: {srcs_s})")
+
+    # Sort: date DESC, then priority ASC (TRADE first within a day).
+    events.sort(key=lambda e: (e["date"], -e["priority"]), reverse=True)
+    raw_count = len(events)
+    events = events[:POST_MERGE_CAP]
+
+    rs_row = by_key.get("rs_ctx")
+    rs_ctx: dict[str, Any] | None = None
+    if rs_row is not None and not isinstance(rs_row, Exception):
+        rs_ctx = dict(rs_row)
+
+    return {
+        "ticker": t,
+        "rs_context": rs_ctx,
+        "events": events,
+        "raw_count": raw_count,
+        "cap": POST_MERGE_CAP,
+    }
+
+
 async def update_parabolic_exclusion(
     ticker: str,
     scan_date: "date",
