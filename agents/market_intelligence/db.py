@@ -2525,9 +2525,12 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
               f"gap {float(r['gap_pct'] or 0):+.1f}%{proj_s}{ant}")
 
     for r in _rows("9m_sugar"):
+        # close_in_range_pct stored as fraction (0.94 = 94%); prev_5d_pct
+        # stored as a true percentage (-4.13 = -4.13%) — different units in
+        # the same row, no shared multiplier.
         rp = int((r["close_in_range_pct"] or 0) * 100)
         p5 = r["prev_5d_pct"]
-        p5_s = f", prev_5d {float(p5)*100:+.0f}%" if p5 is not None else ""
+        p5_s = f", prev_5d {float(p5):+.1f}%" if p5 is not None else ""
         _push(r["alert_date"], "9M-SUGAR",
               f"day2={r['day2_status']}, close top {rp}%{p5_s}")
 
