@@ -1550,11 +1550,41 @@ class MarketIntelligenceAgent(BaseAgent):
         import re as _re
         from agents.market_intelligence.db import (
             get_ticker_setup_timeline, get_security_exchange_map,
+            get_sectors_batch,
         )
         from agents.market_intelligence.friday_watchlist import (
-            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT, _send_with_keyboard,
+            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
         )
         from agents.market_intelligence.briefing import send_telegram_message
+        import os as _os, httpx as _httpx
+
+        # Plain-text variant of friday_watchlist._send_with_keyboard. Skipping
+        # parse_mode entirely sidesteps the failure mode where dynamic content
+        # (prev_5d, 9M_SUGAR, etc.) contains unbalanced underscores/asterisks
+        # and Telegram returns 400, falling back to ugly raw rendering.
+        async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
+            bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
+            allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
+            ids = [x.strip() for x in allowed.split(",") if x.strip()]
+            if not bot_token or not ids:
+                return False
+            payload = {
+                "chat_id": int(ids[0]),
+                "text": text,
+                "disable_web_page_preview": True,
+                "reply_markup": {"inline_keyboard": keyboard},
+            }
+            try:
+                async with _httpx.AsyncClient(timeout=15) as client:
+                    r = await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json=payload,
+                    )
+                    r.raise_for_status()
+                return True
+            except Exception as e:
+                logger.warning(f"setup plain send failed: {e}")
+                return False
 
         raw = request.task.strip()
         # Strip leading slash command if present.
@@ -1608,41 +1638,51 @@ class MarketIntelligenceAgent(BaseAgent):
             "WATCHLIST":   "📋 WATCH",
         }
 
-        # Header + RS context line.
-        lines = [f"🔍 *{ticker}* · _last {days}d_"]
+        # Render in plain text — dynamic content (skip-reason details, theme
+        # names, prev_5d, etc.) routinely contains underscores/asterisks that
+        # unbalance Telegram Markdown and force a fallback that prints raw `*`
+        # and `_`. Emojis + indentation already provide the visual structure.
+        sector = (rs_ctx.get("sector") if rs_ctx else None) or None
+        if not sector:
+            sec_map = await get_sectors_batch([ticker])
+            sector = sec_map.get(ticker) or "—"
+
+        lines = [f"🔍 {ticker} — last {days}d"]
         if rs_ctx:
             rank = rs_ctx.get("rs_rank")
-            comp = rs_ctx.get("rs_composite")
-            sect = rs_ctx.get("sector") or "—"
             ctx_bits = []
             if rank is not None:
                 ctx_bits.append(f"RS #{rank}")
-            if comp is not None:
-                ctx_bits.append(f"composite {float(comp):.1f}")
-            ctx_bits.append(f"sector {sect}")
+            ctx_bits.append(f"sector {sector}")
             ctx_bits.append(f"{raw_count} events")
-            lines.append(f"_{' · '.join(ctx_bits)}_")
+            lines.append(" · ".join(ctx_bits))
         else:
-            lines.append(f"_{raw_count} events_")
+            lines.append(f"{raw_count} events")
 
-        # Group events by date so the reader sees daily clusters at a glance,
-        # not a flat ribbon of dates. Events are already date-DESC sorted.
+        # Group events by date so the reader sees daily clusters at a glance.
+        # Events are already date-DESC sorted.
         current_date = None
         for ev in events:
             d = ev["date"]
             ds = d.isoformat() if hasattr(d, "isoformat") else str(d)
             if ds != current_date:
                 lines.append("")
-                lines.append(f"*{ds}*")
+                lines.append(f"📅 {ds}")
                 current_date = ds
             tag = SRC_TAG.get(ev["source"], ev["source"])
-            lines.append(f"  {tag} · {ev['summary']}")
+            summary = ev["summary"]
+            # Strip the parenthetical detail from humanized skip reasons —
+            # internals like "(ratio=0.25, ORB H=...)" are noise in a digest.
+            if ev["source"] == "TRADE-LIVE" and "(" in summary:
+                paren = summary.find("(")
+                summary = summary[:paren].rstrip(" ·")
+            lines.append(f"  {tag} · {summary}")
 
         if raw_count > cap:
             lines.append("")
             lines.append(
-                f"_…{raw_count - cap} more events truncated — "
-                f"narrow with `/setup {ticker} 30`._"
+                f"…{raw_count - cap} more events truncated — "
+                f"narrow with /setup {ticker} 30."
             )
 
         body_text = "\n".join(lines)
@@ -1660,10 +1700,10 @@ class MarketIntelligenceAgent(BaseAgent):
             # otherwise send body via the auto-splitter and trail a tiny
             # button-only message.
             if len(body_text) <= _TG_SAFE_LIMIT:
-                delivered = await _send_with_keyboard(body_text, keyboard)
+                delivered = await _send_plain_with_keyboard(body_text, keyboard)
             else:
                 body_ok = await send_telegram_message(body_text)
-                btn_ok = await _send_with_keyboard(f"📈 {ticker} chart →", keyboard)
+                btn_ok = await _send_plain_with_keyboard(f"📈 {ticker} chart →", keyboard)
                 delivered = bool(body_ok and btn_ok)
 
             if delivered:
