@@ -224,6 +224,17 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-03 — Reap stale `mi_job_runs` 'running' rows at scheduler startup
+Weekly digest surfaced `minute_volume_curves_refresh` stuck at `status='running'` from 4/30 + 5/01. Investigation found 5 stale rows across 3 jobs (`nightly_data_pull` ×2, `crypto_nightly_ingest`, `minute_volume_curves_refresh` ×2). Git-commit-vs-cron timestamps confirmed deploy-during-job for the curves cluster (commits at 18:24/29/44/47/52 ET around the 18:30 cron); 4/30 crypto run had no nearby commits (real hang). Same root cause class: SIGTERM during `await` inside `audit_run` doesn't reach the except/else paths reliably → row stays `running` forever, `mi_job_runs` accumulates zombies, stuck-job invariants stop working.
+
+**Fix**: `_reap_stale_running_runs()` runs once at scheduler startup via `asyncio.create_task` — `UPDATE mi_job_runs SET status='aborted', finished_at=NOW(), error_message='...' WHERE status='running' AND started_at < NOW() - INTERVAL '2 hours'`. Logs `stale_runs_reaped` audit event with reaped count + job IDs (climb in count is leading indicator of real hangs vs deploy churn). 2h threshold — no legitimate job runs >1h. New status value `aborted` (schema has no CHECK constraint on `status`).
+
+**Verified before ship**: 5/01 curves refresh actually wrote all 74,873 rows in ~1 min before being killed (latest `refreshed_at` = 5/01 18:31 ET). Only the audit row was stuck; data work completed. Monday catch-up not needed — pre-open uses 5/01 baselines, normal Friday→Monday gap RVOL@T tolerates.
+
+**Reap is hygiene, not prevention.** Deploys must win; we accept the kill and recover next cron. Filed for follow-up: wire `scheduler.shutdown(wait=True)` on SIGTERM as actual prevention.
+
+**Lesson**: invariants and audit-row state assume the process always reaches the finally-equivalent path. Container restarts during `await` violate that assumption silently. Reap function makes the audit table self-healing on next startup.
+
 ### 2026-05-01 (session 5) — `/setup TICKER` reverse-lookup detector chronology
 Apollo writes per-ticker rows to ~10 detector tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) but no read-only surface to ask "*what did we see in $XNDU?*" The `/why TICKER` lifecycle handler covers 3 tables; `/setup TICKER [days]` covers all 10.
 

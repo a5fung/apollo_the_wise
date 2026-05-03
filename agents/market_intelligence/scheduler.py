@@ -20,7 +20,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.db import (
     purge_old_data, log_job_run, job_ran_today, upsert_fundamental_flags_batch,
-    get_rs_leaders, update_sectors_batch, get_audit_log,
+    get_rs_leaders, update_sectors_batch, get_audit_log, get_pool, log_audit_event,
 )
 from agents.market_intelligence.rs_engine import run_rs_engine, ingest_daily
 from agents.market_intelligence.regime import run_regime_engine
@@ -1383,9 +1383,40 @@ async def _hud_refresh_job() -> None:
         logger.error(f"HUD refresh failed: {e}", exc_info=True)
 
 
+async def _reap_stale_running_runs() -> None:
+    """Mark any mi_job_runs row stuck at status='running' for >2h as 'aborted'.
+
+    Process kills (SIGTERM during deploy, OOM, real hang) leave the audit row
+    behind because audit_run's finally-equivalent path never reaches the DB
+    UPDATE. No legitimate job in this codebase runs >1h, so 2h is safe margin.
+    Surfaces as `stale_runs_reaped` audit event — climb in count is a leading
+    indicator of something other than deploys (real hangs, DB locks).
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                UPDATE mi_job_runs
+                   SET status='aborted',
+                       finished_at=NOW(),
+                       error_message='started_at exceeded 2h threshold (likely killed mid-run or hung)'
+                 WHERE status='running' AND started_at < NOW() - INTERVAL '2 hours'
+             RETURNING job_id, started_at
+            """)
+        if rows:
+            detail = ", ".join(f"{r['job_id']}@{r['started_at']:%Y-%m-%d %H:%M}Z" for r in rows)
+            await log_audit_event("stale_runs_reaped", f"reaped {len(rows)} rows: {detail}")
+            logger.warning(f"Reaped {len(rows)} stale mi_job_runs rows: {detail}")
+    except Exception as e:
+        logger.error(f"Stale-run reap failed: {e}", exc_info=True)
+
+
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
+
+    # Reap stale 'running' rows from prior process kills before any new job fires.
+    asyncio.create_task(_reap_stale_running_runs())
 
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri
     _scheduler.add_job(
