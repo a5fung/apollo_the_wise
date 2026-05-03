@@ -3404,14 +3404,18 @@ async def get_minute_volume_baseline(
         return None
 
 
-async def get_top_dollar_volume_universe(limit: int = 500) -> list[str]:
-    """Return top N tickers by 20d dollar volume from the most recent score date.
+async def get_top_dollar_volume_universe(
+    min_dollar_volume: float = 5_000_000.0,
+    max_tickers: int = 5000,
+) -> list[str]:
+    """Return tickers with 20d dollar volume ≥ `min_dollar_volume` from the most
+    recent score date, capped at `max_tickers` for safety.
 
-    Used by the minute-volume curves refresh job to scope the universe — we
-    only need baselines for stocks likely to surface as EP candidates, and
-    top-by-dollar-volume covers the realistic gap universe (megacaps + liquid
-    mid-caps). Smaller stocks fall back to the absolute-share floor at gate
-    time.
+    Used by the minute-volume curves refresh job to scope the universe. The
+    earlier top-500 cap silently skipped the pm_rvol gate for ~85% of HIGH EP
+    candidates (most pre-market gappers are mid/small caps outside top-500 by
+    trailing $-vol). $5M floor ≈ 1500–2000 tickers — covers the realistic gap
+    universe, including the OMCL-class names that the gate exists to catch.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -3426,9 +3430,10 @@ async def get_top_dollar_volume_universe(limit: int = 500) -> list[str]:
                WHERE score_date = $1
                  AND adv_20 IS NOT NULL
                  AND close IS NOT NULL
+                 AND (adv_20 * close) >= $2
                ORDER BY (adv_20 * close) DESC NULLS LAST
-               LIMIT $2""",
-            latest, limit,
+               LIMIT $3""",
+            latest, min_dollar_volume, max_tickers,
         )
     return [r["ticker"] for r in rows]
 

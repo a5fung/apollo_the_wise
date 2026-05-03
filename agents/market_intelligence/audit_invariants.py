@@ -36,7 +36,6 @@ INV_REASON_COVERAGE = "reason_coverage_hole"
 INV_AUDIT_ERROR_WINDOW = "silent_audit_error_window"
 INV_REGIME_STUCK_CRISIS = "regime_stuck_crisis"
 INV_FEED_HEALTH_24H = "feed_health_24h"
-INV_STUCK_FILLED_ROW = "stuck_filled_row"
 INV_ZOMBIE_THEME = "zombie_theme"
 INV_STALE_ORDER_PLACED = "stale_order_placed"
 INV_COOLDOWN_SURGE = "cooldown_surge"
@@ -227,41 +226,6 @@ async def check_feed_health_24h(conn) -> tuple[bool, dict]:
 
 
 # ── New 5 (April incidents) ────────────────────────────────────────────────
-
-
-async def check_stuck_filled_row(conn) -> tuple[bool, dict]:
-    """Filled rows still 'filled' with remaining shares 24h+ later — INTC OTO bug class."""
-    rows = await conn.fetch(
-        """
-        SELECT ticker, alert_date, status, filled_at, remaining_shares,
-               stop_order_id, total_pnl
-        FROM mi_live_trades
-        WHERE status = 'filled'
-          AND filled_at < NOW() - INTERVAL '24 hours'
-          AND COALESCE(remaining_shares, 0) > 0
-        ORDER BY filled_at DESC
-        """
-    )
-    return (len(rows) == 0, {
-        "name": INV_STUCK_FILLED_ROW,
-        "count": len(rows),
-        "summary": f"{len(rows)} 'filled' rows with shares > 24h old",
-        "offending": [
-            f"{r['ticker']} {r['alert_date']} remaining={r['remaining_shares']} "
-            f"stop_order_id={r['stop_order_id']}"
-            for r in rows[:10]
-        ],
-        "drill_sql": (
-            "SELECT id, ticker, alert_date, status, filled_at, stop_order_id,\n"
-            "       remaining_shares, total_pnl FROM mi_live_trades\n"
-            "WHERE status='filled' AND filled_at < NOW() - INTERVAL '24 hours'\n"
-            "  AND COALESCE(remaining_shares, 0) > 0;"
-        ),
-        "code_pointers": [
-            "agents/market_intelligence/broker/alpaca_client.py::extract_stop_leg_id",
-            "agents/market_intelligence/broker/trade_stream.py::_process_stop_fill",
-        ],
-    })
 
 
 async def check_zombie_theme(conn, *, stale_after_days: int = 10) -> tuple[bool, dict]:
@@ -552,7 +516,6 @@ def all_invariants(*, since: date, since_dt: datetime, now_et: datetime | None =
         (INV_AUDIT_ERROR_WINDOW, check_audit_error_window, {"since": since_dt}),
         (INV_REGIME_STUCK_CRISIS, check_regime_stuck_crisis, {}),
         (INV_FEED_HEALTH_24H, check_feed_health_24h, {}),
-        (INV_STUCK_FILLED_ROW, check_stuck_filled_row, {}),
         (INV_ZOMBIE_THEME, check_zombie_theme, {}),
         (INV_STALE_ORDER_PLACED, check_stale_order_placed, {}),
         (INV_COOLDOWN_SURGE, check_cooldown_surge, {}),

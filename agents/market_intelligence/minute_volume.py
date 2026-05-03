@@ -63,7 +63,12 @@ SESSION_START_MIN = 9 * 60 + 30  # 570  → 9:30 ET
 SESSION_END_MIN = 16 * 60    # 960  → 16:00 ET
 
 # Universe + lookback
-UNIVERSE_LIMIT = 500
+# $5M trailing 20d $-vol floor ≈ 1500–2000 tickers. Earlier top-500 cap silently
+# skipped the pm_rvol gate for ~85% of HIGH EP candidates (most pre-market
+# gappers are mid/small caps outside top-500). max_tickers is a safety cap, not
+# the operative knob — adjust UNIVERSE_MIN_DOLLAR_VOLUME to widen/narrow.
+UNIVERSE_MIN_DOLLAR_VOLUME = 5_000_000.0
+UNIVERSE_MAX_TICKERS = 5000
 LOOKBACK_DAYS = 30        # calendar days; ~21 trading days
 MIN_SAMPLE_N = 5          # require ≥5 days of history before publishing a baseline
 
@@ -165,10 +170,11 @@ async def _refresh_one_ticker(
 
 async def refresh_curves(
     today: Optional[date] = None,
-    universe_limit: int = UNIVERSE_LIMIT,
+    min_dollar_volume: float = UNIVERSE_MIN_DOLLAR_VOLUME,
+    max_tickers: int = UNIVERSE_MAX_TICKERS,
     lookback_days: int = LOOKBACK_DAYS,
 ) -> dict:
-    """Rebuild minute-volume baselines for the top-dollar-volume universe.
+    """Rebuild minute-volume baselines for the dollar-volume-floor universe.
 
     Called nightly from the scheduler (~18:30 ET). Returns a summary dict for
     logging / job-success notifications:
@@ -181,7 +187,9 @@ async def refresh_curves(
     from_d = to_d - timedelta(days=lookback_days)
     from_str, to_str = from_d.strftime("%Y-%m-%d"), to_d.strftime("%Y-%m-%d")
 
-    universe = await get_top_dollar_volume_universe(limit=universe_limit)
+    universe = await get_top_dollar_volume_universe(
+        min_dollar_volume=min_dollar_volume, max_tickers=max_tickers
+    )
     if not universe:
         logger.warning("Minute volume curves: empty universe (no mi_stock_scores yet?)")
         return {"tickers_attempted": 0, "tickers_succeeded": 0, "rows_written": 0}

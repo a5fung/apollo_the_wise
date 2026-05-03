@@ -224,6 +224,26 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-03 — pm_rvol gate universe: top-500 → $5M $-vol floor
+OMCL 2026-04-28 HIGH alert (gap +22%, lost $1506) prompted re-audit of the pm_rvol entry gate (RVOL@T, shipped 2026-04-26 to plug INTC-class entry leaks). 30d frequency query: **84.2% of HIGH alerts (32/38) and 97.4% of MODERATE (37/38) silently bypassed the gate** because they were outside top-500 by trailing $-vol. OMCL specifically: rank #2173, no baseline at scan time → `compute_rvol_at_time` returned None → gate silently skipped. The list of bypass victims includes OMCL, INTC, KURA, AEHR, URI, GSHD, KYTX — many became live trades. The gate was structurally non-functional for ~85% of the candidates it was designed to protect.
+
+**Fix**: `db.py::get_top_dollar_volume_universe` swapped from `LIMIT 500` to `WHERE adv_20 * close >= $min_dollar_volume` (default $5M, with `max_tickers=5000` as a safety cap). At current scores: 2647 tickers pass, ~5.3× prior universe. `minute_volume.py` constants `UNIVERSE_LIMIT` → `UNIVERSE_MIN_DOLLAR_VOLUME` (5_000_000.0) + `UNIVERSE_MAX_TICKERS` (5000); `refresh_curves` signature updated.
+
+**Runtime impact**: 18:30 ET `minute_volume_curves_refresh` job, prior runtime ~1 min for 500 tickers (74,873 rows written 5/01), expected ~30–60 min at 2647 tickers (Polygon API call latency dominates over DB writes; concurrency=8 unchanged). Next downstream job is the 21:00 ET evening backstop — comfortable headroom. Stale-row reaper (2h threshold, shipped earlier today) is the safety net for SIGTERM-during-job.
+
+**Warm-up lag (expected, not a regression)**: gate fires only when `sample_n >= MIN_BASELINE_N_FOR_GATE = 10`. Newly-included tickers (rank 501–2647) start tomorrow with **zero** per-minute history, accrue ~1 day of bars per nightly refresh, and won't gate until ~10 trading days from now (mid-May 2026). Mid/small caps with sparse pre-market trade flow may take longer at specific minutes. So a HIGH alert tomorrow on a freshly-included name will *still* hit `compute_rvol_at_time → None` and bypass the gate — that's the warm-up, not the fix failing. Flagged here so the next OMCL-class slip in the May window doesn't read as a regression.
+
+**INTC sidebar**: INTC was the 2026-04-26 motivator for shipping RVOL@T but appears on this bypass list — meaning either (a) INTC's $-vol dropped below top-500 since 4/26, or (b) the gate has been non-functional for INTC since day one. Either way, a useful reminder that the original ship verified plumbing, not coverage.
+
+**Lesson**: a fixed-N universe is the wrong shape for a gate that exists to catch *any* gapper outside the megacap set. Pre-market gappers are systematically mid/small-cap (the megacaps don't gap +20% on news), so capping at top-500 by trailing $-vol *inverts* the intended coverage. $-vol *floor* (scope by liquidity threshold, not ranking) matches the gate's purpose. The skip-when-baseline-missing design is correct (better than fabricating a baseline) — the bug was scoping the universe so narrowly that the skip path was the dominant code path.
+
+### 2026-05-03 — Drop `check_stuck_filled_row` invariant (duplicate of naked_position)
+GOOGL + TEAM (5/01 fills, healthy multi-day holds with stops attached, +$157 / +$848 unrealized) tripped L1 `stuck_filled_row` because its 24h threshold is mismatched to a Qullamaggie/Pradeep multi-day hold system. Verified GOOGL stop=`41d1dcbe…`, TEAM stop=`eb0c94fc…` — both have `stop_order_id` set, both alive on Alpaca. The invariant assumed day-trade timeframe; structurally false-positives on every multi-day winner past 24h.
+
+**Fix**: deleted `check_stuck_filled_row`, `INV_STUCK_FILLED_ROW`, and the registry entry in `audit_invariants.py`. The INTC OTO bug class (the original motivation, 2026-04-24) is already covered by `check_naked_position` — its SQL gates on `status='filled' AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '60 seconds'`, which is the actual SQL-detectable signature of a missing-stop bracket. Adding `stop_order_id IS NULL` to stuck_filled_row would just delay-duplicate naked_position by 24h — same matches, later alert.
+
+**Lesson**: two invariants targeting "the same SQL-detectable bug class" must differ in *what* they catch, not just *when*. A 24h-delayed copy of naked_position has zero net detection value and pure false-positive cost on legitimate holds. If the original concern was "did we miss a close that the broker thinks happened?" — that's a broker-vs-DB consistency problem, not a SQL-only invariant. Filed for later if the missed-close case ever surfaces.
+
 ### 2026-05-03 — Cold-start L2 gate: minimum-denominator skip for rate metrics
 Five false `HIGH_ep_entry_rate` L2 alerts (4/27, 4/28, 4/29, 4/30, 5/01) — all at `sample_n < 7`, all triggered by the cold-start floor `(0.5, "low")`. Three with `current=0.0` (no detections), two with `current=0.333` (3 detected, 1 entered). Same structural-zero pattern: low-detection days where a single skip (or zero detections) collapses a rate metric to a value the floor catches regardless of pipeline health.
 
