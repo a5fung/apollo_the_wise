@@ -224,6 +224,17 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-03 — Cold-start L2 gate: minimum-denominator skip for rate metrics
+Five false `HIGH_ep_entry_rate` L2 alerts (4/27, 4/28, 4/29, 4/30, 5/01) — all at `sample_n < 7`, all triggered by the cold-start floor `(0.5, "low")`. Three with `current=0.0` (no detections), two with `current=0.333` (3 detected, 1 entered). Same structural-zero pattern: low-detection days where a single skip (or zero detections) collapses a rate metric to a value the floor catches regardless of pipeline health.
+
+**Fix**: `MetricSpec.fetch_today` signature widened to `Awaitable[float | None]`. Both rate metrics (`_today_high_entry_rate`, `_today_shadow_orb_no_entry_rate`) return None when denominator < `_MIN_DETECTED_FOR_GATE = 5`. `_compute_anomaly` skips both sample recording and anomaly classification when current is None — keeps the baseline clean of structural zeros that would otherwise pollute future warm-tier comparisons too. Threshold = 5 because 60-day historical HIGH detection distribution is 1–16/day; threshold of 5 skips ~half of days but matches steady-state noise floor.
+
+**Trade-off**: on quiet detection days (detected < 5), no L2 fires even if the entry pipeline genuinely broke. Existing ceiling was already broken on those days (false positives regardless), so net change is "noisy false positives → quieter true silence on quiet days." The regime-conditional Crisis baseline + sample-driven warm path still cover steady-state days with detected ≥ 5.
+
+**Cleanup**: deleted 14 polluted `mi_metric_baselines` rows (all p50=0) + 5 polluted `metric_sample` audit events for both metrics. Next baseline refresh starts fresh from real samples only.
+
+**Lesson**: rate metrics with small denominators need a minimum-N gate, not just a zero gate. A "0/0 → 0.0" guard misses the "1/3 → 0.333" case that's structurally indistinguishable from a real entry-rate degradation. The fix is to declare such days uninformative entirely (return None) rather than coerce to a number that happens to look anomalous against the floor.
+
 ### 2026-05-03 — Reap stale `mi_job_runs` 'running' rows at scheduler startup
 Weekly digest surfaced `minute_volume_curves_refresh` stuck at `status='running'` from 4/30 + 5/01. Investigation found 5 stale rows across 3 jobs (`nightly_data_pull` ×2, `crypto_nightly_ingest`, `minute_volume_curves_refresh` ×2). Git-commit-vs-cron timestamps confirmed deploy-during-job for the curves cluster (commits at 18:24/29/44/47/52 ET around the 18:30 cron); 4/30 crypto run had no nearby commits (real hang). Same root cause class: SIGTERM during `await` inside `audit_run` doesn't reach the except/else paths reliably → row stays `running` forever, `mi_job_runs` accumulates zombies, stuck-job invariants stop working.
 

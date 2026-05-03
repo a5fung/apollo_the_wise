@@ -87,6 +87,11 @@ _COLD_START_CEILINGS: dict[str, tuple[float, str]] = {
 
 _MIN_FULL_SAMPLE = 14
 _WARMING_MIN = 7
+# Minimum denominator before rate-style metrics emit a sample. On low-detection
+# days a single skipped HIGH collapses entered/detected to 0.0 or 0.33, which
+# trips the cold-start floor and pollutes the baseline with structural zeros.
+# See 2026-05-03 changelog (5 false L2 fires from quiet-detection days).
+_MIN_DETECTED_FOR_GATE = 5
 _BASELINE_TRIM_PCT = 0.10
 _BASELINE_LOOKBACK_DAYS = 30
 _REGIME_BASELINE_DAYS = 10  # in-Crisis-only window for regime-conditional swap
@@ -118,7 +123,7 @@ def _get_anthropic_client() -> anthropic.AsyncAnthropic:
 @dataclass
 class MetricSpec:
     name: str
-    fetch_today: Callable[..., Awaitable[float]]
+    fetch_today: Callable[..., Awaitable[float | None]]
     drill_sql: str
     code_pointers: list[str] = field(default_factory=list)
 
@@ -156,8 +161,14 @@ async def _today_skip_count(conn, *, category: str) -> float:
     return float(row["n"] or 0)
 
 
-async def _today_high_entry_rate(conn) -> float:
-    """entered / detected for HIGH-tier alerts today. URI class blind spot."""
+async def _today_high_entry_rate(conn) -> float | None:
+    """entered / detected for HIGH-tier alerts today. URI class blind spot.
+
+    Returns None on quiet days (detected < _MIN_DETECTED_FOR_GATE) — a single
+    skipped HIGH on a 1–3 detection day collapses the rate to 0.0 or 0.33 and
+    trips the cold-start floor structurally. None tells _compute_anomaly to
+    skip both the sample record and the anomaly check.
+    """
     row = await conn.fetchrow(
         """
         SELECT
@@ -174,8 +185,8 @@ async def _today_high_entry_rate(conn) -> float:
     )
     detected = int(row["detected"] or 0)
     entered = int(row["entered"] or 0)
-    if detected == 0:
-        return 0.0  # no signal today — not an anomaly, baseline handles
+    if detected < _MIN_DETECTED_FOR_GATE:
+        return None
     return entered / detected
 
 
@@ -336,11 +347,16 @@ async def _today_shadow_orb_entries(conn) -> float:
     return float(row["n"] or 0)
 
 
-async def _today_shadow_orb_no_entry_rate(conn) -> float:
+async def _today_shadow_orb_no_entry_rate(conn) -> float | None:
     """Share of today's shadow rows that never triggered (no 1-min bar high
     >= 5-min ORB high in the 9:35-10:00 window). Steady state should sit
     well below 100% — if it spikes, the 5-min ORB is too wide vs price
-    action that day, or the bar fetch is silently failing."""
+    action that day, or the bar fetch is silently failing.
+
+    Returns None when total < _MIN_DETECTED_FOR_GATE (denominator too small
+    for the rate to be informative; same structural-zero class as
+    _today_high_entry_rate).
+    """
     row = await conn.fetchrow(
         """
         SELECT
@@ -352,8 +368,8 @@ async def _today_shadow_orb_no_entry_rate(conn) -> float:
     )
     total = int(row["total"] or 0)
     no_entry = int(row["no_entry"] or 0)
-    if total == 0:
-        return 0.0
+    if total < _MIN_DETECTED_FOR_GATE:
+        return None
     return no_entry / total
 
 
@@ -881,6 +897,10 @@ async def _compute_anomaly(
     reference distribution.
     """
     current = await metric.fetch_today(conn)
+    # None signals "denominator too small / not informative today" — skip
+    # both sample recording (would pollute the baseline) and anomaly check.
+    if current is None:
+        return None
     # Always record the daily sample so future baselines have it.
     await _record_metric_sample(metric.name, current)
 
