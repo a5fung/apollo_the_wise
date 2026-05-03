@@ -224,6 +224,15 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-03 — Forward-looking wick surfacing (Track A)
+RDDT formed a wick on 5/1 (Fri close), but no surface flagged it Monday morning as a break-of-prior-high candidate. Root cause: existing wick surfaces (`friday_watchlist._fetch_wick`, evening briefing wick line) only count rows where `filled_wick = TRUE`. The `wick_tracker._wick_forward_returns_job` waits 10 forward sessions before populating `filled_wick` (line 98: `if len(session_rows) < _HORIZON_DAYS: continue`), so freshly-fired wicks remain `NULL` for ~2 weeks — invisible to the trader during the actionable window.
+
+**Fix**: new `db.py::get_wick_pending_candidates(lookback_sessions=3)` returns `filled_wick IS NULL` rows where `prior_high` hasn't been broken yet (intraday `NOT EXISTS` clause closes the already-filled blind spot). New `WICK_PENDING` priority slot in `friday_watchlist.py` (priority=4, above settled WICK=5); section header "🪝 Wick Pending — break-of-prior-high"; reason chip format `"Pending May 01: break > $173.00"` (alert_date inline for freshness without chart pull). Morning briefing renders parallel section after EP. Both surfaces gated by `should_run("wick_fill")` strategy phase. Existing settled-wick filters intact (they serve outcome telemetry — the gap was forward visibility, not the backward analysis).
+
+**Trading-day arithmetic** (advisor catch): lookback uses SQL `recent_sessions` CTE selecting DISTINCT trade_date from `mi_daily_closes` ORDER BY DESC LIMIT N — not `today - N calendar days`. Tue/Wed lookback would miss prior-Friday wicks if the window absorbed Sat/Sun. **Already-filled blind spot** (advisor catch): `NOT EXISTS (SELECT 1 FROM mi_daily_closes d WHERE d.ticker=w.ticker AND d.trade_date > w.alert_date AND d.high_price >= w.prior_high)` prevents stale "pending" entries between price-broke-prior-high and the 5:45 PM sweep marking the row filled.
+
+**Lesson**: outcome-telemetry filters (`filled_wick = TRUE`) and forward-looking trader filters (`filled_wick IS NULL AND high < prior_high`) are different shapes of the same conceptual question. Reusing the telemetry filter for trader-facing surfaces silently hides actionable setups during their entire entry window. Two-purpose surfaces need two filters.
+
 ### 2026-05-03 — pm_rvol gate universe: top-500 → $5M $-vol floor
 OMCL 2026-04-28 HIGH alert (gap +22%, lost $1506) prompted re-audit of the pm_rvol entry gate (RVOL@T, shipped 2026-04-26 to plug INTC-class entry leaks). 30d frequency query: **84.2% of HIGH alerts (32/38) and 97.4% of MODERATE (37/38) silently bypassed the gate** because they were outside top-500 by trailing $-vol. OMCL specifically: rank #2173, no baseline at scan time → `compute_rvol_at_time` returned None → gate silently skipped. The list of bypass victims includes OMCL, INTC, KURA, AEHR, URI, GSHD, KYTX — many became live trades. The gate was structurally non-functional for ~85% of the candidates it was designed to protect.
 

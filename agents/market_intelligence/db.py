@@ -1805,6 +1805,48 @@ async def get_wick_candidates_window(window_days: int) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_wick_pending_candidates(lookback_sessions: int = 3) -> list[dict]:
+    """Forward-looking wick candidates: `filled_wick IS NULL` (sweep hasn't
+    closed the row — the 10-session forward window isn't complete yet) AND
+    price hasn't already broken `prior_high` (so the setup is still
+    actionable for next-session entry).
+
+    Lookback is in trading sessions, not calendar days — `recent_sessions`
+    CTE selects DISTINCT trade_date from `mi_daily_closes` so prior-Friday
+    wicks remain visible Mon/Tue/Wed without weekend off-by-one.
+
+    The `NOT EXISTS` clause closes the already-filled blind spot: between
+    the day a wick fires and the day the 5:45 PM sweep marks it filled,
+    intraday breaks of `prior_high` would otherwise still surface here as
+    "pending."
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH recent_sessions AS (
+                SELECT DISTINCT trade_date FROM mi_daily_closes
+                WHERE trade_date <= CURRENT_DATE
+                ORDER BY trade_date DESC
+                LIMIT $1
+            ),
+            cutoff AS (SELECT MIN(trade_date) AS cutoff_date FROM recent_sessions)
+            SELECT w.ticker, w.alert_date, w.close_price, w.high_price,
+                   w.prior_high, w.close_in_range_pct, w.prev_5d_pct, w.volume
+            FROM mi_wick_candidates w
+            CROSS JOIN cutoff
+            WHERE w.alert_date >= cutoff.cutoff_date
+              AND w.filled_wick IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM mi_daily_closes d
+                  WHERE d.ticker = w.ticker
+                    AND d.trade_date > w.alert_date
+                    AND d.high_price >= w.prior_high
+              )
+            ORDER BY w.alert_date DESC, w.volume DESC
+        """, lookback_sessions)
+    return [dict(r) for r in rows]
+
+
 async def insert_fishhook_anchor(record: dict[str, Any]) -> None:
     """Idempotent insert of a freshly-detected fishhook anchor (state='pending').
 

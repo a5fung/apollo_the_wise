@@ -1421,6 +1421,7 @@ def _format_morning_briefing(
     earnings_calendar: str | None = None,
     ep_scan_log: list[dict] | None = None,
     overnight_errors: list[dict] | None = None,
+    wick_pending: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1517,6 +1518,22 @@ def _format_morning_briefing(
     sections += [
         "",
         _format_ep_section(sorted_eps, section_num=1, scan_log=ep_scan_log),
+    ]
+
+    # Wick Pending — forward-looking wick fills (prior_high not yet broken,
+    # 5:45 PM sweep hasn't closed the row). Actionable for today's session.
+    if wick_pending:
+        wp_lines = [f"🪝 *Wick Pending* ({len(wick_pending)}) — break-of-prior-high candidates"]
+        for r in wick_pending[:5]:
+            d = r.get("alert_date")
+            ds = d.strftime("%b %d") if hasattr(d, "strftime") else str(d)
+            prior_high = float(r.get("prior_high") or 0)
+            wp_lines.append(f"  • *{r['ticker']}* — {ds}: break > ${prior_high:.2f}")
+        if len(wick_pending) > 5:
+            wp_lines.append(f"  …{len(wick_pending) - 5} more")
+        sections += ["", "\n".join(wp_lines)]
+
+    sections += [
         "",
         "_EP scan: 4–7 AM PT. HIGH alerts sent in real-time._",
     ]
@@ -1618,6 +1635,17 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     _perplexity_cache.clear()
     _perplexity_cache[today_str] = cache
 
+    # Wick Pending — forward-looking wicks not yet filled, sweep hasn't closed
+    # them yet. Sibling of evening Wick Watch (settled outcomes).
+    wick_pending: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_wick_pending_candidates
+        from agents.market_intelligence.strategies.registry import should_run as _should_run
+        if await _should_run("wick_fill"):
+            wick_pending = await get_wick_pending_candidates(lookback_sessions=3)
+    except Exception as e:
+        logger.warning(f"Wick pending fetch failed: {e}")
+
     text = _format_morning_briefing(
         regime=regime,
         ep_alerts=ep_alerts,
@@ -1630,6 +1658,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         earnings_calendar=earnings_calendar_text,
         ep_scan_log=ep_scan_log,
         overnight_errors=overnight_errors,
+        wick_pending=wick_pending,
     )
 
     success = await send_telegram_message(text, chat_id)

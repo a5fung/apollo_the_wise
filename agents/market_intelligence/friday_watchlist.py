@@ -24,6 +24,7 @@ from agents.market_intelligence.db import (
     get_rs_leaders,
     get_rs_for_tickers,
     get_wick_candidates_window,
+    get_wick_pending_candidates,
     get_security_exchange_map,
     get_latest_regime,
     insert_weekly_watchlist,
@@ -34,13 +35,19 @@ logger = logging.getLogger(__name__)
 
 # Lower priority value = higher precedence (drives section assignment + button order)
 _PRIORITY = {
-    "EP_HIGH":   1,
-    "THEME":     2,
-    "9M_SUGAR":  3,
-    "WICK":      4,
-    "PARABOLIC": 5,
-    "RS":        6,
+    "EP_HIGH":      1,
+    "THEME":        2,
+    "9M_SUGAR":     3,
+    "WICK_PENDING": 4,
+    "WICK":         5,
+    "PARABOLIC":    6,
+    "RS":           7,
 }
+
+# Forward-looking wick window — sessions, not calendar days. 3 sessions covers
+# Mon→Wed visibility for a Friday wick without bleeding stale rows once the
+# 5:45 PM sweep marks them filled/missed.
+WICK_PENDING_LOOKBACK_SESSIONS = 3
 
 # Polygon MIC -> TradingView prefix. Empty/missing -> omit prefix (TV resolves US equities).
 _TV_EXCHANGE_MAP = {
@@ -56,12 +63,13 @@ _MAX_KEYBOARD_BUTTONS = 8
 _TG_SAFE_LIMIT = 3900  # margin under Telegram's 4096-char message ceiling
 
 _SECTION_HEADERS = {
-    "EP_HIGH":   ("⚡", "EP HIGH"),
-    "9M_SUGAR":  ("🍬", "9M Sugar Babies"),
-    "THEME":     ("🚀", "Themes — Accelerating"),
-    "WICK":      ("🪝", "Wick Fill — settled w/ edge"),
-    "PARABOLIC": ("🚨", "Parabolic Climax"),
-    "RS":        ("⭐", "Ambient RS Leaders"),
+    "EP_HIGH":      ("⚡", "EP HIGH"),
+    "9M_SUGAR":     ("🍬", "9M Sugar Babies"),
+    "THEME":        ("🚀", "Themes — Accelerating"),
+    "WICK_PENDING": ("🪝", "Wick Pending — break-of-prior-high"),
+    "WICK":         ("🪝", "Wick Fill — settled w/ edge"),
+    "PARABOLIC":    ("🚨", "Parabolic Climax"),
+    "RS":           ("⭐", "Ambient RS Leaders"),
 }
 
 
@@ -217,6 +225,36 @@ async def _fetch_themes() -> tuple[list[dict], list[dict]]:
                 "rank_within": float(rs.get("rs_composite") or 0),
             })
     return per_ticker, theme_meta
+
+
+async def _fetch_wick_pending(lookback_sessions: int = WICK_PENDING_LOOKBACK_SESSIONS) -> list[dict]:
+    """Forward-looking wicks: prior_high not yet broken, sweep hasn't closed
+    the row. Actionable for next-session entry. Sibling of `_fetch_wick`,
+    which surfaces *settled* outcome telemetry — both gated by the same
+    `should_run("wick_fill")` strategy phase."""
+    if not await should_run("wick_fill"):
+        return []
+    rows = await get_wick_pending_candidates(lookback_sessions)
+    out: list[dict] = []
+    seen: set[str] = set()
+    for r in rows:
+        t = r["ticker"]
+        if t in seen:
+            continue
+        seen.add(t)
+        d = r.get("alert_date")
+        ds = d.strftime("%b %d") if hasattr(d, "strftime") else str(d)
+        prior_high = float(r.get("prior_high") or 0)
+        out.append({
+            "ticker": t,
+            "source_tag": "WICK_PENDING",
+            "reason": f"Pending {ds}: break > ${prior_high:.2f}",
+            "priority": _PRIORITY["WICK_PENDING"],
+            "rank_within": float(r.get("volume") or 0),
+        })
+        if len(out) >= 5:
+            break
+    return out
 
 
 async def _fetch_wick(window_days: int) -> list[dict]:
@@ -406,7 +444,7 @@ def _build_digest(
     for r in rows:
         by_primary.setdefault(r["primary"], []).append(r)
 
-    section_order = ["EP_HIGH", "9M_SUGAR", "THEME", "WICK", "PARABOLIC", "RS"]
+    section_order = ["EP_HIGH", "9M_SUGAR", "THEME", "WICK_PENDING", "WICK", "PARABOLIC", "RS"]
     for src in section_order:
         if src == "THEME":
             if theme_meta:
@@ -507,17 +545,18 @@ async def run_friday_watchlist(window_days: int = 7, persist: bool = True) -> di
     ep_rows = await _fetch_ep_high(window_days)
     nm_rows = await _fetch_9m_sugar(window_days)
     th_rows, theme_meta = await _fetch_themes()
+    wp_rows = await _fetch_wick_pending()
     wk_rows = await _fetch_wick(window_days)
     pb_rows = await _fetch_parabolic(window_days)
 
     pre_rs_tickers = {
         r["ticker"]
-        for bucket in (ep_rows, nm_rows, th_rows, wk_rows, pb_rows)
+        for bucket in (ep_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows)
         for r in bucket
     }
     rs_rows = await _fetch_rs_ambient(pre_rs_tickers)
 
-    merged = _merge_sources([ep_rows, nm_rows, th_rows, wk_rows, pb_rows, rs_rows])
+    merged = _merge_sources([ep_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows, rs_rows])
     merged = merged[:_MAX_TICKERS]
 
     tickers = [r["ticker"] for r in merged]
