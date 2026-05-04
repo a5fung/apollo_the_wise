@@ -141,7 +141,7 @@ async def submit_trade_entry(
     today: date,
     atr_14: float | None = None,
     success_icon: str = "📊",
-    success_title: str = "Paper trade auto-entered",
+    success_title: str = "Order placed",
     stop_label: str = "Stop",
     on_skip: SkipHook | None = None,
     fade_midpoint_ratio: float | None = FADE_MIDPOINT_RATIO,
@@ -340,10 +340,11 @@ async def submit_trade_entry(
             pass
         await send_telegram_message(
             f"{success_icon} *{success_title}:* {ticker}\n"
-            f"Entry: ${order_spec['entry_price']:.2f} | "
+            f"Stop-limit BUY @ ${order_spec['entry_price']:.2f} (pending trigger) | "
             f"{stop_label}: ${order_spec['stop_loss_price']:.2f}\n"
             f"Shares: {order_spec['shares']} | "
-            f"Risk: ${order_spec['risk_dollars']:.0f}"
+            f"Risk: ${order_spec['risk_dollars']:.0f}\n"
+            f"_Fills if price ≥ ${order_spec['entry_price']:.2f}; cancels 10:00 ET if unfilled._"
         )
         return {"ticker": ticker, "action": ACTION_AUTO_ENTERED, "trade_id": trade_id}
 

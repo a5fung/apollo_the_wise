@@ -224,6 +224,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 — Bracket fill messaging + stop-limit buffer (TEAM 5/04 unfilled)
+User reported "TEAM entered" Telegram 5/04 but Alpaca showed no fill. Investigated 4 unfilled-cancellations 4/28→5/04: TEAM (gap-through, cron 60s late), CCC (penny-spread, in-time but limit didn't cross), TWLO + TEVA (never retriggered — pattern failures, not code-fixable). Two-track fix.
+
+**Track 1 — Messaging**: "auto-entered" Telegram fired at order PLACEMENT regardless of fill. Three states already wired downstream (placed in `entry_pipeline.py:341`, filled in `trade_stream.py:332`, cancelled-unfilled in `order_manager.py:850`); only the "placed" copy was misleading. Renamed `success_title` defaults: "Paper trade auto-entered" → "Order placed", "EP entered" → "EP order placed", "9M Day2 entered" → "9M Day2 order placed". Body now reads "Stop-limit BUY @ $X (pending trigger)" with footer `_Fills if price ≥ $X; cancels 10:00 ET if unfilled._` — semantics explicit.
+
+**Track 2 — Buffer + SSoT cleanup**: 7 sites in `order_manager.py` hand-rolled `round(orb_high * 1.001, 2)` for stop-limit BUY. Penny tickers: at $5.49, 0.10% buffer = $0.0055 → rounds to $5.50 → 1¢ effective buffer; thin spreads don't cross. Single helper `stop_limit_buy_price(stop)` returns `round(max(stop * 1.005, stop + 0.02), 2)` — 0.5% with $0.02 floor. Replaced all 7 sites. CCC $5.49 → $5.52 limit (3¢ vs 1¢); TEAM $88.88 → $89.32 (44¢ vs 9¢).
+
+**Acknowledged limit**: buffer fix doesn't address pure gap-through. TEAM 5/04 cron was 60s late (9:32:00 placement, by then last $89.58 with ask $89.59+); even at 0.5% buffer ($89.32 limit) wouldn't have crossed. Real gap-through fix is reducing `BAR_RETRY_DELAY_SEC=60` — separate followup.
+
+**Track 3 — Filed**: TEVA 4/30 cancelled with `EOD unfilled` (4:05 PM cleanup), not `ORB window unfilled` (10:00 ET cleanup). Means 10:00 cleanup didn't pick TEVA up — investigate query filter or scheduler gap. Added to `project_next_followup.md`.
+
+**Lesson**: misleading user-facing wording masked an existing-but-correct downstream fill confirmation pipeline. Fix was 4 string edits, not new infrastructure. Separately: any per-share buffer formula that scales linearly with price needs an absolute floor — `round()` to 2dp + sub-$5 stop = no-op buffer. SSoT: 7 hand-rolled `* 1.001` sites is six too many.
+
 ### 2026-05-03 — Catalyst hedge-phrase downgrade (Track B Layer 2)
 RDDT 5/1 catalyst pipeline returned "strong" with Evercore-initiation blurb instead of identifying the real driver (Q1 earnings beat). Symptom traced: when `search_news_perplexity()` synthesis comes back hedged ("no specific information about RDDT", "couldn't find recent news"), the hollow `news_summary` still gets passed to BOTH classifiers (Claude on `all_news`, Perplexity validator). Both can return "strong" because they're grading a stub — the prompts ask for classification, not "is there enough signal here to classify."
 

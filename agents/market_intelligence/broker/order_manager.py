@@ -28,6 +28,25 @@ from agents.market_intelligence.db import get_pool
 logger = logging.getLogger(__name__)
 
 
+def stop_limit_buy_price(stop_price: float) -> float:
+    """Compute the LIMIT price for a stop-limit BUY parent order.
+
+    Stop-limit semantics: once `last >= stop_price`, the order becomes a limit
+    BUY at this price; it fills only if the ask is at or below the limit. A
+    too-tight buffer rejects fills the instant the spread widens past stop.
+
+    Two-floor buffer:
+      - 0.5% above stop covers normal-priced names where the spread is a few
+        bps wide; gives the limit room to absorb 1-2 ticks of slippage.
+      - $0.02 absolute floor protects penny tickers — at $5.49 the 0.5%
+        buffer is $0.027, enough to clear the spread; at $1.00 a 0.5% buffer
+        rounds to a single penny and a 0.5%-only formula would be no-op.
+    Doesn't address true gap-through (price runs past stop+buffer before
+    order arrives) — that requires latency reduction, not wider buffer.
+    """
+    return round(max(stop_price * 1.005, stop_price + 0.02), 2)
+
+
 # ── Order Preparation ────────────────────────────────────────────────────────
 
 
@@ -95,8 +114,7 @@ async def prepare_orb_order(
         )
 
     position_size = shares * orb_high
-    # Limit price: ORB high + 0.1% slippage buffer
-    limit_price = round(orb_high * 1.001, 2)
+    limit_price = stop_limit_buy_price(orb_high)
 
     spec = {
         "ticker": ticker,
@@ -153,7 +171,7 @@ async def submit_entry(trade_id: int) -> dict | None:
             ticker=ticker,
             qty=trade["entry_shares"],
             stop_price=trade["orb_high"],
-            limit_price=round(trade["orb_high"] * 1.001, 2),
+            limit_price=stop_limit_buy_price(trade["orb_high"]),
             stop_loss_price=trade["stop_price"],
         )
     except Exception as e:
@@ -165,7 +183,7 @@ async def submit_entry(trade_id: int) -> dict | None:
                 ticker=ticker,
                 qty=trade["entry_shares"],
                 stop_price=trade["orb_high"],
-                limit_price=round(trade["orb_high"] * 1.001, 2),
+                limit_price=stop_limit_buy_price(trade["orb_high"]),
                 stop_loss_price=trade["stop_price"],
             )
         except Exception as e2:
@@ -214,7 +232,7 @@ async def submit_entry(trade_id: int) -> dict | None:
             trade_id, entry_order_id, ticker,
             float(trade["entry_shares"]),
             float(trade["orb_high"]),
-            round(float(trade["orb_high"]) * 1.001, 2),
+            stop_limit_buy_price(float(trade["orb_high"])),
             order["status"],
             json.dumps(order),
         )
@@ -404,7 +422,7 @@ async def attempt_day1_reentry(
                 ticker=ticker,
                 qty=trade["entry_shares"],
                 stop_price=orb_high,
-                limit_price=round(orb_high * 1.001, 2),
+                limit_price=stop_limit_buy_price(orb_high),
                 stop_loss_price=stop_loss_price,
             )
             order_type = "stop_limit"
@@ -457,7 +475,7 @@ async def attempt_day1_reentry(
             trade["id"], new_entry_order_id, ticker, order_type,
             float(trade["entry_shares"]),
             float(orb_high),
-            round(float(orb_high) * 1.001, 2),
+            stop_limit_buy_price(float(orb_high)),
             new_order["status"],
             json.dumps(new_order),
         )
@@ -1052,7 +1070,7 @@ async def prepare_9m_day2_orb_order(
     spec = {
         "ticker": ticker,
         "entry_price": orb_high,
-        "limit_price": round(orb_high * 1.001, 2),
+        "limit_price": stop_limit_buy_price(orb_high),
         "stop_loss_price": round(prior_day_low, 2),
         "orb_high": orb_high,
         "orb_low": orb_bar["low"],
