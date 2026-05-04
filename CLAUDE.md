@@ -224,6 +224,27 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 6) — Flag detector: burst-class universe + fresh-tightening COILED path (OKLO miss)
+User flagged OKLO forming a visible flag with no detector hit. Replay (`scripts/backfill_flag_xndu.py --ticker OKLO`) surfaced **two structural gaps**:
+
+**Gap 1 — universe gate excluded OKLO.** rs_rank=981 because raw_6m=-7.4% drags composite, despite rs_1m=94.3 (top 5.7%) and trailing-10 +42.5%. `get_flag_universe` was top-200 RS only; structurally inverts coverage for post-runup names whose 6M is dragged by the pre-runup downtrend (the very signal we're trying to catch).
+
+**Gap 2 — contraction math can't fire on short bases.** With `base_age=6`, early-window (first 5 bars) and recent-window (last 5 bars) overlap 4 of 5 — ratio mechanically stuck near 1.0 even when the last 2 bars are visibly tighter. OKLO 5/4: bars 1–4 of base were whippy (4/24 reversal, 4/29 11.4%, 4/30 10.5%), 5/1 + 5/4 were 4.6% / 5.5%. User's eye picks up the recent tightening; metric can't.
+
+**Fix**: two parallel paths, ship together.
+
+(a) **`get_flag_universe` burst inclusion** (`db.py`): adds OR-clause `rs_1m_pct >= 80 OR (last_close / trailing10_min - 1) >= 0.25` alongside existing `rs_rank <= 200`. Uses `PERCENT_RANK() OVER (ORDER BY rs_1m)` to compute per-scan rs_1m percentile (no precomputed column). Common gates ($5+, $5M ADV20, ≥60 sessions, CS/ADRC) unchanged.
+
+(b) **Fresh-tightening COILED path** (`flag_detector.py`): new helper `_compute_fresh_tightening(rows, today_idx, base_age)` returns `(fires, fresh_2bar_max_tr_pct, atr14_pct)`. Predicate: `base_age ≥ 4 AND max(2bar TR%) ≤ 0.6 × ATR14% AND max(2bar vol) ≤ ADV20`. Promotes to COILED via OR — either existing `(range_tight AND vol_tight)` OR `fresh_fires` qualifies. Both paths still require `bodies_tight AND ma_aligned`. Threshold 0.6 calibrated against OKLO 5/4 (ratio 0.54 fires) + XNDU 4/29-4/30 (ratio 0.62-0.64 doesn't fire — but existing path already catches XNDU; no double-fire, no regression).
+
+**Schema**: 3 additive columns on `mi_flag_candidates` (`fresh_tight_fires BOOL`, `fresh_2bar_tr_pct FLOAT`, `atr14_pct FLOAT`). All `unqualified` rows still persist for offline tuning. ALTER TABLE IF NOT EXISTS pattern.
+
+**Replay verified** (`scripts/replay_flag_fresh_tighten.py` + existing `backfill_flag_xndu.py`):
+- XNDU progression unchanged: WATCH→TIGHTENING→COILED→TRIGGERED→INVALIDATED, every date identical
+- OKLO 5/4: WATCH → **TIGHTENING** (fresh fires, but `ma_aligned` fails because close $68.60 < SMA-10 ~$70.4). Reason string: `"range_0.95 vol_0.85 fresh"`. Promotes to full COILED once price re-aligns above SMA-10 (climax bars rolling out).
+
+**Lesson**: the user's framing ("on my watchlist, not actionable yet") matches what the system now correctly emits — TIGHTENING means "structure forming, not positioned for breakout"; COILED means "coiled AND positioned"; TRIGGERED means "go." Pre-fix the system silently gave WATCH for both "no structure" and "structure forming but base too short to detect" — same bucket, two different traders' situations. Fix isn't a threshold relaxation; it's an alternate predicate aimed at the specific shape (short base, tight tail bars, post-runup) where the original metric is mathematically blind. Same shape as the 2026-05-03 hedge-phrase downgrade and the AVNS Polygon backstop — a structurally independent second source closes a coverage gap the original gate can't see by design.
+
 ### 2026-05-04 (session 5) — Cleanup queue: zombie themes, cancel_unfilled_entries audit, #183 filed
 Three small, low-risk items advisor-scoped from today's working queue:
 

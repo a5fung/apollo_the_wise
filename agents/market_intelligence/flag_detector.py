@@ -42,6 +42,15 @@ _VOL_CONTRACTION_MAX   = 0.70   # recent_5d / early_5d vol   — ≤ 0.70 = dryi
 _BODY_TIGHTNESS_MAX    = 0.50   # |close-open| / ATR14       — small bodies
 _BREAKOUT_VOL_RATIO    = 1.50   # today_vol / 20d_avg_vol    — TRIGGERED gate
 
+# ── Fresh-tightening gates (parallel COILED path for short bases) ───────────
+# Fires when last 2 bars are clearly tighter than the post-runup volatility,
+# even when base_age is too short for the early-vs-recent window math to
+# separate. OKLO 5/4 surfaced the gap: bars 1 and 2 of a 6d base are still in
+# both early and recent windows so the ratio sticks near 1.0, but the user
+# sees "past 2 sessions are coiling." Fresh path captures that signal directly.
+_FRESH_TIGHT_RATIO_MAX     = 0.6   # max(2bar TR%) / ATR14% — ≤ 0.6 = clearly tight
+_FRESH_TIGHT_BASE_AGE_MIN  = 4     # relaxed from _BASE_AGE_MIN_COILED (6)
+
 # ── Stage gates ─────────────────────────────────────────────────────────────
 _BASE_AGE_MIN_WATCH   = 3
 _BASE_AGE_MIN_COILED  = 6
@@ -86,6 +95,59 @@ def _atr_14(rows: list[dict], end_idx: int) -> Optional[float]:
         prev_close = float(rows[i - 1]["close"]) if i > 0 else None
         trs.append(_wilder_tr(rows[i], prev_close))
     return sum(trs) / len(trs) if trs else None
+
+
+def _compute_fresh_tightening(
+    rows: list[dict], today_idx: int, base_age: int,
+) -> tuple[bool, Optional[float], Optional[float]]:
+    """Last-2-bar tightening relative to ATR-14, with dry-volume confirmation.
+
+    Returns (fires, fresh_2bar_max_tr_pct, atr14_pct). `fires` is True only when:
+      - base_age >= _FRESH_TIGHT_BASE_AGE_MIN
+      - max(TR% of last 2 bars) ≤ _FRESH_TIGHT_RATIO_MAX × ATR14%
+      - max(volume of last 2 bars) ≤ ADV20  (volume not spiking)
+
+    Designed as a parallel path to the existing range_tight + vol_tight gate,
+    not a replacement — kicks in for short bases where early/recent windows
+    overlap and the ratio mechanically can't separate.
+    """
+    if today_idx < 20 or base_age < _FRESH_TIGHT_BASE_AGE_MIN:
+        return (False, None, None)
+    today = rows[today_idx]
+    close_today = float(today["close"])
+    if close_today <= 0:
+        return (False, None, None)
+
+    # Last 2 bars TR%
+    trs_pct: list[float] = []
+    for i in (today_idx - 1, today_idx):
+        prev_close = float(rows[i - 1]["close"]) if i > 0 else None
+        tr = _wilder_tr(rows[i], prev_close)
+        c = float(rows[i]["close"])
+        trs_pct.append((tr / c * 100.0) if c > 0 else 0.0)
+    fresh_max_tr_pct = max(trs_pct)
+
+    atr14 = _atr_14(rows, today_idx)
+    if atr14 is None or atr14 <= 0:
+        return (False, fresh_max_tr_pct, None)
+    atr14_pct = atr14 / close_today * 100.0
+    if atr14_pct <= 0:
+        return (False, fresh_max_tr_pct, atr14_pct)
+
+    if (fresh_max_tr_pct / atr14_pct) > _FRESH_TIGHT_RATIO_MAX:
+        return (False, fresh_max_tr_pct, atr14_pct)
+
+    # Dry-volume gate: neither of the last 2 bars exceeds ADV-20
+    vols = [float(rows[i]["volume"] or 0) for i in (today_idx - 1, today_idx)]
+    adv20_window = [float(rows[i]["volume"] or 0)
+                    for i in range(today_idx - 20, today_idx)]
+    if len(adv20_window) != 20:
+        return (False, fresh_max_tr_pct, atr14_pct)
+    adv20 = sum(adv20_window) / 20
+    if adv20 <= 0 or max(vols) > adv20:
+        return (False, fresh_max_tr_pct, atr14_pct)
+
+    return (True, fresh_max_tr_pct, atr14_pct)
 
 
 def _find_pivot_high(rows: list[dict], today_idx: int) -> tuple[Optional[int], Optional[float]]:
@@ -158,6 +220,9 @@ def compute_flag_metrics(
         "sma_20": None,
         "breakout_close": None,
         "breakout_volume_ratio": None,
+        "fresh_tight_fires": False,
+        "fresh_2bar_tr_pct": None,
+        "atr14_pct": None,
         "score": 0,
         "stage": "unqualified",
         "reason": None,
@@ -315,9 +380,22 @@ def compute_flag_metrics(
         and close_today >= sma_10 >= sma_20
     )
 
-    coiled_today = (
-        range_tight and vol_tight and bodies_tight and ma_aligned
-        and base_age >= _BASE_AGE_MIN_COILED
+    # Fresh-tightening complement: catches OKLO-class names where base_age is
+    # too short (4-5d) for the early/recent ratio to separate but the last 2
+    # bars are clearly tight relative to ATR-14. Computed regardless of stage
+    # so the row always carries the metric for offline tuning.
+    fresh_fires, fresh_tr_pct, atr14_pct = _compute_fresh_tightening(rows, today_idx, base_age)
+    base["fresh_tight_fires"]  = fresh_fires
+    base["fresh_2bar_tr_pct"]  = fresh_tr_pct
+    base["atr14_pct"]          = atr14_pct
+
+    # COILED via either path:
+    #  (a) existing — full base contraction (range_tight AND vol_tight, age ≥ 6)
+    #  (b) fresh    — last-2-bar tight vs ATR (age ≥ 4)
+    # Both paths still require bodies_tight + ma_aligned.
+    coiled_today = bodies_tight and ma_aligned and (
+        (range_tight and vol_tight and base_age >= _BASE_AGE_MIN_COILED)
+        or (fresh_fires and base_age >= _FRESH_TIGHT_BASE_AGE_MIN)
     )
     was_coiled_recent = (recent_stages is not None) and (
         "COILED" in recent_stages[-_COILED_LOOKBACK_DAYS:]
@@ -338,15 +416,22 @@ def compute_flag_metrics(
         )
     elif coiled_today:
         proposed = "COILED"
-        base["reason"] = (
-            f"range_{range_ratio:.2f} vol_{vol_ratio:.2f} "
-            f"bodies_{base['last_body_pct']:.2f}/{base['prev_body_pct']:.2f}"
-        )
-    elif range_tight or vol_tight:
+        if fresh_fires and not (range_tight and vol_tight and base_age >= _BASE_AGE_MIN_COILED):
+            base["reason"] = (
+                f"fresh_2bar {fresh_tr_pct:.1f}%/atr {atr14_pct:.1f}% "
+                f"bodies_{base['last_body_pct']:.2f}/{base['prev_body_pct']:.2f}"
+            )
+        else:
+            base["reason"] = (
+                f"range_{range_ratio:.2f} vol_{vol_ratio:.2f} "
+                f"bodies_{base['last_body_pct']:.2f}/{base['prev_body_pct']:.2f}"
+            )
+    elif range_tight or vol_tight or fresh_fires:
         proposed = "TIGHTENING"
         rr = f"range_{range_ratio:.2f}" if range_ratio is not None else "range_NA"
         vr = f"vol_{vol_ratio:.2f}"   if vol_ratio   is not None else "vol_NA"
-        base["reason"] = f"{rr} {vr}"
+        ft = " fresh" if fresh_fires else ""
+        base["reason"] = f"{rr} {vr}{ft}"
     else:
         proposed = "WATCH"
         base["reason"] = (

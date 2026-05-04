@@ -1123,6 +1123,9 @@ async def initialize_schema() -> None:
                 ON mi_flag_candidates(stage, scan_date DESC);
             CREATE INDEX IF NOT EXISTS idx_flag_candidates_ticker
                 ON mi_flag_candidates(ticker, scan_date DESC);
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS fresh_tight_fires BOOLEAN;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS fresh_2bar_tr_pct FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS atr14_pct         FLOAT;
         """)
 
         # ── Strategy maturity registry ───────────────────────────────────
@@ -2202,17 +2205,24 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
 
 
 async def get_flag_universe(scan_date: "str | date") -> list[str]:
-    """Pre-filter for the continuation-flag scan: top-200 RS common stock
-    with usable liquidity and ≥60 sessions of history. Per-ticker pivot
-    walk + state machine runs in Python on the survivors (~150-200/day).
+    """Pre-filter for the continuation-flag scan: top-RS common stock OR
+    burst-class names, with usable liquidity and ≥60 sessions of history.
+    Per-ticker pivot walk + state machine runs in Python on the survivors.
 
-    Filters (per `~/.claude/plans/shiny-mapping-locket.md`):
-      - rs_rank ≤ 200 on scan_date (top-RS universe — Qullamaggie thesis is
-        trading leaders; misses on rank 250 are acceptable v1)
+    Two inclusion paths (UNION, OR-style):
+      (a) **Top-200 RS** — Qullamaggie thesis is trading leaders.
+      (b) **Burst inclusion** — rs_1m percentile ≥ 80 OR trailing-10-session
+          return ≥ 25%. Catches names like OKLO that have a violent recent
+          runup but get dragged out of top-200 by 6M underperformance
+          (OKLO 2026-05-04: rank 981 because raw_6m=-7.4%, but rs_1m=94.3
+          and trailing-10 +42.5%). The flag detector's pivot anchor handles
+          burst names well — gating them out at the universe layer was
+          structurally inverting coverage.
+
+    Common gates:
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
       - close ≥ $5 (avoid microcaps where bar noise dominates)
-      - 20d dollar volume ≥ $5M (lower than parabolic's $10M because flags
-        often dry up to thin volume; we want names that *had* liquidity)
+      - 20d dollar volume ≥ $5M
       - prior_sessions ≥ 60 (need history for runup math)
     """
     pool = await get_pool()
@@ -2230,25 +2240,39 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
             ctx AS (
                 SELECT ticker,
                        AVG(close * volume) FILTER (WHERE rn <= 20) AS dollar_vol_20d,
+                       MAX(close)          FILTER (WHERE rn = 1)  AS last_close,
+                       MIN(close)          FILTER (WHERE rn <= 10) AS trailing10_min,
                        COUNT(*)            AS prior_sessions
                 FROM ranked
                 GROUP BY ticker
                 HAVING COUNT(*) >= 60
+            ),
+            scored AS (
+                SELECT s.ticker, s.rs_rank, s.rs_1m,
+                       PERCENT_RANK() OVER (ORDER BY s.rs_1m) * 100.0 AS rs_1m_pct
+                FROM mi_stock_scores s
+                WHERE s.score_date = (
+                        SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1
+                      )
+                  AND s.rs_1m IS NOT NULL
             )
-            SELECT s.ticker
-            FROM mi_stock_scores s
-            LEFT JOIN mi_security_types st ON st.ticker = s.ticker
-            INNER JOIN ctx m ON m.ticker = s.ticker
-            INNER JOIN mi_daily_closes d ON d.ticker = s.ticker AND d.trade_date = $1
-            WHERE s.score_date = (
-                    SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1
-                  )
-              AND s.rs_rank IS NOT NULL
-              AND s.rs_rank <= 200
-              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
+            SELECT scored.ticker
+            FROM scored
+            LEFT JOIN mi_security_types st ON st.ticker = scored.ticker
+            INNER JOIN ctx m ON m.ticker = scored.ticker
+            INNER JOIN mi_daily_closes d ON d.ticker = scored.ticker AND d.trade_date = $1
+            WHERE (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
               AND d.close >= 5.0
               AND m.dollar_vol_20d >= 5000000
-            ORDER BY s.rs_rank ASC
+              AND (
+                    -- Path (a): top-200 RS
+                    (scored.rs_rank IS NOT NULL AND scored.rs_rank <= 200)
+                    -- Path (b): burst inclusion
+                    OR scored.rs_1m_pct >= 80
+                    OR (m.trailing10_min > 0
+                        AND (m.last_close / m.trailing10_min - 1) >= 0.25)
+                  )
+            ORDER BY COALESCE(scored.rs_rank, 99999) ASC
         """, scan_date)
     return [r["ticker"] for r in rows]
 
@@ -2270,10 +2294,11 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  last_body_pct, prev_body_pct, atr_14, sma_10, sma_20,
                  breakout_close, breakout_volume_ratio,
                  rs_rank, rs_composite, sector,
-                 stage, reason, score, held_from_stage)
+                 stage, reason, score, held_from_stage,
+                 fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24, $25)
+                    $23, $24, $25, $26, $27, $28)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -2297,7 +2322,10 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 stage                   = EXCLUDED.stage,
                 reason                  = EXCLUDED.reason,
                 score                   = EXCLUDED.score,
-                held_from_stage         = EXCLUDED.held_from_stage
+                held_from_stage         = EXCLUDED.held_from_stage,
+                fresh_tight_fires       = EXCLUDED.fresh_tight_fires,
+                fresh_2bar_tr_pct       = EXCLUDED.fresh_2bar_tr_pct,
+                atr14_pct               = EXCLUDED.atr14_pct
         """,
             record["ticker"],
             scan_date,
@@ -2324,6 +2352,9 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("reason"),
             record.get("score"),
             record.get("held_from_stage"),
+            record.get("fresh_tight_fires"),
+            record.get("fresh_2bar_tr_pct"),
+            record.get("atr14_pct"),
         )
 
 
