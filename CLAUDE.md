@@ -224,6 +224,15 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-03 — Catalyst hedge-phrase downgrade (Track B Layer 2)
+RDDT 5/1 catalyst pipeline returned "strong" with Evercore-initiation blurb instead of identifying the real driver (Q1 earnings beat). Symptom traced: when `search_news_perplexity()` synthesis comes back hedged ("no specific information about RDDT", "couldn't find recent news"), the hollow `news_summary` still gets passed to BOTH classifiers (Claude on `all_news`, Perplexity validator). Both can return "strong" because they're grading a stub — the prompts ask for classification, not "is there enough signal here to classify."
+
+**Fix** (`ep_detector.py` _evaluate loop, after agreement-boost block): scan `perplexity_answer` for hedge phrases (9-phrase tuple incl. "no specific information", "couldn't find", "search results don't contain", etc). When detected AND `catalyst_quality ∈ {game_changer, strong}`, downgrade one notch (`game_changer→strong`, `strong→routine`), cancel the 1.2× agreement boost, and emit `catalyst_pplx_hedge_downgrade` audit event with from/to/excerpt. Single override point at the consolidation site — both classifiers run unchanged, the downgrade is a post-hoc skepticism layer.
+
+**FMP verification deferred**: advisor's Layer 1 was "verify RDDT actually had earnings 4/30 via FMP before describing this as a missed-earnings bug." Tested `stable/earnings-calendar` on the current subscription tier — returned ~10–14 entries/week, no RDDT in any window 4/15–5/17. Endpoint likely filtered to S&P 500 / large-caps. Layer 3 (FMP earnings-window pre-check biasing the Perplexity prompt toward earnings as catalyst) is filed in `project_next_followup.md` with the coverage caveat — needs an alternate earnings source for mid-caps before it's actionable.
+
+**Lesson**: chained LLM calls hide their own data quality. The first call (Perplexity search) self-acknowledges nulls in prose; the second call (classifier) reads that prose as input data and grades it. Without a hedge-phrase guard in between, the system's confidence is decoupled from actual evidence. Defensive read: when an LLM in the chain admits uncertainty in natural language, downstream consumers must parse that uncertainty as a signal, not as content.
+
 ### 2026-05-03 — Forward-looking wick surfacing (Track A)
 RDDT formed a wick on 5/1 (Fri close), but no surface flagged it Monday morning as a break-of-prior-high candidate. Root cause: existing wick surfaces (`friday_watchlist._fetch_wick`, evening briefing wick line) only count rows where `filled_wick = TRUE`. The `wick_tracker._wick_forward_returns_job` waits 10 forward sessions before populating `filled_wick` (line 98: `if len(session_rows) < _HORIZON_DAYS: continue`), so freshly-fired wicks remain `NULL` for ~2 weeks — invisible to the trader during the actionable window.
 

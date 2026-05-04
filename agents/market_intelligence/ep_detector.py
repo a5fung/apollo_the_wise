@@ -869,6 +869,45 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             elif pplx_quality and pplx_quality != catalyst_quality:
                 logger.info(f"{ticker}: Claude={catalyst_quality}, Perplexity={pplx_quality} → disagreement, no boost")
 
+            # Hedge-phrase downgrade: when Perplexity self-acknowledges null search
+            # results, both classifiers are grading a hollow news_summary. RDDT 5/1
+            # case: Q1 earnings beat 4/30 AH was the real catalyst, but Perplexity
+            # returned hedged synthesis → Claude classified an Evercore initiation
+            # blurb as "strong". Downgrade by one notch and cancel agreement boost.
+            _PPLX_HEDGE_PHRASES = (
+                "no specific information",
+                "couldn't find",
+                "could not find",
+                "search results don't contain",
+                "search results do not contain",
+                "no recent news",
+                "unable to find",
+                "i don't have",
+                "i do not have",
+            )
+            pplx_low = (perplexity_answer or "").lower()
+            hedged = any(p in pplx_low for p in _PPLX_HEDGE_PHRASES)
+            if hedged and catalyst_quality in ("game_changer", "strong"):
+                _DOWNGRADE = {"game_changer": "strong", "strong": "routine"}
+                downgraded = _DOWNGRADE[catalyst_quality]
+                logger.info(
+                    f"{ticker}: Perplexity hedge detected — downgrading "
+                    f"{catalyst_quality} → {downgraded}"
+                )
+                await log_audit_event(
+                    "catalyst_pplx_hedge_downgrade",
+                    f"{ticker} {catalyst_quality} → {downgraded}",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "from_quality": catalyst_quality,
+                        "to_quality": downgraded,
+                        "pplx_excerpt": (perplexity_answer or "")[:200],
+                    }),
+                )
+                catalyst_quality = downgraded
+                confidence_multiplier = 1.0  # cancel any agreement boost
+
             # Store in cache for subsequent scans today
             _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
 
