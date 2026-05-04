@@ -52,6 +52,30 @@ reviews:
       step in next session), this cohort under-counts. If predicate hits
       threshold before dead-zone fix lands, prefer waiting another 30d to
       re-eval after gate calibration.
+
+      📉 PRIOR EVIDENCE — leaning DON'T LIFT (2026-05-04, n=6 ORB sim):
+      Pulled 6 historically-filtered candidates matching gap≥10% + strong
+      catalyst (EL 5/01, ROKU 5/01, PWR 4/30, ELVR 4/28, ARM 4/24, DFTX 4/20)
+      and ran ORB-high entry / ORB-low stop simulation against 1-min Polygon
+      bars. Results diverged sharply from stock returns:
+        EL    +3.4% close  / never_triggered
+        ROKU  +6.1% close  / stopped 09:32  (-1R)
+        PWR   +15.8% close / filled, held   (+0.99R)
+        ELVR  +7.9% close  / stopped 10:24  (-1R)
+        ARM   +14.8% close / stopped 09:55  (-1R)
+        DFTX  +2.2% close  / stopped 09:32  (-1R)
+      Net: 1/6 win, -3.01R total, -0.50R avg. Five of six closed green but
+      stopped intraday — the early-dip-then-recover pattern blew through
+      ORB-low. PWR is the lone hold-to-close winner.
+      Methodology caveat (advisor): MAGNA53 zero-rates float/neglect/vol_conv
+      for large-caps near 52w highs by design (Qullamaggie/Pradeep doctrine).
+      PWR's "institutional gap" shape may belong in a separate detector
+      class (Institutional Gap), not a MAGNA53 floor patch. n=6 too small
+      to act on alone — keep this review pending until predicate fires at
+      n≥15, then weigh against this prior. If the 90d cohort retains the
+      ~1/6 win rate, close as "filter doing its job"; if it improves
+      (≥3/6 or +R positive), lift the floor.
+      Sim script: scripts/orb_sim_filtered_candidates.py.
     status: pending
     added_on: 2026-04-29
 
@@ -411,3 +435,80 @@ reviews:
       Origin: CLAUDE.md 2026-04-26 session 1.
     status: pending
     added_on: 2026-04-29
+
+  - review_id: flag_proximity_band_calibration
+    title: "Flag proximity band — calibrate by runup magnitude?"
+    question: |
+      The 20%-off-pivot_close proximity gate is uniform regardless of runup
+      size. For high-runup names (>200%), the natural base often forms 15-22%
+      below pivot_close — marginal noise around the 20% threshold flips
+      visually-identical adjacent bars between COILED and unqualified.
+      SIVE.ST 4/8 vs 4/9 is the motivating n=1 (out-of-universe — Stockholm).
+      Question: in the production cohort, do high-runup names systematically
+      sit near or beyond the 20% band? If yes, scale the band with runup
+      (e.g. 20% + min(runup_pct, 5) × 5%) or replace with a base-envelope
+      check (close >= base_low × 0.97).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_candidates
+      WHERE stage = 'COILED'
+        AND scan_date > CURRENT_DATE - 60
+    threshold: 30
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Pull mi_flag_candidates rows where runup_pct > 2.0 (i.e. >200% runup)
+      over the last 60d. For each, compute |close - pivot_close| / pivot_close
+      across all base days and tally what fraction exceed 20%. If ≥30% of
+      base days for ≥5 such runups exceed the band, the gate is miscalibrated
+      for high-runup names. Tune options:
+        (a) scale band: 0.20 + min(runup_pct, 5) * 0.05
+        (b) replace with base-envelope: close >= base_low * 0.97
+        (c) make stage-conditional: stricter pre-base, looser post-base
+      Need ≥5 runups >200% in cohort before tuning — fewer is n=1 territory
+      (same anti-pattern as conviction_floor_extension).
+      Origin: 2026-05-04 SIVE.ST exploration. Advisor verdict: don't ship
+      cleanup without production data on high-runup names.
+    status: pending
+    added_on: 2026-05-04
+
+  - review_id: flag_proximity_bypass_hysteresis
+    title: "Flag proximity early-return bypasses hysteresis"
+    question: |
+      flag_detector.py:255-259 uses `return base` when proximity gate fails,
+      which sets stage='unqualified' and bypasses the hysteresis check at
+      lines 367-373. Compounding: get_yesterday_flag_stages returns the
+      persisted stage (which can already be a held value), so hysteresis can
+      hold indefinitely against persistent downgrades. Question: in
+      production, how often does a stock flip COILED → unqualified → COILED
+      (or TIGHTENING) within 3 days? If pattern recurs ≥5×, fix the bypass
+      AND the indefinite-hold issue together.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_candidates
+      WHERE stage = 'COILED'
+        AND scan_date > CURRENT_DATE - 60
+    threshold: 30
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Find COILED → unqualified → COILED-or-TIGHTENING flips within 3 days:
+        WITH stage_seq AS (
+          SELECT ticker, scan_date, stage,
+                 LAG(stage, 1) OVER (PARTITION BY ticker ORDER BY scan_date) AS prev1,
+                 LAG(stage, 2) OVER (PARTITION BY ticker ORDER BY scan_date) AS prev2,
+                 LAG(stage, 3) OVER (PARTITION BY ticker ORDER BY scan_date) AS prev3
+          FROM mi_flag_candidates
+          WHERE scan_date > CURRENT_DATE - 60
+        )
+        SELECT ticker, scan_date, prev1, prev2, prev3
+        FROM stage_seq
+        WHERE stage IN ('COILED','TIGHTENING')
+          AND (prev1 = 'unqualified' OR prev2 = 'unqualified')
+          AND (prev2 = 'COILED' OR prev3 = 'COILED');
+      If ≥5 distinct (ticker, anchor) tuples show the pattern, fix both:
+        (1) Move proximity check behind hysteresis (don't `return base`
+            with stage='unqualified' — set proposed='unqualified' then fall
+            through to hysteresis block).
+        (2) Track held state separately: when held, next-day comparison
+            uses held_from_stage so a chain of holds breaks naturally.
+      Both fixes are coupled — shipping (1) without (2) just delays the
+      stale-stage problem. Origin: 2026-05-04 SIVE.ST exploration.
+    status: pending
+    added_on: 2026-05-04
