@@ -83,7 +83,10 @@ async def _main(ticker: str, alert_date: date, apply: bool) -> int:
     # Pick the live stop. Same heuristic as extract_stop_leg_id but on top-level orders.
     candidates = []
     for o in open_orders:
-        if str(o.get("side", "")).lower() != "sell":
+        # Use substring `in` rather than equality — Python 3.11+ stringifies
+        # alpaca-py enums as `OrderSide.SELL` / `OrderType.STOP` (not `sell`/`stop`).
+        side_str = str(o.get("side", "")).lower()
+        if "sell" not in side_str:
             continue
         type_str = str(o.get("order_type") or o.get("type") or "").lower()
         has_stop_price = o.get("stop_price") not in (None, "", 0, "0")
