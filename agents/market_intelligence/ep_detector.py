@@ -62,6 +62,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_PM_RVOL_TOO_LOW,
     FILTER_SESSION_RVOL_TOO_LOW,
 )
+from agents.market_intelligence.ma_filter import is_likely_ma
 
 logger = logging.getLogger(__name__)
 
@@ -815,37 +816,32 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             catalyst_quality, claude_analysis = await claude_task
 
-            # Skip M&A / buyout — price capped at deal value, no momentum trade
-            _MNA_KEYWORDS = [
-                "acquisition", "acquire", "buyout", "takeover", "merger", "bought by",
-                "being acquired", "definitive agreement", "tender offer", "going private",
-                "taken private", "strategic transaction", "merger agreement", "to be acquired",
-            ]
-            analysis_low = claude_analysis.lower()
-            catalyst_low = news_summary.lower() if news_summary else ""
-            matched_kw = next(
-                (kw for kw in _MNA_KEYWORDS if kw in analysis_low or kw in catalyst_low),
-                None,
+            # Skip M&A / buyout — price capped at deal value, no momentum trade.
+            # Single-source filter (ma_filter.is_likely_ma) — same logic used by
+            # flag/9M/parabolic detectors. Polygon backstop closes the Perplexity
+            # coverage-gap (AVNS 5/4: Perplexity returned "no specific news" for
+            # 4/14 going-private; Polygon had the headline the whole time).
+            is_mna, mna_meta = await is_likely_ma(
+                ticker,
+                catalyst_quality=catalyst_quality,
+                catalyst_texts=[claude_analysis, news_summary],
+                check_polygon=True,
+                on_or_before=today,
             )
-            is_mna = (catalyst_quality == "mna") or (matched_kw is not None)
             if is_mna:
                 pplx_task.cancel()
                 reason = "M&A/buyout catalyst — no momentum trade"
-                logger.info(f"Skip {ticker}: {reason}")
-                matched_in = None
-                if matched_kw is not None:
-                    matched_in = "analysis" if matched_kw in analysis_low else "summary"
+                logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
                 await log_audit_event(
                     "mna_filter_fired",
-                    f"{ticker} via {'claude' if catalyst_quality == 'mna' else f'kw:{matched_kw}@{matched_in}'}",
+                    f"{ticker} via {(mna_meta or {}).get('source', 'unknown')}",
                     json.dumps({
                         "ticker": ticker,
                         "alert_date": today.isoformat(),
+                        "detector": "ep",
                         "catalyst_quality": catalyst_quality,
-                        "matched_keyword": matched_kw,
-                        "matched_in": matched_in,
-                        "claude_branch": catalyst_quality == "mna",
                         "news_summary": (news_summary or "")[:200],
+                        **(mna_meta or {}),
                     }),
                 )
                 _log_filtered(c, reason)

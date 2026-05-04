@@ -224,6 +224,25 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 3) — SSoT M&A filter (AVNS slip → ma_filter.py + Polygon backstop)
+AVNS appeared in flag scan as COILED on 2026-05-04 — but it was a 4/14 take-private deal pinned at $24.62-72 across 14 sessions (daily ranges 4-15¢ = bid-ask noise floor, 0.16-0.6% of close). EP detector's existing M&A filter at `ep_detector.py:818-852` (`_MNA_KEYWORDS` + `catalyst_quality=='mna'`) didn't fire because Perplexity returned "no specific news or catalysts" for AVNS 4/14 → catalyst_quality='routine' → keyword scan had no text to match. **Same hedge-phrase failure mode the 5/3 catalyst_pplx_hedge_downgrade fix targeted, but the downgrade only acts when Claude *also* graded it strong; here Claude saw nothing either, so no signal to downgrade.**
+
+Polygon news endpoint had it the whole time: Benzinga 2026-04-14 "Avanos To Go Private In $1.27 Billion All-Cash Buyout" + GlobeNewswire 4/15 Halper Sadeh shareholder-investigation followup. Both titles trivially match `_MNA_KEYWORDS` (`"buyout"`, `"go private"`).
+
+User direction: *"We already have a way to filter out M&A, why can't we use the same everywhere? ... no point writing up the heuristic everywhere when we should filter out real M&A for all setups."* Three layers, advisor-split into now/later:
+
+**L0 (root cause, shipped)**: `collector.py::get_polygon_news(ticker, lookback_days, on_or_before)` — wraps `/v2/reference/news`, returns headline list, fails graceful (empty list, never raises). Closes the Perplexity coverage-gap as a free backstop.
+
+**L1 (SSoT refactor, shipped)**: new `agents/market_intelligence/ma_filter.py` with `matches_mna_keywords(text)`, `polygon_news_has_mna_headline(ticker, ...)`, and `is_likely_ma(ticker, *, catalyst_quality, catalyst_texts, check_polygon, on_or_before)`. Single canonical `_MNA_KEYWORDS` tuple (17 entries — added "to go private", "all-cash buyout", "halper sadeh"). Three layered sources, cheapest first: (1) `catalyst_quality=='mna'` Claude verdict, (2) keyword scan over supplied texts, (3) Polygon headlines. Returns `(is_mna, telemetry_dict)` with `source` field so audit events distinguish "Claude flagged it" from "we caught it via Polygon despite Perplexity hedging."
+
+EP detector refactored to call `is_likely_ma` (~25 LOC removed; `mna_filter_fired` audit now carries `source` so post-mortem can split EP catalyst hits from Polygon-backstop hits). **Flag detector wired** at `flag_detector.py:447-481` — only COILED + TRIGGERED candidates run the check (≤20 tickers/day vs ~200 universe). Filtered candidates downgrade to `unqualified` with reason `mna_filter:<source>`, re-upserted to `mi_flag_candidates` so offline review can audit hit rate. Single-ticker TRIGGER alerts fire AFTER the flip, so M&A-flipped TRIGGEREDs no longer ping.
+
+**L2 (deal-pin price signature, filed as data-gated review)** `flag_ma_pin_filter` in `data_gated_reviews.yaml` — predicate `COUNT(COILED) >= 30` over 60d, ready 2026-06-15. Action: query median `(H-L)/close` across 14d-base sessions; ship 0.3% gate only if ≥3 distinct names hit floor AND ≥2 confirm M&A on manual review. L0+L1 should suffice in steady state; L2 only if Polygon coverage proves leaky.
+
+**Not wired in this PR**: 9M and parabolic detectors. Advisor blocking concern — wiring 4 detectors at once changes output distribution; ship EP+flag, watch one cycle of `mna_filter_fired` audit events, then extend.
+
+**Lesson**: chained LLM-only catalyst lookups silently couple coverage to one provider's blind spots. The 5/3 hedge-phrase downgrade caught the case where Perplexity admits nulls; AVNS surfaced the harder case where *both* classifiers see nothing because their input is empty. The fix isn't a smarter classifier — it's a structurally independent second source (Polygon news), composed via a single SSoT filter so every detector benefits without per-detector reinvention. Same shape as the 5/4 limit-buffer SSoT cleanup: 7 hand-rolled `* 1.001` sites was six too many; one M&A keyword list per detector would be N too many.
+
 ### 2026-05-04 (session 2) — Group skip Telegrams per strategy
 Skip messages from `submit_trade_entry._skip` were one Telegram per ticker, per cron run. On a heavy morning the ORB monitor could spit 6–10 individual skips into the chat — noise that buries the actual entries/blocks. Same problem on the 9M Day 2 cron at 9:31 ET.
 

@@ -512,3 +512,51 @@ reviews:
       stale-stage problem. Origin: 2026-05-04 SIVE.ST exploration.
     status: pending
     added_on: 2026-05-04
+
+
+  - review_id: flag_ma_pin_filter
+    title: "Flag deal-pin price-signature backstop (L2)"
+    question: |
+      ma_filter.py L0+L1 (catalyst keyword scan + Polygon news headlines) is
+      the primary M&A defense. It will miss a deal that announced before
+      Polygon's coverage window or where the news endpoint returned no
+      headlines for the ticker (small-cap take-privates, foreign listings).
+      Layer 2 is a price-signature backstop: a stock pinned at a deal value
+      shows median daily (high-low)/close < 0.3-0.5% across many sessions
+      (bid-ask noise floor). Question: in production COILED candidates,
+      how many show this signature, and how many of those are confirmed
+      M&A vs. legitimate ultra-tight VCPs?
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_candidates
+      WHERE stage = 'COILED'
+        AND scan_date > CURRENT_DATE - 60
+    threshold: 30
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Identify deal-pin signature in 60d COILED cohort:
+        SELECT f.ticker, f.scan_date,
+               PERCENTILE_CONT(0.5) WITHIN GROUP (
+                 ORDER BY (d.high_price - d.low_price) / NULLIF(d.close,0)
+               ) AS median_daily_range_pct,
+               COUNT(*) FILTER (
+                 WHERE (d.high_price - d.low_price) / NULLIF(d.close,0) < 0.005
+               ) AS sub_05_pct_sessions,
+               f.base_age
+        FROM mi_flag_candidates f
+        JOIN mi_daily_closes d ON d.ticker = f.ticker
+          AND d.trade_date BETWEEN (f.scan_date - INTERVAL '14 days') AND f.scan_date
+        WHERE f.stage = 'COILED' AND f.scan_date > CURRENT_DATE - 60
+        GROUP BY f.ticker, f.scan_date, f.base_age
+        HAVING PERCENTILE_CONT(0.5) WITHIN GROUP (
+                 ORDER BY (d.high_price - d.low_price) / NULLIF(d.close,0)
+               ) < 0.005;
+      Then manually verify each hit: was it M&A? If ≥3 distinct names hit
+      the floor AND ≥2 are confirmed M&A, ship a price-signature gate at
+      0.3% (median across last 7+ of 10 base sessions). If most "deal-pin"
+      hits are real ultra-tight VCPs that broke out, don't ship — false
+      positives would block legitimate setups. L0+L1 sufficient if Polygon
+      coverage holds.
+      Origin: 2026-05-04 AVNS investigation. Advisor recommended split:
+      ship L0+L1 immediately (cheap, high-precision), gate L2 on data.
+    status: pending
+    added_on: 2026-05-04

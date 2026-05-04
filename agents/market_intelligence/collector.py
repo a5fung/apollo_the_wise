@@ -370,6 +370,45 @@ async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
         return []
 
 
+async def get_polygon_news(
+    ticker: str,
+    *,
+    lookback_days: int = 7,
+    limit: int = 20,
+    on_or_before: Optional[date] = None,
+) -> list[dict]:
+    """Recent news headlines via Polygon /v2/reference/news.
+
+    Free coverage backstop for catalyst lookup when Perplexity hedges.
+    Returns list of {title, description, published_utc, publisher} dicts.
+    Empty list on any failure — never raises.
+    """
+    try:
+        end = on_or_before or date.today()
+        start = end - timedelta(days=lookback_days)
+        params = {
+            "ticker": ticker,
+            "published_utc.gte": start.isoformat(),
+            "published_utc.lte": end.isoformat(),
+            "limit": limit,
+            "order": "desc",
+            "sort": "published_utc",
+        }
+        data = await _polygon_get("/v2/reference/news", params)
+        return [
+            {
+                "title": r.get("title", ""),
+                "description": r.get("description", ""),
+                "published_utc": r.get("published_utc", ""),
+                "publisher": (r.get("publisher") or {}).get("name", ""),
+            }
+            for r in data.get("results", [])
+        ]
+    except Exception as e:
+        logger.warning(f"Polygon news fetch failed for {ticker}: {e}")
+        return []
+
+
 async def get_premarket_snapshot() -> dict[str, float]:
     """
     Pre-market price snapshot for SPY and QQQ via Polygon.

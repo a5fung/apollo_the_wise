@@ -445,6 +445,41 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                 return None
 
     results = await asyncio.gather(*(_score(t) for t in universe))
+
+    # M&A filter — only the actionable stages (COILED + TRIGGERED) get the
+    # Polygon news lookup. WATCH/TIGHTENING are noise-suppressed in the digest
+    # already; gating them at compute time would 5-10x the API cost for no
+    # user-visible benefit. Filtered candidates downgrade to `unqualified`
+    # with reason="mna_filter:<source>" — preserved in mi_flag_candidates so
+    # offline review can audit the filter's hit rate.
+    from agents.market_intelligence.ma_filter import is_likely_ma
+    actionable = [r for r in results if r is not None and r.get("stage") in ("COILED", "TRIGGERED")]
+    if actionable:
+        async def _mna_check(r: dict) -> None:
+            try:
+                is_mna, meta = await is_likely_ma(
+                    r["ticker"],
+                    check_polygon=True,
+                    on_or_before=scan_date,
+                    polygon_lookback_days=21,  # base typically forms 6-25d after pivot
+                )
+                if is_mna:
+                    r["original_stage"] = r["stage"]
+                    r["stage"] = "unqualified"
+                    r["reason"] = f"mna_filter:{(meta or {}).get('source', 'unknown')}"
+                    # _score already inserted the row as COILED/TRIGGERED.
+                    # Re-upsert so the persisted row reflects the flip.
+                    await db.insert_flag_candidate(r)
+                    await db.log_audit_event(
+                        "mna_filter_fired",
+                        f"{r['ticker']} via {(meta or {}).get('source', 'unknown')} (flag)",
+                        detail=str({"detector": "flag", "stage": r['original_stage'], **(meta or {})})[:500],
+                    )
+            except Exception as e:
+                logger.warning(f"flag_scan: M&A check failed for {r['ticker']}: {e}")
+
+        await asyncio.gather(*(_mna_check(r) for r in actionable))
+
     for r in results:
         if r is None:
             continue
