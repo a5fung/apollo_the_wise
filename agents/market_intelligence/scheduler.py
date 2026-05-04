@@ -1305,10 +1305,32 @@ async def _9m_day2_orb_job() -> None:
                         f"🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
                     )
 
-        await asyncio.gather(
+        results = await asyncio.gather(
             *(_process_candidate(c) for c in candidates),
             return_exceptions=True,
         )
+
+        # Grouped skip digest — one Telegram for the whole cron-run instead
+        # of per-ticker. Mirrors the MAGNA53 ORB monitor digest.
+        from agents.market_intelligence.broker.entry_pipeline import (
+            ACTION_SKIPPED, ACTION_BLOCKED,
+        )
+        from agents.market_intelligence.broker.skip_reasons import humanize
+        skipped_results = [
+            r for r in results
+            if isinstance(r, dict) and r.get("action") in (ACTION_SKIPPED, ACTION_BLOCKED)
+        ]
+        if skipped_results:
+            bullets = "\n".join(
+                f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
+                for r in skipped_results
+            )
+            try:
+                await send_telegram_message(
+                    f"⏭️ *9M Day2 skips ({today}, {len(skipped_results)})*\n{bullets}"
+                )
+            except Exception as e:
+                logger.error(f"9M Day2 grouped-skip Telegram failed — {e}")
     except Exception as e:
         import traceback
         logger.error(f"9M Day2 ORB job error: {e}\n{traceback.format_exc()}")

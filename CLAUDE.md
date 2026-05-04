@@ -224,6 +224,23 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 2) — Group skip Telegrams per strategy
+Skip messages from `submit_trade_entry._skip` were one Telegram per ticker, per cron run. On a heavy morning the ORB monitor could spit 6–10 individual skips into the chat — noise that buries the actual entries/blocks. Same problem on the 9M Day 2 cron at 9:31 ET.
+
+**Fix**: new `aggregate_skips: bool = False` param on `submit_trade_entry`. When True, `_skip` writes the DB row and audit event but skips the per-ticker Telegram. Both batched callers (MAGNA53 `process_new_alerts_live`, 9M Day 2 `_9m_day2_orb_job`) pass `aggregate_skips=True` and emit one grouped digest after `asyncio.gather`:
+
+```
+⏭️ ORB skips (2026-05-04, 4)
+• `TEAM` — Already have open position in ticker (open since 2026-05-01)
+• `CCC`  — Stop too wide for risk budget (ORB $0.40 vs 1.5x ATR $0.21)
+• `XYZ`  — No opening bar from data feed
+• `ABC`  — Daily loss limit hit ($-512 >= $400)
+```
+
+Also suppressed the upstream `check_filters` per-ticker Telegram in `_process_alert` (live_tracker.py:213) — it was a parallel skip path that bypassed the pipeline `_skip` and therefore wasn't covered by the new flag. Returning `{"action": "filtered", ...}` instead, captured by the same digest. Default param is False so any future single-shot caller (manual retry, /why, etc.) keeps per-ticker pings.
+
+**Lesson**: Telegram economy. Trading-system Telegrams should be terminal/actionable (entries, fills, cancellations, blocks worth one ping); informational batches (every-skip-with-reason) belong in a digest. The existing per-ticker pings violated that rule for fan-out flows where 5–10 evaluations are normal. The DB row + audit event remains the durable record; Telegram is the human-attention surface.
+
 ### 2026-05-04 (session 2) — Per-ticker open-position guard (TEAM 5/04 double-entry near-miss)
 TEAM 5/04 9M Day 2 placed a bracket order at 09:32 ET while a MAGNA53 5/01 fill in TEAM was still open with shares. Order cancelled unfilled at 4:05 PM EOD — but if it had triggered, exposure would have doubled. Investigation: same-day dedup at `entry_pipeline.py:200` only blocks `(ticker, alert_date)` collisions; safeguards block on count cap, daily loss, circuit breaker — none check per-ticker open positions across days/strategies.
 

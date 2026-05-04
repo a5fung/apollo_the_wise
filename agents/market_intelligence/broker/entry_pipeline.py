@@ -146,6 +146,7 @@ async def submit_trade_entry(
     stop_label: str = "Stop",
     on_skip: SkipHook | None = None,
     fade_midpoint_ratio: float | None = FADE_MIDPOINT_RATIO,
+    aggregate_skips: bool = False,
 ) -> dict:
     """Single entry-submission pipeline.
 
@@ -190,12 +191,16 @@ async def submit_trade_entry(
             await log_audit_event(audit_event, f"{strategy_label} {ticker} — {reason}")
         except Exception:
             pass
-        try:
-            await send_telegram_message(
-                f"{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
-            )
-        except Exception as e:
-            logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
+        # When aggregate_skips=True, caller is responsible for the grouped
+        # Telegram digest after asyncio.gather. Per-ticker pings here would
+        # double-up. DB row + audit log still written for the durable record.
+        if not aggregate_skips:
+            try:
+                await send_telegram_message(
+                    f"{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
+                )
+            except Exception as e:
+                logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
         return {"ticker": ticker, "action": action, "reason": reason}
 
     # 1. Duplicate check — trade row already exists for this ticker+date.

@@ -210,7 +210,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                     await log_audit_event("orb_filtered", f"{ticker} [{trigger}] — {skip_reason}")
                 except Exception:
                     pass
-                await send_telegram_message(f"⏭️ *{ticker}* ORB skipped — {humanize(skip_reason)}")
+                # Per-ticker Telegram suppressed — grouped digest fires post-gather.
                 return {"ticker": ticker, "action": "filtered", "reason": skip_reason}
 
             atr_14, _atr_pct = await compute_atr_14(ticker, today)
@@ -236,6 +236,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 # width + 10:00 ET cleanup already cover dead-cat fills.
                 # Midpoint check was over-strict; drop it.
                 fade_midpoint_ratio=None,
+                aggregate_skips=True,
             )
 
     raw = await asyncio.gather(
@@ -274,8 +275,22 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         results.append(r)
 
     entered = sum(1 for r in results if r.get("action") in (ACTION_AUTO_ENTERED, ACTION_PROPOSED))
-    skipped = sum(1 for r in results if r.get("action") in ("filtered", ACTION_SKIPPED, ACTION_BLOCKED))
-    logger.info(f"ORB monitor: {entered} entered, {skipped} skipped out of {len(alerts)} alerts")
+    skipped_results = [r for r in results if r.get("action") in ("filtered", ACTION_SKIPPED, ACTION_BLOCKED)]
+    logger.info(f"ORB monitor: {entered} entered, {len(skipped_results)} skipped out of {len(alerts)} alerts")
+
+    # Grouped skip digest — one Telegram per cron-run instead of per-ticker.
+    if skipped_results:
+        bullets = "\n".join(
+            f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
+            for r in skipped_results
+        )
+        try:
+            await send_telegram_message(
+                f"⏭️ *ORB skips ({today}, {len(skipped_results)})*\n{bullets}"
+            )
+        except Exception as e:
+            logger.error(f"ORB grouped-skip Telegram failed — {e}")
+
     return results
 
 
@@ -693,6 +708,7 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
         # 9M is pure quant (no LLM validation); keep some fade protection
         # but loose — only skip on real weakness (lower 25% of ORB).
         fade_midpoint_ratio=0.25,
+        aggregate_skips=True,
     )
 
     # Mirror pipeline outcome onto sugar baby row so /9m reflects reality.
