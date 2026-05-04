@@ -224,6 +224,24 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 2) — Per-ticker open-position guard (TEAM 5/04 double-entry near-miss)
+TEAM 5/04 9M Day 2 placed a bracket order at 09:32 ET while a MAGNA53 5/01 fill in TEAM was still open with shares. Order cancelled unfilled at 4:05 PM EOD — but if it had triggered, exposure would have doubled. Investigation: same-day dedup at `entry_pipeline.py:200` only blocks `(ticker, alert_date)` collisions; safeguards block on count cap, daily loss, circuit breaker — none check per-ticker open positions across days/strategies.
+
+**Fix**: new check at entry_pipeline.py right after same-day dedup. SELECT for any prior `alert_date` row with `ticker=$1 AND status='filled' AND remaining_shares > 0`. If found, `_skip` with `BLOCK_TICKER_OPEN_POSITION` (new constant in `skip_reasons.py`, human label "Already have open position in ticker"). Reason carries the prior alert_date for context (e.g. `block:ticker_open_position: open since 2026-05-01`). Action = `ACTION_BLOCKED`, icon = 🚫, audit event `orb_blocked` — matches strategy-disabled / shadow-phase block semantics.
+
+**Why `status='filled' AND remaining_shares > 0`**: canonical "we own shares" signal — matches `update_open_positions_live`. Stuck `order_placed`/`pending_confirmation` rows from prior days don't block (they're stale state, not real exposure).
+
+**Lesson**: trade-level dedup keys ≠ exposure-level dedup keys. `(ticker, alert_date)` is the right primary key for the alert table but the wrong gate for "should we open another position." Two strategies can each see a fresh alert on the same ticker, both pass same-day-duplicate, both pass count/loss safeguards, both fire orders. The exposure check has to live at the position level (status + shares), not the alert level.
+
+### 2026-05-04 (session 2) — Parallelize 9M Day 2 cron + drop bar-retry delay (TEAM 5/04 root cause)
+Re-investigated TEAM 5/04 unfilled after track-1/2/3 ship. **Real root cause was not bar-fetch latency or TEAM-specific** — it was the 9M Day 2 cron's sequential for-loop. SOUN hit `bar_miss` at 09:31:00.150, slept 60s in `fetch_orb_bar_with_retry`, finished at 09:32:00. TEAM was queued behind it; its bar fetched at 09:32:00.654 immediately after SOUN unblocked. Architectural discrepancy: MAGNA53 fans out via `asyncio.gather` over alerts (`live_tracker.py:241`), 9M Day 2 ran a `for candidate in candidates: await submit_9m_day2_trade(c)` — same pipeline, divergent fan-out.
+
+**Fix 1** (`scheduler.py::_9m_day2_orb_job`): replaced for-loop with `asyncio.gather(*..., return_exceptions=True)` + `Semaphore(5)`, mirroring MAGNA53. Per-candidate try/except moved inside the inner coroutine — preserves "one ticker's crash never strands the rest" semantics. Verified `submit_9m_day2_trade` is concurrent-safe: per-ticker `update_9m_sugar_baby_status(ticker, alert_date, status)` updates only, no shared state.
+
+**Fix 2** (`entry_pipeline.py:39`): `BAR_RETRY_DELAY_SEC = 60 → 10`. Defense in depth even after parallelization. Bars settle in seconds, not minutes — 60s was wrong on its own merits. Switching 9M Day 2 to bar_stream wouldn't have helped (same `fetch_orb_bar_with_retry`; INTC 4/24 audit shows bar_stream also hits the retry path).
+
+**Lesson**: two strategies sharing a unified pipeline must also share fan-out shape. The unification at `submit_trade_entry` (2026-04-24 s3) bundled the per-trade work but left the per-batch driver loop strategy-local — and the two drivers drifted. Anytime the same conceptual operation runs in N places (entry, bar fetch, stop-leg ID, limit buffer, fan-out), centralize or at minimum mirror; otherwise one will eventually develop a latency/correctness gap the other doesn't.
+
 ### 2026-05-04 — Bracket fill messaging + stop-limit buffer (TEAM 5/04 unfilled)
 User reported "TEAM entered" Telegram 5/04 but Alpaca showed no fill. Investigated 4 unfilled-cancellations 4/28→5/04: TEAM (gap-through, cron 60s late), CCC (penny-spread, in-time but limit didn't cross), TWLO + TEVA (never retriggered — pattern failures, not code-fixable). Two-track fix.
 

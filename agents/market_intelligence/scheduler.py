@@ -1280,27 +1280,35 @@ async def _9m_day2_orb_job() -> None:
         from agents.market_intelligence.collector import prev_trading_days
         yesterday = prev_trading_days(1, from_date=today)[0]
         candidates = await get_pending_9m_sugar_babies(yesterday)
-        # Per-candidate try/except so one ticker's crash never silently strands
-        # the rest of the watchlist. submit_9m_day2_trade itself Telegrams every
-        # terminal state via the unified pipeline; this guard catches everything
-        # outside that envelope (DB pool, network, programmer error).
-        for candidate in candidates:
-            try:
-                await submit_9m_day2_trade(candidate)
-            except Exception as ce:
-                tkr = candidate.get("ticker", "<unknown>")
-                logger.exception(f"9M Day2 {tkr}: per-candidate crash — {ce}")
+        # Parallel fan-out (mirrors MAGNA53 pattern in live_tracker.py). Sequential
+        # for-loop here was the TEAM 5/04 root cause: SOUN's 60s bar-retry blocked
+        # all subsequent candidates. Semaphore(5) caps concurrent submits; each
+        # ticker keeps its own try/except so one crash never strands the rest.
+        sem = asyncio.Semaphore(5)
+
+        async def _process_candidate(candidate):
+            async with sem:
                 try:
-                    from agents.market_intelligence.db import log_audit_event
-                    await log_audit_event(
-                        "9m_day2_pipeline_crash",
-                        f"{tkr} — {type(ce).__name__}: {ce}",
+                    return await submit_9m_day2_trade(candidate)
+                except Exception as ce:
+                    tkr = candidate.get("ticker", "<unknown>")
+                    logger.exception(f"9M Day2 {tkr}: per-candidate crash — {ce}")
+                    try:
+                        from agents.market_intelligence.db import log_audit_event
+                        await log_audit_event(
+                            "9m_day2_pipeline_crash",
+                            f"{tkr} — {type(ce).__name__}: {ce}",
+                        )
+                    except Exception:
+                        logger.exception(f"9M Day2 {tkr}: audit_log write also failed")
+                    await send_telegram_message(
+                        f"🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
                     )
-                except Exception:
-                    logger.exception(f"9M Day2 {tkr}: audit_log write also failed")
-                await send_telegram_message(
-                    f"🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
-                )
+
+        await asyncio.gather(
+            *(_process_candidate(c) for c in candidates),
+            return_exceptions=True,
+        )
     except Exception as e:
         import traceback
         logger.error(f"9M Day2 ORB job error: {e}\n{traceback.format_exc()}")

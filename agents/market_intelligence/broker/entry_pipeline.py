@@ -28,6 +28,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
     WINDOW_DUPLICATE,
+    BLOCK_TICKER_OPEN_POSITION,
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
@@ -36,7 +37,7 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 logger = logging.getLogger(__name__)
 
 BAR_RETRY_MAX = 3
-BAR_RETRY_DELAY_SEC = 60
+BAR_RETRY_DELAY_SEC = 10
 FADE_MIDPOINT_RATIO = 0.5
 
 # Bounded action vocabulary for `submit_trade_entry` return dicts.
@@ -213,6 +214,32 @@ async def submit_trade_entry(
             pass
         # Not a failure — silent is correct here. It's already been handled once.
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
+
+    # 1b. Open-position guard — block if we already hold this ticker from any
+    # prior alert_date. Prevents cross-strategy / cross-day double exposure
+    # (e.g. TEAM 5/04: 9M Day 2 placed bracket while MAGNA53 5/01 fill still
+    # open). Same-day dedup above handles the within-day case; this catches
+    # multi-day. `status='filled' AND remaining_shares > 0` is the canonical
+    # "we own shares" signal (matches update_open_positions_live).
+    async with pool.acquire() as conn:
+        already_open = await conn.fetchval(
+            """
+            SELECT alert_date FROM mi_live_trades
+            WHERE ticker = $1
+              AND status = 'filled'
+              AND remaining_shares > 0
+              AND alert_date != $2
+            ORDER BY alert_date DESC
+            LIMIT 1
+            """,
+            ticker, today,
+        )
+    if already_open is not None:
+        reason = f"{BLOCK_TICKER_OPEN_POSITION}: open since {already_open.isoformat()}"
+        return await _skip(
+            reason, icon="🚫",
+            audit_event="orb_blocked", action=ACTION_BLOCKED,
+        )
 
     # 1a. Strategy phase gate. Fail-open if the strategy isn't in the registry
     # (legacy code path / pre-deploy state). Once seeded, the gate is the
