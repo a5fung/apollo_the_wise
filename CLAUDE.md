@@ -224,6 +224,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 5) — Cleanup queue: zombie themes, cancel_unfilled_entries audit, #183 filed
+Three small, low-risk items advisor-scoped from today's working queue:
+
+**(a) Zombie theme retire** — 42 themes on prod with latest theme_date < CURRENT_DATE − 7d but stage NOT 'Retired'. Idempotent UPDATE via DISTINCT ON (name, theme_date) — single-shot fix for pre-recency-cap stuck rows. Recency cap (`get_active_themes(stale_after_days=7)`) is the de-facto retirement going forward. `mi_themes` has no `last_seen` column; cleanup query had to derive latest-per-name from `theme_date`.
+
+**(b) `cancel_unfilled_entries` audit logging** — `order_manager.py:1003`. Cancel-failed path was silent `logger.warning + return False` (no audit event, no Telegram). Now emits `orb_unfilled_cancelled` / `eod_unfilled_cancelled` on success and `unfilled_cancel_failed` on failure (per-ticker), plus a grouped Telegram alert on the failure path. TEVA 4/30 anomaly investigation hook — the next time the 10:00 ET cleanup misses a row, we'll have telemetry instead of inferring from row state.
+
+**(c) #183 filed** — `mi_live_orders` status enum stringification. `alpaca_client.py:470::_order_to_dict` returns `str(order.status)` which Python 3.11+ stringifies as `'OrderStatus.NEW'` (not `'new'`). Three reader sites silently broken: `live_tracker.py:481` (morning_stop_refresh stop-still-active gate — falls through to update_stop EVERY active stop EVERY morning, plausibly #182's root cause), `order_manager.py:266` (check_fills polling), `order_manager.py:521` (check_day1_stopouts). WS path covers sites 2/3 in practice. **Empirical signature for tomorrow 9:35 ET**: if the new `stop_update_started` audit event (shipped session 4) fires for **every** active position, site 1 is confirmed → ship the SSoT fix at the wire boundary (`str(order.status).split(".")[-1].lower()`). Fix held tonight to preserve the discriminator in tomorrow's telemetry.
+
+**Closed false alarms**: #181 (Day-1 re-entry row reuse — `exits` JSONB preserves attempt-1 stop-out outcome; only `status` and `entry_*` are overwritten, no data loss); AEHR mi_stock_scores spot-check (RS rotation 3→7→23→71 is normal momentum-name behavior, not a coverage bug).
+
+**Lesson**: same shape as the 2026-05-04 reconcile_orphan_stop fix — Python 3.11+ enum stringification is a single root cause masquerading as N decoupled bugs. SSoT normalization at the wire boundary (one line in `_order_to_dict`) is the right fix; per-site comparison patches would just multiply the surface area. But re-enabling polling readers may surface a separate duplicate-event problem that the WS path was masking — design call after telemetry confirms.
+
 ### 2026-05-04 (session 4) — Audit logging in `update_stop` + `execute_partial_exit` (GOOGL/TEAM 5/4 silent-failure surface)
 GOOGL/TEAM 5/4 incident: TEAM #57 child stop never captured into DB after Day-1 re-entry (4/24-class OTO bug recurrence — manually reconciled today via `scripts/reconcile_orphan_stop.py`); GOOGL #56 partial-exit attempt at 16:45 ET ACCEPTED a 17-share market sell that never filled (after-hours queue), leaving DB row in inconsistent state (total_pnl=10.88 but exits=[] and partial_taken=f). Investigation surfaced that **both `update_stop` and `execute_partial_exit` had zero audit-log writes** — every failure path was silent (logger.warning + return False). Without telemetry there's no way to distinguish a genuine partial-fill drift from a benign retry.
 

@@ -1018,7 +1018,9 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
 
     cancelled = 0
     cancelled_tickers: list[str] = []
+    failed_tickers: list[str] = []
     logger.info(f"{reason}: {len(pending)} unfilled entries to cancel")
+    event_type = "orb_unfilled_cancelled" if "ORB" in reason else "eod_unfilled_cancelled"
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
@@ -1026,12 +1028,37 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
             cancelled += 1
             cancelled_tickers.append(trade["ticker"])
             logger.info(f"{reason} cancel: {trade['ticker']} order_id={trade['entry_order_id']}")
+            await log_audit_event(
+                event_type,
+                f"{trade['ticker']} entry cancelled: {reason}",
+                json.dumps({
+                    "trade_id": trade["id"],
+                    "ticker": trade["ticker"],
+                    "entry_order_id": trade["entry_order_id"],
+                    "reason": reason,
+                }),
+            )
         else:
+            failed_tickers.append(trade["ticker"])
             logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
+            await log_audit_event(
+                "unfilled_cancel_failed",
+                f"{trade['ticker']} cancel failed during {reason}",
+                json.dumps({
+                    "trade_id": trade["id"],
+                    "ticker": trade["ticker"],
+                    "entry_order_id": trade["entry_order_id"],
+                    "reason": reason,
+                }),
+            )
 
     if cancelled:
         await send_telegram_message(
             f"🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
+        )
+    if failed_tickers:
+        await send_telegram_message(
+            f"⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
         )
     return cancelled
 
