@@ -2248,8 +2248,7 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
                 HAVING COUNT(*) >= 60
             ),
             scored AS (
-                SELECT s.ticker, s.rs_rank, s.rs_1m,
-                       PERCENT_RANK() OVER (ORDER BY s.rs_1m) * 100.0 AS rs_1m_pct
+                SELECT s.ticker, s.rs_rank, s.rs_1m
                 FROM mi_stock_scores s
                 WHERE s.score_date = (
                         SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1
@@ -2267,8 +2266,8 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
               AND (
                     -- Path (a): top-200 RS
                     (scored.rs_rank IS NOT NULL AND scored.rs_rank <= 200)
-                    -- Path (b): burst inclusion
-                    OR scored.rs_1m_pct >= 80
+                    -- Path (b): burst inclusion — rs_1m is already a 0-100 percentile
+                    OR scored.rs_1m >= 80
                     OR (m.trailing10_min > 0
                         AND (m.last_close / m.trailing10_min - 1) >= 0.25)
                   )
