@@ -23,7 +23,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_ZERO_RANGE,
 )
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -540,16 +540,43 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
     if not trade or not trade["remaining_shares"]:
         logger.warning(f"update_stop: trade {trade_id} not found or no remaining shares")
+        await log_audit_event(
+            "stop_update_aborted",
+            f"trade_id={trade_id}: not found or no remaining shares",
+            json.dumps({"trade_id": trade_id, "new_stop_price": new_stop_price}),
+        )
         return False
 
     ticker = trade["ticker"]
     old_stop_id = trade.get("stop_order_id")
+    old_stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
+
+    await log_audit_event(
+        "stop_update_started",
+        f"{ticker}: ${old_stop_price} → ${new_stop_price:.2f}",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "old_stop_id": old_stop_id, "old_stop_price": old_stop_price,
+            "new_stop_price": new_stop_price,
+            "remaining_shares": float(trade["remaining_shares"]),
+        }),
+    )
 
     # Cancel existing stop
+    cancel_ok = True
     if old_stop_id:
         cancelled = await alpaca.cancel_order(old_stop_id)
         if not cancelled:
+            cancel_ok = False
             logger.warning(f"Could not cancel old stop {old_stop_id} for {ticker} — may already be filled/cancelled")
+            await log_audit_event(
+                "stop_update_cancel_failed",
+                f"{ticker}: could not cancel old stop {old_stop_id}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "old_stop_id": old_stop_id,
+                }),
+            )
 
     # Place new stop
     try:
@@ -560,6 +587,16 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
     except Exception as e:
         logger.error(f"Failed to place new stop for {ticker}: {e}")
+        await log_audit_event(
+            "stop_update_failed",
+            f"{ticker}: place_stop_order raised on first attempt — {type(e).__name__}",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "new_stop_price": new_stop_price, "attempt": 1,
+                "old_cancel_ok": cancel_ok,
+                "error": str(e)[:500],
+            }),
+        )
         # Urgent: stop not in place!
         await send_telegram_message(
             f"🚨 *STOP ORDER FAILED* for {ticker}!\n"
@@ -573,8 +610,28 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             new_order = await alpaca.place_stop_order(
                 ticker=ticker, qty=trade["remaining_shares"], stop_price=new_stop_price,
             )
+            await log_audit_event(
+                "stop_update_retry_succeeded",
+                f"{ticker}: retry placed stop @${new_stop_price:.2f}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "new_stop_price": new_stop_price,
+                    "new_stop_id": new_order.get("id"),
+                }),
+            )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
+            await log_audit_event(
+                "stop_update_failed",
+                f"{ticker}: retry also failed — position naked, {type(e2).__name__}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "new_stop_price": new_stop_price, "attempt": 2,
+                    "old_cancel_ok": cancel_ok,
+                    "error_first": str(e)[:500],
+                    "error_retry": str(e2)[:500],
+                }),
+            )
             return False
 
     new_stop_id = new_order["id"]
@@ -600,6 +657,17 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
 
     logger.info(f"Stop updated: {ticker} → ${new_stop_price:.2f}")
+    await log_audit_event(
+        "stop_updated",
+        f"{ticker}: stop now ${new_stop_price:.2f} ({new_stop_id})",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "old_stop_id": old_stop_id, "old_stop_price": old_stop_price,
+            "new_stop_id": new_stop_id, "new_stop_price": new_stop_price,
+            "remaining_shares": float(trade["remaining_shares"]),
+            "old_cancel_ok": cancel_ok,
+        }),
+    )
     return True
 
 
@@ -616,6 +684,11 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         )
     if not trade:
         logger.warning(f"execute_partial_exit: trade {trade_id} not found")
+        await log_audit_event(
+            "partial_exit_aborted",
+            f"trade_id={trade_id}: not found",
+            json.dumps({"trade_id": trade_id, "shares": int(shares)}),
+        )
         return False
 
     ticker = trade["ticker"]
@@ -629,6 +702,17 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
         f"(new_remaining={new_remaining}, trade_id={trade_id})"
     )
+    await log_audit_event(
+        "partial_exit_started",
+        f"{ticker}: sell {shares} of {full_remaining} (new_remaining={new_remaining})",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "shares": shares, "full_remaining": full_remaining,
+            "new_remaining": new_remaining,
+            "stop_price": float(stop_price) if stop_price else None,
+            "old_stop_id": old_stop_id,
+        }),
+    )
 
     # Step 1: Replace stop order for new_remaining before unlocking shares.
     # Cancelling the full-qty stop frees shares held-for-orders; the new
@@ -641,6 +725,15 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             # Abort cleanly; morning_stop_refresh will retry tomorrow.
             logger.error(
                 f"execute_partial_exit: cancel failed for stop {old_stop_id} on {ticker} — aborting"
+            )
+            await log_audit_event(
+                "partial_exit_aborted",
+                f"{ticker}: cancel failed for stop {old_stop_id}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "old_stop_id": old_stop_id, "shares": shares,
+                    "stage": "cancel_old_stop",
+                }),
             )
             await send_telegram_message(
                 f"⚠️ Partial exit ABORTED for {ticker}: "
@@ -670,9 +763,28 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
                 f"@${stop_price:.2f} (order {new_stop_id})"
             )
+            await log_audit_event(
+                "partial_exit_stop_replaced",
+                f"{ticker}: stop reissued for {new_remaining} sh @${float(stop_price):.2f} ({new_stop_id})",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                    "stop_price": float(stop_price),
+                }),
+            )
         except Exception as e:
             # Old stop cancelled but new one failed — position momentarily unprotected.
             logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
+            await log_audit_event(
+                "partial_exit_aborted",
+                f"{ticker}: replacement stop failed — position naked, {type(e).__name__}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "old_stop_id": old_stop_id, "new_remaining": new_remaining,
+                    "stop_price": float(stop_price), "stage": "place_new_stop",
+                    "error": str(e)[:500],
+                }),
+            )
             await send_telegram_message(
                 f"🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
                 f"Old stop cancelled but new stop failed: {e}\n"
@@ -691,8 +803,28 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 ON CONFLICT (alpaca_order_id) DO NOTHING
             """, trade_id, order["id"], ticker, float(shares),
                 order.get("status", "new"), json.dumps(order))
+        await log_audit_event(
+            "partial_exit_sell_placed",
+            f"{ticker}: market sell {shares} placed ({order.get('id')}, status={order.get('status', 'new')})",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "shares": shares, "order_id": order.get("id"),
+                "order_status": order.get("status"),
+            }),
+        )
     except Exception as e:
         logger.error(f"Partial exit sell failed for {ticker} after stop replaced: {e}")
+        await log_audit_event(
+            "partial_exit_sell_failed",
+            f"{ticker}: market sell raised — {type(e).__name__}, attempting rollback",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "shares": shares, "new_stop_id": new_stop_id,
+                "full_remaining": full_remaining,
+                "stop_price": float(stop_price) if stop_price else None,
+                "error": str(e)[:500],
+            }),
+        )
         # Rollback: restore stop for full original qty so nothing sits unprotected.
         if new_stop_id:
             await alpaca.cancel_order(new_stop_id)
@@ -711,6 +843,16 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                     ON CONFLICT (alpaca_order_id) DO NOTHING
                 """, trade_id, rollback["id"], ticker, float(full_remaining),
                     float(stop_price), rollback.get("status", "new"), json.dumps(rollback))
+            await log_audit_event(
+                "partial_exit_rolled_back",
+                f"{ticker}: stop restored to full {full_remaining} sh @${float(stop_price):.2f} ({rollback['id']})",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "rollback_stop_id": rollback["id"],
+                    "full_remaining": full_remaining,
+                    "stop_price": float(stop_price),
+                }),
+            )
             await send_telegram_message(
                 f"⚠️ Partial exit FAILED for {ticker}: {e}\n"
                 f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
@@ -720,6 +862,17 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             )
         except Exception as e2:
             logger.error(f"Partial exit rollback ALSO failed for {ticker}: {e2}")
+            await log_audit_event(
+                "partial_exit_rollback_failed",
+                f"{ticker}: CRITICAL — sell failed AND rollback failed, position naked",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "full_remaining": full_remaining,
+                    "stop_price": float(stop_price) if stop_price else None,
+                    "sell_error": str(e)[:500],
+                    "rollback_error": str(e2)[:500],
+                }),
+            )
             await send_telegram_message(
                 f"🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
                 f"Sell error: {e}\nRollback error: {e2}\n"
@@ -753,6 +906,18 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             WHERE id = $1
         """, trade_id, json.dumps(exits), new_remaining, total_pnl)
 
+    await log_audit_event(
+        "partial_exit_committed",
+        f"{ticker}: DB committed — sold {shares} @${float(fill_price):.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "shares": shares, "fill_price": float(fill_price),
+            "pnl": float(pnl), "total_pnl": float(total_pnl),
+            "new_remaining": new_remaining,
+            "order_id": order.get("id"),
+            "order_status": order.get("status"),
+        }),
+    )
     await send_telegram_message(
         f"📤 *Partial exit:* {ticker}\n"
         f"Sold {shares} shares @${fill_price:.2f}\n"

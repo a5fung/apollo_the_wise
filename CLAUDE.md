@@ -224,6 +224,17 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 4) — Audit logging in `update_stop` + `execute_partial_exit` (GOOGL/TEAM 5/4 silent-failure surface)
+GOOGL/TEAM 5/4 incident: TEAM #57 child stop never captured into DB after Day-1 re-entry (4/24-class OTO bug recurrence — manually reconciled today via `scripts/reconcile_orphan_stop.py`); GOOGL #56 partial-exit attempt at 16:45 ET ACCEPTED a 17-share market sell that never filled (after-hours queue), leaving DB row in inconsistent state (total_pnl=10.88 but exits=[] and partial_taken=f). Investigation surfaced that **both `update_stop` and `execute_partial_exit` had zero audit-log writes** — every failure path was silent (logger.warning + return False). Without telemetry there's no way to distinguish a genuine partial-fill drift from a benign retry.
+
+**Fix**: purely additive `log_audit_event` instrumentation across both functions in `broker/order_manager.py`. 7 sites in `update_stop` (`stop_update_started/aborted/cancel_failed/failed/retry_succeeded/updated`); 9 sites in `execute_partial_exit` (`partial_exit_started/aborted/stop_replaced/sell_placed/sell_failed/rolled_back/rollback_failed/committed`). Each event carries trade_id, ticker, broker order IDs, and the relevant state delta as JSON detail.
+
+No logic changed. The point is to capture tomorrow's `morning_stop_refresh` (9:35 ET) + the next partial-exit run (16:45 ET) so #180 (defer DB commit to fill event) and #182 (morning_stop_refresh DB write skew) can be investigated against real telemetry instead of post-hoc state archeology.
+
+**Filed for follow-up**: #181 Day-1 re-entry row reuse loses original closed outcome (TEAM #57 stop-out at 10:21 vanished when 11:21 re-entry overwrote `status='filled'`); #182 morning_stop_refresh DB write skew (placed broker stop but mi_live_trades.stop_order_id stayed NULL — symptom of TEAM 5/4 surface).
+
+**Lesson**: silent return-False paths in trading-side functions violate the no-silent-failure rule. Audit logging is the bare minimum before any defer/rollback refactor — without it, "did the rollback work?" is unanswerable.
+
 ### 2026-05-04 (session 3) — SSoT M&A filter (AVNS slip → ma_filter.py + Polygon backstop)
 AVNS appeared in flag scan as COILED on 2026-05-04 — but it was a 4/14 take-private deal pinned at $24.62-72 across 14 sessions (daily ranges 4-15¢ = bid-ask noise floor, 0.16-0.6% of close). EP detector's existing M&A filter at `ep_detector.py:818-852` (`_MNA_KEYWORDS` + `catalyst_quality=='mna'`) didn't fire because Perplexity returned "no specific news or catalysts" for AVNS 4/14 → catalyst_quality='routine' → keyword scan had no text to match. **Same hedge-phrase failure mode the 5/3 catalyst_pplx_hedge_downgrade fix targeted, but the downgrade only acts when Claude *also* graded it strong; here Claude saw nothing either, so no signal to downgrade.**
 
