@@ -1485,7 +1485,7 @@ class TelegramChannel:
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
-                     "strategy", "watchlist", "wick"):
+                     "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
