@@ -3550,11 +3550,44 @@ class MarketIntelligenceAgent(BaseAgent):
         Joins mi_ep_alerts (detection) + mi_live_trades (execution) +
         mi_audit_log (lifecycle events, bounded to the trading-day window in
         America/New_York to avoid pulling unrelated prior-setup events).
+
+        Render style mirrors `/setup`: plain text + emoji tags + TV chart
+        button. Markdown asterisks/underscores break on dynamic content
+        (skip-reason details, catalyst sentences) and force ugly fallback.
         """
         import re as _re
         from datetime import date as _date
-        from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.db import get_pool
+        from agents.market_intelligence.collector import et_today, _ET
+        from agents.market_intelligence.db import get_pool, get_security_exchange_map
+        from agents.market_intelligence.friday_watchlist import (
+            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
+        )
+        from agents.market_intelligence.briefing import send_telegram_message
+        import os as _os, httpx as _httpx
+
+        async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
+            bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
+            allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
+            ids = [x.strip() for x in allowed.split(",") if x.strip()]
+            if not bot_token or not ids:
+                return False
+            payload = {
+                "chat_id": int(ids[0]),
+                "text": text,
+                "disable_web_page_preview": True,
+                "reply_markup": {"inline_keyboard": keyboard},
+            }
+            try:
+                async with _httpx.AsyncClient(timeout=15) as client:
+                    r = await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json=payload,
+                    )
+                    r.raise_for_status()
+                return True
+            except Exception as e:
+                logger.warning(f"why plain send failed: {e}")
+                return False
 
         raw = request.task.strip()
         tokens = raw.split()
@@ -3563,7 +3596,7 @@ class MarketIntelligenceAgent(BaseAgent):
                                      "ENTRY", "EXIT", "TRADE", "EP", "ORB", "WE", "DID"}
         ticker = next((t for t in cands if t not in skip), None)
         if not ticker:
-            return self._ok(request, result="Usage: `/why TICKER [YYYY-MM-DD]` — shows the lifecycle timeline for a HIGH EP alert.")
+            return self._ok(request, result="Usage: /why TICKER [YYYY-MM-DD]")
 
         target_date: _date | None = None
         for tok in tokens[1:]:
@@ -3577,7 +3610,7 @@ class MarketIntelligenceAgent(BaseAgent):
         if target_date is None:
             # No date given → resolve to the most-recent activity for this
             # ticker (alert / trade / audit) instead of et_today(). User asks
-            # `/why TWLO` weeks after the alert; today's date returns empty.
+            # `/why TWLO` days after the alert; today's date returns empty.
             async with pool.acquire() as conn:
                 latest = await conn.fetchrow("""
                     SELECT MAX(d) AS d FROM (
@@ -3618,59 +3651,96 @@ class MarketIntelligenceAgent(BaseAgent):
         if not alert and not trade and not events:
             return self._ok(
                 request,
-                result=f"No EP alert, trade row, or audit events for `{ticker}` on {target_date}.",
+                result=f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
             )
 
-        from agents.market_intelligence.collector import _ET
-        lines = [f"📋 *{ticker}* ({target_date})"]
+        from agents.market_intelligence.broker.skip_reasons import humanize
 
+        lines = [f"📋 {ticker} — lifecycle {target_date}"]
+
+        # 🎯 Detection
+        lines.append("")
         if alert:
-            cat = alert.get("catalyst") or ""
-            cat_short = (cat[:60] + "…") if len(cat) > 60 else cat
             lines.append(
-                f"*Detected:* {alert['score_tier']} (score {int(alert['ep_score'] or 0)}, "
-                f"gap {float(alert.get('gap_pct') or 0):+.1f}%, "
-                f"cat={alert.get('catalyst_quality') or 'n/a'})"
+                f"🎯 Detected: {alert['score_tier']} score {int(alert['ep_score'] or 0)}"
             )
-            if cat_short:
-                lines.append(f"   _{cat_short}_")
+            lines.append(
+                f"   gap {float(alert.get('gap_pct') or 0):+.1f}%, "
+                f"cat={alert.get('catalyst_quality') or 'n/a'}"
+            )
+            cat_full = alert.get("catalyst") or ""
+            if cat_full:
+                if len(cat_full) > 140:
+                    cat = cat_full[:140].rsplit(" ", 1)[0] + "…"
+                else:
+                    cat = cat_full
+                lines.append(f"   {cat}")
         else:
-            lines.append("*Detected:* (no mi_ep_alerts row — not a recognised EP)")
+            lines.append("🎯 Detected: no mi_ep_alerts row (not a recognised EP)")
 
+        # 💰 Outcome
+        lines.append("")
         if trade:
-            from agents.market_intelligence.broker.skip_reasons import humanize
             status = trade.get("status") or "?"
             reason = trade.get("skip_reason")
+            ep_pr = trade.get("entry_price")
+            sp = trade.get("stop_price")
+            pnl = trade.get("total_pnl")
             if status == "skipped" and reason:
-                lines.append(f"*Outcome:* missed — {humanize(reason)}")
+                lines.append(f"💰 Outcome: skipped — {humanize(reason)}")
+            elif status in ("cancelled", "rejected") and reason:
+                lines.append(f"💰 Outcome: {status} — {humanize(reason)}")
+                if ep_pr and sp:
+                    lines.append(f"   limit ${float(ep_pr):.2f}, stop ${float(sp):.2f}")
             elif status == "closed":
-                pnl = float(trade.get("total_pnl") or 0)
-                lines.append(
-                    f"*Outcome:* closed (entry ${float(trade.get('entry_price') or 0):.2f} → "
-                    f"P&L ${pnl:+,.2f})"
-                )
+                pnl_v = float(pnl or 0)
+                lines.append(f"💰 Outcome: closed P&L ${pnl_v:+,.2f}")
+                if ep_pr:
+                    lines.append(f"   entry ${float(ep_pr):.2f}, stop ${float(sp or 0):.2f}")
             elif status in ("filled", "order_placed", "pending_confirmation", "confirmed"):
-                lines.append(
-                    f"*Outcome:* {status} @${float(trade.get('entry_price') or 0):.2f}, "
-                    f"stop ${float(trade.get('stop_price') or 0):.2f}"
-                )
+                lines.append(f"💰 Outcome: {status}")
+                if ep_pr:
+                    lines.append(f"   entry ${float(ep_pr):.2f}, stop ${float(sp or 0):.2f}")
             else:
-                lines.append(f"*Outcome:* {status}{' — ' + humanize(reason) if reason else ''}")
+                tail = f" — {humanize(reason)}" if reason else ""
+                lines.append(f"💰 Outcome: {status}{tail}")
         else:
-            lines.append("*Outcome:* no mi_live_trades row (silent drop — check events below)")
+            lines.append("💰 Outcome: no mi_live_trades row (silent drop — see lifecycle)")
 
+        # 📅 Lifecycle
         if events:
-            lines.append("*Lifecycle:*")
-            for ev in events[:20]:
+            lines.append("")
+            lines.append(f"📅 Lifecycle ({len(events)} events)")
+            for ev in events[:25]:
                 ts = ev["created_at"].astimezone(_ET).strftime("%H:%M:%S")
-                summary = ev["summary"][:120]
-                lines.append(f"  `{ts}`  {ev['event_type']} — {summary}")
-            if len(events) > 20:
-                lines.append(f"  …{len(events) - 20} more events")
-        else:
-            lines.append("*Lifecycle:* (no audit events for this ticker on this date)")
+                summary = (ev["summary"] or "")[:120]
+                lines.append(f"  {ts}  {ev['event_type']} — {summary}")
+            if len(events) > 25:
+                lines.append(f"  …{len(events) - 25} more events")
 
-        return self._ok(request, result="\n".join(lines))
+        body_text = "\n".join(lines)
+
+        # TradingView chart button — matches /setup.
+        try:
+            ex_map = await get_security_exchange_map([ticker])
+            tv_prefix = _TV_EXCHANGE_MAP.get(ex_map.get(ticker, ""), "NASDAQ")
+            tv_url = f"https://www.tradingview.com/chart/?symbol={tv_prefix}:{ticker}"
+            keyboard = [[{"text": f"📈 {ticker} chart", "url": tv_url}]]
+
+            if len(body_text) <= _TG_SAFE_LIMIT:
+                delivered = await _send_plain_with_keyboard(body_text, keyboard)
+            else:
+                body_ok = await send_telegram_message(body_text)
+                btn_ok = await _send_plain_with_keyboard(f"📈 {ticker} chart →", keyboard)
+                delivered = bool(body_ok and btn_ok)
+
+            if delivered:
+                return self._ok(request, result=f"📋 Lifecycle for {ticker} sent.")
+            logger.warning(f"why delivery returned False for {ticker}")
+            return self._ok(request, result=body_text)
+        except Exception as e:
+            logger.warning(f"why keyboard send failed for {ticker}: {e}")
+            return self._ok(request, result=body_text)
 
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
         msg = await _build_hud_text()
