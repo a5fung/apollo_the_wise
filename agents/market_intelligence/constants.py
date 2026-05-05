@@ -15,7 +15,7 @@ LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() =
 #   /crypto + /altseason commands return shadow-mode message.
 # true: full alt-season Telegram alerts + briefing surfaces enabled.
 CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "true"
-MAX_CONCURRENT_LIVE_POSITIONS = 4
+MAX_CONCURRENT_LIVE_POSITIONS = 5
 CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
 CIRCUIT_BREAKER_CONSEC_LOSSES = 5    # Pause after N consecutive losses (EP win rate ~20s% → P(5 consec) ≈ 33%)
