@@ -3707,6 +3707,80 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append("💰 Outcome: no mi_live_trades row (silent drop — see lifecycle)")
 
+        # 🔍 Fill diagnosis — only meaningful for cancelled/rejected (or
+        # skipped with a price-related reason). Fetches minute bars in the
+        # order's lifetime so the user can see what the tape did vs the
+        # limit. Answers the "but the chart shows price went above ORB high
+        # — why didn't it fill?" class of question (TWLO 5/01).
+        diagnosis_states = ("cancelled", "rejected", "skipped")
+        if (
+            trade
+            and (trade.get("status") or "") in diagnosis_states
+            and trade.get("entry_price")
+            and trade.get("proposed_at")
+        ):
+            try:
+                from agents.market_intelligence.collector import get_minute_bars
+                from datetime import datetime as _dt, timedelta as _td
+
+                limit = float(trade["entry_price"])
+                stop = float(trade.get("stop_price") or 0)
+                orb_h = trade.get("orb_high")
+                orb_l = trade.get("orb_low")
+                t0 = trade["proposed_at"].astimezone(_ET)
+                t1_raw = trade.get("closed_at") or trade.get("confirmed_at")
+                # Cancelled rows have closed_at = cancel time. If null, cap
+                # at 16:00 ET on the alert day.
+                if t1_raw:
+                    t1 = t1_raw.astimezone(_ET)
+                else:
+                    t1 = _dt.combine(target_date, _dt.min.time(), tzinfo=_ET) + _td(hours=16)
+                d_str = target_date.isoformat()
+                bars = await get_minute_bars(ticker, d_str, d_str)
+                in_window = []
+                for b in bars:
+                    bar_t = _dt.fromtimestamp(b["t"] / 1000, tz=_ET)
+                    if t0 <= bar_t <= t1:
+                        in_window.append((bar_t, float(b["h"]), float(b["l"])))
+
+                lines.append("")
+                lines.append("🔍 Fill diagnosis")
+                ctx_bits = []
+                if orb_h is not None: ctx_bits.append(f"ORB H ${float(orb_h):.2f}")
+                if orb_l is not None: ctx_bits.append(f"L ${float(orb_l):.2f}")
+                ctx_bits.append(f"limit ${limit:.2f}")
+                if stop: ctx_bits.append(f"stop ${stop:.2f}")
+                lines.append("   " + " · ".join(ctx_bits))
+                lines.append(
+                    f"   window {t0.strftime('%H:%M:%S')}–{t1.strftime('%H:%M:%S')} "
+                    f"({len(in_window)} bars)"
+                )
+
+                if not in_window:
+                    lines.append("   ⚠️ no minute bars returned — Polygon gap or feed issue")
+                else:
+                    max_h = max(h for _, h, _ in in_window)
+                    touches = [(t, h) for t, h, _ in in_window if h >= limit]
+                    if not touches:
+                        # Limit never reached — order correctly didn't fill.
+                        lines.append(
+                            f"   🟢 max in-window high ${max_h:.2f} < limit ${limit:.2f} "
+                            f"— price never reached trigger"
+                        )
+                    else:
+                        first = touches[0]
+                        lines.append(
+                            f"   🔴 limit reached at {first[0].strftime('%H:%M:%S')} "
+                            f"(${first[1]:.2f}) — {len(touches)} bar(s) ≥ limit, "
+                            f"max ${max_h:.2f}"
+                        )
+                        lines.append(
+                            "   likely causes: stop-limit gap-through (print > limit), "
+                            "broker queue latency, or order cancelled before touch"
+                        )
+            except Exception as e:
+                logger.warning(f"why fill-diagnosis failed for {ticker}: {e}")
+
         # 📅 Lifecycle
         if events:
             lines.append("")
