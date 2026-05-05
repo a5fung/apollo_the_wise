@@ -812,6 +812,12 @@ class TelegramChannel:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"
 
+        # Handlers that already delivered the response via Telegram (e.g.
+        # /why, /setup — body sent through send_telegram_message + inline
+        # keyboard) return result="" so we don't echo a redundant
+        # "Lifecycle for X sent." trailer.
+        if not result.strip():
+            return
         await self._reply(update, result)
 
     async def _handle_ep_command(

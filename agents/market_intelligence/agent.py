@@ -1712,7 +1712,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 delivered = bool(body_ok and btn_ok)
 
             if delivered:
-                return self._ok(request, result=f"📬 Setup timeline for {ticker} sent.")
+                return self._ok(request, result="")
             logger.warning(f"setup delivery returned False for {ticker}")
             return self._ok(request, result=body_text)
         except Exception as e:
@@ -3728,13 +3728,15 @@ class MarketIntelligenceAgent(BaseAgent):
                 orb_h = trade.get("orb_high")
                 orb_l = trade.get("orb_low")
                 t0 = trade["proposed_at"].astimezone(_ET)
-                t1_raw = trade.get("closed_at") or trade.get("confirmed_at")
-                # Cancelled rows have closed_at = cancel time. If null, cap
-                # at 16:00 ET on the alert day.
-                if t1_raw:
-                    t1 = t1_raw.astimezone(_ET)
+                # Window upper bound = order's actual lifetime. Use closed_at
+                # only — `confirmed_at` is the placement timestamp (often
+                # equal to proposed_at), which collapses the window to zero
+                # bars. If closed_at is NULL, default to ORB cleanup at
+                # 10:00 ET (the system's actual cancellation deadline).
+                if trade.get("closed_at"):
+                    t1 = trade["closed_at"].astimezone(_ET)
                 else:
-                    t1 = _dt.combine(target_date, _dt.min.time(), tzinfo=_ET) + _td(hours=16)
+                    t1 = _dt.combine(target_date, _dt.min.time(), tzinfo=_ET) + _td(hours=10)
                 d_str = target_date.isoformat()
                 bars = await get_minute_bars(ticker, d_str, d_str)
                 in_window = []
@@ -3781,16 +3783,62 @@ class MarketIntelligenceAgent(BaseAgent):
             except Exception as e:
                 logger.warning(f"why fill-diagnosis failed for {ticker}: {e}")
 
-        # 📅 Lifecycle
+        # 📅 Lifecycle — filter noise + humanize per-event summary.
+        # Drop multi-ticker batch summaries (where this ticker is incidental)
+        # and strip machine-readable scaffolding from per-event summary.
         if events:
-            lines.append("")
-            lines.append(f"📅 Lifecycle ({len(events)} events)")
-            for ev in events[:25]:
+            # Map event_type -> short human label; fall back to event_type
+            # itself for unknown types.
+            _EV_LABEL = {
+                "ep_alert":         "EP detected",
+                "orb_triggered":    "ORB armed",
+                "orb_bar_fetched":  "ORB bar in",
+                "orb_order_placed": "Order placed",
+                "orb_filled":       "Filled",
+                "orb_cancelled":    "Cancelled",
+                "orb_skipped":      "Skipped",
+                "orb_blocked":      "Blocked",
+                "orb_unfilled_cancelled":  "ORB unfilled (10:00 cleanup)",
+                "eod_unfilled_cancelled":  "EOD cleanup",
+                "stop_updated":     "Stop updated",
+                "stop_update_started":     "Stop update started",
+                "partial_exit_committed":  "Partial exit",
+                "trade_closed":     "Trade closed",
+            }
+
+            def _clean(ev) -> str | None:
+                """Return one-line human label, or None to drop the event."""
+                summary = (ev["summary"] or "").strip()
+                etype = ev["event_type"]
+                # Drop batch-summary events that just happen to mention this
+                # ticker in a list ("[bar_stream] 2 alerts: [TEAM, TWLO]").
+                if summary.startswith("[") and "alerts:" in summary:
+                    return None
+                # Strip noisy bracketed source tags like "[bar_stream]" /
+                # "[cron_9_31]" — they're tracer info, not user-facing signal.
+                import re as _re_local
+                summary = _re_local.sub(r"^\[[^\]]+\]\s*", "", summary)
+                # Drop trade_id, range tags, internal ID-style key=value.
+                summary = _re_local.sub(r"\b(trade_id|range|risk|shares)=\S+", "", summary)
+                summary = _re_local.sub(r"\s+", " ", summary).strip(" -—")
+                label = _EV_LABEL.get(etype, etype.replace("_", " "))
+                if summary:
+                    return f"{label} — {summary[:80]}"
+                return label
+
+            cleaned = []
+            for ev in events:
+                line = _clean(ev)
+                if line is None:
+                    continue
                 ts = ev["created_at"].astimezone(_ET).strftime("%H:%M:%S")
-                summary = (ev["summary"] or "")[:120]
-                lines.append(f"  {ts}  {ev['event_type']} — {summary}")
-            if len(events) > 25:
-                lines.append(f"  …{len(events) - 25} more events")
+                cleaned.append(f"  {ts}  {line}")
+            if cleaned:
+                lines.append("")
+                lines.append(f"📅 Lifecycle ({len(cleaned)} events)")
+                lines.extend(cleaned[:25])
+                if len(cleaned) > 25:
+                    lines.append(f"  …{len(cleaned) - 25} more events")
 
         body_text = "\n".join(lines)
 
@@ -3809,7 +3857,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 delivered = bool(body_ok and btn_ok)
 
             if delivered:
-                return self._ok(request, result=f"📋 Lifecycle for {ticker} sent.")
+                return self._ok(request, result="")
             logger.warning(f"why delivery returned False for {ticker}")
             return self._ok(request, result=body_text)
         except Exception as e:
