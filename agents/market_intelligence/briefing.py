@@ -1311,11 +1311,14 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
         "presidential statements, or diplomatic developments by name if relevant. "
         "Be direct and specific. No citation numbers. "
         "Do NOT restate index prices or percentage moves — the reader already sees those. "
-        "Focus only on the WHY: what news, event, or development drove the move."
+        "Focus only on the WHY: what news, event, or development drove the move. "
+        "ONLY cite news from the last 24 hours (since yesterday's US market close). "
+        "Do NOT cite earnings reports, deals, or events from prior days — if no fresh "
+        "overnight catalyst exists, say so explicitly rather than reaching for stale news."
     )
 
     from agents.market_intelligence.theme_engine import _is_garbage
-    answer = await search_news_perplexity(query, recency="week", system_prompt=_OVERNIGHT_SYSTEM)
+    answer = await search_news_perplexity(query, recency="day", system_prompt=_OVERNIGHT_SYSTEM)
     if not answer:
         logger.warning("Overnight news: Perplexity returned empty response")
         return None
