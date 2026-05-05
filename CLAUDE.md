@@ -224,6 +224,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-05 (session 2) — compute_atr_14: close-to-close → Wilder TR (STRL/BAND skip class)
+STRL 2026-05-05 ORB skipped with `setup:stop_too_wide`: ATR-14 came back $13.55 (close-to-close approximation), 1.5× gate $20.33 < ORB range $35.02. Real Wilder TR ATR is $24.52 → 1.5× $36.78 > $35.02 → entry passes. `backtester/filters.py::compute_atr_14` was reading only `close` and using `abs(close - prev_close)` as TR — silently understated on volatile/gappy stocks where intraday range >> close-to-close. `flag_detector._atr_14` had used proper Wilder TR all along; the two had drifted out of SSoT.
+
+**Fix**: `compute_atr_14` rewritten — reads H/L/close from `mi_daily_closes` (OHLC since 2026-04-25 backfill), computes `TR = max(H-L, |H-prev_close|, |L-prev_close|)`, simple mean of last 14 (matches `flag_detector._atr_14`). Lookback widened 30→35 days to comfortably cover 15-bar window after weekends/holidays. `len(rows) < 10` floor unchanged.
+
+**Verification**: prod has 320,821 rows in last 40d, zero NULL H/L; cold tickers <14 rows are SPAC units (CHACU, IPCXU) filtered by ADV gate. 30d replay (`scripts/replay_stop_too_wide.py`): all 4 `setup:stop_too_wide` skips (BAND 4/30, TTMI 4/30, EVER 5/05, STRL 5/05) pass under new ATR; 2/2 settled cases positive (BAND +27.7%, TTMI +4.3% 5d max-high), today's STRL/EVER pending settlement ~5/12.
+
+**Backtest/live asymmetry (acknowledged, parked)**: backtester reads `as_of_date` H/L too, so backtests include the alert-day gap TR. The 9:31 AM live path only has through prev close (today's bar not in `mi_daily_closes` yet). TV's $43.25 reflects today's gap; Apollo's pre-open ATR cannot. Part 2 (wire today's gap TR via ORB bar + prev_close) NOT shipped — 30d replay shows zero cases where the new Wilder TR still rejects, so no evidence base. Filed as #199; trigger: any future stop_too_wide skip the new gate also rejects on a ticker that subsequently runs.
+
+**SMA vs RMA**: TV uses Wilder smoothing (RMA); shipped SMA to match `flag_detector` SSoT. Deliberate — one ATR shape across the codebase beats matching TV's specific number on one ticker.
+
+**Lesson**: when two implementations of the same conceptual computation drift (flag_detector did Wilder TR; backtester did close-to-close), the stale one isn't merely "less precise" — it silently inverts the gate's coverage on the exact pattern it's supposed to surface. Volatile/gappy stocks are the EP candidates; close-to-close is the worst possible shape on that population. Fix is the SSoT alignment, not a threshold tweak.
+
 ### 2026-05-05 — Earnings-day HIGH override (DOCN miss → yfinance backstop on tier decision)
 DOCN 2026-05-05: gap +30%, Q1 earnings beat pre-market → catalyst classifier rated `routine` because FMP/yfinance news ingest hadn't caught the announcement at scan time. Score landed below threshold; never alerted. Pattern is recurring: 30 settled misses since 4/14 with `gap≥10 + catalyst=routine + score-blocked`, every one of them positive at 5d max-high (+11.9% to +113.5%). The catalyst classifier grades textual news_summary; when news ingest lags the announcement, a qualifying gap silently scores below threshold even though the tape is shouting.
 
