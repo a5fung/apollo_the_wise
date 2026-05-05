@@ -82,36 +82,53 @@ async def _check_adv_dollar_volume(ticker: str, trade_date: date) -> str | None:
 
 async def compute_atr_14(ticker: str, as_of_date: date) -> tuple[float | None, float | None]:
     """
-    Compute 14-day ATR (close-to-close approx).
-    Returns (atr_dollars, atr_pct) or (None, None).
-    atr_pct = ATR / last close — the percentage form needed for stop validation.
+    14-day ATR using Wilder true range:
+        TR = max(H-L, |H-prev_close|, |L-prev_close|)
+        ATR-14 = simple mean of the last 14 TRs (SSoT with flag_detector._atr_14).
+
+    Reads OHLC from mi_daily_closes (backfilled 2026-04-25). Close-to-close
+    approximations silently understate ATR on volatile/gappy stocks — STRL
+    2026-05-05 was the canonical miss: Wilder TR $24.52 vs close-only $13.55
+    (1.5× gate $36.78 vs $20.33; ORB $35.02 now passes).
+
+    Note on backtest/live asymmetry: this reads `as_of_date` H/L too, so
+    backtests include the alert-day's gap TR. The 9:31 AM live path only
+    has through prev close (today's bar not in mi_daily_closes yet). TV's
+    realtime $43.25 reflects today's gap; Apollo's pre-open ATR cannot.
+    Kept as-is (matches flag_detector SSoT); revisit if 30d skip replay
+    shows gap-day false positives that would have been winners.
     """
     pool = await get_pool()
-    lookback_start = as_of_date - timedelta(days=30)  # calendar days for ~14 trading days
+    lookback_start = as_of_date - timedelta(days=35)  # ~20 trading days, covers 15-bar window
 
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT trade_date, close
+            SELECT trade_date, high_price, low_price, close
             FROM mi_daily_closes
             WHERE ticker = $1
               AND trade_date <= $2
               AND trade_date >= $3
+              AND high_price IS NOT NULL
+              AND low_price IS NOT NULL
             ORDER BY trade_date ASC
         """, ticker, as_of_date, lookback_start)
 
     if len(rows) < 10:
         return None, None
 
-    closes = [float(r["close"]) for r in rows]
+    trs = []
+    for i in range(1, len(rows)):
+        h = float(rows[i]["high_price"])
+        l = float(rows[i]["low_price"])
+        pc = float(rows[i - 1]["close"])
+        trs.append(max(h - l, abs(h - pc), abs(l - pc)))
 
-    # ATR approximation from closes (no intraday H/L stored in daily_closes)
-    # Use absolute daily returns as TR proxy
-    true_ranges = [abs(closes[i] - closes[i - 1]) for i in range(1, len(closes))]
-    if not true_ranges:
+    if not trs:
         return None, None
 
-    atr_14 = sum(true_ranges[-14:]) / min(14, len(true_ranges[-14:]))
-    last_close = closes[-1]
+    window = trs[-14:]
+    atr_14 = sum(window) / len(window)
+    last_close = float(rows[-1]["close"])
     atr_pct = (atr_14 / last_close * 100) if last_close > 0 else None
     return atr_14, atr_pct
 
