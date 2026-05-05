@@ -212,22 +212,44 @@ async def _handle_fill(data) -> None:
         await _process_stop_fill(dict(stop_trade), filled_price, pool)
         return
 
-    # 3. Unmatched — likely a managed exit (partial/full) already handled by our code,
-    # OR a direct/manual Alpaca action that bypassed our tracking. If the order is in
-    # mi_live_orders, the submitting path already sent its own Telegram; stay silent.
-    # If NOT in mi_live_orders, the fill is a surprise — alert.
+    # 3. Managed exit fill (partial_exit / full_exit). Atomically claim the
+    # mi_live_orders row by status transition; the RETURNING row's purpose
+    # routes to the right finalizer. Submit-time path no longer commits to
+    # mi_live_trades (after-hours queued sells were printing fake P&L=$0
+    # against entry_price); fill-time finalize uses the real Alpaca fill price.
     async with pool.acquire() as conn:
-        result = await conn.execute("""
+        exit_order = await conn.fetchrow("""
             UPDATE mi_live_orders SET
                 status = 'filled', filled_qty = $2, filled_avg_price = $3, filled_at = NOW()
-            WHERE alpaca_order_id = $1
+            WHERE alpaca_order_id = $1 AND status NOT IN ('filled', 'cancelled')
+            RETURNING trade_id, purpose, exit_reason, qty
         """, order_id, filled_qty, filled_price)
-    # asyncpg returns "UPDATE N" — parse the row count
-    try:
-        updated_rows = int(result.split()[-1]) if result else 0
-    except (ValueError, AttributeError):
-        updated_rows = 0
-    if updated_rows == 0 and filled_qty > 0:
+
+    if exit_order:
+        purpose = exit_order["purpose"]
+        if purpose == "partial_exit":
+            from agents.market_intelligence.broker.order_manager import finalize_partial_exit
+            await finalize_partial_exit(
+                exit_order["trade_id"], int(filled_qty), filled_price, order_id,
+            )
+        elif purpose == "full_exit":
+            from agents.market_intelligence.broker.order_manager import finalize_full_exit
+            await finalize_full_exit(
+                exit_order["trade_id"], int(filled_qty), filled_price, order_id,
+                exit_order["exit_reason"] or "exit",
+            )
+        else:
+            # NULL purpose = legacy mi_live_orders row submitted before this fix
+            # shipped (entry/stop rows have NULL too). Already updated to
+            # status='filled' above; nothing else to do here.
+            logger.info(
+                f"Managed fill (purpose={purpose}): {symbol} order={order_id} "
+                f"{filled_qty}@${filled_price}"
+            )
+        return
+
+    # 4. Truly untracked — surprise fill from a direct/manual Alpaca action.
+    if filled_qty > 0:
         side = str(getattr(order, "side", "")).lower()
         side_label = "SELL" if "sell" in side else ("BUY" if "buy" in side else "FILL")
         await send_telegram_message(
@@ -235,8 +257,6 @@ async def _handle_fill(data) -> None:
             f"Order {order_id[:8]} not in our records — direct Alpaca action."
         )
         logger.warning(f"Untracked fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
-    else:
-        logger.info(f"Managed exit fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
 
 
 async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qty: float, pool) -> None:
@@ -452,7 +472,95 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
             logger.warning(f"WS: stop-loss {event_norm}: {symbol} trade_id={stop_trade['id']}")
         return
 
-    # 3. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
+    # 3. Pending managed exit (partial/full) cancelled or rejected before fill.
+    # With deferred-fill commits, the position state in mi_live_trades was
+    # untouched at submit time, but for a partial exit we already cancelled
+    # the original stop and placed a smaller one sized for new_remaining.
+    # If the partial sell never fills, those leftover shares end up unprotected
+    # — restore the stop to full remaining_shares to close the gap.
+    async with pool.acquire() as conn:
+        pending_exit = await conn.fetchrow("""
+            UPDATE mi_live_orders SET
+                status = $2, cancelled_at = NOW()
+            WHERE alpaca_order_id = $1 AND status NOT IN ('filled', 'cancelled')
+            RETURNING trade_id, purpose
+        """, order_id, event_norm)
+
+    if pending_exit and pending_exit["purpose"] == "partial_exit":
+        async with pool.acquire() as conn:
+            trade_row = await conn.fetchrow("""
+                SELECT id, ticker, remaining_shares, stop_price, stop_order_id
+                FROM mi_live_trades WHERE id = $1
+            """, pending_exit["trade_id"])
+        if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
+            # Cancel the smaller stop and place one sized for the full remaining.
+            if trade_row["stop_order_id"]:
+                await alpaca.cancel_order(trade_row["stop_order_id"])
+            try:
+                restored = await alpaca.place_stop_order(
+                    trade_row["ticker"],
+                    int(trade_row["remaining_shares"]),
+                    float(trade_row["stop_price"]),
+                )
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
+                        trade_row["id"], restored["id"],
+                    )
+                await send_telegram_message(
+                    f"⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
+                    f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "
+                    f"@${float(trade_row['stop_price']):.2f}."
+                )
+                logger.warning(
+                    f"WS: partial exit {event_norm} for {symbol}, stop restored "
+                    f"to {trade_row['remaining_shares']} sh"
+                )
+            except Exception as e:
+                await send_telegram_message(
+                    f"🚨 *PARTIAL EXIT {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
+                    f"{e}\n*Position may be unprotected — manual intervention required.*"
+                )
+                logger.error(f"WS: partial exit {event_norm} stop-restore failed for {symbol}: {e}")
+        return
+
+    if pending_exit and pending_exit["purpose"] == "full_exit":
+        # Original stop was already cancelled in execute_full_exit. Restoring
+        # the stop here requires the original stop_price; mi_live_trades still
+        # has it (we didn't null it out — DB commit was deferred). Surface and
+        # re-place.
+        async with pool.acquire() as conn:
+            trade_row = await conn.fetchrow("""
+                SELECT id, ticker, remaining_shares, stop_price
+                FROM mi_live_trades WHERE id = $1
+            """, pending_exit["trade_id"])
+        if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
+            try:
+                restored = await alpaca.place_stop_order(
+                    trade_row["ticker"],
+                    int(trade_row["remaining_shares"]),
+                    float(trade_row["stop_price"]),
+                )
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
+                        trade_row["id"], restored["id"],
+                    )
+                await send_telegram_message(
+                    f"⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"Position still open ({int(trade_row['remaining_shares'])} sh). "
+                    f"Stop re-placed @${float(trade_row['stop_price']):.2f}."
+                )
+                logger.warning(f"WS: full exit {event_norm} for {symbol}, stop re-placed")
+            except Exception as e:
+                await send_telegram_message(
+                    f"🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
+                    f"{e}\n*Position may be unprotected — manual intervention required.*"
+                )
+                logger.error(f"WS: full exit {event_norm} stop-restore failed for {symbol}: {e}")
+        return
+
+    # 4. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
     # to surface account-level issues (margin/PDT/etc.); stay quieter on expiry.
     if event_norm == "rejected":
         await send_telegram_message(f"⚠️ *Order REJECTED:* {symbol}\nOrder {order_id[:8]} — check logs.")

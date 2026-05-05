@@ -224,6 +224,26 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-05 (session 3) — Defer partial/full exit DB commit + Telegram to fill event (#180)
+GOOGL/TEAM 2026-05-05: 16:45 ET `_live_position_update_job` triggered partial exits. Telegram printed "📤 Partial exit: GOOGL Sold 17 @$382.61 P&L $0.00 Remaining 34" and "📤 Partial exit: TEAM Sold 76 @$85.19 P&L $0.00 Remaining 153" — but no shares were sold. Market sells were queued for next-day's open (after-hours) and DB had been written with fake P&L=$0 against entry_price. Same shape as 2026-05-04's GOOGL #56 incident; yesterday's commit (7fe93d0) was *audit-logging only* — explicit "No logic changed", purpose was to capture today's recurrence with telemetry so #180 ("defer DB commit to fill event") could be fixed against real data.
+
+**Root cause** (`broker/order_manager.py:887-928`, `:968-999`): `execute_partial_exit` and `execute_full_exit` committed to `mi_live_trades` synchronously after `place_market_sell`. Line 888: `fill_price = order.get("filled_avg_price") or trade["entry_price"]` — for orders queued after 4:00 PM ET market close, `filled_avg_price` is None, so fill_price collapsed to entry_price → P&L=0 → DB row marked `partial_taken=TRUE remaining_shares=new_remaining`, Telegram claimed sale. Cron at 16:45 ET (`scheduler.py:1811`) runs **45 minutes after close**, so this path was guaranteed to fire on every partial-trigger day.
+
+**Fix — defer commit + Telegram to WS fill event** (matches the 2026-05-04 entry-pipeline "Order placed" rename for the bracket-fill class):
+- `mi_live_orders`: + `purpose TEXT` ('partial_exit' / 'full_exit'), + `exit_reason TEXT`, + index. Lets the WS fill handler route by intent.
+- `execute_partial_exit`: insert with `purpose='partial_exit'`, exit_reason='partial_profit'. **Removed** the post-submit DB commit + "📤 Sold X" Telegram. Sends "📋 Partial exit order placed (pending fill)" on placement. Stop replacement (smaller-qty stop ahead of the sell) unchanged — that's the safe ordering and stays in place.
+- `execute_full_exit`: insert with `purpose='full_exit'`, exit_reason=reason. Same defer pattern. "📋 Closing order placed (pending fill)" on placement.
+- New `finalize_partial_exit(trade_id, filled_qty, filled_price, order_id)` and `finalize_full_exit(..., reason)` in order_manager.py — contain the lifted commit logic against the **real Alpaca fill price**. Idempotent (no-op if order_id already in `exits[]`).
+- `trade_stream._handle_fill` step 3 rewrite: atomically claim mi_live_orders via `UPDATE ... WHERE alpaca_order_id=$1 AND status NOT IN ('filled','cancelled') RETURNING trade_id, purpose, exit_reason, qty`. Routes to the right finalizer. NULL purpose = legacy (pre-fix) row, falls through silently.
+- `trade_stream._handle_cancel_or_reject` new step 3: when a pending partial-exit sell is cancelled/rejected/expired, restore the stop to full `remaining_shares` (the smaller stop placed before the sell would otherwise leave shares unprotected). Same path for full-exit cancel — re-place the stop using the persisted `mi_live_trades.stop_price`.
+- Submit-time **dedup safeguard**: both executors now bail if there's already a pending partial/full exit order for the trade in mi_live_orders. Without this, a queued sell from yesterday's cron + today's cron firing again would stack a duplicate.
+
+**Audit events**: `partial_exit_committed` and new `full_exit_committed` now fire from the finalizers on real fill, not at submit time. Submit-time `partial_exit_sell_placed` unchanged.
+
+**Today's already-submitted GOOGL/TEAM rows** (before this fix shipped) carry `purpose=NULL` in mi_live_orders. When tomorrow's open fills them, the WS handler hits the NULL-purpose branch and silently logs — no double-commit, no FILLED Telegram. The DB rows from 16:45 ET still carry the wrong P&L=0 entries. Manual cleanup if desired; not auto-corrected because retroactively assigning purpose to legacy rows is fragile.
+
+**Lesson**: "Order accepted" ≠ "shares sold" — most acutely when the cron runs after close. The 2026-05-04 commit (audit-logging-only) was the right intermediate step: ship telemetry, let the bug recur once with full instrumentation, then fix against real data instead of guessing. Same shape as the 2026-05-04 entry-pipeline fix ("EP entered" → "Order placed") which separated placement language from fill confirmation. Apollo's daily schedule has multiple after-close cron points (4:05/4:10/4:15/4:45/5:00 PM); any code path that places a market order from those crons must defer commit + user-visible language to the WS fill event, not the placement response.
+
 ### 2026-05-05 (session 2) — compute_atr_14: close-to-close → Wilder TR (STRL/BAND skip class)
 STRL 2026-05-05 ORB skipped with `setup:stop_too_wide`: ATR-14 came back $13.55 (close-to-close approximation), 1.5× gate $20.33 < ORB range $35.02. Real Wilder TR ATR is $24.52 → 1.5× $36.78 > $35.02 → entry passes. `backtester/filters.py::compute_atr_14` was reading only `close` and using `abs(close - prev_close)` as TR — silently understated on volatile/gappy stocks where intraday range >> close-to-close. `flag_detector._atr_14` had used proper Wilder TR all along; the two had drifted out of SSoT.
 
