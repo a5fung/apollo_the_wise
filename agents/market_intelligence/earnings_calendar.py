@@ -1,0 +1,120 @@
+"""
+Per-ticker earnings-day check via yfinance.
+
+Combines two yfinance surfaces because each has gaps:
+- `Ticker.earnings_dates` — historical, but lags fresh announcements (DOCN 5/05 missing on scan day).
+- `Ticker.calendar` — forward-looking next event; caught DOCN 5/05 when earnings_dates didn't.
+
+A match counts if the announcement timestamp falls within ±1 calendar day of `scan_date`.
+That window covers the two gap-creating cases: AH/AMC report on T-1 → gap on T, BMO report on T → gap on T.
+
+Returns `(matched, source)` where source ∈ {"earnings_dates", "calendar", "no_match", "unavailable"}.
+The detector branches on source for audit telemetry: distinguishes "yfinance said no" from "yfinance was broken."
+
+In-process cache `(ticker, scan_date) → (bool, str)` because the EP scan fires every 5 min from
+7:00–10:00 ET; without it the same ticker would hit yfinance ~36× per morning.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import date, datetime, timedelta
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+# Per-process cache. Cleared on first call when the date rolls over.
+_CACHE: dict[tuple[str, date], tuple[bool, str]] = {}
+_CACHE_DATE: Optional[date] = None
+
+_MATCH_WINDOW_DAYS = 1
+
+
+def _within_window(announce_dt, scan_date: date) -> bool:
+    """True if announce_dt's date is within ±1 day of scan_date."""
+    if announce_dt is None:
+        return False
+    if hasattr(announce_dt, "date"):
+        announce_d = announce_dt.date()
+    elif isinstance(announce_dt, date):
+        announce_d = announce_dt
+    else:
+        return False
+    return abs((announce_d - scan_date).days) <= _MATCH_WINDOW_DAYS
+
+
+def _check_earnings_dates_sync(ticker: str, scan_date: date) -> bool:
+    import yfinance as yf
+    t = yf.Ticker(ticker)
+    df = t.earnings_dates
+    if df is None or df.empty:
+        return False
+    for idx in df.index:
+        if _within_window(idx, scan_date):
+            return True
+    return False
+
+
+def _check_calendar_sync(ticker: str, scan_date: date) -> bool:
+    import yfinance as yf
+    t = yf.Ticker(ticker)
+    cal = t.calendar
+    if not cal:
+        return False
+    earnings = cal.get("Earnings Date") if isinstance(cal, dict) else None
+    if not earnings:
+        return False
+    if isinstance(earnings, list):
+        candidates = earnings
+    else:
+        candidates = [earnings]
+    return any(_within_window(d, scan_date) for d in candidates)
+
+
+async def is_earnings_day(ticker: str, scan_date: date) -> tuple[bool, str]:
+    """
+    Returns (matched, source). Source is one of:
+      - "earnings_dates": matched in historical earnings_dates surface
+      - "calendar": matched in forward-looking calendar surface
+      - "no_match": both surfaces returned data but neither matched the window
+      - "unavailable": yfinance raised or returned empty for both surfaces
+    """
+    global _CACHE_DATE
+    if _CACHE_DATE != scan_date:
+        _CACHE.clear()
+        _CACHE_DATE = scan_date
+
+    key = (ticker, scan_date)
+    if key in _CACHE:
+        return _CACHE[key]
+
+    earnings_dates_ok = False
+    earnings_dates_failed = False
+    try:
+        earnings_dates_ok = await asyncio.to_thread(_check_earnings_dates_sync, ticker, scan_date)
+    except Exception as e:
+        earnings_dates_failed = True
+        logger.debug(f"earnings_dates lookup failed for {ticker}: {e}")
+
+    if earnings_dates_ok:
+        result = (True, "earnings_dates")
+        _CACHE[key] = result
+        return result
+
+    calendar_ok = False
+    calendar_failed = False
+    try:
+        calendar_ok = await asyncio.to_thread(_check_calendar_sync, ticker, scan_date)
+    except Exception as e:
+        calendar_failed = True
+        logger.debug(f"calendar lookup failed for {ticker}: {e}")
+
+    if calendar_ok:
+        result = (True, "calendar")
+    elif earnings_dates_failed and calendar_failed:
+        result = (False, "unavailable")
+    else:
+        result = (False, "no_match")
+
+    _CACHE[key] = result
+    return result

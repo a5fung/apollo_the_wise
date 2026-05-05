@@ -63,6 +63,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_SESSION_RVOL_TOO_LOW,
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
+from agents.market_intelligence.earnings_calendar import is_earnings_day
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,25 @@ _SKIP_TICKERS = SKIP_TICKERS
 # Resets automatically when the calendar date changes.
 _catalyst_cache: dict[str, tuple[str, float, str, str]] = {}
 _catalyst_cache_date: "date | None" = None
+
+# Per-day audit dedupe: keys (ticker, date, event_type). EP scan runs every 5 min
+# from 7:00–10:00 ET (~36 ticks); without dedup, the same ticker emits ~36 rows
+# of `earnings_override_no_match` / `tape_conviction_shadow` per day.
+_audit_dedupe: set[tuple[str, "date", str]] = set()
+_audit_dedupe_date: "date | None" = None
+
+
+def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
+    """Returns True if (ticker, date, event) hasn't been logged this session."""
+    global _audit_dedupe, _audit_dedupe_date
+    if _audit_dedupe_date != scan_date:
+        _audit_dedupe.clear()
+        _audit_dedupe_date = scan_date
+    key = (ticker, scan_date, event)
+    if key in _audit_dedupe:
+        return False
+    _audit_dedupe.add(key)
+    return True
 
 _claude = None
 # Cap concurrent Anthropic calls — earnings days can gap 30+ stocks simultaneously,
@@ -936,6 +956,77 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             continue
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"
+
+        # Earnings-day HIGH override. The catalyst classifier rates textual
+        # news_summary; when news ingest lags the announcement (DOCN 5/05: Q1
+        # beat pre-market, no headlines yet → catalyst='routine'), a qualifying
+        # gap silently scores below threshold. Per Pradeep Bonde, a meaningful
+        # gap on an earnings day is a qualified EP regardless of beat/miss
+        # prose grade — downside bounded by ORB stop-limit + 10:00 cancel + ATR.
+        if tier == "MODERATE" and c["gap_pct"] >= 10.0:
+            earnings_match, earnings_source = await is_earnings_day(ticker, today)
+
+            if earnings_match:
+                logger.info(
+                    f"{ticker}: earnings-day override MODERATE→HIGH "
+                    f"(gap={c['gap_pct']:.1f}% source={earnings_source})"
+                )
+                await log_audit_event(
+                    "earnings_override_applied",
+                    f"{ticker} MODERATE→HIGH via {earnings_source}",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "gap_pct": round(c["gap_pct"], 2),
+                        "ep_score": round(ep_score, 1),
+                        "ep_threshold": ep_threshold,
+                        "catalyst_quality": catalyst_quality,
+                        "source": earnings_source,
+                    }),
+                )
+                tier = "HIGH"
+            else:
+                event = (
+                    "earnings_override_unavailable"
+                    if earnings_source == "unavailable"
+                    else "earnings_override_no_match"
+                )
+                if _audit_dedupe_check(ticker, today, event):
+                    await log_audit_event(
+                        event,
+                        f"{ticker} {earnings_source}",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "gap_pct": round(c["gap_pct"], 2),
+                            "ep_score": round(ep_score, 1),
+                            "catalyst_quality": catalyst_quality,
+                            "source": earnings_source,
+                        }),
+                    )
+
+        # Tape-conviction shadow — forward-only baseline for a future tape-only
+        # override; one row per ticker per scan_date (deduped across cron ticks).
+        proj_vol = c.get("projected_vol_multiple")
+        if (
+            c["gap_pct"] >= 12.0
+            and proj_vol is not None
+            and proj_vol >= 5.0
+            and _audit_dedupe_check(ticker, today, "tape_conviction_shadow")
+        ):
+            await log_audit_event(
+                "tape_conviction_shadow",
+                f"{ticker} gap={c['gap_pct']:.1f}% proj={proj_vol:.1f}x tier={tier}",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": today.isoformat(),
+                    "gap_pct": round(c["gap_pct"], 2),
+                    "projected_vol_multiple": round(proj_vol, 2),
+                    "ep_score": round(ep_score, 1),
+                    "tier": tier,
+                    "catalyst_quality": catalyst_quality,
+                }),
+            )
 
         result = {
             **c,
