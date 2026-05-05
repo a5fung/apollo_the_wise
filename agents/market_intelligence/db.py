@@ -2582,7 +2582,13 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         return v or []
 
     for r in _rows("ep"):
-        cat = (r["catalyst"] or "")[:40]
+        cat_full = r["catalyst"] or ""
+        # Word-break truncation — 40 was cutting mid-word ("due to a s").
+        if len(cat_full) > 120:
+            cut = cat_full[:120].rsplit(" ", 1)[0]
+            cat = cut + "…"
+        else:
+            cat = cat_full
         cat_s = f", {cat}" if cat else ""
         _push(r["alert_date"], "EP-MAGNA",
               f"{r['score_tier']} score {int(r['ep_score'] or 0)} "
@@ -2659,12 +2665,13 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         if ep: bits.append(f"entry ${float(ep):.2f}")
         if sp: bits.append(f"stop ${float(sp):.2f}")
         if pnl: bits.append(f"P&L ${float(pnl):+,.0f}")
-        if r["status"] == "skipped" and r["skip_reason"]:
+        # Show the reason on any non-fill terminal state, not just 'skipped'.
+        # Cancelled rows (10:00 ET ORB cleanup, 4:05 PM EOD cleanup, mid-day
+        # broker reject) carry the same skip_reason column — without rendering
+        # it the user can't tell why a placed order didn't fill.
+        if r["status"] in ("skipped", "cancelled", "rejected") and r["skip_reason"]:
             from agents.market_intelligence.broker.skip_reasons import humanize
             label = humanize(r["skip_reason"])
-            # Keep the human-readable label only; humanize wraps verbose
-            # internals (ratio=, ORB H=, faded x%) in parens that drown the
-            # digest. Strip from the first '(' to drop them.
             if "(" in label:
                 label = label[:label.find("(")].rstrip()
             bits.append(label)

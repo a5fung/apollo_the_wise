@@ -3565,7 +3565,7 @@ class MarketIntelligenceAgent(BaseAgent):
         if not ticker:
             return self._ok(request, result="Usage: `/why TICKER [YYYY-MM-DD]` — shows the lifecycle timeline for a HIGH EP alert.")
 
-        target_date = et_today()
+        target_date: _date | None = None
         for tok in tokens[1:]:
             try:
                 target_date = _date.fromisoformat(tok)
@@ -3574,6 +3574,22 @@ class MarketIntelligenceAgent(BaseAgent):
                 continue
 
         pool = await get_pool()
+        if target_date is None:
+            # No date given → resolve to the most-recent activity for this
+            # ticker (alert / trade / audit) instead of et_today(). User asks
+            # `/why TWLO` weeks after the alert; today's date returns empty.
+            async with pool.acquire() as conn:
+                latest = await conn.fetchrow("""
+                    SELECT MAX(d) AS d FROM (
+                        SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1
+                        UNION ALL
+                        SELECT MAX(alert_date) FROM mi_live_trades WHERE ticker = $1
+                        UNION ALL
+                        SELECT MAX((created_at AT TIME ZONE 'America/New_York')::date)
+                          FROM mi_audit_log WHERE summary ILIKE '%' || $1 || '%'
+                    ) u
+                """, ticker)
+            target_date = (latest["d"] if latest else None) or et_today()
         async with pool.acquire() as conn:
             alert = await conn.fetchrow("""
                 SELECT ticker, alert_date, score_tier, ep_score, gap_pct,
