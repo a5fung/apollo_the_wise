@@ -514,6 +514,48 @@ reviews:
     added_on: 2026-05-04
 
 
+  - review_id: orb_cutoff_extension
+    title: "ORB cutoff extension — 10:00 ET → later? (shadow N≥20)"
+    question: |
+      Should the live ORB unfilled-entry cutoff (currently 10:00 ET) extend to
+      11:00 / 12:00 / 13:00 / 14:00 / 16:00? 2026-05-04 lifecycle analysis on
+      N=5 cancellations was inconclusive (TWLO single-anecdote drove the
+      14:00→16:00 swing). mi_orb_extension_shadow accumulates counterfactual
+      lifecycles for every 10:00 ET cancellation — 6 cutoff rows per trade,
+      Day-1 sim + production daily exit logic (apply_daily_exit_step) for the
+      multi-day arc. Predicate counts DISTINCT trade_id (not row count — table
+      writes 6 rows per cancellation).
+    predicate_sql: |
+      SELECT COUNT(DISTINCT trade_id) FROM mi_orb_extension_shadow
+    threshold: 20
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Aggregate per cutoff:
+        SELECT cutoff_minute,
+               COUNT(*)                                         AS trades,
+               COUNT(*) FILTER (WHERE would_fill)               AS fills,
+               COUNT(*) FILTER (WHERE total_pnl > 0)            AS wins,
+               COUNT(*) FILTER (WHERE total_pnl < 0)            AS losses,
+               COUNT(*) FILTER (WHERE final_status='still_open') AS open_n,
+               SUM(total_pnl)                                   AS total_pnl,
+               AVG(total_pnl)                                   AS mean_pnl,
+               PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_pnl) AS median_pnl,
+               AVG(hold_days) FILTER (WHERE would_fill)         AS avg_hold
+        FROM mi_orb_extension_shadow
+        GROUP BY 1
+        ORDER BY 1;
+      Decision rule (advisor 2026-05-04): cutoff extension justified only when
+      a later cutoff dominates 10:00 on BOTH mean AND median (not driven by 1-2
+      tail anecdotes). If mean improves but median degrades, the win is one
+      anecdote — keep 10:00. Also weigh "still_open" tail: positions opened
+      under a later cutoff that haven't realised (multi-day momentum names)
+      are real edge but require holding through end of evaluation window.
+      If decision is to extend, change ORB_WINDOW_END in scheduler.py + update
+      _orb_window_cleanup_job cron + skip_reasons.
+      Origin: 2026-05-04 cancelled-ORB lifecycle analysis (orb_extension_lifecycle_report.md).
+    status: pending
+    added_on: 2026-05-04
+
   - review_id: flag_ma_pin_filter
     title: "Flag deal-pin price-signature backstop (L2)"
     question: |

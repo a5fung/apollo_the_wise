@@ -414,6 +414,25 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"State alerts failed: {e}")
 
+    # 9. ORB-extension shadow settlement — re-evaluate every still-open
+    # counterfactual position via apply_daily_exit_step. Runs after
+    # mi_daily_closes is refreshed (ingest_daily completed earlier above).
+    # Failure non-fatal: rows stay open, settle next night.
+    try:
+        from agents.market_intelligence.broker.orb_extension_shadow import (
+            settle_open_shadows,
+        )
+        shadow_summary = await settle_open_shadows(_today)
+        if shadow_summary["reviewed"]:
+            logger.info(f"orb_ext_shadow settlement: {shadow_summary}")
+            await log_audit_event(
+                "orb_extension_shadow_settled",
+                f"reviewed={shadow_summary['reviewed']} settled={shadow_summary['settled']} "
+                f"still_open={shadow_summary['still_open']} errors={shadow_summary['errors']}",
+            )
+    except Exception as e:
+        logger.error(f"ORB-extension shadow settlement failed: {e}", exc_info=True)
+
     # Check for silent engine errors (parse failures, API errors that didn't hard-fail).
     # Bucket by category so a flood of one type (e.g. Anthropic 5xx burst) collapses
     # to a single line and doesn't drown out genuinely novel errors.

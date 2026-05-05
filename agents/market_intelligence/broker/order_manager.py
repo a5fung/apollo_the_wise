@@ -11,6 +11,7 @@ import json
 import logging
 import math
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
 from agents.market_intelligence.broker import alpaca_client as alpaca
@@ -26,6 +27,8 @@ from agents.market_intelligence.briefing import send_telegram_message
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
+
+_ET = ZoneInfo("America/New_York")
 
 
 def stop_limit_buy_price(stop_price: float) -> float:
@@ -1011,7 +1014,8 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id
+            SELECT id, ticker, entry_order_id, alert_date, proposed_at,
+                   entry_price, stop_price, entry_shares
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
@@ -1021,6 +1025,10 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     failed_tickers: list[str] = []
     logger.info(f"{reason}: {len(pending)} unfilled entries to cancel")
     event_type = "orb_unfilled_cancelled" if "ORB" in reason else "eod_unfilled_cancelled"
+    if event_type == "orb_unfilled_cancelled":
+        from agents.market_intelligence.broker.orb_extension_shadow import (
+            record_shadow_for_cancellation,
+        )
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
@@ -1038,6 +1046,27 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
                     "reason": reason,
                 }),
             )
+            # Shadow telemetry: only the 10:00 ET ORB-window path. Excluding
+            # 4:05 PM EOD cancellations keeps the dataset homogeneous (the
+            # decision we're trying to make is about extending the morning
+            # cutoff, not the all-day deadline).
+            if (
+                event_type == "orb_unfilled_cancelled"
+                and trade["entry_price"] is not None
+                and trade["stop_price"] is not None
+                and trade["entry_shares"]
+                and trade["proposed_at"] is not None
+            ):
+                asyncio.create_task(record_shadow_for_cancellation(
+                    trade_id=int(trade["id"]),
+                    ticker=trade["ticker"],
+                    alert_date=trade["alert_date"],
+                    proposed_at=trade["proposed_at"],
+                    limit_price=float(trade["entry_price"]),
+                    stop_price=float(trade["stop_price"]),
+                    shares=int(trade["entry_shares"]),
+                    cancelled_at=datetime.now(_ET),
+                ))
         else:
             failed_tickers.append(trade["ticker"])
             logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")

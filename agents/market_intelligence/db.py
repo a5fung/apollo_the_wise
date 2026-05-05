@@ -1177,6 +1177,37 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_weekly_watchlists_ticker
                 ON mi_weekly_watchlists (ticker, week_ending DESC);
+
+            CREATE TABLE IF NOT EXISTS mi_orb_extension_shadow (
+                id                   BIGSERIAL PRIMARY KEY,
+                trade_id             INT NOT NULL,
+                ticker               TEXT NOT NULL,
+                alert_date           DATE NOT NULL,
+                cutoff_minute        INT  NOT NULL,
+                limit_price          NUMERIC,
+                stop_price           NUMERIC,
+                shares               INT,
+                cancelled_at         TIMESTAMPTZ,
+                would_fill           BOOLEAN,
+                fill_at              TIMESTAMPTZ,
+                fill_price           NUMERIC,
+                entry_attempts       INT,
+                state                JSONB,
+                final_status         TEXT,
+                closed_at            DATE,
+                total_pnl            NUMERIC,
+                hold_days            INT,
+                last_close           NUMERIC,
+                last_evaluated_date  DATE,
+                created_at           TIMESTAMPTZ DEFAULT NOW(),
+                updated_at           TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (trade_id, cutoff_minute)
+            );
+            CREATE INDEX IF NOT EXISTS idx_orb_ext_shadow_open
+                ON mi_orb_extension_shadow (final_status)
+                WHERE final_status = 'still_open';
+            CREATE INDEX IF NOT EXISTS idx_orb_ext_shadow_ticker
+                ON mi_orb_extension_shadow (ticker, alert_date);
         """)
 
         # ── Migrations ───────────────────────────────────────────────────
@@ -5605,6 +5636,109 @@ async def insert_weekly_watchlist(week_ending: "date", rows: list[dict]) -> int:
                 for r in rows
             ])
     return len(rows)
+
+
+async def insert_orb_extension_shadow_row(row: dict) -> None:
+    """Insert a single shadow-trade row.
+
+    Idempotent on (trade_id, cutoff_minute) — re-running for the same
+    cancellation overwrites the prior row's would_fill / state / final_status.
+    """
+    import json
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_orb_extension_shadow
+                (trade_id, ticker, alert_date, cutoff_minute,
+                 limit_price, stop_price, shares, cancelled_at,
+                 would_fill, fill_at, fill_price, entry_attempts,
+                 state, final_status, closed_at, total_pnl, hold_days,
+                 last_close, last_evaluated_date)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+                    $13::jsonb,$14,$15,$16,$17,$18,$19)
+            ON CONFLICT (trade_id, cutoff_minute) DO UPDATE SET
+                would_fill = EXCLUDED.would_fill,
+                fill_at = EXCLUDED.fill_at,
+                fill_price = EXCLUDED.fill_price,
+                entry_attempts = EXCLUDED.entry_attempts,
+                state = EXCLUDED.state,
+                final_status = EXCLUDED.final_status,
+                closed_at = EXCLUDED.closed_at,
+                total_pnl = EXCLUDED.total_pnl,
+                hold_days = EXCLUDED.hold_days,
+                last_close = EXCLUDED.last_close,
+                last_evaluated_date = EXCLUDED.last_evaluated_date,
+                updated_at = NOW()
+        """,
+            int(row["trade_id"]), row["ticker"], _to_date(row["alert_date"]),
+            int(row["cutoff_minute"]),
+            row.get("limit_price"), row.get("stop_price"), row.get("shares"),
+            row.get("cancelled_at"),
+            row.get("would_fill"), row.get("fill_at"), row.get("fill_price"),
+            row.get("entry_attempts"),
+            json.dumps(row.get("state") or {}, default=str),
+            row.get("final_status"),
+            _to_date(row["closed_at"]) if row.get("closed_at") else None,
+            row.get("total_pnl"),
+            row.get("hold_days"),
+            row.get("last_close"),
+            _to_date(row["last_evaluated_date"]) if row.get("last_evaluated_date") else None,
+        )
+
+
+async def get_open_orb_extension_shadows() -> list[dict]:
+    """Rows still tracking an open hypothetical position.
+
+    Settlement job re-evaluates these from last_evaluated_date+1 forward.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, trade_id, ticker, alert_date, cutoff_minute,
+                   limit_price, stop_price, shares, fill_at, fill_price,
+                   state, last_evaluated_date
+            FROM mi_orb_extension_shadow
+            WHERE final_status = 'still_open'
+        """)
+    return [dict(r) for r in rows]
+
+
+async def update_orb_extension_shadow_state(
+    shadow_id: int,
+    *,
+    state: dict,
+    final_status: str,
+    closed_at: "date | None",
+    total_pnl: float,
+    hold_days: int,
+    last_close: float | None,
+    last_evaluated_date: "date",
+) -> None:
+    """Persist a settlement-job step's updated state for one shadow row."""
+    import json
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_orb_extension_shadow
+               SET state = $2::jsonb,
+                   final_status = $3,
+                   closed_at = $4,
+                   total_pnl = $5,
+                   hold_days = $6,
+                   last_close = $7,
+                   last_evaluated_date = $8,
+                   updated_at = NOW()
+             WHERE id = $1
+        """,
+            int(shadow_id),
+            json.dumps(state or {}, default=str),
+            final_status,
+            _to_date(closed_at) if closed_at else None,
+            total_pnl,
+            int(hold_days),
+            last_close,
+            _to_date(last_evaluated_date),
+        )
 
 
 async def get_security_exchange_map(tickers: list[str]) -> dict[str, str]:

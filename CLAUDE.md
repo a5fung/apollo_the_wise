@@ -224,6 +224,20 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-04 (session 7) — ORB-extension shadow telemetry (decision-support for cutoff change)
+Lifecycle analysis on N=5 cancelled-ORB-window trades (`orb_extension_lifecycle_report.md`) was inconclusive — the 14:00→16:00 swing of $1,101 was a single TWLO leg. User direction: *"yes, let's shadow and put in reminder to review when data ready."* Built shadow infrastructure that records counterfactual lifecycle for every future 10:00 ET ORB cancellation across 6 cutoffs (10:00/11:00/12:00/13:00/14:00/16:00).
+
+**Components**:
+- `mi_orb_extension_shadow` table: PRIMARY KEY id, UNIQUE (trade_id, cutoff_minute), JSONB `state` for mutable resume (running_closes, partial_taken, breakeven_active, hard_stop, remaining_shares, exits). 6 rows per cancellation.
+- `agents/market_intelligence/broker/orb_extension_shadow.py`: `record_shadow_for_cancellation` (Day-1 sim, 6 cutoffs share one bar fetch) + `settle_open_shadows` (resumes via `apply_daily_exit_step` from `last_evaluated_date+1`).
+- Hook in `cancel_unfilled_entries` (order_manager.py) — gated on `event_type == "orb_unfilled_cancelled"` so 4:05 PM EOD cancellations are EXCLUDED (different decision question). Fire-and-forget via `asyncio.create_task` so the 10:00 ET cron isn't blocked by 6×Polygon fetches.
+- Settlement appended to `_nightly_data_pull` (after mi_daily_closes refresh, before failure check). Audit event `orb_extension_shadow_settled` carries reviewed/settled/still_open/errors.
+- Data-gated review `orb_cutoff_extension`: `COUNT(DISTINCT trade_id) >= 20`, earliest_review_date 2026-07-15. Decision rule (advisor): cutoff extension justified only when later cutoff dominates 10:00 on BOTH mean AND median.
+
+**Sim honesty**: fill threshold uses `stop_limit_buy_price(stop)` (SSoT helper) — high must reach the LIMIT price, not just the stop trigger. Matches live broker semantics.
+
+**Lesson**: a counterfactual decision needs counterfactual data. Single-anecdote cases (TWLO) generate noise that survives any aggregation small enough to compute today. The fix is not "wait until N=20 organically" — it's "record now so when N=20 arrives the data exists." Telemetry-first is the same shape as continuation flag (shipped 2026-05-01) and fishhook V3 (shipped 2026-04-30): build the recording layer before deciding the policy.
+
 ### 2026-05-04 (session 6) — Flag detector: burst-class universe + fresh-tightening COILED path (OKLO miss)
 User flagged OKLO forming a visible flag with no detector hit. Replay (`scripts/backfill_flag_xndu.py --ticker OKLO`) surfaced **two structural gaps**:
 
