@@ -99,13 +99,22 @@ def _atr_14(rows: list[dict], end_idx: int) -> Optional[float]:
 
 def _compute_fresh_tightening(
     rows: list[dict], today_idx: int, base_age: int,
+    recent_avg_vol: Optional[float] = None,
 ) -> tuple[bool, Optional[float], Optional[float]]:
     """Last-2-bar tightening relative to ATR-14, with dry-volume confirmation.
 
     Returns (fires, fresh_2bar_max_tr_pct, atr14_pct). `fires` is True only when:
       - base_age >= _FRESH_TIGHT_BASE_AGE_MIN
       - max(TR% of last 2 bars) ≤ _FRESH_TIGHT_RATIO_MAX × ATR14%
-      - max(volume of last 2 bars) ≤ ADV20  (volume not spiking)
+      - max(volume of last 2 bars) ≤ max(recent_avg_vol, 0.5 × ADV20)
+        Hybrid reference: recent base avg (matches breakout_vol_ratio
+        denominator at L369 — both anchor on contraction floor, not the
+        climax-inflated 20d trailing) with an ADV20-floored fallback so a
+        single sub-average bar in the recent window can't over-tighten the
+        gate. Pure ADV20 was too lenient for post-parabolic names where
+        the 20d denominator absorbs runup climax (OKLO 5/4: 14.65M vs
+        ADV20 15M = 0.98 barely passing). When recent_avg_vol is None
+        (e.g. base_age<2 or unknown), falls back to ADV20-only.
 
     Designed as a parallel path to the existing range_tight + vol_tight gate,
     not a replacement — kicks in for short bases where early/recent windows
@@ -137,14 +146,20 @@ def _compute_fresh_tightening(
     if (fresh_max_tr_pct / atr14_pct) > _FRESH_TIGHT_RATIO_MAX:
         return (False, fresh_max_tr_pct, atr14_pct)
 
-    # Dry-volume gate: neither of the last 2 bars exceeds ADV-20
     vols = [float(rows[i]["volume"] or 0) for i in (today_idx - 1, today_idx)]
     adv20_window = [float(rows[i]["volume"] or 0)
                     for i in range(today_idx - 20, today_idx)]
     if len(adv20_window) != 20:
         return (False, fresh_max_tr_pct, atr14_pct)
     adv20 = sum(adv20_window) / 20
-    if adv20 <= 0 or max(vols) > adv20:
+    if adv20 <= 0:
+        return (False, fresh_max_tr_pct, atr14_pct)
+
+    if recent_avg_vol is not None and recent_avg_vol > 0:
+        dry_vol_ceiling = max(recent_avg_vol, 0.5 * adv20)
+    else:
+        dry_vol_ceiling = adv20
+    if max(vols) > dry_vol_ceiling:
         return (False, fresh_max_tr_pct, atr14_pct)
 
     return (True, fresh_max_tr_pct, atr14_pct)
@@ -384,7 +399,9 @@ def compute_flag_metrics(
     # too short (4-5d) for the early/recent ratio to separate but the last 2
     # bars are clearly tight relative to ATR-14. Computed regardless of stage
     # so the row always carries the metric for offline tuning.
-    fresh_fires, fresh_tr_pct, atr14_pct = _compute_fresh_tightening(rows, today_idx, base_age)
+    fresh_fires, fresh_tr_pct, atr14_pct = _compute_fresh_tightening(
+        rows, today_idx, base_age, recent_avg_vol=recent_avg_vol,
+    )
     base["fresh_tight_fires"]  = fresh_fires
     base["fresh_2bar_tr_pct"]  = fresh_tr_pct
     base["atr14_pct"]          = atr14_pct

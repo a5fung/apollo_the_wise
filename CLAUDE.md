@@ -224,6 +224,22 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-05 (session 5b) — Flag detector dry-volume gate hybrid + queue cleanup (#188 + #163/#164/#189 verified + #177/#179 closed)
+Five queue items resolved. Dates re-checked against today (2026-05-05 Tue): "tomorrow" in the source notes was 2026-05-04, so the verifications were already actionable today, not future.
+
+**#188 — `_compute_fresh_tightening` dry-volume gate (`flag_detector.py`)**: prior code gated on `max(2bar vol) <= ADV20`. Climax-inflated for post-parabolic names — OKLO 5/4 hit 14.65M vs ADV20 15M = 0.98 (barely passing). Switched to hybrid ceiling `max(recent_avg_vol, 0.5 × ADV20)`: anchors on the contraction floor (matches `breakout_vol_ratio` denominator at L369, same SSoT shape) with a 0.5×ADV20 fallback so a single sub-average bar in the recent window can't over-tighten the gate. `recent_avg_vol` already computed at L349 (last 5 base bars); plumbed through as a kwarg. Falls back to ADV20-only when None for safety.
+
+**Verifications (telemetry queries against prod 87.99.134.162)**:
+- **#163 wick pending** — 11 NULL `filled_wick` rows in last 7d (RDDT 5/01, BTSG 5/01, FIVN 5/01, RLYB 5/04, CYTK/EQH/FCEL 5/05, etc.). Morning briefing job ran clean 5/04 + 5/05 09:00 ET. Section wiring verified.
+- **#164 hedge downgrade** — 2 events fired today (EWTX 08:00 ET strong→routine, WAT 09:55 strong→routine). Wiring confirmed live.
+- **#189 flag scan** — 5/05 17:25 ET run produced 576 candidates (matches predicted ~575 smoke), 5 COILED, 36 TIGHTENING, 3 fresh_tight_fires. Burst-inclusion + fresh path both populated.
+
+**Closed without code change**:
+- **#177 update_stop atomicity** — original motivation was the GOOGL/TEAM DB drift, but #180 root-caused that as the partial-exit commit-defer issue (now shipped). Remaining naked window during cancel-then-place is bounded by single-shot retry, WS rejection handler at `trade_stream._handle_cancel_or_reject` site 2 (marks stop_order_id=NULL + Telegram + 4:05 PM remediation), and 21:00 ET evening backstop. Textbook atomic fix is `PATCH /v2/orders/{id}` for stop-price-only updates — file-worthy if it ever bites in practice, not a current correctness gap.
+- **#179 split _live_position_update_job 3:45/4:45** — bug class materially mitigated by #180 (commits deferred to WS fill) + 9:00 PM evening backstop. Folded into #217 P2 cleanup; not flip-blocking.
+
+**Lesson**: "tomorrow" / "next day" in followup notes is a relative-date trap when conversations cross sessions. Always reconcile the note's authoring date with today before deciding actionability — telemetry that the note thought was 24h out may already be 2-3 trading days settled.
+
 ### 2026-05-05 (session 5) — P0.1 enum stringification site-local fix (#211) + #187 doc honesty
 Two unblocked-today items shipped after querying live telemetry from this morning's 9:35 ET cycle.
 
