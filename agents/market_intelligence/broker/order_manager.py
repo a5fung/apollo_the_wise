@@ -1371,11 +1371,22 @@ async def sync_positions() -> list[str]:
                 str(order.get("status", "")).split(".")[-1].lower()
                 if order else ""
             )
-            if order_status in ("new", "accepted", "held"):
-                # Stop is still active at the broker — leave it alone.
+            # Only act on explicitly dead states. Active gate alone is fragile
+            # — Alpaca's enum includes pending_new / pending_replace / accepted
+            # _for_bidding etc., and a freshly-placed stop in pending_new
+            # would be misclassified as dead and double-stopped on remediation.
+            # Inverting: leave alone unless we positively confirm the order is
+            # in a terminal state. Network failure (order=None) is ambiguous,
+            # not dead — defer to next sync_positions run.
+            DEAD_STATES = (
+                "canceled", "cancelled", "expired", "rejected",
+                "replaced", "filled", "done_for_day", "stopped", "suspended",
+            )
+            if order_status not in DEAD_STATES:
+                # Active, transient, unknown, or fetch-failed — leave alone.
                 continue
-            # Dead reference: clear stale ID so the remediation below records a
-            # clean new stop_order_id and future runs see a single source of truth.
+            # Confirmed dead: clear stale ID so remediation records a clean
+            # new stop_order_id and future runs see a single source of truth.
             async with pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
@@ -1383,13 +1394,13 @@ async def sync_positions() -> list[str]:
                 )
             msg = (
                 f"⚠️ Stale stop {ticker}: {existing_stop_id[:8]} status="
-                f"{order_status or 'missing'} — clearing & remediating"
+                f"{order_status} — clearing & remediating"
             )
             discrepancies.append(msg)
             logger.warning(f"sync_positions: stale stop for {ticker}: {msg}")
             await log_audit_event(
                 "naked_position_detected",
-                f"{ticker}: stale stop_order_id ({order_status or 'missing'}) cleared by sync_positions",
+                f"{ticker}: stale stop_order_id ({order_status}) cleared by sync_positions",
                 json.dumps({
                     "trade_id": trade["id"], "ticker": ticker,
                     "stale_stop_id": existing_stop_id,
