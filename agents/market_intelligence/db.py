@@ -1218,6 +1218,10 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS signal_type TEXT;
             CREATE INDEX IF NOT EXISTS idx_live_trades_signal_type
                 ON mi_live_trades(signal_type);
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS account_mode TEXT NOT NULL DEFAULT 'paper';
+            CREATE INDEX IF NOT EXISTS idx_live_trades_account_mode
+                ON mi_live_trades(account_mode);
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

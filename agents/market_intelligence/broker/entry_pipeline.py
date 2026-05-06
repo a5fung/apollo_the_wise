@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from datetime import date
 from typing import Any, Awaitable, Callable
 
@@ -32,6 +31,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
+from agents.market_intelligence.constants import current_account_mode
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
@@ -262,7 +262,7 @@ async def submit_trade_entry(
                 BLOCK_STRATEGY_IN_SHADOW, icon="🚫",
                 audit_event="orb_blocked", action=ACTION_BLOCKED,
             )
-        if strategy.phase == "paper" and os.environ.get("ALPACA_PAPER", "true").lower() != "true":
+        if strategy.phase == "paper" and current_account_mode() == "live":
             return await _skip(
                 BLOCK_PAPER_STRATEGY_ON_LIVE, icon="🚫",
                 audit_event="orb_blocked", action=ACTION_BLOCKED,
@@ -302,6 +302,7 @@ async def submit_trade_entry(
         return await _skip(msg, audit_event="orb_skipped")
 
     # 6. Insert trade row.
+    account_mode = current_account_mode()
     async with pool.acquire() as conn:
         trade_id = await conn.fetchval(
             """
@@ -309,9 +310,9 @@ async def submit_trade_entry(
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct, regime,
                  status, orb_high, orb_low, atr_14,
                  entry_price, entry_shares, stop_price, hard_stop,
-                 position_size, risk_dollars, signal_type, proposed_at)
+                 position_size, risk_dollars, signal_type, account_mode, proposed_at)
             VALUES ($1,$2,$3,$4,$5,$6,'pending_confirmation',$7,$8,$9,
-                    $10,$11,$12,$12,$13,$14,$15,NOW())
+                    $10,$11,$12,$12,$13,$14,$15,$16,NOW())
             ON CONFLICT (ticker, alert_date) DO NOTHING
             RETURNING id
             """,
@@ -324,14 +325,14 @@ async def submit_trade_entry(
             order_spec["entry_price"], float(order_spec["shares"]),
             order_spec["stop_loss_price"],
             order_spec["position_size"], order_spec["risk_dollars"],
-            signal_type,
+            signal_type, account_mode,
         )
     if not trade_id:
         logger.debug(f"{strategy_label} {ticker}: trade row insert hit unique conflict")
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
 
     # 7. Submit bracket.
-    is_paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
+    is_paper = account_mode == "paper"
 
     if is_paper:
         logger.info(f"{strategy_label} paper auto-confirm: {ticker} (trade_id={trade_id})")

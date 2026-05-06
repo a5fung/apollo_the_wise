@@ -116,6 +116,9 @@ async def get_account() -> dict:
             "pattern_day_trader": account.pattern_day_trader,
             "trading_blocked": account.trading_blocked,
             "account_blocked": account.account_blocked,
+            # daytrade_count: rolling 5-business-day count. PDT lockout fires at
+            # 4 day-trades when equity < $25K. Surfaced for /status PDT headroom.
+            "daytrade_count": int(getattr(account, "daytrade_count", 0) or 0),
         }
     except Exception as e:
         logger.error(f"Failed to get account: {e}")

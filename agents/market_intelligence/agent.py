@@ -703,30 +703,51 @@ class MarketIntelligenceAgent(BaseAgent):
             ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT,
             MAX_CONCURRENT_LIVE_POSITIONS, DAILY_LOSS_LIMIT_PCT,
             CIRCUIT_BREAKER_CONSEC_LOSSES, CONFIRMATION_TIMEOUT_SEC,
-            LIVE_TRADING_ENABLED,
+            LIVE_TRADING_ENABLED, current_account_mode,
         )
+        from agents.market_intelligence.broker import alpaca_client as alpaca
         from agents.market_intelligence.db import get_latest_regime
 
         regime = await get_latest_regime()
         qqq_bullish = regime.get("qqq_ema_bullish") if regime else None
         active_risk_pct = RISK_PCT if qqq_bullish is not False else RISK_PCT * 0.5
-        risk_dollars = round(ACCOUNT_SIZE * active_risk_pct)
-        max_pos_dollars = round(ACCOUNT_SIZE * MAX_POSITION_PCT)
-        daily_loss_dollars = round(ACCOUNT_SIZE * DAILY_LOSS_LIMIT_PCT)
 
-        mode = "LIVE" if LIVE_TRADING_ENABLED else "PAPER"
+        # Display equity sourced from the live broker — what the gates ACTUALLY
+        # use (sizing path reads alpaca.get_account()["equity"] at order-prep
+        # time, not the ACCOUNT_SIZE constant). On a $10K live account, the old
+        # constant-based display read $100K — wrong by 10×.
+        equity = ACCOUNT_SIZE
+        equity_source = "constant (broker fetch failed)"
+        try:
+            account = await alpaca.get_account()
+            equity = float(account["equity"])
+            equity_source = "broker (live)"
+        except Exception as e:
+            logger.warning(f"trading_config: broker equity fetch failed, falling back to constant: {e}")
+
+        risk_dollars = round(equity * active_risk_pct)
+        max_pos_dollars = round(equity * MAX_POSITION_PCT)
+        daily_loss_dollars = round(equity * DAILY_LOSS_LIMIT_PCT)
+
+        is_paper = current_account_mode() == "paper"
+        if not LIVE_TRADING_ENABLED:
+            mode = "DISABLED"
+        elif is_paper:
+            mode = "PAPER"
+        else:
+            mode = "LIVE-$"
         qqq_gate = "full risk" if qqq_bullish is not False else "half risk (QQQ 10EMA < 20EMA)"
 
         lines = [
             f"*Trading Configuration — {mode} mode*\n",
             "*Account*",
-            f"  Account size:       ${ACCOUNT_SIZE:,.0f}",
-            f"  Mode:               {'🟢 Live' if LIVE_TRADING_ENABLED else '📄 Paper (Alpaca)'}",
+            f"  Equity:             ${equity:,.2f} _{equity_source}_",
+            f"  Mode:               {'💰 LIVE-$' if (LIVE_TRADING_ENABLED and not is_paper) else ('📄 Paper (Alpaca)' if LIVE_TRADING_ENABLED else '⚫ Trading disabled')}",
             "",
             "*Position Sizing (per trade)*",
             f"  Risk per trade:     {RISK_PCT*100:.0f}% = ${risk_dollars:,}",
             f"  QQQ EMA gate:       {qqq_gate}",
-            f"  Active risk:        ${round(ACCOUNT_SIZE * active_risk_pct):,}/trade right now",
+            f"  Active risk:        ${round(equity * active_risk_pct):,}/trade right now",
             f"  Max position size:  {MAX_POSITION_PCT*100:.0f}% = ${max_pos_dollars:,}",
             f"  Sizing formula:     shares = risk_$ / (entry - stop)",
             "",

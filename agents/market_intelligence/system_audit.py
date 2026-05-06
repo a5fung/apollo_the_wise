@@ -126,6 +126,11 @@ class MetricSpec:
     fetch_today: Callable[..., Awaitable[float | None]]
     drill_sql: str
     code_pointers: list[str] = field(default_factory=list)
+    # scale_invariant: True for ratios, percentages, counts that don't scale with
+    # account equity. False for $-absolute metrics (P&L $, position $, etc.) whose
+    # baselines must be reset on paper→live $ flip (or any equity step-change).
+    # All current metrics are scale-invariant; flip to False when adding $-absolute.
+    scale_invariant: bool = True
 
 
 async def _today_cooldowns(conn) -> float:

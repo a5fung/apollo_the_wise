@@ -1055,12 +1055,14 @@ class TelegramChannel:
             (db_ok, db_err),
             (redis_ok, redis_err),
             (claude_ok, claude_err),
+            account_info,
         ) = await asyncio.gather(
             health_check_all_agents(),
             get_market_pipeline_status(),
             self._check_db(),
             self._check_redis(),
             self._check_claude(),
+            self._check_account_mode(),
         )
 
         lines = ["*System Status*\n"]
@@ -1083,6 +1085,13 @@ class TelegramChannel:
             else:
                 hint = agent_hints.get(agent_name, "")
                 lines.append(f"🔴 {display} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
+
+        # Account (paper vs live $, equity, PDT)
+        if account_info:
+            lines.append("")
+            lines.append("*Account*")
+            for line in account_info:
+                lines.append(line)
 
         # Market pipeline
         if market_status:
@@ -1141,6 +1150,42 @@ class TelegramChannel:
             return False, f"API error {e.status_code}: {str(e)[:100]}"
         except Exception as e:
             return False, str(e)[:120]
+
+    async def _check_account_mode(self) -> list[str]:
+        import os
+        from agents.market_intelligence.constants import current_account_mode
+
+        live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+        if not live_enabled:
+            return ["⚪ Trading: DISABLED (LIVE_TRADING_ENABLED=false)"]
+
+        mode = current_account_mode()
+        mode_line = "📄 Account mode: PAPER" if mode == "paper" else "💰 Account mode: LIVE-$ (real money)"
+
+        lines = [mode_line]
+        try:
+            from agents.market_intelligence.broker import alpaca_client as alpaca
+            account = await alpaca.get_account()
+            equity = account.get("equity", 0.0)
+            buying_power = account.get("buying_power", 0.0)
+            pdt_flag = account.get("pattern_day_trader", False)
+            dt_count = account.get("daytrade_count", 0)
+
+            lines.append(f"Equity: ${equity:,.2f}")
+            lines.append(f"Buying power: ${buying_power:,.2f}")
+            lines.append(f"PDT flag: {pdt_flag}")
+
+            # Day-trade headroom: lockout triggers at count ≥ 4 when equity < $25K.
+            if equity < 25_000:
+                headroom = max(0, 3 - dt_count)
+                warn = " ⚠️" if dt_count >= 2 else ""
+                lines.append(f"Day trades used: {dt_count}/3 (rolling 5d, {headroom} left){warn}")
+            else:
+                lines.append(f"Day trades used: {dt_count} (rolling 5d, equity ≥ $25K — no PDT cap)")
+        except Exception as e:
+            lines.append(f"⚠️ Account fetch failed: {str(e)[:100]}")
+
+        return lines
 
     async def _handle_memory(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE

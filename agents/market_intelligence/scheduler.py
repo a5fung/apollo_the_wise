@@ -1432,6 +1432,43 @@ async def _hud_refresh_job() -> None:
         logger.error(f"HUD refresh failed: {e}", exc_info=True)
 
 
+async def _emit_boot_audit_marker() -> None:
+    """Emit `account_mode_active` audit event on scheduler startup.
+
+    Forensic anchor for live $ migration: any later ambiguity about which
+    Alpaca account a `mi_live_trades` row was written against can be resolved
+    by walking back to the nearest preceding boot marker. Records the
+    resolved env (alpaca_paper, live_trading_enabled), the broker-reported
+    equity, and the derived account mode label. Equity fetch is best-effort —
+    Alpaca outages or missing keys must not block startup.
+    """
+    import os
+    from agents.market_intelligence.constants import current_account_mode
+    paper_env = os.environ.get("ALPACA_PAPER", "true")
+    live_env = os.environ.get("LIVE_TRADING_ENABLED", "false")
+    mode = current_account_mode()
+
+    equity_str = "unknown"
+    try:
+        from agents.market_intelligence.broker import alpaca_client as alpaca
+        account = await alpaca.get_account()
+        equity_str = f"${float(account.get('equity', 0)):,.2f}"
+    except Exception as e:
+        logger.warning(f"Boot marker: equity fetch failed (non-fatal): {e}")
+        equity_str = f"fetch_failed: {str(e)[:80]}"
+
+    summary = f"mode={mode} equity={equity_str}"
+    detail = (
+        f"alpaca_paper_env={paper_env} live_trading_enabled_env={live_env} "
+        f"equity={equity_str}"
+    )
+    try:
+        await log_audit_event("account_mode_active", summary, detail)
+        logger.info(f"Boot marker: {summary} | {detail}")
+    except Exception as e:
+        logger.error(f"Boot marker audit write failed: {e}", exc_info=True)
+
+
 async def _reap_stale_running_runs() -> None:
     """Mark any mi_job_runs row stuck at status='running' for >2h as 'aborted'.
 
@@ -1466,6 +1503,9 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Reap stale 'running' rows from prior process kills before any new job fires.
     asyncio.create_task(_reap_stale_running_runs())
+
+    # Boot marker: forensic anchor for paper/live $ mode at process start.
+    asyncio.create_task(_emit_boot_audit_marker())
 
     # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri
     _scheduler.add_job(

@@ -10,6 +10,17 @@ ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 import os
 LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
 
+
+def current_account_mode() -> str:
+    """Return "paper" or "live" based on ALPACA_PAPER env, read per-call.
+
+    Per-call (not module-level cache) so a future hot env-flip flips the label
+    immediately. Used for `mi_live_trades.account_mode`, the `account_mode_active`
+    boot audit event, the `/status` and `/config` mode lines, and (via the
+    forthcoming P0.3 `mode_prefix` helper) every Telegram surface.
+    """
+    return "paper" if os.environ.get("ALPACA_PAPER", "true").lower() == "true" else "live"
+
 # ── Crypto RS shadow flag ────────────────────────────────────────────────────
 # false (default): nightly ingest runs, RS computed, audit-only on trigger fire,
 #   /crypto + /altseason commands return shadow-mode message.

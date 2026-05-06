@@ -634,16 +634,18 @@ async def _insert_skipped_trade(
     catalyst_quality = alert.get("catalyst_quality") if alert else None
     gap_pct = alert.get("gap_pct") if alert else None
     regime = regime_record.get("regime") if regime_record else None
+    from agents.market_intelligence.constants import current_account_mode
+    account_mode = current_account_mode()
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_live_trades
                 (ticker, alert_date, ep_score, catalyst_quality, gap_pct,
-                 regime, status, skip_reason, signal_type)
-            VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7, $8)
+                 regime, status, skip_reason, signal_type, account_mode)
+            VALUES ($1, $2, $3, $4, $5, $6, 'skipped', $7, $8, $9)
             ON CONFLICT (ticker, alert_date) DO NOTHING
         """,
             ticker, today, ep_score, catalyst_quality, gap_pct, regime,
-            skip_reason, signal_type,
+            skip_reason, signal_type, account_mode,
         )
 
 
