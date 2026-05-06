@@ -562,7 +562,7 @@ async def morning_stop_refresh() -> int:
         # Check if existing stop order is still active
         if trade["stop_order_id"]:
             order = await alpaca.get_order(trade["stop_order_id"])
-            if order and order["status"] in ("new", "accepted", "held"):
+            if order and str(order.get("status", "")).split(".")[-1].lower() in ("new", "accepted", "held"):
                 logger.debug(f"Stop still active for {ticker}")
                 continue
 

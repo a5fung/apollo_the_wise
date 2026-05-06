@@ -224,6 +224,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-05 (session 5) — P0.1 enum stringification site-local fix (#211) + #187 doc honesty
+Two unblocked-today items shipped after querying live telemetry from this morning's 9:35 ET cycle.
+
+**#211 — P0.1 status enum stringification (`live_tracker.py:565`)**: plan's pre-ship gate from session 4 (CLAUDE.md) called for confirming the `stop_update_started` empirical signature before patching the wire boundary. Today's prod telemetry showed both active positions (GOOGL #56, TEAM #57) firing `stop_update_started` at 9:35 ET with **identical from→to prices** ($379.43→$379.43, $82.79→$82.79) — the exact "fires for every active position every morning" shape predicted by the hypothesis. Root cause confirmed: `live_tracker.py:565` compared `order["status"] in ("new", "accepted", "held")` but Python 3.11+ stringifies `OrderStatus.NEW` as `"OrderStatus.NEW"` not `"new"` → the gate falls through every morning → `update_stop` re-cancels and re-places an already-active stop. Advisor recommended **site-local fix** (not SSoT at `_order_to_dict`): normalize at the comparison only — `str(order.get("status", "")).split(".")[-1].lower() in ("new", "accepted", "held")`. Filed followup for SSoT consolidation gated on auditing `order_manager.py:266` and `:521` polling readers for race shapes (re-enabling those readers may surface duplicate-fill or duplicate-stop-capture races the WS path has been masking).
+
+**#187 — `get_flag_universe` trailing-10 semantics (doc honesty)**: prior docstring described path (b) burst inclusion as "trailing-10-session **return** ≥ 25%" but the SQL is `(last_close / trailing10_min - 1) >= 0.25` where `trailing10_min = MIN(close) FILTER (WHERE rn <= 10)` — i.e. "+25% above 10-session **low**", not a 10-session return. Path attribution from this morning: top-200 RS=200, burst via rs_1m only=583, burst via trailing-10 only=8 — the trailing-10 clause is near-inert. Hypothetical 30-session widen would add ~247, but advisor: "8 vs 247 on a 30-session widen is a regime change masquerading as a tweak. Update the docstring; close the task." Rewrote docstring + inline comment to state honestly what the SQL does and that rs_1m≥80 carries the burst path.
+
+**Deferred (not bundled today)**:
+- **#182** — morning_stop_refresh DB write skew. Investigation surfaced new shape: TEAM #57 has `stop_order_id=NULL` (write skew), but GOOGL #56 has `stop_order_id=bd965746…` while today's 16:45 audit shows the placed stop was `537e5bb2…` — different IDs. Advisor: "do NOT bundle today" — investigate the divergent-ID surface before patching.
+- **SSoT enum normalization at `_order_to_dict`** — wire-boundary fix ships only after sites 2/3 race-shape audit confirms it's safe to re-enable polling readers.
+
+**Lesson**: pre-ship empirical gates pay off when the plan author writes them. Session 4's plan note explicitly called for waiting one morning for the `stop_update_started` signature — it took ~12 hours to land decisively, and the signature was so clean (every position, identical prices, all sites) that the site-local fix was the obvious right shape over a wire-boundary SSoT change that would also flip on the polling readers and risk new race surfaces. The discriminator was the discriminator.
+
 ### 2026-05-05 (session 4) — Paper→live $ flip: wave 3 ship (P0.9 staged-paper banner + P1.5 /dryrun + P0.2 partial-fill telemetry)
 Plan: `~/.claude/plans/shiny-mapping-locket.md` (paper→live $ migration). Wave 3 ships the deep-correctness items gated on the wave 1/2 verification work. Three pieces:
 

@@ -2260,13 +2260,16 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
 
     Two inclusion paths (UNION, OR-style):
       (a) **Top-200 RS** — Qullamaggie thesis is trading leaders.
-      (b) **Burst inclusion** — rs_1m percentile ≥ 80 OR trailing-10-session
-          return ≥ 25%. Catches names like OKLO that have a violent recent
-          runup but get dragged out of top-200 by 6M underperformance
-          (OKLO 2026-05-04: rank 981 because raw_6m=-7.4%, but rs_1m=94.3
-          and trailing-10 +42.5%). The flag detector's pivot anchor handles
-          burst names well — gating them out at the universe layer was
-          structurally inverting coverage.
+      (b) **Burst inclusion** — rs_1m percentile ≥ 80 OR last_close ≥ 25%
+          above trailing 10-session **min close** (i.e. +25% off the lowest
+          close in the last 10 sessions, NOT a trailing-10 return). Catches
+          names like OKLO that have a violent recent runup but get dragged
+          out of top-200 by 6M underperformance (OKLO 2026-05-04: rank 981
+          because raw_6m=-7.4%, but rs_1m=94.3). In practice rs_1m≥80 is
+          the dominant burst path; the low-anchored 25% gate fires rarely
+          on top of that and is near-inert as a coverage extender. The flag
+          detector's pivot anchor handles burst names well — gating them
+          out at the universe layer was structurally inverting coverage.
 
     Common gates:
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
@@ -2315,7 +2318,11 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
               AND (
                     -- Path (a): top-200 RS
                     (scored.rs_rank IS NOT NULL AND scored.rs_rank <= 200)
-                    -- Path (b): burst inclusion — rs_1m is already a 0-100 percentile
+                    -- Path (b): burst inclusion. rs_1m is already a 0-100
+                    -- percentile. The trailing10 clause anchors on the 10d
+                    -- min close (NOT a 10d return) — fires only when price
+                    -- is ≥25% above its 10-session low. Near-inert in
+                    -- practice; rs_1m≥80 carries the burst path.
                     OR scored.rs_1m >= 80
                     OR (m.trailing10_min > 0
                         AND (m.last_close / m.trailing10_min - 1) >= 0.25)
