@@ -1141,6 +1141,7 @@ async def initialize_schema() -> None:
                 family               TEXT NOT NULL,
                 phase                TEXT NOT NULL,
                 enabled              BOOLEAN NOT NULL DEFAULT TRUE,
+                live_real_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
                 signal_type          TEXT NOT NULL,
                 outcomes_table       TEXT NOT NULL,
                 promotion_model      TEXT NOT NULL,
@@ -1222,6 +1223,13 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS account_mode TEXT NOT NULL DEFAULT 'paper';
             CREATE INDEX IF NOT EXISTS idx_live_trades_account_mode
                 ON mi_live_trades(account_mode);
+            -- Per-strategy real-$ promotion gate. Independent from `phase`
+            -- (which controls paper-vs-live routing). When account_mode=live
+            -- AND live_real_enabled=False, proposals fire with a STAGED-PAPER
+            -- header so the user can distinguish "ramping" strategies from
+            -- promoted ones at confirmation time.
+            ALTER TABLE mi_strategies
+                ADD COLUMN IF NOT EXISTS live_real_enabled BOOLEAN NOT NULL DEFAULT FALSE;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

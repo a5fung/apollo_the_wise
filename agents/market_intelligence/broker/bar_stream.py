@@ -123,8 +123,9 @@ async def _run_stream() -> None:
                 await asyncio.sleep(min(5 * retries, 30))
 
     from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.constants import mode_prefix
     await send_telegram_message(
-        f"⚠️ *Bar stream failed {MAX_RETRIES} times* — ORB entry falling back to 9:31 cron"
+        f"{mode_prefix()}⚠️ *Bar stream failed {MAX_RETRIES} times* — ORB entry falling back to 9:31 cron"
     )
 
 
@@ -178,8 +179,9 @@ async def _record_subscribe_failure(ticker: str, reason: str) -> None:
     try:
         from agents.market_intelligence.briefing import send_telegram_message
         from agents.market_intelligence.broker.skip_reasons import humanize
+        from agents.market_intelligence.constants import mode_prefix
         await send_telegram_message(
-            f"⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
+            f"{mode_prefix()}⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
         )
     except Exception:
         # Audit row above is already written; log the alert-channel failure

@@ -20,7 +20,8 @@ from alpaca.trading.stream import TradingStream
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.constants import mode_prefix
+from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ async def _run_stream_with_monitoring() -> None:
             )
             if _reconnect_count >= _MAX_OUTER_RETRIES:
                 await send_telegram_message(
-                    f"🚨 *Trade stream failed {_MAX_OUTER_RETRIES} times*\n"
+                    f"{mode_prefix()}🚨 *Trade stream failed {_MAX_OUTER_RETRIES} times*\n"
                     f"Last error: {e}\n"
                     f"Falling back to polling. Check logs."
                 )
@@ -161,7 +162,7 @@ async def _handle_trade_update(data) -> None:
         if event == "fill":
             await _handle_fill(data)
         elif event == "partial_fill":
-            logger.info(f"Partial fill: {symbol} {data.qty} shares, order={order_id}")
+            await _handle_partial_fill(data)
         elif event in ("canceled", "cancelled", "expired", "rejected"):
             await _handle_cancel_or_reject(data, event)
         elif event in ("new", "accepted", "held"):
@@ -171,8 +172,63 @@ async def _handle_trade_update(data) -> None:
     except Exception as e:
         logger.error(f"Error handling WS event {event} for {symbol}: {e}", exc_info=True)
         await send_telegram_message(
-            f"⚠️ *Stream handler error*\n{event} for {symbol}: {e}"
+            f"{mode_prefix()}⚠️ *Stream handler error*\n{event} for {symbol}: {e}"
         )
+
+
+# ── Partial Fill Handler (visibility-only) ──────────────────────────────────
+#
+# Paper Alpaca atomic-fills, so this code path has zero production exercise on
+# paper. Real-$ tick-fills routinely (bid-side liquidity, large size, news bars).
+# When the first real partial lands, we want the operator paged so they can
+# manually verify DB state vs broker state — the full deferred-commit handler
+# will be designed against that production data.
+
+
+async def _handle_partial_fill(data) -> None:
+    order = data.order
+    order_id = str(order.id)
+    symbol = order.symbol
+    event_qty = float(data.qty) if getattr(data, "qty", None) else 0.0
+    cum_filled = float(order.filled_qty) if order.filled_qty else 0.0
+    total_qty = float(order.qty) if order.qty else 0.0
+    avg_price = float(order.filled_avg_price) if order.filled_avg_price else 0.0
+    side = str(getattr(order, "side", "")).split(".")[-1].lower()
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT id, ticker FROM mi_live_trades "
+            "WHERE entry_order_id = $1 OR stop_order_id = $1 "
+            "ORDER BY id DESC LIMIT 1",
+            order_id,
+        )
+    trade_id = trade["id"] if trade else None
+    ticker = trade["ticker"] if trade else symbol
+
+    summary = (
+        f"{symbol} partial_fill {event_qty:g}/{total_qty:g} "
+        f"(cum {cum_filled:g}) @ ${avg_price:.2f} side={side}"
+    )
+    detail = json.dumps({
+        "trade_id": trade_id,
+        "order_id": order_id,
+        "ticker": ticker,
+        "side": side,
+        "event_qty": event_qty,
+        "cum_filled": cum_filled,
+        "total_qty": total_qty,
+        "avg_price": avg_price,
+    })
+    await log_audit_event("entry_partial_fill", summary, detail)
+
+    await send_telegram_message(
+        f"{mode_prefix()}📊 *Partial fill: {symbol}*\n"
+        f"This event: {event_qty:g} sh | Cumulative: {cum_filled:g}/{total_qty:g}\n"
+        f"Avg price: ${avg_price:.2f} | side: {side}\n"
+        f"order={order_id}\n"
+        f"_Visibility-only — handler defers commit to terminal fill event._"
+    )
 
 
 # ── Fill Handler ────────────────────────────────────────────────────────────
@@ -253,7 +309,7 @@ async def _handle_fill(data) -> None:
         side = str(getattr(order, "side", "")).lower()
         side_label = "SELL" if "sell" in side else ("BUY" if "buy" in side else "FILL")
         await send_telegram_message(
-            f"💱 *Untracked {side_label}:* {symbol} @${filled_price:.2f} x {filled_qty:.0f}\n"
+            f"{mode_prefix()}💱 *Untracked {side_label}:* {symbol} @${filled_price:.2f} x {filled_qty:.0f}\n"
             f"Order {order_id[:8]} not in our records — direct Alpaca action."
         )
         logger.warning(f"Untracked fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
@@ -315,20 +371,20 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
                     f"stop=${stop_target:.2f} order_id={stop_order_id}"
                 )
                 await send_telegram_message(
-                    f"🛡 *Protective stop placed:* {ticker_name}\n"
+                    f"{mode_prefix()}🛡 *Protective stop placed:* {ticker_name}\n"
                     f"Bracket leg missing — standalone stop at ${stop_target:.2f}"
                 )
             except Exception as e:
                 logger.error(f"Fill-path stop remediation FAILED for {ticker_name}: {e}")
                 await send_telegram_message(
-                    f"🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                    f"{mode_prefix()}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
                     f"Entry filled but stop placement failed: {e}\n"
                     f"Manual intervention required."
                 )
         else:
             logger.error(f"Fill-path stop remediation impossible for {ticker_name}: no orb_low")
             await send_telegram_message(
-                f"🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                f"{mode_prefix()}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
                 f"Entry filled, no stop order, no orb_low in DB. Manual intervention required."
             )
 
@@ -350,7 +406,7 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
 
     attempt = trade.get("entry_attempt", 1)
     await send_telegram_message(
-        f"✅ *FILLED:* {ticker} (attempt {attempt})\n"
+        f"{mode_prefix()}✅ *FILLED:* {ticker} (attempt {attempt})\n"
         f"Entry: ${filled_price:.2f} x {filled_qty:.0f} shares\n"
         f"Stop: ${trade['orb_low']:.2f}"
     )
@@ -406,7 +462,7 @@ async def _process_stop_fill(trade: dict, stop_fill_price: float, pool) -> None:
 
         reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
         await send_telegram_message(
-            f"❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | {reason}"
         )
         logger.info(f"WS stop-out: {ticker} @${stop_fill_price:.2f} pnl=${pnl:+,.2f}")
@@ -439,7 +495,7 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
             )
         icon = "🚫" if event_norm == "rejected" else "🗑"
         await send_telegram_message(
-            f"{icon} *Entry {event_norm.upper()}:* {symbol}\nOrder {order_id[:8]} — no position opened."
+            f"{mode_prefix()}{icon} *Entry {event_norm.upper()}:* {symbol}\nOrder {order_id[:8]} — no position opened."
         )
         logger.info(f"WS: entry order {event_norm}: {symbol}")
         return
@@ -459,13 +515,13 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
             )
         if event_norm == "expired":
             await send_telegram_message(
-                f"ℹ️ *EOD stop expired (expected):* {symbol}\n"
+                f"{mode_prefix()}ℹ️ *EOD stop expired (expected):* {symbol}\n"
                 f"{stop_trade['remaining_shares']:.0f} sh — GTC re-issue at 4:05 PM ET."
             )
             logger.info(f"WS: EOD stop expired (expected): {symbol} trade_id={stop_trade['id']}")
         else:
             await send_telegram_message(
-                f"⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+                f"{mode_prefix()}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
                 f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
                 f"Remediation runs at 4:05 PM ET — monitor."
             )
@@ -508,7 +564,7 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                         trade_row["id"], restored["id"],
                     )
                 await send_telegram_message(
-                    f"⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
+                    f"{mode_prefix()}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
                     f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "
                     f"@${float(trade_row['stop_price']):.2f}."
                 )
@@ -518,7 +574,7 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                 )
             except Exception as e:
                 await send_telegram_message(
-                    f"🚨 *PARTIAL EXIT {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
+                    f"{mode_prefix()}🚨 *PARTIAL EXIT {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
                     f"{e}\n*Position may be unprotected — manual intervention required.*"
                 )
                 logger.error(f"WS: partial exit {event_norm} stop-restore failed for {symbol}: {e}")
@@ -547,14 +603,14 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                         trade_row["id"], restored["id"],
                     )
                 await send_telegram_message(
-                    f"⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"{mode_prefix()}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                     f"Position still open ({int(trade_row['remaining_shares'])} sh). "
                     f"Stop re-placed @${float(trade_row['stop_price']):.2f}."
                 )
                 logger.warning(f"WS: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
                 await send_telegram_message(
-                    f"🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
+                    f"{mode_prefix()}🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
                     f"{e}\n*Position may be unprotected — manual intervention required.*"
                 )
                 logger.error(f"WS: full exit {event_norm} stop-restore failed for {symbol}: {e}")
@@ -563,7 +619,7 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
     # 4. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
     # to surface account-level issues (margin/PDT/etc.); stay quieter on expiry.
     if event_norm == "rejected":
-        await send_telegram_message(f"⚠️ *Order REJECTED:* {symbol}\nOrder {order_id[:8]} — check logs.")
+        await send_telegram_message(f"{mode_prefix()}⚠️ *Order REJECTED:* {symbol}\nOrder {order_id[:8]} — check logs.")
         logger.warning(f"WS: untracked rejection: {symbol} order={order_id}")
     else:
         logger.info(f"WS: untracked {event_norm}: {symbol} order={order_id}")

@@ -24,6 +24,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_ZERO_RANGE,
 )
 from agents.market_intelligence.briefing import send_telegram_message
+from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
@@ -195,7 +196,7 @@ async def submit_entry(trade_id: int) -> dict | None:
                 trade_id, "order_failed",
                 skip_reason=f"{INFRA_ORDER_SUBMIT_FAILED}: {e2}",
             )
-            await send_telegram_message(f"⚠️ Order FAILED for {ticker}: {e2}")
+            await send_telegram_message(f"{mode_prefix()}⚠️ Order FAILED for {ticker}: {e2}")
             return None
 
     # Store order in DB
@@ -309,7 +310,7 @@ async def check_fills() -> list[dict]:
                 """, trade["entry_order_id"], filled_qty, filled_price)
 
             await send_telegram_message(
-                f"✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
+                f"{mode_prefix()}✅ *FILLED:* {ticker} (attempt {trade.get('entry_attempt', 1)})\n"
                 f"Entry: ${filled_price:.2f} × {filled_qty:.0f} shares\n"
                 f"Stop: ${trade['stop_price']:.2f}"
             )
@@ -394,7 +395,7 @@ async def attempt_day1_reentry(
                 WHERE id = $1
             """, trade["id"], json.dumps(exits), total_pnl_so_far)
         await send_telegram_message(
-            f"❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | No re-entry after 11 AM"
         )
         logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, no re-entry after 11 AM")
@@ -442,7 +443,7 @@ async def attempt_day1_reentry(
                 WHERE id = $1
             """, trade["id"], json.dumps(exits), total_pnl, attempt)
         await send_telegram_message(
-            f"❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | Re-entry failed: {e}"
         )
         return {"ticker": ticker, "action": "reentry_failed"}
@@ -488,7 +489,7 @@ async def attempt_day1_reentry(
         else f"buy >${orb_high:.2f}"
     )
     await send_telegram_message(
-        f"🔄 *Re-entry:* {ticker} (attempt {attempt}/{MAX_ENTRY_ATTEMPTS})\n"
+        f"{mode_prefix()}🔄 *Re-entry:* {ticker} (attempt {attempt}/{MAX_ENTRY_ATTEMPTS})\n"
         f"Stopped @${stop_fill_price:.2f} (${pnl:+,.2f})\n"
         f"New order: {entry_desc} stop ${orb_low:.2f}\n"
         f"_[{source}]_"
@@ -602,7 +603,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
         # Urgent: stop not in place!
         await send_telegram_message(
-            f"🚨 *STOP ORDER FAILED* for {ticker}!\n"
+            f"{mode_prefix()}🚨 *STOP ORDER FAILED* for {ticker}!\n"
             f"Attempted stop @${new_stop_price:.2f}\n"
             f"Error: {e}\n"
             f"Position has NO stop protection!"
@@ -767,7 +768,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"⚠️ Partial exit ABORTED for {ticker}: "
+                f"{mode_prefix()}⚠️ Partial exit ABORTED for {ticker}: "
                 f"could not cancel existing stop (order {old_stop_id}). "
                 f"Will retry next position update."
             )
@@ -817,7 +818,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
+                f"{mode_prefix()}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
                 f"Old stop cancelled but new stop failed: {e}\n"
                 f"*Position unprotected — place a manual stop immediately!*"
             )
@@ -887,7 +888,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"⚠️ Partial exit FAILED for {ticker}: {e}\n"
+                f"{mode_prefix()}⚠️ Partial exit FAILED for {ticker}: {e}\n"
                 f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
             )
             logger.warning(
@@ -907,7 +908,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
+                f"{mode_prefix()}🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
                 f"Sell error: {e}\nRollback error: {e2}\n"
                 f"*Position may have NO stop — manual intervention required!*"
             )
@@ -919,7 +920,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
     # fell back to entry_price → printed P&L $0.00 on a sale that hadn't happened.
     # finalize_partial_exit() runs from the WS fill handler with the real fill price.
     await send_telegram_message(
-        f"📋 *Partial exit order placed:* {ticker}\n"
+        f"{mode_prefix()}📋 *Partial exit order placed:* {ticker}\n"
         f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
         f"_Confirms with real P&L on fill._"
     )
@@ -992,7 +993,7 @@ async def finalize_partial_exit(
         }),
     )
     await send_telegram_message(
-        f"📤 *Partial exit FILLED:* {ticker}\n"
+        f"{mode_prefix()}📤 *Partial exit FILLED:* {ticker}\n"
         f"Sold {shares} shares @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
     )
@@ -1037,7 +1038,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         order = await alpaca.close_position(ticker)
     except Exception as e:
         logger.error(f"Full exit failed for {ticker}: {e}")
-        await send_telegram_message(f"⚠️ Full exit FAILED for {ticker}: {e}")
+        await send_telegram_message(f"{mode_prefix()}⚠️ Full exit FAILED for {ticker}: {e}")
         return False
 
     remaining = trade["remaining_shares"]
@@ -1057,7 +1058,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
     # market order for next open; fill_price was None at submit time, which
     # made P&L print as 0 on a close that hadn't happened yet.
     await send_telegram_message(
-        f"📋 *Closing order placed:* {ticker} — {reason}\n"
+        f"{mode_prefix()}📋 *Closing order placed:* {ticker} — {reason}\n"
         f"Market sell {remaining:.0f} sh — pending fill (Order {order['id'][:8]})\n"
         f"_Confirms with real P&L on fill._"
     )
@@ -1131,7 +1132,7 @@ async def finalize_full_exit(
 
     emoji = "✅" if total_pnl > 0 else "❌"
     await send_telegram_message(
-        f"{emoji} *Closed:* {ticker} — {reason}\n"
+        f"{mode_prefix()}{emoji} *Closed:* {ticker} — {reason}\n"
         f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
         f"Total P&L: ${total_pnl:+,.2f}"
     )
@@ -1220,11 +1221,11 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
 
     if cancelled:
         await send_telegram_message(
-            f"🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
+            f"{mode_prefix()}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
         )
     if failed_tickers:
         await send_telegram_message(
-            f"⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
+            f"{mode_prefix()}⚠️ {reason}: cancel FAILED for {len(failed_tickers)} order(s) — {', '.join(failed_tickers)} — investigate broker side"
         )
     return cancelled
 
@@ -1331,7 +1332,7 @@ async def sync_positions() -> list[str]:
             logger.error(f"sync_positions: stop remediation failed for {ticker}: {last_err}")
 
     if discrepancies:
-        msg = "⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)
+        msg = f"{mode_prefix()}⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)
         await send_telegram_message(msg)
         logger.warning(f"Position sync: {len(discrepancies)} discrepancies")
     else:

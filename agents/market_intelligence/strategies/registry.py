@@ -40,6 +40,11 @@ class Strategy:
     promotion_model: str     # 'paired_r' | 'unpaired_r' | 'telemetry_review'
     promotion_thresholds: dict = field(default_factory=dict)
     notes: str | None = None
+    # Per-strategy real-$ ramp gate. Independent from `phase`. When False AND
+    # account_mode='live', proposals fire with a "🟡 STAGED-PAPER ramp" header
+    # so user can stage strategies (MAGNA53 first, 9M Day 2 after N clean fills)
+    # without flipping every strategy to real money on flip day.
+    live_real_enabled: bool = False
 
 
 _CACHE: dict[str, Strategy] | None = None
@@ -56,7 +61,8 @@ async def _load_all() -> dict[str, Strategy]:
         rows = await conn.fetch(
             """
             SELECT strategy_id, name, family, phase, enabled, signal_type,
-                   outcomes_table, promotion_model, promotion_thresholds, notes
+                   outcomes_table, promotion_model, promotion_thresholds, notes,
+                   live_real_enabled
             FROM mi_strategies
             """
         )
@@ -76,6 +82,7 @@ async def _load_all() -> dict[str, Strategy]:
             promotion_model=r["promotion_model"],
             promotion_thresholds=thresholds or {},
             notes=r["notes"],
+            live_real_enabled=r["live_real_enabled"],
         )
     return out
 
@@ -114,6 +121,7 @@ async def update_strategy(
     *,
     phase: str | None = None,
     enabled: bool | None = None,
+    live_real_enabled: bool | None = None,
     promotion_thresholds: dict | None = None,
 ) -> Strategy | None:
     """Mutate a registered strategy. Invalidates cache and returns the
@@ -129,6 +137,9 @@ async def update_strategy(
     if enabled is not None:
         args.append(enabled)
         sets.append(f"enabled = ${len(args)}")
+    if live_real_enabled is not None:
+        args.append(live_real_enabled)
+        sets.append(f"live_real_enabled = ${len(args)}")
     if promotion_thresholds is not None:
         args.append(json.dumps(promotion_thresholds))
         sets.append(f"promotion_thresholds = ${len(args)}::jsonb")

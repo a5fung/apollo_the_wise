@@ -31,7 +31,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.constants import current_account_mode
+from agents.market_intelligence.constants import current_account_mode, mode_prefix
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
@@ -191,13 +191,14 @@ async def submit_trade_entry(
             await log_audit_event(audit_event, f"{strategy_label} {ticker} — {reason}")
         except Exception:
             pass
-        # When aggregate_skips=True, caller is responsible for the grouped
-        # Telegram digest after asyncio.gather. Per-ticker pings here would
-        # double-up. DB row + audit log still written for the durable record.
-        if not aggregate_skips:
+        # aggregate_skips=True: caller emits one grouped digest after gather().
+        # infra:* always pings immediately (no-silent-failures rule); filter /
+        # setup / block reasons stay aggregated.
+        is_infra = isinstance(reason, str) and reason.startswith("infra:")
+        if not aggregate_skips or is_infra:
             try:
                 await send_telegram_message(
-                    f"{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
+                    f"{mode_prefix()}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
@@ -356,7 +357,7 @@ async def submit_trade_entry(
             except Exception:
                 pass
             await send_telegram_message(
-                f"⚠️ *{ticker}* {strategy_label} auto-enter failed — "
+                f"{mode_prefix()}⚠️ *{ticker}* {strategy_label} auto-enter failed — "
                 f"check logs (trade_id={trade_id})"
             )
             return {"ticker": ticker, "action": ACTION_AUTO_ENTER_FAILED}
@@ -372,7 +373,7 @@ async def submit_trade_entry(
         except Exception:
             pass
         await send_telegram_message(
-            f"{success_icon} *{success_title}:* {ticker}\n"
+            f"{mode_prefix()}{success_icon} *{success_title}:* {ticker}\n"
             f"Stop-limit BUY @ ${order_spec['entry_price']:.2f} (pending trigger) | "
             f"{stop_label}: ${order_spec['stop_loss_price']:.2f}\n"
             f"Shares: {order_spec['shares']} | "
@@ -382,12 +383,16 @@ async def submit_trade_entry(
         return {"ticker": ticker, "action": ACTION_AUTO_ENTERED, "trade_id": trade_id}
 
     # Live (non-paper) — send Telegram proposal for manual confirmation.
-    sent = await send_trade_proposal(alert_context, order_spec, trade_id)
+    live_real_enabled = bool(strategy.live_real_enabled) if strategy else False
+    sent = await send_trade_proposal(
+        alert_context, order_spec, trade_id,
+        live_real_enabled=live_real_enabled,
+    )
     if sent:
         logger.info(f"{strategy_label} trade proposal sent: {ticker} (id={trade_id})")
         return {"ticker": ticker, "action": ACTION_PROPOSED, "trade_id": trade_id}
     await send_telegram_message(
-        f"⚠️ *{ticker}* {strategy_label} proposal send failed — "
+        f"{mode_prefix()}⚠️ *{ticker}* {strategy_label} proposal send failed — "
         f"check logs (trade_id={trade_id})"
     )
     return {"ticker": ticker, "action": ACTION_PROPOSAL_SEND_FAILED}

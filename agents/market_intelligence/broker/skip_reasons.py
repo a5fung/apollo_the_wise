@@ -36,6 +36,8 @@ BLOCK_STRATEGY_DISABLED          = "block:strategy_disabled"
 BLOCK_STRATEGY_IN_SHADOW         = "block:strategy_in_shadow"
 BLOCK_PAPER_STRATEGY_ON_LIVE     = "block:paper_strategy_on_live"
 BLOCK_TICKER_OPEN_POSITION       = "block:ticker_open_position"
+BLOCK_PDT_LOCKOUT_IMMINENT       = "block:pdt_lockout_imminent"
+BLOCK_PDT_LOCKOUT_ACTIVE         = "block:pdt_lockout_active"
 
 # ── infra: infrastructure / connectivity failures ───────────────────────────
 INFRA_NO_BAR              = "infra:no_bar"
@@ -74,6 +76,8 @@ _HUMAN_LABELS: dict[str, str] = {
     BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
     BLOCK_PAPER_STRATEGY_ON_LIVE:  "Paper-phase strategy can't run on live account",
     BLOCK_TICKER_OPEN_POSITION:    "Already have open position in ticker",
+    BLOCK_PDT_LOCKOUT_IMMINENT:    "PDT lockout imminent (3 day-trades used)",
+    BLOCK_PDT_LOCKOUT_ACTIVE:      "PDT lockout active (account flagged)",
     INFRA_NO_BAR:               "No opening bar from data feed",
     INFRA_SUBSCRIBE_TIMEOUT:    "Bar subscribe timed out",
     INFRA_SUBSCRIBE_FAILED:     "Bar subscribe failed",

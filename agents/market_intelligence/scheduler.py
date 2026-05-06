@@ -41,6 +41,7 @@ from agents.market_intelligence.briefing import (
     send_ep_alert,
     send_telegram_message,
 )
+from agents.market_intelligence.constants import mode_prefix
 from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
     format_tracker_telegram,
@@ -600,7 +601,7 @@ async def _ep_scan_job():
                     except Exception:
                         pass
                     await send_telegram_message(
-                        f"⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
+                        f"{mode_prefix()}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "
                         f"ORB window closed, no order"
                     )
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
@@ -1321,7 +1322,7 @@ async def _9m_day2_orb_job() -> None:
                     except Exception:
                         logger.exception(f"9M Day2 {tkr}: audit_log write also failed")
                     await send_telegram_message(
-                        f"🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
+                        f"{mode_prefix()}🚨 *{tkr}* 9M Day2 pipeline crashed — {type(ce).__name__}: {ce}"
                     )
 
         results = await asyncio.gather(
@@ -1346,7 +1347,7 @@ async def _9m_day2_orb_job() -> None:
             )
             try:
                 await send_telegram_message(
-                    f"⏭️ *9M Day2 skips ({today}, {len(skipped_results)})*\n{bullets}"
+                    f"{mode_prefix()}⏭️ *9M Day2 skips ({today}, {len(skipped_results)})*\n{bullets}"
                 )
             except Exception as e:
                 logger.error(f"9M Day2 grouped-skip Telegram failed — {e}")

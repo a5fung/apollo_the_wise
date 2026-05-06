@@ -17,9 +17,14 @@ def current_account_mode() -> str:
     Per-call (not module-level cache) so a future hot env-flip flips the label
     immediately. Used for `mi_live_trades.account_mode`, the `account_mode_active`
     boot audit event, the `/status` and `/config` mode lines, and (via the
-    forthcoming P0.3 `mode_prefix` helper) every Telegram surface.
+    `mode_prefix` helper) every Telegram surface.
     """
     return "paper" if os.environ.get("ALPACA_PAPER", "true").lower() == "true" else "live"
+
+
+def mode_prefix() -> str:
+    """Account-mode prefix for Telegram message headers (trailing space)."""
+    return "💰 LIVE-$ " if current_account_mode() == "live" else "📄 PAPER "
 
 # ── Crypto RS shadow flag ────────────────────────────────────────────────────
 # false (default): nightly ingest runs, RS computed, audit-only on trigger fire,

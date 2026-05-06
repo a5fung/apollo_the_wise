@@ -37,6 +37,8 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
     BLOCK_DAILY_LOSS,
     BLOCK_MAX_POSITIONS,
+    BLOCK_PDT_LOCKOUT_ACTIVE,
+    BLOCK_PDT_LOCKOUT_IMMINENT,
     SETUP_ACCOUNT_FETCH_FAILED,
     humanize,
 )
@@ -50,12 +52,50 @@ from agents.market_intelligence.constants import (
     DAILY_LOSS_LIMIT_PCT,
     CIRCUIT_BREAKER_CONSEC_LOSSES,
     CIRCUIT_BREAKER_COOLDOWN_DAYS,
+    current_account_mode,
+    mode_prefix,
 )
 
 logger = logging.getLogger(__name__)
 
 
 # ── Safeguards ───────────────────────────────────────────────────────────────
+
+
+async def _emit_pdt_warning_once(daytrade_count: int, equity: float) -> None:
+    """Telegram + audit at daytrade_count >= 2, deduped to once per UTC day.
+
+    Dedup via mi_audit_log presence: we don't want every cron tick to ping the
+    user about the same headroom. The block guard above is the hard stop;
+    this is just the heads-up before we hit it.
+    """
+    today = et_today()
+    pool = await get_pool()
+    try:
+        async with pool.acquire() as conn:
+            already = await conn.fetchval(
+                """
+                SELECT EXISTS (
+                    SELECT 1 FROM mi_audit_log
+                    WHERE event_type = 'pdt_warning_emitted'
+                      AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+                )
+                """,
+                today,
+            )
+        if already:
+            return
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "pdt_warning_emitted",
+            f"daytrade_count={daytrade_count}/3 equity=${equity:,.0f}",
+        )
+        await send_telegram_message(
+            f"{mode_prefix()}⚠️ *PDT headroom: {daytrade_count}/3 day-trades used* — "
+            f"one more triggers 90-day liquidation-only lockout (equity ${equity:,.0f} < $25K)."
+        )
+    except Exception as e:
+        logger.warning(f"PDT warning emit failed: {e}")
 
 
 async def _check_safeguards() -> tuple[bool, str | None]:
@@ -85,6 +125,50 @@ async def _check_safeguards() -> tuple[bool, str | None]:
         except Exception as e:
             logger.error(f"Safeguard: cannot get account equity: {e}")
             return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
+
+        # PDT guard: at < $25K equity, the 4th day-trade in a rolling 5-business-day
+        # window flips the account to liquidation-only for 90 days. Block the 4th
+        # before it triggers; also block any new entry once already flagged.
+        daytrade_count = int(account.get("daytrade_count", 0) or 0)
+        is_pdt_flagged = bool(account.get("pattern_day_trader", False))
+        if equity < 25_000:
+            if is_pdt_flagged:
+                logger.warning(
+                    f"Safeguard blocked: PDT lockout active "
+                    f"(equity ${equity:,.0f}, pattern_day_trader=True)"
+                )
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "pdt_lockout_block_active",
+                        f"equity=${equity:,.0f} daytrade_count={daytrade_count}",
+                    )
+                except Exception:
+                    pass
+                return False, (
+                    f"{BLOCK_PDT_LOCKOUT_ACTIVE}: equity=${equity:,.0f} "
+                    f"daytrade_count={daytrade_count}"
+                )
+            if daytrade_count >= 3:
+                logger.warning(
+                    f"Safeguard blocked: PDT lockout imminent "
+                    f"(equity ${equity:,.0f}, day-trades {daytrade_count}/3)"
+                )
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "pdt_lockout_block_imminent",
+                        f"equity=${equity:,.0f} daytrade_count={daytrade_count}",
+                    )
+                except Exception:
+                    pass
+                return False, (
+                    f"{BLOCK_PDT_LOCKOUT_IMMINENT}: daytrade_count={daytrade_count}/3 "
+                    f"equity=${equity:,.0f}"
+                )
+            # One-shot daily warning at 2/3 — dedup via audit-log presence.
+            if daytrade_count >= 2:
+                await _emit_pdt_warning_once(daytrade_count, equity)
 
         today = et_today()
         today_losses = await conn.fetchval("""
@@ -263,7 +347,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 logger.exception(f"ORB crash audit_log write also failed for {tkr}")
             try:
                 await send_telegram_message(
-                    f"🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
+                    f"{mode_prefix()}🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
                 )
             except Exception:
                 logger.exception(
@@ -286,7 +370,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         )
         try:
             await send_telegram_message(
-                f"⏭️ *ORB skips ({today}, {len(skipped_results)})*\n{bullets}"
+                f"{mode_prefix()}⏭️ *ORB skips ({today}, {len(skipped_results)})*\n{bullets}"
             )
         except Exception as e:
             logger.error(f"ORB grouped-skip Telegram failed — {e}")
@@ -379,7 +463,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                         step.new_total_pnl, step.hold_days,
                         json.dumps(step.new_running_closes))
                 await send_telegram_message(
-                    f"❌ *Stop hit:* {ticker} @${step.close_price:.2f}\n"
+                    f"{mode_prefix()}❌ *Stop hit:* {ticker} @${step.close_price:.2f}\n"
                     f"P&L: ${step.new_total_pnl:+,.2f} ({step.hold_days}d)"
                 )
                 results.append({"ticker": ticker, "action": "stopped_out", "pnl": step.new_total_pnl})
@@ -491,7 +575,7 @@ async def morning_stop_refresh() -> int:
 
     if refreshed:
         await send_telegram_message(
-            f"🔄 Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
+            f"{mode_prefix()}🔄 Morning: refreshed {refreshed} stop order(s) — {', '.join(refreshed_tickers)}"
         )
     return refreshed
 
@@ -537,8 +621,9 @@ async def send_live_trade_summary() -> None:
             WHERE alert_date = $1 AND status IN ('skipped', 'cancelled', 'order_failed')
         """, today)
 
-    # Build message
-    lines = ["📊 *Live Trade Update (Alpaca — Paper)*\n"]
+    # Build message — header reflects current account mode (paper/live)
+    mode_label = "Live" if current_account_mode() == "live" else "Paper"
+    lines = [f"{mode_prefix()}📊 *Live Trade Update (Alpaca — {mode_label})*\n"]
 
     # Today's activity
     if todays_entries:

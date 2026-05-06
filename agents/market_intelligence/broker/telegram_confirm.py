@@ -19,10 +19,21 @@ logger = logging.getLogger(__name__)
 VALID_ACTIONS = frozenset({"trade_confirm", "trade_skip"})
 
 
-async def send_trade_proposal(alert: dict, order_spec: dict, trade_id: int) -> bool:
+async def send_trade_proposal(
+    alert: dict,
+    order_spec: dict,
+    trade_id: int,
+    *,
+    live_real_enabled: bool = False,
+) -> bool:
     """
     Send a trade proposal to Telegram with inline Confirm/Skip buttons.
     Returns True if message was sent successfully.
+
+    When account_mode='live' AND live_real_enabled=False, the header swaps
+    to a STAGED-PAPER ramp banner so the user can distinguish strategies
+    that haven't been promoted to real-$ yet (manual Confirm tap is the
+    actual safety gate; the banner is decision-support).
     """
     ticker = order_spec["ticker"]
     entry = order_spec["entry_price"]
@@ -37,8 +48,13 @@ async def send_trade_proposal(alert: dict, order_spec: dict, trade_id: int) -> b
     equity = order_spec.get("equity", 0)
     risk_pct = (risk / equity * 100) if equity else 0
 
+    from agents.market_intelligence.constants import current_account_mode, mode_prefix
+    if current_account_mode() == "live" and not live_real_enabled:
+        header = f"🟡 *STAGED-PAPER ramp — confirm to enter REAL-$:* {ticker}"
+    else:
+        header = f"{mode_prefix()}📊 *TRADE PROPOSAL: {ticker}*"
     text = (
-        f"📊 *TRADE PROPOSAL: {ticker}*\n"
+        f"{header}\n"
         f"Entry: ${entry:.2f} (ORB high)\n"
         f"Stop: ${stop:.2f} (ORB low)\n"
         f"Risk: ${risk:.0f} ({risk_pct:.1f}% of account)\n"
@@ -179,12 +195,13 @@ async def handle_callback(callback_data: str, user_id: int | None = None) -> dic
             """, trade_id)
 
         from agents.market_intelligence.briefing import send_telegram_message
+        from agents.market_intelligence.constants import mode_prefix
         async with pool.acquire() as conn:
             ticker_row = await conn.fetchval(
                 "SELECT ticker FROM mi_live_trades WHERE id = $1", trade_id,
             )
         logger.info(f"Trade {trade_id} ({ticker_row}) skipped by user")
-        await send_telegram_message(f"⏭ Skipped trade: {ticker_row or trade_id}")
+        await send_telegram_message(f"{mode_prefix()}⏭ Skipped trade: {ticker_row or trade_id}")
         return {"action": "skipped", "trade_id": trade_id}
 
     return {"error": "invalid action"}

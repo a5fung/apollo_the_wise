@@ -411,10 +411,11 @@ class MarketIntelligenceAgent(BaseAgent):
                 from agents.market_intelligence.broker import alpaca_client as alpaca
                 # 1. Account info
                 account = await alpaca.get_account()
+                from agents.market_intelligence.constants import current_account_mode
                 results["account"] = {
                     "connected": True,
                     "trading_blocked": account["trading_blocked"],
-                    "paper": os.environ.get("ALPACA_PAPER", "true").lower() == "true",
+                    "paper": current_account_mode() == "paper",
                 }
                 # 2. Get a market data bar (AAPL yesterday)
                 from datetime import date, timedelta
@@ -823,6 +824,134 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.exception(f"Audit topic failed: {e}")
             return self._error(request, f"Audit failed: {e}")
+
+    async def _handle_dryrun(self, request: AgentRequest) -> AgentResponse:
+        """`/dryrun` — pre-flight check.
+
+        Surfaces broker account block (mode/equity/PDT/daytrades) plus, for
+        every trade row inserted today, the stored spec recomputed against
+        current equity. The recompute exposes sizing drift if the account
+        has moved since the row was written — the moment that matters most
+        is the day after a flip, when stored specs were sized at $100K
+        paper but live equity is now $10K.
+
+        Read-only: never submits. Idempotent.
+        """
+        import math
+        from datetime import date as _date
+
+        from agents.market_intelligence.broker import alpaca_client as alpaca
+        from agents.market_intelligence.constants import (
+            current_account_mode, mode_prefix,
+        )
+        from agents.market_intelligence.db import get_pool
+        from zoneinfo import ZoneInfo
+
+        _ET = ZoneInfo("America/New_York")
+        from datetime import datetime as _dt
+        today = _dt.now(_ET).date()
+        mode = current_account_mode()
+
+        # Account block — fail-soft so /dryrun stays useful even if broker
+        # is unreachable (e.g. weekend Alpaca maintenance).
+        equity: float | None = None
+        buying_power: float | None = None
+        daytrade_count: int = 0
+        pdt_flag = False
+        broker_err: str | None = None
+        try:
+            account = await alpaca.get_account()
+            equity = float(account["equity"])
+            buying_power = float(account["buying_power"])
+            daytrade_count = int(account.get("daytrade_count") or 0)
+            pdt_flag = bool(account.get("pattern_day_trader") or False)
+        except Exception as e:
+            broker_err = str(e)
+
+        lines = [f"{mode_prefix()}*Pre-flight `/dryrun` — {today.isoformat()}*", ""]
+        lines.append("*Account*")
+        lines.append(f"  Mode:           `{mode}`")
+        if broker_err:
+            lines.append(f"  Equity:         _broker fetch failed: {broker_err}_")
+        else:
+            lines.append(f"  Equity:         ${equity:,.2f}")
+            lines.append(f"  Buying power:   ${buying_power:,.2f}")
+            lines.append(f"  PDT flagged:    {pdt_flag}")
+            lines.append(f"  Day-trades:     {daytrade_count}/3 (rolling 5-day)")
+        lines.append("")
+
+        # Today's trades — any status, including pending/skipped/blocked rows
+        # (skipped rows still show why a candidate didn't enter).
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, ticker, signal_type, status, entry_price, stop_price,
+                       entry_shares, risk_dollars, position_size, account_mode,
+                       skip_reason
+                FROM mi_live_trades
+                WHERE alert_date = $1
+                ORDER BY id ASC
+                """,
+                today,
+            )
+
+        if not rows:
+            lines.append("_No alert rows today yet._")
+            return self._ok(request, "\n".join(lines))
+
+        lines.append(f"*Today's trade rows ({len(rows)})*")
+        # Risk pct read at compute time (matches prepare_orb_order). 1% default;
+        # halved when QQQ EMA bearish — surface that gate in the output.
+        from agents.market_intelligence.constants import RISK_PCT
+        from agents.market_intelligence.db import get_latest_regime
+        regime = await get_latest_regime()
+        qqq_bullish = regime.get("qqq_ema_bullish") if regime else None
+        active_risk_pct = RISK_PCT if qqq_bullish is not False else RISK_PCT * 0.5
+        if equity is not None:
+            lines.append(
+                f"  _Recompute basis: equity=${equity:,.0f} × "
+                f"{active_risk_pct*100:.2f}% = ${equity*active_risk_pct:,.0f} risk/trade_"
+            )
+        lines.append("")
+        for r in rows:
+            ticker = r["ticker"]
+            status = r["status"]
+            entry = r["entry_price"]
+            stop = r["stop_price"]
+            stored_shares = int(r["entry_shares"] or 0)
+            stored_risk = float(r["risk_dollars"] or 0)
+            stored_pos = float(r["position_size"] or 0)
+            row_mode = r["account_mode"] or "?"
+            sig = r["signal_type"] or "?"
+
+            head = f"  `{ticker}` [{sig}/{row_mode}] {status}"
+            lines.append(head)
+            if entry and stop and entry > stop:
+                lines.append(
+                    f"      stored: entry=${entry:.2f} stop=${stop:.2f} "
+                    f"shares={stored_shares} risk=${stored_risk:,.0f} "
+                    f"pos=${stored_pos:,.0f}"
+                )
+                if equity is not None:
+                    risk_per_share = float(entry) - float(stop)
+                    hyp_risk = equity * active_risk_pct
+                    hyp_shares = math.floor(hyp_risk / risk_per_share) if risk_per_share > 0 else 0
+                    # 20% of equity position cap
+                    cap_shares = math.floor((equity * 0.20) / float(entry)) if entry > 0 else 0
+                    if cap_shares > 0:
+                        hyp_shares = min(hyp_shares, cap_shares)
+                    hyp_pos = hyp_shares * float(entry)
+                    diff = hyp_shares - stored_shares
+                    diff_str = f"{diff:+d}" if diff else "0"
+                    lines.append(
+                        f"      @ now:  shares={hyp_shares} ({diff_str}) "
+                        f"risk=${hyp_shares * risk_per_share:,.0f} pos=${hyp_pos:,.0f}"
+                    )
+            elif r["skip_reason"]:
+                lines.append(f"      skip: {r['skip_reason']}")
+
+        return self._ok(request, "\n".join(lines))
 
     async def _handle_strategy_command(self, request: AgentRequest) -> AgentResponse:
         """`/strategy` (list) or `/strategy <id> [action]` (detail / mutate).
@@ -3553,6 +3682,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/flags":          self._handle_flag_query,
             "/flag":           self._handle_flag_query,
             "/setup":          self._handle_setup_query,
+            "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,
             "/watchlist":      self._handle_friday_watchlist,
             "/eps_detail":     self._handle_eps_detail,
