@@ -694,6 +694,34 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         )
         return False
 
+    # Dedup against an already-pending exit order for this trade — without this,
+    # if a sell placed by yesterday's cron is still queued (e.g. after-hours
+    # market sell awaiting next open), today's cron would stack a duplicate.
+    async with pool.acquire() as conn:
+        pending = await conn.fetchrow("""
+            SELECT alpaca_order_id, qty, purpose FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+            LIMIT 1
+        """, trade_id)
+    if pending:
+        logger.info(
+            f"execute_partial_exit: trade {trade_id} {trade['ticker']} already has "
+            f"pending {pending['purpose']} order {pending['alpaca_order_id']} — skip"
+        )
+        await log_audit_event(
+            "partial_exit_aborted",
+            f"{trade['ticker']}: pending {pending['purpose']} order already open ({pending['alpaca_order_id']})",
+            json.dumps({
+                "trade_id": trade_id, "ticker": trade["ticker"],
+                "pending_order_id": pending["alpaca_order_id"],
+                "pending_purpose": pending["purpose"],
+                "stage": "dedup_pending_exit",
+            }),
+        )
+        return False
+
     ticker = trade["ticker"]
     shares = int(shares)
     full_remaining = int(trade["remaining_shares"])
@@ -801,8 +829,10 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         async with pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO mi_live_orders
-                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status, raw_response)
-                VALUES ($1, $2, $3, 'sell', 'market', $4, $5, $6::jsonb)
+                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                     purpose, exit_reason, raw_response)
+                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                        'partial_exit', 'partial_profit', $6::jsonb)
                 ON CONFLICT (alpaca_order_id) DO NOTHING
             """, trade_id, order["id"], ticker, float(shares),
                 order.get("status", "new"), json.dumps(order))
@@ -883,18 +913,59 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             )
         return False
 
-    # Step 3: Update DB on successful sell.
+    # Step 3: Pending fill — DO NOT commit P&L / remaining_shares / partial_taken
+    # at submit time. The order may be queued (after-hours) and fill at next open
+    # at an unknown price; using the placement-time response here meant fill_price
+    # fell back to entry_price → printed P&L $0.00 on a sale that hadn't happened.
+    # finalize_partial_exit() runs from the WS fill handler with the real fill price.
+    await send_telegram_message(
+        f"📋 *Partial exit order placed:* {ticker}\n"
+        f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
+        f"_Confirms with real P&L on fill._"
+    )
+    return True
+
+
+async def finalize_partial_exit(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+) -> None:
+    """Commit a partial exit on actual fill (called from WS fill handler).
+
+    Splits the original execute_partial_exit "Step 3" out so commit happens
+    against the real Alpaca fill price, not the response at submit time.
+    Idempotent: silently no-ops if the same order_id is already in exits[].
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade:
+        logger.warning(f"finalize_partial_exit: trade {trade_id} not found")
+        return
+
+    ticker = trade["ticker"]
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
-    fill_price = order.get("filled_avg_price") or trade["entry_price"]
-    pnl = (fill_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
+
+    # Idempotency: a duplicate WS fill for the same order_id no-ops.
+    if any(e.get("order_id") == order_id for e in exits):
+        logger.info(f"finalize_partial_exit: {ticker} order {order_id[:8]} already committed")
+        return
+
+    shares = int(filled_qty)
+    new_remaining = int(trade["remaining_shares"]) - shares
+    pnl = (filled_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
 
     exits.append({
         "time": datetime.utcnow().isoformat(),
-        "price": fill_price,
+        "price": filled_price,
         "reason": "partial_profit",
         "shares": shares,
         "pnl": pnl,
-        "order_id": order["id"],
+        "order_id": order_id,
     })
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
@@ -911,22 +982,20 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
 
     await log_audit_event(
         "partial_exit_committed",
-        f"{ticker}: DB committed — sold {shares} @${float(fill_price):.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}",
+        f"{ticker}: DB committed on WS fill — sold {shares} @${filled_price:.2f}, pnl ${pnl:+,.2f}, remaining {new_remaining}",
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
-            "shares": shares, "fill_price": float(fill_price),
+            "shares": shares, "fill_price": float(filled_price),
             "pnl": float(pnl), "total_pnl": float(total_pnl),
             "new_remaining": new_remaining,
-            "order_id": order.get("id"),
-            "order_status": order.get("status"),
+            "order_id": order_id,
         }),
     )
     await send_telegram_message(
-        f"📤 *Partial exit:* {ticker}\n"
-        f"Sold {shares} shares @${fill_price:.2f}\n"
+        f"📤 *Partial exit FILLED:* {ticker}\n"
+        f"Sold {shares} shares @${filled_price:.2f}\n"
         f"P&L: ${pnl:+,.2f} | Remaining: {new_remaining}"
     )
-    return True
 
 
 async def execute_full_exit(trade_id: int, reason: str) -> bool:
@@ -938,6 +1007,22 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         )
     if not trade or trade["remaining_shares"] <= 0:
         logger.warning(f"execute_full_exit: trade {trade_id} not found or no remaining shares")
+        return False
+
+    # Dedup against pending exit orders — see execute_partial_exit comment.
+    async with pool.acquire() as conn:
+        pending = await conn.fetchrow("""
+            SELECT alpaca_order_id, purpose FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+            LIMIT 1
+        """, trade_id)
+    if pending:
+        logger.info(
+            f"execute_full_exit: trade {trade_id} {trade['ticker']} already has "
+            f"pending {pending['purpose']} order {pending['alpaca_order_id']} — skip"
+        )
         return False
 
     ticker = trade["ticker"]
@@ -959,23 +1044,64 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_live_orders
-                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status, raw_response)
-            VALUES ($1, $2, $3, 'sell', 'market', $4, $5, $6::jsonb)
+                (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                 purpose, exit_reason, raw_response)
+            VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                    'full_exit', $6, $7::jsonb)
             ON CONFLICT (alpaca_order_id) DO NOTHING
         """, trade_id, order["id"], ticker, float(remaining),
-            order.get("status", "new"), json.dumps(order))
+            order.get("status", "new"), reason, json.dumps(order))
 
-    fill_price = order.get("filled_avg_price") or trade.get("entry_price", 0)
-    pnl = (fill_price - trade["entry_price"]) * remaining if trade["entry_price"] else 0
+    # Pending fill — finalize_full_exit() runs from the WS fill handler with
+    # the real fill price. Submitting close_position after-hours queues a
+    # market order for next open; fill_price was None at submit time, which
+    # made P&L print as 0 on a close that hadn't happened yet.
+    await send_telegram_message(
+        f"📋 *Closing order placed:* {ticker} — {reason}\n"
+        f"Market sell {remaining:.0f} sh — pending fill (Order {order['id'][:8]})\n"
+        f"_Confirms with real P&L on fill._"
+    )
+    return True
 
+
+async def finalize_full_exit(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+    reason: str,
+) -> None:
+    """Commit a full exit on actual fill (called from WS fill handler).
+
+    Splits the post-submit DB commit out of execute_full_exit so it runs
+    against the real Alpaca fill price, not the response at submit time.
+    Idempotent: no-ops if the same order_id is already in exits[].
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade:
+        logger.warning(f"finalize_full_exit: trade {trade_id} not found")
+        return
+
+    ticker = trade["ticker"]
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+
+    if any(e.get("order_id") == order_id for e in exits):
+        logger.info(f"finalize_full_exit: {ticker} order {order_id[:8]} already committed")
+        return
+
+    pnl = (filled_price - trade["entry_price"]) * filled_qty if trade["entry_price"] else 0
+
     exits.append({
         "time": datetime.utcnow().isoformat(),
-        "price": fill_price,
+        "price": filled_price,
         "reason": reason,
-        "shares": remaining,
+        "shares": filled_qty,
         "pnl": pnl,
-        "order_id": order["id"],
+        "order_id": order_id,
     })
     total_pnl = sum(e.get("pnl", 0) for e in exits)
 
@@ -991,13 +1117,24 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
             WHERE id = $1
         """, trade_id, json.dumps(exits), total_pnl)
 
+    await log_audit_event(
+        "full_exit_committed",
+        f"{ticker}: DB committed on WS fill — closed {filled_qty} @${filled_price:.2f}, "
+        f"reason={reason}, total_pnl ${total_pnl:+,.2f}",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "shares": int(filled_qty), "fill_price": float(filled_price),
+            "pnl": float(pnl), "total_pnl": float(total_pnl),
+            "reason": reason, "order_id": order_id,
+        }),
+    )
+
     emoji = "✅" if total_pnl > 0 else "❌"
     await send_telegram_message(
         f"{emoji} *Closed:* {ticker} — {reason}\n"
-        f"Exit @${fill_price:.2f} × {remaining:.0f} shares\n"
+        f"Exit @${filled_price:.2f} × {filled_qty:.0f} shares\n"
         f"Total P&L: ${total_pnl:+,.2f}"
     )
-    return True
 
 
 # ── EOD Cleanup ──────────────────────────────────────────────────────────────

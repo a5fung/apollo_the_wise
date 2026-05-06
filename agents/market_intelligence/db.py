@@ -1242,6 +1242,12 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS excluded_source TEXT;
             ALTER TABLE mi_parabolic_candidates
                 ADD COLUMN IF NOT EXISTS excluded_detail TEXT;
+            ALTER TABLE mi_live_orders
+                ADD COLUMN IF NOT EXISTS purpose TEXT;
+            ALTER TABLE mi_live_orders
+                ADD COLUMN IF NOT EXISTS exit_reason TEXT;
+            CREATE INDEX IF NOT EXISTS idx_live_orders_purpose
+                ON mi_live_orders(purpose);
         """)
 
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
