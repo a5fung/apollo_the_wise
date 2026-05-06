@@ -224,6 +224,25 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-06 — Stale `stop_order_id` after `update_stop` failure → /trades drift + missed naked-position alerts (TEAM 5/06)
+TEAM 2026-05-06: 9:32 ET partial exit filled (sold 76 @$89.51, 153 remaining). 9:35 ET `morning_stop_refresh` ran `update_stop` which cancelled the existing stop, then both `place_stop_order` attempts failed with Alpaca's "insufficient qty available — held_for_orders: 153". User reported TEAM no longer their position at the broker, but `/trades` still showed it open with no naked indicator and no stop-out Telegram fired.
+
+**Root cause**: `update_stop` (`order_manager.py:626`) returned False after the retry exception but **never nulled `mi_live_trades.stop_order_id`** — column kept pointing to the now-cancelled old stop. Same shape in `execute_partial_exit` (line 807, place-new-stop fail) and the rollback-failed branch (line 934). Downstream consequences:
+- `sync_positions` Path C orphan-remediation gated on `stop_order_id IS NULL` → never fired.
+- `_handle_fill` branch 2 atomically claims via `WHERE stop_order_id = $1`; if a later closure used a different order_id (manual exit, broker risk, etc.) the match silently failed → fell through to "untracked fill" (Telegram only, no DB update).
+- `/trades` rendered the position normally, masking that no broker stop was active.
+
+**Fix** (3 sites + 1 visibility):
+1. **`update_stop` retry-failed branch** — null `stop_order_id` and emit `naked_position_detected` audit event before returning False.
+2. **`execute_partial_exit` place-new-stop except branch** — same null + audit event (was leaving DB pointing at the just-cancelled `old_stop_id`).
+3. **`execute_partial_exit` rollback-failed branch** — null + audit event after the new smaller stop is cancelled and the full-qty rollback also fails.
+4. **`sync_positions` Path C extension** — also detect non-NULL `stop_order_id` whose broker status is not in `(new, accepted, held)`. Defense in depth: if a future code path forgets to null on failure, the next 4:05 PM / 9:00 PM sync still catches it. Uses the same enum-stringification-safe normalization as `live_tracker.py:565` (#211).
+5. **`/trades` view (`agent.py:_build_summary`)** — adds `stop_order_id` to the open-positions SELECT and renders `⚠️ NAKED` flag when it's NULL with live shares. Operator gets immediate visual confirmation of the unprotected state instead of inferring it from a missing Telegram.
+
+**Why null is the right shape**: makes the DB row honest about reality. The orphan remediation (`sync_positions` Path C, scheduler.py 4:05 PM and 9:00 PM jobs) was already designed for the NULL signal — fix consolidates the failure paths to actually emit it. Doesn't change the failure semantics (function still returns False, operator still gets the original "STOP ORDER FAILED" Telegram); just lets reconciliation see the broken state.
+
+**Lesson**: a function that returns False without normalizing its DB writes leaves callers inferring state from `None`-vs-stale-ID, and the reconciliation layer can't tell the difference. Same shape as the 2026-05-04 `cancel_unfilled_entries` audit-logging fix and the 2026-05-05 `_handle_partial_fill` visibility-only ship — terminal failure paths in trading code must (a) leave DB in a state reconciliation can act on, and (b) emit a distinct audit event that names the failure class. "Returns False on error, logs warning" is insufficient when downstream paths gate on the column value.
+
 ### 2026-05-05 (session 5b) — Flag detector dry-volume gate hybrid + queue cleanup (#188 + #163/#164/#189 verified + #177/#179 closed)
 Five queue items resolved. Dates re-checked against today (2026-05-05 Tue): "tomorrow" in the source notes was 2026-05-04, so the verifications were already actionable today, not future.
 

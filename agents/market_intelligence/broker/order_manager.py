@@ -625,6 +625,14 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             )
         except Exception as e2:
             logger.error(f"Stop re-placement also failed for {ticker}: {e2}")
+            # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
+            # can detect the orphan and remediate. Leaving the stale ID in place
+            # silently masks the naked state and blocks Path C's orphan check.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
+                    trade_id,
+                )
             await log_audit_event(
                 "stop_update_failed",
                 f"{ticker}: retry also failed — position naked, {type(e2).__name__}",
@@ -632,8 +640,19 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
                     "trade_id": trade_id, "ticker": ticker,
                     "new_stop_price": new_stop_price, "attempt": 2,
                     "old_cancel_ok": cancel_ok,
+                    "stale_stop_id_cleared": old_stop_id,
                     "error_first": str(e)[:500],
                     "error_retry": str(e2)[:500],
+                }),
+            )
+            await log_audit_event(
+                "naked_position_detected",
+                f"{ticker}: stop_order_id cleared; sync_positions will remediate",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "stop_price": new_stop_price,
+                    "remaining_shares": float(trade["remaining_shares"]),
+                    "source": "update_stop",
                 }),
             )
             return False
@@ -807,6 +826,13 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         except Exception as e:
             # Old stop cancelled but new one failed — position momentarily unprotected.
             logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
+            # Null stop_order_id (still pointing to the now-cancelled old_stop_id)
+            # so sync_positions Path C can detect the orphan and remediate.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
+                    trade_id,
+                )
             await log_audit_event(
                 "partial_exit_aborted",
                 f"{ticker}: replacement stop failed — position naked, {type(e).__name__}",
@@ -814,7 +840,18 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                     "trade_id": trade_id, "ticker": ticker,
                     "old_stop_id": old_stop_id, "new_remaining": new_remaining,
                     "stop_price": float(stop_price), "stage": "place_new_stop",
+                    "stale_stop_id_cleared": old_stop_id,
                     "error": str(e)[:500],
+                }),
+            )
+            await log_audit_event(
+                "naked_position_detected",
+                f"{ticker}: stop_order_id cleared; sync_positions will remediate",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "stop_price": float(stop_price),
+                    "remaining_shares": float(new_remaining),
+                    "source": "execute_partial_exit",
                 }),
             )
             await send_telegram_message(
@@ -896,6 +933,13 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             )
         except Exception as e2:
             logger.error(f"Partial exit rollback ALSO failed for {ticker}: {e2}")
+            # new_stop_id was just cancelled; rollback didn't place anything.
+            # Null stop_order_id so sync_positions Path C remediates.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
+                    trade_id,
+                )
             await log_audit_event(
                 "partial_exit_rollback_failed",
                 f"{ticker}: CRITICAL — sell failed AND rollback failed, position naked",
@@ -903,14 +947,25 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                     "trade_id": trade_id, "ticker": ticker,
                     "full_remaining": full_remaining,
                     "stop_price": float(stop_price) if stop_price else None,
+                    "stale_stop_id_cleared": new_stop_id,
                     "sell_error": str(e)[:500],
                     "rollback_error": str(e2)[:500],
+                }),
+            )
+            await log_audit_event(
+                "naked_position_detected",
+                f"{ticker}: stop_order_id cleared; sync_positions will remediate",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "stop_price": float(stop_price) if stop_price else None,
+                    "remaining_shares": float(full_remaining),
+                    "source": "execute_partial_exit_rollback",
                 }),
             )
             await send_telegram_message(
                 f"{mode_prefix()}🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
                 f"Sell error: {e}\nRollback error: {e2}\n"
-                f"*Position may have NO stop — manual intervention required!*"
+                f"*Position may have NO stop — sync_positions will retry; verify on Alpaca.*"
             )
         return False
 
@@ -1287,17 +1342,61 @@ async def sync_positions() -> list[str]:
         msg = f"Unknown Alpaca position: {ticker} ({pos['qty']:.0f} shares) — not in mi_live_trades"
         discrepancies.append(msg)
 
-    # Orphaned stop check — filled positions in Alpaca with no stop order in DB
+    # Orphaned stop check — filled positions in Alpaca with no active stop.
+    # Two shapes: stop_order_id IS NULL (e.g. update_stop / execute_partial_exit
+    # nulled it on placement failure), or stop_order_id IS NOT NULL but the
+    # referenced order is dead at the broker (cancelled/rejected/expired/missing).
+    # The second shape happens when update_stop's cancel succeeded but new
+    # placement failed in a path that didn't null — we still verify here as
+    # defense in depth.
     for trade in db_trades:
         ticker = trade["ticker"]
         if trade["status"] != "filled":
             continue
         if not (trade["remaining_shares"] or 0) > 0:
             continue
-        if trade["stop_order_id"]:
-            continue
         if ticker not in alpaca_tickers:
             continue
+
+        existing_stop_id = trade["stop_order_id"]
+        if existing_stop_id:
+            try:
+                order = await alpaca.get_order(existing_stop_id)
+            except Exception as exc:
+                logger.warning(
+                    f"sync_positions: get_order({existing_stop_id}) raised for {ticker}: {exc}"
+                )
+                order = None
+            order_status = (
+                str(order.get("status", "")).split(".")[-1].lower()
+                if order else ""
+            )
+            if order_status in ("new", "accepted", "held"):
+                # Stop is still active at the broker — leave it alone.
+                continue
+            # Dead reference: clear stale ID so the remediation below records a
+            # clean new stop_order_id and future runs see a single source of truth.
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
+                    trade["id"],
+                )
+            msg = (
+                f"⚠️ Stale stop {ticker}: {existing_stop_id[:8]} status="
+                f"{order_status or 'missing'} — clearing & remediating"
+            )
+            discrepancies.append(msg)
+            logger.warning(f"sync_positions: stale stop for {ticker}: {msg}")
+            await log_audit_event(
+                "naked_position_detected",
+                f"{ticker}: stale stop_order_id ({order_status or 'missing'}) cleared by sync_positions",
+                json.dumps({
+                    "trade_id": trade["id"], "ticker": ticker,
+                    "stale_stop_id": existing_stop_id,
+                    "broker_status": order_status,
+                    "source": "sync_positions",
+                }),
+            )
         # Position is live in Alpaca but has no stop order — remediate
         stop = trade["stop_price"] or trade["orb_low"]
         if not stop:

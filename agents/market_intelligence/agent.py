@@ -4261,7 +4261,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,
                            partial_taken, breakeven_active, ep_score,
-                           catalyst_quality, exits
+                           catalyst_quality, exits, stop_order_id
                     FROM mi_live_trades
                     WHERE status = 'filled' AND remaining_shares > 0
                     ORDER BY alert_date ASC
@@ -4347,6 +4347,12 @@ class MarketIntelligenceAgent(BaseAgent):
                         flags.append("partial")
                     if p.get("breakeven_active"):
                         flags.append("BE")
+                    # NAKED indicator — stop_order_id IS NULL with live shares means
+                    # update_stop / partial-exit / sync_positions cleared it after a
+                    # placement failure and the next sync_positions hasn't remediated
+                    # yet. Surface so the operator can sanity-check the broker side.
+                    if p.get("stop_order_id") is None and shares > 0:
+                        flags.append("⚠️ NAKED")
                     flag_str = f" ({', '.join(flags)})" if flags else ""
 
                     entry_str = f"${entry:.2f}" if entry else "?"
