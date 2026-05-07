@@ -3917,26 +3917,39 @@ class MarketIntelligenceAgent(BaseAgent):
                 )
 
                 if not in_window:
-                    lines.append("   ⚠️ no minute bars returned — Polygon gap or feed issue")
+                    lines.append("   ⚠️ No price data for this window — feed gap.")
                 else:
                     max_h = max(h for _, h, _ in in_window)
-                    touches = [(t, h) for t, h, _ in in_window if h >= limit]
-                    if not touches:
-                        # Limit never reached — order correctly didn't fill.
+                    trigger = float(orb_h) if orb_h is not None else limit
+                    touches_limit = [(t, h) for t, h, _ in in_window if h >= limit]
+                    touched_trigger = max_h >= trigger
+
+                    if not touched_trigger:
+                        # Price never reached the buy trigger — clean no-fire.
                         lines.append(
-                            f"   🟢 max in-window high ${max_h:.2f} < limit ${limit:.2f} "
-                            f"— price never reached trigger"
+                            f"   🟢 Price topped at ${max_h:.2f}, never reached trigger "
+                            f"${trigger:.2f} — order correctly didn't fire."
+                        )
+                    elif not touches_limit:
+                        # Trigger fired but price stayed below limit — rare; either the
+                        # order activated and oscillated in the trigger-to-limit band
+                        # without a seller, or the trigger is the limit (no buffer).
+                        lines.append(
+                            f"   🟡 Trigger ${trigger:.2f} touched but price stayed below "
+                            f"limit ${limit:.2f} (window max ${max_h:.2f}) — no seller "
+                            f"at limit price."
                         )
                     else:
-                        first = touches[0]
+                        first = touches_limit[0]
                         lines.append(
-                            f"   🔴 limit reached at {first[0].strftime('%H:%M:%S')} "
-                            f"(${first[1]:.2f}) — {len(touches)} bar(s) ≥ limit, "
-                            f"max ${max_h:.2f}"
+                            f"   🔴 Trigger ${trigger:.2f} hit at "
+                            f"{first[0].strftime('%H:%M')}, price ran to ${max_h:.2f}."
                         )
                         lines.append(
-                            "   likely causes: stop-limit gap-through (print > limit), "
-                            "broker queue latency, or order cancelled before touch"
+                            f"   Price moved past limit ${limit:.2f} too fast — after "
+                            f"the trigger fired, it never came back to the limit so no "
+                            f"seller matched. (Wider buffer or stop-market would catch "
+                            f"this; current buffer is 0.5%.)"
                         )
             except Exception as e:
                 logger.warning(f"why fill-diagnosis failed for {ticker}: {e}")
