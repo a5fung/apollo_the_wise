@@ -4163,8 +4163,17 @@ async def upsert_split(
 
 
 async def get_unapplied_splits(since: date | None = None) -> list[dict]:
-    """All split rows where adjustment_applied = FALSE. Ordered by execution_date asc
-    so multiple splits on one ticker apply in chronological order."""
+    """All split rows where adjustment_applied = FALSE AND execution_date <= today.
+
+    Future-dated splits are skipped: Polygon's adjusted=true feed only adjusts
+    history for splits that have ALREADY executed. Applying a not-yet-executed
+    split fetches un-adjusted history, marks the row applied, and never re-runs
+    once the split actually executes — leaving mi_daily_closes with mismatched
+    pre/post-split bars (ERNA 5/04 incident, 2026-05-07).
+
+    Ordered by execution_date asc so multiple splits on one ticker apply in
+    chronological order.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         if since is None:
@@ -4173,6 +4182,7 @@ async def get_unapplied_splits(since: date | None = None) -> list[dict]:
                 SELECT ticker, execution_date, split_from, split_to
                 FROM mi_splits
                 WHERE adjustment_applied = FALSE
+                  AND execution_date <= CURRENT_DATE
                 ORDER BY execution_date ASC, ticker ASC
                 """
             )
@@ -4181,7 +4191,9 @@ async def get_unapplied_splits(since: date | None = None) -> list[dict]:
                 """
                 SELECT ticker, execution_date, split_from, split_to
                 FROM mi_splits
-                WHERE adjustment_applied = FALSE AND execution_date >= $1
+                WHERE adjustment_applied = FALSE
+                  AND execution_date >= $1
+                  AND execution_date <= CURRENT_DATE
                 ORDER BY execution_date ASC, ticker ASC
                 """,
                 since,

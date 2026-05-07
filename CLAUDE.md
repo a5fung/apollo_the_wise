@@ -224,6 +224,29 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-07 (session 2) — splits_ingest premature-apply: every split silently un-adjusted (ERNA-class data corruption)
+User flagged "ERNA / VECO false climaxes" as Wave C #3. Investigation surfaced ERNA wasn't a parabolic-detector tuning issue — it was a **systemic data-integrity bug** in `splits_ingest.py`: every split row had `applied_premature=t` (apply ran *before* the split's execution date).
+
+**Mechanism**: `get_unapplied_splits` had no filter on `execution_date <= today`. The nightly_data_pull Phase-0 splits pipeline picked up freshly-detected splits from Polygon's `/v3/reference/splits` and immediately ran `_apply_one`: re-fetch ~250d history with `adjusted=true`, overwrite `mi_daily_closes`, mark `adjustment_applied=TRUE`. **Polygon's `adjusted=true` only adjusts history for splits that have ALREADY executed** — applying a not-yet-executed split fetches un-adjusted history, marks the row applied, and never re-runs once the split actually executes. Result: pre-execution bars stay un-adjusted, post-execution daily ingest writes properly-adjusted post-split bars. Same row, mismatched units.
+
+**ERNA 5/04 25:1 reverse split symptom**: pre-5/04 bars in DB at $0.15-$0.21 (un-adjusted; should have been ×25 → $3.75-$5.25), post-5/04 bars at $3.74-$6.04. Parabolic detector saw "+3989% prior move" and flagged climax. User's framing "ERNA's been going down for months" was correct — the apparent rally was a split-data artifact, not a real move.
+
+**Fix** (`db.py::get_unapplied_splits`): added `AND execution_date <= CURRENT_DATE` to both query branches. Future-dated splits stay queued; they apply on/after their execution date when Polygon's adjusted feed actually reflects the split. Backfill script (`scripts/backfill_splits.py`) inherits the gate via `run_splits_ingest`, which is correct — premature applies are a bug regardless of invocation path.
+
+**Reconciliation** (one-shot SQL on prod):
+```sql
+UPDATE mi_splits
+SET adjustment_applied = FALSE, applied_at = NULL
+WHERE applied_at < execution_date::timestamptz;
+```
+Resets all 15+ premature-applied rows. Splits whose execution_date has passed (ERNA 5/04, plus any with date ≤ today) re-apply on next nightly run with proper data; future splits stay queued for their own execution date.
+
+**Verified**: ERNA pre-5/04 bars now multiplied by 25; parabolic detector no longer flags ERNA (close $6.04 / adjusted base $5.00 = +20% prior move, well below the 100%+ threshold). Wave C #3 closed incidentally — was a downstream symptom, not a gate-tuning issue.
+
+**Affected detectors before fix**: every reader of `mi_daily_closes` — RS scoring, EP detection, parabolic, flag, friday watchlist, anything pulling daily history. ERNA-class artifacts could surface in any of them. Going forward: same data, single fix.
+
+**Lesson**: `adjustment_applied=TRUE` was a flag on the wrong axis — it tracked "we ran the apply step" not "the data is actually adjusted." When the apply step's preconditions weren't met (split not yet executed), the flag silently lied. Same shape as past invariants that gated on procedure-ran rather than outcome-correct (the 2026-05-04 `cancel_unfilled_entries` audit-logging fix, the 2026-05-04 `update_stop` audit logging). For state-machine-style flags: the gate must reflect the *outcome*, not the *attempt*.
+
 ### 2026-05-07 — Wave B #9: TEAM attempt counter showing 1 instead of 2 (schema-migration leftover)
 TEAM 5/06 /positions and /trades displayed attempt count of 1 despite the 5/01 closed row carrying `entry_attempt=2` (Day 1 re-entry: stop-out + re-entered + closed). Two distinct sites, same root cause — schema migration from old `entries` JSONB to `entry_attempt` integer column left attempt-counting on the dead column.
 
