@@ -3795,7 +3795,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 FROM mi_audit_log
                 WHERE created_at >= ($1::date AT TIME ZONE 'America/New_York')
                   AND created_at <  (($1::date + INTERVAL '1 day') AT TIME ZONE 'America/New_York')
-                  AND summary ILIKE '%' || $2 || '%'
+                  AND summary ~* ('\m' || $2 || '\M')
                 ORDER BY created_at ASC
             """, target_date, ticker)
 

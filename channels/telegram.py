@@ -807,7 +807,10 @@ class TelegramChannel:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-            result = data.get("result") or data.get("error") or "No response."
+            if "result" in data:
+                result = data["result"] or ""
+            else:
+                result = data.get("error") or "No response."
         except Exception as e:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"

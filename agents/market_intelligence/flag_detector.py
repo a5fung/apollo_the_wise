@@ -597,11 +597,8 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         f"{len(by_stage['unqualified'])} unqualified"
     )
 
-    # Per-ticker TRIGGERED alerts BEFORE the digest so the digest can
-    # cite "1 triggered today" without repeating per-ticker detail.
-    for r in by_stage["TRIGGERED"]:
-        await _send_trigger_alert(r)
-
+    # TRIGGERED rows surface in the digest's TRIGGERED section (same minute,
+    # same details). Per-ticker alerts deleted as duplicate noise.
     await send_flag_digest(by_stage, scan_date, yesterday_map=yesterday_map)
     return by_stage
 
@@ -640,38 +637,6 @@ def _fmt_triggered(r: dict) -> str:
         if close is not None and bh is not None else
         f"  • `{r['ticker']}` — base {age}d · runup {_fmt_pct(runup, 0, sign=True)} · vol {_fmt_ratio(bvr)}×"
     )
-
-
-async def _send_trigger_alert(r: dict) -> None:
-    """Single-ticker TRIGGERED alert. Mirrors EP HIGH alert pattern —
-    immediate, separate from daily digest. Trade-idea radar; user charts
-    it manually, no auto-entry."""
-    from agents.market_intelligence.briefing import send_telegram_message
-
-    ticker = r["ticker"]
-    runup = r.get("runup_pct")
-    age = r.get("base_age")
-    pivot = r.get("pivot_high_date")
-    pivot_str = f"{pivot.month}/{pivot.day}" if hasattr(pivot, "month") else str(pivot or "?")
-    rs_rank = r.get("rs_rank")
-    rs_str = f" · RS rank {rs_rank}" if rs_rank else ""
-    close = r.get("breakout_close")
-    bh = r.get("base_high")
-    bl = r.get("base_low")
-    bvr = r.get("breakout_volume_ratio")
-    rr = r.get("range_contraction_ratio")
-    vr = r.get("vol_contraction_ratio")
-    lines = [
-        f"🎯 *FLAG TRIGGER:* `{ticker}`",
-        f"Base: {age}d (since {pivot_str}) · runup {_fmt_pct(runup, 0, sign=True)}{rs_str}",
-    ]
-    if close is not None and bh is not None and bvr is not None:
-        lines.append(f"Today: ${close:.2f} close (>${bh:.2f} base high) on {bvr:.2f}× volume")
-    if rr is not None and vr is not None:
-        lines.append(f"Range: {_fmt_pct(rr - 1, 0, sign=True)} · Volume: {_fmt_pct(vr - 1, 0, sign=True)}")
-    if bl is not None:
-        lines.append(f"Stop ref: ${bl:.2f} (base low)")
-    await send_telegram_message("\n".join(lines))
 
 
 async def send_flag_digest(
