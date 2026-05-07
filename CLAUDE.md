@@ -224,6 +224,23 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-06 (session 2) — Unify EP volume gate to RVOL@T (one primitive, two anchors)
+HUT/BLMN/GLW HIGHs detected late at ~09:52 ET on 5/6, missing the 9:45 ORB cutoff. Investigation surfaced **three structurally distinct volume gates** in EP detection: pre-9:30 RVOL@T (pm anchor), 9:30-9:45 no gate (`compute_rvol_at_time` returned None at >=9:45), 9:45+ `today_volume / 390min_ADV` ratio vs `MIN_REL_VOLUME=2.0` (or `projected_vol_multiple` after 15 min). The post-open ratio is mathematically tiny in the first 15 minutes even on record-volume days — `today_5min_vol / 390min_ADV` is structurally < 2.0× regardless of how hot the tape is. By the time the 9:45 projection gate would have promoted them, the ORB submission window (`now_et.hour == 9 and now_et.minute < 45`) had closed.
+
+**Discriminator validated** (Polygon minute aggs, 5/6 prod): HUT 9:31 → 7.29× session RVOL@T, BLMN 9:31 → 11.84×, GLW 9:31 → 0.72× → 9:35 → 2.41× — all clear ≥1.0× well before the cutoff.
+
+User mandate: *"why is it so complex with 3 distinct phases and each with different criteria; if we need to distinguish than it's pre-market vs after open, that's it, having something the first 15min makes no sense at all... The concept is clear, EP comes with volume along with other criteria, how do we determine volume, figure that out and apply it. HUT is a EP, i won't accept that it didn't meet requirement first 15min, that is a clear and obvious error on the system."*
+
+**Fix** (two surgical changes):
+1. **`minute_volume.py`** — removed artificial 9:45 ET cutoff in `compute_rvol_at_time`. Both pm and session anchors are already populated by the nightly refresh for the entire 4:00-15:59 ET window. Updated docstring to reflect.
+2. **`ep_detector.py`** — collapsed the conditional pre-market-only RVOL@T call AND the broken post-open `rel_volume`/`projected_vol_multiple` gate into ONE uniform RVOL@T call. Pre-9:30 → pm anchor with `today_premkt_vol = c["today_volume"]`; 9:30+ → session anchor with `today_session_vol = c["today_volume"]`. Threshold by anchor (`MIN_PM_RVOL=1.0` / `MIN_SESSION_RVOL=1.0`). Skip reasons + audit events (`FILTER_PM_RVOL_TOO_LOW` / `FILTER_SESSION_RVOL_TOO_LOW` / `ep_filter_pm_rvol` / `ep_filter_session_rvol`) distinguish the anchor. Removed unused `MIN_REL_VOLUME` constant + import.
+
+**Re-evaluation invariant verified**: `already_today` is sourced from `mi_ep_alerts` (scored alerts only, line 643-647), NOT from `_log_filtered` (which writes to `mi_ep_scan_log`). A ticker filtered at 9:30 (e.g. GLW with 0.72× session RVOL@T) cleanly re-evaluates at the next 5-min tick when its RVOL@T clears. GLW 9:35 RVOL@T = 2.41× → would pass next tick.
+
+**Note (filed, not blocking)**: snapshot `today_volume` includes pre-market accumulation. At 9:30:00 sharp tick (`_minutes_since_open = max(1, 0) = 1` → session branch), pre-market shares get fed into session anchor → over-passing for high-PM gappers. Error direction is permissive (favorable to user mandate), so non-blocking; can be tightened later by subtracting `pm_cum_vol` from `today_volume` if false positives appear.
+
+**Lesson**: three structurally-distinct gates for the same conceptual question ("is volume above normal at this clock-minute") are three places for the math to drift. Two of the three were broken in different ways: the post-open ratio was structurally tiny in the first 15 min; the projection gate fired too late for the ORB cutoff. The fix is not threshold tuning — it's recognizing that `mi_minute_volume_curves` already has session baselines for the entire 4:00-16:00 window and that the existing `compute_rvol_at_time` primitive answers the volume question uniformly. Same shape as the 2026-05-04 limit-buffer SSoT cleanup (7 hand-rolled `* 1.001` sites collapsed to one helper) and the 2026-05-04 M&A filter SSoT.
+
 ### 2026-05-06 — Stale `stop_order_id` after `update_stop` failure → /trades drift + missed naked-position alerts (TEAM 5/06)
 TEAM 2026-05-06: 9:32 ET partial exit filled (sold 76 @$89.51, 153 remaining). 9:35 ET `morning_stop_refresh` ran `update_stop` which cancelled the existing stop, then both `place_stop_order` attempts failed with Alpaca's "insufficient qty available — held_for_orders: 153". User reported TEAM no longer their position at the broker, but `/trades` still showed it open with no naked indicator and no stop-out Telegram fired.
 
