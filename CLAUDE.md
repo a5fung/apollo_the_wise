@@ -224,6 +224,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-07 (session 4) — `/pregame` + `/ep` show latest data with date tag (post-midnight pre-scan window)
+User reported: at 12:30 AM ET on a weekday, `/pregame` returned no EPs because today (the new ET day) had no scan data yet. Existing `last_trading_day()` rolls Saturday/Sunday → Friday but doesn't catch the **post-midnight pre-scan window on weekdays** — today IS a trading day per the calendar, but the 7 AM EP scan hasn't run yet. Same shape applies to weekends and holidays — three states, one fix.
+
+**Fix** — new resolver `db.py::latest_market_data_date(as_of)`: `SELECT MAX(d) FROM (MAX(alert_date) FROM mi_ep_alerts UNION ALL MAX(alert_date) FROM mi_9m_ep_alerts) WHERE alert_date <= as_of AND alert_date >= as_of - 14d`. Returns the actual freshest date. Cheap query — indexed alert_date column, single MAX.
+
+**Wired sites** (`agent.py`):
+- `_handle_pregame`: replaced `today_str` with `data_date` resolved via the helper. Sugar-baby today/yesterday fallback now keys off `data_date`. Header tags "_(data: Tue May 6)_" when `data_date != today`; silent when same.
+- `_handle_ep_query`: replaced `last_trading_day(today)` with the resolver. Same tagging pattern. Drops the previous "showing last trading day" weekend-only note in favor of unified `data: <date>` tag.
+
+**Generalization**: the resolver covers three states with one query — weekend, holiday, post-midnight pre-scan. Future commands following this pattern just import `latest_market_data_date` and tag accordingly. No per-handler date arithmetic.
+
+**Verified**: at 2026-05-07 ~01:00 ET (post-midnight pre-scan), resolver returns 2026-05-06 (5/6's EP scan was the most recent) — pregame for "tomorrow" now shows 5/6 data with the date tag.
+
 ### 2026-05-07 (session 3) — Wave C #5: 9M EP per-scan digest (anticipation noise reduction)
 User reported today's 9M Pace had 15+ tickers each in their own Telegram bubble. Single scan tick fired per-ticker `send_telegram_message` for every high-conviction anticipation that crossed the threshold — same shape as the per-ticker FLAG TRIGGER msgs that Wave A #4 dropped 2026-05-07.
 

@@ -3599,6 +3599,37 @@ async def get_ep_scan_log_history(days: int = 14) -> dict[str, list[dict]]:
     return result
 
 
+async def latest_market_data_date(as_of: date) -> date | None:
+    """Return the most recent date ≤ as_of where EP or 9M scan data exists.
+
+    Use case: pre-market / pre-scan windows (after midnight ET, before the 7 AM
+    EP scan starts) and weekends/holidays where strict "today" returns empty.
+    Generalizes the existing weekend-rollback pattern in last_trading_day() —
+    weekends-only doesn't catch the post-midnight pre-scan window on weekdays
+    (today is a trading day per the calendar, but no scan has run yet).
+
+    Returns the actual date with data, or None if no scan data exists in the
+    last 14 days (caller should fall back to last_trading_day).
+
+    Cheap query: indexed alert_date columns, single MAX over each table.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT MAX(d) AS d FROM (
+                SELECT MAX(alert_date) AS d FROM mi_ep_alerts
+                  WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '14 days'
+                UNION ALL
+                SELECT MAX(alert_date) FROM mi_9m_ep_alerts
+                  WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '14 days'
+            ) t
+            """,
+            as_of,
+        )
+        return row["d"] if row else None
+
+
 async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
     pool = await get_pool()
     async with pool.acquire() as conn:

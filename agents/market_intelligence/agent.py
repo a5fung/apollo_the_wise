@@ -2763,24 +2763,30 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._error(request, error=f"Theme engine failed: {e}")
 
     async def _handle_ep_query(self, request: AgentRequest) -> AgentResponse:
-        from agents.market_intelligence.collector import last_trading_day
+        from agents.market_intelligence.db import latest_market_data_date
         today = et_today()
-        query_date = last_trading_day(today)
-        today_str = query_date.strftime("%Y-%m-%d")
-        weekend_note = "" if query_date == today else f" _(showing last trading day — {today.strftime('%a %b %-d')} is a non-trading day)_"
-        alerts = await get_today_ep_alerts(today_str)
+        # Resolve to most recent date with EP scan data — covers weekends, holidays,
+        # AND the post-midnight pre-scan window on weekdays (today exists per the
+        # calendar but no scan has run yet, so strict alert_date=today is empty).
+        query_date = await latest_market_data_date(today) or today
+        query_str = query_date.strftime("%Y-%m-%d")
+        if query_date == today:
+            data_tag = ""
+        else:
+            data_tag = f" _(data: {query_date.strftime('%a %b %-d').lstrip('0')})_"
+        alerts = await get_today_ep_alerts(query_str)
         regime = await get_current_regime()
 
         if not alerts:
             result = (
-                f"No EP alerts for {today_str}.{weekend_note}\n"
+                f"No EP alerts for {query_str}.{data_tag}\n"
                 f"Market regime: {regime.get('regime')} (EP bar: {regime.get('ep_threshold')}+).\n"
                 f"EP scanning runs every 5 min from 7:00–9:30 AM ET."
             )
         else:
             high = [e for e in alerts if e.get("score_tier") == "HIGH"]
             moderate = [e for e in alerts if e.get("score_tier") == "MODERATE"]
-            lines = [f"EP alerts for {today_str}:{weekend_note} {len(high)} HIGH, {len(moderate)} MODERATE\n"]
+            lines = [f"EP alerts for {query_str}:{data_tag} {len(high)} HIGH, {len(moderate)} MODERATE\n"]
             for ep in alerts:
                 lines.append(
                     f"• *{ep['ticker']}* — {ep['score_tier']} (score {ep['ep_score']:.0f}) "
@@ -4045,27 +4051,32 @@ class MarketIntelligenceAgent(BaseAgent):
             get_overnight_watchlist,
             get_today_9m_ep_alerts,
             get_all_9m_sugar_babies,
+            latest_market_data_date,
         )
         from agents.market_intelligence.collector import et_today, prev_trading_days
 
         today = et_today()
-        today_str = today.isoformat()
-        yesterday = prev_trading_days(1, from_date=today)[0]
+        # Roll back to most recent date with EP/9M scan data — covers post-midnight
+        # pre-scan window AND weekends/holidays in one shot. If today has data
+        # (post 7 AM scan), data_date == today and the tag below stays empty.
+        data_date = await latest_market_data_date(today) or today
+        data_date_str = data_date.isoformat()
+        yesterday = prev_trading_days(1, from_date=data_date)[0]
 
         watchlist_rows = await get_overnight_watchlist()
         watchlist_tickers = [r["symbol"] for r in watchlist_rows]
 
-        # Sugar babies for the next open: if today's EOD sweep has already run,
-        # today's confirmed babies are what we'll trade tomorrow. Otherwise fall
-        # back to yesterday's (regardless of day2_status — so traded ones stay
-        # visible after their ORB orders fire).
+        # Sugar babies for the next open: if data_date's EOD sweep has already run,
+        # data_date's confirmed babies are what we'll trade next session. Otherwise
+        # fall back to the prior trading day (regardless of day2_status — so
+        # traded ones stay visible after their ORB orders fire).
         regime, ep_alerts, themes, ma_rows, ninem_alerts, sugar_today, sugar_yday = await _aio.gather(
             get_latest_regime(),
-            get_today_ep_alerts(today_str),
+            get_today_ep_alerts(data_date_str),
             get_active_themes(),
-            get_ma_pullbacks(today_str, tickers=watchlist_tickers or None),
-            get_today_9m_ep_alerts(today_str),
-            get_all_9m_sugar_babies(today),
+            get_ma_pullbacks(data_date_str, tickers=watchlist_tickers or None),
+            get_today_9m_ep_alerts(data_date_str),
+            get_all_9m_sugar_babies(data_date),
             get_all_9m_sugar_babies(yesterday),
             return_exceptions=True,
         )
@@ -4073,7 +4084,12 @@ class MarketIntelligenceAgent(BaseAgent):
 
         sep = "━━━━━━━━━━━━━━━━━━━━━"
         now_et = today.strftime("%a %b %-d %I:%M %p ET").lstrip("0")
-        lines = [f"📋 *Pregame — {now_et}*", sep]
+        # Tag the data date when it's not today (weekend, holiday, or pre-scan window).
+        if data_date != today:
+            data_tag = f" _(data: {data_date.strftime('%a %b %-d').lstrip('0')})_"
+        else:
+            data_tag = ""
+        lines = [f"📋 *Pregame — {now_et}*{data_tag}", sep]
 
         # Regime
         r = regime if isinstance(regime, dict) else {}
