@@ -69,7 +69,6 @@ logger = logging.getLogger(__name__)
 
 # Hard filters
 MIN_GAP_PCT = 8.0
-MIN_REL_VOLUME = 2.0
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
@@ -687,67 +686,61 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         ticker = c["ticker"]
         rel_volume = c.get("rel_volume") or 0
 
-        # ── RVOL@T pre-open gate ──────────────────────────────────────────
-        # Compares today's pre-market cumulative volume at this clock-time
-        # against the 20-day mean cumulative pre-market volume at the same
-        # clock-time (per-ticker baseline in mi_minute_volume_curves).
+        # ── Volume gate (RVOL@T) ──────────────────────────────────────────
+        # ONE primitive, two anchors. Pre-9:30 → pm anchor (cumulative from
+        # 4:00 ET vs 22-day pre-market baseline). 9:30 onward → session
+        # anchor (cumulative from 9:30 vs 22-day session baseline). RVOL@T
+        # answers: "is today's pace at this clock-minute above this ticker's
+        # normal pace at this clock-minute." Replaces the structurally broken
+        # `today_5min_vol / 390min_ADV` ratio that mathematically rejected
+        # every name in the first 15 min unless they had outsized pre-market
+        # volume (HUT/BLMN/GLW false-rejects 5/6).
         #
-        # Replaces the structurally-flawed `today_vol / daily_ADV` ratio for
-        # pre-9:30 alerts — that mismatch let INTC (rel_volume=0.09) through
-        # on 2026-04-24 because the numerator samples a thin slice of the
-        # intraday curve while the denominator is the full-session total.
-        # RVOL@T sidesteps the U-curve entirely by anchoring to time-of-day.
-        #
-        # Silent fallback: if the ticker has no baseline (outside top-500
-        # universe, or curves not yet refreshed), pass through to the
-        # existing absolute-share floor below. This keeps the gate safe to
-        # ship before the universe-wide baseline accumulates history.
-        if _minutes_since_open is None:  # pre-market scan
-            try:
-                rvol_info = await compute_rvol_at_time(
-                    ticker=ticker,
-                    now_et=now_et,
-                    today_premkt_vol=c["today_volume"],
-                    today_session_vol=0,
+        # Silent fallback: if the ticker has no baseline (outside dollar-vol
+        # universe, or curves not yet refreshed), the gate passes — the
+        # absolute-share floor below catches micro-float noise.
+        try:
+            if _minutes_since_open is None:
+                premkt_vol, session_vol = c["today_volume"], 0
+            else:
+                premkt_vol, session_vol = 0, c["today_volume"]
+            rvol_info = await compute_rvol_at_time(
+                ticker=ticker,
+                now_et=now_et,
+                today_premkt_vol=premkt_vol,
+                today_session_vol=session_vol,
+            )
+        except Exception as e:
+            logger.warning(f"RVOL@T lookup failed for {ticker}: {e}")
+            rvol_info = None
+        if rvol_info:
+            anchor = rvol_info["anchor"]
+            threshold = MIN_PM_RVOL if anchor == "pm" else MIN_SESSION_RVOL
+            reason_const = (
+                FILTER_PM_RVOL_TOO_LOW if anchor == "pm" else FILTER_SESSION_RVOL_TOO_LOW
+            )
+            audit_event = "ep_filter_pm_rvol" if anchor == "pm" else "ep_filter_session_rvol"
+            phase_label = "pre-open" if anchor == "pm" else "session"
+            c["pm_rvol"] = rvol_info["rvol_at_time"]  # column reused for both anchors
+            c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
+            if (
+                rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                and rvol_info["rvol_at_time"] < threshold
+            ):
+                detail = (
+                    f"{anchor}_rvol={rvol_info['rvol_at_time']:.2f}x "
+                    f"(today {rvol_info['today_cum_vol']:,} / "
+                    f"baseline {rvol_info['baseline_mean']:,.0f} "
+                    f"n={rvol_info['baseline_n']}) < {threshold}x"
                 )
-            except Exception as e:
-                logger.warning(f"RVOL@T lookup failed for {ticker}: {e}")
-                rvol_info = None
-            if rvol_info:
-                c["pm_rvol"] = rvol_info["rvol_at_time"]
-                c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
-                if (
-                    rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
-                    and rvol_info["rvol_at_time"] < MIN_PM_RVOL
-                ):
-                    detail = (
-                        f"pm_rvol={rvol_info['rvol_at_time']:.2f}x "
-                        f"(today {rvol_info['today_cum_vol']:,} / "
-                        f"baseline {rvol_info['baseline_mean']:,.0f} "
-                        f"n={rvol_info['baseline_n']}) < {MIN_PM_RVOL}x"
-                    )
-                    reason = f"{FILTER_PM_RVOL_TOO_LOW}: {detail}"
-                    logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
-                    _log_filtered(c, reason)
-                    await log_audit_event(
-                        "ep_filter_pm_rvol",
-                        f"{ticker} pre-open pace below normal",
-                        f"{detail} | gap={c['gap_pct']:.1f}%",
-                    )
-                    continue
-
-        # Hard filter: rel volume — post-open only.
-        # Use open_intensity (projected full-day vol) if available — raw rel_vol at 9:35 AM
-        # is structurally tiny even on a record volume day (0.26x raw = 4x projected at 25min in).
-        # Pre-market gate is the absolute share floor below (25K).
-        if _minutes_since_open and c.get("adv"):
-            intensity = c.get("projected_vol_multiple")
-            vol_check = intensity if intensity is not None else rel_volume
-            if vol_check < MIN_REL_VOLUME:
-                which = f"projected {intensity:.1f}x" if intensity is not None else f"rel_vol {rel_volume:.1f}x"
-                reason = f"low volume {which} < {MIN_REL_VOLUME}x (post-open)"
-                logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+                reason = f"{reason_const}: {detail}"
+                logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
                 _log_filtered(c, reason)
+                await log_audit_event(
+                    audit_event,
+                    f"{ticker} {phase_label} pace below normal",
+                    f"{detail} | gap={c['gap_pct']:.1f}%",
+                )
                 continue
 
         # Hard filter: absolute pre-market volume (filters micro-float noise)

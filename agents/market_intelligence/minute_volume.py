@@ -242,20 +242,20 @@ async def compute_rvol_at_time(
         }
 
     Returns None if:
-      - now_et is outside the gating window (before 4:00 ET or at/past 9:45 ET),
+      - now_et is outside the gating window (before 4:00 ET or at/past 16:00 ET),
       - or there's no baseline row for this ticker at this minute (caller
         should fall back to existing absolute floors).
 
-    The 9:45 ET upper bound is intentional: past 15 minutes of regular session,
-    `ep_detector`'s existing `projected_vol_multiple` extrapolates full-day
-    RVOL well enough that adding RVOL@T on top would just double-gate.
+    Pre-9:30 uses the `pm` anchor (cumulative from 4:00 ET); 9:30 onward uses
+    the `session` anchor (cumulative from 9:30). Both anchors are populated
+    by the nightly refresh for the entire 4:00-16:00 ET window.
     """
     et_minute = now_et.hour * 60 + now_et.minute
 
     if et_minute < PM_START_MIN:
         return None  # before pre-market open
-    if et_minute >= SESSION_START_MIN + 15:
-        return None  # 9:45 ET+ → existing projection gate takes over
+    if et_minute >= SESSION_END_MIN:
+        return None  # at/past 16:00 ET — outside gating window
 
     if et_minute < SESSION_START_MIN:
         anchor = ANCHOR_PM
