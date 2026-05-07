@@ -224,6 +224,21 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-07 — Wave B #9: TEAM attempt counter showing 1 instead of 2 (schema-migration leftover)
+TEAM 5/06 /positions and /trades displayed attempt count of 1 despite the 5/01 closed row carrying `entry_attempt=2` (Day 1 re-entry: stop-out + re-entered + closed). Two distinct sites, same root cause — schema migration from old `entries` JSONB to `entry_attempt` integer column left attempt-counting on the dead column.
+
+**Site 1 — /positions closed line** (`agent.py:4298`): `ticker_history` aggregate did `COUNT(*) AS attempts WHERE status='closed'`. Counts rows, not entries-within-row. TEAM has 1 closed row → "1 attempt".
+
+**Site 2 — /trades row header** (`agent.py:2579, 2636`): comment "mi_paper_trades has entries column; mi_live_trades does not" already noted the schema divergence. Live path SELECTed `NULL::jsonb AS entries`, then `_attempt_count(r.get("entries"))` returned 0 → no "Nx" suffix ever rendered for live trades. User read absent suffix as "1".
+
+**Fix**:
+- /positions: `COUNT(*)` → `COALESCE(SUM(entry_attempt), 0)::int`. For TEAM: SUM=2 ✓ (verified against prod).
+- /trades: added `entry_attempt` to SELECT (live: from column; paper: `NULL::int` so paper continues using `_attempt_count(entries)`). Counter prefers `entry_attempt`, falls back to `_attempt_count`.
+
+**Filed followup**: `format_trade_attempts()` (per-attempt timeline lines under the row header) also reads from `entries` JSONB; structurally returns nothing in live mode. Out of scope for #9 — lower priority since it's display thinness, not wrong data. Could be rebuilt from `entry_attempt` count + `exits` JSONB (which carries per-attempt `attempt` keys + reason + pnl + time).
+
+**Lesson**: a schema migration that introduces a replacement column must update every reader of the old column at the same commit. Two of three readers (`_attempt_count`, `format_trade_attempts`) were left pointing at the dead `entries` column; the third (`/positions ticker_history`) didn't reference the dead column but had its own divergent semantic (row-count instead of attempt-sum). Same shape as past SSoT slips — the right time to grep for old-column readers is at migration, not when a user notices the wrong number.
+
 ### 2026-05-06 (session 2) — Unify EP volume gate to RVOL@T (one primitive, two anchors)
 HUT/BLMN/GLW HIGHs detected late at ~09:52 ET on 5/6, missing the 9:45 ORB cutoff. Investigation surfaced **three structurally distinct volume gates** in EP detection: pre-9:30 RVOL@T (pm anchor), 9:30-9:45 no gate (`compute_rvol_at_time` returned None at >=9:45), 9:45+ `today_volume / 390min_ADV` ratio vs `MIN_REL_VOLUME=2.0` (or `projected_vol_multiple` after 15 min). The post-open ratio is mathematically tiny in the first 15 minutes even on record-volume days — `today_5min_vol / 390min_ADV` is structurally < 2.0× regardless of how hot the tape is. By the time the 9:45 projection gate would have promoted them, the ORB submission window (`now_et.hour == 9 and now_et.minute < 45`) had closed.
 

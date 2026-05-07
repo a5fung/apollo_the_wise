@@ -2575,15 +2575,16 @@ class MarketIntelligenceAgent(BaseAgent):
 
         where = " AND ".join(where_clauses)
 
-        # mi_paper_trades has entries column; mi_live_trades does not
+        # mi_paper_trades has entries column; mi_live_trades has entry_attempt int instead
         entries_col = "entries" if not LIVE_TRADING_ENABLED else "NULL::jsonb AS entries"
+        attempt_col = "entry_attempt" if LIVE_TRADING_ENABLED else "NULL::int AS entry_attempt"
         async with pool.acquire() as conn:
             rows = await conn.fetch(f"""
                 SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality, regime,
                        status, skip_reason,
                        {entry_col} AS entry_price, orb_high, orb_low, stop_price,
                        total_pnl, hold_days,
-                       exits, {entries_col}
+                       exits, {entries_col}, {attempt_col}
                 FROM {table}
                 WHERE {where}
                 ORDER BY alert_date DESC
@@ -2633,7 +2634,7 @@ class MarketIntelligenceAgent(BaseAgent):
             score = f"score={r['ep_score']:.0f}" if r["ep_score"] else ""
             gap = f"gap={r['gap_pct']:.1f}%" if r["gap_pct"] else ""
 
-            num_attempts = _attempt_count(r.get("entries"))
+            num_attempts = r.get("entry_attempt") or _attempt_count(r.get("entries"))
             att_str = f" {num_attempts}x" if num_attempts > 1 else ""
 
             header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}{att_str}"
@@ -4297,7 +4298,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 if relevant_tickers:
                     hist_rows = await conn.fetch("""
                         SELECT ticker,
-                               COUNT(*) AS attempts,
+                               COALESCE(SUM(entry_attempt), 0)::int AS attempts,
                                COALESCE(SUM(total_pnl), 0) AS realized
                         FROM mi_live_trades
                         WHERE status = 'closed' AND ticker = ANY($1)
