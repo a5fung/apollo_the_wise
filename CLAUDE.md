@@ -224,6 +224,27 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-07 (session 3) — Wave C #5: 9M EP per-scan digest (anticipation noise reduction)
+User reported today's 9M Pace had 15+ tickers each in their own Telegram bubble. Single scan tick fired per-ticker `send_telegram_message` for every high-conviction anticipation that crossed the threshold — same shape as the per-ticker FLAG TRIGGER msgs that Wave A #4 dropped 2026-05-07.
+
+**Fix** (`ninem_detector.py::run_9m_scan`): collect per-ticker lines into `digest_actual` / `digest_pace` lists during the scan loop. After the loop, emit ONE Telegram if either list has content. Sections by tier:
+
+```
+🏦 *9M EP — 09:35 ET*
+
+*Actual (2)*
+• `BLMN` Vol 12.3M ($246M) RVOL 4.2x $48.50 +12.5%
+• `HUT` Vol 11.5M ($82M) RVOL 5.8x $7.12 +18.2%
+
+*Pace (5)*
+• `TICKER1` Vol ~15.0M proj ($45M) $48.50 +12.5%
+• ...
+```
+
+Per-ticker DB inserts + `9m_ep_detected` audit events unchanged — only the user-facing Telegram is batched. Quiet scans send nothing. `_alerted_today` set still dedups across scan ticks (a ticker that fires at 9:35 won't re-fire at 9:40).
+
+**Why digest, not threshold tightening**: the data is informational — anticipation pings are radar, not entry triggers (entries route through Day-2 ORB the next morning). User explicitly validated "digest is the right shape" in the Wave A→D triage. Same architectural pattern as the Flag Scanner's COILED digest.
+
 ### 2026-05-07 (session 2) — splits_ingest premature-apply: every split silently un-adjusted (ERNA-class data corruption)
 User flagged "ERNA / VECO false climaxes" as Wave C #3. Investigation surfaced ERNA wasn't a parabolic-detector tuning issue — it was a **systemic data-integrity bug** in `splits_ingest.py`: every split row had `applied_premature=t` (apply ran *before* the split's execution date).
 

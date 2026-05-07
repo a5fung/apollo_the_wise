@@ -187,6 +187,12 @@ async def run_9m_scan() -> list[dict]:
     ma10_map = await _get_ma10_map(today_str)
 
     new_alerts: list[dict] = []
+    # Per-scan digest collection — one Telegram per scan tick instead of per
+    # ticker. User reported 15+ separate "9M Pace" Telegram bubbles per scan
+    # on hot days (Wave C #5, 2026-05-07). Per-ticker DB inserts + audit
+    # events stay; only the user-facing Telegram is batched.
+    digest_actual: list[str] = []
+    digest_pace: list[str] = []
 
     for ticker, snap in snaps.items():
         if len(ticker) > 5 or "." in ticker:
@@ -312,25 +318,27 @@ async def run_9m_scan() -> list[dict]:
 
         if is_9m_actual:
             vol_str = f"{today_volume / 1_000_000:.1f}M"
-            label = "🏦 *9M EP*"
         else:
             vol_str = f"~{projected_vol / 1_000_000:.1f}M proj"  # type: ignore[operator]
-            label = "🏦 *9M EP (Pace)*"
 
-        rvol_str = f" | RVOL: {rvol_display:.1f}x" if rvol_display else ""
+        rvol_str = f" RVOL {rvol_display:.1f}x" if rvol_display else ""
         dv_str = f"${dollar_volume/1_000_000:.0f}M"
-        msg = f"{label}: `{ticker}` — Vol: {vol_str} ({dv_str}){rvol_str} | ${current_price:.2f} | +{display_pct:.1f}%"
+        # Per-ticker line; sections add their own header in the digest.
+        line = f"• `{ticker}` Vol {vol_str} ({dv_str}){rvol_str} ${current_price:.2f} +{display_pct:.1f}%"
 
-        # High-conviction anticipation carve-out: pace alerts ping only if gap or
-        # projected volume is clearly above baseline. Weaker anticipations stay
-        # DB-only (visible via /9m and evening brief) to cut Telegram noise.
+        # High-conviction anticipation carve-out: pace alerts join the digest
+        # only if gap or projected volume is clearly above baseline. Weaker
+        # anticipations stay DB-only (visible via /9m and evening brief).
         is_high_conviction_anticipation = is_9m_anticipation and (
             gap_pct >= _ANTICIPATION_PING_GAP_PCT
             or (projected_vol or 0) >= _ANTICIPATION_PING_PROJ_VOL
         )
         should_ping = is_9m_actual or is_high_conviction_anticipation
         if should_ping:
-            await send_telegram_message(msg)
+            if is_9m_actual:
+                digest_actual.append(line)
+            else:
+                digest_pace.append(line)
         logger.info(
             f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f} "
             f"pinged={should_ping}"
@@ -340,6 +348,19 @@ async def run_9m_scan() -> list[dict]:
             f"{ticker} vol={today_volume/1_000_000:.1f}M price=${current_price:.2f} gap={gap_pct:.1f}%",
             f"is_anticipation={is_anticipation} projected={projected_vol} pinged={should_ping}",
         )
+
+    # Single Telegram per scan tick — sections by tier. Quiet scans send
+    # nothing.
+    if digest_actual or digest_pace:
+        clock = now_et.strftime("%H:%M")
+        parts = [f"🏦 *9M EP — {clock} ET*"]
+        if digest_actual:
+            parts.append(f"\n*Actual ({len(digest_actual)})*")
+            parts.extend(digest_actual)
+        if digest_pace:
+            parts.append(f"\n*Pace ({len(digest_pace)})*")
+            parts.extend(digest_pace)
+        await send_telegram_message("\n".join(parts))
 
     return new_alerts
 
