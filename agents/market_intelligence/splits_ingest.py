@@ -100,10 +100,19 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     async with _SEM:
         bars = await fetch_ticker_history(ticker)
         if not bars:
+            # Polygon Starter doesn't carry OTC / pink-sheet / foreign-suffix
+            # tickers (.F / .Y / etc.). They re-queue every nightly run and
+            # spam split_apply_failed (152 events on 2026-05-08, all foreign
+            # F/Y suffix). Mark applied so we don't retry — same idiom as the
+            # phantom-detected branch. Operator can `reset_split_applied`
+            # one-shot if Polygon coverage changes. Foreign tickers aren't in
+            # the RS universe (CS + ADRC only) so adjustment_applied=TRUE
+            # has no downstream effect; this is purely log-noise hygiene.
             await log_audit_event(
-                "split_apply_failed",
-                f"{ticker} {exec_date} {split_from}:{split_to} — empty Polygon response",
+                "split_apply_skipped_no_data",
+                f"{ticker} {exec_date} {split_from}:{split_to} — Polygon returned no bars; marking applied to stop retry",
             )
+            await mark_split_applied(ticker, exec_date)
             return (ticker, False, 0)
 
         # Phantom-split sanity check (AGL 3/31 25:1 incident class). Polygon
