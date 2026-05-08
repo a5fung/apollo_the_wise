@@ -39,6 +39,14 @@ _PIVOT_HIGH_BAND     = 0.02     # Volume candidate's high must be within 2% of m
                                 # breakout. Tightening keeps non-near-max-high bars
                                 # from stealing pivot via volume alone. True blow-off
                                 # shooting stars are typically <2% off max anyway.)
+_PIVOT_WALK_THRESHOLD = 0.01    # Stable-anchor: only walk pivot forward when the
+                                # current lookback's max_high beats the prior pivot's
+                                # high by ≥ this fraction. Prevents pivot from drifting
+                                # forward 1¢-at-a-time on a base making slow higher-highs
+                                # in tight increments — that drift kept the base at
+                                # base_age=0 and prevented contraction math from ever
+                                # accumulating a window. 1% is the v1; ATR-relative
+                                # threshold filed for follow-up tune.
 _RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
 _RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
 _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
@@ -172,15 +180,29 @@ def _compute_fresh_tightening(
     return (True, fresh_max_tr_pct, atr14_pct)
 
 
-def _find_pivot_high(rows: list[dict], today_idx: int) -> tuple[Optional[int], Optional[float]]:
+def _find_pivot_high(
+    rows: list[dict],
+    today_idx: int,
+    prior_pivot_date: Optional[date] = None,
+    prior_pivot_high: Optional[float] = None,
+) -> tuple[Optional[int], Optional[float]]:
     """Find pivot index (within `rows`) and pivot_high_price.
 
     Lookback: 25 sessions BEFORE today (today excluded). Anchor = bar with
-    highest VOLUME among those whose HIGH is within 5% of max_high in the
+    highest VOLUME among those whose HIGH is within 2% of max_high in the
     lookback. High-anchored (not close-anchored) so blow-off shooting-star
     reversal days — which carry the runup's true volume climax but close
-    well below their high — still get captured. Returns (idx_in_rows,
-    pivot_high_price) or (None, None) if no qualifying bar.
+    well below their high — still get captured.
+
+    Stable-anchor: when `prior_pivot_date`/`prior_pivot_high` are supplied
+    AND the prior pivot bar still falls within the current lookback, the
+    pivot is held in place unless the current max_high beats prior_pivot_high
+    by at least `_PIVOT_WALK_THRESHOLD`. Prevents the pivot from walking
+    forward 1¢-at-a-time on a base making slow higher-highs, which leaves
+    base_age stuck near zero and starves the contraction window.
+
+    Returns (idx_in_rows, pivot_high_price) or (None, None) if no qualifying
+    bar.
     """
     earliest = max(0, today_idx - _PIVOT_LOOKBACK_DAYS)
     lookback = list(range(earliest, today_idx))   # exclude today
@@ -189,6 +211,29 @@ def _find_pivot_high(rows: list[dict], today_idx: int) -> tuple[Optional[int], O
     max_high = max(float(rows[i]["high_price"]) for i in lookback)
     if max_high <= 0:
         return (None, None)
+
+    # Stable-anchor branch: if prior pivot is still within the lookback AND
+    # the new max_high doesn't beat it decisively, keep the prior anchor.
+    # Look up the prior pivot's index by trade_date — gracefully fall through
+    # to fresh re-anchor if the date isn't found (data gap, halt day).
+    if (
+        prior_pivot_date is not None
+        and prior_pivot_high is not None
+        and prior_pivot_high > 0
+    ):
+        prior_idx: Optional[int] = None
+        for i in lookback:
+            if rows[i]["trade_date"] == prior_pivot_date:
+                prior_idx = i
+                break
+        if prior_idx is not None:
+            walk_floor = prior_pivot_high * (1.0 + _PIVOT_WALK_THRESHOLD)
+            if max_high <= walk_floor:
+                # No decisive break → keep prior anchor. Use the bar's actual
+                # current high (in case the row was repaired after the prior
+                # scan, e.g. split adjustment); the band recomputes around it.
+                return (prior_idx, float(rows[prior_idx]["high_price"]))
+
     threshold = max_high * (1.0 - _PIVOT_HIGH_BAND)
     candidates = [i for i in lookback if float(rows[i]["high_price"]) >= threshold]
     if not candidates:
@@ -205,6 +250,8 @@ def compute_flag_metrics(
     sector: Optional[str] = None,
     yesterday_stage: Optional[str] = None,
     recent_stages: Optional[list[str]] = None,
+    prior_pivot_date: Optional[date] = None,
+    prior_pivot_high: Optional[float] = None,
 ) -> dict[str, Any]:
     """Score the LAST row in `rows` as a continuation-flag candidate.
 
@@ -266,7 +313,11 @@ def compute_flag_metrics(
     vol_today   = float(today["volume"] or 0)
 
     # ── Pivot anchor ─────────────────────────────────────────────────────
-    pivot_idx, pivot_high = _find_pivot_high(rows, today_idx)
+    pivot_idx, pivot_high = _find_pivot_high(
+        rows, today_idx,
+        prior_pivot_date=prior_pivot_date,
+        prior_pivot_high=prior_pivot_high,
+    )
     if pivot_idx is None:
         base["reason"] = "no_pivot_in_lookback"
         return base
@@ -514,11 +565,12 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         logger.info(f"flag_scan {scan_date}: empty universe")
         return by_stage
 
-    yesterday_map, recent_map, rs_map, sector_map = await asyncio.gather(
+    yesterday_map, recent_map, rs_map, sector_map, pivot_map = await asyncio.gather(
         db.get_yesterday_flag_stages(scan_date),
         db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS),
         db.get_rs_for_tickers(scan_date, universe),
         db.get_sectors_batch(universe),
+        db.get_yesterday_flag_pivots(scan_date),
     )
 
     logger.info(f"flag_scan {scan_date}: scoring {len(universe)} candidates")
@@ -531,6 +583,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                 if not history or len(history) < 60:
                     return None
                 rs = rs_map.get(ticker) or {}
+                prior_pivot = pivot_map.get(ticker)
                 metrics = compute_flag_metrics(
                     history,
                     ticker=ticker,
@@ -539,6 +592,8 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     sector=sector_map.get(ticker),
                     yesterday_stage=yesterday_map.get(ticker),
                     recent_stages=recent_map.get(ticker, []),
+                    prior_pivot_date=prior_pivot[0] if prior_pivot else None,
+                    prior_pivot_high=prior_pivot[1] if prior_pivot else None,
                 )
                 metrics["scan_date"] = scan_date
                 await db.insert_flag_candidate(metrics)

@@ -57,11 +57,23 @@ Added 2026-05-04 to catch short-base tight setups that don't fit the early-vs-re
 
 ## Known limitations / open questions
 
-1. **Pivot stability** (advisor flag 2026-05-08): same as parabolic_short.md item 1 — pivot can walk forward on any new bar that beats prior pivot's high (even by 1¢). For a base making slow higher-highs, pivot keeps moving and base never accumulates. Band tightening (5% → 2%) helps but stable-anchor approach is the principled fix. Filed.
+1. **ATR-relative pivot walk threshold** (filed 2026-05-08): `_PIVOT_WALK_THRESHOLD` is currently a flat 1% for all tickers. For a $5 stock that's a 5¢ beat — could be noise on a high-ATR runup name. Future tune: `max(0.01 × prior_pivot_high, 0.25 × ATR14)`. Ship-then-tune, not flip-blocking.
 
 2. **Trailing-10 burst path** (CLAUDE.md 2026-05-05): currently inert (`rs_1m ≥ 80` carries the burst path on most tickers). Documented in flag_detector docstring; non-action item.
 
 ## Change log (newest first)
+
+### 2026-05-08 — Stable-anchor pivot (1% walk threshold)
+
+**Trigger**: advisor flag 2026-05-08, deeper structural issue surfaced by VECO 5/06: pivot can walk forward on any new bar that beats prior pivot's high (even by 1¢). For a base making slow higher-highs in tight increments, pivot keeps walking and base_age stays near zero — contraction math never accumulates a window. The 5% → 2% band tightening (commit 42993e1) was a band-aid that addressed the volume-stealing-pivot symptom; this fix addresses the marginal-walk-forward cause.
+
+**Evidence**: replay verification on three known calibration cases — XNDU progression unchanged (pivot stable at 04-16 throughout 4/22-5/01, every stage matches expected); VECO 4/27-5/06 base preserved with pivot at 04-24 (5/07 walks forward correctly after the +25% breakout decisively beats prior pivot); OKLO base at 04-23 preserved through 5/07 with fresh-tightening firing 5/04-5/05 as expected. No regressions on previously-correct stages.
+
+**Anticipated effect**: pivots stay stable across the base regardless of marginal new highs in the lookback. Decisive breakouts (≥1% above prior pivot) still walk the anchor forward as today. Logic is conditional — only applies when prior pivot data is available AND prior pivot bar still falls within the current 25-session lookback. Cold start (no prior data) and aged-out (>25 sessions) cases fall through to the existing fresh-anchor logic. Same shape as the hysteresis pattern: state from yesterday's row carries forward by default, override only on decisive change.
+
+**Reversion-flag**: NEW. Adds `_PIVOT_WALK_THRESHOLD = 0.01` constant and `prior_pivot_date` / `prior_pivot_high` kwargs through `compute_flag_metrics` → `_find_pivot_high`. New `db.get_yesterday_flag_pivots` helper mirrors `get_yesterday_flag_stages` shape (5-day lookback, DISTINCT ON ticker, filters NULL pivot fields).
+
+**Status**: shipped 2026-05-08. Watch for: (a) bases that should reset but don't (look for pivot at age >20 with weak metrics); (b) surprise non-resets near the breakout (compare TRIGGERED rate before/after).
 
 ### 2026-05-08 — Tightened `_PIVOT_HIGH_BAND` 5% → 2%
 

@@ -28,7 +28,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from datetime import datetime as _dt, timedelta as _td
+from datetime import date, datetime as _dt, timedelta as _td
 from typing import Optional
 
 # Allow running from project root: `python scripts/backfill_flag_xndu.py`
@@ -133,6 +133,8 @@ async def main() -> int:
 
     yesterday_stage: Optional[str] = None
     recent_stages: list[str] = []
+    prior_pivot_date: Optional[date] = None
+    prior_pivot_high: Optional[float] = None
 
     for sd in scan_dates:
         end_idx = next((i for i, r in enumerate(full) if r["trade_date"] == sd), None)
@@ -144,6 +146,8 @@ async def main() -> int:
             ticker=args.ticker,
             yesterday_stage=yesterday_stage,
             recent_stages=recent_stages.copy(),
+            prior_pivot_date=prior_pivot_date,
+            prior_pivot_high=prior_pivot_high,
         )
 
         pivot_str = m["pivot_high_date"].strftime("%m-%d") if m["pivot_high_date"] else "—"
@@ -175,6 +179,12 @@ async def main() -> int:
         recent_stages.append(m["stage"])
         if len(recent_stages) > 10:
             recent_stages.pop(0)
+        # Stable-anchor: thread today's pivot forward (prod loads from
+        # mi_flag_candidates via get_yesterday_flag_pivots; in replay we
+        # carry it inline). Skip rows with no pivot (unqualified path).
+        if m.get("pivot_high_date") and m.get("pivot_high_price"):
+            prior_pivot_date = m["pivot_high_date"]
+            prior_pivot_high = float(m["pivot_high_price"])
 
     print()
     return 0

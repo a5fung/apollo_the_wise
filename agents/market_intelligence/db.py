@@ -2472,6 +2472,32 @@ async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
     return {r["ticker"]: r["stage"] for r in rows}
 
 
+async def get_yesterday_flag_pivots(
+    scan_date: "str | date",
+) -> dict[str, tuple[date, float]]:
+    """Map ticker → (pivot_high_date, pivot_high_price) from the most recent
+    prior scan that had a real pivot anchor. Mirrors get_yesterday_flag_stages
+    shape (5-day lookback so Mon picks up Fri's row across weekends/holidays).
+    Filters NULL pivot fields — `unqualified` rows from the no_pivot_in_lookback
+    branch persist without anchors and must NOT seed stable-anchor logic.
+    Returns {} if no prior rows.
+    """
+    pool = await get_pool()
+    if isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (ticker) ticker, pivot_high_date, pivot_high_price
+            FROM mi_flag_candidates
+            WHERE scan_date < $1
+              AND scan_date >= $1 - INTERVAL '5 days'
+              AND pivot_high_date IS NOT NULL
+              AND pivot_high_price IS NOT NULL
+            ORDER BY ticker, scan_date DESC
+        """, scan_date)
+    return {r["ticker"]: (r["pivot_high_date"], float(r["pivot_high_price"])) for r in rows}
+
+
 async def get_recent_flag_stages(scan_date: "str | date", lookback_days: int = 5) -> dict[str, list[str]]:
     """Per-ticker stage history (most recent last) over the last
     `lookback_days` scans before `scan_date`. Used for the TRIGGERED gate
