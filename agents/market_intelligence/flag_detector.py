@@ -39,14 +39,20 @@ _PIVOT_HIGH_BAND     = 0.02     # Volume candidate's high must be within 2% of m
                                 # breakout. Tightening keeps non-near-max-high bars
                                 # from stealing pivot via volume alone. True blow-off
                                 # shooting stars are typically <2% off max anyway.)
-_PIVOT_WALK_THRESHOLD = 0.01    # Stable-anchor: only walk pivot forward when the
-                                # current lookback's max_high beats the prior pivot's
-                                # high by ≥ this fraction. Prevents pivot from drifting
-                                # forward 1¢-at-a-time on a base making slow higher-highs
-                                # in tight increments — that drift kept the base at
-                                # base_age=0 and prevented contraction math from ever
-                                # accumulating a window. 1% is the v1; ATR-relative
-                                # threshold filed for follow-up tune.
+_PIVOT_WALK_THRESHOLD = 0.01    # Stable-anchor floor: walk pivot forward only
+                                # when the current lookback's max_high beats prior
+                                # pivot by ≥ this fraction OR by ≥ 0.25 × ATR-14
+                                # (whichever is larger — see _PIVOT_WALK_ATR_MULT).
+                                # 1% on $5 stock = 5¢; on a high-ATR runup name
+                                # 5¢ is one tick of noise. ATR-relative arm makes
+                                # the gate methodology-aware.
+_PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 ≈
+                                # quarter of a typical day's range. For a $50
+                                # name with ATR $5, that's $1.25 (2.5%) vs the
+                                # flat 1% floor of $0.50 — the higher gate wins.
+                                # For a $100 / ATR $2 name (low vol), flat 1%
+                                # = $1 wins over $0.50. Whichever is harder to
+                                # cross by accident.
 _RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
 _RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
 _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
@@ -227,7 +233,16 @@ def _find_pivot_high(
                 prior_idx = i
                 break
         if prior_idx is not None:
-            walk_floor = prior_pivot_high * (1.0 + _PIVOT_WALK_THRESHOLD)
+            # ATR-relative walk threshold (filed from #41): take whichever
+            # is larger — the flat 1% floor or 0.25× ATR-14. Methodology-aware
+            # so a high-ATR runup name needs a real beat, not just one bar
+            # of normal volatility. ATR computed on bars ending at prior_idx
+            # (history available up to that point); falls back to flat-only
+            # if insufficient history.
+            atr_at_prior = _atr_14(rows, prior_idx)
+            flat_beat = prior_pivot_high * _PIVOT_WALK_THRESHOLD
+            atr_beat = (atr_at_prior * _PIVOT_WALK_ATR_MULT) if atr_at_prior else 0.0
+            walk_floor = prior_pivot_high + max(flat_beat, atr_beat)
             if max_high <= walk_floor:
                 # No decisive break → keep prior anchor. Use the bar's actual
                 # current high (in case the row was repaired after the prior
