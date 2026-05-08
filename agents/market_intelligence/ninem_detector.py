@@ -13,6 +13,7 @@ mi_9m_sugar_babies and surfaced in the evening briefing as Day 2 ORB candidates.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
@@ -378,6 +379,19 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
     - (close - low) / (high - low) >= 0.75 (close in upper 25% of range)
     - volume >= 3× adv_20 (virgin 9M; unknown ADV → pass)
 
+    Trend gate (added 2026-05-08, ATEC 5/07 incident class):
+    - REJECT if ALL THREE structural metrics indicate a destroyed name:
+        prev_20d_pct < -10%        AND
+        prev_vs_sma50 < 0.85       AND
+        sma50_slope_pct < 0
+      Pradeep virgin 9M needs uptrending or fresh-news context. A
+      stock that's been crashing (huge prior drawdown + extended below
+      a downward SMA) bouncing on heavy volume is distressed unwinding,
+      not institutional accumulation. ANY one of the three passing
+      keeps the candidate (allows pullback-from-highs, recently-broke-
+      out, and long-uptrend shapes through). Backfilled 60d: filters
+      ATEC 5/07, BRBR 5/06, EGO 4/30 — none had day2_status='traded'.
+
     Inserts qualifying stocks into mi_9m_sugar_babies for Day 2 ORB.
     Returns count of sugar babies stored.
     """
@@ -388,6 +402,7 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
 
     rows = await get_eod_9m_sugar_babies(trade_date_str)
     count = 0
+    filtered_trend = 0
 
     for row in rows:
         h = row["high_price"]
@@ -401,6 +416,35 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
             continue
 
         close_in_range = (c - l) / (h - l)
+
+        # Trend gate (destroyed-name filter). All three metrics must fail
+        # to filter — ANY one passing keeps the candidate. Missing data
+        # (e.g. recent IPO) → keep (insufficient data to judge as destroyed).
+        prev_20d = row.get("prev_20d_pct")
+        sma50_ratio = row.get("prev_vs_sma50")
+        sma50_slope = row.get("sma50_slope_pct")
+        if (
+            prev_20d is not None and prev_20d < -10.0
+            and sma50_ratio is not None and sma50_ratio < 0.85
+            and sma50_slope is not None and sma50_slope < 0.0
+        ):
+            filtered_trend += 1
+            await log_audit_event(
+                "9m_sugar_baby_filtered_destroyed_trend",
+                f"{row['ticker']} {trade_date_str}: "
+                f"prev_20d={prev_20d:.1f}% sma50_ratio={sma50_ratio:.2f} "
+                f"sma50_slope={sma50_slope:.1f}% — all 3 destroyed-name markers",
+                json.dumps({
+                    "ticker": row["ticker"],
+                    "alert_date": trade_date_str,
+                    "prev_20d_pct": prev_20d,
+                    "prev_vs_sma50": sma50_ratio,
+                    "sma50_slope_pct": sma50_slope,
+                    "close": c,
+                    "volume": row["volume"],
+                }),
+            )
+            continue
 
         await insert_9m_sugar_baby({
             "ticker": row["ticker"],
@@ -420,11 +464,15 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
         })
         count += 1
 
-    logger.info(f"9M EOD sweep {trade_date_str}: {count} sugar babies confirmed")
-    if count:
+    logger.info(
+        f"9M EOD sweep {trade_date_str}: {count} sugar babies confirmed, "
+        f"{filtered_trend} filtered (destroyed-name trend gate)"
+    )
+    if count or filtered_trend:
         await log_audit_event(
             "9m_sugar_babies_confirmed",
-            f"{count} sugar babies on {trade_date_str}",
+            f"{count} sugar babies on {trade_date_str} "
+            f"({filtered_trend} filtered by trend gate)",
         )
     return count
 

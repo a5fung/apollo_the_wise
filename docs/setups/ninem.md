@@ -55,6 +55,13 @@ Mirrors intraday gates against `mi_daily_closes` data (final EOD bars):
 - volume ≥ 3 × adv_20 (or unknown ADV passes)
 - net_up ≥ 3% vs prev_close (categorical, NOT just close > open — rejects gap-down wick-fills like WU 4/24)
 
+**Trend gate** (added 2026-05-08): REJECT if all three structural metrics indicate a destroyed name:
+- `prev_20d_pct < -10%` (in steep drawdown), AND
+- `prev_vs_sma50 < 0.85` (>15% below SMA-50), AND
+- `sma50_slope_pct < 0` (downtrending MA)
+
+A virgin 9M needs uptrending or fresh-news context. A destroyed name bouncing on heavy volume is distressed unwinding, not institutional accumulation. ANY one of the three passing keeps the candidate (allows pullback-from-highs / recently-broke-out / long-uptrend shapes through). Missing data → keep (insufficient data to judge as destroyed).
+
 Confirmed Sugar Babies → `mi_9m_sugar_babies` table. They become Day 2 ORB candidates.
 
 ### Stage 3 — Day 2 ORB (next morning)
@@ -78,6 +85,18 @@ User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit eve
 2. **9M Day 2 stop discrepancy** (CLAUDE.md 2026-05-01 session 1): the ORIGINAL bug was that order_manager.py read `trade["orb_low"]` for stop, but 9M Day 2 writes `stop_price = prior_day_low`. Fixed; documented for SSoT continuity.
 
 ## Change log (newest first)
+
+### 2026-05-08 — Sugar baby destroyed-name trend gate (ATEC 5/07 incident)
+
+**Trigger**: User flagged ATEC 5/07 sugar baby — stock down 70% over months, tanked another -13% on earnings 5/06, then bounced on huge volume 5/07. All sugar baby criteria passed (cirp 0.80, net_up +10.9%, vol 11.9M, dollar_vol $92M) but structurally a dead-cat bounce on a destroyed name, not Pradeep virgin 9M. The trend columns (prev_5d_pct, prev_20d_pct, prev_vs_sma50, sma50_slope_pct) had been captured as telemetry since earlier ship but never promoted to gates.
+
+**Evidence**: 60d historical backtest. Destroyed-name pattern (all 3 trend metrics fail: prev_20d < -10% AND prev_vs_sma50 < 0.85 AND sma50_slope_pct < 0) caught **3 of 51 sugar babies** (5.9%): ATEC 5/07 (pending, would trade 5/08), BRBR 5/06 (skipped), EGO 4/30 (skipped). **Zero historical impact on actually-traded sugar babies** — all 3 had day2_status != 'traded'. Surgical filter. Looser variants tested: `prev_20d < -15%` standalone would also filter CCC 4/30 (which DID trade) — too aggressive.
+
+**Anticipated effect**: ~1-2 fewer sugar babies per month under destroyed-name conditions. ANY one of the three trend metrics passing keeps the candidate (allows the various uptrend / pullback / long-base shapes through).
+
+**Reversion-flag**: NEW. Trend columns existed as telemetry; this is the first time they're enforced as a gate.
+
+**Status**: shipped + ATEC's pending row deleted from prod.
 
 ### 2026-05-07 — Wave C #5: 9M EP per-scan digest
 
