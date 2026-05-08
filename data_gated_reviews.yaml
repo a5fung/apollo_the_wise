@@ -598,6 +598,43 @@ reviews:
     status: pending
     added_on: 2026-05-08
 
+  - review_id: apollo_trades_dashboard_db_flip
+    title: "Apollo Trades dashboard — flip mock → live (#52)"
+    question: |
+      Phase 1 scaffold (commit 01f18be in portfolio-app2 repo, 2026-05-09)
+      runs against APOLLO_DATA_MODE=mock. When live trading produces
+      ≥30 closed trades, flip to APOLLO_DATA_MODE=db with the direct-
+      Postgres reader. Visualizing fewer than 30 closed live trades
+      is statistical noise per project_apollo_trades_dashboard.md
+      design intent. Live cutover earliest 2026-05-12; at typical fill
+      rate (~1 closed trade per 2 days) the predicate ripens around
+      2026-07-15.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode = 'live'
+        AND status IN ('closed', 'stopped')
+    threshold: 30
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      1. Confirm Tailscale tunnel from user's local machine to Hetzner
+         Postgres works (project_rs_theme_dash_backlog.md R1 — same
+         network primitive). If not yet wired, ship that first.
+      2. Apollo side: create read-only Postgres role with SELECT grants
+         on mi_live_trades, mi_ep_alerts, mi_market_regime only.
+      3. portfolio-app2 side: replace apollo_data.py 'db' branch's
+         NotImplementedError with an asyncpg query joining the three
+         tables (full SQL in task #52 description) plus the derived
+         column computations (same formulas as the mock generator).
+      4. Add APOLLO_DB_URL to portfolio-app2 .streamlit/secrets.toml.
+      5. Set APOLLO_DATA_MODE=db env var and verify the calendar
+         heatmap + stats table populate from real data.
+      6. Optionally also build Phase 2 (equity curve / best-worst /
+         drill-down — task #50) at the same time since they share
+         the same data path.
+      Origin: 2026-05-09 Phase 1 scaffold ship. Phase 2/3 tasks #50/#51.
+    status: pending
+    added_on: 2026-05-09
+
   - review_id: theme_assignment_telemetry_review
     title: "Theme assignment under-anchoring root cause (#46)"
     question: |
