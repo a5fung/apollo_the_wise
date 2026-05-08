@@ -421,7 +421,16 @@ def _score_ep(
         raw_score = max(raw_score, 60)
         breakdown["conviction_floor"] = max(0, 60 - sum(v for k, v in breakdown.items() if k != "conviction_floor"))
 
-    final_score = min(raw_score * regime_multiplier, 100)
+    # Removed prior `min(..., 100)` cap (#42, 2026-05-09). The cap squashed
+    # multiple high-conviction setups to identical 100s — 5/8 spike showed
+    # 3+ MAGNA53 names tied at 100 on 3/8 sampled days. Cross-strategy
+    # allocator (#31) needs ranking resolution at the top tier; uncapping
+    # gives natural 100-115 spread under Bull regime (×1.2 multiplier on
+    # raw_score that maxes near 95). Tier thresholds (HIGH ≥ 70-90 by
+    # regime) unchanged — uncap never promotes a candidate that wasn't
+    # already capped, and conviction floors apply to raw_score pre-multiplier
+    # so they aren't affected.
+    final_score = raw_score * regime_multiplier
     return round(final_score, 1), breakdown
 
 
