@@ -5152,6 +5152,63 @@ async def get_shadow_outcomes_window(window_days: int = 30,
 
 # ── Theme exclusions ──────────────────────────────────────────────────────────
 
+
+async def assign_ticker_to_theme(
+    ticker: str, theme_name: str, scan_date: "str | date" = None,
+) -> dict[str, Any]:
+    """Manual operator override: anchor `ticker` to today's `theme_name` row.
+
+    Bypasses the assignment LLM + post-validation. Used when the automated
+    pipeline misses obvious matches (e.g. MU → 'AI Memory & Storage'). Adds
+    DISTINCT-merged ticker to today's mi_themes row, lifts the matching
+    cooldown row if any, emits `theme_manual_assignment` audit event.
+
+    Returns {"matched": bool, "before": list, "after": list, "lifted_cooldown": bool}.
+    """
+    if scan_date is None:
+        scan_date = date.today()
+    elif isinstance(scan_date, str):
+        scan_date = date.fromisoformat(scan_date)
+    ticker = ticker.upper()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow("""
+                SELECT id, tickers FROM mi_themes
+                WHERE name = $1 AND theme_date = $2
+            """, theme_name, scan_date)
+            if not row:
+                return {"matched": False, "before": [], "after": [], "lifted_cooldown": False}
+            before = list(row["tickers"] or [])
+            if ticker in before:
+                return {"matched": True, "before": before, "after": before, "lifted_cooldown": False}
+            after = sorted(set(before) | {ticker})
+            await conn.execute("""
+                UPDATE mi_themes SET tickers = $2 WHERE id = $1
+            """, row["id"], after)
+            # Lift any active cooldown for (ticker, theme_name) — operator override
+            # supersedes the automated cooldown.
+            lifted = await conn.fetchval("""
+                UPDATE mi_validation_cooldowns
+                SET bypassed = TRUE, bypassed_at = NOW(),
+                    bypassed_reason = 'manual /theme assign override'
+                WHERE ticker = $1 AND theme_name = $2 AND bypassed = FALSE
+                RETURNING id
+            """, ticker, theme_name)
+            await log_audit_event(
+                "theme_manual_assignment",
+                summary=f"{ticker} → '{theme_name}' (manual override)",
+                detail=json.dumps({
+                    "ticker": ticker, "theme_name": theme_name,
+                    "scan_date": scan_date.isoformat(),
+                    "before": before, "after": after,
+                    "cooldown_lifted": bool(lifted),
+                }),
+            )
+    return {"matched": True, "before": before, "after": after,
+            "lifted_cooldown": bool(lifted)}
+
+
 async def add_theme_exclusion(ticker: str, theme_name: str, reason: str = "") -> None:
     """
     Permanently exclude a ticker from a specific theme.

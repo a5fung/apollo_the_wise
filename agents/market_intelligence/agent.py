@@ -42,6 +42,7 @@ from agents.market_intelligence.db import (
     add_theme_exclusion,
     remove_theme_exclusion,
     list_theme_exclusions,
+    assign_ticker_to_theme,
     add_parabolic_exclusion,
     remove_parabolic_exclusion,
     list_parabolic_exclusions,
@@ -475,6 +476,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
             return await self._handle_theme_exclusion(request)
+
+        if task.startswith("/theme assign ") or task.startswith("theme assign "):
+            return await self._handle_theme_assign(request)
 
         if any(k in task for k in ["restore retired themes", "restore themes", "unretire themes", "recover themes"]):
             return await self._handle_restore_themes(request)
@@ -1155,6 +1159,68 @@ class MarketIntelligenceAgent(BaseAgent):
                     f"To undo: 'remove exclusion {ticker} from {theme_name}'"
                 ),
             )
+
+    async def _handle_theme_assign(self, request: AgentRequest) -> AgentResponse:
+        """Manual theme membership override — /theme assign TICKER THEME_NAME.
+
+        Bypasses the assignment LLM + post-validation. Used when the automated
+        pipeline misses obvious matches (5/9 incident: MU/SNDK/MRAM/SIMO not
+        anchored to AI Memory & Storage despite top-30 RS, MXL not anchored
+        to optical theme despite advisor verdict). DISTINCT-merges into
+        today's mi_themes row, lifts any active cooldown for that pair,
+        emits theme_manual_assignment audit event.
+
+        Usage:
+          /theme assign MU AI Memory & Storage
+          theme assign MXL AI Datacenter Optical Transceivers & Components
+        """
+        import re as _re
+        task_orig = request.task
+
+        # Strip the leading command, leaving "TICKER THEME_NAME"
+        body = _re.sub(r'^\s*/?theme\s+assign\s+', '', task_orig, count=1, flags=_re.IGNORECASE).strip()
+        if not body:
+            return self._ok(request, result=(
+                "Usage: `/theme assign TICKER THEME_NAME`\n"
+                "Example: `/theme assign MU AI Memory & Storage`"
+            ))
+
+        # First token = ticker, rest = theme name
+        parts = body.split(None, 1)
+        if len(parts) < 2:
+            return self._ok(request, result=(
+                "Need both a ticker and a theme name.\n"
+                "Example: `/theme assign MU AI Memory & Storage`"
+            ))
+        ticker_raw, theme_name = parts
+        ticker = ticker_raw.upper().strip(",.'\"")
+        theme_name = theme_name.strip().rstrip(".,!?")
+
+        if not _re.fullmatch(r'[A-Z]{1,6}', ticker):
+            return self._ok(request, result=f"Couldn't parse ticker `{ticker_raw}` — expected 1-6 uppercase letters.")
+
+        try:
+            result = await assign_ticker_to_theme(ticker, theme_name)
+        except Exception as e:
+            return self._ok(request, result=f"Assignment failed: {type(e).__name__}: {e}")
+
+        if not result["matched"]:
+            return self._ok(request, result=(
+                f"No active theme named _{theme_name}_ for today. Check the exact name "
+                f"via `themes` or `/themes` — must match including punctuation."
+            ))
+        before = result["before"]
+        after = result["after"]
+        if ticker in before:
+            return self._ok(request, result=f"`{ticker}` is already in _{theme_name}_.")
+        lifted_note = " (active cooldown lifted)" if result["lifted_cooldown"] else ""
+        return self._ok(request, result=(
+            f"Done. `{ticker}` added to _{theme_name}_{lifted_note}.\n"
+            f"Members now: {', '.join(after)} ({len(after)} stocks)\n"
+            f"Tomorrow's nightly Haiku validation will revalidate; if it strips "
+            f"`{ticker}`, that's a Haiku validator misfire — reassign or file the "
+            f"audit row."
+        ))
 
     async def _handle_parabolic_exclusion(self, request: AgentRequest) -> AgentResponse:
         """Manage parabolic-short exclusions (manual operator overrides).
