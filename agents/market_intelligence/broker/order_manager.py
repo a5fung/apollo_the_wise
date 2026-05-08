@@ -554,7 +554,20 @@ async def _check_day1_reentry() -> list[dict]:
 
 
 async def update_stop(trade_id: int, new_stop_price: float) -> bool:
-    """Cancel old stop order and place new one at updated price."""
+    """Cancel old stop order and place new one at updated price.
+
+    Sizes the stop against `remaining_shares` MINUS any pending partial/full
+    exit orders. Without that subtraction, the deferred-commit pattern
+    (see CLAUDE.md 2026-05-05) leaves `remaining_shares` at the pre-partial
+    value until the WS fill arrives — so a same-job-call sequence of
+    `execute_partial_exit` then `update_stop` (e.g. partial fires + SMA
+    trail bumps stop in the same `_live_position_update` pass) requests a
+    stop for the original qty against an Alpaca position that already has
+    those shares held_for_orders by the partial sell. Alpaca rejects with
+    `insufficient qty` and the position goes naked. FTRE 2026-05-09 was
+    the trigger — partial sell 461 of 1384, stop attempt rejected because
+    of the 461 held.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         trade = await conn.fetchrow(
@@ -573,14 +586,47 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     old_stop_id = trade.get("stop_order_id")
     old_stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
 
+    # Subtract pending-exit qty from remaining so the stop sizes correctly
+    # ahead of the deferred WS commit.
+    async with pool.acquire() as conn:
+        held = await conn.fetchval("""
+            SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+        """, trade_id)
+    held = int(held or 0)
+    effective_qty = int(trade["remaining_shares"]) - held
+    if effective_qty <= 0:
+        logger.info(
+            f"update_stop: {ticker} remaining {trade['remaining_shares']} fully covered "
+            f"by pending exits ({held}) — skip"
+        )
+        await log_audit_event(
+            "stop_update_aborted",
+            f"{ticker}: pending exits ({held}) cover full remaining "
+            f"({trade['remaining_shares']}) — no stop sizing left",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "remaining_shares": float(trade["remaining_shares"]),
+                "pending_exit_qty": held,
+                "effective_qty": effective_qty,
+                "new_stop_price": new_stop_price,
+            }),
+        )
+        return False
+
     await log_audit_event(
         "stop_update_started",
-        f"{ticker}: ${old_stop_price} → ${new_stop_price:.2f}",
+        f"{ticker}: ${old_stop_price} → ${new_stop_price:.2f} "
+        f"({effective_qty} of {int(trade['remaining_shares'])} after {held} held)",
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "old_stop_id": old_stop_id, "old_stop_price": old_stop_price,
             "new_stop_price": new_stop_price,
             "remaining_shares": float(trade["remaining_shares"]),
+            "pending_exit_qty": held,
+            "effective_qty": effective_qty,
         }),
     )
 
@@ -604,7 +650,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     try:
         new_order = await alpaca.place_stop_order(
             ticker=ticker,
-            qty=trade["remaining_shares"],
+            qty=effective_qty,
             stop_price=new_stop_price,
         )
     except Exception as e:
@@ -630,7 +676,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         await asyncio.sleep(3)
         try:
             new_order = await alpaca.place_stop_order(
-                ticker=ticker, qty=trade["remaining_shares"], stop_price=new_stop_price,
+                ticker=ticker, qty=effective_qty, stop_price=new_stop_price,
             )
             await log_audit_event(
                 "stop_update_retry_succeeded",
@@ -693,20 +739,25 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             ON CONFLICT (alpaca_order_id) DO NOTHING
         """,
             trade_id, new_stop_id, ticker,
-            float(trade["remaining_shares"]),
+            float(effective_qty),
             new_stop_price, new_order["status"],
             json.dumps(new_order),
         )
 
-    logger.info(f"Stop updated: {ticker} → ${new_stop_price:.2f}")
+    logger.info(
+        f"Stop updated: {ticker} → ${new_stop_price:.2f} "
+        f"({effective_qty} sh, {held} held by pending exit)"
+    )
     await log_audit_event(
         "stop_updated",
-        f"{ticker}: stop now ${new_stop_price:.2f} ({new_stop_id})",
+        f"{ticker}: stop now ${new_stop_price:.2f} ({new_stop_id}) for {effective_qty} sh",
         json.dumps({
             "trade_id": trade_id, "ticker": ticker,
             "old_stop_id": old_stop_id, "old_stop_price": old_stop_price,
             "new_stop_id": new_stop_id, "new_stop_price": new_stop_price,
             "remaining_shares": float(trade["remaining_shares"]),
+            "pending_exit_qty": held,
+            "effective_qty": effective_qty,
             "old_cancel_ok": cancel_ok,
         }),
     )
