@@ -31,7 +31,14 @@ _HISTORY_DAYS     = 90      # 60d runup window + 25d base + buffer
 
 # ── Universe / runup gates ──────────────────────────────────────────────────
 _PIVOT_LOOKBACK_DAYS = 25       # Walk back this far to find pivot-high bar
-_PIVOT_HIGH_BAND     = 0.05     # Volume candidate's high must be within 5% of max_high
+_PIVOT_HIGH_BAND     = 0.02     # Volume candidate's high must be within 2% of max_high
+                                # (was 0.05 — VECO 5/06 case: 5/5 high $52.16 was 2.4%
+                                # below period max $53.43 with 3M vol vs 1.5M at the
+                                # max-high bar (4/24). Pivot wrongly reset to 5/5 →
+                                # base_age=0 → unqualified the day before VECO's +25%
+                                # breakout. Tightening keeps non-near-max-high bars
+                                # from stealing pivot via volume alone. True blow-off
+                                # shooting stars are typically <2% off max anyway.)
 _RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
 _RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
 _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
