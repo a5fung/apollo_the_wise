@@ -90,6 +90,10 @@ def format_trade_attempts_live(trade: dict, prefix: str = "  ") -> list[str]:
 
     Header line uses trade-level columns (entry_price, stop_price,
     entry_shares — overwritten on re-entry, so reflect the LATEST attempt).
+    For multi-attempt trades, the header references orb_high as the trigger
+    (constant across attempts) and discloses entry_price as the latest fill,
+    so per-leg stop_hit lines from earlier attempts no longer read against
+    a mismatched header price.
 
     Returns same shape as format_trade_attempts: header line + per-leg lines.
     Empty list if there's nothing to show (e.g. cancelled before fill).
@@ -99,6 +103,7 @@ def format_trade_attempts_live(trade: dict, prefix: str = "  ") -> list[str]:
     entry_price = trade.get("entry_price")
     stop_price = trade.get("stop_price")
     entry_shares = trade.get("entry_shares")
+    orb_high = trade.get("orb_high")
 
     # No fills on this trade — nothing to render.
     if not exits and not entry_price:
@@ -107,10 +112,17 @@ def format_trade_attempts_live(trade: dict, prefix: str = "  ") -> list[str]:
     lines: list[str] = []
     if entry_price and stop_price:
         sh_str = f" ×{int(entry_shares):d}" if entry_shares else ""
-        att_str = f" (attempt {entry_attempt})" if entry_attempt and entry_attempt > 1 else ""
-        lines.append(
-            f"{prefix}ORB entry=${entry_price:.2f} stop=${stop_price:.2f}{sh_str}{att_str}"
-        )
+        multi_attempt = entry_attempt and entry_attempt > 1
+        if multi_attempt and orb_high:
+            lines.append(
+                f"{prefix}ORB trigger=${orb_high:.2f} stop=${stop_price:.2f}{sh_str} "
+                f"(attempt {entry_attempt}, latest fill ${entry_price:.2f})"
+            )
+        else:
+            att_str = f" (attempt {entry_attempt})" if multi_attempt else ""
+            lines.append(
+                f"{prefix}ORB entry=${entry_price:.2f} stop=${stop_price:.2f}{sh_str}{att_str}"
+            )
 
     if not exits:
         # Filled but no exits yet — open position.

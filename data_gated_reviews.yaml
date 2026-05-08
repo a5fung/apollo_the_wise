@@ -556,6 +556,42 @@ reviews:
     status: pending
     added_on: 2026-05-04
 
+  - review_id: drawdown_breaker_promotion
+    title: "Drawdown circuit breaker — shadow → active flip (#39)"
+    question: |
+      After ≥14 calendar days of post-live-cutover shadow telemetry, do the
+      drawdown breaker's transition events justify promoting from shadow to
+      active? Acceptance gates: trip rate ≤ ~1×/quarter equivalent, zero
+      `drawdown_check_unavailable` clusters, ≥1 `drawdown_breaker_released`
+      observed (proves recovery path works). Live cutover earliest 2026-05-12
+      → earliest review 2026-05-26.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT s.snapshot_date)
+      FROM mi_account_equity_snapshots s
+      WHERE s.account_mode = 'live'
+        AND s.snapshot_date > CURRENT_DATE - 30
+    threshold: 14
+    earliest_review_date: 2026-05-26
+    action_when_ready: |
+      Run validation queries from docs/setups/safeguards.md "Promotion plan"
+      section against post-cutover audit log + snapshot history. If acceptance
+      gates pass:
+        1. Set DRAWDOWN_BREAKER_PHASE=active env var, restart container.
+        2. Update docs/setups/safeguards.md change log: shadow → active (with
+           validation evidence link).
+        3. Mark CIRCUIT_BREAKER_CONSEC_LOSSES and CIRCUIT_BREAKER_COOLDOWN_DAYS
+           in constants.py deprecated with 30-day removal comment.
+        4. After 30 days of clean drawdown-active operation, remove the
+           count-based block from live_tracker.py:_check_safeguards (~lines 184-210).
+      If thresholds appear miscalibrated (no trips ever / constant trips), tune
+      DRAWDOWN_TRIP_PCT / DRAWDOWN_RELEASE_PCT and log the change as a new
+      change-log entry in safeguards.md per CHANGE_PROCESS rules. Do NOT flip
+      to active if acceptance gates fail — defer 14 more days.
+      Origin: 2026-05-08 #39 shadow ship. Plan:
+      ~/.claude/plans/let-s-go-into-plan-glittery-graham.md
+    status: pending
+    added_on: 2026-05-08
+
   - review_id: flag_ma_pin_filter
     title: "Flag deal-pin price-signature backstop (L2)"
     question: |
