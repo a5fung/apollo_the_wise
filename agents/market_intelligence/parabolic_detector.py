@@ -395,19 +395,22 @@ def compute_parabolic_metrics(
     base_record["score"] = burst_score
     base_record["is_earnings_today"] = is_earnings_today
 
-    # Climax-tier earnings-day exclusion (AGL/XMTR 5/07 incident class:
-    # earnings-day gap from a flat base mistaken for parabolic continuation).
-    # Earnings gaps are catalyst events, not multi-day acceleration.
-    #
-    # NOTE 2026-05-08: original ship also had a `days_up_streak >= 3` HARD
-    # gate but 30d backtest showed 6 of 16 (38%) climaxes would be filtered,
-    # including VECO 5/6 — which was a correctly-anticipated Pradeep setup
-    # (3-week run + tight base + breakout 5/7). days_up is a structural
-    # signal but a single up-day before climax is the canonical Pradeep
-    # entry shape (consolidation → breakout). Reverted to 1-of-4 burst
-    # component status. is_earnings_today catches AGL/XMTR/AMD/INTC class
-    # cleanly without false-negative on VECO.
-    climax_hard_gates_pass = not is_earnings_today
+    # Climax-tier hard gates — both required to qualify.
+    # 1. days_up_streak >= 3: parabolic SHORT requires multi-day vertical
+    #    acceleration into climax day (Stamatoudis / Quallamaggie). 1-2 up
+    #    days going into climax is a flat-base catalyst gap, not exhaustion.
+    #    AGL/XMTR/VECO 5/07 class: all had streak < 3 and were flat-base
+    #    earnings gaps mistakenly tagged as parabolic shorts. The 30d
+    #    backtest showed 6 of 16 climaxes filtered by this gate — all 6
+    #    are false positives on review (earnings-driven flat-base gaps,
+    #    not parabolic exhaustion). Filter rate is correct, not aggressive.
+    # 2. not is_earnings_today: even with multi-day streak, an earnings
+    #    catalyst event isn't climax exhaustion — it's a fresh news gap.
+    #    XMTR (streak=3, earnings 5/7) requires this second gate.
+    climax_hard_gates_pass = (
+        days_up_streak >= _MIN_DAYS_UP_STREAK_FOR_CLIMAX
+        and not is_earnings_today
+    )
 
     if (
         burst_score >= _MIN_ANTICIPATION_SCORE
