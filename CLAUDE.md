@@ -238,6 +238,21 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-08 (session 3) — Circuit breaker threshold 5→10 (interim stand-in for drawdown-based fix)
+User flagged that today's morning ORB window was blocked by the circuit breaker. Investigation surfaced TWO structural issues with the current count-based implementation that the bump alone doesn't solve, but the bump is a 5-min unblock while the proper drawdown-based replacement gets built (task #39).
+
+**Issues** (per discussion + advisor review):
+1. **Self-perpetuating**: cooldown anchored to `latest_loss_at` which advances every time another loss closes. During cooldown no new entries fire → only existing open winners can break the cycle. If they all stop out as losers, cooldown extends indefinitely until manual intervention.
+2. **Methodology-blind**: "trailing-N closed trades" structurally over-weights losers because Pradeep/Qullamaggie methodology HOLDS winners until trailing stop catches them (days/weeks) while losers stop fast (minutes/hours). The closed-trade window is biased toward losses by design.
+
+**Trigger**: 5/8 morning ORB blocked because the trailing-5 closed trades were ALL losses (AMD/ARM/TEAM/OMCL/INTC, 4/24-5/07). 6-loss streak in 14 days is not unusual in a fast-stop strategy with ~25% win rate. P(5 consec | 25%) = 24%; P(10 consec | 25%) = 5.6%. 5 was statistically too tight.
+
+**Fix (interim)**: bumped `CIRCUIT_BREAKER_CONSEC_LOSSES` 5 → 10. Single-line constant change. Currently 7 closed trades total; len < 10 → check skipped → unblocked. When 10+ trades close, KURA's win at position 7 means `all_losses=False` → still no trip.
+
+**Proper fix (filed as task #39)**: drawdown-based safeguard. Track account equity (realized + unrealized via Alpaca positions) over recent N days. Trip when equity drops X% from recent peak; release when drawdown recovers to within Y%. Methodology-aware (open winners' unrealized lifts equity); self-clearing (no perpetuation); magnitude-sensitive (5 small losses don't trip, 1 big one can). 4-6 hr build. Should ship before live-money cutover. SSoT location: docs/setups/safeguards.md (to be created with the build).
+
+**Lesson**: the user observation surfaced a foundational problem, but advisor review (correctly) recommended interim threshold bump rather than disabling the safeguard entirely or jumping straight to the rewrite. Pattern: don't disable a safeguard with caveats; tune it down to non-firing while the proper fix is engineered. Daily loss limit (`DAILY_LOSS_LIMIT_PCT`) remains active as the magnitude-side backstop — count-side is what got tuned.
+
 ### 2026-05-08 (session 2) — 5/7 paper-session triage: parabolic earnings exclusion + EP earnings boost + HIMX cooldown + pm-shares floor + phantom split detection
 Five additive fixes from the 5/7 paper-session debrief — see `~/.claude/plans/paper-session-5-7-triage.md`. All small, all bounded, all targeting specific user-reported missed-EP / false-climax classes.
 

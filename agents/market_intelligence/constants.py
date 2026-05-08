@@ -34,7 +34,13 @@ CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "tru
 MAX_CONCURRENT_LIVE_POSITIONS = 5
 CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
-CIRCUIT_BREAKER_CONSEC_LOSSES = 5    # Pause after N consecutive losses (EP win rate ~20s% → P(5 consec) ≈ 33%)
+CIRCUIT_BREAKER_CONSEC_LOSSES = 10   # Pause after N consecutive losses (EP win rate ~25% → P(10 consec) ≈ 5.6%, vs P(5) = 24%).
+                                     # Bumped 5→10 on 2026-05-08: at 5 the breaker tripped on 6-loss streak (BSX 4/23 → AMD 5/07)
+                                     # — a normal occurrence in a fast-stop strategy. Two known structural issues remain:
+                                     # (1) self-perpetuating — each new loss closing during cooldown advances latest_loss_at + 24h;
+                                     # (2) methodology-blind — closed-trade streak over-weights losers because Pradeep methodology
+                                     # holds winners until trailing stop catches them. Both resolved by drawdown-based replacement
+                                     # (task #39). This threshold-bump is the interim stand-in.
 CIRCUIT_BREAKER_COOLDOWN_DAYS = 1    # Block resumes after this window past last loss
 
 REGIME_EMOJI = {
