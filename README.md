@@ -30,6 +30,16 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "Best Accelerating theme stocks with fundamentals" | Screener filtered to Accelerating themes with EPS/revenue data |
 | "AXTI is working, track it" | Apollo asks questions, adds to tracking + seeds theme |
 | Any stock/investment question | Apollo consults market agent before answering |
+| `/setup TICKER [days]` | Reverse-lookup detector chronology across 10 tables (EP, 9M, wick, parabolic, flag, themes, trades) with TradingView chart link |
+| `/flags` / `/flags TICKER` | Continuation flag detector (VCP / Qullamaggie tightening) — today's COILED + TRIGGERED, or 14d ticker history |
+| `/watchlist` | Friday curated watchlist (Friday 6 PM ET) — best ideas across all sources + TradingView import block |
+| `/wick` | Wick-fill candidates (telemetry) — today's candidates + 30d fill-rate footer |
+| `/why TICKER [date]` | EP lifecycle timeline — every gate hit/miss for one alert |
+| `/audit <topic>` | On-demand L1/L2/L3 anomaly check — cooldowns, themes, skips, positions, feed, 9m, all |
+| `/strategies` / `/strategy <id>` | Strategy maturity registry — phase + KPI promotion thresholds, manual `enable / disable / promote / demote` |
+| `/dryrun` | Pre-flight sizing math against current Alpaca equity (no orders placed) |
+| `/pregame` | Compact trade shortlist for tomorrow — Accelerating themes + HIGH EPs + watchlist + sugar babies |
+| `/postmortem TICKER [YYYY-MM-DD]` | Sonnet-narrated 4-section trade postmortem (Setup / Execution / Outcome / Lesson) |
 
 **Two daily briefings (automatic):**
 - **5:00 PM PT (8 PM ET)** — Evening briefing: full EOD review package. Sent after close when you sit down to review charts. Includes 🍭 Sugar Babies section if any confirmed 9M days.
@@ -43,20 +53,22 @@ Apollo runs semi-automated paper trading via Alpaca. Two independent systems sha
 
 | Feature | How it works |
 |---|---|
-| **MAGNA53 EP entries** | Pre-market HIGH alerts subscribe to Alpaca bar WebSocket. First bar close at 9:30:59 → order placed at 9:31:00 |
+| **MAGNA53 EP entries** | Pre-market HIGH alerts subscribe to Alpaca bar WebSocket. First bar close at 9:30:59 → order placed at 9:31:00 via unified `entry_pipeline.submit_trade_entry` |
 | ORB entry (post-open HIGHs) | 9:31 AM scan finds new HIGHs → ORB order placed inline |
 | ORB fallback | If bar stream misses a pre-market HIGH, 9:31 scan fires `_orb_monitor_job` as safety net |
 | Stop width validation | `validate_orb_entry(orb_high, orb_low, atr_14)` — single shared rule. ORB range must be ≤ 1.5x ATR-14. |
-| M&A hard filter | Definitive agreement / tender offer → classified `mna` → hard skip before scoring |
+| M&A hard filter | Three-layer defense (`ma_filter.py`): EP catalyst classifier verdict → `_MNA_KEYWORDS` text scan → Polygon news headline backstop. SSoT shared by EP + flag detectors |
+| Earnings-day catalyst boost | `is_earnings_day` (yfinance) confirms ±yesterday/today; routine catalyst → strong, plus MODERATE→HIGH override at gap ≥10%. Closes the DDOG/AAON/HIMX miss class |
 | 11 AM cutoff | Re-entry after stop-out only before 11 AM ET |
-| **9M EP Day 2 entries** | Sugar babies from the prior day → ORB entry at 9:31 AM. Stop = prior day's low (institutional wall), not ATR. Auto-enters in paper mode. |
+| **9M EP Day 2 entries** | Sugar babies from the prior day → ORB entry at 9:31 AM. Stop = prior day's low (institutional wall), not ATR. Auto-enters in paper mode. Same `entry_pipeline.submit_trade_entry` funnel as MAGNA53 |
 | Auto-confirm | Paper mode bypasses Telegram confirmation — both systems execute automatically |
 | Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
-| Position tracking | `9m trades` / `trades` command — log with P&L per trade |
-| Safeguards | Max 4 positions (shared across both systems), 2% daily loss limit, 5-loss circuit breaker (1-day cooldown auto-release) |
-| Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions |
-| EOD cleanup | 4:05 PM — cancel unfilled entries, sync positions with Alpaca |
-| Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS` in `constants.py` |
+| Position tracking | `9m trades` / `trades` / `/setup TICKER` — log with P&L per trade, reverse-lookup detector chronology across 10 tables |
+| Safeguards (full list) | See **Safeguards** section below — kill switch, max 5 concurrent positions, PDT guards, 2% daily-loss limit, count-based circuit breaker (interim), drawdown breaker (shadow) |
+| Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions; stale `stop_order_id` nulled on update failure for orphan reconciliation |
+| EOD cleanup | 4:05 PM — cancel unfilled entries (preserves prior fill history); 9:00 PM evening backstop catches late EXPIRED events |
+| Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS=5` in `constants.py` |
+| **Cross-strategy allocator** | Shadow phase (#43, 5/8) — strategies enqueue to `mi_pending_allocations`; 9:35 AM allocator scores composite (40/30/20/10), emits `unified_allocation_decided` audit. Phase 1B activation gated on ≥5 days shadow telemetry. See `cross_strategy_allocator.py` |
 
 **Status:** Paper trading live on Alpaca paper account ($100K). Collecting data to validate before real money.
 
@@ -142,7 +154,9 @@ A parallel, LLM-free EP track based on Pradeep Bonde's "9M" tactic. Volume is th
 - **9M actual** — today's volume crosses 8.9M shares → Telegram `🏦 9M EP` alert fires immediately
 - **9M pace** — projected volume ≥ 12M based on rate (only after 30 min elapsed, ≥3M shares already traded). Pings Telegram **only if** `gap ≥ 10%` or projected volume ≥ 25M (high-conviction carve-out). Lower-conviction anticipations still write to DB and surface via `/9m` and the evening-brief `🔍 Anticipation-only today` roundup.
 
-**Quality gates (intraday + EOD):** price ≥ $5, dollar-volume ≥ $50M (actual) / ≥ $30M (anticipation), gap ≥ 3% OR intraday gain ≥ 4%, effective volume ≥ 3× 20-day ADV, intraday range ≥ 2% of price, `prev_close ≤ 1.20× 10-day SMA` (rejects already-extended chases).
+**Quality gates (intraday + EOD, identical filters):** price ≥ $5, dollar-volume ≥ $50M (actual) / ≥ $30M (anticipation), gap ≥ 3% OR intraday gain ≥ 4%, effective volume ≥ 3× 20-day ADV (ratio, not flat ceiling), intraday range ≥ 2% of price, `prev_close ≤ 1.20× 10-day SMA` (rejects already-extended chases). **Target 2-5 alerts/day**.
+
+**Sugar baby destroyed-name trend gate** (5/8, ATEC class): filters when ALL three fail — `prev_20d_pct < -10%` AND `prev_vs_sma50 < 0.85` AND `sma50_slope_pct < 0`. Catches dead-cat-bounce candidates (single 9M day on a structurally destroyed name).
 
 **Sugar Babies** — stocks completing a 9M day with a strong close:
 - Volume ≥ 9M shares
@@ -220,6 +234,110 @@ python scripts/backfill_parabolic_car.py --ticker NVDA --end-date 2024-03-15  # 
 
 ---
 
+### Continuation Flag Detector (VCP / Qullamaggie tightening)
+
+Daily state-machine scan for the post-runup VCP / tightening flag setup. **Shadow phase** — telemetry-only, no entries. XNDU 4/16 → 5/01 was the calibration case (9-session base after pivot, breakout 5/01).
+
+**Five stages** per (ticker, scan_date):
+- `unqualified` → `WATCH` → `TIGHTENING` → `COILED` → `TRIGGERED` (or `INVALIDATED`)
+
+**Pivot anchor:** highest-volume bar within 2% of period max-high (tightened 5% → 2% on 5/8 to prevent volume-stealing-pivot from a non-near-max-high bar).
+
+**Stable-anchor (5/8):** pivot only walks forward when current lookback's max_high beats the prior pivot by ≥ 1% (`_PIVOT_WALK_THRESHOLD`). Fixes the marginal-walk-forward failure where slow higher-highs in tight increments kept `base_age` near zero.
+
+**Fresh-tightening predicate**: alternative COILED path for short bases (≥4 sessions) where early-vs-recent contraction math can't fire — uses 2-bar TR vs ATR-14 + hybrid volume ceiling (`max(recent_5d_avg, 0.5 × ADV20)`).
+
+**M&A filter** at COILED + TRIGGERED stages — same SSoT (`ma_filter.py`) as EP detection.
+
+**From Telegram:**
+```
+/flags                 → today's COILED + TRIGGERED candidates with chart links
+/flags watch           → WATCH + TIGHTENING tier (deeper drill-down)
+/flags TICKER          → 14d stage history for one ticker
+```
+
+**Scan schedule:** 5:25 PM ET, mon-fri (between fishhook 5:20 and post-nightly audit 5:30).
+
+**SSoT:** `docs/setups/flag_continuation.md`.
+
+---
+
+### Friday Curated Watchlist
+
+Friday 6:00 PM ET aggregator — combines best ideas from EP / 9M / themes / wick / parabolic / RS into a single Telegram digest with TradingView import block + per-ticker chart-link buttons.
+
+**Cross-source dedup priority:** EP > theme > 9M > wick > parabolic > RS. Single bullet per ticker with bracketed reason chips. Top 25 by composite priority.
+
+**Two integration depths:**
+1. Text import block `EXCHANGE:TICKER` comma-separated → TradingView mobile Watchlist Import
+2. Per-ticker chart-link inline keyboard, top 8, 4×2 layout, deep-links to TradingView charts
+
+**From Telegram:** `/watchlist`
+
+---
+
+### Drawdown Circuit Breaker (#39, shadow phase)
+
+Replaces the count-based 10-loss circuit breaker (which was self-perpetuating and methodology-blind for Pradeep/Qullamaggie hold-winners style). State-machine evaluated daily at 4:12 PM ET cron.
+
+**Mechanics:**
+- **Equity source**: Alpaca `account.equity` (includes unrealized — open winners lift equity)
+- **Peak window**: 30-day rolling max from `mi_account_equity_snapshots`
+- **Trip threshold**: drawdown ≤ -5% while state='OK' → TRIPPED
+- **Release threshold**: drawdown ≥ -2.5% while state='TRIPPED' → OK (asymmetric hysteresis prevents flap)
+- **Stale-data fail-open**: if most recent snapshot >48h old, breaker effectively disabled (silent cron-failure protection)
+- **Account-mode scoping**: paper history doesn't carry to live; live cutover starts a fresh peak
+
+**Phase**: SHADOW — emits `drawdown_breaker_tripped` / `drawdown_breaker_released` audit events on transitions only; `_check_safeguards` does not block. Promotion to active gated on ≥14 days post-live-cutover telemetry (env var `DRAWDOWN_BREAKER_PHASE=active`).
+
+**SSoT:** `docs/setups/safeguards.md`.
+
+---
+
+### Cross-Strategy Unified Allocator (#31, Phase 1A shadow)
+
+Replaces the cron-order FCFS slot grab (5/7 incident: 9M Day 2 took all available slots before MAGNA53 ORB monitor). Shared queue + composite scoring across strategies.
+
+**Scoring (Phase 1):**
+- 40% setup quality (MAGNA53 = ep_score; 9M Day 2 = blend of close-in-range + gap)
+- 30% catalyst (game_changer 100, strong 70, routine 30; 9M intrinsic 100)
+- 20% volume (pm_rvol or vol/ADV ratio, capped + normalized)
+- 10% regime (Bull 100, Crisis 60)
+
+No Z-norm — multi-day spike (5/8) showed it systemically penalizes MAGNA53's cap-saturated top-tier scores. Track-record dimension (Phase 2) is the proper home for cross-strategy reliability.
+
+**Tie-breakers:** pm_rvol → gap_pct → strategy priority (MAGNA53 > 9M > Flag).
+
+**Phase 1A (shadow, current):**
+- Strategies enqueue to `mi_pending_allocations`
+- 9:35 AM ET cron drains, scores, marks `shadow_rank` + `shadow_allocated`
+- Emits `unified_allocation_decided` audit event with full ranking
+- Legacy submission paths run unchanged
+
+**Phase 1B activation** (gated on ≥5 days shadow telemetry, earliest 5/15): move cron to 9:28 ET pre-market, add price-freshness HARD gate (>1.5% past trigger → drop), refactor strategies to drain queue (winners only), intraday re-sweep on stop/exit events, FCFS fallback.
+
+Spec: `~/.claude/plans/cross-strategy-ranking-spike.md`. Spike harness: `scripts/spike_unified_allocator.py`.
+
+---
+
+### System Self-Audit (L1/L2/L3)
+
+Three-tier anomaly + invariant scanner runs at 4:15 PM (post-EOD) and 5:30 PM (post-nightly). Detects silent breakage that would otherwise compound across days.
+
+| Tier | Trigger | Action |
+|---|---|---|
+| **L1** | Hard SQL invariant breach | Immediate Telegram + audit row |
+| **L2** | Metric outside 30d trimmed median ± 3 MAD OR > 5× median | Immediate Telegram with Sonnet hypothesis |
+| **L3** | Band transition (drift) | Audit row only; surfaces in Sunday weekly digest |
+
+Cold-start tiers: `sample_n < 7` → hardcoded ceilings only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
+
+**On-demand:** `/audit <topic>` — cooldowns, themes, skips, positions, feed, 9m, all.
+
+Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.
+
+---
+
 ### EP Detection (MAGNA53)
 
 MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
@@ -228,12 +346,21 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 - **HIGH (≥85):** Immediate Telegram alert during pre-market scan
 - **MODERATE (≥65):** Shown in morning briefing
 - **Perplexity cross-validation:** When Claude + Perplexity agree on catalyst → 1.2x confidence multiplier
-- **M&A hard filter:** Definitive agreement / tender offer / going-private → classified `mna` → hard skip before scoring. Buyouts don't trade like EPs.
+- **Hedge-phrase downgrade** (Track B Layer 2): when `perplexity_answer` contains hedge phrases ("no specific information", "couldn't find", etc.), downgrade catalyst one notch and skip the agreement boost — defensive read against chained-LLM hollow-input grading
+- **M&A hard filter** (`ma_filter.py`, three layers): EP catalyst classifier → `_MNA_KEYWORDS` text scan over catalyst texts → Polygon news headline backstop. SSoT shared by EP and flag detectors so both setups close the same coverage gap
+- **Earnings-day catalyst boost** (Track B Layer 3, 5/8): `is_earnings_day(ticker, scan_date)` via yfinance `earnings_dates` + `calendar` confirms today/yesterday earnings; routine catalyst → strong, plus MODERATE→HIGH override at gap ≥ 10%. Tightened to {yesterday, today} window — closes DDOG/AAON/HIMX class without false-positive spillover
+- **Cooldown bypass on fresh earnings**: 60-day re-alert cooldown bypassed when `gap ≥ 15% AND is_earnings_day` (HIMX 5/7-class — quarterly earnings is structurally fresh signal)
+- **Pm-shares floor relative-anomaly carveout** (5/8): the absolute 25K pm-shares floor is skipped when `pm_rvol ≥ 5×` — low-float names with strong relative anomaly no longer false-blocked
+- **pm_rvol gate (RVOL@T)** (`minute_volume.py`): per-minute baselines from `mi_minute_volume_curves` (~2,647 tickers, $5M+ ADV20 floor); pre-9:30 uses pm anchor, 9:30+ uses session anchor with the same primitive
 - **Game-changer floor:** Gap ≥10% + `game_changer` catalyst → minimum score 60 (MODERATE), ensuring high-quality mid-gap moves aren't invisible
 - **Open intensity metric:** Post-open volume shown as intensity (`raw_rvol × 390 / minutes_since_open`) rather than projected daily RVOL — honest label, not extrapolated noise
 - **Scan schedule:** 7:00 AM – 10:00 AM ET, every 5 minutes
+- **Bar fetch retry:** 10s delay (was 60s) — bars settle in seconds, not minutes
+- **Stop-limit BUY buffer**: SSoT helper `stop_limit_buy_price(stop)` = `round(max(stop * 1.005, stop + 0.02), 2)` — 0.5% with $0.02 floor, prevents 1¢-effective-buffer on penny tickers
 
 **EP diagnostic from Telegram:** "Why not EP ARAI?" → runs filter checks in sequence, stops at first failure, fetches recent news. Returns specific answer (e.g. `❌ Price filter: $0.67 < $5 minimum`) instead of a generic checklist.
+
+**`/setup TICKER`**: reverse-lookup detector chronology across ~10 tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) with TradingView chart-link button. Answers "what did Apollo see in $XNDU?" — see also `/why TICKER` for EP-specific lifecycle.
 
 ### Market Regime
 
@@ -305,15 +432,25 @@ Critical engine events are written to `mi_audit_log` and queryable from Telegram
 | Event type | What triggers it |
 |---|---|
 | `advisor_call` | Sonnet consulted Opus — includes full question + verdict |
-| `theme_discovered` | New theme created — name, tickers, thesis |
-| `theme_retired` | Theme retired after 5 fading days |
-| `stage_change` | Theme lifecycle transition |
-| `theme_excluded` | Ticker permanently banned from theme (manual or auto-validation) |
-| `orb_triggered` | ORB order placed for an EP alert |
-| `orb_filtered` | ORB skipped (stop too wide, ADV too low, etc.) |
-| `orb_no_bar` | Bar data unavailable at entry time |
-| `9m_ep_detected` | Intraday 9M volume threshold crossed — ticker, volume, price |
-| `9m_sugar_babies_confirmed` | EOD sweep confirmed N sugar babies for Day 2 watchlist |
+| `theme_discovered` / `theme_retired` / `stage_change` / `theme_excluded` | Theme lifecycle |
+| `validation_error` / `assignment_error` / `discovery_error` | Theme engine silent failures (banner in morning briefing) |
+| `validation_rate_limited` / `anthropic_rate_limited` | 429 retries; surfaces in morning briefing 🟠 banner |
+| `orb_triggered` / `orb_filtered` / `orb_no_bar` | ORB lifecycle |
+| `orb_unfilled_cancelled` / `eod_unfilled_cancelled` | 10:00 ET / 4:05 PM cleanup of unfilled bracket entries |
+| `partial_exit_committed` / `full_exit_committed` / `stop_exit_committed` | Trade lifecycle (real fill, not order placement) |
+| `naked_position_detected` | `stop_order_id` nulled after stop placement / update failure → reconcile |
+| `9m_ep_detected` / `9m_sugar_babies_confirmed` | 9M intraday + EOD |
+| `9m_sugar_baby_filtered_destroyed_trend` | ATEC-class filter (prev_20d < -10% AND prev_vs_sma50 < 0.85 AND sma50 slope < 0) |
+| `mna_filter_fired` | M&A filter caught a deal candidate (source: catalyst / keyword / polygon) |
+| `catalyst_earnings_boost` / `earnings_override_applied` | EP earnings-day catalyst promotion |
+| `ep_cooldown_bypassed_earnings` | 60-day cooldown bypassed on fresh earnings |
+| `flag_stage_flip_held` | Flag detector hysteresis — single-day downgrade held one day |
+| `parabolic_climax_detected` / `parabolic_anticipation` | Parabolic short scan |
+| `drawdown_breaker_tripped` / `drawdown_breaker_released` / `drawdown_check_unavailable` | Drawdown breaker state transitions (shadow) |
+| `unified_allocation_decided` | Cross-strategy allocator picks (shadow) — full ranking + winners |
+| `split_detected` / `split_applied` / `split_phantom_detected` | Splits ingest pipeline (Phase 0 of nightly) |
+| `audit_invariant_breach_*` | L1 hard guard fail (immediate Telegram) |
+| `metric_anomaly` | L2 outlier (>3 MAD or >5× median) — includes Sonnet hypothesis |
 
 **From Telegram:**
 ```
@@ -331,20 +468,29 @@ Show logs excluded → exclusion events
 
 | Time (ET) | Time (PT) | What |
 |---|---|---|
-| 7:00 AM | 4:00 AM | MAGNA53 EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions |
+| 7:00 AM | 4:00 AM | MAGNA53 EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions; allocator queue starts filling |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
 | 9:30 AM | 6:30 AM | 9M EP intraday scan starts (every 5 min) |
-| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs; 9M Day 2 ORB entries placed |
-| 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions |
+| 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs; 9M Day 2 ORB entries placed (parallel via `asyncio.gather`) |
+| 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions; **cross-strategy allocator shadow** — scores queue, emits `unified_allocation_decided` |
 | 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
-| 10:00 AM | 7:00 AM | MAGNA53 EP scan stops |
+| 10:00 AM | 7:00 AM | MAGNA53 EP scan stops; ORB unfilled-entry cleanup |
 | 4:00 PM | 1:00 PM | 9M EP intraday scan stops |
-| 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions |
-| 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed |
-| 5:15 PM | 2:15 PM | Parabolic-short scan (TI1 telemetry) → anticipation/climax digest if any |
-| 5:35 PM | 2:35 PM | Wick-fill forward-returns (TI2/P22 telemetry) — settles unsettled wick candidates |
+| 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions, audit-log unfilled cancellations |
+| 4:10 PM | 1:10 PM | EOD EP recap — HIGH outcomes + feed telemetry |
+| 4:12 PM | 1:12 PM | **Account equity snapshot** + drawdown breaker state recompute (drawdown_breaker, currently shadow phase) |
+| 4:15 PM | 1:15 PM | **Post-EOD audit** — L1 invariants + trade-side L2/L3 anomaly detection |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
-| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies + wick watch sections if any) |
+| 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed; splits ingest (Phase 0); error check |
+| 5:15 PM | 2:15 PM | Parabolic-short scan (TI1 telemetry) → anticipation/climax digest if any |
+| 5:25 PM | 2:25 PM | **Continuation flag scan** (shadow) — VCP / Qullamaggie tightening flag detector |
+| 5:30 PM | 2:30 PM | **Post-nightly audit** — theme/cooldown/regime L2/L3 anomaly detection |
+| 5:35 PM | 2:35 PM | Wick-fill forward-returns (TI2/P22 telemetry) — settles unsettled wick candidates |
+| 6:00 PM (Fri) | 3:00 PM | **Friday curated watchlist** — chart-review aggregator + TradingView import block |
+| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies, wick watch, parabolic, flag candidates) |
+| 9:00 PM | 6:00 PM | **Evening position backstop** — 2nd `sync_positions` pass catches late EXPIRED events |
+| 2:00 AM | 11:00 PM | **Baseline refresh** — rebuild `mi_metric_baselines` 30d trailing for L2/L3 audit |
+| Sun 8:00 AM | 5:00 AM | Weekly system self-audit — 7d metrics + L3 drift roll-up → Telegram digest |
 
 ---
 
@@ -378,35 +524,55 @@ Apollo_Assistant/
 │   └── webhooks.py                  # FastAPI webhook receiver
 ├── agents/
 │   └── market_intelligence/
-│       ├── agent.py                 # FastAPI app on port 8006
-│       ├── db.py                    # Schema + all DB queries
+│       ├── agent.py                 # FastAPI app on port 8006 + execute_task router
+│       ├── db.py                    # Schema + all DB queries (single SSoT for table layout)
 │       ├── collector.py             # Polygon + yfinance + Perplexity data fetching
-│       ├── constants.py             # Shared constants (skip lists, sector filters, trimmed_mean)
+│       ├── constants.py             # Shared constants (skip lists, safeguards, drawdown thresholds)
 │       ├── rs_engine.py             # RS scoring + MA computation + single-ticker score
-│       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Perplexity
-│       ├── ninem_detector.py        # 9M EP scanner + EOD sugar baby sweep
-│       ├── parabolic_detector.py    # Parabolic-short scan (TI1 telemetry, 5:15 PM ET)
+│       ├── ep_detector.py           # MAGNA53 EP scoring + Claude + Perplexity (with hedge-phrase downgrade)
+│       ├── ninem_detector.py        # 9M EP scanner + EOD sugar baby sweep + destroyed-name filter
+│       ├── parabolic_detector.py    # Parabolic-short scan (TI1 telemetry, 5:15 PM ET) + earnings-day exclusion
+│       ├── flag_detector.py         # Continuation flag detector (VCP / Qullamaggie, 5:25 PM ET)
+│       ├── friday_watchlist.py      # Friday 6:00 PM ET aggregator + TradingView import block
+│       ├── wick_tracker.py          # Wick-fill forward-returns settlement (TI2/P22 telemetry)
+│       ├── ma_filter.py             # SSoT M&A filter — keywords + Polygon news backstop
+│       ├── earnings_calendar.py     # is_earnings_day(ticker, scan_date) via yfinance two-surface
+│       ├── minute_volume.py         # RVOL@T per-minute baselines (mi_minute_volume_curves)
+│       ├── splits_ingest.py         # Phase 0 of nightly — Polygon splits + post-apply ratio sanity
+│       ├── system_audit.py          # L1/L2/L3 anomaly + invariant scans (4:15 + 5:30 PM ET)
+│       ├── audit_invariants.py      # Shared invariant library (also used by readiness_check.py)
+│       ├── cross_strategy_allocator.py  # Phase 1A shadow allocator (#31)
 │       ├── regime.py                # Market regime engine
-│       ├── briefing.py              # Evening + morning briefing formatters
+│       ├── briefing.py              # Evening + morning briefing formatters + send_telegram_message
 │       ├── theme_engine.py          # Theme discovery + deduplication + lifecycle
-│       ├── scheduler.py             # APScheduler jobs (4:30pm data, 8pm evening, 9am morning)
+│       ├── scheduler.py             # APScheduler jobs (full daily cron stack)
 │       ├── fundamentals.py          # O'Neil fundamentals + get_fundamentals_batch()
 │       ├── outcome_tracker.py       # Nightly forward return computation (RS/EP/9M → mi_signal_outcomes)
 │       ├── screener.py              # Composite screener (RS + theme + fundamentals)
 │       ├── universe.py              # Curated universe with company descriptions
 │       ├── trading_calendar.py      # NYSE holiday calendar (exchange-calendars lib, offline)
+│       ├── strategies/
+│       │   ├── registry.py          # mi_strategies registry — phase + KPI thresholds + enable flag
+│       │   └── adapters.py          # Per-strategy promotion-evaluation adapters
 │       ├── backtester/
 │       │   ├── engine.py            # Core trade simulation (Day 1 ORB + Day 2+ SMA trail)
-│       │   ├── filters.py           # validate_orb_entry() — single shared ORB stop-width rule
+│       │   ├── filters.py           # validate_orb_entry() + compute_atr_14 (Wilder TR, 5/5 fix)
 │       │   ├── models.py            # BacktestTrade, TradeEntry, TradeExit dataclasses
-│       │   ├── tracker.py           # Paper trade tracker (EOD sim); parse_json_list, format_trade_attempts
+│       │   ├── tracker.py           # Paper trade tracker (EOD sim); parse_json_list, format_trade_attempts(_live)
 │       │   ├── intraday.py          # Intraday bar fetching + caching
-│       │   └── safeguards.py        # Position limits, daily loss cap, circuit breaker
+│       │   └── safeguards.py        # Position limits, daily loss cap (legacy count breaker)
 │       └── broker/
-│           ├── alpaca_client.py     # Async Alpaca SDK wrapper (paper + live)
+│           ├── alpaca_client.py     # Async Alpaca SDK wrapper + extract_stop_leg_id SSoT
 │           ├── bar_stream.py        # Alpaca StockDataStream — subscribe EP candidates, fire ORB on first bar
-│           ├── order_manager.py     # Order lifecycle (entry, stops, partials, exits)
-│           ├── live_tracker.py      # Real-time ORB monitor + Day 2+ management
+│           ├── trade_stream.py      # WebSocket fill events — purpose-tagged routing (entry/partial/full/stop)
+│           ├── order_manager.py     # Order lifecycle — finalize_partial_exit / finalize_full_exit / finalize_stop_fill
+│           ├── entry_pipeline.py    # SSoT funnel — submit_trade_entry for MAGNA53 + 9M Day 2
+│           ├── skip_reasons.py      # 18 bounded skip-reason constants (filter:* / setup:* / block:* / infra:* / window:*)
+│           ├── live_tracker.py      # Real-time ORB monitor + Day 2+ management + _check_safeguards
+│           ├── drawdown_breaker.py  # Daily account equity snapshot + state machine (shadow #39)
+│           ├── orb_extension_shadow.py  # Counterfactual lifecycle for cancelled-ORB cutoffs
+│           ├── gap_through_telemetry.py # Stop-limit gap-through frequency telemetry
+│           ├── shadow_orb_tracker.py    # Shadow ORB strategy (paired_r promotion model)
 │           └── telegram_confirm.py  # Inline keyboard trade proposals
 ├── docker/
 │   ├── docker-compose.yml           # Local dev
@@ -492,6 +658,25 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 ---
 
 ## Backlog / Upgrade Path
+
+### Recently completed (May 2026)
+- ✅ **Cross-strategy unified allocator Phase 1A (#31, shadow ship 5/8)** — `mi_pending_allocations` queue + `cross_strategy_allocator.py` module + 9:35 AM shadow cron. MAGNA53 + 9M Day 2 strategies enqueue; allocator scores 40/30/20/10 (setup/catalyst/volume/regime), emits `unified_allocation_decided` audit. Z-norm DROPPED post-spike (8-day simulation showed it systemically penalizes MAGNA53's cap-saturated top-tier scores). Phase 1B activation gated on ≥5 days shadow telemetry (earliest 5/15)
+- ✅ **Drawdown circuit breaker (#39, shadow ship 5/8)** — methodology-aware state machine replacing count-based breaker. Daily 4:12 PM ET cron snapshots Alpaca equity (includes unrealized — open winners lift), recomputes state with asymmetric hysteresis (-5% trip / -2.5% release). State-aware threshold check eliminates flap-spam; stale-data fail-open prevents silent cron-failure lockout. Promotion gated on ≥14d post-live-cutover
+- ✅ **Stable-anchor pivot for flag detector (#37, 5/8)** — pivot only walks forward when current lookback's max_high beats prior pivot by ≥1%. Fixes marginal-walk-forward where slow higher-highs in tight increments kept `base_age` stuck at zero. Replay-verified on XNDU/VECO/OKLO calibration cases
+- ✅ **5/7 paper-session triage (5/8)** — five additive fixes: parabolic earnings-day exclusion + `days_up_streak ≥ 3` hard gate (AGL/XMTR class); EP earnings-day catalyst boost (DDOG/AAON class); EP cooldown bypass on fresh earnings (HIMX class); pm-shares floor relative-anomaly carveout (`pm_rvol ≥ 5×`); phantom split sanity check via post-apply ratio
+- ✅ **Setup SSoT discipline (5/7)** — `docs/setups/*.md` per-setup canonical files (magna53_ep, ninem, parabolic_short, flag_continuation, wick_fill, safeguards, convergence) + `CHANGE_PROCESS.md` discipline rules. Required reading before any setup change; all changes carry Trigger / Evidence / Anticipated effect / Reversion-flag / Status fields
+- ✅ **`/setup TICKER` reverse-lookup (5/1)** — fans out across ~10 detector tables in parallel; ticker timeline merged + sorted, top 60 capped, TradingView chart-link button. Answers "what did Apollo see in $XNDU?"
+- ✅ **Continuation flag detector (5/1, shadow)** — VCP / Qullamaggie tightening flag, daily 5:25 PM ET. Five-stage state machine, fresh-tightening predicate for short bases, M&A filter shared with EP via `ma_filter.py` SSoT
+- ✅ **Friday curated watchlist (4/30)** — Friday 6:00 PM ET aggregator combining EP/9M/themes/wick/parabolic/RS into one digest with TradingView import block + per-ticker chart-link buttons
+- ✅ **Splits ingest authoritative (5/1)** — Polygon `/v3/reference/splits` Phase 0 of nightly; replaces `MAX_PERIOD_RETURN=300` heuristic that misfired on recently-listed verticals. Phantom split sanity check via post-apply ratio (5/8)
+- ✅ **`compute_atr_14` Wilder TR (5/5)** — switched from close-only approximation to full Wilder TR (`max(H-L, |H-prev_close|, |L-prev_close|)`). Volatile/gappy stocks (STRL/EVER) no longer reject as `setup:stop_too_wide`
+- ✅ **Stop-leg ID capture SSoT (5/3)** — `alpaca_client.extract_stop_leg_id` is canonical helper; `_handle_fill` checks WS event legs + DB + REST refetch before remediation. Deferred-commit pattern for partial/full exits — DB writes happen on real fill, not order placement
+- ✅ **Self-audit L1/L2/L3 (5/3+)** — daily 4:15 PM (post-EOD) + 5:30 PM (post-nightly) anomaly scans against `mi_metric_baselines` 30d trailing. Cold-start tiers, Sonnet hypothesis on L2, Sunday weekly drift roll-up. On-demand `/audit <topic>`
+- ✅ **Hedge-phrase catalyst downgrade (5/3, Track B Layer 2)** — when Perplexity returns hedge phrases, downgrade catalyst one notch and skip agreement boost. Closes RDDT-class miss where chained-LLM grades hollow input as confident
+- ✅ **Three-layer M&A filter SSoT (5/4, `ma_filter.py`)** — catalyst classifier verdict → `_MNA_KEYWORDS` text scan → Polygon news headline backstop. Shared by EP + flag detectors; no per-detector reinvention. AVNS take-private surfaced the gap
+- ✅ **Limit-buffer SSoT (5/4)** — 7 hand-rolled `* 1.001` sites collapsed to one helper `stop_limit_buy_price(stop) = round(max(stop * 1.005, stop + 0.02), 2)`. Penny tickers ($5.49) no longer get 1¢-effective-buffer that doesn't cross
+- ✅ **9M Day 2 cron parallelization (5/4)** — `asyncio.gather(*..., return_exceptions=True)` + `Semaphore(5)`. SOUN's 60s bar-retry no longer queues TEAM behind it
+- ✅ **Apollo time handling discipline (4/29 → 5/8)** — every datetime/time comparison in this codebase is in America/New_York (ET). Container runs UTC; naive `datetime.now()` returns UTC clock with no tzinfo and silently breaks every ET-keyed comparison. `datetime.now(_ET)` everywhere, never `datetime.now()` / `datetime.utcnow()` / `date.today()`
 
 ### Recently completed (April 2026)
 - ✅ **P22 — Wick-Fill shadow tracker (telemetry-only)** — 9M days closing mid-range with green body (Kristjan/Bonde "negated shooting star"). Three-way EOD branching off shared 9M CTE: `≥ 0.75` → sugar baby, `[0.50, 0.75)` → wick, `< 0.50` → ignored. Same gates as sugar babies (incl. net-up ≥ 3% via shared `is_green_close` predicate); only range-position differs. Forward-returns measured from two anchors (prior_high conditional on fill, prior_close unconditional baseline) — gap between them is the edge. `/wick` command, evening-brief Wick Watch line, weekly review drift-gap citation. POET 2026-04-21 verified via `scripts/backfill_wick_replay.py`. First strategy shipped through the Strategy Maturity Framework
