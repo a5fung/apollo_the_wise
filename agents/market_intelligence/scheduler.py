@@ -1886,22 +1886,37 @@ def start_scheduler() -> AsyncIOScheduler:
     # before exiting. Without this, Docker stop/restart kills `await` inside
     # audit_run mid-job → mi_job_runs row stuck at status='running' (the
     # stale-row reaper at startup catches these but it's hygiene; this is
-    # prevention). Trade-off: deploys block briefly on long-running jobs
-    # (curves refresh up to 60 min). Acceptable since deploys are rare.
+    # prevention).
+    #
+    # Registration order (advisor flag 2026-05-08): try asyncio loop's
+    # add_signal_handler first — composes with uvicorn's own signal
+    # handling instead of competing via signal.signal which uvicorn
+    # may overwrite. Falls back to signal.signal on Windows / no running
+    # loop. Stale-row reaper at startup is the backup if both fail.
     import signal
-    def _sigterm_handler(signum, frame):
-        logger.info(f"SIGTERM received — graceful shutdown (waiting for in-flight jobs)")
+    import asyncio as _asyncio
+
+    def _trigger_shutdown():
+        logger.info("SIGTERM received — graceful shutdown (waiting for in-flight jobs)")
         if _scheduler and _scheduler.running:
             _scheduler.shutdown(wait=True)
             logger.info("Scheduler shutdown complete")
+
     try:
-        signal.signal(signal.SIGTERM, _sigterm_handler)
-        logger.info("SIGTERM handler registered for graceful scheduler shutdown")
-    except (ValueError, OSError) as e:
-        # signal.signal only works in main thread; APScheduler may be on a
-        # worker. Log + continue — stale-row reaper still catches the killed
-        # rows on next startup.
-        logger.warning(f"Could not register SIGTERM handler: {e}")
+        loop = _asyncio.get_running_loop()
+        loop.add_signal_handler(signal.SIGTERM, _trigger_shutdown)
+        logger.info("SIGTERM handler registered via asyncio.add_signal_handler")
+    except (RuntimeError, NotImplementedError) as e:
+        # No running loop (e.g. called from sync context) or Windows.
+        # Fall back to signal.signal — works in main thread of main interpreter.
+        try:
+            signal.signal(signal.SIGTERM, lambda signum, frame: _trigger_shutdown())
+            logger.info(f"SIGTERM handler registered via signal.signal (loop unavailable: {e})")
+        except (ValueError, OSError) as e2:
+            logger.warning(
+                f"Could not register SIGTERM handler "
+                f"(asyncio: {e}; signal: {e2}). Stale-row reaper is the backup."
+            )
 
     return _scheduler
 

@@ -95,15 +95,20 @@ async def classify_orb_cancellation(
         # Price never reached trigger → order correctly didn't fire. Clean miss.
         classification = "clean_miss"
         trigger_first_t = None
-        min_low_after_trigger = None
+        min_trade_after_trigger = None
     else:
         trigger_first_t = bars_at_or_above_trigger[0][0]
-        # After the trigger fires, did any bar's LOW come back ≤ limit_price?
-        # If yes → would_have_filled (broker/simulator should have caught it).
-        # If no  → gap_through (price ran away, no return to limit).
+        # After the trigger fires, did any bar's LOW (= a trade print) come
+        # back ≤ limit_price? If yes → "would_have_filled" — but with a
+        # caveat: bar low is a TRADE PRINT, not a guarantee an ASK was
+        # offered at limit_price (a wide-spread name can print a low at
+        # limit while the offer side stayed higher). For coarse
+        # gap_through vs not-gap_through classification this is fine, but
+        # the audit-event field is named `min_trade_after_trigger` to
+        # avoid implying matching-engine guarantees.
         bars_after_trigger = [b for b in in_window if b[0] >= trigger_first_t]
-        min_low_after_trigger = min(l for _, _, l in bars_after_trigger)
-        if min_low_after_trigger <= limit_price:
+        min_trade_after_trigger = min(l for _, _, l in bars_after_trigger)
+        if min_trade_after_trigger <= limit_price:
             classification = "would_have_filled"
         else:
             classification = "gap_through"
@@ -120,7 +125,7 @@ async def classify_orb_cancellation(
             "trigger_price": trigger_price,
             "limit_price": limit_price,
             "max_high_in_window": max_h_in_window,
-            "min_low_after_trigger": min_low_after_trigger,
+            "min_trade_after_trigger": min_trade_after_trigger,
             "trigger_first_hit_et": trigger_first_t.strftime("%H:%M:%S") if trigger_first_t else None,
             "window_start_et": t0.strftime("%H:%M:%S"),
             "window_end_et": t1.strftime("%H:%M:%S"),
