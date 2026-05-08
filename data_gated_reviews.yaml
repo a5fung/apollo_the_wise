@@ -598,6 +598,57 @@ reviews:
     status: pending
     added_on: 2026-05-08
 
+  - review_id: theme_assignment_telemetry_review
+    title: "Theme assignment under-anchoring root cause (#46)"
+    question: |
+      User flagged 2026-05-09 that obvious matches (MU/SNDK/MRAM/SIMO →
+      AI Memory & Storage, MXL → optical theme) sit unanchored despite
+      top-30 RS. Telemetry shipped same day (commit 6647669): every
+      silent-skip path now emits an audit event, plus
+      `assignment_llm_proposed` captures Sonnet's full proposal list.
+      After the first 1-2 nightly runs with the new telemetry, the
+      smoking gun is in the audit log — diagnose and ship the
+      targeted fix.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type IN ('assignment_llm_proposed', 'assignment_silent_stop')
+        AND created_at > NOW() - INTERVAL '7 days'
+    threshold: 1
+    earliest_review_date: 2026-05-12
+    action_when_ready: |
+      1. Pull the most recent assignment_llm_proposed event:
+           SELECT detail FROM mi_audit_log
+           WHERE event_type='assignment_llm_proposed'
+           ORDER BY created_at DESC LIMIT 1;
+         Parse JSON for `proposals` and `candidate_tickers`.
+
+      2. Three diagnostic branches:
+         a) MU/MXL/MRAM/SIMO in candidate_tickers but NOT in proposals
+            → LLM under-proposal. Fix: tighten the assignment prompt to
+            elevate "obvious match" cases (sector + theme-keyword overlap
+            → strong inclusion signal, not just permission to include).
+         b) They ARE in proposals → check assignment_skipped_* events
+            for the filter that rejected them; tighten that gate.
+         c) Missing from candidate_tickers entirely → upstream filter
+            (top-40 RS, covered_tickers, revalidated_out, globally_banned).
+            Trace via `leaders` list at the call site.
+
+      3. Also check for `assignment_silent_stop` events — if any fired,
+         the LLM response text shows its reasoning for stopping without
+         proposing. Consider stronger prompt directive requiring tool
+         call after advisor consultation.
+
+      4. Check ticker_revalidated_out events Mon/Wed/Fri to see if Haiku
+         is stripping the 5/9 manual anchors (MU/SNDK/MRAM/SIMO/MXL).
+         If yes, separate Haiku validator bug to investigate.
+
+      5. Ship the targeted fix per branch (a/b/c). Manual override
+         /theme assign command (committed 9d50bf9) remains as the
+         operator recourse regardless.
+      Origin: 2026-05-09 user-flagged coverage gap. See task #46.
+    status: pending
+    added_on: 2026-05-09
+
   - review_id: drawdown_breaker_promotion
     title: "Drawdown circuit breaker — shadow → active flip (#39)"
     question: |
