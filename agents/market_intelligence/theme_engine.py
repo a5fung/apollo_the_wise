@@ -1392,7 +1392,30 @@ If none of these apply, call assign_stocks_to_themes directly."""
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
             if not tool_uses:
-                logger.warning("Theme assignment: model stopped without calling assign_stocks_to_themes")
+                # Silent-drop path — Sonnet returned text only after (often) an
+                # advisor consultation. Log the response text so we can see
+                # what reasoning the LLM offered for stopping. This was the
+                # 5/4 MXL case: advisor verdicted "add to optical" but Sonnet
+                # never called assign_stocks_to_themes.
+                text_blocks = [
+                    getattr(b, "text", "")[:500] for b in response.content
+                    if getattr(b, "type", "") == "text"
+                ]
+                stop_text = " | ".join(t for t in text_blocks if t)[:1500] or "(no text)"
+                logger.warning(
+                    f"Theme assignment: model stopped without calling assign_stocks_to_themes "
+                    f"(advisor_calls={advisor_calls}). Response: {stop_text[:300]}"
+                )
+                await log_audit_event(
+                    "assignment_silent_stop",
+                    summary=f"Sonnet stopped without proposing assignments after {advisor_calls} advisor call(s)",
+                    detail=json.dumps({
+                        "advisor_calls": advisor_calls,
+                        "response_text": stop_text,
+                        "candidate_pool_size": len(uncovered_stocks),
+                        "candidate_tickers": [s["ticker"] for s in uncovered_stocks][:20],
+                    }),
+                )
                 break
 
             assign_block = next((b for b in tool_uses if b.name == "assign_stocks_to_themes"), None)
@@ -1402,6 +1425,22 @@ If none of these apply, call assign_stocks_to_themes directly."""
                 else:
                     logger.info(f"Theme assignment: Sonnet used advisor {advisor_calls}x before assigning")
                 assignments = assign_block.input.get("assignments", [])
+                # Telemetry — log every proposal so we can compare LLM intent
+                # vs final state and diagnose silent-skip filters.
+                proposals = [
+                    {"ticker": a.get("ticker", ""), "theme": a.get("theme", "")}
+                    for a in assignments
+                ]
+                await log_audit_event(
+                    "assignment_llm_proposed",
+                    summary=f"Sonnet proposed {len(proposals)} assignment(s) (advisor_calls={advisor_calls})",
+                    detail=json.dumps({
+                        "advisor_calls": advisor_calls,
+                        "proposals": proposals,
+                        "candidate_pool_size": len(uncovered_stocks),
+                        "candidate_tickers": [s["ticker"] for s in uncovered_stocks][:30],
+                    }),
+                )
                 break
 
             # Handle advisor calls
@@ -1482,6 +1521,11 @@ If none of these apply, call assign_stocks_to_themes directly."""
         # Honor persistent exclusions — uses fuzzy match so renames don't bypass it
         if theme_exclusions and ticker in _get_excluded_tickers_for_theme(theme_name, theme_exclusions):
             logger.info(f"Assignment blocked: {ticker} is permanently excluded from '{theme_name}'")
+            await log_audit_event(
+                "assignment_skipped_exclusion",
+                f"{ticker} → '{theme_name}' blocked: persistent exclusion",
+                json.dumps({"ticker": ticker, "theme": theme_name}),
+            )
             continue
 
         # Sector outlier check: reject if stock's sector is outlier vs theme
@@ -1492,21 +1536,68 @@ If none of these apply, call assign_stocks_to_themes directly."""
         if stock_sector and stock_sector != "Unknown":
             if known_sectors and stock_sector not in known_sectors:
                 logger.info(f"Assignment skipped: {ticker} sector '{stock_sector}' is outlier in '{theme_name}'")
+                await log_audit_event(
+                    "assignment_skipped_sector_outlier",
+                    f"{ticker} ({stock_sector}) → '{theme_name}' (members: {sorted(set(known_sectors))})",
+                    json.dumps({
+                        "ticker": ticker, "theme": theme_name,
+                        "stock_sector": stock_sector,
+                        "theme_known_sectors": sorted(set(known_sectors)),
+                    }),
+                )
                 continue
             elif not known_sectors:
                 # Theme members all have unknown sectors (e.g. oil stocks outside top-300 RS).
                 # The normal sector gate is blind — fall back to keyword overlap between the
                 # stock's sector and the theme name+description. Zero overlap = obvious
                 # cross-sector hallucination (e.g. "Electronic Technology" → "Crude Oil E&P").
+                # KNOWN WEAKNESS (#46): broad sector labels like "Technology" rarely overlap
+                # with specific theme keywords ("Optical", "Memory", etc.) — false-positive
+                # rejections of valid Tech matches. Description-overlap fallback below is
+                # the better gate; this branch should be deprecated once #46 ships the fix.
                 sector_words = set(re.findall(r'\b\w{4,}\b', stock_sector.lower()))
                 theme_text = (theme_name + " " + (theme.get("description") or "")).lower()
                 theme_words = set(re.findall(r'\b\w{4,}\b', theme_text))
                 if sector_words and theme_words and not sector_words.intersection(theme_words):
-                    logger.info(
-                        f"Assignment skipped: {ticker} sector '{stock_sector}' has zero keyword "
-                        f"overlap with theme '{theme_name}' — likely cross-sector hallucination"
-                    )
-                    continue
+                    # Try description-overlap as a second-chance gate before rejecting.
+                    # If the stock's description shares ≥2 keywords with the theme
+                    # description, treat the sector-keyword check as a false rejection.
+                    stock_desc = (TICKER_DESC.get(ticker) or "").lower()
+                    theme_desc = (theme.get("description") or "").lower()
+                    desc_words = set(re.findall(r'\b\w{4,}\b', stock_desc))
+                    theme_desc_words = set(re.findall(r'\b\w{4,}\b', theme_desc))
+                    desc_overlap = desc_words & theme_desc_words
+                    if len(desc_overlap) >= 2:
+                        logger.info(
+                            f"Assignment retained: {ticker} sector '{stock_sector}' lacks theme-name "
+                            f"keyword overlap but description overlaps {sorted(desc_overlap)[:5]} — "
+                            f"sector-keyword check overridden by description-overlap rescue"
+                        )
+                        await log_audit_event(
+                            "assignment_sector_kw_overridden_by_desc",
+                            f"{ticker} → '{theme_name}' (desc rescue: {sorted(desc_overlap)[:5]})",
+                            json.dumps({
+                                "ticker": ticker, "theme": theme_name,
+                                "stock_sector": stock_sector,
+                                "desc_overlap_words": sorted(desc_overlap)[:10],
+                            }),
+                        )
+                    else:
+                        logger.info(
+                            f"Assignment skipped: {ticker} sector '{stock_sector}' has zero keyword "
+                            f"overlap with theme '{theme_name}' — likely cross-sector hallucination"
+                        )
+                        await log_audit_event(
+                            "assignment_skipped_sector_kw",
+                            f"{ticker} ({stock_sector}) → '{theme_name}' (zero kw overlap, no desc rescue)",
+                            json.dumps({
+                                "ticker": ticker, "theme": theme_name,
+                                "stock_sector": stock_sector,
+                                "theme_words_sample": sorted(theme_words)[:10],
+                                "desc_overlap_words": sorted(desc_overlap)[:10] if desc_words else [],
+                            }),
+                        )
+                        continue
         else:
             # Stock sector unknown — fall back to description keyword overlap as a sanity check.
             stock_desc = (TICKER_DESC.get(ticker) or "").lower()
@@ -1518,6 +1609,11 @@ If none of these apply, call assign_stocks_to_themes directly."""
                     logger.info(
                         f"Assignment skipped: {ticker} has Unknown sector and zero "
                         f"description overlap with '{theme_name}'"
+                    )
+                    await log_audit_event(
+                        "assignment_skipped_desc_overlap",
+                        f"{ticker} → '{theme_name}' (Unknown sector + zero desc overlap)",
+                        json.dumps({"ticker": ticker, "theme": theme_name}),
                     )
                     continue
 
