@@ -791,6 +791,57 @@ async def _recent_audit_event_types(conn, hours: int = 48, limit: int = 10) -> l
     return [f"{r['event_type']}({r['n']})" for r in rows]
 
 
+async def _today_skip_breakdown(conn) -> str:
+    """Today's mi_live_trades skip_reason category counts — context for the
+    Sonnet hypothesis call. Without this, hypotheses on entry-rate / skip
+    metrics fire blind and tend to over-correlate with whatever audit-event
+    type happens to be loud (e.g. 5/8 wrongly blamed split_apply_failed=190
+    for HIGH_ep_entry_rate=0 when the actual cause was 4 circuit_breaker +
+    5 out_of_orb skips). Returns "(none)" on quiet days.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT split_part(skip_reason, ':', 1) AS cat, COUNT(*) AS n
+        FROM mi_live_trades
+        WHERE alert_date = CURRENT_DATE
+          AND status = 'skipped'
+          AND skip_reason IS NOT NULL
+        GROUP BY 1 ORDER BY 2 DESC
+        """
+    )
+    if not rows:
+        return "(none)"
+    return ", ".join(f"{r['cat']}={r['n']}" for r in rows)
+
+
+async def _today_skip_top_reasons(conn, limit: int = 5) -> str:
+    """Top N skip_reason prefixes today, with up-to-3 sample tickers each.
+    Distinguishes block:max_positions vs block:circuit_breaker etc. — the
+    level the operator typically wants for triage."""
+    rows = await conn.fetch(
+        """
+        SELECT
+            split_part(skip_reason, ':', 1) || ':' || split_part(skip_reason, ':', 2) AS prefix,
+            COUNT(*) AS n,
+            (array_agg(ticker ORDER BY ticker))[1:3] AS sample_tickers
+        FROM mi_live_trades
+        WHERE alert_date = CURRENT_DATE
+          AND status = 'skipped'
+          AND skip_reason IS NOT NULL
+        GROUP BY 1
+        ORDER BY 2 DESC LIMIT $1
+        """,
+        limit,
+    )
+    if not rows:
+        return "(none)"
+    parts = []
+    for r in rows:
+        sample = ",".join(r["sample_tickers"] or [])
+        parts.append(f"{r['prefix']}={r['n']} [{sample}]")
+    return "; ".join(parts)
+
+
 # ── Sonnet hypothesis ────────────────────────────────────────────────────────
 
 
@@ -800,9 +851,18 @@ async def _synthesize_hypothesis(
     baseline: dict | None,
     recent_changes: list[str],
     recent_events: list[str],
+    skip_breakdown: str = "(none)",
+    skip_top: str = "(none)",
 ) -> str:
     """One Sonnet call per anomaly. Token-bounded; on 429 returns a fallback
     string so the alert still fires — never silently drops.
+
+    `skip_breakdown` / `skip_top` carry today's mi_live_trades skip_reason
+    aggregation. Trade-side metrics (entry rate, naked positions, infra
+    skip count) need this for causal reasoning — without it the LLM
+    correlates with whatever audit event happens to be loud (e.g. 5/8
+    blamed split_apply_failed for HIGH_ep_entry_rate=0 when the cause was
+    actually 4 circuit_breaker + 5 out_of_orb skips).
     """
     try:
         client = _get_anthropic_client()
@@ -816,12 +876,15 @@ async def _synthesize_hypothesis(
     prompt = (
         f"You are debugging a momentum-trading system. A metric has gone outside its "
         f"normal range. Give ONE short sentence (under 30 words) hypothesizing the most "
-        f"likely cause. Be specific. Reference recent changes if any look related.\n\n"
+        f"likely cause. Be specific. Prefer skip_reason buckets and recent code changes "
+        f"over generic audit-event correlation.\n\n"
         f"Metric: {metric_name}\n"
         f"Today's value: {current}\n"
         f"30d trimmed median: {base_p50}\n"
         f"30d MAD: {base_mad}\n"
         f"Sample size: {sample_n}\n\n"
+        f"Today's skip_reason categories: {skip_breakdown}\n"
+        f"Today's top skip prefixes (with sample tickers): {skip_top}\n"
         f"Recent system changes (CLAUDE.md): {', '.join(recent_changes) or '(none)'}\n"
         f"Recent audit event types (48h): {', '.join(recent_events) or '(none)'}\n"
     )
@@ -1181,6 +1244,8 @@ async def _scan_metrics(
     L1 is always 0 here — invariants own L1."""
     recent_changes = _recent_changes_context()
     recent_events = await _recent_audit_event_types(conn)
+    skip_breakdown = await _today_skip_breakdown(conn)
+    skip_top = await _today_skip_top_reasons(conn)
 
     l2_count = 0
     l3_count = 0
@@ -1202,6 +1267,8 @@ async def _scan_metrics(
                  "mad": anomaly.body.get("mad"),
                  "sample_n": anomaly.body.get("sample_n")},
                 recent_changes, recent_events,
+                skip_breakdown=skip_breakdown,
+                skip_top=skip_top,
             )
             await _emit_l2(metric, anomaly, hypothesis)
             l2_count += 1
