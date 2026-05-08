@@ -5,8 +5,9 @@ Combines two yfinance surfaces because each has gaps:
 - `Ticker.earnings_dates` — historical, but lags fresh announcements (DOCN 5/05 missing on scan day).
 - `Ticker.calendar` — forward-looking next event; caught DOCN 5/05 when earnings_dates didn't.
 
-A match counts if the announcement timestamp falls within ±1 calendar day of `scan_date`.
-That window covers the two gap-creating cases: AH/AMC report on T-1 → gap on T, BMO report on T → gap on T.
+A match counts ONLY if the announcement is on yesterday (AMC) or today (BMO) — the two gap-
+creating cases that would produce same-day price action. Tomorrow's earnings can't have
+caused today's gap; matching them was over-permissive (tightened 2026-05-08 per user req).
 
 Returns `(matched, source)` where source ∈ {"earnings_dates", "calendar", "no_match", "unavailable"}.
 The detector branches on source for audit telemetry: distinguishes "yfinance said no" from "yfinance was broken."
@@ -27,11 +28,16 @@ logger = logging.getLogger(__name__)
 _CACHE: dict[tuple[str, date], tuple[bool, str]] = {}
 _CACHE_DATE: Optional[date] = None
 
-_MATCH_WINDOW_DAYS = 1
-
 
 def _within_window(announce_dt, scan_date: date) -> bool:
-    """True if announce_dt's date is within ±1 day of scan_date."""
+    """True if announcement is yesterday (AMC) or today (BMO).
+
+    Tightened 2026-05-08 from ±1 day to {yesterday, today} only. Earnings on
+    `scan_date + 1` cannot have produced today's gap — matching them was
+    over-permissive and could surface false-positive boost candidates whose
+    catalyst is unrelated (sector sympathy, rumor, etc.) but happen to have
+    earnings expected later in the week.
+    """
     if announce_dt is None:
         return False
     if hasattr(announce_dt, "date"):
@@ -40,7 +46,8 @@ def _within_window(announce_dt, scan_date: date) -> bool:
         announce_d = announce_dt
     else:
         return False
-    return abs((announce_d - scan_date).days) <= _MATCH_WINDOW_DAYS
+    diff = (announce_d - scan_date).days
+    return diff in (-1, 0)  # yesterday or today; NOT tomorrow
 
 
 def _check_earnings_dates_sync(ticker: str, scan_date: date) -> bool:

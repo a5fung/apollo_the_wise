@@ -395,16 +395,19 @@ def compute_parabolic_metrics(
     base_record["score"] = burst_score
     base_record["is_earnings_today"] = is_earnings_today
 
-    # Climax-tier hard gates beyond burst score (AGL/XMTR 5/07 incident class:
+    # Climax-tier earnings-day exclusion (AGL/XMTR 5/07 incident class:
     # earnings-day gap from a flat base mistaken for parabolic continuation).
-    # Earnings gaps are catalyst events, not multi-day acceleration. days_up
-    # as a burst-component is too weak — gap+range+vol can pass 3/4 without
-    # any sustained sequence of up-days. Hard-gate it for climax only;
-    # anticipation tier still allows 3/4 burst.
-    climax_hard_gates_pass = (
-        days_up_streak >= _MIN_DAYS_UP_STREAK_FOR_CLIMAX
-        and not is_earnings_today
-    )
+    # Earnings gaps are catalyst events, not multi-day acceleration.
+    #
+    # NOTE 2026-05-08: original ship also had a `days_up_streak >= 3` HARD
+    # gate but 30d backtest showed 6 of 16 (38%) climaxes would be filtered,
+    # including VECO 5/6 — which was a correctly-anticipated Pradeep setup
+    # (3-week run + tight base + breakout 5/7). days_up is a structural
+    # signal but a single up-day before climax is the canonical Pradeep
+    # entry shape (consolidation → breakout). Reverted to 1-of-4 burst
+    # component status. is_earnings_today catches AGL/XMTR/AMD/INTC class
+    # cleanly without false-negative on VECO.
+    climax_hard_gates_pass = not is_earnings_today
 
     if (
         burst_score >= _MIN_ANTICIPATION_SCORE
