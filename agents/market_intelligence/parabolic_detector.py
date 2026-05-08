@@ -87,6 +87,13 @@ _GAPPED_TODAY_PCT      = 0.02        # today's open > yesterday's close × 1.02
 # ── Anticipation promotion: burst items 1-4, need ≥ this many ────────────────
 _MIN_ANTICIPATION_SCORE = 3          # 3 of 4 burst items
 
+# ── Climax hard gate: days_up_streak (NOT just a burst component) ────────────
+# AGL/XMTR 5/07 incident: both gapped on earnings from tight 3-week bases.
+# burst checklist passed 3/4 via gap+range+vol, but days_up=2 (AGL) / 3 (XMTR).
+# A real parabolic short setup requires the move into climax day was already
+# vertical — multiple consecutive up-days, not a single fresh-news gap.
+_MIN_DAYS_UP_STREAK_FOR_CLIMAX = 3
+
 # ── Lookback windows ─────────────────────────────────────────────────────────
 _BASE_LOOKBACK_DAYS    = 60
 _SMA20_DAYS            = 20
@@ -191,6 +198,7 @@ def _compute_velocity_delta(
 def compute_parabolic_metrics(
     rows: list[dict],
     market_cap: Optional[int] = None,
+    is_earnings_today: Optional[bool] = None,
 ) -> dict[str, Any]:
     """Score the LAST row in `rows` as a parabolic-short candidate.
 
@@ -385,8 +393,25 @@ def compute_parabolic_metrics(
         vol_expansion_count_3d >= _MIN_VOL_EXP_3D,
     ])
     base_record["score"] = burst_score
+    base_record["is_earnings_today"] = is_earnings_today
 
-    if burst_score >= _MIN_ANTICIPATION_SCORE and gapped_today and climax_volume_flag:
+    # Climax-tier hard gates beyond burst score (AGL/XMTR 5/07 incident class:
+    # earnings-day gap from a flat base mistaken for parabolic continuation).
+    # Earnings gaps are catalyst events, not multi-day acceleration. days_up
+    # as a burst-component is too weak — gap+range+vol can pass 3/4 without
+    # any sustained sequence of up-days. Hard-gate it for climax only;
+    # anticipation tier still allows 3/4 burst.
+    climax_hard_gates_pass = (
+        days_up_streak >= _MIN_DAYS_UP_STREAK_FOR_CLIMAX
+        and not is_earnings_today
+    )
+
+    if (
+        burst_score >= _MIN_ANTICIPATION_SCORE
+        and gapped_today
+        and climax_volume_flag
+        and climax_hard_gates_pass
+    ):
         base_record["stage"] = "climax"
     elif burst_score >= _MIN_ANTICIPATION_SCORE:
         base_record["stage"] = "anticipation"
@@ -636,6 +661,10 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
     logger.info(f"parabolic_scan {trade_date}: scoring {len(universe)} candidates")
     sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
 
+    # Earnings-day exclusion: AGL/XMTR 5/07 class. yfinance is_earnings_day
+    # already cached per-ticker per-day inside earnings_calendar.py.
+    from agents.market_intelligence.earnings_calendar import is_earnings_day
+
     async def _score(ticker: str) -> Optional[dict]:
         async with sem:
             try:
@@ -643,7 +672,16 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
                 if not history or len(history) < 60:
                     return None
                 cap = await _get_or_fetch_market_cap(ticker)
-                metrics = compute_parabolic_metrics(history, market_cap=cap)
+                # is_earnings_day returns (bool, source); fail-soft on any
+                # yfinance error → treat as False (don't suppress climax on
+                # data outage, which would be the wrong direction).
+                try:
+                    earnings_today, _src = await is_earnings_day(ticker, trade_date)
+                except Exception:
+                    earnings_today = False
+                metrics = compute_parabolic_metrics(
+                    history, market_cap=cap, is_earnings_today=earnings_today,
+                )
                 metrics["ticker"] = ticker
                 await db.insert_parabolic_candidate(metrics)
                 return metrics

@@ -743,19 +743,52 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 continue
 
-        # Hard filter: absolute pre-market volume (filters micro-float noise)
+        # Hard filter: absolute pre-market volume (filters micro-float noise),
+        # UNLESS pm_rvol confirms relative anomaly (AAON 5/07 class: low-float
+        # name with pm_rvol 32-60× normal still tripped 25K absolute floor).
+        # The relative gate is the better signal; the absolute floor is just
+        # a backup for names with no pm_rvol baseline.
         if c["today_volume"] < MIN_PREMARKET_SHARES:
-            reason = f"pre-mkt volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares"
-            logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
-            _log_filtered(c, reason)
-            continue
+            pm_rvol_cur = c.get("pm_rvol")
+            if pm_rvol_cur is not None and pm_rvol_cur >= 5.0:
+                # Relative anomaly clearly anomalous — don't reject on absolute count.
+                pass  # fall through to next gate
+            else:
+                reason = f"pre-mkt volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares"
+                logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+                _log_filtered(c, reason)
+                continue
 
-        # Hard filter: EP cooldown — don't re-alert same ticker within 60 days
+        # Hard filter: EP cooldown — don't re-alert same ticker within 60 days,
+        # UNLESS a fresh earnings catalyst is firing (HIMX 5/07 incident class:
+        # ticker on cooldown from prior alert, but fresh earnings + qualifying
+        # gap is structurally a new event — earnings are quarterly, the prior
+        # alert was a different catalyst). Bypass requires both gap >= 15%
+        # AND is_earnings_day to avoid bypassing on routine post-news bumps.
         if ticker in cooldown_tickers:
-            reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
-            logger.info(f"Skip {ticker}: {reason}")
-            _log_filtered(c, reason)
-            continue
+            cooldown_bypass = False
+            if c["gap_pct"] >= 15.0:
+                try:
+                    earnings_match_cd, _ = await is_earnings_day(ticker, today)
+                except Exception:
+                    earnings_match_cd = False
+                if earnings_match_cd:
+                    cooldown_bypass = True
+                    await log_audit_event(
+                        "ep_cooldown_bypassed_earnings",
+                        f"{ticker}: cooldown bypassed — fresh earnings + gap {c['gap_pct']:.1f}%",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "gap_pct": c["gap_pct"],
+                            "cooldown_days": EP_COOLDOWN_DAYS,
+                        }),
+                    )
+            if not cooldown_bypass:
+                reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason)
+                continue
 
         # Skip if already scored in an earlier scan run today
         if ticker in already_today:
@@ -919,6 +952,40 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             # Store in cache for subsequent scans today
             _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
+
+        # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
+        # Existing earnings-day override (below) only fires for MODERATE→HIGH
+        # promotion (score ≥ 50). DDOG/AAON scored 30 because catalyst='routine'
+        # mathematically caps score below 50 regardless of gap/volume. The
+        # classifier (Claude + Perplexity) returned 'routine' because the news
+        # scrape was hedged/hollow. is_earnings_day is structurally independent
+        # evidence — when yfinance confirms today is the earnings date, the
+        # catalyst IS the earnings event regardless of LLM grade. Upgrade
+        # routine→strong (or no-op if already strong/game_changer) so the
+        # score can clear the 50 threshold.
+        try:
+            earnings_today_match, earnings_src = await is_earnings_day(ticker, today)
+        except Exception:
+            earnings_today_match, earnings_src = False, None
+        if earnings_today_match and catalyst_quality in ("routine", None):
+            original_quality = catalyst_quality
+            catalyst_quality = "strong"
+            await log_audit_event(
+                "catalyst_earnings_boost",
+                f"{ticker}: {original_quality} → strong (earnings_day, source={earnings_src})",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": today.isoformat(),
+                    "from_quality": original_quality,
+                    "to_quality": "strong",
+                    "earnings_source": earnings_src,
+                    "gap_pct": c["gap_pct"],
+                }),
+            )
+            # Also update cache so subsequent scan ticks see the boosted grade.
+            _catalyst_cache[ticker] = (
+                catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+            )
 
         # Compute prior 3-month change %
         prior_3m_change = None

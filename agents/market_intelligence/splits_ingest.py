@@ -95,19 +95,77 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     Returns (ticker, success, n_bars_written)."""
     ticker = split_row["ticker"]
     exec_date = split_row["execution_date"]
+    split_from = int(split_row["split_from"])
+    split_to = int(split_row["split_to"])
     async with _SEM:
         bars = await fetch_ticker_history(ticker)
         if not bars:
             await log_audit_event(
                 "split_apply_failed",
-                f"{ticker} {exec_date} {split_row['split_from']}:{split_row['split_to']} — empty Polygon response",
+                f"{ticker} {exec_date} {split_from}:{split_to} — empty Polygon response",
             )
             return (ticker, False, 0)
+
+        # Phantom-split sanity check (AGL 3/31 25:1 incident class). Polygon
+        # sometimes reports a split that didn't actually execute. The adjusted
+        # feed then returns un-adjusted history (since no adjustment is needed),
+        # but Apollo records adjustment_applied=TRUE — leaving downstream
+        # detectors (parabolic, RS) reading wrong-units pre-execution data.
+        # Verify by comparing the adjusted close on the day BEFORE execution
+        # against the expected pre/post ratio. For a real split:
+        #   close_before / close_after ≈ split_to / split_from
+        # (e.g. 25:1 reverse: pre-split adjusted close is ~25× the next-day
+        # post-split close in Polygon's adjusted units.)
+        from datetime import datetime, timezone
+        bars_by_date = {
+            datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date(): b
+            for b in bars
+            if "t" in b and "c" in b
+        }
+        # Find the trading day on/before exec_date - 1 (the last pre-split bar).
+        prev_date = exec_date - timedelta(days=1)
+        for _ in range(7):  # walk back through weekend/holidays
+            if prev_date in bars_by_date:
+                break
+            prev_date -= timedelta(days=1)
+        # And the first bar on/after exec_date.
+        post_date = exec_date
+        for _ in range(7):
+            if post_date in bars_by_date:
+                break
+            post_date += timedelta(days=1)
+
+        if prev_date in bars_by_date and post_date in bars_by_date:
+            close_pre = float(bars_by_date[prev_date]["c"])
+            close_post = float(bars_by_date[post_date]["c"])
+            if close_post > 0 and split_from > 0:
+                expected_ratio = split_from / split_to  # >1 for reverse, <1 for forward
+                actual_ratio = close_pre / close_post
+                # Tolerance: 30% — splits adjust prices but real overnight
+                # moves can compound. Wider than typical price moves but tight
+                # enough to catch a no-op (ratio ≈ 1.0 instead of 25.0 for AGL).
+                tol = 0.30
+                ratio_ok = (
+                    expected_ratio * (1 - tol) <= actual_ratio <= expected_ratio * (1 + tol)
+                )
+                if not ratio_ok:
+                    await log_audit_event(
+                        "split_phantom_detected",
+                        f"{ticker} {exec_date} {split_from}:{split_to} — "
+                        f"expected ratio {expected_ratio:.2f}, actual "
+                        f"close_pre/close_post = {close_pre:.2f}/{close_post:.2f} "
+                        f"= {actual_ratio:.2f}. Skipping apply; mark phantom.",
+                    )
+                    # Don't write any bars; mark applied so we don't retry every
+                    # nightly run. Operator can manually reset if Polygon corrects.
+                    await mark_split_applied(ticker, exec_date)
+                    return (ticker, False, 0)
+
         n_written = await upsert_ticker_history(ticker, bars)
         await mark_split_applied(ticker, exec_date)
         await log_audit_event(
             "split_applied",
-            f"{ticker} {exec_date} {split_row['split_from']}:{split_row['split_to']} — {n_written} bars overwritten",
+            f"{ticker} {exec_date} {split_from}:{split_to} — {n_written} bars overwritten",
         )
         return (ticker, True, n_written)
 
