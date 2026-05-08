@@ -222,13 +222,22 @@ async def _handle_partial_fill(data) -> None:
     })
     await log_audit_event("entry_partial_fill", summary, detail)
 
-    # Route sell-side partial fills on tagged exit legs (purpose='stop_loss' /
-    # 'partial_exit' / 'full_exit') to their finalizers. ARM 5/07 incident:
-    # stop-loss leg sold 87/89 sh @$219.50 as a partial_fill event; the
-    # remaining 2 sh never filled (odd-lot). Without this, the partial fill
-    # was visibility-only and the trade row stayed in inconsistent state.
-    # Entry-side partials remain visibility-only per Wave 3 P0.2 advisor scope.
-    if "sell" in side and trade_id:
+    # Route sell-side partial fills on tagged exit legs to their finalizers,
+    # but ONLY when cumulative qty has reached total qty (i.e., the order is
+    # terminal — the broker just reported it through partial_fill events
+    # instead of a final `fill` event). ARM 5/07 incident: stop sold 87/89
+    # @$219.50 then odd-lot leftover never filled; cum_filled=total_qty=87
+    # at terminal would have routed correctly.
+    #
+    # General-case multi-print partials (cum_filled < total_qty) STAY
+    # visibility-only per Wave 3 P0.2 advisor scope: the finalizer's
+    # idempotency check is keyed on order_id, so committing on the first
+    # partial would no-op subsequent partials and drop their shares' P&L
+    # silently. Wait for the terminal event before committing state.
+    is_terminal_partial = (
+        "sell" in side and trade_id and total_qty > 0 and cum_filled >= total_qty
+    )
+    if is_terminal_partial:
         async with pool.acquire() as conn:
             exit_order = await conn.fetchrow("""
                 UPDATE mi_live_orders SET
