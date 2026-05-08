@@ -40,6 +40,11 @@ def format_trade_attempts(entries_raw, exits_raw, prefix: str = "  ") -> list[st
     Returns:
       - One 'ORB entry=... stop=...' line (same price every attempt)
       - One timestamp line per attempt: '#1 09:31 → 10:00 (stop_hit) P&L $-635'
+
+    Used by paper trades (mi_paper_trades) which have an `entries` JSONB
+    column. For live trades (mi_live_trades), use `format_trade_attempts_live`
+    instead — that path reconstructs the timeline from `entry_attempt` int
+    + `exits` JSONB since `mi_live_trades` doesn't have an `entries` column.
     """
     entries = parse_json_list(entries_raw)
     exits = parse_json_list(exits_raw)
@@ -67,6 +72,69 @@ def format_trade_attempts(entries_raw, exits_raw, prefix: str = "  ") -> list[st
         ex_pnl = ex.get("pnl", 0)
         att_label = f"#{att} " if num_att > 1 else ""
         lines.append(f"{prefix}{att_label}{in_str} → {out_str} ({reason}) P&L ${ex_pnl:+.0f}")
+
+    return lines
+
+
+def format_trade_attempts_live(trade: dict, prefix: str = "  ") -> list[str]:
+    """
+    Live-mode equivalent of format_trade_attempts. mi_live_trades has no
+    `entries` JSONB; the per-attempt timeline reconstructs from:
+      - trade['entry_attempt'] (int) — total entry attempts within this row
+      - trade['exits'] (JSONB) — per-leg exits with `attempt`, `time`,
+        `reason`, `price`, `shares`, `pnl` keys
+
+    Each exit in exits[] is one closed leg (stop, partial_profit, full_exit
+    reason, etc.). A single attempt may have multiple exits (e.g. attempt 2
+    had partial_profit at 09:32 + stop_hit at 09:51).
+
+    Header line uses trade-level columns (entry_price, stop_price,
+    entry_shares — overwritten on re-entry, so reflect the LATEST attempt).
+
+    Returns same shape as format_trade_attempts: header line + per-leg lines.
+    Empty list if there's nothing to show (e.g. cancelled before fill).
+    """
+    exits = parse_json_list(trade.get("exits"))
+    entry_attempt = trade.get("entry_attempt") or 0
+    entry_price = trade.get("entry_price")
+    stop_price = trade.get("stop_price")
+    entry_shares = trade.get("entry_shares")
+
+    # No fills on this trade — nothing to render.
+    if not exits and not entry_price:
+        return []
+
+    lines: list[str] = []
+    if entry_price and stop_price:
+        sh_str = f" ×{int(entry_shares):d}" if entry_shares else ""
+        att_str = f" (attempt {entry_attempt})" if entry_attempt and entry_attempt > 1 else ""
+        lines.append(
+            f"{prefix}ORB entry=${entry_price:.2f} stop=${stop_price:.2f}{sh_str}{att_str}"
+        )
+
+    if not exits:
+        # Filled but no exits yet — open position.
+        if entry_price:
+            lines.append(f"{prefix}↗ open")
+        return lines
+
+    # Render exits in chronological order. Exits already carry attempt /
+    # time / reason / pnl / shares / price, so each line is self-contained.
+    # Multiple exits per attempt (partial then stop) display as separate lines.
+    multi_attempt = entry_attempt and entry_attempt > 1
+    for ex in exits:
+        att = ex.get("attempt", "?")
+        out_t = ex.get("time", "")
+        out_str = out_t[11:16] if isinstance(out_t, str) and len(out_t) >= 16 else "?"
+        reason = ex.get("reason", "?")
+        ex_pnl = ex.get("pnl", 0) or 0
+        ex_shares = ex.get("shares", 0) or 0
+        ex_price = ex.get("price", 0) or 0
+        att_label = f"#{att} " if multi_attempt else ""
+        sh_label = f" {int(ex_shares):d}sh @${ex_price:.2f}" if ex_shares and ex_price else ""
+        lines.append(
+            f"{prefix}{att_label}{out_str} ({reason}){sh_label} P&L ${ex_pnl:+.0f}"
+        )
 
     return lines
 

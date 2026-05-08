@@ -2579,12 +2579,16 @@ class MarketIntelligenceAgent(BaseAgent):
         entries_col = "entries" if not LIVE_TRADING_ENABLED else "NULL::jsonb AS entries"
         attempt_col = "entry_attempt" if LIVE_TRADING_ENABLED else "NULL::int AS entry_attempt"
         async with pool.acquire() as conn:
+            # entry_shares pulled for live-mode timeline rendering (paper has
+            # the column too via entries[0].shares, but living off the
+            # mi_paper_trades column directly is simpler if it exists).
+            shares_col = "entry_shares" if LIVE_TRADING_ENABLED else "NULL::float AS entry_shares"
             rows = await conn.fetch(f"""
                 SELECT ticker, alert_date, ep_score, gap_pct, catalyst_quality, regime,
                        status, skip_reason,
                        {entry_col} AS entry_price, orb_high, orb_low, stop_price,
                        total_pnl, hold_days,
-                       exits, {entries_col}, {attempt_col}
+                       exits, {entries_col}, {attempt_col}, {shares_col}
                 FROM {table}
                 WHERE {where}
                 ORDER BY alert_date DESC
@@ -2620,7 +2624,10 @@ class MarketIntelligenceAgent(BaseAgent):
         if not rows and ticker:
             return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
 
-        from agents.market_intelligence.backtester.tracker import parse_json_list, format_trade_attempts, _attempt_count
+        from agents.market_intelligence.backtester.tracker import (
+            parse_json_list, format_trade_attempts, format_trade_attempts_live,
+            _attempt_count,
+        )
 
         lines = [f"*{label}*\n"]
 
@@ -2645,7 +2652,13 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append(f"  Filtered: {humanize(r['skip_reason']) or 'unknown'}")
                 continue
 
-            lines += format_trade_attempts(r.get("entries"), r.get("exits"), prefix="  ")
+            # Live trades: rebuild timeline from entry_attempt + exits[]
+            # (mi_live_trades has no `entries` JSONB). Paper trades: use
+            # the legacy entries-based formatter against mi_paper_trades.
+            if LIVE_TRADING_ENABLED:
+                lines += format_trade_attempts_live(dict(r), prefix="  ")
+            else:
+                lines += format_trade_attempts(r.get("entries"), r.get("exits"), prefix="  ")
 
             # Summary
             if not is_open:

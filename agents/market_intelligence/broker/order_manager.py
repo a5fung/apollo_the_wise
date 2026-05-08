@@ -1302,11 +1302,17 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # orb_high included for gap-through telemetry (task #22) — trigger
+        # price reference. pm_rvol joined from mi_ep_alerts for stratification
+        # (LEFT JOIN; null-safe if alert isn't in mi_ep_alerts e.g. 9M Day 2).
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id, alert_date, proposed_at,
-                   entry_price, stop_price, entry_shares
-            FROM mi_live_trades
-            WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
+            SELECT t.id, t.ticker, t.entry_order_id, t.alert_date, t.proposed_at,
+                   t.entry_price, t.stop_price, t.entry_shares, t.orb_high,
+                   a.pm_rvol
+            FROM mi_live_trades t
+            LEFT JOIN mi_ep_alerts a
+              ON a.ticker = t.ticker AND a.alert_date = t.alert_date
+            WHERE t.status = 'order_placed' AND t.entry_order_id IS NOT NULL
         """)
 
     cancelled = 0
@@ -1317,6 +1323,9 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     if event_type == "orb_unfilled_cancelled":
         from agents.market_intelligence.broker.orb_extension_shadow import (
             record_shadow_for_cancellation,
+        )
+        from agents.market_intelligence.broker.gap_through_telemetry import (
+            classify_orb_cancellation,
         )
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
@@ -1375,6 +1384,7 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
                 and trade["entry_shares"]
                 and trade["proposed_at"] is not None
             ):
+                cancellation_time = datetime.now(_ET)
                 asyncio.create_task(record_shadow_for_cancellation(
                     trade_id=int(trade["id"]),
                     ticker=trade["ticker"],
@@ -1383,8 +1393,25 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
                     limit_price=float(trade["entry_price"]),
                     stop_price=float(trade["stop_price"]),
                     shares=int(trade["entry_shares"]),
-                    cancelled_at=datetime.now(_ET),
+                    cancelled_at=cancellation_time,
                 ))
+                # Gap-through telemetry (task #22): classify why the limit
+                # didn't fill — clean_miss vs gap_through vs would_have_filled.
+                # Trigger price = orb_high (per submit_entry, the buy-stop trigger
+                # is set slightly below orb_high but orb_high is the reference);
+                # limit_price = entry_price (set via stop_limit_buy_price helper).
+                # Fire-and-forget; bar fetch failure logs and continues.
+                if trade.get("orb_high") and trade.get("entry_price"):
+                    asyncio.create_task(classify_orb_cancellation(
+                        trade_id=int(trade["id"]),
+                        ticker=trade["ticker"],
+                        alert_date=trade["alert_date"],
+                        proposed_at=trade["proposed_at"],
+                        trigger_price=float(trade["orb_high"]),
+                        limit_price=float(trade["entry_price"]),
+                        cancelled_at=cancellation_time,
+                        pm_rvol=trade.get("pm_rvol"),
+                    ))
         else:
             failed_tickers.append(trade["ticker"])
             logger.warning(f"{reason} cancel failed: {trade['ticker']} order_id={trade['entry_order_id']}")
