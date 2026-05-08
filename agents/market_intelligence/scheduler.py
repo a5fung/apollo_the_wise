@@ -756,6 +756,38 @@ async def _eod_cleanup_job():
         await notify_job_failure("eod_cleanup", str(e))
 
 
+async def _account_equity_snapshot_job():
+    """Run at 4:12 PM ET. Snapshot Alpaca account.equity to mi_account_equity_snapshots
+    and recompute the drawdown breaker state machine (#39).
+
+    Sequenced after eod_cleanup (16:05) which syncs positions — by 16:12 equity
+    reflects settled MTM. State transitions emit one audit event each
+    (drawdown_breaker_tripped / drawdown_breaker_released). Active phase reads
+    the persisted state via cheap PK lookup in _check_safeguards.
+
+    Failure-safe: snapshot failures emit drawdown_check_unavailable audit event;
+    state recompute is skipped (don't transition without fresh data). Stale-data
+    fail-open guard inside compute_drawdown_state covers the case where this
+    job has been failing silently for >48h.
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.drawdown_breaker import (
+            snapshot_account_equity, recompute_drawdown_state,
+        )
+        from agents.market_intelligence.constants import current_account_mode
+        mode = current_account_mode()
+        snap = await snapshot_account_equity()
+        if snap:
+            await recompute_drawdown_state(mode)
+        # else: snapshot_account_equity already audit-logged drawdown_check_unavailable
+    except Exception as e:
+        logger.error(f"Account equity snapshot/recompute failed: {e}")
+        await notify_job_failure("account_equity_snapshot", str(e))
+
+
 async def _evening_position_backstop_job():
     """Run at 9:00 PM ET. Backstop sync_positions catching late EXPIRED events
     or earlier remediation failures — market closed, no other jobs running, so
@@ -1833,6 +1865,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_eod_ep_recap_job, "eod_ep_recap"),
         CronTrigger(hour=16, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
         id="eod_ep_recap",
+        replace_existing=True,
+    )
+
+    # Account equity snapshot + drawdown breaker recompute: 4:12 PM ET — runs
+    # after eod_cleanup (16:05) and recap (16:10) so equity reflects settled
+    # MTM. Single source for daily peak tracking + drawdown state machine (#39).
+    _scheduler.add_job(
+        audit_wrap(_account_equity_snapshot_job, "account_equity_snapshot"),
+        CronTrigger(hour=16, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
+        id="account_equity_snapshot",
         replace_existing=True,
     )
 

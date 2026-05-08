@@ -14,6 +14,7 @@
 | [flag_continuation.md](flag_continuation.md) | Continuation Flag (VCP / Qullamaggie tightening) | Shadow | 2026-05-08 | 0 |
 | [wick_fill.md](wick_fill.md) | Wick-Fill / Negated Shooting Star (Kristjan/Bonde) | Telemetry | 2026-04-28 | 0 |
 | [convergence.md](convergence.md) | Base + Anticipated Catalyst (Wave D #8) | Spike memo only | 2026-05-08 | 7 (in spike memo) |
+| [safeguards.md](safeguards.md) | Portfolio safeguards (drawdown breaker #6 in shadow) | Shadow → Active (target ≥14d post-live-cutover) | 2026-05-08 | 3 |
 
 ## Discipline
 

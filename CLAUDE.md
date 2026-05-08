@@ -14,7 +14,7 @@ git push origin main
 
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
-**Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups):
+**Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):
 
 1. **Read the setup's SSoT file** at `docs/setups/<setup>.md` — entire file, not just change log. Confirms current criteria, recent changes, and known limitations.
 2. **Read `docs/setups/CHANGE_PROCESS.md`** — discipline rules including required change-log fields, reversion-flag, evidence requirements.
@@ -237,6 +237,27 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 ---
 
 ## Changes Made — Recent
+
+### 2026-05-08 (session 4) — Drawdown circuit breaker shadow ship (#39)
+Replaces the count-based circuit breaker with a methodology-aware drawdown-from-peak state machine. **Currently SHADOW phase** — daily 16:12 ET cron emits transition audit events; `_check_safeguards()` does not block on it. Promotes to active after ≥14d post-live-cutover telemetry by env-var flip (`DRAWDOWN_BREAKER_PHASE=active`). Plan: `~/.claude/plans/let-s-go-into-plan-glittery-graham.md`. SSoT: `docs/setups/safeguards.md`.
+
+**Two structural flaws of count-based** (documented at length in `constants.py:37-43`): self-perpetuating (cooldown anchored to `latest_loss_at + 24h`, advances on each new loss closing in cooldown — only an open winner can break it); methodology-blind (Pradeep/Qullamaggie holds winners for days/weeks but stops losers in minutes/hours, so the trailing-N closed-trade window structurally over-weights losers and the breaker's default state is to fire).
+
+**Architecture**: state-machine evaluated once daily, NOT per-call. Two new tables:
+- `mi_account_equity_snapshots` (daily Alpaca equity per account_mode; generically reusable for analytics, /status, allocator track-record dim)
+- `mi_safeguard_state` (1 row per (safeguard, mode) with state + drawdown metadata)
+
+Daily 16:12 ET cron `account_equity_snapshot_job` runs `snapshot_account_equity` then `recompute_drawdown_state(mode)`. State transitions emit `drawdown_breaker_tripped` / `drawdown_breaker_released` audit events (single event per transition; no flood). `_check_safeguards()` in active phase does a cheap PK lookup on `mi_safeguard_state` — zero per-call compute.
+
+**Hysteresis is state-aware** (advisor refinement): when state='OK' only the trip threshold (-5%) is checked; when state='TRIPPED' only the release threshold (-2.5%). Eliminates the `-5.1% → -4.9% → -5.1%` flap-and-spam scenario a stateless comparator would produce.
+
+**Stale-data fail-open** (advisor refinement): if most recent snapshot is older than 48h, `sufficient_history=False` and the breaker is effectively disabled until data freshens. Protects against silent cron failures locking the system on a week-old peak. Active-phase reads see `state='OK'` because `recompute_drawdown_state` won't transition without fresh data.
+
+**Promotion gate**: ≥14 days of post-live-cutover shadow telemetry, validated via SQL queries documented in `safeguards.md`. Acceptance: trip rate ≤ 1× per quarter, no `drawdown_check_unavailable` clusters, ≥1 release observed (proves recovery path works). Flip is a single env var change.
+
+**Day-1 baseline seed**: `docker exec apollo-market python -m scripts.seed_drawdown_breaker` (idempotent; runs once after deploy then 16:12 cron takes over).
+
+**Lesson**: a safeguard for a momentum strategy must be methodology-aware. "Trailing-N closed losses" was a trivially-implemented but conceptually wrong metric — the strategy's success mechanism (hold winners) created the breaker's failure mode (closed-trade window biased toward losses). The drawdown-from-peak shape uses Alpaca's mark-to-market equity which already accounts for unrealized gains — open winners lift equity, prevent false trips. Same architectural pattern as the 2026-05-04 single-source-of-truth lessons (one primitive, multiple integration points): one equity source, one peak window, one state machine.
 
 ### 2026-05-08 (session 3) — Circuit breaker threshold 5→10 (interim stand-in for drawdown-based fix)
 User flagged that today's morning ORB window was blocked by the circuit breaker. Investigation surfaced TWO structural issues with the current count-based implementation that the bump alone doesn't solve, but the bump is a 5-min unblock while the proper drawdown-based replacement gets built (task #39).

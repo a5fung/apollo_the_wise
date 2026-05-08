@@ -43,6 +43,22 @@ CIRCUIT_BREAKER_CONSEC_LOSSES = 10   # Pause after N consecutive losses (EP win 
                                      # (task #39). This threshold-bump is the interim stand-in.
 CIRCUIT_BREAKER_COOLDOWN_DAYS = 1    # Block resumes after this window past last loss
 
+# ── Drawdown-based circuit breaker (#39) ──────────────────────────────────────
+# Replaces count-based breaker on flip day. Methodology-aware: trips on equity
+# drawdown from recent peak (Alpaca account.equity includes unrealized — open
+# winners' MTM lifts equity, prevents false trips). State-machine evaluated
+# once daily at 16:10 ET, persisted in mi_safeguard_state. _check_safeguards()
+# reads cached state via cheap PK lookup. SSoT: docs/setups/safeguards.md.
+DRAWDOWN_PEAK_WINDOW_DAYS  = 30      # Rolling N-day peak window
+DRAWDOWN_TRIP_PCT          = -0.05   # Trip when drawdown ≤ -5% (from peak)
+DRAWDOWN_RELEASE_PCT       = -0.025  # Release at ≥ -2.5% (asymmetric → no flap)
+MIN_SNAPSHOT_HISTORY_DAYS  = 7       # Active-phase fail-safe; don't trip on sparse history.
+                                     # Shadow always evaluates and emits regardless (calibration).
+DRAWDOWN_BREAKER_PHASE = os.environ.get("DRAWDOWN_BREAKER_PHASE", "shadow").lower()
+                                     # 'shadow' | 'active' — env-driven flip.
+                                     # Shadow: daily cron emits transition events; _check_safeguards no-op.
+                                     # Active: _check_safeguards reads state, blocks on TRIPPED.
+
 REGIME_EMOJI = {
     "Bull": "🟢",
     "Choppy": "🟡",

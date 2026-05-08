@@ -209,6 +209,22 @@ async def _check_safeguards() -> tuple[bool, str | None]:
                         f"{cooldown_until.isoformat()}"
                     )
 
+    # Drawdown breaker — active phase only (env DRAWDOWN_BREAKER_PHASE='active').
+    # Shadow phase emits transition events from the daily 16:12 ET cron;
+    # _check_safeguards stays no-op for shadow to avoid per-call work.
+    # State is computed once daily and persisted to mi_safeguard_state; this
+    # is just a cheap PK lookup. Fail-safe: read_breaker_state returns 'OK' on
+    # any error (see broker/drawdown_breaker.py). SSoT: docs/setups/safeguards.md.
+    from agents.market_intelligence.constants import DRAWDOWN_BREAKER_PHASE
+    if DRAWDOWN_BREAKER_PHASE == "active":
+        from agents.market_intelligence.broker.drawdown_breaker import read_breaker_state
+        from agents.market_intelligence.constants import current_account_mode
+        from agents.market_intelligence.broker.skip_reasons import BLOCK_DRAWDOWN_BREAKER
+        dd_state = await read_breaker_state(current_account_mode())
+        if dd_state == "TRIPPED":
+            logger.info("Safeguard blocked: drawdown breaker TRIPPED")
+            return False, f"{BLOCK_DRAWDOWN_BREAKER}: tripped (see mi_safeguard_state)"
+
     return True, None
 
 

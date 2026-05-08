@@ -644,6 +644,42 @@ async def initialize_schema() -> None:
                 ON mi_orb_shadow_trades(status);
             CREATE INDEX IF NOT EXISTS idx_shadow_alert_date
                 ON mi_orb_shadow_trades(alert_date);
+
+            -- Daily account-equity history (per account_mode) for the
+            -- drawdown-based circuit breaker (#39, shadow shipped 2026-05-08).
+            -- Generically reusable for analytics, /status enrichment, and
+            -- future cross-strategy ranking allocator track-record dim —
+            -- do NOT couple readers exclusively to drawdown-breaker semantics.
+            CREATE TABLE IF NOT EXISTS mi_account_equity_snapshots (
+                id              SERIAL PRIMARY KEY,
+                snapshot_date   DATE NOT NULL,
+                account_mode    TEXT NOT NULL,
+                equity          NUMERIC NOT NULL,
+                cash            NUMERIC,
+                portfolio_value NUMERIC,
+                source          TEXT NOT NULL DEFAULT 'eod',
+                created_at      TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (snapshot_date, account_mode)
+            );
+            CREATE INDEX IF NOT EXISTS idx_equity_snap_mode_date
+                ON mi_account_equity_snapshots(account_mode, snapshot_date DESC);
+
+            -- Safeguard state machine (1 row per (safeguard, account_mode)).
+            -- Currently used by drawdown_breaker; extensible to other future
+            -- safeguards. Read by _check_safeguards via PK lookup; written
+            -- only by the daily 16:10 cron's recompute_drawdown_state.
+            CREATE TABLE IF NOT EXISTS mi_safeguard_state (
+                safeguard           TEXT NOT NULL,
+                account_mode        TEXT NOT NULL,
+                state               TEXT NOT NULL,
+                last_transition_at  TIMESTAMPTZ,
+                last_evaluation_at  TIMESTAMPTZ,
+                last_drawdown_pct   NUMERIC,
+                last_peak           NUMERIC,
+                last_peak_date      DATE,
+                updated_at          TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (safeguard, account_mode)
+            );
         """)
 
         # Migrations — add columns to existing tables
