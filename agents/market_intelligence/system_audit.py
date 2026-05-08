@@ -74,11 +74,11 @@ _COLD_START_CEILINGS: dict[str, tuple[float, str]] = {
     "skip_count_setup":               (20,   "high"),
     "skip_count_block":               (5,    "high"),
     "skip_count_window":              (10,   "high"),
-    # HIGH_ep_entry_rate: scanner-crash class — a drop to 0 on a day with
-    # detected HIGHs means the entry pipeline broke. Fires when 0 detected
-    # is also a degenerate case but `_today_high_entry_rate` returns 0.0
-    # there too; that's why the regime-conditional + sample-driven path
-    # carries the real load. The cold-start floor is just a safety net.
+    # HIGH_ep_entry_rate: scanner-crash class — entered / actionable_detected
+    # for HIGH-tier alerts. Denominator excludes as-designed blocks (safeguards,
+    # timing, filters) so the rate stays high (0.8-1.0) under normal operation
+    # and only drops when pipeline genuinely fails. Floor of 0.5 means "fewer
+    # than half of actionable HIGHs reached broker = pipeline issue."
     "HIGH_ep_entry_rate":             (0.5,  "low"),   # < 0.5 entry rate = warning
     "theme_count_active":             (5,    "low"),   # < 5 themes = dedup death
     "validation_rate_limited_count":  (3,    "high"),
@@ -167,20 +167,46 @@ async def _today_skip_count(conn, *, category: str) -> float:
 
 
 async def _today_high_entry_rate(conn) -> float | None:
-    """entered / detected for HIGH-tier alerts today. URI class blind spot.
+    """For HIGHs the entry pipeline could actually act on, what fraction
+    reached the broker?
 
-    Returns None on quiet days (detected < _MIN_DETECTED_FOR_GATE) — a single
-    skipped HIGH on a 1–3 detection day collapses the rate to 0.0 or 0.33 and
-    trips the cold-start floor structurally. None tells _compute_anomaly to
-    skip both the sample record and the anomaly check.
+    Denominator (`actionable`) excludes HIGHs blocked BEFORE pipeline entry
+    by as-designed safeguards / filters / timing — those aren't pipeline
+    failures. Without this exclusion (rewritten 2026-05-09), the metric fired
+    L2 daily because most days have HIGHs blocked by max_positions, circuit
+    breaker, or out_of_orb timing — entirely expected operational state.
+    Numerator counts HIGHs that placed an order (status != 'skipped'); a
+    cancelled-unfilled is pipeline success, just the price never triggered.
+
+    Returns None when actionable < _MIN_DETECTED_FOR_GATE — quiet days lack
+    the resolution to distinguish noise from breakage.
+
+    Skip-reason classification (mirrors broker/skip_reasons.py):
+      As-designed (excluded from denominator):
+        - block:*        — safeguards (max_positions, circuit_breaker, etc.)
+        - window:*       — timing (out_of_orb, duplicate)
+        - filter:*       — pre-trade quality (ADV/ATR/mcap/RVOL)
+        - setup:faded_from_orb / stop_too_wide / price_exceeds_cap /
+          size_too_small — pre-entry quality gates
+      Pipeline-failure (counted in actionable, NOT entered):
+        - infra:*        — bar/subscribe/order-submit failures
+        - setup:zero_range / account_fetch_failed — Alpaca/data outage
     """
     row = await conn.fetchrow(
         """
         SELECT
-          COUNT(*) FILTER (WHERE a.score_tier='HIGH') AS detected,
           COUNT(*) FILTER (
             WHERE a.score_tier='HIGH'
-              AND lt.status IN ('filled','closed','order_placed','pending_confirmation')
+              AND (
+                lt.id IS NULL                 -- still in flight, no live_trades row yet
+                OR lt.status != 'skipped'     -- entered pipeline (filled/cancelled/order_placed/etc.)
+                OR lt.skip_reason ~ '^(infra:|setup:zero_range|setup:account_fetch_failed)'
+              )
+          ) AS actionable,
+          COUNT(*) FILTER (
+            WHERE a.score_tier='HIGH'
+              AND lt.id IS NOT NULL
+              AND lt.status != 'skipped'
           ) AS entered
         FROM mi_ep_alerts a
         LEFT JOIN mi_live_trades lt
@@ -188,11 +214,11 @@ async def _today_high_entry_rate(conn) -> float | None:
         WHERE a.alert_date = CURRENT_DATE
         """
     )
-    detected = int(row["detected"] or 0)
+    actionable = int(row["actionable"] or 0)
     entered = int(row["entered"] or 0)
-    if detected < _MIN_DETECTED_FOR_GATE:
+    if actionable < _MIN_DETECTED_FOR_GATE:
         return None
-    return entered / detected
+    return entered / actionable
 
 
 async def _today_active_themes(conn) -> float:
@@ -324,10 +350,22 @@ _TRADE_METRICS: list[MetricSpec] = [
     ),
     MetricSpec(
         "HIGH_ep_entry_rate", _today_high_entry_rate,
-        "SELECT a.ticker, a.score_tier, lt.status, lt.skip_reason FROM mi_ep_alerts a "
+        # Drill-down splits today's HIGHs by skip-reason category. Pipeline-failure
+        # buckets (infra:* / setup:zero_range / setup:account_fetch_failed) are the
+        # ones that should trigger investigation. As-designed buckets
+        # (block:* / window:* / filter:*) explain why rate may look low without
+        # the pipeline being broken — denominator already excludes them.
+        "SELECT COALESCE(split_part(lt.skip_reason, ':', 1), "
+        "  CASE WHEN lt.id IS NULL THEN 'no_row' "
+        "       WHEN lt.status != 'skipped' THEN 'entered' "
+        "       ELSE 'unknown' END) AS bucket, "
+        "COUNT(*) AS n, array_agg(a.ticker ORDER BY a.ep_score DESC) AS tickers "
+        "FROM mi_ep_alerts a "
         "LEFT JOIN mi_live_trades lt ON lt.ticker=a.ticker AND lt.alert_date=a.alert_date "
-        "WHERE a.alert_date=CURRENT_DATE AND a.score_tier='HIGH';",
-        ["agents/market_intelligence/broker/live_tracker.py::process_new_alerts_live"],
+        "WHERE a.alert_date=CURRENT_DATE AND a.score_tier='HIGH' "
+        "GROUP BY 1 ORDER BY 2 DESC;",
+        ["agents/market_intelligence/broker/live_tracker.py::process_new_alerts_live",
+         "agents/market_intelligence/broker/entry_pipeline.py::submit_trade_entry"],
     ),
     MetricSpec(
         "9m_alerts_per_day", _today_9m_alerts,
