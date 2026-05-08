@@ -1286,7 +1286,16 @@ async def _9m_scan_job() -> None:
 
 
 async def _9m_day2_orb_job() -> None:
-    """Run at 9:31 AM ET. Place Day 2 ORB entries for yesterday's confirmed 9M sugar babies."""
+    """Run at 9:31 AM ET. Place Day 2 ORB entries for yesterday's confirmed 9M sugar babies.
+
+    MAGNA53-priority reserve (Path C, 2026-05-08): MAGNA53 HIGH EPs and 9M
+    Day 2 entries fire from independent crons at 9:31 ET and race for the
+    same MAX_CONCURRENT_LIVE_POSITIONS slots. Without coordination, 9M Day 2
+    typically wins on cron-fire-order regardless of relative quality. This
+    hack reserves slots for today's HIGH MAGNA53 EPs by reading
+    mi_ep_alerts BEFORE submitting sugar babies. Stripped-down stand-in
+    until cross-strategy ranking Phase 1 (#31, locked spec) ships.
+    """
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
@@ -1296,10 +1305,100 @@ async def _9m_day2_orb_job() -> None:
         return
     try:
         from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
-        from agents.market_intelligence.db import get_pending_9m_sugar_babies
+        from agents.market_intelligence.db import get_pending_9m_sugar_babies, get_pool
         from agents.market_intelligence.collector import prev_trading_days
+        from agents.market_intelligence.constants import MAX_CONCURRENT_LIVE_POSITIONS
         yesterday = prev_trading_days(1, from_date=today)[0]
         candidates = await get_pending_9m_sugar_babies(yesterday)
+        if not candidates:
+            return
+
+        # Slot budget: count currently-active/pending positions + reserve
+        # for today's HIGH MAGNA53 EPs that haven't been submitted yet.
+        # 9M Day 2 takes only the leftover slots, top-N sorted by quality.
+        pool_ = await get_pool()
+        async with pool_.acquire() as conn:
+            active_count = await conn.fetchval("""
+                SELECT COUNT(*) FROM mi_live_trades
+                WHERE (status = 'filled' AND remaining_shares > 0)
+                   OR status = 'order_placed'
+            """)
+            high_ep_pending = await conn.fetchval("""
+                SELECT COUNT(*) FROM mi_ep_alerts a
+                WHERE a.alert_date = $1 AND a.score_tier = 'HIGH'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM mi_live_trades t
+                      WHERE t.ticker = a.ticker
+                        AND t.alert_date = a.alert_date
+                        AND t.signal_type = 'magna53'
+                  )
+            """, today)
+        active_count = active_count or 0
+        high_ep_pending = high_ep_pending or 0
+        budget = MAX_CONCURRENT_LIVE_POSITIONS - active_count - high_ep_pending
+
+        if budget <= 0:
+            from agents.market_intelligence.db import log_audit_event
+            skipped_tickers = ", ".join(c["ticker"] for c in candidates[:5])
+            if len(candidates) > 5:
+                skipped_tickers += f" + {len(candidates) - 5} more"
+            await log_audit_event(
+                "9m_day2_all_skipped_high_ep_reserve",
+                f"All {len(candidates)} 9M Day 2 candidates skipped — slots reserved "
+                f"({active_count} active, {high_ep_pending} HIGH EPs pending)",
+                json.dumps({
+                    "active_count": active_count,
+                    "high_ep_pending": high_ep_pending,
+                    "max_positions": MAX_CONCURRENT_LIVE_POSITIONS,
+                    "skipped_count": len(candidates),
+                    "skipped_tickers": [c["ticker"] for c in candidates],
+                }),
+            )
+            await send_telegram_message(
+                f"{mode_prefix()}🎯 *9M Day 2 reserved-for-HIGH-EPs*\n"
+                f"Slots: {active_count} active + {high_ep_pending} HIGH EPs pending = "
+                f"{active_count + high_ep_pending}/{MAX_CONCURRENT_LIVE_POSITIONS}.\n"
+                f"Skipped {len(candidates)} sugar baby candidate(s): {skipped_tickers}"
+            )
+            return
+
+        # Sort by quality, take top-{budget}. cirp (close-in-range-pct) DESC
+        # is the canonical 9M Day 2 quality metric — higher cirp = stronger
+        # close = better setup. Tie-break by volume.
+        candidates_sorted = sorted(
+            candidates,
+            key=lambda c: (
+                -(c.get("close_in_range_pct") or 0),
+                -(c.get("volume") or 0),
+            ),
+        )
+        to_process = candidates_sorted[:budget]
+        to_skip = candidates_sorted[budget:]
+
+        if to_skip:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "9m_day2_partial_skipped_high_ep_reserve",
+                f"Took top-{budget} of {len(candidates)} sugar babies; "
+                f"skipped {len(to_skip)} for HIGH EP reserve "
+                f"({active_count} active + {high_ep_pending} HIGH pending)",
+                json.dumps({
+                    "active_count": active_count,
+                    "high_ep_pending": high_ep_pending,
+                    "budget": budget,
+                    "processed": [c["ticker"] for c in to_process],
+                    "skipped": [c["ticker"] for c in to_skip],
+                }),
+            )
+            await send_telegram_message(
+                f"{mode_prefix()}🎯 *9M Day 2 partial reserve*\n"
+                f"Took top-{budget} (by close-in-range): "
+                f"{', '.join(c['ticker'] for c in to_process)}\n"
+                f"Skipped {len(to_skip)} for HIGH EP reserve: "
+                f"{', '.join(c['ticker'] for c in to_skip)}"
+            )
+
+        candidates = to_process
         # Parallel fan-out (mirrors MAGNA53 pattern in live_tracker.py). Sequential
         # for-loop here was the TEAM 5/04 root cause: SOUN's 60s bar-retry blocked
         # all subsequent candidates. Semaphore(5) caps concurrent submits; each
