@@ -241,6 +241,24 @@ async def submit_entry(trade_id: int) -> dict | None:
             json.dumps(order),
         )
 
+        # OTO bracket child stop-loss leg — tag with purpose='stop_loss' so
+        # WS fill handler can route reliably even when stop_order_id on
+        # mi_live_trades goes stale (TEAM 5/06 + ARM 5/07 incident class).
+        if stop_order_id:
+            await conn.execute("""
+                INSERT INTO mi_live_orders
+                    (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                     stop_price, status, raw_response, purpose, exit_reason)
+                VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, 'new', $6::jsonb,
+                        'stop_loss', 'stop_hit')
+                ON CONFLICT (alpaca_order_id) DO NOTHING
+            """,
+                trade_id, stop_order_id, ticker,
+                float(trade["entry_shares"]),
+                float(trade["orb_low"]),
+                json.dumps({"parent_entry_order": entry_order_id}),
+            )
+
     logger.info(f"Entry order submitted: {ticker} order_id={entry_order_id}")
     return order
 
@@ -669,8 +687,9 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         await conn.execute("""
             INSERT INTO mi_live_orders
                 (trade_id, alpaca_order_id, ticker, side, order_type, qty,
-                 stop_price, status, raw_response)
-            VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+                 stop_price, status, raw_response, purpose, exit_reason)
+            VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                    'stop_loss', 'stop_hit')
             ON CONFLICT (alpaca_order_id) DO NOTHING
         """,
             trade_id, new_stop_id, ticker,
@@ -805,8 +824,9 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 await conn.execute("""
                     INSERT INTO mi_live_orders
                         (trade_id, alpaca_order_id, ticker, side, order_type, qty,
-                         stop_price, status, raw_response)
-                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+                         stop_price, status, raw_response, purpose, exit_reason)
+                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                            'stop_loss', 'stop_hit')
                     ON CONFLICT (alpaca_order_id) DO NOTHING
                 """, trade_id, new_stop_id, ticker, float(new_remaining),
                     float(stop_price), new_stop_order["status"], json.dumps(new_stop_order))
@@ -909,8 +929,9 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 await conn.execute("""
                     INSERT INTO mi_live_orders
                         (trade_id, alpaca_order_id, ticker, side, order_type, qty,
-                         stop_price, status, raw_response)
-                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb)
+                         stop_price, status, raw_response, purpose, exit_reason)
+                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                            'stop_loss', 'stop_hit')
                     ON CONFLICT (alpaca_order_id) DO NOTHING
                 """, trade_id, rollback["id"], ticker, float(full_remaining),
                     float(stop_price), rollback.get("status", "new"), json.dumps(rollback))
@@ -1193,6 +1214,81 @@ async def finalize_full_exit(
     )
 
 
+async def finalize_stop_fill(
+    trade_id: int,
+    filled_qty: int,
+    filled_price: float,
+    order_id: str,
+) -> None:
+    """Commit a stop-loss fill on actual fill (called from WS handler).
+
+    Mirrors finalize_full_exit but with reason='stop_hit'. Routed via
+    mi_live_orders.purpose='stop_loss' instead of mi_live_trades.stop_order_id
+    matching, which can go stale (TEAM 5/06 BE-stop, ARM 5/07 entry-stop classes).
+
+    Idempotent: no-ops if the same order_id is already in exits[].
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow(
+            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
+        )
+    if not trade:
+        logger.warning(f"finalize_stop_fill: trade {trade_id} not found")
+        return
+
+    ticker = trade["ticker"]
+    exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+
+    if any(e.get("order_id") == order_id for e in exits):
+        logger.info(f"finalize_stop_fill: {ticker} order {order_id[:8]} already committed")
+        return
+
+    pnl = (filled_price - trade["entry_price"]) * filled_qty if trade["entry_price"] else 0
+    attempt = trade.get("entry_attempt", 1)
+
+    exits.append({
+        "time": datetime.utcnow().isoformat(),
+        "price": filled_price,
+        "reason": "stop_hit",
+        "shares": filled_qty,
+        "pnl": pnl,
+        "attempt": attempt,
+        "order_id": order_id,
+        "source": "websocket",
+    })
+    total_pnl = sum(e.get("pnl", 0) for e in exits)
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                status = 'closed',
+                exits = $2::jsonb,
+                remaining_shares = 0,
+                total_pnl = $3,
+                stop_order_id = NULL,
+                closed_at = NOW()
+            WHERE id = $1
+        """, trade_id, json.dumps(exits), total_pnl)
+
+    await log_audit_event(
+        "stop_exit_committed",
+        f"{ticker}: stopped out {filled_qty} @${filled_price:.2f}, "
+        f"pnl ${pnl:+,.2f}, total ${total_pnl:+,.2f}",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "shares": int(filled_qty), "fill_price": float(filled_price),
+            "pnl": float(pnl), "total_pnl": float(total_pnl),
+            "attempt": attempt, "order_id": order_id,
+        }),
+    )
+
+    await send_telegram_message(
+        f"{mode_prefix()}❌ *Stopped out:* {ticker} @${filled_price:.2f}\n"
+        f"P&L: ${pnl:+,.2f} | shares: {filled_qty}"
+    )
+
+
 # ── EOD Cleanup ──────────────────────────────────────────────────────────────
 
 
@@ -1225,7 +1321,36 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     for trade in pending:
         success = await alpaca.cancel_order(trade["entry_order_id"])
         if success:
-            await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
+            # If this trade has prior fills (Day-1 re-entry pattern: prior
+            # attempt stopped out, re-entry never filled), don't overwrite the
+            # whole trade as 'cancelled' — that masks the prior loss/profit.
+            # Mark as 'closed' instead and preserve exits[]. ARM 5/07 incident:
+            # entry filled $224, stop fired $219.50 (-$391.50), Day-1 re-entry
+            # attempt unfilled at 10:00, cleanup wrongly marked trade
+            # 'cancelled' with empty exits[].
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT exits, total_pnl FROM mi_live_trades WHERE id = $1",
+                    trade["id"],
+                )
+            exits_raw = row["exits"] if row else None
+            exits_list = (
+                exits_raw if isinstance(exits_raw, list)
+                else (json.loads(exits_raw) if exits_raw else [])
+            )
+            if exits_list:
+                # Has prior history → preserve it; trade is closed not cancelled.
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        UPDATE mi_live_trades SET
+                            status = 'closed',
+                            closed_at = COALESCE(closed_at, NOW()),
+                            skip_reason = NULL,
+                            entry_order_id = NULL
+                        WHERE id = $1
+                    """, trade["id"])
+            else:
+                await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
             cancelled += 1
             cancelled_tickers.append(trade["ticker"])
             logger.info(f"{reason} cancel: {trade['ticker']} order_id={trade['entry_order_id']}")

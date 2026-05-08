@@ -224,6 +224,34 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-08 — Stop-fill state desync (ARM 5/07 + TEAM 5/06 class) — purpose-tagged routing + cleanup fix
+ARM 5/07 incident: entry filled $224, stop-loss leg fired and partial-filled 87/89 sh @$219.50 (-$391.50), but `mi_live_trades` row 107 ended the day `status='cancelled'` with `exits=[]` and `total_pnl=$0` — the loss was silently dropped. Broker confirms zero ARM position; Apollo's books were lying. **User flagged as live-$ blocker.** Same bug class as TEAM 5/06 BE-stop missing exits.
+
+**Three stacked failures:**
+1. **WS partial_fill on stop-loss leg was visibility-only.** Wave 3 P0.2 telemetry handler logged the `entry_partial_fill` audit event but didn't mutate state. ARM stop sold 87/89 (odd-lot leftover never filled), so no terminal `fill` event ever came → `_handle_fill` never ran → exits never appended.
+2. **WS `_handle_fill` step 2 routes by `mi_live_trades.stop_order_id` matching `status='filled'`.** Brittle when `stop_order_id` goes stale (TEAM 5/06: smaller-qty replacement stop placed without DB update propagating in time). Step 3 only routes `purpose='partial_exit'`/`'full_exit'` from `mi_live_orders` — stop legs had `purpose=NULL` → silent else branch.
+3. **10:00 ET ORB cleanup overwrote the whole trade as cancelled** when the Day-1 re-entry attempt didn't fill. Cleanup queried `status='order_placed'`, didn't check whether the trade had prior fills/exits, marked status='cancelled' with empty exits[].
+
+**Fix — purpose-tagged routing + cleanup preservation** (`broker/order_manager.py` + `broker/trade_stream.py`):
+
+- New `finalize_stop_fill(trade_id, qty, price, order_id)` mirrors `finalize_full_exit` with `reason='stop_hit'`. Idempotent. Emits `stop_exit_committed` audit event.
+- WS `_handle_fill` step 3: added `elif purpose == 'stop_loss'` branch routing to `finalize_stop_fill`. Step 2 (legacy `stop_order_id` match) still runs first for backwards compat with un-tagged historical stops.
+- WS `_handle_partial_fill`: extended beyond visibility-only for sell-side legs. Claims `mi_live_orders` by order_id, routes on purpose to the matching finalizer (stop_loss / partial_exit / full_exit). Cumulative qty drives the commit. Entry-side partials remain visibility-only per Wave 3 P0.2 advisor scope.
+- **Tagged all stop placements** with `purpose='stop_loss', exit_reason='stop_hit'` in `mi_live_orders`:
+  - `submit_entry`: NEW — OTO bracket child stop leg now also gets a `mi_live_orders` row (was missing entirely).
+  - `update_stop`: existing INSERT now tags purpose.
+  - `execute_partial_exit` replacement-stop INSERT: tags purpose.
+  - `execute_partial_exit` rollback-stop INSERT: tags purpose.
+- **`cancel_unfilled_entries` cleanup preserves fill history**: before marking a trade `cancelled`, checks whether `exits` JSONB has any entries. If yes → status='closed' (preserve prior outcome); if no → 'cancelled' as before. Closes the ARM-class overwrite path.
+
+**One-time backfill (prod SQL)**:
+- ARM #107 patched: `status='closed'`, `total_pnl=-$391.50`, exits[] gets the missing stop_hit row.
+- 3 currently-open trades (GOOGL, SMCI, FTRE) had their stop legs tagged with `purpose='stop_loss'` so the new fix applies retroactively. SMCI/FTRE had no `mi_live_orders` row at all (the OTO bracket stop-leg INSERT didn't exist before this PR).
+
+**Lesson**: state-mutation paths in trading code must be **routable by intent**, not by identity. `stop_order_id` matching couples the routing to a single mutable column; if any path forgets to update or any race overwrites it, the routing silently fails. `purpose` tagging at placement time is durable — the order's intent doesn't change after submission. Same architectural pattern as the 2026-05-05 deferred-commit fix (`partial_exit`/`full_exit` purpose). Generalizing to `stop_loss` was the missing third leg.
+
+**Filed followup**: trade_stream.py:367 (entry-fill stop remediation) and 600-611 (partial-exit cancel/reject restore stop) place stops without inserting `mi_live_orders` rows. Edge cases — bracket-leg-missing remediation should be rare per OTO validation, and partial-exit cancel-reject is only triggered on broker-side rejection. File for next session if either fires.
+
 ### 2026-05-07 (session 4) — `/pregame` + `/ep` show latest data with date tag (post-midnight pre-scan window)
 User reported: at 12:30 AM ET on a weekday, `/pregame` returned no EPs because today (the new ET day) had no scan data yet. Existing `last_trading_day()` rolls Saturday/Sunday → Friday but doesn't catch the **post-midnight pre-scan window on weekdays** — today IS a trading day per the calendar, but the 7 AM EP scan hasn't run yet. Same shape applies to weekends and holidays — three states, one fix.
 

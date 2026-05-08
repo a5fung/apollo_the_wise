@@ -222,6 +222,43 @@ async def _handle_partial_fill(data) -> None:
     })
     await log_audit_event("entry_partial_fill", summary, detail)
 
+    # Route sell-side partial fills on tagged exit legs (purpose='stop_loss' /
+    # 'partial_exit' / 'full_exit') to their finalizers. ARM 5/07 incident:
+    # stop-loss leg sold 87/89 sh @$219.50 as a partial_fill event; the
+    # remaining 2 sh never filled (odd-lot). Without this, the partial fill
+    # was visibility-only and the trade row stayed in inconsistent state.
+    # Entry-side partials remain visibility-only per Wave 3 P0.2 advisor scope.
+    if "sell" in side and trade_id:
+        async with pool.acquire() as conn:
+            exit_order = await conn.fetchrow("""
+                UPDATE mi_live_orders SET
+                    status = 'partially_filled',
+                    filled_qty = $2, filled_avg_price = $3
+                WHERE alpaca_order_id = $1
+                  AND purpose IS NOT NULL
+                  AND status NOT IN ('filled', 'cancelled')
+                RETURNING trade_id, purpose, exit_reason, qty
+            """, order_id, cum_filled, avg_price)
+        if exit_order:
+            purpose = exit_order["purpose"]
+            if purpose == "stop_loss":
+                from agents.market_intelligence.broker.order_manager import finalize_stop_fill
+                await finalize_stop_fill(
+                    exit_order["trade_id"], int(cum_filled), avg_price, order_id,
+                )
+            elif purpose == "partial_exit":
+                from agents.market_intelligence.broker.order_manager import finalize_partial_exit
+                await finalize_partial_exit(
+                    exit_order["trade_id"], int(cum_filled), avg_price, order_id,
+                )
+            elif purpose == "full_exit":
+                from agents.market_intelligence.broker.order_manager import finalize_full_exit
+                await finalize_full_exit(
+                    exit_order["trade_id"], int(cum_filled), avg_price, order_id,
+                    exit_order["exit_reason"] or "exit",
+                )
+            return  # finalizer already sent its own Telegram
+
     await send_telegram_message(
         f"{mode_prefix()}📊 *Partial fill: {symbol}*\n"
         f"This event: {event_qty:g} sh | Cumulative: {cum_filled:g}/{total_qty:g}\n"
@@ -293,6 +330,15 @@ async def _handle_fill(data) -> None:
             await finalize_full_exit(
                 exit_order["trade_id"], int(filled_qty), filled_price, order_id,
                 exit_order["exit_reason"] or "exit",
+            )
+        elif purpose == "stop_loss":
+            # Stop-loss leg fill — primary routing path now (replaces step 2's
+            # stop_order_id-match which can go stale, ref. TEAM 5/06 BE-stop +
+            # ARM 5/07 entry-stop classes). Step 2 still runs first for
+            # backwards compat with un-tagged historical stops.
+            from agents.market_intelligence.broker.order_manager import finalize_stop_fill
+            await finalize_stop_fill(
+                exit_order["trade_id"], int(filled_qty), filled_price, order_id,
             )
         else:
             # NULL purpose = legacy mi_live_orders row submitted before this fix
