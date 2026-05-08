@@ -955,9 +955,12 @@ async def initialize_schema() -> None:
                 climax_volume_flag          BOOLEAN,
                 score                       INT,
                 stage                       TEXT NOT NULL,
+                is_earnings_today           BOOLEAN,
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
+            ALTER TABLE mi_parabolic_candidates
+                ADD COLUMN IF NOT EXISTS is_earnings_today BOOLEAN;
             CREATE INDEX IF NOT EXISTS idx_parabolic_candidates_date
                 ON mi_parabolic_candidates(scan_date);
             CREATE INDEX IF NOT EXISTS idx_parabolic_candidates_stage
@@ -2209,9 +2212,9 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
                  ext_vs_sma20, ext_vs_sma50, roc_5d, roc_20d, pullback_count_20d,
                  days_up_streak, gap_count_3d, range_expansion_count_3d,
                  vol_expansion_count_3d, gapped_today, climax_volume_flag,
-                 score, stage)
+                 score, stage, is_earnings_today)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                    $15, $16, $17, $18, $19)
+                    $15, $16, $17, $18, $19, $20)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 market_cap                = EXCLUDED.market_cap,
                 cap_tier                  = EXCLUDED.cap_tier,
@@ -2229,7 +2232,8 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
                 gapped_today              = EXCLUDED.gapped_today,
                 climax_volume_flag        = EXCLUDED.climax_volume_flag,
                 score                     = EXCLUDED.score,
-                stage                     = EXCLUDED.stage
+                stage                     = EXCLUDED.stage,
+                is_earnings_today         = EXCLUDED.is_earnings_today
         """,
             record["ticker"],
             record["scan_date"] if isinstance(record["scan_date"], date) else date.fromisoformat(record["scan_date"]),
@@ -2250,6 +2254,7 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
             record.get("climax_volume_flag"),
             record.get("score"),
             record["stage"],
+            record.get("is_earnings_today"),
         )
 
 

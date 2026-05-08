@@ -768,10 +768,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if ticker in cooldown_tickers:
             cooldown_bypass = False
             if c["gap_pct"] >= 15.0:
+                # Fail-soft direction (advisor alignment 2026-05-08): on
+                # yfinance error, treat as earnings day → cooldown BYPASSED.
+                # Defensive: rather over-allow on data outage than block a
+                # real fresh-earnings EP.
                 try:
                     earnings_match_cd, _ = await is_earnings_day(ticker, today)
                 except Exception:
-                    earnings_match_cd = False
+                    earnings_match_cd = True
                 if earnings_match_cd:
                     cooldown_bypass = True
                     await log_audit_event(
@@ -963,10 +967,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # catalyst IS the earnings event regardless of LLM grade. Upgrade
         # routine→strong (or no-op if already strong/game_changer) so the
         # score can clear the 50 threshold.
+        # Fail-soft direction (advisor alignment 2026-05-08): on yfinance
+        # error, treat as earnings day → catalyst boost FIRES. Defensive:
+        # rather over-boost on data outage than miss a real earnings EP.
         try:
             earnings_today_match, earnings_src = await is_earnings_day(ticker, today)
         except Exception:
-            earnings_today_match, earnings_src = False, None
+            earnings_today_match, earnings_src = True, "unavailable"
         if earnings_today_match and catalyst_quality in ("routine", None):
             original_quality = catalyst_quality
             catalyst_quality = "strong"
@@ -1024,7 +1031,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # gap on an earnings day is a qualified EP regardless of beat/miss
         # prose grade — downside bounded by ORB stop-limit + 10:00 cancel + ATR.
         if tier == "MODERATE" and c["gap_pct"] >= 10.0:
-            earnings_match, earnings_source = await is_earnings_day(ticker, today)
+            # Fail-soft direction (advisor alignment 2026-05-08): on yfinance
+            # error, treat as earnings day → MODERATE→HIGH override fires.
+            # Defensive: rather over-promote than miss a real earnings EP.
+            try:
+                earnings_match, earnings_source = await is_earnings_day(ticker, today)
+            except Exception:
+                earnings_match, earnings_source = True, "unavailable"
 
             if earnings_match:
                 logger.info(

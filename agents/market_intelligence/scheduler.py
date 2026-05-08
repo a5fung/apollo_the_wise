@@ -1881,6 +1881,28 @@ def start_scheduler() -> AsyncIOScheduler:
 
     _scheduler.start()
     logger.info("Market Intelligence scheduler started (ET timezone)")
+
+    # SIGTERM handler — wait for in-flight jobs to reach their finally path
+    # before exiting. Without this, Docker stop/restart kills `await` inside
+    # audit_run mid-job → mi_job_runs row stuck at status='running' (the
+    # stale-row reaper at startup catches these but it's hygiene; this is
+    # prevention). Trade-off: deploys block briefly on long-running jobs
+    # (curves refresh up to 60 min). Acceptable since deploys are rare.
+    import signal
+    def _sigterm_handler(signum, frame):
+        logger.info(f"SIGTERM received — graceful shutdown (waiting for in-flight jobs)")
+        if _scheduler and _scheduler.running:
+            _scheduler.shutdown(wait=True)
+            logger.info("Scheduler shutdown complete")
+    try:
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+        logger.info("SIGTERM handler registered for graceful scheduler shutdown")
+    except (ValueError, OSError) as e:
+        # signal.signal only works in main thread; APScheduler may be on a
+        # worker. Log + continue — stale-row reaper still catches the killed
+        # rows on next startup.
+        logger.warning(f"Could not register SIGTERM handler: {e}")
+
     return _scheduler
 
 

@@ -421,6 +421,19 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
             try:
                 new_stop = await alpaca.place_stop_order(ticker_name, filled_qty, stop_target)
                 stop_order_id = new_stop["id"]
+                # Tag remediation stop with purpose='stop_loss' so WS fill handler
+                # routes via mi_live_orders even if stop_order_id goes stale later.
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO mi_live_orders
+                            (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                             stop_price, status, raw_response, purpose, exit_reason)
+                        VALUES ($1, $2, $3, 'sell', 'stop', $4, $5,
+                                $6, $7::jsonb, 'stop_loss', 'stop_hit')
+                        ON CONFLICT (alpaca_order_id) DO NOTHING
+                    """, trade["id"], stop_order_id, ticker_name,
+                        float(filled_qty), stop_target,
+                        new_stop.get("status", "new"), json.dumps(new_stop))
                 logger.warning(
                     f"Fill-path stop remediation: {ticker_name} qty={filled_qty} "
                     f"stop=${stop_target:.2f} order_id={stop_order_id}"
@@ -618,6 +631,19 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                         "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
                         trade_row["id"], restored["id"],
                     )
+                    # Tag restored stop with purpose='stop_loss' so WS fill handler
+                    # routes correctly even if stop_order_id later goes stale.
+                    await conn.execute("""
+                        INSERT INTO mi_live_orders
+                            (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                             stop_price, status, raw_response, purpose, exit_reason)
+                        VALUES ($1, $2, $3, 'sell', 'stop', $4, $5,
+                                $6, $7::jsonb, 'stop_loss', 'stop_hit')
+                        ON CONFLICT (alpaca_order_id) DO NOTHING
+                    """, trade_row["id"], restored["id"], trade_row["ticker"],
+                        float(trade_row["remaining_shares"]),
+                        float(trade_row["stop_price"]),
+                        restored.get("status", "new"), json.dumps(restored))
                 await send_telegram_message(
                     f"{mode_prefix()}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
                     f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "

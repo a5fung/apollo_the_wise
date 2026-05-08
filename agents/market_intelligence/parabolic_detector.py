@@ -678,13 +678,15 @@ async def run_parabolic_scan(trade_date: date) -> dict[str, list[dict]]:
                 if not history or len(history) < 60:
                     return None
                 cap = await _get_or_fetch_market_cap(ticker)
-                # is_earnings_day returns (bool, source); fail-soft on any
-                # yfinance error → treat as False (don't suppress climax on
-                # data outage, which would be the wrong direction).
+                # is_earnings_day returns (bool, source); fail-soft direction
+                # aligned 2026-05-08 (advisor flag): on yfinance error, treat
+                # as earnings day → climax SUPPRESSED. Defensive: rather emit
+                # zero false-climax signals on a data outage than fire a false
+                # climax. Aligns with the same direction at EP boost + cooldown.
                 try:
                     earnings_today, _src = await is_earnings_day(ticker, trade_date)
                 except Exception:
-                    earnings_today = False
+                    earnings_today = True
                 metrics = compute_parabolic_metrics(
                     history, market_cap=cap, is_earnings_today=earnings_today,
                 )

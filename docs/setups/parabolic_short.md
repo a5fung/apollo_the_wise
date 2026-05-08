@@ -64,9 +64,21 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 
 1. **Pivot anchoring is unstable** (advisor flag 2026-05-08): pivot can walk forward on any new bar that beats prior pivot's high (even by 1¢). For a base making slow higher-highs in tight increments, pivot keeps moving and base never accumulates. The current band-tightening (5% → 2%) helps but isn't the principled fix. **Stable-anchor approach** (once pivot established, only move on strict break exceeding prior pivot's high by N%) is filed for next session. Note: this is `flag_continuation.md`'s issue too — both share the pivot logic.
 
-2. **Earnings-day check has fail-soft inconsistency** (advisor flag 2026-05-08): yfinance error → `is_earnings_today=False` → climax allowed. Compare to EP earnings-boost (error → no boost) and EP cooldown (error → no bypass). Should align all three to "treat as earnings day on unavailable" (most defensive). Filed.
+2. ~~Earnings-day check has fail-soft inconsistency~~ — **resolved 2026-05-08**. All four sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as "earnings day = True". Defensive direction at each site: parabolic suppresses climax, EP boost fires, cooldown bypasses, override promotes.
 
 ## Change log (newest first)
+
+### 2026-05-08 (session 2) — Aligned `is_earnings_day` fail-soft direction across all 4 sites
+
+**Trigger**: Advisor flag 2026-05-08 — three sites (parabolic, EP boost, EP cooldown bypass) had different exception-handling directions (False at all three meant: parabolic permissive / EP boost restrictive / EP cooldown restrictive). Inconsistent and harder to reason about under outage.
+
+**Evidence**: Logical (correctness alignment, no quantified backtest needed).
+
+**Anticipated effect**: on yfinance error, all 4 sites now `treat as earnings day = True`. Direction at each site is the most defensive: parabolic SUPPRESSES climax (no false signal on outage), EP boost FIRES (real EP not missed), cooldown BYPASSES (real fresh signal not blocked), MODERATE→HIGH override PROMOTES (real EP reaches HIGH tier).
+
+**Reversion-flag**: REFINEMENT of the four prior earnings-day check ships.
+
+**Status**: shipped.
 
 ### 2026-05-08 — Tightened `_PIVOT_HIGH_BAND` 5% → 2%
 
