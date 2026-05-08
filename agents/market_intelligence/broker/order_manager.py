@@ -553,6 +553,28 @@ async def _check_day1_reentry() -> list[dict]:
 # ── Stop Management ──────────────────────────────────────────────────────────
 
 
+async def get_pending_exit_qty(trade_id: int) -> int:
+    """Sum of qty across non-terminal partial/full-exit orders for `trade_id`.
+
+    Single source of truth for "shares Alpaca is currently holding for a
+    pending sell." Callers that size a stop against `mi_live_trades.remaining_shares`
+    must subtract this — without it, the deferred-commit pattern (CLAUDE.md
+    2026-05-05) leaves remaining_shares at the pre-partial value and the
+    stop-placement request collides with held_for_orders. FTRE 2026-05-09
+    was the trigger; sync_positions Path C orphan remediation has the same
+    structural exposure.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        held = await conn.fetchval("""
+            SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
+            WHERE trade_id = $1
+              AND purpose IN ('partial_exit', 'full_exit')
+              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+        """, trade_id)
+    return int(held or 0)
+
+
 async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     """Cancel old stop order and place new one at updated price.
 
@@ -587,15 +609,8 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     old_stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
 
     # Subtract pending-exit qty from remaining so the stop sizes correctly
-    # ahead of the deferred WS commit.
-    async with pool.acquire() as conn:
-        held = await conn.fetchval("""
-            SELECT COALESCE(SUM(qty)::int, 0) FROM mi_live_orders
-            WHERE trade_id = $1
-              AND purpose IN ('partial_exit', 'full_exit')
-              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
-        """, trade_id)
-    held = int(held or 0)
+    # ahead of the deferred WS commit. See get_pending_exit_qty docstring.
+    held = await get_pending_exit_qty(trade_id)
     effective_qty = int(trade["remaining_shares"]) - held
     if effective_qty <= 0:
         logger.info(
@@ -1618,7 +1633,28 @@ async def sync_positions() -> list[str]:
             discrepancies.append(msg)
             logger.error(f"sync_positions: orphaned {ticker} trade_id={trade['id']} — no stop_price to remediate")
             continue
-        qty = float(trade["remaining_shares"])
+        # Subtract pending-exit qty so a partial-exit pending at sync time
+        # doesn't cause Alpaca to reject the remediation stop on insufficient
+        # qty. Same shape as update_stop's accounting (FTRE 5/9). If a partial
+        # is in flight, remediate to the post-partial qty; the WS handler
+        # will resize the stop again when the partial fills/cancels.
+        held = await get_pending_exit_qty(trade["id"])
+        qty = float(int(trade["remaining_shares"]) - held)
+        if qty <= 0:
+            logger.warning(
+                f"sync_positions: {ticker} fully covered by pending exits "
+                f"({held}/{trade['remaining_shares']}) — skipping remediation"
+            )
+            await log_audit_event(
+                "stop_remediation_skipped_pending_exit",
+                f"{ticker}: {held} pending exit covers full {int(trade['remaining_shares'])} remaining",
+                json.dumps({
+                    "trade_id": trade["id"], "ticker": ticker,
+                    "remaining_shares": float(trade["remaining_shares"]),
+                    "pending_exit_qty": held,
+                }),
+            )
+            continue
         new_order = None
         last_err: Exception | None = None
         for attempt in range(1, 4):
