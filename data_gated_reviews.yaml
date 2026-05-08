@@ -556,6 +556,48 @@ reviews:
     status: pending
     added_on: 2026-05-04
 
+  - review_id: unified_allocator_phase_1b
+    title: "Cross-strategy allocator Phase 1B (active) promotion (#44)"
+    question: |
+      After ≥5 trading days of Phase 1A shadow telemetry post-deploy
+      2026-05-08, do the `unified_allocation_decided` audit events show
+      the allocator's picks consistently match or beat the cron-order
+      FCFS winners? If validated, flip Phase 1B (active submission).
+    predicate_sql: |
+      SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
+      FROM mi_audit_log
+      WHERE event_type = 'unified_allocation_decided'
+        AND created_at > NOW() - INTERVAL '14 days'
+    threshold: 5
+    earliest_review_date: 2026-05-15
+    action_when_ready: |
+      Pull the audit events:
+        SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
+        FROM mi_audit_log
+        WHERE event_type = 'unified_allocation_decided'
+          AND created_at > NOW() - INTERVAL '14 days'
+        ORDER BY created_at;
+      For each contested day (slots < n_candidates), compare the audit's
+      `winners` array vs actual `mi_live_trades` fills for that alert_date.
+      Validation criteria: on contested days, allocator winners include the
+      score-96 / cap-saturated MAGNA53 names that 5/7 incident left blocked.
+      If validated:
+        1. Move shadow cron 9:35 → 9:28 ET pre-market.
+        2. Add price-freshness HARD gate at 9:30:00.001 submit handler
+           (>1.5% past trigger → drop with skip_reason
+           block:stale_price_runaway).
+        3. Refactor MAGNA53 + 9M Day 2 submission paths to gate on
+           shadow_allocated=TRUE before submitting (winners only).
+        4. Build intraday re-sweep on stop_exit_committed /
+           full_exit_committed audit events.
+        5. FCFS fallback safety net wraps allocator failure → emit
+           Telegram + restore legacy direct-submit.
+        6. Backtest harness scripts/replay_unified_allocator.py.
+      Plan: ~/.claude/plans/cross-strategy-ranking-spike.md
+      "Code work order" steps 4-9.
+    status: pending
+    added_on: 2026-05-08
+
   - review_id: drawdown_breaker_promotion
     title: "Drawdown circuit breaker — shadow → active flip (#39)"
     question: |
