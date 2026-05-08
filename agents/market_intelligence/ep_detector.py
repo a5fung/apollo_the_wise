@@ -50,7 +50,7 @@ from agents.market_intelligence.collector import (
     search_news_perplexity,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -1140,6 +1140,32 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
             "detected_at": now_et,
         })
+
+        # Cross-strategy allocator (#31) Phase 1A — shadow enqueue. HIGH and
+        # MODERATE tiers are slot contenders. Legacy submission pipeline runs
+        # unchanged; the 9:28 AM allocator job reads this queue, scores, and
+        # writes shadow_rank for offline comparison vs actual fills. UPSERT —
+        # later-tick re-scores update in place. Failure here MUST NOT block
+        # the alert path; wrap defensively.
+        if tier in ("HIGH", "MODERATE"):
+            try:
+                from agents.market_intelligence.cross_strategy_allocator import score_magna53
+                cand = score_magna53(
+                    ticker=ticker,
+                    alert_date=today,
+                    ep_score=ep_score,
+                    catalyst_quality=catalyst_quality,
+                    pm_rvol=c.get("pm_rvol"),
+                    gap_pct=c.get("gap_pct"),
+                    regime_label=regime_label,
+                )
+                await enqueue_pending_allocation(
+                    ticker=ticker, alert_date=today, strategy="magna53",
+                    composite_score=cand.composite,
+                    raw_dimensions=cand.raw_dimensions,
+                )
+            except Exception as e:
+                logger.warning(f"allocator enqueue failed for {ticker} ({tier}): {e}")
 
         # Telemetry for `conviction_floor_extension` review (data_gated_reviews.yaml).
         # Cell under evaluation: gap∈[10,15) + catalyst='strong'. Logs whether the

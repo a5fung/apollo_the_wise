@@ -1346,6 +1346,57 @@ async def _9m_day2_orb_job() -> None:
         if not candidates:
             return
 
+        # Cross-strategy allocator (#31) Phase 1A — shadow enqueue.
+        # Every sugar baby competing for a slot today goes onto the queue.
+        # Path C reservation logic + actual submission run unchanged below;
+        # the 9:35 AM shadow allocator scores the queue and emits an audit
+        # event comparing its picks to actual fills. UPSERT — re-runs of
+        # the cron refresh the score in-place.
+        try:
+            from agents.market_intelligence.cross_strategy_allocator import score_9m_day2
+            from agents.market_intelligence.db import enqueue_pending_allocation, get_latest_regime, get_pool as _gp
+            regime_ = await get_latest_regime()
+            regime_lbl = (regime_ or {}).get("regime", "Bull")
+            # Fetch ADV-20 for all candidate tickers in one query so the
+            # volume dimension is real, not a placeholder. Uses sugar baby
+            # day (yesterday) as the cutoff so adv covers the same window
+            # the sugar-baby qualification used.
+            cand_tickers = [c["ticker"] for c in candidates]
+            pool_ = await _gp()
+            async with pool_.acquire() as conn:
+                adv_rows = await conn.fetch("""
+                    SELECT ticker, AVG(volume)::FLOAT AS adv20 FROM (
+                        SELECT ticker, volume,
+                               ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                        FROM mi_daily_closes
+                        WHERE ticker = ANY($1) AND trade_date <= $2
+                    ) t WHERE rn <= 20
+                    GROUP BY ticker
+                """, cand_tickers, yesterday)
+            adv_map_alloc = {r["ticker"]: float(r["adv20"]) for r in adv_rows}
+            for c in candidates:
+                op = c.get("open_price") or 0
+                cl = c.get("close_price") or 0
+                gap_proxy = ((cl - op) / op * 100) if op else 0.0
+                vol = float(c.get("volume") or 0)
+                adv20 = adv_map_alloc.get(c["ticker"]) or 0.0
+                vol_ratio = (vol / adv20) if adv20 > 0 else 5.0
+                cand = score_9m_day2(
+                    ticker=c["ticker"],
+                    alert_date=today,
+                    close_in_range_pct=c.get("close_in_range_pct") or 0,
+                    gap_proxy_pct=gap_proxy,
+                    vol_ratio_adv=vol_ratio,
+                    regime_label=regime_lbl,
+                )
+                await enqueue_pending_allocation(
+                    ticker=c["ticker"], alert_date=today, strategy="9m_day2",
+                    composite_score=cand.composite,
+                    raw_dimensions=cand.raw_dimensions,
+                )
+        except Exception as e:
+            logger.warning(f"9M Day 2 allocator enqueue failed: {e}")
+
         # Slot budget: count currently-active/pending positions + reserve
         # for today's HIGH MAGNA53 EPs that haven't been submitted yet.
         # 9M Day 2 takes only the leftover slots, top-N sorted by quality.
@@ -1487,6 +1538,35 @@ async def _9m_day2_orb_job() -> None:
         import traceback
         logger.error(f"9M Day2 ORB job error: {e}\n{traceback.format_exc()}")
         await notify_job_failure("9m_day2_orb", str(e))
+
+
+async def _unified_allocator_shadow_job() -> None:
+    """Cross-strategy allocator (#31) Phase 1A — shadow.
+
+    Runs at 9:35 ET after MAGNA53 ORB monitor (9:30) and 9M Day 2 cron (9:31)
+    have populated mi_pending_allocations. Drains today's queue, scores each
+    candidate via cross_strategy_allocator.run_shadow_allocation, marks
+    shadow_rank + shadow_allocated, emits `unified_allocation_decided` audit.
+
+    Does NOT submit. Phase 1B (active) will move this to 9:28 ET pre-market
+    and replace the legacy submission paths. Compare actual fills today's
+    morning vs the audit event's `winners` field to validate the design.
+    """
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
+    if not get_market_status(today).is_trading_day:
+        return
+    try:
+        from agents.market_intelligence.cross_strategy_allocator import run_shadow_allocation
+        result = await run_shadow_allocation(today)
+        logger.info(
+            f"unified_allocator_shadow: {result['n_winners']}/{result['n_candidates']} "
+            f"winners (slots={result.get('slots', 0)}); top_picks={result['top_picks']}"
+        )
+    except Exception as e:
+        import traceback
+        logger.error(f"unified_allocator_shadow error: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("unified_allocator_shadow", str(e))
 
 
 async def check_missed_jobs() -> None:
@@ -2009,6 +2089,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_9m_day2_orb_job, "9m_day2_orb"),
         CronTrigger(hour=9, minute=31, day_of_week="mon-fri", timezone="America/New_York"),
         id="9m_day2_orb",
+        replace_existing=True,
+    )
+
+    # Cross-strategy unified allocator (#31) Phase 1A — SHADOW.
+    # Runs at 9:35 ET (after MAGNA53 ORB monitor + 9M Day 2 cron have populated
+    # mi_pending_allocations). Scores every queued candidate, marks shadow_rank
+    # + shadow_allocated, emits `unified_allocation_decided` audit event with
+    # full ranking. Does NOT submit. Phase 1B (active) will move this to 9:28
+    # ET pre-market and replace the legacy submission paths.
+    _scheduler.add_job(
+        audit_wrap(_unified_allocator_shadow_job, "unified_allocator_shadow"),
+        CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="unified_allocator_shadow",
         replace_existing=True,
     )
 

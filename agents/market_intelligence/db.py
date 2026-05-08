@@ -4,6 +4,7 @@ Uses the same Postgres instance as Apollo, separate tables prefixed with mi_.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import date, timedelta
 from typing import Any, Optional
@@ -680,6 +681,32 @@ async def initialize_schema() -> None:
                 updated_at          TIMESTAMPTZ DEFAULT NOW(),
                 PRIMARY KEY (safeguard, account_mode)
             );
+
+            -- Cross-strategy allocator (#31) candidate queue. Strategies
+            -- enqueue RankableCandidate rows during their normal scan; the
+            -- 9:28 AM allocator job drains, scores, and selects top-N.
+            -- Phase 1A (shadow): legacy submission paths run unchanged
+            -- alongside the queue; allocator emits audit-only telemetry.
+            -- raw_dimensions JSONB carries setup/catalyst/volume/regime
+            -- breakdown for offline scoring tune.
+            CREATE TABLE IF NOT EXISTS mi_pending_allocations (
+                id                  SERIAL PRIMARY KEY,
+                ticker              TEXT NOT NULL,
+                alert_date          DATE NOT NULL,
+                strategy            TEXT NOT NULL,
+                composite_score     NUMERIC NOT NULL,
+                raw_dimensions      JSONB NOT NULL DEFAULT '{}',
+                status              TEXT NOT NULL DEFAULT 'pending',
+                shadow_rank         INTEGER,
+                shadow_allocated    BOOLEAN DEFAULT FALSE,
+                created_at          TIMESTAMPTZ DEFAULT NOW(),
+                evaluated_at        TIMESTAMPTZ,
+                UNIQUE (ticker, alert_date, strategy)
+            );
+            CREATE INDEX IF NOT EXISTS idx_pending_alloc_date
+                ON mi_pending_allocations(alert_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_pending_alloc_strategy
+                ON mi_pending_allocations(strategy, alert_date DESC);
         """)
 
         # Migrations — add columns to existing tables
@@ -2452,6 +2479,95 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("fresh_2bar_tr_pct"),
             record.get("atr14_pct"),
         )
+
+
+async def enqueue_pending_allocation(
+    ticker: str,
+    alert_date: "str | date",
+    strategy: str,
+    composite_score: float,
+    raw_dimensions: dict[str, Any],
+) -> None:
+    """Cross-strategy allocator (#31) — strategies emit RankableCandidate rows
+    during their daily scan. Shadow phase: legacy submission still runs;
+    allocator reads this queue at 9:28 AM ET and emits audit-only telemetry.
+    UPSERT — same (ticker, alert_date, strategy) on a re-scan refreshes
+    the score without exploding row count. `raw_dimensions` JSONB carries
+    setup/catalyst/volume/regime breakdown for offline tune.
+    """
+    if isinstance(alert_date, str):
+        alert_date = date.fromisoformat(alert_date)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_pending_allocations
+                (ticker, alert_date, strategy, composite_score, raw_dimensions)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (ticker, alert_date, strategy)
+            DO UPDATE SET
+                composite_score = EXCLUDED.composite_score,
+                raw_dimensions  = EXCLUDED.raw_dimensions,
+                created_at      = NOW()
+        """, ticker, alert_date, strategy, composite_score,
+             json.dumps(raw_dimensions))
+
+
+async def get_pending_allocations_for_date(
+    alert_date: "str | date",
+) -> list[dict[str, Any]]:
+    """Drain queue for the allocator pre-market job. Returns all candidates
+    enqueued for `alert_date` with status='pending', most-recent enqueue
+    first within each strategy."""
+    if isinstance(alert_date, str):
+        alert_date = date.fromisoformat(alert_date)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, strategy, composite_score,
+                   raw_dimensions, status, created_at
+            FROM mi_pending_allocations
+            WHERE alert_date = $1 AND status = 'pending'
+            ORDER BY strategy, composite_score DESC
+        """, alert_date)
+    return [dict(r) for r in rows]
+
+
+async def mark_pending_allocations_evaluated(
+    ids: list[int],
+    selected_ids: list[int],
+) -> None:
+    """Stamp rows post-evaluation: shadow_rank set per scoring order,
+    shadow_allocated=True for the top-N picks. Status stays 'pending' in
+    Phase 1A (shadow) so legacy submission paths still see fresh rows;
+    will flip to 'allocated'/'rejected' in Phase 1B (active)."""
+    if not ids:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # Rank: order in `ids` is the scored order (best first).
+            for rank, row_id in enumerate(ids, start=1):
+                await conn.execute("""
+                    UPDATE mi_pending_allocations
+                    SET shadow_rank = $2,
+                        shadow_allocated = $3,
+                        evaluated_at = NOW()
+                    WHERE id = $1
+                """, row_id, rank, row_id in selected_ids)
+
+
+async def get_open_position_count() -> int:
+    """Count of currently-open live positions (filled or in-flight orders).
+    Mirrors the count `_check_safeguards` uses for MAX_CONCURRENT_LIVE_POSITIONS,
+    so the cross-strategy allocator's slot math matches the live safeguard.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT COUNT(*) AS n FROM mi_live_trades
+            WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
+        """)
+    return int(row["n"] or 0) if row else 0
 
 
 async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
