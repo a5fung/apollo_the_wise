@@ -118,6 +118,65 @@ def _atr_14(rows: list[dict], end_idx: int) -> Optional[float]:
     return sum(trs) / len(trs) if trs else None
 
 
+def _compute_rmv(
+    rows: list[dict],
+    today_idx: int,
+    lookback: int = 5,
+    current_window: int = 2,
+) -> Optional[float]:
+    """Relative Measured Volatility (DeepVue / TraderLion) — 0-100 contraction index.
+
+    Min-max normalization of smoothed current TR vs the rolling ATR range over
+    `lookback` sessions. RMV near 0 = contraction (current vol at the floor of
+    recent range); RMV near 100 = expansion (current vol at the ceiling).
+
+    Both sides are smoothed (advisor-corrected from Gemini's naive single-bar
+    current/max form) so a single wick spike doesn't pollute the score:
+    - ATR_today = mean of last `current_window` TRs (default 2)
+    - ATR_min   = min of rolling `current_window`-bar ATRs over `lookback`
+    - ATR_max   = max of rolling `current_window`-bar ATRs over `lookback`
+    - RMV = (ATR_today − ATR_min) / (ATR_max − ATR_min) × 100
+
+    Returns None if insufficient history (today_idx < lookback). Returns 0.0
+    when ATR_max == ATR_min (zero-variance window — fully degenerate
+    contraction; treat as maximum coil signal).
+
+    Phase 1: telemetry-only. Phase 2 evaluates whether RMV-low diverges from
+    existing _compute_fresh_tightening signal — see TI #54 in tasklist.
+    """
+    if today_idx < lookback or current_window < 1:
+        return None
+
+    # Build TR list spanning the lookback window + a small lead-in for the
+    # rolling current-window mean. Earliest TR needed is at
+    # (today_idx - lookback - current_window + 2).
+    earliest = max(0, today_idx - lookback - current_window + 1)
+    trs: list[float] = []
+    for i in range(earliest, today_idx + 1):
+        prev_close = float(rows[i - 1]["close"]) if i > 0 else None
+        trs.append(_wilder_tr(rows[i], prev_close))
+    if len(trs) < current_window:
+        return None
+
+    # Rolling smoothed-TR series (each value = mean of last current_window TRs)
+    smoothed: list[float] = []
+    for i in range(current_window - 1, len(trs)):
+        smoothed.append(sum(trs[i - current_window + 1 : i + 1]) / current_window)
+
+    # Take the trailing `lookback` smoothed values for min/max baseline; the
+    # final value is ATR_today.
+    if len(smoothed) < lookback:
+        return None
+    window = smoothed[-lookback:]
+    atr_today = window[-1]
+    atr_min = min(window)
+    atr_max = max(window)
+
+    if atr_max == atr_min:
+        return 0.0
+    return (atr_today - atr_min) / (atr_max - atr_min) * 100.0
+
+
 def _compute_fresh_tightening(
     rows: list[dict], today_idx: int, base_age: int,
     recent_avg_vol: Optional[float] = None,
@@ -307,6 +366,8 @@ def compute_flag_metrics(
         "fresh_tight_fires": False,
         "fresh_2bar_tr_pct": None,
         "atr14_pct": None,
+        "rmv_5d": None,
+        "rmv_15d": None,
         "score": 0,
         "stage": "unqualified",
         "reason": None,
@@ -478,6 +539,14 @@ def compute_flag_metrics(
     base["fresh_tight_fires"]  = fresh_fires
     base["fresh_2bar_tr_pct"]  = fresh_tr_pct
     base["atr14_pct"]          = atr14_pct
+
+    # RMV (Phase 1 telemetry — TI #54). Pure persistence, no gate effect.
+    # Computed for every candidate (incl. unqualified) so offline Phase 2
+    # divergence analysis has the full distribution. Both 5d (short-base
+    # sensitive) and 15d (classic VCP) — Phase 2 picks the more useful
+    # window after ≥30 days of data.
+    base["rmv_5d"]  = _compute_rmv(rows, today_idx, lookback=5)
+    base["rmv_15d"] = _compute_rmv(rows, today_idx, lookback=15)
 
     # COILED via either path:
     #  (a) existing — full base contraction (range_tight AND vol_tight, age ≥ 6)

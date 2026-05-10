@@ -1192,6 +1192,11 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS fresh_tight_fires BOOLEAN;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS fresh_2bar_tr_pct FLOAT;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS atr14_pct         FLOAT;
+            -- RMV Phase 1 (TI #54, 2026-05-09): telemetry-only persistence.
+            -- 0-100 contraction index per DeepVue; both windows persisted for
+            -- offline Phase 2 divergence analysis vs _compute_fresh_tightening.
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_5d  FLOAT;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_15d FLOAT;
         """)
 
         # ── Strategy maturity registry ───────────────────────────────────
@@ -2418,10 +2423,11 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  breakout_close, breakout_volume_ratio,
                  rs_rank, rs_composite, sector,
                  stage, reason, score, held_from_stage,
-                 fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct)
+                 fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
+                 rmv_5d, rmv_15d)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24, $25, $26, $27, $28)
+                    $23, $24, $25, $26, $27, $28, $29, $30)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -2448,7 +2454,9 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 held_from_stage         = EXCLUDED.held_from_stage,
                 fresh_tight_fires       = EXCLUDED.fresh_tight_fires,
                 fresh_2bar_tr_pct       = EXCLUDED.fresh_2bar_tr_pct,
-                atr14_pct               = EXCLUDED.atr14_pct
+                atr14_pct               = EXCLUDED.atr14_pct,
+                rmv_5d                  = EXCLUDED.rmv_5d,
+                rmv_15d                 = EXCLUDED.rmv_15d
         """,
             record["ticker"],
             scan_date,
@@ -2478,6 +2486,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("fresh_tight_fires"),
             record.get("fresh_2bar_tr_pct"),
             record.get("atr14_pct"),
+            record.get("rmv_5d"),
+            record.get("rmv_15d"),
         )
 
 
