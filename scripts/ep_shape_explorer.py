@@ -14,16 +14,28 @@ through `mi_daily_closes` and computes:
     - first_undercut_session  (first session where close < anchor_open)
     - first_breakout_session  (first session where high > anchor_high)
 
-  Forward returns at each horizon: fwd_close_pct, fwd_max_high_pct.
+  Forward R-multiple distribution at each horizon — the methodology metric.
 
-Buckets by deterministic shape labels (8 total) → reports base rates per
-bucket vs overall EP cohort baseline. Bucket with materially higher
-forward-5d positive rate is a candidate for v1 detector promotion (per
-TI5 backlog memo + advisor refinements).
+R is computed against an explicit stop assumption:
+    entry  = anchor_close (operator enters at EP-day close)
+    stop   = anchor_low   (matches 9M Day 2 sugar baby stop convention)
+    R(t)   = (price_t - entry) / (entry - stop)
 
-Sanity gate before any v1 ship: ≥ 200 anchors total + ≥ 30 anchors per
-bucket of interest. If a shape shows ≥ 5pp lift over baseline forward-5d
-positive rate, build a one-pattern detector.
+Per anchor:
+    did_stop_T+N       — did any session [T+1..T+N] have low ≤ stop?
+    max_favorable_R    — peak R reached before stopping (or to horizon)
+    R_at_horizon_close — R if exited at T+N close (time-stop exit)
+    R_with_3R_target   — R if exited at +3R take-profit OR stopped (-1R)
+
+Buckets by deterministic shape labels → reports per-bucket EXPECTANCY
+metrics, not just positive-rate. Per Pradeep/Qullamaggie methodology:
+20% win rate × 10R = +1.2R expectancy beats 60% × 1R = +0.2R. Win rate
+alone is misleading; lose-small / win-big systems show their edge in R.
+
+v1 detector candidate: bucket with median_max_favorable_R ≥ 3.0 AND
+expectancy_3R_TP ≥ +0.5R AND n ≥ 30. (Stop-rate alone doesn't disqualify
+— a 70% stop-out rate with +5R median favorable still has positive
+expectancy if winners run.)
 
 Usage (on Hetzner):
     docker exec apollo-market python -m scripts.ep_shape_explorer
@@ -62,18 +74,18 @@ def _close_in_range(o: float, h: float, l: float, c: float) -> Optional[float]:
     return (c - l) / (h - l)
 
 
-def _bucket(close_in_range: Optional[float], cont_fade_pct: Optional[float]) -> str:
-    """Deterministic shape label given Day-0 close-in-range + T+5 close-vs-anchor.
+def _bucket(close_in_range: Optional[float], R_at_T5_close: Optional[float]) -> str:
+    """Deterministic shape label given Day-0 close-in-range + T+5 R-at-close.
 
-    cont_fade_pct = (close_T+5 / close_T+0) - 1. None if insufficient forward data.
+    R_at_T5_close ≥ 0 means forward close ≥ entry (continuation in R-space).
+    None if insufficient forward data.
     """
     if close_in_range is None:
         return "no_close_in_range"
-    if cont_fade_pct is None:
+    if R_at_T5_close is None:
         return "no_forward_data"
 
-    # Continuation if forward close ≥ anchor close, fade if below
-    is_cont = cont_fade_pct >= 0
+    is_cont = R_at_T5_close >= 0
 
     if close_in_range >= STRONG_CLOSE:
         return "strong_close_continuation" if is_cont else "strong_close_fade"
@@ -165,26 +177,54 @@ async def explore(conn, days: int, csv_path: Optional[str]) -> None:
             if first_breakout is None and f_high is not None and f_high > a_high:
                 first_breakout = i
 
-        # Forward returns at each horizon
+        # R-based forward simulation — entry at anchor_close, stop at anchor_low.
+        # For each horizon, compute: did_stop, max_favorable_R, R_at_horizon_close.
+        risk_per_share = a_close - a_low
+        if risk_per_share <= 0:
+            continue  # zero-range / inverted — can't compute R
+
         fwd: dict[int, dict[str, Optional[float]]] = {}
         for h in HORIZONS:
-            if h <= len(forward):
-                window = forward[:h]
-                f_close = float(window[-1]["close"]) if window[-1]["close"] else None
-                f_max_high = max(
-                    (float(b["high_price"]) for b in window if b["high_price"] is not None),
-                    default=None,
-                )
-                fwd[h] = {
-                    "fwd_close_pct": (f_close / a_close - 1.0) if f_close else None,
-                    "fwd_max_high_pct": (f_max_high / a_close - 1.0) if f_max_high else None,
-                }
-            else:
-                fwd[h] = {"fwd_close_pct": None, "fwd_max_high_pct": None}
+            if h > len(forward):
+                fwd[h] = {"did_stop": None, "max_favorable_R": None,
+                          "R_at_close": None, "R_with_3R_TP": None}
+                continue
+            window = forward[:h]
+            did_stop = False
+            max_R = 0.0  # max favorable R reached
+            R_with_3R_TP: Optional[float] = None
+            for b in window:
+                f_low = float(b["low_price"]) if b["low_price"] is not None else None
+                f_high = float(b["high_price"]) if b["high_price"] is not None else None
+                # Stop-out check first (intraday low touched stop)
+                if f_low is not None and f_low <= a_low:
+                    did_stop = True
+                    if R_with_3R_TP is None:
+                        R_with_3R_TP = -1.0
+                    break
+                # Track favorable R from intraday high
+                if f_high is not None:
+                    bar_R = (f_high - a_close) / risk_per_share
+                    if bar_R > max_R:
+                        max_R = bar_R
+                    # 3R take-profit check (assumes intraday fills exact)
+                    if R_with_3R_TP is None and bar_R >= 3.0:
+                        R_with_3R_TP = 3.0
+            # If no stop and no 3R hit yet → exit at horizon close
+            f_close = float(window[-1]["close"]) if window[-1]["close"] else None
+            R_at_close = (f_close - a_close) / risk_per_share if f_close else None
+            if R_with_3R_TP is None:
+                R_with_3R_TP = R_at_close if R_at_close is not None else 0.0
+            fwd[h] = {
+                "did_stop": did_stop,
+                "max_favorable_R": max_R,
+                "R_at_close": R_at_close,
+                "R_with_3R_TP": R_with_3R_TP,
+            }
 
-        # Bucket
-        cont_fade = fwd[CONT_FADE_HORIZON]["fwd_close_pct"]
-        bucket = _bucket(close_in_range, cont_fade)
+        # Bucket — use T+5 close-vs-anchor direction
+        cont_fade_R = fwd[CONT_FADE_HORIZON]["R_at_close"]
+        bucket = _bucket(close_in_range, cont_fade_R)
 
         rows.append({
             "ticker": ticker,
@@ -197,16 +237,19 @@ async def explore(conn, days: int, csv_path: Optional[str]) -> None:
             "anchor_low": a_low, "anchor_close": a_close,
             "close_in_range": close_in_range,
             "prev_5d_pct": prev_5d_pct,
+            "risk_per_share": risk_per_share,
             "first_undercut_session": first_undercut,
             "first_breakout_session": first_breakout,
-            "fwd_1d_close_pct": fwd[1]["fwd_close_pct"],
-            "fwd_3d_close_pct": fwd[3]["fwd_close_pct"],
-            "fwd_5d_close_pct": fwd[5]["fwd_close_pct"],
-            "fwd_10d_close_pct": fwd[10]["fwd_close_pct"],
-            "fwd_1d_max_high_pct": fwd[1]["fwd_max_high_pct"],
-            "fwd_3d_max_high_pct": fwd[3]["fwd_max_high_pct"],
-            "fwd_5d_max_high_pct": fwd[5]["fwd_max_high_pct"],
-            "fwd_10d_max_high_pct": fwd[10]["fwd_max_high_pct"],
+            # 5d R metrics (primary horizon for sugar baby methodology)
+            "did_stop_5d": fwd[5]["did_stop"],
+            "max_favorable_R_5d": fwd[5]["max_favorable_R"],
+            "R_at_close_5d": fwd[5]["R_at_close"],
+            "R_with_3R_TP_5d": fwd[5]["R_with_3R_TP"],
+            # 10d R metrics (longer hold)
+            "did_stop_10d": fwd[10]["did_stop"],
+            "max_favorable_R_10d": fwd[10]["max_favorable_R"],
+            "R_at_close_10d": fwd[10]["R_at_close"],
+            "R_with_3R_TP_10d": fwd[10]["R_with_3R_TP"],
             "bucket": bucket,
         })
 
@@ -217,54 +260,88 @@ async def explore(conn, days: int, csv_path: Optional[str]) -> None:
     for r in rows:
         by_bucket[r["bucket"]].append(r)
 
-    print("\n" + "=" * 100)
-    print(f"TI5 — POST-EP SHAPE BUCKETS ({days}d window, {len(rows)} settled alerts)")
-    print("=" * 100)
-    print(f"\nThresholds: strong ≥ {STRONG_CLOSE}, weak < {WEAK_CLOSE}, "
-          f"continuation = fwd_{CONT_FADE_HORIZON}d close ≥ anchor close")
-    print(f"Positive outcome: fwd_5d_max_high_pct ≥ {POSITIVE_THRESHOLD*100:.0f}%\n")
+    print("\n" + "=" * 110)
+    print(f"TI5 — POST-EP SHAPE R-EXPECTANCY ({days}d window, {len(rows)} settled alerts)")
+    print("=" * 110)
+    print(f"\nEntry model: anchor_close. Stop: anchor_low. R = (price − entry) / risk_per_share")
+    print(f"Thresholds: strong close-in-range ≥ {STRONG_CLOSE}, weak < {WEAK_CLOSE}\n")
 
-    # Overall baseline
-    valid_5d = [r for r in rows if r["fwd_5d_max_high_pct"] is not None]
-    baseline_pos_rate = sum(1 for r in valid_5d if r["fwd_5d_max_high_pct"] >= POSITIVE_THRESHOLD) / max(1, len(valid_5d))
-    baseline_med_high = statistics.median(r["fwd_5d_max_high_pct"] for r in valid_5d) if valid_5d else 0
-    baseline_med_close = statistics.median(r["fwd_5d_close_pct"] for r in valid_5d if r["fwd_5d_close_pct"] is not None) if valid_5d else 0
-    print(f"BASELINE (all settled): n={len(valid_5d)}, "
-          f"pos_rate={baseline_pos_rate*100:.1f}%, "
-          f"med_5d_high={baseline_med_high*100:+.1f}%, "
-          f"med_5d_close={baseline_med_close*100:+.1f}%\n")
+    def _bucket_R_stats(bucket_rows: list[dict], horizon: str) -> dict:
+        """Per-bucket R aggregations at given horizon (5d or 10d)."""
+        valid = [r for r in bucket_rows if r[f"R_at_close_{horizon}"] is not None]
+        if not valid:
+            return {}
+        n = len(valid)
+        stop_rate = sum(1 for r in valid if r[f"did_stop_{horizon}"]) / n
+        max_R = [r[f"max_favorable_R_{horizon}"] for r in valid]
+        R_close = [r[f"R_at_close_{horizon}"] for r in valid]
+        R_3R = [r[f"R_with_3R_TP_{horizon}"] for r in valid]
+        # Expectancy with time-stop: mean R if exited at horizon close (or stopped at -1)
+        exp_time = statistics.mean(
+            (-1.0 if r[f"did_stop_{horizon}"] else r[f"R_at_close_{horizon}"])
+            for r in valid
+        )
+        # Expectancy with 3R take-profit: simulated exit at +3R or stop
+        exp_3R = statistics.mean(R_3R)
+        # Profit factor: sum of positive R / |sum of negative R|
+        wins = sum(r for r in R_3R if r > 0)
+        losses = abs(sum(r for r in R_3R if r < 0))
+        pf = wins / losses if losses > 0 else float("inf") if wins > 0 else 0
+        win_rate_3R = sum(1 for r in R_3R if r > 0) / n
+        return {
+            "n": n,
+            "stop_rate": stop_rate,
+            "med_max_R": statistics.median(max_R),
+            "med_R_close": statistics.median(R_close),
+            "exp_time": exp_time,
+            "exp_3R": exp_3R,
+            "pf": pf,
+            "win_rate_3R": win_rate_3R,
+        }
 
-    # Per-bucket rows
-    header = f"  {'bucket':<32} {'n':>5} {'pos%':>7} {'lift':>7} {'med5dHi':>9} {'med5dCl':>9} {'medGap':>7}"
-    print(header)
-    print("  " + "-" * 80)
+    # Overall baseline at 5d
+    baseline = _bucket_R_stats(rows, "5d")
+    if baseline:
+        print(f"BASELINE (all settled, T+5): "
+              f"n={baseline['n']}, stop_rate={baseline['stop_rate']*100:.1f}%, "
+              f"med_max_R={baseline['med_max_R']:+.2f}R, "
+              f"exp_3R_TP={baseline['exp_3R']:+.2f}R, pf={baseline['pf']:.2f}\n")
+
+    # Per-bucket — show 5d AND 10d horizons side by side
     bucket_order = [
         "strong_close_continuation", "strong_close_fade",
         "mid_range_continuation",    "mid_range_fade",
         "weak_close_continuation",   "weak_close_fade",
-        "no_forward_data", "no_close_in_range",
     ]
-    for b in bucket_order:
-        bucket_rows = by_bucket.get(b, [])
-        if not bucket_rows:
-            continue
-        valid = [r for r in bucket_rows if r["fwd_5d_max_high_pct"] is not None]
-        if not valid:
-            continue
-        pos_rate = sum(1 for r in valid if r["fwd_5d_max_high_pct"] >= POSITIVE_THRESHOLD) / len(valid)
-        med_high = statistics.median(r["fwd_5d_max_high_pct"] for r in valid)
-        cls = [r["fwd_5d_close_pct"] for r in valid if r["fwd_5d_close_pct"] is not None]
-        med_close = statistics.median(cls) if cls else 0
-        gaps = [r["gap_pct"] for r in valid if r["gap_pct"] is not None]
-        med_gap = statistics.median(gaps) if gaps else 0
-        lift = pos_rate - baseline_pos_rate
-        marker = " ★" if abs(lift) >= 0.05 and len(valid) >= 30 else ""
-        print(f"  {b:<32} {len(valid):>5} {pos_rate*100:>6.1f}% {lift*100:>+6.1f} "
-              f"{med_high*100:>+8.1f}% {med_close*100:>+8.1f}% {med_gap:>6.1f}%{marker}")
 
-    print()
+    for horizon, h_label in [("5d", "T+5"), ("10d", "T+10")]:
+        print(f"--- {h_label} horizon ---")
+        header = (f"  {'bucket':<32} {'n':>5} {'stop%':>7} "
+                  f"{'medMaxR':>9} {'expTime':>9} {'exp3R':>8} "
+                  f"{'pf':>6} {'wr3R':>7}")
+        print(header)
+        print("  " + "-" * 95)
+        for b in bucket_order:
+            stats = _bucket_R_stats(by_bucket.get(b, []), horizon)
+            if not stats:
+                continue
+            base_exp = baseline.get("exp_3R", 0) if horizon == "5d" else None
+            lift_marker = ""
+            if (stats["exp_3R"] >= 0.5 and stats["med_max_R"] >= 3.0
+                    and stats["n"] >= 30):
+                lift_marker = " ★"
+            print(f"  {b:<32} {stats['n']:>5} {stats['stop_rate']*100:>6.1f}% "
+                  f"{stats['med_max_R']:>+8.2f}R {stats['exp_time']:>+8.2f}R "
+                  f"{stats['exp_3R']:>+7.2f}R {stats['pf']:>6.2f} "
+                  f"{stats['win_rate_3R']*100:>6.1f}%{lift_marker}")
+        print()
+
     print("Sanity gate (per TI5 memo): ≥ 200 total + ≥ 30 per bucket of interest")
-    print("Decision rule: ★ marks buckets with ≥5pp lift AND n ≥ 30 → v1 detector candidate")
+    print("Decision rule: ★ marks buckets with med_max_R ≥ 3R AND exp_3R ≥ +0.5R AND n ≥ 30")
+    print()
+    print("Methodology note: per Pradeep/Qullamaggie, expectancy in R is the edge metric.")
+    print("Win rate alone is misleading — 20% × 10R = +1.2R/trade beats 60% × 1R = +0.2R/trade.")
+    print("medMaxR shows the favorable runway available; exp_3R shows realized R with 3R TP.")
 
     if csv_path:
         with open(csv_path, "w", newline="") as f:
