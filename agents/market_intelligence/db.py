@@ -155,12 +155,24 @@ async def _seed_strategies_registry(conn) -> None:
             "phase": "shadow",
             "signal_type": "shadow_orb_5m",
             "outcomes_table": "mi_orb_shadow_trades",
-            "promotion_model": "paired_r",
+            # 2026-05-10 (#57): switched paired_r → unpaired_r. The 5-min
+            # shadow and 1-min live ORB cohorts diverge by design (different
+            # bar-size-sensitive gates), so paired matching never converged
+            # (10 days, 1 shadow closed vs 3 live closed, zero overlap).
+            # unpaired_r evaluates 5-min on its own R-distribution — actually
+            # informative. Per-strategy R-multiple is the methodology metric.
+            "promotion_model": "unpaired_r",
             "promotion_thresholds": {
                 "shadow_to_paper": {
-                    "min_paired_closed": 30,
-                    "min_median_r_delta": 0.0,
-                    "min_win_rate": 0.40,
+                    "min_closed": 30,
+                    "min_median_r": 0.0,
+                    "max_drawdown_pct": 0.3,
+                },
+                "paper_to_live": {
+                    "min_closed": 30,
+                    "min_median_r": 0.5,
+                    "min_win_rate": 0.30,
+                    "max_drawdown_dollars": 5000,
                 },
             },
         },

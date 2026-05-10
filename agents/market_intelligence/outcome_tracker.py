@@ -73,6 +73,18 @@ async def run_outcome_tracker(trade_date: date | None = None) -> dict:
             logger.info(f"Outcome tracker: {n} EP scan outcomes computed")
     except Exception as e:
         logger.error(f"EP scan outcomes failed: {e}")
+        # Surface to audit so future silent-failure regressions are visible
+        # (the dc.high typo lurked here for weeks before the weekly review
+        # surfaced the 0-rows pattern, 2026-05-10).
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "ep_scan_outcomes_error",
+                summary=f"EP scan outcomes failed: {type(e).__name__}",
+                detail=str(e)[:500],
+            )
+        except Exception:
+            pass
 
     return {"total": total, "trade_date": today.isoformat()}
 
@@ -455,7 +467,7 @@ async def _compute_ep_scan_outcomes(today: date) -> int:
             ),
             forward AS (
                 SELECT b.ticker, b.scan_date, b.baseline_close,
-                       dc.high,
+                       dc.high_price AS high,
                        ROW_NUMBER() OVER (
                            PARTITION BY b.ticker, b.scan_date
                            ORDER BY dc.trade_date
