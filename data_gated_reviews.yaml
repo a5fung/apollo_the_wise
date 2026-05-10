@@ -598,6 +598,62 @@ reviews:
     status: pending
     added_on: 2026-05-08
 
+  - review_id: rmv_phase2_evaluation
+    title: "RMV Phase 2 — divergence vs fresh_tightening (#54)"
+    question: |
+      Phase 1 telemetry (commit a3a237c, 2026-05-09) persists rmv_5d
+      and rmv_15d on every mi_flag_candidates row. Phase 2 evaluates
+      whether RMV-low among structurally-valid candidates catches
+      setups Apollo's existing _compute_fresh_tightening misses, OR
+      is redundant with it. Earliest review 2026-06-09 (Phase 1 +
+      30 trading days).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_candidates
+      WHERE rmv_5d IS NOT NULL
+        AND scan_date > CURRENT_DATE - 35
+    threshold: 200
+    earliest_review_date: 2026-06-09
+    action_when_ready: |
+      LOCKED Phase 2 spec (advisor 2026-05-09) — divergence
+      comparison MUST filter on structural validity. Run:
+
+      -- RMV-low among structurally-valid candidates
+      WITH rmv_low AS (
+        SELECT scan_date, ticker, stage, rmv_5d
+        FROM mi_flag_candidates
+        WHERE rmv_5d <= 10
+          AND base_age >= 3
+          AND sma_10 IS NOT NULL AND sma_20 IS NOT NULL
+          AND breakout_close > sma_10 AND sma_10 > sma_20
+          AND scan_date > CURRENT_DATE - 35
+      )
+      SELECT
+        COUNT(*) AS rmv_low_n,
+        COUNT(*) FILTER (WHERE stage = 'COILED') AS overlap_coiled,
+        COUNT(*) FILTER (WHERE stage IN ('WATCH','TIGHTENING')) AS rmv_catches_apollo_misses
+      FROM rmv_low;
+
+      Then attach forward returns to evaluate edge. For each
+      `rmv_catches_apollo_misses` row, compute fwd_5d_max_high_pct
+      from mi_daily_closes joined on ticker + scan_date. Compare
+      median fwd_5d_max_high to baseline of all flag candidates over
+      the same period.
+
+      Decision rule:
+      - Lift ≥ 5pp over baseline → Phase 3 (add `rmv_5d ≤ 10` as
+        alternative COILED qualifier alongside existing paths;
+        same ma_aligned + bodies_tight structural guards apply).
+      - Lift < 5pp → close out, RMV redundant with
+        _compute_fresh_tightening; consider dropping the columns
+        (or keep for diagnostic).
+      - Sample too thin (rmv_low_n < 30 after structural filter) →
+        defer 30 more days.
+
+      Origin: 2026-05-09 DeepVue/TraderLion review + advisor approval.
+      See TI6 in project_trading_ideas_backlog.md for full design.
+    status: pending
+    added_on: 2026-05-09
+
   - review_id: apollo_trades_dashboard_db_flip
     title: "Apollo Trades dashboard — flip mock → live (#52)"
     question: |
