@@ -42,6 +42,31 @@ _SYSTEM_PROMPT = """You are Apollo's weekly self-auditor. You review metrics fro
 a momentum/EP trading assistant and surface what's working, what's broken, and \
 propose concrete tuning changes.
 
+Methodology context (NON-NEGOTIABLE — proposals contradicting these get rejected):
+- Pradeep Bonde / Qullamaggie momentum doctrine: lose-small / win-big.
+  20% win rate × 10R per winner is excellent; win-rate alone is misleading.
+  Edge is measured in R-expectancy and profit factor, not pos_rate.
+- HOLD WINNERS, stop losers fast. Do NOT propose mandatory partials based
+  on gap size — Pradeep methodology lets winners run; auto-partial on
+  a +15% gap is a methodology violation regardless of how the math looks.
+- Tight defined stop on Day 0; manage via SMA trail + breakeven, not
+  time-based exits.
+- N=3 trade samples are statistical noise — do not propose changes from
+  single-week trade outcomes; require ≥30 closed trades or ≥60 days of
+  telemetry for any cohort-driven recommendation.
+
+Hygiene rules for proposed changes:
+- Before proposing a "new" guardrail, check `recent_changes` in the metrics
+  JSON. If the change shipped within the last 30 days, do NOT re-propose;
+  instead note it shipped and observe whether the metric improved.
+- Do NOT speculate on bugs from circumstantial data (e.g. "this loss might
+  be a duplicate-exit bug"). Only flag bugs that are SUPPORTED by audit
+  events in `audit_errors`. If audit log is silent on a behavior, the
+  behavior was nominal.
+- Distinguish skipped/blocked alerts from actual trade attempts. If `36`
+  EPs were 33 max_positions blocks + 3 actual entries, the cohort is N=3,
+  not N=36. Cite the active cohort, not the alert volume.
+
 Output exactly this structure, in this order, with these exact section headers:
 
 ✅ *Working*
@@ -73,6 +98,8 @@ Rules:
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
 - When `fishhook.n_settled >= 10`, append a "🪝 *Fishhook:*" line after 🔁 summarizing gap-up undercut & reclaim telemetry. Cite `n_total` anchors, `n_settled`, `median_r`, `hit_rate`, and the shallow-vs-deep slice when both have data: `45 anchors, 12 settled; R 1.18, hit 17%; shallow R 1.31 (n=8) vs deep R 0.61 (n=4)`. The shallow-vs-deep gap matters — Stage-0 evidence said deeper drift inverts the edge; if deep starts winning, threshold revisit. If `n_settled < 10`, omit the line entirely.
 - When `pending_reviews.ready` is non-empty, append a "📅 *Reviews ready:*" section after 🔁 listing each ready entry on its own line: `<title> — <action_when_ready first sentence>`. These are data-gated reviews from `data_gated_reviews.yaml` whose threshold flipped this week — the user needs to act. If `pending_reviews.ready` is empty, omit the section entirely.
+- When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count>`. These are non-fatal errors caught by try/except in jobs that didn't crash hard but indicate something silently broken (e.g. EP scan outcomes typo lurked weeks before surfacing). Even 1 fire merits inclusion — silent failures compound. If `audit_errors.total == 0`, omit the section entirely.
+- When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
 """
 
 
@@ -387,12 +414,26 @@ async def _aggregate_paper_trades(window_start: date) -> dict:
 
 
 async def _aggregate_audit_errors(days: int) -> dict:
+    """Silent-failure surface — captures *_error AND *_failed event types
+    across the past `days`. The 2026-05-10 EP scan outcomes typo lurked
+    for weeks because it logged only via logger.error and never hit
+    audit. Going forward, any try/except path that catches a job-level
+    failure must emit an audit event ending in _error or _failed —
+    this aggregator surfaces them unconditionally in the weekly digest."""
     since_hours = days * 24
-    rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%error%")
-    counts = Counter(r["event_type"] for r in rows)
-    top5 = counts.most_common(5)
+    err_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%error%")
+    failed_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%_failed%")
+    # Merge + de-dup (a single event_type matching both globs counts once)
+    merged: dict[str, int] = {}
+    for r in err_rows:
+        merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
+    for r in failed_rows:
+        # Avoid double-counting events that match both filters
+        if r["event_type"] not in {er["event_type"] for er in err_rows}:
+            merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
+    top5 = sorted(merged.items(), key=lambda kv: -kv[1])[:5]
     return {
-        "total": sum(counts.values()),
+        "total": sum(merged.values()),
         "top_types": [{"event_type": t, "count": c} for t, c in top5],
     }
 

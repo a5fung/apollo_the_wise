@@ -103,8 +103,33 @@ async def _eval_paired_r(strategy_id: str, rows: list[OutcomeRow], thresholds: d
     """
     paired_keys = {(r.ticker, r.alert_date) for r in rows if r.status == "closed"}
     if not paired_keys:
-        return {"n_paired_closed": 0}, [
-            f"need {thresholds.get('min_paired_closed', 30)} paired closed (have 0)"
+        # Diagnostic breakdown — surfaces cohort divergence directly in the
+        # weekly digest so 0-paired doesn't force a follow-up question.
+        # Queries both sides separately and shows up to 3 sample tickers.
+        n_shadow = sum(1 for r in rows if r.status == "closed")
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            live_count = await conn.fetchval("""
+                SELECT COUNT(*) FROM mi_live_trades
+                WHERE status='closed' AND alert_date >= CURRENT_DATE - $1::int
+            """, WINDOW_DAYS) or 0
+            shadow_tickers = [r.ticker for r in rows if r.status == "closed"][:3]
+            live_tickers_rows = await conn.fetch("""
+                SELECT DISTINCT ticker FROM mi_live_trades
+                WHERE status='closed' AND alert_date >= CURRENT_DATE - $1::int
+                ORDER BY ticker LIMIT 3
+            """, WINDOW_DAYS)
+            live_tickers = [r["ticker"] for r in live_tickers_rows]
+        breakdown = (
+            f"{n_shadow} shadow ({','.join(shadow_tickers) or 'none'}) "
+            f"vs {live_count} live ({','.join(live_tickers) or 'none'}), zero overlap"
+        )
+        return {
+            "n_paired_closed": 0,
+            "cohort_breakdown": breakdown,
+        }, [
+            f"need {thresholds.get('min_paired_closed', 30)} paired closed "
+            f"(have 0 — {breakdown})"
         ]
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -181,7 +206,23 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
     min_count = thresholds.get("min_count", thresholds.get("min_climax_alerts", 20))
     if n < min_count:
         label = metric_key[2:] if metric_key.startswith("n_") else metric_key
-        blocking.append(f"need {min_count} {label} (have {n})")
+        # Diagnostic breakdown — surfaces in-flight state distribution so
+        # 0-settled (or low n) doesn't force a follow-up question. Counts
+        # rows in non-terminal states so user sees the pipeline progression.
+        # Generic across telemetry strategies — uses extras["state"] when
+        # present (fishhook anchors carry it; others may not).
+        non_term: dict[str, int] = {}
+        for r in rows:
+            state = (r.extras or {}).get("state") if r.extras else None
+            if state and state != "closed":
+                non_term[state] = non_term.get(state, 0) + 1
+        if non_term:
+            breakdown = ", ".join(f"{v} {k}" for k, v in
+                                  sorted(non_term.items(), key=lambda kv: -kv[1]))
+            metrics["cohort_breakdown"] = breakdown
+            blocking.append(f"need {min_count} {label} (have {n} — {breakdown})")
+        else:
+            blocking.append(f"need {min_count} {label} (have {n})")
 
     min_fill = thresholds.get("min_fill_rate")
     if min_fill is not None and n > 0:
