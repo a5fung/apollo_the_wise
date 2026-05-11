@@ -4,9 +4,19 @@ WebSocket streaming for real-time Alpaca trade updates.
 Replaces polling-based fill checking with instant event-driven detection.
 Handles: entry fills, stop-loss triggers, Day 1 re-entry, order cancellations.
 
+Dual-account architecture (#66, 2026-05-10): one TradingStream instance
+per Alpaca account_mode (paper, live). Each stream's handler is closure-
+bound to its account_mode. The central dispatcher
+(`_dispatch_trade_event`) validates `mi_live_trades.account_mode ==
+stream_account_mode` before any state mutation — prevents a paper-stream
+event from racing into a live trade row (and vice versa). Cross-account
+mismatches drop the event and emit `cross_account_event_rejected` audit.
+
 The SDK's TradingStream auto-reconnects on WebSocket errors. This module adds
 an outer monitoring wrapper that restarts the stream if it dies unexpectedly,
-and falls back to polling if the stream fails repeatedly.
+and falls back to polling if the stream fails repeatedly. Per-stream
+backoff state means paper-stream reconnect doesn't reset the live-stream
+counter and vice versa.
 """
 from __future__ import annotations
 
@@ -25,155 +35,297 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
-# ── Module state ────────────────────────────────────────────────────────────
+# ── Per-mode module state (#66) ──────────────────────────────────────────────
 
-_stream_task: asyncio.Task | None = None
-_trading_stream: TradingStream | None = None
-_stream_healthy: bool = False
-_last_event_time: datetime | None = None
-_reconnect_count: int = 0
+_stream_tasks: dict[str, asyncio.Task] = {}
+_trading_streams: dict[str, TradingStream] = {}
+_stream_healthy: dict[str, bool] = {}
+_last_event_time: dict[str, datetime | None] = {}
+_reconnect_count: dict[str, int] = {}
 _MAX_OUTER_RETRIES = 3
+
+
+def _resolve_modes() -> list[str]:
+    """Return the list of account_modes to subscribe streams for.
+
+    ENABLE_LIVE_MODE=true → ['paper', 'live'] (production default).
+    ENABLE_LIVE_MODE=false → ['paper'] (dev / single-account).
+    """
+    from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+    return ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
 
 
 # ── Lifecycle ───────────────────────────────────────────────────────────────
 
 
 async def start_trade_stream() -> None:
-    """Start the WebSocket trade update stream. Called from agent.py startup."""
-    global _stream_task, _trading_stream
-
+    """Start one WebSocket trade-update stream per account_mode."""
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         logger.info("Live trading disabled, trade stream not started")
         return
 
-    api_key = os.environ.get("ALPACA_API_KEY")
-    secret_key = os.environ.get("ALPACA_SECRET_KEY")
+    for mode in _resolve_modes():
+        await _start_one_stream(mode)
+
+
+async def _start_one_stream(account_mode: str) -> None:
+    """Spawn one TradingStream subscribed for a specific account_mode."""
+    env_prefix = f"ALPACA_{account_mode.upper()}_"
+    api_key = os.environ.get(f"{env_prefix}API_KEY")
+    secret_key = os.environ.get(f"{env_prefix}SECRET_KEY")
     if not api_key or not secret_key:
-        logger.warning("Alpaca credentials not set, trade stream not started")
-        return
-
-    paper = os.environ.get("ALPACA_PAPER", "true").lower() == "true"
-
-    _trading_stream = TradingStream(
-        api_key=api_key,
-        secret_key=secret_key,
-        paper=paper,
-        raw_data=False,
-    )
-    _trading_stream.subscribe_trade_updates(_handle_trade_update)
-
-    # Guard against SDK changes — _run_forever is the coroutine we need
-    if not hasattr(_trading_stream, "_run_forever") or not asyncio.iscoroutinefunction(
-        _trading_stream._run_forever
-    ):
-        logger.error(
-            "alpaca-py SDK changed: TradingStream._run_forever not found. "
-            "Pin alpaca-py==0.43.2. Falling back to polling."
+        logger.warning(
+            f"Alpaca {account_mode} credentials not set, "
+            f"trade stream NOT started for mode={account_mode}"
         )
         return
 
-    _stream_task = asyncio.create_task(_run_stream_with_monitoring())
-    mode = "PAPER" if paper else "LIVE"
-    logger.info(f"Trade update stream started ({mode})")
+    stream = TradingStream(
+        api_key=api_key,
+        secret_key=secret_key,
+        paper=(account_mode == "paper"),
+        raw_data=False,
+    )
+
+    # Closure binding: every event from this stream knows which mode it
+    # came from. The dispatcher validates account_mode against the trade
+    # row before any state mutation (cross-account contamination guard).
+    async def _handler(data, _mode=account_mode):
+        await _dispatch_trade_event(data, _mode)
+
+    stream.subscribe_trade_updates(_handler)
+
+    # Guard against SDK changes — _run_forever is the coroutine we need
+    if not hasattr(stream, "_run_forever") or not asyncio.iscoroutinefunction(
+        stream._run_forever
+    ):
+        logger.error(
+            "alpaca-py SDK changed: TradingStream._run_forever not found. "
+            "Pin alpaca-py==0.43.2. Falling back to polling for "
+            f"mode={account_mode}."
+        )
+        return
+
+    _trading_streams[account_mode] = stream
+    _stream_healthy[account_mode] = False
+    _last_event_time[account_mode] = None
+    _reconnect_count[account_mode] = 0
+    _stream_tasks[account_mode] = asyncio.create_task(
+        _run_stream_with_monitoring(account_mode)
+    )
+    logger.info(f"Trade update stream started for mode={account_mode}")
 
 
-async def _run_stream_with_monitoring() -> None:
-    """Outer wrapper: restarts _run_forever if it exits unexpectedly."""
-    global _stream_healthy, _reconnect_count
+async def _run_stream_with_monitoring(account_mode: str) -> None:
+    """Outer wrapper: restarts _run_forever for a specific mode if it dies."""
+    stream = _trading_streams.get(account_mode)
+    if stream is None:
+        return
 
     while True:
         try:
-            _stream_healthy = True
-            _reconnect_count = 0
-            logger.info("Trade stream connecting...")
-            await _trading_stream._run_forever()
+            _stream_healthy[account_mode] = True
+            _reconnect_count[account_mode] = 0
+            logger.info(f"Trade stream connecting (mode={account_mode})...")
+            await stream._run_forever()
         except asyncio.CancelledError:
-            logger.info("Trade stream cancelled (shutdown)")
-            _stream_healthy = False
+            logger.info(f"Trade stream cancelled for mode={account_mode} (shutdown)")
+            _stream_healthy[account_mode] = False
             return
         except Exception as e:
-            _stream_healthy = False
-            _reconnect_count += 1
+            _stream_healthy[account_mode] = False
+            _reconnect_count[account_mode] += 1
+            n = _reconnect_count[account_mode]
             logger.error(
-                f"Trade stream died unexpectedly: {e}, "
-                f"reconnect attempt {_reconnect_count}/{_MAX_OUTER_RETRIES}"
+                f"Trade stream (mode={account_mode}) died unexpectedly: {e}, "
+                f"reconnect attempt {n}/{_MAX_OUTER_RETRIES}"
             )
-            if _reconnect_count >= _MAX_OUTER_RETRIES:
+            if n >= _MAX_OUTER_RETRIES:
                 await send_telegram_message(
-                    f"{mode_prefix()}🚨 *Trade stream failed {_MAX_OUTER_RETRIES} times*\n"
+                    f"{mode_prefix(account_mode)}🚨 *Trade stream "
+                    f"failed {_MAX_OUTER_RETRIES} times* (mode={account_mode})\n"
                     f"Last error: {e}\n"
                     f"Falling back to polling. Check logs."
                 )
-                _stream_healthy = False
+                _stream_healthy[account_mode] = False
                 return
-            backoff = min(5 * _reconnect_count, 30)
-            logger.info(f"Retrying trade stream in {backoff}s...")
+            backoff = min(5 * n, 30)
+            logger.info(f"Retrying trade stream (mode={account_mode}) in {backoff}s...")
             await asyncio.sleep(backoff)
 
 
 async def stop_trade_stream() -> None:
-    """Stop the WebSocket stream. Called from agent.py shutdown."""
-    global _stream_task, _trading_stream, _stream_healthy
+    """Stop all per-mode WebSocket streams. Called from agent.py shutdown."""
+    for mode, task in list(_stream_tasks.items()):
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
-    if _stream_task and not _stream_task.done():
-        _stream_task.cancel()
+    for mode, stream in list(_trading_streams.items()):
         try:
-            await _stream_task
-        except asyncio.CancelledError:
-            pass
-
-    if _trading_stream:
-        try:
-            await _trading_stream.close()
+            await stream.close()
         except Exception:
             pass
 
-    _stream_healthy = False
-    logger.info("Trade stream stopped")
+    _stream_healthy.clear()
+    logger.info("All trade streams stopped")
 
 
 def get_stream_status() -> dict:
-    """Return stream health info for monitoring and fallback decisions."""
-    return {
-        "healthy": _stream_healthy,
-        "last_event": _last_event_time.isoformat() if _last_event_time else None,
-        "reconnect_count": _reconnect_count,
-        "task_alive": _stream_task is not None and not _stream_task.done() if _stream_task else False,
-    }
+    """Return per-mode stream health info for monitoring + fallback decisions."""
+    out: dict = {}
+    for mode in list(_stream_tasks.keys()):
+        task = _stream_tasks.get(mode)
+        out[mode] = {
+            "healthy": _stream_healthy.get(mode, False),
+            "last_event": (
+                _last_event_time[mode].isoformat()
+                if _last_event_time.get(mode) else None
+            ),
+            "reconnect_count": _reconnect_count.get(mode, 0),
+            "task_alive": task is not None and not task.done() if task else False,
+        }
+    return out
+
+
+# ── Cross-account event validation (reviewer correctness invariant) ─────────
+
+
+async def _verify_event_account_mode(order_id: str, stream_account_mode: str) -> bool:
+    """Validate that an order event arrived on the correct account's stream.
+
+    Looks up the trade row's account_mode by order_id (covers entry, stop,
+    and tagged exit orders). Returns:
+      - True if account_mode matches stream_account_mode → safe to process
+      - True if no row found → likely untracked direct Alpaca action;
+        downstream handler emits the untracked-fill alert
+      - False if mismatch → drops the event, emits cross_account_event_rejected
+        audit, prevents cross-account state mutation
+
+    Required because a single Apollo container subscribes to BOTH paper and
+    live trade streams. Without this guard, a paper-stream event for an
+    untagged order_id could mutate a live trade row (or vice versa) if the
+    order_id happened to match — extremely unlikely with mode-bound
+    client_order_id (apollo_paper_… vs apollo_live_…) but still load-bearing
+    defense in depth.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Try mi_live_trades first (entry / stop order matches)
+        row_mode = await conn.fetchval(
+            """
+            SELECT account_mode FROM mi_live_trades
+            WHERE entry_order_id = $1 OR stop_order_id = $1
+            LIMIT 1
+            """,
+            order_id,
+        )
+        # Then mi_live_orders (tagged exits: partial_exit, full_exit, stop_loss)
+        if row_mode is None:
+            row_mode = await conn.fetchval(
+                """
+                SELECT lt.account_mode FROM mi_live_orders lo
+                JOIN mi_live_trades lt ON lt.id = lo.trade_id
+                WHERE lo.alpaca_order_id = $1
+                LIMIT 1
+                """,
+                order_id,
+            )
+
+    if row_mode is None:
+        # Untracked — let downstream handler emit the untracked-fill alert.
+        return True
+
+    if row_mode != stream_account_mode:
+        logger.error(
+            f"CROSS_ACCOUNT_EVENT_REJECTED: order_id={order_id} arrived on "
+            f"stream={stream_account_mode} but trade row carries "
+            f"account_mode={row_mode}"
+        )
+        try:
+            await log_audit_event(
+                event_type="cross_account_event_rejected",
+                summary=(
+                    f"Stream {stream_account_mode} got event for "
+                    f"{row_mode} trade (order={order_id})"
+                ),
+                detail=json.dumps({
+                    "order_id": order_id,
+                    "stream_account_mode": stream_account_mode,
+                    "trade_account_mode": row_mode,
+                }),
+            )
+        except Exception:
+            pass
+        return False
+
+    return True
 
 
 # ── Event Router ────────────────────────────────────────────────────────────
 
 
-async def _handle_trade_update(data) -> None:
-    """Central handler for all Alpaca trade update WebSocket events."""
-    global _last_event_time
-    _last_event_time = datetime.utcnow()
+async def _dispatch_trade_event(data, stream_account_mode: str) -> None:
+    """Central handler for all Alpaca trade update WebSocket events.
+
+    Validates cross-account invariant before routing to the per-event
+    handler. All downstream handlers receive the validated account_mode
+    and use it to (a) filter mi_live_trades queries, (b) route alpaca
+    calls to the correct client, (c) emit Telegram with the right prefix.
+    """
+    _last_event_time[stream_account_mode] = datetime.utcnow()
 
     event = str(data.event)
     order = data.order
     order_id = str(order.id)
     symbol = order.symbol
 
-    logger.info(f"WS event: {event} | {symbol} | order={order_id} | status={order.status}")
+    logger.info(
+        f"WS [{stream_account_mode}] event: {event} | {symbol} | "
+        f"order={order_id} | status={order.status}"
+    )
+
+    # Cross-account guard — runs BEFORE any DB mutation. Lifecycle events
+    # (new, accepted, held) bypass since they don't mutate state.
+    if event in ("fill", "partial_fill", "canceled", "cancelled", "expired", "rejected"):
+        if not await _verify_event_account_mode(order_id, stream_account_mode):
+            return
 
     try:
         if event == "fill":
-            await _handle_fill(data)
+            await _handle_fill(data, stream_account_mode)
         elif event == "partial_fill":
-            await _handle_partial_fill(data)
+            await _handle_partial_fill(data, stream_account_mode)
         elif event in ("canceled", "cancelled", "expired", "rejected"):
-            await _handle_cancel_or_reject(data, event)
+            await _handle_cancel_or_reject(data, event, stream_account_mode)
         elif event in ("new", "accepted", "held"):
-            logger.debug(f"Order {event}: {symbol} order_id={order_id}")
+            logger.debug(
+                f"Order {event} [{stream_account_mode}]: "
+                f"{symbol} order_id={order_id}"
+            )
         else:
             logger.debug(f"Unhandled trade event: {event} for {symbol}")
     except Exception as e:
-        logger.error(f"Error handling WS event {event} for {symbol}: {e}", exc_info=True)
-        await send_telegram_message(
-            f"{mode_prefix()}⚠️ *Stream handler error*\n{event} for {symbol}: {e}"
+        logger.error(
+            f"Error handling WS event {event} [{stream_account_mode}] "
+            f"for {symbol}: {e}",
+            exc_info=True,
         )
+        await send_telegram_message(
+            f"{mode_prefix(stream_account_mode)}⚠️ *Stream handler error*\n"
+            f"{event} for {symbol}: {e}"
+        )
+
+
+# Backward-compat alias (some older imports may still call _handle_trade_update
+# directly). New code should use _dispatch_trade_event with explicit mode.
+async def _handle_trade_update(data, account_mode: str | None = None) -> None:
+    from agents.market_intelligence.constants import current_account_mode
+    await _dispatch_trade_event(data, account_mode or current_account_mode())
 
 
 # ── Partial Fill Handler (visibility-only) ──────────────────────────────────
@@ -185,7 +337,7 @@ async def _handle_trade_update(data) -> None:
 # will be designed against that production data.
 
 
-async def _handle_partial_fill(data) -> None:
+async def _handle_partial_fill(data, account_mode: str) -> None:
     order = data.order
     order_id = str(order.id)
     symbol = order.symbol
@@ -199,15 +351,17 @@ async def _handle_partial_fill(data) -> None:
     async with pool.acquire() as conn:
         trade = await conn.fetchrow(
             "SELECT id, ticker FROM mi_live_trades "
-            "WHERE entry_order_id = $1 OR stop_order_id = $1 "
+            "WHERE (entry_order_id = $1 OR stop_order_id = $1) "
+            "  AND account_mode = $2 "
             "ORDER BY id DESC LIMIT 1",
             order_id,
+            account_mode,
         )
     trade_id = trade["id"] if trade else None
     ticker = trade["ticker"] if trade else symbol
 
     summary = (
-        f"{symbol} partial_fill {event_qty:g}/{total_qty:g} "
+        f"[{account_mode}] {symbol} partial_fill {event_qty:g}/{total_qty:g} "
         f"(cum {cum_filled:g}) @ ${avg_price:.2f} side={side}"
     )
     detail = json.dumps({
@@ -219,6 +373,7 @@ async def _handle_partial_fill(data) -> None:
         "cum_filled": cum_filled,
         "total_qty": total_qty,
         "avg_price": avg_price,
+        "account_mode": account_mode,
     })
     await log_audit_event("entry_partial_fill", summary, detail)
 
@@ -269,7 +424,7 @@ async def _handle_partial_fill(data) -> None:
             return  # finalizer already sent its own Telegram
 
     await send_telegram_message(
-        f"{mode_prefix()}📊 *Partial fill: {symbol}*\n"
+        f"{mode_prefix(account_mode)}📊 *Partial fill: {symbol}*\n"
         f"This event: {event_qty:g} sh | Cumulative: {cum_filled:g}/{total_qty:g}\n"
         f"Avg price: ${avg_price:.2f} | side: {side}\n"
         f"order={order_id}\n"
@@ -280,7 +435,7 @@ async def _handle_partial_fill(data) -> None:
 # ── Fill Handler ────────────────────────────────────────────────────────────
 
 
-async def _handle_fill(data) -> None:
+async def _handle_fill(data, account_mode: str) -> None:
     """Route fill events to entry fill or stop-loss fill handlers."""
     order = data.order
     order_id = str(order.id)
@@ -290,28 +445,32 @@ async def _handle_fill(data) -> None:
 
     pool = await get_pool()
 
-    # 1. Check if this is an entry order fill (atomic claim)
+    # 1. Check if this is an entry order fill (atomic claim, mode-scoped)
     async with pool.acquire() as conn:
         entry_trade = await conn.fetchrow("""
             UPDATE mi_live_trades SET status = 'filling'
             WHERE entry_order_id = $1 AND status = 'order_placed'
+              AND account_mode = $2
             RETURNING *
-        """, order_id)
+        """, order_id, account_mode)
 
     if entry_trade:
-        await _process_entry_fill(dict(entry_trade), order, filled_price, filled_qty, pool)
+        await _process_entry_fill(
+            dict(entry_trade), order, filled_price, filled_qty, pool, account_mode
+        )
         return
 
-    # 2. Check if this is a stop-loss leg fill (atomic claim)
+    # 2. Check if this is a stop-loss leg fill (atomic claim, mode-scoped)
     async with pool.acquire() as conn:
         stop_trade = await conn.fetchrow("""
             UPDATE mi_live_trades SET status = 'stop_processing'
             WHERE stop_order_id = $1 AND status = 'filled'
+              AND account_mode = $2
             RETURNING *
-        """, order_id)
+        """, order_id, account_mode)
 
     if stop_trade:
-        await _process_stop_fill(dict(stop_trade), filled_price, pool)
+        await _process_stop_fill(dict(stop_trade), filled_price, pool, account_mode)
         return
 
     # 3. Managed exit fill (partial_exit / full_exit). Atomically claim the
@@ -354,8 +513,8 @@ async def _handle_fill(data) -> None:
             # shipped (entry/stop rows have NULL too). Already updated to
             # status='filled' above; nothing else to do here.
             logger.info(
-                f"Managed fill (purpose={purpose}): {symbol} order={order_id} "
-                f"{filled_qty}@${filled_price}"
+                f"Managed fill [{account_mode}] (purpose={purpose}): "
+                f"{symbol} order={order_id} {filled_qty}@${filled_price}"
             )
         return
 
@@ -364,13 +523,24 @@ async def _handle_fill(data) -> None:
         side = str(getattr(order, "side", "")).lower()
         side_label = "SELL" if "sell" in side else ("BUY" if "buy" in side else "FILL")
         await send_telegram_message(
-            f"{mode_prefix()}💱 *Untracked {side_label}:* {symbol} @${filled_price:.2f} x {filled_qty:.0f}\n"
+            f"{mode_prefix(account_mode)}💱 *Untracked {side_label}:* "
+            f"{symbol} @${filled_price:.2f} x {filled_qty:.0f}\n"
             f"Order {order_id[:8]} not in our records — direct Alpaca action."
         )
-        logger.warning(f"Untracked fill: {symbol} order={order_id} filled={filled_qty}@${filled_price}")
+        logger.warning(
+            f"Untracked fill [{account_mode}]: {symbol} order={order_id} "
+            f"filled={filled_qty}@${filled_price}"
+        )
 
 
-async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qty: float, pool) -> None:
+async def _process_entry_fill(
+    trade: dict,
+    order,
+    filled_price: float,
+    filled_qty: float,
+    pool,
+    account_mode: str,
+) -> None:
     """Handle entry order fill — update trade to 'filled' status."""
     ticker = trade["ticker"]
 
@@ -378,7 +548,7 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
     if filled_qty < (trade["entry_shares"] or 0) and filled_price and filled_qty * filled_price < 500:
         logger.info(f"Partial fill too small for {ticker}: {filled_qty} shares, closing")
         try:
-            await alpaca.close_position(ticker)
+            await alpaca.close_position(ticker, account_mode=account_mode)
         except Exception as e:
             logger.error(f"Failed to close partial fill for {ticker}: {e}")
         async with pool.acquire() as conn:
@@ -406,7 +576,7 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
 
     if not stop_order_id:
         try:
-            refetched = await alpaca.get_order(str(order.id))
+            refetched = await alpaca.get_order(str(order.id), account_mode=account_mode)
             stop_order_id = alpaca.extract_stop_leg_id(refetched)
         except Exception as e:
             logger.warning(f"Could not refetch order {order.id} for leg extraction: {e}")
@@ -419,7 +589,9 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
         ticker_name = trade["ticker"]
         if stop_target:
             try:
-                new_stop = await alpaca.place_stop_order(ticker_name, filled_qty, stop_target)
+                new_stop = await alpaca.place_stop_order(
+                    ticker_name, filled_qty, stop_target, account_mode=account_mode,
+                )
                 stop_order_id = new_stop["id"]
                 # Tag remediation stop with purpose='stop_loss' so WS fill handler
                 # routes via mi_live_orders even if stop_order_id goes stale later.
@@ -435,24 +607,24 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
                         float(filled_qty), stop_target,
                         new_stop.get("status", "new"), json.dumps(new_stop))
                 logger.warning(
-                    f"Fill-path stop remediation: {ticker_name} qty={filled_qty} "
-                    f"stop=${stop_target:.2f} order_id={stop_order_id}"
+                    f"Fill-path stop remediation [{account_mode}]: {ticker_name} "
+                    f"qty={filled_qty} stop=${stop_target:.2f} order_id={stop_order_id}"
                 )
                 await send_telegram_message(
-                    f"{mode_prefix()}🛡 *Protective stop placed:* {ticker_name}\n"
+                    f"{mode_prefix(account_mode)}🛡 *Protective stop placed:* {ticker_name}\n"
                     f"Bracket leg missing — standalone stop at ${stop_target:.2f}"
                 )
             except Exception as e:
                 logger.error(f"Fill-path stop remediation FAILED for {ticker_name}: {e}")
                 await send_telegram_message(
-                    f"{mode_prefix()}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                    f"{mode_prefix(account_mode)}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
                     f"Entry filled but stop placement failed: {e}\n"
                     f"Manual intervention required."
                 )
         else:
             logger.error(f"Fill-path stop remediation impossible for {ticker_name}: no orb_low")
             await send_telegram_message(
-                f"{mode_prefix()}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
+                f"{mode_prefix(account_mode)}🚨 *UNPROTECTED POSITION:* {ticker_name}\n"
                 f"Entry filled, no stop order, no orb_low in DB. Manual intervention required."
             )
 
@@ -474,14 +646,16 @@ async def _process_entry_fill(trade: dict, order, filled_price: float, filled_qt
 
     attempt = trade.get("entry_attempt", 1)
     await send_telegram_message(
-        f"{mode_prefix()}✅ *FILLED:* {ticker} (attempt {attempt})\n"
+        f"{mode_prefix(account_mode)}✅ *FILLED:* {ticker} (attempt {attempt})\n"
         f"Entry: ${filled_price:.2f} x {filled_qty:.0f} shares\n"
         f"Stop: ${trade['orb_low']:.2f}"
     )
-    logger.info(f"WS fill: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
+    logger.info(f"WS fill [{account_mode}]: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
 
 
-async def _process_stop_fill(trade: dict, stop_fill_price: float, pool) -> None:
+async def _process_stop_fill(
+    trade: dict, stop_fill_price: float, pool, account_mode: str,
+) -> None:
     """Handle stop-loss fill — close trade or attempt Day 1 re-entry."""
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.broker.order_manager import attempt_day1_reentry, MAX_ENTRY_ATTEMPTS
@@ -500,7 +674,7 @@ async def _process_stop_fill(trade: dict, stop_fill_price: float, pool) -> None:
                 trade["id"],
             )
         result = await attempt_day1_reentry(trade["id"], stop_fill_price, source="websocket")
-        logger.info(f"WS re-entry result for {ticker}: {result}")
+        logger.info(f"WS re-entry result [{account_mode}] for {ticker}: {result}")
     else:
         # Close trade — Day 2+ or max attempts reached
         entry_price = trade["entry_price"]
@@ -530,16 +704,19 @@ async def _process_stop_fill(trade: dict, stop_fill_price: float, pool) -> None:
 
         reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
         await send_telegram_message(
-            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | {reason}"
         )
-        logger.info(f"WS stop-out: {ticker} @${stop_fill_price:.2f} pnl=${pnl:+,.2f}")
+        logger.info(
+            f"WS stop-out [{account_mode}]: {ticker} @${stop_fill_price:.2f} "
+            f"pnl=${pnl:+,.2f}"
+        )
 
 
 # ── Cancel/Reject Handler ──────────────────────────────────────────────────
 
 
-async def _handle_cancel_or_reject(data, event: str) -> None:
+async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
     """Handle order cancellation, expiry, or rejection."""
     order = data.order
     order_id = str(order.id)
@@ -548,12 +725,13 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
 
     pool = await get_pool()
 
-    # 1. Entry order?
+    # 1. Entry order? (mode-scoped)
     async with pool.acquire() as conn:
         entry_trade = await conn.fetchrow("""
             SELECT id, ticker FROM mi_live_trades
-            WHERE entry_order_id = $1 AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
-        """, order_id)
+            WHERE entry_order_id = $1 AND account_mode = $2
+              AND status IN ('order_placed', 'submitting', 'pending_confirmation', 'confirmed')
+        """, order_id, account_mode)
 
     if entry_trade:
         async with pool.acquire() as conn:
@@ -563,17 +741,18 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
             )
         icon = "🚫" if event_norm == "rejected" else "🗑"
         await send_telegram_message(
-            f"{mode_prefix()}{icon} *Entry {event_norm.upper()}:* {symbol}\nOrder {order_id[:8]} — no position opened."
+            f"{mode_prefix(account_mode)}{icon} *Entry {event_norm.upper()}:* {symbol}\n"
+            f"Order {order_id[:8]} — no position opened."
         )
-        logger.info(f"WS: entry order {event_norm}: {symbol}")
+        logger.info(f"WS [{account_mode}]: entry order {event_norm}: {symbol}")
         return
 
     # 2. Stop-loss leg cancellation — signals open position is now unprotected
     async with pool.acquire() as conn:
         stop_trade = await conn.fetchrow("""
             SELECT id, ticker, remaining_shares, stop_price FROM mi_live_trades
-            WHERE stop_order_id = $1 AND status = 'filled'
-        """, order_id)
+            WHERE stop_order_id = $1 AND status = 'filled' AND account_mode = $2
+        """, order_id, account_mode)
 
     if stop_trade:
         async with pool.acquire() as conn:
@@ -583,17 +762,23 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
             )
         if event_norm == "expired":
             await send_telegram_message(
-                f"{mode_prefix()}ℹ️ *EOD stop expired (expected):* {symbol}\n"
+                f"{mode_prefix(account_mode)}ℹ️ *EOD stop expired (expected):* {symbol}\n"
                 f"{stop_trade['remaining_shares']:.0f} sh — GTC re-issue at 4:05 PM ET."
             )
-            logger.info(f"WS: EOD stop expired (expected): {symbol} trade_id={stop_trade['id']}")
+            logger.info(
+                f"WS [{account_mode}]: EOD stop expired (expected): {symbol} "
+                f"trade_id={stop_trade['id']}"
+            )
         else:
             await send_telegram_message(
-                f"{mode_prefix()}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
+                f"{mode_prefix(account_mode)}⚠️ *Stop order {event_norm.upper()}:* {symbol}\n"
                 f"Position unprotected ({stop_trade['remaining_shares']:.0f} sh). "
                 f"Remediation runs at 4:05 PM ET — monitor."
             )
-            logger.warning(f"WS: stop-loss {event_norm}: {symbol} trade_id={stop_trade['id']}")
+            logger.warning(
+                f"WS [{account_mode}]: stop-loss {event_norm}: {symbol} "
+                f"trade_id={stop_trade['id']}"
+            )
         return
 
     # 3. Pending managed exit (partial/full) cancelled or rejected before fill.
@@ -619,12 +804,13 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
         if trade_row and trade_row["remaining_shares"] > 0 and trade_row["stop_price"]:
             # Cancel the smaller stop and place one sized for the full remaining.
             if trade_row["stop_order_id"]:
-                await alpaca.cancel_order(trade_row["stop_order_id"])
+                await alpaca.cancel_order(trade_row["stop_order_id"], account_mode=account_mode)
             try:
                 restored = await alpaca.place_stop_order(
                     trade_row["ticker"],
                     int(trade_row["remaining_shares"]),
                     float(trade_row["stop_price"]),
+                    account_mode=account_mode,
                 )
                 async with pool.acquire() as conn:
                     await conn.execute(
@@ -645,20 +831,24 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                         float(trade_row["stop_price"]),
                         restored.get("status", "new"), json.dumps(restored))
                 await send_telegram_message(
-                    f"{mode_prefix()}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
+                    f"{mode_prefix(account_mode)}⚠️ *Partial exit {event_norm.upper()}:* {symbol}\n"
                     f"Sell did not fill. Stop restored to full {int(trade_row['remaining_shares'])} sh "
                     f"@${float(trade_row['stop_price']):.2f}."
                 )
                 logger.warning(
-                    f"WS: partial exit {event_norm} for {symbol}, stop restored "
-                    f"to {trade_row['remaining_shares']} sh"
+                    f"WS [{account_mode}]: partial exit {event_norm} for {symbol}, "
+                    f"stop restored to {trade_row['remaining_shares']} sh"
                 )
             except Exception as e:
                 await send_telegram_message(
-                    f"{mode_prefix()}🚨 *PARTIAL EXIT {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
-                    f"{e}\n*Position may be unprotected — manual intervention required.*"
+                    f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT {event_norm.upper()} + "
+                    f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"
+                    f"*Position may be unprotected — manual intervention required.*"
                 )
-                logger.error(f"WS: partial exit {event_norm} stop-restore failed for {symbol}: {e}")
+                logger.error(
+                    f"WS [{account_mode}]: partial exit {event_norm} stop-restore "
+                    f"failed for {symbol}: {e}"
+                )
         return
 
     if pending_exit and pending_exit["purpose"] == "full_exit":
@@ -677,6 +867,7 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                     trade_row["ticker"],
                     int(trade_row["remaining_shares"]),
                     float(trade_row["stop_price"]),
+                    account_mode=account_mode,
                 )
                 async with pool.acquire() as conn:
                     await conn.execute(
@@ -684,23 +875,30 @@ async def _handle_cancel_or_reject(data, event: str) -> None:
                         trade_row["id"], restored["id"],
                     )
                 await send_telegram_message(
-                    f"{mode_prefix()}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                     f"Position still open ({int(trade_row['remaining_shares'])} sh). "
                     f"Stop re-placed @${float(trade_row['stop_price']):.2f}."
                 )
-                logger.warning(f"WS: full exit {event_norm} for {symbol}, stop re-placed")
+                logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
                 await send_telegram_message(
-                    f"{mode_prefix()}🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
-                    f"{e}\n*Position may be unprotected — manual intervention required.*"
+                    f"{mode_prefix(account_mode)}🚨 *CLOSE {event_norm.upper()} + "
+                    f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"
+                    f"*Position may be unprotected — manual intervention required.*"
                 )
-                logger.error(f"WS: full exit {event_norm} stop-restore failed for {symbol}: {e}")
+                logger.error(
+                    f"WS [{account_mode}]: full exit {event_norm} stop-restore "
+                    f"failed for {symbol}: {e}"
+                )
         return
 
     # 4. Untracked cancellation (direct/manual Alpaca action) — still alert on rejection
     # to surface account-level issues (margin/PDT/etc.); stay quieter on expiry.
     if event_norm == "rejected":
-        await send_telegram_message(f"{mode_prefix()}⚠️ *Order REJECTED:* {symbol}\nOrder {order_id[:8]} — check logs.")
-        logger.warning(f"WS: untracked rejection: {symbol} order={order_id}")
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ *Order REJECTED:* {symbol}\n"
+            f"Order {order_id[:8]} — check logs."
+        )
+        logger.warning(f"WS [{account_mode}]: untracked rejection: {symbol} order={order_id}")
     else:
-        logger.info(f"WS: untracked {event_norm}: {symbol} order={order_id}")
+        logger.info(f"WS [{account_mode}]: untracked {event_norm}: {symbol} order={order_id}")
