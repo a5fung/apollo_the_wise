@@ -743,38 +743,50 @@ reviews:
     added_on: 2026-05-09
 
   - review_id: drawdown_breaker_promotion
-    title: "Drawdown circuit breaker — shadow → active flip (#39)"
+    title: "Drawdown circuit breaker — shadow → active flip (#39, GATE 1 of live cutover)"
     question: |
-      After ≥14 calendar days of post-live-cutover shadow telemetry, do the
-      drawdown breaker's transition events justify promoting from shadow to
-      active? Acceptance gates: trip rate ≤ ~1×/quarter equivalent, zero
-      `drawdown_check_unavailable` clusters, ≥1 `drawdown_breaker_released`
-      observed (proves recovery path works). Live cutover earliest 2026-05-12
-      → earliest review 2026-05-26.
+      **GATE 1 of 3 for live-$ cutover decision** (advisor 2026-05-10: must be
+      ACTIVE before live cutover, not after — going live with safeguard in
+      shadow defeats the safeguard's purpose during the highest-risk window).
+
+      After ≥14 calendar days of paper shadow telemetry from 2026-05-08 ship
+      date, do the drawdown breaker's transition events justify promoting
+      shadow → active? Acceptance gates: trip rate ≤ ~1×/quarter equivalent,
+      zero `drawdown_check_unavailable` clusters, ideally ≥1
+      `drawdown_breaker_released` observed (proves recovery path works — but
+      may not fire if paper account doesn't drift).
     predicate_sql: |
       SELECT COUNT(DISTINCT s.snapshot_date)
       FROM mi_account_equity_snapshots s
-      WHERE s.account_mode = 'live'
-        AND s.snapshot_date > CURRENT_DATE - 30
+      WHERE s.snapshot_date > CURRENT_DATE - 30
     threshold: 14
-    earliest_review_date: 2026-05-26
+    earliest_review_date: 2026-05-22
     action_when_ready: |
       Run validation queries from docs/setups/safeguards.md "Promotion plan"
-      section against post-cutover audit log + snapshot history. If acceptance
+      section against paper shadow audit log + snapshot history. If acceptance
       gates pass:
         1. Set DRAWDOWN_BREAKER_PHASE=active env var, restart container.
         2. Update docs/setups/safeguards.md change log: shadow → active (with
            validation evidence link).
         3. Mark CIRCUIT_BREAKER_CONSEC_LOSSES and CIRCUIT_BREAKER_COOLDOWN_DAYS
            in constants.py deprecated with 30-day removal comment.
-        4. After 30 days of clean drawdown-active operation, remove the
-           count-based block from live_tracker.py:_check_safeguards (~lines 184-210).
+        4. After 30 days of clean drawdown-active operation in paper, remove
+           the count-based block from live_tracker.py:_check_safeguards
+           (~lines 184-210).
       If thresholds appear miscalibrated (no trips ever / constant trips), tune
       DRAWDOWN_TRIP_PCT / DRAWDOWN_RELEASE_PCT and log the change as a new
       change-log entry in safeguards.md per CHANGE_PROCESS rules. Do NOT flip
       to active if acceptance gates fail — defer 14 more days.
-      Origin: 2026-05-08 #39 shadow ship. Plan:
-      ~/.claude/plans/let-s-go-into-plan-glittery-graham.md
+
+      **NOTE re: live cutover sequencing** — original plan
+      (~/.claude/plans/let-s-go-into-plan-glittery-graham.md) said live cutover
+      restarts the shadow clock and promotion is measured against live
+      snapshots. Advisor 2026-05-10 reversed this: paper shadow telemetry is
+      sufficient evidence to flip active, AND active state must precede live
+      cutover. Live cutover then starts with a fresh peak under an active
+      breaker — safer than shadow-during-learning-curve.
+      Origin: 2026-05-08 #39 shadow ship; gating revised 2026-05-10 per
+      advisor live-cutover review.
     status: pending
     added_on: 2026-05-08
 
@@ -824,3 +836,200 @@ reviews:
       ship L0+L1 immediately (cheap, high-precision), gate L2 on data.
     status: pending
     added_on: 2026-05-04
+
+  - review_id: ftre_partial_trail_verification
+    title: "FTRE naked-window fix verification (#306, GATE 2 of live cutover)"
+    question: |
+      **GATE 2 of 3 for live-$ cutover decision** (advisor 2026-05-10:
+      shipping fresh fixes to live $ without observing them in paper means
+      using real money to validate the fix — wrong ordering).
+
+      The 2026-05-09 fix to update_stop / sync_positions
+      (broker/order_manager.py::get_pending_exit_qty SSoT helper) handles
+      the naked-window race when a partial-exit is pending and a stop refresh
+      runs concurrently. FTRE 5/9 was the originating incident.
+
+      Has at least one partial-then-trail cycle (partial exit followed by
+      stop trail or stop hit) been observed in paper since the fix landed,
+      with no naked-window event in mi_audit_log? If yes, fix is verified.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades lt
+      WHERE lt.account_mode = 'paper'
+        AND lt.alert_date >= '2026-05-10'
+        AND lt.exits IS NOT NULL
+        AND jsonb_typeof(lt.exits) = 'array'
+        AND jsonb_array_length(lt.exits) >= 2
+        AND lt.status = 'closed'
+    threshold: 1
+    earliest_review_date: 2026-05-13
+    action_when_ready: |
+      1. Identify the qualifying trade(s):
+           SELECT id, ticker, alert_date, status, exits, total_pnl
+           FROM mi_live_trades
+           WHERE account_mode='paper'
+             AND alert_date >= '2026-05-10'
+             AND jsonb_array_length(exits) >= 2
+             AND status='closed'
+           ORDER BY alert_date DESC;
+
+      2. For each qualifying trade, scan mi_audit_log for naked-window events
+         in the relevant time window:
+           SELECT created_at, event_type, summary, detail
+           FROM mi_audit_log
+           WHERE created_at BETWEEN <trade_open> AND <trade_close>
+             AND event_type IN (
+               'naked_position_detected',
+               'stop_placement_failed_after_partial',
+               'sync_positions_orphan_remediated'
+             );
+
+      3. Decision:
+         - 0 naked-window events across all qualifying trades → fix VERIFIED.
+           Mark gate green; close this review entry as done.
+         - ≥1 naked-window event despite the fix → investigate. The fix
+           may not cover all races; new evidence reopens the naked-window
+           class. Block live cutover decision until root cause found.
+
+      Origin: 2026-05-09 FTRE incident + fix.
+      Code: broker/order_manager.py::get_pending_exit_qty + update_stop /
+      sync_positions integrations.
+    status: pending
+    added_on: 2026-05-10
+
+  - review_id: paper_r_expectancy_validation
+    title: "Paper R-expectancy positive over recent N≥10 (GATE 3 of live cutover)"
+    question: |
+      **GATE 3 of 3 for live-$ cutover decision** (advisor 2026-05-10:
+      methodology validation gate is positive R-expectancy in paper, not
+      "enough trades to justify going live"; current 0/3 live cohort needs
+      reset by N≥10 closed trades trending positive).
+
+      Over the most recent 10 closed paper trades, is total R-expectancy
+      positive? Pradeep/Qullamaggie methodology accepts low win rates
+      (~25-30%) so long as winners run multiples of risk. The validation
+      threshold is +R cumulative across N≥10, not win-rate.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode = 'paper'
+        AND status = 'closed'
+        AND closed_at > NOW() - INTERVAL '21 days'
+    threshold: 10
+    earliest_review_date: 2026-05-17
+    action_when_ready: |
+      Compute R-expectancy on the most recent 10 closed paper trades:
+
+        WITH recent AS (
+          SELECT id, ticker, alert_date,
+                 entry_price, stop_price, total_pnl,
+                 (entry_price - stop_price) AS risk_per_share,
+                 -- approx R: (close pnl per share) / risk per share
+                 NULLIF(entry_price - stop_price, 0) AS denom
+          FROM mi_live_trades
+          WHERE account_mode = 'paper'
+            AND status = 'closed'
+            AND closed_at IS NOT NULL
+          ORDER BY closed_at DESC
+          LIMIT 10
+        )
+        SELECT
+          COUNT(*) AS n,
+          SUM(CASE WHEN total_pnl > 0 THEN 1 ELSE 0 END) AS wins,
+          ROUND(AVG(total_pnl)::numeric, 2) AS avg_pnl,
+          -- R aggregation requires per-trade share count + risk;
+          -- check entries[] JSONB or mi_live_orders for filled qty
+          SUM(total_pnl) AS total_pnl
+        FROM recent;
+
+      Decision:
+        - Total_pnl > 0 across N=10 → GATE 3 GREEN. Methodology validated.
+        - Total_pnl ≤ 0 across N=10 → DEFER cutover by another N=10. Either
+          methodology is broken (re-evaluate setup definitions) or sample
+          variance — accumulate more paper data.
+        - If 0 wins across N=10 → STOP. Investigate detection-side bugs
+          before continuing. Compare cohort to backtest expectancy.
+
+      Note: R computation here is approximate (uses entry_price - stop_price
+      as denominator). For precise R, multiply per-share P&L by entry shares,
+      divide by initial $ risked. Apollo doesn't currently store an "R" column
+      — rely on total_pnl direction + cumulative sign as the validation
+      proxy. If precision matters, file a per-trade R column followup.
+
+      Origin: 2026-05-10 advisor live-cutover gate review.
+    status: pending
+    added_on: 2026-05-10
+
+  - review_id: live_cutover_decision
+    title: "Live $ cutover decision — composite of 3 gates (advisor 2026-05-10)"
+    question: |
+      Are all three live-cutover gates green?
+        Gate 1: drawdown_breaker_promotion (#39 / review above)
+        Gate 2: ftre_partial_trail_verification (review above)
+        Gate 3: paper_r_expectancy_validation (review above)
+
+      If yes, evaluate live cutover at $10K starting size, MAGNA53-only
+      (live_real_enabled=True), 9M Day 2 stays staged-paper.
+
+      Earliest review 2026-05-22 (matches drawdown breaker shadow window).
+      Practical date range: 2026-05-22 → 2026-05-24, possibly slipping to
+      early June if Gate 3 needs more closed trades to reach N=10 with +R.
+    predicate_sql: |
+      SELECT COUNT(*) FROM (
+        SELECT 1
+      ) t
+      WHERE EXISTS (
+        SELECT 1 FROM mi_account_equity_snapshots
+        WHERE snapshot_date > CURRENT_DATE - 14
+        GROUP BY 1=1
+        HAVING COUNT(DISTINCT snapshot_date) >= 14
+      )
+    threshold: 1
+    earliest_review_date: 2026-05-22
+    action_when_ready: |
+      Verify all three gates are green by querying the predicates of:
+        - drawdown_breaker_promotion
+        - ftre_partial_trail_verification
+        - paper_r_expectancy_validation
+
+      For each, check that the action_when_ready criteria evaluate green
+      (not just that the predicate ripened — predicate is the
+      "do we have enough data to decide" gate, not the decision itself).
+
+      If ALL THREE green:
+        1. Activate drawdown breaker:
+             DRAWDOWN_BREAKER_PHASE=active in container env, restart.
+        2. Verify breaker active in live_tracker._check_safeguards path
+           (one paper trade should now route through the new check).
+        3. Set MAGNA53 strategy live_real_enabled=True via:
+             UPDATE mi_strategies SET live_real_enabled=true
+             WHERE strategy_id='magna53';
+           Leave 9M Day 2 staged-paper (live_real_enabled=False) until
+           ≥30 closed live MAGNA53 fills with positive R (separate review).
+        4. Set initial live $ deposit: $10K.
+        5. Verify staged-paper banner shows correctly on Telegram for 9M
+           Day 2 alerts (🟡 STAGED-PAPER tag); MAGNA53 alerts now route
+           live (no banner).
+        6. Watch first 5 live trades closely — manual sanity check on each
+           fill, slippage vs paper expectations, partial fill behavior.
+        7. After ≥30 closed live MAGNA53 fills with positive R-expectancy:
+           - Promote 9M Day 2 to live_real_enabled=True
+           - Consider scaling deposit to $25K
+           File this as the next data-gated review at that point.
+
+      If ANY gate red:
+        - Identify which gate(s) failed and why (predicate not ripe vs
+          predicate ripe but criteria failed).
+        - Defer cutover. File a follow-up triggered by the relevant
+          gate's re-readiness.
+        - Do NOT cut over partial — all three gates green is the contract.
+
+      Hard gate-fail signals that push the date out:
+        - Drawdown breaker shadow shows API reliability issues
+        - New trading-side bug discovered (FTRE class)
+        - Paper R-expectancy stays negative through next 10 trades
+        - Theme assignment investigation (#46) surfaces detection-side bug
+
+      Origin: 2026-05-10 advisor live-cutover review (replaced agent's
+      original "$5K starting size now" recommendation with a gate-based
+      readiness approach).
+    status: pending
+    added_on: 2026-05-10
