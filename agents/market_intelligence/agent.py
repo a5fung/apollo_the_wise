@@ -4903,6 +4903,32 @@ async def startup():
             )
     except Exception as e:
         logger.warning(f"Failed to audit-log alpaca creds status: {e}")
+    # Boot smoke test: instantiate per-mode TradingClients, verify each can
+    # talk to its Alpaca account. Surfaces credential rot or live-account
+    # not-yet-funded scenarios at boot, not on first trade.
+    try:
+        from agents.market_intelligence.broker.alpaca_client import verify_dual_account_clients
+        from agents.market_intelligence.db import log_audit_event
+        verify_result = await verify_dual_account_clients()
+        ok_modes = [m for m, r in verify_result.items() if r.get("ok")]
+        bad_modes = [m for m, r in verify_result.items() if not r.get("ok")]
+        if bad_modes:
+            await log_audit_event(
+                event_type="dual_account_boot_failed",
+                summary=f"Alpaca client init failed for modes: {bad_modes}",
+                detail=str(verify_result),
+            )
+            logger.error(f"DUAL_ACCOUNT_BOOT_FAILED: {verify_result}")
+        else:
+            equities = {m: r.get("equity") for m, r in verify_result.items()}
+            await log_audit_event(
+                event_type="dual_account_boot_verified",
+                summary=f"Alpaca clients verified for modes={ok_modes}",
+                detail=f"Equities by mode: {equities}",
+            )
+            logger.info(f"Dual-account boot verified: {equities}")
+    except Exception as e:
+        logger.warning(f"Failed to verify dual-account clients at boot: {e}")
     # Load description overrides from DB into in-memory TICKER_DESC
     try:
         from agents.market_intelligence.universe import apply_overrides
