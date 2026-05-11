@@ -127,6 +127,14 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     regime_label = metrics.get("regime", {}).get("current") or "Unknown"
     message = f"{header}\n*Regime:* {regime_label}\n\n{summary}"
 
+    # Losers post-mortem (#76, 2026-05-11) — deterministic appendix above
+    # crypto so the methodology-tuning signals land near the top of the
+    # appendix block, right where the eye looks after reading the LLM
+    # summary. Empty string if no losing trades in window (skipped clean).
+    loser_section = _format_loser_section(metrics.get("loser_breakdown") or {})
+    if loser_section:
+        message = f"{message}\n\n{loser_section}"
+
     # Crypto RS readiness — deterministic appendix (not LLM-interpreted).
     # Surfaces "ready to flip" verdict so the user doesn't forget about
     # the shadow-mode module accumulating in the background.
@@ -156,6 +164,7 @@ async def _gather_and_aggregate(
     clusters = await _aggregate_clusters(today)
     regime = await _aggregate_regime(window_days)
     postmortems = await _aggregate_trade_postmortems(window_start)
+    loser_breakdown = await _aggregate_loser_breakdown(window_start)
     anomalies = await _aggregate_anomalies(window_days)
     crypto = await _aggregate_crypto_readiness(window_days)
     shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
@@ -177,6 +186,7 @@ async def _gather_and_aggregate(
         "anomalies": anomalies,
         "postmortem_best": postmortems.get("best"),
         "postmortem_worst": postmortems.get("worst"),
+        "loser_breakdown": loser_breakdown,
         "crypto": crypto,
         "shadow_orb": shadow_orb,
         "wick": wick,
@@ -336,6 +346,241 @@ async def _aggregate_trade_postmortems(window_start: date) -> dict:
         except Exception as e:
             logger.warning(f"Weekly postmortem (worst) failed: {e}")
     return out
+
+
+_LOSER_NEGATIVE_PROSE_MARKERS = (
+    "no gap up catalyst identified",
+    "no specific news or catalyst",
+    "no fresh company-specific news",
+    "no fresh headlines",
+    "no specific catalyst",
+    "class action",
+    "lawsuit",
+)
+
+
+async def _aggregate_loser_breakdown(window_start: date) -> dict:
+    """Per-loser systematic post-mortem for the weekly digest (#76, 2026-05-11).
+
+    For each closed losing trade in the window, joins to mi_ep_alerts +
+    mi_orb_shadow_trades + mi_audit_log to surface methodology-tuning
+    signals invisible in aggregate P&L: catalyst-prose vs grade mismatch,
+    1-min vs 5-min ORB comparison, gap-through severity, time-to-stop,
+    re-entry compound-loss pattern.
+
+    Returns {"losers": [...], "aggregates": {...}}. Empty dict when no
+    losing closed trades in window.
+    """
+    from agents.market_intelligence.db import get_pool
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        losers = await conn.fetch("""
+            SELECT
+                t.id, t.ticker, t.alert_date, t.signal_type, t.entry_attempt,
+                t.account_mode, t.total_pnl, t.entry_price, t.stop_price,
+                t.orb_high, t.orb_low, t.filled_at, t.closed_at, t.exits,
+                a.ep_score, a.catalyst_quality, a.catalyst AS catalyst_prose,
+                a.pm_rvol, a.gap_pct
+            FROM mi_live_trades t
+            LEFT JOIN mi_ep_alerts a
+                ON a.ticker = t.ticker AND a.alert_date = t.alert_date
+            WHERE t.status = 'closed'
+              AND t.alert_date >= $1
+              AND t.total_pnl < 0
+            ORDER BY t.total_pnl ASC
+        """, window_start)
+
+        if not losers:
+            return {}
+
+        # 5-min ORB shadow for the same (ticker, alert_date) pairs.
+        shadow_rows = await conn.fetch("""
+            SELECT ticker, alert_date,
+                   orb_high::numeric AS s5_orb_high,
+                   orb_low::numeric AS s5_orb_low,
+                   status AS s5_status,
+                   skip_reason AS s5_skip_reason
+            FROM mi_orb_shadow_trades
+            WHERE bar_size_minutes = 5
+              AND alert_date >= $1
+        """, window_start)
+        shadow_idx = {
+            (r["ticker"], r["alert_date"]): dict(r) for r in shadow_rows
+        }
+
+        # Earnings-boost audit events keyed by ticker+alert_date.
+        boost_rows = await conn.fetch("""
+            SELECT summary, (created_at AT TIME ZONE 'America/New_York')::date AS et_date
+            FROM mi_audit_log
+            WHERE event_type = 'catalyst_earnings_boost'
+              AND created_at::date >= $1
+        """, window_start)
+        # Summary format: "MNDY: routine → strong (earnings_day, source=...)"
+        boosted: set[tuple] = set()
+        for r in boost_rows:
+            summary = r["summary"] or ""
+            tick = summary.split(":")[0].strip()
+            if tick:
+                boosted.add((tick, r["et_date"]))
+
+    def _negative_prose(prose: str | None) -> list[str]:
+        if not prose:
+            return []
+        lower = prose.lower()
+        hits = []
+        for marker in _LOSER_NEGATIVE_PROSE_MARKERS:
+            if marker in lower:
+                hits.append(marker)
+        return hits
+
+    losers_out: list[dict] = []
+    n_blocked_by_5m = 0
+    n_wider_stop_5m = 0
+    n_prose_mismatch = 0
+    n_fast_stop = 0
+    n_compound_attempt2 = 0
+    gap_through_cents: list[float] = []
+
+    for row in losers:
+        trade = dict(row)
+        ticker = trade["ticker"]
+        alert_d = trade["alert_date"]
+
+        # Parse exits[] for stop fill details.
+        exits = trade["exits"]
+        if isinstance(exits, str):
+            try:
+                exits = json.loads(exits)
+            except Exception:
+                exits = []
+        if not isinstance(exits, list):
+            exits = []
+        first_stop = next(
+            (e for e in exits if e.get("reason") == "stop_hit"), None
+        )
+
+        # Gap-through severity: fill price vs stop price (positive = past stop).
+        stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
+        gap_through_dollars: float | None = None
+        if first_stop and stop_price:
+            try:
+                gap_through_dollars = round(
+                    float(stop_price) - float(first_stop.get("price") or 0), 4
+                )
+                if gap_through_dollars > 0:
+                    gap_through_cents.append(gap_through_dollars)
+            except Exception:
+                pass
+
+        # Time-to-stop: filled_at → first stop_hit time.
+        time_to_stop_min: float | None = None
+        if first_stop and trade.get("filled_at"):
+            try:
+                from datetime import datetime as _dt
+                ts_raw = first_stop.get("time")
+                if ts_raw:
+                    ts = _dt.fromisoformat(ts_raw.replace("Z", "+00:00")) if isinstance(ts_raw, str) else ts_raw
+                    if ts.tzinfo is None:
+                        from datetime import timezone as _tz
+                        ts = ts.replace(tzinfo=_tz.utc)
+                    fa = trade["filled_at"]
+                    if fa.tzinfo is None:
+                        from datetime import timezone as _tz
+                        fa = fa.replace(tzinfo=_tz.utc)
+                    time_to_stop_min = round((ts - fa).total_seconds() / 60.0, 1)
+                    if time_to_stop_min < 10:
+                        n_fast_stop += 1
+            except Exception:
+                pass
+
+        # Catalyst prose vs grade.
+        prose_markers = _negative_prose(trade.get("catalyst_prose"))
+        earnings_boosted = (ticker, alert_d) in boosted
+        # Mismatch flag: graded strong but prose has negative markers AND
+        # no earnings backstop fired. The earnings boost is a legitimate
+        # reason for "strong" without specific-news prose, so excluding
+        # boosted tickers avoids false positives (MNDY 5/11 class).
+        prose_mismatch = (
+            trade.get("catalyst_quality") == "strong"
+            and bool(prose_markers)
+            and not earnings_boosted
+        )
+        if prose_mismatch:
+            n_prose_mismatch += 1
+
+        # 5-min ORB comparison.
+        s5 = shadow_idx.get((ticker, alert_d))
+        s5_verdict = "no_shadow_data"
+        if s5:
+            s5_status = (s5.get("s5_status") or "").lower()
+            if s5_status == "gate_blocked":
+                s5_verdict = "would_block"
+                n_blocked_by_5m += 1
+            elif s5.get("s5_orb_low") is not None and trade.get("orb_low") is not None:
+                if float(s5["s5_orb_low"]) + 0.01 < float(trade["orb_low"]):
+                    s5_verdict = "wider_stop"
+                    n_wider_stop_5m += 1
+                else:
+                    s5_verdict = "similar_stop"
+            else:
+                s5_verdict = "shadow_no_levels"
+
+        # Compound-loss check: if attempt 2 exists, are the two stop losses
+        # within 15% of each other (i.e., paid the same loss twice)?
+        is_compound = False
+        if int(trade.get("entry_attempt") or 1) >= 2:
+            stop_hits = [e for e in exits if e.get("reason") == "stop_hit"]
+            if len(stop_hits) >= 2:
+                p1 = float(stop_hits[0].get("pnl") or 0)
+                p2 = float(stop_hits[1].get("pnl") or 0)
+                if p1 < 0 and p2 < 0:
+                    ratio = abs((p2 - p1) / p1) if p1 != 0 else 1.0
+                    if ratio < 0.15:
+                        is_compound = True
+                        n_compound_attempt2 += 1
+
+        losers_out.append({
+            "ticker": ticker,
+            "alert_date": alert_d.isoformat(),
+            "signal_type": trade.get("signal_type"),
+            "account_mode": trade.get("account_mode"),
+            "entry_attempt": int(trade.get("entry_attempt") or 1),
+            "total_pnl": round(float(trade["total_pnl"]), 2),
+            "entry_price": float(trade["entry_price"]) if trade.get("entry_price") else None,
+            "stop_price": stop_price,
+            "ep_score": float(trade["ep_score"]) if trade.get("ep_score") else None,
+            "catalyst_quality": trade.get("catalyst_quality"),
+            "earnings_boost_fired": earnings_boosted,
+            "prose_negative_markers": prose_markers,
+            "prose_mismatch": prose_mismatch,
+            "orb1_low": float(trade["orb_low"]) if trade.get("orb_low") else None,
+            "orb1_high": float(trade["orb_high"]) if trade.get("orb_high") else None,
+            "orb5_low": float(s5["s5_orb_low"]) if s5 and s5.get("s5_orb_low") is not None else None,
+            "orb5_high": float(s5["s5_orb_high"]) if s5 and s5.get("s5_orb_high") is not None else None,
+            "orb5_verdict": s5_verdict,
+            "orb5_skip_reason": s5.get("s5_skip_reason") if s5 else None,
+            "gap_through_dollars": gap_through_dollars,
+            "time_to_stop_min": time_to_stop_min,
+            "is_compound_loss": is_compound,
+        })
+
+    n = len(losers_out)
+    total_loss = sum(L["total_pnl"] for L in losers_out)
+    aggregates = {
+        "n_losers": n,
+        "total_loss": round(total_loss, 2),
+        "pct_5m_would_block": round(100.0 * n_blocked_by_5m / n, 1) if n else 0.0,
+        "pct_5m_wider_stop": round(100.0 * n_wider_stop_5m / n, 1) if n else 0.0,
+        "pct_prose_mismatch": round(100.0 * n_prose_mismatch / n, 1) if n else 0.0,
+        "pct_fast_stop_lt_10min": round(100.0 * n_fast_stop / n, 1) if n else 0.0,
+        "n_compound_attempt2": n_compound_attempt2,
+        "median_gap_through_dollars": (
+            round(sorted(gap_through_cents)[len(gap_through_cents) // 2], 4)
+            if gap_through_cents else None
+        ),
+    }
+    return {"losers": losers_out, "aggregates": aggregates}
 
 
 async def _aggregate_ep_outcomes(days: int) -> dict:
@@ -860,6 +1105,73 @@ async def _aggregate_fishhook_outcomes(window_days: int) -> dict:
         "deep_median_r": round(float(row["deep_median_r"]), 2) if row["deep_median_r"] is not None else None,
         "n_deep": int(row["n_deep"] or 0),
     }
+
+
+def _format_loser_section(loser_breakdown: dict) -> str:
+    """Deterministic per-loser breakdown for the weekly digest (#76).
+
+    Surfaces methodology-tuning signals (catalyst-prose mismatch, 1m vs
+    5m ORB, gap-through, fast stops, compound losses) verbatim — no LLM
+    paraphrasing so exact stop prices and verdicts land in the digest.
+    """
+    if not loser_breakdown:
+        return ""
+    losers = loser_breakdown.get("losers") or []
+    agg = loser_breakdown.get("aggregates") or {}
+    if not losers:
+        return ""
+
+    lines = [
+        f"❌ *Losers post-mortem ({agg.get('n_losers', 0)} trades · "
+        f"${agg.get('total_loss', 0):+,.0f})*",
+    ]
+    # Per-trade rows — most recent / largest loss first (already sorted ASC by pnl).
+    # Cap to top 10 to keep digest scannable; aggregates capture the tail.
+    for L in losers[:10]:
+        flags = []
+        if L.get("prose_mismatch"):
+            flags.append("📰 prose↔grade")
+        if L.get("orb5_verdict") == "would_block":
+            flags.append("⛔ 5m blocked")
+        elif L.get("orb5_verdict") == "wider_stop":
+            flags.append(f"🪜 5m stop ${L['orb5_low']:.2f}")
+        if (L.get("time_to_stop_min") or 999) < 10:
+            flags.append(f"⏱ {L['time_to_stop_min']:.1f}m")
+        if L.get("is_compound_loss"):
+            flags.append("🔁 compound")
+        if (L.get("gap_through_dollars") or 0) > 0.05:
+            flags.append(f"⚡ gap-thru ${L['gap_through_dollars']:.2f}")
+        if L.get("earnings_boost_fired"):
+            flags.append("📅 earnings")
+        attempt_marker = f" att{L['entry_attempt']}" if L.get("entry_attempt", 1) > 1 else ""
+        flag_str = (" · " + " · ".join(flags)) if flags else ""
+        lines.append(
+            f"• `{L['ticker']}` {L['alert_date']}{attempt_marker} "
+            f"${L['total_pnl']:+,.0f}{flag_str}"
+        )
+    if len(losers) > 10:
+        lines.append(f"_(+ {len(losers) - 10} more losers, see DB row)_")
+
+    # Aggregate roll-up — the methodology signals worth tracking week-over-week.
+    n = agg.get("n_losers", 0)
+    median_gt = agg.get("median_gap_through_dollars")
+    agg_bits = [
+        f"5m-blocked: {agg.get('pct_5m_would_block', 0):.0f}%",
+        f"5m-wider: {agg.get('pct_5m_wider_stop', 0):.0f}%",
+        f"prose-mismatch: {agg.get('pct_prose_mismatch', 0):.0f}%",
+        f"fast-stop<10m: {agg.get('pct_fast_stop_lt_10min', 0):.0f}%",
+    ]
+    if median_gt is not None:
+        agg_bits.append(f"med gap-thru ${median_gt:.2f}")
+    if agg.get("n_compound_attempt2", 0):
+        agg_bits.append(f"compound att2: {agg['n_compound_attempt2']}")
+    lines.append("_" + " · ".join(agg_bits) + "_")
+    lines.append(
+        f"_Legend: 📰=catalyst grade vs prose mismatch · ⛔=5m ORB would block · "
+        f"🪜=5m ORB stop wider · ⏱=stopped <10m post-fill · 🔁=att2 loss within 15% "
+        f"of att1 · ⚡=fill past stop · 📅=earnings backstop fired_"
+    )
+    return "\n".join(lines)
 
 
 def _format_crypto_section(crypto: dict) -> str:
