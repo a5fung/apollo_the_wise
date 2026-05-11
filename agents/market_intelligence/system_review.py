@@ -456,29 +456,34 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
                 exits = []
         if not isinstance(exits, list):
             exits = []
-        first_stop = next(
-            (e for e in exits if e.get("reason") == "stop_hit"), None
-        )
+        # Pair the stop with its OWN attempt. The trade's filled_at reflects
+        # the CURRENT (latest) attempt's fill — so for time-to-stop and
+        # gap-through we want the stop_hit that BELONGS to that attempt,
+        # not attempt 1's stop on a re-entered trade. exits[] is chronological;
+        # the last stop_hit corresponds to the most recent attempt and
+        # therefore pairs with the current filled_at.
+        stop_hits = [e for e in exits if e.get("reason") == "stop_hit"]
+        last_stop = stop_hits[-1] if stop_hits else None
 
         # Gap-through severity: fill price vs stop price (positive = past stop).
         stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
         gap_through_dollars: float | None = None
-        if first_stop and stop_price:
+        if last_stop and stop_price:
             try:
                 gap_through_dollars = round(
-                    float(stop_price) - float(first_stop.get("price") or 0), 4
+                    float(stop_price) - float(last_stop.get("price") or 0), 4
                 )
                 if gap_through_dollars > 0:
                     gap_through_cents.append(gap_through_dollars)
             except Exception:
                 pass
 
-        # Time-to-stop: filled_at → first stop_hit time.
+        # Time-to-stop: filled_at → matching attempt's stop_hit time.
         time_to_stop_min: float | None = None
-        if first_stop and trade.get("filled_at"):
+        if last_stop and trade.get("filled_at"):
             try:
                 from datetime import datetime as _dt
-                ts_raw = first_stop.get("time")
+                ts_raw = last_stop.get("time")
                 if ts_raw:
                     ts = _dt.fromisoformat(ts_raw.replace("Z", "+00:00")) if isinstance(ts_raw, str) else ts_raw
                     if ts.tzinfo is None:
