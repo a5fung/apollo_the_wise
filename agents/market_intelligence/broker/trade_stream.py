@@ -423,6 +423,25 @@ async def _handle_partial_fill(data, account_mode: str) -> None:
                 )
             return  # finalizer already sent its own Telegram
 
+    # Paper-mode noise reduction (2026-05-11): paper Alpaca synthesizes
+    # partial fills on liquid mid-caps even though no real liquidity
+    # constraint exists. One trade can produce 6+ partial-fill messages
+    # (e.g. MNDY 5/11: 228 sh entry filled in 3 partials, then exited in
+    # another 4 partials = 7 messages for one trade). The audit-log entry
+    # above is preserved for telemetry; only the Telegram blast is
+    # suppressed on paper.
+    #
+    # Live mode keeps the alert per the 2026-05-05 contract — first real
+    # partials need operator eyes on DB state vs broker state. When a
+    # large-size live trade starts tick-filling, this is load-bearing
+    # visibility.
+    if account_mode != "live":
+        logger.info(
+            f"Partial fill suppressed (paper): {symbol} {event_qty:g}/{total_qty:g} "
+            f"@${avg_price:.2f} order={order_id}"
+        )
+        return
+
     await send_telegram_message(
         f"{mode_prefix(account_mode)}📊 *Partial fill: {symbol}*\n"
         f"This event: {event_qty:g} sh | Cumulative: {cum_filled:g}/{total_qty:g}\n"
