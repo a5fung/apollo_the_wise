@@ -31,8 +31,13 @@ from agents.market_intelligence.broker.skip_reasons import (
     humanize,
 )
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.constants import current_account_mode, mode_prefix
+from agents.market_intelligence.constants import (
+    current_account_mode,
+    mode_prefix,
+    resolve_account_mode_for_strategy,
+)
 from agents.market_intelligence.db import get_pool, log_audit_event
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -127,8 +132,11 @@ async def check_fade_guard(
 # ── Main pipeline ────────────────────────────────────────────────────────────
 
 SpecBuilder = Callable[
-    [dict, dict, dict | None], Awaitable[tuple[dict | None, str | None]]
+    [dict, dict, dict | None, str], Awaitable[tuple[dict | None, str | None]]
 ]
+# 4th positional arg is account_mode ('paper' | 'live'), threaded so the
+# spec_builder can fetch equity from the correct Alpaca account when sizing.
+# Added 2026-05-10 (#66 dual-account).
 SkipHook = Callable[[str], Awaitable[None]]
 
 
@@ -198,7 +206,7 @@ async def submit_trade_entry(
         if not aggregate_skips or is_infra:
             try:
                 await send_telegram_message(
-                    f"{mode_prefix()}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
+                    f"{mode_prefix()}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"  # mode_prefix() ok here — pre-account-routing skip
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
@@ -270,7 +278,16 @@ async def submit_trade_entry(
             )
 
     # 2. Safeguards — position cap / daily loss / circuit breaker.
-    ok, sg_reason = await _check_safeguards()
+    # Resolve account_mode from strategy here (pre-spec-builder) so safeguards
+    # filter by the correct mode AND so spec_builder can route alpaca calls
+    # to the correct account for equity sizing.
+    if strategy is not None:
+        _safeguard_mode = resolve_account_mode_for_strategy(strategy)
+    else:
+        _safeguard_mode = current_account_mode()
+    ok, sg_reason = await _check_safeguards(
+        account_mode=_safeguard_mode, signal_type=signal_type,
+    )
     if not ok:
         return await _skip(sg_reason, icon="🚫", audit_event="orb_blocked", action=ACTION_BLOCKED)
 
@@ -296,14 +313,45 @@ async def submit_trade_entry(
     if not fade_ok:
         return await _skip(fade_reason, audit_event="orb_faded")
 
-    # 5. Strategy-specific spec build.
-    order_spec, spec_reason = await spec_builder(alert_context, orb_bar, regime_record)
+    # 5. Strategy-specific spec build. Pass account_mode so the builder
+    # fetches equity from the correct Alpaca account when sizing.
+    order_spec, spec_reason = await spec_builder(
+        alert_context, orb_bar, regime_record, _safeguard_mode,
+    )
     if not order_spec:
         msg = spec_reason or "order spec failed"
         return await _skip(msg, audit_event="orb_skipped")
 
-    # 6. Insert trade row.
-    account_mode = current_account_mode()
+    # 5b. Per-strategy sizing multiplier (#65). Applied uniformly across
+    # spec_builders (prepare_orb_order, prepare_9m_day2_orb_order, ...) so
+    # 9M Day 2 can ramp at e.g. position_size_multiplier=0.5 without
+    # touching its own builder. Skipped when strategy is None (legacy
+    # pre-registry path) or multiplier is 1.0 (no-op).
+    if strategy is not None:
+        multiplier = float(getattr(strategy, "position_size_multiplier", None) or 1.0)
+        if multiplier != 1.0 and order_spec.get("shares"):
+            new_shares = math.floor(int(order_spec["shares"]) * multiplier)
+            if new_shares < 1:
+                return await _skip(
+                    f"setup:size_too_small: post-multiplier ({multiplier}x) shares < 1",
+                    audit_event="orb_skipped",
+                )
+            risk_per_share = float(order_spec.get("risk_per_share") or 0)
+            entry_price = float(order_spec.get("entry_price") or 0)
+            order_spec["shares"] = new_shares
+            order_spec["position_size"] = round(new_shares * entry_price, 2)
+            order_spec["risk_dollars"] = round(new_shares * risk_per_share, 2)
+            try:
+                await log_audit_event(
+                    "per_strategy_sizing_applied",
+                    f"{strategy_label} {ticker} multiplier={multiplier}x → "
+                    f"shares={new_shares} risk=${order_spec['risk_dollars']:.0f}",
+                )
+            except Exception:
+                pass
+
+    # 6. Insert trade row. account_mode already resolved at safeguard step.
+    account_mode = _safeguard_mode
     async with pool.acquire() as conn:
         trade_id = await conn.fetchval(
             """
@@ -357,7 +405,7 @@ async def submit_trade_entry(
             except Exception:
                 pass
             await send_telegram_message(
-                f"{mode_prefix()}⚠️ *{ticker}* {strategy_label} auto-enter failed — "
+                f"{mode_prefix(account_mode)}⚠️ *{ticker}* {strategy_label} auto-enter failed — "
                 f"check logs (trade_id={trade_id})"
             )
             return {"ticker": ticker, "action": ACTION_AUTO_ENTER_FAILED}
@@ -373,7 +421,7 @@ async def submit_trade_entry(
         except Exception:
             pass
         await send_telegram_message(
-            f"{mode_prefix()}{success_icon} *{success_title}:* {ticker}\n"
+            f"{mode_prefix(account_mode)}{success_icon} *{success_title}:* {ticker}\n"
             f"Stop-limit BUY @ ${order_spec['entry_price']:.2f} (pending trigger) | "
             f"{stop_label}: ${order_spec['stop_loss_price']:.2f}\n"
             f"Shares: {order_spec['shares']} | "
@@ -392,7 +440,7 @@ async def submit_trade_entry(
         logger.info(f"{strategy_label} trade proposal sent: {ticker} (id={trade_id})")
         return {"ticker": ticker, "action": ACTION_PROPOSED, "trade_id": trade_id}
     await send_telegram_message(
-        f"{mode_prefix()}⚠️ *{ticker}* {strategy_label} proposal send failed — "
+        f"{mode_prefix(account_mode)}⚠️ *{ticker}* {strategy_label} proposal send failed — "
         f"check logs (trade_id={trade_id})"
     )
     return {"ticker": ticker, "action": ACTION_PROPOSAL_SEND_FAILED}

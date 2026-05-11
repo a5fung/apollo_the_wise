@@ -24,7 +24,11 @@ from agents.market_intelligence.broker.skip_reasons import (
     SETUP_ZERO_RANGE,
 )
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.constants import mode_prefix
+from agents.market_intelligence.constants import (
+    current_account_mode,
+    mode_prefix,
+    ENABLE_LIVE_MODE,
+)
 from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
@@ -59,6 +63,7 @@ async def prepare_orb_order(
     orb_bar: dict,
     atr_14: float,
     regime_record: dict | None,
+    account_mode: str | None = None,
 ) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares/risk from ORB bar and account equity.
@@ -81,9 +86,9 @@ async def prepare_orb_order(
             )
         return None, f"{SETUP_ZERO_RANGE}: open=high=low=${orb_high:.2f}"
 
-    # Get actual account equity from Alpaca
+    # Get actual account equity from Alpaca (per-mode for dual-account)
     try:
-        account = await alpaca.get_account()
+        account = await alpaca.get_account(account_mode=account_mode)
         equity = account["equity"]
     except Exception as e:
         logger.error(f"Cannot get account equity for {ticker}, aborting order prep: {e}")
@@ -170,6 +175,9 @@ async def submit_entry(trade_id: int) -> dict | None:
         return None
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    signal_type = trade.get("signal_type") or "unknown"
+    coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
     try:
         order = await alpaca.place_bracket_order(
             ticker=ticker,
@@ -177,18 +185,24 @@ async def submit_entry(trade_id: int) -> dict | None:
             stop_price=trade["orb_high"],
             limit_price=stop_limit_buy_price(trade["orb_high"]),
             stop_loss_price=trade["stop_price"],
+            account_mode=account_mode,
+            client_order_id=coid,
         )
     except Exception as e:
         # 1 retry after 5s for transient errors
         logger.warning(f"Entry order failed for {ticker}, retrying: {e}")
         await asyncio.sleep(5)
         try:
+            # New COID for retry so client_order_id stays unique
+            coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
             order = await alpaca.place_bracket_order(
                 ticker=ticker,
                 qty=trade["entry_shares"],
                 stop_price=trade["orb_high"],
                 limit_price=stop_limit_buy_price(trade["orb_high"]),
                 stop_loss_price=trade["stop_price"],
+                account_mode=account_mode,
+                client_order_id=coid,
             )
         except Exception as e2:
             logger.error(f"Entry order failed after retry for {ticker}: {e2}")
@@ -196,7 +210,9 @@ async def submit_entry(trade_id: int) -> dict | None:
                 trade_id, "order_failed",
                 skip_reason=f"{INFRA_ORDER_SUBMIT_FAILED}: {e2}",
             )
-            await send_telegram_message(f"{mode_prefix()}⚠️ Order FAILED for {ticker}: {e2}")
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}⚠️ Order FAILED for {ticker}: {e2}"
+            )
             return None
 
     # Store order in DB
@@ -208,7 +224,7 @@ async def submit_entry(trade_id: int) -> dict | None:
     # so one extra call here closes the gap that triggers the fill-path
     # remediation false alarm.
     if not stop_order_id:
-        refetched = await alpaca.get_order(entry_order_id)
+        refetched = await alpaca.get_order(entry_order_id, account_mode=account_mode)
         stop_order_id = alpaca.extract_stop_leg_id(refetched)
         if not stop_order_id:
             logger.warning(
@@ -271,14 +287,16 @@ async def check_fills() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         pending = await conn.fetch("""
-            SELECT id, ticker, entry_order_id, entry_shares, orb_low, stop_price, entry_attempt
+            SELECT id, ticker, entry_order_id, entry_shares, orb_low, stop_price,
+                   entry_attempt, account_mode
             FROM mi_live_trades
             WHERE status = 'order_placed' AND entry_order_id IS NOT NULL
         """)
 
     results = []
     for trade in pending:
-        order = await alpaca.get_order(trade["entry_order_id"])
+        account_mode = trade["account_mode"] or current_account_mode()
+        order = await alpaca.get_order(trade["entry_order_id"], account_mode=account_mode)
         if not order:
             continue
 
@@ -293,7 +311,7 @@ async def check_fills() -> list[dict]:
             if filled_qty < trade["entry_shares"] and filled_price and filled_qty * filled_price < 500:
                 logger.info(f"Partial fill too small for {ticker}: {filled_qty} shares, closing")
                 try:
-                    await alpaca.close_position(ticker)
+                    await alpaca.close_position(ticker, account_mode=account_mode)
                 except Exception as e:
                     logger.error(f"Failed to close partial fill for {ticker}: {e}")
                 await _update_trade_status(trade["id"], "closed", skip_reason="partial_fill_too_small")
@@ -369,7 +387,8 @@ async def attempt_day1_reentry(
         trade = await conn.fetchrow("""
             SELECT id, ticker, entry_price, entry_shares, remaining_shares,
                    orb_high, orb_low, stop_price, atr_14, stop_order_id, entry_attempt,
-                   exits, ep_score, catalyst_quality, gap_pct, regime, alert_date
+                   exits, ep_score, catalyst_quality, gap_pct, regime, alert_date,
+                   account_mode, signal_type
             FROM mi_live_trades WHERE id = $1
         """, trade_id)
 
@@ -378,6 +397,8 @@ async def attempt_day1_reentry(
 
     trade = dict(trade)
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    signal_type = trade.get("signal_type") or "unknown"
     entry_price = trade["entry_price"]
     shares = trade["remaining_shares"]
     orb_high = trade["orb_high"]
@@ -413,7 +434,7 @@ async def attempt_day1_reentry(
                 WHERE id = $1
             """, trade["id"], json.dumps(exits), total_pnl_so_far)
         await send_telegram_message(
-            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | No re-entry after 11 AM"
         )
         logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, no re-entry after 11 AM")
@@ -424,6 +445,7 @@ async def attempt_day1_reentry(
     # Price-aware re-entry: check if price already above ORB high
     try:
         latest = await alpaca.get_latest_trade(ticker)
+        coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
         if latest and latest["price"] > orb_high:
             # Price already past breakout — stop-limit would never trigger
             limit_price = round(latest["price"] * 1.002, 2)
@@ -436,6 +458,8 @@ async def attempt_day1_reentry(
                 qty=trade["entry_shares"],
                 limit_price=limit_price,
                 stop_loss_price=stop_loss_price,
+                account_mode=account_mode,
+                client_order_id=coid,
             )
             order_type = "limit"
         else:
@@ -446,6 +470,8 @@ async def attempt_day1_reentry(
                 stop_price=orb_high,
                 limit_price=stop_limit_buy_price(orb_high),
                 stop_loss_price=stop_loss_price,
+                account_mode=account_mode,
+                client_order_id=coid,
             )
             order_type = "stop_limit"
     except Exception as e:
@@ -461,7 +487,7 @@ async def attempt_day1_reentry(
                 WHERE id = $1
             """, trade["id"], json.dumps(exits), total_pnl, attempt)
         await send_telegram_message(
-            f"{mode_prefix()}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | Re-entry failed: {e}"
         )
         return {"ticker": ticker, "action": "reentry_failed"}
@@ -470,7 +496,7 @@ async def attempt_day1_reentry(
     new_entry_order_id = new_order["id"]
     new_stop_order_id = alpaca.extract_stop_leg_id(new_order)
     if not new_stop_order_id:
-        refetched = await alpaca.get_order(new_entry_order_id)
+        refetched = await alpaca.get_order(new_entry_order_id, account_mode=account_mode)
         new_stop_order_id = alpaca.extract_stop_leg_id(refetched)
 
     async with pool.acquire() as conn:
@@ -507,7 +533,7 @@ async def attempt_day1_reentry(
         else f"buy >${orb_high:.2f}"
     )
     await send_telegram_message(
-        f"{mode_prefix()}🔄 *Re-entry:* {ticker} (attempt {attempt}/{MAX_ENTRY_ATTEMPTS})\n"
+        f"{mode_prefix(account_mode)}🔄 *Re-entry:* {ticker} (attempt {attempt}/{MAX_ENTRY_ATTEMPTS})\n"
         f"Stopped @${stop_fill_price:.2f} (${pnl:+,.2f})\n"
         f"New order: {entry_desc} stop ${orb_low:.2f}\n"
         f"_[{source}]_"
@@ -527,7 +553,7 @@ async def _check_day1_reentry() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         trades = await conn.fetch("""
-            SELECT id, ticker, stop_order_id, stop_price
+            SELECT id, ticker, stop_order_id, stop_price, account_mode
             FROM mi_live_trades
             WHERE alert_date = $1
               AND status = 'filled'
@@ -539,7 +565,8 @@ async def _check_day1_reentry() -> list[dict]:
     results = []
     for trade in trades:
         trade = dict(trade)
-        stop_order = await alpaca.get_order(trade["stop_order_id"])
+        account_mode = trade.get("account_mode") or current_account_mode()
+        stop_order = await alpaca.get_order(trade["stop_order_id"], account_mode=account_mode)
         if not stop_order or stop_order["status"] != "filled":
             continue
 
@@ -605,6 +632,8 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         return False
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    signal_type = trade.get("signal_type") or "unknown"
     old_stop_id = trade.get("stop_order_id")
     old_stop_price = float(trade["stop_price"]) if trade.get("stop_price") else None
 
@@ -648,7 +677,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     # Cancel existing stop
     cancel_ok = True
     if old_stop_id:
-        cancelled = await alpaca.cancel_order(old_stop_id)
+        cancelled = await alpaca.cancel_order(old_stop_id, account_mode=account_mode)
         if not cancelled:
             cancel_ok = False
             logger.warning(f"Could not cancel old stop {old_stop_id} for {ticker} — may already be filled/cancelled")
@@ -663,10 +692,13 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
 
     # Place new stop
     try:
+        coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
         new_order = await alpaca.place_stop_order(
             ticker=ticker,
             qty=effective_qty,
             stop_price=new_stop_price,
+            account_mode=account_mode,
+            client_order_id=coid,
         )
     except Exception as e:
         logger.error(f"Failed to place new stop for {ticker}: {e}")
@@ -682,7 +714,7 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         )
         # Urgent: stop not in place!
         await send_telegram_message(
-            f"{mode_prefix()}🚨 *STOP ORDER FAILED* for {ticker}!\n"
+            f"{mode_prefix(account_mode)}🚨 *STOP ORDER FAILED* for {ticker}!\n"
             f"Attempted stop @${new_stop_price:.2f}\n"
             f"Error: {e}\n"
             f"Position has NO stop protection!"
@@ -690,8 +722,10 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
         # Try once more
         await asyncio.sleep(3)
         try:
+            coid_retry = alpaca.make_client_order_id(account_mode, signal_type, ticker)
             new_order = await alpaca.place_stop_order(
                 ticker=ticker, qty=effective_qty, stop_price=new_stop_price,
+                account_mode=account_mode, client_order_id=coid_retry,
             )
             await log_audit_event(
                 "stop_update_retry_succeeded",
@@ -828,6 +862,8 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         return False
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
+    signal_type = trade.get("signal_type") or "unknown"
     shares = int(shares)
     full_remaining = int(trade["remaining_shares"])
     new_remaining = full_remaining - shares
@@ -855,7 +891,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
     # smaller stop immediately re-establishes protection for what we keep.
     new_stop_id = None
     if old_stop_id and stop_price and new_remaining > 0:
-        cancelled = await alpaca.cancel_order(old_stop_id)
+        cancelled = await alpaca.cancel_order(old_stop_id, account_mode=account_mode)
         if not cancelled:
             # Old stop still live — all shares held-for-orders, sell will fail.
             # Abort cleanly; morning_stop_refresh will retry tomorrow.
@@ -872,14 +908,18 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}⚠️ Partial exit ABORTED for {ticker}: "
+                f"{mode_prefix(account_mode)}⚠️ Partial exit ABORTED for {ticker}: "
                 f"could not cancel existing stop (order {old_stop_id}). "
                 f"Will retry next position update."
             )
             return False
 
         try:
-            new_stop_order = await alpaca.place_stop_order(ticker, new_remaining, float(stop_price))
+            coid_stop = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+            new_stop_order = await alpaca.place_stop_order(
+                ticker, new_remaining, float(stop_price),
+                account_mode=account_mode, client_order_id=coid_stop,
+            )
             new_stop_id = new_stop_order["id"]
             # Persist immediately — if we crash after this, sync_positions sees correct qty.
             async with pool.acquire() as conn:
@@ -941,7 +981,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
+                f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
                 f"Old stop cancelled but new stop failed: {e}\n"
                 f"*Position unprotected — place a manual stop immediately!*"
             )
@@ -949,7 +989,11 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
 
     # Step 2: Market sell the partial (shares are now free from the stop).
     try:
-        order = await alpaca.place_market_sell(ticker, shares)
+        coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+        order = await alpaca.place_market_sell(
+            ticker, shares,
+            account_mode=account_mode, client_order_id=coid_sell,
+        )
         async with pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO mi_live_orders
@@ -984,9 +1028,13 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         )
         # Rollback: restore stop for full original qty so nothing sits unprotected.
         if new_stop_id:
-            await alpaca.cancel_order(new_stop_id)
+            await alpaca.cancel_order(new_stop_id, account_mode=account_mode)
         try:
-            rollback = await alpaca.place_stop_order(ticker, full_remaining, float(stop_price))
+            coid_rollback = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+            rollback = await alpaca.place_stop_order(
+                ticker, full_remaining, float(stop_price),
+                account_mode=account_mode, client_order_id=coid_rollback,
+            )
             async with pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
@@ -1012,7 +1060,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}⚠️ Partial exit FAILED for {ticker}: {e}\n"
+                f"{mode_prefix(account_mode)}⚠️ Partial exit FAILED for {ticker}: {e}\n"
                 f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
             )
             logger.warning(
@@ -1050,7 +1098,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 }),
             )
             await send_telegram_message(
-                f"{mode_prefix()}🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
+                f"{mode_prefix(account_mode)}🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
                 f"Sell error: {e}\nRollback error: {e2}\n"
                 f"*Position may have NO stop — sync_positions will retry; verify on Alpaca.*"
             )
@@ -1062,7 +1110,7 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
     # fell back to entry_price → printed P&L $0.00 on a sale that hadn't happened.
     # finalize_partial_exit() runs from the WS fill handler with the real fill price.
     await send_telegram_message(
-        f"{mode_prefix()}📋 *Partial exit order placed:* {ticker}\n"
+        f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
         f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
         f"_Confirms with real P&L on fill._"
     )
@@ -1169,18 +1217,21 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
         return False
 
     ticker = trade["ticker"]
+    account_mode = trade.get("account_mode") or current_account_mode()
     logger.info(f"Full exit: {ticker} reason={reason} shares={trade['remaining_shares']:.0f} (trade_id={trade_id})")
 
     # Cancel stop order first
     if trade.get("stop_order_id"):
-        cancelled = await alpaca.cancel_order(trade["stop_order_id"])
+        cancelled = await alpaca.cancel_order(trade["stop_order_id"], account_mode=account_mode)
         logger.info(f"Full exit: cancelled stop {trade['stop_order_id']} for {ticker} (success={cancelled})")
 
     try:
-        order = await alpaca.close_position(ticker)
+        order = await alpaca.close_position(ticker, account_mode=account_mode)
     except Exception as e:
         logger.error(f"Full exit failed for {ticker}: {e}")
-        await send_telegram_message(f"{mode_prefix()}⚠️ Full exit FAILED for {ticker}: {e}")
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ Full exit FAILED for {ticker}: {e}"
+        )
         return False
 
     remaining = trade["remaining_shares"]
@@ -1200,7 +1251,7 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
     # market order for next open; fill_price was None at submit time, which
     # made P&L print as 0 on a close that hadn't happened yet.
     await send_telegram_message(
-        f"{mode_prefix()}📋 *Closing order placed:* {ticker} — {reason}\n"
+        f"{mode_prefix(account_mode)}📋 *Closing order placed:* {ticker} — {reason}\n"
         f"Market sell {remaining:.0f} sh — pending fill (Order {order['id'][:8]})\n"
         f"_Confirms with real P&L on fill._"
     )
@@ -1374,7 +1425,7 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
         pending = await conn.fetch("""
             SELECT t.id, t.ticker, t.entry_order_id, t.alert_date, t.proposed_at,
                    t.entry_price, t.stop_price, t.entry_shares, t.orb_high,
-                   a.pm_rvol
+                   t.account_mode, a.pm_rvol
             FROM mi_live_trades t
             LEFT JOIN mi_ep_alerts a
               ON a.ticker = t.ticker AND a.alert_date = t.alert_date
@@ -1394,7 +1445,10 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
             classify_orb_cancellation,
         )
     for trade in pending:
-        success = await alpaca.cancel_order(trade["entry_order_id"])
+        trade_mode = trade["account_mode"] or current_account_mode()
+        success = await alpaca.cancel_order(
+            trade["entry_order_id"], account_mode=trade_mode,
+        )
         if success:
             # If this trade has prior fills (Day-1 re-entry pattern: prior
             # attempt stopped out, re-entry never filled), don't overwrite the
@@ -1493,6 +1547,8 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
             )
 
     if cancelled:
+        # Telegram digest uses global mode_prefix — cancellations span both modes
+        # in dual-account; per-trade mode is captured in the per-line audit events.
         await send_telegram_message(
             f"{mode_prefix()}🕓 {reason}: cancelled {cancelled} unfilled order(s) — {', '.join(cancelled_tickers)}"
         )
@@ -1505,13 +1561,34 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
 
 async def sync_positions() -> list[str]:
     """
-    Reconcile DB vs Alpaca positions. Alpaca is source of truth.
-    Returns list of discrepancy messages.
+    Reconcile DB vs Alpaca positions per account_mode (dual-account #66).
+    Alpaca is source of truth. Returns combined list of discrepancy messages
+    across both modes.
+
+    In dual-mode (ENABLE_LIVE_MODE=true): iterates ['paper', 'live'] and runs
+    isolated reconciliation per mode — paper-side discrepancies don't touch
+    live trades and vice versa. Each mode's mi_live_trades query carries its
+    AND account_mode=$1 filter, and each Alpaca call routes to its mode's
+    TradingClient via the per-mode singleton.
     """
-    logger.info("Position sync starting...")
-    alpaca_positions = await alpaca.get_all_positions()
+    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    all_discrepancies: list[str] = []
+    for mode in modes:
+        try:
+            mode_discrepancies = await _sync_positions_for_mode(mode)
+            all_discrepancies.extend(mode_discrepancies)
+        except Exception as e:
+            logger.error(f"sync_positions for mode={mode} failed: {e}", exc_info=True)
+            all_discrepancies.append(f"[{mode}] sync failed: {e}")
+    return all_discrepancies
+
+
+async def _sync_positions_for_mode(account_mode: str) -> list[str]:
+    """Per-mode reconciliation. Called by sync_positions for each mode."""
+    logger.info(f"Position sync starting (mode={account_mode})...")
+    alpaca_positions = await alpaca.get_all_positions(account_mode=account_mode)
     alpaca_map = {p["symbol"]: p for p in alpaca_positions}
-    logger.info(f"Position sync: {len(alpaca_positions)} Alpaca positions")
+    logger.info(f"Position sync [{account_mode}]: {len(alpaca_positions)} Alpaca positions")
 
     alpaca_tickers = {p["symbol"] for p in alpaca_positions}
 
@@ -1519,10 +1596,11 @@ async def sync_positions() -> list[str]:
     async with pool.acquire() as conn:
         db_trades = await conn.fetch("""
             SELECT id, ticker, remaining_shares, entry_price, status,
-                   stop_order_id, stop_price, orb_low
+                   stop_order_id, stop_price, orb_low, signal_type
             FROM mi_live_trades
             WHERE status IN ('filled', 'order_placed')
-        """)
+              AND account_mode = $1
+        """, account_mode)
 
     discrepancies = []
 
@@ -1557,7 +1635,7 @@ async def sync_positions() -> list[str]:
 
     # Alpaca has positions not in DB
     for ticker, pos in alpaca_map.items():
-        msg = f"Unknown Alpaca position: {ticker} ({pos['qty']:.0f} shares) — not in mi_live_trades"
+        msg = f"[{account_mode}] Unknown Alpaca position: {ticker} ({pos['qty']:.0f} shares) — not in mi_live_trades"
         discrepancies.append(msg)
 
     # Orphaned stop check — filled positions in Alpaca with no active stop.
@@ -1579,7 +1657,7 @@ async def sync_positions() -> list[str]:
         existing_stop_id = trade["stop_order_id"]
         if existing_stop_id:
             try:
-                order = await alpaca.get_order(existing_stop_id)
+                order = await alpaca.get_order(existing_stop_id, account_mode=account_mode)
             except Exception as exc:
                 logger.warning(
                     f"sync_positions: get_order({existing_stop_id}) raised for {ticker}: {exc}"
@@ -1657,9 +1735,14 @@ async def sync_positions() -> list[str]:
             continue
         new_order = None
         last_err: Exception | None = None
+        signal_type = trade.get("signal_type") or "unknown"
         for attempt in range(1, 4):
             try:
-                new_order = await alpaca.place_stop_order(ticker, qty, float(stop))
+                coid_remediate = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+                new_order = await alpaca.place_stop_order(
+                    ticker, qty, float(stop),
+                    account_mode=account_mode, client_order_id=coid_remediate,
+                )
                 break
             except Exception as e:
                 last_err = e
@@ -1681,11 +1764,14 @@ async def sync_positions() -> list[str]:
             logger.error(f"sync_positions: stop remediation failed for {ticker}: {last_err}")
 
     if discrepancies:
-        msg = f"{mode_prefix()}⚠️ *Position Sync Discrepancies:*\n" + "\n".join(f"  • {d}" for d in discrepancies)
+        msg = (
+            f"{mode_prefix(account_mode)}⚠️ *Position Sync Discrepancies "
+            f"({account_mode}):*\n" + "\n".join(f"  • {d}" for d in discrepancies)
+        )
         await send_telegram_message(msg)
-        logger.warning(f"Position sync: {len(discrepancies)} discrepancies")
+        logger.warning(f"Position sync [{account_mode}]: {len(discrepancies)} discrepancies")
     else:
-        logger.info("Position sync: all clear")
+        logger.info(f"Position sync [{account_mode}]: all clear")
 
     return discrepancies
 
@@ -1697,6 +1783,7 @@ async def prepare_9m_day2_orb_order(
     sugar_baby: dict,
     orb_bar: dict,
     regime_record: dict | None = None,
+    account_mode: str | None = None,
 ) -> tuple[dict | None, str | None]:
     """
     Compute entry/stop/shares for a 9M sugar baby Day 2 ORB entry.
@@ -1751,7 +1838,7 @@ async def prepare_9m_day2_orb_order(
         )
 
     try:
-        account = await alpaca.get_account()
+        account = await alpaca.get_account(account_mode=account_mode)
         equity = account["equity"]
     except Exception as e:
         logger.error(f"9M Day2 {ticker}: cannot get account equity — {e}")

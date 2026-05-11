@@ -777,12 +777,21 @@ async def _account_equity_snapshot_job():
         from agents.market_intelligence.broker.drawdown_breaker import (
             snapshot_account_equity, recompute_drawdown_state,
         )
-        from agents.market_intelligence.constants import current_account_mode
-        mode = current_account_mode()
-        snap = await snapshot_account_equity()
-        if snap:
-            await recompute_drawdown_state(mode)
-        # else: snapshot_account_equity already audit-logged drawdown_check_unavailable
+        from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+        # Dual-account #66: snapshot + recompute per mode. Each mode has its
+        # own equity, peak, drawdown state — paper drift doesn't trip the
+        # live breaker and vice versa.
+        modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+        for mode in modes:
+            try:
+                snap = await snapshot_account_equity(account_mode=mode)
+                if snap:
+                    await recompute_drawdown_state(mode)
+                # else: snapshot_account_equity already audit-logged drawdown_check_unavailable
+            except Exception as e:
+                logger.error(
+                    f"Account equity snapshot/recompute for mode={mode} failed: {e}"
+                )
     except Exception as e:
         logger.error(f"Account equity snapshot/recompute failed: {e}")
         await notify_job_failure("account_equity_snapshot", str(e))

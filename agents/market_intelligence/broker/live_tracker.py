@@ -98,32 +98,84 @@ async def _emit_pdt_warning_once(daytrade_count: int, equity: float) -> None:
         logger.warning(f"PDT warning emit failed: {e}")
 
 
-async def _check_safeguards() -> tuple[bool, str | None]:
+async def _check_safeguards(
+    account_mode: str | None = None,
+    signal_type: str | None = None,
+) -> tuple[bool, str | None]:
     """
     Check all safety gates before proposing a new trade.
     Returns (ok, reason) — reason is None if ok.
+
+    Dual-account aware (#66, 2026-05-10): when account_mode is passed,
+    all mi_live_trades queries filter by AND account_mode = $1, and
+    alpaca.get_account routes to the per-mode TradingClient. Per-mode
+    isolated safeguards: paper at-cap doesn't constrain live and vice
+    versa. None falls back to current_account_mode() for legacy callers.
+
+    Per-strategy cap (#65): when signal_type is passed AND the strategy
+    row has max_concurrent_positions set, enforces a per-strategy slot
+    budget within the per-mode global envelope. NULL on the strategy row
+    means "share the global cap" — no per-strategy gate.
     """
     if not LIVE_TRADING_ENABLED:
         logger.debug("Safeguard: live trading disabled")
         return False, "live_trading_disabled"
 
+    if account_mode is None:
+        from agents.market_intelligence.constants import current_account_mode
+        account_mode = current_account_mode()
+
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Max concurrent positions
+        # Max concurrent positions — per mode (paper noise doesn't
+        # constrain live; live noise doesn't constrain paper).
         open_count = await conn.fetchval("""
             SELECT COUNT(*) FROM mi_live_trades
             WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
-        """)
+              AND account_mode = $1
+        """, account_mode)
         if open_count >= MAX_CONCURRENT_LIVE_POSITIONS:
-            logger.info(f"Safeguard blocked: max positions ({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})")
-            return False, f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS}"
+            logger.info(
+                f"Safeguard [{account_mode}] blocked: max positions "
+                f"({open_count}/{MAX_CONCURRENT_LIVE_POSITIONS})"
+            )
+            return False, (
+                f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS} "
+                f"(mode={account_mode})"
+            )
 
-        # Daily loss limit
+        # Per-strategy concurrent-position cap (#65). Enforced WITHIN the
+        # per-mode global envelope above. NULL on mi_strategies = share
+        # global cap, no per-strategy gate.
+        if signal_type:
+            strat_cap = await conn.fetchval(
+                "SELECT max_concurrent_positions FROM mi_strategies WHERE strategy_id = $1",
+                signal_type,
+            )
+            if strat_cap is not None:
+                strat_open = await conn.fetchval("""
+                    SELECT COUNT(*) FROM mi_live_trades
+                    WHERE status IN ('filled', 'order_placed', 'pending_confirmation', 'confirmed')
+                      AND account_mode = $1
+                      AND signal_type = $2
+                """, account_mode, signal_type)
+                if strat_open >= int(strat_cap):
+                    logger.info(
+                        f"Safeguard [{account_mode}/{signal_type}] blocked: "
+                        f"per-strategy cap ({strat_open}/{strat_cap})"
+                    )
+                    from agents.market_intelligence.broker.skip_reasons import BLOCK_STRATEGY_POSITION_CAP
+                    return False, (
+                        f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
+                        f"{strat_open}/{strat_cap} (mode={account_mode})"
+                    )
+
+        # Daily loss limit (per-mode)
         try:
-            account = await alpaca.get_account()
+            account = await alpaca.get_account(account_mode=account_mode)
             equity = account["equity"]
         except Exception as e:
-            logger.error(f"Safeguard: cannot get account equity: {e}")
+            logger.error(f"Safeguard [{account_mode}]: cannot get account equity: {e}")
             return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
         # PDT guard: at < $25K equity, the 4th day-trade in a rolling 5-business-day
@@ -175,22 +227,30 @@ async def _check_safeguards() -> tuple[bool, str | None]:
             SELECT COALESCE(SUM(total_pnl), 0)
             FROM mi_live_trades
             WHERE alert_date = $1 AND status = 'closed' AND total_pnl < 0
-        """, today)
+              AND account_mode = $2
+        """, today, account_mode)
         daily_limit = equity * DAILY_LOSS_LIMIT_PCT
         if abs(today_losses) >= daily_limit:
-            logger.info(f"Safeguard blocked: daily loss limit (${today_losses:+,.0f} >= ${daily_limit:.0f})")
-            return False, f"{BLOCK_DAILY_LOSS}: ${today_losses:+,.0f} >= ${daily_limit:.0f}"
+            logger.info(
+                f"Safeguard [{account_mode}] blocked: daily loss limit "
+                f"(${today_losses:+,.0f} >= ${daily_limit:.0f})"
+            )
+            return False, (
+                f"{BLOCK_DAILY_LOSS}: ${today_losses:+,.0f} >= ${daily_limit:.0f} "
+                f"(mode={account_mode})"
+            )
 
-        # Circuit breaker: N consecutive losses, then auto-release after cooldown.
-        # Time-based escape valve mirrors backtester semantics — without it, once N
-        # losses close, no new entries can ever fire (the trailing-N window is
-        # permanently all-losses until a winner ages into it, which can't happen
-        # if entries are blocked).
+        # Circuit breaker: N consecutive losses, per mode (so a paper losing
+        # streak doesn't gate live entries). Time-based escape valve mirrors
+        # backtester semantics — without it, once N losses close, no new
+        # entries can ever fire (the trailing-N window is permanently
+        # all-losses until a winner ages into it).
         recent_closed = await conn.fetch("""
             SELECT total_pnl, closed_at FROM mi_live_trades
             WHERE status = 'closed' AND total_pnl IS NOT NULL
+              AND account_mode = $2
             ORDER BY closed_at DESC LIMIT $1
-        """, CIRCUIT_BREAKER_CONSEC_LOSSES)
+        """, CIRCUIT_BREAKER_CONSEC_LOSSES, account_mode)
 
         if len(recent_closed) >= CIRCUIT_BREAKER_CONSEC_LOSSES:
             all_losses = all(r["total_pnl"] <= 0 for r in recent_closed)
@@ -212,18 +272,20 @@ async def _check_safeguards() -> tuple[bool, str | None]:
     # Drawdown breaker — active phase only (env DRAWDOWN_BREAKER_PHASE='active').
     # Shadow phase emits transition events from the daily 16:12 ET cron;
     # _check_safeguards stays no-op for shadow to avoid per-call work.
-    # State is computed once daily and persisted to mi_safeguard_state; this
-    # is just a cheap PK lookup. Fail-safe: read_breaker_state returns 'OK' on
-    # any error (see broker/drawdown_breaker.py). SSoT: docs/setups/safeguards.md.
+    # State is per-mode (mi_safeguard_state PK = (safeguard, account_mode));
+    # this is just a cheap PK lookup. Fail-safe: read_breaker_state returns
+    # 'OK' on any error. SSoT: docs/setups/safeguards.md.
     from agents.market_intelligence.constants import DRAWDOWN_BREAKER_PHASE
     if DRAWDOWN_BREAKER_PHASE == "active":
         from agents.market_intelligence.broker.drawdown_breaker import read_breaker_state
-        from agents.market_intelligence.constants import current_account_mode
         from agents.market_intelligence.broker.skip_reasons import BLOCK_DRAWDOWN_BREAKER
-        dd_state = await read_breaker_state(current_account_mode())
+        dd_state = await read_breaker_state(account_mode)
         if dd_state == "TRIPPED":
-            logger.info("Safeguard blocked: drawdown breaker TRIPPED")
-            return False, f"{BLOCK_DRAWDOWN_BREAKER}: tripped (see mi_safeguard_state)"
+            logger.info(f"Safeguard [{account_mode}] blocked: drawdown breaker TRIPPED")
+            return False, (
+                f"{BLOCK_DRAWDOWN_BREAKER}: tripped (mode={account_mode}, "
+                f"see mi_safeguard_state)"
+            )
 
     return True, None
 
@@ -319,9 +381,13 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 alert_ctx: dict,
                 orb_bar: dict,
                 regime: dict | None,
+                account_mode: str,
                 _atr=atr_14,
             ) -> tuple[dict | None, str | None]:
-                return await prepare_orb_order(alert_ctx, orb_bar, _atr or 0, regime)
+                return await prepare_orb_order(
+                    alert_ctx, orb_bar, _atr or 0, regime,
+                    account_mode=account_mode,
+                )
 
             return await submit_trade_entry(
                 alert_context=alert,
@@ -774,12 +840,15 @@ async def submit_9m_day2_trade(sugar_baby: dict) -> dict:
 
     regime_record = await get_latest_regime()
 
-    # Pipeline spec_builder signature is (alert_ctx, orb_bar, regime) — the
-    # sugar_baby row IS the alert_context, so we just pass it through.
+    # Pipeline spec_builder signature is (alert_ctx, orb_bar, regime,
+    # account_mode) — the sugar_baby row IS the alert_context, so we just
+    # pass it through. account_mode threaded for dual-account #66 routing.
     async def _ninem_spec_builder(
-        alert_ctx: dict, orb_bar: dict, regime: dict | None,
+        alert_ctx: dict, orb_bar: dict, regime: dict | None, account_mode: str,
     ) -> tuple[dict | None, str | None]:
-        return await prepare_9m_day2_orb_order(alert_ctx, orb_bar, regime)
+        return await prepare_9m_day2_orb_order(
+            alert_ctx, orb_bar, regime, account_mode=account_mode,
+        )
 
     # on_skip fires for every terminal skip (safeguard, no-bar, fade, spec fail).
     # Sugar baby row must mirror the skip so /9m doesn't show it as "pending" forever.

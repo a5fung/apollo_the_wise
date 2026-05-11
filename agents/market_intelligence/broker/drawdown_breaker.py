@@ -72,18 +72,25 @@ class DrawdownState:
 # ── Snapshot ────────────────────────────────────────────────────────────────
 
 
-async def snapshot_account_equity(source: str = "eod") -> Optional[dict]:
+async def snapshot_account_equity(
+    source: str = "eod",
+    account_mode: str | None = None,
+) -> Optional[dict]:
     """Fetch Alpaca equity and persist a row for today's ET date.
 
     Idempotent via UNIQUE (snapshot_date, account_mode). On Alpaca API
     failure: emits `drawdown_check_unavailable` audit event and returns None
     (caller skips the recompute step). Never raises into caller.
+
+    account_mode: 'paper' | 'live'. None falls back to current_account_mode()
+    for legacy callers; dual-account scheduler iterates and passes explicit
+    mode per call.
     """
-    mode = current_account_mode()
+    mode = account_mode or current_account_mode()
     today_et = _today_et()
 
     try:
-        account = await alpaca.get_account()
+        account = await alpaca.get_account(account_mode=mode)
     except Exception as e:
         logger.warning(f"snapshot_account_equity: Alpaca get_account failed: {e}")
         await log_audit_event(
@@ -148,7 +155,7 @@ async def compute_drawdown_state(mode: str) -> Optional[DrawdownState]:
     cutoff = today_et - timedelta(days=DRAWDOWN_PEAK_WINDOW_DAYS)
 
     try:
-        account = await alpaca.get_account()
+        account = await alpaca.get_account(account_mode=mode)
         current = float(account["equity"])
     except Exception as e:
         logger.warning(f"compute_drawdown_state: Alpaca get_account failed: {e}")
