@@ -499,6 +499,13 @@ async def attempt_day1_reentry(
         refetched = await alpaca.get_order(new_entry_order_id, account_mode=account_mode)
         new_stop_order_id = alpaca.extract_stop_leg_id(refetched)
 
+    # Invariant: total_pnl = sum(exits[].pnl). MUST update both columns
+    # together. MNDY 2026-05-11 bug class — attempt 1 stopped out, attempt 2
+    # placed bracket but never filled, 10:00 ET cleanup marked status='closed'
+    # but total_pnl was never updated from its zero default → /trades displayed
+    # $0 P/L on a >$1000 loss. Fix: update total_pnl alongside exits in every
+    # path that mutates exits.
+    total_pnl_after_stop = sum(ex.get("pnl", 0) for ex in exits)
     async with pool.acquire() as conn:
         await conn.execute("""
             UPDATE mi_live_trades SET
@@ -508,10 +515,11 @@ async def attempt_day1_reentry(
                 remaining_shares = 0,
                 entry_attempt = $4,
                 exits = $5::jsonb,
+                total_pnl = $6,
                 filled_at = NULL
             WHERE id = $1
         """, trade["id"], new_entry_order_id, new_stop_order_id,
-            attempt, json.dumps(exits))
+            attempt, json.dumps(exits), total_pnl_after_stop)
 
         await conn.execute("""
             INSERT INTO mi_live_orders
@@ -1469,15 +1477,24 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
             )
             if exits_list:
                 # Has prior history → preserve it; trade is closed not cancelled.
+                # Also recompute total_pnl from exits (defense in depth — every
+                # path that mutates exits SHOULD also update total_pnl, but if
+                # one drops the invariant the cleanup catches it). MNDY
+                # 2026-05-11 bug: row had exits=[stop_out: -$1100] but
+                # total_pnl=0 → /trades showed $0 P/L on a stopped trade.
+                cleanup_total_pnl = sum(
+                    float(e.get("pnl") or 0) for e in exits_list
+                )
                 async with pool.acquire() as conn:
                     await conn.execute("""
                         UPDATE mi_live_trades SET
                             status = 'closed',
                             closed_at = COALESCE(closed_at, NOW()),
                             skip_reason = NULL,
-                            entry_order_id = NULL
+                            entry_order_id = NULL,
+                            total_pnl = $2
                         WHERE id = $1
-                    """, trade["id"])
+                    """, trade["id"], cleanup_total_pnl)
             else:
                 await _update_trade_status(trade["id"], "cancelled", skip_reason=reason)
             cancelled += 1
