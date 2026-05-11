@@ -176,19 +176,48 @@ async def stop_trade_stream() -> None:
 
 
 def get_stream_status() -> dict:
-    """Return per-mode stream health info for monitoring + fallback decisions."""
-    out: dict = {}
+    """Return per-mode stream health info for monitoring + fallback decisions.
+
+    Shape: per-mode nested dict PLUS legacy top-level aggregate keys for
+    callers that pre-date the dual-account refactor.
+
+      {
+        "paper": {"healthy": bool, "last_event": str|None,
+                  "reconnect_count": int, "task_alive": bool},
+        "live":  {... (only if dual-mode active)},
+        # Legacy aggregate — true only if EVERY mode is healthy/alive.
+        # Watchdog uses these to detect "all streams down → restart".
+        "healthy": bool,
+        "task_alive": bool,
+        "modes": [list of mode names],
+      }
+    """
+    out: dict = {"modes": []}
+    all_healthy = True
+    all_alive = True
     for mode in list(_stream_tasks.keys()):
         task = _stream_tasks.get(mode)
+        mode_alive = task is not None and not task.done() if task else False
+        mode_healthy = bool(_stream_healthy.get(mode, False))
         out[mode] = {
-            "healthy": _stream_healthy.get(mode, False),
+            "healthy": mode_healthy,
             "last_event": (
                 _last_event_time[mode].isoformat()
                 if _last_event_time.get(mode) else None
             ),
             "reconnect_count": _reconnect_count.get(mode, 0),
-            "task_alive": task is not None and not task.done() if task else False,
+            "task_alive": mode_alive,
         }
+        out["modes"].append(mode)
+        all_healthy = all_healthy and mode_healthy
+        all_alive = all_alive and mode_alive
+    # Aggregate fallback: when no streams exist yet, report not-healthy /
+    # not-alive so the watchdog kicks a restart attempt.
+    if not out["modes"]:
+        all_healthy = False
+        all_alive = False
+    out["healthy"] = all_healthy
+    out["task_alive"] = all_alive
     return out
 
 
