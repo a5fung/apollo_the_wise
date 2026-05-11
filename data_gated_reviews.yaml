@@ -989,64 +989,115 @@ reviews:
     threshold: 1
     earliest_review_date: 2026-05-22
     action_when_ready: |
+      ## Pre-flight gate verification
+
       Verify all four gates are green:
-        - drawdown_breaker_promotion (predicate: 14d paper snapshots)
-        - ftre_partial_trail_verification (predicate: ≥1 paper partial-then-trail)
-        - paper_r_expectancy_validation (predicate: ≥10 closed paper trades 21d, +R)
-        - Gate 4 (dual_account_architecture, task #66): NO predicate — manual
-          verify shipped + tested. Required because today's single-client
-          architecture would force all paper-tier strategies to lose real
-          Alpaca paper execution when MAGNA53 flips to live, breaking the
-          shadow → paper → real-$ maturation pipeline.
+        - Gate 1: drawdown_breaker_promotion (predicate: 14d paper snapshots)
+        - Gate 2: ftre_partial_trail_verification (predicate: ≥1 paper partial-then-trail)
+        - Gate 3: paper_r_expectancy_validation (predicate: ≥10 closed paper trades 21d, +R)
+        - Gate 4: dual_account_architecture (#65 + #66) — code SHIPPED 2026-05-10
+          (commits c79abd6 → 9bcaba6). Currently DORMANT on Hetzner
+          (ENABLE_LIVE_MODE=false; legacy ALPACA_API_KEY/SECRET fallback
+          remaps to paper). Gate 4 has TWO sub-states:
+            4a — code shipped + Hetzner restart confirms boot via legacy
+                  fallback path with no regression. ✓ DONE 2026-05-10.
+            4b — dual-mode ACTIVATED on Hetzner (set new env vars,
+                  ENABLE_LIVE_MODE=true, restart, both Alpaca clients
+                  verify). See "Dual-mode activation" steps below; this is
+                  a discrete pre-cutover step, NOT done yet.
 
-      For each predicate-bound gate, check that the action_when_ready criteria
-      evaluate green (not just that the predicate ripened — predicate is the
-      "do we have enough data to decide" gate, not the decision itself).
+      For each predicate-bound gate (1-3), check that the action_when_ready
+      criteria evaluate green (predicate ripeness ≠ decision criteria).
 
-      Gate 4 verification checklist (no predicate; binary ship-state):
-        - alpaca_client.get_trading_client(mode) factory exists and returns
-          two singletons keyed by mode
-        - ALPACA_PAPER_API_KEY/SECRET and ALPACA_LIVE_API_KEY/SECRET both
-          set in container env, both clients can fetch_account()
-        - One test trade routed through paper client, one through live
-          client (in staging — confirm fills land in correct Alpaca
-          dashboard)
-        - WebSocket trade streams subscribe to both accounts; fill events
-          route to correct mi_live_trades / mi_paper_trades rows tagged
-          by account_mode
-        - sync_positions iterates both modes; reconciliation per account
-        - _check_safeguards evaluates per-mode (MAX_CONCURRENT_LIVE_POSITIONS
-          and DAILY_LOSS_LIMIT_PCT applied within each account separately)
-        - Telegram surface shows correct mode_prefix per trade (not global)
+      ## Cutover sequence (when all gates green)
 
-      If ALL FOUR green:
-        1. Activate drawdown breaker:
-             DRAWDOWN_BREAKER_PHASE=active in container env, restart.
-        2. Verify breaker active in live_tracker._check_safeguards path
-           (one paper trade should now route through the new check).
-        3. Set MAGNA53 strategy phase='live', live_real_enabled=True via:
-             UPDATE mi_strategies SET phase='live', live_real_enabled=true
-             WHERE strategy_id='magna53';
-           Leave 9M Day 2 / fishhook_v3 / etc. at phase='paper' — they
-           continue submitting to Alpaca paper account for real execution
-           feedback at the paper-tier.
-        4. Fund live Alpaca account: $10K initial deposit.
-        5. Verify staged-paper banner / mode_prefix show correctly on
-           Telegram for paper-tier alerts; MAGNA53 alerts route live.
-        6. Watch first 5 live trades closely — manual sanity check on each
-           fill, slippage vs paper expectations, partial fill behavior,
-           per-account safeguard isolation.
-        7. After ≥30 closed live MAGNA53 fills with positive R-expectancy:
-           - Promote 9M Day 2 to phase='live' + live_real_enabled=True
-             (file separate data-gated review)
-           - Per-strategy sizing/cap (#65) MUST ship before this promotion
-             so 9M Day 2 starts at smaller size / capped slot count
-           - Consider scaling deposit to $25K
+      ### Step A — Provision live Alpaca account (external, manual)
+        - Open live Alpaca account via web (KYC, funding source).
+        - Wait for account approval (typically 1-3 business days).
+        - Generate live API key pair from Alpaca dashboard.
+        - Fund $10K initial deposit (or chosen starting size).
 
-      If ANY gate red:
+      ### Step B — Activate dual-mode on Hetzner (Gate 4b)
+        SSH to apollo@87.99.134.162 and edit
+        /home/apollo/apollo_the_wise/.env (or docker-compose.prod.yml env):
+
+          ENABLE_LIVE_MODE=true
+          ALPACA_PAPER_API_KEY=<existing paper key>
+          ALPACA_PAPER_SECRET_KEY=<existing paper secret>
+          ALPACA_LIVE_API_KEY=<new live key>
+          ALPACA_LIVE_SECRET_KEY=<new live secret>
+
+          # Optional cleanup AFTER dual-mode is verified stable (≥7d):
+          # remove ALPACA_API_KEY / ALPACA_SECRET_KEY / ALPACA_PAPER
+
+        Restart container:
+          docker compose -f docker/docker-compose.prod.yml up -d market-agent
+
+        Verify boot:
+          - Tail logs for "Alpaca credentials resolved: status=dual_ready"
+          - Query mi_audit_log for dual_account_boot_verified event with
+            both paper + live equities populated.
+          - If dual_account_boot_failed appears, fix env vars before
+            proceeding (boot was successful but Alpaca rejected one).
+
+      ### Step C — 48-hour dual-mode regression observation
+        ALL strategies stay at phase='paper' during this window. Verify:
+          - Paper trading continues end-to-end (one full alert → fill →
+            stop or exit cycle on paper Alpaca account)
+          - sync_positions iterates both modes cleanly (paper finds open
+            positions, live finds zero — both produce no discrepancies)
+          - 16:12 ET cron writes TWO mi_account_equity_snapshots rows
+            (paper + live) per day
+          - drawdown_breaker recompute runs per mode without error
+          - Zero cross_account_event_rejected events in audit log
+          - Zero unexpected behavior from existing paper strategies
+
+        If any regression observed → revert (set ENABLE_LIVE_MODE=false,
+        restart, investigate). Do NOT proceed to Step D until 48h clean.
+
+      ### Step D — Activate drawdown breaker (production)
+        Set DRAWDOWN_BREAKER_PHASE=active in container env, restart.
+        Verify breaker active by triggering one paper trade — should
+        evaluate without error and return state='OK'.
+
+      ### Step E — Flip MAGNA53 to live
+        SQL (run via psql in container):
+          UPDATE mi_strategies SET phase='live', live_real_enabled=true
+          WHERE strategy_id='magna53';
+
+        Leave 9M Day 2 / fishhook_v3 / etc. at phase='paper' — they
+        continue submitting to Alpaca paper account for real execution
+        feedback at the paper-tier of the maturation pipeline.
+
+        Verify:
+          - Telegram alerts for next MAGNA53 alert show 💰 LIVE-$ prefix
+            (NOT 📄 PAPER)
+          - mi_live_trades insert tagged account_mode='live'
+          - First MAGNA53 fill lands in LIVE Alpaca dashboard, NOT paper
+          - 9M Day 2 alerts continue as 📄 PAPER — paper Alpaca dashboard
+
+      ### Step F — Watch first 5 live trades closely
+        Manual sanity check on each fill:
+          - Slippage vs paper expectations
+          - Partial fill behavior (FTRE-class)
+          - Per-account safeguard isolation (live trades don't constrain
+            paper, paper drift doesn't trip live drawdown breaker)
+          - WebSocket fill routing (live events touch live row, paper
+            events touch paper row, no cross_account_event_rejected)
+
+      ### Step G — 9M Day 2 promotion (separate review, deferred)
+        After ≥30 closed live MAGNA53 fills with positive R-expectancy:
+          - File new data-gated review with predicate counting closed
+            live magna53 fills
+          - Set 9m_day2 strategy: position_size_multiplier=0.5,
+            max_concurrent_positions=2 (per #65 — start small)
+          - Flip 9m_day2 phase='live' + live_real_enabled=True
+          - Consider scaling live $ deposit to $25K
+
+      ## If ANY gate red
         - Identify which gate(s) failed and why (predicate not ripe vs
-          predicate ripe but criteria failed; for Gate 4: build incomplete
-          or untested).
+          predicate ripe but criteria failed; for Gate 4b: dual-mode
+          activation incomplete or staging regression).
         - Defer cutover. File a follow-up triggered by the relevant
           gate's re-readiness.
         - Do NOT cut over partial — all four gates green is the contract.
@@ -1055,10 +1106,11 @@ reviews:
         - Drawdown breaker shadow shows API reliability issues
         - New trading-side bug discovered (FTRE class)
         - Paper R-expectancy stays negative through next 10 trades
-        - Dual-account integration bugs surfaced in staging
+        - Dual-mode regression observed during 48h Step C window
         - Theme assignment investigation (#46) surfaces detection-side bug
 
       Origin: 2026-05-10 advisor live-cutover review (Gates 1-3) + user
-      requirement for 3-tier maturation pipeline (Gate 4 dual-account).
+      requirement for 3-tier maturation pipeline (Gate 4 dual-account
+      shipped 2026-05-10 c79abd6→9bcaba6).
     status: pending
     added_on: 2026-05-10
