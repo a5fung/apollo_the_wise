@@ -797,6 +797,29 @@ async def _account_equity_snapshot_job():
         await notify_job_failure("account_equity_snapshot", str(e))
 
 
+async def _track_open_position_extremes_job():
+    """Run every 5 min during market hours (9:30 AM - 4:00 PM ET, mon-fri).
+
+    Polls Polygon for minute bars per open ticker, then updates each open
+    trade's lowest_price_seen / highest_price_seen via monotonic
+    LEAST/GREATEST. Feeds setup-quality analytics — does this setup let
+    trades run high before exit (good edge to keep) or drag toward stop
+    (tighten or drop)?
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    try:
+        from agents.market_intelligence.broker.order_manager import (
+            track_open_position_extremes,
+        )
+        n = await track_open_position_extremes()
+        if n:
+            logger.info(f"track_position_extremes: updated {n} open trade rows")
+    except Exception as e:
+        logger.error(f"track_position_extremes failed: {e}")
+
+
 async def _evening_position_backstop_job():
     """Run at 9:00 PM ET. Backstop sync_positions catching late EXPIRED events
     or earlier remediation failures — market closed, no other jobs running, so
@@ -1965,6 +1988,22 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
         id="account_equity_snapshot",
         replace_existing=True,
+    )
+
+    # Worst-price / best-price tracking for open positions: every 5 min from
+    # 9:30 AM to 4:00 PM ET (2026-05-10). Polls Polygon minute bars per open
+    # ticker, monotonic LEAST/GREATEST updates lowest_price_seen +
+    # highest_price_seen on mi_live_trades. Powers setup-quality analytics
+    # (does this setup let trades run high before exit, or drag near stop?).
+    _scheduler.add_job(
+        audit_wrap(_track_open_position_extremes_job, "track_position_extremes"),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="track_position_extremes",
+        replace_existing=True,
+        misfire_grace_time=180,
     )
 
     # Post-EOD audit: 4:15 PM ET — trade-side invariants + metrics, runs after

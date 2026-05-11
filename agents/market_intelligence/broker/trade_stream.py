@@ -634,7 +634,14 @@ async def _process_entry_fill(
                 status = 'filled',
                 entry_price = $2, entry_shares = $3, remaining_shares = $3,
                 hard_stop = $4, stop_price = $4, filled_at = NOW(),
-                stop_order_id = COALESCE($5, stop_order_id)
+                stop_order_id = COALESCE($5, stop_order_id),
+                -- Seed worst/best price tracking with the fill price; the
+                -- 5-min track_open_position_extremes job updates it from
+                -- here. COALESCE preserves any value set by a prior fill
+                -- on a re-entry attempt — we want lifetime extreme across
+                -- the whole trade record, not per-attempt.
+                lowest_price_seen = COALESCE(lowest_price_seen, $2),
+                highest_price_seen = COALESCE(highest_price_seen, $2)
             WHERE id = $1
         """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
 

@@ -1326,6 +1326,19 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0;
             ALTER TABLE mi_strategies
                 ADD COLUMN IF NOT EXISTS max_concurrent_positions INT;
+            -- Worst-price-vs-you / best-price-in-your-favor tracking
+            -- (2026-05-10). Captures the lowest and highest market prices
+            -- observed during a trade's open life. Populated at fill time
+            -- (initialized to entry price) and updated every 5 min during
+            -- market hours by track_open_position_extremes. Backfilled
+            -- for historical closed trades via scripts/backfill_position_extremes.py.
+            -- Use case: setup-quality analytics — does this setup
+            -- consistently let trades run high before exit (good edge) or
+            -- consistently drag near stop (tighten stop / drop setup)?
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS lowest_price_seen NUMERIC;
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS highest_price_seen NUMERIC;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

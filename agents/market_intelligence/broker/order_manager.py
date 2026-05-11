@@ -1880,6 +1880,68 @@ async def prepare_9m_day2_orb_order(
     return spec, None
 
 
+async def track_open_position_extremes() -> int:
+    """Update worst-price / best-price seen for every open position.
+
+    Runs every 5 min during market hours. For each unique ticker with open
+    trades, fetches today's minute bars from Polygon, takes the recent
+    period's MIN(low) and MAX(high), and applies monotonic LEAST/GREATEST
+    against the persisted values on every trade row for that ticker.
+
+    Lifetime extremes (across the whole trade, including any Day-1 re-entry
+    attempts) — not per-attempt. Initialized to entry_price by
+    trade_stream._process_entry_fill; this job tightens (lows down, highs
+    up) over the trade's life.
+
+    Returns count of trade rows updated.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        open_trades = await conn.fetch("""
+            SELECT id, ticker
+            FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+        """)
+    if not open_trades:
+        return 0
+
+    from collections import defaultdict
+    by_ticker: dict[str, list] = defaultdict(list)
+    for t in open_trades:
+        by_ticker[t["ticker"]].append(t)
+
+    from agents.market_intelligence.collector import get_minute_bars, et_today
+    today_str = et_today().isoformat()
+
+    updates = 0
+    for ticker, trades in by_ticker.items():
+        try:
+            bars = await get_minute_bars(ticker, today_str, today_str)
+        except Exception as e:
+            logger.warning(f"track_extremes: {ticker} minute bars fetch failed: {e}")
+            continue
+        if not bars:
+            continue
+        # Take MIN(low) / MAX(high) across all of today's bars so far. Bars
+        # include extended hours; for an open position that spans days we
+        # rely on monotonic LEAST/GREATEST below to retain the historical
+        # extreme — the per-call window is cheap and idempotent.
+        period_low = min(float(b.get("l") or 0) for b in bars if b.get("l"))
+        period_high = max(float(b.get("h") or 0) for b in bars if b.get("h"))
+        if period_low <= 0 or period_high <= 0:
+            continue
+        for trade in trades:
+            async with pool.acquire() as conn:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        lowest_price_seen = LEAST(COALESCE(lowest_price_seen, $2), $2),
+                        highest_price_seen = GREATEST(COALESCE(highest_price_seen, $3), $3)
+                    WHERE id = $1
+                """, trade["id"], period_low, period_high)
+            updates += 1
+    return updates
+
+
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:
     logger.info(f"Trade {trade_id} → status={status}" + (f" reason={skip_reason}" if skip_reason else ""))
     pool = await get_pool()
