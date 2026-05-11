@@ -160,9 +160,50 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
 
 ### Entry Pipeline
-- **`broker/entry_pipeline.py::submit_trade_entry`** — single funnel for both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback. Pipeline owns: dedup → safeguards → bar-fetch retry → fade guard → spec build → DB insert → Alpaca submit → audit log → Telegram. **Contract: every terminal failure Telegrams via `humanize()`.**
+- **`broker/entry_pipeline.py::submit_trade_entry`** — single funnel for both MAGNA53 EP and 9M Day 2 entries. Strategy differences (stop source, sizing) inject via `spec_builder` callback. Pipeline owns: dedup → safeguards → bar-fetch retry → fade guard → spec build → per-strategy sizing multiplier → DB insert → Alpaca submit → audit log → Telegram. **Contract: every terminal failure Telegrams via `humanize()`.**
+- `account_mode` resolved at safeguard step from `strategy.phase` via `resolve_account_mode_for_strategy()` and threaded through spec_builder, alpaca client calls, DB inserts, and Telegram surfaces. SpecBuilder type alias takes account_mode as 4th positional arg.
 - Bounded action vocabulary: `ACTION_AUTO_ENTERED / PROPOSED / AUTO_ENTER_FAILED / PROPOSAL_SEND_FAILED / SKIPPED / BLOCKED`.
-- Bounded skip-reason vocabulary in `broker/skip_reasons.py` — 18 constants across `filter:* / setup:* / block:* / infra:* / window:*`. Aggregate via `split_part(skip_reason, ':', 1)`.
+- Bounded skip-reason vocabulary in `broker/skip_reasons.py` — 19 constants across `filter:* / setup:* / block:* / infra:* / window:*`. Aggregate via `split_part(skip_reason, ':', 1)`. New: `block:strategy_position_cap` for per-strategy slot limit (#65).
+
+### Dual-Account Architecture (#66, 2026-05-10)
+**One Apollo container, two Alpaca accounts** (paper + live), routed per-strategy via `mi_strategies.phase`:
+
+| phase | live_real_enabled | account_mode | Submit destination |
+|---|---|---|---|
+| shadow | – | (n/a) | No submit; audit telemetry only |
+| paper | – | paper | Alpaca paper account (real fills, fake $) |
+| live | False | live | 🟡 STAGED-PAPER Telegram proposal; no auto-submit |
+| live | True | live | Alpaca live account (real fills, real $) |
+
+**Key components:**
+- `constants.resolve_account_mode_for_strategy(strategy)` — SSoT mode resolver. Pre-dual-account global `current_account_mode()` kept for non-trade contexts (`/status`, boot audit).
+- `alpaca_client.get_trading_client(account_mode)` — per-mode TradingClient singletons, independent HTTP sessions (no shared pool). Every wrapper accepts optional `account_mode`.
+- `alpaca_client.make_client_order_id(account_mode, strategy_id, ticker)` — strict mode-bound `apollo_{mode}_{strategy}_{ticker}_{ms_epoch}` format. **Required at every order submission site** to prevent cross-account COID collisions.
+- `trade_stream.py` — two TradingStream instances (one per mode), each handler closure-bound to its account_mode. `_dispatch_trade_event` runs `_verify_event_account_mode` before any DB mutation; mismatches drop the event + emit `cross_account_event_rejected` audit (defense in depth even with mode-bound COIDs).
+- `_check_safeguards(account_mode, signal_type)` — per-mode isolated (paper at-cap doesn't constrain live). Per-strategy `max_concurrent_positions` enforced WITHIN per-mode envelope. NULL = share global cap.
+- `sync_positions()` iterates `['paper','live']` (or `['paper']` if `ENABLE_LIVE_MODE=false`) — runs `_sync_positions_for_mode(account_mode)` per mode. Each mode's mi_live_trades query carries `AND account_mode = $1`.
+- `account_equity_snapshot_job` (16:12 ET) iterates both modes; drawdown breaker state per mode (`mi_safeguard_state` PK = `(safeguard, account_mode)`).
+
+**Boot bootstrap** (`agent.py::_bootstrap_alpaca_credentials`):
+- `ENABLE_LIVE_MODE=true` (default): hard-requires `ALPACA_PAPER_API_KEY/SECRET` AND `ALPACA_LIVE_API_KEY/SECRET`. Boot-blocks if either pair missing.
+- `ENABLE_LIVE_MODE=false`: only `ALPACA_PAPER_*` required. Strategies at `phase='live'` blocked. Dev / single-account opt-out.
+- **Legacy fallback** (one deploy cycle only): if `ALPACA_PAPER_API_KEY` missing AND old `ALPACA_API_KEY` present, remap at boot. Emits `legacy_alpaca_creds_fallback` audit + WARNING log. Remove after dual-mode is verified stable for ≥7 days.
+- Post-init `verify_dual_account_clients()` smoke-tests both accounts, emits `dual_account_boot_verified` (success) or `dual_account_boot_failed` (per-mode error detail).
+
+**Per-strategy sizing/cap** (#65, two new mi_strategies columns):
+- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers both `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly. Multiplies shares; recomputes position_size + risk_dollars.
+- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: 9M Day 2 starts at multiplier=0.5 + cap=2 when promoting to live.
+
+**Migration deploy steps:**
+1. Set new env vars on Hetzner: `ALPACA_PAPER_API_KEY`, `ALPACA_PAPER_SECRET_KEY`, `ALPACA_LIVE_API_KEY`, `ALPACA_LIVE_SECRET_KEY` (if `ENABLE_LIVE_MODE=true`) OR set `ENABLE_LIVE_MODE=false` for paper-only.
+2. Restart container. Boot will fail-fast if env vars missing.
+3. Watch boot logs for `dual_account_boot_verified` audit event with both equities.
+4. All strategies stay at `phase='paper'` initially. Verify ≥48h regression-free paper trading before flipping any strategy to `phase='live'`.
+
+**Critical correctness invariants:**
+- Mode-bound `client_order_id`: every submit uses `make_client_order_id()`. Prevents cross-account COID collisions on concurrent same-setup submits.
+- Cross-account event validation: WebSocket dispatcher refuses events whose order_id resolves to a different account_mode than the stream.
+- `AND account_mode = $X` filter on every `mi_live_trades` query in trade lifecycle code.
 
 ### Stop-Leg ID Capture
 - `alpaca_client.extract_stop_leg_id(order)` is the canonical helper — uses `stop_price` as primary signal, case-insensitive `"stop" in type_str` fallback. Robust against Python 3.11+ Enum stringification (`str(OrderType.STOP)` → `"OrderType.STOP"`).
@@ -229,7 +270,16 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ```
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
 ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
-ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
+
+# Dual-account Alpaca (#66, 2026-05-10) — required when ENABLE_LIVE_MODE=true
+ENABLE_LIVE_MODE=true       # false = dev/single-account opt-out (paper only)
+ALPACA_PAPER_API_KEY, ALPACA_PAPER_SECRET_KEY     # paper-api.alpaca.markets
+ALPACA_LIVE_API_KEY, ALPACA_LIVE_SECRET_KEY       # api.alpaca.markets
+
+# Legacy (deprecated; remapped to ALPACA_PAPER_* at boot for one cycle):
+ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true
+
+LIVE_TRADING_ENABLED=false  # Master kill switch — disables ALL submits
 ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 ```
@@ -237,6 +287,32 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 ---
 
 ## Changes Made — Recent
+
+### 2026-05-10 — Dual-account architecture #66 + per-strategy sizing #65 (BLOCKER for live cutover)
+Bundled ship of two coupled changes (advisor 2026-05-10: bundle is right call since both touch mi_strategies + safeguard/sizer paths; threading account_mode hits the same call sites where sizing multipliers apply).
+
+**#66 dual-account**: one Apollo container subscribes to BOTH Alpaca paper + live accounts simultaneously. Strategies route per their `mi_strategies.phase`: `phase='paper'` → paper Alpaca, `phase='live' + live_real_enabled=True` → live Alpaca, `phase='live' + live_real_enabled=False` → STAGED-PAPER Telegram proposal. Enables 3-tier maturation pipeline (shadow → paper → real-$) without losing real Alpaca paper execution feedback when MAGNA53 promotes to live.
+
+Architecture (see "Dual-Account Architecture" section above for full detail):
+- `alpaca_client.get_trading_client(account_mode)` returns per-mode TradingClient singletons with independent HTTP sessions
+- `make_client_order_id()` enforces strict mode-bound `apollo_{mode}_{strategy}_{ticker}_{ms_epoch}` format (cross-account COID collision prevention)
+- `trade_stream.py` runs two TradingStream instances; `_dispatch_trade_event` validates `mi_live_trades.account_mode == stream_account_mode` before any DB mutation; mismatches drop the event + emit `cross_account_event_rejected` audit
+- `_check_safeguards(account_mode, signal_type)` per-mode isolated (paper at-cap doesn't constrain live) + per-strategy `max_concurrent_positions` enforcement
+- `sync_positions()` iterates `['paper','live']` via `_sync_positions_for_mode(mode)` helper — independent reconciliation per account
+- `account_equity_snapshot_job` (16:12 ET) iterates both modes → two `mi_account_equity_snapshots` rows daily; drawdown breaker state per mode
+
+Boot bootstrap (`agent.py::_bootstrap_alpaca_credentials`) hard-requires both `ALPACA_PAPER_*` AND `ALPACA_LIVE_*` env var pairs when `ENABLE_LIVE_MODE=true`. Dev opt-out: `ENABLE_LIVE_MODE=false` requires only paper. Legacy `ALPACA_API_KEY/SECRET` remapped to `ALPACA_PAPER_*` at boot (one-deploy-cycle rollback safety; emits `legacy_alpaca_creds_fallback` audit; remove after dual-mode is stable).
+
+**#65 per-strategy sizing/cap**: two new `mi_strategies` columns:
+- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline post-spec-builder so it covers BOTH `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly
+- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`
+- Use case: 9M Day 2 promotes to live with multiplier=0.5 + cap=2 (smaller size, restricted slot count)
+
+**Migration deploy steps** (Hetzner): set `ALPACA_PAPER_API_KEY/SECRET` + `ALPACA_LIVE_API_KEY/SECRET` env vars BEFORE container restart. OR set `ENABLE_LIVE_MODE=false` for paper-only (legacy `ALPACA_API_KEY` continues working as paper). Boot will FAIL with clear message if env vars missing under `ENABLE_LIVE_MODE=true`.
+
+**All strategies stay at `phase='paper'` initially.** Verify ≥48h regression-free paper trading before flipping any strategy to `phase='live'` (this is the dual-mode validation gate, separate from the live cutover composite gate #64). Live cutover sequencing remains: drawdown breaker active → paper R+ over N≥10 → dual-account verified → MAGNA53 phase='live' + live_real_enabled=True.
+
+**Lesson**: the cleanest place to apply per-strategy parameters (sizing multiplier, position cap) is at the orchestration layer (entry_pipeline + _check_safeguards), NOT inside each strategy's spec_builder. Single application point covers all current and future strategies. Same architectural pattern as the 2026-05-04 limit-buffer SSoT cleanup.
 
 ### 2026-05-08 (session 4) — Drawdown circuit breaker shadow ship (#39)
 Replaces the count-based circuit breaker with a methodology-aware drawdown-from-peak state machine. **Currently SHADOW phase** — daily 16:12 ET cron emits transition audit events; `_check_safeguards()` does not block on it. Promotes to active after ≥14d post-live-cutover telemetry by env-var flip (`DRAWDOWN_BREAKER_PHASE=active`). Plan: `~/.claude/plans/let-s-go-into-plan-glittery-graham.md`. SSoT: `docs/setups/safeguards.md`.
