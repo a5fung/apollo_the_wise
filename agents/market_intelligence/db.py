@@ -1219,19 +1219,21 @@ async def initialize_schema() -> None:
         # telemetry_review (no PnL — false-positive review).
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_strategies (
-                strategy_id          TEXT PRIMARY KEY,
-                name                 TEXT NOT NULL,
-                family               TEXT NOT NULL,
-                phase                TEXT NOT NULL,
-                enabled              BOOLEAN NOT NULL DEFAULT TRUE,
-                live_real_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
-                signal_type          TEXT NOT NULL,
-                outcomes_table       TEXT NOT NULL,
-                promotion_model      TEXT NOT NULL,
-                promotion_thresholds JSONB NOT NULL,
-                notes                TEXT,
-                created_at           TIMESTAMPTZ DEFAULT NOW(),
-                updated_at           TIMESTAMPTZ DEFAULT NOW(),
+                strategy_id              TEXT PRIMARY KEY,
+                name                     TEXT NOT NULL,
+                family                   TEXT NOT NULL,
+                phase                    TEXT NOT NULL,
+                enabled                  BOOLEAN NOT NULL DEFAULT TRUE,
+                live_real_enabled        BOOLEAN NOT NULL DEFAULT FALSE,
+                signal_type              TEXT NOT NULL,
+                outcomes_table           TEXT NOT NULL,
+                promotion_model          TEXT NOT NULL,
+                promotion_thresholds     JSONB NOT NULL,
+                position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0,
+                max_concurrent_positions INT,
+                notes                    TEXT,
+                created_at               TIMESTAMPTZ DEFAULT NOW(),
+                updated_at               TIMESTAMPTZ DEFAULT NOW(),
                 CHECK (phase IN ('shadow','paper','live')),
                 CHECK (promotion_model IN ('paired_r','unpaired_r','telemetry_review'))
             );
@@ -1313,6 +1315,17 @@ async def initialize_schema() -> None:
             -- promoted ones at confirmation time.
             ALTER TABLE mi_strategies
                 ADD COLUMN IF NOT EXISTS live_real_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+            -- Per-strategy sizing + position cap (#65, 2026-05-10).
+            -- position_size_multiplier: 1.0 = full Apollo sizing; 0.5 = half-size
+            -- (e.g. for newly-promoted 9M Day 2 ramp). Applied in entry_pipeline
+            -- post-spec-builder so it covers both prepare_orb_order and
+            -- prepare_9m_day2_orb_order paths uniformly.
+            -- max_concurrent_positions: NULL = share global MAX_CONCURRENT_LIVE_POSITIONS;
+            -- integer = per-strategy slot cap on top of the global envelope.
+            ALTER TABLE mi_strategies
+                ADD COLUMN IF NOT EXISTS position_size_multiplier NUMERIC NOT NULL DEFAULT 1.0;
+            ALTER TABLE mi_strategies
+                ADD COLUMN IF NOT EXISTS max_concurrent_positions INT;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

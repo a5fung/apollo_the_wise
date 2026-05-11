@@ -10,21 +10,63 @@ ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 import os
 LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
 
+# ── Dual-account architecture (#66, 2026-05-10) ───────────────────────────────
+# ENABLE_LIVE_MODE=true (production default): both ALPACA_PAPER_API_KEY/SECRET
+# AND ALPACA_LIVE_API_KEY/SECRET required; per-mode TradingClient singletons.
+# ENABLE_LIVE_MODE=false (dev/test): only ALPACA_PAPER_* required; strategies
+# at phase='live' blocked at boot. Removes "two key pairs to clone and run"
+# friction for new contributors. Boot fallback in agent.py maps the legacy
+# ALPACA_API_KEY/ALPACA_SECRET_KEY to the paper account if ALPACA_PAPER_* not
+# set — keeps git-revert rollback clean for ONE deploy cycle.
+ENABLE_LIVE_MODE = os.environ.get("ENABLE_LIVE_MODE", "true").lower() == "true"
+
+
+def resolve_account_mode_for_strategy(strategy) -> str:
+    """Resolve the Alpaca account mode for a given strategy row.
+
+    Single source of truth for routing strategy submissions to paper vs live
+    Alpaca clients. Reads `strategy.phase` (and indirectly `live_real_enabled`
+    via the caller's gating).
+
+    Mapping:
+      phase='shadow'                          → no submit (caller short-circuits)
+      phase='paper'                           → 'paper' (Alpaca paper account)
+      phase='live' + live_real_enabled=True   → 'live'  (Alpaca live account)
+      phase='live' + live_real_enabled=False  → 'live'  (staged-paper Telegram only)
+
+    Note: 'live' return covers both real-$ submit AND staged-paper Telegram
+    proposals — the live_real_enabled gate happens downstream of mode resolution.
+    """
+    phase = getattr(strategy, "phase", None) or (strategy.get("phase") if isinstance(strategy, dict) else None)
+    if phase == "paper":
+        return "paper"
+    if phase == "live":
+        return "live"
+    raise ValueError(f"Cannot resolve account_mode for strategy phase={phase!r}")
+
 
 def current_account_mode() -> str:
-    """Return "paper" or "live" based on ALPACA_PAPER env, read per-call.
+    """LEGACY: return "paper" or "live" based on ALPACA_PAPER env, read per-call.
 
-    Per-call (not module-level cache) so a future hot env-flip flips the label
-    immediately. Used for `mi_live_trades.account_mode`, the `account_mode_active`
-    boot audit event, the `/status` and `/config` mode lines, and (via the
-    `mode_prefix` helper) every Telegram surface.
+    Pre-dual-account global mode resolver. Still used for non-trade contexts
+    (`/status` default view, `account_mode_active` boot audit event) where a
+    single mode label is meaningful. For trade-bound calls, use
+    `resolve_account_mode_for_strategy(strategy)` and propagate `account_mode`
+    explicitly through alpaca client calls.
     """
     return "paper" if os.environ.get("ALPACA_PAPER", "true").lower() == "true" else "live"
 
 
-def mode_prefix() -> str:
-    """Account-mode prefix for Telegram message headers (trailing space)."""
-    return "💰 LIVE-$ " if current_account_mode() == "live" else "📄 PAPER "
+def mode_prefix(account_mode: str | None = None) -> str:
+    """Account-mode prefix for Telegram message headers (trailing space).
+
+    Pass `account_mode` explicitly for trade-bound surfaces (so paper-tier
+    and live-tier strategies render with the correct prefix in dual-mode).
+    Defaults to current_account_mode() for backward compat with non-trade
+    surfaces.
+    """
+    mode = account_mode or current_account_mode()
+    return "💰 LIVE-$ " if mode == "live" else "📄 PAPER "
 
 # ── Crypto RS shadow flag ────────────────────────────────────────────────────
 # false (default): nightly ingest runs, RS computed, audit-only on trigger fire,

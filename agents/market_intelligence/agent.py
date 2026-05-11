@@ -4785,10 +4785,68 @@ _agent = MarketIntelligenceAgent()
 app = _agent.app
 
 
+def _bootstrap_alpaca_credentials() -> tuple[str, bool]:
+    """Resolve Alpaca credentials at boot for dual-account architecture (#66).
+
+    Runs BEFORE any alpaca_client import so downstream modules consume only
+    the new ALPACA_PAPER_*/ALPACA_LIVE_* env var names. Returns
+    (status, fallback_used) where status ∈ {'dual_ready', 'paper_only',
+    'fallback_paper'} and fallback_used flags whether the deprecated
+    ALPACA_API_KEY/SECRET path was used.
+
+    Three modes:
+      ENABLE_LIVE_MODE=true (production default):
+        - Hard-require ALPACA_PAPER_API_KEY/SECRET AND ALPACA_LIVE_API_KEY/SECRET.
+        - Boot-blocks if either pair is missing.
+      ENABLE_LIVE_MODE=false (dev / single-account):
+        - Only ALPACA_PAPER_* required.
+        - If ALPACA_PAPER_* missing AND legacy ALPACA_API_KEY/SECRET present,
+          remap legacy to paper. Warning + audit event emitted post-init.
+    """
+    import os as _os
+    from agents.market_intelligence.constants import ENABLE_LIVE_MODE as _ENABLE_LIVE
+
+    fallback_used = False
+    if _ENABLE_LIVE:
+        for var in ("ALPACA_PAPER_API_KEY", "ALPACA_PAPER_SECRET_KEY",
+                    "ALPACA_LIVE_API_KEY", "ALPACA_LIVE_SECRET_KEY"):
+            if var not in _os.environ:
+                raise RuntimeError(
+                    f"Boot Blocked: ENABLE_LIVE_MODE=true requires {var}. "
+                    f"Set ALPACA_PAPER_* and ALPACA_LIVE_* env var pairs, OR "
+                    f"set ENABLE_LIVE_MODE=false to opt into single-account "
+                    f"dev mode (paper-only)."
+                )
+        return "dual_ready", False
+
+    # Dev / rollback path: paper-only required
+    if "ALPACA_PAPER_API_KEY" not in _os.environ:
+        if "ALPACA_API_KEY" in _os.environ:
+            # Legacy fallback: map deprecated ALPACA_API_KEY → ALPACA_PAPER_*.
+            # Boot-only remap; rest of codebase consumes new names.
+            _os.environ["ALPACA_PAPER_API_KEY"] = _os.environ["ALPACA_API_KEY"]
+            _os.environ["ALPACA_PAPER_SECRET_KEY"] = _os.environ.get(
+                "ALPACA_SECRET_KEY", ""
+            )
+            fallback_used = True
+        else:
+            raise RuntimeError(
+                "Boot Blocked: ENABLE_LIVE_MODE=false requires ALPACA_PAPER_API_KEY "
+                "(or legacy ALPACA_API_KEY for one-cycle rollback fallback)."
+            )
+    return ("fallback_paper" if fallback_used else "paper_only"), fallback_used
+
+
 @app.on_event("startup")
 async def startup():
     import os
     from logging.handlers import RotatingFileHandler
+
+    # Resolve Alpaca credentials BEFORE any alpaca_client import.
+    # Raises RuntimeError on missing/misconfigured env vars (boot-blocks the
+    # container start, surfaces in docker logs immediately).
+    _alpaca_creds_status, _alpaca_creds_fallback = _bootstrap_alpaca_credentials()
+
     _fmt = logging.Formatter(
         "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
@@ -4798,6 +4856,16 @@ async def startup():
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+    if _alpaca_creds_fallback:
+        logging.getLogger(__name__).warning(
+            "LEGACY_CREDS_FALLBACK: deprecated ALPACA_API_KEY/SECRET_KEY remapped "
+            "to ALPACA_PAPER_*. Migrate to ALPACA_PAPER_API_KEY/SECRET_KEY env "
+            "vars within one deploy cycle (see docs/setups/safeguards.md)."
+        )
+    else:
+        logging.getLogger(__name__).info(
+            f"Alpaca credentials resolved: status={_alpaca_creds_status}"
+        )
     # Persist logs to host-mounted volume so rebuilds don't lose history
     log_dir = "/app/logs"
     try:
@@ -4813,6 +4881,28 @@ async def startup():
     except Exception as _e:
         logging.getLogger(__name__).warning(f"Could not start file logging: {_e}")
     await initialize_schema()
+    # Audit-log Alpaca credential resolution outcome (post-DB-init so
+    # log_audit_event has a pool to write to).
+    try:
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            event_type="dual_account_creds_resolved",
+            summary=f"Alpaca creds status={_alpaca_creds_status}",
+            detail=(
+                "Legacy ALPACA_API_KEY/SECRET fallback used — migrate to "
+                "ALPACA_PAPER_API_KEY/SECRET_KEY within one deploy cycle"
+                if _alpaca_creds_fallback
+                else f"Mode resolution: {_alpaca_creds_status}"
+            ),
+        )
+        if _alpaca_creds_fallback:
+            await log_audit_event(
+                event_type="legacy_alpaca_creds_fallback",
+                summary="ALPACA_API_KEY remapped to ALPACA_PAPER_*",
+                detail="One-deploy-cycle rollback safety net — remove after dual-mode is verified stable",
+            )
+    except Exception as e:
+        logger.warning(f"Failed to audit-log alpaca creds status: {e}")
     # Load description overrides from DB into in-memory TICKER_DESC
     try:
         from agents.market_intelligence.universe import apply_overrides
