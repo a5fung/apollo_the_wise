@@ -2254,20 +2254,25 @@ class MarketIntelligenceAgent(BaseAgent):
             cats = await missed_by_category(window_days=window_days)
             if not cats:
                 return self._ok(request, result=f"🔍 No missed-EP data in last {window_days}d.")
-            lines = [f"🔍 *Missed EPs by skip reason (last {window_days}d)*", ""]
-            lines.append("_category · n · avg 5d · ≥10% winners · top_")
+            from agents.market_intelligence.missed_outcomes import _humanize_category
+            lines = [
+                f"🔍 *Missed EPs by skip reason (last {window_days}d)*",
+                "_n=alerts · avg=avg 5d return · ≥10%=winners ≥10% · top=best hit_",
+                "",
+                "```",
+                "reason                    n    avg    ≥10%  top",
+            ]
             for c in cats:
                 n = c.get("n") or 0
                 avg = c.get("avg_ret_5d")
-                avg_s = f"{avg*100:+.1f}%" if avg is not None else "—"
+                avg_s = (f"{avg*100:+3.0f}%" if avg is not None else "  —").rjust(5)
                 n10 = c.get("n_10pct_plus") or 0
-                top_t = c.get("top_ticker") or "—"
+                top_t = (c.get("top_ticker") or "—")[:5]
                 top_r = c.get("top_ret_5d")
-                top_s = f"{top_r*100:+.1f}%" if top_r is not None else "—"
-                lines.append(
-                    f"• `{c['skip_category']}` · n={n} · avg {avg_s} · "
-                    f"≥10%×{n10} · top `{top_t}` {top_s}"
-                )
+                top_s = (f"{top_r*100:+3.0f}%" if top_r is not None else "  —").rjust(5)
+                label = _humanize_category(c.get("skip_category"))[:24].ljust(24)
+                lines.append(f"{label}  {n:>3}  {avg_s}  {n10:>3}   {top_t} {top_s}")
+            lines.append("```")
             return self._ok(request, result="\n".join(lines))
 
         rows = await top_missed_winners(

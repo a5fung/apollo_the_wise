@@ -340,7 +340,13 @@ async def top_missed_winners(
     horizon: str = "5d",
     top_n: int = 15,
 ) -> list[dict]:
-    """Top N misses by forward return over `horizon` ('1d' | '5d' | '20d')."""
+    """Top N misses by forward return over `horizon` ('1d' | '5d' | '20d').
+
+    Includes rows whose close return hasn't settled yet (recent alerts within
+    the horizon window) — ranks them by the running max-favorable-excursion
+    so they don't disappear from the surface. The two numbers (close ret +
+    max excursion) are both shown in the formatter.
+    """
     col = {"1d": "ret_1d", "5d": "ret_5d", "20d": "ret_20d"}.get(horizon, "ret_5d")
     max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
     pool = await get_pool()
@@ -351,8 +357,9 @@ async def top_missed_winners(
                    ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d
             FROM mi_ep_missed_outcomes
             WHERE alert_date >= CURRENT_DATE - $1::INT
-              AND {col} IS NOT NULL
-            ORDER BY {col} DESC NULLS LAST, {max_col} DESC NULLS LAST
+              AND ({col} IS NOT NULL OR {max_col} IS NOT NULL)
+            ORDER BY COALESCE({col}, {max_col}) DESC NULLS LAST,
+                     {max_col} DESC NULLS LAST
             LIMIT $2
         """, window_days, top_n)
     return [dict(r) for r in rows]
@@ -408,6 +415,32 @@ async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
 
 # ── Telegram formatting ──────────────────────────────────────────────────────
 
+# Human-readable labels for each skip_category. Keep them short enough to
+# fit on one mobile line alongside count + numbers (≤ 28 chars).
+_CATEGORY_LABELS: dict[str, str] = {
+    "cooldown":           "60-day cooldown",
+    "score_below_50":     "Score below 50",
+    "pm_rvol_low":        "Pre-mkt volume light",
+    "session_rvol_low":   "Session volume light",
+    "adv_low":            "Avg volume too low",
+    "atr_high":           "Volatility too high",
+    "mcap_low":           "Market cap too small",
+    "catalyst_downgrade": "Catalyst downgraded",
+    "extension_gate":     "Already extended",
+    "outside_top20":      "Outside top-20 gap",
+    "duplicate_scan":     "Already scored today",
+    "filter_other":       "Other filter",
+    "moderate_tier":      "MODERATE — not entered",
+    "high_unentered":     "HIGH — no fill",
+}
+
+
+def _humanize_category(cat: Optional[str]) -> str:
+    if not cat:
+        return "Other"
+    return _CATEGORY_LABELS.get(cat, cat.replace("_", " ").capitalize())
+
+
 def _fmt_pct(v: Optional[float], digits: int = 1, sign: bool = True) -> str:
     if v is None:
         return "—"
@@ -415,29 +448,59 @@ def _fmt_pct(v: Optional[float], digits: int = 1, sign: bool = True) -> str:
     return fmt.format(v * 100)
 
 
+def _fmt_pct_fixed(v: Optional[float], width: int = 5) -> str:
+    """Right-padded percent for monospace column alignment. '   —' if NULL."""
+    if v is None:
+        return "—".rjust(width)
+    s = f"{v*100:+.0f}%"
+    return s.rjust(width)
+
+
 def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> str:
-    """`/missed [days]` Telegram output: top N winners + brief category roll-up."""
+    """`/missed [days]` output — top winners grouped by skip reason.
+
+    Layout: monospace code blocks per category so the columns align on mobile.
+    Each row shows ticker, date, close return, max excursion. The close return
+    is "—" when the horizon window hasn't fully elapsed yet; the max-excursion
+    column always carries the running peak so the row stays informative.
+    """
     if not rows:
-        return f"🔍 *Missed EPs (last {window_days}d)* — no settled data yet."
-    lines = [f"🔍 *Missed EPs — top winners (last {window_days}d, {horizon} return)*", ""]
+        return f"🔍 *Missed EPs (last {window_days}d)* — no data yet."
+
+    # Group by category, preserving overall rank order within each group.
+    from collections import OrderedDict
+    grouped: "OrderedDict[str, list[dict]]" = OrderedDict()
     for r in rows:
-        ret_5d = _fmt_pct(r.get("ret_5d"))
-        max_5d = _fmt_pct(r.get("max_high_5d"))
-        ret_20d = _fmt_pct(r.get("ret_20d"))
-        cat = r.get("skip_category", "?")
-        gap = _fmt_pct((r.get("gap_pct") or 0) / 100.0, digits=1, sign=False) \
-            if r.get("gap_pct") is not None else "—"
-        score = f"{r['ep_score']:.0f}" if r.get("ep_score") is not None else "—"
-        date_str = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "?"
-        lines.append(
-            f"• `{r['ticker']}` {date_str} — 5d {ret_5d} (max {max_5d}), "
-            f"20d {ret_20d} · gap {gap} score {score} · _{cat}_"
-        )
-    return "\n".join(lines)
+        grouped.setdefault(r.get("skip_category") or "filter_other", []).append(r)
+
+    horizon_label = {"1d": "1-day", "5d": "5-day", "20d": "20-day"}.get(horizon, "5-day")
+    parts = [
+        f"🔍 *Missed EPs — top winners (last {window_days}d)*",
+        f"_Ranked by {horizon_label} return from gap-day open_",
+        "",
+    ]
+    ret_col = "ret_5d" if horizon == "5d" else ("ret_1d" if horizon == "1d" else "ret_20d")
+    max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
+
+    for cat, items in grouped.items():
+        parts.append(f"*{_humanize_category(cat)}* ({len(items)})")
+        parts.append("```")
+        for r in items:
+            tk = r["ticker"][:5].ljust(5)
+            d = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "  —  "
+            ret_s = _fmt_pct_fixed(r.get(ret_col))
+            max_s = _fmt_pct_fixed(r.get(max_col))
+            parts.append(f"{tk} {d}   close {ret_s}   max {max_s}")
+        parts.append("```")
+    return "\n".join(parts)
 
 
 def format_missed_section_for_weekly(missed: dict) -> str:
-    """Weekly review appendix: top 5 + per-category roll-up."""
+    """Weekly review appendix: top 5 winners + per-category roll-up.
+
+    Same grouping/monospace shape as `/missed` so the visual rhythm is
+    consistent across the two surfaces (digest is just shorter).
+    """
     top = missed.get("top_winners") or []
     cats = missed.get("by_category") or []
     if not top and not cats:
@@ -448,26 +511,31 @@ def format_missed_section_for_weekly(missed: dict) -> str:
     if top:
         parts.append("")
         parts.append("_Top winners we didn't enter:_")
+        parts.append("```")
         for r in top[:5]:
-            ret_5d = _fmt_pct(r.get("ret_5d"))
-            max_5d = _fmt_pct(r.get("max_high_5d"))
-            cat = r.get("skip_category", "?")
-            date_str = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "?"
-            parts.append(
-                f"  • `{r['ticker']}` {date_str} — 5d {ret_5d} (max {max_5d}) · _{cat}_"
-            )
+            tk = r["ticker"][:5].ljust(5)
+            d = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "  —  "
+            ret_s = _fmt_pct_fixed(r.get("ret_5d"))
+            max_s = _fmt_pct_fixed(r.get("max_high_5d"))
+            cat = _humanize_category(r.get("skip_category"))[:22].ljust(22)
+            parts.append(f"{tk} {d}  5d {ret_s}  max {max_s}  {cat}")
+        parts.append("```")
 
     if cats:
         parts.append("")
-        parts.append("_By skip reason (n / median 5d / winners ≥10% / top):_")
+        parts.append("_By skip reason:_")
+        parts.append("```")
+        parts.append("reason                    n    avg    ≥10%  top")
         for c in cats[:6]:
             n = c.get("n") or 0
-            avg = _fmt_pct(c.get("avg_ret_5d"))
+            avg = _fmt_pct_fixed(c.get("avg_ret_5d"))
             n10 = c.get("n_10pct_plus") or 0
-            top_t = c.get("top_ticker") or "—"
-            top_r = _fmt_pct(c.get("top_ret_5d"))
-            parts.append(
-                f"  • {c['skip_category']}: n={n}, avg={avg}, "
-                f"≥10%×{n10}, top=`{top_t}` {top_r}"
-            )
+            top_t = (c.get("top_ticker") or "—")[:5]
+            top_r = _fmt_pct_fixed(c.get("top_ret_5d"))
+            label = _humanize_category(c.get("skip_category"))[:24].ljust(24)
+            parts.append(f"{label}  {n:>3}  {avg}  {n10:>3}   {top_t} {top_r}")
+        parts.append("```")
+        return "\n".join(parts)
     return "\n".join(parts)
+
+
