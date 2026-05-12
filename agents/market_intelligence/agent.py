@@ -1696,19 +1696,22 @@ class MarketIntelligenceAgent(BaseAgent):
         # Latest-scan-date fallback: flag scan runs 5:25 PM ET Mon-Fri.
         # Pre-scan weekday queries (e.g. 10 AM Monday) and weekends both
         # fall back to the most recent date with actual scan data.
+        # asyncpg's prepare-time type inference rejects both
+        # `scan_date >= $1 - INTERVAL '14 days'` (date vs timestamp) AND
+        # `scan_date >= $1 - 14` (date vs integer mid-expression).
+        # Compute the cutoff in Python so both bind params are plain dates.
+        from datetime import timedelta
+        cutoff_date = today - timedelta(days=14)
         pool = await get_pool()
         async with pool.acquire() as conn:
-            # date - integer = date; date - INTERVAL returns timestamp and
-            # asyncpg's strict type matching rejects "date >= timestamp"
-            # at prepare time.
             query_date = await conn.fetchval(
                 """
                 SELECT MAX(scan_date)
                 FROM mi_flag_candidates
-                WHERE scan_date >= $1 - 14
-                  AND scan_date <= $1
+                WHERE scan_date >= $1
+                  AND scan_date <= $2
                 """,
-                today,
+                cutoff_date, today,
             )
         if query_date is None:
             return self._ok(
