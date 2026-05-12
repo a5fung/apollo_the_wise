@@ -1643,19 +1643,30 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_flag_query(self, request: AgentRequest) -> AgentResponse:
-        """Continuation Flag detector — daily TRIGGERED + COILED + WATCH lists.
+        """Continuation Flag detector — combined daily stage digest.
 
-        Three modes:
-          /flags             → today's TRIGGERED + COILED (compact)
-          /flags watch       → today's full WATCH + TIGHTENING drill-down
+        Two modes (2026-05-11 consolidation):
+          /flags             → ALL stages (TRIGGERED + COILED + TIGHTENING +
+                               WATCH names) for latest scan date
           /flags TICKER      → 14-day stage history for one ticker
+
+        Pre-2026-05-11 had a separate `/flags watch` command for WATCH +
+        TIGHTENING; merged into the single default digest since users were
+        running both commands consecutively. Backward-compat: "/flags watch"
+        still parses (the keyword is ignored — same combined output).
+
+        Scan-date fallback (2026-05-11): if today's scan hasn't run yet
+        (flag detector runs at 5:25 PM ET Mon-Fri), the query falls back to
+        the most recent scan date that actually has data, tagged in the
+        header. Mirrors the latest_market_data_date pattern from /pregame
+        and /ep (2026-05-07).
 
         Trade-idea radar — does NOT auto-enter. User charts and decides.
         """
         import re as _re
-        from agents.market_intelligence.collector import et_today, last_trading_day
+        from agents.market_intelligence.collector import et_today
         from agents.market_intelligence.db import (
-            get_flag_candidates_window, get_ticker_flag_history,
+            get_flag_candidates_window, get_ticker_flag_history, get_pool,
         )
 
         task = request.task.lower()
@@ -1682,47 +1693,46 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._ok(request, result="\n".join(lines))
 
         today = et_today()
-        query_date = last_trading_day(today)
-        weekend_note = "" if query_date == today else "  _(last trading day)_"
-
-        # Watch drill-down mode
-        watch_mode = "watch" in task or "tightening" in task
-        if watch_mode:
-            rows = await get_flag_candidates_window(query_date, stages=["WATCH", "TIGHTENING"])
-            if not rows:
-                return self._ok(request, result=f"_No watch/tightening flags on {query_date.isoformat()}._")
-            lines = [f"🚩 *Flag Watch + Tightening — {query_date.isoformat()}*{weekend_note}\n"]
-            tightening = [r for r in rows if r["stage"] == "TIGHTENING"]
-            watch = [r for r in rows if r["stage"] == "WATCH"]
-            if tightening:
-                lines.append(f"*TIGHTENING ({len(tightening)})*")
-                for r in tightening[:30]:
-                    rr = r.get("range_contraction_ratio")
-                    vr = r.get("vol_contraction_ratio")
-                    rr_s = f"r{rr:.2f}" if rr is not None else "r—"
-                    vr_s = f"v{vr:.2f}" if vr is not None else "v—"
-                    lines.append(f"  • `{r['ticker']}` age {r.get('base_age')}d · {rr_s} {vr_s}")
-                if len(tightening) > 30:
-                    lines.append(f"  …{len(tightening) - 30} more")
-            if watch:
-                names = ", ".join(r["ticker"] for r in watch[:30])
-                more = f" …+{len(watch) - 30}" if len(watch) > 30 else ""
-                lines.append("")
-                lines.append(f"*WATCH ({len(watch)})*")
-                lines.append(f"  {names}{more}")
-            return self._ok(request, result="\n".join(lines))
-
-        # Default: TRIGGERED + COILED only
-        rows = await get_flag_candidates_window(query_date, stages=["TRIGGERED", "COILED"])
-        triggered = [r for r in rows if r["stage"] == "TRIGGERED"]
-        coiled = [r for r in rows if r["stage"] == "COILED"]
-        if not (triggered or coiled):
+        # Latest-scan-date fallback: flag scan runs 5:25 PM ET Mon-Fri.
+        # Pre-scan weekday queries (e.g. 10 AM Monday) and weekends both
+        # fall back to the most recent date with actual scan data.
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            query_date = await conn.fetchval(
+                """
+                SELECT MAX(scan_date)
+                FROM mi_flag_candidates
+                WHERE scan_date >= $1 - INTERVAL '14 days'
+                  AND scan_date <= $1
+                """,
+                today,
+            )
+        if query_date is None:
             return self._ok(
                 request,
-                result=f"_No triggered or coiled flags on {query_date.isoformat()}.{weekend_note}_\n"
-                       f"For watch + tightening drill-down: `/flags watch`",
+                result="_No flag-scanner data in last 14 days._",
             )
-        lines = [f"🚩 *Flag Scanner — {query_date.isoformat()}*{weekend_note}\n"]
+        date_note = "" if query_date == today else f"  _(data: {query_date.isoformat()})_"
+
+        # Pull ALL stages in one shot — consolidated digest replaces the
+        # old separate /flags vs /flags watch split.
+        rows = await get_flag_candidates_window(
+            query_date,
+            stages=["TRIGGERED", "COILED", "TIGHTENING", "WATCH"],
+        )
+        triggered = [r for r in rows if r["stage"] == "TRIGGERED"]
+        coiled = [r for r in rows if r["stage"] == "COILED"]
+        tightening = [r for r in rows if r["stage"] == "TIGHTENING"]
+        watch = [r for r in rows if r["stage"] == "WATCH"]
+
+        if not (triggered or coiled or tightening or watch):
+            return self._ok(
+                request,
+                result=f"_No flags in any stage on {query_date.isoformat()}.{date_note}_",
+            )
+
+        lines = [f"🚩 *Flag Scanner — {query_date.isoformat()}*{date_note}\n"]
+
         if triggered:
             lines.append(f"🎯 *TRIGGERED ({len(triggered)})*")
             for r in triggered:
@@ -1739,6 +1749,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     )
                 else:
                     lines.append(f"  • `{r['ticker']}` — base {age}d · runup {ru_s}")
+
         if coiled:
             lines.append("")
             lines.append(f"🌀 *COILED — actionable setup ({len(coiled)})*")
@@ -1753,8 +1764,29 @@ class MarketIntelligenceAgent(BaseAgent):
                 )
             if len(coiled) > 15:
                 lines.append(f"  …{len(coiled) - 15} more")
+
+        if tightening:
+            lines.append("")
+            lines.append(f"🔧 *TIGHTENING ({len(tightening)})*")
+            for r in tightening[:15]:
+                age = r.get("base_age")
+                rr = r.get("range_contraction_ratio")
+                vr = r.get("vol_contraction_ratio")
+                rr_s = f"{float(rr):.2f}" if rr is not None else "—"
+                vr_s = f"{float(vr):.2f}" if vr is not None else "—"
+                lines.append(f"  • `{r['ticker']}` age {age}d · range {rr_s} · vol {vr_s}")
+            if len(tightening) > 15:
+                lines.append(f"  …{len(tightening) - 15} more")
+
+        if watch:
+            lines.append("")
+            lines.append(f"👀 *WATCH ({len(watch)})*")
+            names = ", ".join(r["ticker"] for r in watch[:30])
+            more = f" …+{len(watch) - 30}" if len(watch) > 30 else ""
+            lines.append(f"  {names}{more}")
+
         lines.append("")
-        lines.append("_Drill-down: `/flags watch` · `/flags TICKER`_")
+        lines.append("_Drill-down: `/flags TICKER` for 14-day history_")
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_setup_query(self, request: AgentRequest) -> AgentResponse:
@@ -1928,7 +1960,15 @@ class MarketIntelligenceAgent(BaseAgent):
                 delivered = bool(body_ok and btn_ok)
 
             if delivered:
-                return self._ok(request, result="")
+                # Empty result string makes the orchestrator's LLM loop
+                # produce "(no response)" — see core/orchestrator.py:254.
+                # Return a short delivery confirmation so Claude has
+                # something to acknowledge instead of falling through to
+                # the empty-block fallback.
+                return self._ok(
+                    request,
+                    result=f"`/setup {ticker}` digest delivered to Telegram.",
+                )
             logger.warning(f"setup delivery returned False for {ticker}")
             return self._ok(request, result=body_text)
         except Exception as e:
