@@ -139,7 +139,11 @@ async def refresh_missed_outcomes(
             WHERE alert_date >= $1 AND alert_date <= $2
         ),
         scan_filtered AS (
-            SELECT
+            -- mi_ep_scan_log has no UNIQUE constraint — same ticker can be
+            -- logged multiple times per day (each 5-min scan tick). Take
+            -- the latest row per (ticker, scan_date) so ON CONFLICT doesn't
+            -- trip on duplicate proposed inserts.
+            SELECT DISTINCT ON (s.ticker, s.scan_date)
                 s.ticker,
                 s.scan_date AS alert_date,
                 'scan_filter'::TEXT AS source,
@@ -155,9 +159,10 @@ async def refresh_missed_outcomes(
                   SELECT 1 FROM traded t
                   WHERE t.ticker = s.ticker AND t.alert_date = s.scan_date
               )
+            ORDER BY s.ticker, s.scan_date, s.created_at DESC
         ),
         moderate AS (
-            SELECT
+            SELECT DISTINCT ON (a.ticker, a.alert_date)
                 a.ticker,
                 a.alert_date,
                 'moderate_alert'::TEXT AS source,
@@ -173,9 +178,10 @@ async def refresh_missed_outcomes(
                   SELECT 1 FROM traded t
                   WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
               )
+            ORDER BY a.ticker, a.alert_date, a.created_at DESC
         ),
         high_unentered AS (
-            SELECT
+            SELECT DISTINCT ON (a.ticker, a.alert_date)
                 a.ticker,
                 a.alert_date,
                 'high_unentered'::TEXT AS source,
@@ -191,6 +197,7 @@ async def refresh_missed_outcomes(
                   SELECT 1 FROM traded t
                   WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
               )
+            ORDER BY a.ticker, a.alert_date, a.created_at DESC
         ),
         base AS (
             SELECT * FROM scan_filtered
