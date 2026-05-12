@@ -288,6 +288,28 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 — Outage: every paper trade failed with `'ALPACA_LIVE_API_KEY'` KeyError (seed × dual-account mismatch)
+**Incident**: 9:31 ET ORB monitor logged `0 entered, 10 skipped` across AMBQ/HLIT/PACS/SE/SIBN/TE/VG/VPG/VSTS/ZBRA. Every HIGH alert blocked with `setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'`. Live paper-trading completely down for the morning session. User flagged: "this could easily be prevented with proper test and validation."
+
+**Root cause** — three-layer bug:
+1. `_seed_strategies_registry()` (db.py:103-155) seeded magna53 and 9m_day2 with `phase='live'`. Pre-dual-account-architecture this meant "submit to the single Alpaca account configured by ALPACA_PAPER env var" (implicitly paper).
+2. The 2026-05-10 dual-account ship (#66) **redefined** `phase='live'` to mean the literal LIVE Alpaca TradingClient. `resolve_account_mode_for_strategy()` now returns `'live'` for those rows.
+3. Container runs with `ENABLE_LIVE_MODE=false` (per #68 deploy plan) → `ALPACA_LIVE_API_KEY` env var never set. `get_trading_client('live')` → `os.environ['ALPACA_LIVE_API_KEY']` → KeyError → safeguard returns `SETUP_ACCOUNT_FETCH_FAILED` → every entry blocked.
+
+The 2026-05-12 deploy verification (#68) confirmed container BOOTED clean but never exercised the entry pipeline on a paper-phase strategy. A boot smoke test isn't an end-to-end test.
+
+**Immediate fix** (SQL on prod): `UPDATE mi_strategies SET phase='paper' WHERE strategy_id IN ('magna53','9m_day2');`. Restored paper trading for the next session.
+
+**Structural fixes** (commit 78c5fa3):
+- `_seed_strategies_registry()` now seeds magna53 + 9m_day2 with `phase='paper'` so fresh installs don't repeat. Existing DBs unaffected (ON CONFLICT DO NOTHING) — operator must run the SQL above. Inline comments document why the legacy default is wrong.
+- **Boot consistency check** in `agent.py` post-credential bootstrap: queries `mi_strategies WHERE enabled=TRUE AND phase='live'`. If any rows exist AND `ENABLE_LIVE_MODE=false`, raises `RuntimeError` with explicit remediation (set ENABLE_LIVE_MODE=true + creds OR demote rows). Emits `strategy_phase_mode_mismatch` audit event.
+
+**Why fail-loud instead of silent auto-downgrade**: if an operator intended to promote magna53 to live but forgot to set ALPACA_LIVE_API_KEY, auto-downgrade silently demotes the strategy and the operator never realizes. Boot-block forces explicit acknowledgment.
+
+**Lesson**: a feature whose semantics change (`phase='live'` meant paper, now means live) needs a database migration — not just a code change. Seeds left behind in their old denomination become live landmines. Same shape as the 2026-05-07 splits_ingest premature-apply bug where `adjustment_applied=TRUE` meant "we ran the step" but the operator-visible semantic was "the data is adjusted." Re-defining a column's meaning without migrating existing values is the foundational error.
+
+**Deploy verification gap to fix**: post-deploy verification (#68 and future) MUST include a real entry-pipeline exercise — e.g., a `/dryrun TICKER` Telegram command that walks every gate including safeguards. Today's boot smoke test confirmed credentials worked at startup; it did NOT confirm credentials worked when `_check_safeguards()` actually queried account equity. Boot ≠ runtime.
+
 ### 2026-05-11 — Missed-EP opportunity-cost telemetry (3-step ship)
 New `missed_outcomes.py` + `mi_ep_missed_outcomes` table tracks every EP the system saw but didn't enter (scan_filter, MODERATE-tier, HIGH-unentered) with forward returns from gap-day open to d+1/d+5/d+20 close plus max-favorable-excursion within each window. User flagged INOD/HIMX/FTNT/DDOG/BAND/TWLO as huge winners not entered — needed systematic surface for "which gate bled the most upside" instead of single-trade anecdotes.
 
