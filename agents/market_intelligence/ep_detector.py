@@ -1063,6 +1063,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     catalyst_quality, confidence_multiplier,
                     news_summary, claude_analysis,
                 )
+                # Visibility surface (advisor 2026-05-11): user needs to see
+                # the new behavior in action, not discover it by missing
+                # alerts. Telegram once per (ticker, date) — already gated
+                # by _catalyst_cache (one decision per ticker per day).
+                try:
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    from agents.market_intelligence.constants import mode_prefix
+                    await send_telegram_message(
+                        f"{mode_prefix()}📰 *Catalyst downgrade:* `{ticker}` "
+                        f"gap +{c['gap_pct']:.1f}%\n"
+                        f"Grade strong → routine — prose marker "
+                        f"\"{matched_marker}\" in {matched_source}\n"
+                        f"_Late-stage / no-fresh-news filter (#72). "
+                        f"This alert will not promote to HIGH._"
+                    )
+                except Exception:
+                    pass
 
         # Compute prior 3-month change %
         prior_3m_change = None

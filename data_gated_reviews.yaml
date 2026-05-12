@@ -897,37 +897,44 @@ reviews:
     added_on: 2026-05-10
 
   - review_id: paper_r_expectancy_validation
-    title: "Paper R-expectancy positive over recent N≥10 (GATE 3 of live cutover)"
+    title: "Paper R-expectancy positive over recent N≥10 (GATE 3 of live cutover) — COHORT RESET 2026-05-12"
     question: |
       **GATE 3 of 3 for live-$ cutover decision** (advisor 2026-05-10:
       methodology validation gate is positive R-expectancy in paper, not
       "enough trades to justify going live"; current 0/3 live cohort needs
       reset by N≥10 closed trades trending positive).
 
-      Over the most recent 10 closed paper trades, is total R-expectancy
-      positive? Pradeep/Qullamaggie methodology accepts low win rates
-      (~25-30%) so long as winners run multiples of risk. The validation
-      threshold is +R cumulative across N≥10, not win-rate.
+      **COHORT RESET (advisor 2026-05-11):** four methodology changes
+      shipped on 2026-05-11 (#72 catalyst prose downgrade, #73 re-entry
+      gap-through gate, #79 deal-pin filter, #80 proximity scaling).
+      The R-expectancy gate must measure stable system behavior, not the
+      changes it's validating readiness for. Counting starts from
+      2026-05-12 — the first trading day under the new gates.
+
+      Over the most recent 10 closed paper trades **from 2026-05-12
+      onward**, is total R-expectancy positive? Pradeep/Qullamaggie
+      methodology accepts low win rates (~25-30%) so long as winners
+      run multiples of risk. The validation threshold is +R cumulative
+      across N≥10, not win-rate.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_live_trades
       WHERE account_mode = 'paper'
         AND status = 'closed'
-        AND closed_at > NOW() - INTERVAL '21 days'
+        AND closed_at >= '2026-05-12'
     threshold: 10
-    earliest_review_date: 2026-05-17
+    earliest_review_date: 2026-05-22
     action_when_ready: |
-      Compute R-expectancy on the most recent 10 closed paper trades:
+      Compute R-expectancy on the most recent 10 closed paper trades
+      from the post-2026-05-12 cohort:
 
         WITH recent AS (
           SELECT id, ticker, alert_date,
                  entry_price, stop_price, total_pnl,
-                 (entry_price - stop_price) AS risk_per_share,
-                 -- approx R: (close pnl per share) / risk per share
-                 NULLIF(entry_price - stop_price, 0) AS denom
+                 (entry_price - stop_price) AS risk_per_share
           FROM mi_live_trades
           WHERE account_mode = 'paper'
             AND status = 'closed'
-            AND closed_at IS NOT NULL
+            AND closed_at >= '2026-05-12'
           ORDER BY closed_at DESC
           LIMIT 10
         )
@@ -935,8 +942,6 @@ reviews:
           COUNT(*) AS n,
           SUM(CASE WHEN total_pnl > 0 THEN 1 ELSE 0 END) AS wins,
           ROUND(AVG(total_pnl)::numeric, 2) AS avg_pnl,
-          -- R aggregation requires per-trade share count + risk;
-          -- check entries[] JSONB or mi_live_orders for filled qty
           SUM(total_pnl) AS total_pnl
         FROM recent;
 
@@ -955,6 +960,9 @@ reviews:
       proxy. If precision matters, file a per-trade R column followup.
 
       Origin: 2026-05-10 advisor live-cutover gate review.
+      Cohort reset: 2026-05-11 advisor review after 4 methodology ships
+      contaminated the prior week's cohort (sample-size discipline
+      violation; see memory feedback_sample_size_discipline).
     status: pending
     added_on: 2026-05-10
 
