@@ -56,6 +56,14 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 _RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
 _RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
 _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
+
+# Deal-pin M&A signature (Layer 3): once price is pinned at an announced
+# deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
+# VCPs run 1.5-3% even when tight, so a strict 0.5% threshold has
+# near-zero false-positive risk.
+_DEAL_PIN_LOOKBACK_DAYS          = 10
+_DEAL_PIN_RANGE_THRESHOLD        = 0.005
+_DEAL_PIN_MIN_SUB_THRESHOLD_DAYS = 5
 # Runup-scaled proximity (2026-05-11 #80): high-runup names consolidate
 # proportionally deeper. TRT (runup 332%) was rejected at 25% off pivot
 # despite being a textbook flag. SIVE.ST 5/04 was the original anecdote.
@@ -763,11 +771,17 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
             r for r in actionable if r.get("stage") in ("COILED", "TRIGGERED")
         ]
         if still_actionable:
+            try:
+                pin_map = await _check_deal_pin_signatures_batch(
+                    [r["ticker"] for r in still_actionable], scan_date,
+                )
+            except Exception as e:
+                logger.warning(f"flag_scan: deal-pin batch query failed: {e}")
+                pin_map = {}
+
             async def _deal_pin_check(r: dict) -> None:
                 try:
-                    sig = await _check_deal_pin_signature(
-                        r["ticker"], scan_date, lookback_days=10,
-                    )
+                    sig = pin_map.get(r["ticker"])
                     if sig and sig.get("is_pin"):
                         r["original_stage"] = r["stage"]
                         r["stage"] = "unqualified"
@@ -813,61 +827,73 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     return by_stage
 
 
-async def _check_deal_pin_signature(
-    ticker: str,
-    scan_date: date,
-    lookback_days: int = 10,
-    range_threshold: float = 0.005,
-    min_sub_threshold_days: int = 5,
-) -> Optional[dict]:
-    """Layer 3 M&A backstop: detect deal-pin price signature.
-
-    Once a stock is pinned at an announced deal value, daily ranges
-    collapse to bid-ask noise (~0.2-0.5%). Real VCPs have 1.5-3% daily
-    ranges even when tight, so strict thresholds carry near-zero
-    false-positive risk.
-
-    Returns dict with is_pin + telemetry, or None if data insufficient.
-    Telemetry includes median_range_pct, sub_threshold_days, total_days
-    so audit logs can show why the filter fired.
-    """
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT high_price, low_price, close
-            FROM mi_daily_closes
-            WHERE ticker = $1
-              AND trade_date <= $2
-              AND high_price IS NOT NULL
-              AND low_price IS NOT NULL
-              AND close IS NOT NULL
-              AND close > 0
-            ORDER BY trade_date DESC
-            LIMIT $3
-            """,
-            ticker, scan_date, lookback_days,
-        )
-    if len(rows) < min_sub_threshold_days:
-        # Not enough data to evaluate — fail open (no filter trigger).
+def _evaluate_deal_pin(rows: list) -> Optional[dict]:
+    """Pure-function evaluator: turn a ticker's daily H/L/C rows into a deal-pin signature dict."""
+    if len(rows) < _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS:
         return None
-
     ranges = [
         (float(r["high_price"]) - float(r["low_price"])) / float(r["close"])
         for r in rows
     ]
     ranges_sorted = sorted(ranges)
     median = ranges_sorted[len(ranges_sorted) // 2]
-    sub = sum(1 for x in ranges if x < range_threshold)
-
+    sub = sum(1 for x in ranges if x < _DEAL_PIN_RANGE_THRESHOLD)
     return {
         "median_range_pct": median,
         "sub_threshold_days": sub,
         "total_days": len(rows),
-        "is_pin": median < range_threshold and sub >= min_sub_threshold_days,
-        "range_threshold": range_threshold,
+        "is_pin": (
+            median < _DEAL_PIN_RANGE_THRESHOLD
+            and sub >= _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS
+        ),
+        "range_threshold": _DEAL_PIN_RANGE_THRESHOLD,
     }
+
+
+async def _check_deal_pin_signatures_batch(
+    tickers: list[str],
+    scan_date: date,
+) -> dict[str, dict]:
+    """Batch version: one DB round-trip for N tickers' last _DEAL_PIN_LOOKBACK_DAYS bars.
+
+    Returns {ticker: signature_dict} for every ticker with enough data;
+    tickers with insufficient history are omitted (caller fails open).
+    """
+    if not tickers:
+        return {}
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, high_price, low_price, close
+            FROM (
+                SELECT
+                    ticker, high_price, low_price, close,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ticker ORDER BY trade_date DESC
+                    ) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1)
+                  AND trade_date <= $2
+                  AND high_price IS NOT NULL
+                  AND low_price IS NOT NULL
+                  AND close IS NOT NULL
+                  AND close > 0
+            ) sub
+            WHERE rn <= $3
+            """,
+            tickers, scan_date, _DEAL_PIN_LOOKBACK_DAYS,
+        )
+    by_ticker: dict[str, list] = {}
+    for r in rows:
+        by_ticker.setdefault(r["ticker"], []).append(r)
+    out: dict[str, dict] = {}
+    for ticker, ticker_rows in by_ticker.items():
+        sig = _evaluate_deal_pin(ticker_rows)
+        if sig is not None:
+            out[ticker] = sig
+    return out
 
 
 def _fmt_pct(v: Optional[float], digits: int = 0, sign: bool = False) -> str:

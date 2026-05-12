@@ -348,12 +348,12 @@ async def _aggregate_trade_postmortems(window_start: date) -> dict:
     return out
 
 
-_LOSER_NEGATIVE_PROSE_MARKERS = (
-    "no gap up catalyst identified",
+from agents.market_intelligence.prose_markers import NEGATIVE_CATALYST_MARKERS_BASE
+
+# Post-mortem loser grading adds retrospective signals (litigation language,
+# "or catalyst" tail) that the live EP downgrade gate intentionally doesn't fire on.
+_LOSER_NEGATIVE_PROSE_MARKERS = NEGATIVE_CATALYST_MARKERS_BASE + (
     "no specific news or catalyst",
-    "no fresh company-specific news",
-    "no fresh headlines",
-    "no specific catalyst",
     "class action",
     "lawsuit",
 )

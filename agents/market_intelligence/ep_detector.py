@@ -96,12 +96,12 @@ _catalyst_cache_date: "date | None" = None
 # loss). Only fires when earnings backstop did NOT fire — MNDY 5/11 had
 # the same prose pattern but was earnings day, the boost correctly graded
 # it strong, downgrade must not fight the boost.
-_PROSE_NEGATIVE_MARKERS = (
-    "no gap up catalyst identified",
+from agents.market_intelligence.prose_markers import NEGATIVE_CATALYST_MARKERS_BASE
+
+# EP downgrade fires on the shared base plus the EP-specific shorter form
+# "no specific news" (catches summaries that don't include " or catalyst" tail).
+_PROSE_NEGATIVE_MARKERS = NEGATIVE_CATALYST_MARKERS_BASE + (
     "no specific news",
-    "no fresh company-specific news",
-    "no fresh headlines",
-    "no specific catalyst",
 )
 
 # Per-day audit dedupe: keys (ticker, date, event_type). EP scan runs every 5 min
@@ -1078,8 +1078,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"_Late-stage / no-fresh-news filter (#72). "
                         f"This alert will not promote to HIGH._"
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(
+                        f"catalyst_downgrade_telegram_failed: {ticker}: {e}"
+                    )
 
         # Compute prior 3-month change %
         prior_3m_change = None

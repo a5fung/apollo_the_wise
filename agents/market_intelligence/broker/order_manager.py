@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 from agents.market_intelligence.backtester.filters import validate_orb_entry
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import (
+    BLOCK_REENTRY_GAP_THROUGH,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_ACCOUNT_FETCH_FAILED,
     SETUP_PRICE_EXCEEDS_CAP,
@@ -456,9 +457,10 @@ async def attempt_day1_reentry(
                     status = 'closed', exits = $2::jsonb,
                     remaining_shares = 0, total_pnl = $3,
                     stop_order_id = NULL, closed_at = NOW(),
-                    skip_reason = 'block:reentry_gap_through'
+                    skip_reason = $4
                 WHERE id = $1
-            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+            """, trade["id"], json.dumps(exits), total_pnl_so_far,
+                BLOCK_REENTRY_GAP_THROUGH)
         await log_audit_event(
             "reentry_blocked_gap_through",
             f"{ticker}: att1 stop {stop_level:.2f} → fill {stop_fill_price:.2f} "
@@ -1990,7 +1992,12 @@ async def track_open_position_extremes() -> int:
     from agents.market_intelligence.collector import get_minute_bars, et_today
     today_str = et_today().isoformat()
 
-    updates = 0
+    # Per-trade filtering by filled_at (#74): Polygon get_minute_bars returns
+    # extended-hours bars including pre-market, which captured BW's pre-open
+    # dip at $14.51 below the $16.49 stop and stored it as lowest_price_seen
+    # even though the trade only filled at 9:53 ET. Fix: only consider bars
+    # whose timestamp >= trade's filled_at.
+    update_rows: list[tuple[int, float, float]] = []
     for ticker, trades in by_ticker.items():
         try:
             bars = await get_minute_bars(ticker, today_str, today_str)
@@ -1999,14 +2006,6 @@ async def track_open_position_extremes() -> int:
             continue
         if not bars:
             continue
-        # Per-trade filtering by filled_at (2026-05-11 #74). Polygon's
-        # get_minute_bars returns extended-hours bars including pre-market,
-        # which captured BW's pre-open dip at $14.51 below the $16.49 stop
-        # and stored it as lowest_price_seen even though the trade only
-        # filled at 9:53 ET. Fix: only consider bars whose timestamp is
-        # >= the trade's filled_at. Each trade in the by_ticker bucket
-        # gets its own filtered view so multiple positions in the same
-        # ticker (different alert_dates) each see the right window.
         for trade in trades:
             filled_at = trade["filled_at"]
             if not filled_at:
@@ -2023,15 +2022,18 @@ async def track_open_position_extremes() -> int:
             period_high = max(float(b["h"]) for b in in_hold)
             if period_low <= 0 or period_high <= 0:
                 continue
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        lowest_price_seen = LEAST(COALESCE(lowest_price_seen, $2), $2),
-                        highest_price_seen = GREATEST(COALESCE(highest_price_seen, $3), $3)
-                    WHERE id = $1
-                """, trade["id"], period_low, period_high)
-            updates += 1
-    return updates
+            update_rows.append((trade["id"], period_low, period_high))
+
+    if not update_rows:
+        return 0
+    async with pool.acquire() as conn:
+        await conn.executemany("""
+            UPDATE mi_live_trades SET
+                lowest_price_seen = LEAST(COALESCE(lowest_price_seen, $2), $2),
+                highest_price_seen = GREATEST(COALESCE(highest_price_seen, $3), $3)
+            WHERE id = $1
+        """, update_rows)
+    return len(update_rows)
 
 
 async def _update_trade_status(trade_id: int, status: str, skip_reason: str | None = None) -> None:
