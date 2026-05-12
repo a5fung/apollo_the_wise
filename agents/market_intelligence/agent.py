@@ -3882,6 +3882,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,
             "/watchlist":      self._handle_friday_watchlist,
+            "/missed":         self._handle_missed_query,
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
