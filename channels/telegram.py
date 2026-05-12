@@ -471,6 +471,8 @@ class TelegramChannel:
             "\n"
             "*Diagnostics*\n"
             "`/why TICKER [YYYY-MM-DD]` — full lifecycle trace (alert → entry/skip → events)\n"
+            "`/missed [days]` — top EPs we didn't enter, ranked by forward return\n"
+            "`/missed by reason` — same data, grouped by skip category\n"
             "`show errors 7d` — recent engine errors (validation, broker, feed)\n"
             "`weekly review` — on-demand system self-audit (also Sun 8 AM)\n"
             "\n"
@@ -1539,7 +1541,8 @@ class TelegramChannel:
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
-                     "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook", "dryrun"):
+                     "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook", "dryrun",
+                     "missed"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1576,6 +1579,7 @@ class TelegramChannel:
             BotCommand("why",       "/why TICKER [date] — per-ticker lifecycle (alert→trade→audit)"),
             BotCommand("flags",     "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
             BotCommand("fishhook",  "Fishhook anchors — armed/triggered breakout candidates"),
+            BotCommand("missed",    "Missed EPs — top winners we didn't enter (opportunity cost)"),
             BotCommand("strategy",  "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("status",    "System health + API spend"),
             BotCommand("help",      "Capabilities, rules, command reference"),
