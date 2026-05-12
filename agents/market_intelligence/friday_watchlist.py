@@ -36,12 +36,13 @@ logger = logging.getLogger(__name__)
 # Lower priority value = higher precedence (drives section assignment + button order)
 _PRIORITY = {
     "EP_HIGH":      1,
-    "THEME":        2,
-    "9M_SUGAR":     3,
-    "WICK_PENDING": 4,
-    "WICK":         5,
-    "PARABOLIC":    6,
-    "RS":           7,
+    "FLAG":         2,
+    "THEME":        3,
+    "9M_SUGAR":     4,
+    "WICK_PENDING": 5,
+    "WICK":         6,
+    "PARABOLIC":    7,
+    "RS":           8,
 }
 
 # Forward-looking wick window — sessions, not calendar days. 3 sessions covers
@@ -64,6 +65,7 @@ _TG_SAFE_LIMIT = 3900  # margin under Telegram's 4096-char message ceiling
 
 _SECTION_HEADERS = {
     "EP_HIGH":      ("⚡", "EP HIGH"),
+    "FLAG":         ("🚩", "Flag Setups — COILED / TIGHTENING"),
     "9M_SUGAR":     ("🍬", "9M Sugar Babies"),
     "THEME":        ("🚀", "Themes — Accelerating"),
     "WICK_PENDING": ("🪝", "Wick Pending — break-of-prior-high"),
@@ -292,6 +294,76 @@ async def _fetch_wick(window_days: int) -> list[dict]:
     return out
 
 
+async def _fetch_flag(window_days: int) -> list[dict]:
+    """Continuation flag setups — COILED (actionable) + TIGHTENING (forming).
+
+    Pulls latest scan date with data (handles pre-EOD Friday before the
+    5:25 PM scan completes — falls back to previous day) and surfaces up
+    to 5 COILED + 3 TIGHTENING. Excludes mna_filter:* hits since those
+    are deal-pinned and unenterable.
+    """
+    if not await should_run("flag_continuation"):
+        return []
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Latest scan date within last 7d. Mirrors the /flags resolver
+        # so weekend / pre-scan timing doesn't return empty.
+        from datetime import date as _date, timedelta as _td
+        today = _date.today()
+        cutoff = today - _td(days=7)
+        scan_date = await conn.fetchval(
+            """
+            SELECT MAX(scan_date) FROM mi_flag_candidates
+            WHERE scan_date >= $1 AND scan_date <= $2
+            """,
+            cutoff, today,
+        )
+        if scan_date is None:
+            return []
+        rows = await conn.fetch(
+            """
+            SELECT ticker, stage, base_age, runup_pct,
+                   range_contraction_ratio, vol_contraction_ratio,
+                   breakout_close, base_high
+            FROM mi_flag_candidates
+            WHERE scan_date = $1
+              AND stage IN ('COILED', 'TIGHTENING')
+            ORDER BY
+              CASE stage WHEN 'COILED' THEN 0 ELSE 1 END,
+              range_contraction_ratio NULLS LAST
+            """,
+            scan_date,
+        )
+
+    coiled = [r for r in rows if r["stage"] == "COILED"][:5]
+    tightening = [r for r in rows if r["stage"] == "TIGHTENING"][:3]
+    out: list[dict] = []
+    for i, r in enumerate(coiled):
+        rr = r.get("range_contraction_ratio")
+        runup = r.get("runup_pct")
+        rr_s = f"r{float(rr):.2f}" if rr is not None else "r—"
+        runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
+        out.append({
+            "ticker": r["ticker"],
+            "source_tag": "FLAG",
+            "reason": f"COILED · base {r.get('base_age')}d · runup {runup_s} · {rr_s}",
+            "priority": _PRIORITY["FLAG"],
+            "rank_within": i,
+        })
+    for i, r in enumerate(tightening):
+        rr = r.get("range_contraction_ratio")
+        rr_s = f"r{float(rr):.2f}" if rr is not None else "r—"
+        out.append({
+            "ticker": r["ticker"],
+            "source_tag": "FLAG",
+            "reason": f"TIGHTENING · base {r.get('base_age')}d · {rr_s}",
+            "priority": _PRIORITY["FLAG"] + 0.5,  # rank below COILED
+            "rank_within": 100 + i,
+        })
+    return out
+
+
 async def _fetch_parabolic(window_days: int) -> list[dict]:
     if not await should_run("parabolic_short"):
         return []
@@ -444,7 +516,7 @@ def _build_digest(
     for r in rows:
         by_primary.setdefault(r["primary"], []).append(r)
 
-    section_order = ["EP_HIGH", "9M_SUGAR", "THEME", "WICK_PENDING", "WICK", "PARABOLIC", "RS"]
+    section_order = ["EP_HIGH", "FLAG", "9M_SUGAR", "THEME", "WICK_PENDING", "WICK", "PARABOLIC", "RS"]
     for src in section_order:
         if src == "THEME":
             if theme_meta:
@@ -543,6 +615,7 @@ async def run_friday_watchlist(window_days: int = 7, persist: bool = True) -> di
         partial_rs = bool(running)
 
     ep_rows = await _fetch_ep_high(window_days)
+    fl_rows = await _fetch_flag(window_days)
     nm_rows = await _fetch_9m_sugar(window_days)
     th_rows, theme_meta = await _fetch_themes()
     wp_rows = await _fetch_wick_pending()
@@ -551,12 +624,12 @@ async def run_friday_watchlist(window_days: int = 7, persist: bool = True) -> di
 
     pre_rs_tickers = {
         r["ticker"]
-        for bucket in (ep_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows)
+        for bucket in (ep_rows, fl_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows)
         for r in bucket
     }
     rs_rows = await _fetch_rs_ambient(pre_rs_tickers)
 
-    merged = _merge_sources([ep_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows, rs_rows])
+    merged = _merge_sources([ep_rows, fl_rows, nm_rows, th_rows, wp_rows, wk_rows, pb_rows, rs_rows])
     merged = merged[:_MAX_TICKERS]
 
     tickers = [r["ticker"] for r in merged]

@@ -1630,7 +1630,25 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             if abs(alpaca_qty - db_qty) > 0.5:
                 msg = f"Qty mismatch {ticker}: DB={db_qty:.0f} Alpaca={alpaca_qty:.0f}"
                 discrepancies.append(msg)
-                # Update DB to match Alpaca
+                # Audit the overwrite (SMCI 5/11 #77 forensics: previously
+                # this just wrote silently with logger.info, leaving no
+                # trail for "when did DB qty drift?" investigations).
+                # Common cause: paper Alpaca temporarily soft-reserves
+                # shares for an after-hours queued sell, so
+                # get_all_positions returns reduced qty until the order
+                # finalizes at next open.
+                await log_audit_event(
+                    "sync_qty_overwrite",
+                    f"{ticker}: DB {db_qty:.0f} → Alpaca {alpaca_qty:.0f} "
+                    f"(trade_id={trade['id']}, mode={account_mode})",
+                    detail=json.dumps({
+                        "trade_id": trade["id"],
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "db_qty_before": float(db_qty),
+                        "alpaca_qty_after": float(alpaca_qty),
+                    }),
+                )
                 async with pool.acquire() as conn:
                     await conn.execute(
                         "UPDATE mi_live_trades SET remaining_shares = $2 WHERE id = $1",

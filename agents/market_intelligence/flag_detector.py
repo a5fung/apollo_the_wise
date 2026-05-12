@@ -56,6 +56,16 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 _RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
 _RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
 _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
+# Runup-scaled proximity (2026-05-11 #80): high-runup names consolidate
+# proportionally deeper. TRT (runup 332%) was rejected at 25% off pivot
+# despite being a textbook flag. SIVE.ST 5/04 was the original anecdote.
+# Formula: effective_band = base + min(runup_pct, runup_cap) * scale.
+# At runup_pct=3.32 (TRT), band = 0.20 + 3.0*0.05 = 0.35 → 25% off
+# pivot passes. At runup_pct=0.5 (50% — minimum), band = 0.225 (small
+# bump, no surprise behavior change). Capped at runup=3.0 so a 10x
+# runup doesn't blow out to 70%+.
+_PROXIMITY_RUNUP_SCALE = 0.05   # per 1x of runup_pct above 0
+_PROXIMITY_RUNUP_CAP   = 3.0    # cap runup contribution at 3.0x
 
 # ── Tightening gates ────────────────────────────────────────────────────────
 _RANGE_CONTRACTION_MAX = 0.75   # recent_5d / early_5d TR%   — ≤ 0.75 = tight
@@ -461,14 +471,23 @@ def compute_flag_metrics(
         base["reason"] = f"close_{close_today:.2f}_below_sma20_{sma_20:.2f}"
         return base
 
-    # ── Proximity gate: close within ±20% of pivot_close ────────────────
+    # ── Proximity gate: close within ±EFFECTIVE_BAND of pivot_close ─────
     # Anchor on pivot_close (not pivot_high) so shooting-star pivots whose
     # intraday high is 15-25% above the close don't structurally fail this
     # gate forever. The base typically forms beneath the wick high but
     # around the pivot's close.
-    if abs(close_today - pivot_close) / pivot_close > _PROXIMITY_BAND:
+    # Runup-scaled band (2026-05-11 #80): a stock that ran 332% (TRT)
+    # consolidates proportionally deeper than one that ran 80%. Apply a
+    # linear scale, capped, so the gate doesn't over-reject high-runup
+    # textbook flags.
+    runup_pct = base.get("runup_pct") or 0.0
+    runup_contrib = min(max(runup_pct, 0.0), _PROXIMITY_RUNUP_CAP) * _PROXIMITY_RUNUP_SCALE
+    effective_band = _PROXIMITY_BAND + runup_contrib
+    off_pivot = abs(close_today - pivot_close) / pivot_close
+    if off_pivot > effective_band:
         base["reason"] = (
-            f"close_{close_today:.2f}_off_pivot_close_{pivot_close:.2f}_>20%"
+            f"close_{close_today:.2f}_off_pivot_close_{pivot_close:.2f}_"
+            f">{effective_band*100:.0f}%(scaled_for_runup_{runup_pct:.1f}x)"
         )
         return base
 
@@ -728,6 +747,51 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
 
         await asyncio.gather(*(_mna_check(r) for r in actionable))
 
+        # Layer 3 M&A backstop: deal-pin price signature.
+        # KALV 2026-05-11 surfaced the case where Polygon has ZERO news on
+        # an M&A target (small biotech, recent announcement, or coverage
+        # gap) → L0+L1+L2 all miss. The price action itself is the tell:
+        # once price is pinned at the deal value, daily range collapses to
+        # bid-ask noise (~0.2-0.5%). Real VCPs have 1.5-3% daily ranges
+        # even when tight, so a strict 0.5% threshold has near-zero
+        # false-positive risk against legitimate continuation flags.
+        # Filter criteria (require all): median (H-L)/C over last 10
+        # sessions < 0.5%, AND ≥5 sessions sub-0.5%. KALV today:
+        # median 0.22%, 8 of 9 sessions sub-0.5%, vs SXT 3.2% / SEI 6.0%
+        # also-COILED → KALV cleanly outlier.
+        still_actionable = [
+            r for r in actionable if r.get("stage") in ("COILED", "TRIGGERED")
+        ]
+        if still_actionable:
+            async def _deal_pin_check(r: dict) -> None:
+                try:
+                    sig = await _check_deal_pin_signature(
+                        r["ticker"], scan_date, lookback_days=10,
+                    )
+                    if sig and sig.get("is_pin"):
+                        r["original_stage"] = r["stage"]
+                        r["stage"] = "unqualified"
+                        r["reason"] = "mna_filter:deal_pin_signature"
+                        await db.insert_flag_candidate(r)
+                        await db.log_audit_event(
+                            "mna_filter_fired",
+                            f"{r['ticker']} via deal_pin_signature (flag) — "
+                            f"median {sig['median_range_pct']:.3%}, "
+                            f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%",
+                            detail=str({
+                                "detector": "flag",
+                                "stage": r["original_stage"],
+                                "source": "deal_pin_signature",
+                                **sig,
+                            })[:500],
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"flag_scan: deal-pin check failed for {r['ticker']}: {e}"
+                    )
+
+            await asyncio.gather(*(_deal_pin_check(r) for r in still_actionable))
+
     for r in results:
         if r is None:
             continue
@@ -747,6 +811,63 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     # same details). Per-ticker alerts deleted as duplicate noise.
     await send_flag_digest(by_stage, scan_date, yesterday_map=yesterday_map)
     return by_stage
+
+
+async def _check_deal_pin_signature(
+    ticker: str,
+    scan_date: date,
+    lookback_days: int = 10,
+    range_threshold: float = 0.005,
+    min_sub_threshold_days: int = 5,
+) -> Optional[dict]:
+    """Layer 3 M&A backstop: detect deal-pin price signature.
+
+    Once a stock is pinned at an announced deal value, daily ranges
+    collapse to bid-ask noise (~0.2-0.5%). Real VCPs have 1.5-3% daily
+    ranges even when tight, so strict thresholds carry near-zero
+    false-positive risk.
+
+    Returns dict with is_pin + telemetry, or None if data insufficient.
+    Telemetry includes median_range_pct, sub_threshold_days, total_days
+    so audit logs can show why the filter fired.
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT high_price, low_price, close
+            FROM mi_daily_closes
+            WHERE ticker = $1
+              AND trade_date <= $2
+              AND high_price IS NOT NULL
+              AND low_price IS NOT NULL
+              AND close IS NOT NULL
+              AND close > 0
+            ORDER BY trade_date DESC
+            LIMIT $3
+            """,
+            ticker, scan_date, lookback_days,
+        )
+    if len(rows) < min_sub_threshold_days:
+        # Not enough data to evaluate — fail open (no filter trigger).
+        return None
+
+    ranges = [
+        (float(r["high_price"]) - float(r["low_price"])) / float(r["close"])
+        for r in rows
+    ]
+    ranges_sorted = sorted(ranges)
+    median = ranges_sorted[len(ranges_sorted) // 2]
+    sub = sum(1 for x in ranges if x < range_threshold)
+
+    return {
+        "median_range_pct": median,
+        "sub_threshold_days": sub,
+        "total_days": len(rows),
+        "is_pin": median < range_threshold and sub >= min_sub_threshold_days,
+        "range_threshold": range_threshold,
+    }
 
 
 def _fmt_pct(v: Optional[float], digits: int = 0, sign: bool = False) -> str:
