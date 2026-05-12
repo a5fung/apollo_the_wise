@@ -686,6 +686,88 @@ async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
         )
 
 
+async def _canonicalize_theme_names(
+    conn, themes: list[dict], today
+) -> int:
+    """Rename today's themes to match a prior 14d theme when ticker set is
+    identical (cross-run dup canonicalization, #59 2026-05-11).
+
+    Sonnet's theme discovery generates new descriptive names every run, so
+    `[AMD, ARM, MRVL]` cycles between "AI Datacenter Silicon" and
+    "Custom AI Silicon & Chip Architecture Licensing" night-over-night.
+    Net effect: theme history (days_active, consecutive_accelerating)
+    resets every rename; forward-returns analysis can't track stable
+    cohorts; /themes output looks noisier than the underlying reality.
+
+    Rename rules:
+    - Same ticker set (exact frozenset match) under different name within
+      last 14 days → use prior name.
+    - If multiple prior matches, use the EARLIEST (canonical original).
+    - Skip if prior name already exists in today's pending save list
+      (Sonnet split today; not a rename case).
+
+    Returns count of themes renamed. Emits one audit event with the
+    full rename map for traceability.
+    """
+    today_names = {t["name"] for t in themes}
+    today_sets: dict[frozenset, int] = {}  # ticker set -> index in themes
+    for i, t in enumerate(themes):
+        tk = frozenset(t.get("tickers") or [])
+        if tk:
+            today_sets[tk] = i
+    if not today_sets:
+        return 0
+
+    # Pull EARLIEST appearance per name in last 14d (so cycling renames
+    # converge on the original canonical name, not the most recent).
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT ON (name) name, theme_date, tickers
+        FROM mi_themes
+        WHERE theme_date >= $1::date - 14 AND theme_date < $1::date
+        ORDER BY name, theme_date ASC
+        """,
+        today,
+    )
+
+    # Group prior rows by ticker set → list of (prior_name, prior_date).
+    by_set: dict[frozenset, list[tuple[str, str]]] = {}
+    for row in rows:
+        tk = frozenset(row["tickers"] or [])
+        if not tk:
+            continue
+        by_set.setdefault(tk, []).append((row["name"], str(row["theme_date"])))
+
+    renames: list[tuple[str, str, str]] = []  # (old_today_name, new_canonical_name, prior_date)
+    for tk, idx in today_sets.items():
+        current_name = themes[idx]["name"]
+        priors = by_set.get(tk)
+        if not priors:
+            continue
+        # Sort earliest first; pick the earliest prior name as canonical.
+        priors_sorted = sorted(priors, key=lambda x: x[1])
+        prior_name, prior_date = priors_sorted[0]
+        if prior_name == current_name:
+            continue  # same name already, no rename
+        if prior_name in today_names:
+            continue  # already a theme today with that name; don't collide
+        renames.append((current_name, prior_name, prior_date))
+        themes[idx]["name"] = prior_name
+        today_names.discard(current_name)
+        today_names.add(prior_name)
+
+    if renames:
+        detail = "\n".join(
+            f"'{old}' → '{new}' (canonical from {pd})" for old, new, pd in renames
+        )
+        await log_audit_event(
+            "theme_renamed_for_continuity",
+            summary=f"{len(renames)} theme(s) renamed to prior canonical names",
+            detail=detail,
+        )
+    return len(renames)
+
+
 async def _save_themes(themes: list[dict]) -> None:
     """
     Persist today's theme snapshot.  Uses upsert by (theme_date, name)
@@ -697,7 +779,20 @@ async def _save_themes(themes: list[dict]) -> None:
     today = themes[0]["theme_date"]
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Fetch prior conviction counters for all theme names in one query
+        # Cross-run uniqueness probe: query the last 14 days of `mi_themes` for
+        # rows with the same ticker set as anything we're about to save BUT under
+        # a DIFFERENT name. Diagnostic only; does not mutate.
+        await _emit_cross_run_dup_probe(conn, themes, today)
+
+        # Canonicalize names: rename today's themes to match prior 14d themes
+        # when the ticker set is identical (#59, 2026-05-11). Preserves
+        # days_active / consecutive_accelerating history through Sonnet's
+        # cosmetic rephrasings. Must run AFTER the dup probe so the diagnostic
+        # event captures pre-rename state, and BEFORE prior_map fetch so the
+        # rebuilt name lookups pick up the canonical history.
+        await _canonicalize_theme_names(conn, themes, today)
+
+        # Fetch prior conviction counters for the (possibly renamed) theme names.
         prior_rows = await conn.fetch("""
             SELECT DISTINCT ON (name)
                 name, days_active, consecutive_accelerating, stage
@@ -706,13 +801,6 @@ async def _save_themes(themes: list[dict]) -> None:
             ORDER BY name, theme_date DESC
         """, [t["name"] for t in themes], today)
         prior_map = {r["name"]: dict(r) for r in prior_rows}
-
-        # Cross-run uniqueness probe: query the last 14 days of `mi_themes` for
-        # rows with the same ticker set as anything we're about to save BUT under
-        # a DIFFERENT name. This catches the cross-run dup hypothesis — two themes
-        # created on different days that never co-entered a single merge call.
-        # Diagnostic only; does not mutate.
-        await _emit_cross_run_dup_probe(conn, themes, today)
 
         # Safety net: themes with identical ticker sets are by definition the
         # same theme. Merge passes should have collapsed these upstream — when
