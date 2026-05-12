@@ -351,9 +351,53 @@ async def refresh_missed_outcomes(
 # ── Query helpers (Telegram + weekly review) ────────────────────────────────
 
 # Skip categories that represent CORRECTLY filtered names (size / illiquidity
-# / structural M&A noise). Hidden from /missed by default — they didn't bleed
-# tradeable opportunity, they did their job. Visible via `/missed all`.
-_UNTRADEABLE_CATEGORIES = ("mcap_low", "adv_low", "ma_filter")
+# / structural M&A noise / volatility too high / already extended). These
+# rejections say "not in our trade universe" — they didn't bleed tradeable
+# opportunity, they did their job. Hidden from /missed by default; visible
+# via `/missed all`.
+_UNTRADEABLE_CATEGORIES = (
+    "mcap_low",        # market cap below floor
+    "adv_low",         # avg dollar volume below floor
+    "ma_filter",       # M&A target / deal-pinned shell
+    "atr_high",        # volatility above tradeable threshold
+    "extension_gate",  # price already extended (parabolic-shape rejection)
+)
+
+# Conceptual taxonomy of skip kinds — surfaced in /missed section headers so
+# the user can tell at a glance whether a bucket is a "genuine miss" vs a
+# "signal-weak skip" vs a "scored-but-not-entered" case. Structural kinds
+# are excluded from default view anyway (see _UNTRADEABLE_CATEGORIES) but
+# kept here for documentation parity.
+_CATEGORY_KIND: dict[str, str] = {
+    # Structural — system correctly said "not our universe"
+    "mcap_low":           "structural",
+    "adv_low":            "structural",
+    "ma_filter":           "structural",
+    "atr_high":            "structural",
+    "extension_gate":      "structural",
+    # Operational — budget / housekeeping; would've been evaluated otherwise
+    "outside_top20":       "operational",
+    "cooldown":            "operational",
+    "duplicate_scan":      "operational",
+    "score_below_50":      "operational",
+    # Signal — trade-time conditions said "no follow-through"
+    "pm_rvol_low":         "signal",
+    "session_rvol_low":    "signal",
+    "catalyst_downgrade":  "signal",
+    # Scored-and-passed-to-user but not entered
+    "moderate_tier":       "tier",
+    "high_unentered":      "tier",
+    # Unknown
+    "filter_other":        "other",
+}
+
+_KIND_LABELS: dict[str, str] = {
+    "operational": "operational miss",
+    "signal":      "weak signal",
+    "tier":        "scored, not entered",
+    "structural":  "structurally filtered",
+    "other":       "uncategorized",
+}
 
 # Open-price floor for the default view. Apollo's strategies don't trade
 # sub-$5 names; surfacing penny-stock rockets just creates noise.
@@ -546,7 +590,9 @@ def format_missed_telegram(
     ]
 
     for cat, items in grouped.items():
-        parts.append(f"*{_humanize_category(cat)}* ({len(items)})")
+        kind_label = _KIND_LABELS.get(_CATEGORY_KIND.get(cat, "other"), "")
+        kind_suffix = f" — _{kind_label}_" if kind_label else ""
+        parts.append(f"*{_humanize_category(cat)}*{kind_suffix} ({len(items)})")
         parts.append("```")
         parts.append("           5d           20d")
         parts.append("tckr  date  close  max   close  max")

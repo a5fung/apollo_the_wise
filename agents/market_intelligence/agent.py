@@ -2254,15 +2254,19 @@ class MarketIntelligenceAgent(BaseAgent):
             cats = await missed_by_category(window_days=window_days)
             if not cats:
                 return self._ok(request, result=f"🔍 No missed-EP data in last {window_days}d.")
-            from agents.market_intelligence.missed_outcomes import _humanize_category
+            from agents.market_intelligence.missed_outcomes import (
+                _humanize_category, _CATEGORY_KIND, _KIND_LABELS,
+            )
             lines = [
                 f"🔍 *Missed EPs by skip reason (last {window_days}d)*",
-                "_n=alerts · avg=avg 5d return · ≥10%=winners ≥10% · top=best hit_",
+                "_kind: operational=we never evaluated · signal=trade-time weak ·_",
+                "_       tier=scored but not entered · structural=outside trade universe_",
                 "",
                 "```",
-                "reason                    n    avg    ≥10%  top",
+                "reason                    kind          n    avg    ≥10%  top",
             ]
             for c in cats:
+                cat = c.get("skip_category") or "filter_other"
                 n = c.get("n") or 0
                 avg = c.get("avg_ret_5d")
                 avg_s = (f"{avg*100:+3.0f}%" if avg is not None else "  —").rjust(5)
@@ -2270,8 +2274,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 top_t = (c.get("top_ticker") or "—")[:5]
                 top_r = c.get("top_ret_5d")
                 top_s = (f"{top_r*100:+3.0f}%" if top_r is not None else "  —").rjust(5)
-                label = _humanize_category(c.get("skip_category"))[:24].ljust(24)
-                lines.append(f"{label}  {n:>3}  {avg_s}  {n10:>3}   {top_t} {top_s}")
+                label = _humanize_category(cat)[:24].ljust(24)
+                kind = _KIND_LABELS.get(_CATEGORY_KIND.get(cat, "other"), "—")[:12].ljust(12)
+                lines.append(f"{label}  {kind}  {n:>3}  {avg_s}  {n10:>3}   {top_t} {top_s}")
             lines.append("```")
             return self._ok(request, result="\n".join(lines))
 
