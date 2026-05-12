@@ -350,33 +350,66 @@ async def refresh_missed_outcomes(
 
 # ── Query helpers (Telegram + weekly review) ────────────────────────────────
 
+# Skip categories that represent CORRECTLY filtered names (size / illiquidity
+# / structural M&A noise). Hidden from /missed by default — they didn't bleed
+# tradeable opportunity, they did their job. Visible via `/missed all`.
+_UNTRADEABLE_CATEGORIES = ("mcap_low", "adv_low", "ma_filter")
+
+# Open-price floor for the default view. Apollo's strategies don't trade
+# sub-$5 names; surfacing penny-stock rockets just creates noise.
+_DEFAULT_PRICE_FLOOR = 5.0
+
+
 async def top_missed_winners(
     window_days: int = 30,
     horizon: str = "5d",
-    top_n: int = 15,
+    per_category: int = 3,
+    include_untradeable: bool = False,
 ) -> list[dict]:
-    """Top N misses by forward return over `horizon` ('1d' | '5d' | '20d').
+    """Top N misses per skip category — guarantees each bucket shows up.
 
-    Includes rows whose close return hasn't settled yet (recent alerts within
-    the horizon window) — ranks them by the running max-favorable-excursion
-    so they don't disappear from the surface. The two numbers (close ret +
-    max excursion) are both shown in the formatter.
+    Why per-category instead of global top-N: global sort by 5d return is
+    dominated by small-cap rockets (AKAN/XNDU/POEL +200%+), drowning out
+    actionable misses like HIMX/BAND (+30-40% in the user's actual trade
+    universe). Per-category surfaces the top miss within each skip reason
+    so methodology-tuning context is preserved across the whole output.
+
+    Default view excludes correctly-filtered categories (mcap_low / adv_low /
+    ma_filter) and rows whose gap-day open was < $5 (Apollo doesn't trade
+    sub-$5). Pass `include_untradeable=True` (or `/missed all`) to see them.
     """
     col = {"1d": "ret_1d", "5d": "ret_5d", "20d": "ret_20d"}.get(horizon, "ret_5d")
     max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
+    untradeable_clause = "" if include_untradeable else (
+        f"AND skip_category NOT IN {_UNTRADEABLE_CATEGORIES} "
+        f"AND COALESCE(open_d0, 0) >= {_DEFAULT_PRICE_FLOOR} "
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""
-            SELECT ticker, alert_date, source, skip_reason, skip_category,
-                   ep_score, gap_pct, catalyst_quality,
-                   ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d
-            FROM mi_ep_missed_outcomes
-            WHERE alert_date >= CURRENT_DATE - $1::INT
-              AND ({col} IS NOT NULL OR {max_col} IS NOT NULL)
-            ORDER BY COALESCE({col}, {max_col}) DESC NULLS LAST,
-                     {max_col} DESC NULLS LAST
-            LIMIT $2
-        """, window_days, top_n)
+            WITH base AS (
+                SELECT ticker, alert_date, source, skip_reason, skip_category,
+                       ep_score, gap_pct, catalyst_quality, open_d0,
+                       ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY skip_category
+                           ORDER BY COALESCE({col}, {max_col}) DESC NULLS LAST,
+                                    {max_col} DESC NULLS LAST
+                       ) AS rn,
+                       MAX(COALESCE({col}, {max_col})) OVER (
+                           PARTITION BY skip_category
+                       ) AS cat_rank_metric
+                FROM mi_ep_missed_outcomes
+                WHERE alert_date >= CURRENT_DATE - $1::INT
+                  AND ({col} IS NOT NULL OR {max_col} IS NOT NULL)
+                  {untradeable_clause}
+            )
+            SELECT * FROM base
+            WHERE rn <= $2
+            ORDER BY cat_rank_metric DESC NULLS LAST,
+                     skip_category,
+                     rn
+        """, window_days, per_category)
     return [dict(r) for r in rows]
 
 
@@ -419,7 +452,9 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
 
 async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
     """Weekly review input: top winners + per-category roll-up."""
-    top = await top_missed_winners(window_days=window_days, horizon="5d", top_n=10)
+    top = await top_missed_winners(
+        window_days=window_days, horizon="5d", per_category=2,
+    )
     cats = await missed_by_category(window_days=window_days)
     return {
         "window_days": window_days,
@@ -472,7 +507,13 @@ def _fmt_pct_fixed(v: Optional[float], width: int = 5) -> str:
     return s.rjust(width)
 
 
-def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> str:
+def format_missed_telegram(
+    rows: list[dict],
+    horizon: str,
+    window_days: int,
+    *,
+    include_untradeable: bool = False,
+) -> str:
     """`/missed [days]` output — top winners grouped by skip reason.
 
     Columns: ticker · date · 5d close · 5d max · 20d close · 20d max.
@@ -483,6 +524,11 @@ def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> 
       show the row because the max-excursion column gives a running peak.
     """
     if not rows:
+        if not include_untradeable:
+            return (
+                f"🔍 *Missed EPs (last {window_days}d)* — no tradeable misses found.\n"
+                f"_Try `/missed all` to include sub-$5 / mcap_low / adv_low rows._"
+            )
         return f"🔍 *Missed EPs (last {window_days}d)* — no data yet."
 
     from collections import OrderedDict
@@ -491,9 +537,10 @@ def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> 
         grouped.setdefault(r.get("skip_category") or "filter_other", []).append(r)
 
     horizon_label = {"1d": "1-day", "5d": "5-day", "20d": "20-day"}.get(horizon, "5-day")
+    scope_note = "all alerts" if include_untradeable else "tradeable only ≥$5"
     parts = [
-        f"🔍 *Missed EPs — top winners (last {window_days}d)*",
-        f"_Ranked by {horizon_label} return from gap-day open_",
+        f"🔍 *Missed EPs — top per skip reason (last {window_days}d)*",
+        f"_Ranked by {horizon_label} return from gap-day open · {scope_note}_",
         "_close = EOD return · max = peak intraday excursion_",
         "",
     ]

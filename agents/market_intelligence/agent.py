@@ -2275,12 +2275,17 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("```")
             return self._ok(request, result="\n".join(lines))
 
+        include_untradeable = "all" in task or "untradeable" in task or "microcap" in task
         rows = await top_missed_winners(
-            window_days=window_days, horizon=horizon, top_n=15,
+            window_days=window_days, horizon=horizon, per_category=3,
+            include_untradeable=include_untradeable,
         )
         return self._ok(
             request,
-            result=format_missed_telegram(rows, horizon, window_days),
+            result=format_missed_telegram(
+                rows, horizon, window_days,
+                include_untradeable=include_untradeable,
+            ),
         )
 
     async def _handle_correlation_clusters(self, request: AgentRequest) -> AgentResponse:
