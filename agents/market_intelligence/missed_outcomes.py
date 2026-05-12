@@ -48,6 +48,8 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     s = raw.lower()
     if "cooldown" in s:
         return "cooldown"
+    if "m&a" in s or "buyout" in s or "merger" in s:
+        return "ma_filter"
     if "already scored" in s or "duplicate" in s:
         return "duplicate_scan"
     if "outside top-20" in s or "top-20 gap cap" in s:
@@ -265,16 +267,29 @@ async def refresh_missed_outcomes(
                 WHEN source = 'high_unentered' THEN 'high_unentered'
                 WHEN skip_reason IS NULL THEN 'filter_other'
                 WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
+                WHEN skip_reason ILIKE '%m&a%'
+                  OR skip_reason ILIKE '%buyout%'
+                  OR skip_reason ILIKE '%merger%' THEN 'ma_filter'
                 WHEN skip_reason ILIKE '%already scored%'
                   OR skip_reason ILIKE '%duplicate%' THEN 'duplicate_scan'
                 WHEN skip_reason ILIKE '%outside top-20%'
                   OR skip_reason ILIKE '%top-20 gap cap%' THEN 'outside_top20'
                 WHEN skip_reason ILIKE '%score%' AND skip_reason ILIKE '%< 50%' THEN 'score_below_50'
+                -- Volume gates: cover both legacy free-form ("low rel volume
+                -- 0.4x < 2.0x") and the new RVOL@T bounded prefixes. The
+                -- legacy strings are dominant in scan_log before the 2026-05-06
+                -- unification — bucket them together as session_rvol_low since
+                -- 2.0x is the session-anchor threshold.
                 WHEN skip_reason ILIKE '%pm_rvol%'
                   OR skip_reason ILIKE '%pre-market rvol%'
-                  OR skip_reason ILIKE '%pre-mkt volume%' THEN 'pm_rvol_low'
+                  OR skip_reason ILIKE '%pre-mkt volume%'
+                  OR skip_reason ILIKE '%pm volume%' THEN 'pm_rvol_low'
                 WHEN skip_reason ILIKE '%session_rvol%'
-                  OR skip_reason ILIKE '%session rvol%' THEN 'session_rvol_low'
+                  OR skip_reason ILIKE '%session rvol%'
+                  OR skip_reason ILIKE '%rel volume%'
+                  OR skip_reason ILIKE '%rel_vol%'
+                  OR skip_reason ILIKE '%low volume%'
+                  OR skip_reason ILIKE '%projected%' THEN 'session_rvol_low'
                 WHEN skip_reason ILIKE '%adv%' THEN 'adv_low'
                 WHEN skip_reason ILIKE '%atr%' THEN 'atr_high'
                 WHEN skip_reason ILIKE '%mcap%'
@@ -419,15 +434,16 @@ async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
 # fit on one mobile line alongside count + numbers (≤ 28 chars).
 _CATEGORY_LABELS: dict[str, str] = {
     "cooldown":           "60-day cooldown",
+    "ma_filter":          "M&A / buyout (no momentum)",
     "score_below_50":     "Score below 50",
     "pm_rvol_low":        "Pre-mkt volume light",
-    "session_rvol_low":   "Session volume light",
+    "session_rvol_low":   "Volume below 2× (post-open)",
     "adv_low":            "Avg volume too low",
     "atr_high":           "Volatility too high",
     "mcap_low":           "Market cap too small",
     "catalyst_downgrade": "Catalyst downgraded",
     "extension_gate":     "Already extended",
-    "outside_top20":      "Outside top-20 gap",
+    "outside_top20":      "Outside top-20 gap rank",
     "duplicate_scan":     "Already scored today",
     "filter_other":       "Other filter",
     "moderate_tier":      "MODERATE — not entered",
@@ -459,15 +475,16 @@ def _fmt_pct_fixed(v: Optional[float], width: int = 5) -> str:
 def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> str:
     """`/missed [days]` output — top winners grouped by skip reason.
 
-    Layout: monospace code blocks per category so the columns align on mobile.
-    Each row shows ticker, date, close return, max excursion. The close return
-    is "—" when the horizon window hasn't fully elapsed yet; the max-excursion
-    column always carries the running peak so the row stays informative.
+    Columns: ticker · date · 5d close · 5d max · 20d close · 20d max.
+    - "close" = return from gap-day open to close[alert+N], measured EOD.
+    - "max"   = max intraday excursion over the same window (gap-day open
+                base, max(high) over alert..alert+N).
+    - Either may be "—" if the horizon window hasn't elapsed yet; we still
+      show the row because the max-excursion column gives a running peak.
     """
     if not rows:
         return f"🔍 *Missed EPs (last {window_days}d)* — no data yet."
 
-    # Group by category, preserving overall rank order within each group.
     from collections import OrderedDict
     grouped: "OrderedDict[str, list[dict]]" = OrderedDict()
     for r in rows:
@@ -477,20 +494,23 @@ def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> 
     parts = [
         f"🔍 *Missed EPs — top winners (last {window_days}d)*",
         f"_Ranked by {horizon_label} return from gap-day open_",
+        "_close = EOD return · max = peak intraday excursion_",
         "",
     ]
-    ret_col = "ret_5d" if horizon == "5d" else ("ret_1d" if horizon == "1d" else "ret_20d")
-    max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
 
     for cat, items in grouped.items():
         parts.append(f"*{_humanize_category(cat)}* ({len(items)})")
         parts.append("```")
+        parts.append("           5d           20d")
+        parts.append("tckr  date  close  max   close  max")
         for r in items:
             tk = r["ticker"][:5].ljust(5)
             d = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "  —  "
-            ret_s = _fmt_pct_fixed(r.get(ret_col))
-            max_s = _fmt_pct_fixed(r.get(max_col))
-            parts.append(f"{tk} {d}   close {ret_s}   max {max_s}")
+            c5 = _fmt_pct_fixed(r.get("ret_5d"))
+            m5 = _fmt_pct_fixed(r.get("max_high_5d"))
+            c20 = _fmt_pct_fixed(r.get("ret_20d"))
+            m20 = _fmt_pct_fixed(r.get("max_high_20d"))
+            parts.append(f"{tk} {d}  {c5} {m5}   {c20} {m20}")
         parts.append("```")
     return "\n".join(parts)
 
