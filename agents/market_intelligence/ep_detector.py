@@ -89,6 +89,21 @@ _SKIP_TICKERS = SKIP_TICKERS
 _catalyst_cache: dict[str, tuple[str, float, str, str]] = {}
 _catalyst_cache_date: "date | None" = None
 
+# Prose-mismatch downgrade markers (#72, 2026-05-11). When the catalyst
+# classifier returns "strong" but the prose explicitly says "no catalyst" or
+# "no fresh news", the classifier is over-weighting volume/gap features
+# against hedged news. MRAM 5/11 was the motivating case (-$2200 compound
+# loss). Only fires when earnings backstop did NOT fire — MNDY 5/11 had
+# the same prose pattern but was earnings day, the boost correctly graded
+# it strong, downgrade must not fight the boost.
+_PROSE_NEGATIVE_MARKERS = (
+    "no gap up catalyst identified",
+    "no specific news",
+    "no fresh company-specific news",
+    "no fresh headlines",
+    "no specific catalyst",
+)
+
 # Per-day audit dedupe: keys (ticker, date, event_type). EP scan runs every 5 min
 # from 7:00–10:00 ET (~36 ticks); without dedup, the same ticker emits ~36 rows
 # of `earnings_override_no_match` / `tape_conviction_shadow` per day.
@@ -1002,6 +1017,52 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _catalyst_cache[ticker] = (
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
             )
+
+        # Prose-mismatch downgrade (#72, 2026-05-11). Strong-graded alerts
+        # whose prose explicitly says "no catalyst / no fresh news" are
+        # late-stage retail-driven gappers (MRAM 5/11 class). The classifier
+        # over-weights volume+gap features against hedged news. Downgrade to
+        # 'routine' so the score-50 threshold filters them out. Must run
+        # AFTER the earnings boost so legitimate earnings-day strongs are
+        # preserved (MNDY 5/11 same prose, but earnings = real catalyst).
+        if catalyst_quality == "strong" and not earnings_today_match:
+            matched_marker: Optional[str] = None
+            matched_source: Optional[str] = None
+            for src_name, text in (
+                ("claude_analysis", claude_analysis or ""),
+                ("news_summary", news_summary or ""),
+            ):
+                if not text:
+                    continue
+                low = text.lower()
+                for marker in _PROSE_NEGATIVE_MARKERS:
+                    if marker in low:
+                        matched_marker = marker
+                        matched_source = src_name
+                        break
+                if matched_marker:
+                    break
+            if matched_marker:
+                original_quality = catalyst_quality
+                catalyst_quality = "routine"
+                await log_audit_event(
+                    "catalyst_prose_mismatch_downgrade",
+                    f"{ticker}: strong → routine "
+                    f"(prose marker '{matched_marker}' in {matched_source})",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "from_quality": original_quality,
+                        "to_quality": "routine",
+                        "matched_marker": matched_marker,
+                        "matched_source": matched_source,
+                        "gap_pct": c["gap_pct"],
+                    }),
+                )
+                _catalyst_cache[ticker] = (
+                    catalyst_quality, confidence_multiplier,
+                    news_summary, claude_analysis,
+                )
 
         # Compute prior 3-month change %
         prior_3m_change = None

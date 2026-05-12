@@ -440,6 +440,48 @@ async def attempt_day1_reentry(
         logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, no re-entry after 11 AM")
         return {"ticker": ticker, "action": "closed", "reason": "after_11am"}
 
+    # Gap-through quality gate (#73, 2026-05-11). 90-day backtest: 5 of 6
+    # multi-attempt trades had gap-through att1 stops (fill price < stop_price
+    # - $0.05). Zero winning re-entries in the whole cohort; ~$1900 in
+    # cumulative att2 losses. Gap-through indicates the level broke
+    # decisively, not a shake-out — the setup quality is compromised.
+    # Skip re-entry, close the trade with att1's loss preserved.
+    stop_level = trade.get("stop_price")
+    if stop_level is not None and stop_fill_price < float(stop_level) - 0.05:
+        gap_through = float(stop_level) - stop_fill_price
+        total_pnl_so_far = sum(ex.get("pnl", 0) for ex in exits)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed', exits = $2::jsonb,
+                    remaining_shares = 0, total_pnl = $3,
+                    stop_order_id = NULL, closed_at = NOW(),
+                    skip_reason = 'block:reentry_gap_through'
+                WHERE id = $1
+            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+        await log_audit_event(
+            "reentry_blocked_gap_through",
+            f"{ticker}: att1 stop {stop_level:.2f} → fill {stop_fill_price:.2f} "
+            f"(gap-through ${gap_through:.2f}); re-entry skipped",
+            json.dumps({
+                "trade_id": trade["id"], "ticker": ticker,
+                "stop_price": float(stop_level),
+                "stop_fill_price": float(stop_fill_price),
+                "gap_through_dollars": float(gap_through),
+                "att1_pnl": float(pnl),
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"P&L: ${pnl:+,.2f} | Re-entry SKIPPED — gap-through "
+            f"${gap_through:.2f} past stop signals broken level"
+        )
+        logger.info(
+            f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, "
+            f"re-entry blocked (gap-through ${gap_through:.2f})"
+        )
+        return {"ticker": ticker, "action": "closed", "reason": "gap_through"}
+
     logger.info(f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, attempting re-entry #{attempt}")
 
     # Price-aware re-entry: check if price already above ORB high
@@ -1933,7 +1975,7 @@ async def track_open_position_extremes() -> int:
     pool = await get_pool()
     async with pool.acquire() as conn:
         open_trades = await conn.fetch("""
-            SELECT id, ticker
+            SELECT id, ticker, filled_at
             FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
         """)
@@ -1957,15 +1999,30 @@ async def track_open_position_extremes() -> int:
             continue
         if not bars:
             continue
-        # Take MIN(low) / MAX(high) across all of today's bars so far. Bars
-        # include extended hours; for an open position that spans days we
-        # rely on monotonic LEAST/GREATEST below to retain the historical
-        # extreme — the per-call window is cheap and idempotent.
-        period_low = min(float(b.get("l") or 0) for b in bars if b.get("l"))
-        period_high = max(float(b.get("h") or 0) for b in bars if b.get("h"))
-        if period_low <= 0 or period_high <= 0:
-            continue
+        # Per-trade filtering by filled_at (2026-05-11 #74). Polygon's
+        # get_minute_bars returns extended-hours bars including pre-market,
+        # which captured BW's pre-open dip at $14.51 below the $16.49 stop
+        # and stored it as lowest_price_seen even though the trade only
+        # filled at 9:53 ET. Fix: only consider bars whose timestamp is
+        # >= the trade's filled_at. Each trade in the by_ticker bucket
+        # gets its own filtered view so multiple positions in the same
+        # ticker (different alert_dates) each see the right window.
         for trade in trades:
+            filled_at = trade["filled_at"]
+            if not filled_at:
+                continue
+            filled_ms = int(filled_at.timestamp() * 1000)
+            in_hold = [
+                b for b in bars
+                if b.get("t") and int(b["t"]) >= filled_ms
+                and b.get("l") and b.get("h")
+            ]
+            if not in_hold:
+                continue
+            period_low = min(float(b["l"]) for b in in_hold)
+            period_high = max(float(b["h"]) for b in in_hold)
+            if period_low <= 0 or period_high <= 0:
+                continue
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_live_trades SET
