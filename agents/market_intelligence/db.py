@@ -114,7 +114,16 @@ async def _seed_strategies_registry(conn) -> None:
             "strategy_id": "magna53",
             "name": "MAGNA53 EP",
             "family": "orb_long",
-            "phase": "live",
+            # 2026-05-13 incident: ALL trades failed because phase='live'
+            # routed through the LIVE TradingClient even with ENABLE_LIVE_MODE=false
+            # (live env vars unset → KeyError). Pre-dual-account, phase='live'
+            # meant "submit to the single Alpaca account configured via
+            # ALPACA_PAPER env var" — implicitly paper. Post-dual-account
+            # (#66, 2026-05-10) phase='live' literally means the LIVE Alpaca
+            # account. New seed default is 'paper'; promotion to 'live'
+            # happens explicitly via /strategy or DB update, gated on the
+            # cutover composite gate (#64).
+            "phase": "paper",
             "signal_type": "magna53",
             "outcomes_table": "mi_live_trades",
             "promotion_model": "unpaired_r",
@@ -133,7 +142,8 @@ async def _seed_strategies_registry(conn) -> None:
             "strategy_id": "9m_day2",
             "name": "9M Day 2 ORB",
             "family": "orb_long",
-            "phase": "live",
+            # Seed at 'paper' per 2026-05-13 incident — see magna53 comment above.
+            "phase": "paper",
             "signal_type": "9m_day2",
             "outcomes_table": "mi_live_trades",
             "promotion_model": "unpaired_r",

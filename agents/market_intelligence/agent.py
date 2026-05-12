@@ -5056,6 +5056,46 @@ async def startup():
             logger.info(f"Dual-account boot verified: {equities}")
     except Exception as e:
         logger.warning(f"Failed to verify dual-account clients at boot: {e}")
+
+    # Strategy / mode consistency check — prevents the 2026-05-13 incident
+    # where magna53 + 9m_day2 seeded as phase='live' (legacy default) but
+    # ENABLE_LIVE_MODE=false meant ALPACA_LIVE_API_KEY was never set →
+    # KeyError on every entry attempt. Hard-block boot if any enabled
+    # strategy's phase requires a TradingClient whose credentials are
+    # missing. Auto-downgrade is tempting but silent — fail loud instead.
+    try:
+        from agents.market_intelligence.constants import ENABLE_LIVE_MODE as _ENABLE_LIVE
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            mismatched = await conn.fetch("""
+                SELECT strategy_id, phase, live_real_enabled
+                FROM mi_strategies
+                WHERE enabled = TRUE AND phase = 'live'
+            """)
+        if mismatched and not _ENABLE_LIVE:
+            ids = ", ".join(r["strategy_id"] for r in mismatched)
+            msg = (
+                f"BOOT BLOCKED: strategies at phase='live' with ENABLE_LIVE_MODE=false: "
+                f"[{ids}]. The dual-account architecture routes phase='live' through "
+                f"the LIVE Alpaca client, but ALPACA_LIVE_API_KEY is not set under "
+                f"ENABLE_LIVE_MODE=false. Fix: either set ENABLE_LIVE_MODE=true + "
+                f"provide ALPACA_LIVE_API_KEY/SECRET_KEY, OR downgrade these "
+                f"strategies via: UPDATE mi_strategies SET phase='paper' "
+                f"WHERE strategy_id IN ({ids})"
+            )
+            await log_audit_event(
+                event_type="strategy_phase_mode_mismatch",
+                summary=msg[:200],
+                detail=msg,
+            )
+            logger.error(msg)
+            raise RuntimeError(msg)
+    except RuntimeError:
+        raise
+    except Exception as e:
+        logger.warning(f"Strategy phase consistency check failed (non-fatal): {e}")
+
     # Load description overrides from DB into in-memory TICKER_DESC
     try:
         from agents.market_intelligence.universe import apply_overrides
