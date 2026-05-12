@@ -1422,6 +1422,15 @@ async def initialize_schema() -> None:
     except Exception:
         logger.exception("Crypto RS schema init failed (non-fatal)")
 
+    # Missed-EP opportunity-cost telemetry (forward returns on filtered /
+    # MODERATE / HIGH-unentered alerts). Own schema for isolation.
+    try:
+        from agents.market_intelligence.missed_outcomes import ensure_missed_outcomes_schema
+        await ensure_missed_outcomes_schema()
+        logger.info("Missed-outcomes schema initialized")
+    except Exception:
+        logger.exception("Missed-outcomes schema init failed (non-fatal)")
+
 
 async def upsert_stock_score(record: dict[str, Any]) -> None:
     pool = await get_pool()

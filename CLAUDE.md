@@ -251,7 +251,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
 | 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
 | 4:45 PM | Position update |
-| 5:00 PM | Data pull — RS + regime + themes + error check |
+| 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
 | 5:25 PM | **Continuation flag scan** (shadow — VCP/Qullamaggie tightening) |
 | 5:30 PM | **Post-nightly audit** (theme/cooldown/regime L2/L3) |
 | 6:00 PM (Fri) | **Friday watchlist** (curated chart-review aggregator + TV import block) |
@@ -287,6 +287,22 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 ---
 
 ## Changes Made — Recent
+
+### 2026-05-11 — Missed-EP opportunity-cost telemetry (3-step ship)
+New `missed_outcomes.py` + `mi_ep_missed_outcomes` table tracks every EP the system saw but didn't enter (scan_filter, MODERATE-tier, HIGH-unentered) with forward returns from gap-day open to d+1/d+5/d+20 close plus max-favorable-excursion within each window. User flagged INOD/HIMX/FTNT/DDOG/BAND/TWLO as huge winners not entered — needed systematic surface for "which gate bled the most upside" instead of single-trade anecdotes.
+
+**Three integration points:**
+- Refresh: `refresh_missed_outcomes(window_days=30)` runs after step 7 of `_nightly_data_pull` (5pm ET) — slots between `run_outcome_tracker` and `detect_state_changes`, after `mi_daily_closes` is current. UPSERT on `(ticker, alert_date, source)`; forward returns recompute each night so newly-settled d+5/d+20 bars flow into rows written when the alert fired. Emits `missed_outcomes_refreshed` audit event with per-source counts.
+- `/missed [days]` Telegram: top 15 ranked by 5d (or `20d`/`1d` horizon) return. `/missed by reason` switches to per-category roll-up (n, avg ret_5d, count of ≥10% winners, top ticker). Routes before generic "why didn't we trade" single-ticker handler.
+- Weekly review appendix: `_aggregate_missed_opportunities` → `format_missed_section_for_weekly` adds "🔍 *Missed Opportunities*" block right after the loser breakdown — top 5 winners we didn't enter + per-skip-reason roll-up. Methodology-tuning context lives next to the loser-side post-mortem for symmetric review.
+
+**Skip-category buckets** (SQL CASE mirrors `_categorize_skip_reason` Python helper): `cooldown`, `score_below_50`, `pm_rvol_low`, `session_rvol_low`, `adv_low`, `atr_high`, `mcap_low`, `catalyst_downgrade`, `extension_gate`, `outside_top20`, `duplicate_scan`, `filter_other`, plus source-derived `moderate_tier` / `high_unentered`. Stable taxonomy so weekly category counts are comparable run-over-run.
+
+**Forward-return basis: gap-day open** — measures from `open_price[alert_date]` (what a day-2 chaser would've paid) to `close[alert_date+N]`, with `max_high_5d/20d` for max-favorable-excursion. All computed as one SQL `INSERT...SELECT` with five `LEFT JOIN LATERAL` subqueries against `mi_daily_closes` — single round-trip vs N+1 per ticker.
+
+**Backfill**: `python -m scripts.refresh_missed_outcomes 90` for immediate population on first deploy (90d window). Nightly refresh then uses the 30-day sliding window; rows older than 30d freeze once the 20d return is settled.
+
+**Pure observability**: zero methodology change. No new entries admitted, no filters loosened. The table only records what the existing pipeline already filtered, joined to data already in `mi_daily_closes`. Exempt from the methodology-shipping freeze per `feedback_sample_size_discipline.md`.
 
 ### 2026-05-10 — Dual-account architecture #66 + per-strategy sizing #65 (BLOCKER for live cutover)
 Bundled ship of two coupled changes (advisor 2026-05-10: bundle is right call since both touch mi_strategies + safeguard/sizer paths; threading account_mode hits the same call sites where sizing multipliers apply).

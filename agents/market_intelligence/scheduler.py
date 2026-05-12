@@ -405,6 +405,28 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.error(f"Outcome tracker failed: {e}")
 
+    # 7b. Missed-EP opportunity-cost telemetry — rebuild the 30-day rolling
+    # window of filtered / MODERATE / HIGH-unentered alerts with forward
+    # returns from mi_daily_closes. Slots after outcome tracker so all
+    # daily closes are settled. Failure non-fatal: stale rows freeze.
+    try:
+        from agents.market_intelligence.missed_outcomes import refresh_missed_outcomes
+        missed_summary = await refresh_missed_outcomes(window_days=30)
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "missed_outcomes_refreshed",
+            f"window {missed_summary['window_start']}..{missed_summary['window_end']}: "
+            f"scan_filter={missed_summary.get('scan_filter', 0)}, "
+            f"moderate_alert={missed_summary.get('moderate_alert', 0)}, "
+            f"high_unentered={missed_summary.get('high_unentered', 0)}",
+            detail=str(missed_summary)[:500],
+        )
+        total = sum(v for k, v in missed_summary.items() if isinstance(v, int))
+        if total:
+            summary_parts.append(f"{total} missed-EP rows")
+    except Exception as e:
+        logger.error(f"Missed-outcomes refresh failed: {e}")
+
     # 8. State-change alerts (sent immediately via Telegram)
     try:
         alerts, today_themes, prior_themes = await detect_state_changes(_today)

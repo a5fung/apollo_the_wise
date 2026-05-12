@@ -1,0 +1,466 @@
+"""
+mi_ep_missed_outcomes — opportunity-cost telemetry for EPs the system saw but
+did NOT enter (filtered, cooldown-blocked, MODERATE-tier, or HIGH-but-unfilled).
+
+Three sources feed the table:
+
+  1. `scan_filter` — rows in mi_ep_scan_log with a non-null filter_reason and
+     no corresponding trade in mi_live_trades / mi_paper_trades.
+  2. `moderate_alert` — mi_ep_alerts rows with score_tier='MODERATE' that
+     never became a trade (no entry — MODERATEs only surface in morning briefing).
+  3. `high_unentered` — mi_ep_alerts rows with score_tier='HIGH' that never
+     became a trade (HIGH outside ORB window, stop_too_wide, infra failure).
+
+Forward returns measured from open[alert_date] (the gap day open — what a
+day-2 chaser would've paid) to close[d+N] and max(high[d0..dN]). Stored:
+
+  - ret_1d / ret_5d / ret_20d  (close return)
+  - max_high_5d / max_high_20d (max favorable excursion)
+
+Refresh: nightly, sliding 30-day window. Old rows freeze in place once the
+20d return is settled.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import date, timedelta
+from typing import Optional
+
+from agents.market_intelligence.db import get_pool
+
+logger = logging.getLogger(__name__)
+
+_REFRESH_WINDOW_DAYS = 30  # how far back nightly refresh recomputes returns
+_MAX_FORWARD_DAYS = 25     # SQL LATERAL needs to look ≥20 trading days ahead
+
+
+# ── Skip-reason → category normalizer ────────────────────────────────────────
+
+def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
+    """Bucket the free-form reason into a stable category for grouping."""
+    if source == "moderate_alert":
+        return "moderate_tier"
+    if source == "high_unentered":
+        return "high_unentered"
+    # scan_filter — parse the free-form filter_reason
+    if not raw:
+        return "filter_other"
+    s = raw.lower()
+    if "cooldown" in s:
+        return "cooldown"
+    if "already scored" in s or "duplicate" in s:
+        return "duplicate_scan"
+    if "outside top-20" in s or "top-20 gap cap" in s:
+        return "outside_top20"
+    if "score" in s and "< 50" in s:
+        return "score_below_50"
+    if "pm_rvol" in s or "pre-market rvol" in s or "pre-mkt volume" in s:
+        return "pm_rvol_low"
+    if "session_rvol" in s or "session rvol" in s:
+        return "session_rvol_low"
+    if "adv" in s:
+        return "adv_low"
+    if "atr" in s:
+        return "atr_high"
+    if "mcap" in s or "market cap" in s:
+        return "mcap_low"
+    if "catalyst" in s and ("downgrade" in s or "routine" in s):
+        return "catalyst_downgrade"
+    if "extension" in s or "extended" in s:
+        return "extension_gate"
+    return "filter_other"
+
+
+# ── Schema init ──────────────────────────────────────────────────────────────
+
+async def ensure_missed_outcomes_schema() -> None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ep_missed_outcomes (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                source TEXT NOT NULL,
+                skip_reason TEXT,
+                skip_category TEXT NOT NULL,
+                ep_score FLOAT,
+                gap_pct FLOAT,
+                rel_volume FLOAT,
+                catalyst_quality TEXT,
+                open_d0 FLOAT,
+                close_d0 FLOAT,
+                ret_1d FLOAT,
+                ret_5d FLOAT,
+                ret_20d FLOAT,
+                max_high_5d FLOAT,
+                max_high_20d FLOAT,
+                last_refreshed_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date, source)
+            );
+            CREATE INDEX IF NOT EXISTS idx_missed_outcomes_alert_date
+                ON mi_ep_missed_outcomes(alert_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_missed_outcomes_category
+                ON mi_ep_missed_outcomes(skip_category, alert_date DESC);
+        """)
+
+
+# ── Refresh / backfill ───────────────────────────────────────────────────────
+
+async def refresh_missed_outcomes(
+    window_days: int = _REFRESH_WINDOW_DAYS,
+    *,
+    end_date: Optional[date] = None,
+) -> dict:
+    """Rebuild mi_ep_missed_outcomes for the last `window_days` from source tables.
+
+    Idempotent — UPSERTs on (ticker, alert_date, source). Forward returns
+    recompute on every refresh so newly-settled bars (alert_date+5, +20)
+    flow into the row that was first written when the alert fired.
+
+    Returns counts per source for the nightly audit event.
+    """
+    await ensure_missed_outcomes_schema()
+
+    end = end_date or date.today()
+    start = end - timedelta(days=window_days)
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Single SQL: build the base set from 3 sources, exclude actual trades,
+        # then LEFT JOIN forward-return windows from mi_daily_closes.
+        # UPSERT on (ticker, alert_date, source).
+        await conn.execute("""
+        WITH traded AS (
+            SELECT ticker, alert_date FROM mi_live_trades
+            WHERE alert_date >= $1 AND alert_date <= $2
+            UNION
+            SELECT ticker, alert_date FROM mi_paper_trades
+            WHERE alert_date >= $1 AND alert_date <= $2
+        ),
+        scan_filtered AS (
+            SELECT
+                s.ticker,
+                s.scan_date AS alert_date,
+                'scan_filter'::TEXT AS source,
+                s.filter_reason AS skip_reason,
+                s.ep_score,
+                s.gap_pct,
+                s.rel_volume,
+                s.catalyst_quality
+            FROM mi_ep_scan_log s
+            WHERE s.scan_date >= $1 AND s.scan_date <= $2
+              AND s.filter_reason IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM traded t
+                  WHERE t.ticker = s.ticker AND t.alert_date = s.scan_date
+              )
+        ),
+        moderate AS (
+            SELECT
+                a.ticker,
+                a.alert_date,
+                'moderate_alert'::TEXT AS source,
+                NULL::TEXT AS skip_reason,
+                a.ep_score,
+                a.gap_pct,
+                NULL::FLOAT AS rel_volume,
+                a.catalyst_quality
+            FROM mi_ep_alerts a
+            WHERE a.alert_date >= $1 AND a.alert_date <= $2
+              AND a.score_tier = 'MODERATE'
+              AND NOT EXISTS (
+                  SELECT 1 FROM traded t
+                  WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+              )
+        ),
+        high_unentered AS (
+            SELECT
+                a.ticker,
+                a.alert_date,
+                'high_unentered'::TEXT AS source,
+                NULL::TEXT AS skip_reason,
+                a.ep_score,
+                a.gap_pct,
+                NULL::FLOAT AS rel_volume,
+                a.catalyst_quality
+            FROM mi_ep_alerts a
+            WHERE a.alert_date >= $1 AND a.alert_date <= $2
+              AND a.score_tier = 'HIGH'
+              AND NOT EXISTS (
+                  SELECT 1 FROM traded t
+                  WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
+              )
+        ),
+        base AS (
+            SELECT * FROM scan_filtered
+            UNION ALL SELECT * FROM moderate
+            UNION ALL SELECT * FROM high_unentered
+        ),
+        with_returns AS (
+            SELECT
+                b.*,
+                d0.open_price AS open_d0,
+                d0.close AS close_d0,
+                d1.close AS close_d1,
+                d5.close AS close_d5,
+                d20.close AS close_d20,
+                h5.h AS max_high_5d,
+                h20.h AS max_high_20d
+            FROM base b
+            LEFT JOIN LATERAL (
+                SELECT open_price, close FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date = b.alert_date
+            ) d0 ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT close FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date > b.alert_date
+                ORDER BY trade_date ASC LIMIT 1
+            ) d1 ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT close FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date > b.alert_date
+                ORDER BY trade_date ASC OFFSET 4 LIMIT 1
+            ) d5 ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT close FROM mi_daily_closes
+                WHERE ticker = b.ticker AND trade_date > b.alert_date
+                ORDER BY trade_date ASC OFFSET 19 LIMIT 1
+            ) d20 ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT MAX(high_price) AS h FROM (
+                    SELECT high_price FROM mi_daily_closes
+                    WHERE ticker = b.ticker AND trade_date >= b.alert_date
+                    ORDER BY trade_date ASC LIMIT 6
+                ) x
+            ) h5 ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT MAX(high_price) AS h FROM (
+                    SELECT high_price FROM mi_daily_closes
+                    WHERE ticker = b.ticker AND trade_date >= b.alert_date
+                    ORDER BY trade_date ASC LIMIT 21
+                ) x
+            ) h20 ON TRUE
+        )
+        INSERT INTO mi_ep_missed_outcomes (
+            ticker, alert_date, source, skip_reason, skip_category,
+            ep_score, gap_pct, rel_volume, catalyst_quality,
+            open_d0, close_d0,
+            ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d,
+            last_refreshed_at
+        )
+        SELECT
+            ticker, alert_date, source, skip_reason,
+            -- skip_category derived in Python? No — keep DB-side for simplicity.
+            -- Mirror _categorize_skip_reason mappings in SQL CASE.
+            CASE
+                WHEN source = 'moderate_alert' THEN 'moderate_tier'
+                WHEN source = 'high_unentered' THEN 'high_unentered'
+                WHEN skip_reason IS NULL THEN 'filter_other'
+                WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
+                WHEN skip_reason ILIKE '%already scored%'
+                  OR skip_reason ILIKE '%duplicate%' THEN 'duplicate_scan'
+                WHEN skip_reason ILIKE '%outside top-20%'
+                  OR skip_reason ILIKE '%top-20 gap cap%' THEN 'outside_top20'
+                WHEN skip_reason ILIKE '%score%' AND skip_reason ILIKE '%< 50%' THEN 'score_below_50'
+                WHEN skip_reason ILIKE '%pm_rvol%'
+                  OR skip_reason ILIKE '%pre-market rvol%'
+                  OR skip_reason ILIKE '%pre-mkt volume%' THEN 'pm_rvol_low'
+                WHEN skip_reason ILIKE '%session_rvol%'
+                  OR skip_reason ILIKE '%session rvol%' THEN 'session_rvol_low'
+                WHEN skip_reason ILIKE '%adv%' THEN 'adv_low'
+                WHEN skip_reason ILIKE '%atr%' THEN 'atr_high'
+                WHEN skip_reason ILIKE '%mcap%'
+                  OR skip_reason ILIKE '%market cap%' THEN 'mcap_low'
+                WHEN skip_reason ILIKE '%catalyst%'
+                  AND (skip_reason ILIKE '%downgrade%'
+                       OR skip_reason ILIKE '%routine%') THEN 'catalyst_downgrade'
+                WHEN skip_reason ILIKE '%extension%'
+                  OR skip_reason ILIKE '%extended%' THEN 'extension_gate'
+                ELSE 'filter_other'
+            END AS skip_category,
+            ep_score, gap_pct, rel_volume, catalyst_quality,
+            open_d0, close_d0,
+            -- Return basis: open_d0 (gap day open) — what a day-2 chaser pays.
+            CASE WHEN open_d0 > 0 AND close_d1 IS NOT NULL
+                 THEN (close_d1 - open_d0) / open_d0 ELSE NULL END AS ret_1d,
+            CASE WHEN open_d0 > 0 AND close_d5 IS NOT NULL
+                 THEN (close_d5 - open_d0) / open_d0 ELSE NULL END AS ret_5d,
+            CASE WHEN open_d0 > 0 AND close_d20 IS NOT NULL
+                 THEN (close_d20 - open_d0) / open_d0 ELSE NULL END AS ret_20d,
+            CASE WHEN open_d0 > 0 AND max_high_5d IS NOT NULL
+                 THEN (max_high_5d - open_d0) / open_d0 ELSE NULL END AS max_high_5d,
+            CASE WHEN open_d0 > 0 AND max_high_20d IS NOT NULL
+                 THEN (max_high_20d - open_d0) / open_d0 ELSE NULL END AS max_high_20d,
+            NOW() AS last_refreshed_at
+        FROM with_returns
+        ON CONFLICT (ticker, alert_date, source) DO UPDATE SET
+            skip_reason       = EXCLUDED.skip_reason,
+            skip_category     = EXCLUDED.skip_category,
+            ep_score          = EXCLUDED.ep_score,
+            gap_pct           = EXCLUDED.gap_pct,
+            rel_volume        = EXCLUDED.rel_volume,
+            catalyst_quality  = EXCLUDED.catalyst_quality,
+            open_d0           = EXCLUDED.open_d0,
+            close_d0          = EXCLUDED.close_d0,
+            ret_1d            = EXCLUDED.ret_1d,
+            ret_5d            = EXCLUDED.ret_5d,
+            ret_20d           = EXCLUDED.ret_20d,
+            max_high_5d       = EXCLUDED.max_high_5d,
+            max_high_20d      = EXCLUDED.max_high_20d,
+            last_refreshed_at = NOW()
+        """, start, end)
+
+        # Counts per source for the audit event
+        counts = await conn.fetch("""
+            SELECT source, COUNT(*)::INT AS n
+            FROM mi_ep_missed_outcomes
+            WHERE alert_date >= $1 AND alert_date <= $2
+            GROUP BY source
+        """, start, end)
+
+    summary = {r["source"]: r["n"] for r in counts}
+    summary["window_start"] = start.isoformat()
+    summary["window_end"] = end.isoformat()
+    logger.info(f"refresh_missed_outcomes: {summary}")
+    return summary
+
+
+# ── Query helpers (Telegram + weekly review) ────────────────────────────────
+
+async def top_missed_winners(
+    window_days: int = 30,
+    horizon: str = "5d",
+    top_n: int = 15,
+) -> list[dict]:
+    """Top N misses by forward return over `horizon` ('1d' | '5d' | '20d')."""
+    col = {"1d": "ret_1d", "5d": "ret_5d", "20d": "ret_20d"}.get(horizon, "ret_5d")
+    max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT ticker, alert_date, source, skip_reason, skip_category,
+                   ep_score, gap_pct, catalyst_quality,
+                   ret_1d, ret_5d, ret_20d, max_high_5d, max_high_20d
+            FROM mi_ep_missed_outcomes
+            WHERE alert_date >= CURRENT_DATE - $1::INT
+              AND {col} IS NOT NULL
+            ORDER BY {col} DESC NULLS LAST, {max_col} DESC NULLS LAST
+            LIMIT $2
+        """, window_days, top_n)
+    return [dict(r) for r in rows]
+
+
+async def missed_by_category(window_days: int = 30) -> list[dict]:
+    """Per-category roll-up: count, median ret_5d, top winner."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH base AS (
+                SELECT skip_category, ticker, alert_date,
+                       ret_5d, max_high_5d
+                FROM mi_ep_missed_outcomes
+                WHERE alert_date >= CURRENT_DATE - $1::INT
+            ),
+            ranked AS (
+                SELECT skip_category, ticker, alert_date, ret_5d, max_high_5d,
+                       ROW_NUMBER() OVER (PARTITION BY skip_category
+                                          ORDER BY ret_5d DESC NULLS LAST) AS rn
+                FROM base
+            )
+            SELECT
+                b.skip_category,
+                COUNT(*)::INT AS n,
+                COUNT(*) FILTER (WHERE b.ret_5d > 0)::INT AS n_winners,
+                COUNT(*) FILTER (WHERE b.ret_5d > 0.10)::INT AS n_10pct_plus,
+                COUNT(*) FILTER (WHERE b.ret_5d > 0.20)::INT AS n_20pct_plus,
+                AVG(b.ret_5d) AS avg_ret_5d,
+                MAX(b.ret_5d) AS max_ret_5d,
+                AVG(b.max_high_5d) AS avg_max_high_5d,
+                MAX(r.ticker) FILTER (WHERE r.rn = 1) AS top_ticker,
+                MAX(r.ret_5d) FILTER (WHERE r.rn = 1) AS top_ret_5d
+            FROM base b
+            LEFT JOIN ranked r
+              ON r.skip_category = b.skip_category AND r.rn = 1
+            GROUP BY b.skip_category
+            ORDER BY n_10pct_plus DESC, avg_ret_5d DESC NULLS LAST
+        """, window_days)
+    return [dict(r) for r in rows]
+
+
+async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
+    """Weekly review input: top winners + per-category roll-up."""
+    top = await top_missed_winners(window_days=window_days, horizon="5d", top_n=10)
+    cats = await missed_by_category(window_days=window_days)
+    return {
+        "window_days": window_days,
+        "top_winners": top,
+        "by_category": cats,
+    }
+
+
+# ── Telegram formatting ──────────────────────────────────────────────────────
+
+def _fmt_pct(v: Optional[float], digits: int = 1, sign: bool = True) -> str:
+    if v is None:
+        return "—"
+    fmt = f"{{:+.{digits}f}}%" if sign else f"{{:.{digits}f}}%"
+    return fmt.format(v * 100)
+
+
+def format_missed_telegram(rows: list[dict], horizon: str, window_days: int) -> str:
+    """`/missed [days]` Telegram output: top N winners + brief category roll-up."""
+    if not rows:
+        return f"🔍 *Missed EPs (last {window_days}d)* — no settled data yet."
+    lines = [f"🔍 *Missed EPs — top winners (last {window_days}d, {horizon} return)*", ""]
+    for r in rows:
+        ret_5d = _fmt_pct(r.get("ret_5d"))
+        max_5d = _fmt_pct(r.get("max_high_5d"))
+        ret_20d = _fmt_pct(r.get("ret_20d"))
+        cat = r.get("skip_category", "?")
+        gap = _fmt_pct((r.get("gap_pct") or 0) / 100.0, digits=1, sign=False) \
+            if r.get("gap_pct") is not None else "—"
+        score = f"{r['ep_score']:.0f}" if r.get("ep_score") is not None else "—"
+        date_str = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "?"
+        lines.append(
+            f"• `{r['ticker']}` {date_str} — 5d {ret_5d} (max {max_5d}), "
+            f"20d {ret_20d} · gap {gap} score {score} · _{cat}_"
+        )
+    return "\n".join(lines)
+
+
+def format_missed_section_for_weekly(missed: dict) -> str:
+    """Weekly review appendix: top 5 + per-category roll-up."""
+    top = missed.get("top_winners") or []
+    cats = missed.get("by_category") or []
+    if not top and not cats:
+        return ""
+    window_days = missed.get("window_days", 7)
+    parts = [f"🔍 *Missed Opportunities ({window_days}d):*"]
+
+    if top:
+        parts.append("")
+        parts.append("_Top winners we didn't enter:_")
+        for r in top[:5]:
+            ret_5d = _fmt_pct(r.get("ret_5d"))
+            max_5d = _fmt_pct(r.get("max_high_5d"))
+            cat = r.get("skip_category", "?")
+            date_str = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "?"
+            parts.append(
+                f"  • `{r['ticker']}` {date_str} — 5d {ret_5d} (max {max_5d}) · _{cat}_"
+            )
+
+    if cats:
+        parts.append("")
+        parts.append("_By skip reason (n / median 5d / winners ≥10% / top):_")
+        for c in cats[:6]:
+            n = c.get("n") or 0
+            avg = _fmt_pct(c.get("avg_ret_5d"))
+            n10 = c.get("n_10pct_plus") or 0
+            top_t = c.get("top_ticker") or "—"
+            top_r = _fmt_pct(c.get("top_ret_5d"))
+            parts.append(
+                f"  • {c['skip_category']}: n={n}, avg={avg}, "
+                f"≥10%×{n10}, top=`{top_t}` {top_r}"
+            )
+    return "\n".join(parts)

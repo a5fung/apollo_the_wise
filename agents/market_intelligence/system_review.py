@@ -135,6 +135,19 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     if loser_section:
         message = f"{message}\n\n{loser_section}"
 
+    # Missed-opportunity appendix (Step 3 of #missed-EP-tracking, 2026-05-11).
+    # Top winners we didn't enter + per-skip-reason roll-up. Tells the
+    # methodology-tuning side which filter bled the most upside in the window.
+    try:
+        from agents.market_intelligence.missed_outcomes import format_missed_section_for_weekly
+        missed_section = format_missed_section_for_weekly(
+            metrics.get("missed_opportunities") or {}
+        )
+        if missed_section:
+            message = f"{message}\n\n{missed_section}"
+    except Exception:
+        logger.exception("missed_opportunities section render failed")
+
     # Crypto RS readiness — deterministic appendix (not LLM-interpreted).
     # Surfaces "ready to flip" verdict so the user doesn't forget about
     # the shadow-mode module accumulating in the background.
@@ -172,6 +185,7 @@ async def _gather_and_aggregate(
     fishhook = await _aggregate_fishhook_outcomes(window_days)
     strategy_promotions = await _aggregate_promotion_checks()
     pending_reviews = await _aggregate_pending_reviews(today)
+    missed_opps = await _aggregate_missed_opportunities(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -193,7 +207,20 @@ async def _gather_and_aggregate(
         "fishhook": fishhook,
         "strategy_promotions": strategy_promotions,
         "pending_reviews": pending_reviews,
+        "missed_opportunities": missed_opps,
     }
+
+
+async def _aggregate_missed_opportunities(window_days: int) -> dict:
+    """Top missed EPs in the window + per-skip-reason roll-up. Surfaces
+    opportunity cost so the weekly digest can flag filters that bled the
+    most upside (e.g. cooldown skipped 4 trades that ran >30%)."""
+    try:
+        from agents.market_intelligence.missed_outcomes import aggregate_missed_for_weekly
+        return await aggregate_missed_for_weekly(window_days=window_days)
+    except Exception:
+        logger.exception("missed_opportunities aggregator failed")
+        return {"window_days": window_days, "top_winners": [], "by_category": []}
 
 
 async def _aggregate_pending_reviews(today: date) -> dict:

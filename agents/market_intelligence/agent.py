@@ -604,6 +604,14 @@ class MarketIntelligenceAgent(BaseAgent):
                                      "ep returns", "ep results", "ep track"]):
             return await self._handle_ep_outcomes(request)
 
+        # Missed EPs — opportunity-cost lookup. Must be before generic "missed ep"
+        # diagnostic route (which is single-ticker "why wasn't X flagged").
+        if (task.startswith("/missed") or task.strip() == "/missed"
+            or "missed opportunit" in task or "missed winner" in task
+            or "missed eps" in task or "what did we miss" in task
+            or "what are we missing" in task or "missed list" in task):
+            return await self._handle_missed_query(request)
+
         # Lifecycle trace: "trace TICKER" or "why didn't we enter TICKER" — execution-side diagnostic.
         # Distinct from `_handle_ep_diagnostic` (detection-side: "why wasn't X an EP at all?").
         if "trace " in task or "why didn't we enter" in task or "why didn't we trade" in task:
@@ -2212,6 +2220,63 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("  Paper tracker wasn't running on these dates (early setup period).")
 
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_missed_query(self, request: AgentRequest) -> AgentResponse:
+        """Top missed EPs ranked by forward return — opportunity-cost surface.
+
+        Routes:
+          /missed              → 30d window, 5d return
+          /missed 60           → 60d window, 5d return
+          /missed 20d          → 30d window, 20d return horizon
+          /missed by reason    → per-category roll-up
+        """
+        import re as _re
+        from agents.market_intelligence.missed_outcomes import (
+            top_missed_winners, missed_by_category,
+            format_missed_telegram,
+        )
+        task = request.task.lower()
+
+        # Window (days back to scan source tables): default 30, max 90
+        m = _re.search(r'(?<!\d)(\d{1,3})\s*d?\b', task)
+        window_days = 30
+        if m:
+            window_days = min(int(m.group(1)), 90)
+
+        # Horizon (forward-return column)
+        horizon = "5d"
+        if "20d" in task or "20 d" in task or "month" in task:
+            horizon = "20d"
+        elif "1d" in task or "next day" in task:
+            horizon = "1d"
+
+        if "by reason" in task or "by category" in task or "breakdown" in task:
+            cats = await missed_by_category(window_days=window_days)
+            if not cats:
+                return self._ok(request, result=f"🔍 No missed-EP data in last {window_days}d.")
+            lines = [f"🔍 *Missed EPs by skip reason (last {window_days}d)*", ""]
+            lines.append("_category · n · avg 5d · ≥10% winners · top_")
+            for c in cats:
+                n = c.get("n") or 0
+                avg = c.get("avg_ret_5d")
+                avg_s = f"{avg*100:+.1f}%" if avg is not None else "—"
+                n10 = c.get("n_10pct_plus") or 0
+                top_t = c.get("top_ticker") or "—"
+                top_r = c.get("top_ret_5d")
+                top_s = f"{top_r*100:+.1f}%" if top_r is not None else "—"
+                lines.append(
+                    f"• `{c['skip_category']}` · n={n} · avg {avg_s} · "
+                    f"≥10%×{n10} · top `{top_t}` {top_s}"
+                )
+            return self._ok(request, result="\n".join(lines))
+
+        rows = await top_missed_winners(
+            window_days=window_days, horizon=horizon, top_n=15,
+        )
+        return self._ok(
+            request,
+            result=format_missed_telegram(rows, horizon, window_days),
+        )
 
     async def _handle_correlation_clusters(self, request: AgentRequest) -> AgentResponse:
         """Show today's correlation clusters."""
