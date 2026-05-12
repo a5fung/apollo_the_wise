@@ -1698,11 +1698,14 @@ class MarketIntelligenceAgent(BaseAgent):
         # fall back to the most recent date with actual scan data.
         pool = await get_pool()
         async with pool.acquire() as conn:
+            # date - integer = date; date - INTERVAL returns timestamp and
+            # asyncpg's strict type matching rejects "date >= timestamp"
+            # at prepare time.
             query_date = await conn.fetchval(
                 """
                 SELECT MAX(scan_date)
                 FROM mi_flag_candidates
-                WHERE scan_date >= $1 - INTERVAL '14 days'
+                WHERE scan_date >= $1 - 14
                   AND scan_date <= $1
                 """,
                 today,
