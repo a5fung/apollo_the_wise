@@ -4415,14 +4415,29 @@ class MarketIntelligenceAgent(BaseAgent):
                     ORDER BY id DESC LIMIT 1
                 """, ticker, target_date)
             else:
+                # Prefer the most recent trade that actually entered (not skipped/
+                # cancelled with zero shares). Falls back to most-recent if none
+                # entered — preserves the old behaviour for ticker that only has
+                # skip rows. Without this, `/trade SMCI` on a day SMCI also has
+                # a skipped alert returns the empty row.
                 trade = await conn.fetchrow("""
                     SELECT id, ticker, alert_date, status, entry_price,
                            stop_price, entry_shares, remaining_shares,
                            total_pnl, hold_days, exits, closed_at, entry_attempt
                     FROM mi_live_trades
                     WHERE ticker=$1
+                      AND status NOT IN ('skipped','cancelled','rejected')
                     ORDER BY alert_date DESC, id DESC LIMIT 1
                 """, ticker)
+                if not trade:
+                    trade = await conn.fetchrow("""
+                        SELECT id, ticker, alert_date, status, entry_price,
+                               stop_price, entry_shares, remaining_shares,
+                               total_pnl, hold_days, exits, closed_at, entry_attempt
+                        FROM mi_live_trades
+                        WHERE ticker=$1
+                        ORDER BY alert_date DESC, id DESC LIMIT 1
+                    """, ticker)
             if not trade:
                 tail = f" on {target_date}" if target_date else ""
                 return self._ok(
@@ -4588,25 +4603,56 @@ class MarketIntelligenceAgent(BaseAgent):
         for _, s in stop_items:
             lines.append(s)
 
-        # EXITS — committed exits from mi_live_trades.exits[]
+        # EXITS — prefer the canonical exits[] JSONB; fall back to deriving
+        # from mi_live_orders sell-side fills when that JSONB is empty but
+        # broker orders show real fills (SMCI 5/06: partial + stop-hit
+        # filled but never committed to exits[] — known data-integrity bug).
         lines.append("")
         lines.append("EXITS")
-        if not exits:
-            lines.append("  (no exits committed)")
-        for ex in exits:
-            t_raw = ex.get("time") or ex.get("filled_at")
-            try:
-                t = _dt.fromisoformat(t_raw).replace(tzinfo=_ET) if t_raw else None
-            except Exception:
-                t = None
-            price = ex.get("price")
-            shares = int(ex.get("shares") or 0)
-            reason = (ex.get("reason") or "?").replace("_", " ")
-            ex_pnl = ex.get("pnl")
-            pnl_s = f"${float(ex_pnl):+,.2f}" if ex_pnl is not None else "?"
-            price_s = f"${float(price):.2f}" if price is not None else "?"
-            ts_s = t.strftime("%m/%d %H:%M:%S") if t else "—"
-            lines.append(f"  {ts_s}  {reason}   {shares} sh @ {price_s}   {pnl_s}")
+        if exits:
+            for ex in exits:
+                t_raw = ex.get("time") or ex.get("filled_at")
+                try:
+                    t = _dt.fromisoformat(t_raw).replace(tzinfo=_ET) if t_raw else None
+                except Exception:
+                    t = None
+                price = ex.get("price")
+                shares = int(ex.get("shares") or 0)
+                reason = (ex.get("reason") or "?").replace("_", " ")
+                ex_pnl = ex.get("pnl")
+                pnl_s = f"${float(ex_pnl):+,.2f}" if ex_pnl is not None else "?"
+                price_s = f"${float(price):.2f}" if price is not None else "?"
+                ts_s = t.strftime("%m/%d %H:%M:%S") if t else "—"
+                lines.append(f"  {ts_s}  {reason}   {shares} sh @ {price_s}   {pnl_s}")
+        else:
+            # Fallback: derive from filled sell orders. Estimate pnl per leg
+            # using entry_price (best available — actual cost basis may differ
+            # per partial). Mark "[derived]" so the user knows this came from
+            # the orders table, not the canonical commit log.
+            entry_basis = trade.get("entry_price")
+            derived_exits = [
+                o for o in orders
+                if (o["side"] or "").lower() == "sell"
+                and "fill" in (o["status"] or "").lower().split(".")[-1]
+                and (o["filled_qty"] or 0) > 0
+            ]
+            if not derived_exits:
+                lines.append("  (no exits committed)")
+            else:
+                lines.append("  [derived from mi_live_orders — exits[] JSONB is empty]")
+                for o in derived_exits:
+                    t = o["filled_at"].astimezone(_ET) if o["filled_at"] else None
+                    fq = int(o["filled_qty"] or 0)
+                    avg = o["filled_avg_price"]
+                    reason = (o["exit_reason"] or o["purpose"] or "?").replace("_", " ")
+                    price_s = f"${float(avg):.2f}" if avg else "?"
+                    ts_s = t.strftime("%m/%d %H:%M:%S") if t else "—"
+                    if entry_basis and avg:
+                        leg_pnl = (float(avg) - float(entry_basis)) * fq
+                        pnl_s = f"${leg_pnl:+,.2f}"
+                    else:
+                        pnl_s = "?"
+                    lines.append(f"  {ts_s}  {reason}   {fq} sh @ {price_s}   {pnl_s}")
 
         body_text = "\n".join(lines)
 
