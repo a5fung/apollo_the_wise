@@ -262,15 +262,23 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
-- Market agent only: `git pull origin main && docker compose -f docker/docker-compose.prod.yml build --no-cache market-agent && docker compose -f docker/docker-compose.prod.yml up -d market-agent`
-- Both services: same but add `orchestrator` to build/up commands
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 
-**Post-deploy preflight (REQUIRED after every deploy touching broker / strategies / safeguards / alpaca_client / entry_pipeline):**
+**Canonical deploy command** — preflight is chained inside the script so the deploy fails loudly if entry-pipeline safeguards can't authenticate. **Use the script, not raw `docker compose` commands.** The 2026-05-13 outage was caused by deploying without the verification step.
+```bash
+# Market agent only (default):
+bash scripts/deploy.sh
+
+# Both services:
+bash scripts/deploy.sh both
+
+# Orchestrator only:
+bash scripts/deploy.sh orchestrator
 ```
-docker exec apollo-market python -m scripts.preflight_check
-```
-Walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Exits non-zero if any strategy/mode pair raises. **2026-05-13 outage would have been caught here** — magna53 + 9m_day2 at `phase='live'` under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'` on `get_account('live')`. Boot smoke (`verify_dual_account_clients`) didn't catch it because it only checked clients with present credentials.
+
+The script runs git pull → build → up → wait-for-boot → preflight in one chain with `set -euo pipefail`. Any step that fails exits non-zero (with a specific code per failure mode). The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Treats `setup:*` / `infra:*` as failures; only `block:*` reasons count as pass-through. Failure here = deploy is not green.
+
+**2026-05-13 outage would have been caught here**: magna53 + 9m_day2 at `phase='live'` under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'` on `get_account('live')`. The legacy boot smoke (`verify_dual_account_clients`) didn't catch it because it only checks clients whose credentials happen to be present. The preflight exercises the strategy-driven path, which is what actually fires.
 
 ## Required Env Vars
 ```

@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Canonical deploy script for the Hetzner production box.
+#
+# Sequences git pull → build → up → wait-for-ready → preflight in one chain.
+# Any step that fails breaks the chain and exits non-zero, so the operator
+# can't accidentally skip preflight after a build/restart.
+#
+# Usage (from /home/apollo/apollo_the_wise on the prod box):
+#   bash scripts/deploy.sh                 # market-agent only (default)
+#   bash scripts/deploy.sh both            # market-agent + orchestrator
+#   bash scripts/deploy.sh orchestrator    # orchestrator only
+#
+# The 2026-05-13 outage happened because deploy verification was a separate
+# documented step that the operator skipped. Wrapping the full sequence in
+# this script makes the preflight non-bypassable from the canonical path.
+set -euo pipefail
+
+SCOPE="${1:-market-agent}"
+COMPOSE_FILE="docker/docker-compose.prod.yml"
+
+case "$SCOPE" in
+  market-agent)
+    SERVICES="market-agent"
+    ;;
+  orchestrator)
+    SERVICES="orchestrator"
+    ;;
+  both)
+    SERVICES="market-agent orchestrator"
+    ;;
+  *)
+    echo "Unknown scope: $SCOPE (expected market-agent | orchestrator | both)"
+    exit 2
+    ;;
+esac
+
+echo "=== [1/5] git pull origin main ==="
+git pull origin main
+
+echo "=== [2/5] Building images: $SERVICES ==="
+docker compose -f "$COMPOSE_FILE" build --no-cache $SERVICES
+
+echo "=== [3/5] Restarting containers: $SERVICES ==="
+docker compose -f "$COMPOSE_FILE" up -d $SERVICES
+
+# Only need to wait for market-agent if it was restarted. The preflight
+# runs inside the market-agent container, so it must be ready regardless.
+echo "=== [4/5] Waiting for market-agent boot to complete ==="
+TIMEOUT=120
+ELAPSED=0
+while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Missed-outcomes schema initialized'; do
+  sleep 2
+  ELAPSED=$((ELAPSED + 2))
+  if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+    echo "TIMEOUT after ${TIMEOUT}s waiting for market-agent boot. Check 'docker logs apollo-market'."
+    exit 3
+  fi
+done
+echo "market-agent ready (${ELAPSED}s)"
+
+echo "=== [5/5] Preflight smoke test ==="
+if ! docker exec apollo-market python -m scripts.preflight_check; then
+  echo ""
+  echo "DEPLOY FAILED — preflight reported infra failure(s)."
+  echo "The container is running but entry-pipeline safeguards can't authenticate."
+  echo "DO NOT declare this deploy green. Either fix the issue and re-run, or rollback."
+  exit 4
+fi
+
+echo ""
+echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
