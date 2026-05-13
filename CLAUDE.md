@@ -294,6 +294,21 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 (session 2) — Preflight smoke test (#84) + #10 STRL/EVER outcome
+**#84 ship** (commit `face09d`): new `scripts/preflight_check.py` walks every enabled non-shadow strategy through `_check_safeguards` (the exact code path that fires on real ORB entries — auth, account fetch, position cap, daily loss, drawdown breaker). Run as the final step of every deploy touching broker / strategies / safeguards / alpaca_client / entry_pipeline. CLAUDE.md "Production Deploy" section updated with the command.
+
+Two preflight bugs the first run caught (both fixed in `face09d`):
+1. `docker exec` subprocesses don't inherit the boot-time `ALPACA_API_KEY → ALPACA_PAPER_*` remap. Preflight now calls `_bootstrap_alpaca_credentials()` itself so the legacy fallback fires in the subprocess too — otherwise it false-alarms on a healthy container.
+2. Initial version printed "PREFLIGHT OK" even when every strategy was BLOCKED by `setup:account_fetch_failed`. Added `_BENIGN_BLOCK_PREFIXES = ("block:",)` so only the proper portfolio safeguards (max positions, daily loss, circuit breakers, drawdown breaker) count as benign blocks; anything `setup:*` / `infra:*` is treated as an infra failure that fails the preflight.
+
+Verified end-to-end on prod: both `magna53` and `9m_day2` now report PASS via the preflight after the morning outage was fixed.
+
+**#10 closure** — STRL/EVER 5d outcomes (5/05 alerts, both rejected by `setup:stop_too_wide`):
+- **STRL**: open $727 → 5d close $851 (**+17.0%**), 5d max $889 (**+22.2%**). Stop-too-wide rejected a clean winner.
+- **EVER**: open $19.09 → 5d close $19.12 (**+0.2%**), 5d max $23.98 (**+25.6%**). Move was real intraday but fully gave back.
+
+STRL is the trigger condition for #11 (Reconsider ATR Part 2 — fires when stop_too_wide rejects a winner). Filing for later investigation; one case (N=1) is not enough to ship a methodology change per `feedback_sample_size_discipline`, but it IS enough to start tracking the pattern.
+
 ### 2026-05-13 — Outage: every paper trade failed with `'ALPACA_LIVE_API_KEY'` KeyError (seed × dual-account mismatch)
 **Incident**: 9:31 ET ORB monitor logged `0 entered, 10 skipped` across AMBQ/HLIT/PACS/SE/SIBN/TE/VG/VPG/VSTS/ZBRA. Every HIGH alert blocked with `setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'`. Live paper-trading completely down for the morning session. User flagged: "this could easily be prevented with proper test and validation."
 
