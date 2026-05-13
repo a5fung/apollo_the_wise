@@ -27,11 +27,19 @@ from typing import Iterable, Optional
 logger = logging.getLogger(__name__)
 
 # Keep this list as the single canonical source — every detector reads from here.
+#
+# Target-direction only: every keyword below should imply the ticker is the
+# TARGET of a deal, not the acquirer. Bare "acquire" / "acquisition" were
+# removed 2026-05-13 after NBIS (acquired Eigen AI for $643M; NBIS = buyer)
+# was wrongly filtered. 90d backtest: 13 acquirer-side FPs vs 2 real targets
+# already covered by Claude `catalyst_quality='mna'` (EBAY) or `"take-private"`
+# (WEN). See ma_filter.py change log + magna53_ep.md 2026-05-13.
 _MNA_KEYWORDS: tuple[str, ...] = (
-    "acquisition", "acquire", "buyout", "takeover", "merger", "bought by",
+    "buyout", "takeover", "merger", "bought by",
     "being acquired", "definitive agreement", "tender offer", "going private",
     "taken private", "to go private", "strategic transaction", "merger agreement",
     "to be acquired", "all-cash buyout", "halper sadeh",  # shareholder-investigation firm; always follows M&A
+    "take-private", "private deal for",
 )
 
 

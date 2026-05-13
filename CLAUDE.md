@@ -302,6 +302,22 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 (session 3) — M&A filter direction-blindness: NBIS-class FP (drop bare "acquire"/"acquisition")
+User flagged NBIS not flagged as EP today despite +15.79% gap, pm_rvol 6.4×. Audit log surfaced 10 `mna_filter_fired` events between 7:55 and 9:31 ET — every catalyst text described **NBIS as acquirer** (bought Eigen AI for $643M) but `ma_filter._MNA_KEYWORDS` matched bare `"acquire"` / `"acquisition"` regardless of direction. Direction-blind substring scan is the bug class.
+
+**90d backtest** (90d `mna_filter_fired` audit events, bare `acquire`/`acquisition` matches): 16 distinct tickers — **13 false positives** (NBIS, WAT, MNST, FOUR, RKLB, IREN, VEEV, KGS, NXT, PINS, QBTS, QUBT, RAL) and **3 nominal TPs** where:
+- EBAY → caught independently by Claude `catalyst_quality='mna'` classifier branch (LLM understands direction)
+- WEN → recovered by adding `"take-private"` and `"private deal for"` keywords (Trian buyout rumor)
+- GLIBK → keyword accidentally matched in unrelated biotech chatter (Perplexity returned "no info on GLIBK"); structurally a FP that landed on a real target by coincidence
+
+**Fix** (`ma_filter.py`): dropped `"acquisition"` and `"acquire"` from `_MNA_KEYWORDS`; added `"take-private"` and `"private deal for"`. Other keywords (`buyout`, `takeover`, `merger`, `halper sadeh`, `to go private`, etc.) spot-checked across 90d and retained — true-positive yield holds. Inline comment documents the NBIS-class trigger.
+
+**SSoT updated**: `docs/setups/magna53_ep.md` change log entry covers full ledger (TPs, FPs, evidence, anticipated effect, reversion-flag=REFINEMENT). Filter is also gated for flag/9M/convergence detectors via same SSoT — fix applies uniformly.
+
+**Filed followup** (not addressed today): Perplexity hallucination leak. RAL/P caught by `merger`/`strategic transaction` keywords matched not against actual catalyst content but against "no info found... nearest match is X" filler text Perplexity returns when ticker is unknown. Separate bug class; affects every detector that feeds Perplexity output to keyword scanners. Lower priority (N=2 in 90d).
+
+**Lesson**: a keyword-substring filter that gates trade entry must be **direction-aware**, especially for verbs whose object switches sides (acquire X vs acquired by X). The fix shape generalizes: when a substring is grammatically ambiguous about which party is which, replace it with the unambiguous phrasings (`"to be acquired"`, `"bought by"`, `"taken private"` — passive voice = ticker is target). Same shape as past SSoT lessons where a flag tracked "we ran the step" rather than "the outcome is correct" (2026-05-07 splits_ingest premature-apply, 2026-05-04 update_stop audit, 2026-05-06 stale stop_order_id).
+
 ### 2026-05-13 (session 2) — Preflight smoke test (#84) + #10 STRL/EVER outcome
 **#84 ship** (commit `face09d`): new `scripts/preflight_check.py` walks every enabled non-shadow strategy through `_check_safeguards` (the exact code path that fires on real ORB entries — auth, account fetch, position cap, daily loss, drawdown breaker). Run as the final step of every deploy touching broker / strategies / safeguards / alpaca_client / entry_pipeline. CLAUDE.md "Production Deploy" section updated with the command.
 
