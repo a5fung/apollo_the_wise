@@ -1054,21 +1054,32 @@ class TelegramChannel:
             return
 
         from core.router import health_check_all_agents, get_market_pipeline_status
-        (
-            agent_health,
-            market_status,
-            (db_ok, db_err),
-            (redis_ok, redis_err),
-            (claude_ok, claude_err),
-            account_info,
-        ) = await asyncio.gather(
+        # return_exceptions=True so a single sub-check raising doesn't kill
+        # the entire /status response (2026-05-13 incident: _check_account_mode
+        # raised ModuleNotFoundError in orchestrator container that lacks
+        # market-agent code; whole /status returned nothing).
+        results = await asyncio.gather(
             health_check_all_agents(),
             get_market_pipeline_status(),
             self._check_db(),
             self._check_redis(),
             self._check_claude(),
             self._check_account_mode(),
+            return_exceptions=True,
         )
+        def _unwrap(idx, default):
+            r = results[idx]
+            if isinstance(r, BaseException):
+                logger.warning(f"/status sub-check {idx} raised: {r!r}")
+                return default
+            return r
+
+        agent_health = _unwrap(0, {})
+        market_status = _unwrap(1, None)
+        db_ok, db_err = _unwrap(2, (False, "check failed"))
+        redis_ok, redis_err = _unwrap(3, (False, "check failed"))
+        claude_ok, claude_err = _unwrap(4, (False, "check failed"))
+        account_info = _unwrap(5, ["⚠️ Account check failed"])
 
         lines = ["*System Status*\n"]
 
@@ -1159,26 +1170,35 @@ class TelegramChannel:
     async def _check_account_mode(self) -> list[str]:
         """Render per-mode account block. Under dual-account architecture
         (#66, 2026-05-10), both paper + live can be active simultaneously
-        with different strategies routing to each. /status shows whichever
-        modes are enabled side-by-side.
+        with different strategies routing to each.
+
+        **Container boundary note (2026-05-13):** the orchestrator Docker
+        image does NOT include `agents.market_intelligence` (only
+        `agents/base.py`, per Dockerfile.orchestrator). All inner logic
+        is wrapped in try/except — on ModuleNotFoundError we degrade to
+        a single-line marker rather than crashing the whole `/status`
+        response via asyncio.gather propagation. Followup task #86 will
+        route the account block through the market-agent HTTP API
+        instead of trying to import its modules locally.
         """
         import os
-        from agents.market_intelligence.constants import ENABLE_LIVE_MODE
 
         live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
         if not live_enabled:
             return ["⚪ Trading: DISABLED (LIVE_TRADING_ENABLED=false)"]
 
-        # Which modes are reachable in this container? Paper is always on;
-        # live only when ENABLE_LIVE_MODE=true (env vars present, client
-        # was successfully instantiated at boot).
+        try:
+            from agents.market_intelligence.constants import ENABLE_LIVE_MODE
+        except ModuleNotFoundError:
+            return [
+                "⚠️ Account block unavailable from orchestrator",
+                "  _market-agent code not bundled in this container — see task #86_",
+            ]
+
         modes_to_show: list[str] = ["paper"]
         if ENABLE_LIVE_MODE:
             modes_to_show.append("live")
 
-        # Which strategies route to which mode? Compact one-liner so the
-        # user can tell at a glance whether the live block has any actual
-        # consumer or is just a placeholder.
         strat_by_mode: dict[str, list[str]] = {"paper": [], "live": []}
         try:
             from agents.market_intelligence.strategies.registry import load_strategies
@@ -1222,7 +1242,6 @@ class TelegramChannel:
                 lines.append(f"  ⚠️ Account fetch failed: {str(e)[:100]}")
             lines.append("")  # blank line between blocks
 
-        # Trim trailing blank
         while lines and not lines[-1]:
             lines.pop()
         return lines
