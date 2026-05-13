@@ -43,20 +43,25 @@ docker compose -f "$COMPOSE_FILE" build --no-cache $SERVICES
 echo "=== [3/5] Restarting containers: $SERVICES ==="
 docker compose -f "$COMPOSE_FILE" up -d $SERVICES
 
-# Only need to wait for market-agent if it was restarted. The preflight
-# runs inside the market-agent container, so it must be ready regardless.
-echo "=== [4/5] Waiting for market-agent boot to complete ==="
-TIMEOUT=120
-ELAPSED=0
-while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Missed-outcomes schema initialized'; do
-  sleep 2
-  ELAPSED=$((ELAPSED + 2))
-  if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-    echo "TIMEOUT after ${TIMEOUT}s waiting for market-agent boot. Check 'docker logs apollo-market'."
-    exit 3
-  fi
-done
-echo "market-agent ready (${ELAPSED}s)"
+# Only wait for market-agent boot if it was actually restarted in step 3.
+# Orchestrator-only deploys don't touch market-agent — the boot marker
+# from its existing run is older than 90s and we'd time out for no reason.
+if [[ "$SERVICES" == *"market-agent"* ]]; then
+  echo "=== [4/5] Waiting for market-agent boot to complete ==="
+  TIMEOUT=120
+  ELAPSED=0
+  while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Missed-outcomes schema initialized'; do
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+    if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+      echo "TIMEOUT after ${TIMEOUT}s waiting for market-agent boot. Check 'docker logs apollo-market'."
+      exit 3
+    fi
+  done
+  echo "market-agent ready (${ELAPSED}s)"
+else
+  echo "=== [4/5] Skipped — market-agent not in this deploy scope ==="
+fi
 
 echo "=== [5/5] Preflight smoke test ==="
 if ! docker exec apollo-market python -m scripts.preflight_check; then
