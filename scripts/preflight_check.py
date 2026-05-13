@@ -28,9 +28,16 @@ import asyncio
 import logging
 import sys
 
+from agents.market_intelligence.agent import _bootstrap_alpaca_credentials
 from agents.market_intelligence.broker.live_tracker import _check_safeguards
 from agents.market_intelligence.constants import resolve_account_mode_for_strategy
 from agents.market_intelligence.strategies.registry import load_strategies
+
+# Skip-reason prefixes that count as PASS even when (ok=False) — these are
+# real safeguards firing as designed (e.g. drawdown breaker tripped). They
+# do block real entries, but their firing is *correct*. Anything else
+# (setup:* infra:*) is an infra failure and fails preflight.
+_BENIGN_BLOCK_PREFIXES = ("block:",)
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -41,6 +48,16 @@ logger.setLevel(logging.INFO)
 
 
 async def main() -> int:
+    # Bootstrap Alpaca credentials EXACTLY like agent.py does at container
+    # boot. Without this, the legacy ALPACA_API_KEY → ALPACA_PAPER_* remap
+    # never fires in this subprocess and we'd false-alarm on a healthy
+    # container that just hasn't migrated env var names yet.
+    try:
+        _bootstrap_alpaca_credentials()
+    except Exception as e:
+        print(f"PREFLIGHT FAILED — bootstrap raised: {e}")
+        return 1
+
     strategies = await load_strategies()
     print("\n=== Preflight: entry-pipeline safeguard walk ===\n")
 
@@ -66,23 +83,31 @@ async def main() -> int:
             ok, reason = await _check_safeguards(
                 account_mode=mode, signal_type=s.signal_type,
             )
-            verdict = "PASS" if ok else f"BLOCKED ({reason})"
-            ok_rows.append((sid, mode, verdict))
         except Exception as e:
             failures.append((sid, mode, f"_check_safeguards raised: {e}"))
+            continue
+
+        if ok:
+            ok_rows.append((sid, mode, "PASS"))
+        elif reason and reason.startswith(_BENIGN_BLOCK_PREFIXES):
+            # Real safeguard fired — that's correct behavior, not preflight fail.
+            ok_rows.append((sid, mode, f"BLOCKED-OK ({reason})"))
+        else:
+            # setup:* / infra:* / anything non-block:* = infra failure
+            failures.append((sid, mode, f"{reason}"))
 
     # Print report
     for line in skipped:
         print(line)
     for sid, mode, verdict in ok_rows:
-        marker = "✓" if verdict == "PASS" else "·"
+        marker = "✓"
         print(f"  {marker} {sid:20s}  mode={mode:5s}  {verdict}")
     for sid, mode, err in failures:
         print(f"  ✗ {sid:20s}  mode={mode:5s}  FAILED: {err}")
 
     print()
     if failures:
-        print(f"PREFLIGHT FAILED — {len(failures)} strategy/mode pair(s) raised.")
+        print(f"PREFLIGHT FAILED — {len(failures)} strategy/mode pair(s) blocked by infra.")
         print("Resolve before declaring the deploy green. This is the same")
         print("safeguard path that fires on every real ORB entry.")
         return 1
