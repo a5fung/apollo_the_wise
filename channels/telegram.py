@@ -1157,39 +1157,74 @@ class TelegramChannel:
             return False, str(e)[:120]
 
     async def _check_account_mode(self) -> list[str]:
+        """Render per-mode account block. Under dual-account architecture
+        (#66, 2026-05-10), both paper + live can be active simultaneously
+        with different strategies routing to each. /status shows whichever
+        modes are enabled side-by-side.
+        """
         import os
-        from agents.market_intelligence.constants import current_account_mode
+        from agents.market_intelligence.constants import ENABLE_LIVE_MODE
 
         live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
         if not live_enabled:
             return ["⚪ Trading: DISABLED (LIVE_TRADING_ENABLED=false)"]
 
-        mode = current_account_mode()
-        mode_line = "📄 Account mode: PAPER" if mode == "paper" else "💰 Account mode: LIVE-$ (real money)"
+        # Which modes are reachable in this container? Paper is always on;
+        # live only when ENABLE_LIVE_MODE=true (env vars present, client
+        # was successfully instantiated at boot).
+        modes_to_show: list[str] = ["paper"]
+        if ENABLE_LIVE_MODE:
+            modes_to_show.append("live")
 
-        lines = [mode_line]
+        # Which strategies route to which mode? Compact one-liner so the
+        # user can tell at a glance whether the live block has any actual
+        # consumer or is just a placeholder.
+        strat_by_mode: dict[str, list[str]] = {"paper": [], "live": []}
         try:
-            from agents.market_intelligence.broker import alpaca_client as alpaca
-            account = await alpaca.get_account()
-            equity = account.get("equity", 0.0)
-            buying_power = account.get("buying_power", 0.0)
-            pdt_flag = account.get("pattern_day_trader", False)
-            dt_count = account.get("daytrade_count", 0)
-
-            lines.append(f"Equity: ${equity:,.2f}")
-            lines.append(f"Buying power: ${buying_power:,.2f}")
-            lines.append(f"PDT flag: {pdt_flag}")
-
-            # Day-trade headroom: lockout triggers at count ≥ 4 when equity < $25K.
-            if equity < 25_000:
-                headroom = max(0, 3 - dt_count)
-                warn = " ⚠️" if dt_count >= 2 else ""
-                lines.append(f"Day trades used: {dt_count}/3 (rolling 5d, {headroom} left){warn}")
-            else:
-                lines.append(f"Day trades used: {dt_count} (rolling 5d, equity ≥ $25K — no PDT cap)")
+            from agents.market_intelligence.strategies.registry import load_strategies
+            from agents.market_intelligence.constants import resolve_account_mode_for_strategy
+            strategies = await load_strategies()
+            for sid, s in sorted(strategies.items()):
+                if not s.enabled or s.phase == "shadow":
+                    continue
+                try:
+                    strat_by_mode[resolve_account_mode_for_strategy(s)].append(sid)
+                except Exception:
+                    pass
         except Exception as e:
-            lines.append(f"⚠️ Account fetch failed: {str(e)[:100]}")
+            logger.warning(f"/status: strategy routing fetch failed: {e}")
 
+        lines: list[str] = []
+        for mode in modes_to_show:
+            icon = "📄" if mode == "paper" else "💰"
+            label = "PAPER" if mode == "paper" else "LIVE-$ (real money)"
+            mode_strats = strat_by_mode.get(mode, [])
+            routed = f" · routed: {', '.join(mode_strats)}" if mode_strats else " · _(no strategies routed)_"
+            lines.append(f"{icon} *{label}*{routed}")
+            try:
+                from agents.market_intelligence.broker import alpaca_client as alpaca
+                account = await alpaca.get_account(account_mode=mode)
+                equity = account.get("equity", 0.0)
+                buying_power = account.get("buying_power", 0.0)
+                pdt_flag = account.get("pattern_day_trader", False)
+                dt_count = account.get("daytrade_count", 0)
+
+                lines.append(f"  Equity: ${equity:,.2f}")
+                lines.append(f"  Buying power: ${buying_power:,.2f}")
+                lines.append(f"  PDT flag: {pdt_flag}")
+                if equity < 25_000:
+                    headroom = max(0, 3 - dt_count)
+                    warn = " ⚠️" if dt_count >= 2 else ""
+                    lines.append(f"  Day trades used: {dt_count}/3 (rolling 5d, {headroom} left){warn}")
+                else:
+                    lines.append(f"  Day trades used: {dt_count} (equity ≥ $25K — no PDT cap)")
+            except Exception as e:
+                lines.append(f"  ⚠️ Account fetch failed: {str(e)[:100]}")
+            lines.append("")  # blank line between blocks
+
+        # Trim trailing blank
+        while lines and not lines[-1]:
+            lines.pop()
         return lines
 
     async def _handle_memory(
