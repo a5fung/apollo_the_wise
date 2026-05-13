@@ -86,6 +86,18 @@ User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit eve
 
 ## Change log (newest first)
 
+### 2026-05-13 — Sugar baby M&A filter (WEN-class coverage closure)
+
+**Trigger**: WEN 5/12 was logged as a sugar baby and surfaced as a Day-2 ORB candidate on 5/13 — despite an active Trian Fund take-private rumor that filtered the same ticker on the EP path (10× `mna_filter_fired` audit events on 5/13). 9m_day2 entry attempt only failed on `setup:faded_from_orb` shape rejection. If WEN had held the ORB high, the system would have entered a take-private target with no follow-through available (price pins to deal value).
+
+**Evidence**: Symmetry gap. `is_likely_ma` is already applied in `ep_detector.py` (MAGNA53) and `flag_detector.py` (continuation flags). The 9M sugar baby + Day-2 ORB path had zero M&A coverage — code path verified by grep, WEN-on-5/13 confirmed live.
+
+**Anticipated effect**: ~1-2 sugar babies/month filtered as `mna_filter_fired (9m_sugar_baby)`. Polygon-news-only check (9M is pure-quant, no LLM catalyst grading). 21-day lookback (matches flag detector). Same `_MNA_KEYWORDS` SSoT used by every detector — including today's morning fix that dropped direction-blind `"acquire"`/`"acquisition"` and added `"take-private"` / `"private deal for"` (which is exactly the keyword path that catches WEN).
+
+**Reversion-flag**: NEW integration point (the M&A filter itself is unchanged; this just wires it into the 9M sugar baby loop). Fail-open on Polygon outage — don't block sugar baby logging if news fetch raises.
+
+**Status**: shipped 2026-05-13. Intraday 9M scan (`run_9m_scan`) still does NOT run the M&A filter (informational alerts, no trade triggered directly). Filed as future scope if intraday FP becomes an issue.
+
 ### 2026-05-08 — Sugar baby destroyed-name trend gate (ATEC 5/07 incident)
 
 **Trigger**: User flagged ATEC 5/07 sugar baby — stock down 70% over months, tanked another -13% on earnings 5/06, then bounced on huge volume 5/07. All sugar baby criteria passed (cirp 0.80, net_up +10.9%, vol 11.9M, dollar_vol $92M) but structurally a dead-cat bounce on a destroyed name, not Pradeep virgin 9M. The trend columns (prev_5d_pct, prev_20d_pct, prev_vs_sma50, sma50_slope_pct) had been captured as telemetry since earlier ship but never promoted to gates.

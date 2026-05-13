@@ -30,6 +30,7 @@ from agents.market_intelligence.db import (
     insert_9m_sugar_baby,
     log_audit_event,
 )
+from agents.market_intelligence.ma_filter import is_likely_ma
 
 logger = logging.getLogger(__name__)
 
@@ -445,6 +446,36 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
                 }),
             )
             continue
+
+        # M&A pin filter (same SSoT as ep_detector + flag_detector). A
+        # take-private rumor pins the price at deal value — no follow-through
+        # available for Day-2 ORB. 9M is pure-quant, no LLM catalyst grading,
+        # so this is a Polygon-news-only check. Triggered by WEN 5/13:
+        # take-private rumor filtered correctly on EP path but the same name
+        # passed sugar baby logging and was only saved by `setup:faded_from_orb`
+        # shape rejection (coincidence).
+        try:
+            is_mna, meta = await is_likely_ma(
+                row["ticker"],
+                check_polygon=True,
+                on_or_before=trade_date if isinstance(trade_date, date) else None,
+                polygon_lookback_days=21,
+            )
+            if is_mna:
+                await log_audit_event(
+                    "mna_filter_fired",
+                    f"{row['ticker']} via {(meta or {}).get('source', 'unknown')} (9m_sugar_baby)",
+                    json.dumps({
+                        "detector": "9m_sugar_baby",
+                        "ticker": row["ticker"],
+                        "alert_date": trade_date_str,
+                        **(meta or {}),
+                    })[:500],
+                )
+                continue
+        except Exception as e:
+            logger.warning(f"9m_sugar_baby: M&A check failed for {row['ticker']}: {e}")
+            # Fail-open: don't block the sugar baby on a Polygon news outage.
 
         await insert_9m_sugar_baby({
             "ticker": row["ticker"],

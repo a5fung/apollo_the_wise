@@ -1163,3 +1163,65 @@ reviews:
       shipped 2026-05-10 c79abd6→9bcaba6).
     status: pending
     added_on: 2026-05-10
+
+  - review_id: stop_too_wide_outcome_cohort
+    title: "Stop-too-wide rejection outcome cohort (#11 ATR Part 2 trigger)"
+    question: |
+      The MAGNA53 `setup:stop_too_wide` filter rejects HIGH-tier alerts when
+      ORB range > 1.5× ATR_14. Two cases since 5/05 have raised the question
+      of whether this filter sheds winners:
+        - STRL 5/05: rejected stop_too_wide; 5d close +17.0%, 5d max +22.2%
+        - AIP  5/13: rejected stop_too_wide (ORB $3.18 / ATR $3.02 = 1.05x);
+                     score 115.2 HIGH, AI semis catalyst (MIPS, earnings)
+
+      Per `feedback_sample_size_discipline`, N=2 is below the N≥10 backtest
+      threshold for a methodology change. Track every `setup:stop_too_wide`
+      rejection going forward; once N≥10 settled with 5d/20d outcomes,
+      evaluate whether to (a) widen the multiple (1.5x → 2.0x), (b) switch
+      stop anchor (ORB-low → VWAP / prior-day-low), or (c) keep as-is
+      because the cohort genuinely has poor R:R.
+    predicate_sql: |
+      -- Count distinct mi_live_trades rows with skip_reason starting
+      -- `setup:stop_too_wide`. Each represents one rejection where the
+      -- missed-EP outcomes pipeline will populate 5d/20d forward returns.
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE skip_reason LIKE 'setup:stop_too_wide%'
+        AND alert_date >= '2026-05-05'
+        AND alert_date <= CURRENT_DATE - INTERVAL '25 days';
+        -- 25-day lag = 20d forward outcome settled + buffer
+    threshold: 10
+    earliest_review_date: 2026-06-13
+    action_when_ready: |
+      1. Pull the cohort with forward outcomes via mi_ep_missed_outcomes
+         (which joins mi_live_trades rejections to mi_daily_closes):
+           SELECT lt.ticker, lt.alert_date, lt.ep_score, lt.skip_reason,
+                  mo.ret_5d, mo.ret_20d, mo.max_high_5d, mo.max_high_20d
+           FROM mi_live_trades lt
+           LEFT JOIN mi_ep_missed_outcomes mo
+                  ON mo.ticker=lt.ticker AND mo.alert_date=lt.alert_date
+           WHERE lt.skip_reason LIKE 'setup:stop_too_wide%'
+             AND lt.alert_date >= '2026-05-05'
+           ORDER BY lt.alert_date;
+
+      2. Compute cohort stats:
+         - Hit rate at 5d ≥ +10% threshold
+         - Median ret_5d, ret_20d, max_high_5d (max-favorable-excursion)
+         - Score distribution by ep_score band (50-69 MOD, 70-99, 100+)
+
+      3. Decision matrix:
+         - 5d hit-rate ≥ 30% AND median max_high_5d ≥ +8% → REVISIT.
+           Filter is shedding winners. Options to test in shadow:
+             (a) Widen multiple 1.5x → 2.0x — measure how many additional
+                 candidates pass + their cohort outcomes
+             (b) Replace stop anchor: stop = VWAP at ORB-low or stop = max(ORB_low, prior_day_low). Wider effective
+                 stop for high-ATR names while keeping ORB-high entry.
+             (c) Tier the gate: keep 1.5x for MODERATE, loosen to 2.0x for
+                 HIGH (score ≥ 80). Score-conditional looseness.
+         - 5d hit-rate < 20% OR median max_high_5d < +3% → KEEP. Filter
+           correctly rejecting low-R:R setups.
+
+      Origin: STRL 5/05 single-case anomaly (#11 filed 2026-05-13 session 2).
+      AIP 5/13 second case raised priority to formal cohort review.
+      Related backlog: project_market_intelligence_backlog item #11.
+    status: pending
+    added_on: 2026-05-13

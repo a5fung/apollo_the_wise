@@ -302,6 +302,23 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 (session 4) — 9M sugar baby M&A coverage closure (WEN-class) + stop_too_wide cohort review filed
+Followups from morning's M&A filter ship. **Coverage gap surfaced by WEN 5/13**: take-private rumor was correctly filtered on EP path (10× `mna_filter_fired` audit events) but the same name passed 9M sugar baby logging on 5/12 EOD and surfaced as a Day-2 ORB candidate on 5/13. Entry attempt only failed on `setup:faded_from_orb` shape rejection (coincidence — if WEN had held ORB high, system would have entered a take-private target with no follow-through available). Grep confirmed `is_likely_ma` not called in `ninem_detector.py` or `broker/entry_pipeline.py` — 9M Day 2 path had zero M&A coverage.
+
+**Fix** (`ninem_detector.py::run_9m_eod_sweep`): added `is_likely_ma` check between destroyed-name trend gate and `insert_9m_sugar_baby`. Polygon-news-only path (9M is pure-quant, no LLM catalyst grading); 21-day lookback (matches flag detector). Fail-open on news fetch error — don't block sugar baby on Polygon outage. Emits `mna_filter_fired (9m_sugar_baby)` audit event. SSoT updated: `docs/setups/ninem.md` change log.
+
+**Intraday 9M scan (`run_9m_scan`) intentionally NOT filtered** — informational alerts only, no trade triggered directly. Filed as future scope if intraday FP becomes an issue.
+
+**Tier A telemetry reviews verified + closed** (`data_gated_reviews.yaml`, commit 113f0db):
+- `dead_zone_telemetry_smoke` — all 4 writers populating (3541 scan_log rows / 0 NULL, 330 multi-row pairs, 63 alerts with detected_at, 587 outcome rows through 5/08)
+- `fishhook_v3_first_eod_pass_verify` — EOD pass running daily 17:20 ET with state transitions firing (5/13: new_pending=6, invalidated=1, reclaimed=5, promoted=5); registry seeded phase=shadow
+- `ep_adv_probe_volume_sanity` — emit path proven on 5/06 (1131) / 5/07 (922) in expected 400-1000/day range; thin days are universe-width driven (not a code bug). Recalibrated downstream `adv_probe_retirement` gate to cohort N≥30 instead of absolute 50/day floor.
+- `ftre_partial_trail_verification` (GATE 2 live cutover) — predicate tightened to `partial_taken=true` (exits>=2 had false-positive on re-entry cases like MRAM 5/11). Status stays pending until a real partial-then-trail completes in paper.
+
+**`stop_too_wide` cohort review filed** (`data_gated_reviews.yaml`): N=2 cases (STRL 5/05 +17%/+22% 5d, AIP 5/13 today). Per `feedback_sample_size_discipline` N=2 is below the N≥10 backtest threshold, so file rather than ship. Threshold=10 settled cases (≥20d outcomes) before review; predicate joins `mi_live_trades.skip_reason LIKE 'setup:stop_too_wide%'` to `mi_ep_missed_outcomes` for forward returns. Decision matrix in YAML: 5d hit-rate ≥30% + median max_high_5d ≥+8% → revisit (widen multiple / change stop anchor / score-conditional looseness); below those bands → keep. Earliest review 2026-06-13.
+
+**Lesson**: a filter applied at one detector site but not its sibling sites is a coverage gap waiting to fire. Today's WEN-class was caught by the EP path while the 9M Day 2 path silently allowed it through — same as 2026-05-04 update_stop audit-logging gap and 2026-05-06 stale `stop_order_id` cleanup. When a SSoT primitive exists (`ma_filter.is_likely_ma`), every actionable detector path should call it; sibling-site coverage audit should be standard practice when shipping a filter ship.
+
 ### 2026-05-13 (session 3) — M&A filter direction-blindness: NBIS-class FP (drop bare "acquire"/"acquisition")
 User flagged NBIS not flagged as EP today despite +15.79% gap, pm_rvol 6.4×. Audit log surfaced 10 `mna_filter_fired` events between 7:55 and 9:31 ET — every catalyst text described **NBIS as acquirer** (bought Eigen AI for $643M) but `ma_filter._MNA_KEYWORDS` matched bare `"acquire"` / `"acquisition"` regardless of direction. Direction-blind substring scan is the bug class.
 
