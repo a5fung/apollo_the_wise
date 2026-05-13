@@ -302,6 +302,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 (session 7) — Theme orphan_sub remediation (parent dropped → sub survives top-level)
+Followup on yesterday's session 6 — filed `theme_orphan_sub_mechanism` review then immediately worked the fix. 7 firings in 14d, all oil/E&P sector: parent theme (Hydraulic Fracturing / Permian E&P) dropped during merge or cap stage while sub-theme survives with stale `parent_theme` reference. Today's case: sub `Independent E&P Operators` [37 oil tickers] points at parent `Hydraulic Fracturing & Well Completion Services` (last seen 5/11 with the same 37 tickers — semantically the same theme renamed by Sonnet).
+
+**Fix** (`theme_engine.py::_emit_pipeline_diagnostic` orphan-detection block): after the audit event fires, mutate the orphaned child in place to clear `parent_theme=None` AND drop the entry from the `sub_theme_parents` dict (caller-mutating, so the next-stage diagnostic sees the cleaned-up state and doesn't re-fire). Sub-theme survives as a top-level theme; only the broken metadata is lost. Function docstring updated from "Non-mutating" to "diagnostic + bounded orphan remediation" with rationale.
+
+**Why option (b) clear-parent_theme over (a) block-parent-drop or (c) drop-orphan-along-with-parent**: (a) is too coupled to merge/cap logic (each stage has valid reasons to drop themes); (c) loses real information (the E&P sub is a valid theme on its own merits). (b) is defensive and generic — handles ALL orphan classes (rename-induced AND real-merge-induced) uniformly.
+
+**Separate review filed** `canonicalize_ticker_set_evolution`: surfaced while diagnosing — `_canonicalize_theme_names` uses `DISTINCT ON (name) ORDER BY name, theme_date ASC` (earliest snapshot per name) which misses ticker-set evolution cases. The earliest `Hydraulic Fracturing` snapshot had 5 tickers (4/23); today's `Independent E&P Operators` has 37 tickers matching the 5/11 `Hydraulic Fracturing` snapshot. Canonicalize misses because the EARLIEST snapshot doesn't share today's ticker set. Proper fix would query all snapshots, group by `frozenset(tickers)`, pick earliest unique name. Threshold N≥3 distinct days observed via a new probe event; earliest review 2026-06-01. Separate scope because it touches the canonicalize SSoT helper and needs its own backtest + advisor consult.
+
+**C2 stays closed** — advisor confirmed: the C2 framing ("find mechanism cited by ≥2 incidents") was about the cross-run probe over-emission (which IS noise). The canonicalize gap is a different finding that surfaces only on close inspection of specific cases. Don't reopen C2 — file separately.
+
+**Lesson**: a diagnostic that's purely "audit-only" leaves the bad state in the pipeline for downstream stages. Sometimes the right pattern is "audit + bounded remediation" — fix the local symptom uniformly while filing the root cause for proper investigation. Same shape as the 2026-05-04 update_stop audit + null-stop_order_id remediation: audit captures the failure class, but the remediation is what lets reconciliation continue working downstream.
+
 ### 2026-05-13 (session 6) — Theme `cross_run_dup_candidate` was over-firing (no fix needed); filed orphan_sub separately
 C2 diagnostic walk on `theme_engine_dup_incident` review (10 days of probe events, threshold 2). 60d audit walk surfaced that the YAML's premise was wrong — **the "incidents" weren't incidents.** Zero true same-day dups exist (`mi_themes` has 0 `(theme_date, ticker_set)` pairs with multiple names in 14d; `theme_save_dedup` audit event has 0 firings in 60d). The probe `theme_cross_run_dup_candidate` was emitting 7-9 "candidates" per day, all canonicalization-handled and most being false positives — fires whenever a ticker set has had a different name in 14d, even when today's name IS the earliest canonical and `_canonicalize_theme_names` correctly leaves it alone.
 

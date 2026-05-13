@@ -1341,5 +1341,96 @@ reviews:
 
       Origin: C2 diagnostic walk 2026-05-13 (session 6). Surfaced incidentally
       while diagnosing theme_engine_dup_incident (which closed as no-fix-needed).
+    status: done
+    added_on: 2026-05-13
+    closed_on: 2026-05-13
+    outcome: |
+      Investigated session 7. 7 events / 14d, dominant pattern: oil-sector
+      E&P/Fracturing parent dropped during merge/cap while sub-theme
+      survived. Today's case: sub=Independent E&P Operators [37 oil
+      tickers] parent=Hydraulic Fracturing & Well Completion Services
+      (last seen 5/11 with same 37 ticker set; today's "sub" is
+      semantically the same theme renamed by Sonnet).
+
+      Two-tier fix shipped:
+      (1) Orphan remediation (this commit): `_emit_pipeline_diagnostic`
+          now mutates orphaned children to clear `parent_theme=None` and
+          drops the entry from `sub_theme_parents` so subsequent stages
+          don't re-fire. Sub survives as top-level theme; only the broken
+          metadata is lost. Defensive — handles ALL orphan classes
+          (rename-induced + real-merge-induced).
+
+      (2) Upstream canonicalize gap filed as separate review
+          `canonicalize_ticker_set_evolution`: the root cause that the
+          parent gets dropped in the first place is canonicalize using
+          DISTINCT ON earliest snapshot per name, missing ticker-set
+          evolution cases. Different scope — touches SSoT canonicalize
+          helper, needs its own backtest + advisor consult. Threshold
+          N≥3 distinct days observed via a new probe event.
+
+      Verification: zero `theme_orphan_sub` events should fire from
+      next nightly run onward (remediation runs at after_merge_1 then
+      after_cap_1 sees the cleaned-up state).
+
+  - review_id: canonicalize_ticker_set_evolution
+    title: "Canonicalize misses ticker-set-evolution cases (followup to C2)"
+    question: |
+      `_canonicalize_theme_names` uses `DISTINCT ON (name) ORDER BY name,
+      theme_date ASC` — returns the EARLIEST snapshot per name. When a
+      name's ticker set evolves over its life (tickers cycle in/out),
+      the earliest snapshot may have a different ticker set than today,
+      so canonicalize misses the match — even though the LATEST snapshot
+      of that name DOES match today.
+
+      Concrete case (2026-05-13): today's `Independent E&P Operators`
+      with 37 oil tickers exactly matches 5/11 `Hydraulic Fracturing &
+      Well Completion Services` (also 37 oil tickers). Canonicalize
+      missed because earliest `Hydraulic Fracturing` was 4/23 with only
+      5 tickers. Result: theme history (`days_active=7`) was orphaned,
+      and the sub-theme `Independent E&P Operators` was logged with
+      `parent_theme=Hydraulic Fracturing` even though parent wasn't
+      in today's list — triggering `theme_orphan_sub` (fixed in
+      separate commit 2026-05-13).
+
+      Proposed fix: drop `DISTINCT ON`, query ALL `(name, theme_date,
+      tickers)` tuples from last 14d. Group by `frozenset(tickers)`.
+      For each today theme, look up its ticker set in the group; if
+      found, rename to the earliest name in that group. This handles
+      ticker-set evolution within one name (same name appears multiple
+      times with different ticker sets — match against the snapshot
+      that actually shares today's set).
+    predicate_sql: |
+      -- Track via theme_name_variant_observed events where today's
+      -- ticker set matches a prior name's latest snapshot but NOT
+      -- its earliest snapshot. This needs an additional probe inside
+      -- _emit_cross_run_dup_probe to log such cases as
+      -- `theme_canonicalize_gap_observed`. Predicate placeholder: count
+      -- distinct days with such an event.
+      SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
+      FROM mi_audit_log
+      WHERE event_type = 'theme_canonicalize_gap_observed'
+        AND created_at > NOW() - INTERVAL '30 days';
+    threshold: 3
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      1. Pull theme_canonicalize_gap_observed events to confirm ≥3
+         distinct days with the pattern.
+      2. Read `_canonicalize_theme_names` and `_emit_cross_run_dup_probe`
+         in theme_engine.py — confirm the diagnosis (DISTINCT ON vs
+         all-snapshots).
+      3. Propose the fix in shadow (no rename, just log what would have
+         been renamed). Run 7 days, compare to actual rename count.
+         Sanity check: does the proposed fix oscillate (rename theme A
+         to B today, B to A tomorrow)? It shouldn't — sort by date
+         picks earliest deterministically.
+      4. Ship after backtest passes. SSoT update: docs/setups/ doesn't
+         have a theme-engine doc; document in CLAUDE.md.
+
+      Also: file the upstream probe addition `theme_canonicalize_gap_observed`
+      as part of this work so the predicate has data when review time comes.
+
+      Origin: 2026-05-13 session 7 — surfaced while fixing orphan_sub
+      remediation. C2 review correctly closed (no fix for cross-run
+      probe); this is a separate finding about the canonicalize helper.
     status: pending
     added_on: 2026-05-13

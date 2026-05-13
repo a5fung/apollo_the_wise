@@ -470,18 +470,25 @@ async def _emit_pipeline_diagnostic(
     sub_theme_parents: dict[str, str] | None = None,
 ) -> dict:
     """Stage-boundary diagnostic: emit audit rows for any pipeline-state invariant
-    violations after the named stage. Non-mutating — answers "what is the state
-    of the pipeline at this checkpoint?" so the next prod incident has evidence
-    naming the stage and mechanism.
+    violations after the named stage, with one bounded remediation.
 
-    Captures:
+    Captures (audit-only):
       - duplicate ticker sets (two themes with identical members)
       - score-tie groups (≥2 themes at same score → sort non-deterministic)
       - empty themes (tickers list empty after a strip/cap mutation)
-      - orphan sub-themes (parent_theme refers to a name not in the current list)
 
-    Each violation gets its own event_type so `show errors` / topic queries can
-    filter cleanly.
+    Captures + remediates:
+      - orphan sub-themes (parent_theme refers to a name not in the current
+        list). 2026-05-13: the orphaned child's `parent_theme` is cleared in
+        place and the entry is removed from `sub_theme_parents` so subsequent
+        diagnostic stages don't re-fire. Sub-theme survives as a top-level
+        theme; only the parent_theme metadata is lost. Chosen over
+        block-parent-drop (too coupled to merge/cap logic) and drop-orphan
+        (loses information). Triggered by 7 events in 14d, dominant pattern
+        E&P/Fracturing oil-sector parent dropped during merge or cap stage.
+
+    Each violation still gets its own event_type so `show errors` / topic
+    queries can filter cleanly. Mutations live in this one block only.
     """
     findings: dict = {}
 
@@ -531,7 +538,10 @@ async def _emit_pipeline_diagnostic(
             detail=f"stage={stage_label}\nempties={empties}",
         )
 
-    # 4. Orphan sub-themes (parent not in this list — relationship snapped)
+    # 4. Orphan sub-themes (parent not in this list — relationship snapped).
+    # Audit + remediate: clear the orphaned child's parent_theme in place
+    # and drop the entry from sub_theme_parents so subsequent stages don't
+    # re-fire. See function docstring for rationale.
     if sub_theme_parents:
         names_in_list = {t["name"] for t in themes}
         orphans = [
@@ -547,6 +557,16 @@ async def _emit_pipeline_diagnostic(
                 summary=f"{len(orphans)} orphan sub-theme(s) after stage '{stage_label}'",
                 detail=f"stage={stage_label}\n{detail}",
             )
+            # Remediation: clear parent_theme on each orphaned child and drop
+            # the entry from sub_theme_parents (caller-mutating; the same dict
+            # is passed to the next stage's diagnostic so subsequent calls
+            # see the cleaned-up state).
+            orphan_children = {child for child, _ in orphans}
+            for t in themes:
+                if t["name"] in orphan_children:
+                    t["parent_theme"] = None
+            for child, _ in orphans:
+                sub_theme_parents.pop(child, None)
 
     return findings
 
