@@ -58,6 +58,40 @@ def _cost_for_call(
     return round(cost, 6)
 
 
+_SCHEMA_ENSURED = False
+
+
+async def _ensure_schema() -> None:
+    """Ensure api_usage table exists. Idempotent. Cached after first success.
+
+    Advisor 2026-05-13 caught: spend_tracker assumed api_usage existed
+    because orchestrator's core.spend.initialize_spend_schema() creates it.
+    On any cold-restart that brings up market-agent first, INSERTs would
+    silently fail — exactly the silent-failure pattern this file fixes.
+    """
+    global _SCHEMA_ENSURED
+    if _SCHEMA_ENSURED:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS api_usage (
+                id              SERIAL PRIMARY KEY,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                model           TEXT NOT NULL,
+                caller          TEXT NOT NULL,
+                input_tokens    INT NOT NULL DEFAULT 0,
+                output_tokens   INT NOT NULL DEFAULT 0,
+                cache_creation  INT NOT NULL DEFAULT 0,
+                cache_read      INT NOT NULL DEFAULT 0,
+                cost_usd        DOUBLE PRECISION NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_api_usage_created
+                ON api_usage(created_at);
+        """)
+    _SCHEMA_ENSURED = True
+
+
 async def log_anthropic_call(
     *,
     model: str,
@@ -89,6 +123,7 @@ async def log_anthropic_call(
         cache_read_tokens=cache_read,
     )
 
+    await _ensure_schema()
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
