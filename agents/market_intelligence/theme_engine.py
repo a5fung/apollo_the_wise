@@ -1457,11 +1457,15 @@ Rules:
 - Return empty array if nothing fits — that is the correct answer
 - Use the EXACT theme name from the list above
 
-Before calling assign_stocks_to_themes, ask yourself: am I uncertain about any assignment?
-Consult the advisor FIRST if any of these apply:
+OUTPUT FORMAT — IMPORTANT:
+Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field. Free text before the tool call wastes the output budget and can cause the response to truncate before the tool is invoked.
+
+Call `assign_stocks_to_themes` directly with your reasoning in `analysis_scratchpad` (one short line per ticker: business + decision + theme name or "no fit"). The `assignments` array contains only the actual fits.
+
+Consult the advisor ONLY if either of these apply:
 - A stock could plausibly fit 2 different themes and you're not sure which is more specific
 - A stock's description is ambiguous — it could be in this theme or something unrelated
-If none of these apply, call assign_stocks_to_themes directly."""
+In every other case, skip the advisor and call `assign_stocks_to_themes` immediately."""
 
     try:
         messages: list[dict] = [{"role": "user", "content": prompt}]
@@ -1471,7 +1475,13 @@ If none of these apply, call assign_stocks_to_themes directly."""
         while True:
             response = await client.messages.create(
                 model=THEME_MODEL,
-                max_tokens=1000,
+                # Bumped 1000 → 4000 (2026-05-13): silent_stop on 5/12 and 5/13
+                # were caused by Sonnet exhausting max_tokens on inline analysis
+                # text before reaching the tool call. 4000 gives headroom for
+                # scratchpad + assignments + occasional verbose runs. Prompt
+                # also restructured to push reasoning into analysis_scratchpad
+                # instead of pre-tool free text.
+                max_tokens=4000,
                 tools=[_THEME_ASSIGNMENT_TOOL, _ADVISOR_TOOL],
                 tool_choice={"type": "auto"},
                 messages=messages,

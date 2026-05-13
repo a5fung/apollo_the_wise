@@ -302,6 +302,19 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-13 (session 5) — #46 theme assignment silent_stop fix (max_tokens + prompt restructure)
+**Root cause** of the 2026-05-09 user-flagged under-anchoring (MU/SNDK/MRAM/SIMO/MXL missing from themes despite top-30 RS): `max_tokens=1000` truncated Sonnet's response BEFORE the `assign_stocks_to_themes` tool call could emit. Pattern surfaced by the silent-skip telemetry that shipped 5/9 (commit 6647669) — 5/12 and 5/13 both fired `assignment_silent_stop` with `advisor_calls=0` and response text "I'll systematically analyze each uncovered stock..." (21 candidates × ~50 tokens of inline analysis = ~1050 tokens, exhausting the budget). The 5/11 successful run with `advisor_calls=3, proposed=0` confirms the loop itself works when Sonnet routes through advisor instead of inline analysis — Sonnet's reasoning path is temperature-variant.
+
+User-reported tickers (MU/SNDK/MRAM/SIMO/MXL) all anchored to AI Memory & Storage + AI Datacenter Optical Transceivers themes by 5/13 via manual `/theme assign` + subsequent nightly runs. Coverage gap closed before the fix shipped.
+
+**Fix** (`theme_engine.py::_assign_uncovered_to_themes`):
+(A) `max_tokens` 1000 → 4000 — headroom for scratchpad + verbose runs, prevents future truncation as universe grows.
+(B) Prompt restructured: replaced "Before calling X, ask yourself..." (which invited pre-tool free text) with explicit "Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field." Advisor consultation reserved for genuine ambiguity (2+ plausible themes / ambiguous description) — preserves the 5/11 working pattern where Sonnet uses the advisor for hard calls.
+
+**Monitoring**: watch `assignment_silent_stop` count over next ≥7 days. Zero events = fix worked. Reappearance = look at structural loop changes (retry on silent_stop). YAML review `theme_assignment_telemetry_review` closed with full diagnostic outcome.
+
+**Lesson**: an LLM tool-use loop without sufficient `max_tokens` headroom fails silently — the response gets truncated mid-stream, the tool_use block never materializes, the code-side "no tool call" branch treats it as legitimate "no proposals" rather than truncation. Same shape as the 2026-05-07 splits_ingest premature-apply bug: a flag (here, "Sonnet didn't call the tool") tracked the procedure-ran outcome rather than the semantic outcome (here, "the response wasn't truncated"). Defensive headroom + telemetry to detect the failure are both required. Advisor's recommendation to also restructure the prompt (B) was the structural fix — A alone would fail again at larger candidate-pool sizes.
+
 ### 2026-05-13 (session 4) — 9M sugar baby M&A coverage closure (WEN-class) + stop_too_wide cohort review filed
 Followups from morning's M&A filter ship. **Coverage gap surfaced by WEN 5/13**: take-private rumor was correctly filtered on EP path (10× `mna_filter_fired` audit events) but the same name passed 9M sugar baby logging on 5/12 EOD and surfaced as a Day-2 ORB candidate on 5/13. Entry attempt only failed on `setup:faded_from_orb` shape rejection (coincidence — if WEN had held ORB high, system would have entered a take-private target with no follow-through available). Grep confirmed `is_likely_ma` not called in `ninem_detector.py` or `broker/entry_pipeline.py` — 9M Day 2 path had zero M&A coverage.
 

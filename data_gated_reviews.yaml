@@ -778,8 +778,34 @@ reviews:
          /theme assign command (committed 9d50bf9) remains as the
          operator recourse regardless.
       Origin: 2026-05-09 user-flagged coverage gap. See task #46.
-    status: pending
+    status: done
     added_on: 2026-05-09
+    closed_on: 2026-05-13
+    outcome: |
+      Root cause: `max_tokens=1000` truncated Sonnet's response BEFORE the
+      tool_use block emitted. 5/12 and 5/13 both showed silent_stop with
+      advisor_calls=0 and response_text starting with "I'll systematically
+      analyze each uncovered stock..." (21 candidates × ~50 tokens of inline
+      analysis = ~1050 tokens, hits the limit). The 5/11 successful run
+      (advisor_calls=3, proposed 0) confirms the assignment path itself
+      works when Sonnet routes through advisor instead of inline analysis
+      — Sonnet's reasoning path is temperature-variant.
+
+      User-reported tickers (MU/SNDK/MRAM/SIMO/MXL) all anchored by 5/13
+      via manual /theme assign + subsequent nightly runs. Coverage gap
+      closed.
+
+      Fix shipped (2026-05-13):
+      (A) max_tokens 1000 → 4000 — headroom for scratchpad + verbose runs
+      (B) Prompt restructured to forbid pre-tool free-text analysis,
+          push per-ticker reasoning into the tool's analysis_scratchpad
+          field. Advisor consultation reserved for genuine ambiguity
+          (2+ plausible themes / ambiguous description) — preserves the
+          5/11 working pattern.
+
+      Monitoring: watch `assignment_silent_stop` audit event count over
+      next ≥7 days. Zero events = fix worked. Reappearance = look at
+      structural loop changes (e.g. retry on silent_stop).
 
   - review_id: drawdown_breaker_promotion
     title: "Drawdown circuit breaker — shadow → active flip (#39, GATE 1 of live cutover)"
