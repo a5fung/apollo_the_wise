@@ -289,8 +289,15 @@ reviews:
       affected job (`run_outcome_tracker` for #4, `_log_ep_scan` writes
       for #1/#2, alert insert path for #3) and trace the silent failure.
       Origin: 2026-04-30 dead-zone telemetry deploy verification.
-    status: pending
+    status: done
     added_on: 2026-04-30
+    closed_on: 2026-05-13
+    outcome: |
+      All 4 writers verified populating. 7d snapshot: scan_log 3541 rows
+      with 0 NULL scan_time_et; 330 multi-row pairs (append-only working);
+      63 alerts since 5/01 all with detected_at populated; scan_outcomes
+      587 rows through 5/08 (consistent with 5d forward-return window
+      settling 5/13). No silent failures.
 
   - review_id: ep_adv_probe_volume_sanity
     title: "ADV probe event volume sanity (rank 21-50 audit firing)"
@@ -325,8 +332,30 @@ reviews:
       Origin: 2026-04-30 deploy. Failure mode: silent under-emission
       would let adv_probe_retirement (review_id above) misjudge "no
       winners → retire" when reality is "no telemetry → can't tell".
-    status: pending
+    status: done
     added_on: 2026-04-30
+    closed_on: 2026-05-13
+    outcome: |
+      Emit path WORKS. 9d sample 2026-05-01..05-13: 5/06=1131, 5/07=922
+      both within the originally-expected 400-1000/day range, proving
+      the rank>20 audit-emit code path is reachable when the universe
+      supports it. Other days varied 5-218 (5/04=5, 5/12=21, 5/01=14
+      below the 50 "telemetry hole" threshold but on otherwise-thin
+      pre-market days — scan_log shows only 15-28 max_rank on those
+      days, so few rank-21-50 candidates exist to probe).
+
+      Root cause of variance: rate is determined by how many candidates
+      per scan tick have rank>20 AND adv_source='pending' (outside
+      pre-cached top-500 universe). On wide gap-list days that's
+      hundreds; on thin days it's a handful. Naturally varies with
+      pre-market gap-list width — not a code bug.
+
+      Implication for adv_probe_retirement (2026-06-01 review): the
+      "no winners → retire" decision must base on relative cohort
+      outcomes (rank-21-50 win rate vs rank<=20 in the same period),
+      not absolute audit-event count. A 50/day floor is not a
+      meaningful gate; substitute "rank-21-50 cohort N >= 30
+      observations" instead.
 
   - review_id: fishhook_v3_first_eod_pass_verify
     title: "Fishhook V3 first EOD pass smoke test"
@@ -361,7 +390,17 @@ reviews:
       _fishhook_eod_job at 17:20 ET. If (3) is missing, _seed_strategies
       didn't run on startup — restart the market service.
       Origin: 2026-04-30 fishhook V3 deploy.
-    status: pending
+    status: done
+    closed_on: 2026-05-13
+    outcome: |
+      All 3 checks pass. 22 anchors logged in last 3d (all pending,
+      fresh); EOD pass running 17:20 ET every trading day with state
+      transitions firing (5/13: new_pending=6, invalidated=1,
+      reclaimed=5, promoted=5); mi_strategies has fishhook_v3 row with
+      phase=shadow, promotion_model=telemetry_review, enabled=true.
+      First-EOD-pass smoke test passed. Promotion-gate review
+      (fishhook_v3_first_telemetry_review) takes over once n_settled
+      reaches 10.
     added_on: 2026-04-30
 
   - review_id: fishhook_v3_first_telemetry_review
@@ -853,12 +892,14 @@ reviews:
       stop trail or stop hit) been observed in paper since the fix landed,
       with no naked-window event in mi_audit_log? If yes, fix is verified.
     predicate_sql: |
+      -- 2026-05-13 tightened: exits>=2 catches re-entry cases (stop1+stop2)
+      -- which don't exercise the partial-trail naked-window code path.
+      -- partial_taken=true is the real signal that the fix-target scenario
+      -- (partial exit + concurrent stop refresh) actually occurred.
       SELECT COUNT(*) FROM mi_live_trades lt
       WHERE lt.account_mode = 'paper'
         AND lt.alert_date >= '2026-05-10'
-        AND lt.exits IS NOT NULL
-        AND jsonb_typeof(lt.exits) = 'array'
-        AND jsonb_array_length(lt.exits) >= 2
+        AND lt.partial_taken = true
         AND lt.status = 'closed'
     threshold: 1
     earliest_review_date: 2026-05-13
