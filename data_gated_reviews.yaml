@@ -87,9 +87,13 @@ reviews:
       the dominant cause? Pick the mechanism cited by audit rows in BOTH
       incidents and write the targeted fix.
     predicate_sql: |
+      -- Post-2026-05-13: probe renamed to theme_name_variant_observed
+      -- (informational), and theme_save_dedup is the true-dup signal.
+      -- Predicate kept for historical audit; predicate threshold made
+      -- irrelevant by closure status.
       SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
       FROM mi_audit_log
-      WHERE event_type IN ('theme_dup_ticker_sets', 'theme_cross_run_dup_candidate')
+      WHERE event_type = 'theme_save_dedup'
         AND created_at > NOW() - INTERVAL '60 days'
     threshold: 2
     earliest_review_date: 2026-04-30
@@ -98,8 +102,38 @@ reviews:
       mechanisms, pick the one cited in BOTH incidents. See
       project_theme_engine_diagnostic_followups.md for triage workflow.
       Hard rule from that memo: no semantic fix until ≥2 incidents agree.
-    status: pending
+    status: done
     added_on: 2026-04-29
+    closed_on: 2026-05-13
+    outcome: |
+      No fix needed. 10-day audit walk revealed the YAML's premise was
+      wrong: the "incidents" weren't incidents. Zero true same-day dups
+      exist (mi_themes has 0 (date, ticker_set) pairs with multiple
+      names in 14d; theme_save_dedup has 0 events in 60d). The probe
+      `theme_cross_run_dup_candidate` was over-emitting — 7-9 "candidates"
+      per day, all canonicalization-handled. Most fires were FALSE
+      POSITIVES: today's name is the earliest canonical, but the same
+      ticker set ALSO appeared under a different name on an anomaly day
+      (often a one-day Sonnet rename), and the probe flagged the variant
+      regardless of whether canonicalize would handle it.
+
+      Action taken (commit 2026-05-13 session 6):
+      - Renamed audit event `theme_cross_run_dup_candidate` →
+        `theme_name_variant_observed` to honestly describe what it
+        reports (Sonnet name-drift telemetry, not an incident).
+      - Reframed in-code docstring to clarify it's informational.
+      - No semantic fix shipped — hard rule held: zero real incidents,
+        zero fix.
+
+      True-dup signal already exists: `theme_save_dedup` (theme_engine.py
+      line ~836) fires when Sonnet generates ≥2 themes with the same
+      ticker set on the same day. 0 events in 60d = canonicalize is
+      working as designed. If this ever starts firing, that's a real
+      canonicalize regression.
+
+      Filed separately: theme_orphan_sub_mechanism (parent dropped during
+      merge/cap stages leaves sub orphaned; 7 events in 14d; small
+      volume but real bug).
 
   - review_id: system_audit_baseline_validation
     title: "L2/L3 audit baseline trust window"
@@ -1249,5 +1283,63 @@ reviews:
       Origin: STRL 5/05 single-case anomaly (#11 filed 2026-05-13 session 2).
       AIP 5/13 second case raised priority to formal cohort review.
       Related backlog: project_market_intelligence_backlog item #11.
+    status: pending
+    added_on: 2026-05-13
+
+  - review_id: theme_orphan_sub_mechanism
+    title: "Theme orphan sub-theme — parent dropped during merge/cap"
+    question: |
+      `theme_orphan_sub` fires when a sub-theme's `parent_theme` field
+      references a theme name that is NOT in the final themes list at the
+      `after_merge_1` or `after_cap_1` stage. 7+ events in 14d (small
+      volume but recurring). The merge or cap stage is dropping the parent
+      theme while keeping its child sub-theme — leaving the sub stranded
+      without context.
+
+      Today (2026-05-13) example: sub=`Independent E&P Operators` parent=
+      `Hydraulic Fracturing & Well Completion Services` (parent not in list).
+      The 37-ticker E&P theme is logged as a "sub" of the (dropped) Hydraulic
+      Fracturing theme — semantic nonsense.
+
+      Diagnose which merge/cap stage condition drops the parent. Likely
+      candidates per code reading: stage threshold filter (score-too-low,
+      stage=Retired/Fading), ticker-overlap merge that consumed parent into
+      another, or a sub-theme split that severed parent linkage.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'theme_orphan_sub'
+        AND created_at > NOW() - INTERVAL '14 days';
+    threshold: 14
+    earliest_review_date: 2026-05-13
+    action_when_ready: |
+      1. Pull 14d of theme_orphan_sub events with detail:
+           SELECT created_at, summary, detail FROM mi_audit_log
+           WHERE event_type='theme_orphan_sub'
+             AND created_at > NOW() - INTERVAL '14 days'
+           ORDER BY created_at DESC;
+         Catalog distinct (sub, parent) pairs. Are they always the same
+         pair (single chronic case) or many different pairs (systemic)?
+
+      2. For each chronic (sub, parent) pair, check what happened to the
+         parent in the same nightly run:
+           SELECT theme_date, name, stage, score, days_active
+           FROM mi_themes
+           WHERE theme_date = <orphan_event_date>
+             AND name = <parent_name>;
+         If 0 rows: parent was dropped entirely. If 1 row with stage=
+         Retired/Fading: filter dropped it. If 1 row with different
+         tickers: was merged into another theme.
+
+      3. Trace the merge/cap stage in theme_engine.py — find the code path
+         that drops the parent without checking for orphan subs. Either:
+         (a) Block parent-drop when sub-theme references it (cleanest)
+         (b) Promote orphan sub to top-level theme (drop parent_theme field)
+         (c) Drop the orphan sub along with the parent (loses the data)
+
+      4. Ship the fix in the same commit as a regression test using a
+         scripted nightly-run fixture.
+
+      Origin: C2 diagnostic walk 2026-05-13 (session 6). Surfaced incidentally
+      while diagnosing theme_engine_dup_incident (which closed as no-fix-needed).
     status: pending
     added_on: 2026-05-13

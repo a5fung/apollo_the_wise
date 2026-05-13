@@ -632,12 +632,22 @@ async def _emit_load_diagnostic(existing: list[dict], today) -> None:
 
 async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
     """For each theme being saved, query the last 14 days of mi_themes for rows
-    with the same ticker set under a DIFFERENT name. Catches the cross-run dup
-    pattern where two themes are created on different days and never co-enter
-    a single merge call.
+    with the same ticker set under a DIFFERENT name.
 
-    Diagnostic only — emits audit rows so the next prod incident can be traced
-    to a specific (today_name, prior_name, ticker_set, prior_date) tuple.
+    Informational only — reports Sonnet's tendency to generate name variants
+    for stable ticker sets across runs. Most fires are NOT real dups: today's
+    name is often the earliest canonical, and `_canonicalize_theme_names`
+    correctly leaves it alone. The real same-day dup signal is
+    `theme_save_dedup` (line ~836), which has fired 0× in 60d.
+
+    Event name `theme_name_variant_observed` reflects the actual semantics:
+    "this ticker set has appeared under a different name in the last 14d."
+    Useful telemetry for measuring Sonnet drift rate; NOT an incident.
+
+    History: previously named `theme_cross_run_dup_candidate`. Renamed
+    2026-05-13 after a 10-day audit revealed it was over-emitting (7-9
+    "candidates" per day, all canonicalization-handled). YAML review
+    `theme_engine_dup_incident` closed same day.
     """
     today_names = {t["name"] for t in themes}
     today_sets: dict[frozenset, str] = {}  # frozenset -> our theme name
@@ -677,10 +687,10 @@ async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
             for tn, tk, pn, pd in findings
         )
         await log_audit_event(
-            "theme_cross_run_dup_candidate",
+            "theme_name_variant_observed",
             summary=(
-                f"{len(findings)} theme(s) match a different prior name with same ticker set "
-                f"(last 14d) — possible cross-run dup"
+                f"{len(findings)} theme(s) had a different name in last 14d for the same ticker set "
+                f"(informational — Sonnet name-drift; canonicalize handles)"
             ),
             detail=detail,
         )
