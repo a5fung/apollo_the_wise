@@ -1434,3 +1434,138 @@ reviews:
       probe); this is a separate finding about the canonicalize helper.
     status: pending
     added_on: 2026-05-13
+
+  - review_id: perplexity_hallucination_keyword_leak
+    title: "Perplexity disclaimer text leaks into M&A keyword scanner (RAL/P-class FPs)"
+    question: |
+      When Perplexity is asked about an unknown ticker it returns
+      disclaimer text like "No recent catalysts found for RAL stock...
+      Search results reference Rocket Lab (RKLB) wins..." or "No direct
+      information available on WAT. Nearest match is 5N Plus (FPLSF)..."
+      That filler is then passed verbatim to `ma_filter.is_likely_ma` as
+      `catalyst_texts`, and the keyword scanner matches against words in
+      the IRRELEVANT content Perplexity returned (e.g. "merger" in a
+      mention of an unrelated company, "strategic transaction" in a
+      generic phrase).
+
+      90d audit: 11 `mna_filter_fired` events have disclaimer-pattern
+      news_summary text. RAL/P were two such cases analyzed during the
+      2026-05-13 M&A direction-blind fix.
+
+      The same bug class likely affects other detectors that feed
+      Perplexity output to keyword scanners (flag detection, theme
+      description ingestion, EP catalyst grading). A systematic
+      sanitizer detecting disclaimer phrases and suppressing them
+      before keyword matching would close the class.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'mna_filter_fired'
+        AND created_at > NOW() - INTERVAL '90 days'
+        AND (detail ILIKE '%nearest match%'
+             OR detail ILIKE '%closest match%'
+             OR detail ILIKE '%no direct catalyst%'
+             OR detail ILIKE '%no recent catalysts%'
+             OR detail ILIKE '%no specific news%');
+    threshold: 11
+    earliest_review_date: 2026-05-13
+    action_when_ready: |
+      Predicate threshold already met (11 hits in 90d). Actions:
+
+      1. Add `_strip_perplexity_disclaimer(text)` helper in collector.py.
+         Detects lead patterns ("No recent catalysts", "No direct
+         information", "I dont have information" (note ASCII apostrophe
+         convert), "Nearest match", "Closest match", "Search results
+         reference") in the first 100 chars and returns
+         (clean_text, is_disclaimer). Conservative — only strip when
+         pattern is in the LEAD, not when it appears mid-content as a
+         legitimate quote.
+
+      2. Hook at ep_detector.py (~line 898) before catalyst_texts list
+         is built. When is_disclaimer=True, pass empty string for
+         catalyst_texts[1] so Polygon news headlines (different source)
+         drive the M&A check alone. Emit
+         `perplexity_disclaimer_stripped` audit event with original /
+         stripped length for verification.
+
+      3. Backtest: re-evaluate the 11 historical hits — would they
+         still trip the M&A filter under the new sanitizer? Goal: 0
+         (all 11 were FPs). If any genuine M&A target is among the 11,
+         tighten the disclaimer pattern.
+
+      4. Same hook for flag_detector.py:735 (different invocation, no
+         LLM catalyst grading — uses Polygon news directly, so this
+         site may not need the strip; verify).
+
+      Origin: 2026-05-13 session 1 spot-check during M&A direction-blind
+      fix. Broader 11-event 90d backtest surfaced session 7.
+    status: pending
+    added_on: 2026-05-13
+
+  - review_id: trade_stream_stop_placement_without_orders_row
+    title: "trade_stream.py places stops without mi_live_orders row (2 edge case sites)"
+    question: |
+      Two code paths in `agents/market_intelligence/broker/trade_stream.py`
+      place a stop order via Alpaca but do NOT insert a `mi_live_orders`
+      row to track it:
+
+      Site 1 — line 367: entry-fill stop remediation. When the OTO
+      bracket's stop-loss leg is missing from the WebSocket event (rare;
+      should not happen per OTO validation), this branch fires a
+      replacement stop. No mi_live_orders row written. mi_live_trades.
+      stop_order_id is updated, but the purpose=stop_loss routing
+      shipped 2026-05-08 has no row to read.
+
+      Site 2 — lines 600-611: partial-exit cancel/reject restore stop.
+      When a partial exit is canceled/rejected by the broker, this
+      branch restores the full-quantity stop. Same omission — no
+      mi_live_orders row written.
+
+      Impact: if either fires, the _handle_partial_fill / _handle_fill
+      purpose-tagged routing (shipped 2026-05-08) falls back to legacy
+      stop_order_id matching, which is brittle. Same bug class as ARM
+      5/07 / TEAM 5/06 — desync between broker state and Apollo DB.
+
+      Predicate: count fires of either branch. Both should be 0 per
+      OTO bracket validation. If either fires under live $ load, the
+      fix is to insert a tagged mi_live_orders row at the same time
+      we update stop_order_id.
+    predicate_sql: |
+      -- TODO: add explicit audit events at trade_stream.py:367 and
+      -- :600-611 so this predicate is specific. For now uses
+      -- naked-position proxy (fires if either branch's stop also
+      -- fails to actually be placed at broker).
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type IN ('naked_position_detected',
+                            'stop_placement_failed_after_partial',
+                            'entry_fill_stop_remediated')
+        AND created_at > NOW() - INTERVAL '14 days';
+    threshold: 1
+    earliest_review_date: 2026-05-22
+    action_when_ready: |
+      Predicate met → either branch fired. Actions:
+
+      1. Identify which branch via the specific audit event:
+         - entry_fill_stop_remediated → site 1
+         - stop_placement_failed_after_partial → site 2
+         - naked_position_detected (catch-all) → check trade history
+           for partial_taken=true rows around event time
+
+      2. Inspect the failing trade's mi_live_orders rows for the
+         relevant stop leg. If 0 rows for the active stop_order_id,
+         confirmed: branch placed a stop but never logged it.
+
+      3. Fix: insert mi_live_orders row at both sites with
+         purpose=stop_loss, exit_reason=stop_hit (matches 2026-05-08
+         SSoT). Site 1 also needs to verify OTO validation — why
+         did bracket lose its stop leg?
+
+      4. SSoT: document in CLAUDE.md "Stop-Leg ID Capture" section.
+
+      Origin: 2026-05-08 commit notes (TEAM 5/06 class fix). Filed
+      2026-05-13 session 7 as defensive pre-live-cutover coverage —
+      partial-exit cancel/reject is precisely the class where live $
+      broker behavior can differ from paper. If Gate 3 paper trades
+      reach N≥5 without firing this, marginal. If fires during live
+      cutover, immediate blocker.
+    status: pending
+    added_on: 2026-05-13
