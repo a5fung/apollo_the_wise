@@ -266,6 +266,12 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - Both services: same but add `orchestrator` to build/up commands
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
 
+**Post-deploy preflight (REQUIRED after every deploy touching broker / strategies / safeguards / alpaca_client / entry_pipeline):**
+```
+docker exec apollo-market python -m scripts.preflight_check
+```
+Walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Exits non-zero if any strategy/mode pair raises. **2026-05-13 outage would have been caught here** — magna53 + 9m_day2 at `phase='live'` under `ENABLE_LIVE_MODE=false` raised `KeyError: 'ALPACA_LIVE_API_KEY'` on `get_account('live')`. Boot smoke (`verify_dual_account_clients`) didn't catch it because it only checked clients with present credentials.
+
 ## Required Env Vars
 ```
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
