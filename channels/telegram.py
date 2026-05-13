@@ -470,7 +470,8 @@ class TelegramChannel:
             "/help — this reference\n"
             "\n"
             "*Diagnostics*\n"
-            "`/why TICKER [YYYY-MM-DD]` — full lifecycle trace (alert → entry/skip → events)\n"
+            "`/why TICKER [YYYY-MM-DD]` — detection + entry diagnosis (alert, skip-reason, fill)\n"
+            "`/trade TICKER [YYYY-MM-DD]` — full trade anatomy (entries, stops, exits)\n"
             "`/missed [days]` — top EPs we didn't enter, ranked by forward return\n"
             "`/missed by reason` — same data, grouped by skip category\n"
             "`show errors 7d` — recent engine errors (validation, broker, feed)\n"
@@ -1589,7 +1590,7 @@ class TelegramChannel:
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
                      "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook", "dryrun",
-                     "missed"):
+                     "missed", "trade"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1623,7 +1624,8 @@ class TelegramChannel:
             BotCommand("trades",    "Positions + P&L — tap to drill down"),
             BotCommand("watchlist", "Friday curated chart-review list (cross-source aggregator)"),
             BotCommand("setup",     "/setup TICKER [days] — reverse-lookup detector chronology"),
-            BotCommand("why",       "/why TICKER [date] — per-ticker lifecycle (alert→trade→audit)"),
+            BotCommand("why",       "/why TICKER [date] — detection + entry diagnosis"),
+            BotCommand("trade",     "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("flags",     "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
             BotCommand("fishhook",  "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("missed",    "Missed EPs — top winners we didn't enter (opportunity cost)"),

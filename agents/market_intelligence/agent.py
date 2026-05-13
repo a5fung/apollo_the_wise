@@ -3973,6 +3973,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/positions":      self._handle_watchlist,
             "/pregame":        self._handle_pregame,
             "/trades":         self._handle_trades_detail,
+            "/trade":          self._handle_trade_query,
             "/why":            self._handle_why_query,
             "/audit":          self._handle_audit_topic,
             "/parabolic":      self._handle_parabolic_exclusion,
@@ -4270,10 +4271,21 @@ class MarketIntelligenceAgent(BaseAgent):
                 "trade_closed":     "Trade closed",
             }
 
+            # Per-fill broker notifications — useful for execution forensics,
+            # but /why is the detection-and-outcome view. Use /trade TICKER
+            # for partial-fill breakdown.
+            _EXEC_NOISE_TYPES = {
+                "entry_partial_fill",
+                "partial_exit_sell_placed",
+                "partial_exit_stop_replaced",
+            }
+
             def _clean(ev) -> str | None:
                 """Return one-line human label, or None to drop the event."""
                 summary = (ev["summary"] or "").strip()
                 etype = ev["event_type"]
+                if etype in _EXEC_NOISE_TYPES:
+                    return None
                 # Drop batch-summary events that just happen to mention this
                 # ticker in a list ("[bar_stream] 2 alerts: [TEAM, TWLO]").
                 if summary.startswith("[") and "alerts:" in summary:
@@ -4326,6 +4338,294 @@ class MarketIntelligenceAgent(BaseAgent):
             return self._ok(request, result=body_text)
         except Exception as e:
             logger.warning(f"why keyboard send failed for {ticker}: {e}")
+            return self._ok(request, result=body_text)
+
+    async def _handle_trade_query(self, request: AgentRequest) -> AgentResponse:
+        """`/trade TICKER [YYYY-MM-DD]` — full trade anatomy.
+
+        Buys / sells / stop edits chronologically, sourced from
+        mi_live_orders (every order placed), mi_live_trades.exits[]
+        (committed exits), and mi_audit_log (stop_update failures +
+        naked-position windows that aren't in the orders table).
+
+        Differs from /why: /why is detection + entry diagnosis
+        ("why didn't this fire / why did it skip"). /trade is
+        execution anatomy ("what happened to my money").
+        """
+        import re as _re
+        import json as _json
+        from datetime import date as _date, datetime as _dt
+        from agents.market_intelligence.collector import _ET
+        from agents.market_intelligence.db import get_pool, get_security_exchange_map
+        from agents.market_intelligence.friday_watchlist import (
+            _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
+        )
+        from agents.market_intelligence.briefing import send_telegram_message
+        import os as _os, httpx as _httpx
+
+        async def _send_plain_with_keyboard(text: str, keyboard: list[list[dict]]) -> bool:
+            bot_token = _os.environ.get("TELEGRAM_BOT_TOKEN")
+            allowed = _os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
+            ids = [x.strip() for x in allowed.split(",") if x.strip()]
+            if not bot_token or not ids:
+                return False
+            payload = {
+                "chat_id": int(ids[0]),
+                "text": text,
+                "disable_web_page_preview": True,
+                "reply_markup": {"inline_keyboard": keyboard},
+            }
+            try:
+                async with _httpx.AsyncClient(timeout=15) as client:
+                    r = await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json=payload,
+                    )
+                    r.raise_for_status()
+                return True
+            except Exception as e:
+                logger.warning(f"trade plain send failed: {e}")
+                return False
+
+        raw = request.task.strip()
+        tokens = raw.split()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', raw.upper())
+        skip = _PREPOSITION_SKIP | {"TRADE", "THE", "FOR", "AND", "MY"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(request, result="Usage: /trade TICKER [YYYY-MM-DD]")
+
+        target_date: _date | None = None
+        for tok in tokens[1:]:
+            try:
+                target_date = _date.fromisoformat(tok)
+                break
+            except ValueError:
+                continue
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if target_date:
+                trade = await conn.fetchrow("""
+                    SELECT id, ticker, alert_date, status, entry_price,
+                           stop_price, entry_shares, remaining_shares,
+                           total_pnl, hold_days, exits, closed_at, entry_attempt
+                    FROM mi_live_trades
+                    WHERE ticker=$1 AND alert_date=$2
+                    ORDER BY id DESC LIMIT 1
+                """, ticker, target_date)
+            else:
+                trade = await conn.fetchrow("""
+                    SELECT id, ticker, alert_date, status, entry_price,
+                           stop_price, entry_shares, remaining_shares,
+                           total_pnl, hold_days, exits, closed_at, entry_attempt
+                    FROM mi_live_trades
+                    WHERE ticker=$1
+                    ORDER BY alert_date DESC, id DESC LIMIT 1
+                """, ticker)
+            if not trade:
+                tail = f" on {target_date}" if target_date else ""
+                return self._ok(
+                    request,
+                    result=f"📋 {ticker} — no trade row{tail}. Try /why for skip/cancel diagnosis.",
+                )
+
+            orders = await conn.fetch("""
+                SELECT id, alpaca_order_id, side, order_type, qty, filled_qty,
+                       filled_avg_price, status, purpose, exit_reason,
+                       stop_price, limit_price, submitted_at, filled_at,
+                       cancelled_at
+                FROM mi_live_orders
+                WHERE trade_id=$1
+                ORDER BY submitted_at ASC, id ASC
+            """, trade["id"])
+
+            # Audit events not represented in mi_live_orders: stop-update
+            # attempts that failed before producing an order row, and the
+            # naked-position window detection. Bounded to alert_date → close.
+            window_end = trade.get("closed_at") or _dt.now(tz=_ET)
+            events = await conn.fetch(r"""
+                SELECT created_at, event_type, summary
+                FROM mi_audit_log
+                WHERE created_at >= ($1::date - INTERVAL '1 day')
+                  AND created_at <= ($2::timestamptz + INTERVAL '1 day')
+                  AND summary ~* ('\m' || $3 || '\M')
+                  AND event_type IN (
+                      'stop_update_started','stop_update_failed',
+                      'naked_position_detected'
+                  )
+                ORDER BY created_at ASC
+            """, trade["alert_date"], window_end, ticker)
+
+        def _parse_exits(raw):
+            if isinstance(raw, list):
+                return raw
+            try:
+                return _json.loads(raw or "[]")
+            except Exception:
+                return []
+        exits = _parse_exits(trade.get("exits"))
+
+        entry_date = trade["alert_date"]
+        closed_at = trade.get("closed_at")
+        close_str = closed_at.astimezone(_ET).strftime("%m/%d") if closed_at else "open"
+        pnl_v = float(trade.get("total_pnl") or 0)
+        pnl_emoji = "✅" if pnl_v > 0 else ("❌" if pnl_v < 0 else "⚪")
+        status = trade.get("status") or "?"
+        entry_sh = int(trade.get("entry_shares") or 0)
+        remaining = int(trade.get("remaining_shares") or 0)
+        attempt = trade.get("entry_attempt") or 1
+
+        attempt_tag = f" · attempt {attempt}" if attempt and attempt > 1 else ""
+        lines = [
+            f"📋 {ticker} — trade #{trade['id']} · {entry_date.strftime('%m/%d')} → {close_str}{attempt_tag}",
+            f"   {pnl_emoji} P&L ${pnl_v:+,.2f}  ·  status={status}  ·  {entry_sh} sh entered, {remaining} remaining",
+        ]
+
+        # ENTRY — buy orders chronologically
+        entry_orders = [o for o in orders if (o["side"] or "").lower() == "buy"]
+        lines.append("")
+        lines.append("ENTRY")
+        if not entry_orders:
+            lines.append("  (no entry orders recorded)")
+        for o in entry_orders:
+            sub = o["submitted_at"].astimezone(_ET) if o["submitted_at"] else None
+            fil = o["filled_at"].astimezone(_ET) if o["filled_at"] else None
+            qty = int(o["qty"] or 0)
+            fq = int(o["filled_qty"] or 0)
+            avg = o["filled_avg_price"]
+            trig = o["stop_price"]
+            lim = o["limit_price"]
+            spec_bits = []
+            if trig is not None:
+                spec_bits.append(f"trigger ${float(trig):.2f}")
+            if lim is not None:
+                spec_bits.append(f"limit ${float(lim):.2f}")
+            spec = " / ".join(spec_bits) if spec_bits else (o["order_type"] or "?")
+            sub_s = sub.strftime("%m/%d %H:%M:%S") if sub else "—"
+            lines.append(f"  {sub_s}  placed   {qty} sh  {spec}")
+            st = (o["status"] or "").lower().split(".")[-1]
+            if "fill" in st and fq > 0:
+                avg_s = f"${float(avg):.2f}" if avg else "?"
+                elapsed = ""
+                if sub and fil:
+                    secs = int((fil - sub).total_seconds())
+                    elapsed = f"  ({secs // 60}m {secs % 60}s)" if secs >= 60 else f"  ({secs}s)"
+                fil_s = fil.strftime("%m/%d %H:%M:%S") if fil else "—"
+                lines.append(f"  {fil_s}  filled   {fq} sh @ {avg_s}{elapsed}")
+            elif "cancel" in st:
+                cx = o["cancelled_at"].astimezone(_ET) if o["cancelled_at"] else None
+                cx_s = cx.strftime("%m/%d %H:%M:%S") if cx else "—"
+                lines.append(f"  {cx_s}  cancelled")
+
+        # STOPS — sell-side stop orders + audit events (failures, naked windows)
+        stop_orders = [
+            o for o in orders
+            if o["purpose"] == "stop_loss"
+            or ((o["side"] or "").lower() == "sell"
+                and (o["order_type"] or "").lower().endswith("stop"))
+        ]
+        stop_items: list[tuple] = []
+        for o in stop_orders:
+            sub = o["submitted_at"].astimezone(_ET) if o["submitted_at"] else None
+            cx = o["cancelled_at"].astimezone(_ET) if o["cancelled_at"] else None
+            fil = o["filled_at"].astimezone(_ET) if o["filled_at"] else None
+            sp = o["stop_price"]
+            qty = int(o["qty"] or 0)
+            fq = int(o["filled_qty"] or 0)
+            avg = o["filled_avg_price"]
+            sp_s = f"${float(sp):.2f}" if sp is not None else "?"
+            st = (o["status"] or "").lower().split(".")[-1]
+            if "fill" in st and fq > 0:
+                avg_s = f"${float(avg):.2f}" if avg else "?"
+                t = fil or sub
+                stop_items.append((
+                    t,
+                    f"  {t.strftime('%m/%d %H:%M:%S')}  🔴 STOP HIT  {fq} sh @ {avg_s} (stop was {sp_s})",
+                ))
+            elif "cancel" in st:
+                if sub:
+                    stop_items.append((
+                        sub,
+                        f"  {sub.strftime('%m/%d %H:%M:%S')}  placed   {qty} sh @ {sp_s}",
+                    ))
+                if cx:
+                    stop_items.append((
+                        cx,
+                        f"  {cx.strftime('%m/%d %H:%M:%S')}  cancelled (was {sp_s})",
+                    ))
+            else:
+                t = sub
+                stop_items.append((
+                    t,
+                    f"  {t.strftime('%m/%d %H:%M:%S') if t else '—'}  placed   {qty} sh @ {sp_s}  [{st}]",
+                ))
+        for e in events:
+            ts = e["created_at"].astimezone(_ET)
+            summary = (e["summary"] or "").strip()
+            # Strip the "TICKER:" prefix and other tracer scaffolding
+            summary = _re.sub(rf"^\s*{ticker}:\s*", "", summary)
+            if e["event_type"] == "stop_update_failed":
+                stop_items.append((
+                    ts,
+                    f"  {ts.strftime('%m/%d %H:%M:%S')}  ⚠️ update FAILED — {summary[:90]}",
+                ))
+            elif e["event_type"] == "naked_position_detected":
+                stop_items.append((
+                    ts,
+                    f"  {ts.strftime('%m/%d %H:%M:%S')}  ⚠️ NAKED window (no broker stop active)",
+                ))
+            elif e["event_type"] == "stop_update_started":
+                stop_items.append((
+                    ts,
+                    f"  {ts.strftime('%m/%d %H:%M:%S')}  update started — {summary[:60]}",
+                ))
+        stop_items.sort(key=lambda x: x[0] or _dt.min.replace(tzinfo=_ET))
+        lines.append("")
+        lines.append("STOPS")
+        if not stop_items:
+            lines.append("  (no stop orders or stop-update events)")
+        for _, s in stop_items:
+            lines.append(s)
+
+        # EXITS — committed exits from mi_live_trades.exits[]
+        lines.append("")
+        lines.append("EXITS")
+        if not exits:
+            lines.append("  (no exits committed)")
+        for ex in exits:
+            t_raw = ex.get("time") or ex.get("filled_at")
+            try:
+                t = _dt.fromisoformat(t_raw).replace(tzinfo=_ET) if t_raw else None
+            except Exception:
+                t = None
+            price = ex.get("price")
+            shares = int(ex.get("shares") or 0)
+            reason = (ex.get("reason") or "?").replace("_", " ")
+            ex_pnl = ex.get("pnl")
+            pnl_s = f"${float(ex_pnl):+,.2f}" if ex_pnl is not None else "?"
+            price_s = f"${float(price):.2f}" if price is not None else "?"
+            ts_s = t.strftime("%m/%d %H:%M:%S") if t else "—"
+            lines.append(f"  {ts_s}  {reason}   {shares} sh @ {price_s}   {pnl_s}")
+
+        body_text = "\n".join(lines)
+
+        try:
+            ex_map = await get_security_exchange_map([ticker])
+            tv_prefix = _TV_EXCHANGE_MAP.get(ex_map.get(ticker, ""), "NASDAQ")
+            tv_url = f"https://www.tradingview.com/chart/?symbol={tv_prefix}:{ticker}"
+            keyboard = [[{"text": f"📈 {ticker} chart", "url": tv_url}]]
+            if len(body_text) <= _TG_SAFE_LIMIT:
+                delivered = await _send_plain_with_keyboard(body_text, keyboard)
+            else:
+                body_ok = await send_telegram_message(body_text)
+                btn_ok = await _send_plain_with_keyboard(f"📈 {ticker} chart →", keyboard)
+                delivered = bool(body_ok and btn_ok)
+            if delivered:
+                return self._ok(request, result="")
+            return self._ok(request, result=body_text)
+        except Exception as e:
+            logger.warning(f"trade keyboard send failed for {ticker}: {e}")
             return self._ok(request, result=body_text)
 
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
