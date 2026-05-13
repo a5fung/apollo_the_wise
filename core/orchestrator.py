@@ -219,7 +219,11 @@ class Apollo:
                     cache_read_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
                 )
             except Exception as e:
-                logger.debug(f"Spend tracking failed: {e}")
+                # WARNING not DEBUG — this hid the May 2026 spend-logger
+                # outage for ~12 days. Per feedback_silent_failures, any
+                # observability gap must surface at WARNING+ so future
+                # regressions are visible without manual inspection.
+                logger.warning(f"Spend tracking failed: {e}")
 
             # If Claude wants to use tools
             if response.stop_reason == "tool_use":

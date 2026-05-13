@@ -1279,6 +1279,13 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
+    try:
+        from agents.market_intelligence.spend_tracker import log_anthropic_call
+        await log_anthropic_call(
+            model=_MODEL, caller="system_review_weekly", usage=resp.usage,
+        )
+    except Exception as e:
+        logger.warning(f"Spend log (system_review_weekly) failed: {e}")
     return "".join(block.text for block in resp.content if hasattr(block, "text")).strip()
 
 

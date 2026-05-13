@@ -1839,15 +1839,14 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
         )
         try:
-            from core.spend import log_api_usage
-            await log_api_usage(
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(
                 model="claude-opus-4-6",
                 caller=f"theme_advisor_{caller}",
-                input_tokens=resp.usage.input_tokens,
-                output_tokens=resp.usage.output_tokens,
+                usage=resp.usage,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Spend log (theme_advisor_{caller}) failed: {e}")
         return verdict
     except Exception as e:
         logger.warning(f"Advisor call failed: {e}")

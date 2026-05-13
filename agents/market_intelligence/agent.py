@@ -129,6 +129,93 @@ class MarketIntelligenceAgent(BaseAgent):
     def _register_extra_routes(self) -> None:
         """Register additional endpoints beyond the base /task and /health."""
 
+        @self.app.get("/account/status")
+        async def account_status(
+            _: str = Depends(verify_internal_secret),
+        ):
+            """Per-mode Alpaca account block for orchestrator `/status` rendering.
+
+            The orchestrator container doesn't ship market-agent modules
+            (see Dockerfile.orchestrator — only agents/base.py is copied).
+            This endpoint is the architectural bridge: orchestrator calls
+            us via HTTP, we return JSON, telegram.py renders.
+
+            Returns:
+                {
+                    "live_trading_enabled": bool,    # LIVE_TRADING_ENABLED env
+                    "dual_mode_enabled": bool,       # ENABLE_LIVE_MODE env
+                    "modes": [
+                        {
+                            "mode": "paper" | "live",
+                            "routed_strategies": [str, ...],
+                            "account": {            # null on failure
+                                "equity": float,
+                                "buying_power": float,
+                                "pattern_day_trader": bool,
+                                "daytrade_count": int,
+                            },
+                            "error": str | null,
+                        },
+                        ...
+                    ],
+                }
+            """
+            import os
+            from agents.market_intelligence.constants import (
+                ENABLE_LIVE_MODE, resolve_account_mode_for_strategy,
+            )
+            from agents.market_intelligence.strategies.registry import load_strategies
+            from agents.market_intelligence.broker import alpaca_client as alpaca
+
+            live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
+            if not live_enabled:
+                return {
+                    "live_trading_enabled": False,
+                    "dual_mode_enabled": ENABLE_LIVE_MODE,
+                    "modes": [],
+                }
+
+            modes_to_show = ["paper"] + (["live"] if ENABLE_LIVE_MODE else [])
+
+            strat_by_mode: dict[str, list[str]] = {"paper": [], "live": []}
+            try:
+                strategies = await load_strategies()
+                for sid, s in sorted(strategies.items()):
+                    if not s.enabled or s.phase == "shadow":
+                        continue
+                    try:
+                        strat_by_mode[resolve_account_mode_for_strategy(s)].append(sid)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f"/account/status: strategy routing fetch failed: {e}")
+
+            result_modes = []
+            for mode in modes_to_show:
+                block: dict = {
+                    "mode": mode,
+                    "routed_strategies": strat_by_mode.get(mode, []),
+                    "account": None,
+                    "error": None,
+                }
+                try:
+                    account = await alpaca.get_account(account_mode=mode)
+                    block["account"] = {
+                        "equity": float(account.get("equity", 0.0)),
+                        "buying_power": float(account.get("buying_power", 0.0)),
+                        "pattern_day_trader": bool(account.get("pattern_day_trader", False)),
+                        "daytrade_count": int(account.get("daytrade_count", 0)),
+                    }
+                except Exception as e:
+                    block["error"] = str(e)[:200]
+                result_modes.append(block)
+
+            return {
+                "live_trading_enabled": True,
+                "dual_mode_enabled": ENABLE_LIVE_MODE,
+                "modes": result_modes,
+            }
+
         @self.app.post("/briefing/morning")
         async def trigger_morning_briefing(
             background: BackgroundTasks,

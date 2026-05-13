@@ -898,6 +898,15 @@ async def _synthesize_hypothesis(
                         max_tokens=120,
                         messages=[{"role": "user", "content": prompt}],
                     )
+                    try:
+                        from agents.market_intelligence.spend_tracker import log_anthropic_call
+                        await log_anthropic_call(
+                            model="claude-sonnet-4-6",
+                            caller="system_audit_hypothesis",
+                            usage=resp.usage,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Spend log (system_audit_hypothesis) failed: {e}")
                     break
                 except anthropic.RateLimitError:
                     if attempt == 1:

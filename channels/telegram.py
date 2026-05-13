@@ -1168,67 +1168,56 @@ class TelegramChannel:
             return False, str(e)[:120]
 
     async def _check_account_mode(self) -> list[str]:
-        """Render per-mode account block. Under dual-account architecture
-        (#66, 2026-05-10), both paper + live can be active simultaneously
-        with different strategies routing to each.
+        """Render per-mode account block for /status.
 
-        **Container boundary note (2026-05-13):** the orchestrator Docker
-        image does NOT include `agents.market_intelligence` (only
-        `agents/base.py`, per Dockerfile.orchestrator). All inner logic
-        is wrapped in try/except — on ModuleNotFoundError we degrade to
-        a single-line marker rather than crashing the whole `/status`
-        response via asyncio.gather propagation. Followup task #86 will
-        route the account block through the market-agent HTTP API
-        instead of trying to import its modules locally.
+        Calls market-agent's GET /account/status endpoint via HTTP. The
+        orchestrator container can't import agents.market_intelligence
+        directly (only agents/base.py is bundled per Dockerfile.orchestrator),
+        so all account/strategy info routes through the market-agent
+        service the same way all other market-side data does.
         """
-        import os
+        import httpx
+        from shared.registry import get_agent_url
+        from shared.secrets import get_secrets
 
-        live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
-        if not live_enabled:
+        url = get_agent_url("market_intelligence")
+        if not url:
+            return ["⚠️ Account block unavailable — market-agent URL not set"]
+
+        try:
+            secret = get_secrets().internal_api_secret
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{url}/account/status",
+                    headers={"X-Apollo-Secret": secret},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            return [f"⚠️ Account fetch failed: {str(e)[:120]}"]
+
+        if not data.get("live_trading_enabled", False):
             return ["⚪ Trading: DISABLED (LIVE_TRADING_ENABLED=false)"]
 
-        try:
-            from agents.market_intelligence.constants import ENABLE_LIVE_MODE
-        except ModuleNotFoundError:
-            return [
-                "⚠️ Account block unavailable from orchestrator",
-                "  _market-agent code not bundled in this container — see task #86_",
-            ]
-
-        modes_to_show: list[str] = ["paper"]
-        if ENABLE_LIVE_MODE:
-            modes_to_show.append("live")
-
-        strat_by_mode: dict[str, list[str]] = {"paper": [], "live": []}
-        try:
-            from agents.market_intelligence.strategies.registry import load_strategies
-            from agents.market_intelligence.constants import resolve_account_mode_for_strategy
-            strategies = await load_strategies()
-            for sid, s in sorted(strategies.items()):
-                if not s.enabled or s.phase == "shadow":
-                    continue
-                try:
-                    strat_by_mode[resolve_account_mode_for_strategy(s)].append(sid)
-                except Exception:
-                    pass
-        except Exception as e:
-            logger.warning(f"/status: strategy routing fetch failed: {e}")
-
         lines: list[str] = []
-        for mode in modes_to_show:
+        for block in data.get("modes", []):
+            mode = block.get("mode", "?")
             icon = "📄" if mode == "paper" else "💰"
             label = "PAPER" if mode == "paper" else "LIVE-$ (real money)"
-            mode_strats = strat_by_mode.get(mode, [])
-            routed = f" · routed: {', '.join(mode_strats)}" if mode_strats else " · _(no strategies routed)_"
+            routed_strats = block.get("routed_strategies", [])
+            routed = (
+                f" · routed: {', '.join(routed_strats)}"
+                if routed_strats else " · _(no strategies routed)_"
+            )
             lines.append(f"{icon} *{label}*{routed}")
-            try:
-                from agents.market_intelligence.broker import alpaca_client as alpaca
-                account = await alpaca.get_account(account_mode=mode)
+
+            account = block.get("account")
+            err = block.get("error")
+            if account:
                 equity = account.get("equity", 0.0)
                 buying_power = account.get("buying_power", 0.0)
                 pdt_flag = account.get("pattern_day_trader", False)
                 dt_count = account.get("daytrade_count", 0)
-
                 lines.append(f"  Equity: ${equity:,.2f}")
                 lines.append(f"  Buying power: ${buying_power:,.2f}")
                 lines.append(f"  PDT flag: {pdt_flag}")
@@ -1238,9 +1227,9 @@ class TelegramChannel:
                     lines.append(f"  Day trades used: {dt_count}/3 (rolling 5d, {headroom} left){warn}")
                 else:
                     lines.append(f"  Day trades used: {dt_count} (equity ≥ $25K — no PDT cap)")
-            except Exception as e:
-                lines.append(f"  ⚠️ Account fetch failed: {str(e)[:100]}")
-            lines.append("")  # blank line between blocks
+            elif err:
+                lines.append(f"  ⚠️ Account fetch failed: {err[:100]}")
+            lines.append("")
 
         while lines and not lines[-1]:
             lines.pop()
