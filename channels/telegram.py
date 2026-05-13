@@ -1205,10 +1205,14 @@ class TelegramChannel:
             icon = "📄" if mode == "paper" else "💰"
             label = "PAPER" if mode == "paper" else "LIVE-$ (real money)"
             routed_strats = block.get("routed_strategies", [])
-            routed = (
-                f" · routed: {', '.join(routed_strats)}"
-                if routed_strats else " · _(no strategies routed)_"
-            )
+            # Wrap each strategy ID in backticks — IDs like "9m_day2" contain
+            # underscores that Telegram MarkdownV1 interprets as italic start
+            # markers. Backticks render as monospace AND skip Markdown parsing
+            # inside, so any underscore-containing strategy_id is safe.
+            if routed_strats:
+                routed = " · routed: " + ", ".join(f"`{s}`" for s in routed_strats)
+            else:
+                routed = " · (no strategies routed)"
             lines.append(f"{icon} *{label}*{routed}")
 
             account = block.get("account")
