@@ -302,6 +302,29 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 (session 4) — Filed EP selectivity deep-dive review (user mandate: rare EPs, not 100+/quarter)
+User flagged that EP detection is over-firing during earnings season. Past 10 trading days: **87 HIGH alerts** (8.7/day average; 11 on 5/14 alone). Almost all graded `catalyst_quality='strong'` — near-zero `game_changer` discrimination. Extrapolated: ~180/month → **~550/quarter** vs the methodology-correct "handful per quarter."
+
+NBIS example: 700%+ annual revenue growth = textbook game-changer, but (a) was filtered by the M&A direction-blind bug (fixed earlier today) AND (b) would have only been graded `strong` not `game_changer` by current LLM grader. The grader doesn't see fundamentals magnitude.
+
+Filed `ep_selectivity_deep_dive` data-gated review with phased plan:
+- **Phase 1 — diagnostic baseline**: cohort outcome distribution by score_tier × catalyst_quality, gap-size buckets, pm_rvol buckets, catalyst-prose labeled training set
+- **Phase 2 — shadow filter telemetry**: 30 days of `ep_selectivity_filter_shadow` audit events; measure alert reduction ratio + win-rate on shadow-admitted cohort
+- **Phase 3 — ship**: N≥20 shadow settled with measurably better R-expectancy
+
+Selectivity dimensions to investigate (user-specified):
+1. **Catalyst quality grading — fundamentals magnitude** (revenue growth tier, guidance raise, margin inflection — likely needs structured earnings data fetch, not just LLM-grading press release)
+2. **Gap size tiers** — non-linear scoring (25%+ structurally different from 10%+)
+3. **Technical structure** — gap above MAs, above congestion, distance to round numbers, prior base shape, distance from 52-week high
+4. **Volume conviction floors** — raise pm_rvol min from 1.0× to 5×+
+5. **Multi-quarter context** — EPs off bases vs extended uptrends (current `neglect_period` scoring is loose)
+
+**Working hypothesis** (test before shipping): fundamentals-magnitude filter alone might drop alert volume 80%+ while keeping the best setups (NBIS-class). Technical structure adds modest further selectivity. Volume + multi-quarter are tiebreakers.
+
+**Relation to live cutover**: NOT a hard blocker, but if Gate 3 paper_r_expectancy stays red (cohort -$2,041 over 4 trades currently), this review is the natural unblock path. Even if Gate 3 turns green at current selectivity, completing this review reduces live-$ risk meaningfully.
+
+**Earliest review date 2026-05-21** (gated on 100 EP alerts + 30d paper trade history — both metrics likely met by then). Predicate counts EP scans + closed paper trades in lookback windows.
+
 ### 2026-05-14 (session 3) — P&L attribution column to exclude CRMD bug damage from methodology metrics
 User flagged that the CRMD bug damage will distort P/L performance reviews. Shipped a generic exclusion mechanism rather than ad-hoc adjustments:
 

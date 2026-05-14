@@ -1705,3 +1705,178 @@ reviews:
       can ruin it all" → formal post-mortem mandated.
     status: pending
     added_on: 2026-05-14
+
+  - review_id: ep_selectivity_deep_dive
+    title: "EP entry selectivity overhaul (current ~180/month, target handful/quarter)"
+    question: |
+      **User mandate 2026-05-14**: Current EP system fires on essentially
+      every earnings gap-up during earnings season. Past 10 trading days:
+      87 HIGH alerts (8.7/day average; 11 on 5/14 alone). Almost all
+      graded `catalyst_quality='strong'` — near-zero `game_changer`
+      discrimination. Linear extrapolation: ~180/month → ~550/quarter.
+
+      **Target**: EPs should be RARE — "a handful per quarter, not 100+."
+      That's a 50-100x reduction in entry rate. Pradeep/Qullamaggie
+      methodology accepts low win rates IF the entries are exceptional
+      setups. Current selectivity admits every earnings gapper, then
+      depends on stop-loss to manage risk. Result: trade-by-trade losses
+      compound, win rate stays low because entries lack edge.
+
+      **Specific examples flagged**:
+      - NBIS (2026-05-13): 700%+ annual revenue growth — truly
+        game-changing. System missed due to direction-blind M&A filter
+        bug (separate fix shipped commit 446f700), but ALSO the catalyst
+        grader would have rated it just "strong" not "game_changer".
+        Grader doesn't see fundamental magnitude.
+      - 5/14 cohort: 11 HIGH alerts → 3 actually traded
+        (CRMD/KLAR/CSCO) → 0 winners. Methodology cohort -$2,041 over
+        4 trades (excluding bug). Compounding losses on low-conviction
+        entries.
+
+      **Selectivity dimensions to investigate** (user-specified):
+
+      1. **Catalyst quality grading — fundamentals magnitude**
+         Current LLM grader outputs game_changer/strong/routine. In
+         practice nearly all earnings names get "strong". Needs:
+         - Revenue growth tier (50%+, 100%+, 300%+ YoY thresholds)
+         - Guidance raise magnitude vs prior
+         - Margin expansion / FCF inflection
+         - Sequential acceleration vs deceleration
+         Likely requires structured earnings data fetch (Polygon /v3
+         financials endpoint or similar) — not just LLM-grading the
+         press release.
+
+      2. **Gap size tiers — non-linear scoring**
+         Current MAGNA53: 20%+=25pts, 15%+=20pts, 10%+=15pts, 8-9%=10pts.
+         Linear-ish. Should probably be exponential — a 25% gap on
+         earnings is structurally different (limit-up signal) from a 10%
+         gap. Test thresholds where win rate spikes.
+
+      3. **Technical structure**
+         Current scoring ignores chart position. User-specified gates:
+         - Gap-and-go above key MAs (10/20/50/200d) — gapping THROUGH
+           resistance vs gapping in mid-range
+         - Gap above price congestion (volume profile, prior consolidation)
+         - Distance to whole round numbers ($50, $100, $200 — psychological
+           resistance)
+         - Prior base shape: rectangle / flag / VCP vs no base / extended
+         - Distance from 52-week high — leaders gap to fresh highs
+
+      4. **Volume conviction floors**
+         Current pm_rvol_at_time minimum is 1.0x. For "rare" EPs the
+         floor should be much higher (5x? 10x?) — institutional
+         participation evidence. Backtest the win-rate distribution
+         by pm_rvol bucket.
+
+      5. **Multi-quarter context**
+         Is this an EP off a base (after 6+ weeks of consolidation), or
+         is the stock already extended in an uptrend? Pradeep's
+         methodology specifically targets EPs after NEGLECT periods.
+         Current `neglect_period` scoring (6mo+=15pts, 3mo=8pts) is in
+         place but loosely enforced.
+
+      **Working hypothesis** (test in backtest before shipping):
+        The single biggest selectivity gate is probably "earnings is
+        actually game-changing magnitude" — i.e., NBIS-class fundamentals
+        (revenue 100%+ growth, guidance raise above consensus by N%,
+        margin inflection). Most earnings gappers are routine beats
+        (low- to mid-single-digit beat vs estimates). A
+        fundamentals-magnitude filter alone might drop alert volume
+        80%+ while keeping the best setups.
+
+        Technical structure (#3) likely adds further selectivity at
+        modest false-positive cost.
+
+        Volume / multi-quarter context (#4, #5) are tiebreakers — small
+        gains over fundamentals + technical primary filter.
+    predicate_sql: |
+      -- Predicate: enough closed-paper-trade data + EP scan history to
+      -- evaluate selectivity impact. Want at least 60d of EP scan data
+      -- + 30d of closed paper trades (since SIP flip 2026-04-23).
+      SELECT COUNT(*) FROM (
+        SELECT 1 FROM mi_ep_alerts WHERE alert_date >= CURRENT_DATE - 60
+        UNION ALL
+        SELECT 1 FROM mi_live_trades
+        WHERE account_mode='paper' AND status='closed'
+          AND closed_at >= CURRENT_DATE - 30
+      ) t;
+    threshold: 100
+    earliest_review_date: 2026-05-21
+    action_when_ready: |
+      **Phase 1: Diagnostic baseline** (no code change yet)
+
+      1. Cohort size + outcome distribution:
+           SELECT score_tier, catalyst_quality,
+                  COUNT(*) AS alerts,
+                  COUNT(DISTINCT lt.id) AS traded,
+                  SUM(CASE WHEN lt.total_pnl > 0 THEN 1 ELSE 0 END) AS winners,
+                  AVG(lt.total_pnl) AS avg_pnl
+           FROM mi_ep_alerts a
+           LEFT JOIN mi_live_trades lt
+             ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+             AND lt.pnl_attribution IS NULL
+           WHERE a.alert_date >= CURRENT_DATE - 60
+           GROUP BY 1, 2;
+
+      2. Distribution by gap size:
+           SELECT CASE
+                    WHEN gap_pct >= 25 THEN '25%+'
+                    WHEN gap_pct >= 15 THEN '15-25%'
+                    WHEN gap_pct >= 10 THEN '10-15%'
+                    ELSE '8-10%'
+                  END AS gap_bucket,
+                  COUNT(*) AS alerts,
+                  ...same outcome cols...
+           FROM mi_ep_alerts a
+           LEFT JOIN mi_live_trades lt ...
+
+      3. pm_rvol_at_time distribution: same shape, bucketed at 1x, 3x,
+         5x, 10x, 20x.
+
+      4. Catalyst-prose textual analysis: pull all "strong"-graded
+         catalysts from past 60d. Eyeball: which had revenue 100%+
+         growth, which had guidance raise, which were routine
+         single-digit beats. Build a labeled training set of
+         "should-have-been-game_changer" vs "actually-strong" vs
+         "routine-mis-labeled".
+
+      **Phase 2: Shadow filter telemetry**
+
+      Add a `ep_selectivity_filter_shadow` audit event that fires on
+      every current-system HIGH alert with a verdict: would the
+      proposed stricter filter (TBD from Phase 1 data) admit this
+      alert? Run shadow for 30 days. Measure:
+      - Alert reduction ratio (current vs shadow)
+      - Win rate on shadow-admitted cohort vs current cohort
+      - R-expectancy on shadow-admitted
+
+      **Phase 3: Ship**
+
+      Promote shadow filter to live AFTER N≥20 shadow alerts settled
+      with measurably better R-expectancy. Per
+      feedback_sample_size_discipline N≥10 is the floor; N≥20 here
+      because this is a big-impact methodology change.
+
+      Concrete deliverables expected:
+      - One new gate at MAGNA53 scoring (e.g. require
+        `revenue_growth_yoy >= 100% OR margin_inflection OR guidance_raise_above_consensus_by_N%`
+        for catalyst='game_changer' upgrade)
+      - One technical-structure filter (e.g. close above 50d MA AND
+        gap closes above 90d resistance level — methodology TBD)
+      - pm_rvol floor raised from 1.0x to 5.0x (or similar — backtest
+        sensitivity)
+      - Keep current MODERATE-tier flow as informational digest, drop
+        from auto-entry
+
+      **Relation to live cutover**: NOT a hard blocker, but if Gate 3
+      paper_r_expectancy_validation stays red (cohort negative),
+      the selectivity review is the natural unblock path. If Gate 3
+      somehow turns green at current selectivity, this review is
+      still worth completing for live-$ risk reduction.
+
+      Origin: 2026-05-14 user mandate. "EP should be rare, a handful
+      per quarter, not 100+. Current system is not selective enough."
+      Reference: NBIS (700%+ revenue growth, system missed) vs the
+      87-alert / 10-day current state.
+    status: pending
+    added_on: 2026-05-14
