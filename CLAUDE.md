@@ -302,6 +302,27 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 (session 5) — EP selectivity review expanded to be exhaustive (user mandate)
+User pushed back on initial review: needs to be MORE exhaustive, include every tracked variable already in code — specifically called out 5-min ORB shadow (`mi_orb_shadow_trades`) which has parallel telemetry running since shipped earlier this year.
+
+Expanded the review to cover **6 lettered sections of dimensions** (was 5 numbered):
+- **§A — Existing entry filters** (17 items: gap floor, RVOL@T anchors, pm-shares floor, ADV/mcap/ATR floors, extension cap, cooldown, M&A filter, stop-too-wide, fade guard, ORB window, position cap, daily-loss/circuit/drawdown — note these are gates not selectivity dials per se)
+- **§B — Existing scoring weights** (12 items: gap pts, catalyst pts, rel_vol pts, neglect pts, vol conviction, analyst upgrades, low float, bull regime mult, perplexity mult, score threshold, earnings boost, MODERATE→HIGH override)
+- **§C — Entry-mechanic dimensions** (7 items: 5-min vs 1-min ORB, re-entry attempts, stop placement source, sizing, order type, ORB cutoff, fade guard tier)
+- **§D — NEW filter dimensions** (7 user-specified items: fundamentals magnitude, gap-above-MAs, gap-above-congestion, round-number distance, base shape, 52w-high distance, multi-quarter context)
+- **§E — Setup-context dimensions** (5 items: theme membership, sector rotation, COILED overlap, 9M Day 2 comparison, missed-EP outcomes per skip-reason)
+- **§F — Already-shipped recent gate changes to evaluate** (5 items: hedge-phrase downgrade, earnings boost, cooldown bypass, re-entry gap-through, pm-shares carve-out)
+
+**Phase 1 expanded** to produce a master cohort table joining `mi_ep_alerts × mi_ep_scan_log × mi_live_trades × mi_ep_scan_outcomes × mi_orb_shadow_trades × mi_ep_missed_outcomes × mi_themes × mi_flag_candidates × mi_daily_closes`. Output: `docs/decisions/0003-ep-selectivity-overhaul.md` with cohort breakdowns + recommended filter set + scoring weight adjustments.
+
+**Phase 1 deliverables broken into 5 substeps**: P1.1 master cohort, P1.2 per-dimension outcome breakdown, P1.3 new-dimension feasibility prototypes (D1-D6), P1.4 catalyst-prose labeled training set (~400-500 alerts hand-labeled), P1.5 score-weight recalibration via regression.
+
+**Earliest review date**: 2026-05-17 (Friday). User signaled "tomorrow or over the weekend" → 5/15-5/17 window for Phase 1.
+
+**Cross-references to existing reviews documented** in YAML to avoid duplication (`stop_too_wide_outcome_cohort`, `orb_cutoff_extension`, `adv_probe_retirement`, `conviction_floor_extension`, `perplexity_hallucination_keyword_leak`).
+
+**Scope discipline warning embedded**: "this review is EXHAUSTIVE intentionally — but not every dimension ships. Phase 1 picks ~3-5 highest-signal dimensions. Avoid scope creep — shipping all 30+ filters at once is overfit and unsupportable."
+
 ### 2026-05-14 (session 4) — Filed EP selectivity deep-dive review (user mandate: rare EPs, not 100+/quarter)
 User flagged that EP detection is over-firing during earnings season. Past 10 trading days: **87 HIGH alerts** (8.7/day average; 11 on 5/14 alone). Almost all graded `catalyst_quality='strong'` — near-zero `game_changer` discrimination. Extrapolated: ~180/month → **~550/quarter** vs the methodology-correct "handful per quarter."
 

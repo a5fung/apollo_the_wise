@@ -1707,7 +1707,7 @@ reviews:
     added_on: 2026-05-14
 
   - review_id: ep_selectivity_deep_dive
-    title: "EP entry selectivity overhaul (current ~180/month, target handful/quarter)"
+    title: "EP entry selectivity overhaul — EXHAUSTIVE review of every tracked variable"
     question: |
       **User mandate 2026-05-14**: Current EP system fires on essentially
       every earnings gap-up during earnings season. Past 10 trading days:
@@ -1716,79 +1716,139 @@ reviews:
       discrimination. Linear extrapolation: ~180/month → ~550/quarter.
 
       **Target**: EPs should be RARE — "a handful per quarter, not 100+."
-      That's a 50-100x reduction in entry rate. Pradeep/Qullamaggie
-      methodology accepts low win rates IF the entries are exceptional
-      setups. Current selectivity admits every earnings gapper, then
-      depends on stop-loss to manage risk. Result: trade-by-trade losses
-      compound, win rate stays low because entries lack edge.
+      50-100x reduction in entry rate. Pradeep/Qullamaggie methodology
+      accepts low win rates IF entries are exceptional setups. Current
+      selectivity admits every earnings gapper, then depends on stop-loss
+      to manage risk. Result: trade-by-trade losses compound; win rate
+      stays low because entries lack edge.
 
       **Specific examples flagged**:
-      - NBIS (2026-05-13): 700%+ annual revenue growth — truly
-        game-changing. System missed due to direction-blind M&A filter
-        bug (separate fix shipped commit 446f700), but ALSO the catalyst
-        grader would have rated it just "strong" not "game_changer".
-        Grader doesn't see fundamental magnitude.
-      - 5/14 cohort: 11 HIGH alerts → 3 actually traded
-        (CRMD/KLAR/CSCO) → 0 winners. Methodology cohort -$2,041 over
-        4 trades (excluding bug). Compounding losses on low-conviction
-        entries.
+      - NBIS (2026-05-13): 700%+ revenue growth — truly game-changing.
+        Missed by M&A direction-blind bug (fix 446f700), but ALSO would
+        have been graded only "strong" not "game_changer". Grader
+        doesn't see fundamentals magnitude.
+      - 5/14 cohort: 11 HIGH alerts → 3 traded (CRMD/KLAR/CSCO) → 0
+        winners. Methodology cohort -$2,041 over 4 trades (excluding
+        bug).
 
-      **Selectivity dimensions to investigate** (user-specified):
+      **EXHAUSTIVE LIST of variables in play — Phase 1 must evaluate ALL**
 
-      1. **Catalyst quality grading — fundamentals magnitude**
-         Current LLM grader outputs game_changer/strong/routine. In
-         practice nearly all earnings names get "strong". Needs:
-         - Revenue growth tier (50%+, 100%+, 300%+ YoY thresholds)
-         - Guidance raise magnitude vs prior
-         - Margin expansion / FCF inflection
-         - Sequential acceleration vs deceleration
-         Likely requires structured earnings data fetch (Polygon /v3
-         financials endpoint or similar) — not just LLM-grading the
-         press release.
+      ### A. Existing entry filters (already coded)
+      A1. Gap percentage (≥8% floor; scoring tiers 20%+ / 15%+ / 10%+ / 8-9%)
+      A2. Pre-market RVOL@T (`MIN_PM_RVOL=1.0`)
+      A3. Session RVOL@T post-9:30 (`MIN_SESSION_RVOL=1.0`)
+      A4. Pre-market shares absolute floor (25K, with pm_rvol≥5x carve-out)
+      A5. ADV dollar volume min ($1M floor)
+      A6. ATR% ceiling (≤15%)
+      A7. Market cap floor (≥$500M)
+      A8. Prev-close ≥ $5
+      A9. Extension cap (prev_close > 1.50× SMA-10 → skip)
+      A10. 60-day EP cooldown (with earnings-day bypass at ≥15% gap)
+      A11. Already-scored-today dedup
+      A12. M&A filter (direction-aware after 446f700 fix)
+      A13. Stop-too-wide rejection (ORB range > 1.5× ATR) —
+            already its own review `stop_too_wide_outcome_cohort` (N=2)
+      A14. Fade guard (`fade_midpoint_ratio` 0.25 for 9M Day 2; MAGNA53 skipped)
+      A15. ORB submission window cutoff (9:31 ≤ now < 9:45 ET)
+      A16. Strategy_position_cap (#65 per-strategy slot limit)
+      A17. Daily loss limit / circuit breaker / drawdown breaker — gates
+            new entries but doesn't influence selectivity
 
-      2. **Gap size tiers — non-linear scoring**
-         Current MAGNA53: 20%+=25pts, 15%+=20pts, 10%+=15pts, 8-9%=10pts.
-         Linear-ish. Should probably be exponential — a 25% gap on
-         earnings is structurally different (limit-up signal) from a 10%
-         gap. Test thresholds where win rate spikes.
+      ### B. Existing scoring weights (already coded)
+      B1. Gap magnitude points (20%+=25, 15%+=20, 10%+=15, 8-9%=10)
+      B2. Catalyst quality points (game_changer=25, strong=15, routine=0)
+      B3. Relative volume points (5x+=15, 2-4x=10, 1-2x=5)
+      B4. Neglect period points (6mo+=15, 3mo=8, <3mo=0)
+      B5. Volume conviction (pm vol ≥90th pct=5, ≥70th=3)
+      B6. Analyst upgrades (3+=5)
+      B7. Low float (<50M shares=5)
+      B8. Bull regime multiplier (1.2x)
+      B9. Perplexity agreement multiplier (1.2x; stacks with regime)
+      B10. Score threshold (HIGH ≥ ep_threshold regime-dependent;
+           MODERATE 50-69)
+      B11. Earnings-day pre-score boost (routine→strong if is_earnings_day)
+      B12. MODERATE→HIGH override on earnings (gap≥15% + earnings_day)
 
-      3. **Technical structure**
-         Current scoring ignores chart position. User-specified gates:
-         - Gap-and-go above key MAs (10/20/50/200d) — gapping THROUGH
-           resistance vs gapping in mid-range
-         - Gap above price congestion (volume profile, prior consolidation)
-         - Distance to whole round numbers ($50, $100, $200 — psychological
-           resistance)
-         - Prior base shape: rectangle / flag / VCP vs no base / extended
-         - Distance from 52-week high — leaders gap to fresh highs
+      ### C. Entry-mechanic dimensions (already tracked, parallel telemetry)
+      C1. **5-min ORB shadow** (`mi_orb_shadow_trades`) vs 1-min live
+          — would 5-min entries have better R? Existing shadow data.
+      C2. Re-entry attempts (Day-1 attempt 1 vs attempt 2 win rates)
+      C3. Stop placement: ORB-low (current) vs ATR-based vs prior-day-low
+      C4. Position sizing: 1% risk fixed vs scaled by conviction score
+      C5. Entry order type: stop-limit (current) vs market-on-trigger
+      C6. ORB cutoff extension review (filed separately
+          `orb_cutoff_extension`)
+      C7. Fade guard tier — 9M Day 2 uses 0.25; MAGNA53 skipped;
+          should MAGNA53 also use a tier?
 
-      4. **Volume conviction floors**
-         Current pm_rvol_at_time minimum is 1.0x. For "rare" EPs the
-         floor should be much higher (5x? 10x?) — institutional
-         participation evidence. Backtest the win-rate distribution
-         by pm_rvol bucket.
+      ### D. NEW filter dimensions (user-specified — not yet in code)
+      D1. **Catalyst fundamentals magnitude** — revenue growth tier
+          (50%+, 100%+, 300%+ YoY), guidance raise magnitude vs
+          consensus, margin expansion / FCF inflection, sequential
+          acceleration. Requires structured earnings fetch (Polygon
+          `/v3/financials` or similar), not just LLM-grading press
+          release.
+      D2. **Gap-above-key-MAs** — 10/20/50/200d. Gapping THROUGH MA
+          resistance is fundamentally different from gapping in
+          mid-range.
+      D3. **Gap-above-price-congestion** — volume profile / prior
+          consolidation. Likely needs minute-bar volume by price
+          analysis over prior 20-90 days.
+      D4. **Distance to round numbers** — $50/$100/$200 psychological
+          resistance. Cheap heuristic, possibly high-signal.
+      D5. **Prior base shape** — rectangle / flag / VCP vs no base /
+          extended. Methodology-specific; needs base detection (mostly
+          in flag_detector.py already).
+      D6. **Distance from 52-week high** — leaders gap to FRESH highs.
+          Already-near-high before gap = continuation; far-from-high =
+          recovery (different setup class).
+      D7. **Multi-quarter context** — 1st EP after base vs Nth in trend.
+          Pradeep's methodology specifically targets EPs after NEGLECT.
 
-      5. **Multi-quarter context**
-         Is this an EP off a base (after 6+ weeks of consolidation), or
-         is the stock already extended in an uptrend? Pradeep's
-         methodology specifically targets EPs after NEGLECT periods.
-         Current `neglect_period` scoring (6mo+=15pts, 3mo=8pts) is in
-         place but loosely enforced.
+      ### E. Setup-context dimensions (related-system signal)
+      E1. **Theme membership** — is the ticker in an active Accelerating
+          or Mainstream theme? Leaders gapping into themes have
+          different prior probability. Theme engine tracks this; just
+          needs join.
+      E2. **Sector rotation** — is the ticker's sector hot? Theme rs_avg
+          data.
+      E3. **Continuation flag overlap** — is the ticker already COILED
+          per flag_detector? Strong continuation signal.
+      E4. **9M Day 2 cohort comparison** — sister methodology with
+          different criteria. Cross-tab outcomes.
+      E5. **Missed-EP outcomes by skip-reason** — already tracked in
+          `mi_ep_missed_outcomes`. Which existing filters shed winners?
+          Direct read of opportunity cost per gate.
 
-      **Working hypothesis** (test in backtest before shipping):
-        The single biggest selectivity gate is probably "earnings is
-        actually game-changing magnitude" — i.e., NBIS-class fundamentals
-        (revenue 100%+ growth, guidance raise above consensus by N%,
-        margin inflection). Most earnings gappers are routine beats
-        (low- to mid-single-digit beat vs estimates). A
-        fundamentals-magnitude filter alone might drop alert volume
-        80%+ while keeping the best setups.
+      ### F. Already-shipped recent gate changes (evaluate effectiveness)
+      F1. Catalyst hedge-phrase downgrade (2026-05-03) — did downgrades
+          improve win rate vs admits?
+      F2. Earnings-day pre-score boost (2026-05-08) — did the boost
+          admit net winners or losers? Audit `catalyst_earnings_boost`.
+      F3. EP cooldown bypass on earnings (2026-05-08) — outcomes of
+          bypassed-cooldown alerts.
+      F4. Re-entry gap-through gate (2026-05-11 #73) — outcomes by
+          gate decision.
+      F5. Pre-market shares relative-anomaly carve-out (2026-05-08) —
+          carve-out admits vs absolute-floor blocks.
 
-        Technical structure (#3) likely adds further selectivity at
-        modest false-positive cost.
+      **Working hypothesis** (test before shipping):
+        Single biggest selectivity gate is "earnings is actually
+        game-changing magnitude" (D1). NBIS-class. Most earnings
+        gappers are routine beats. Fundamentals-magnitude filter alone
+        could drop alert volume 80%+ while keeping best setups.
 
-        Volume / multi-quarter context (#4, #5) are tiebreakers — small
-        gains over fundamentals + technical primary filter.
+        Technical structure (D2/D3/D4/D5/D6) likely adds further
+        selectivity at modest cost — Phase 1 measures contribution.
+
+        Setup-context (E) and entry-mechanic (C) dimensions are
+        likely tiebreakers — small gains over fundamentals + technical
+        primary filter. But C1 (5-min vs 1-min ORB) is structurally
+        independent — could be a separate ship (better entries on
+        same selectivity).
+
+        Volume / multi-quarter (B3/B4) are existing scoring weights
+        likely under-calibrated. Re-weight from outcome data.
     predicate_sql: |
       -- Predicate data already exists: 60d EP scan history has ~500+ rows
       -- (87 in last 10d alone). Phase 1 diagnostic can start any time.
@@ -1802,94 +1862,176 @@ reviews:
           AND closed_at >= CURRENT_DATE - 30
       ) t;
     threshold: 100
-    earliest_review_date: 2026-05-14
+    earliest_review_date: 2026-05-17
     action_when_ready: |
-      **Phase 1: Diagnostic baseline** (no code change yet)
+      **PHASE 1 — DIAGNOSTIC BASELINE (no code change yet)**
 
-      1. Cohort size + outcome distribution:
-           SELECT score_tier, catalyst_quality,
-                  COUNT(*) AS alerts,
-                  COUNT(DISTINCT lt.id) AS traded,
-                  SUM(CASE WHEN lt.total_pnl > 0 THEN 1 ELSE 0 END) AS winners,
-                  AVG(lt.total_pnl) AS avg_pnl
-           FROM mi_ep_alerts a
-           LEFT JOIN mi_live_trades lt
-             ON lt.ticker = a.ticker AND lt.alert_date = a.alert_date
-             AND lt.pnl_attribution IS NULL
-           WHERE a.alert_date >= CURRENT_DATE - 60
-           GROUP BY 1, 2;
+      Goal: produce a wide-cohort outcome table joining every tracked
+      attribute to settled forward returns. Single-pass analysis;
+      output is a spreadsheet/table the operator can review.
 
-      2. Distribution by gap size:
-           SELECT CASE
-                    WHEN gap_pct >= 25 THEN '25%+'
-                    WHEN gap_pct >= 15 THEN '15-25%'
-                    WHEN gap_pct >= 10 THEN '10-15%'
-                    ELSE '8-10%'
-                  END AS gap_bucket,
-                  COUNT(*) AS alerts,
-                  ...same outcome cols...
-           FROM mi_ep_alerts a
-           LEFT JOIN mi_live_trades lt ...
+      ## P1.1 — Master cohort table
+      For every `mi_ep_alerts` row in last 60d, join:
+        - mi_ep_scan_log (last tick before alert: rank_by_gap,
+          projected_vol_multiple, pm_rvol, adv, adv_source)
+        - mi_live_trades (entry/exit if traded; pnl_attribution filter)
+        - mi_ep_scan_outcomes (5d forward return)
+        - mi_orb_shadow_trades (5-min ORB outcome — C1 dimension)
+        - mi_ep_missed_outcomes (per-skip-reason outcomes for SKIPPED)
+        - mi_themes (theme membership / stage — E1/E2)
+        - mi_flag_candidates (COILED overlap — E3)
+        - mi_daily_closes (prior 20d for MA distance + base context —
+          D2/D5/D6/D7)
+      Materialize as a view or CSV export for analysis.
 
-      3. pm_rvol_at_time distribution: same shape, bucketed at 1x, 3x,
-         5x, 10x, 20x.
+      ## P1.2 — Per-dimension outcome breakdown
+      Each variable in §A–§F produces a 2×N table (alert count, win
+      count, avg pnl, R-expectancy) bucketed by the variable. Examples:
 
-      4. Catalyst-prose textual analysis: pull all "strong"-graded
-         catalysts from past 60d. Eyeball: which had revenue 100%+
-         growth, which had guidance raise, which were routine
-         single-digit beats. Build a labeled training set of
-         "should-have-been-game_changer" vs "actually-strong" vs
-         "routine-mis-labeled".
+        - Gap size: 8-10% / 10-15% / 15-25% / 25%+ → win rate, avg R
+        - Catalyst quality: routine / strong / game_changer → outcomes
+        - pm_rvol: 1-2x / 3-5x / 5-10x / 10x+ → outcomes
+        - Score tier: MOD-low / MOD-high / HIGH-low / HIGH-mid / HIGH-high
+        - Score band promotion path (B11 earnings boost, B12 override):
+          admitted by boost → win rate vs other-path admits
+        - Entry attempt: 1 vs 2 win rates
+        - 5-min ORB vs 1-min: paired comparison for same alert
+        - Theme membership: in-theme vs uncovered
+        - Time of alert: pre-market vs 9:30-9:44 vs 9:45+
+        - Catalyst hedge-phrase downgrade: downgraded vs admitted
+        - EP cooldown bypass on earnings: bypassed vs blocked outcomes
+        - Re-entry gap-through gate: gated vs admitted outcomes
+        - pm-shares relative-anomaly carve-out: admitted-by-carve-out
+          win rate
+        - Missed-EP by skip-reason: per-category win rate among
+          rejected — which gates shed winners?
 
-      **Phase 2: Shadow filter telemetry**
+      ## P1.3 — NEW-dimension feasibility prototypes
+      Build minimal prototypes for §D dimensions (data-fetch + score):
 
-      Add a `ep_selectivity_filter_shadow` audit event that fires on
-      every current-system HIGH alert with a verdict: would the
-      proposed stricter filter (TBD from Phase 1 data) admit this
-      alert? Run shadow for 30 days. Measure:
-      - Alert reduction ratio (current vs shadow)
-      - Win rate on shadow-admitted cohort vs current cohort
-      - R-expectancy on shadow-admitted
+        D1. Earnings fundamentals fetch — try Polygon `/v3/financials`
+            on past 50 EPs. Capture: revenue_growth_yoy, eps_beat_pct,
+            guidance_change_pct (if available). Label which would have
+            been game_changer vs strong vs routine by magnitude
+            thresholds.
+        D2. MA-distance signal — for each alert, compute
+            close_at_alert / SMA(10/20/50/200). Score "gapping THROUGH"
+            (close > SMA-X by less than today's range) vs "mid-range".
+        D3. Volume profile / congestion — for prior 20d, build
+            price-bucket volume histogram. Distance from
+            high-volume zone to gap close.
+        D4. Round-number distance — abs(close - nearest($10, $25, $50,
+            $100, $250)) as a fraction of ATR.
+        D5. Base shape — borrow flag_detector's COILED/TRIGGERED logic.
+        D6. 52-week-high distance — close / max(close, 252d) as fraction.
 
-      **Phase 3: Ship**
+      For each prototype, eyeball the labeled distribution: does the
+      signal separate winners from losers visually?
 
-      Promote shadow filter to live AFTER N≥20 shadow alerts settled
-      with measurably better R-expectancy. Per
-      feedback_sample_size_discipline N≥10 is the floor; N≥20 here
-      because this is a big-impact methodology change.
+      ## P1.4 — Catalyst-prose labeled training set
+      Pull all "strong"-graded catalysts from past 60d (~400-500).
+      Operator labels each:
+        - True game_changer (NBIS-class — 100%+ revenue growth, guidance
+          raise, segment inflection)
+        - True strong (clean beat + raise, but not 10x magnitude)
+        - Routine mis-labeled (single-digit beat, no inflection)
+        - Other (M&A leak, hedge phrase that should've downgraded)
+      Output: labeled CSV that can train a refined catalyst classifier
+      (LLM with magnitude rubric, or rule-based fundamentals filter).
 
-      Concrete deliverables expected:
-      - One new gate at MAGNA53 scoring (e.g. require
-        `revenue_growth_yoy >= 100% OR margin_inflection OR guidance_raise_above_consensus_by_N%`
-        for catalyst='game_changer' upgrade)
-      - One technical-structure filter (e.g. close above 50d MA AND
-        gap closes above 90d resistance level — methodology TBD)
-      - pm_rvol floor raised from 1.0x to 5.0x (or similar — backtest
-        sensitivity)
-      - Keep current MODERATE-tier flow as informational digest, drop
-        from auto-entry
+      ## P1.5 — Score-weight recalibration
+      Using the master cohort, fit a simple linear/logistic regression
+      of forward 5d R against existing scoring components (gap pts,
+      catalyst pts, rel_vol pts, neglect pts, etc.). Compare fitted
+      weights to current hardcoded weights. Identify under-weighted
+      and over-weighted dimensions.
+
+      **PHASE 1 OUTPUT**: one document `docs/decisions/0003-ep-selectivity-overhaul.md`
+      with:
+        - Cohort outcome breakdowns (tables)
+        - Per-dimension separation signal
+        - Recommended new filters (chosen set, not all candidates)
+        - Recommended scoring weight adjustments
+        - Recommended scope split: what ships first, what stays shadow
+
+      ---
+
+      **PHASE 2 — SHADOW FILTER TELEMETRY (30-day window)**
+
+      For the filter set chosen in Phase 1, add a single audit event
+      `ep_selectivity_filter_shadow` that fires on every current-system
+      HIGH alert with:
+        - Verdict (would-admit / would-reject)
+        - Reject reason (which sub-filter blocked)
+        - Forward-return prediction (regression-implied R if shipped)
+
+      Telemetry-only: NO change to actual entries. Run 30 days. Measure:
+        - Alert reduction ratio (current vs shadow)
+        - Win rate on shadow-admitted vs current cohort
+        - R-expectancy on shadow-admitted (target: at least +0.3R better)
+        - False-rejection rate: shadow rejects that were winners
+
+      **PHASE 3 — SHIP (after N≥20 shadow alerts settled)**
+
+      Promote shadow filter to live ONLY IF:
+        - Shadow-admitted cohort R-expectancy > current cohort
+        - Shadow-admitted win rate ≥ current OR shadow-admitted R per win
+          materially higher
+        - No single dimension dominates (avoid overfit to one ticker)
+
+      Concrete deliverable types (pick from):
+        - Fundamentals-magnitude gate (D1) — new earnings_grade column
+          on mi_ep_alerts, populated at scoring time
+        - Technical-structure gate (D2/D3 ensemble) — composite score
+          column, threshold in ep_threshold
+        - Scoring weight tweaks (B-section recalibration)
+        - 5-min ORB promotion to primary (C1) — separate ship if
+          independently profitable
+        - MODERATE-tier drop or promotion-criteria change
+        - pm_rvol floor adjustment (B3 → 5x?)
+
+      Each individual ship goes through standard SSoT update flow:
+      docs/setups/magna53_ep.md change log entry, backtest evidence,
+      reversion-flag.
 
       **Relation to live cutover**: NOT a hard blocker, but if Gate 3
-      paper_r_expectancy_validation stays red (cohort negative),
-      the selectivity review is the natural unblock path. If Gate 3
-      somehow turns green at current selectivity, this review is
-      still worth completing for live-$ risk reduction.
+      paper_r_expectancy_validation stays red (cohort currently
+      -$2,041 over 4 methodology trades), this review is the natural
+      unblock path. If Gate 3 turns green at current selectivity, this
+      review is still worth completing for live-$ risk reduction.
+
+      **Scope warning**: this review is EXHAUSTIVE intentionally — but
+      not every dimension ships. Phase 1 picks ~3-5 highest-signal
+      dimensions. Avoid scope creep: shipping all 30+ filters at once
+      is overfit and unsupportable.
 
       Origin: 2026-05-14 user mandate. "EP should be rare, a handful
       per quarter, not 100+. Current system is not selective enough."
       Reference: NBIS (700%+ revenue growth, system missed) vs the
       87-alert / 10-day current state.
 
-      **Timeline reality** (corrected 2026-05-14 same-day):
-        Phase 1 diagnostic — start immediately. Data already exists
-        (60d EP scans + 30d paper trades).
-        Phase 2 shadow telemetry — 30-day window after Phase 1 picks
-        the filter to shadow.
+      **Timeline reality**:
+        Phase 1 diagnostic — 1-3 day session. Data already exists.
+          Earliest start 2026-05-15 (tomorrow); user signaled
+          "tomorrow or over the weekend" so 5/15-5/17 window.
+        Phase 2 shadow telemetry — 30-day window after Phase 1.
         Phase 3 ship — N>=20 shadow settled with measurably better R.
-        Estimated full path: 4-6 weeks from Phase 1 start.
+        Estimated full path: 5-7 weeks from Phase 1 start.
 
-      First Phase 1 deliverable: cohort outcome distribution table
-      (catalyst quality x gap bucket x pm_rvol bucket → win rate,
-      avg P&L, R-expectancy). Single SQL query against existing tables.
+      Phase 1 entry point: build the master cohort table (P1.1),
+      then iterate through P1.2 per-dimension breakdowns and P1.3
+      new-dimension prototypes. P1.4 catalyst-prose labeling is
+      operator-driven and can run in parallel.
+
+      Cross-references to existing reviews (avoid duplication):
+        - stop_too_wide_outcome_cohort — A13 dimension already filed
+          separately; N=2/10 currently
+        - orb_cutoff_extension — C6 dimension already filed
+        - adv_probe_retirement — rank-21-50 cohort outcomes (related to
+          B/A1 dimensions)
+        - conviction_floor_extension — gap[10,15)+strong cell already
+          filed (related to B1/B2)
+        - perplexity_hallucination_keyword_leak — affects D1 catalyst
+          fetch (filed today)
     status: pending
     added_on: 2026-05-14
