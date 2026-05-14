@@ -1790,9 +1790,10 @@ reviews:
         Volume / multi-quarter context (#4, #5) are tiebreakers — small
         gains over fundamentals + technical primary filter.
     predicate_sql: |
-      -- Predicate: enough closed-paper-trade data + EP scan history to
-      -- evaluate selectivity impact. Want at least 60d of EP scan data
-      -- + 30d of closed paper trades (since SIP flip 2026-04-23).
+      -- Predicate data already exists: 60d EP scan history has ~500+ rows
+      -- (87 in last 10d alone). Phase 1 diagnostic can start any time.
+      -- Phase 2 (shadow telemetry) is what needs 30 days of new data;
+      -- Phase 3 (ship) needs N>=20 shadow settled.
       SELECT COUNT(*) FROM (
         SELECT 1 FROM mi_ep_alerts WHERE alert_date >= CURRENT_DATE - 60
         UNION ALL
@@ -1801,7 +1802,7 @@ reviews:
           AND closed_at >= CURRENT_DATE - 30
       ) t;
     threshold: 100
-    earliest_review_date: 2026-05-21
+    earliest_review_date: 2026-05-14
     action_when_ready: |
       **Phase 1: Diagnostic baseline** (no code change yet)
 
@@ -1878,5 +1879,17 @@ reviews:
       per quarter, not 100+. Current system is not selective enough."
       Reference: NBIS (700%+ revenue growth, system missed) vs the
       87-alert / 10-day current state.
+
+      **Timeline reality** (corrected 2026-05-14 same-day):
+        Phase 1 diagnostic — start immediately. Data already exists
+        (60d EP scans + 30d paper trades).
+        Phase 2 shadow telemetry — 30-day window after Phase 1 picks
+        the filter to shadow.
+        Phase 3 ship — N>=20 shadow settled with measurably better R.
+        Estimated full path: 4-6 weeks from Phase 1 start.
+
+      First Phase 1 deliverable: cohort outcome distribution table
+      (catalyst quality x gap bucket x pm_rvol bucket → win rate,
+      avg P&L, R-expectancy). Single SQL query against existing tables.
     status: pending
     added_on: 2026-05-14
