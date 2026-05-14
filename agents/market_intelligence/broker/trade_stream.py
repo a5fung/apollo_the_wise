@@ -344,10 +344,22 @@ async def _dispatch_trade_event(data, stream_account_mode: str) -> None:
             f"for {symbol}: {e}",
             exc_info=True,
         )
-        await send_telegram_message(
-            f"{mode_prefix(stream_account_mode)}⚠️ *Stream handler error*\n"
-            f"{event} for {symbol}: {e}"
-        )
+        # Escalate entry-fill errors specifically — the consequence is a
+        # naked position at broker (the OTO stop leg cancels when the
+        # parent's WS callback throws). Generic "Stream handler error"
+        # framing was missed during CRMD 2026-05-14 incident.
+        if event == "fill":
+            await send_telegram_message(
+                f"{mode_prefix(stream_account_mode)}🚨 *POSITION MAY BE NAKED — INTERVENTION REQUIRED*\n"
+                f"Entry fill handler threw for {symbol}; stop-leg likely canceled by broker.\n"
+                f"Check Alpaca dashboard NOW and place a protective stop manually.\n"
+                f"Error: {e}"
+            )
+        else:
+            await send_telegram_message(
+                f"{mode_prefix(stream_account_mode)}⚠️ *Stream handler error*\n"
+                f"{event} for {symbol}: {e}"
+            )
 
 
 # Backward-compat alias (some older imports may still call _handle_trade_update
@@ -688,8 +700,16 @@ async def _process_entry_fill(
                 -- here. COALESCE preserves any value set by a prior fill
                 -- on a re-entry attempt — we want lifetime extreme across
                 -- the whole trade record, not per-attempt.
-                lowest_price_seen = COALESCE(lowest_price_seen, $2),
-                highest_price_seen = COALESCE(highest_price_seen, $2)
+                --
+                -- IMPORTANT: explicit `::numeric` casts disambiguate $2
+                -- for asyncpg type deduction. Without them, $2 is used
+                -- as both double precision (entry_price) AND numeric
+                -- (lowest/highest_price_seen) → AmbiguousParameterError
+                -- at prepare-time. 2026-05-14 incident: CRMD entered
+                -- naked because the WS handler threw, stop got canceled
+                -- by the OTO bracket teardown.
+                lowest_price_seen = COALESCE(lowest_price_seen, $2::numeric),
+                highest_price_seen = COALESCE(highest_price_seen, $2::numeric)
             WHERE id = $1
         """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
 
