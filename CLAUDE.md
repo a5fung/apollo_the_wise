@@ -302,6 +302,24 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 (session 2) — Post-mortem filed + Gate 5 live-cutover blocker
+Following the CRMD incident, formal post-mortem document `docs/incidents/2026-05-14-crmd-naked-position.md` written: full timeline, 5-whys, damage assessment, what-went-right/wrong, action items §6, sign-off §8. Filed as P0 live-cutover blocker.
+
+**Gate 5 added to `live_cutover_decision` review** (`data_gated_reviews.yaml`): NO strategy may promote to `phase='live'` + `live_real_enabled=True` until 5 deliverables ship + verify:
+- (A) Naked-position remediation: when entry-fill UPDATE raises ANY exception, IMMEDIATELY submit a fallback stop-market at `trade["orb_low"]` BEFORE any other action. Emit `naked_position_remediation_fired` audit event.
+- (B) Boot-time DB UPDATE prepare validation: extend preflight to walk every parameterized UPDATE via `connection.prepare(sql)`. Deploy blocks on `AmbiguousParameterError` etc.
+- (C) Escalated naked-position alert for `partial_fill` (fill already shipped 96fd7ee).
+- (D) Stuck-fill watchdog cron: every 60s during market hours, surface `entry_order_id IS NOT NULL AND status='filling' AND filled_at IS NULL AND created_at < NOW() - INTERVAL '2 min'`.
+- (E) Regression pytest for schema column-type additions against mi_live_trades.
+- (F) Operator sign-off on post-mortem doc.
+
+**Verification protocol** (must pass before status=done on `crmd_naked_position_postmortem_2026_05_14` review):
+1. Paper-mode synthetic test: patch entry-fill UPDATE to raise AmbiguousParameterError; confirm remediation path submits fallback stop within 5s + Telegram escalation fires + DB reconciles.
+2. Preflight test: insert a synthetic ambiguous UPDATE; confirm deploy BLOCKS.
+3. Stuck-fill watchdog: insert a synthetic stuck row; confirm watchdog surfaces it.
+
+**Why this gate is HARD-blocker**: live-$ projection on same setup = $5K-$25K loss per unstopped position at planned account sizes. `daily_loss_limit` doesn't catch a single naked position — it gates new entries, not exits. A runaway gap-down on one position could exceed account equity. The architectural lesson generalizes: boot-time preflight needs to walk hot DB-mutation paths, not just credentials.
+
 ### 2026-05-14 — INCIDENT: CRMD entered naked, bled to -$778 (asyncpg type ambiguity since 2026-05-10)
 **Trigger**: User Telegram alert "Apollo entered CRMD this morning without a stop and now it's way below stop price!" Three stream-handler error alerts had fired earlier (CRMD/KLAR/CSCO) — "inconsistent types deduced for parameter $2 / numeric versus double precision" — but the generic error framing didn't convey "POSITION IS NAKED."
 

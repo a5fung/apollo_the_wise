@@ -1217,10 +1217,43 @@ reviews:
         - Paper R-expectancy stays negative through next 10 trades
         - Dual-mode regression observed during 48h Step C window
         - Theme assignment investigation (#46) surfaces detection-side bug
+        - CRMD 5/14 naked-position class fix (Gate 5) not verified
+
+      ### Gate 5 — Naked-Position Hardening (added 2026-05-14)
+        **HARD BLOCKER** — incident 2026-05-14 CRMD entered naked for
+        1h34m due to asyncpg AmbiguousParameterError in
+        _process_entry_fill. Same code path runs identically on live
+        Alpaca account. On live $ at planned position sizes the same
+        bug could cost -$5K to -$25K per unstopped position.
+
+        Required artifacts:
+        - docs/incidents/2026-05-14-crmd-naked-position.md sign-off
+          complete (operator review + action items A/B/C shipped)
+        - Naked-position remediation in _process_entry_fill (P0):
+          when entry-fill UPDATE raises, IMMEDIATELY submit a fallback
+          stop-market at trade["orb_low"] before any other action.
+          Emit naked_position_remediation_fired audit event.
+        - Boot-time DB UPDATE prepare validation (P0): preflight walks
+          every parameterized UPDATE in trade_stream.py / order_manager.py /
+          live_tracker.py via connection.prepare(sql). Deploy blocks
+          on prepare-time errors.
+        - Escalated naked-position alert for partial_fill (in addition
+          to fill, already shipped 2026-05-14 commit 96fd7ee).
+        - Stuck-fill watchdog: cron every 60s during market hours,
+          surfaces entry_order_id IS NOT NULL AND status='filling' AND
+          filled_at IS NULL AND created_at < NOW() - INTERVAL '2 min'.
+
+        Verification:
+        - Trigger the entry-fill UPDATE failure deliberately in paper
+          (mock a type error via SQL or a transient asyncpg patch).
+        - Confirm fallback stop submits within 5 seconds.
+        - Confirm Telegram escalation fires with NAKED POSITION wording.
+        - Confirm stuck-fill watchdog catches a similar synthetic case.
 
       Origin: 2026-05-10 advisor live-cutover review (Gates 1-3) + user
       requirement for 3-tier maturation pipeline (Gate 4 dual-account
-      shipped 2026-05-10 c79abd6→9bcaba6).
+      shipped 2026-05-10 c79abd6→9bcaba6). Gate 5 added 2026-05-14
+      following CRMD naked-position P0 incident.
     status: pending
     added_on: 2026-05-10
 
@@ -1569,3 +1602,98 @@ reviews:
       cutover, immediate blocker.
     status: pending
     added_on: 2026-05-13
+
+  - review_id: crmd_naked_position_postmortem_2026_05_14
+    title: "CRMD naked-position post-mortem + Gate 5 hardening (LIVE CUTOVER BLOCKER)"
+    question: |
+      **P0 LIVE CUTOVER BLOCKER** — incident 2026-05-14.
+
+      CRMD entered without a working stop at 09:34 ET. asyncpg
+      AmbiguousParameterError in _process_entry_fill caused the WS
+      callback to throw; Alpaca canceled the OTO stop leg; position
+      naked for 1h34m. Manual market SELL recovered at -$778 vs
+      intended -$220. Same bug has been silently failing entry-fill
+      UPDATEs since 2026-05-10 (commit 35c1f6c added NUMERIC columns
+      and overloaded $2 with double precision entry_price).
+
+      Full post-mortem at docs/incidents/2026-05-14-crmd-naked-position.md
+
+      Live-$ projection: $5K-$25K loss per unstopped position at planned
+      sizes. daily_loss_limit doesn't catch a single naked position
+      (it gates entries, not exits). A runaway gap-down could exceed
+      account equity.
+
+      This review tracks the post-mortem completion + Gate 5 hardening.
+      Until status=done, NO strategy may promote to phase='live' +
+      live_real_enabled=True.
+
+      Required deliverables (all must ship + verify):
+
+      A. Naked-position remediation in _process_entry_fill (P0)
+         When entry-fill UPDATE raises ANY exception, IMMEDIATELY submit
+         a stop-market SELL at trade["orb_low"] BEFORE any other action.
+         Emit naked_position_remediation_fired audit event.
+
+      B. Boot-time DB UPDATE prepare validation (P0)
+         Preflight walks every parameterized UPDATE in trade_stream.py /
+         order_manager.py / live_tracker.py via connection.prepare(sql).
+         Deploy blocks on AmbiguousParameterError or similar.
+
+      C. Escalated naked-position alert for partial_fill exceptions
+         (fill exception already shipped 2026-05-14 commit 96fd7ee).
+
+      D. Stuck-fill watchdog cron
+         Every 60s during market hours, surface
+         entry_order_id IS NOT NULL AND status='filling' AND
+         filled_at IS NULL AND created_at < NOW() - INTERVAL '2 minutes'.
+
+      E. Regression test for schema column-type additions (P1)
+         pytest exercises every UPDATE in mi_live_trades against a
+         fresh test DB. Asserts no AmbiguousParameterError.
+
+      F. Operator sign-off on the post-mortem document
+    predicate_sql: |
+      -- Predicate is "all five deliverables shipped + verified."
+      -- No automated count works for this. Predicate placeholder:
+      -- count naked_position_remediation_fired events to confirm
+      -- the remediation path is wired up (synthetic test should
+      -- fire it).
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'naked_position_remediation_fired'
+        AND created_at > '2026-05-14';
+    threshold: 1
+    earliest_review_date: 2026-05-14
+    action_when_ready: |
+      Predicate fires when the remediation path runs once (synthetic
+      test should be the first invocation). Final sign-off requires
+      operator review of all 5 deliverables in
+      docs/incidents/2026-05-14-crmd-naked-position.md §6.
+
+      Verification protocol (must pass before status=done):
+
+      1. Deploy a paper-mode test: introduce a transient asyncpg
+         patch that raises AmbiguousParameterError on the entry-fill
+         UPDATE. Submit a paper bracket entry. Observe:
+         - WS callback throws
+         - naked_position_remediation_fired audit event fires
+         - Fallback stop-market SELL submitted within 5 seconds
+         - Telegram escalation: 🚨 NAKED POSITION REMEDIATED
+         - DB state reconciled: status='closed' or similar terminal
+         - Original OTO stop teardown noted
+
+      2. Deploy: confirm preflight walks all UPDATE prepares and
+         BLOCKS on a synthetic ambiguous-parameter UPDATE inserted
+         into a test file.
+
+      3. Stuck-fill watchdog: insert a row with status='filling' and
+         filled_at=NULL and created_at < 2min ago. Confirm watchdog
+         surfaces it on next tick.
+
+      4. Operator reviews post-mortem document — sign-off table §8
+         filled. Block live cutover until then.
+
+      Origin: 2026-05-14 P0 incident — CRMD naked position. User
+      flagged "this is a huge issue and cannot happen with real $,
+      can ruin it all" → formal post-mortem mandated.
+    status: pending
+    added_on: 2026-05-14
