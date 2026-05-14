@@ -141,6 +141,23 @@ The following MUST ship before any strategy is promoted to `phase='live'` + `liv
 
 ---
 
+## 6b. P&L attribution (shipped 2026-05-14 same day)
+
+To prevent the CRMD bug damage from corrupting methodology-evaluation metrics, a generic exclusion mechanism was shipped:
+
+- **Schema**: `mi_live_trades.pnl_attribution TEXT` (nullable). NULL = methodology (default). Non-NULL = bug-attributable loss; the actual P&L still hit the account but the row is excluded from methodology evaluation. First use: `'incident_2026_05_14_naked_position'` on CRMD #137.
+- **Filter applied to** (methodology evaluation — should exclude bug rows):
+  - Gate 3 paper R-expectancy validation (`data_gated_reviews.yaml::paper_r_expectancy_validation`)
+  - Weekly review postmortem narratives (`system_review.py::_aggregate_postmortem_narratives`)
+  - Weekly review loser breakdown (`system_review.py::_aggregate_loser_breakdown`)
+- **Filter NOT applied to** (account safety + accounting visibility — must reflect reality):
+  - Daily loss limit safeguard (`live_tracker.py:226` — `today_losses` aggregation)
+  - Daily Telegram summary (`live_tracker.py:673` — real P&L visibility)
+  - `/status`, `/pnl`, `/trades` user-facing commands (`agent.py`)
+  - Account equity snapshots / drawdown breaker
+
+**Pre-fix cohort impact**: CRMD's -$778 was actually ~-$220 methodology + ~-$558 bug damage. After tagging, Gate 3 will evaluate methodology performance correctly while account analytics still see the full -$778.
+
 ## 7. Live cutover gate requirement
 
 The `live_cutover_decision` review in `data_gated_reviews.yaml` is updated to add a 5th gate:

@@ -302,6 +302,26 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 (session 3) — P&L attribution column to exclude CRMD bug damage from methodology metrics
+User flagged that the CRMD bug damage will distort P/L performance reviews. Shipped a generic exclusion mechanism rather than ad-hoc adjustments:
+
+**Schema**: `mi_live_trades.pnl_attribution TEXT` (nullable, idempotent migration). NULL = methodology (default). Non-NULL names the incident (`'incident_2026_05_14_naked_position'` for CRMD #137 today). Account equity still reflects actual -$778 hit; only methodology-evaluation queries filter on this column.
+
+**Filter applied to** (methodology evaluation):
+- Gate 3 `paper_r_expectancy_validation` predicate + action SQL
+- `system_review.py::_aggregate_postmortem_narratives` (weekly digest best/worst)
+- `system_review.py::_aggregate_loser_breakdown` (weekly loser deep-dive)
+
+**Filter NOT applied to** (account safety + accounting visibility — must reflect reality):
+- `daily_loss_limit` safeguard (live_tracker.py:226)
+- Daily Telegram summary (live_tracker.py:673)
+- `/status`, `/pnl`, `/trades` user commands
+- Account equity / drawdown breaker
+
+**Why this shape over alternatives**: (a) preserves account-truth in the row; (b) one query filter applies uniformly to all methodology analytics; (c) explicitly names the incident in the column value — auditable years later; (d) handles future incidents the same way without code changes.
+
+**Pre-fix cohort impact**: CRMD's -$778 was ~-$220 methodology + ~-$558 bug damage. Gate 3 cohort now reads -$2,041 methodology vs -$2,599 actual. Still deeply negative, but methodology evaluation is no longer distorted by bug damage going forward.
+
 ### 2026-05-14 (session 2) — Post-mortem filed + Gate 5 live-cutover blocker
 Following the CRMD incident, formal post-mortem document `docs/incidents/2026-05-14-crmd-naked-position.md` written: full timeline, 5-whys, damage assessment, what-went-right/wrong, action items §6, sign-off §8. Filed as P0 live-cutover blocker.
 

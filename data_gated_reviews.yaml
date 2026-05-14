@@ -1018,15 +1018,22 @@ reviews:
       run multiples of risk. The validation threshold is +R cumulative
       across N≥10, not win-rate.
     predicate_sql: |
+      -- 2026-05-14: added pnl_attribution IS NULL filter to exclude
+      -- bug-attributable trades from methodology evaluation. CRMD #137
+      -- tagged 'incident_2026_05_14_naked_position' after the naked-position
+      -- incident — its -$778 includes ~-$558 of bug damage (vs intended
+      -- stop at -$220). Actual P&L still hit the account; only the
+      -- methodology gate excludes.
       SELECT COUNT(*) FROM mi_live_trades
       WHERE account_mode = 'paper'
         AND status = 'closed'
         AND closed_at >= '2026-05-12'
+        AND pnl_attribution IS NULL
     threshold: 10
     earliest_review_date: 2026-05-22
     action_when_ready: |
       Compute R-expectancy on the most recent 10 closed paper trades
-      from the post-2026-05-12 cohort:
+      from the post-2026-05-12 cohort, excluding bug-attributable trades:
 
         WITH recent AS (
           SELECT id, ticker, alert_date,
@@ -1036,6 +1043,7 @@ reviews:
           WHERE account_mode = 'paper'
             AND status = 'closed'
             AND closed_at >= '2026-05-12'
+            AND pnl_attribution IS NULL    -- exclude bug-attributable
           ORDER BY closed_at DESC
           LIMIT 10
         )

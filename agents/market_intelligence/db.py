@@ -1349,6 +1349,16 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS lowest_price_seen NUMERIC;
             ALTER TABLE mi_live_trades
                 ADD COLUMN IF NOT EXISTS highest_price_seen NUMERIC;
+            -- pnl_attribution: NULL = methodology (default). Non-NULL means
+            -- the P&L on this row was distorted by a system bug, not the
+            -- methodology being evaluated. Methodology-evaluation queries
+            -- (Gate 3 R-expectancy, weekly review, future setup analytics)
+            -- should filter `WHERE pnl_attribution IS NULL`. Account-safety
+            -- queries (daily_loss_limit, drawdown breaker) should NOT filter
+            -- — the actual P&L still hit the account. First use:
+            -- 'incident_2026_05_14_naked_position' on CRMD #137.
+            ALTER TABLE mi_live_trades
+                ADD COLUMN IF NOT EXISTS pnl_attribution TEXT;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS rs_avg FLOAT;
             ALTER TABLE mi_themes

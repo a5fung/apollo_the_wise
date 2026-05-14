@@ -330,9 +330,13 @@ async def _aggregate_trade_postmortems(window_start: date) -> dict:
 
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # pnl_attribution IS NULL: exclude bug-attributable trades from
+        # methodology evaluation. Real P&L still hit the account; the weekly
+        # postmortem is about strategy fitness, not account safety.
         rows = await conn.fetch("""
             SELECT ticker, alert_date, total_pnl FROM mi_live_trades
             WHERE status = 'closed' AND alert_date >= $1 AND total_pnl IS NOT NULL
+              AND pnl_attribution IS NULL
             ORDER BY alert_date DESC
         """, window_start)
         if not rows:
@@ -402,6 +406,9 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
 
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # pnl_attribution IS NULL: exclude bug-attributable trades. The
+        # loser breakdown is methodology-tuning telemetry — counting a
+        # bug-induced loss as a methodology miss would lead to false fixes.
         losers = await conn.fetch("""
             SELECT
                 t.id, t.ticker, t.alert_date, t.signal_type, t.entry_attempt,
@@ -415,6 +422,7 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
             WHERE t.status = 'closed'
               AND t.alert_date >= $1
               AND t.total_pnl < 0
+              AND t.pnl_attribution IS NULL
             ORDER BY t.total_pnl ASC
         """, window_start)
 
