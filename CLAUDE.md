@@ -302,6 +302,42 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 — INCIDENT: CRMD entered naked, bled to -$778 (asyncpg type ambiguity since 2026-05-10)
+**Trigger**: User Telegram alert "Apollo entered CRMD this morning without a stop and now it's way below stop price!" Three stream-handler error alerts had fired earlier (CRMD/KLAR/CSCO) — "inconsistent types deduced for parameter $2 / numeric versus double precision" — but the generic error framing didn't convey "POSITION IS NAKED."
+
+**Root cause** (commit `35c1f6c` 2026-05-10 — "Track worst-price / best-price per trade for setup-quality analytics"): added `lowest_price_seen` / `highest_price_seen` as **NUMERIC** columns and reused `$2` in `_process_entry_fill` UPDATE for them. `entry_price` is `double precision`. `$2` overloaded across both types → `AmbiguousParameterError` at asyncpg `prepare` time.
+
+```sql
+entry_price = $2,                                    -- double precision
+lowest_price_seen = COALESCE(lowest_price_seen, $2), -- numeric ← collides
+highest_price_seen = COALESCE(highest_price_seen, $2) -- numeric ← collides
+```
+
+**Silent damage** (4 trades since 2026-05-10 22:43 PT): every entry fill UPDATE in this window failed → `filled_at` NULL on MRAM/KLAR/CSCO/CRMD. KLAR/CSCO got into `status='closed'` via the stop-fill code path (different UPDATE, no type collision). CRMD got stuck — its OTO stop leg was canceled by Alpaca when the entry-fill WS callback threw, position became naked from 09:34 ET to 11:08 ET (1h34m).
+
+**Damage assessment**:
+- CRMD: 2214 sh, entry $8.36 → manual market SELL $8.01 = **-$778.02** (intended stop $8.45 would have lost -$220; bug cost ~-$558 extra)
+- KLAR -$914, CSCO -$407 (stop-hit at proper price — bug didn't worsen these, just left filled_at NULL)
+- Total day P&L: **-$2,099** → triggered daily_loss_limit safeguard ($1,897 cap), system correctly blocked further entries
+
+**Fix** (commit `96fd7ee`): explicit `::numeric` casts on the two `lowest/highest_price_seen` assignments. `$2` now deduces to `double precision` (from `entry_price`); the casts handle conversion to numeric for the NUMERIC columns at write time. Verified live by re-running the same UPDATE shape on KLAR/CSCO during backfill — no error.
+
+**Defensive escalation**: when `event=='fill'` exception fires, Telegram now says "🚨 POSITION MAY BE NAKED — INTERVENTION REQUIRED" with explicit broker-check instruction. Generic "Stream handler error" framing was easy to dismiss during today's incident.
+
+**Reconciliation scripts** (kept for evidence):
+- `scripts/_emergency_close_crmd.py` — submits market SELL for the naked position (used today)
+- `scripts/_reconcile_crmd_close.py` — backfills CRMD row from Alpaca order data (entry_price, filled_at, exits, total_pnl)
+- `scripts/_backfill_filled_at.py` — backfills filled_at on KLAR/CSCO from entry orders (separate run)
+
+**This would have been a $5K+ live loss had it happened post-cutover.** The daily_loss_limit safeguard caught it in paper (correctly blocked at -$2,099), but a single naked position with no stop could blow through that on a one-name basis if the trade size were larger.
+
+**Pre-live-cutover hardening to file as followup data-gated reviews**:
+- `_process_entry_fill` (and other DB-mutation paths in `trade_stream.py`) should have an **explicit naked-position remediation** branch: if UPDATE raises any DB error, IMMEDIATELY submit a stop-market order at the intended stop price BEFORE any other action. Don't trust the OTO bracket to remain intact when the WS callback throws.
+- Add a CI/test that exercises every `mi_live_trades.*` UPDATE statement against a fresh DB schema. asyncpg's AmbiguousParameter is a prepare-time error — discoverable by running each statement once at boot.
+- Boot-time validation: `_bootstrap_alpaca_credentials` already runs at startup. Add a parallel `_validate_db_update_statements` that prepares each parameterized UPDATE without executing (asyncpg `connection.prepare()` is cheap) and refuses to start if any prepare fails.
+
+**Lesson**: a column-type addition to a hot UPDATE path is a SCHEMA CHANGE that requires regression coverage. The bug was a parameter overload — same value passed for both a `double precision` and `numeric` column. asyncpg's prepare-time type deduction caught it correctly, but the error was thrown at first execution (entry fill), not at boot. Same shape as the 2026-05-13 outage where strategy `phase='live'` redefinition broke entry pipelines silently at first ORB attempt. Both classes are catchable by a preflight that walks every hot path at boot time, not just the credential check. The 2026-05-13 preflight (#84) was a first step in this direction — needs expansion to DB UPDATE prepare validation.
+
 ### 2026-05-13 (session 7) — Theme orphan_sub remediation (parent dropped → sub survives top-level)
 Followup on yesterday's session 6 — filed `theme_orphan_sub_mechanism` review then immediately worked the fix. 7 firings in 14d, all oil/E&P sector: parent theme (Hydraulic Fracturing / Permian E&P) dropped during merge or cap stage while sub-theme survives with stale `parent_theme` reference. Today's case: sub `Independent E&P Operators` [37 oil tickers] points at parent `Hydraulic Fracturing & Well Completion Services` (last seen 5/11 with the same 37 tickers — semantically the same theme renamed by Sonnet).
 
