@@ -1908,6 +1908,74 @@ reviews:
       F5. Pre-market shares relative-anomaly carve-out (2026-05-08) —
           carve-out admits vs absolute-floor blocks.
 
+      ### G. Post-EP entry-timing CLASS (user case studies 2026-05-14)
+      User flagged 4 cases that crystallize a hypothesis: EPs split into
+      TWO classes that need DIFFERENT entry tactics:
+
+      G1. **Class A — Explosive gap-and-go** (current MAGNA53 ORB capture)
+          Gaps up, runs immediately, ORB-high entry within 9:31-9:45 ET
+          window works. This is what the current system targets.
+
+      G2. **Class B — Gap-digest-then-breakout** (currently UNCAPTURED)
+          Gaps up but doesn't immediately follow through. Forms an
+          intraday base in early session. Real breakout happens AFTER
+          the ORB submission window closes (10:00 ET cutoff).
+          Different mechanics: monitor for a base low, watch for
+          breakout of the intraday consolidation structure (NOT the
+          original ORB).
+
+          User uses the "620 method" by OWL trader for intraday entry
+          framework on these (https://theowltrader.com/2023/05/25/
+          tools-of-the-trade-the-620-chart/). Key primitives: 6 EMA / 20
+          EMA cross, candle pattern, basing structure.
+
+      ### Case studies — preserve for Friday Phase 1 analysis
+
+      **ONDS 2026-05-14**: Class B. Gap with strong technicals (above
+      10/20/50 MAs, multi-month base). 1-min ORB entry stopped TWICE
+      before working the 3rd time. 620 method entry signal flashed
+      ~7:25 PT (10:25 ET) — past our 10:00 ET ORB cutoff. Currently
+      uncaptured. The setup was real, the timing was wrong for our
+      pipeline.
+
+      **CPA 2026-05-14**: EP FIRED AFTER ORB window — gap happened
+      pre-open, earnings the previous night, MAs cleared, basing
+      structure. Why did the EP detector fire late? Investigate
+      latency in mi_ep_scan_log: scan_time_et vs first eligible
+      tick. Possible causes: pre-market RVOL gate not satisfied
+      until later, catalyst grading turnaround latency, snapshot
+      cache staleness.
+
+      **KLAR 2026-05-14**: Class B variant. Entered once today,
+      stopped with loss. SECOND signal ~7:10 PT (10:10 ET, just past
+      ORB cutoff) would have worked. Reinforces ONDS pattern —
+      second-chance entries within 30-60 min post-ORB-cutoff are
+      losing real alpha.
+
+      **CSCO 2026-05-14**: counter-example for catalyst grading.
+      11% earnings growth, 10% revenue growth — "hardly
+      transformative" per user. Large-cap AI catch-up play. Current
+      grader called this "strong"; by fundamentals-magnitude rubric
+      this is at most "routine+". Entered, stopped. User nuance:
+      not that CSCO won't work, but it's the wrong ENTRY TACTIC —
+      Class A explosive ORB-high doesn't fit. Class B "let it base
+      and see" might.
+
+      ### G implications for Phase 1
+      - Cross-tab existing alerts × (Class A vs Class B) using
+        proxy: did the 1-min ORB-high get hit within 14 minutes
+        post-9:31 (Class A) vs later (Class B)?
+      - Measure win rate / R-expectancy by class. Hypothesis:
+        Class A success conditional on fundamentals-magnitude (D1);
+        Class B requires a different entry signal AND probably
+        looser cutoff or basing-detection.
+      - Related to existing `orb_cutoff_extension` review (filed
+        for 7/15) — user's case studies materially strengthen the
+        case for revisiting that window.
+      - 620 method is a candidate signal framework for Class B
+        detection. Feasibility prototype in Phase 1.3 as D7:
+        "intraday basing-then-breakout" detector.
+
       **Working hypothesis** (test before shipping):
         Single biggest selectivity gate is "earnings is actually
         game-changing magnitude" (D1). NBIS-class. Most earnings
@@ -1925,6 +1993,15 @@ reviews:
 
         Volume / multi-quarter (B3/B4) are existing scoring weights
         likely under-calibrated. Re-weight from outcome data.
+
+        **Class A vs Class B split** (G) is structurally orthogonal
+        to fundamentals/technicals — even after we pick the right
+        SETUPS, we still need different ENTRY TACTICS per class.
+        Phase 1 must measure class split rates and per-class outcomes
+        as a first-order analysis, not a tiebreaker. If 50%+ of
+        otherwise-good setups are Class B, fixing only selectivity
+        without addressing entry timing leaves real alpha on the
+        table.
     predicate_sql: |
       -- Predicate data already exists: 60d EP scan history has ~500+ rows
       -- (87 in last 10d alone). Phase 1 diagnostic can start any time.
@@ -2022,13 +2099,62 @@ reviews:
       weights to current hardcoded weights. Identify under-weighted
       and over-weighted dimensions.
 
+      ## P1.6 — Class A vs Class B split (per §G — user case studies)
+      For each historical HIGH alert, classify post-EP shape:
+        - Class A (gap-and-go): 1-min ORB-high broken within 14 min of
+          open (i.e. by 9:45 ET), and held above for ≥5 min.
+        - Class B (gap-digest-breakout): ORB-high not broken in window,
+          OR broken but immediately stopped back below; then a later
+          intraday consolidation low forms and gets broken upward
+          (proxy: first 5-min high made after 10:00 ET that exceeds
+          all preceding session highs).
+        - Class C (fade): ORB-low broken, no recovery.
+
+      Compute by class:
+        - Distribution (% Class A / B / C in cohort)
+        - Per-class win rate, R-expectancy, max-favorable-excursion
+        - Class A × fundamentals-magnitude (D1) interaction
+        - Class B × technical-structure (D2-D5) interaction
+
+      Use today's 2026-05-14 case studies as labeled fixtures:
+        - ONDS = Class B (1-min stopped 2x, 3rd worked; 620 signal 10:25 ET)
+        - CPA  = Class B (also a late EP-detector fire — separate
+                 latency investigation)
+        - KLAR = Class B partial (entered Class A, stopped; Class B
+                 entry at 10:10 ET worked)
+        - CSCO = wrong-class-for-setup (Class A entry attempted but
+                 fundamentals didn't support explosive class)
+
+      If Class B is 30%+ of HIGH alerts, the recommendation is a
+      parallel entry path, not just a selectivity tightening. Filed
+      as cross-reference to `orb_cutoff_extension` review — user's
+      observations materially strengthen that case.
+
+      Candidate Class B entry-signal framework: OWL trader 620 method
+      (6 EMA / 20 EMA cross + candle + basing). Prototype as D7 in
+      P1.3 alongside other technical-structure dimensions.
+
+      ## P1.7 — EP detector latency investigation (CPA-class)
+      User flagged CPA 2026-05-14 fired AFTER ORB window despite
+      pre-open earnings catalyst. Investigate:
+        - mi_ep_scan_log: scan_time_et of CPA's first eligible tick
+          vs market open
+        - Was pre-market RVOL gate not satisfied until later?
+        - Was catalyst grading turnaround too slow?
+        - Is snapshot cache stale at open?
+      Goal: surface late-firing root causes; quantify how many HIGH
+      alerts fire AFTER 9:31 ET that should have fired pre-open.
+
       **PHASE 1 OUTPUT**: one document `docs/decisions/0003-ep-selectivity-overhaul.md`
       with:
         - Cohort outcome breakdowns (tables)
         - Per-dimension separation signal
+        - Class A / B / C split + per-class outcomes (§G)
         - Recommended new filters (chosen set, not all candidates)
         - Recommended scoring weight adjustments
         - Recommended scope split: what ships first, what stays shadow
+        - Parallel-entry-path proposal IF Class B share ≥30%
+        - Late-fire latency findings (CPA-class)
 
       ---
 

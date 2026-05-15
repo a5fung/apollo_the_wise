@@ -45,7 +45,7 @@ Sorted by earliest_review_date.
 - [ ] `unified_allocator_phase_1b` (5/15, #44 cross-strategy allocator) → YAML
 - [ ] `pass1_protect_strip_equalsize_test` (5/15, test fixture) → YAML
 - [ ] `gate5_tomorrow_verifications` (5/15, 5-item checklist) → YAML
-- [ ] `ep_selectivity_deep_dive` (5/17 — Phase 1 exhaustive cohort review, ~50 variables) → YAML
+- [ ] `ep_selectivity_deep_dive` (5/17 — Phase 1 exhaustive cohort review, ~50 variables + §G Class A vs B + 5/14 case studies ONDS/CPA/KLAR/CSCO) → YAML
 - [ ] `vix_ingest_for_p19_sizing` (5/20) → YAML
 - [ ] `perplexity_sanitizer_verification` (5/21, 7d outcome watch target=0) → YAML
 - [ ] `paper_r_expectancy_validation` (5/22, Gate 3 above) → YAML
