@@ -2111,3 +2111,188 @@ reviews:
           fetch (filed today)
     status: pending
     added_on: 2026-05-14
+
+  - review_id: perplexity_sanitizer_verification
+    title: "Perplexity disclaimer sanitizer — verify zero new FPs over 7d"
+    question: |
+      Sanitizer shipped 2026-05-14 commit c4243aa
+      (collector.strip_perplexity_disclaimer + ep_detector hook).
+      It detects disclaimer markers in the first 200 chars of news_summary
+      and excludes them from the M&A keyword-scan catalyst_texts list.
+
+      Verification: zero new mna_filter_fired events with disclaimer
+      patterns over a 7-day window. If any fire, the marker list missed
+      a phrase variant and needs expanding.
+
+      Scope note: the sanitizer ONLY filters M&A keyword scan. Other
+      surfaces (briefing, /trades, weekly review postmortem) still
+      display the disclaimer text verbatim — that's narrow by design;
+      methodology is the only path that needs sanitizing. Cosmetic
+      cleanup of those surfaces is filed-as-future-scope.
+    predicate_sql: |
+      -- Count NEW disclaimer-pattern mna_filter_fired events since the
+      -- fix shipped. Predicate met when ≥7 days have elapsed; outcome
+      -- evaluation is "count == 0" not "count >= threshold".
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'mna_filter_fired'
+        AND created_at > '2026-05-14 20:00:00+00'  -- post-c4243aa deploy
+        AND (detail ILIKE '%nearest match%'
+             OR detail ILIKE '%closest match%'
+             OR detail ILIKE '%no direct catalyst%'
+             OR detail ILIKE '%no recent catalysts%'
+             OR detail ILIKE '%no specific news%'
+             OR detail ILIKE '%I don%t have information%');
+    threshold: 0  # outcome target: zero
+    earliest_review_date: 2026-05-21
+    action_when_ready: |
+      Run predicate. If count == 0 → sanitizer working as intended,
+      close perplexity_hallucination_keyword_leak review (which the
+      sanitizer addresses) and mark this verification done.
+      If count > 0 → inspect the disclaimer phrases that slipped through,
+      expand _PERPLEXITY_DISCLAIMER_MARKERS tuple, re-deploy. Also emit
+      perplexity_disclaimer_stripped audit count should grow over the
+      window — if it doesn't, the sanitizer isn't firing at all.
+
+      Origin: advisor 2026-05-14 review of session 6 sanitizer ship.
+    status: pending
+    added_on: 2026-05-14
+
+  - review_id: pass1_protect_strip_equalsize_test
+    title: "Pass1 BOTH_PROTECTED tiebreaker — lock equal-size case via test"
+    question: |
+      Pass1 BOTH_PROTECTED tiebreaker shipped 2026-05-14 (Wave 2)
+      strips from j when len(tickers_i) >= len(tickers_j). When sizes
+      are EQUAL, the >= comparison makes j the loser by default — i.e.
+      tie goes to i (the iteration-order earlier theme). Today's SNDK
+      case worked cleanly (8 vs 3 tickers) but the equal-size behavior
+      is undefined-by-iteration-order and brittle.
+
+      Lock via test fixture: assert that two equal-size protected themes
+      with overlap produce a deterministic outcome (e.g. alphabetically
+      earlier name wins, regardless of which iterates first).
+    predicate_sql: |
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-05-15
+    action_when_ready: |
+      1. Add test fixture in tests/test_theme_engine_pass1.py:
+         - Build two themes with identical len(tickers) = 5, overlapping
+           on 3 tickers, both in protected_names.
+         - Call _merge_overlapping_themes.
+         - Assert: the alphabetically-earlier-named theme keeps the
+           intersection; the later-named one is stripped.
+      2. If test fails (current behavior), tighten the tiebreaker to
+         use alphabetical name sort as the second-level discriminator:
+           if len(i) > len(j): strip from j
+           elif len(i) < len(j): strip from i (existing default)
+           elif name_i < name_j: strip from j
+           else: strip from i
+      3. Re-run test to confirm pass.
+      Non-blocking — equal-size protected overlap is rare in production.
+      Worth pre-emptive lock since the brittle case will fire eventually.
+      Origin: advisor 2026-05-14 review.
+    status: pending
+    added_on: 2026-05-14
+
+  - review_id: vix_ingest_for_p19_sizing
+    title: "VIX ingest into mi_market_regime so P19 sizing actually engages"
+    question: |
+      P19 vix_scaled_risk_pct is now WIRED into prepare_orb_order +
+      prepare_9m_day2_orb_order (2026-05-14 commit cc8f2e9). But the
+      helper reads regime_record["vix"], which doesn't exist yet —
+      VIX is not ingested into mi_market_regime. The None-safe fallback
+      means risk_pct stays at RISK_PCT (1%) unchanged; the wiring is
+      DORMANT until VIX is added.
+
+      To engage the continuous sizing, add VIX ingest:
+      1. Polygon Indices add-on covers VIX (^VIX) — confirm subscription
+      2. Add VIX fetch in regime_engine; persist to mi_market_regime
+      3. Helper auto-activates on first regime row with non-null vix
+
+      Alternative: yfinance "^VIX" (free, lower latency) for V1.
+    predicate_sql: |
+      -- Predicate: VIX column present in mi_market_regime with at
+      -- least 5 days of non-null values.
+      SELECT COUNT(*) FROM mi_market_regime
+      WHERE vix IS NOT NULL
+        AND record_date > CURRENT_DATE - INTERVAL '14 days';
+    threshold: 5
+    earliest_review_date: 2026-05-20
+    action_when_ready: |
+      1. Add vix DOUBLE PRECISION column to mi_market_regime (idempotent
+         migration in db.py).
+      2. In regime_engine, fetch VIX via yfinance "^VIX" (start) or
+         Polygon Indices (production). Persist alongside other regime
+         fields.
+      3. Verify: after first nightly run with VIX populated, hit a paper
+         trade with VIX value visible; confirm risk_pct in
+         "Order spec: ..." log line scales below 1.0× when VIX > 15.
+      4. Mark vix_ingest_for_p19_sizing done.
+      Origin: 2026-05-14 P19 wiring (helper shipped, ingest deferred).
+      Memo: project_market_intelligence_backlog P19 — "binary captures
+      ~80% of benefit today; revisit after 3+ months live." So this is
+      genuinely lower-urgency than other items.
+    status: pending
+    added_on: 2026-05-14
+
+  - review_id: gate5_tomorrow_verifications
+    title: "Tomorrow-morning verifications for tonight's shipped fixes"
+    question: |
+      Multiple fixes shipped 2026-05-14 evening need next-day
+      verification that they're actually live and behaving:
+
+      1. BW partial fill at next open → finalize_partial_exit populates
+         exits[], partial_taken=TRUE, total_pnl, remaining_shares=776
+         with REAL fill price (validates live_tracker:591-602 fix).
+      2. Stuck-fill watchdog runs every minute during market hours:
+         docker logs apollo-market --since 30m | grep stuck_fill_watchdog
+         Should show 30+ "Running job" entries between 9:30-10:00 ET.
+      3. Nightly RS recompute (5pm ET) uses corrected AIXI/CVNA daily
+         closes → AIXI RS_composite drops from 100 to normal range,
+         CVNA RS_rank unchanged or marginally different.
+      4. Nightly theme run (5pm ET) respects SNDK manual assignment via
+         Haiku validator + Pass1 tiebreaker — SNDK stays in AI Memory
+         & Storage; Front-End Interconnect theme has only ICHR + TSEM.
+      5. 9M intraday scan first firing of mna_filter_fired (9m_intraday)
+         confirms the new hook is reachable.
+    predicate_sql: |
+      -- Trivially predicate-met tomorrow. Just a checklist.
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-05-15
+    action_when_ready: |
+      Run all 5 verifications:
+
+      1. BW partial fill:
+         SELECT id, status, partial_taken, total_pnl, remaining_shares,
+                jsonb_array_length(exits) AS n_exits, exits
+         FROM mi_live_trades WHERE id=119;
+         Expect: partial_taken=TRUE, total_pnl≈+$1500-2000, n_exits=1,
+                 remaining_shares=776.
+
+      2. Stuck-fill watchdog:
+         docker logs apollo-market --since 30m | grep stuck_fill_watchdog
+         Expect: 30+ "Running job" lines between 9:30-10:00 ET.
+
+      3. AIXI RS recompute:
+         SELECT rs_composite, rs_1m, rs_3m, rs_6m
+         FROM mi_stock_scores WHERE ticker='AIXI' AND score_date=CURRENT_DATE;
+         Expect: NOT 100 (was artifact of corrupt history).
+
+      4. SNDK theme stick:
+         SELECT name FROM mi_themes
+         WHERE theme_date=CURRENT_DATE AND 'SNDK'=ANY(tickers);
+         Expect: only 'AI Memory & Storage'.
+
+      5. 9M intraday M&A first hit:
+         SELECT * FROM mi_audit_log
+         WHERE event_type='mna_filter_fired'
+           AND detail LIKE '%9m_intraday%'
+           AND created_at > '2026-05-15';
+         Expect: ≥0 rows (no rows = no eligible ticker; ≥1 = hook
+                 reachable).
+
+      Mark done after all five pass.
+      Origin: 2026-05-14 multi-wave ship verification protocol.
+    status: pending
+    added_on: 2026-05-14
