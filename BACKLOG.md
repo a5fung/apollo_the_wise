@@ -22,6 +22,7 @@ Last updated: 2026-05-14
 
 Live-$ flip cannot happen until ALL of these are green.
 
+- [ ] **Gate 5 G — Column-write audit invariant** (added 2026-05-15 after KLAR/ARM stop_price clobber). Refactor write sites per `docs/architecture/trade-state-ownership.md` + ship `scripts/audit_column_writes.py check` mode + wire into `deploy.sh` as `[5c/5]`. Sunday focused.
 - [ ] **Gate 5 F — Operator sign-off on CRMD post-mortem** → `docs/incidents/2026-05-14-crmd-naked-position.md` §8
 - [ ] **Gate 3 — Paper R-expectancy N≥10** (currently 4 methodology trades since 5/12, need 6 more) → `data_gated_reviews.yaml::paper_r_expectancy_validation` (earliest 2026-05-22)
 - [ ] **Gate 2 — FTRE partial-trail verification** (waiting for real partial-then-trail in paper) → `data_gated_reviews.yaml::ftre_partial_trail_verification`
@@ -80,9 +81,7 @@ From `memory/project_market_intelligence_backlog.md`. Memory file auto-loads
 each session; this index is the cross-cutting view.
 
 - [ ] **P10** Conditional auto-entry alerts (gated on live $) → memory
-- [ ] **P13** Theme constituent churn detection ✓ shipped tonight in `theme_engine._detect_theme_constituent_churn` → memory + commit 623c603
-
-> **NOTE**: P13 effectively done. Marking [x] in next BACKLOG.md sync.
+- [x] **P13** Theme constituent churn detection — shipped 2026-05-14 commit 623c603 (`theme_engine._detect_theme_constituent_churn`)
 
 - [ ] **P16** Live trading flip (gated on Gates 1-5 above) → memory
 - [ ] **P17** Monthly & Quarterly system reviews (after 3+ weekly cycles) → memory
@@ -93,13 +92,8 @@ each session; this index is the cross-cutting view.
 - [ ] **P22b** Wick-Fill productionization (gated on n≥30 shadow fills with fill_rate≥0.50) → memory
 - [ ] **P24** Audit-system backfill verification (earliest 2026-05-24 after 30d baseline accumulation) → memory + plan `~/.claude/plans/shiny-mapping-locket.md`
 - [~] **P25** Theme Rank Evolution Dashboard — MVP scaffold shipped tonight (`dashboard/theme_rank_evolution.py`); requires local `pip install streamlit pandas psycopg2-binary` to run; canonical-ID layer (stage 2) deferred → memory
-- [ ] **P26** Verify Fix B global ticker ban ✓ verified tonight (firing daily since 4/28) — memory still marks pending → memory
-
-> **NOTE**: P26 effectively done. Marking [x] in next BACKLOG.md sync.
-
-- [ ] **P27** Accelerating-drop-out churn L2 telemetry ✓ already implemented at `system_audit.py:242` — memory still marks pending → memory
-
-> **NOTE**: P27 effectively done. Marking [x] in next BACKLOG.md sync.
+- [x] **P26** Verify Fix B global ticker ban — verified 2026-05-14 (firing daily since 4/28 deploy)
+- [x] **P27** Accelerating-drop-out churn L2 telemetry — already implemented at `system_audit.py:242` + `_accel_dropout_count_7d`
 
 - [ ] **MAGNA53 Simulator** (low-priority frontend widget) → memory
 
@@ -155,6 +149,16 @@ work later.
 ## ✅ Done — rolling (last 14 days)
 
 Pruned monthly. Newest first.
+
+### 2026-05-15
+- [x] Weekend scope plan filed (`docs/plans/2026-05-15-weekend-scope.md`, 3dad03f)
+- [x] KLAR/ARM stop_price clobber fix (commit d6fa74c) + reconcile of 2 trades
+- [x] Trade-state ownership doc drafted (`docs/architecture/trade-state-ownership.md`)
+- [x] `scripts/audit_column_writes.py` — column→writer matrix, audit mode (foundation for Sunday Gate 5 G)
+- [x] Methodology damage assessment — KLAR #149 was reading -3.20R fictional vs -1.03R real; corruption-window note added to `paper_r_expectancy_validation`
+- [x] Pass1 protect-strip equal-size test fixture (`tests/test_theme_engine_pass1.py`)
+- [x] Perplexity sanitizer test fixture (`tests/test_perplexity_sanitizer.py`)
+- [x] Surfaced `gate3_initial_stop_modeling` followup — FTRE/SMCI have entry==stop (breakeven trail), R-calc needs original stop not current
 
 ### 2026-05-14 (10 commits across multiple sessions)
 - [x] CRMD naked-position incident: asyncpg AmbiguousParameterError fix (commit 96fd7ee) + reconcile + post-mortem

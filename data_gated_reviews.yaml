@@ -1017,6 +1017,31 @@ reviews:
       methodology accepts low win rates (~25-30%) so long as winners
       run multiples of risk. The validation threshold is +R cumulative
       across N≥10, not win-rate.
+
+      ## Corruption windows (must be excluded or re-evaluated post-fix)
+
+      **2026-05-14 CRMD naked position**: tagged via pnl_attribution,
+      auto-excluded by predicate. No further action needed.
+
+      **2026-05-07 → 2026-05-15 stop_price clobber** (fixed 2026-05-15
+      commit d6fa74c, reconciled same day):
+      - ARM #107 (5/07): stop_price was $218 (orb_low clobber), true
+        was $220.10 (prior_day_low). Not in cohort (closed pre-5/12)
+        but corrupted R-expectancy reads for any cohort window.
+      - KLAR #149 (5/15): stop_price was $15.74, true was $14.96.
+        IN cohort. Pre-reconcile R = -3.20R fictional. Post-reconcile
+        R = -1.03R real. **Difference: +2.17R fictional loss.**
+      - GOOGL #56 (5/01): possibly affected; investigation pending
+        Sunday. If contaminated, file as third reconcile.
+
+      **Modeling concern — entry_price == stop_price for some closed
+      trades** (FTRE #72, SMCI #82): risk basis = $0 → r_multiple
+      undefined. Likely a breakeven-trail moved stop up to entry.
+      Gate 3 R-calc currently uses `entry_price - stop_price` but
+      stop_price reflects CURRENT (possibly trailed) stop, not
+      ORIGINAL risk. Filed as `gate3_initial_stop_modeling`
+      followup — R calc should use the original stop set at INSERT,
+      not the trailed value.
     predicate_sql: |
       -- 2026-05-14: added pnl_attribution IS NULL filter to exclude
       -- bug-attributable trades from methodology evaluation. CRMD #137
@@ -2488,3 +2513,46 @@ reviews:
       Origin: 2026-05-14 multi-wave ship verification protocol.
     status: pending
     added_on: 2026-05-14
+
+  - review_id: gate3_initial_stop_modeling
+    title: "Gate 3 R-calc should use INITIAL stop, not current (trailed) stop"
+    question: |
+      Discovered 2026-05-15 during Track 4 damage assessment: FTRE #72
+      and SMCI #82 both have entry_price == stop_price → risk basis
+      $0/share → r_multiple undefined.
+
+      Root cause: stop_price column reflects CURRENT stop (after any
+      trail updates including breakeven). When a winner gets trailed
+      to breakeven and then exits at profit, current stop ≈ entry, so
+      `entry_price - stop_price = 0`. R calc breaks.
+
+      Pradeep/Qullamaggie R-multiple definition: P&L / INITIAL_RISK
+      (the risk at trade ENTRY). Trail updates don't change R basis.
+
+      Need a separate column `initial_stop` (or `risk_per_share`)
+      set ONCE at INSERT and never updated. Gate 3 R-calc reads
+      initial_stop, not stop_price.
+    predicate_sql: |
+      -- Predicate: trades where current Gate 3 calc produces NULL R
+      -- due to entry==stop trail collapse.
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE account_mode='paper' AND status='closed'
+        AND ABS(entry_price - stop_price) < 0.01
+        AND closed_at >= '2026-05-12';
+    threshold: 1
+    earliest_review_date: 2026-05-18
+    action_when_ready: |
+      1. Add column `initial_stop NUMERIC` to mi_live_trades (idempotent
+         migration via db.py _ensure_schema).
+      2. Populate at INSERT in entry_pipeline.py:358 — copy
+         order_spec["stop_loss_price"] into both stop_price AND
+         initial_stop.
+      3. Backfill historical rows: `initial_stop` from
+         `orb_order_placed` audit log entries.
+      4. Update Gate 3 R-calc SQL: use initial_stop, not stop_price.
+      5. Update CRMD post-mortem note: stop_price is current; initial
+         risk is initial_stop.
+      6. Add to BACKLOG.md done.
+      Origin: 2026-05-15 Track 4 methodology damage assessment.
+    status: pending
+    added_on: 2026-05-15
