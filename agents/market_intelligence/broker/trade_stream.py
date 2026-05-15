@@ -719,6 +719,16 @@ async def _process_entry_fill(
             # which caught the broken statement before it shipped to live $.
             # The fix: $2 stays bound to the double-precision sites,
             # $6 (same Python value) is bound to the numeric sites.
+            # IMPORTANT: $4 is the actual stop level placed at broker, which
+            # is trade["stop_price"] (set correctly at INSERT per-strategy:
+            # MAGNA53 = orb_low, 9M Day 2 = prior_day_low). DO NOT use
+            # trade["orb_low"] here — for 9M Day 2 that's WRONG and
+            # overwrites the correct prior_day_low stop with orb_low.
+            # 2026-05-15 KLAR incident: 9M Day 2 trade #149 had broker
+            # stop=$14.96 (prior_day_low) but DB stop_price=$15.74 (orb_low)
+            # because this UPDATE clobbered it. /trades displayed wrong
+            # stop; R-expectancy calc corrupted by ~3x on every 9M Day 2.
+            # COALESCE to orb_low as defensive fallback only.
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     status = 'filled',
@@ -728,7 +738,9 @@ async def _process_entry_fill(
                     lowest_price_seen = COALESCE(lowest_price_seen, $6),
                     highest_price_seen = COALESCE(highest_price_seen, $6)
                 WHERE id = $1
-            """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id, filled_price)
+            """, trade["id"], filled_price, filled_qty,
+                 float(trade["stop_price"] or trade["orb_low"]),
+                 stop_order_id, filled_price)
     except Exception as db_err:
         # Submit fallback stop IMMEDIATELY at intended orb_low — do not
         # depend on later sync_positions, do not re-raise yet. Cover the
