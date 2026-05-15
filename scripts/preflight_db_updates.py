@@ -37,8 +37,8 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
             entry_price = $2, entry_shares = $3, remaining_shares = $3,
             hard_stop = $4, stop_price = $4, filled_at = NOW(),
             stop_order_id = COALESCE($5, stop_order_id),
-            lowest_price_seen = COALESCE(lowest_price_seen, $2::numeric),
-            highest_price_seen = COALESCE(highest_price_seen, $2::numeric)
+            lowest_price_seen = COALESCE(lowest_price_seen, $6),
+            highest_price_seen = COALESCE(highest_price_seen, $6)
         WHERE id = $1
         """,
     ),

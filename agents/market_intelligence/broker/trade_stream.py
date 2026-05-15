@@ -711,29 +711,24 @@ async def _process_entry_fill(
     # the DB-level reconciliation is broken.
     try:
         async with pool.acquire() as conn:
+            # IMPORTANT: separate $6 for the NUMERIC columns. Earlier attempt
+            # used $2::numeric casts but asyncpg still inferred $2 from the
+            # `entry_price = $2` site (double precision), creating the same
+            # AmbiguousParameter the cast was meant to fix. Confirmed by the
+            # 2026-05-14 boot-time preflight (scripts/preflight_db_updates.py)
+            # which caught the broken statement before it shipped to live $.
+            # The fix: $2 stays bound to the double-precision sites,
+            # $6 (same Python value) is bound to the numeric sites.
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     status = 'filled',
                     entry_price = $2, entry_shares = $3, remaining_shares = $3,
                     hard_stop = $4, stop_price = $4, filled_at = NOW(),
                     stop_order_id = COALESCE($5, stop_order_id),
-                    -- Seed worst/best price tracking with the fill price; the
-                    -- 5-min track_open_position_extremes job updates it from
-                    -- here. COALESCE preserves any value set by a prior fill
-                    -- on a re-entry attempt — we want lifetime extreme across
-                    -- the whole trade record, not per-attempt.
-                    --
-                    -- IMPORTANT: explicit `::numeric` casts disambiguate $2
-                    -- for asyncpg type deduction. Without them, $2 is used
-                    -- as both double precision (entry_price) AND numeric
-                    -- (lowest/highest_price_seen) → AmbiguousParameterError
-                    -- at prepare-time. 2026-05-14 incident: CRMD entered
-                    -- naked because the WS handler threw, stop got canceled
-                    -- by the OTO bracket teardown.
-                    lowest_price_seen = COALESCE(lowest_price_seen, $2::numeric),
-                    highest_price_seen = COALESCE(highest_price_seen, $2::numeric)
+                    lowest_price_seen = COALESCE(lowest_price_seen, $6),
+                    highest_price_seen = COALESCE(highest_price_seen, $6)
                 WHERE id = $1
-            """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
+            """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id, filled_price)
     except Exception as db_err:
         # Submit fallback stop IMMEDIATELY at intended orb_low — do not
         # depend on later sync_positions, do not re-raise yet. Cover the
