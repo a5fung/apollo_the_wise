@@ -302,6 +302,51 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-14 (session 6) — 3 bugs fixed in parallel + recurring "DB tracks attempt not outcome" pattern surfaced
+
+User flagged three issues; all three diagnosed + shipped + reconciled in one session:
+
+**Bug 1: Phantom split check formula error (broadest impact, 10 tickers affected)**
+
+`splits_ingest._apply_one` checked `close_pre / close_post ≈ split_from / split_to` from Polygon's `adjusted=true` fetch. **The math is wrong for adjusted-feed data**: with `adjusted=true`, real splits have pre-split bars RE-ADJUSTED to current units, so `close_pre / close_post ≈ 1.0` (not 20 for a 20:1 reverse). Phantom splits also yield ~1.0 (no adjustment applied either way). The check couldn't discriminate, and EVERY real split since 2026-05-08 ship was wrongly flagged phantom and skipped. 10 tickers affected: AIXI/ASBP/DKI/KALA/SMX (5/11), BNZI/CVNA/OLOX (5/08), MHVIY (5/13), SLMT (5/14).
+
+**Fix**: compare the fresh adjusted-feed pre-split close against the un-adjusted (or stale) value currently in `mi_daily_closes`. Real split → new/old ≈ split_factor. Phantom → new/old ≈ 1.0. Tight 10% tolerance because comparing same-date across two fetches. Added `_get_old_close(ticker, date)` helper.
+
+**Damage**: AIXI's RS was scored at 100 with 2-week of "below SMAs" actually showing $0.60-$1.60 raw vs corrected $12-$15 adjusted. CVNA similarly. Downstream: every detector reading `mi_daily_closes` (RS, EP, parabolic, theme) for these 10 tickers used wrong-units data for up to 6 days.
+
+**Reconciliation**: `scripts/_reconcile_2026_05_14_bugs.py` reset `adjustment_applied=FALSE` on the 10 split rows and called `_apply_one` with the fixed check — all 10 successfully wrote 79-173 adjusted bars each. AIXI's 5/05-5/14 closes now show coherent $16.20 → $12.20 → $11.73 progression matching the user's "trending down" observation. Tomorrow's nightly RS scoring will use correct data.
+
+**Bug 2: BW pre-fill state mutation (`live_tracker.py:591-602`)**
+
+Post-close partial-profit logic at 16:45 ET submitted 3 orders to Alpaca (cancel old stop, partial sell 387, new stop 776) — all `ACCEPTED`, queued for next-day open. `execute_partial_exit` correctly deferred state mutation to the WS fill handler. **But the wrapping UPDATE at lines 591-602 wrote the optimistic `step` outcome unconditionally**: `partial_taken=TRUE`, `total_pnl=$1613.79`, `remaining_shares=776`. Then `sync_positions` later overwrote `remaining_shares` back to 1163 (broker truth) but didn't touch `partial_taken` or `total_pnl`. Result: Frankenstein row showing partial-done + realized P&L + full open shares.
+
+**Fix**: when `step.partial_fired=True`, skip partial-specific fields in the UPDATE. Only update stop_price, hold_days, running_closes. The partial-specific fields will be populated by `finalize_partial_exit` on actual WS fill.
+
+**Reconciliation**: reverted BW #119 to `partial_taken=FALSE`, `total_pnl=0`, `exits=[]`. Tomorrow's WS fill will repopulate correctly.
+
+**Bug 3: SNDK theme misclassification (operational)**
+
+2026-05-14 nightly theme run moved SanDisk from `AI Memory & Storage` to a new theme `Semiconductor Front-End Interconnect & Wafer Processing Equipment`. Wrong — SanDisk = memory products. Manual reassignment via SQL (remove from wrong) + `assign_ticker_to_theme` (add to correct). Filed `theme_assignment_sndk_class_refinement` review to diagnose the assignment mechanism and ship a structural fix.
+
+---
+
+**Recurring architectural pattern** (now sub-weekly cadence; flagged by advisor):
+
+| Date | Bug | The flag/field tracked... | ...instead of the actual outcome |
+|---|---|---|---|
+| 2026-05-04 | `update_stop` audit | "we tried to update stop" | "stop is actually placed" |
+| 2026-05-07 | `splits_ingest` premature-apply | `adjustment_applied=TRUE` "step ran" | "data is correctly adjusted" |
+| 2026-05-13 | strategy `phase='live'` redefinition | "row says phase=live" | "Alpaca client for live mode exists" |
+| 2026-05-14 (CRMD) | `_process_entry_fill` UPDATE | "UPDATE statement issued" | "DB matches broker fill state" |
+| 2026-05-14 (BW) | `step.new_partial_taken` | "decision logic said partial" | "broker actually filled the partial" |
+| 2026-05-14 (AIXI) | phantom check `expected_ratio` | "ratio formula matched a constant" | "Polygon actually applied the adjustment" |
+
+Same shape every time: a flag/field semantically named for the OUTCOME (data adjusted, position filled, mode active) but mechanically gated only on the ATTEMPT (procedure ran, decision made, formula matched).
+
+**Prophylactic discipline** (going forward, especially before live cutover):
+- Every new boolean flag on a hot-path table needs a paired invariant query that surfaces the row state when the flag's mechanical condition is met but the semantic outcome ISN'T.
+- Boot-time UPDATE prepare validation (Gate 5 deliverable B from CRMD post-mortem) addresses one slice. The broader principle: distinguish "we ran the step" from "the outcome is correct" by validating outcome state in a separate query, not by trusting the flag.
+
 ### 2026-05-14 (session 5) — EP selectivity review expanded to be exhaustive (user mandate)
 User pushed back on initial review: needs to be MORE exhaustive, include every tracked variable already in code — specifically called out 5-min ORB shadow (`mi_orb_shadow_trades`) which has parallel telemetry running since shipped earlier this year.
 

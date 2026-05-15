@@ -1706,6 +1706,82 @@ reviews:
     status: pending
     added_on: 2026-05-14
 
+  - review_id: theme_assignment_sndk_class_refinement
+    title: "Theme assignment misclassification (SNDK → wafer equipment) — refine prompt + post-filter"
+    question: |
+      2026-05-14 nightly theme run moved SNDK from `AI Memory & Storage`
+      (where it had been since 5/11) to a brand-new theme
+      `Semiconductor Front-End Interconnect & Wafer Processing Equipment`.
+      SanDisk = memory products (NAND flash, SSDs); it is categorically
+      NOT front-end wafer processing equipment (like ICHR's fluid
+      delivery subsystems or AEHR's burn-in testers).
+
+      User flagged immediately. Manual reassignment shipped same day.
+
+      Hypothesis: Sonnet's theme discovery / split logic generated the
+      new theme name with "Interconnect" in it, then pulled SNDK in
+      either:
+      (a) by ticker similarity grouping (NAND flash → memory chip
+          interconnect → "interconnect" theme),
+      (b) by description keyword overlap ("wafer" or "semiconductor"
+          in SanDisk's description matching the new theme name), or
+      (c) by structural placement during a split — if "AI Memory &
+          Storage" got split and Sonnet had to redistribute orphans.
+
+      Need to diagnose the mechanism by reading 2026-05-14 theme run
+      audit events around SNDK + the new theme creation.
+
+      Refinement options (pick after diagnosis):
+      1. Tighten prompt: require the LLM to state the ticker's CORE
+         BUSINESS in a one-sentence rationale field, then reject
+         assignments where the rationale contradicts the theme thesis.
+      2. Post-LLM sector filter: if ticker.sector ≠ majority sector
+         of theme members AND theme name keywords don't overlap with
+         ticker's description, reject. (`_strip_sector_outliers`
+         already exists per CLAUDE.md — verify it ran for SNDK.)
+      3. Maintain manual exclusion list (`mi_theme_exclusions`) for
+         egregious cases. Less robust — only handles known offenders.
+      4. Two-stage validation: after assignment, ask Haiku validator
+         to re-confirm fit. (Already runs Mon/Wed/Fri — verify it
+         didn't catch SNDK on this run.)
+    predicate_sql: |
+      -- Diagnostic data available immediately (audit events from 5/14).
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-05-15
+    action_when_ready: |
+      1. Pull 2026-05-14 theme run audit events around SNDK:
+           SELECT created_at AT TIME ZONE 'America/New_York' AS et,
+                  event_type, summary, detail
+           FROM mi_audit_log
+           WHERE created_at::date BETWEEN '2026-05-14' AND '2026-05-15'
+             AND (summary LIKE '%SNDK%' OR detail LIKE '%SNDK%'
+                  OR summary LIKE '%Front-End Interconnect%')
+           ORDER BY created_at;
+
+      2. Determine mechanism:
+         a) `assignment_llm_proposed` with SNDK→new theme → LLM under-
+            informed; tighten prompt with rationale rejection.
+         b) `theme_discovered` with SNDK in tickers → discovery path
+            grouped SNDK incorrectly; new theme thesis too broad.
+         c) `theme_split` creating the new theme with SNDK → split path
+            misclassified; check `_split_fat_theme` placement logic.
+         d) `assignment_sector_kw_overridden_by_desc` → sector-kw fallback
+            admitted SNDK via description-overlap rescue; tighten rescue
+            to require multiple kw matches.
+
+      3. Ship the targeted fix per (a)/(b)/(c)/(d). Operator validates
+         on next 7 nightly theme runs (no SNDK-class regressions).
+
+      4. Add SNDK→`Semiconductor Front-End Interconnect & Wafer
+         Processing Equipment` to `mi_theme_exclusions` IF the
+         offending theme persists rather than being retired.
+
+      Origin: 2026-05-14 user flag. SanDisk-as-equipment is a clear
+      misclassification visible in evening briefing diff.
+    status: pending
+    added_on: 2026-05-14
+
   - review_id: ep_selectivity_deep_dive
     title: "EP entry selectivity overhaul — EXHAUSTIVE review of every tracked variable"
     question: |
