@@ -95,8 +95,16 @@ async def prepare_orb_order(
         logger.error(f"Cannot get account equity for {ticker}, aborting order prep: {e}")
         return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
-    # Position sizing: 1% risk, halved if QQQ EMA bearish
-    risk_pct = 0.01
+    # Position sizing: P19 — VIX-scaled continuous risk pct (2026-05-14).
+    # Reads regime_record["vix"] when available; falls back to binary
+    # bearish-halve if VIX isn't ingested yet. Continuous formula
+    # (in constants.vix_scaled_risk_pct):
+    #   VIX ≤ 15  → 1.0× base    VIX 20 → 0.75×    VIX 25 → 0.50×
+    #   VIX 30+   → 0.25× floor
+    # Bearish regime additionally halves (preserves existing safety).
+    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+    vix_value = regime_record.get("vix") if regime_record else None
+    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
     if regime_record and regime_record.get("qqq_ema_bullish") is False:
         risk_pct *= 0.5
 
@@ -1923,7 +1931,10 @@ async def prepare_9m_day2_orb_order(
         logger.error(f"9M Day2 {ticker}: cannot get account equity — {e}")
         return None, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
 
-    risk_pct = 0.01
+    # P19 VIX-scaled sizing (same path as MAGNA53 prepare_orb_order).
+    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+    vix_value = regime_record.get("vix") if regime_record else None
+    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
     if regime_record and regime_record.get("qqq_ema_bullish") is False:
         risk_pct *= 0.5
 
