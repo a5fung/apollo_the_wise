@@ -3291,11 +3291,62 @@ async def run_theme_engine(
     if all_themes:
         await _save_themes(all_themes)
 
+    # Post-save: detect constituent churn (P13). Flag (theme, ticker) pairs
+    # that have re-entered the theme 2+ times in the last 10 days — symptom
+    # of validation-induced flip-flop or assignment indecision.
+    await _detect_theme_constituent_churn()
+
     logger.info(
         f"Theme engine complete: {len(updated_themes)} updated, {len(new_themes)} new, "
         f"{len(existing) - len(updated_themes)} retired — {today_str}"
     )
     return all_themes, changelog
+
+
+async def _detect_theme_constituent_churn() -> None:
+    """P13 — flag tickers entering a theme 2+ times in 10 days.
+
+    Each "reentry" is a day where the ticker is in the theme today but
+    was NOT in it yesterday. A ticker that's been re-added 2+ times
+    inside the rolling window is high-churn — usually a Haiku validation
+    flip-flop or an assignment-then-strip cycle. Auto-suggests review.
+
+    Emits `theme_constituent_churn` audit event with (theme, ticker,
+    reentry_count) for each high-churn pair. Daily nightly run; the
+    review action_when_ready then surfaces the audit log.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH expanded AS (
+                SELECT name, unnest(tickers) AS ticker, theme_date
+                FROM mi_themes
+                WHERE theme_date >= CURRENT_DATE - INTERVAL '10 days'
+            ),
+            with_gaps AS (
+                SELECT name, ticker, theme_date,
+                       LAG(theme_date) OVER (
+                           PARTITION BY name, ticker ORDER BY theme_date
+                       ) AS prev_date
+                FROM expanded
+            )
+            SELECT name, ticker, COUNT(*) AS reentries
+            FROM with_gaps
+            WHERE prev_date IS NOT NULL
+              AND theme_date > prev_date + INTERVAL '1 day'
+            GROUP BY name, ticker
+            HAVING COUNT(*) >= 2
+            ORDER BY 3 DESC
+        """)
+    if not rows:
+        return
+    sample = ", ".join(f"{r['ticker']}↔{r['name'][:20]}({r['reentries']})" for r in rows[:5])
+    detail_lines = [f"{r['name']} | {r['ticker']} | reentries={r['reentries']}" for r in rows]
+    await log_audit_event(
+        "theme_constituent_churn",
+        f"{len(rows)} high-churn (theme,ticker) pair(s) in last 10d — sample: {sample}",
+        "\n".join(detail_lines)[:2000],
+    )
 
 
 async def get_today_themes(d: "str | date | None" = None) -> list[dict]:
