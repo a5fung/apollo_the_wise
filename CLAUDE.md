@@ -5,6 +5,19 @@ At the start of every session: `git pull origin main`
 Read "Changes Made — Recent" sections to understand prior sessions.
 Older session details live in git history; see compressed log below for a roadmap.
 
+## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
+
+When the user asks about backlog, todo, tasks, what's ready, what's open,
+or "what should I work on next" — consult `BACKLOG.md` at repo root FIRST.
+It's the master index pointing to detail files (`data_gated_reviews.yaml`,
+memory backlogs, incident docs).
+
+Detail files retain runtime behavior (YAML predicates, memory auto-load,
+etc.); `BACKLOG.md` is the cross-cutting view. When filing, closing, or
+status-changing an item in its detail file, mirror in `BACKLOG.md`. If
+they drift, source files own truth — but mirror back ASAP to keep the
+quick-scan view honest.
+
 At the end (if code changed):
 ```bash
 git add CLAUDE.md <changed files>
