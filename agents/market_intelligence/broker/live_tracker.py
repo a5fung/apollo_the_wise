@@ -588,18 +588,39 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
             await update_stop(trade["id"], round(step.effective_stop, 2))
 
+        # 2026-05-14 fix: when step.partial_fired, execute_partial_exit
+        # just submitted orders to Alpaca that may not have filled yet
+        # (after-hours, queued for next open). DO NOT write the optimistic
+        # post-partial state for partial_taken/total_pnl/remaining_shares —
+        # those come from finalize_partial_exit on actual WS fill.
+        # Non-partial fields (stop_price, hold_days, running_closes) are
+        # still safe to update from `step`.
+        #
+        # BW 5/14 incident: post-close partial triggered at 16:45 ET, orders
+        # queued for next-day open, but optimistic UPDATE wrote
+        # partial_taken=TRUE + total_pnl=$1613.79 as if the partial had
+        # filled. /trades displayed bogus realized P&L on full open position.
         async with pool.acquire() as conn:
-            await conn.execute("""
-                UPDATE mi_live_trades SET
-                    stop_price = $2, hold_days = $3, total_pnl = $4,
-                    partial_taken = $5, breakeven_active = $6,
-                    running_closes = $7::jsonb,
-                    remaining_shares = $8
-                WHERE id = $1
-            """, trade["id"], step.effective_stop, step.hold_days,
-                step.new_total_pnl, step.new_partial_taken,
-                step.new_breakeven_active,
-                json.dumps(step.new_running_closes), step.new_remaining)
+            if step.partial_fired:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        stop_price = $2, hold_days = $3,
+                        running_closes = $4::jsonb
+                    WHERE id = $1
+                """, trade["id"], step.effective_stop, step.hold_days,
+                    json.dumps(step.new_running_closes))
+            else:
+                await conn.execute("""
+                    UPDATE mi_live_trades SET
+                        stop_price = $2, hold_days = $3, total_pnl = $4,
+                        partial_taken = $5, breakeven_active = $6,
+                        running_closes = $7::jsonb,
+                        remaining_shares = $8
+                    WHERE id = $1
+                """, trade["id"], step.effective_stop, step.hold_days,
+                    step.new_total_pnl, step.new_partial_taken,
+                    step.new_breakeven_active,
+                    json.dumps(step.new_running_closes), step.new_remaining)
 
         logger.info(
             f"{ticker}: effective_stop=${step.effective_stop:.2f} "

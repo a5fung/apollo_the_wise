@@ -90,6 +90,24 @@ async def fetch_ticker_history(ticker: str, days: int = HISTORY_DAYS) -> list[di
         return []
 
 
+async def _get_old_close(ticker: str, trade_date) -> float | None:
+    """Look up the close in mi_daily_closes for (ticker, date), if any.
+
+    Used by `_apply_one`'s phantom-split sanity check: comparing the fresh
+    adjusted-feed pre-split close against whatever was previously written
+    distinguishes a real split (Polygon multiplied historical bars by
+    split_factor) from a phantom (Polygon left bars un-adjusted because
+    no actual event occurred).
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT close FROM mi_daily_closes WHERE ticker=$1 AND trade_date=$2",
+            ticker, trade_date,
+        )
+
+
 async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     """Re-fetch + overwrite cached history for one (ticker, execution_date).
     Returns (ticker, success, n_bars_written)."""
@@ -120,11 +138,25 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
         # feed then returns un-adjusted history (since no adjustment is needed),
         # but Apollo records adjustment_applied=TRUE — leaving downstream
         # detectors (parabolic, RS) reading wrong-units pre-execution data.
-        # Verify by comparing the adjusted close on the day BEFORE execution
-        # against the expected pre/post ratio. For a real split:
-        #   close_before / close_after ≈ split_to / split_from
-        # (e.g. 25:1 reverse: pre-split adjusted close is ~25× the next-day
-        # post-split close in Polygon's adjusted units.)
+        #
+        # Compare the FRESH adjusted-feed pre-split close against whatever is
+        # currently in mi_daily_closes for that date (un-adjusted, written by
+        # prior nightly grouped-daily ingests OR a premature-apply leftover).
+        #
+        #   Real split with proper Polygon adjustment:
+        #     new_close_pre ≈ old_close_pre × (split_from / split_to)
+        #     adjustment_factor (new/old) ≈ split_factor → APPLY
+        #
+        #   Phantom split (Polygon mis-reported, no actual event):
+        #     new_close_pre ≈ old_close_pre (no adjustment applied either way)
+        #     adjustment_factor ≈ 1.0 → SKIP
+        #
+        # 2026-05-14 fix: the previous formula (`close_pre / close_post` vs
+        # `split_from / split_to`) was wrong for adjusted-feed data — both
+        # real and phantom splits yield close_pre/close_post ≈ 1.0 after
+        # Polygon's adjustment, so every real split was wrongly flagged
+        # phantom and skipped. 10 tickers affected 5/08-5/14 including AIXI
+        # and CVNA. See incident write-up in CLAUDE.md.
         from datetime import datetime, timezone
         bars_by_date = {
             datetime.fromtimestamp(b["t"] / 1000, tz=timezone.utc).date(): b
@@ -137,33 +169,26 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
             if prev_date in bars_by_date:
                 break
             prev_date -= timedelta(days=1)
-        # And the first bar on/after exec_date.
-        post_date = exec_date
-        for _ in range(7):
-            if post_date in bars_by_date:
-                break
-            post_date += timedelta(days=1)
 
-        if prev_date in bars_by_date and post_date in bars_by_date:
-            close_pre = float(bars_by_date[prev_date]["c"])
-            close_post = float(bars_by_date[post_date]["c"])
-            if close_post > 0 and split_from > 0:
-                expected_ratio = split_from / split_to  # >1 for reverse, <1 for forward
-                actual_ratio = close_pre / close_post
-                # Tolerance: 30% — splits adjust prices but real overnight
-                # moves can compound. Wider than typical price moves but tight
-                # enough to catch a no-op (ratio ≈ 1.0 instead of 25.0 for AGL).
-                tol = 0.30
-                ratio_ok = (
-                    expected_ratio * (1 - tol) <= actual_ratio <= expected_ratio * (1 + tol)
-                )
-                if not ratio_ok:
+        if prev_date in bars_by_date:
+            new_close_pre = float(bars_by_date[prev_date]["c"])
+            # Query whatever is currently in mi_daily_closes for that date.
+            # If no row (first-ever apply), skip the check — can't compare,
+            # default to apply (Polygon reported a split, trust it).
+            old_close_pre = await _get_old_close(ticker, prev_date)
+            if old_close_pre is not None and old_close_pre > 0 and new_close_pre > 0:
+                adjustment_factor = new_close_pre / old_close_pre
+                # Tolerance: 10% — adjustment_factor should be very close to
+                # 1.0 for phantoms (same un-adjusted data both reads) or very
+                # close to split_factor for real splits. Tight tolerance is OK
+                # because we're comparing the SAME date across two fetches.
+                if abs(adjustment_factor - 1.0) < 0.10:
                     await log_audit_event(
                         "split_phantom_detected",
                         f"{ticker} {exec_date} {split_from}:{split_to} — "
-                        f"expected ratio {expected_ratio:.2f}, actual "
-                        f"close_pre/close_post = {close_pre:.2f}/{close_post:.2f} "
-                        f"= {actual_ratio:.2f}. Skipping apply; mark phantom.",
+                        f"adjustment_factor {adjustment_factor:.3f} ≈ 1.0 "
+                        f"(old close {old_close_pre:.4f}, new close {new_close_pre:.4f}); "
+                        f"Polygon did not apply an adjustment. Skipping apply; mark phantom.",
                     )
                     # Don't write any bars; mark applied so we don't retry every
                     # nightly run. Operator can manually reset if Polygon corrects.
