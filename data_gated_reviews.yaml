@@ -1961,6 +1961,72 @@ reviews:
       Class A explosive ORB-high doesn't fit. Class B "let it base
       and see" might.
 
+      ### Missed-winners cohort (user-flagged 2026-05-14)
+      EPs that worked out OK/well recently. Apollo entered ZERO of
+      these successfully. This is the false-NEGATIVE side of the
+      selectivity problem — the system is BOTH firing too many
+      losers AND missing real winners. Each case is a labeled
+      fixture for Phase 1 diagnosis.
+
+      For each, Phase 1 must determine: was it filtered (which
+      gate?), under-scored (score band threshold?), wrong-class
+      (Class B uncaptured?), or wrong-entry (signal fired but ORB
+      timing wrong)?
+
+      - **OSS** — small-cap AI hardware
+      - **STRL** — 5/05 was rejected by `setup:stop_too_wide` (ORB
+        range > 1.5× ATR). 5d close +17.0%, 5d max +22.2%. Already
+        the trigger case for the `stop_too_wide_outcome_cohort`
+        review (N=2 of 10 currently). Strong signal — stop-too-wide
+        filter is shedding winners.
+      - **FTNT** — 5/7→5/8 was the TI5 origin case. HIGH EP score
+        96 on 5/7, +6% follow-through 5/8. Failed EVERY existing
+        post-EP detector (no undercut for fishhook, close-in-range
+        0.44 not 0.75 for sugar baby, no base for continuation
+        flag). "Mid-range close that continues anyway" — exactly
+        the Class B shape from §G.
+      - **TWLO** — investigated earlier this session (scripts
+        replay_twlo_reentry.py + replay_twlo_sameday.py exist as
+        diagnostic artifacts). Likely re-entry / Day-2 ORB class.
+      - **BAND** — cloud comms / VoIP. Appears in recent theme
+        assignment candidate pools (uncovered). Likely no theme
+        anchor + low pm_rvol.
+      - **MXL** — optical components. Was 2026-05-09 theme
+        assignment under-anchoring case (was uncovered despite
+        top-30 RS); manually anchored 5/9. EP miss is probably
+        separate — investigate why no EP alert fired on its move.
+      - **HIMX** — 2026-05-07 was rejected by 60-day EP cooldown.
+        Gap +28%, pm_rvol 65×. Earnings catalyst was the cooldown
+        bypass trigger case (shipped 2026-05-08). HIMX miss
+        predates the bypass — verify post-bypass behavior.
+      - **INOD** — appears in cohort lists from recent audits.
+        Theme: AI / data services. Investigate gate.
+      - **DDOG** — 2026-05-07 scored 30 every tick (gap 19-31%,
+        pm_rvol 30-89×) — blocked by `score < 50 catalyst=routine`.
+        Earnings-day pre-score boost shipped 2026-05-08 to fix
+        this exact case. User now confirms DDOG worked out — boost
+        was the right move. Verify boost is firing in production
+        for similar cases going forward.
+
+      Phase 1 cross-tab: for each name, pull
+        - mi_ep_alerts (was alert generated? score / tier / catalyst)
+        - mi_ep_scan_log (filtered? which skip_reason?)
+        - mi_ep_missed_outcomes (5d / 20d forward returns)
+        - mi_live_trades (did entry attempt fire? skip_reason if not)
+      Then categorize each miss by mechanism:
+        (a) Pre-scan filter blocked (ADV / mcap / extension / cooldown / M&A)
+        (b) Score below tier threshold (catalyst grading too conservative)
+        (c) Stop-too-wide / fade-guard / ORB window cutoff
+        (d) Class B (Apollo never had an entry mechanic for this shape)
+        (e) Theme/sector context missed (would have entered if surfaced)
+        (f) Other (timing, infra, data corruption)
+
+      Mechanism (d) Class B reinforces the §G hypothesis — separate
+      tactic needed.
+      Mechanism (b) reinforces the catalyst-magnitude (D1) hypothesis.
+      Mechanism (c) reinforces the orb_cutoff_extension /
+      stop_too_wide_outcome_cohort reviews.
+
       ### G implications for Phase 1
       - Cross-tab existing alerts × (Class A vs Class B) using
         proxy: did the 1-min ORB-high get hit within 14 minutes
