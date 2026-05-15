@@ -819,6 +819,57 @@ async def _account_equity_snapshot_job():
         await notify_job_failure("account_equity_snapshot", str(e))
 
 
+async def _stuck_fill_watchdog_job():
+    """Gate 5 deliverable D (2026-05-14): surface stuck-filling trade rows.
+
+    If an entry order is placed but the WS fill handler errored (e.g. CRMD
+    AmbiguousParameter), the trade row stays at status='filling' indefinitely.
+    Today's naked-position remediation in _process_entry_fill submits a
+    fallback stop, but the row's state still needs operator attention.
+
+    Predicate: entry_order_id IS NOT NULL AND status='filling' AND
+    filled_at IS NULL AND created_at < NOW() - INTERVAL '2 minutes'.
+
+    Runs every 60s during market hours. Fires `stuck_fill_detected` audit
+    event + escalated Telegram on first detection per trade (dedup via
+    audit log presence).
+    """
+    from agents.market_intelligence.db import get_pool, log_audit_event
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.constants import mode_prefix
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        stuck = await conn.fetch(
+            """
+            SELECT id, ticker, account_mode, entry_order_id, created_at
+            FROM mi_live_trades
+            WHERE entry_order_id IS NOT NULL
+              AND status = 'filling'
+              AND filled_at IS NULL
+              AND created_at < NOW() - INTERVAL '2 minutes'
+            """
+        )
+        for row in stuck:
+            already = await conn.fetchval(
+                "SELECT 1 FROM mi_audit_log WHERE event_type='stuck_fill_detected' "
+                "AND summary LIKE $1 AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
+                f"{row['ticker']} #{row['id']}%",
+            )
+            if already:
+                continue
+            await log_audit_event(
+                "stuck_fill_detected",
+                f"{row['ticker']} #{row['id']} ({row['account_mode']}): "
+                f"status='filling' with no filled_at for >2 min — WS handler likely threw",
+            )
+            await send_telegram_message(
+                f"{mode_prefix(row['account_mode'])}🚨 *STUCK FILL DETECTED:* {row['ticker']}\n"
+                f"Trade #{row['id']} stuck in status='filling' since "
+                f"{row['created_at']:%H:%M:%S ET}.\n"
+                f"WS handler likely threw — check broker for naked position and Apollo logs."
+            )
+
+
 async def _track_open_position_extremes_job():
     """Run every 5 min during market hours (9:30 AM - 4:00 PM ET, mon-fri).
 
@@ -2026,6 +2077,21 @@ def start_scheduler() -> AsyncIOScheduler:
         id="track_position_extremes",
         replace_existing=True,
         misfire_grace_time=180,
+    )
+
+    # Stuck-fill watchdog (Gate 5 deliverable D, 2026-05-14). Every 60s
+    # during market hours, surface trade rows that show status='filling'
+    # with no filled_at for >2 min — symptom of a WS handler exception
+    # like the CRMD AmbiguousParameter case.
+    _scheduler.add_job(
+        audit_wrap(_stuck_fill_watchdog_job, "stuck_fill_watchdog"),
+        CronTrigger(
+            hour="9-15", minute="*",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="stuck_fill_watchdog",
+        replace_existing=True,
+        misfire_grace_time=30,
     )
 
     # Post-EOD audit: 4:15 PM ET — trade-side invariants + metrics, runs after

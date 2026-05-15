@@ -344,15 +344,15 @@ async def _dispatch_trade_event(data, stream_account_mode: str) -> None:
             f"for {symbol}: {e}",
             exc_info=True,
         )
-        # Escalate entry-fill errors specifically — the consequence is a
-        # naked position at broker (the OTO stop leg cancels when the
-        # parent's WS callback throws). Generic "Stream handler error"
-        # framing was missed during CRMD 2026-05-14 incident.
-        if event == "fill":
+        # Escalate fill / partial_fill errors specifically — the consequence
+        # is a naked or partially-managed position at broker. The auto-
+        # remediation inside _process_entry_fill should have submitted a
+        # fallback stop, but the outer alert is the operator's hard ping.
+        if event in ("fill", "partial_fill"):
             await send_telegram_message(
                 f"{mode_prefix(stream_account_mode)}🚨 *POSITION MAY BE NAKED — INTERVENTION REQUIRED*\n"
-                f"Entry fill handler threw for {symbol}; stop-leg likely canceled by broker.\n"
-                f"Check Alpaca dashboard NOW and place a protective stop manually.\n"
+                f"{event} handler threw for {symbol}; stop-leg may have been canceled.\n"
+                f"Check Alpaca dashboard NOW and confirm a protective stop is active.\n"
                 f"Error: {e}"
             )
         else:
@@ -688,30 +688,102 @@ async def _process_entry_fill(
                 f"Entry filled, no stop order, no orb_low in DB. Manual intervention required."
             )
 
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_live_trades SET
-                status = 'filled',
-                entry_price = $2, entry_shares = $3, remaining_shares = $3,
-                hard_stop = $4, stop_price = $4, filled_at = NOW(),
-                stop_order_id = COALESCE($5, stop_order_id),
-                -- Seed worst/best price tracking with the fill price; the
-                -- 5-min track_open_position_extremes job updates it from
-                -- here. COALESCE preserves any value set by a prior fill
-                -- on a re-entry attempt — we want lifetime extreme across
-                -- the whole trade record, not per-attempt.
-                --
-                -- IMPORTANT: explicit `::numeric` casts disambiguate $2
-                -- for asyncpg type deduction. Without them, $2 is used
-                -- as both double precision (entry_price) AND numeric
-                -- (lowest/highest_price_seen) → AmbiguousParameterError
-                -- at prepare-time. 2026-05-14 incident: CRMD entered
-                -- naked because the WS handler threw, stop got canceled
-                -- by the OTO bracket teardown.
-                lowest_price_seen = COALESCE(lowest_price_seen, $2::numeric),
-                highest_price_seen = COALESCE(highest_price_seen, $2::numeric)
-            WHERE id = $1
-        """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
+    # CRMD-class naked-position remediation (Gate 5 deliverable A, 2026-05-14):
+    # if the UPDATE raises (asyncpg AmbiguousParameter, transient DB error,
+    # serialization fail, anything), the OTO bracket's stop leg gets
+    # canceled by Alpaca and the position is naked. Submit a fallback
+    # stop-market BEFORE re-raising so the position is protected even if
+    # the DB-level reconciliation is broken.
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'filled',
+                    entry_price = $2, entry_shares = $3, remaining_shares = $3,
+                    hard_stop = $4, stop_price = $4, filled_at = NOW(),
+                    stop_order_id = COALESCE($5, stop_order_id),
+                    -- Seed worst/best price tracking with the fill price; the
+                    -- 5-min track_open_position_extremes job updates it from
+                    -- here. COALESCE preserves any value set by a prior fill
+                    -- on a re-entry attempt — we want lifetime extreme across
+                    -- the whole trade record, not per-attempt.
+                    --
+                    -- IMPORTANT: explicit `::numeric` casts disambiguate $2
+                    -- for asyncpg type deduction. Without them, $2 is used
+                    -- as both double precision (entry_price) AND numeric
+                    -- (lowest/highest_price_seen) → AmbiguousParameterError
+                    -- at prepare-time. 2026-05-14 incident: CRMD entered
+                    -- naked because the WS handler threw, stop got canceled
+                    -- by the OTO bracket teardown.
+                    lowest_price_seen = COALESCE(lowest_price_seen, $2::numeric),
+                    highest_price_seen = COALESCE(highest_price_seen, $2::numeric)
+                WHERE id = $1
+            """, trade["id"], filled_price, filled_qty, float(trade["orb_low"]), stop_order_id)
+    except Exception as db_err:
+        # Submit fallback stop IMMEDIATELY at intended orb_low — do not
+        # depend on later sync_positions, do not re-raise yet. Cover the
+        # naked position first; surface the underlying error after.
+        ticker = trade["ticker"]
+        stop_target = float(trade["orb_low"]) if trade.get("orb_low") else None
+        if stop_target:
+            try:
+                fallback = await alpaca.place_stop_order(
+                    ticker, filled_qty, stop_target, account_mode=account_mode,
+                )
+                await log_audit_event(
+                    "naked_position_remediation_fired",
+                    f"{ticker}: entry-fill UPDATE failed ({type(db_err).__name__}); "
+                    f"fallback stop placed at ${stop_target:.2f} order={fallback['id']}",
+                    detail=json.dumps({
+                        "trade_id": trade["id"],
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "db_error": f"{type(db_err).__name__}: {str(db_err)[:200]}",
+                        "filled_qty": float(filled_qty),
+                        "fallback_stop_price": stop_target,
+                        "fallback_order_id": fallback["id"],
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🛡 *NAKED POSITION REMEDIATED:* {ticker}\n"
+                    f"Entry-fill UPDATE failed ({type(db_err).__name__}); "
+                    f"fallback stop placed at ${stop_target:.2f}.\n"
+                    f"DB row remains in inconsistent state — operator should reconcile."
+                )
+            except Exception as stop_err:
+                await log_audit_event(
+                    "naked_position_remediation_failed",
+                    f"{ticker}: BOTH UPDATE and fallback stop failed",
+                    detail=json.dumps({
+                        "trade_id": trade["id"],
+                        "ticker": ticker,
+                        "db_error": f"{type(db_err).__name__}: {str(db_err)[:200]}",
+                        "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: POSITION NAKED AND UNRECOVERABLE* {ticker}\n"
+                    f"UPDATE failed: {db_err}\n"
+                    f"Fallback stop also failed: {stop_err}\n"
+                    f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard NOW."
+                )
+        else:
+            await log_audit_event(
+                "naked_position_remediation_failed",
+                f"{ticker}: UPDATE failed and no orb_low for fallback stop",
+                detail=json.dumps({
+                    "trade_id": trade["id"],
+                    "ticker": ticker,
+                    "db_error": f"{type(db_err).__name__}: {str(db_err)[:200]}",
+                }),
+            )
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: NAKED + NO STOP ANCHOR* {ticker}\n"
+                f"UPDATE failed: {db_err}\nNo orb_low. MANUAL INTERVENTION REQUIRED."
+            )
+        # Re-raise so the outer handler logs / Telegram-escalates the original
+        # error class. Remediation is best-effort; the failure is still loud.
+        raise
 
         await conn.execute("""
             UPDATE mi_live_orders SET

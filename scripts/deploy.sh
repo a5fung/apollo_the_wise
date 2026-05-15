@@ -66,10 +66,21 @@ fi
 echo "=== [5/5] Preflight smoke test ==="
 if ! docker exec apollo-market python -m scripts.preflight_check; then
   echo ""
-  echo "DEPLOY FAILED — preflight reported infra failure(s)."
+  echo "DEPLOY FAILED — preflight (safeguards) reported infra failure(s)."
   echo "The container is running but entry-pipeline safeguards can't authenticate."
   echo "DO NOT declare this deploy green. Either fix the issue and re-run, or rollback."
   exit 4
+fi
+
+echo ""
+echo "=== [5b/5] Preflight DB UPDATE prepare validation ==="
+if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
+  echo ""
+  echo "DEPLOY FAILED — DB UPDATE prepare validation reported type/schema error(s)."
+  echo "asyncpg can't prepare one or more trade-lifecycle UPDATEs against the"
+  echo "current schema. This is the CRMD-class bug surface (2026-05-14). Fix"
+  echo "before declaring green."
+  exit 5
 fi
 
 echo ""
