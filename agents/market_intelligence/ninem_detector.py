@@ -310,6 +310,34 @@ async def run_9m_scan() -> list[dict]:
             "is_anticipation": is_anticipation,
         }
 
+        # M&A pin filter — same SSoT (`is_likely_ma`) used by EP path and
+        # 9M EOD sugar baby path. 9M is pure-quant (no LLM catalyst grading)
+        # so this is a Polygon-news-only check. 21d lookback matches flag
+        # detector. Fail-open: don't block alert on news fetch error.
+        try:
+            from datetime import date as _date
+            today_d = _date.fromisoformat(today_str)
+            is_mna_intraday, mna_meta_intraday = await is_likely_ma(
+                ticker,
+                check_polygon=True,
+                on_or_before=today_d,
+                polygon_lookback_days=21,
+            )
+            if is_mna_intraday:
+                await log_audit_event(
+                    "mna_filter_fired",
+                    f"{ticker} via {(mna_meta_intraday or {}).get('source', 'unknown')} (9m_intraday)",
+                    json.dumps({
+                        "detector": "9m_intraday",
+                        "ticker": ticker,
+                        "alert_date": today_str,
+                        **(mna_meta_intraday or {}),
+                    })[:500],
+                )
+                continue
+        except Exception as e:
+            logger.warning(f"9m_intraday: M&A check failed for {ticker}: {e}")
+
         is_new = await insert_9m_ep_alert(alert)
         if not is_new:
             _alerted_today.add(ticker)

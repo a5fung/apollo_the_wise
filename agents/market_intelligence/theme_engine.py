@@ -768,11 +768,41 @@ async def _canonicalize_theme_names(
             continue
         by_set.setdefault(tk, []).append((row["name"], str(row["theme_date"])))
 
+    # Probe: ticker-set-evolution gap. Track cases where today's ticker set
+    # matches a prior name's LATEST snapshot but NOT its earliest. The current
+    # canonicalize uses DISTINCT ON earliest, so these slip through. See
+    # canonicalize_ticker_set_evolution review (filed 2026-05-13). Predicate
+    # accumulates `theme_canonicalize_gap_observed` events here.
+    latest_by_name: dict[str, tuple[frozenset, str]] = {}
+    for row in rows:
+        nm = row["name"]
+        tk = frozenset(row["tickers"] or [])
+        if tk:
+            # rows already sorted earliest by query; latest = last per name
+            latest_by_name[nm] = (tk, str(row["theme_date"]))
+
     renames: list[tuple[str, str, str]] = []  # (old_today_name, new_canonical_name, prior_date)
     for tk, idx in today_sets.items():
         current_name = themes[idx]["name"]
         priors = by_set.get(tk)
         if not priors:
+            # Look for ticker-set-evolution gap: did any prior name's latest
+            # snapshot match this ticker set even though its earliest didn't?
+            for nm, (latest_tk, latest_date) in latest_by_name.items():
+                if nm == current_name:
+                    continue
+                if latest_tk == tk:
+                    await log_audit_event(
+                        "theme_canonicalize_gap_observed",
+                        f"today='{current_name}' tickers={sorted(tk)} matches "
+                        f"prior='{nm}' latest_snapshot={latest_date}, but earliest "
+                        f"snapshot had different ticker set — canonicalize missed",
+                        detail=(
+                            f"today_name={current_name} today_tk={sorted(tk)} "
+                            f"prior_name={nm} latest_date={latest_date}"
+                        ),
+                    )
+                    break  # one gap event per today_set is enough
             continue
         # Sort earliest first; pick the earliest prior name as canonical.
         priors_sorted = sorted(priors, key=lambda x: x[1])
@@ -2597,29 +2627,62 @@ async def _merge_overlapping_themes(
                 j_protected = protected_names and themes[j]["name"] in protected_names
                 if j_protected:
                     # Protected existing theme (j) would be absorbed by new cluster (i).
-                    # Reverse: strip the overlap from the new cluster to preserve identity.
-                    pre_size = len(tickers_i)
-                    tickers_i = tickers_i - intersection
-                    themes[i]["tickers"] = list(tickers_i)
-                    post_size = len(tickers_i)
+                    # Default: strip the overlap from i to preserve j's identity.
+                    #
+                    # BOTH-PROTECTED tiebreaker (2026-05-14 SNDK incident): when
+                    # i is ALSO protected, both themes are returning from prior
+                    # days and the iteration order shouldn't decide ownership.
+                    # The more established theme (larger membership) keeps the
+                    # intersection; the smaller one gets stripped.
+                    #
+                    # SNDK example: AI Memory & Storage (i, 8 tickers, established)
+                    # vs Semiconductor Front-End Interconnect & Wafer Processing
+                    # Equipment (j, 3 tickers, new-ish). Old behavior stripped i
+                    # → SNDK went to the smaller new theme. New behavior: i has
+                    # more members → strip from j instead, preserving SanDisk
+                    # in AI Memory & Storage.
                     i_protected = bool(protected_names and themes[i]["name"] in protected_names)
+                    strip_from = "i"
+                    if i_protected and len(tickers_i) >= len(tickers_j):
+                        # Both protected, i is the larger/equal theme → strip from j
+                        strip_from = "j"
+
+                    if strip_from == "i":
+                        pre_size = len(tickers_i)
+                        tickers_i = tickers_i - intersection
+                        themes[i]["tickers"] = list(tickers_i)
+                        post_size = len(tickers_i)
+                        stripped_name = themes[i]["name"]
+                        kept_name = themes[j]["name"]
+                    else:
+                        pre_size = len(tickers_j)
+                        tickers_j = tickers_j - intersection
+                        themes[j]["tickers"] = list(tickers_j)
+                        post_size = len(tickers_j)
+                        stripped_name = themes[j]["name"]
+                        kept_name = themes[i]["name"]
+
                     logger.info(
-                        f"Theme protect: stripped {sorted(intersection)} from new cluster "
-                        f"'{themes[i]['name']}' to preserve existing '{themes[j]['name']}'"
+                        f"Theme protect: stripped {sorted(intersection)} from "
+                        f"'{stripped_name}' to preserve '{kept_name}'"
+                        + (f" (BOTH_PROTECTED tiebreaker, kept larger)" if i_protected else "")
                     )
                     await log_audit_event(
                         "theme_pass1_protect_strip",
                         summary=(
                             f"Pass1: stripped {len(intersection)} ticker(s) from "
-                            f"'{themes[i]['name']}' (protect '{themes[j]['name']}')"
+                            f"'{stripped_name}' (protect '{kept_name}')"
                         ),
                         detail=(
                             f"i='{themes[i]['name']}' i_protected={i_protected} "
+                            f"i_size={len(themes[i].get('tickers') or [])} "
                             f"j='{themes[j]['name']}' j_protected=True "
+                            f"j_size={len(themes[j].get('tickers') or [])} "
                             f"intersection={sorted(intersection)} "
-                            f"i_size {pre_size}->{post_size}"
+                            f"stripped='{stripped_name}' {pre_size}->{post_size}"
                             + (" EMPTY_AFTER_STRIP" if post_size == 0 else "")
                             + (" BOTH_PROTECTED" if i_protected else "")
+                            + (f" tiebreaker=size_kept_{kept_name}" if i_protected else "")
                         ),
                     )
                 else:

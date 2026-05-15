@@ -670,6 +670,21 @@ async def _process_entry_fill(
                     f"Fill-path stop remediation [{account_mode}]: {ticker_name} "
                     f"qty={filled_qty} stop=${stop_target:.2f} order_id={stop_order_id}"
                 )
+                # Explicit audit event for the
+                # trade_stream_stop_placement_without_orders_row review's
+                # specific predicate (was using naked_position_detected proxy).
+                await log_audit_event(
+                    "entry_fill_stop_remediated",
+                    f"{ticker_name}: bracket leg missing, standalone stop placed at ${stop_target:.2f}",
+                    json.dumps({
+                        "trade_id": trade["id"],
+                        "ticker": ticker_name,
+                        "account_mode": account_mode,
+                        "stop_price": stop_target,
+                        "stop_order_id": stop_order_id,
+                        "site": "trade_stream.py:367_entry_fill_remediation",
+                    }),
+                )
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🛡 *Protective stop placed:* {ticker_name}\n"
                     f"Bracket leg missing — standalone stop at ${stop_target:.2f}"

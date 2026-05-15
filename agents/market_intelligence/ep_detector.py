@@ -895,10 +895,30 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # flag/9M/parabolic detectors. Polygon backstop closes the Perplexity
             # coverage-gap (AVNS 5/4: Perplexity returned "no specific news" for
             # 4/14 going-private; Polygon had the headline the whole time).
+            #
+            # Sanitize Perplexity disclaimer text before feeding to keyword
+            # scanner (2026-05-14 perplexity_hallucination_keyword_leak fix).
+            # When Perplexity returns "No recent catalysts... Nearest match is X"
+            # the unrelated content trips M&A keywords on the wrong company.
+            from agents.market_intelligence.collector import strip_perplexity_disclaimer
+            _, news_is_disclaimer = strip_perplexity_disclaimer(news_summary)
+            catalyst_texts_for_filter = [claude_analysis]
+            if not news_is_disclaimer:
+                catalyst_texts_for_filter.append(news_summary)
+            else:
+                logger.info(f"{ticker}: Perplexity disclaimer in news_summary — excluding from M&A keyword scan")
+                await log_audit_event(
+                    "perplexity_disclaimer_stripped",
+                    f"{ticker}: news_summary suppressed from M&A keyword scan",
+                    json.dumps({
+                        "ticker": ticker,
+                        "news_summary_lead": (news_summary or "")[:200],
+                    }),
+                )
             is_mna, mna_meta = await is_likely_ma(
                 ticker,
                 catalyst_quality=catalyst_quality,
-                catalyst_texts=[claude_analysis, news_summary],
+                catalyst_texts=catalyst_texts_for_filter,
                 check_polygon=True,
                 on_or_before=today,
             )

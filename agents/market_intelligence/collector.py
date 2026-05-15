@@ -531,6 +531,46 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
         return True, 0, ""
 
 
+# Disclaimer markers that indicate Perplexity returned "no info found" rather
+# than actual ticker-specific catalyst content. When these appear in the lead
+# of a Perplexity response, the rest of the text is unrelated filler (often
+# a "nearest match" stock or industry chatter) that should NOT be fed to
+# downstream keyword scanners. See review
+# `perplexity_hallucination_keyword_leak` — 11 mna_filter_fired FPs in 90d
+# caused by disclaimer text matching M&A keywords on unrelated companies.
+_PERPLEXITY_DISCLAIMER_MARKERS: tuple[str, ...] = (
+    "no recent catalysts found",
+    "no direct catalyst",
+    "no specific news",
+    "no direct information",
+    "nearest match",
+    "closest match",
+    "i don't have information",
+    "i dont have information",
+    "no information about",
+    "search results reference",
+    "search results focus on",
+)
+
+
+def strip_perplexity_disclaimer(text: str | None) -> tuple[str, bool]:
+    """Detect Perplexity 'no info found' disclaimer patterns in the LEAD of
+    a response. Returns (clean_text, is_disclaimer).
+
+    Conservative — only flags when a marker appears in the first 200 chars,
+    not when it appears mid-content as a legitimate quote. Used by every
+    detector that feeds Perplexity output to keyword scanners; downstream
+    callers should treat the catalyst text as unusable when is_disclaimer=True.
+    """
+    if not text:
+        return ("", False)
+    lead = text[:200].lower()
+    for marker in _PERPLEXITY_DISCLAIMER_MARKERS:
+        if marker in lead:
+            return (text, True)
+    return (text, False)
+
+
 async def search_news_perplexity(
     query: str, recency: str = "month", system_prompt: str | None = None,
 ) -> str:
