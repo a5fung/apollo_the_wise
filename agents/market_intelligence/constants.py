@@ -6,6 +6,38 @@ RISK_PCT = 0.01              # 1% account risk per trade
 MAX_POSITION_PCT = 0.20      # Max 20% of account in one trade
 ENTRY_SLIPPAGE_PCT = 0.001   # 0.1% slippage on breakout entries
 
+
+def vix_scaled_risk_pct(vix_value: float | None, base_pct: float = RISK_PCT) -> float:
+    """P19 — Continuous VIX-scaled risk sizing.
+
+    Formula: risk = base × max(0.25, 1 - (VIX - 15) / 20).
+      VIX ≤ 15  → 1.0× base (low-vol environment, full risk)
+      VIX  20   → 0.75× base
+      VIX  25   → 0.50× base
+      VIX  30   → 0.25× base (vol floor — never go below 25% of base)
+      VIX > 30  → still 0.25× base (clamp)
+
+    Returns base_pct unchanged when vix_value is None (no VIX ingest yet,
+    or fetch failed). This is the conservative fallback — equivalent to
+    the existing binary RISK_PCT * 0.5 halving when regime is bearish.
+
+    Use cases when VIX is wired up:
+    - entry_pipeline._size_position can call this with the latest VIX
+      reading instead of the binary halve-on-bearish-regime logic
+    - alpha override: VIX > 25 dampens position size even within
+      permissive regimes; VIX < 12 doesn't increase above base (no
+      complacency reward)
+
+    Per project_market_intelligence_backlog.md P19 "Binary captures ~80%
+    of the benefit today; revisit after 3+ months live." This helper
+    ships ready-to-use; integration deferred to live cutover.
+    """
+    if vix_value is None or vix_value <= 0:
+        return base_pct
+    scaled_multiplier = max(0.25, 1.0 - (vix_value - 15.0) / 20.0)
+    scaled_multiplier = min(1.0, scaled_multiplier)
+    return base_pct * scaled_multiplier
+
 # ── Live trading ─────────────────────────────────────────────────────────────
 import os
 LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
