@@ -159,6 +159,11 @@ Pruned monthly. Newest first.
 - [x] Pass1 protect-strip equal-size test fixture (`tests/test_theme_engine_pass1.py`)
 - [x] Perplexity sanitizer test fixture (`tests/test_perplexity_sanitizer.py`)
 - [x] Surfaced `gate3_initial_stop_modeling` followup — FTRE/SMCI have entry==stop (breakeven trail), R-calc needs original stop not current
+- [x] **Area 1**: theme carryforward deterministic-remove pass (`theme_engine._apply_carryforward_deterministic_filter`) — closes the adds/removes asymmetry. 6 tests, commit 3f0233e
+- [x] **Area 3**: dropped `_synthesize_hypothesis` LLM sentence; added `_top_event_deltas` raw facts. Removed `_HYPOTHESIS_SEMAPHORE`, dead `anthropic`/`random` imports, orphaned plumbing. 5 tests, commit 6326da9
+- [x] **Area 2**: `_theme_round_trip_validator_job` cron 6:00 AM ET — defense-in-depth catch for hallucinated themes with ≥50% strip-within-3d rate, commit 0c33a8d
+- [x] Weekend scope plan committed (`docs/plans/2026-05-15-weekend-scope.md`, 3dad03f)
+- [x] BACKLOG.md status sync (P13, P26, P27 → [x] done)
 
 ### 2026-05-14 (10 commits across multiple sessions)
 - [x] CRMD naked-position incident: asyncpg AmbiguousParameterError fix (commit 96fd7ee) + reconcile + post-mortem
