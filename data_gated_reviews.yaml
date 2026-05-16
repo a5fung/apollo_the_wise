@@ -2054,6 +2054,19 @@ reviews:
         this exact case. User now confirms DDOG worked out — boost
         was the right move. Verify boost is firing in production
         for similar cases going forward.
+      - **TRT (2026-04-23 → 2026-05-15)** — Class B exemplar. 9M EP
+        on 4/23 (+33% gap, 31M vol). Then 3-week digest in
+        $10.50-$16.50 range. Two lose days 5/12-5/13 broke below
+        EP-day low ($10.76 intraday); 5/14 recovered ($12.00 →
+        $14.02 close); 5/15 explosive breakout ($14.90 → $20.05
+        close, +43% on 4.6M vol). User entered manually using
+        **EP-day low + nearby 20MA as risk reference**, NOT
+        ORB-high entry. Exactly the Class B "gap, digest, delayed
+        breakout" pattern that MAGNA53 ORB-day-of capture misses.
+        Apollo's flag detector also labeled 5/14 + 5/15 TIGHTENING
+        (semantically wrong — those were explosive breakouts, not
+        contraction). Separate `flag_detector_post_breakout_label`
+        review filed below.
 
       Phase 1 cross-tab: for each name, pull
         - mi_ep_alerts (was alert generated? score / tier / catalyst)
@@ -2576,5 +2589,75 @@ reviews:
          risk is initial_stop.
       6. Add to BACKLOG.md done.
       Origin: 2026-05-15 Track 4 methodology damage assessment.
+    status: pending
+    added_on: 2026-05-15
+
+  - review_id: flag_detector_post_breakout_label
+    title: "Flag detector mislabels post-breakout days as TIGHTENING"
+    question: |
+      User-flagged 2026-05-15 via TRT case study.
+
+      TRT 2026-05-14: close $14.02, range $11.68-$14.48 (intraday $2.80),
+      vol 2.35M. Detector emitted: `FLAG · TIGHTENING — base 13d r0.49 v0.57`.
+      TRT 2026-05-15: close $20.05 (+43% one day), range $14.53-$21.38
+      (intraday $6.85), vol 4.6M. Detector emitted:
+      `FLAG · TIGHTENING — base 14d r0.67 v0.85`.
+
+      These are explosive breakout days, NOT contraction. The "TIGHTENING"
+      label is semantically wrong.
+
+      Root cause (flag_detector.py:615-620): the state-machine evaluates
+      base contraction ratios using PRIOR bars (the base), not today's
+      bar. When the breakout day arrives, today's bar isn't included in
+      the base ratios — so they still register as tight. If TRIGGERED
+      gate can't fire (requires COILED today or in last 5 days, neither
+      of which TRT achieved), the elif falls through to TIGHTENING
+      based on lagging base data.
+
+      The detector has no label for "broke out but precursor base
+      didn't reach COILED." Falls back to TIGHTENING which misleads.
+
+      Possible fixes (not yet picked):
+      1. Add a `UNCOILED_BREAKOUT` state for days where breakout_now=True
+         but COILED prerequisite wasn't met — distinct telemetry
+      2. Mark the day INVALIDATED when today's bar breaks above
+         base_high but state machine can't promote to TRIGGERED
+      3. Suppress TIGHTENING when today's bar is itself a clear
+         breakout (close > base_high AND vol > 1.5x AND wide body)
+      4. Keep current behavior; emphasize in display that TIGHTENING
+         reflects BASE state not today's bar
+
+      Option 3 is the least disruptive (just a display suppression).
+      Option 1 is the most informative (operator learns about the
+      coverage gap). Option 2 is the most aggressive (acknowledges
+      the setup left the flag-friendly regime).
+    predicate_sql: |
+      -- Predicate: flag candidates labeled TIGHTENING on days when
+      -- close > base_high_close AND volume > 1.5x base_avg.
+      -- Approximation — exact base values need code-level data.
+      -- For now use audit-presence: any TIGHTENING row where the
+      -- ticker also had a 2x+ intraday gain that day.
+      SELECT COUNT(*) FROM mi_flag_candidates f
+      JOIN mi_daily_closes d
+        ON d.ticker = f.ticker AND d.trade_date = f.scan_date
+      WHERE f.stage = 'TIGHTENING'
+        AND f.scan_date > CURRENT_DATE - 60
+        AND (d.high_price - d.open_price) / d.open_price >= 0.15;  -- 15%+ intraday
+    threshold: 5
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      1. Pull all TIGHTENING-labeled candidates from last 60d with
+         intraday gain ≥15% (predicate query above). Eyeball: how
+         many are real breakouts mislabeled?
+      2. Pick fix option (1, 2, or 3 from question section). Lean
+         toward option 1 (UNCOILED_BREAKOUT state) — gives the
+         EP Selectivity Phase 1 cohort study an explicit telemetry
+         category for "Class B breakout the flag pipeline missed."
+      3. Backtest the new label against historical data; ensure no
+         downstream consumer (briefing, /flags command, Sunday
+         digest) breaks on the new state value.
+      4. Update flag_continuation.md SSoT change log.
+      Origin: 2026-05-15 TRT case study. Related to EP Selectivity
+      Phase 1 §G Class A vs B framework.
     status: pending
     added_on: 2026-05-15
