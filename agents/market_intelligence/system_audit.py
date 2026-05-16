@@ -25,7 +25,6 @@ import asyncio
 import json
 import logging
 import os
-import random
 import re
 import statistics
 from dataclasses import dataclass, field
@@ -36,7 +35,6 @@ from zoneinfo import ZoneInfo
 
 _ET = ZoneInfo("America/New_York")
 
-import anthropic
 
 from agents.market_intelligence.audit_invariants import all_invariants
 from agents.market_intelligence.collector import et_today
@@ -102,19 +100,10 @@ _MULTIPLIER_THRESHOLD = 5.0
 
 _AUDIT_EVENT = "anomaly_detected"
 
-# Token-bounded Sonnet hypothesis call. Single-flight (sequential) to avoid
-# stacking org rate-limit budget on top of theme validation fan-outs.
-_HYPOTHESIS_SEMAPHORE = asyncio.Semaphore(1)
-_anthropic_client: anthropic.AsyncAnthropic | None = None
-
-
-def _get_anthropic_client() -> anthropic.AsyncAnthropic:
-    global _anthropic_client
-    if _anthropic_client is None:
-        _anthropic_client = anthropic.AsyncAnthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
-        )
-    return _anthropic_client
+# Note (2026-05-15): the prior Sonnet-based hypothesis was removed in favor
+# of raw audit-event-delta facts. See `_top_event_deltas` below. Today's
+# wrong attribution (cooldowns spike blamed on splits) motivated the
+# simplification — operator reads facts, no LLM inference.
 
 
 # ── Metric specs ─────────────────────────────────────────────────────────────
@@ -845,86 +834,78 @@ async def _today_skip_top_reasons(conn, limit: int = 5) -> str:
 # ── Sonnet hypothesis ────────────────────────────────────────────────────────
 
 
-async def _synthesize_hypothesis(
-    metric_name: str,
-    current: float,
-    baseline: dict | None,
-    recent_changes: list[str],
-    recent_events: list[str],
-    skip_breakdown: str = "(none)",
-    skip_top: str = "(none)",
-) -> str:
-    """One Sonnet call per anomaly. Token-bounded; on 429 returns a fallback
-    string so the alert still fires — never silently drops.
+async def _top_event_deltas(
+    conn, top_n: int = 3, window_days: int = 14,
+) -> list[dict]:
+    """Return the top N audit event types whose 24h count today most
+    exceeds their trailing window_days trimmed-median baseline.
 
-    `skip_breakdown` / `skip_top` carry today's mi_live_trades skip_reason
-    aggregation. Trade-side metrics (entry rate, naked positions, infra
-    skip count) need this for causal reasoning — without it the LLM
-    correlates with whatever audit event happens to be loud (e.g. 5/8
-    blamed split_apply_failed for HIGH_ep_entry_rate=0 when the cause was
-    actually 4 circuit_breaker + 5 out_of_orb skips).
+    Replaces the prior `_synthesize_hypothesis` Sonnet call (2026-05-15).
+    Today's L2 anomaly had a wrong LLM hypothesis (attributed
+    cooldowns_per_day=13 spike to splits when the actual cause was theme
+    assignment). Operator preferred raw facts over LLM guess — gets the
+    same actionable signal without the LLM failure mode.
+
+    Returns: list of {event_type, today_count, baseline_median, ratio,
+    is_new} sorted by ratio (highest first). is_new=True when baseline=0
+    (event hasn't fired in the window — clearer signal than infinite
+    ratio).
+
+    Reuses `_trimmed_median_mad` for baseline math. Uses `max(median, 0.5)`
+    floor for ratio to avoid division-by-zero on rare events.
     """
-    try:
-        client = _get_anthropic_client()
-    except Exception:
-        return "(no anthropic client — see drill-down SQL)"
+    # Today's per-event counts (last 24h ET)
+    today_rows = await conn.fetch("""
+        SELECT event_type, COUNT(*)::int AS n
+        FROM mi_audit_log
+        WHERE created_at > NOW() - INTERVAL '24 hours'
+        GROUP BY event_type
+    """)
+    if not today_rows:
+        return []
 
-    base_p50 = baseline.get("p50") if baseline else None
-    base_mad = baseline.get("mad") if baseline else None
-    sample_n = baseline.get("sample_n") if baseline else None
+    # Per-day counts over the trailing window, EXCLUDING last 24h so
+    # today's spike doesn't contaminate its own baseline
+    history_rows = await conn.fetch(f"""
+        SELECT event_type,
+               (created_at AT TIME ZONE 'America/New_York')::date AS day,
+               COUNT(*)::int AS n
+        FROM mi_audit_log
+        WHERE created_at > NOW() - INTERVAL '{window_days} days'
+          AND created_at <= NOW() - INTERVAL '24 hours'
+        GROUP BY event_type, day
+    """)
 
-    prompt = (
-        f"You are debugging a momentum-trading system. A metric has gone outside its "
-        f"normal range. Give ONE short sentence (under 30 words) hypothesizing the most "
-        f"likely cause. Be specific. Prefer skip_reason buckets and recent code changes "
-        f"over generic audit-event correlation.\n\n"
-        f"Metric: {metric_name}\n"
-        f"Today's value: {current}\n"
-        f"30d trimmed median: {base_p50}\n"
-        f"30d MAD: {base_mad}\n"
-        f"Sample size: {sample_n}\n\n"
-        f"Today's skip_reason categories: {skip_breakdown}\n"
-        f"Today's top skip prefixes (with sample tickers): {skip_top}\n"
-        f"Recent system changes (CLAUDE.md): {', '.join(recent_changes) or '(none)'}\n"
-        f"Recent audit event types (48h): {', '.join(recent_events) or '(none)'}\n"
-    )
+    history_by_type: dict[str, list[float]] = {}
+    for row in history_rows:
+        history_by_type.setdefault(row["event_type"], []).append(float(row["n"]))
 
-    try:
-        async with _HYPOTHESIS_SEMAPHORE:
-            for attempt in range(2):
-                try:
-                    resp = await client.messages.create(
-                        model="claude-sonnet-4-6",
-                        max_tokens=120,
-                        messages=[{"role": "user", "content": prompt}],
-                    )
-                    try:
-                        from agents.market_intelligence.spend_tracker import log_anthropic_call
-                        await log_anthropic_call(
-                            model="claude-sonnet-4-6",
-                            caller="system_audit_hypothesis",
-                            usage=resp.usage,
-                        )
-                    except Exception as e:
-                        logger.warning(f"Spend log (system_audit_hypothesis) failed: {e}")
-                    break
-                except anthropic.RateLimitError:
-                    if attempt == 1:
-                        return "(rate-limited — see drill-down SQL)"
-                    wait = 8 + random.random() * 4
-                    await log_audit_event(
-                        "anthropic_rate_limited",
-                        summary=f"Hypothesis call rate-limited for '{metric_name}' — retry in {wait:.0f}s",
-                        detail="429 on claude-sonnet-4-6 in system_audit",
-                    )
-                    await asyncio.sleep(wait)
-        if not resp.content:
-            return "(empty response)"
-        block = resp.content[0]
-        return (getattr(block, "text", "") or "").strip()[:240]
-    except Exception as e:
-        logger.warning(f"system_audit: hypothesis call failed for {metric_name}: {e}")
-        return f"(hypothesis call failed: {type(e).__name__})"
+    expected_days = max(window_days - 1, 1)
+
+    results: list[dict] = []
+    for row in today_rows:
+        event_type = row["event_type"]
+        today_n = row["n"]
+        daily_counts = history_by_type.get(event_type, [])
+        # Pad missing days with 0 so events that don't fire daily still
+        # produce a meaningful baseline (zero-firing days are real signal)
+        while len(daily_counts) < expected_days:
+            daily_counts.append(0.0)
+        p50, _, _, _ = _trimmed_median_mad(daily_counts)
+        is_new = p50 == 0
+        # Floor at 0.5 to handle zero-baseline events without division-by-zero
+        # and to dampen the "infinite ratio" effect on very-rare events
+        ratio = today_n / max(p50, 0.5)
+        results.append({
+            "event_type": event_type,
+            "today_count": today_n,
+            "baseline_median": p50,
+            "ratio": ratio,
+            "is_new": is_new,
+        })
+
+    results.sort(key=lambda r: (r["ratio"], r["today_count"]), reverse=True)
+    return results[:top_n]
 
 
 # ── Anomaly detection ────────────────────────────────────────────────────────
@@ -998,8 +979,6 @@ async def _compute_anomaly(
     conn,
     metric: MetricSpec,
     current_regime: str | None,
-    recent_changes: list[str],
-    recent_events: list[str],
     *,
     as_of: date | None = None,
 ) -> Anomaly | None:
@@ -1121,7 +1100,16 @@ def _format_l1_alert(name: str, body: dict) -> str:
     return "\n".join(lines)
 
 
-def _format_l2_alert(metric: MetricSpec, current: float, baseline: dict, hypothesis: str, body: dict) -> str:
+def _format_l2_alert(
+    metric: MetricSpec, current: float, baseline: dict,
+    event_deltas: list[dict], body: dict,
+) -> str:
+    """Render L2 Telegram alert.
+
+    Replaces the prior `Hypothesis: <Sonnet sentence>` line with structured
+    audit-event-delta facts (2026-05-15). Operator interprets cause from
+    raw signal — no LLM inference.
+    """
     p50 = baseline.get("p50") or 0
     mad = baseline.get("mad") or 0
     z = body.get("z_score")
@@ -1134,11 +1122,21 @@ def _format_l2_alert(metric: MetricSpec, current: float, baseline: dict, hypothe
         + (f" · z={z}" if z is not None else "")
         + (f" · ratio={ratio}×" if ratio else ""),
         "",
-        f"Hypothesis: {hypothesis or '(none)'}",
-        "",
-        "Drill-down:",
-        metric.drill_sql,
     ]
+    if event_deltas:
+        lines.append("Top audit event deltas today vs 14d baseline:")
+        for d in event_deltas:
+            event_type = d["event_type"]
+            today_n = d["today_count"]
+            base = d["baseline_median"]
+            if d["is_new"]:
+                tag = f"baseline 0, NEW today"
+            else:
+                tag = f"baseline {base:.1f}, {d['ratio']:.1f}× normal"
+            lines.append(f"  • {event_type:30s} {today_n:4d}  ({tag})")
+        lines.append("")
+    lines.append("Drill-down:")
+    lines.append(metric.drill_sql)
     if metric.code_pointers:
         lines.append("")
         lines.append("Code pointers:")
@@ -1173,14 +1171,14 @@ async def _emit_l1(name: str, body: dict) -> None:
         logger.exception(f"system_audit: L1 Telegram send failed for {name} (audit row written)")
 
 
-async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, hypothesis: str) -> None:
+async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict]) -> None:
     if await count_today_anomalies(metric.name) > 0:
         return
     baseline = {
         "p50": anomaly.body.get("baseline_p50"),
         "mad": anomaly.body.get("mad"),
     }
-    text = _format_l2_alert(metric, anomaly.body["current"], baseline, hypothesis, anomaly.body)
+    text = _format_l2_alert(metric, anomaly.body["current"], baseline, event_deltas, anomaly.body)
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L2 {metric.name}",
@@ -1194,7 +1192,7 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, hypothesis: str) -> Non
             "z_score": anomaly.body.get("z_score"),
             "ratio": anomaly.body.get("ratio"),
             "regime_conditional": anomaly.body.get("regime_conditional", False),
-            "hypothesis": hypothesis,
+            "event_deltas": event_deltas,
             "drill_sql": metric.drill_sql,
             "code_pointers": metric.code_pointers,
         }),
@@ -1251,17 +1249,12 @@ async def _scan_metrics(
 ) -> tuple[int, int, int]:
     """Run the L2/L3 metric sweep over `metrics`. Returns (l1, l2, l3) counts.
     L1 is always 0 here — invariants own L1."""
-    recent_changes = _recent_changes_context()
-    recent_events = await _recent_audit_event_types(conn)
-    skip_breakdown = await _today_skip_breakdown(conn)
-    skip_top = await _today_skip_top_reasons(conn)
-
     l2_count = 0
     l3_count = 0
     for metric in metrics:
         try:
             anomaly = await _compute_anomaly(
-                conn, metric, current_regime, recent_changes, recent_events,
+                conn, metric, current_regime,
                 as_of=as_of,
             )
         except Exception:
@@ -1270,16 +1263,8 @@ async def _scan_metrics(
         if anomaly is None:
             continue
         if anomaly.level == 2:
-            hypothesis = await _synthesize_hypothesis(
-                metric.name, anomaly.body["current"],
-                {"p50": anomaly.body.get("baseline_p50"),
-                 "mad": anomaly.body.get("mad"),
-                 "sample_n": anomaly.body.get("sample_n")},
-                recent_changes, recent_events,
-                skip_breakdown=skip_breakdown,
-                skip_top=skip_top,
-            )
-            await _emit_l2(metric, anomaly, hypothesis)
+            event_deltas = await _top_event_deltas(conn)
+            await _emit_l2(metric, anomaly, event_deltas)
             l2_count += 1
         elif anomaly.level == 3:
             await _emit_l3(metric, anomaly)
