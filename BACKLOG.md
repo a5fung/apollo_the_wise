@@ -121,7 +121,7 @@ Stage 3 live.
 Smaller items embedded in session change logs that aren't yet formalized
 into reviews. Listed by surfacing date.
 
-- [ ] **Breadth cluster-view + missing secondaries** (2026-05-15) — Pradeep tweet showed Stockbee Market Monitor in CLUSTER-MATRIX format (date rows × indicator cols), red-cluster runs visually obvious. We have primary +/-4% + 5d/10d ratio + T2108 + 25%/1M + 25%/3M + 700-down-4% consec, but: (a) no cluster matrix render (each day reported alone), (b) missing 50%/1M, 13%+/34d ("thrust"), Worden Common ratio. Pure observability — ideation in `data_gated_reviews.yaml::breadth_cluster_view_ideation`.
+- [ ] **Breadth cluster-view + surface/compute gap** (2026-05-15) — Pradeep tweet showed Stockbee Market Monitor as CLUSTER-MATRIX (date × indicator), red-cluster runs visually obvious. Inventory: compute-AND-surface: 50%/M, 25%/Q. Compute-but-not-surfaced in evening brief: 25%/M, +/-4% 5d/10d, T2108, consec 700-down-4%. Truly missing: 13%+/34d, Worden. Two prongs: (a) cluster-matrix render, (b) low-cost surface 25%/M into briefing + compute 13%+/34d. Pure observability — ideation in `data_gated_reviews.yaml::breadth_cluster_view_ideation`.
 - [ ] **format_trade_attempts older-style live mode** ✓ already addressed via `format_trade_attempts_live` dispatch (2026-05-12)
 - [ ] **9M intraday M&A coverage** ✓ shipped tonight (commit c4243aa)
 - [ ] **`trade_stream.py:367 + 600-611` explicit audit events** ✓ shipped tonight (`entry_fill_stop_remediated`)

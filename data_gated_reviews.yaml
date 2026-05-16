@@ -2707,25 +2707,30 @@ reviews:
          vertical runs (consecutive red days in a column) as the
          primary signal. Same data we already have, new shape.
 
-      B. **Missing secondary indicators** — Pradeep shows three
-         indicators we don't currently track:
-            - up/down 50% in 1 month (extreme thrust)
-            - up/down 13%+ in 34 days (Wm O'Neil thrust-style)
-            - Worden Common Stocks (proprietary breadth measure;
-              we'd need a proxy or skip)
-         Up/down 50%/1M is cheap from `mi_stock_scores.raw_1m`
-         (already populated). 13%/34d would need a new column or
-         on-the-fly calc from `mi_daily_closes`. Worden is closed-
-         source; skip or pick a proxy like advance/decline-line.
+      B. **Compute-vs-surface gap + truly missing indicators** —
+         CORRECTION 2026-05-15 (user feedback): we compute MORE than
+         the evening briefing surfaces. Inventory:
 
-      What we ALREADY have (regime.py:228-265):
-        - up/down 25% in 1M ✓
-        - up/down 25% in 3M ✓
-        - T2108 (% above 40MA) ✓
-        - +/-4% ratio rolling 5d + 10d ✓
-        - Consecutive 700+ down-4% breakdown days ✓
-      What's surfaced today: a sentence per metric in regime briefing
-      + numeric in evening briefing. NOT a cross-day matrix.
+         COMPUTED AND SURFACED (evening briefing breadth line):
+            - 50%/1M ✓ (briefing.py:199-205, `50%/M` label)
+            - 25%/3M ✓ (briefing.py:206-212, `25%/Q` label)
+
+         COMPUTED BUT NOT SURFACED IN BRIEFING:
+            - 25%/1M (regime.py:254, never rendered in evening brief)
+            - +/-4% ratio rolling 5d/10d (in regime signals list, NOT
+              the breadth section)
+            - Consecutive 700+ down-4% days (signals list)
+            - T2108 (signals list, but not in the matrix-style cell)
+
+         TRULY MISSING — not computed:
+            - up/down 13%+ in 34 days (Wm O'Neil thrust-style)
+            - Worden Common Stocks (closed-source; needs A/D-line
+              or similar proxy if we want to fill the column)
+
+         Two-tier work: (i) low-cost surfacing of already-computed
+         25%/1M into the briefing breadth section closes the most
+         obvious user-visible gap; (ii) compute 13%+/34d from
+         `mi_daily_closes` if cluster matrix becomes the render.
 
       Open design questions:
         - Render target: Telegram monospace table, or a new dashboard
