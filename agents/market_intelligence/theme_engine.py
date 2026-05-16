@@ -2104,6 +2104,112 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
     return None, advisor_calls
 
 
+async def _apply_carryforward_deterministic_filter(
+    themes: list[dict],
+    globally_banned: set[str],
+    cooldown_set: set[tuple[str, str]],
+    stocks_by_ticker: dict[str, dict],
+) -> int:
+    """Daily strip-only filter for theme carryforward members (2026-05-15).
+
+    Closes the adds/removes asymmetry — the bug class that let 4 oncology
+    biotechs (RVMD/AVBP/DAWN/AJRD) cycle through Satellite-named themes for
+    ~3 weeks despite Fix B global ban + validation cooldowns. The theme
+    engine ADDS daily (assignment + discovery) but historically only REMOVED
+    semantically via LLM validation on Mon/Wed/Fri. Deterministic removes
+    (banned tickers, active cooldowns, sector outliers) never ran against
+    carryforward members at all — they survived every non-validation day.
+
+    This filter runs daily, BEFORE assignment + discovery. For each
+    carryforward theme, strip members that fail any of:
+      1. Ticker is in Fix B's globally_banned set
+      2. (ticker, theme_name) has an active validation cooldown
+      3. Ticker is a sector outlier (singleton sector when ≥3 members)
+
+    STRIP-ONLY: never retires themes here. Themes with 0 members may be
+      a) refilled by assignment LLM (uncovered ticker fits the thesis), OR
+      b) caught by existing retirement logic AFTER assignment+discovery
+         (recency-cap, PRUNE_MIN_TICKERS, etc.)
+    Deferring retirement avoids the "theme dies before LLM can refill it"
+    bug class.
+
+    Emits one aggregate audit event per affected theme; reuses existing
+    primitives (no new schema, no new LLM call, no new write authorities).
+    Returns the count of tickers stripped across all themes.
+    """
+    from collections import Counter
+
+    stripped_total = 0
+    for theme in themes:
+        tickers = list(theme.get("tickers") or [])
+        if not tickers:
+            continue
+        theme_name = theme["name"]
+
+        banned_hits = [t for t in tickers if t in globally_banned]
+        cooldown_hits = [
+            t for t in tickers if (t, theme_name) in cooldown_set
+        ]
+
+        # Sector outliers: reuse _strip_sector_outliers logic (singleton sector
+        # when ≥3 members + at least one non-Unknown sector). The existing
+        # function operates per-merge; here we apply the same logic per-theme
+        # without that gate.
+        sector_outliers: list[str] = []
+        if len(tickers) >= 3:
+            sector_of = {
+                t: stocks_by_ticker.get(t, {}).get("sector") or "Unknown"
+                for t in tickers
+            }
+            known = [s for s in sector_of.values() if s != "Unknown"]
+            if known:
+                counts = Counter(known)
+                singleton_sectors = {
+                    s for s, n in counts.items() if n == 1 and len(counts) > 1
+                }
+                sector_outliers = [
+                    t for t in tickers if sector_of[t] in singleton_sectors
+                ]
+
+        to_remove = set(banned_hits) | set(cooldown_hits) | set(sector_outliers)
+        if not to_remove:
+            continue
+
+        new_tickers = [t for t in tickers if t not in to_remove]
+        theme["tickers"] = new_tickers
+        stripped_total += len(to_remove)
+
+        # One aggregate audit per affected theme (mirrors theme_pass1_protect_strip
+        # pattern). Per-ticker rows would balloon the audit log without adding
+        # signal beyond what the reason buckets already convey.
+        reason_parts = []
+        if banned_hits:
+            reason_parts.append(f"banned={sorted(banned_hits)}")
+        if cooldown_hits:
+            reason_parts.append(f"cooldown={sorted(cooldown_hits)}")
+        if sector_outliers:
+            reason_parts.append(f"sector_outlier={sorted(sector_outliers)}")
+        await log_audit_event(
+            "theme_carryforward_filter_stripped",
+            summary=(
+                f"{theme_name}: stripped {len(to_remove)} ticker(s) "
+                f"({', '.join(p.split('=')[0] for p in reason_parts)})"
+            ),
+            detail=(
+                f"theme={theme_name}\n"
+                f"pre_size={len(tickers)} post_size={len(new_tickers)}\n"
+                + "\n".join(reason_parts)
+            ),
+        )
+
+    if stripped_total > 0:
+        logger.info(
+            f"Carryforward deterministic filter: stripped {stripped_total} "
+            f"ticker(s) across themes (banned + cooldown + sector outliers)"
+        )
+    return stripped_total
+
+
 def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:
     """
     Remove tickers whose sector is a lone outlier vs the rest of the theme.
@@ -3117,6 +3223,21 @@ async def run_theme_engine(
             summary=f"{len(globally_banned)} tickers globally banned from theme assignment",
             detail="\n".join(detail_lines),
         )
+
+    # --- Step 2a: Carryforward deterministic-remove pass (2026-05-15) ---
+    # Closes the adds/removes asymmetry. The theme engine ADDS daily
+    # (assignment + discovery) but previously only REMOVED via LLM validation
+    # on Mon/Wed/Fri. Banned/cooldown/outlier tickers in carryforward
+    # survived every non-validation day, letting wrong members persist for
+    # weeks (Satellite-biotech 2026-05-15 incident, 4 tickers cycling for
+    # ~3 weeks). Strip those members here, EVERY run, BEFORE assignment.
+    #
+    # STRIP-ONLY: retirement deferred to existing post-assignment logic so
+    # a theme can be refilled by the LLM in this same run.
+    cooldown_set = await get_cooldown_set()
+    await _apply_carryforward_deterministic_filter(
+        updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
+    )
 
     # --- Step 2b: Assign uncovered stocks to existing themes ---
     if uncovered and updated_themes:
