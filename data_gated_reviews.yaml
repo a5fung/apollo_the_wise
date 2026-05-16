@@ -1804,6 +1804,28 @@ reviews:
 
       Origin: 2026-05-14 user flag. SanDisk-as-equipment is a clear
       misclassification visible in evening briefing diff.
+
+      ## Related (2026-05-15): Satellite-biotech recurring hallucination
+
+      Today's L2 anomaly (cooldowns_per_day=13 vs baseline=1) was driven
+      by the same root cause class. 4 oncology biotechs
+      (RVMD, AVBP, DAWN, AJRD) have been cycling between Satellite-named
+      themes (Imagery / Earth Observation / Mobile / Space Economy) for
+      weeks. Fix B global ban triggers but only catches AMPLIFICATION,
+      not first-discovery. Today: discovery created a NEW theme
+      "Satellite Earth Observation & Geospatial Intelligence" containing
+      ONLY these 4 banned biotechs.
+
+      Hypothesis for why: correlation clustering groups by price-action
+      similarity (small-cap volatility match) + LLM keyword overlap
+      ("imaging", "mapping", "intelligence" in biotech descriptions).
+      Discovery-time check needs to look at sector/industry as a
+      pre-filter, not just post-hoc validation.
+
+      Add to the structural fix scope alongside the SNDK case — both
+      are "wrong ticker in theme despite signals" symptoms of the
+      same root cause class. Sunday refactor or next-session focused
+      session.
     status: pending
     added_on: 2026-05-14
 
