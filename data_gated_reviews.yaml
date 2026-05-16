@@ -2744,12 +2744,17 @@ reviews:
           primary + first red in secondary = regime warning. Should
           this become an explicit L2/L3 audit event?
     predicate_sql: |
-      -- Ideation review: no predicate, manually surface during
-      -- next breadth-deterioration episode (or in EP Selectivity
-      -- Phase 1 if cluster-view would have helped diagnose).
+      -- Ideation review, gated on prerequisites being done — NOT
+      -- a calendar date. Unblocks when both of these are complete:
+      --   (a) EP Selectivity Phase 1 (`ep_selectivity_deep_dive`)
+      --   (b) Trade-state ownership refactor (Gate 5 G)
+      -- Status check is manual until those reviews close.
       SELECT 0;
     threshold: 0
-    earliest_review_date: 2026-06-01
+    earliest_review_date: null  # gated on prerequisites, not calendar
+    blocked_by:
+      - ep_selectivity_deep_dive
+      - gate_5g_column_write_audit  # see BACKLOG.md live-cutover blockers
     action_when_ready: |
       Decide on render target (Telegram vs dashboard) + missing-
       indicator priority. Spec out:
@@ -2765,7 +2770,8 @@ reviews:
       Origin: 2026-05-15 user-shared Pradeep tweet
       (Screenshot 2026-05-15 222517.png). Pure observability —
       no methodology change, no entry/exit decision impact.
-      Defer to weekend (post-Phase 1) or later — Phase 1 EP
-      selectivity is higher priority for live cutover.
+      Unblocks immediately after EP Selectivity Phase 1 and
+      trade-state ownership refactor (Gate 5 G) are done — no
+      arbitrary calendar floor.
     status: pending
     added_on: 2026-05-15
