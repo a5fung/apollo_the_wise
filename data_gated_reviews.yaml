@@ -1963,13 +1963,29 @@ reviews:
           Gaps up, runs immediately, ORB-high entry within 9:31-9:45 ET
           window works. This is what the current system targets.
 
-      G2. **Class B — Gap-digest-then-breakout** (currently UNCAPTURED)
-          Gaps up but doesn't immediately follow through. Forms an
-          intraday base in early session. Real breakout happens AFTER
-          the ORB submission window closes (10:00 ET cutoff).
-          Different mechanics: monitor for a base low, watch for
-          breakout of the intraday consolidation structure (NOT the
-          original ORB).
+      G2. **Class B — Delayed EP** (Pradeep Bonde nomenclature;
+          currently UNCAPTURED). EP day fires on catalyst (gap +
+          volume) but doesn't immediately follow through. Stock then
+          DIGESTS — could be intraday only, could be days or weeks —
+          before the real breakout. Entry tactic per Pradeep: anchor
+          off the EP-day's low (catalyst-day low) as risk reference,
+          watch for breakout of the digestion structure. Risk-managed
+          off EP-day low + nearby 20MA confluence.
+
+          Two sub-shapes within delayed EP:
+          (B-intra) Same-day digest, breaks out post-ORB-cutoff. 620
+              method (OWL trader, 6/20 EMA cross) is one tactical
+              framework (https://theowltrader.com/2023/05/25/
+              tools-of-the-trade-the-620-chart/). ONDS/KLAR 5/14
+              fit here.
+          (B-multi) Multi-day/week digest, eventual breakout. EP-day
+              low + 20MA = risk anchor; breakout above digest range
+              = entry trigger. TRT 4/23 → 5/15 fits here (3-week
+              digest, then +43% explosive breakout on 5/15).
+
+          Both sub-shapes share the principle: ORB-day-of capture
+          (MAGNA53) is the wrong mechanic. The EP signal is correct;
+          the entry timing is delayed.
 
           User uses the "620 method" by OWL trader for intraday entry
           framework on these (https://theowltrader.com/2023/05/25/
@@ -2054,19 +2070,23 @@ reviews:
         this exact case. User now confirms DDOG worked out — boost
         was the right move. Verify boost is firing in production
         for similar cases going forward.
-      - **TRT (2026-04-23 → 2026-05-15)** — Class B exemplar. 9M EP
-        on 4/23 (+33% gap, 31M vol). Then 3-week digest in
-        $10.50-$16.50 range. Two lose days 5/12-5/13 broke below
-        EP-day low ($10.76 intraday); 5/14 recovered ($12.00 →
-        $14.02 close); 5/15 explosive breakout ($14.90 → $20.05
-        close, +43% on 4.6M vol). User entered manually using
-        **EP-day low + nearby 20MA as risk reference**, NOT
-        ORB-high entry. Exactly the Class B "gap, digest, delayed
-        breakout" pattern that MAGNA53 ORB-day-of capture misses.
-        Apollo's flag detector also labeled 5/14 + 5/15 TIGHTENING
-        (semantically wrong — those were explosive breakouts, not
-        contraction). Separate `flag_detector_post_breakout_label`
-        review filed below.
+      - **TRT (2026-04-23 → 2026-05-15)** — **Delayed EP per Pradeep
+        Bonde** (Class B-multi exemplar). 9M EP on 4/23 (+33% gap,
+        31M vol on catalyst). Then 3-week digest in $10.50-$16.50
+        range. Two lose days 5/12-5/13 broke below EP-day low
+        ($10.76 intraday); 5/14 recovered ($12.00 → $14.02 close);
+        5/15 explosive breakout ($14.90 → $20.05 close, +43% on
+        4.6M vol). User entered manually using **EP-day low + nearby
+        20MA as risk reference** — textbook Pradeep delayed-EP
+        entry tactic. NOT an ORB-high entry. Exactly the pattern
+        that MAGNA53 ORB-day-of capture misses by design.
+        Methodology vocabulary: this is the OG case to design
+        Apollo's delayed-EP capture mechanic around — anchor on
+        EP-day's low, watch the digest range, breakout-of-range +
+        20MA confluence = trigger. Apollo's flag detector also
+        labeled 5/14 + 5/15 TIGHTENING (semantically wrong — those
+        were explosive breakouts, not contraction). Separate
+        `flag_detector_post_breakout_label` review filed below.
 
       Phase 1 cross-tab: for each name, pull
         - mi_ep_alerts (was alert generated? score / tier / catalyst)
