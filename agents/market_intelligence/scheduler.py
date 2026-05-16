@@ -1211,6 +1211,110 @@ async def _post_nightly_audit_job():
         await notify_job_failure("post_nightly_audit", str(e))
 
 
+async def _theme_round_trip_validator_job():
+    """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
+
+    Defense-in-depth secondary catch for the class of bugs where an LLM-
+    generated theme has most of its members stripped by validation soon
+    after creation. Area 1's carryforward filter handles the "stale
+    members persist" case; this catches the "brand new theme born bad"
+    case — a theme created/modified on day D where ≥50% of its members
+    were stripped within the next 3 days.
+
+    Today's biotech case (had Area 1 been in place) wouldn't have caught
+    the FIRST-day-of-cycle hallucination — only its persistence. This job
+    closes that gap by firing immediately on the day the strip rate
+    crosses 50%.
+
+    Pure observability — no new schema, no LLM calls, no write authorities.
+    SQL + audit event + Telegram line. Dedup by (theme_name, day) via
+    audit-log presence so same theme doesn't re-alarm.
+    """
+    from agents.market_intelligence.db import get_pool, log_audit_event
+    from agents.market_intelligence.briefing import send_telegram_message
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH recent_themes AS (
+                SELECT
+                    name,
+                    theme_date,
+                    tickers,
+                    created_at,
+                    array_length(tickers, 1) AS member_count
+                FROM mi_themes
+                WHERE created_at >= NOW() - INTERVAL '7 days'
+            ),
+            strips AS (
+                SELECT theme_name, ticker, removed_at
+                FROM mi_validation_cooldowns
+                WHERE removed_at >= NOW() - INTERVAL '10 days'
+            )
+            SELECT
+                t.name,
+                t.theme_date,
+                t.created_at,
+                t.member_count,
+                COUNT(DISTINCT s.ticker) FILTER (
+                    WHERE s.ticker = ANY(t.tickers)
+                      AND s.removed_at BETWEEN t.created_at
+                                          AND t.created_at + INTERVAL '3 days'
+                ) AS stripped_within_3d
+            FROM recent_themes t
+            LEFT JOIN strips s ON s.theme_name = t.name
+            WHERE t.member_count >= 2
+            GROUP BY t.name, t.theme_date, t.created_at, t.tickers, t.member_count
+            HAVING COUNT(DISTINCT s.ticker) FILTER (
+                       WHERE s.ticker = ANY(t.tickers)
+                         AND s.removed_at BETWEEN t.created_at
+                                             AND t.created_at + INTERVAL '3 days'
+                   ) >= GREATEST(2, (t.member_count * 0.5)::int)
+            ORDER BY t.created_at DESC
+        """)
+        # Dedup: skip if we've already alarmed for this (theme, theme_date)
+        for row in rows:
+            already = await conn.fetchval(
+                """
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type='theme_high_strip_rate'
+                  AND summary LIKE $1
+                  AND created_at > NOW() - INTERVAL '7 days'
+                LIMIT 1
+                """,
+                f"%{row['name']}%{row['theme_date']}%",
+            )
+            if already:
+                continue
+            stripped = row["stripped_within_3d"]
+            count = row["member_count"]
+            pct = (stripped / count * 100) if count else 0
+            summary = (
+                f"'{row['name']}' ({row['theme_date']}): {stripped}/{count} members "
+                f"stripped within 3d of creation ({pct:.0f}%)"
+            )
+            await log_audit_event(
+                "theme_high_strip_rate",
+                summary=summary,
+                detail=(
+                    f"theme={row['name']} theme_date={row['theme_date']} "
+                    f"created_at={row['created_at']} "
+                    f"member_count={count} stripped_within_3d={stripped} "
+                    f"strip_pct={pct:.1f}"
+                ),
+            )
+            await send_telegram_message(
+                f"🟡 *Theme high strip rate*\n"
+                f"`{row['name']}` ({row['theme_date']})\n"
+                f"{stripped}/{count} members stripped within 3d of creation ({pct:.0f}%).\n"
+                f"Likely a hallucinated theme or wrong member assignment — review."
+            )
+        logger.info(
+            f"Theme round-trip validator: scanned 7d window, "
+            f"{len(rows)} theme(s) flagged for ≥50% strip rate"
+        )
+
+
 async def _baseline_refresh_job():
     """Run at 2:00 AM ET daily. Recompute mi_metric_baselines from trailing 30d.
 
@@ -2166,6 +2270,19 @@ def start_scheduler() -> AsyncIOScheduler:
         id="baseline_refresh",
         replace_existing=True,
         misfire_grace_time=3600,
+    )
+
+    # Theme round-trip outcome validator: 6:00 AM ET daily (Area 2,
+    # 2026-05-15). Defense-in-depth secondary catch for hallucinated
+    # themes where ≥50% of members are stripped within 3 days of
+    # creation. Pure observability; emits theme_high_strip_rate audit
+    # + Telegram on first detection per (theme, day).
+    _scheduler.add_job(
+        audit_wrap(_theme_round_trip_validator_job, "theme_round_trip_validator"),
+        CronTrigger(hour=6, minute=0, timezone="America/New_York"),
+        id="theme_round_trip_validator",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Crypto RS nightly ingest: 6:00 PM ET mon-sun (crypto trades 24/7; daily
