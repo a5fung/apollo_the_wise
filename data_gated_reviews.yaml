@@ -2681,3 +2681,86 @@ reviews:
       Phase 1 §G Class A vs B framework.
     status: pending
     added_on: 2026-05-15
+
+  - review_id: breadth_cluster_view_ideation
+    title: "Breadth cluster-matrix view + missing Stockbee secondaries"
+    question: |
+      Pradeep tweet 2026-05-15 showed Stockbee Market Monitor in
+      CLUSTER-MATRIX format: rows = dates (most recent on top),
+      columns = breadth indicators (primary on left, secondary
+      right, T2108 + S&P at far right). Red clusters in vertical
+      columns made deterioration visually obvious — past week of
+      down-4% reds in primary, today's first red day in 25%/3M
+      secondaries, today's first red T2108.
+
+      Our system has the same DATA (most of it) but presents it
+      one-day-at-a-time in regime + briefing text. We don't see
+      "primary indicators have been red 5 days running, now
+      secondaries are joining" without manual SQL.
+
+      Two ideation prongs (this review is ideation-only; not
+      shipping until shape decided):
+
+      A. **Cluster matrix render** — produce a 10-row × N-column
+         table (date × indicator) in a Telegram code block or
+         dashboard, color-coded red/green/yellow per cell. Highlight
+         vertical runs (consecutive red days in a column) as the
+         primary signal. Same data we already have, new shape.
+
+      B. **Missing secondary indicators** — Pradeep shows three
+         indicators we don't currently track:
+            - up/down 50% in 1 month (extreme thrust)
+            - up/down 13%+ in 34 days (Wm O'Neil thrust-style)
+            - Worden Common Stocks (proprietary breadth measure;
+              we'd need a proxy or skip)
+         Up/down 50%/1M is cheap from `mi_stock_scores.raw_1m`
+         (already populated). 13%/34d would need a new column or
+         on-the-fly calc from `mi_daily_closes`. Worden is closed-
+         source; skip or pick a proxy like advance/decline-line.
+
+      What we ALREADY have (regime.py:228-265):
+        - up/down 25% in 1M ✓
+        - up/down 25% in 3M ✓
+        - T2108 (% above 40MA) ✓
+        - +/-4% ratio rolling 5d + 10d ✓
+        - Consecutive 700+ down-4% breakdown days ✓
+      What's surfaced today: a sentence per metric in regime briefing
+      + numeric in evening briefing. NOT a cross-day matrix.
+
+      Open design questions:
+        - Render target: Telegram monospace table, or a new dashboard
+          page (would need streamlit/mobile-accessible)?
+        - Color encoding in Telegram is limited (emoji only — 🟥🟧🟩);
+          how many cells can we fit before it's noise?
+        - Should we add the missing secondaries first (data) or build
+          the cluster view first (shape) — which delivers more value
+          if shipped alone?
+        - Pradeep's signal-of-signals: 5+ consecutive red days in
+          primary + first red in secondary = regime warning. Should
+          this become an explicit L2/L3 audit event?
+    predicate_sql: |
+      -- Ideation review: no predicate, manually surface during
+      -- next breadth-deterioration episode (or in EP Selectivity
+      -- Phase 1 if cluster-view would have helped diagnose).
+      SELECT 0;
+    threshold: 0
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      Decide on render target (Telegram vs dashboard) + missing-
+      indicator priority. Spec out:
+        1. Which indicators (existing + new) make the final matrix.
+        2. Row count (10d? 20d?) — how far back is signal-relevant.
+        3. Color rule per metric (red threshold, green threshold,
+           neutral band).
+        4. Trigger: daily evening briefing append? On-demand
+           `/breadth_matrix` command? Both?
+        5. Vertical-run detector: how many consecutive red days
+           in N primary cols triggers an audit event?
+
+      Origin: 2026-05-15 user-shared Pradeep tweet
+      (Screenshot 2026-05-15 222517.png). Pure observability —
+      no methodology change, no entry/exit decision impact.
+      Defer to weekend (post-Phase 1) or later — Phase 1 EP
+      selectivity is higher priority for live cutover.
+    status: pending
+    added_on: 2026-05-15

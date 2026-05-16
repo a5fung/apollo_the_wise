@@ -121,7 +121,7 @@ Stage 3 live.
 Smaller items embedded in session change logs that aren't yet formalized
 into reviews. Listed by surfacing date.
 
-- [ ] **Perplexity disclaimer in display surfaces** (2026-05-14) — /trades, briefing, weekly review show disclaimer text verbatim. Sanitizer only filters M&A keyword scan path. Cosmetic; non-blocking. Flagged in `perplexity_sanitizer_verification` scope note.
+- [ ] **Breadth cluster-view + missing secondaries** (2026-05-15) — Pradeep tweet showed Stockbee Market Monitor in CLUSTER-MATRIX format (date rows × indicator cols), red-cluster runs visually obvious. We have primary +/-4% + 5d/10d ratio + T2108 + 25%/1M + 25%/3M + 700-down-4% consec, but: (a) no cluster matrix render (each day reported alone), (b) missing 50%/1M, 13%+/34d ("thrust"), Worden Common ratio. Pure observability — ideation in `data_gated_reviews.yaml::breadth_cluster_view_ideation`.
 - [ ] **format_trade_attempts older-style live mode** ✓ already addressed via `format_trade_attempts_live` dispatch (2026-05-12)
 - [ ] **9M intraday M&A coverage** ✓ shipped tonight (commit c4243aa)
 - [ ] **`trade_stream.py:367 + 600-611` explicit audit events** ✓ shipped tonight (`entry_fill_stop_remediated`)
