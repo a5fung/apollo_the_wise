@@ -68,7 +68,11 @@ from agents.market_intelligence.earnings_calendar import is_earnings_day
 logger = logging.getLogger(__name__)
 
 # Hard filters
-MIN_GAP_PCT = 8.0
+# MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0. The 8-10% gap
+# bucket had 0/8 WR over the 60d cohort (ADR 0003 §3). Env override
+# available via EP_MIN_GAP_PCT for fast rollback without redeploy.
+_MIN_GAP_PCT_DEFAULT = 10.0
+MIN_GAP_PCT = float(os.environ.get("EP_MIN_GAP_PCT", _MIN_GAP_PCT_DEFAULT))
 MIN_PREMARKET_SHARES = 25_000  # Absolute minimum — filters micro-float noise
 MIN_PREV_CLOSE = 5.0           # Skip sub-$5 stocks — noise, not EPs
 MAX_TICKER_LEN = 5             # Skip warrants/units (long symbols like ABCDW)
