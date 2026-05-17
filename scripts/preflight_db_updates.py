@@ -30,15 +30,18 @@ logger = logging.getLogger(__name__)
 # trade-lifecycle tables. The deploy fails if any prepare raises.
 TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
     (
-        "trade_stream._process_entry_fill: entry-fill UPDATE",
+        "trade_stream._process_entry_fill: entry-fill UPDATE (post-T1.1 5-param)",
+        # T1.1 refactor 2026-05-17: dropped stop_price + hard_stop from this
+        # UPDATE (entry-fill is not the authorized writer; INSERT sets initial
+        # value, update_stop owns trail). Param count 6 → 5.
         """
         UPDATE mi_live_trades SET
             status = 'filled',
             entry_price = $2, entry_shares = $3, remaining_shares = $3,
-            hard_stop = $4, stop_price = $4, filled_at = NOW(),
-            stop_order_id = COALESCE($5, stop_order_id),
-            lowest_price_seen = COALESCE(lowest_price_seen, $6),
-            highest_price_seen = COALESCE(highest_price_seen, $6)
+            filled_at = NOW(),
+            stop_order_id = COALESCE($4, stop_order_id),
+            lowest_price_seen = COALESCE(lowest_price_seen, $5),
+            highest_price_seen = COALESCE(highest_price_seen, $5)
         WHERE id = $1
         """,
     ),
