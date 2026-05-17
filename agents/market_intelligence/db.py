@@ -6003,13 +6003,24 @@ async def insert_system_review(review: dict) -> bool:
     Upsert a weekly/monthly system review row.
     Expected keys: review_date, window_days, regime, summary, metrics, suggestions.
     Same (review_date, window_days) replaces prior row (supports mid-week reruns).
+
+    metrics + suggestions go into JSONB columns. asyncpg's default JSON
+    encoder can't serialize date/datetime objects — and the metrics dict
+    is built from 17+ aggregator functions, any one of which may leak a
+    raw date. Pre-serialize with `default=str` at this boundary so we
+    don't have to chase every aggregator. JSONB column accepts a string
+    transparently (PostgreSQL parses it on insert). 2026-05-17 fix —
+    weekly_system_review job failed Sunday morning with "Object of type
+    date is not JSON serializable".
     """
     pool = await get_pool()
+    metrics_json = json.dumps(review.get("metrics") or {}, default=str)
+    suggestions_json = json.dumps(review.get("suggestions") or [], default=str)
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_system_reviews
                 (review_date, window_days, regime, summary, metrics, suggestions)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb)
             ON CONFLICT (review_date, window_days) DO UPDATE SET
                 regime      = EXCLUDED.regime,
                 summary     = EXCLUDED.summary,
@@ -6021,8 +6032,8 @@ async def insert_system_review(review: dict) -> bool:
             int(review.get("window_days", 7)),
             review.get("regime"),
             review["summary"],
-            review.get("metrics"),
-            review.get("suggestions"),
+            metrics_json,
+            suggestions_json,
         )
     return True
 
