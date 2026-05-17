@@ -86,11 +86,13 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
-        "live_tracker.morning_stop_refresh: partial_fired branch (post-2026-05-14 fix)",
+        "live_tracker.morning_stop_refresh: partial_fired branch (post-T1.2 3-param)",
+        # T1.2 refactor 2026-05-17: dropped stop_price from this UPDATE.
+        # update_stop() at the same call site is the authorized writer.
         """
         UPDATE mi_live_trades SET
-            stop_price = $2, hold_days = $3,
-            running_closes = $4::jsonb
+            hold_days = $2,
+            running_closes = $3::jsonb
         WHERE id = $1
         """,
     ),

@@ -602,12 +602,23 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         # filled. /trades displayed bogus realized P&L on full open position.
         async with pool.acquire() as conn:
             if step.partial_fired:
+                # T1.2 refactor 2026-05-17: dropped stop_price from this UPDATE.
+                # update_stop() at line 589 is the authorized stop_price writer
+                # when effective_stop rises; if it didn't rise, writing it here
+                # is a no-op. If update_stop() FAILED upstream (returning False
+                # and nulling stop_order_id), this UPDATE would have falsely
+                # reported a stop_price the broker no longer holds.
+                #
+                # Per docs/architecture/trade-state-ownership.md: stop_price is
+                # owned by entry_pipeline._skip (INSERT) and update_stop()
+                # (trail). live_tracker keeps hold_days + running_closes
+                # (which are its domain).
                 await conn.execute("""
                     UPDATE mi_live_trades SET
-                        stop_price = $2, hold_days = $3,
-                        running_closes = $4::jsonb
+                        hold_days = $2,
+                        running_closes = $3::jsonb
                     WHERE id = $1
-                """, trade["id"], step.effective_stop, step.hold_days,
+                """, trade["id"], step.hold_days,
                     json.dumps(step.new_running_closes))
             else:
                 await conn.execute("""
