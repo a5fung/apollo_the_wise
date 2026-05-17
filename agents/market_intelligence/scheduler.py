@@ -870,6 +870,144 @@ async def _stuck_fill_watchdog_job():
             )
 
 
+async def _stop_ack_timeout_watchdog_job():
+    """Stop-ACK timeout gate (2026-05-17, MRAM-class). Sibling of Gate 5 D
+    stuck-fill watchdog.
+
+    Gate 5 A (2026-05-14) covers the EXCEPTION case — when entry-fill
+    UPDATE raises (CRMD AmbiguousParameter), submit a fallback stop
+    immediately. Gate 5 A does NOT cover the SILENT case where the entry
+    UPDATE succeeds normally but `stop_order_id` stays NULL because the
+    OTO bracket's child stop leg either never ACK'd from Alpaca or its
+    acceptance event was missed by the WS handler. MRAM #120
+    (2026-05-11) is the canonical example: entry filled, stop_order_id
+    persisted as NULL, position closed via WS-only path with phantom
+    double-exit logged.
+
+    Predicate: status='filled' AND filled_at IS NOT NULL AND
+    stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'.
+
+    Runs every 30s during market hours. On detection, submits a fallback
+    stop-market at trade['orb_low'] (mirroring Gate 5 A pattern). On
+    fallback failure: escalates to CRITICAL Telegram + audit event.
+
+    Env flag STOP_ACK_TIMEOUT_GATE_ENABLED=false disables the gate for
+    fast rollback (default true).
+    """
+    import os
+    if os.environ.get("STOP_ACK_TIMEOUT_GATE_ENABLED", "true").lower() != "true":
+        return
+    import json as _json
+    from agents.market_intelligence.db import get_pool, log_audit_event
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.constants import mode_prefix
+    from agents.market_intelligence.broker import alpaca_client as alpaca
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        stuck = await conn.fetch(
+            """
+            SELECT id, ticker, account_mode, orb_low, entry_shares,
+                   remaining_shares, filled_at, entry_order_id
+            FROM mi_live_trades
+            WHERE status = 'filled'
+              AND filled_at IS NOT NULL
+              AND stop_order_id IS NULL
+              AND filled_at < NOW() - INTERVAL '30 seconds'
+            """
+        )
+        for row in stuck:
+            ticker = row["ticker"]
+            account_mode = row["account_mode"]
+            trade_id = row["id"]
+            # Dedup — one remediation attempt per (trade_id, day). If a
+            # prior attempt already fired we don't re-fire (the prior
+            # action either succeeded or escalated to CRITICAL).
+            already = await conn.fetchval(
+                "SELECT 1 FROM mi_audit_log "
+                "WHERE event_type IN ('stop_ack_timeout_remediated', "
+                "                     'stop_ack_remediation_failed') "
+                "AND summary LIKE $1 "
+                "AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
+                f"{ticker} #{trade_id}%",
+            )
+            if already:
+                continue
+
+            qty = float(row["remaining_shares"] or row["entry_shares"] or 0)
+            stop_target = float(row["orb_low"]) if row["orb_low"] is not None else None
+
+            if qty <= 0 or stop_target is None:
+                await log_audit_event(
+                    "stop_ack_remediation_failed",
+                    f"{ticker} #{trade_id}: cannot remediate — qty={qty}, orb_low={stop_target}",
+                    detail=_json.dumps({
+                        "trade_id": trade_id,
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "filled_at": str(row["filled_at"]),
+                        "reason": "missing_qty_or_orb_low",
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: STOP-ACK TIMEOUT + NO FALLBACK* {ticker}\n"
+                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                    f"no stop_order_id, can't remediate (qty={qty}, orb_low={stop_target}).\n"
+                    f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard."
+                )
+                continue
+
+            try:
+                fallback = await alpaca.place_stop_order(
+                    ticker, qty, stop_target, account_mode=account_mode,
+                )
+                # Update the row so subsequent watchdog runs don't re-fire
+                async with pool.acquire() as conn2:
+                    await conn2.execute(
+                        "UPDATE mi_live_trades SET stop_order_id = $1 WHERE id = $2",
+                        fallback["id"], trade_id,
+                    )
+                await log_audit_event(
+                    "stop_ack_timeout_remediated",
+                    f"{ticker} #{trade_id}: stop-ACK timeout (filled_at "
+                    f"{row['filled_at']:%H:%M:%S} ET, stop_order_id NULL >30s); "
+                    f"fallback stop placed at ${stop_target:.2f} order={fallback['id']}",
+                    detail=_json.dumps({
+                        "trade_id": trade_id,
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "filled_at": str(row["filled_at"]),
+                        "qty": qty,
+                        "stop_target": stop_target,
+                        "fallback_order_id": fallback["id"],
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🛡 *STOP-ACK TIMEOUT — REMEDIATED:* {ticker}\n"
+                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                    f"stop_order_id never populated.\n"
+                    f"Fallback stop placed at ${stop_target:.2f}. Original OTO child "
+                    f"stop-leg likely failed silently on Alpaca side."
+                )
+            except Exception as stop_err:
+                await log_audit_event(
+                    "stop_ack_remediation_failed",
+                    f"{ticker} #{trade_id}: stop-ACK timeout AND fallback stop submit failed",
+                    detail=_json.dumps({
+                        "trade_id": trade_id,
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "stop_target": stop_target,
+                        "stop_error": f"{type(stop_err).__name__}: {str(stop_err)[:200]}",
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🚨🚨 *CRITICAL: POSITION NAKED, REMEDIATION FAILED* {ticker}\n"
+                    f"Trade #{trade_id} filled at {row['filled_at']:%H:%M:%S} ET, "
+                    f"no stop, fallback also failed: {stop_err}\n"
+                    f"MANUAL INTERVENTION REQUIRED on Alpaca dashboard NOW."
+                )
+
+
 async def _track_open_position_extremes_job():
     """Run every 5 min during market hours (9:30 AM - 4:00 PM ET, mon-fri).
 
@@ -2194,6 +2332,25 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id="stuck_fill_watchdog",
+        replace_existing=True,
+        misfire_grace_time=30,
+    )
+
+    # Stop-ACK timeout watchdog (2026-05-17, MRAM-class). Every 30s
+    # during market hours, detect filled trades where stop_order_id is
+    # NULL >30 seconds after fill — symptom of silent OTO bracket
+    # child-leg failure not caught by Gate 5 A (which only handles the
+    # entry-fill UPDATE exception path). MRAM #120 2026-05-11 is the
+    # canonical case: stop_order_id persisted as NULL, position closed
+    # via WS-only path with phantom double-exit logged. Fallback stop
+    # at trade['orb_low'] mirrors Gate 5 A pattern.
+    _scheduler.add_job(
+        audit_wrap(_stop_ack_timeout_watchdog_job, "stop_ack_timeout_watchdog"),
+        CronTrigger(
+            hour="9-15", minute="*", second="0,30",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id="stop_ack_timeout_watchdog",
         replace_existing=True,
         misfire_grace_time=30,
     )

@@ -103,6 +103,24 @@ ORDER BY s.snapshot_date DESC;
 
 ## Change log (newest first)
 
+### 2026-05-17 — Stop-ACK timeout watchdog (MRAM-class silent-failure gate)
+
+**Trigger**: Weekly review 2026-05-17 surfaced the MRAM #120 (2026-05-11) incident — entry filled cleanly, `stop_order_id` persisted as NULL, position closed via WS-only path with phantom double-exit (logged -$2,199 vs actual -$1,100). Gate 5 A naked-position remediation (shipped 2026-05-14 from CRMD postmortem) handles the EXCEPTION case (entry-fill UPDATE raises) but does NOT handle the SILENT case (entry UPDATE succeeds, but OTO bracket child stop-leg never ACKs from Alpaca or its acceptance event is missed by WS handler). Weekly review proposed a 30-sec stop-ACK timeout gate; per investigation, it was a DIFFERENT class from Gate 5 A and was never built — this entry closes that gap.
+
+**Evidence**: MRAM #120 has `stop_order_id IS NULL` with `status='closed'` and `filled_at='2026-05-11 13:50:17'` confirmed in production. Direct production evidence of the failure class. Weekly review framing: 40% of losers stopped in <10 minutes with no mechanical floor.
+
+**Anticipated effect**: new scheduler job `_stop_ack_timeout_watchdog_job` runs every 30s during market hours (9:00-15:30 ET, mon-fri). Predicate: `status='filled' AND filled_at IS NOT NULL AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'`. On detection: submits fallback stop-market at `trade['orb_low']` (matches Gate 5 A pattern), UPDATEs `mi_live_trades.stop_order_id` with fallback order ID, emits `stop_ack_timeout_remediated` audit event, sends "🛡 STOP-ACK TIMEOUT — REMEDIATED" Telegram. On fallback failure: escalates to CRITICAL with `stop_ack_remediation_failed` + double-burst Telegram. Dedup: one remediation attempt per (trade_id, day).
+
+**Why "fallback stop" not "flatten"** (deviation from weekly review proposal): Gate 5 A precedent submits fallback stop, not flatten. The fallback approach is recoverable if real ACK arrives later (race with cancel). Flatten on transient ACK delay loses the trade entirely. Acceptable risk: position naked for 30-60s window (between fill and watchdog detection). Trade-off accepted because the alternative (flatten on every 30-sec-delayed ACK) would surface false-positives on normal Alpaca latency.
+
+**Env flag**: `STOP_ACK_TIMEOUT_GATE_ENABLED=true` (default). Set false + docker compose restart to revert.
+
+**Reversion-flag**: NEW. Sibling of Gate 5 D stuck-fill watchdog (which only catches `status='filling'` cases, not `status='filled' + stop_order_id NULL`).
+
+**Status**: shipped 2026-05-17. Field validation: monitor `stop_ack_timeout_remediated` audit events; expect zero firings if OTO bracket child-leg ACKs normally; non-zero count = a real MRAM-class case the gate caught.
+
+---
+
 ### 2026-05-08 — Initial shadow ship
 
 **Trigger**: 5/8 morning ORB blocked by 5-consecutive-loss count breaker (BSX 4/23 → AMD 5/07 streak). User flagged the breaker as methodology-blind + self-perpetuating. Two structural flaws documented in `constants.py:37-43`: (1) cooldown anchored to `latest_loss_at + 24h`, advancing with each new loss closing during cooldown — only a closed winner breaks it, but during cooldown no new entries fire, so only existing open winners can resolve it; (2) Pradeep methodology holds winners for days/weeks while losers stop fast in minutes/hours, so the trailing-N closed-trade window structurally over-weights losers.
