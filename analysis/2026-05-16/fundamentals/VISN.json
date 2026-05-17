@@ -1,0 +1,122 @@
+{
+  "ticker": "VISN",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 7,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2026-03-31",
+      "revenue": 471800000.0,
+      "gross_profit": 233700000.0,
+      "operating_income": 32200000.0,
+      "net_income": 5508000000.0,
+      "eps_basic": 24.45,
+      "eps_diluted": 23.15,
+      "gross_margin": 0.4953370072064434,
+      "op_margin": 0.06824925816023739,
+      "net_margin": 11.674438321322594
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": -2198400000.0,
+      "gross_profit": -772200000.0,
+      "operating_income": -627500000.0,
+      "net_income": 1359500000.0,
+      "eps_basic": 6.05,
+      "eps_diluted": 6.05
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 1629700000.0,
+      "gross_profit": 667800000.0,
+      "operating_income": 294100000.0,
+      "net_income": 108400000.0,
+      "eps_basic": 0.41,
+      "eps_diluted": 0.39,
+      "gross_margin": 0.4097686690801988,
+      "op_margin": 0.18046266183960238,
+      "net_margin": 0.06651530956617782
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 1388100000.0,
+      "gross_profit": 591700000.0,
+      "operating_income": 228700000.0,
+      "net_income": 31800000.0,
+      "eps_basic": 0.07,
+      "eps_diluted": 0.06,
+      "gross_margin": 0.4262661191556804,
+      "op_margin": 0.16475758230675022,
+      "net_margin": 0.02290901231899719
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 388100000.0,
+      "gross_profit": 197600000.0,
+      "operating_income": -13800000.0,
+      "net_income": 784000000.0,
+      "eps_basic": 3.55,
+      "eps_diluted": 2.88,
+      "gross_margin": 0.5091471270291162,
+      "op_margin": -0.03555784591600103,
+      "net_margin": 2.020097912909044
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-09-30",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 0.2156660654470497,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 7.038194444444445,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": 2.88,
+    "margins_q0": {
+      "gross_margin": 0.4953370072064434,
+      "op_margin": 0.06824925816023739,
+      "net_margin": 11.674438321322594
+    },
+    "margins_q1": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    },
+    "margins_q2": {
+      "gross_margin": 0.4097686690801988,
+      "op_margin": 0.18046266183960238,
+      "net_margin": 0.06651530956617782
+    }
+  }
+}

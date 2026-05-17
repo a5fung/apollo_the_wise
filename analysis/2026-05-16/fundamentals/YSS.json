@@ -1,0 +1,54 @@
+{
+  "ticker": "YSS",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 2,
+  "n_quarters_with_revenue": 2,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 105349000.0,
+      "gross_profit": 21066000.0,
+      "operating_income": -5024000.0,
+      "net_income": -28493000.0,
+      "eps_basic": null,
+      "eps_diluted": null,
+      "gross_margin": 0.1999639294155616,
+      "op_margin": -0.047689109531177325,
+      "net_margin": -0.2704629374744896
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": 76606000.0,
+      "gross_profit": 15656000.0,
+      "operating_income": -16818000.0,
+      "net_income": -25268000.0,
+      "eps_basic": null,
+      "eps_diluted": null,
+      "gross_margin": 0.20437041485001176,
+      "op_margin": -0.21953893950865466,
+      "net_margin": -0.3298436153826071
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": null,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": null,
+    "margins_q0": {},
+    "margins_q1": {},
+    "margins_q2": {}
+  }
+}

@@ -250,26 +250,138 @@ Recommendation: keep §G's "Class B uncaptured" language only for
 shape-level Class B (4.3%), and treat detection-late + Pradeep
 delayed-EP as separate workstreams.
 
-## 5. D1 fundamentals magnitude (Block 4) — STRETCH
+## 5. D1 fundamentals magnitude (Block C, ran 2026-05-16 PM)
 
-Status: deferred to a follow-up session. Polygon `/v3/reference/financials`
-fetcher not yet built. Block 4 was scoped as stretch and deprioritized
-once Blocks 1-3 produced enough signal for the headline recommendations.
-Filed as a separate work item; the catalyst-quality crosstabs in §3
-already test the broad hypothesis (`routine` admits at 17% WR — already
-clearly bad without a more granular grader).
+Built and tested. Outputs:
+- `scripts/fetch_ep_fundamentals.py` — Polygon `/vX/reference/financials`
+  primary + yfinance fallback. 50-ticker sample fetched: 38 from Polygon
+  with full 8 quarters, 12 from yfinance fallback (mostly recent IPOs).
+- `scripts/score_catalyst_rubric.py` — applies 6-axis rubric with
+  Gemini-locked weighting (2× Axes 1+5).
+- `analysis/2026-05-16/catalyst_rubric_design.md` — full rubric spec
+  with 4 hard caps and missing-data scaling.
+- `analysis/2026-05-16/catalyst_rubric_scores.csv` + verification md.
 
-## 6. EP detector latency (Block 5) — STRETCH
+### Fixture results (50 tickers, Axes 1-3 + 6 scored — Axes 4-5 require consensus + guidance data, deferred)
 
-Status: deferred. CPA-class late-fire investigation needs a focused
-query against `mi_ep_scan_log` to identify HIGH alerts where
-`scan_time_et > 09:45 ET` and what gate held them. **Working
-hypothesis** (to test in a focused session): pre-market RVOL gate
-doesn't satisfy until later because of low pm-share floor for some
-tickers; or catalyst grader latency from LLM round-trip. Quantify
-how many HIGH alerts fire AFTER 9:31 ET that should have fired
-pre-open. This is the path that converts CPA-class detected-late
-losses into Class A entries.
+| Ticker | Expected | Got | Composite | Why |
+|---|---|---|---:|---|
+| CSCO | routine_correct | routine_correct ✓ | 16.25 | A1=2 decelerating, milestone cap fired |
+| NBIS | game_changer | strong | 22.75 | A1=4 big rev growth, A3=1 op_margin -110% (still loss-making) |
+| TRT | strong | routine_correct | 19.5 | A1=5 hot rev, A2=0 neg EPS, A3=1 margins contracting |
+| ONDS | strong | routine_correct | 19.5 | Same pattern as TRT |
+| KLAR | routine_correct | weak | 0.0 | Coverage gap (IPO, no quarterly history) |
+| CPA | strong | weak | 6.5 | Low growth + milestone cap |
+
+Label distribution across 50-ticker sample: 0 game_changer / 3 strong
+/ 14 routine_correct / 33 weak. Conservative by design.
+
+### Meta-rubric architecture (user lock 2026-05-16, Path 1)
+
+The catalyst rubric grades the **fundamentals component** only. It is
+**not the final EP verdict**. Fixture mismatches (NBIS→strong not
+game_changer; TRT/ONDS→routine_correct not strong) are
+**methodologically correct** — fundamentals alone don't capture:
+
+- **Theme heat**: NBIS = neo-cloud in active AI theme (+27pp WR per
+  Block 2 in-theme breakdown)
+- **Technical structure**: gap through MAs, base shape, distance from
+  52w high
+- **Gap-vs-base alignment**: gap through resistance vs into congestion
+- **Methodology fit**: explosive small-cap vs leader breakout vs
+  delayed EP
+
+The production architecture composes these inputs:
+
+```
+catalyst_rubric_score → fundamentals_grade ┐
+theme_context boost                       ─┼→ meta_rubric → final EP label
+technical_structure score                 ─┤
+gap_alignment                            ─┘
+```
+
+Each input gets its own SSoT + quarterly review (per
+`user_quarterly_rule_review.md` memory).
+
+**Phase 2 implication**: ship `catalyst_rubric_shadow` audit event
+recording the FUNDAMENTALS COMPONENT separately. Don't conflate it
+with the overall EP label until the meta-rubric is built. Top-3
+data-rich strong names from the 50-sample (RSI 29.25, TEAM 24.38,
+NBIS 22.75) are good early-shadow validation targets.
+
+### Top 5 scoring tickers in sample (Phase 1 sanity check)
+
+| Ticker | Composite | A1 | A2 | A3 | A6 | Source |
+|---|---:|---:|---:|---:|---:|---|
+| RSI | 29.25 | 5 | 3 | 4 | 1 | Polygon |
+| TEAM | 24.38 | 4 | 5 | 1 | 1 | Polygon |
+| NBIS | 22.75 | 4 | 3 | 1 | 2 | yfinance |
+| VG | 22.58 | 5 | None | 0 | 1 | Polygon |
+| SITM | 21.12 | 4 | 0 | 5 | 0 | Polygon |
+
+## 6. EP detector latency (Block B, ran 2026-05-16 PM)
+
+Output: `analysis/2026-05-16/latency_audit.md`. N=64 HIGH alerts in
+60d with `detected_at` populated.
+
+### Emit-time distribution
+
+| Bucket | N | Share |
+|---|---:|---:|
+| pre-market (best — fired before open) | 47 | **73.4%** |
+| 9:30-9:44 (in ORB window) | 0 | **0.0%** |
+| 9:45-9:59 (LATE — past cutoff) | 17 | **26.6%** |
+| 10:00+ | 0 | 0.0% |
+
+**Late-fire rate = 26.6%** — over a quarter of HIGH alerts emit after
+the 9:45 ORB submission cutoff and CANNOT be acted on under current
+mechanics. Each is a missed Class A entry.
+
+The **zero alerts in 9:30-9:44** is structural — gates uniformly
+release at 9:45+ scan tick, meaning ANY name not pre-market-qualified
+gets pushed past the window.
+
+### What blocks the late-fires (first filter_reason at earliest scan)
+
+| Category | N | Notes |
+|---|---:|---|
+| score_below_50 | 4 | LLM catalyst grader was slow to promote — HUT/FROG/PGNY: 170 min latency from first scan to HIGH emit |
+| pm_shares_floor | 3 | CPA-class — gapper with low pm float held by absolute 25K floor |
+| outside_top20 | 2 | Gap rank didn't qualify until others dropped |
+| rel_vol_low | 2 | session-RVOL gate during first 15 min |
+| other | 2 | |
+| (no reason recorded) | 4 | |
+
+### CPA 5/14 fixture (user-flagged)
+
+- Score 67.7, gap 13.12%, catalyst `strong`
+- First scan at **09:31 ET** with reason `pre-mkt volume 7,058 < 25,000 shares`
+- Detected (HIGH-promoted) at **09:55 ET**
+- **Latency: 24 minutes** — clean Class A entry missed because of
+  pm-shares absolute floor on a low-pm-float name that was already
+  up 13% with a strong catalyst
+
+### Implications (NEW R6)
+
+### R6 — PM-shares absolute floor carve-out for high-score gappers
+**Evidence**: pm_shares_floor blocks 3 of 17 late-fires, including
+CPA. The 2026-05-08 carve-out lifts the floor when `pm_rvol ≥ 5x`
+but doesn't help low-float names where pm volume hasn't built ratio
+yet despite real catalyst.
+**Action**: extend the carve-out to also bypass the absolute
+`MIN_PREMARKET_SHARES=25000` floor when `gap_pct ≥ 10% AND
+catalyst='strong'` — admit on relative anomaly via ATR-normalized
+range or similar, not absolute share count.
+**Caveat**: small N (3 cases); ship as shadow-only first to confirm
+fewer false positives than current floor's intent (dead-zone
+prevention).
+
+**R7 — Catalyst-grader latency**: HUT/FROG/PGNY 170-min latencies
+all root-cause to `score < 50` at early scans, promoted only after
+LLM re-grading. Either (a) LLM call latency is high or (b) grader
+is conservative on first read. Worth filing as a separate
+infrastructure investigation — not a filter change, a pipeline
+latency optimization. **Phase 1.5 followup.**
 
 ## 7. Score-weight regression (Block 6) — STRETCH
 
@@ -299,12 +411,63 @@ watchlist and 10% as ORB entry trigger.
 **Reduction impact**: -8 / 165 = -5% direct + tighter top-20 filtering
 downstream.
 
-### R3 — Drop Day-1 re-entry mechanic entirely
+### R3 — Drop Day-1 same-day re-entry from MAGNA53 ORB pipeline
 **Evidence**: 0.0% WR over 6 re-entries; methodology says first
 breakout failure = setup invalidated.
-**Action**: in `entry_pipeline`, after first stop-out, do not retry
-same ticker same day.
-**Reduction impact**: -6 / 58 = ~10% of traded alerts.
+
+**Nuance (user feedback 2026-05-16)**: R3 is OK ONLY IF the cohort
+we capture as "first attempt" is genuinely gap-and-go (Class A). For
+Class B / delayed-EP shapes, re-entry is the RIGHT tactic — just
+not on the same-day ORB. The proper home for re-entry-of-failed-EP
+is the **9M Day-2 ORB** path (already exists) and the
+**continuation-flag** detector (TRT 4/23 → 5/15 pattern). These
+treat the breakout-day as a digest seed, not as the entry trigger.
+
+**Block D audit empirically tested this hand-off** — for every
+MAGNA53 HIGH alert in 60d that failed Day 1, walked forward 21 days
+to check downstream pickup. **Results are sobering**:
+
+- **Failed Day 1**: 112 of 115 HIGH alerts (97.4% failure rate)
+- **69.1% of those failed names made +5% within 21d** = 76 alpha names
+- **Capture rate of those alpha names by downstream detectors**:
+  - Continuation flag (COILED/TRIGGERED/WATCH): 31.6% ✓ only meaningful
+  - 9M EP: 5.3% (weak)
+  - 9M sugar baby: **0.0%** (structurally broken — filter requires
+    close>open + close in top 25% of range, which a stopped-out name
+    almost never satisfies)
+  - Next MAGNA53 EP within 21d: 0.0%
+  - **ANY downstream pickup: 34.2%** — **65.8% of the alpha slips
+    through entirely**.
+
+Concrete alpha-slip names from the cohort: AMBQ (+38.7%), MRAM
+(+42.7%), INOD (+57.4%), WEST (+30.7%), FLNC (+42.6%), VG (+14.5%),
+VPG (+25.3%), AKAM (+13.8%) — all failed Day 1, made meaningful
+21d moves, NOT captured downstream.
+
+**Revised action**: R3 ships ONLY paired with the following downstream
+gap closures (file as separate followups; shipping R3 in isolation
+loses alpha):
+1. **Sugar baby gate audit** — relax the close>open + top-25% close
+   requirement so that MAGNA53-failed names with constructive late-day
+   reversal can carry forward as Day-2 candidates. The 0% capture is
+   structural, not data thinness.
+2. **MAGNA53-failed → continuation-flag carryforward**: when a
+   MAGNA53 EP fails Day 1, automatically register the ticker as a
+   continuation-flag candidate (instead of waiting for the flag
+   detector to independently discover it). The 31.6% capture rate
+   shows the flag detector finds about 1-in-3 alpha names; this would
+   lift coverage materially.
+3. **Delayed-EP audit on 9M cohort**: this audit covered MAGNA53
+   only. TRT was a 9M EP, not in this cohort. Repeat the audit on
+   `mi_9m_ep_alerts` to size the 9M-side delayed-EP gap.
+
+**Without these paired changes, shipping R3 alone trades a known
+~10% loss-stream (0/6 re-entries) for a likely larger uncaptured-
+alpha cost.** R3 still ships eventually; the order matters.
+
+**Reduction impact**: -6 / 58 traded = ~10% of traded alerts.
+Quality impact: those 6 attempts averaged -6.0% return. Paired
+downstream capture work could recover the 30-60% of slipping alpha.
 
 ### R4 — In-theme scoring bonus (+10 pts for Accelerating/Mainstream)
 **Evidence**: in-theme = 66.7% WR vs uncovered 39.6% WR (+27pp).
@@ -314,23 +477,60 @@ or Mainstream theme on alert_date.
 boundary) get nudged into HIGH if in-theme. Pairs with R1 — keeps the
 genuinely high-context candidates.
 
-### R5 — Loosen `session_rvol_low` rejection band
-**Evidence**: 174 rejections, 48% would have been winners. The 1.0x
-session RVOL floor is shedding alpha. The MIN_SESSION_RVOL floor
-of 1.0 is too high during the first 15 minutes (volume curves are
-still building).
-**Action**: drop minimum session RVOL to 0.5x during 9:30-9:45 only;
-keep 1.0x after. Or: shadow-track 0.5x for 30d and measure shadow-
-admitted cohort WR.
-**Reduction impact**: NEGATIVE (admits more) — but expected to ADMIT
-WINNERS. Net effect is on cohort quality + opportunity-cost, not
-volume.
+### R5 — Loosen `session_rvol_low` rejection band — DOWNGRADED to shadow-only
+**Original evidence (broad cohort)**: 174 session_rvol_low rejections,
+48% would have been winners by 5d forward.
+**Retrospective sim (block 2.5)**: when properly windowed to only the
+9:30-9:45 ET first-15-min cohort (where the volume-curve building
+argument applies), only **12 candidates** match, with avg ret -0.7%
+and unclear win rate (most are pending or losers). The original
+"48% WR" was an all-time-of-day aggregate; the time-windowed slice
+that the rule would actually target is mediocre.
+**Revised action**: do NOT ship R5 as a live filter change in Phase 2.
+Instead, ADD a SHADOW audit event (`session_rvol_shadow_admit`) that
+records candidates which would pass a 0.5× floor during 9:30-9:45,
+along with their forward returns. Accumulate ≥30 settled outcomes
+before reconsidering.
+**Reduction impact**: zero (telemetry only).
 
 ### Cross-recommendation expected outcome
-After R1-R5 ship: alert volume drops ~30% (MODERATE retired + gap
-floor lifted); admitted cohort quality rises (themes + re-entry
-removed); some session-RVOL alpha recovered. Hand-of-cards model:
-fewer cards, better cards.
+After **R1+R2+R3+R4 ship** (R5 deferred to shadow-only):
+- Alert volume: 165 → 111 over 60d window (**-32.7%**)
+- Cohort win rate: 43.1% → **58.2%** (+15.1pp)
+- Cohort avg return: +4.5% → **+6.8%**
+- Median return: +2.9% → **+6.7%**
+
+These numbers come from the retrospective shadow simulation
+(`scripts/ep_selectivity_shadow_sim.py`, output
+`analysis/2026-05-16/shadow_sim.md`). They are DIRECTIONAL evidence,
+not a guarantee — see Caveats below. Real Phase 2 shadow telemetry
+in production is the actual test.
+
+### Per-rule incremental contribution (data backing for §8.0)
+
+| Rule | Alert delta | WR delta | Avg ret delta | Verdict |
+|---|---:|---:|---:|---|
+| R1 (drop MODERATE) | -48 | +9.0pp (43→52) | +0.9pp | **biggest lever** |
+| R2 (gap floor 10%) | -1 | +0.7pp | flat | **fine cut** |
+| R3 (drop re-entry) | -6 | +4.8pp | +1.0pp | clean structural cut |
+| R4 (in-theme re-admit) | +1 | +0.6pp | +0.4pp | small but +ev |
+| R5 (session_rvol 0.5×) | +12 | -5.5pp | -0.7pp | **don't ship; shadow only** |
+
+### Caveats (read before believing the numbers)
+
+1. **Retrospective**: filters applied to data they didn't shape.
+   Real production Phase 2 shadow is the test.
+2. **R3 sample size small (n=6)**: structural pattern is sound
+   (failed breakout = invalidated setup), but the numerical lever
+   is small in this cohort.
+3. **R4 only n=1 admit** because few alerts in 60d were
+   MODERATE + in Accelerating/Mainstream theme. The mechanism is
+   right; the cohort just didn't have the data to validate.
+4. **Sample 165 alerts** is below the N≥30-per-dimension feedback
+   ship-gate. Treat each rule as directional, not definitive.
+5. **Outcome metric mixing**: traded rows use entry-pnl R;
+   unentered use 5d open-to-close return. WR direction is
+   comparable; avg-ret only rough indicator.
 
 ## 9. Parallel entry path proposal — NOT recommended
 
@@ -377,6 +577,63 @@ just whether MAGNA53 misses it.
   the better testbed for "Class B" capture than MAGNA53; separate
   ADR.
 
+## 10.1 Catalyst-labeling rubric (P1.4 operator instructions)
+
+Sheet: `analysis/2026-05-16/catalyst_labels.csv` — 98 HIGH alerts in
+last 30d. Columns: `ticker`, `alert_date`, `gap_pct`, `ep_score`,
+`catalyst_quality` (current LLM grade), `catalyst` (1-line summary),
+`claude_analysis` (LLM reasoning), `user_label` (BLANK — for you),
+`user_notes` (BLANK — optional).
+
+**For each row, set `user_label` to ONE of**:
+
+| Label | Use when |
+|---|---|
+| `game_changer` | Genuinely transformative fundamentals: revenue growth ≥100% YoY (NBIS-class), guidance raise ≥30% over consensus, margin inflection from negative to positive, segment-changing news (FDA approval for primary product, contract worth >50% of mcap). The 1-in-50 case. |
+| `strong` | Real beat-and-raise: revenue ≥20% growth + guidance raise + clear forward narrative. Not transformative, but materially better than expected. Most "strong" current grades will land here if accurate. |
+| `routine_mislabeled` | Currently graded `strong` but actually pedestrian: single-digit beat, no guidance change, in-line revenue, generic management commentary. CSCO 5/14 type. Likely the biggest correction class. |
+| `routine_correct` | Currently graded `routine`, you agree. Sanity check the grader is working when it does fire low. |
+| `other` | Edge cases: M&A leak that should've been filtered, hedge phrase that should've downgraded, partial earnings (pre-announce only), data error in catalyst extraction. Put detail in `user_notes`. |
+
+**`user_notes` (RECOMMENDED — capture context beyond catalyst prose)**.
+
+Per user direction 2026-05-16: the catalyst rubric is one input of
+many. Final EP conviction also depends on theme context, technical
+structure, gap-vs-base alignment, sector heat. Capture these in
+notes so the meta-rubric work later can use them:
+
+- **Theme/sector context**: "neo-cloud in AI theme", "biotech FDA
+  catalyst, EMA in oncology sub-theme", "energy independent E&P
+  with crude rally tailwind". The Block 2 breakdowns showed
+  in-theme +27pp WR — this is a separate input dimension.
+- **Technical structure**: "gap up through 50d MA from base",
+  "extended >50% in 30d", "VCP base 12 weeks, near 52w high",
+  "no base, momentum-from-nothing"
+- **Gap-vs-base alignment**: "gap-through prior consolidation",
+  "gap into open air (no resistance)", "gap into prior failed
+  breakout zone"
+- **Methodology fit**: "small-cap explosive (Pradeep)", "leader
+  breakout (Qullamaggie Stage 2)", "EP with neglect period (8-12
+  months sideways)"
+- **Standard catalyst notes**: "guidance raised but revenue only
+  +8% YoY", "pre-announcement, full earnings 5/22", "partial Q
+  earnings"
+
+These notes will inform the meta-rubric design later. Don't worry
+about completeness — capture what's salient. Empty `user_notes` is
+fine for routine cases.
+
+**Time estimate**: ~1.5-3 min per row × 98 rows = ~3-4 hours total.
+Reading the catalyst column alone is usually enough; `claude_analysis`
+adds context for marginal calls. Skip rows where the catalyst text is
+empty / unreadable.
+
+**Output use**: once 30+ rows are labeled (especially
+`routine_mislabeled` cases), I can train a refined catalyst grader
+with magnitude rubric. This feeds D1 (fundamentals-magnitude filter)
+in a follow-up session. No urgency — labels can land over multiple
+sittings.
+
 ## 11. Artifacts
 
 - `scripts/ep_selectivity_cohort.py` — master cohort SQL + CSV
@@ -388,3 +645,5 @@ just whether MAGNA53 misses it.
 - `analysis/2026-05-16/classifier.csv` — per-alert shape labels
 - `analysis/2026-05-16/classifier_summary.md` — §4 source
 - `analysis/2026-05-16/catalyst_labels.csv` — operator labeling sheet
+- `scripts/ep_selectivity_shadow_sim.py` — retrospective R1-R5 sim
+- `analysis/2026-05-16/shadow_sim.md` — projected cohort delta

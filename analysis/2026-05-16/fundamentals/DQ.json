@@ -1,0 +1,125 @@
+{
+  "ticker": "DQ",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 7,
+  "n_quarters_with_revenue": 5,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2026-03-31",
+      "revenue": 26722000.0,
+      "gross_profit": -139366000.0,
+      "operating_income": -150812000.0,
+      "net_income": -88375000.0,
+      "eps_basic": -1.31,
+      "eps_diluted": -1.31,
+      "gross_margin": -5.215403038694708,
+      "op_margin": -5.64373924107477,
+      "net_margin": -3.3072000598757576
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": -0.11,
+      "eps_diluted": -0.11
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 244601000.0,
+      "gross_profit": 9652000.0,
+      "operating_income": -20304000.0,
+      "net_income": -14918000.0,
+      "eps_basic": -0.22,
+      "eps_diluted": -0.22,
+      "gross_margin": 0.03946018209246896,
+      "op_margin": -0.08300865491146807,
+      "net_margin": -0.06098912105837671
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 75189000.0,
+      "gross_profit": -81406000.0,
+      "operating_income": -114987000.0,
+      "net_income": -76478000.0,
+      "eps_basic": -1.14,
+      "eps_diluted": -5.7,
+      "gross_margin": -1.082684967215949,
+      "op_margin": -1.5293061485057655,
+      "net_margin": -1.0171434651345277
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 123914000.0,
+      "gross_profit": -81535000.0,
+      "operating_income": -114053000.0,
+      "net_income": -71837000.0,
+      "eps_basic": -1.07,
+      "eps_diluted": -1.07,
+      "gross_margin": -0.6579966751133851,
+      "op_margin": -0.9204206142970125,
+      "net_margin": -0.5797327178527043
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": 195359000.0,
+      "gross_profit": -65263000.0,
+      "operating_income": -125312000.0,
+      "net_income": -180182000.0,
+      "eps_basic": null,
+      "eps_diluted": null,
+      "gross_margin": -0.3340670253226112,
+      "op_margin": -0.6414447248399101,
+      "net_margin": -0.9223122558981158
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-09-30",
+      "revenue": null,
+      "gross_profit": null,
+      "operating_income": null,
+      "net_income": null,
+      "eps_basic": null,
+      "eps_diluted": null
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": -0.7843504365931211,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 0.22429906542056077,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": -1.07,
+    "margins_q0": {
+      "gross_margin": -5.215403038694708,
+      "op_margin": -5.64373924107477,
+      "net_margin": -3.3072000598757576
+    },
+    "margins_q1": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    },
+    "margins_q2": {
+      "gross_margin": 0.03946018209246896,
+      "op_margin": -0.08300865491146807,
+      "net_margin": -0.06098912105837671
+    }
+  }
+}

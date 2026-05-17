@@ -1,0 +1,54 @@
+{
+  "ticker": "KLAR",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 2,
+  "n_quarters_with_revenue": 2,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2025-06-30",
+      "revenue": 823000000.0,
+      "gross_profit": 315000000.0,
+      "operating_income": -46000000.0,
+      "net_income": -52000000.0,
+      "eps_basic": -0.137838,
+      "eps_diluted": -0.137838,
+      "gross_margin": 0.3827460510328068,
+      "op_margin": -0.05589307411907655,
+      "net_margin": -0.06318347509113001
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-03-31",
+      "revenue": 701000000.0,
+      "gross_profit": 271000000.0,
+      "operating_income": -90000000.0,
+      "net_income": -101000000.0,
+      "eps_basic": -0.267723,
+      "eps_diluted": -0.267723,
+      "gross_margin": 0.38659058487874465,
+      "op_margin": -0.12838801711840228,
+      "net_margin": -0.14407988587731813
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": null,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": null,
+    "margins_q0": {},
+    "margins_q1": {},
+    "margins_q2": {}
+  }
+}

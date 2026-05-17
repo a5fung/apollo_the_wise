@@ -1,0 +1,160 @@
+{
+  "ticker": "VSTS",
+  "source_chain": [
+    "polygon"
+  ],
+  "n_quarters": 8,
+  "n_quarters_with_revenue": 8,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2026",
+      "end_date": "2026-04-03",
+      "filing_date": "2026-05-12",
+      "revenue": 659437000.0,
+      "gross_profit": null,
+      "operating_income": 26779000.0,
+      "net_income": 2596000.0,
+      "eps_basic": 0.02,
+      "eps_diluted": 0.02,
+      "op_margin": 0.040608883032040965,
+      "net_margin": 0.003936691450434234
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-01-02",
+      "filing_date": "2026-02-10",
+      "revenue": 663388000.0,
+      "gross_profit": null,
+      "operating_income": 16578000.0,
+      "net_income": -6391000.0,
+      "eps_basic": -0.05,
+      "eps_diluted": -0.05,
+      "op_margin": 0.024989900329822064,
+      "net_margin": -0.009633879418982557
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "end_date": "2025-06-27",
+      "filing_date": "2025-08-05",
+      "revenue": 673799000.0,
+      "gross_profit": null,
+      "operating_income": 24961000.0,
+      "net_income": -676000,
+      "eps_basic": -0.01,
+      "eps_diluted": -0.01,
+      "op_margin": 0.03704517222495136,
+      "net_margin": -0.0010032665527850294
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2025",
+      "end_date": "2025-03-28",
+      "filing_date": "2025-05-07",
+      "revenue": 665249000.0,
+      "gross_profit": null,
+      "operating_income": -8570000.0,
+      "net_income": -27830000.0,
+      "eps_basic": -0.21,
+      "eps_diluted": -0.21,
+      "op_margin": -0.012882394411716515,
+      "net_margin": -0.04183395991576087
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2025",
+      "end_date": "2024-12-27",
+      "filing_date": "2025-02-05",
+      "revenue": 683780000.0,
+      "gross_profit": null,
+      "operating_income": 30399000.0,
+      "net_income": 832000,
+      "eps_basic": 0.01,
+      "eps_diluted": 0.01,
+      "op_margin": 0.044457281581795315,
+      "net_margin": 0.001216765626371055
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2024",
+      "end_date": "2024-06-28",
+      "filing_date": "2024-08-07",
+      "revenue": 698248000.0,
+      "gross_profit": null,
+      "operating_income": 37523000.0,
+      "net_income": 5037000.0,
+      "eps_basic": 0.04,
+      "eps_diluted": 0.04,
+      "op_margin": 0.05373878621922297,
+      "net_margin": 0.007213769319783229
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2024",
+      "end_date": "2024-03-29",
+      "filing_date": "2024-05-08",
+      "revenue": 705368000.0,
+      "gross_profit": null,
+      "operating_income": 43054000.0,
+      "net_income": 5965000.0,
+      "eps_basic": 0.05,
+      "eps_diluted": 0.05,
+      "op_margin": 0.061037642762359505,
+      "net_margin": 0.00845657869367479
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2024",
+      "end_date": "2023-12-29",
+      "filing_date": "2024-02-09",
+      "revenue": 717923000.0,
+      "gross_profit": null,
+      "operating_income": 47598000.0,
+      "net_income": 12266000.0,
+      "eps_basic": 0.09,
+      "eps_diluted": 0.09,
+      "op_margin": 0.06629958923171426,
+      "net_margin": 0.01708539773764039
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": -0.035600631782152115,
+    "rev_yoy_q1": -0.049924955030304474,
+    "rev_yoy_q2": -0.04475536174025474,
+    "rev_yoy_q3": -0.07336998536054706,
+    "eps_yoy_q0": 1.0,
+    "eps_yoy_q1": -2.25,
+    "eps_yoy_q2": -1.2,
+    "rev_qoq_q0": -0.005955790578062947,
+    "rev_accel": 0.01432432324815236,
+    "rev_accel_streak": 1,
+    "eps_accel": 3.25,
+    "rev_yoy_max_prior_7q": -0.04475536174025474,
+    "eps_qm4": 0.01,
+    "margins_q0": {
+      "gross_margin": null,
+      "op_margin": 0.040608883032040965,
+      "net_margin": 0.003936691450434234
+    },
+    "margins_q1": {
+      "gross_margin": null,
+      "op_margin": 0.024989900329822064,
+      "net_margin": -0.009633879418982557
+    },
+    "margins_q2": {
+      "gross_margin": null,
+      "op_margin": 0.03704517222495136,
+      "net_margin": -0.0010032665527850294
+    }
+  }
+}
