@@ -156,9 +156,21 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ```
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS
 ANTHROPIC_API_KEY, POLYGON_API_KEY, FMP_API_KEY, PERPLEXITY_API_KEY
-ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true, LIVE_TRADING_ENABLED=false
+
+# Dual-account Alpaca (#66, 2026-05-10) — required when ENABLE_LIVE_MODE=true
+ENABLE_LIVE_MODE=true                              # false = paper-only / dev opt-out
+ALPACA_PAPER_API_KEY, ALPACA_PAPER_SECRET_KEY      # paper-api.alpaca.markets
+ALPACA_LIVE_API_KEY, ALPACA_LIVE_SECRET_KEY        # api.alpaca.markets (only when ENABLE_LIVE_MODE=true)
+
+# Legacy (deprecated; remapped to ALPACA_PAPER_* at boot for one cycle):
+# ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true
+
+LIVE_TRADING_ENABLED=false                         # Master kill switch (disables ALL submits)
+ALPACA_DATA_FEED=iex                               # "sip" requires Algo Trader Plus ($99/mo)
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 ```
+
+**Canonical deploy**: `bash scripts/deploy.sh` (chains git pull → build → up → wait-for-boot → 3-stage preflight). Never run raw `docker compose` for deploys. See CLAUDE.md "Production Deploy" for the full sequence.
 
 ## Changes Made 2026-04-19
 
