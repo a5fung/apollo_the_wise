@@ -122,7 +122,7 @@ Flag detector's `compute_flag_metrics` runs the normal per-ticker eligibility (c
 
 **Reversion-flag**: NEW (paired with P7.2 universe-source schema).
 
-**Status**: shipped 2026-05-17 commit `<TBD>`. Stage 1 verification at Day 7-14 (universe pattern firing, looking for ≥30 9M tickers in flag candidates with `universe_sources @> ARRAY['ninem_universe_watch']`). Stage 2 — analyze flag-stage progression of 9M-origin names at Day 21+.
+**Status**: shipped 2026-05-17 commit `f025737`. Stage 1 verification (same-day): **189 9M tickers in 14d window, 76 (40%) are 9M-only** (would NOT have entered organic patterns). Confirms the methodology gap was real. Sample 9M-only names: DIS, BCRX, JD, BTG, GBTG. Stage 2 verification at Day 21+ — analyze flag-stage progression of 9M-origin names.
 
 ### 2026-05-13 — Sugar baby M&A filter (WEN-class coverage closure)
 
