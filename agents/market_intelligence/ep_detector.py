@@ -810,21 +810,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 continue
 
-        # Hard filter: absolute pre-market volume (filters micro-float noise),
-        # UNLESS pm_rvol confirms relative anomaly (AAON 5/07 class: low-float
-        # name with pm_rvol 32-60× normal still tripped 25K absolute floor).
-        # The relative gate is the better signal; the absolute floor is just
-        # a backup for names with no pm_rvol baseline.
-        if c["today_volume"] < MIN_PREMARKET_SHARES:
-            pm_rvol_cur = c.get("pm_rvol")
-            if pm_rvol_cur is not None and pm_rvol_cur >= 5.0:
-                # Relative anomaly clearly anomalous — don't reject on absolute count.
-                pass  # fall through to next gate
-            else:
-                reason = f"pre-mkt volume {c['today_volume']:,} < {MIN_PREMARKET_SHARES:,} shares"
-                logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
-                _log_filtered(c, reason)
-                continue
+        # NOTE: pm-shares absolute-floor gate moved post-catalyst (R6 ship,
+        # 2026-05-17) so we can carve out high-conviction names. The new
+        # location is after catalyst classification — search for "R6 pm-shares".
 
         # Hard filter: EP cooldown — don't re-alert same ticker within 60 days,
         # UNLESS a fresh earnings catalyst is firing (HIMX 5/07 incident class:
@@ -991,6 +979,46 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 logger.info(f"Skip {ticker}: {reason}")
                 _log_filtered(c, reason)
                 continue
+
+            # R6 pm-shares carve-out (2026-05-17 ship). Moved from pre-catalyst
+            # position so we can use catalyst_quality in the carve-out condition.
+            # Reject the absolute pm-shares floor UNLESS one of the carve-outs
+            # bypasses it:
+            #   1. pm_rvol ≥ 5x (relative anomaly — original 2026-05-08 carve-out)
+            #   2. gap ≥ 10% AND catalyst_quality='strong' (high-conviction —
+            #      NEW R6 carve-out; CPA 5/14 class: gap 13%, strong, but
+            #      pm-shares=7K blocked entry for 24 min in old pre-catalyst
+            #      position)
+            # Env-flagged for fast rollback: set R6_PMSHARES_CARVEOUT_ENABLED=false
+            # to disable carve-out #2 only (carve-out #1 always active).
+            _R6_ENABLED = os.environ.get(
+                "R6_PMSHARES_CARVEOUT_ENABLED", "true"
+            ).lower() == "true"
+            if c["today_volume"] < MIN_PREMARKET_SHARES:
+                pm_rvol_cur = c.get("pm_rvol")
+                bypass_reason = None
+                if pm_rvol_cur is not None and pm_rvol_cur >= 5.0:
+                    bypass_reason = f"pm_rvol={pm_rvol_cur:.1f}x ≥ 5.0x"
+                elif (
+                    _R6_ENABLED
+                    and c["gap_pct"] >= 10.0
+                    and catalyst_quality == "strong"
+                ):
+                    bypass_reason = (
+                        f"R6 carve-out: gap={c['gap_pct']:.1f}% + catalyst=strong"
+                    )
+                if bypass_reason is None:
+                    pplx_task.cancel()
+                    reason = (
+                        f"pre-mkt volume {c['today_volume']:,} < "
+                        f"{MIN_PREMARKET_SHARES:,} shares"
+                    )
+                    logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
+                    _log_filtered(c, reason)
+                    continue
+                logger.info(
+                    f"{ticker}: pm-shares floor bypassed — {bypass_reason}"
+                )
 
             pplx_quality = await pplx_task
 
