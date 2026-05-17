@@ -1,0 +1,98 @@
+ticker,alert_date,user_label,in_theme,theme_name,theme_stage,theme_size,theme_context_score,score_membership,score_stage,score_size,outcome,ret_5d
+AEHR,2026-04-16,"game_changer, but Delayed EP",True,Semiconductor Probe Card & Front-End Test Equipment,Accelerating,1,8,5,3,0,pending,
+AIP,2026-05-13,No EP,False,,,0,0,0,0,0,pending,
+AKAM,2026-05-08,strong,False,,,0,0,0,0,0,win,0.1201
+AMBQ,2026-05-12,strong,False,,,0,0,0,0,0,pending,
+AMD,2026-05-06,strong,True,Custom AI Silicon & Chip Architecture Licensing,Mainstream,1,7,5,2,0,loss,-0.041911698712375094
+ARRY,2026-05-07,routine_mislabeled,False,,,0,0,0,0,0,win,0.1159
+ARX,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+AXTI,2026-05-01,strong,True,Optical Components & Transceiver Manufacturers,Fading,4,7,5,0,2,win,0.3482
+BAND,2026-04-30,strong,False,,,0,0,0,0,0,win,0.33799999999999997
+BE,2026-04-29,"strong, delayed EP",True,AI Data Center Power Infrastructure,Mainstream,1,7,5,2,0,win,0.052199999999999996
+BILL,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0416
+BLMN,2026-05-06,strong,False,,,0,0,0,0,0,win,0.0745
+BW,2026-05-11,strong,True,Agricultural Commodities & Agri-Business,Fading,1,5,5,0,0,pending,
+BZH,2026-05-11,other,False,,,0,0,0,0,0,pending,
+CADL,2026-04-20,strong,False,,,0,0,0,0,0,pending,
+CALY,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0274
+CHE,2026-04-24,routine_mislabeled,False,,,0,0,0,0,0,pending,
+CMPS,2026-04-20,strong,False,,,0,0,0,0,0,pending,
+COMP,2026-05-06,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0195
+CPA,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+CRI,2026-05-06,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0473
+CRMD,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+CRML,2026-04-27,game_changer,False,,,0,0,0,0,0,loss,-0.0339
+CSCO,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.021346312207571248
+CVLT,2026-04-28,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0499
+EOSE,2026-05-13,strong,False,,,0,0,0,0,0,pending,
+EVER,2026-05-05,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.0055000000000000005
+FLEX,2026-05-06,strong,False,,,0,0,0,0,0,win,0.09359999999999999
+FLNC,2026-05-07,strong,False,,,0,0,0,0,0,win,0.4439
+FPS,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+FROG,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,loss,0.015600000000000001
+FTAI,2026-04-30,routine_mislabeled,False,,,0,0,0,0,0,win,0.1535
+FTNT,2026-05-07,game_changer,True,Network Security & Zero-Trust Edge,Accelerating,1,8,5,3,0,win,0.1297
+FTRE,2026-05-05,strong,False,,,0,0,0,0,0,win,0.006980041443996049
+GEMI,2026-05-15,routine_mislabeled,False,,,0,0,0,0,0,pending,
+GEO,2026-05-06,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0225
+GHRS,2026-04-20,strong,False,,,0,0,0,0,0,pending,
+GKOS,2026-04-30,routine_mislabeled,False,,,0,0,0,0,0,loss,0.021400000000000002
+GLOB,2026-05-15,routine_mislabeled,False,,,0,0,0,0,0,pending,
+GLW,2026-05-06,strong,True,Optical Components & Transceiver Manufacturers,Accelerating,4,10,5,3,2,win,0.1664
+GO,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+GSHD,2026-04-23,routine_mislabeled,False,,,0,0,0,0,0,pending,
+HCSG,2026-04-22,routine_mislabeled,False,,,0,0,0,0,0,pending,
+HLIT,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+HUT,2026-05-06,strong,True,Crypto Asset Recovery,Accelerating,2,9,5,3,1,loss,0.0305
+IART,2026-05-05,routine_mislabeled,False,,,0,0,0,0,0,win,0.09300000000000001
+INBX,2026-04-22,strong,False,,,0,0,0,0,0,pending,
+INOD,2026-05-08,strong,False,,,0,0,0,0,0,win,0.35200000000000004
+INTC,2026-04-24,strong,True,Silicon Carbide Power Semiconductors & EV Infrastructure,Mainstream,1,7,5,2,0,loss,-0.02396700230272793
+JMIA,2026-05-07,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0067
+KALV,2026-04-29,other,False,,,0,0,0,0,0,loss,0.0066
+KFRC,2026-04-28,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0355
+KLAR,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.047738693467336675
+KURA,2026-04-17,routine_mislabeled,False,,,0,0,0,0,0,win,0.0010449320794148156
+KYTX,2026-04-22,routine_mislabeled,True,Autonomous Military Drone Swarm & AI Defense Software,Fading,1,5,5,0,0,pending,
+LASR,2026-05-08,strong,True,Optical Components & Transceiver Manufacturers,Accelerating,4,10,5,3,2,win,0.17370000000000002
+LIVN,2026-05-06,game_changer,False,,,0,0,0,0,0,win,0.0984
+MNDY,2026-05-11,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.05123682593479804
+MRAM,2026-05-11,strong,True,AI Memory & Storage,Mainstream,2,8,5,2,1,loss,-0.14383298630136987
+MTSI,2026-05-07,strong,False,,,0,0,0,0,0,win,0.1648
+NKTR,2026-04-20,strong,False,,,0,0,0,0,0,pending,
+NMAX,2026-04-22,routine_correct,False,,,0,0,0,0,0,pending,
+NXPI,2026-04-29,routine_mislabeled,False,,,0,0,0,0,0,win,0.0507
+OMCL,2026-04-28,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.0758167391304349
+ORKA,2026-04-27,routine_mislabeled,True,Inflammatory Disease & Immunology Biologics,Accelerating,1,8,5,3,0,win,0.11230000000000001
+PACS,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+PCT,2026-05-07,routine_mislabeled,False,,,0,0,0,0,0,win,0.44299999999999995
+PGNY,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,loss,0.0282
+PI,2026-04-30,routine_mislabeled,False,,,0,0,0,0,0,win,0.09140000000000001
+RSI,2026-04-29,strong,False,,,0,0,0,0,0,loss,0.045
+SE,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+SEZL,2026-05-07,routine_mislabeled,False,,,0,0,0,0,0,win,0.0669
+SIBN,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+SITM,2026-05-07,routine_mislabeled,False,,,0,0,0,0,0,win,0.1311
+SMCI,2026-05-06,routine_mislabeled,False,,,0,0,0,0,0,loss,-0.03207701982712023
+STAA,2026-05-14,strong,False,,,0,0,0,0,0,pending,
+STRL,2026-05-05,strong,False,,,0,0,0,0,0,win,0.10289999999999999
+STUB,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+STX,2026-04-29,strong,True,AI Memory & Storage,Mainstream,2,8,5,2,1,win,0.23120000000000002
+TE,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+TEAM,2026-05-01,strong,False,,,0,0,0,0,0,loss,-0.013789874777725107
+TTMI,2026-04-30,routine_mislabeled,False,,,0,0,0,0,0,win,0.0528
+TWLO,2026-05-01,strong,False,,,0,0,0,0,0,win,0.11109999999999999
+URI,2026-04-23,routine_mislabeled,False,,,0,0,0,0,0,pending,
+USAX,2026-04-20,N/A,False,,,0,0,0,0,0,win,0.1597081475476286
+USGG,2026-04-20,N/A,False,,,0,0,0,0,0,pending,
+VG,2026-05-12,routine_mislabeled,True,Petroleum Refining & Downstream Fuels,Nascent,1,6,5,1,0,pending,
+VIAV,2026-04-30,routine_mislabeled,True,Optical Components & Transceiver Manufacturers,Fading,4,7,5,0,2,win,0.08800000000000001
+VIK,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+VPG,2026-05-12,strong,False,,,0,0,0,0,0,pending,
+VSNT,2026-05-14,routine_mislabeled,False,,,0,0,0,0,0,pending,
+VSTS,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,
+WEST,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,win,0.08800000000000001
+WKC,2026-04-24,routine_mislabeled,False,,,0,0,0,0,0,pending,
+WLDN,2026-05-08,routine_mislabeled,False,,,0,0,0,0,0,win,0.10869999999999999
+WST,2026-04-23,routine_mislabeled,False,,,0,0,0,0,0,pending,
+ZBRA,2026-05-12,routine_mislabeled,False,,,0,0,0,0,0,pending,

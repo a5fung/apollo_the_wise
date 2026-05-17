@@ -1,0 +1,162 @@
+{
+  "ticker": "CRMD",
+  "source_chain": [
+    "polygon"
+  ],
+  "n_quarters": 8,
+  "n_quarters_with_revenue": 7,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-03-31",
+      "filing_date": "2026-05-14",
+      "revenue": 127427000.0,
+      "gross_profit": 105122000.0,
+      "operating_income": 63658000.0,
+      "net_income": 38601000.0,
+      "eps_basic": 0.48,
+      "eps_diluted": 0.43,
+      "gross_margin": 0.8249586037495978,
+      "op_margin": 0.4995644565123561,
+      "net_margin": 0.3029263813791426
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "end_date": "2025-09-30",
+      "filing_date": "2025-11-12",
+      "revenue": 104275289.0,
+      "gross_profit": 93080673.0,
+      "operating_income": 51345966.0,
+      "net_income": 108562980.0,
+      "eps_basic": 1.42,
+      "eps_diluted": 1.26,
+      "gross_margin": 0.8926436348692354,
+      "op_margin": 0.49240780334830814,
+      "net_margin": 1.0411189558055312
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2025",
+      "end_date": "2025-06-30",
+      "filing_date": "2025-08-07",
+      "revenue": 39736790.0,
+      "gross_profit": 37874342.0,
+      "operating_income": 19543505.0,
+      "net_income": 19827981.0,
+      "eps_basic": 0.29,
+      "eps_diluted": 0.28,
+      "gross_margin": 0.9531303862239502,
+      "op_margin": 0.49182394954398684,
+      "net_margin": 0.4989829576067921
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2025",
+      "end_date": "2025-03-31",
+      "filing_date": "2025-05-06",
+      "revenue": 39081657.0,
+      "gross_profit": 37484942.0,
+      "operating_income": 20125280.0,
+      "net_income": 20643898.0,
+      "eps_basic": 0.32,
+      "eps_diluted": 0.3,
+      "gross_margin": 0.9591441325018537,
+      "op_margin": 0.5149546243650825,
+      "net_margin": 0.5282247372469392
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2024",
+      "end_date": "2024-09-30",
+      "filing_date": "2024-10-30",
+      "revenue": 11456115.0,
+      "gross_profit": 10769517.0,
+      "operating_income": -3287336.0,
+      "net_income": -2776812.0,
+      "eps_basic": -0.05,
+      "eps_diluted": -0.05,
+      "gross_margin": 0.94006711699385,
+      "op_margin": -0.28695033176604806,
+      "net_margin": -0.2423868824640814
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2024",
+      "end_date": "2024-06-30",
+      "filing_date": "2024-08-14",
+      "revenue": 806119,
+      "gross_profit": 296280,
+      "operating_income": -15300826.0,
+      "net_income": -14151489.0,
+      "eps_basic": -0.25,
+      "eps_diluted": -0.25,
+      "gross_margin": 0.367538787697598,
+      "op_margin": -18.98085270288878,
+      "net_margin": -17.55508677999154
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2024",
+      "end_date": "2024-03-31",
+      "filing_date": "2024-05-09",
+      "revenue": -818539,
+      "gross_profit": -818539,
+      "operating_income": -16704236.0,
+      "net_income": -14466123.0,
+      "eps_basic": -0.25,
+      "eps_diluted": -0.25
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2023",
+      "end_date": "2023-09-30",
+      "filing_date": "2023-11-14",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -10467283.0,
+      "net_income": -9744354.0,
+      "eps_basic": -0.17,
+      "eps_diluted": -0.17
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 10.123055241676607,
+    "rev_yoy_q1": 128.35470941635168,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": -9.6,
+    "eps_yoy_q1": -6.04,
+    "eps_yoy_q2": -2.12,
+    "rev_qoq_q0": 0.22202490371424433,
+    "rev_accel": -118.23165417467507,
+    "rev_accel_streak": 0,
+    "eps_accel": -3.5599999999999996,
+    "rev_yoy_max_prior_7q": 128.35470941635168,
+    "eps_qm4": -0.05,
+    "margins_q0": {
+      "gross_margin": 0.8249586037495978,
+      "op_margin": 0.4995644565123561,
+      "net_margin": 0.3029263813791426
+    },
+    "margins_q1": {
+      "gross_margin": 0.8926436348692354,
+      "op_margin": 0.49240780334830814,
+      "net_margin": 1.0411189558055312
+    },
+    "margins_q2": {
+      "gross_margin": 0.9531303862239502,
+      "op_margin": 0.49182394954398684,
+      "net_margin": 0.4989829576067921
+    }
+  }
+}

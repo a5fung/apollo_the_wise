@@ -1,0 +1,145 @@
+{
+  "ticker": "KYTX",
+  "source_chain": [
+    "polygon",
+    "yfinance_attempted_no_improvement"
+  ],
+  "n_quarters": 8,
+  "n_quarters_with_revenue": 0,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-03-31",
+      "filing_date": "2026-05-12",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -41367000.0,
+      "net_income": -39728000.0,
+      "eps_basic": -0.66,
+      "eps_diluted": -0.66
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2025",
+      "end_date": "2025-09-30",
+      "filing_date": "2025-11-12",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -38727000.0,
+      "net_income": -36787000.0,
+      "eps_basic": -0.85,
+      "eps_diluted": -0.85
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2025",
+      "end_date": "2025-06-30",
+      "filing_date": "2025-08-12",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -44410000.0,
+      "net_income": -42081000.0,
+      "eps_basic": -0.97,
+      "eps_diluted": -0.97
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2025",
+      "end_date": "2025-03-31",
+      "filing_date": "2025-05-13",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -47408000.0,
+      "net_income": -44635000.0,
+      "eps_basic": -1.03,
+      "eps_diluted": -1.03
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2024",
+      "end_date": "2024-09-30",
+      "filing_date": "2024-11-13",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -38770000.0,
+      "net_income": -34492000.0,
+      "eps_basic": -0.8,
+      "eps_diluted": -0.8
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2024",
+      "end_date": "2024-06-30",
+      "filing_date": "2024-08-12",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -33435000.0,
+      "net_income": -28803000.0,
+      "eps_basic": -0.67,
+      "eps_diluted": -0.67
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2024",
+      "end_date": "2024-03-31",
+      "filing_date": "2024-05-14",
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -29358000.0,
+      "net_income": -26693000.0,
+      "eps_basic": -1.12,
+      "eps_diluted": -1.12
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q4",
+      "fiscal_year": "2025",
+      "end_date": "2025-12-31",
+      "filing_date": null,
+      "revenue": 0,
+      "gross_profit": null,
+      "operating_income": -39282000.0,
+      "net_income": -37804000.0,
+      "eps_basic": -0.79,
+      "eps_diluted": -0.79
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": -0.17500000000000004,
+    "eps_yoy_q1": 0.26865671641791034,
+    "eps_yoy_q2": -0.1339285714285715,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": -0.4436567164179104,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": -0.8,
+    "margins_q0": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    },
+    "margins_q1": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    },
+    "margins_q2": {
+      "gross_margin": null,
+      "op_margin": null,
+      "net_margin": null
+    }
+  }
+}

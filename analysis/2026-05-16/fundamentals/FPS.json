@@ -1,0 +1,80 @@
+{
+  "ticker": "FPS",
+  "source_chain": [
+    "yfinance"
+  ],
+  "n_quarters": 4,
+  "n_quarters_with_revenue": 4,
+  "quarters": [
+    {
+      "source": "yfinance",
+      "end_date": "2025-12-31",
+      "revenue": 296404000.0,
+      "gross_profit": 101756000.0,
+      "operating_income": 20090000.0,
+      "net_income": 246000.0,
+      "eps_basic": 0.001066,
+      "eps_diluted": 0.001066,
+      "gross_margin": 0.34330170982847735,
+      "op_margin": 0.0677791122926816,
+      "net_margin": 0.0008299483137879381
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2025-09-30",
+      "revenue": 283274000.0,
+      "gross_profit": 97952000.0,
+      "operating_income": 27175000.0,
+      "net_income": 10367000.0,
+      "eps_basic": 0.04,
+      "eps_diluted": 0.04,
+      "gross_margin": 0.3457853526973884,
+      "op_margin": 0.09593185396471261,
+      "net_margin": 0.036597075622895145
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-12-31",
+      "revenue": 175338000.0,
+      "gross_profit": 63755000.0,
+      "operating_income": 18945000.0,
+      "net_income": 4593000.0,
+      "eps_basic": 0.019871,
+      "eps_diluted": 0.019871,
+      "gross_margin": 0.3636119951180007,
+      "op_margin": 0.10804845498408788,
+      "net_margin": 0.026195120281969683
+    },
+    {
+      "source": "yfinance",
+      "end_date": "2024-09-30",
+      "revenue": 154013000.0,
+      "gross_profit": 66445000.0,
+      "operating_income": 22601000.0,
+      "net_income": 6281000.0,
+      "eps_basic": 0.027173,
+      "eps_diluted": 0.027173,
+      "gross_margin": 0.4314246199996104,
+      "op_margin": 0.14674735249621784,
+      "net_margin": 0.040782271626421146
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": null,
+    "rev_yoy_q1": null,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": null,
+    "eps_yoy_q1": null,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": null,
+    "rev_accel": null,
+    "rev_accel_streak": 0,
+    "eps_accel": null,
+    "rev_yoy_max_prior_7q": null,
+    "eps_qm4": null,
+    "margins_q0": {},
+    "margins_q1": {},
+    "margins_q2": {}
+  }
+}

@@ -293,14 +293,33 @@ def build_sample(alerts_rows: list[dict]) -> list[str]:
     return selected
 
 
-async def main() -> None:
+def build_full_labeled_set() -> list[str]:
+    """Full coverage: every ticker in catalyst_labels.csv that has a
+    user_label populated. Used for the post-label cross-tab pass."""
+    labels_csv = DATA_DIR / "catalyst_labels.csv"
+    if not labels_csv.exists():
+        return []
+    with labels_csv.open("r", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return sorted({
+        r["ticker"] for r in rows
+        if r.get("user_label", "").strip()
+    })
+
+
+async def main(mode: str = "sample") -> None:
+    """mode = 'sample' (50-ticker stratified) or 'labeled' (all
+    user-labeled tickers from catalyst_labels.csv)."""
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     with ALERTS_CSV.open("r", encoding="utf-8") as f:
         alerts = list(csv.DictReader(f))
 
-    sample = build_sample(alerts)
-    logger.info("fetching fundamentals for %d tickers: %s",
-                len(sample), sample[:10])
+    if mode == "labeled":
+        sample = build_full_labeled_set()
+    else:
+        sample = build_sample(alerts)
+    logger.info("mode=%s fetching fundamentals for %d tickers: %s",
+                mode, len(sample), sample[:10])
 
     completed = 0
     for ticker in sample:
@@ -323,4 +342,6 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    mode = sys.argv[1] if len(sys.argv) > 1 else "sample"
+    asyncio.run(main(mode))

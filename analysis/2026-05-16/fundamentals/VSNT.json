@@ -1,0 +1,135 @@
+{
+  "ticker": "VSNT",
+  "source_chain": [
+    "polygon"
+  ],
+  "n_quarters": 6,
+  "n_quarters_with_revenue": 6,
+  "quarters": [
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2026",
+      "end_date": "2026-03-31",
+      "filing_date": "2026-05-14",
+      "revenue": 1687000000.0,
+      "gross_profit": null,
+      "operating_income": 442000000.0,
+      "net_income": 286000000.0,
+      "eps_basic": 1.99,
+      "eps_diluted": 1.99,
+      "op_margin": 0.26200355660936575,
+      "net_margin": 0.16953171310017784
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2012",
+      "end_date": "2012-07-31",
+      "filing_date": "2012-09-13",
+      "revenue": 3042000.0,
+      "gross_profit": 2624000.0,
+      "operating_income": -1146000.0,
+      "net_income": -1169000.0,
+      "eps_basic": -0.42,
+      "eps_diluted": -0.42,
+      "gross_margin": 0.8625904010519395,
+      "op_margin": -0.3767258382642998,
+      "net_margin": -0.38428665351742275
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q2",
+      "fiscal_year": "2012",
+      "end_date": "2012-04-30",
+      "filing_date": "2012-06-13",
+      "revenue": 3845000.0,
+      "gross_profit": 3397000.0,
+      "operating_income": -133000,
+      "net_income": -212000,
+      "eps_basic": -0.07,
+      "eps_diluted": -0.07,
+      "gross_margin": 0.8834850455136541,
+      "op_margin": -0.03459037711313394,
+      "net_margin": -0.055136540962288684
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q1",
+      "fiscal_year": "2012",
+      "end_date": "2012-01-31",
+      "filing_date": "2012-03-16",
+      "revenue": 4343000.0,
+      "gross_profit": 3874000.0,
+      "operating_income": 292000,
+      "net_income": 133000,
+      "eps_basic": 0.05,
+      "eps_diluted": 0.05,
+      "gross_margin": 0.8920101312456827,
+      "op_margin": 0.06723463043978817,
+      "net_margin": 0.03062399263182132
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q3",
+      "fiscal_year": "2011",
+      "end_date": "2011-07-31",
+      "filing_date": "2011-09-14",
+      "revenue": 4204000.0,
+      "gross_profit": 3702000.0,
+      "operating_income": 495000,
+      "net_income": 474000,
+      "eps_basic": 0.16,
+      "eps_diluted": 0.16,
+      "gross_margin": 0.8805899143672693,
+      "op_margin": 0.11774500475737393,
+      "net_margin": 0.11274976213130353
+    },
+    {
+      "source": "polygon",
+      "fiscal_period": "Q4",
+      "fiscal_year": "2011",
+      "end_date": "2011-10-31",
+      "filing_date": null,
+      "revenue": 3979000.0,
+      "gross_profit": 3519000.0,
+      "operating_income": 441000,
+      "net_income": 304000,
+      "eps_basic": 0.1,
+      "eps_diluted": 0.1,
+      "gross_margin": 0.884393063583815,
+      "op_margin": 0.11083186730334255,
+      "net_margin": 0.07640110580547876
+    }
+  ],
+  "deltas": {
+    "rev_yoy_q0": 400.28449096098956,
+    "rev_yoy_q1": -0.23548630309122898,
+    "rev_yoy_q2": null,
+    "rev_yoy_q3": null,
+    "eps_yoy_q0": 11.4375,
+    "eps_yoy_q1": -5.199999999999999,
+    "eps_yoy_q2": null,
+    "rev_qoq_q0": 553.56936226167,
+    "rev_accel": 400.5199772640808,
+    "rev_accel_streak": 1,
+    "eps_accel": 16.6375,
+    "rev_yoy_max_prior_7q": -0.23548630309122898,
+    "eps_qm4": 0.16,
+    "margins_q0": {
+      "gross_margin": null,
+      "op_margin": 0.26200355660936575,
+      "net_margin": 0.16953171310017784
+    },
+    "margins_q1": {
+      "gross_margin": 0.8625904010519395,
+      "op_margin": -0.3767258382642998,
+      "net_margin": -0.38428665351742275
+    },
+    "margins_q2": {
+      "gross_margin": 0.8834850455136541,
+      "op_margin": -0.03459037711313394,
+      "net_margin": -0.055136540962288684
+    }
+  }
+}
