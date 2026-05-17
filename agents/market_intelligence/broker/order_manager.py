@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import math
+import os
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
@@ -428,6 +429,47 @@ async def attempt_day1_reentry(
     })
 
     attempt = trade["entry_attempt"] + 1
+
+    # R3 ship 2026-05-17: drop Day-1 same-day re-entry from MAGNA53 ORB
+    # path. Evidence: 0/6 re-entry win rate over 60d cohort.
+    # Methodology: a failed first breakout invalidates the setup; same-day
+    # re-entry chases the failure rather than respecting it.
+    # Alpha-slip risk known and accepted: 65% of failed-Day-1 alpha names
+    # made +5% within 21d, only 34% caught by downstream detectors.
+    # Phase 7 paired work (sugar baby filter audit + MAGNA53→flag
+    # carryforward) close the gap quickly post-ship. Target: 2026-05-24.
+    # Env flag for fast rollback if Phase 7 slips materially.
+    _R3_ENABLED = os.environ.get("R3_DAY1_REENTRY_ENABLED", "false").lower() == "true"
+    if not _R3_ENABLED:
+        total_pnl_so_far = sum(ex.get("pnl", 0) for ex in exits)
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    status = 'closed', exits = $2::jsonb,
+                    remaining_shares = 0, total_pnl = $3,
+                    stop_order_id = NULL, closed_at = NOW(),
+                    skip_reason = 'block:r3_reentry_disabled'
+                WHERE id = $1
+            """, trade["id"], json.dumps(exits), total_pnl_so_far)
+        await log_audit_event(
+            "r3_day1_reentry_blocked",
+            f"{ticker}: Day-1 re-entry disabled by R3 ship",
+            json.dumps({
+                "trade_id": trade["id"], "ticker": ticker,
+                "stop_fill_price": stop_fill_price,
+                "att1_pnl": pnl,
+                "source": source,
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
+            f"P&L: ${pnl:+,.2f} | Re-entry disabled (R3 2026-05-17)"
+        )
+        logger.info(
+            f"Day 1 stop-out ({source}): {ticker} @${stop_fill_price:.2f}, "
+            f"R3 ship — re-entry disabled"
+        )
+        return {"ticker": ticker, "action": "closed", "reason": "r3_disabled"}
 
     # Re-entry only valid in the morning session — no late-day chasing
     from agents.market_intelligence.collector import _ET
