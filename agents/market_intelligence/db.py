@@ -1219,6 +1219,19 @@ async def initialize_schema() -> None:
             -- offline Phase 2 divergence analysis vs _compute_fresh_tightening.
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_5d  FLOAT;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS rmv_15d FLOAT;
+            -- P7.2 audit trail (2026-05-17): records which universe pattern(s)
+            -- admitted this ticker for the scan. Possible tags:
+            --   'rs_top200'           — top-200 RS leader (organic)
+            --   'rs_1m_80'            — rs_1m percentile ≥ 80 (organic burst)
+            --   'momentum_25pct'      — +25% off 10d min close (organic burst)
+            --   'magna53_failed_r3'   — R3-stopped MAGNA53 within last 7d
+            --   'ninem_universe_watch'— 9M EP within last 14d (P7.3b, Pradeep
+            --                            methodology: 9M = watchlist trigger)
+            -- A ticker admitted by multiple patterns captures all tags. Phase 5
+            -- calibration uses this to answer "did carryforward admit names
+            -- organic patterns wouldn't have caught?"
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS
+                universe_sources TEXT[] DEFAULT '{}';
         """)
 
         # ── Strategy maturity registry ───────────────────────────────────
@@ -2393,13 +2406,18 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
         )
 
 
-async def get_flag_universe(scan_date: "str | date") -> list[str]:
+async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
     """Pre-filter for the continuation-flag scan: top-RS common stock OR
     burst-class names, with usable liquidity and ≥60 sessions of history.
     Per-ticker pivot walk + state machine runs in Python on the survivors.
 
-    Two inclusion paths (UNION, OR-style):
-      (a) **Top-200 RS** — Qullamaggie thesis is trading leaders.
+    Returns: {ticker: [universe_source_tags]} so the caller can record
+    which patterns admitted each ticker (P7.2 audit trail 2026-05-17).
+    Multi-source admission preserved — a ticker in top-200 RS AND R3-
+    stopped captures both tags.
+
+    Inclusion paths (UNION, OR-style):
+      (a) **Top-200 RS** — Qullamaggie thesis is trading leaders. Tag: `rs_top200`
       (b) **Burst inclusion** — rs_1m percentile ≥ 80 OR last_close ≥ 25%
           above trailing 10-session **min close** (i.e. +25% off the lowest
           close in the last 10 sessions, NOT a trailing-10 return). Catches
@@ -2410,18 +2428,35 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
           on top of that and is near-inert as a coverage extender. The flag
           detector's pivot anchor handles burst names well — gating them
           out at the universe layer was structurally inverting coverage.
+          Tags: `rs_1m_80`, `momentum_25pct`
+      (c) **MAGNA53 carryforward** (P7.2 2026-05-17) — R3-stopped MAGNA53
+          names in last 7d. Stopped-out names that recently had a +25%
+          intraday move get fed into the flag detector's tightness state
+          machine to catch the eventual delayed-EP breakout. Tag:
+          `magna53_failed_r3`. Env flag `MAGNA53_FLAG_CARRYFORWARD_ENABLED`.
 
-    Common gates:
+    Common gates (all paths share):
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
       - close ≥ $5 (avoid microcaps where bar noise dominates)
       - 20d dollar volume ≥ $5M
       - prior_sessions ≥ 60 (need history for runup math)
+
+    Carryforward paths (c+) bypass dollar_vol/close gates only insofar as
+    they're added to the universe — the flag detector's compute_flag_metrics
+    runs the same per-ticker eligibility checks regardless of source.
     """
+    import os
+
     pool = await get_pool()
     if isinstance(scan_date, str):
         scan_date = date.fromisoformat(scan_date)
+
+    # Per-ticker source tags. We collect from each path, then merge.
+    source_map: dict[str, list[str]] = {}
+
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        # ── Paths (a) + (b): organic top-RS / burst inclusion ─────────
+        organic_rows = await conn.fetch("""
             WITH ranked AS (
                 SELECT ticker, close, volume,
                        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
@@ -2447,7 +2482,11 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
                       )
                   AND s.rs_1m IS NOT NULL
             )
-            SELECT scored.ticker
+            SELECT scored.ticker,
+                   -- Source tags as booleans (Python collapses to TEXT[] below)
+                   (scored.rs_rank IS NOT NULL AND scored.rs_rank <= 200) AS is_rs_top200,
+                   (scored.rs_1m >= 80) AS is_rs_1m_80,
+                   (m.trailing10_min > 0 AND (m.last_close / m.trailing10_min - 1) >= 0.25) AS is_momentum_25pct
             FROM scored
             LEFT JOIN mi_security_types st ON st.ticker = scored.ticker
             INNER JOIN ctx m ON m.ticker = scored.ticker
@@ -2456,20 +2495,41 @@ async def get_flag_universe(scan_date: "str | date") -> list[str]:
               AND d.close >= 5.0
               AND m.dollar_vol_20d >= 5000000
               AND (
-                    -- Path (a): top-200 RS
                     (scored.rs_rank IS NOT NULL AND scored.rs_rank <= 200)
-                    -- Path (b): burst inclusion. rs_1m is already a 0-100
-                    -- percentile. The trailing10 clause anchors on the 10d
-                    -- min close (NOT a 10d return) — fires only when price
-                    -- is ≥25% above its 10-session low. Near-inert in
-                    -- practice; rs_1m≥80 carries the burst path.
                     OR scored.rs_1m >= 80
                     OR (m.trailing10_min > 0
                         AND (m.last_close / m.trailing10_min - 1) >= 0.25)
                   )
             ORDER BY COALESCE(scored.rs_rank, 99999) ASC
         """, scan_date)
-    return [r["ticker"] for r in rows]
+        for r in organic_rows:
+            sources = []
+            if r["is_rs_top200"]:
+                sources.append("rs_top200")
+            if r["is_rs_1m_80"]:
+                sources.append("rs_1m_80")
+            if r["is_momentum_25pct"]:
+                sources.append("momentum_25pct")
+            source_map[r["ticker"]] = sources
+
+        # ── Path (c): MAGNA53 carryforward (P7.2 2026-05-17) ───────────
+        r3_enabled = os.environ.get(
+            "MAGNA53_FLAG_CARRYFORWARD_ENABLED", "true"
+        ).lower() == "true"
+        if r3_enabled:
+            r3_rows = await conn.fetch("""
+                SELECT DISTINCT ticker
+                FROM mi_live_trades
+                WHERE alert_date >= $1 - INTERVAL '7 days'
+                  AND alert_date < $1
+                  AND status = 'closed'
+                  AND skip_reason = 'block:r3_reentry_disabled'
+                  AND account_mode = 'paper'
+            """, scan_date)
+            for r in r3_rows:
+                source_map.setdefault(r["ticker"], []).append("magna53_failed_r3")
+
+    return source_map
 
 
 async def insert_flag_candidate(record: dict[str, Any]) -> None:
@@ -2491,10 +2551,10 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  rs_rank, rs_composite, sector,
                  stage, reason, score, held_from_stage,
                  fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
-                 rmv_5d, rmv_15d)
+                 rmv_5d, rmv_15d, universe_sources)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
-                    $23, $24, $25, $26, $27, $28, $29, $30)
+                    $23, $24, $25, $26, $27, $28, $29, $30, $31)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -2523,7 +2583,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 fresh_2bar_tr_pct       = EXCLUDED.fresh_2bar_tr_pct,
                 atr14_pct               = EXCLUDED.atr14_pct,
                 rmv_5d                  = EXCLUDED.rmv_5d,
-                rmv_15d                 = EXCLUDED.rmv_15d
+                rmv_15d                 = EXCLUDED.rmv_15d,
+                universe_sources        = EXCLUDED.universe_sources
         """,
             record["ticker"],
             scan_date,
@@ -2555,6 +2616,7 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("atr14_pct"),
             record.get("rmv_5d"),
             record.get("rmv_15d"),
+            record.get("universe_sources") or [],
         )
 
 

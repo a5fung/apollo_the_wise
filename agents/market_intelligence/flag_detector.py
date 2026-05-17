@@ -667,7 +667,12 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         return {"TRIGGERED": [], "COILED": [], "TIGHTENING": [],
                 "WATCH": [], "INVALIDATED": [], "unqualified": []}
 
-    universe = await db.get_flag_universe(scan_date)
+    # P7.2 (2026-05-17): get_flag_universe now returns dict[ticker, sources]
+    # so we can record which universe pattern admitted each ticker. The
+    # `universe` list passed downstream is just the keys; sources are
+    # threaded into metrics via `universe_sources_map`.
+    universe_sources_map = await db.get_flag_universe(scan_date)
+    universe = list(universe_sources_map.keys())
     by_stage: dict[str, list[dict]] = {
         "TRIGGERED": [], "COILED": [], "TIGHTENING": [],
         "WATCH": [], "INVALIDATED": [], "unqualified": [],
@@ -675,6 +680,17 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     if not universe:
         logger.info(f"flag_scan {scan_date}: empty universe")
         return by_stage
+
+    # P7.2 telemetry: log per-source counts
+    from collections import Counter as _Counter
+    _source_counts = _Counter()
+    for _srcs in universe_sources_map.values():
+        for _s in _srcs:
+            _source_counts[_s] += 1
+    logger.info(
+        f"flag_scan {scan_date}: universe={len(universe)} | "
+        + " ".join(f"{src}={n}" for src, n in _source_counts.most_common())
+    )
 
     yesterday_map, recent_map, rs_map, sector_map, pivot_map = await asyncio.gather(
         db.get_yesterday_flag_stages(scan_date),
@@ -707,6 +723,8 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     prior_pivot_high=prior_pivot[1] if prior_pivot else None,
                 )
                 metrics["scan_date"] = scan_date
+                # P7.2: record universe-pattern provenance for telemetry
+                metrics["universe_sources"] = universe_sources_map.get(ticker, [])
                 await db.insert_flag_candidate(metrics)
                 if metrics.get("held_from_stage"):
                     await db.log_audit_event(
