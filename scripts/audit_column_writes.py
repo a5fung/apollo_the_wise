@@ -31,6 +31,137 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TARGET = "mi_live_trades"
 
+
+# Gate 5 G allow-list — per docs/architecture/trade-state-ownership.md.
+#
+# Each entry maps a column to the set of "module.function" pairs that are
+# authorized to write it. The `check` mode walks every write site and
+# fails the deploy on any (column, function) not in this allow-list.
+#
+# Adding a new writer requires updating this list in the same commit —
+# explicit ack of new co-ownership. Friction by design.
+#
+# Module name = file's basename without .py extension. Function name = the
+# enclosing def / async def's identifier (from find_enclosing_function).
+#
+# Naming convention for site identity: `<module>.<function>`. Duplicate
+# function names across modules are distinguished by module prefix.
+#
+# Last refreshed: 2026-05-17 (T1.5 / Gate 5 G ship).
+ALLOWED_WRITERS: dict[str, set[str]] = {
+    # ── INSERT-side only (entry creation) ──────────────────────────────
+    # These columns are set once at row creation by either the primary
+    # entry path (entry_pipeline._skip — confusing name; despite "_skip"
+    # it's the function that INSERTs every row including non-skipped) or
+    # the skipped-only path (live_tracker._insert_skipped_trade).
+    "account_mode":       {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "alert_date":         {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "atr_14":             {"entry_pipeline._skip"},
+    "catalyst_quality":   {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "ep_score":           {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "gap_pct":            {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "orb_high":           {"entry_pipeline._skip"},
+    "orb_low":            {"entry_pipeline._skip"},
+    "position_size":      {"entry_pipeline._skip"},
+    "proposed_at":        {"entry_pipeline._skip"},
+    "regime":             {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+    "risk_dollars":       {"entry_pipeline._skip"},
+    "signal_type":        {"entry_pipeline._skip", "live_tracker._insert_skipped_trade", "db.initialize_schema"},
+    "ticker":             {"entry_pipeline._skip", "live_tracker._insert_skipped_trade"},
+
+    # ── Entry-fill lifecycle ───────────────────────────────────────────
+    "entry_order_id":     {"order_manager.submit_entry", "order_manager.attempt_day1_reentry", "order_manager.cancel_unfilled_entries"},
+    "entry_price":        {"entry_pipeline._skip", "order_manager.check_fills", "trade_stream._process_entry_fill"},
+    "entry_shares":       {"entry_pipeline._skip", "order_manager.check_fills", "trade_stream._process_entry_fill"},
+    "filled_at":          {"order_manager.check_fills", "order_manager.attempt_day1_reentry", "trade_stream._process_entry_fill"},
+    "confirmed_at":       {"entry_pipeline._skip", "telegram_confirm.handle_callback"},
+    "entry_attempt":      {"order_manager.attempt_day1_reentry"},
+
+    # ── Stop management (KLAR/CRMD strict-ownership column) ────────────
+    # T1.1/T1.2/T1.4 (2026-05-17) cut writers 7 → 4. update_stop owns
+    # trail. entry_pipeline._skip sets initial. check_fills writes on
+    # poll-fill backup. live_tracker close path (line 537) writes NULL
+    # on stopped-out fallback — T1.3 will delegate that to finalize_stop_fill
+    # in next session. Currently listed as legitimate until T1.3 ships.
+    "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills", "live_tracker.update_open_positions_live"},
+    "hard_stop":          {"entry_pipeline._skip", "order_manager.check_fills"},
+    "stop_order_id":      {
+        # T1.5a future-work: consolidate the 25 writers below into one
+        # helper. Currently documented as the existing landscape.
+        "order_manager.submit_entry", "order_manager.check_fills",
+        "order_manager.update_stop", "order_manager.execute_partial_exit",
+        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
+        "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
+        "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
+        "trade_stream._handle_cancel_or_reject",
+        "live_tracker.update_open_positions_live",
+        "scheduler._stop_ack_timeout_watchdog_job",
+    },
+
+    # ── Exit lifecycle ─────────────────────────────────────────────────
+    "exits":              {
+        "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
+        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "trade_stream._process_stop_fill", "live_tracker.update_open_positions_live",
+    },
+    "remaining_shares":   {
+        "order_manager.check_fills", "order_manager.attempt_day1_reentry",
+        "order_manager.finalize_partial_exit", "order_manager.finalize_full_exit",
+        "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
+        "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
+        "live_tracker.update_open_positions_live",
+    },
+    "total_pnl":          {
+        "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
+        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "order_manager.cancel_unfilled_entries", "trade_stream._process_stop_fill",
+        "live_tracker.update_open_positions_live",
+    },
+    "closed_at":          {
+        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
+        "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",
+        "order_manager._sync_positions_for_mode", "trade_stream._process_stop_fill",
+        "live_tracker.update_open_positions_live",
+    },
+
+    # ── BW strict-ownership columns (single owner each) ────────────────
+    # 2026-05-14 BW incident: wrapping UPDATE in live_tracker wrote
+    # partial_taken=TRUE optimistically. c0fa67f fix moved write to
+    # finalize_partial_exit. Strict-single-owner enforcement now.
+    "partial_taken":      {"order_manager.finalize_partial_exit"},
+    "breakeven_active":   {"order_manager.finalize_partial_exit", "live_tracker.update_open_positions_live"},
+
+    # ── live_tracker-domain columns (computed by state machine) ────────
+    "hold_days":          {"live_tracker.update_open_positions_live"},
+    "running_closes":     {"live_tracker.update_open_positions_live"},
+
+    # ── Position-extreme tracking ──────────────────────────────────────
+    "lowest_price_seen":  {"order_manager.track_open_position_extremes", "trade_stream._process_entry_fill"},
+    "highest_price_seen": {"order_manager.track_open_position_extremes", "trade_stream._process_entry_fill"},
+
+    # ── Status / skip_reason (FSM-style; many legitimate writers) ──────
+    # advisor 2026-05-17: skip FSM-style enforcement. Document the set
+    # but allow many writers per the state machine.
+    "status":             {
+        "entry_pipeline._skip", "live_tracker._insert_skipped_trade",
+        "live_tracker.update_open_positions_live",
+        "order_manager.submit_entry", "order_manager.check_fills",
+        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
+        "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",
+        "order_manager._sync_positions_for_mode", "order_manager._update_trade_status",
+        "telegram_confirm.handle_callback",
+        "trade_stream._handle_fill", "trade_stream._process_entry_fill",
+        "trade_stream._process_stop_fill", "trade_stream._handle_cancel_or_reject",
+    },
+    "skip_reason":        {
+        "live_tracker._insert_skipped_trade",
+        "order_manager.attempt_day1_reentry", "order_manager.cancel_unfilled_entries",
+        "order_manager._update_trade_status",
+        "telegram_confirm.handle_callback",
+        "trade_stream._process_entry_fill", "trade_stream._handle_cancel_or_reject",
+    },
+}
+
 # Match an UPDATE block: from `UPDATE mi_live_trades SET` up to first
 # `WHERE` (case-insensitive, multiline). Captures the SET clause.
 UPDATE_RE = re.compile(
@@ -162,11 +293,55 @@ def main(mode: str = "audit") -> int:
         return 0
 
     elif mode == "check":
-        # Phase 2 (Sunday Gate 5 G): compare against ALLOWED_WRITERS.
-        # For now (Phase 1), this branch just emits a placeholder.
-        print("Gate 5 G column-write authority check — not yet implemented.")
-        print("Phase 2 (Sunday): load ALLOWED_WRITERS, exit non-zero on violations.")
-        return 0
+        # Gate 5 G (2026-05-17 T1.5 ship): compare every column-write site
+        # against ALLOWED_WRITERS. Exit non-zero on any unauthorized pair.
+        violations: list[dict] = []
+        for s in all_sites:
+            # Module identity = file basename without .py.
+            file_path = Path(s["file"])
+            module = file_path.stem
+            func = s["function"]
+            site_id = f"{module}.{func}"
+            for col in s["columns"]:
+                allowed = ALLOWED_WRITERS.get(col)
+                if allowed is None:
+                    # Column not in allow-list at all — strict gate: any
+                    # new column write needs an explicit ALLOWED_WRITERS
+                    # entry to acknowledge ownership.
+                    violations.append({
+                        "site": site_id,
+                        "file": s["file"], "line": s["line"],
+                        "column": col, "kind": s["kind"],
+                        "reason": "column not in ALLOWED_WRITERS — new column requires explicit ownership entry",
+                        "allowed": None,
+                    })
+                elif site_id not in allowed:
+                    violations.append({
+                        "site": site_id,
+                        "file": s["file"], "line": s["line"],
+                        "column": col, "kind": s["kind"],
+                        "reason": "writer not in column's ALLOWED_WRITERS set",
+                        "allowed": sorted(allowed),
+                    })
+
+        if not violations:
+            print(f"Gate 5 G column-write authority check — OK ({len(all_sites)} sites verified clean against ALLOWED_WRITERS).")
+            return 0
+
+        print(f"Gate 5 G column-write authority check — FAIL ({len(violations)} violation(s)):\n")
+        for v in violations:
+            print(f"UNAUTHORIZED COLUMN WRITER:")
+            print(f"  file:    {v['file']}:{v['line']}")
+            print(f"  writer:  {v['site']}  [{v['kind']}]")
+            print(f"  column:  {v['column']}")
+            print(f"  reason:  {v['reason']}")
+            if v["allowed"] is not None:
+                print(f"  Allowed writers: {', '.join(v['allowed'])}")
+            print(f"  Fix: either")
+            print(f"    (a) add '{v['site']}' to ALLOWED_WRITERS['{v['column']}'] in scripts/audit_column_writes.py")
+            print(f"    (b) refactor {v['site']} to call the authorized writer instead")
+            print()
+        return 1
 
     print(f"Unknown mode: {mode}")
     return 2

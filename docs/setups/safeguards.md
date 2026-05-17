@@ -103,6 +103,42 @@ ORDER BY s.snapshot_date DESC;
 
 ## Change log (newest first)
 
+### 2026-05-17 — Trade-state ownership refactor (T1.1/T1.2/T1.4) + Gate 5 G (column-write authority preflight)
+
+**Trigger**: Five trade-state corruption bugs in May (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to the same column with no ownership rule, last-write-wins by accident. Boot-time prepare validation (Gate 5 B, shipped 2026-05-14) catches type errors but not semantic-overwrite. Friday's Phase 1 audit (`docs/architecture/trade-state-ownership.md`) enumerated every writer per column + drafted ownership rules; today's Phase 2 work refactors three hot-path bug surfaces + ships the static-analysis gate.
+
+**Three refactors shipped (commit chain T1.1 → T1.2 → T1.4):**
+
+- **T1.1** — `trade_stream._process_entry_fill` no longer writes `stop_price` / `hard_stop`. Entry-fill is NOT the authorized writer; INSERT at `entry_pipeline._skip` sets the initial value, `update_stop()` owns trail. KLAR/ARM bug root cause. Cuts stop_price writers 7 → 4. Param count 6 → 5.
+
+- **T1.2** — `live_tracker.update_open_positions_live` partial-fired branch no longer writes `stop_price`. `update_stop()` at the same call site is the authorized writer. When `update_stop()` failed (returning False + nulling stop_order_id per naked-position protocol), the wrapping write previously falsely reported a stop_price the broker no longer held. Cuts stop_price writers 4 → 3. Param count 4 → 3.
+
+- **T1.4** — `live_tracker.update_open_positions_live` no-partial branch no longer writes `stop_price` / `total_pnl` / `partial_taken` / `remaining_shares`. Beyond the stop_price reason: in this branch `step.new_X == state[X]` (no change when no partial fires), so the "idempotent no-op write" was actually a LOST UPDATE hazard if a WS fill arrived concurrently between state-load and UPDATE. Cuts stop_price writers 3 → 2 effective (live_tracker close path at line 537 still writes NULL — T1.3 future-work). Param count 8 → 4.
+
+**Gate 5 G ship (T1.5):**
+
+`scripts/audit_column_writes.py check` mode + `ALLOWED_WRITERS` dict + `deploy.sh` step `[5c/5]` wire. Walks every UPDATE / INSERT site touching `mi_live_trades`, builds `(column, module.function)` pairs, fails the deploy on any pair not in `ALLOWED_WRITERS`. Output names the violation, the file/line, the function, the existing allowed set, and the two fix paths (add to allow-list OR refactor to authorized writer).
+
+**Verification protocol passed**:
+1. `check` mode on clean tree → OK, 47 sites verified clean.
+2. Synthetic test: injected a `rogue_writer` function writing `stop_price` from `fake_violator.py` → check correctly flagged the violation + named the four legitimate writers. Test passed.
+
+**Promotion**: Active on every deploy via `scripts/deploy.sh` step `[5c/5]`. Exit code 6 reserved for column-write authority failures.
+
+**Friction by design**: adding a new writer requires updating `ALLOWED_WRITERS` in the same commit. Explicit ack of new co-ownership.
+
+**Limitations** (per script docstring): regex-based parsing handles multiline UPDATEs but would miss dynamic SQL string-concat (none currently exist). Doesn't catch raw `conn.execute` with template strings. Acceptable for current codebase pattern.
+
+**Future-work follow-ups filed**:
+- T1.3 — `live_tracker.update_open_positions_live` close path (line 537) delegates to `finalize_full_exit` / `finalize_stop_fill`. Deferred today per drop priority (complex — WS-vs-fallback ownership for Alpaca-confirms-gone case).
+- T1.5a — `set_stop_order_id` helper consolidates 12 solo writes into one authorized writer. Allow-list tightening (cosmetic per advisor 2026-05-17); not safety.
+
+**Reversion-flag**: NEW for Gate 5 G. REFINEMENTs of 2026-05-14 KLAR/ARM fix (d6fa74c) and 2026-05-14 BW fix (c0fa67f) for T1.1/T1.2/T1.4 — the inline COALESCE / `partial_fired` skips remain as belt-and-suspenders; refactors remove the SECOND-WRITE pattern at source.
+
+**Status**: shipped 2026-05-17. Closes Gate 5 G live-cutover blocker. Composite `live_cutover_decision` review evaluation continues per schedule (2026-05-22 earliest).
+
+---
+
 ### 2026-05-17 — Stop-ACK timeout watchdog (MRAM-class silent-failure gate)
 
 **Trigger**: Weekly review 2026-05-17 surfaced the MRAM #120 (2026-05-11) incident — entry filled cleanly, `stop_order_id` persisted as NULL, position closed via WS-only path with phantom double-exit (logged -$2,199 vs actual -$1,100). Gate 5 A naked-position remediation (shipped 2026-05-14 from CRMD postmortem) handles the EXCEPTION case (entry-fill UPDATE raises) but does NOT handle the SILENT case (entry UPDATE succeeds, but OTO bracket child stop-leg never ACKs from Alpaca or its acceptance event is missed by WS handler). Weekly review proposed a 30-sec stop-ACK timeout gate; per investigation, it was a DIFFERENT class from Gate 5 A and was never built — this entry closes that gap.

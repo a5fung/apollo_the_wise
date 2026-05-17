@@ -84,4 +84,16 @@ if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
 fi
 
 echo ""
+echo "=== [5c/5] Preflight column-write authority check (Gate 5 G) ==="
+if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
+  echo ""
+  echo "DEPLOY FAILED — unauthorized writer to mi_live_trades column(s)."
+  echo "Some function writes a column it's not in ALLOWED_WRITERS for. This"
+  echo "is the trade-state-ownership invariant (BW / KLAR / CRMD bug class)."
+  echo "Either (a) add the writer to ALLOWED_WRITERS in scripts/audit_column_writes.py,"
+  echo "or (b) refactor it to call the authorized writer instead."
+  exit 6
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
