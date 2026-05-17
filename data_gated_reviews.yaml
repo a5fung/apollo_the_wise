@@ -2381,8 +2381,17 @@ reviews:
           filed (related to B1/B2)
         - perplexity_hallucination_keyword_leak — affects D1 catalyst
           fetch (filed today)
-    status: pending
+    status: shipped
     added_on: 2026-05-14
+    shipped_on: 2026-05-17
+    shipped_notes: |
+      Phase 1 diagnostic ADR completed 2026-05-16
+      (`docs/decisions/0003-ep-selectivity-overhaul.md`). Phase 2
+      filter ships 2026-05-17 (R2/R4/R6/R3 + bug fixes; R1 verified
+      already-in-effect; R5 not shipping). Phase 7 alpha-slip hedge
+      (P7.2 MAGNA53→flag carryforward) 2026-05-17. Catalyst rubric
+      SSoT `docs/setups/catalyst_rubric.md` PROVISIONAL. Meta-rubric
+      Phase 3-6 follows per `~/.claude/plans/i-want-to-plan-groovy-horizon.md`.
 
   - review_id: perplexity_sanitizer_verification
     title: "Perplexity disclaimer sanitizer — verify zero new FPs over 7d"
