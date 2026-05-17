@@ -75,13 +75,16 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
-        "live_tracker.morning_stop_refresh: non-partial branch",
+        "live_tracker.morning_stop_refresh: non-partial branch (post-T1.4 4-param)",
+        # T1.4 refactor 2026-05-17: dropped stop_price + total_pnl +
+        # partial_taken + remaining_shares. update_stop owns stop_price;
+        # finalize_* own the others. Kept hold_days + breakeven_active +
+        # running_closes (live_tracker domain).
         """
         UPDATE mi_live_trades SET
-            stop_price = $2, hold_days = $3, total_pnl = $4,
-            partial_taken = $5, breakeven_active = $6,
-            running_closes = $7::jsonb,
-            remaining_shares = $8
+            hold_days = $2,
+            breakeven_active = $3,
+            running_closes = $4::jsonb
         WHERE id = $1
         """,
     ),

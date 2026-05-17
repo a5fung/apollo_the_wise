@@ -621,17 +621,33 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                 """, trade["id"], step.hold_days,
                     json.dumps(step.new_running_closes))
             else:
+                # T1.4 refactor 2026-05-17: dropped stop_price + total_pnl +
+                # partial_taken + remaining_shares from this UPDATE.
+                #
+                # - stop_price: update_stop() at line 589 owns trail writes.
+                #   Writing here is redundant when update_stop succeeded and
+                #   FALSELY OPTIMISTIC when it failed (KLAR-class bug).
+                # - total_pnl / partial_taken / remaining_shares: in the
+                #   no-partial branch, step.new_X == state[X] (no change). The
+                #   "no-op idempotent write" is actually a LOST UPDATE hazard
+                #   if a WS fill arrived concurrently between state-load and
+                #   this UPDATE — the stale read would clobber the WS write.
+                #   Authorized writers: finalize_partial_exit, finalize_full_exit,
+                #   finalize_stop_fill, _sync_positions_for_mode.
+                #
+                # Keeps: hold_days, breakeven_active (state-machine derived;
+                # only ever changed inside this function's domain when partial
+                # fires, which this branch by definition didn't), running_closes
+                # (live_tracker domain).
                 await conn.execute("""
                     UPDATE mi_live_trades SET
-                        stop_price = $2, hold_days = $3, total_pnl = $4,
-                        partial_taken = $5, breakeven_active = $6,
-                        running_closes = $7::jsonb,
-                        remaining_shares = $8
+                        hold_days = $2,
+                        breakeven_active = $3,
+                        running_closes = $4::jsonb
                     WHERE id = $1
-                """, trade["id"], step.effective_stop, step.hold_days,
-                    step.new_total_pnl, step.new_partial_taken,
+                """, trade["id"], step.hold_days,
                     step.new_breakeven_active,
-                    json.dumps(step.new_running_closes), step.new_remaining)
+                    json.dumps(step.new_running_closes))
 
         logger.info(
             f"{ticker}: effective_stop=${step.effective_stop:.2f} "
