@@ -2520,8 +2520,8 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             r3_rows = await conn.fetch("""
                 SELECT DISTINCT ticker
                 FROM mi_live_trades
-                WHERE alert_date >= $1 - INTERVAL '7 days'
-                  AND alert_date < $1
+                WHERE alert_date >= ($1::date - INTERVAL '7 days')
+                  AND alert_date < $1::date
                   AND status = 'closed'
                   AND skip_reason = 'block:r3_reentry_disabled'
                   AND account_mode = 'paper'
