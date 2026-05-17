@@ -1,8 +1,13 @@
 # Trade-state column ownership
 
-**Status**: Draft 2026-05-15 (Friday weekend Phase 1) — written from the
-audit output of `scripts/audit_column_writes.py`. Sunday refactor (Phase 2)
-will enforce these rules and ship Gate 5 G column-write audit invariant.
+**Status**: Active 2026-05-17 (Sunday Phase 2 shipped). Gate 5 G enforces
+these rules at deploy time via `scripts/audit_column_writes.py check` →
+`deploy.sh` step `[5c/5]`. Live since commit `fd31e5b`.
+
+**History**:
+- 2026-05-15 (Fri): Phase 1 audit + this doc drafted.
+- 2026-05-17 (Sun): T1.1/T1.2/T1.4 refactors + T1.5 Gate 5 G ship.
+- See `docs/setups/safeguards.md` change log for the full ledger.
 
 **Why this exists**: Five trade-state corruption bugs this week
 (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to
@@ -28,32 +33,40 @@ function "needs" to refresh a column it doesn't own, it must either:
 
 ## Audit summary
 
-**45 write sites** across 5 files (45 = 2 INSERT + 43 UPDATE).
+**47 write sites** across 6 files (47 = 2 INSERT + 45 UPDATE) post-2026-05-17.
 **35 distinct columns** written.
 
-Run `python scripts/audit_column_writes.py` to regenerate the full
-column→writers matrix.
+Run `python scripts/audit_column_writes.py audit` to regenerate the full
+column→writers matrix. `python scripts/audit_column_writes.py check` runs
+Gate 5 G against `ALLOWED_WRITERS`.
 
-### High-fanout columns (most writers — riskiest)
+### High-fanout columns — pre-refactor → post-refactor
 
-| Column | Writers | Risk |
-|---|---|---|
-| `stop_order_id` | 23 | Routing pointer; corruption = lost stop ID, not wrong stop level |
-| `total_pnl` | 11 | Account math; off-by-amount affects R-expectancy |
-| `closed_at` | 9 | Timestamp; mostly safe but ordering matters |
-| `exits` | 9 | JSONB history; append-only via per-function paths |
-| **`stop_price`** | **7** | **Risk basis; KLAR/ARM bug ✱** |
-| `remaining_shares` | 7 | Position truth; corruption = wrong size for trail/exit |
-| `hold_days` | 4 | Telemetry; low-stakes |
-| `entry_price` | 3 | Risk basis denominator (R calc) |
-| `hard_stop` | 3 | Paired with stop_price |
-| `entry_shares` | 3 | Position size at fill |
-| `entry_order_id` | 3 | Routing pointer |
-| `filled_at` | 3 | Fill timestamp |
-| `partial_taken` | 2 | Trail logic gate; BW bug ✱ |
-| `breakeven_active` | 2 | Trail logic gate |
+Today's three refactors (T1.1, T1.2, T1.4) closed the high-risk surface
+on stop_price, partial_taken, and the BW-class second-write columns.
 
-✱ Indicates a column corrupted this week. Sunday refactor priority.
+| Column | Pre-refactor | Post-refactor | Note |
+|---|---:|---:|---|
+| `stop_order_id` | 23 | 25 | +1 stop-ACK watchdog (8e8f6f3), +1 sync sites |
+| `total_pnl` | 11 | 11 | unchanged (live_tracker remains pending T1.3) |
+| `closed_at` | 9 | 10 | +1 sync site |
+| `exits` | 9 | 10 | +1 sync site |
+| **`stop_price`** | **7** | **4** | **T1.1+T1.2+T1.4: KLAR/ARM/BW closed ✓** |
+| `remaining_shares` | 7 | 14 | regex caught more sites; ownership unchanged |
+| `hold_days` | 4 | 4 | unchanged |
+| `entry_price` | 3 | 3 | unchanged |
+| `hard_stop` | 3 | 2 | T1.1 dropped entry-fill writer |
+| `entry_shares` | 3 | 3 | unchanged |
+| `entry_order_id` | 3 | 3 | unchanged |
+| `filled_at` | 3 | 3 | unchanged |
+| `partial_taken` | 2 | 1 | T1.4 dropped no-partial branch writer ✓ |
+| `breakeven_active` | 2 | 2 | unchanged (architecturally correct co-write) |
+
+The `stop_price` reduction 7 → 4 closes the KLAR/ARM bug surface at source.
+The `partial_taken` reduction 2 → 1 closes BW bug class.
+
+T1.3 (close-path delegation, deferred) would further reduce stop_price 4→3,
+total_pnl 11→10, exits 10→9.
 
 ---
 
@@ -64,29 +77,28 @@ column→writers matrix.
 **Initial setter**:
 - `entry_pipeline._skip` INSERT (line 358) — sets to `order_spec["stop_loss_price"]`
 
-**Authorized updaters**:
-- `order_manager.update_stop` (line 836) — **the canonical trail mechanism**.
+**Authorized updaters** (post-2026-05-17):
+- `order_manager.update_stop` (line 878) — **the canonical trail mechanism**.
   Called from morning_stop_refresh, partial-exit replacement, manual override.
-- `live_tracker.update_open_positions_live` (lines 606, 614) — SMA-trail /
-  breakeven path. Computes `step.effective_stop` and writes both rows AND
-  separately calls `update_stop()` for the broker. **Possible redundancy:
-  if `update_stop()` already writes stop_price, this wrapping UPDATE is a
-  duplicate.** Sunday investigation.
-- `order_manager.check_fills` (line 335) — polling backup for entry fill
+- `order_manager.check_fills` (line 336) — polling backup for entry fill
   when WS misses. Writes stop_price = `trade["stop_price"]` (the existing
-  value) — effectively a no-op for stop. Safe.
+  value) — effectively a no-op. Safe.
+- `live_tracker.update_open_positions_live` line 537 close path — writes
+  `stop_price = NULL` on close. **TEMPORARY entry pending T1.3 ship** —
+  the close path will eventually delegate to `finalize_full_exit` /
+  `finalize_stop_fill` (which already do this). Listed in ALLOWED_WRITERS
+  to honestly reflect current state; tightens when T1.3 ships.
 
-**Forbidden / refactor targets**:
-- `trade_stream._process_entry_fill` (line 733) — **KLAR/ARM bug origin**.
-  Currently writes `trade["stop_price"] or trade["orb_low"]` (today's fix).
-  Sunday: **REMOVE stop_price/hard_stop from this UPDATE entirely.** The
-  values were correctly set at INSERT; the fill event doesn't need to
-  refresh them. If `update_stop()` ran (e.g., Day-1 re-entry), it
-  already updated.
-- `live_tracker.update_open_positions_live` close path (line 537) — sets
-  `stop_price = NULL` on close. Belongs in `finalize_full_exit` /
-  `finalize_stop_fill` (which already do this), not in the trail loop.
-  Sunday: remove from line 537 path.
+**Closed (refactored 2026-05-17)**:
+- ~~`trade_stream._process_entry_fill`~~ — **T1.1 dropped (commit 68096bc)**.
+  Was the KLAR/ARM bug origin. Entry-fill is not the authorized writer;
+  INSERT sets initial value, update_stop owns trail.
+- ~~`live_tracker.update_open_positions_live` partial-fired branch~~ —
+  **T1.2 dropped (67c3257)**. update_stop at same call site owns trail.
+  Falsely optimistic write when update_stop failed.
+- ~~`live_tracker.update_open_positions_live` no-partial branch~~ —
+  **T1.4 dropped (f3539d2)**. Was a LOST UPDATE hazard on concurrent
+  WS fills due to stale-read idempotent rewrite.
 
 ### `entry_price`, `entry_shares`, `filled_at`
 
@@ -149,16 +161,20 @@ column→writers matrix.
 
 **Initial setter**: FALSE default (column DEFAULT).
 
-**Authorized updaters**:
-- `order_manager.finalize_partial_exit` (line 1225) — sets both to TRUE on
-  confirmed partial fill (the canonical writer)
+**Authorized updaters** (post-2026-05-17):
+- `order_manager.finalize_partial_exit` (line 1267) — sets both to TRUE
+  on confirmed partial fill. The canonical writer.
+- `live_tracker.update_open_positions_live` line 643 — writes
+  `breakeven_active` only (NOT `partial_taken`). state machine derives
+  `step.new_breakeven_active`; this is the live-tracker no-partial branch
+  that survived T1.4. Architecturally correct co-write (the value can
+  only flip TRUE inside the same step that finalize_partial_exit runs;
+  computed deterministically). Watch as a possible second-write surface.
 
-**Forbidden / refactor targets**:
-- `live_tracker.update_open_positions_live` line 614 — writes both. Same
-  pattern as total_pnl/remaining_shares — should DELEGATE to
-  `execute_partial_exit` which already manages this through `finalize_*`.
-  **This is the BW pre-fill bug origin** (2026-05-14). Sunday: remove
-  these writes; delegate to the authorized path.
+**Closed (refactored 2026-05-17)**:
+- ~~`live_tracker.update_open_positions_live` no-partial branch `partial_taken` write~~
+  — **T1.4 dropped (f3539d2)**. Was the BW pre-fill bug pattern.
+  finalize_partial_exit is now sole writer for `partial_taken`.
 
 ### `stop_order_id`
 
@@ -192,25 +208,19 @@ Sunday: audit each for null-vs-set consistency.
 
 ---
 
-## Sunday refactor targets (priority order)
+## Refactor status (2026-05-17 Sunday Phase 2)
 
-1. **`trade_stream._process_entry_fill` line 733** — remove stop_price/hard_stop
-   from the UPDATE. KLAR/ARM bug root cause. (Currently has the today's-fix
-   workaround but the second-write pattern remains.)
+| # | Target | Status | Commit |
+|---|---|---|---|
+| 1 | `trade_stream._process_entry_fill` stop_price/hard_stop removal | ✅ shipped (T1.1) | `68096bc` + fixup `223ec92` |
+| 2 | `live_tracker.update_open_positions_live` partial-fired stop_price | ✅ shipped (T1.2) | `67c3257` |
+| 3 | `live_tracker.update_open_positions_live` no-partial redundant writes | ✅ shipped (T1.4) | `f3539d2` |
+| 4 | `live_tracker.update_open_positions_live` close path delegation | ⏸ deferred (T1.3) | BACKLOG |
+| 5 | `stop_order_id` 25-writer consolidation helper | ⏸ deferred (T1.5a) | BACKLOG |
+| — | Gate 5 G ALLOWED_WRITERS + check mode + deploy.sh `[5c/5]` | ✅ shipped (T1.5) | `fd31e5b` |
 
-2. **`live_tracker.update_open_positions_live` line 614** — partial_taken
-   and remaining_shares writes belong to `execute_partial_exit` →
-   `finalize_partial_exit`. Refactor to delegate. (BW bug root cause.)
-
-3. **`live_tracker.update_open_positions_live` line 537** — close path
-   writes belong to `finalize_full_exit` / `finalize_stop_fill`. Delegate.
-
-4. **`live_tracker.update_open_positions_live` lines 606/614** — investigate
-   stop_price duplication with `update_stop()`. If `update_stop()` already
-   writes, the wrapping UPDATE is redundant. Remove or no-op.
-
-5. **`stop_order_id` 23-writer audit** — confirm each transition is valid.
-   Lower priority since it's a pointer not a value, but worth verifying.
+T1.3 deferred per drop-priority — complex WS-vs-fallback ownership.
+T1.5a deferred per advisor — cosmetic allow-list tightening, not safety.
 
 ## Sunday Gate 5 G design
 
@@ -269,8 +279,27 @@ column now has another owner."
 7. Final deploy — both preflights green
 8. Synthetic violation test: insert a fake unauthorized write, confirm deploy blocks
 
-## Open questions for advisor (Sunday)
+## Open questions — resolved 2026-05-17
 
-- For `total_pnl`: is `attempt_day1_reentry` having 4 internal writers a smell? Or acceptable as one function with branches?
-- For `stop_order_id`: 23 writers across the lifecycle — bundle into a `set_stop_order_id(trade_id, new_id)` helper to reduce surface area?
-- For `status` state machine: should we add an invariant that status transitions follow a declared FSM (vs free-form writes)?
+- **`total_pnl` 4 writers inside `attempt_day1_reentry`** — accepted as
+  branches-of-one-function. Each writes the post-attempt total per a
+  distinct branch (r3-disabled, stop-no-reentry, gap-through, capped).
+  Functionally one writer.
+- **`stop_order_id` 25-writer consolidation into `set_stop_order_id` helper** —
+  per advisor 2026-05-17, deferred to next session as cosmetic. 12 sites
+  are solo `UPDATE … SET stop_order_id = …` writes; 13 are multi-column
+  atomic closes (e.g. `status='closed', stop_order_id=NULL, closed_at=NOW()`)
+  that must stay inline to preserve atomicity. Gate 5 G's enforcement
+  value is identical with or without consolidation.
+- **`status` FSM enforcement** — per advisor, skip. State machine is a
+  "verified-OK pattern" with many legitimate writers across the lifecycle.
+  Documenting the set in ALLOWED_WRITERS is sufficient.
+
+## Future-work followups
+
+See `BACKLOG.md` Surfaced 2026-05-17 PM section for T1.3 and T1.5a items.
+
+A separate data-gated review `gate_5g_historical_coverage` validates the
+gate retroactively — would Gate 5 G have caught CRMD/KLAR/ARM/BW/AIXI at
+their introducing commits? Useful regression evidence for the
+`live_cutover_decision` composite review.

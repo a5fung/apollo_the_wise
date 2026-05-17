@@ -2993,3 +2993,80 @@ reviews:
       magna53_ep.md change log.
     status: pending
     added_on: 2026-05-17
+
+
+  - review_id: gate_5g_historical_coverage
+    title: "Gate 5 G retroactive coverage — would the gate have caught CRMD/KLAR/ARM/BW/AIXI?"
+    question: |
+      Gate 5 G shipped 2026-05-17 (commit fd31e5b) — static-analysis
+      check that fails the deploy on any (column, function) write pair
+      not in ALLOWED_WRITERS. The gate's value depends on whether it
+      would have actually CAUGHT the five trade-state corruption bugs
+      from May at their introducing commits.
+
+      If YES on all five: compelling regression evidence for the
+      live_cutover_decision composite review — Gate 5 G structurally
+      prevents the bug class.
+      If NO on any: file as gate-coverage refinement; expand
+      ALLOWED_WRITERS' strictness OR add complementary check.
+
+      Five bugs to walk:
+        1. CRMD (2026-05-14 commit 35c1f6c) — entry-fill UPDATE added
+           lowest_price_seen/highest_price_seen NUMERIC columns sharing
+           $2 with double precision entry_price. Type-collision bug.
+        2. KLAR (2026-05-15) — entry-fill UPDATE writing stop_price =
+           trade["orb_low"] for 9M Day 2 (wrong; should be prior_day_low).
+        3. ARM (2026-05-07 stop-fill state desync) — purpose-tagging
+           routing fix; stop_order_id stale ID class.
+        4. BW (2026-05-14) — wrapping UPDATE wrote partial_taken=TRUE
+           optimistically before broker fill confirmed.
+        5. AIXI (2026-05-14 splits_ingest) — phantom split detection.
+           Adjacent class; may or may not be in scope of Gate 5 G.
+
+      Methodology: for each bug, identify the introducing commit's diff,
+      check whether the new writer (function) was already in
+      ALLOWED_WRITERS for the columns it touched. If absent → Gate 5 G
+      would have blocked the deploy. If present → Gate 5 G would have
+      passed; bug class not covered.
+    predicate_sql: |
+      -- Predicate: Gate 5 G shipped + at least one deploy completed
+      -- with the [5c/5] step green (proxy: SSoT entry exists).
+      -- Audit log proxy: any deploy verification entry mentioning Gate 5 G.
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'dual_account_boot_verified'
+        AND created_at::date >= '2026-05-17';
+    threshold: 1
+    earliest_review_date: 2026-05-18
+    action_when_ready: |
+      30-min investigation:
+      1. git show 35c1f6c -- agents/market_intelligence/broker/trade_stream.py
+         → check if the new column writes (lowest/highest_price_seen) had
+         _process_entry_fill in their ALLOWED_WRITERS entry at commit time.
+         If those columns didn't exist pre-commit, the bug was a
+         type-mismatch on $2 param, NOT a column-ownership violation —
+         Gate 5 G would NOT have caught it (Gate 5 B prepare validation
+         is the correct gate for this class).
+      2. Pre-d6fa74c trade_stream._process_entry_fill: did it write
+         stop_price? If YES, _process_entry_fill was in ALLOWED_WRITERS
+         (today's T1.1 removed it). Gate 5 G would have passed —
+         retroactively allowing the bug. Document this honestly.
+      3. ARM stop-fill desync: was the introducing commit a writer
+         addition? Likely was a SELECT-based routing bug, not a column
+         write. Gate 5 G not applicable.
+      4. BW: pre-c0fa67f live_tracker wrapping UPDATE wrote partial_taken.
+         At BW time, partial_taken was likely in ALLOWED_WRITERS for
+         live_tracker.update_open_positions_live. Gate 5 G would have
+         passed — Friday's ALLOWED_WRITERS design (single owner
+         finalize_partial_exit only) wouldn't have existed yet.
+      5. AIXI splits_ingest: completely different file/table; out of
+         Gate 5 G's scope (mi_live_trades only).
+
+      Expected outcome: Gate 5 G's NET value is forward-looking — it
+      prevents future regressions where someone adds a new writer to a
+      sensitive column without explicit ALLOWED_WRITERS update. For the
+      five May bugs, Gate 5 G's retroactive coverage is partial at best.
+
+      File outcome in docs/setups/safeguards.md change log + amend
+      live_cutover_decision composite review notes.
+    status: pending
+    added_on: 2026-05-17
