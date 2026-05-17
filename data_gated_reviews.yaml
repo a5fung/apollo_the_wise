@@ -2784,3 +2784,212 @@ reviews:
       arbitrary calendar floor.
     status: pending
     added_on: 2026-05-15
+
+  - review_id: p74_alpha_capture_stage2
+    title: "Phase 7 Stage 2 — re-run Block D after 21d of P7.2/P7.3b firing"
+    question: |
+      Did P7.2 (MAGNA53→flag carryforward) and P7.3b (9M
+      universe-watch) materially lift the alpha-capture rate of
+      MAGNA53-failed-Day-1 names from 34% (baseline) toward 60-70%?
+      Did 9M-origin names actually progress through flag stages
+      (WATCH → TIGHTENING → COILED) over the multi-week window?
+
+      Stage 1 verification (commit 4022df7 + f025737) confirmed
+      plumbing works: 76 9M-only names entered the flag universe
+      same-day. Stage 2 verifies the alpha-capture EFFECT — does
+      the basing/tightening lifecycle catch the delayed-EP class.
+    predicate_sql: |
+      -- Earliest viable: 21 trading days after the first R3
+      -- stop-out fires (post-2026-05-18 market open). Phase 7
+      -- ship date 2026-05-17 + 21 trading days ≈ 2026-06-18.
+      -- Predicate: ≥5 mi_flag_candidates rows tagged
+      -- `magna53_failed_r3` or `ninem_universe_watch` that have
+      -- aged through ≥21 days of flag-detector evaluation.
+      SELECT COUNT(*) FROM mi_flag_candidates
+      WHERE 'magna53_failed_r3' = ANY(universe_sources)
+         OR 'ninem_universe_watch' = ANY(universe_sources)
+         AND scan_date <= CURRENT_DATE - 21;
+    threshold: 30
+    earliest_review_date: 2026-06-08
+    action_when_ready: |
+      Run scripts/ep_delayed_capture_audit.py against the
+      post-P7.2-ship window. Compare to baseline:
+        - MAGNA53 alpha capture: 34% → target 60-70%
+        - 9M-origin names: track flag-stage distribution
+          (% reaching TIGHTENING / COILED / TRIGGERED)
+      If MAGNA53 capture <50% at Day 21: file followup investigation
+      before declaring Phase 7 complete. If 9M-origin names stuck at
+      `unqualified` ≥80% of time, the universe expansion may be too
+      noisy — consider tightening the 14-day window OR adding a
+      pre-filter on the 9M side.
+    status: pending
+    added_on: 2026-05-17
+
+  - review_id: phase3_telemetry_coverage_check
+    title: "Phase 3 — catalyst rubric + theme context telemetry coverage"
+    question: |
+      After Phase 3 ships (catalyst_rubric_scored + theme_context_scored
+      audit events on every EP alert), is the coverage approximately
+      1:1 with ep_alert events? If not, scoring is silently failing.
+    predicate_sql: |
+      -- Wait 7 days after Phase 3 ships to accumulate enough data
+      -- for a meaningful coverage ratio.
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type IN (
+              'catalyst_rubric_scored',
+              'theme_context_scored',
+              'ep_alert'
+            )
+        AND created_at >= NOW() - INTERVAL '7 days';
+    threshold: 30
+    earliest_review_date: 2026-05-27
+    action_when_ready: |
+      Cross-tab `catalyst_rubric_scored` count vs `ep_alert` count
+      over the 7d window. Coverage should be ≥90%. If lower:
+        1. Check audit log for `catalyst_rubric_score_failed` events
+        2. Check `data_quality_flag='fiscal_attrs_missing_fallback_index'`
+           rate — if >20%, structural fundamentals fetch issue
+        3. Investigate per-alert path: is the rubric scorer wired
+           AFTER the catalyst classifier returns?
+    status: pending
+    added_on: 2026-05-17
+
+  - review_id: phase5_meta_rubric_calibration
+    title: "Phase 5 — meta-rubric composition + threshold calibration"
+    question: |
+      With ≥30 settled paired-score alerts (catalyst + theme +
+      technical + gap all populated, plus settled 5d forward return),
+      fit composition weights via logistic regression against
+      operator labels + actual outcomes. Calibrate composite-score
+      thresholds for game_changer / strong / routine_correct / weak.
+
+      Phase 5 ships an ADVISORY meta_rubric_score on every alert.
+      Does NOT yet gate entries — that's Phase 6.
+    predicate_sql: |
+      -- Need 30 alerts with ALL 4 inputs scored + 5d forward returns
+      -- settled. At ~1.7 HIGH/day post-filters and ≥3 weeks for
+      -- 5d settled, realistic earliest = mid-September 2026.
+      SELECT COUNT(*) FROM mi_audit_log a1
+      WHERE event_type = 'catalyst_rubric_scored'
+        AND created_at < CURRENT_DATE - INTERVAL '7 days'
+        AND EXISTS (
+          SELECT 1 FROM mi_audit_log a2
+          WHERE a2.event_type = 'theme_context_scored'
+            AND a2.summary LIKE '%' || split_part(a1.summary, ' ', 1) || '%'
+            AND a2.created_at::date = a1.created_at::date
+        );
+    threshold: 30
+    earliest_review_date: 2026-09-08
+    action_when_ready: |
+      1. Build `scripts/fit_meta_rubric_weights.py` — logistic
+         regression fitting on settled paired-score alerts.
+      2. Compare fitted β to proposed weights (catalyst 2.0×,
+         theme 1.5×, technical 1.5×, gap 1.0×).
+      3. Calibrate composite thresholds against operator labels.
+      4. Ship as ADVISORY (meta_rubric_score_advisory audit event)
+         — no entry gating yet. 30-day shadow validation period
+         before Phase 6.
+      5. Update docs/setups/catalyst_rubric.md from PROVISIONAL
+         → ACTIVE-ADVISORY.
+    status: pending
+    added_on: 2026-05-17
+
+  - review_id: phase6_meta_rubric_gating
+    title: "Phase 6 — meta-rubric gating ship (production filter)"
+    question: |
+      With ≥20 settled advisory alerts showing measurably better
+      R-expectancy than current cohort, promote meta_rubric_score
+      from advisory to entry-gating filter. Replaces LLM-only
+      catalyst grader.
+    predicate_sql: |
+      -- Need ≥20 advisory alerts settled (5d forward returns) WITH
+      -- the meta_rubric_score_advisory audit event AND a measurable
+      -- R-expectancy improvement vs current cohort.
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'meta_rubric_score_advisory'
+        AND created_at < CURRENT_DATE - INTERVAL '7 days';
+    threshold: 20
+    earliest_review_date: 2026-09-29
+    action_when_ready: |
+      Per CLAUDE.md "Trading Setup Changes — Read SSoT First":
+      1. Backtest N≥10 historical samples under new gating logic
+      2. Confirm cohort R-expectancy materially better than current
+         (target: ≥+0.3R lift over current cohort)
+      3. Confirm no single dimension dominates (avoid overfit)
+      4. Update docs/setups/catalyst_rubric.md → ACTIVE
+      5. Promote env flag `META_RUBRIC_GATING_ENABLED=true`
+      6. File data_gated_reviews.yaml::catalyst_rubric_quarterly
+         with first review date = ship date + 90d
+    status: pending
+    added_on: 2026-05-17
+
+  - review_id: catalyst_rubric_quarterly
+    title: "Quarterly catalyst rubric review (per user discipline)"
+    question: |
+      Per user_quarterly_rule_review.md memory: every load-bearing
+      filter/rubric reviewed quarterly. NOT for frequent tuning —
+      for "knowing deeply what we filter and why." Anti-overfit
+      discipline.
+
+      Per-axis outcome correlation, false-positives, false-negatives,
+      coverage gaps, threshold drift candidates (with N≥30 evidence
+      per feedback_sample_size_discipline). Decisions: ship tweak /
+      keep / file for next quarter.
+    predicate_sql: |
+      -- Fires every 90 days starting Phase 6 ship + 90d.
+      -- Initial earliest_review_date estimated; resets after each
+      -- review completes.
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'meta_rubric_score_advisory'
+        AND created_at >= CURRENT_DATE - INTERVAL '90 days';
+    threshold: 30
+    earliest_review_date: 2026-12-29
+    action_when_ready: |
+      Build `scripts/quarterly_rubric_review.py`:
+        1. Cross-tab composite_label × 21d max-favorable-excursion
+        2. Per-axis Spearman correlation with forward returns
+        3. False-positives: composite ≥ 30 (game_changer) that didn't
+           work — name + post-mortem note
+        4. False-negatives: composite < 14 (weak) that WERE winners
+        5. Coverage report per axis
+        6. Threshold drift candidates (need N≥30 evidence per axis-
+           score band)
+      Output: docs/decisions/0003-quarterly-review-YYYY-MM.md
+      Logged in docs/setups/catalyst_rubric.md change log.
+      Decisions go through standard SSoT change-process flow.
+    status: pending
+    added_on: 2026-05-17
+    cadence: quarterly  # re-arm after each review
+
+  - review_id: rel_volume_large_cap_floor_evidence
+    title: "rel_volume floor 0.5× for large-cap (ADV ≥$50M) EP entries"
+    question: |
+      Weekly review 2026-05-17 proposal #2: CSCO 5/14 had
+      rel_volume=0.04 at alert time, ORB fired, price never traded
+      above entry tick. Single-case (N=1) evidence. Per
+      feedback_sample_size_discipline, doesn't ship until N≥10
+      similar cases accumulate.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_ep_alerts a
+      JOIN mi_stock_scores s
+        ON s.ticker = a.ticker AND s.score_date <= a.alert_date
+      WHERE a.alert_date >= CURRENT_DATE - 90
+        AND a.score_tier = 'HIGH'
+        AND a.rel_volume IS NOT NULL
+        AND a.rel_volume < 0.5
+        AND s.adv_20 IS NOT NULL
+        AND (s.adv_20 * s.close) >= 50000000;
+    threshold: 10
+    earliest_review_date: 2026-07-01
+    action_when_ready: |
+      Pull the N≥10 cases. Compute 5d forward outcome for each.
+      If <30% win rate, ship a `rel_volume ≥ 0.5x AND ADV ≥ $50M`
+      filter for HIGH alerts. If 30-50%, file for further evidence.
+      If >50%, the gate would shed legitimate winners — keep current.
+
+      Implementation: add condition to ep_detector.py post-catalyst
+      similar to R6 carve-out structure. Env flag
+      `LARGE_CAP_RELVOL_FLOOR_ENABLED=true`. SSoT entry in
+      magna53_ep.md change log.
+    status: pending
+    added_on: 2026-05-17

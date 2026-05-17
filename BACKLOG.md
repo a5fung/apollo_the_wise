@@ -46,7 +46,13 @@ Sorted by earliest_review_date.
 - [ ] `unified_allocator_phase_1b` (5/15, #44 cross-strategy allocator) → YAML
 - [ ] `pass1_protect_strip_equalsize_test` (5/15, test fixture) → YAML
 - [ ] `gate5_tomorrow_verifications` (5/15, 5-item checklist) → YAML
-- [ ] `ep_selectivity_deep_dive` (5/17 — Phase 1 exhaustive cohort review, ~50 variables + §G Class A vs B + 5/14 entered-and-failed case studies ONDS/CPA/KLAR/CSCO + 10 missed-winners cohort OSS/STRL/FTNT/TWLO/BAND/MXL/HIMX/INOD/DDOG/TRT — TRT is the Class B exemplar with user's manual entry methodology: EP-day low + 20MA as risk reference) → YAML
+- [x] ~~`ep_selectivity_deep_dive`~~ ✅ **SHIPPED 2026-05-17** (commits 9787527/939c314/cf9167c/643a577/3421a15/d214ba9 + Phase 7 commits 34fd3cc/54be094/370aed1/f025737/46ba0d2/8e8f6f3). Phase 2 + Phase 7 filter ships + bug fixes + stop-ACK gate. Phase 3-9 follow per `~/.claude/plans/i-want-to-plan-groovy-horizon.md`. Status closed in YAML.
+- [ ] `p74_alpha_capture_stage2` (6/8 — re-run Block D 21d post-P7.2/P7.3b ship; MAGNA53 capture 34% → target 60-70%) → YAML
+- [ ] `phase3_telemetry_coverage_check` (5/27 — 7d after Phase 3 ships, audit count ≈ ep_alert count ≥90%) → YAML
+- [ ] `phase5_meta_rubric_calibration` (9/8 — N≥30 paired-score settled, fit composition weights) → YAML
+- [ ] `phase6_meta_rubric_gating` (9/29 — N≥20 advisory settled with R+, ship gating filter) → YAML
+- [ ] `catalyst_rubric_quarterly` (12/29 + 90d cadence — per user_quarterly_rule_review memory) → YAML
+- [ ] `rel_volume_large_cap_floor_evidence` (7/1 — N≥10 CSCO-class evidence batch) → YAML
 - [ ] `vix_ingest_for_p19_sizing` (5/20) → YAML
 - [ ] `perplexity_sanitizer_verification` (5/21, 7d outcome watch target=0) → YAML
 - [ ] `paper_r_expectancy_validation` (5/22, Gate 3 above) → YAML
@@ -126,6 +132,22 @@ into reviews. Listed by surfacing date.
 - [ ] ~~**M&A buyouts past direction-aware filter** (2026-05-17)~~ ✓ **investigated 2026-05-17 PM** — ma_filter not actually broken. BZH 5/11 alert preceded the Dream Finders hostile-bid news by 2 days (Polygon: 0 items in 90d window before alert; first M&A headline 5/13). KALV 4/29 preceded M&A class-action notices by 13 days (first headline 5/12). Both labels were hindsight-correct from news that surfaced AFTER alert time. Filter is working correctly.
 - [ ] **Post-alert M&A backfill check** (Phase 8+, 2026-05-17) — when M&A news surfaces within 2 weeks of an alert that triggered a paper trade, retroactively flag the trade for review. Today's gap: BZH 5/11 + KALV 4/29 would have been ENTERED if they made it through filters (in BZH's case the hostile bid didn't surface until 5/13, by which point any Day-1 entry would have already stopped or been pinned by deal-cap). Better detection requires either (a) speculative pre-news shape detection (KALV gapped on no Polygon news — that itself is a signal) or (b) post-fact reconciliation that retroactively tags the alert outcome with "M&A revealed within 14d" context. Not a filter, just outcome-attribution data quality.
 - [ ] **R1 (drop MODERATE auto-actions) defensive guard** (2026-05-17) — P2.1d investigation found R1 is already effectively in place: every entry pipeline (live_tracker.py:324, backtester/tracker.py:251, engine.py:534, shadow_orb_tracker.py:346, audit_invariants.py:387/404, scheduler.py:1621, system_audit.py:188/196/354) filters `score_tier='HIGH'`. 0 MODERATE alerts traded in last 60d. R1 ship was a no-op. Optional defensive followup: add explicit env-flagged guard at score_tier assignment so a future code change can't accidentally introduce a MODERATE auto-entry path. Low priority — current architecture is self-enforcing.
+
+### EP rollout — multi-phase tracker (per `~/.claude/plans/i-want-to-plan-groovy-horizon.md`)
+
+The full EP rollout spans Phase 1-9. Phase 1 (diagnostic) + Phase 2 (immediate ships) + Phase 7 (alpha-slip hedge) shipped 2026-05-17. Remaining phases below; each becomes its own data-gated review once the prerequisite phase ships.
+
+- [x] Phase 1 — Diagnostic ADR (`docs/decisions/0003-ep-selectivity-overhaul.md`) ✅ shipped 2026-05-16
+- [x] Phase 2 — Filter ships (R2/R4/R6/R3 + bug fixes + SSoT) ✅ shipped 2026-05-17
+- [x] Phase 7 — MAGNA53→flag + 9M universe-watch + stop-ACK gate ✅ shipped 2026-05-17
+- [ ] **Phase 3** — Meta-rubric telemetry: wire catalyst_rubric + theme_context scoring into production scan path. Emit `catalyst_rubric_scored` + `theme_context_scored` audit events. Background fundamentals refresh job. Target week of 5/19. Verification: `phase3_telemetry_coverage_check` review.
+- [ ] **Phase 4.1** — Technical structure score (gap-above-MAs, base shape, 52w distance, RS rank). Target week of 5/26+. SSoT `docs/setups/technical_structure.md`.
+- [ ] **Phase 4.2** — Gap alignment score (gap-through-resistance, gap into open air, round-number proximity). Target week of 5/26+. SSoT `docs/setups/gap_alignment.md`.
+- [ ] **Phase 4.5** — Weekly operator catalyst review job (per user idea 2026-05-17): Friday EOD/Saturday AM scheduled job surfaces week's HIGH-EP alerts (especially traded names) for operator catalyst-correctness labeling. Ongoing label collection feeds Phase 5 calibration. Reuse catalyst_labels.csv schema.
+- [ ] **Phase 5** — Composition + calibration (after N≥30 settled paired-score alerts). Target week of 9/8+. Verification: `phase5_meta_rubric_calibration` review.
+- [ ] **Phase 6** — Gating ship (after N≥20 settled advisory alerts with R+). Target week of 9/29+. Verification: `phase6_meta_rubric_gating` review.
+- [ ] **Phase 8** — Catalyst extraction pipeline fix (8 mislabeled names + CRML date). Investigation depth unknown; runs parallel.
+- [ ] **Phase 9** — First quarterly catalyst rubric review (Phase 6 ship + 90d). Verification: `catalyst_rubric_quarterly` review.
 
 ### Surfaced 2026-05-17 PM (weekly review + Phase 7)
 
