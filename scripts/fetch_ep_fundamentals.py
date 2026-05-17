@@ -58,20 +58,56 @@ INCOME_PATHS = {
 
 
 async def fetch_polygon_quarterlies(ticker: str, limit: int = 8) -> list[dict]:
-    """Pull last `limit` quarterly reports from Polygon. Sorted newest first."""
+    """Pull last `limit` quarterly reports from Polygon.
+
+    Fix 2026-05-17 (VSNT/ARX/HUT class bug):
+    - Polygon's `sort=filing_date` interleaves late-filed quarters with
+      current ones (HUT had Q4 2025 at index 7 instead of in
+      chronological position). We re-sort by `end_date` DESC after fetch.
+    - Polygon sometimes returns the same `(fiscal_year, fiscal_period)`
+      twice via multiple filings (amended reports). Dedup keeping the
+      most recently-filed copy per fiscal-quarter tuple.
+    - Use `(fiscal_year, fiscal_period)` as the dedup key — NOT
+      `end_date`. 52/53-week fiscal-year companies shift end_date by
+      a few days across years (per Gemini 2026-05-17), causing same-
+      quarter rows to appear distinct under end_date keying.
+    """
     try:
+        # Fetch MORE than requested so we have headroom after dedup
         data = await _polygon_get(
             "/vX/reference/financials",
             {
                 "ticker": ticker,
                 "timeframe": "quarterly",
-                "limit": limit,
+                "limit": limit + 4,  # dedup margin
                 "sort": "filing_date",
                 "order": "desc",
             },
         )
         results = data.get("results", []) or []
-        return results
+
+        # Dedup by (fiscal_year, fiscal_period), keeping most-recently-filed
+        # (input is sorted by filing_date DESC, so first occurrence wins)
+        seen: set[tuple] = set()
+        deduped: list[dict] = []
+        for r in results:
+            key = (r.get("fiscal_year"), r.get("fiscal_period"))
+            if key in seen or key == (None, None):
+                continue
+            seen.add(key)
+            deduped.append(r)
+
+        # Re-sort by end_date DESC (chronological newest-first), so
+        # downstream index-based reads (margins q0/q1/q2) are aligned.
+        # Fall back to filing_date when end_date is missing.
+        def _sort_key(r):
+            ed = r.get("end_date") or ""
+            fd = r.get("filing_date") or ""
+            return (ed, fd)
+        deduped.sort(key=_sort_key, reverse=True)
+
+        # Trim to requested limit
+        return deduped[:limit]
     except Exception as e:
         logger.warning("polygon financials failed for %s: %s", ticker, e)
         return []
@@ -170,7 +206,15 @@ def _is_nan(v) -> bool:
 def compute_growth_deltas(quarters: list[dict]) -> dict:
     """Given quarters list (newest first, len ≥ 5 ideally), compute
     Y/Y growth + acceleration deltas + Q/Q sequentials + 8-quarter
-    history for milestone detection."""
+    history for milestone detection.
+
+    Fix 2026-05-17 (VSNT-class bug): Y/Y lookup uses
+    `(fiscal_year, fiscal_period)` matching, NOT index `[i+4]`. The
+    old approach broke when fetched quarters had gaps (missing
+    filings, restatements, or interleaved late-filings). Now we
+    explicitly find the prior-year same-fiscal-period quarter.
+    Falls back to index-based ONLY when fiscal attributes missing.
+    """
     out = {
         "rev_yoy_q0": None, "rev_yoy_q1": None, "rev_yoy_q2": None,
         "rev_yoy_q3": None,
@@ -181,42 +225,86 @@ def compute_growth_deltas(quarters: list[dict]) -> dict:
         "rev_yoy_max_prior_7q": None,
         "eps_qm4": None,  # for small-base guardrail
         "margins_q0": {}, "margins_q1": {}, "margins_q2": {},
+        "data_quality_flag": None,  # populated when fiscal lookup misses
     }
-    if len(quarters) < 5:
+    if len(quarters) < 2:
         return out
 
-    def rev(i): return quarters[i].get("revenue") if i < len(quarters) else None
-    def eps(i):
-        if i >= len(quarters):
+    def _fy(q):
+        v = q.get("fiscal_year")
+        try:
+            return int(v) if v is not None else None
+        except (ValueError, TypeError):
             return None
-        # prefer diluted, fallback to basic
-        return quarters[i].get("eps_diluted") or quarters[i].get("eps_basic")
 
-    def yoy(i):
-        cur = rev(i)
-        prior = rev(i + 4)
+    def _fp(q):
+        return q.get("fiscal_period")
+
+    def _eps(q):
+        return q.get("eps_diluted") or q.get("eps_basic")
+
+    def _find_prior_year(idx: int) -> dict | None:
+        """Find the quarter at fiscal_year=cur-1, fiscal_period=cur.
+        Returns None if not present (caller treats as missing data)."""
+        if idx >= len(quarters):
+            return None
+        cur = quarters[idx]
+        cur_fy = _fy(cur)
+        cur_fp = _fp(cur)
+        if cur_fy is None or cur_fp is None:
+            # No fiscal attributes — graceful fallback to index-based
+            # ONLY for yfinance rows. Polygon rows always have fiscal
+            # attributes; yfinance lacks them and is structurally
+            # ordered by end_date already.
+            fallback_idx = idx + 4
+            if fallback_idx < len(quarters):
+                out["data_quality_flag"] = "fiscal_attrs_missing_fallback_index"
+                return quarters[fallback_idx]
+            return None
+        for q in quarters:
+            if _fy(q) == cur_fy - 1 and _fp(q) == cur_fp:
+                return q
+        return None  # genuinely missing prior-year quarter
+
+    def _yoy_rev(idx: int) -> float | None:
+        if idx >= len(quarters):
+            return None
+        cur = quarters[idx].get("revenue")
+        prior_q = _find_prior_year(idx)
+        prior = prior_q.get("revenue") if prior_q else None
         if cur is not None and prior and prior > 0:
             return cur / prior - 1
         return None
 
-    def eps_yoy(i):
-        cur = eps(i)
-        prior = eps(i + 4)
+    def _yoy_eps(idx: int) -> float | None:
+        if idx >= len(quarters):
+            return None
+        cur = _eps(quarters[idx])
+        prior_q = _find_prior_year(idx)
+        prior = _eps(prior_q) if prior_q else None
         if cur is not None and prior is not None and abs(prior) > 0.001:
             return cur / prior - 1
         return None
 
-    out["rev_yoy_q0"] = yoy(0)
-    out["rev_yoy_q1"] = yoy(1)
-    out["rev_yoy_q2"] = yoy(2)
-    out["rev_yoy_q3"] = yoy(3)
-    out["eps_yoy_q0"] = eps_yoy(0)
-    out["eps_yoy_q1"] = eps_yoy(1)
-    out["eps_yoy_q2"] = eps_yoy(2)
-    out["eps_qm4"] = eps(4)  # for small-base guard
+    out["rev_yoy_q0"] = _yoy_rev(0)
+    out["rev_yoy_q1"] = _yoy_rev(1)
+    out["rev_yoy_q2"] = _yoy_rev(2)
+    out["rev_yoy_q3"] = _yoy_rev(3)
+    out["eps_yoy_q0"] = _yoy_eps(0)
+    out["eps_yoy_q1"] = _yoy_eps(1)
+    out["eps_yoy_q2"] = _yoy_eps(2)
 
-    if rev(0) is not None and rev(1) and rev(1) > 0:
-        out["rev_qoq_q0"] = rev(0) / rev(1) - 1
+    # eps_qm4 (small-base guard) — find prior-year q0
+    prior_q0 = _find_prior_year(0)
+    if prior_q0:
+        out["eps_qm4"] = _eps(prior_q0)
+
+    # Q/Q sequential: q0 vs q1 (assumes sequential after sort+dedup)
+    if len(quarters) >= 2:
+        cur_rev = quarters[0].get("revenue")
+        prev_rev = quarters[1].get("revenue")
+        if cur_rev is not None and prev_rev and prev_rev > 0:
+            out["rev_qoq_q0"] = cur_rev / prev_rev - 1
 
     if out["rev_yoy_q0"] is not None and out["rev_yoy_q1"] is not None:
         out["rev_accel"] = out["rev_yoy_q0"] - out["rev_yoy_q1"]
@@ -225,9 +313,9 @@ def compute_growth_deltas(quarters: list[dict]) -> dict:
 
     # acceleration streak (consecutive quarters of positive Y/Y delta)
     streak = 0
-    for i in range(0, 4):
-        cur_y = yoy(i)
-        prior_y = yoy(i + 1)
+    for i in range(0, min(4, len(quarters) - 1)):
+        cur_y = _yoy_rev(i)
+        prior_y = _yoy_rev(i + 1)
         if cur_y is None or prior_y is None:
             break
         if cur_y - prior_y > 0:
@@ -237,7 +325,7 @@ def compute_growth_deltas(quarters: list[dict]) -> dict:
     out["rev_accel_streak"] = streak
 
     # max Y/Y over prior 7 quarters (for milestone "beat prior max by ≥5pp")
-    prior_7 = [yoy(i) for i in range(1, 8)]
+    prior_7 = [_yoy_rev(i) for i in range(1, min(8, len(quarters)))]
     prior_7 = [v for v in prior_7 if v is not None]
     out["rev_yoy_max_prior_7q"] = max(prior_7) if prior_7 else None
 
