@@ -325,6 +325,7 @@ def _score_ep(
     vol_percentile: float = 50.0,
     prior_3m_change: float | None = None,
     projected_vol_multiple: float | None = None,
+    in_active_theme: bool = False,
 ) -> tuple[float, dict]:
     """
     Calculate MAGNA53 EP score (0-100 before multiplier).
@@ -337,6 +338,15 @@ def _score_ep(
     Measures how many times above the normal rate-for-this-time the stock is trading.
     Linear extrapolation overstates final daily RVOL (opening minutes are always dense),
     but correctly rewards early institutional conviction. Pre-market: raw RVOL used instead.
+
+    in_active_theme: ticker is in an Accelerating or Mainstream theme on
+    alert_date. Adds +10 to score breakdown (R4 ship 2026-05-17). Evidence:
+    in-theme alerts had 67% WR vs 40% uncovered in label cross-tab; +27pp
+    lift. Under current ep_threshold=70 the bonus is decorative (60d
+    verification: 0 MODERATE-in-theme alerts would have crossed to HIGH
+    with +10). Shipped for telemetry/visibility — future Phase 5 meta-
+    rubric will use theme_context as a composite input with its own
+    weight calibration. Env-flagged for fast rollback.
     """
     breakdown = {}
 
@@ -420,6 +430,21 @@ def _score_ep(
             breakdown["prior_momentum"] = 0
     else:
         breakdown["prior_momentum"] = 0
+
+    # R4 in-theme bonus (2026-05-17 ship). +10 when ticker is in an
+    # Accelerating or Mainstream theme on alert_date. Env-flagged.
+    # Under current ep_threshold=70 this is decorative — verified via
+    # pre-ship SQL (0 MODERATE-in-theme alerts in 60d would cross HIGH
+    # with +10). Shipped for telemetry/visibility: score breakdown
+    # surfaces the theme context, and Phase 5 meta-rubric will compose
+    # theme_context as a separate scoring input with its own calibrated
+    # weights. The +10 contributes to ep_score regardless of HIGH/MOD
+    # outcome — useful as a paired-data signal for Phase 5 regression.
+    _R4_ENABLED = os.environ.get("R4_THEME_BONUS_ENABLED", "true").lower() == "true"
+    if _R4_ENABLED and in_active_theme:
+        breakdown["theme_bonus"] = 10
+    else:
+        breakdown["theme_bonus"] = 0
 
     raw_score = sum(breakdown.values())
 
@@ -507,6 +532,28 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"EP scan: could not load security_types ({e}) — relying on SKIP_TICKERS only")
 
     logger.info(f"EP scan: regime={regime_label}, threshold={ep_threshold}")
+
+    # R4 (2026-05-17 ship): cache the set of tickers currently in an
+    # active (Accelerating/Mainstream) theme. Built once per scan tick
+    # to avoid N+1 PostgreSQL array-containment queries per ticker
+    # (Gemini 2026-05-17). Per-ticker membership check is O(1) on the
+    # set. Lookups against `_in_active_theme_set` happen inside
+    # `_score_ep` via the new `in_active_theme` parameter.
+    _in_active_theme_set: set[str] = set()
+    try:
+        from agents.market_intelligence.db import get_active_themes
+        _active_themes = await get_active_themes(stale_after_days=7)
+        for _theme in _active_themes:
+            stage = (_theme.get("stage") or "").strip()
+            if stage in ("Accelerating", "Mainstream"):
+                for _t in (_theme.get("tickers") or []):
+                    _in_active_theme_set.add(_t)
+        logger.info(
+            f"EP scan: {len(_in_active_theme_set)} tickers in active themes "
+            f"(Accelerating/Mainstream) for R4 bonus"
+        )
+    except Exception as e:
+        logger.warning(f"EP scan: theme set load failed ({e}) — R4 bonus disabled this tick")
 
     # Minutes since market open — used for projected volume calculation post-open
     from agents.market_intelligence.collector import _ET
@@ -1191,6 +1238,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             projected_vol_multiple=c.get("projected_vol_multiple"),
             vol_percentile=vol_pct,
             prior_3m_change=prior_3m_change,
+            in_active_theme=(ticker in _in_active_theme_set),
         )
 
         if ep_score < 50:
