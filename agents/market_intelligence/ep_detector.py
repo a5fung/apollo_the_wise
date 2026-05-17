@@ -472,15 +472,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Authoritative ETF/non-stock filter from security_types table.
     # _SKIP_TICKERS catches known leveraged ETFs fast; this catches anything
     # classified as non-common-stock in our reference data (ETF, ETP, ETPT, etc.).
+    #
+    # Fix 2026-05-17 (P2.0b): also build `_known_stock_tickers` so we can
+    # detect candidates that are NEITHER classified as stock NOR non-stock
+    # (i.e., not in mi_security_types at all). USAX/USGG 4/20 case: the
+    # weekly Monday refresh hadn't run yet for those names, so they slipped
+    # through `_non_stock_tickers` (empty for unknown tickers) and got
+    # admitted as EP candidates despite being ETFs. Fail-safe: skip
+    # unclassified candidates entirely — the next weekly refresh adds them
+    # to mi_security_types and they'll be properly admitted/excluded.
     _non_stock_tickers: set[str] = set()
+    _known_stock_tickers: set[str] = set()
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
+            non_stock_rows = await conn.fetch(
                 "SELECT ticker FROM mi_security_types WHERE security_type NOT IN ('CS', 'ADRC')"
             )
-        _non_stock_tickers = {r["ticker"] for r in rows}
-        logger.info(f"EP scan: {len(_non_stock_tickers)} non-stock tickers loaded from security_types")
+            stock_rows = await conn.fetch(
+                "SELECT ticker FROM mi_security_types WHERE security_type IN ('CS', 'ADRC')"
+            )
+        _non_stock_tickers = {r["ticker"] for r in non_stock_rows}
+        _known_stock_tickers = {r["ticker"] for r in stock_rows}
+        logger.info(
+            f"EP scan: security_types loaded — "
+            f"{len(_known_stock_tickers)} stock, "
+            f"{len(_non_stock_tickers)} non-stock"
+        )
     except Exception as e:
         logger.warning(f"EP scan: could not load security_types ({e}) — relying on SKIP_TICKERS only")
 
@@ -503,12 +521,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
     # Find gap candidates
     candidates = []
+    _unclassified_skipped = 0  # P2.0b counter
     for ticker, snap in snapshots.items():
         try:
             # Skip warrants, units, non-standard symbols, ETFs, and leveraged products
             if len(ticker) > MAX_TICKER_LEN or ticker in _SKIP_TICKERS or "." in ticker:
                 continue
             if ticker in _non_stock_tickers:
+                continue
+            # P2.0b 2026-05-17: fail-safe for unclassified candidates.
+            # If a ticker is not in EITHER set, mi_security_types hasn't
+            # classified it yet (weekly cadence — gap window up to 7 days).
+            # USAX/USGG class names slipped through this gap on 4/20.
+            # Skip the unknown — next weekly refresh will classify. Don't
+            # per-ticker log (would flood scan_log with thousands of names);
+            # the aggregate count is logged once at scan end.
+            if _known_stock_tickers and ticker not in _known_stock_tickers:
+                _unclassified_skipped += 1
                 continue
 
             prev_close = snap.get("prevDay", {}).get("c", 0)
@@ -573,6 +602,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     rank_by_gap = {c["ticker"]: i + 1 for i, c in enumerate(candidates)}
     logger.info(f"Gap candidates ≥{MIN_GAP_PCT}%: {len(candidates)}"
                 + (f" (top: {candidates[0]['ticker']} {candidates[0]['gap_pct']:.1f}%)" if candidates else ""))
+    # P2.0b 2026-05-17: log aggregate count of unclassified-skip — surfaces
+    # when the weekly mi_security_types refresh is overdue. If this is high
+    # (≥10/scan), there are many new tickers that haven't been classified;
+    # consider bumping the refresh cadence from weekly to daily.
+    if _unclassified_skipped > 0:
+        logger.info(
+            f"EP scan: {_unclassified_skipped} candidates skipped — unclassified "
+            f"(not in mi_security_types). Weekly refresh runs Mondays; if "
+            f"this number is high consistently, bump to daily."
+        )
     if not candidates:
         return []
 
