@@ -2434,8 +2434,16 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           intraday move get fed into the flag detector's tightness state
           machine to catch the eventual delayed-EP breakout. Tag:
           `magna53_failed_r3`. Env flag `MAGNA53_FLAG_CARRYFORWARD_ENABLED`.
+      (d) **9M universe-watch** (P7.3b 2026-05-17, Pradeep methodology) —
+          ALL 9M EPs (sugar baby + failed-Day-2 + intraday-only) in last
+          14d. Per Pradeep, 9M volume = ~1% of stocks; the event itself
+          is a watchlist trigger, not a directional signal. Entry comes
+          from the tightness→expansion lifecycle (flag detector's
+          domain). Tag: `ninem_universe_watch`. Env flag
+          `NINEM_FLAG_CARRYFORWARD_ENABLED`. 14-day window for multi-
+          week tightness observation.
 
-    Common gates (all paths share):
+    Common gates (organic paths a+b share):
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
       - close ≥ $5 (avoid microcaps where bar noise dominates)
       - 20d dollar volume ≥ $5M
@@ -2528,6 +2536,31 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             """, scan_date)
             for r in r3_rows:
                 source_map.setdefault(r["ticker"], []).append("magna53_failed_r3")
+
+        # ── Path (d): 9M universe-watch (P7.3b 2026-05-17) ─────────────
+        # Per Pradeep methodology (memory:
+        # user_pradeep_9m_universe_methodology.md): 9M EP = universe-to-
+        # watch trigger, NOT directional signal. Entry comes from
+        # tightness→expansion (flag-class pattern). ALL 9M EPs (intraday
+        # alerts + EOD sugar babies + failed-Day-2 + skipped) get fed
+        # into the flag detector's universe. The flag detector's state
+        # machine handles the tightness→expansion lifecycle that
+        # produces the eventual entry.
+        # 14-day rolling window — multi-week tightness observation.
+        # Source: mi_9m_ep_alerts (NOT mi_9m_sugar_babies; sugar-baby
+        # filter is unrelated to the watchlist decision).
+        ninem_enabled = os.environ.get(
+            "NINEM_FLAG_CARRYFORWARD_ENABLED", "true"
+        ).lower() == "true"
+        if ninem_enabled:
+            ninem_rows = await conn.fetch("""
+                SELECT DISTINCT ticker
+                FROM mi_9m_ep_alerts
+                WHERE alert_date >= ($1::date - INTERVAL '14 days')
+                  AND alert_date <= $1::date
+            """, scan_date)
+            for r in ninem_rows:
+                source_map.setdefault(r["ticker"], []).append("ninem_universe_watch")
 
     return source_map
 

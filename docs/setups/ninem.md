@@ -86,6 +86,44 @@ User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit eve
 
 ## Change log (newest first)
 
+### 2026-05-17 — P7.3b 9M universe-watch (Pradeep methodology)
+
+**Trigger**: Methodological reframing of 9M EP role per Pradeep Bonde (memory: `user_pradeep_9m_universe_methodology.md`). Pradeep estimates 9M volume hits ~1% of stocks per day. The event itself is a watchlist trigger — NOT a directional entry signal. Entry comes from the tightness→expansion lifecycle (flag-detector class), which aligns with the continuation flag detector's existing state machine.
+
+This reframing means **every 9M EP** (intraday alert + EOD sugar baby + failed-Day-2 + skipped) should enter the flag detector's universe, where it gets evaluated for runup→base→tightness→expansion over weeks. NOT just failed-Day-2 names. The sugar-baby Day-2 entry mechanism (which DOES exist) is one possible entry path, but the universe-watch carryforward catches the cohort that doesn't fit the Day-2 ORB shape.
+
+**Evidence**:
+- P7.3a audit (2026-05-17, `analysis/2026-05-17/ninem_delayed_ep_audit.md`):
+  9M failed-Day-2 alpha cohort of 242 names had 54.5% organic capture
+  rate via existing downstream paths. Meaningful gap to close, but the
+  Pradeep-methodology framing makes the universe-watch scope BROADER
+  than failed-Day-2 alone — every 9M EP regardless of Day 2 outcome.
+- P7.3a day2_status semantic check: 'pending' rows persist indefinitely
+  (100% of 'pending' >1 day old over 60d cohort). Confirms `day2_status`
+  is not a reliable filter; the universe-watch query reads
+  `mi_9m_ep_alerts` directly, ignoring sugar baby Day 2 disposition.
+
+**Architecture**: 5th universe-pattern added to `db.get_flag_universe`. Query:
+```sql
+SELECT DISTINCT ticker FROM mi_9m_ep_alerts
+WHERE alert_date >= ($1::date - INTERVAL '14 days')
+  AND alert_date <= $1::date
+```
+
+14-day rolling window — multi-week tightness observation. Tag: `ninem_universe_watch` (added to new `mi_flag_candidates.universe_sources TEXT[]` column from P7.2 ship `370aed1`). Names admitted by both organic AND 9M-watch paths capture BOTH tags (no dedup loss).
+
+Flag detector's `compute_flag_metrics` runs the normal per-ticker eligibility (close ≥ $5, ≥60 sessions, runup ≥50%, etc.) — universe expansion just brings names INTO the scoring queue, doesn't bypass per-ticker gates.
+
+**Env flag**: `NINEM_FLAG_CARRYFORWARD_ENABLED=true` (default). Set false + docker compose restart to revert.
+
+**Telemetry-first ship per user direction** ("monitor this as shadow or some way"): the universe expansion is itself the shadow — we watch how 9M EPs progress through flag stages over weeks before considering automated entry logic. No auto-entry change today.
+
+**Anticipated effect**: ~3-5 9M EPs per day on average → ~40-70 distinct tickers in 14-day rolling window. Most enter as `unqualified` initially (runup not yet ≥50%, or fail other organic gates). Some will progress to WATCH → TIGHTENING → COILED over weeks. The Pradeep delayed-EP class (TRT 4/23 → 5/15) should show up as multi-week basing on a 9M-origin universe-source tag.
+
+**Reversion-flag**: NEW (paired with P7.2 universe-source schema).
+
+**Status**: shipped 2026-05-17 commit `<TBD>`. Stage 1 verification at Day 7-14 (universe pattern firing, looking for ≥30 9M tickers in flag candidates with `universe_sources @> ARRAY['ninem_universe_watch']`). Stage 2 — analyze flag-stage progression of 9M-origin names at Day 21+.
+
 ### 2026-05-13 — Sugar baby M&A filter (WEN-class coverage closure)
 
 **Trigger**: WEN 5/12 was logged as a sugar baby and surfaced as a Day-2 ORB candidate on 5/13 — despite an active Trian Fund take-private rumor that filtered the same ticker on the EP path (10× `mna_filter_fired` audit events on 5/13). 9m_day2 entry attempt only failed on `setup:faded_from_orb` shape rejection. If WEN had held the ORB high, the system would have entered a take-private target with no follow-through available (price pins to deal value).
