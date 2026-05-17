@@ -3068,5 +3068,59 @@ reviews:
 
       File outcome in docs/setups/safeguards.md change log + amend
       live_cutover_decision composite review notes.
-    status: pending
+    status: done
     added_on: 2026-05-17
+    closed_on: 2026-05-17
+    outcome: |
+      Walked all five May trade-state bugs against today's Gate 5 G
+      allow-list at their introducing commits. Honest verdict:
+
+      CRMD (35c1f6c, 2026-05-10): NOT applicable. Bug was type-mismatch
+      on $2 param (numeric vs double precision). Gate 5 B prepare
+      validation is the correct gate; caught the class when shipped
+      2026-05-14. Introducing commit added lowest/highest_price_seen
+      writes to `_process_entry_fill` — the legitimate writer for paired
+      columns. Gate 5 G would have passed.
+
+      KLAR (pre-d6fa74c, 2026-05-15): WOULD NOT catch. _process_entry_fill
+      was already an authorized stop_price writer. Bug was WRONG VALUE
+      (trade["orb_low"] vs trade["stop_price"]) written by an authorized
+      writer. Gate 5 G structurally cannot catch wrong-value-by-
+      authorized-writer. Today's T1.1 removed stop_price from this
+      UPDATE entirely — that's the proper resolution.
+
+      ARM (pre-6843141, 2026-05-07): NOT applicable. Stop-fill state
+      desync was a SELECT/routing bug (stop_order_id matching), not a
+      column-write violation. Fix shipped 2026-05-08 (purpose-tagged
+      routing).
+
+      BW (pre-c0fa67f, 2026-05-14): WOULD catch under today's narrowed
+      allow-list. Pre-Friday, live_tracker.update_open_positions_live
+      was a writer to partial_taken. Today's ALLOWED_WRITERS narrows
+      partial_taken to just finalize_partial_exit — any new writer
+      attempting partial_taken from outside finalize_partial_exit now
+      fails the deploy. Concrete forward-looking win.
+
+      AIXI (splits_ingest, 2026-05-14): NOT applicable. Wrong-units
+      phantom-split data corruption on mi_daily_closes — different
+      table. Gate 5 G's scope is mi_live_trades only.
+
+      Net: Gate 5 G is FORWARD-LOOKING. Retroactive coverage is partial
+      (1 of 5 under today's design). The other 4 are different bug
+      classes covered by different gates:
+        - Type-mismatch   -> Gate 5 B prepare validation
+        - Wrong-value     -> no current gate
+        - Routing/SELECT  -> purpose-tagged orders (shipped)
+        - Cross-table     -> different gate per table
+
+      Implication for live_cutover_decision composite: Gate 5 G is
+      NECESSARY BUT NOT SUFFICIENT. Closes one recurring class (multi-
+      writer column ownership) and adds friction for future co-writer
+      additions. Adequate for live cutover when paired with Gate 5
+      A/B/C/D/E + stop-ACK timeout watchdog.
+
+      Future-work filed: "value-invariant" gate for sensitive columns
+      (stop_price > 0, stop_price < entry_price for long positions,
+      hard_stop <= stop_price, etc.). Defensive belt-and-suspenders.
+      Could become Gate 5 H if KLAR-class bugs recur. Not blocking
+      live cutover.

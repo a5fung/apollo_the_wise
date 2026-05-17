@@ -315,6 +315,39 @@ POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECR
 
 ## Changes Made — Recent
 
+### 2026-05-17 (Sun) — Track 1 trade-state ownership refactor + Gate 5 G column-write authority preflight (live-cutover blocker closed)
+
+**Trigger**: Five trade-state corruption bugs in May (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to the same column with no ownership rule, last-write-wins by accident. Friday's Phase 1 audit (`docs/architecture/trade-state-ownership.md`) enumerated every writer; Sunday Phase 2 refactored three hot-path bug surfaces + shipped the static-analysis gate. Gate 5 G was the final unshipped Gate 5 deliverable — composite `live_cutover_decision` review now has all four gates ready for 2026-05-22 evaluation.
+
+**Three refactors shipped** (atomic commit chain — each deployed + Gate 5 B prepare validation re-verified between commits):
+- **T1.1** (commit `68096bc` + fixup `223ec92`) — `trade_stream._process_entry_fill` no longer writes `stop_price` / `hard_stop`. Entry-fill is NOT the authorized writer; INSERT at `entry_pipeline._skip` sets initial value, `update_stop()` owns trail. KLAR/ARM bug root cause. Cuts stop_price writers 7→4. Param count 6→5.
+- **T1.2** (commit `67c3257`) — `live_tracker.update_open_positions_live` partial-fired branch no longer writes `stop_price`. `update_stop()` at the same call site is the authorized writer; when it FAILED (returning False + nulling stop_order_id per naked-position protocol), the wrapping write previously falsely reported a stop_price the broker no longer held. Cuts 4→3. Param count 4→3.
+- **T1.4** (commit `f3539d2`) — `live_tracker.update_open_positions_live` no-partial branch no longer writes `stop_price`, `total_pnl`, `partial_taken`, or `remaining_shares`. In this branch `step.new_X == state[X]` (no change when no partial fires), so the "idempotent no-op write" was actually a LOST UPDATE hazard if a WS fill arrived concurrently between state-load and UPDATE. Cuts 3→2 effective. Param count 8→4.
+
+**Gate 5 G ship** (commit `fd31e5b`):
+- `scripts/audit_column_writes.py check` mode + `ALLOWED_WRITERS` dict (35 columns) + `deploy.sh` step `[5c/5]` wire.
+- Walks every UPDATE/INSERT site touching `mi_live_trades`, fails deploy non-zero on any (column, function) pair not in `ALLOWED_WRITERS`. Exit code 6 reserved.
+- Synthetic violation test PASSED (rogue_writer correctly flagged with full diagnostic output).
+- End-to-end exit-code test PASSED (check returns 1 on violation, 0 on clean — triggers `deploy.sh exit 6`).
+- Friction by design: adding a new writer requires updating `ALLOWED_WRITERS` in the same commit. Explicit ack.
+
+**Gate 5 G retroactive coverage walked** (`gate_5g_historical_coverage` data-gated review closed same day):
+- 1 of 5 May bugs caught: BW under today's narrowed partial_taken allow-list.
+- Other 4 are different bug classes covered by different gates: CRMD → Gate 5 B prepare validation; KLAR → wrong-value-by-authorized-writer (no current gate); ARM → routing/SELECT (purpose-tagged orders, shipped); AIXI → cross-table.
+- Gate 5 G is necessary but not sufficient. Future-work proposal: "value-invariant" Gate 5 H for sensitive columns (`stop_price > 0`, `stop_price < entry_price` for long, `hard_stop <= stop_price`, etc.). Defensive belt-and-suspenders. Not blocking live cutover.
+
+**Deferred to next session**:
+- T1.3 — `live_tracker.update_open_positions_live` close path delegation. Complex (WS-vs-fallback ownership for Alpaca-confirms-gone case). ALLOWED_WRITERS entry is TEMPORARY pending T1.3 ship.
+- T1.5a — `set_stop_order_id` helper consolidation. 12 solo writes (not 24 as originally framed). Per advisor: cosmetic-not-safety; Gate 5 G's enforcement value identical with or without.
+
+**Discipline that worked at hour 3+ of fatigued architectural work**:
+- Advisor consult before EVERY commit (not just at start + end)
+- Deploy + Gate 5 B prepare validation between EVERY commit (catches issues before compounding)
+- Atomic commit-per-refactor (T1.1 → T1.1 fixup → T1.2 → T1.4 → T1.5+SSoT)
+- Honest scope reduction when investigation surfaced complexity (T1.3 deferred mid-session per drop-priority)
+
+**Lesson**: a column-ownership bug class needs a column-ownership gate. Type-mismatch (Gate 5 B), wrong-value (no current gate), routing (purpose-tagged orders), and ownership (Gate 5 G) are DIFFERENT bug classes that need DIFFERENT gates. Single-gate thinking ("Gate 5 G will catch all DB write bugs") is wrong; layered-gate thinking is right. Today's three refactors + Gate 5 G close the multi-writer ownership class; the other classes are addressed elsewhere.
+
 ### 2026-05-14 (session 6) — 3 bugs fixed in parallel + recurring "DB tracks attempt not outcome" pattern surfaced
 
 User flagged three issues; all three diagnosed + shipped + reconciled in one session:
