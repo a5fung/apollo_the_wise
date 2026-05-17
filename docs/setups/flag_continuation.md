@@ -63,6 +63,24 @@ Added 2026-05-04 to catch short-base tight setups that don't fit the early-vs-re
 
 ## Change log (newest first)
 
+### 2026-05-17 — P7.2 universe expansion: MAGNA53-failed carryforward
+
+**Trigger**: R3 (drop Day-1 same-day re-entry) shipped 2026-05-17 morning leaves a known alpha-slip window — Block D audit found 65% of failed-Day-1 MAGNA53 alpha names made +5% within 21d, but only 34% caught by downstream detectors (continuation flag 31.6%, 9M EP 5.3%, sugar baby 0%, next MAGNA53 EP 0%). Sugar baby loosening (P7.1a) confirmed structurally insufficient (most names fail 9M-volume gate). The right hedge: feed R3-stopped MAGNA53 names directly into the flag detector's universe via universe-query expansion.
+
+**Evidence**: P7.1a analysis on 76 alpha names from 60d Block D cohort — 22.4% recovery at sugar baby 0.50 cutoff (Option C verdict — sugar baby insufficient). MAGNA53-failed names are typically smaller-cap, lower-volume than 9M class. They're flag-candidate-class, not sugar-baby-class.
+
+**Anticipated effect**: 3-10 R3-stopped names enter the flag scan's universe per scan tick (bursty around earnings season; ~1.3/day average). Flag detector evaluates them via the normal `compute_flag_metrics` — most enter as `unqualified` initially (base_age=1, runup not yet ≥50%), progress through WATCH → TIGHTENING → COILED as basing develops over 1-3 weeks. Targets ~60-70% downstream capture vs current 31.6%.
+
+**Architecture**: modified `get_flag_universe` (db.py:2396) to return `dict[str, list[str]]` (ticker → source-tag list). New universe-pattern query: `WHERE alert_date >= scan_date - INTERVAL '7 days' AND status='closed' AND skip_reason='block:r3_reentry_disabled' AND account_mode='paper'`. Multi-source admission preserved — a ticker in top-200 RS AND R3-stopped captures both tags.
+
+New `mi_flag_candidates.universe_sources TEXT[]` column records provenance for telemetry. Tag taxonomy: `rs_top200`, `rs_1m_80`, `momentum_25pct`, `magna53_failed_r3`, `ninem_universe_watch` (P7.3b — Monday). `ALTER TABLE ADD COLUMN IF NOT EXISTS` pattern, idempotent on restart.
+
+**Env flag**: `MAGNA53_FLAG_CARRYFORWARD_ENABLED=true` (default). Set false + docker compose restart to revert.
+
+**Reversion-flag**: NEW (introduces 4th universe pattern + audit-trail column).
+
+**Status**: shipped 2026-05-17 commit `370aed1`. Stage 1 verification at Day 7-14 (universe pattern firing, looking for ≥1 R3-stopped name appearing in `mi_flag_candidates` with `universe_sources @> ARRAY['magna53_failed_r3']`). Stage 2 alpha-capture measurement at Day 21+.
+
 ### 2026-05-08 — Stable-anchor pivot (1% walk threshold)
 
 **Trigger**: advisor flag 2026-05-08, deeper structural issue surfaced by VECO 5/06: pivot can walk forward on any new bar that beats prior pivot's high (even by 1¢). For a base making slow higher-highs in tight increments, pivot keeps walking and base_age stays near zero — contraction math never accumulates a window. The 5% → 2% band tightening (commit 42993e1) was a band-aid that addressed the volume-stealing-pivot symptom; this fix addresses the marginal-walk-forward cause.

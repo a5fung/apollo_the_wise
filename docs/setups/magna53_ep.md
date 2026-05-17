@@ -72,6 +72,20 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-05-17 PM — P7.2: MAGNA53→flag carryforward (R3 alpha-slip hedge)
+
+**Trigger**: R3 shipped this morning leaves a known alpha-slip window — 65% of failed-Day-1 alpha names made +5% within 21d, only 34% caught downstream. P7.1a sugar baby analysis confirmed loosening doesn't address the structural gap. Architectural hedge: feed R3-stopped MAGNA53 names into the continuation-flag detector's universe so the basing/tightness state machine catches the delayed-EP breakout.
+
+**Evidence**: Block D audit (60d cohort) + P7.1a sugar baby recovery analysis (22.4% recovery at 0.50 cutoff, mostly fails 9M-volume gate not close_in_range).
+
+**Anticipated effect**: ~1.3 R3-stopped names enter the flag scan's universe per day (bursty around earnings). Flag detector evaluates organically; most enter as `unqualified` initially, progress through stages over 1-3 weeks. Targets ~60-70% downstream capture lift from current 34%.
+
+**Code**: see `docs/setups/flag_continuation.md` 2026-05-17 entry for implementation details. MAGNA53 detector itself unchanged — this is a downstream-detector universe expansion.
+
+**Reversion-flag**: NEW (paired with R3 ship). Env `MAGNA53_FLAG_CARRYFORWARD_ENABLED=false` reverts.
+
+**Status**: shipped 2026-05-17 commit `370aed1`. Verification at Day 7-14 (Stage 1 plumbing) and Day 21+ (Stage 2 alpha capture re-measurement).
+
 ### 2026-05-17 — EP Selectivity Phase 2 — five filter ships (R2/R6/R4/R1/R3) + bug fixes
 
 Bundle commit per `~/.claude/plans/i-want-to-plan-groovy-horizon.md`. Phase 1 diagnostic in `docs/decisions/0003-ep-selectivity-overhaul.md`. Phase 2 ships these in risk-ordered sequence as separate commits with feature flags. Each entry below has its own block per CHANGE_PROCESS format.
