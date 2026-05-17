@@ -65,11 +65,17 @@ You'll need accounts/keys from four services. All are free or low-cost.
 1. Go to [polygon.io](https://polygon.io) → sign up for Starter ($29/mo)
 2. Dashboard → API Keys → copy your key
 
-### 1e. Alpaca API Key (paper/live trading)
+### 1e. Alpaca API Keys (dual-account architecture)
+
+Apollo runs ONE container that subscribes to BOTH Alpaca paper + live accounts simultaneously. Strategies route per their `mi_strategies.phase` (shadow / paper / live). You need separate API key pairs for each.
 
 1. Go to [alpaca.markets](https://alpaca.markets) → sign up
-2. Dashboard → Paper Trading → Generate API keys
-3. Save both `API Key` and `Secret Key`
+2. **Paper account** — Dashboard → Paper Trading → Generate API keys → save `API Key` + `Secret Key` (these become `ALPACA_PAPER_API_KEY` / `ALPACA_PAPER_SECRET_KEY`)
+3. **Live account** (optional for dev / single-account opt-out) — Dashboard → Live → Generate → save (these become `ALPACA_LIVE_API_KEY` / `ALPACA_LIVE_SECRET_KEY`)
+
+**Single-account opt-out**: if you only want paper trading, set `ENABLE_LIVE_MODE=false` in `.env` — only the paper key pair is required. Strategies at `phase='live'` are blocked.
+
+**Legacy fallback** (one deploy cycle only): if you have an old `.env` with `ALPACA_API_KEY` / `ALPACA_SECRET_KEY`, those are auto-remapped to `ALPACA_PAPER_*` at boot. Migrate to the new variable names when convenient — the fallback will be removed after dual-mode is stable.
 
 ### 1f. Generate random secrets
 
@@ -112,12 +118,17 @@ POLYGON_API_KEY=...                        # Required
 PERPLEXITY_API_KEY=pplx-...                # Required — catalyst news + cross-validation
 FMP_API_KEY=...                            # Optional — fundamentals fallback
 
-# Paper/live trading (Alpaca)
-ALPACA_API_KEY=...
-ALPACA_SECRET_KEY=...
-ALPACA_PAPER=true                          # Paper trading (safe default)
-LIVE_TRADING_ENABLED=false                 # Master kill switch
+# Paper/live trading (Alpaca — dual-account architecture)
+ENABLE_LIVE_MODE=false                     # Set true to enable both paper + live; false = paper only
+ALPACA_PAPER_API_KEY=...                   # Required
+ALPACA_PAPER_SECRET_KEY=...                # Required
+ALPACA_LIVE_API_KEY=...                    # Required ONLY when ENABLE_LIVE_MODE=true
+ALPACA_LIVE_SECRET_KEY=...                 # Required ONLY when ENABLE_LIVE_MODE=true
+ALPACA_DATA_FEED=iex                       # "sip" requires Algo Trader Plus ($99/mo)
+LIVE_TRADING_ENABLED=false                 # Master kill switch (disables ALL submits)
 ```
+
+**Legacy variables**: `ALPACA_API_KEY` / `ALPACA_SECRET_KEY` / `ALPACA_PAPER=true` are auto-remapped to `ALPACA_PAPER_*` at boot for one deploy cycle. Migrate when convenient.
 
 ---
 

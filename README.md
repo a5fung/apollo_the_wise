@@ -87,10 +87,24 @@ Market Intelligence :8006
   RS engine, EP detection, theme clustering, regime,
   Alpaca paper + live ORB trading, TradingView webhooks
       │
+      ├──── Alpaca Paper Account (TradingClient + TradingStream)
+      ├──── Alpaca Live Account  (TradingClient + TradingStream) — gated by ENABLE_LIVE_MODE
+      │
       ▼
 PostgreSQL (pgvector)  +  Redis
 Persistent memory          Caching + confirmations
 ```
+
+**Dual-account architecture** (#66, 2026-05-10): one Apollo container subscribes to BOTH Alpaca paper and live accounts simultaneously. Strategies route per `mi_strategies.phase`:
+
+| phase | live_real_enabled | Submit destination |
+|---|---|---|
+| `shadow` | – | audit telemetry only (no submit) |
+| `paper` | – | Alpaca paper account (real fills, fake $) |
+| `live` | False | 🟡 STAGED-PAPER Telegram proposal (no auto-submit) |
+| `live` | True | Alpaca live account (real fills, real $) |
+
+Per-account safeguards are isolated (paper at-cap doesn't constrain live). Per-strategy `position_size_multiplier` + `max_concurrent_positions` enable gradual live promotion. Set `ENABLE_LIVE_MODE=false` for dev / single-account opt-out.
 
 ---
 
@@ -317,6 +331,34 @@ No Z-norm — multi-day spike (5/8) showed it systemically penalizes MAGNA53's c
 **Phase 1B activation** (gated on ≥5 days shadow telemetry, earliest 5/15): move cron to 9:28 ET pre-market, add price-freshness HARD gate (>1.5% past trigger → drop), refactor strategies to drain queue (winners only), intraday re-sweep on stop/exit events, FCFS fallback.
 
 Spec: `~/.claude/plans/cross-strategy-ranking-spike.md`. Spike harness: `scripts/spike_unified_allocator.py`.
+
+---
+
+### Live-cutover Gate 5 hardening (A–G)
+
+A layered defense system for trade-state correctness, hardened across May 2026 in response to five trade-state corruption incidents (CRMD/KLAR/ARM/BW/AIXI). Each Gate addresses a distinct bug class. Run as preflight on every deploy via `scripts/deploy.sh`. SSoT: `docs/setups/safeguards.md`.
+
+| Gate | What it catches | Implementation |
+|---|---|---|
+| **A — Naked-position remediation** | Entry-fill UPDATE raises exception → bracket child stop dies → position naked | `trade_stream._process_entry_fill` catches exception, immediately submits fallback stop-market at intended orb_low BEFORE any other action |
+| **B — Boot-time DB UPDATE prepare validation** | asyncpg type-mismatch (CRMD class: numeric vs double precision sharing param) | `scripts/preflight_db_updates.py` walks every parameterized UPDATE via `connection.prepare()`. Deploy step `[5b/5]` blocks on `AmbiguousParameterError` |
+| **C — Escalated naked-position alert** | partial_fill on entry leaves position un-stopped | Escalation to CRITICAL Telegram on naked detection |
+| **D — Stuck-fill watchdog** | Entry stays `status='filling'` past ACK window | Cron surfaces rows where `entry_order_id IS NOT NULL AND status='filling' AND filled_at IS NULL AND created_at < NOW() - INTERVAL '2 min'` |
+| **E — Schema regression pytest** | Column-type additions break hot-path UPDATEs | Test suite against mi_live_trades schema |
+| **F — Operator post-mortem sign-off** | Process discipline gate | Manual review |
+| **G — Column-write authority preflight** (2026-05-17) | Multi-writer column ownership violations (BW class) | `scripts/audit_column_writes.py check` + `ALLOWED_WRITERS` dict. Deploy step `[5c/5]` blocks on unauthorized (column, function) pair. See `docs/architecture/trade-state-ownership.md` |
+| **Stop-ACK timeout watchdog** (2026-05-17, sibling to Gate 5 A) | OTO bracket child stop-leg never ACKs from Alpaca (silent failure, MRAM class) | New scheduler job every 30s during market hours: `status='filled' AND filled_at NOT NULL AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'` → submit fallback stop |
+
+**Deploy chain** (`scripts/deploy.sh`):
+1. git pull
+2. build images
+3. restart containers
+4. wait for boot
+5. `[5/5]` entry-pipeline safeguard walk (PASS = strategies can authenticate)
+6. `[5b/5]` DB UPDATE prepare validation
+7. `[5c/5]` column-write authority check
+
+Any preflight failure exits non-zero with a distinct code (4/5/6) — no green-deploy without all three gates passing.
 
 ---
 
@@ -660,6 +702,14 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 ## Backlog / Upgrade Path
 
 ### Recently completed (May 2026)
+- ✅ **Gate 5 G column-write authority preflight (5/17)** — static analysis at deploy time: `scripts/audit_column_writes.py check` walks every UPDATE/INSERT on `mi_live_trades`, fails the deploy on any `(column, function)` pair not in `ALLOWED_WRITERS`. Closes the BW-class bug surface (multi-writer column ownership). Last unshipped Gate 5 deliverable. Sibling refactors T1.1/T1.2/T1.4 same day cut `stop_price` writers 7 → 4
+- ✅ **Stop-ACK timeout watchdog (5/17)** — sibling to Gate 5 A. Closes MRAM-class silent failure (entry fills, OTO bracket child stop-leg never ACKs, position naked). New scheduler job every 30s during market hours, submits fallback stop, escalates to Telegram CRITICAL on remediation failure
+- ✅ **EP Selectivity Phase 1-7 (5/16-17 weekend)** — cohort analysis + meta-rubric architecture (catalyst rubric = ONE input among fundamentals/theme/technical/gap) + multi-dimensional catalyst grading (6 axes, Gemini-weighted 2× Axis 1 + 2× Axis 5) + immediate filter ships (R2/R4/R6/P2.0a/P2.0b) + alpha-slip hedge (MAGNA53→flag carryforward + 9M universe-watch). Sugar baby Day 2 recovery analysis at 22.4%. Operator catalyst labels (~98 alerts cross-tabbed). ADR `docs/decisions/0003-ep-selectivity-overhaul.md`
+- ✅ **Dual-account architecture (#66, 5/10)** — one Apollo container subscribes to both paper + live Alpaca accounts. Strategy `phase` field routes per-account. Per-mode TradingClient singletons, mode-bound `client_order_id`, cross-account event validation in WebSocket dispatcher, per-mode safeguard isolation, per-mode position/drawdown state. Boot bootstrap hard-requires both keypairs when `ENABLE_LIVE_MODE=true`. Legacy `ALPACA_API_KEY` remapped to `ALPACA_PAPER_*` at boot
+- ✅ **Per-strategy sizing + position cap (#65, 5/10)** — two new `mi_strategies` columns: `position_size_multiplier` + `max_concurrent_positions`. Applied in entry_pipeline post-spec-builder (covers both MAGNA53 and 9M Day 2). Enables gradual live promotion (e.g., 9M Day 2 starts at multiplier=0.5 + cap=2)
+- ✅ **Track 1 trade-state ownership refactor (5/17)** — T1.1 dropped stop_price/hard_stop from entry-fill UPDATE (KLAR/ARM bug source); T1.2 dropped stop_price from partial-fired wrapping UPDATE; T1.4 dropped redundant writes from no-partial branch (BW class + LOST UPDATE hazard). Cuts stop_price writers 7→4, partial_taken writers 2→1. SSoT: `docs/architecture/trade-state-ownership.md`
+- ✅ **P&L attribution column (5/14)** — `mi_live_trades.pnl_attribution` excludes incident damage from methodology evaluation metrics. NULL = methodology (default); non-NULL names the incident. Account equity still reflects actual hit; only Gate 3 paper R-expectancy + system review aggregations filter on this column
+- ✅ **Preflight smoke test (#84, 5/13)** — `scripts/preflight_check.py` walks every enabled non-shadow strategy through `_check_safeguards`. Run as final deploy step. The 2026-05-13 outage (seed × dual-account mismatch — `phase='live'` rows but `ENABLE_LIVE_MODE=false`) would have been caught here
 - ✅ **Cross-strategy unified allocator Phase 1A (#31, shadow ship 5/8)** — `mi_pending_allocations` queue + `cross_strategy_allocator.py` module + 9:35 AM shadow cron. MAGNA53 + 9M Day 2 strategies enqueue; allocator scores 40/30/20/10 (setup/catalyst/volume/regime), emits `unified_allocation_decided` audit. Z-norm DROPPED post-spike (8-day simulation showed it systemically penalizes MAGNA53's cap-saturated top-tier scores). Phase 1B activation gated on ≥5 days shadow telemetry (earliest 5/15)
 - ✅ **Drawdown circuit breaker (#39, shadow ship 5/8)** — methodology-aware state machine replacing count-based breaker. Daily 4:12 PM ET cron snapshots Alpaca equity (includes unrealized — open winners lift), recomputes state with asymmetric hysteresis (-5% trip / -2.5% release). State-aware threshold check eliminates flap-spam; stale-data fail-open prevents silent cron-failure lockout. Promotion gated on ≥14d post-live-cutover
 - ✅ **Stable-anchor pivot for flag detector (#37, 5/8)** — pivot only walks forward when current lookback's max_high beats prior pivot by ≥1%. Fixes marginal-walk-forward where slow higher-highs in tight increments kept `base_age` stuck at zero. Replay-verified on XNDU/VECO/OKLO calibration cases
