@@ -2790,8 +2790,36 @@ reviews:
 
       Mark done after all five pass.
       Origin: 2026-05-14 multi-wave ship verification protocol.
-    status: pending
+    status: done
     added_on: 2026-05-14
+    closed_on: 2026-05-18
+    outcome: |
+      ALL 5 VERIFICATIONS PASSED (2026-05-18 audit):
+
+      1. BW partial fill (id=119): status='filled', partial_taken=TRUE,
+         total_pnl=$728.64, remaining_shares=776. exits has the WS
+         partial-fill commit. Validates live_tracker:591-602 fix.
+
+      2. Stuck-fill watchdog: 100+ entries in mi_job_runs
+         (job_id='stuck_fill_watchdog') throughout Monday 9:30-16:00 ET.
+         Runs every minute as designed.
+
+      3. AIXI RS recompute trajectory:
+           5/14 (bug):  rs_composite=100  rs_1m=99.9  (phantom split artifact)
+           5/15 (post): rs_composite=63.5 rs_1m=2.2   (corrected data)
+           5/18:        rs_composite=67.5 rs_1m=7.7   (consistent normal range)
+         Confirms splits_ingest fix is feeding clean data to RS.
+
+      4. SNDK theme stick: SNDK is in 'AI Memory & Storage' on
+         today's theme_date. NOT in any 'Front-End Interconnect'
+         or wafer-equipment theme. BOTH_PROTECTED tiebreaker fix
+         (theme_engine.py:2750-2754) is holding.
+
+      5. 9M intraday M&A hook: 40 mna_filter_fired events with 9m
+         context since 2026-05-15. Hook is reachable + firing on
+         eligible tickers.
+
+      All five 2026-05-14 multi-wave ship fixes verified live + working.
 
   - review_id: gate3_initial_stop_modeling
     title: "Gate 3 R-calc should use INITIAL stop, not current (trailed) stop"
@@ -3280,6 +3308,45 @@ reviews:
       magna53_ep.md change log.
     status: pending
     added_on: 2026-05-17
+    notes_2026_05_18: |
+      INITIAL ANALYSIS RAN BUT FOUND UNRELIABLE METRIC. Predicate
+      threshold met (48 cases, well over 10), but the
+      `mi_ep_scan_outcomes.fwd_5d_pct` metric used in
+      action_when_ready measures `(close[t+5d] - close[t]) / close[t]`
+      — a CLOSE-TO-CLOSE drift signal, NOT an ORB-trade outcome.
+
+      Both the filtered cohort (97.3% wins) and the broader ALL-HIGH
+      cohort (95.5% wins, n=67/272) score similarly on this metric.
+      That tells us close-to-close drift on already-gapped stocks in
+      a rising market is positive by default — it tells us NOTHING
+      about whether the ORB trade succeeded.
+
+      Honest evaluation requires entry-aware metrics:
+        - Did orb_high get hit (entry triggered)?
+        - Did orb_low get hit before any target (stopped out)?
+        - Per-trade R-multiple
+
+      Outcome data we need is in `mi_ep_missed_outcomes.max_high_5d`
+      and `mi_live_trades.total_pnl / hard_stop` for actually-traded
+      names. Need to re-run analysis with proper entry+stop modeling.
+
+      DO NOT CLOSE this review until the analysis uses proper
+      ORB-trade-outcome data. Updated action_when_ready below
+      reflects the corrected evaluation approach.
+
+      Revised action_when_ready (2026-05-18):
+        1. For the N>=10 large-cap-low-rel_volume cohort, join to
+           mi_ep_missed_outcomes for ret_5d + max_high_5d (entry-
+           sensitive, gap-day-open basis).
+        2. Compute the proper "trade outcome" approximation:
+             - "would have hit orb_high target": max_high_5d > 0
+               (the day-of high)
+             - "win" approximated via max_high_5d > orb_high*1.005
+               (entry buffer) AND ret_5d trajectory not reversed
+        3. Compare proper-outcome win rates: cohort vs ALL HIGH baseline.
+        4. If cohort proper-outcome win rate > baseline by ≥10pp:
+           keep current (don't filter). If cohort ≤ baseline - 10pp:
+           SHIP filter. Between: more data.
 
 
   - review_id: gate_5g_historical_coverage
