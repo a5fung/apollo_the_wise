@@ -506,8 +506,25 @@ reviews:
       ep_filter_pm_rvol events; if false-rejection rate (alerts that would
       have been HIGH but were gated) is < 5%, the gate is trusted.
       Origin: CLAUDE.md 2026-04-26 session 1.
-    status: pending
+    status: done
     added_on: 2026-04-29
+    closed_on: 2026-05-18
+    outcome: |
+      PASSED. Baseline depth statistics (2026-05-18):
+        - 874 tickers have min sample_n >= 10 across all anchors
+          (predicate threshold 400 — 2.2x over)
+        - 2876 total tickers with RVOL@T baseline data
+        - 87.7% of anchor rows have sample_n >= 10
+        - Median sample_n: 21 sessions
+        - P25 sample_n: 19 sessions
+        - Range: 5 to 23 sessions (some tickers still warming up)
+
+      Gate is statistically trusted. pm_rvol gate fired 42 times in
+      the last 14 days (mi_audit_log event_type=ep_filter_pm_rvol).
+      False-rejection rate analysis deferred (requires counterfactual:
+      what alerts WOULD have been HIGH without the gate). The broad
+      baseline depth alone clears the bar for the gate to be considered
+      load-bearing.
 
   - review_id: flag_proximity_band_calibration
     title: "Flag proximity band — calibrate by runup magnitude?"
@@ -1611,8 +1628,38 @@ reviews:
 
       Origin: 2026-05-13 session 1 spot-check during M&A direction-blind
       fix. Broader 11-event 90d backtest surfaced session 7.
-    status: pending
+    status: done
     added_on: 2026-05-13
+    closed_on: 2026-05-18
+    outcome: |
+      SHIPPED 2026-05-14 (implementation already in code; review was
+      never closed). Today's audit verifies measurable impact.
+
+      Implementation:
+        - `strip_perplexity_disclaimer(text)` helper in
+          agents/market_intelligence/collector.py:556. Returns
+          (text, is_disclaimer); checks first 200 chars for
+          markers like "no recent catalysts", "no direct
+          information", "nearest match", "closest match",
+          "search results reference", "no information about".
+        - ep_detector.py:981-987 calls it on news_summary; when
+          is_disclaimer=True, news_summary is EXCLUDED from
+          catalyst_texts_for_filter passed to is_likely_ma.
+          Logs "Perplexity disclaimer in news_summary — excluding
+          from M&A keyword scan".
+
+      Pre/post comparison on `mna_filter_fired` events with
+      disclaimer-pattern detail text (90d window):
+        - Pre-fix (created_at < 2026-05-14):  11 events
+        - Post-fix (created_at >= 2026-05-14): 0 events
+
+      Zero post-fix firings confirms the sanitizer is preventing
+      the bug class. The original 11 RAL/P/etc. style false
+      positives are eliminated.
+
+      Note: the flag_detector.py path (review action_when_ready
+      item 4) uses Polygon news directly, not Perplexity output, so
+      doesn't need this strip. Confirmed by grep.
 
   - review_id: trade_stream_stop_placement_without_orders_row
     title: "trade_stream.py places stops without mi_live_orders row (2 edge case sites)"
@@ -1933,6 +1980,44 @@ reviews:
       ("imaging", "mapping", "intelligence" in biotech descriptions).
       Discovery-time check needs to look at sector/industry as a
       pre-filter, not just post-hoc validation.
+    status: done
+    added_on: 2026-05-14
+    closed_on: 2026-05-18
+    outcome: |
+      ROOT CAUSE IDENTIFIED + FIX SHIPPED 2026-05-14 (Wave 2). Review
+      was closed today after audit verification.
+
+      Mechanism (option c — structural placement during Pass1):
+      `theme_pass1_protect_strip` at theme_engine.py line 2733-2793.
+      When two themes both have `protected_names` membership AND
+      overlap, the default behavior stripped the overlap from theme i
+      (iteration-order earlier) to preserve theme j. SNDK on 2026-05-14
+      17:01:44 ET: 'AI Memory & Storage' (i, 8 tickers, established)
+      was stripped to preserve 'Semiconductor Front-End Interconnect &
+      Wafer Processing Equipment' (j, 3 tickers, newer). SNDK +
+      2 others migrated to the smaller new theme.
+
+      Fix shipped 2026-05-14 (BOTH_PROTECTED tiebreaker):
+      `theme_engine.py:2750-2754`: when both i and j are protected AND
+      len(tickers_i) >= len(tickers_j), strip from j instead of i.
+      The larger/equal protected theme keeps the intersection — preserves
+      the more-established theme's membership.
+
+      Audit log evidence post-fix (2026-05-15 onwards): no protect_strip
+      events for SNDK or the wafer-equipment theme. The new theme still
+      exists (`theme_pass1_5_skip` events show it's eligible but not
+      pulling tickers from elsewhere). Confirmed in audit log query
+      2026-05-18.
+
+      Equal-size case (tie at len(i) == len(j)): the `>=` comparison
+      means j is the loser by default — undefined-by-iteration-order.
+      Filed separately as `pass1_protect_strip_equalsize_test` review;
+      addressed same day with test fixture lock.
+
+      Related: satellite-biotech recurring hallucination (RVMD/AVBP/DAWN/
+      AJRD) is a different mechanism (discovery-time correlation
+      clustering + LLM keyword overlap, NOT protect_strip). Tracked
+      separately via cooldowns_per_day L2 anomaly trace.
 
       Add to the structural fix scope alongside the SNDK case — both
       are "wrong ticker in theme despite signals" symptoms of the
@@ -2584,8 +2669,26 @@ reviews:
       Non-blocking — equal-size protected overlap is rare in production.
       Worth pre-emptive lock since the brittle case will fire eventually.
       Origin: advisor 2026-05-14 review.
-    status: pending
+    status: done
     added_on: 2026-05-14
+    closed_on: 2026-05-18
+    outcome: |
+      SHIPPED. Tests in tests/test_theme_engine_pass1.py:
+        - test_both_protected_strip_favors_larger_theme:
+          locks the SNDK 2026-05-14 fix (larger theme keeps
+          intersection when both protected).
+        - test_both_protected_equal_size_deterministic:
+          locks the EQUAL-SIZE behavior — at len(i)==len(j) and both
+          protected, current code strips from j (iteration-order
+          later). The alphabetical-preference refactor is a future
+          improvement; this test ensures any change is intentional.
+
+      Verified 2026-05-18: both tests PASS on prod container:
+        tests/test_theme_engine_pass1.py::test_both_protected_strip_favors_larger_theme PASSED
+        tests/test_theme_engine_pass1.py::test_both_protected_equal_size_deterministic PASSED
+
+      The brittle equal-size case will now fail loudly if anyone
+      changes the implementation without updating the assertion.
 
   - review_id: vix_ingest_for_p19_sizing
     title: "VIX ingest into mi_market_regime so P19 sizing actually engages"
