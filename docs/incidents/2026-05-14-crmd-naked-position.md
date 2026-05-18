@@ -1,6 +1,6 @@
 # Incident Post-Mortem: CRMD Naked Position (2026-05-14)
 
-**Status**: DRAFT — pending full root-cause walk + sign-off
+**Status**: CLOSED — all 6 deliverables shipped + verified; operator sign-off 2026-05-18
 **Severity**: P0 — would have caused materially worse damage on live $
 **Detected**: 2026-05-14 ~10:50 ET (user-flagged via Telegram)
 **Resolved**: 2026-05-14 11:08 ET (manual market SELL on CRMD)
@@ -173,9 +173,9 @@ The `live_cutover_decision` review in `data_gated_reviews.yaml` is updated to ad
 
 | Role | Reviewer | Sign-off Date | Notes |
 |---|---|---|---|
-| Author | Claude Code session 2026-05-14 | 2026-05-14 | Draft |
-| Operator | Alvin | pending | |
-| Live cutover gate | n/a | pending | Gates A/B/C above must ship before sign-off |
+| Author | Claude Code session 2026-05-14 | 2026-05-14 | Initial draft + same-day fix shipped |
+| Operator | Alvin | 2026-05-18 | All 6 deliverables verified (A: E2E test 2026-05-18; B: shipped 2026-05-14 + verified daily by `deploy.sh [5b/5]`; C: shipped `96fd7ee` 2026-05-14; D: shipped `_stuck_fill_watchdog_job` 60s cron; E: `tests/test_db_update_prepare.py` regression; F: this sign-off). Gate 5 G column-write authority preflight shipped 2026-05-17 as additional hardening. |
+| Live cutover gate | LIVE-CUTOVER UNBLOCKED | 2026-05-18 | Gate 5 A-G all shipped + verified. P0 blocker closed. Composite `live_cutover_decision` review evaluates remaining gates (drawdown breaker promotion, paper R-expectancy, FTRE partial-trail) earliest 2026-05-22. |
 
 ---
 
