@@ -3018,6 +3018,23 @@ reviews:
          before Phase 6.
       5. Update docs/setups/catalyst_rubric.md from PROVISIONAL
          → ACTIVE-ADVISORY.
+
+      Prep work completed 2026-05-18:
+        - `scripts/ep_pradeep_catalyst_tier_analysis.py`: keyword-
+          classifies 90d HIGH EP cohort into Pradeep's tier 2/3/4
+          (tier 1 needs mi_themes join). Surfaces forward-return
+          medians per tier + sample classifications for operator
+          review.
+        - First empirical pass (278 alerts, 90d): empirical order
+          [3, 4, 2] does NOT match Pradeep's [2, 3, 4] — but
+          sample sizes are too small (tier 3 N=4, tier 2 N=12) to
+          conclude. Tier 4 (N=262) dominates and likely
+          mislabels many theme-driven names.
+        - Phase 5 final ship MUST replace keyword classifier with
+          LLM grader + cross-reference mi_themes for tier 1
+          membership. Window expansion to 180d for tier 2/3 sample.
+        - Per `user_pradeep_catalyst_hierarchy.md`: weighted theme
+          axis 1.5-2× fundamentals in final composite.
     status: pending
     added_on: 2026-05-17
 
