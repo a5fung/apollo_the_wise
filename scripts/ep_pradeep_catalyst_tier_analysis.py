@@ -114,7 +114,7 @@ async def main():
         rows = await conn.fetch("""
             WITH ep AS (
                 SELECT a.ticker, a.alert_date, a.catalyst_quality, a.catalyst,
-                       a.score, a.gap_pct, a.pm_rvol
+                       a.ep_score, a.gap_pct, a.pm_rvol
                 FROM mi_ep_alerts a
                 WHERE a.alert_date >= CURRENT_DATE - 90
                   AND a.score_tier = 'HIGH'
@@ -141,7 +141,7 @@ async def main():
             "tier_label": {2: "policy", 3: "shortage", 4: "operational"}[tier],
             "matched_keywords": "|".join(kws[:3]),
             "catalyst_quality": r["catalyst_quality"],
-            "score": r["score"],
+            "ep_score": r["ep_score"],
             "gap_pct": float(r["gap_pct"]) if r["gap_pct"] else None,
             "ret_5d": float(r["ret_5d"]) if r["ret_5d"] is not None else None,
             "max_high_5d": float(r["max_high_5d"]) if r["max_high_5d"] is not None else None,
