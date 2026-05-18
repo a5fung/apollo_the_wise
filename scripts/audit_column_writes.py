@@ -78,12 +78,13 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     "entry_attempt":      {"order_manager.attempt_day1_reentry"},
 
     # ── Stop management (KLAR/CRMD strict-ownership column) ────────────
-    # T1.1/T1.2/T1.4 (2026-05-17) cut writers 7 → 4. update_stop owns
-    # trail. entry_pipeline._skip sets initial. check_fills writes on
-    # poll-fill backup. live_tracker close path (line 537) writes NULL
-    # on stopped-out fallback — T1.3 will delegate that to finalize_stop_fill
-    # in next session. Currently listed as legitimate until T1.3 ships.
-    "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills", "live_tracker.update_open_positions_live"},
+    # T1.1/T1.2/T1.4 (2026-05-17) cut writers 7 → 4. T1.3 (2026-05-18)
+    # removed live_tracker close-path writer by delegating to
+    # finalize_stop_fill. Now 3 writers: INSERT, trail update, polling
+    # backup. update_stop owns trail. entry_pipeline._skip sets initial.
+    # check_fills writes on poll-fill backup (no-op for stop in normal
+    # ordering since stop_price unchanged from INSERT at that point).
+    "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills"},
     # hard_stop: SINGLE WRITER (entry_pipeline._skip INSERT only). Per Gate 3
     # initial-stop modeling (2026-05-18) — hard_stop is the immutable
     # risk-basis for R-expectancy calc, set once at INSERT, never updated.
@@ -92,42 +93,42 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # if the polling backup ran after a same-tick trail update).
     "hard_stop":          {"entry_pipeline._skip"},
     "stop_order_id":      {
-        # T1.5a future-work: consolidate the 25 writers below into one
-        # helper. Currently documented as the existing landscape.
+        # T1.5a future-work: consolidate the writers below into one
+        # helper. T1.3 (2026-05-18) removed live_tracker.update_open_positions_live
+        # by delegating close path to finalize_stop_fill.
         "order_manager.submit_entry", "order_manager.check_fills",
         "order_manager.update_stop", "order_manager.execute_partial_exit",
         "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
         "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
         "trade_stream._handle_cancel_or_reject",
-        "live_tracker.update_open_positions_live",
         "scheduler._stop_ack_timeout_watchdog_job",
     },
 
     # ── Exit lifecycle ─────────────────────────────────────────────────
+    # T1.3 (2026-05-18) removed live_tracker.update_open_positions_live
+    # from exits / remaining_shares / total_pnl / closed_at — close-path
+    # delegated to finalize_stop_fill which is the canonical writer.
     "exits":              {
         "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
         "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
-        "trade_stream._process_stop_fill", "live_tracker.update_open_positions_live",
+        "trade_stream._process_stop_fill",
     },
     "remaining_shares":   {
         "order_manager.check_fills", "order_manager.attempt_day1_reentry",
         "order_manager.finalize_partial_exit", "order_manager.finalize_full_exit",
         "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
-        "live_tracker.update_open_positions_live",
     },
     "total_pnl":          {
         "order_manager.attempt_day1_reentry", "order_manager.finalize_partial_exit",
         "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
         "order_manager.cancel_unfilled_entries", "trade_stream._process_stop_fill",
-        "live_tracker.update_open_positions_live",
     },
     "closed_at":          {
         "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
         "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",
         "order_manager._sync_positions_for_mode", "trade_stream._process_stop_fill",
-        "live_tracker.update_open_positions_live",
     },
 
     # ── BW strict-ownership columns (single owner each) ────────────────
@@ -150,7 +151,8 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # but allow many writers per the state machine.
     "status":             {
         "entry_pipeline._skip", "live_tracker._insert_skipped_trade",
-        "live_tracker.update_open_positions_live",
+        # T1.3 (2026-05-18) removed live_tracker.update_open_positions_live —
+        # close-path status='closed' write now delegated to finalize_stop_fill.
         "order_manager.submit_entry", "order_manager.check_fills",
         "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
         "order_manager.finalize_stop_fill", "order_manager.cancel_unfilled_entries",

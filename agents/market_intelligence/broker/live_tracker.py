@@ -31,6 +31,7 @@ from agents.market_intelligence.broker.order_manager import (
     prepare_orb_order,
     execute_partial_exit,
     execute_full_exit,
+    finalize_stop_fill,
     update_stop,
 )
 from agents.market_intelligence.broker.skip_reasons import (
@@ -532,22 +533,37 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         if step.action == "stopped_out":
             pos = await alpaca.get_position(ticker)
             if not pos or pos["qty"] <= 0:
+                # T1.3 refactor 2026-05-18: delegate close commit to
+                # finalize_stop_fill (the canonical authorized writer for
+                # close-path columns: exits, status, remaining_shares,
+                # total_pnl, closed_at, stop_order_id). This path is the
+                # FALLBACK when WS missed the stop fill — synthetic
+                # deterministic order_id prevents collision with real
+                # Alpaca IDs + makes the idempotent check work if
+                # update_open_positions_live runs twice.
+                #
+                # Per docs/architecture/trade-state-ownership.md:
+                # live_tracker is no longer a writer to those columns;
+                # hold_days + running_closes are live_tracker-domain
+                # (state machine outputs) and get their own UPDATE.
+                synthetic_order_id = f"inferred_close_{trade['id']}_{today.isoformat()}"
+                await finalize_stop_fill(
+                    trade_id=trade["id"],
+                    filled_qty=int(trade["remaining_shares"]),
+                    filled_price=float(step.close_price),
+                    order_id=synthetic_order_id,
+                )
+                # Live_tracker-domain follow-up: hold_days + running_closes
                 async with pool.acquire() as conn:
                     await conn.execute("""
                         UPDATE mi_live_trades SET
-                            status = 'closed', exits = $2::jsonb,
-                            remaining_shares = 0, stop_price = NULL,
-                            total_pnl = $3, hold_days = $4, closed_at = NOW(),
-                            stop_order_id = NULL,
-                            running_closes = $5::jsonb
+                            hold_days = $2,
+                            running_closes = $3::jsonb
                         WHERE id = $1
-                    """, trade["id"], json.dumps(step.new_exits),
-                        step.new_total_pnl, step.hold_days,
+                    """, trade["id"], step.hold_days,
                         json.dumps(step.new_running_closes))
-                await send_telegram_message(
-                    f"{mode_prefix()}❌ *Stop hit:* {ticker} @${step.close_price:.2f}\n"
-                    f"P&L: ${step.new_total_pnl:+,.2f} ({step.hold_days}d)"
-                )
+                # finalize_stop_fill already sends the close Telegram +
+                # logs stop_exit_committed audit event. No duplicate ping.
                 results.append({"ticker": ticker, "action": "stopped_out", "pnl": step.new_total_pnl})
                 continue
             # Alpaca still holds — re-run skipping the close branch.
