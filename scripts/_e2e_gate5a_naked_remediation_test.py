@@ -159,7 +159,7 @@ async def synth_gate5a_test():
                 raised = False
                 try:
                     await trade_stream._process_entry_fill(
-                        trade_dict, MockOrder(), wrapped_pool, "paper",
+                        trade_dict, MockOrder(), 100.5, 10, wrapped_pool, "paper",
                     )
                 except asyncpg.exceptions.AmbiguousParameterError as e:
                     raised = True
