@@ -84,7 +84,13 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # on stopped-out fallback — T1.3 will delegate that to finalize_stop_fill
     # in next session. Currently listed as legitimate until T1.3 ships.
     "stop_price":         {"entry_pipeline._skip", "order_manager.update_stop", "order_manager.check_fills", "live_tracker.update_open_positions_live"},
-    "hard_stop":          {"entry_pipeline._skip", "order_manager.check_fills"},
+    # hard_stop: SINGLE WRITER (entry_pipeline._skip INSERT only). Per Gate 3
+    # initial-stop modeling (2026-05-18) — hard_stop is the immutable
+    # risk-basis for R-expectancy calc, set once at INSERT, never updated.
+    # check_fills removed as a writer 2026-05-18 (previously wrote
+    # hard_stop = trade["stop_price"] which could corrupt initial basis
+    # if the polling backup ran after a same-tick trail update).
+    "hard_stop":          {"entry_pipeline._skip"},
     "stop_order_id":      {
         # T1.5a future-work: consolidate the 25 writers below into one
         # helper. Currently documented as the existing landscape.

@@ -332,13 +332,21 @@ async def check_fills() -> list[dict]:
             stop_order_id = alpaca.extract_stop_leg_id(order)
 
             async with pool.acquire() as conn:
+                # Gate 3 initial-stop modeling (2026-05-18): hard_stop is the
+                # IMMUTABLE initial-risk basis for R-expectancy calc — set
+                # ONCE at INSERT in entry_pipeline._skip from
+                # order_spec["stop_loss_price"], never updated thereafter.
+                # check_fills is the polling backup for entry fills; it
+                # MUST NOT write hard_stop or it can corrupt the initial
+                # risk basis if it runs after a same-tick trail update.
+                # stop_price (current/trailed) is still written here for
+                # consistency with INSERT value at the time of fill.
                 await conn.execute("""
                     UPDATE mi_live_trades SET
                         status = 'filled',
                         entry_price = $2,
                         entry_shares = $3,
                         remaining_shares = $3,
-                        hard_stop = $4,
                         stop_price = $4,
                         filled_at = NOW(),
                         stop_order_id = COALESCE($5, stop_order_id)

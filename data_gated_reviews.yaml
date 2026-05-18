@@ -1058,12 +1058,18 @@ reviews:
     earliest_review_date: 2026-05-22
     action_when_ready: |
       Compute R-expectancy on the most recent 10 closed paper trades
-      from the post-2026-05-12 cohort, excluding bug-attributable trades:
+      from the post-2026-05-12 cohort, excluding bug-attributable trades.
+
+      IMPORTANT (2026-05-18 update — gate3_initial_stop_modeling resolved):
+      risk_per_share uses `hard_stop` (immutable INSERT value) NOT
+      `stop_price` (current/trailed). Trail-to-breakeven would otherwise
+      collapse risk_per_share → 0 and break r_multiple.
 
         WITH recent AS (
           SELECT id, ticker, alert_date,
-                 entry_price, stop_price, total_pnl,
-                 (entry_price - stop_price) AS risk_per_share
+                 entry_price, hard_stop, stop_price, entry_shares, total_pnl,
+                 (entry_price - hard_stop) AS risk_per_share,
+                 ((entry_price - hard_stop) * entry_shares) AS initial_risk_dollars
           FROM mi_live_trades
           WHERE account_mode = 'paper'
             AND status = 'closed'
@@ -1076,7 +1082,8 @@ reviews:
           COUNT(*) AS n,
           SUM(CASE WHEN total_pnl > 0 THEN 1 ELSE 0 END) AS wins,
           ROUND(AVG(total_pnl)::numeric, 2) AS avg_pnl,
-          SUM(total_pnl) AS total_pnl
+          SUM(total_pnl) AS total_pnl,
+          ROUND(AVG(total_pnl / NULLIF(initial_risk_dollars, 0))::numeric, 2) AS avg_r
         FROM recent;
 
       Decision:
@@ -2683,8 +2690,63 @@ reviews:
          risk is initial_stop.
       6. Add to BACKLOG.md done.
       Origin: 2026-05-15 Track 4 methodology damage assessment.
-    status: pending
+    status: done
     added_on: 2026-05-15
+    closed_on: 2026-05-18
+    outcome: |
+      PIVOTED from Option A (add new initial_stop column) to Option B
+      (use existing hard_stop as immutable risk basis) per advisor 2026-05-18.
+
+      Discriminator query confirmed hard_stop is intact across the
+      methodology cohort:
+
+        signal_type | n  | min_risk | max_risk | zero_risk_count
+        ------------+----+----------+----------+----------------
+        9m_day2     |  2 |  $1.15   |  $3.90   |  0
+        magna53     | 13 | -$0.09   |  $7.68   |  0
+
+      The single negative (CRMD #137, -$0.09) is the incident trade
+      already excluded via pnl_attribution='incident_2026_05_14_naked_position'.
+      Across all real-methodology cohort trades, hard_stop reflects
+      the original ORB low (or prior_day_low for 9M Day 2) at entry —
+      exactly the initial-risk basis we need.
+
+      Option A would have added an `initial_stop` column with nearly-
+      identical semantics to hard_stop. That's an SSoT violation per
+      feedback_single_source_of_truth.md.
+
+      Changes shipped 2026-05-18:
+
+      1. Removed `hard_stop = $4` from check_fills UPDATE
+         (order_manager.py:341). check_fills now writes entry-side
+         values only (entry_price, entry_shares, remaining_shares,
+         stop_price, filled_at, stop_order_id). hard_stop is no longer
+         overwritten by the polling backup.
+
+      2. ALLOWED_WRITERS["hard_stop"] tightened to single writer
+         {entry_pipeline._skip} — INSERT only, immutable thereafter.
+         Gate 5 G now enforces this at deploy time.
+
+      3. Gate 3 review (paper_r_expectancy_validation) action_when_ready
+         SQL updated to compute risk_per_share = (entry_price - hard_stop)
+         instead of (entry_price - stop_price). Adds initial_risk_dollars
+         + avg_r columns for precise R-expectancy.
+
+      Backfill not needed — production data shows hard_stop is already
+      correct across all closed paper trades. The fix prevents future
+      corruption rather than reconciling past data.
+
+      Predicate note: the predicate
+      `ABS(entry_price - stop_price) < 0.01 AND closed_at >= '2026-05-12'`
+      still fires today (FTRE #72, SMCI #82 — both have trailed stops
+      that collapsed to entry). Under Option B, this predicate is no
+      longer a Gate 3 blocker because R-calc now reads hard_stop. The
+      predicate stops being meaningful for ongoing measurement; it was
+      the trigger to file this review.
+
+      Live-cutover impact: Gate 3 is now correctly computable on the
+      current cohort. composite live_cutover_decision review can
+      evaluate Gate 3 properly at 2026-05-22.
 
   - review_id: flag_detector_post_breakout_label
     title: "Flag detector mislabels post-breakout days as TIGHTENING"
