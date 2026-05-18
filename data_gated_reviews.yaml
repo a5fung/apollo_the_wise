@@ -636,13 +636,23 @@ reviews:
       2026-05-08, do the `unified_allocation_decided` audit events show
       the allocator's picks consistently match or beat the cron-order
       FCFS winners? If validated, flip Phase 1B (active submission).
+
+      **First evaluation 2026-05-18: deferred** — 6 days of telemetry
+      but allocator winners were frequently intercepted by downstream
+      filters (stop_too_wide, max_positions, ORB unfilled, faded_from_orb).
+      Inconclusive FCFS-vs-allocator comparison. Need ≥10 more days
+      of telemetry where allocator picks actually trade through to
+      outcomes. See action_when_ready outcome block for ledger.
+
+      Predicate threshold bumped 5 → 15 days to require enough
+      contested days with traded outcomes (not just decision events).
     predicate_sql: |
       SELECT COUNT(DISTINCT date_trunc('day', created_at AT TIME ZONE 'America/New_York'))
       FROM mi_audit_log
       WHERE event_type = 'unified_allocation_decided'
-        AND created_at > NOW() - INTERVAL '14 days'
-    threshold: 5
-    earliest_review_date: 2026-05-15
+        AND created_at > NOW() - INTERVAL '30 days'
+    threshold: 15
+    earliest_review_date: 2026-06-02
     action_when_ready: |
       Pull the audit events:
         SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
@@ -668,6 +678,36 @@ reviews:
         6. Backtest harness scripts/replay_unified_allocator.py.
       Plan: ~/.claude/plans/cross-strategy-ranking-spike.md
       "Code work order" steps 4-9.
+
+      First evaluation outcome 2026-05-18:
+        6 days of shadow telemetry (5/11-5/18). Per-day analysis:
+        - 5/11: 0 slots (cap saturated), 12 candidates lower-ranked
+        - 5/12: ZBRA winner; SKIPPED downstream ('ALPACA_LIVE_API_KEY'
+          outage day); inconclusive
+        - 5/13: AIP+EOSE winners; AIP skipped stop_too_wide,
+          EOSE cancelled ORB-unfilled
+        - 5/14: VSNT winner; SKIPPED block:max_positions 5/5;
+          CSCO (rank 2) entered via FCFS lost -$407;
+          KLAR (rank 7, non-winner) entered via FCFS lost -$914
+        - 5/15: GEMI winner; cancelled ORB-unfilled;
+          KLAR (rank 3, non-winner) entered via FCFS lost -$854
+        - 5/18: SEDG winner; skipped setup:faded_from_orb
+
+        ONE concrete signal of allocator value: 5/14 + 5/15 KLAR
+        entries (allocator non-winners) lost $1,768 cumulative.
+        FCFS allowed them through; allocator gating would have
+        blocked. But N=2 trades is not enough to validate.
+
+        Allocator winners frequently intercepted by downstream
+        filters before reaching ORB submission. The FCFS-vs-allocator
+        comparison requires picks that actually trade through to
+        outcomes. Current rate ~1/6 days. Need ≥10 more days for
+        statistically meaningful comparison.
+
+        DECISION: defer Phase 1B activation. Threshold bumped to
+        15 trading days, earliest review 2026-06-02. Per
+        feedback_sample_size_discipline: methodology changes need
+        N≥10 backtest evidence. We have N=2.
     status: pending
     added_on: 2026-05-08
 
