@@ -961,11 +961,12 @@ async def _stop_ack_timeout_watchdog_job():
                     ticker, qty, stop_target, account_mode=account_mode,
                 )
                 # Update the row so subsequent watchdog runs don't re-fire
-                async with pool.acquire() as conn2:
-                    await conn2.execute(
-                        "UPDATE mi_live_trades SET stop_order_id = $1 WHERE id = $2",
-                        fallback["id"], trade_id,
-                    )
+                from agents.market_intelligence.broker.order_manager import set_stop_order_id
+                await set_stop_order_id(
+                    trade_id, fallback["id"],
+                    reason="stop_ack_timeout",
+                    account_mode=account_mode,
+                )
                 await log_audit_event(
                     "stop_ack_timeout_remediated",
                     f"{ticker} #{trade_id}: stop-ACK timeout (filled_at "

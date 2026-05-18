@@ -928,11 +928,12 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         """, order_id, account_mode)
 
     if stop_trade:
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
-                stop_trade["id"],
-            )
+        from agents.market_intelligence.broker.order_manager import set_stop_order_id
+        await set_stop_order_id(
+            stop_trade["id"], None,
+            reason="cancel_or_reject_null",
+            account_mode=account_mode,
+        )
         if event_norm == "expired":
             await send_telegram_message(
                 f"{mode_prefix(account_mode)}ℹ️ *EOD stop expired (expected):* {symbol}\n"
@@ -985,11 +986,13 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     float(trade_row["stop_price"]),
                     account_mode=account_mode,
                 )
+                from agents.market_intelligence.broker.order_manager import set_stop_order_id
+                await set_stop_order_id(
+                    trade_row["id"], restored["id"],
+                    reason="cancel_or_reject_restored",
+                    account_mode=account_mode,
+                )
                 async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
-                        trade_row["id"], restored["id"],
-                    )
                     # Tag restored stop with purpose='stop_loss' so WS fill handler
                     # routes correctly even if stop_order_id later goes stale.
                     await conn.execute("""
@@ -1042,11 +1045,12 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     float(trade_row["stop_price"]),
                     account_mode=account_mode,
                 )
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
-                        trade_row["id"], restored["id"],
-                    )
+                from agents.market_intelligence.broker.order_manager import set_stop_order_id
+                await set_stop_order_id(
+                    trade_row["id"], restored["id"],
+                    reason="cancel_or_reject_restored",
+                    account_mode=account_mode,
+                )
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
                     f"Position still open ({int(trade_row['remaining_shares'])} sh). "

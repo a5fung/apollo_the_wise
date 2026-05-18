@@ -94,19 +94,18 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     "hard_stop":          {"entry_pipeline._skip"},
     "stop_order_id":      {
         # T1.5a (2026-05-18): set_stop_order_id helper is the single
-        # authorized writer for SOLO stop_order_id mutations. Old solo-write
-        # sites in order_manager refactored 2026-05-18 (part 1). Multi-column
-        # atomic closes (e.g. submit_entry, check_fills, finalize_*) stay
-        # inline and remain authorized writers. trade_stream + scheduler
-        # solo sites refactored in part 2.
-        "order_manager.set_stop_order_id",  # T1.5a helper
+        # authorized writer for SOLO stop_order_id mutations. All 11 solo
+        # call sites refactored 2026-05-18 (parts 1 + 2). Multi-column
+        # atomic closes (e.g. submit_entry, check_fills, finalize_*,
+        # attempt_day1_reentry, _sync_positions_for_mode close path,
+        # _process_entry_fill via COALESCE) stay inline and remain
+        # authorized writers — splitting them would lose atomicity.
+        "order_manager.set_stop_order_id",  # T1.5a helper — SOLO mutations
         "order_manager.submit_entry", "order_manager.check_fills",
         "order_manager.update_stop", "order_manager.attempt_day1_reentry",
         "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
         "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
-        "trade_stream._handle_cancel_or_reject",
-        "scheduler._stop_ack_timeout_watchdog_job",
     },
 
     # ── Exit lifecycle ─────────────────────────────────────────────────
