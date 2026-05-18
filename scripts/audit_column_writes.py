@@ -93,13 +93,17 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
     # if the polling backup ran after a same-tick trail update).
     "hard_stop":          {"entry_pipeline._skip"},
     "stop_order_id":      {
-        # T1.5a future-work: consolidate the writers below into one
-        # helper. T1.3 (2026-05-18) removed live_tracker.update_open_positions_live
-        # by delegating close path to finalize_stop_fill.
+        # T1.5a (2026-05-18): set_stop_order_id helper is the single
+        # authorized writer for SOLO stop_order_id mutations. Old solo-write
+        # sites in order_manager refactored 2026-05-18 (part 1). Multi-column
+        # atomic closes (e.g. submit_entry, check_fills, finalize_*) stay
+        # inline and remain authorized writers. trade_stream + scheduler
+        # solo sites refactored in part 2.
+        "order_manager.set_stop_order_id",  # T1.5a helper
         "order_manager.submit_entry", "order_manager.check_fills",
-        "order_manager.update_stop", "order_manager.execute_partial_exit",
-        "order_manager.attempt_day1_reentry", "order_manager.finalize_full_exit",
-        "order_manager.finalize_stop_fill", "order_manager._sync_positions_for_mode",
+        "order_manager.update_stop", "order_manager.attempt_day1_reentry",
+        "order_manager.finalize_full_exit", "order_manager.finalize_stop_fill",
+        "order_manager._sync_positions_for_mode",
         "trade_stream._process_entry_fill", "trade_stream._process_stop_fill",
         "trade_stream._handle_cancel_or_reject",
         "scheduler._stop_ack_timeout_watchdog_job",
