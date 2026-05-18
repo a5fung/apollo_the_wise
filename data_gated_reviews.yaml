@@ -3295,7 +3295,7 @@ reviews:
         AND s.adv_20 IS NOT NULL
         AND (s.adv_20 * s.close) >= 50000000;
     threshold: 10
-    earliest_review_date: 2026-07-01
+    earliest_review_date: 2026-06-15
     action_when_ready: |
       Pull the N≥10 cases. Compute 5d forward outcome for each.
       If <30% win rate, ship a `rel_volume ≥ 0.5x AND ADV ≥ $50M`
@@ -3309,44 +3309,67 @@ reviews:
     status: pending
     added_on: 2026-05-17
     notes_2026_05_18: |
-      INITIAL ANALYSIS RAN BUT FOUND UNRELIABLE METRIC. Predicate
-      threshold met (48 cases, well over 10), but the
-      `mi_ep_scan_outcomes.fwd_5d_pct` metric used in
-      action_when_ready measures `(close[t+5d] - close[t]) / close[t]`
-      — a CLOSE-TO-CLOSE drift signal, NOT an ORB-trade outcome.
+      INITIAL CLOSE-TO-CLOSE METRIC ANALYSIS WAS WRONG. Both cohort
+      and baseline scored 95-97% by `fwd_5d_pct` from `mi_ep_scan_outcomes`,
+      but that's a drift signal on already-gapped stocks in a rising
+      market — NOT an ORB-trade outcome. User caught the artifact.
 
-      Both the filtered cohort (97.3% wins) and the broader ALL-HIGH
-      cohort (95.5% wins, n=67/272) score similarly on this metric.
-      That tells us close-to-close drift on already-gapped stocks in
-      a rising market is positive by default — it tells us NOTHING
-      about whether the ORB trade succeeded.
+      RE-RAN WITH PROPER ENTRY-AWARE DATA (2026-05-18):
+      Joined cohort to `mi_live_trades` (entered + closed trades
+      with actual P&L) instead of close-to-close drift outcomes.
 
-      Honest evaluation requires entry-aware metrics:
-        - Did orb_high get hit (entry triggered)?
-        - Did orb_low get hit before any target (stopped out)?
-        - Per-trade R-multiple
+      Cohort: 53 large-cap rel_volume<0.5x HIGH alerts (90d)
+      Trade outcomes:
+        SKIPPED:    38 (block:* cap=16, window:* out-of-ORB=13, setup:*=9)
+        CANCELLED:   6 (ORB unfilled)
+        FILLED:      1 (BW #119 still open, partial_taken=TRUE, +$728)
+        CLOSED:      7 -- THE EVIDENCE SET
 
-      Outcome data we need is in `mi_ep_missed_outcomes.max_high_5d`
-      and `mi_live_trades.total_pnl / hard_stop` for actually-traded
-      names. Need to re-run analysis with proper entry+stop modeling.
+      Closed-trade outcomes (the 7 that passed ALL existing filters):
+        Wins:        0 / 7 (0% win rate)
+        Avg P&L:    -$650 / trade
+        Total loss: -$4,552 (74% of all paper magna53 closed losses
+                              in the 90d window: -$6,152 total)
 
-      DO NOT CLOSE this review until the analysis uses proper
-      ORB-trade-outcome data. Updated action_when_ready below
-      reflects the corrected evaluation approach.
+      Baseline comparison (ALL HIGH magna53 paper closed, 90d):
+        n:            11 closed
+        wins:         2 (18.2% win rate)
+        avg P&L:    -$559
 
-      Revised action_when_ready (2026-05-18):
-        1. For the N>=10 large-cap-low-rel_volume cohort, join to
-           mi_ep_missed_outcomes for ret_5d + max_high_5d (entry-
-           sensitive, gap-day-open basis).
-        2. Compute the proper "trade outcome" approximation:
-             - "would have hit orb_high target": max_high_5d > 0
-               (the day-of high)
-             - "win" approximated via max_high_5d > orb_high*1.005
-               (entry buffer) AND ret_5d trajectory not reversed
-        3. Compare proper-outcome win rates: cohort vs ALL HIGH baseline.
-        4. If cohort proper-outcome win rate > baseline by ≥10pp:
-           keep current (don't filter). If cohort ≤ baseline - 10pp:
-           SHIP filter. Between: more data.
+      Residual subset (rel_volume >= 0.5x):
+        n:            4 (= 11 baseline - 7 cohort)
+        wins:         2 (50% win rate)
+        avg P&L:    -$400
+
+      DIRECTIONAL EVIDENCE STRONGLY SUPPORTS THE FILTER:
+        - 0/7 cohort vs 2/4 outside cohort
+        - Cohort represents 64% of closed HIGH population and 74%
+          of losses
+        - Cohort that ENTERED passed all existing filters
+          (stop_too_wide, max_positions, fade_guard, etc.) — so
+          rel_volume<0.5x adds independent signal those filters miss
+
+      BUT SAMPLE SIZE BELOW THRESHOLD: N=7 < N>=10 per
+      `feedback_sample_size_discipline`. Need ~3 more closed
+      trades in cohort to clear the discipline bar.
+
+      DECISION: defer ship. Strong directional signal but not yet
+      enough N. Review reopens with same predicate — re-run when
+      cohort closed count reaches 10.
+
+      Action_when_ready (updated 2026-05-18):
+        1. Re-run the cohort analysis when n_closed >= 10
+           (currently 7; add ~3 more in next 30-60 days).
+        2. If win rate stays at 0-30% with N>=10 -> SHIP filter
+           (rel_volume >= 0.5x AND ADV >= $50M for HIGH entries).
+        3. If win rate trends to 30-50% -> defer for more evidence.
+        4. If win rate >= 50% -> the early N=7 sample was unlucky;
+           don't ship.
+        5. Ship as SHADOW (audit-only, env flag
+           LARGE_CAP_RELVOL_FLOOR_SHADOW_ENABLED) if the signal
+           strengthens at N=10-15 but evidence is borderline.
+      Earliest review bumped to 2026-06-15 (allow time for ~3
+      more closed cohort trades).
 
 
   - review_id: gate_5g_historical_coverage
