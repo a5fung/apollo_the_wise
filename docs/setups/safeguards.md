@@ -103,6 +103,26 @@ ORDER BY s.snapshot_date DESC;
 
 ## Change log (newest first)
 
+### 2026-05-18 — Stop-ACK timeout watchdog: first real production catch (GOOGL #56)
+
+**Field validation**: the stop-ACK timeout watchdog shipped 2026-05-17 (commit `8e8f6f3`) fired its first real case at 09:00:00 ET Monday 2026-05-18.
+
+**Timeline** (UTC times in audit log → ET):
+- 13:00:00 UTC (09:00 ET) — Watchdog scan detected GOOGL #56: `status='filled' AND filled_at NOT NULL AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'`. Position had no broker stop entering Monday open.
+- 13:00:00 UTC — `stop_ack_timeout_remediated` audit event. Fallback stop-market placed at `trade['orb_low']` = $379.43, order `b47256af-a252-4df9-865c-776e52fde847`.
+- (Implicit) 09:35 ET — `morning_stop_refresh` ran. Read `trade["stop_price"]=$394.497` (the BE-level trailed stop from prior Day-2 management), called `update_stop()` to re-establish proper methodology stop above the conservative fallback.
+- 20:45:00 UTC (16:45 ET) — Day-2 `update_open_positions_live` ran. `stop_update_started: $394.497 → $395.87` (slight SMA-trail bump). New stop `a16b3bbe-b105-4524-8800-bec219ad7cb6`.
+
+**Why the stop_order_id was NULL Monday morning**: most likely Friday's DAY-TIF stop expired at 4:00 PM ET close (Alpaca DAY orders don't carry over weekends), and the weekend orphan-remediation didn't re-place — the normal 9:35 ET `morning_stop_refresh` would have re-established it, but for the 35 minutes between 9:00-9:35 ET the position would have been naked at broker. The 9:00 ET watchdog tick caught it.
+
+**Concrete evidence**: position protected at $379.43 from 9:00 ET (well before market open at 9:30) instead of unprotected until 9:35 — 35 minutes of naked exposure eliminated. If GOOGL had gapped down hard at open, the methodology stop would have been re-established at the right level by 9:35 OR the fallback would have already stopped the position out. Either path is safe; no path leaves the position naked through market open.
+
+**Operational outcome**: the watchdog did exactly what it was designed for. The MRAM-class silent-failure gate is now field-validated less than 48 hours after ship.
+
+**Followup filed** (BACKLOG): investigate WHY GOOGL's stop_order_id went NULL between Friday close and Monday open — was it (a) Alpaca DAY TIF expiration as theorized, (b) weekend maintenance, or (c) some race with the 5:00 PM data-pull pipeline. Understanding the trigger informs whether to add a Friday-close stop-renewal job OR confirm the watchdog is sufficient on its own.
+
+---
+
 ### 2026-05-17 — Trade-state ownership refactor (T1.1/T1.2/T1.4) + Gate 5 G (column-write authority preflight)
 
 **Trigger**: Five trade-state corruption bugs in May (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to the same column with no ownership rule, last-write-wins by accident. Boot-time prepare validation (Gate 5 B, shipped 2026-05-14) catches type errors but not semantic-overwrite. Friday's Phase 1 audit (`docs/architecture/trade-state-ownership.md`) enumerated every writer per column + drafted ownership rules; today's Phase 2 work refactors three hot-path bug surfaces + ships the static-analysis gate.

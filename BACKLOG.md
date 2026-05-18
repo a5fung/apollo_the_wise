@@ -149,6 +149,10 @@ The full EP rollout spans Phase 1-9. Phase 1 (diagnostic) + Phase 2 (immediate s
 - [ ] **Phase 8** — Catalyst extraction pipeline fix (8 mislabeled names + CRML date). Investigation depth unknown; runs parallel.
 - [ ] **Phase 9** — First quarterly catalyst rubric review (Phase 6 ship + 90d). Verification: `catalyst_rubric_quarterly` review.
 
+### Surfaced 2026-05-18 (Monday market open)
+
+- [ ] **Investigate GOOGL stop_order_id NULL trigger** (2026-05-18) — Watchdog catch at 9:00 ET Monday confirmed GOOGL #56 entered Monday with no broker stop. Root-cause hypothesis: Friday DAY-TIF stop expired at 4 PM Friday close, weekend orphan-remediation didn't re-place. Investigation: (a) check Alpaca order history for the stop that existed at GOOGL Friday close — when did it expire? (b) check `_sync_positions_for_mode` Path C orphan remediation logs for Friday EOD / Saturday / Sunday firings. If pattern is "DAY TIF expires + no weekend re-place + Monday morning watchdog catch", consider whether to (i) switch stop TIF to GTC, or (ii) add Friday-EOD stop-renewal job, or (iii) accept the watchdog as sufficient. ~30 min investigation. Output: docs/setups/safeguards.md change log entry with root cause + chosen mitigation.
+
 ### Surfaced 2026-05-17 PM (weekly review + Phase 7)
 
 - [ ] **Track 1 T1.3 — live_tracker close path delegation** (2026-05-17, deferred from Track 1 ship) — `live_tracker.update_open_positions_live` line 537 close path writes `status='closed' / exits / remaining_shares=0 / stop_price=NULL / total_pnl / hold_days / closed_at / stop_order_id=NULL / running_closes`. This is the fallback path when state machine says stopped_out AND Alpaca confirms gone. WS-driven `finalize_stop_fill` is the authorized writer; live_tracker is the backup when WS missed. Refactor: delegate to `finalize_stop_fill` instead of inline UPDATE. Risk: if removed wrong and WS handler also misses, trade row stays 'filled' indefinitely. ~45 min focused work. Earliest next session.
