@@ -3501,3 +3501,76 @@ reviews:
       hard_stop <= stop_price, etc.). Defensive belt-and-suspenders.
       Could become Gate 5 H if KLAR-class bugs recur. Not blocking
       live cutover.
+
+  - review_id: gate5h_value_invariant_proposal
+    title: "Gate 5 H: value-invariant preflight for sensitive trade-state columns"
+    question: |
+      Gate 5 G column-write authority preflight (shipped 2026-05-17) closes
+      the multi-writer ownership class. It does NOT catch the KLAR class:
+      WRONG VALUE written by an AUTHORIZED writer. KLAR bug: pre-d6fa74c
+      trade_stream._process_entry_fill wrote `trade["orb_low"]` to
+      stop_price for 9M Day 2 (correct shape would be `trade["stop_price"]`
+      = prior_day_low). Gate 5 G would have passed (entry_fill was an
+      authorized writer at the time); the bug was VALUE not OWNERSHIP.
+
+      Proposed: a new preflight gate that asserts row-state invariants on
+      every mi_live_trades INSERT/UPDATE-prepared SQL. Examples:
+        - stop_price > 0 (never zero/negative)
+        - stop_price < entry_price for long positions (stop below entry)
+        - hard_stop <= stop_price always (trail moves up, never below floor)
+        - remaining_shares <= entry_shares (can't exceed initial)
+        - remaining_shares >= 0
+        - status IN ('order_placed', 'submitting', 'filling', 'filled',
+                     'closed', 'cancelled', 'skipped')
+
+      Two implementation paths:
+        A) Postgres CHECK constraints on the table — declarative,
+           runtime-enforced, fails INSERT/UPDATE if violated. Tightest
+           guarantee but might break existing paths that legitimately
+           transition through invalid intermediate states.
+        B) Application-level invariant checker — runs as preflight before
+           commit, can have escape hatches. Less strict but more flexible.
+
+      Defensive belt-and-suspenders. Not blocking live cutover today.
+      Ship when the next KLAR-class wrong-value-by-authorized-writer bug
+      surfaces (predicate fires the review).
+    predicate_sql: |
+      -- Predicate fires when a KLAR-class wrong-value bug recurs.
+      -- Definition: a methodology-wrong stop_price exists on a closed
+      -- trade where (a) entry_price > stop_price was always required for
+      -- long, and (b) hard_stop > stop_price (a real ordering violation,
+      -- not just trail-to-BE).
+      --
+      -- Today's data: zero such cases (the KLAR fix d6fa74c reconciled
+      -- everything 5/15). When predicate fires, ship Gate 5 H.
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE status = 'closed'
+        AND closed_at >= '2026-05-15'
+        AND stop_price IS NOT NULL AND hard_stop IS NOT NULL
+        AND entry_price IS NOT NULL
+        AND (stop_price <= 0
+             OR stop_price > entry_price
+             OR hard_stop > stop_price + 0.01)  -- 1c tolerance for trail rounding
+        AND pnl_attribution IS NULL;
+    threshold: 1
+    earliest_review_date: 2026-05-19
+    action_when_ready: |
+      Predicate fires when ≥1 trade closed since the KLAR fix shows a
+      stop_price ordering violation (the bug class Gate 5 G can't catch).
+
+      When fires:
+        1. Investigate the offending trade: what code path wrote the wrong
+           value? Is it an authorized writer (Gate 5 G allowed) writing
+           wrong data, or an unauthorized writer slipping through?
+        2. If authorized writer with wrong value → Gate 5 H is needed.
+           Choose implementation path A (Postgres CHECK) or B (app-level
+           invariant) based on the specific column + transition shape.
+        3. If unauthorized writer → tighten ALLOWED_WRITERS instead.
+        4. Ship the fix + corresponding test (similar to
+           tests/test_db_update_prepare.py for Gate 5 B).
+
+      Until fires: monitor via daily L1 anomaly scan. Predicate query is
+      cheap; could be added to audit_invariants.py as
+      `check_stop_price_ordering` for proactive detection (vs reactive).
+    status: pending
+    added_on: 2026-05-18
