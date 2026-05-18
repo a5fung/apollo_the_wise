@@ -712,6 +712,57 @@ async def get_pending_exit_qty(trade_id: int) -> int:
     return int(held or 0)
 
 
+async def set_stop_order_id(
+    trade_id: int,
+    new_id: str | None,
+    *,
+    reason: str,
+    account_mode: str,
+) -> None:
+    """Single authorized writer for mi_live_trades.stop_order_id (T1.5a).
+
+    Used for SOLO stop_order_id mutations: cycling stop orders
+    (cancel old + place new), nulling on failure (orphan remediation
+    triggers), recovery from cancel/reject events, and watchdog
+    fallback placements.
+
+    Multi-column atomic closes (e.g. status='closed', stop_order_id=NULL,
+    closed_at=NOW()) stay inline at their respective call sites — splitting
+    them via this helper would lose atomicity.
+
+    `reason` taxonomy (used in audit event for tracing):
+      - 'stop_update_succeeded'    update_stop trail succeeded
+      - 'stop_update_failed'       update_stop retry failed → null
+      - 'partial_replacement'      execute_partial_exit replaced stop
+      - 'partial_naked'            execute_partial_exit failed → null
+      - 'partial_rollback'         execute_partial_exit rollback stop
+      - 'partial_rollback_failed'  execute_partial_exit both failed → null
+      - 'sync_stale_stop'          sync_positions found stale broker ID
+      - 'sync_remediation'         sync_positions placed remediation stop
+      - 'cancel_or_reject_null'    trade_stream cleared on cancel/reject
+      - 'cancel_or_reject_restored' trade_stream restored stop after cancel
+      - 'stop_ack_timeout'         scheduler watchdog fallback
+
+    Emits `stop_order_id_changed` audit event with full context.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE mi_live_trades SET stop_order_id = $1 WHERE id = $2",
+            new_id, trade_id,
+        )
+    await log_audit_event(
+        "stop_order_id_changed",
+        f"trade #{trade_id} [{account_mode}]: stop_order_id={new_id or 'NULL'} (reason={reason})",
+        json.dumps({
+            "trade_id": trade_id,
+            "account_mode": account_mode,
+            "new_id": new_id,
+            "reason": reason,
+        }),
+    )
+
+
 async def update_stop(trade_id: int, new_stop_price: float) -> bool:
     """Cancel old stop order and place new one at updated price.
 
@@ -851,11 +902,11 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
             # Null stop_order_id so sync_positions Path C (4:05 PM + 9:00 PM)
             # can detect the orphan and remediate. Leaving the stale ID in place
             # silently masks the naked state and blocks Path C's orphan check.
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
-                    trade_id,
-                )
+            await set_stop_order_id(
+                trade_id, None,
+                reason="stop_update_failed",
+                account_mode=account_mode,
+            )
             await log_audit_event(
                 "stop_update_failed",
                 f"{ticker}: retry also failed — position naked, {type(e2).__name__}",
@@ -1032,11 +1083,12 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             )
             new_stop_id = new_stop_order["id"]
             # Persist immediately — if we crash after this, sync_positions sees correct qty.
+            await set_stop_order_id(
+                trade_id, new_stop_id,
+                reason="partial_replacement",
+                account_mode=account_mode,
+            )
             async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
-                    trade_id, new_stop_id,
-                )
                 await conn.execute("""
                     INSERT INTO mi_live_orders
                         (trade_id, alpaca_order_id, ticker, side, order_type, qty,
@@ -1064,11 +1116,11 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
             # Null stop_order_id (still pointing to the now-cancelled old_stop_id)
             # so sync_positions Path C can detect the orphan and remediate.
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
-                    trade_id,
-                )
+            await set_stop_order_id(
+                trade_id, None,
+                reason="partial_naked",
+                account_mode=account_mode,
+            )
             await log_audit_event(
                 "partial_exit_aborted",
                 f"{ticker}: replacement stop failed — position naked, {type(e).__name__}",
@@ -1145,11 +1197,12 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
                 ticker, full_remaining, float(stop_price),
                 account_mode=account_mode, client_order_id=coid_rollback,
             )
+            await set_stop_order_id(
+                trade_id, rollback["id"],
+                reason="partial_rollback",
+                account_mode=account_mode,
+            )
             async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
-                    trade_id, rollback["id"],
-                )
                 await conn.execute("""
                     INSERT INTO mi_live_orders
                         (trade_id, alpaca_order_id, ticker, side, order_type, qty,
@@ -1180,11 +1233,11 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             logger.error(f"Partial exit rollback ALSO failed for {ticker}: {e2}")
             # new_stop_id was just cancelled; rollback didn't place anything.
             # Null stop_order_id so sync_positions Path C remediates.
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
-                    trade_id,
-                )
+            await set_stop_order_id(
+                trade_id, None,
+                reason="partial_rollback_failed",
+                account_mode=account_mode,
+            )
             await log_audit_event(
                 "partial_exit_rollback_failed",
                 f"{ticker}: CRITICAL — sell failed AND rollback failed, position naked",
@@ -1820,11 +1873,11 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 continue
             # Confirmed dead: clear stale ID so remediation records a clean
             # new stop_order_id and future runs see a single source of truth.
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = NULL WHERE id = $1",
-                    trade["id"],
-                )
+            await set_stop_order_id(
+                trade["id"], None,
+                reason="sync_stale_stop",
+                account_mode=account_mode,
+            )
             msg = (
                 f"⚠️ Stale stop {ticker}: {existing_stop_id[:8]} status="
                 f"{order_status} — clearing & remediating"
@@ -1887,11 +1940,11 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                 if attempt < 3:
                     await asyncio.sleep(2 ** attempt)  # 2s, 4s
         if new_order:
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "UPDATE mi_live_trades SET stop_order_id = $2 WHERE id = $1",
-                    trade["id"], new_order["id"],
-                )
+            await set_stop_order_id(
+                trade["id"], new_order["id"],
+                reason="sync_remediation",
+                account_mode=account_mode,
+            )
             msg = f"🛡 Orphaned stop remediated: {ticker} qty={qty:.0f} stop=${stop:.2f}"
             discrepancies.append(msg)
             logger.warning(f"sync_positions: placed remediation stop for {ticker} trade_id={trade['id']} stop={stop:.2f}")
