@@ -121,6 +121,24 @@ ORDER BY s.snapshot_date DESC;
 
 **Followup filed** (BACKLOG): investigate WHY GOOGL's stop_order_id went NULL between Friday close and Monday open — was it (a) Alpaca DAY TIF expiration as theorized, (b) weekend maintenance, or (c) some race with the 5:00 PM data-pull pipeline. Understanding the trigger informs whether to add a Friday-close stop-renewal job OR confirm the watchdog is sufficient on its own.
 
+**Followup outcome (2026-05-18 investigation)**: Stops are placed via `place_stop_order` with `TimeInForce.GTC`, NOT DAY — so Friday close didn't expire d3b1850f. Audit log shows:
+- Fri 16:45 ET: `stop_updated` placed d3b1850f at $394.50
+- Fri 21:00 ET: `evening_position_backstop` ran sync_positions — quiet (stop ACTIVE)
+- Sat/Sun: no scheduled jobs (mon-fri only)
+- **14 container restarts** Sat 5:15 PM ET → Sun 12:11 PM ET (Track 1 deploy cycle)
+- Mon 09:00 ET: watchdog catches stop_order_id NULL
+
+Most-likely cause: during one of the Saturday restarts, Alpaca's WS dispatched a backlogged cancel/reject/expired event for d3b1850f. Pre-T1.5a (today), `trade_stream._handle_cancel_or_reject` nulled stop_order_id via inline `UPDATE mi_live_trades SET stop_order_id = NULL` WITHOUT any `log_audit_event` call — silent state mutation. That's why no audit trail.
+
+**Going forward**: T1.5a's `set_stop_order_id` helper emits `stop_order_id_changed` audit event with `reason='cancel_or_reject_null'` for exactly this code path. If this recurs, full timeline will be in audit log.
+
+**Verdict**: defense in depth sufficient. No additional code change needed.
+1. Trigger (silent WS cancel during restart) — was silent pre-T1.5a, NOW audited
+2. Watchdog catches NULL Monday 09:00 — already working
+3. morning_stop_refresh re-establishes proper stop at 09:35 — already working
+
+Closes the followup. Three-layer protection is in place.
+
 ---
 
 ### 2026-05-17 — Trade-state ownership refactor (T1.1/T1.2/T1.4) + Gate 5 G (column-write authority preflight)

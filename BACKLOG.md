@@ -151,7 +151,7 @@ The full EP rollout spans Phase 1-9. Phase 1 (diagnostic) + Phase 2 (immediate s
 
 ### Surfaced 2026-05-18 (Monday market open)
 
-- [ ] **Investigate GOOGL stop_order_id NULL trigger** (2026-05-18) — Watchdog catch at 9:00 ET Monday confirmed GOOGL #56 entered Monday with no broker stop. Root-cause hypothesis: Friday DAY-TIF stop expired at 4 PM Friday close, weekend orphan-remediation didn't re-place. Investigation: (a) check Alpaca order history for the stop that existed at GOOGL Friday close — when did it expire? (b) check `_sync_positions_for_mode` Path C orphan remediation logs for Friday EOD / Saturday / Sunday firings. If pattern is "DAY TIF expires + no weekend re-place + Monday morning watchdog catch", consider whether to (i) switch stop TIF to GTC, or (ii) add Friday-EOD stop-renewal job, or (iii) accept the watchdog as sufficient. ~30 min investigation. Output: docs/setups/safeguards.md change log entry with root cause + chosen mitigation.
+- [x] **Investigate GOOGL stop_order_id NULL trigger** (2026-05-18) ✅ RESOLVED — Stops are GTC (not DAY); Friday expiration ruled out. Most likely cause: during Saturday's 14 Track 1 container restarts, Alpaca WS dispatched a backlogged cancel/reject/expired event for d3b1850f. Pre-T1.5a `_handle_cancel_or_reject` nulled stop_order_id via inline SQL UPDATE without any audit log — silent state mutation. T1.5a (today) closes the gap: future occurrences will emit `stop_order_id_changed` audit event with `reason='cancel_or_reject_null'`. Defense in depth (watchdog + morning_stop_refresh) sufficient. No additional code change. See docs/setups/safeguards.md change log for full timeline.
 
 ### Surfaced 2026-05-17 PM (weekly review + Phase 7)
 
