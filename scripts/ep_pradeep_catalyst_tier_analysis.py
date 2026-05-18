@@ -120,11 +120,14 @@ async def main():
                   AND a.score_tier = 'HIGH'
             )
             SELECT ep.*,
-                   o.ret_5d, o.max_high_5d,
-                   o.ret_20d, o.max_high_20d
+                   o.fwd_5d_pct / 100.0 AS ret_5d,
+                   o.fwd_10d_pct / 100.0 AS ret_10d,
+                   m.ret_20d, m.max_high_5d
             FROM ep
             LEFT JOIN mi_ep_scan_outcomes o
-              ON o.ticker = ep.ticker AND o.alert_date = ep.alert_date
+              ON o.ticker = ep.ticker AND o.scan_date = ep.alert_date
+            LEFT JOIN mi_ep_missed_outcomes m
+              ON m.ticker = ep.ticker AND m.alert_date = ep.alert_date
             ORDER BY ep.alert_date DESC
         """)
 
