@@ -353,8 +353,56 @@ async def get_fmp_analyst_ratings(ticker: str) -> list[dict]:
         return []
 
 
-async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
-    """Recent news via yfinance."""
+async def get_fmp_news(
+    ticker: str,
+    limit: int = 5,
+    *,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+) -> list[dict]:
+    """Stock news via FMP `/stable/news/stock` endpoint.
+
+    Supports date-windowed historical lookup via `from_date`/`to_date`
+    (FMP's `from`/`to` query params, YYYY-MM-DD). Default = latest.
+
+    yfinance fallback retained for resilience if FMP errors — yfinance
+    has no date filter, so historical callers should treat the fallback
+    as degraded.
+    """
+    api_key = os.environ.get("FMP_API_KEY", "")
+    if api_key:
+        try:
+            params: dict[str, Any] = {
+                "symbols": ticker,
+                "limit": limit,
+                "apikey": api_key,
+            }
+            if from_date is not None:
+                params["from"] = from_date.isoformat()
+            if to_date is not None:
+                params["to"] = to_date.isoformat()
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(
+                    "https://financialmodelingprep.com/stable/news/stock",
+                    params=params,
+                )
+                r.raise_for_status()
+                data = r.json()
+            if isinstance(data, list) and data:
+                return [
+                    {
+                        "title": n.get("title", "") or "",
+                        "text": n.get("text", "") or n.get("content", "") or "",
+                        "publishedDate": n.get("publishedDate", "") or "",
+                        "site": n.get("site", "") or n.get("publisher", "") or "",
+                    }
+                    for n in data[:limit]
+                ]
+        except Exception as e:
+            logger.warning(f"FMP news failed for {ticker} ({from_date}..{to_date}): {e}")
+            # fall through to yfinance fallback
+
+    # yfinance fallback (degraded — no date filter)
     try:
         import yfinance as yf
         loop = asyncio.get_event_loop()
@@ -366,7 +414,7 @@ async def get_fmp_news(ticker: str, limit: int = 5) -> list[dict]:
                  "text":  n.get("content", {}).get("summary", "")}
                 for n in news[:limit]]
     except Exception as e:
-        logger.warning(f"yfinance news failed for {ticker}: {e}")
+        logger.warning(f"yfinance news fallback failed for {ticker}: {e}")
         return []
 
 

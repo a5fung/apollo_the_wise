@@ -4,21 +4,21 @@ Polygon news (on_or_before=alert_date).
 Validates that runtime extraction + rubric scoring reproduces the
 weekend operator labels for NBIS/CSCO/KLAR/TRT/ONDS/CPA.
 
-DEGRADED EXTRACTION CAVEAT
---------------------------
+PARTIALLY DEGRADED EXTRACTION CAVEAT
+------------------------------------
 Perplexity cannot time-travel. This script passes perplexity_text=None
-to extract_earnings_metrics, so extraction relies solely on:
+to extract_earnings_metrics, so extraction relies on:
   - Polygon news (historical, gated by on_or_before)
-  - FMP news (current — degraded for older alerts)
+  - FMP news (historical, gated by from_date/to_date — 2026-05-19 fix)
   - yfinance (current — fine for q1+/historical, but q0 may be stale
     if quarter changed since alert_date)
 
-Result is intentionally "less rich" than live runtime, but exercises
-the same code path on real ticker/date pairs. Use this for code-path
-sanity + edge-case surfacing, NOT for gate-threshold calibration.
-
-Forward validation (gate calibration) comes from operator feedback on
-live alerts over 2-3 weeks.
+Polygon + FMP both cover the press-release window, so extraction is
+substantially less degraded than the first B5 run (pre FMP date fix).
+Still no Perplexity synthesis, so reasoning depth is lower than live
+runtime. Use this for code-path sanity + better calibration evidence
+than the v1 pass, but forward operator-feedback remains the canonical
+gate-threshold validator.
 
 Run: docker exec apollo-market python -m scripts._b5_historical_fixtures
 """
@@ -45,7 +45,13 @@ FIXTURES = [
 
 
 async def score_one(ticker: str, alert_date: date) -> dict:
-    fmp_news = await get_fmp_news(ticker, limit=5)
+    # FMP date-windowed: 7d window ending on alert_date (catalyst day inclusive)
+    from datetime import timedelta as _td
+    fmp_news = await get_fmp_news(
+        ticker, limit=10,
+        from_date=alert_date - _td(days=7),
+        to_date=alert_date,
+    )
     extracted = await extract_earnings_metrics(
         ticker, alert_date,
         claude_analysis=None,
@@ -54,7 +60,7 @@ async def score_one(ticker: str, alert_date: date) -> dict:
         news_on_or_before=alert_date,
     )
     rubric = score_ep_with_rubric(ticker, extracted, alert_date)
-    return {"extracted": extracted, "rubric": rubric}
+    return {"extracted": extracted, "rubric": rubric, "fmp_n": len(fmp_news)}
 
 
 async def main():
@@ -77,13 +83,14 @@ async def main():
 
         rubric = result["rubric"]
         extracted = result["extracted"]
+        fmp_n = result.get("fmp_n", 0)
+        polygon_n = extracted.get("_polygon_news_count", 0)
         if rubric is None:
             q_rev = "(no q_rev)"
             extraction_quality = extracted.get("extraction_quality", "?")
-            polygon_n = extracted.get("_polygon_news_count", 0)
             print(f"{ticker:<6} {alert_date} {expected:<16} {q_rev:<12} "
                   f"(not scored)        -      safety_net  "
-                  f"[xq={extraction_quality}, polygon_n={polygon_n}]")
+                  f"[xq={extraction_quality}, polygon_n={polygon_n}, fmp_n={fmp_n}]")
             not_scored += 1
             continue
 
@@ -96,7 +103,8 @@ async def main():
         else:
             diffs += 1
         comp_str = f"{comp:>5.1f}/39" if comp is not None else "(none)/39"
-        print(f"{ticker:<6} {alert_date} {expected:<16} {comp_str:<12} {label:<18} {match:<6} {verdict:<10}")
+        print(f"{ticker:<6} {alert_date} {expected:<16} {comp_str:<12} {label:<18} {match:<6} {verdict:<10} "
+              f"[polygon_n={polygon_n}, fmp_n={fmp_n}]")
 
     print("-" * 95)
     print(f"Summary: {matches} match, {diffs} diff, {not_scored} not_scored "

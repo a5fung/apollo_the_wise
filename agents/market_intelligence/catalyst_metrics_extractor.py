@@ -187,8 +187,11 @@ async def extract_earnings_metrics(
 
     `news_on_or_before` constrains the Polygon news window for historical
     re-extraction (fixture re-validation, backtests). Default None = today.
-    Perplexity has no time-travel; callers doing historical work should
-    pass perplexity_text=None and accept degraded extraction quality.
+    FMP also supports date filtering — callers doing historical work should
+    pass a date-windowed `fmp_news` (via get_fmp_news with from_date/to_date).
+    Perplexity has no time-travel; historical callers should pass
+    perplexity_text=None and accept somewhat degraded extraction (still has
+    Polygon + FMP press-release coverage).
 
     Returns the extraction dict (per schema in _EXTRACTION_PROMPT) plus
     `_raw_corpus` for audit traceability. If extraction completely fails,
