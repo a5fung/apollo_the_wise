@@ -177,11 +177,13 @@ Closes the followup. Three-layer protection is in place.
 
 ---
 
-### 2026-05-17 — Stop-ACK timeout watchdog (MRAM-class silent-failure gate)
+### 2026-05-17 — Stop-ACK timeout watchdog (silent-failure gate, sibling of Gate 5 A)
 
-**Trigger**: Weekly review 2026-05-17 surfaced the MRAM #120 (2026-05-11) incident — entry filled cleanly, `stop_order_id` persisted as NULL, position closed via WS-only path with phantom double-exit (logged -$2,199 vs actual -$1,100). Gate 5 A naked-position remediation (shipped 2026-05-14 from CRMD postmortem) handles the EXCEPTION case (entry-fill UPDATE raises) but does NOT handle the SILENT case (entry UPDATE succeeds, but OTO bracket child stop-leg never ACKs from Alpaca or its acceptance event is missed by WS handler). Weekly review proposed a 30-sec stop-ACK timeout gate; per investigation, it was a DIFFERENT class from Gate 5 A and was never built — this entry closes that gap.
+**Trigger**: Weekly review 2026-05-17 proposed a 30-sec stop-ACK timeout gate to close the gap that Gate 5 A doesn't cover. Gate 5 A (naked-position remediation, shipped 2026-05-14 from CRMD postmortem) handles the EXCEPTION case (entry-fill UPDATE raises). The silent case — entry UPDATE succeeds cleanly, but OTO bracket child stop-leg never ACKs from Alpaca OR its acceptance event is missed by WS handler — was not covered by any gate. This entry closes that gap.
 
-**Evidence**: MRAM #120 has `stop_order_id IS NULL` with `status='closed'` and `filled_at='2026-05-11 13:50:17'` confirmed in production. Direct production evidence of the failure class. Weekly review framing: 40% of losers stopped in <10 minutes with no mechanical floor.
+**Note (2026-05-18 correction)**: the weekly review framed MRAM #120 (2026-05-11) as the trigger incident citing "phantom double-exit" with stop_order_id persisting NULL. That framing was incorrect — broker order history (`mi_live_orders` for trade_id=120) shows MRAM had stop `b59f5633` placed cleanly + filled, plus a legitimate Day-1 re-entry (entry #2 `f7d0cad4` filled at 13:50). The -$2,199 was real damage from two real stop-outs on a re-entered trade, not phantom. See BACKLOG entry 2026-05-18 + commit `de01238` for the revert. The watchdog's design rationale (silent vs exception class) stands; the specific MRAM justification was wrong.
+
+**Evidence (revised)**: the field-validation evidence is today's GOOGL #56 catch (2026-05-18 09:00 ET). GOOGL had its broker stop silently nulled some time between Friday 4:45 PM ET (last `stop_updated` audit event) and Monday 9:00 AM ET (watchdog firing). Most likely cause: WS cancel/reject event for stop `d3b1850f` during Saturday's 14 Track 1 container restarts. Pre-T1.5a `_handle_cancel_or_reject` nulled stop_order_id without audit logging — silent state mutation. Watchdog detected the NULL state at 9:00 ET, placed fallback at orb_low ($379.43). morning_stop_refresh re-established proper trail at 9:35 ET. Position never naked through market open.
 
 **Anticipated effect**: new scheduler job `_stop_ack_timeout_watchdog_job` runs every 30s during market hours (9:00-15:30 ET, mon-fri). Predicate: `status='filled' AND filled_at IS NOT NULL AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'`. On detection: submits fallback stop-market at `trade['orb_low']` (matches Gate 5 A pattern), UPDATEs `mi_live_trades.stop_order_id` with fallback order ID, emits `stop_ack_timeout_remediated` audit event, sends "🛡 STOP-ACK TIMEOUT — REMEDIATED" Telegram. On fallback failure: escalates to CRITICAL with `stop_ack_remediation_failed` + double-burst Telegram. Dedup: one remediation attempt per (trade_id, day).
 
@@ -191,7 +193,7 @@ Closes the followup. Three-layer protection is in place.
 
 **Reversion-flag**: NEW. Sibling of Gate 5 D stuck-fill watchdog (which only catches `status='filling'` cases, not `status='filled' + stop_order_id NULL`).
 
-**Status**: shipped 2026-05-17. Field validation: monitor `stop_ack_timeout_remediated` audit events; expect zero firings if OTO bracket child-leg ACKs normally; non-zero count = a real MRAM-class case the gate caught.
+**Status**: shipped 2026-05-17. **Field-validated 2026-05-18** by GOOGL #56 catch (see safeguards.md change log entry above this one). Continue monitoring `stop_ack_timeout_remediated` audit events; non-zero count = a real silent-failure case the gate caught.
 
 ---
 
