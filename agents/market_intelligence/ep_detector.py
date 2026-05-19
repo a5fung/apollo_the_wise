@@ -1210,8 +1210,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"q_rev_yoy={get_q_revenue_yoy_pct(_extracted)})"
                     )
                 except Exception as e:
+                    # Silent extraction failures leave the rubric gate unused
+                    # (falls through to Q-rev safety net). Surface as audit
+                    # event + Telegram so operator knows the gate wasn't
+                    # exercised. (Item #15, 2026-05-19.)
                     logger.warning(f"{ticker}: catalyst metrics extraction failed: {e}")
                     _extracted = {"extraction_quality": "low", "extraction_error": str(e)[:200]}
+                    try:
+                        from agents.market_intelligence.db import log_audit_event
+                        await log_audit_event(
+                            "extraction_error",
+                            f"{ticker}: catalyst extraction failed — {str(e)[:200]} "
+                            f"(rubric gate skipped; Q-rev safety-net engaged)",
+                        )
+                    except Exception:
+                        pass
+                    # Only Telegram on HIGH-tier catalysts — extraction failures
+                    # on MODERATE are noise (rubric doesn't gate MODERATE anyway).
+                    if catalyst_quality in ("strong", "game_changer"):
+                        try:
+                            from agents.market_intelligence.briefing import send_telegram_message
+                            await send_telegram_message(
+                                f"⚠️ *{ticker}*: catalyst extraction failed — "
+                                f"rubric gate not exercised, Q-rev safety-net engaged. "
+                                f"_See `/why {ticker}` for context; `mi_audit_log` for full error._"
+                            )
+                        except Exception:
+                            pass
 
             _q_rev_yoy = get_q_revenue_yoy_pct(_extracted)
             _quality = _extracted.get("extraction_quality", "low")

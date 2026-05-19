@@ -4381,6 +4381,9 @@ async def purge_old_data() -> dict[str, int]:
     - mi_themes:       365 days (theme lifecycle history — stage transitions over months)
     - mi_market_regime: kept forever (1 row/day, ~260 rows/year — negligible)
     - mi_tracked_stocks: kept forever (state table, not time-series)
+    - mi_ep_catalyst_metrics: 180 days (covers B6 backtests against
+      methodology changes; raw corpus columns ~50KB/row, ~15MB/month
+      ingest — 6mo window holds ~90MB which is trivial on Hetzner)
 
     Returns dict with row counts deleted per table.
     """
@@ -4401,6 +4404,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_intraday_bars": today - timedelta(days=120),
             "mi_9m_ep_alerts":   today - timedelta(days=90),
             "mi_9m_sugar_babies": today - timedelta(days=90),
+            "mi_ep_catalyst_metrics": today - timedelta(days=180),
         }
         date_cols = {
             "mi_ep_alerts":    "alert_date",
@@ -4413,6 +4417,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_intraday_bars": "bar_time",
             "mi_9m_ep_alerts":   "alert_date",
             "mi_9m_sugar_babies": "alert_date",
+            "mi_ep_catalyst_metrics": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
         _valid_cols = frozenset(date_cols.values())

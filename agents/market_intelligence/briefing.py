@@ -48,6 +48,51 @@ from agents.market_intelligence.theme_engine import get_today_themes
 logger = logging.getLogger(__name__)
 
 
+# Filler patterns Perplexity returns when it has no info on a ticker.
+# Without sanitization, the operator sees content like
+# "I cannot find information about XYZ, but the nearest match is..."
+# in the catalyst field, which is misleading. Item #12 (2026-05-19).
+_PERPLEXITY_FILLER_PATTERNS = [
+    # "no info found" / "cannot find" prefixes
+    r"^(?:I (?:could not|cannot|can't|couldn't|do not have|don't have|am unable to find|was unable to find|don't have any|don't have specific|don't have current)[^.]*\.\s*)",
+    r"^(?:Sorry,?\s+(?:but\s+)?I (?:could not|cannot|can't|couldn't)[^.]*\.\s*)",
+    r"^(?:Based on (?:available|the) (?:information|data)[^.]*(?:no|cannot|unable|don't have)[^.]*\.\s*)",
+    # "nearest match" hedges — these are pure hallucination fuel; always strip
+    r"(?:The|A)?\s*nearest match(?:\s+(?:I (?:found|could find)|to your query|appears to be|is))?[^.]*\.\s*",
+    r"(?:Closest|Most similar) (?:match|ticker|company)[^.]*\.\s*",
+    # "as of my knowledge cutoff" disclaimers
+    r"(?:As of my (?:knowledge|training) (?:cutoff|date)|My information (?:may be|is) (?:outdated|limited))[^.]*\.\s*",
+    # "for the most current information" tail boilerplate
+    r"For (?:the )?(?:most )?(?:current|latest|up-to-date|accurate) (?:information|data|news)[^.]*\.\s*$",
+    r"(?:Please|I (?:recommend|suggest)) (?:check|consult|visit|refer to)[^.]*\.\s*$",
+]
+
+
+def _sanitize_perplexity_filler(text: str) -> str:
+    """Strip Perplexity hedge/filler patterns from operator-visible text.
+
+    Returns sanitized text; if everything gets stripped (text was 100%
+    filler), returns "See news" as a clean fallback so the alert line
+    still renders meaningfully.
+
+    Examples (input → output):
+      "I cannot find specific info on XYZ. The nearest match is ABC..."
+        → "" → "See news"
+      "AGYS reported Q4 earnings up 12%. As of my knowledge cutoff..."
+        → "AGYS reported Q4 earnings up 12%."
+    """
+    if not text:
+        return text
+    cleaned = text
+    for pattern in _PERPLEXITY_FILLER_PATTERNS:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.strip()
+    # If sanitization removed everything (or near-everything), fall back
+    if len(cleaned) < 15:
+        return "See news"
+    return cleaned
+
+
 def _truncate_sentence(text: str, max_len: int) -> str:
     """Truncate at last sentence/word boundary within max_len — never mid-word."""
     if not text or len(text) <= max_len:
@@ -1798,6 +1843,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # Strip conflicting gap% from catalyst text (Perplexity may say "18%" while actual gap is 27%)
     catalyst_text = ep.get("catalyst", "See news")[:300]
     catalyst_text = re.sub(r"gapped (?:up |down )?[\d.]+%", "gapped up", catalyst_text)
+    catalyst_text = _sanitize_perplexity_filler(catalyst_text)
 
     text = (
         f"*EP ALERT {tier_e}*\n\n"
