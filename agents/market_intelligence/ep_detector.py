@@ -1180,51 +1180,60 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if (EARNINGS_REVENUE_GATE_ENABLED
                 and earnings_today_match
                 and catalyst_quality in ("strong", "game_changer")):
-            from agents.market_intelligence.db import (
-                get_pool as _get_pool,
-                upsert_fundamental_flags_batch as _upsert_ff,
+            # Multi-source FRESH extraction (2026-05-19, AGYS hotfix).
+            # yfinance quarterly_financials lags announcements by 24-72h →
+            # stale data on catalyst-day. Read structured numbers FROM the
+            # actual press-release news corpus (Polygon + FMP + Perplexity +
+            # internal Claude analysis) via Sonnet extraction → cache to
+            # mi_ep_catalyst_metrics for subsequent scan ticks + /why.
+            from agents.market_intelligence.catalyst_metrics_extractor import (
+                extract_earnings_metrics, lookup_cached_metrics,
+                persist_catalyst_metrics, get_q_revenue_yoy_pct,
             )
-            _pool = await _get_pool()
-            async with _pool.acquire() as _conn:
-                _ff = await _conn.fetchrow("""
-                    SELECT sales_yoy_latest, eps_yoy_latest
-                    FROM mi_fundamental_flags
-                    WHERE ticker = $1
-                    ORDER BY flag_date DESC
-                    LIMIT 1
-                """, ticker)
-            _sales_yoy = _ff["sales_yoy_latest"] if _ff else None
-            _eps_yoy = _ff["eps_yoy_latest"] if _ff else None
 
-            # On-demand fetch if cache missing — AGYS class (nightly fetcher
-            # only covers top-40 RS + active themes; EP universe is broader).
-            # Persist to cache so subsequent scan ticks + tomorrow re-use.
-            if _sales_yoy is None:
+            _cached = await lookup_cached_metrics(ticker, today)
+            if _cached:
+                _extracted = _cached
+                logger.info(f"{ticker}: catalyst metrics cached (extraction_quality={_extracted.get('extraction_quality')})")
+            else:
                 try:
-                    from agents.market_intelligence.fundamentals import compute_fundamental_flags
-                    _fresh = await compute_fundamental_flags([ticker], today)
-                    if _fresh:
-                        await _upsert_ff(_fresh)
-                        _row = _fresh[0]
-                        _sales_yoy = _row.get("sales_yoy_latest")
-                        _eps_yoy = _row.get("eps_yoy_latest")
-                        logger.info(
-                            f"{ticker}: on-demand fundamentals fetched "
-                            f"sales_yoy={_sales_yoy} eps_yoy={_eps_yoy}"
-                        )
+                    _extracted = await extract_earnings_metrics(
+                        ticker, today,
+                        claude_analysis=claude_analysis,
+                        perplexity_text=news_summary,
+                        fmp_news=fmp_news if 'fmp_news' in dir() else None,
+                    )
+                    await persist_catalyst_metrics(ticker, today, _extracted)
+                    logger.info(
+                        f"{ticker}: catalyst metrics extracted "
+                        f"(quality={_extracted.get('extraction_quality')}, "
+                        f"q_rev_yoy={get_q_revenue_yoy_pct(_extracted)})"
+                    )
                 except Exception as e:
-                    logger.warning(f"{ticker}: on-demand fundamentals fetch failed: {e}")
+                    logger.warning(f"{ticker}: catalyst metrics extraction failed: {e}")
+                    _extracted = {"extraction_quality": "low", "extraction_error": str(e)[:200]}
+
+            _q_rev_yoy = get_q_revenue_yoy_pct(_extracted)
+            _quality = _extracted.get("extraction_quality", "low")
+            _reasoning = _extracted.get("reasoning_brief", "")
 
             _downgrade_reason = None
-            if _sales_yoy is None:
-                _downgrade_reason = "fundamentals_unavailable"
-            elif _sales_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
-                # sales_yoy is stored as percent (15.6 = 15.6%); threshold also percent
-                _downgrade_reason = f"sales_yoy_{_sales_yoy:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
+            if _q_rev_yoy is None:
+                # Extraction couldn't find a Q-rev YoY — fail-loud per advisor.
+                # Default downgrade with explicit reason. Operator can
+                # re-evaluate via /why TICKER which shows the raw extraction.
+                _downgrade_reason = f"q_rev_yoy_unextractable_quality_{_quality}"
+            elif _q_rev_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
+                _downgrade_reason = (
+                    f"q_rev_yoy_{_q_rev_yoy:.1f}pct_below_"
+                    f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
+                )
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality
                 catalyst_quality = "routine"
+                _qr_block = _extracted.get("q_revenue_usd") or {}
+                _gf_block = _extracted.get("guidance_fy_revenue_usd") or {}
                 await log_audit_event(
                     "catalyst_earnings_revenue_weak_downgrade",
                     f"{ticker}: {_original_quality} → routine "
@@ -1235,8 +1244,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         "from_quality": _original_quality,
                         "to_quality": "routine",
                         "reason": _downgrade_reason,
-                        "sales_yoy_latest": _sales_yoy,
-                        "eps_yoy_latest": _eps_yoy,
+                        "q_revenue_yoy_pct": _q_rev_yoy,
+                        "extraction_quality": _quality,
+                        "extraction_reasoning": _reasoning,
+                        "extraction_sources": _qr_block.get("sources"),
+                        "extraction_confidence": _qr_block.get("confidence"),
+                        "guidance_midpoint_yoy_pct": _gf_block.get("midpoint_yoy_pct"),
                         "earnings_source": earnings_src,
                         "gap_pct": c["gap_pct"],
                     }),
@@ -1246,17 +1259,30 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     news_summary, claude_analysis,
                 )
                 # Telegram surface so operator sees the downgrade in real
-                # time (matches the prose-mismatch surface pattern below).
+                # time + can use /why to inspect full extraction.
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
-                    _detail = (
-                        f"sales_yoy={_sales_yoy:.1f}%" if _sales_yoy is not None
-                        else "no fundamentals data (fail-closed)"
+                    if _q_rev_yoy is not None:
+                        _detail = (
+                            f"Q-rev YoY={_q_rev_yoy:.1f}% < "
+                            f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}% threshold "
+                            f"(extraction quality={_quality})"
+                        )
+                    else:
+                        _detail = (
+                            f"Q-rev YoY un-extractable from news "
+                            f"(extraction quality={_quality}) — fail-loud"
+                        )
+                    _src_str = (
+                        ", ".join(_qr_block.get("sources", []))
+                        if _qr_block.get("sources") else "n/a"
                     )
                     await send_telegram_message(
                         f"📉 *Earnings catalyst downgraded: {ticker}*\n"
-                        f"LLM graded {_original_quality} on earnings narrative, "
-                        f"but {_detail}. Downgraded to routine."
+                        f"LLM graded {_original_quality} on narrative, "
+                        f"fresh extraction shows {_detail}.\n"
+                        f"Sources: {_src_str}\n"
+                        f"`/why {ticker}` for full extraction."
                     )
                 except Exception:
                     pass

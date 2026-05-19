@@ -436,6 +436,27 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_fund_flags_date ON mi_fundamental_flags(flag_date);
 
+            -- Fresh earnings-catalyst structured metrics (2026-05-19).
+            -- Populated by catalyst_metrics_extractor on every earnings-day
+            -- HIGH alert with catalyst_quality in (strong, game_changer).
+            -- Solves the yfinance-lag problem: yfinance quarterly_financials
+            -- doesn't update for 24-72h post-announcement, so the gate read
+            -- stale Q-1 data on catalyst-day EPs (AGYS 2026-05-19 trigger).
+            -- Multi-source extraction (Polygon + FMP + Perplexity + Claude
+            -- analysis) → Sonnet → structured JSON. Denormalized fields for
+            -- gate query; raw_json for /why TICKER deep dive.
+            CREATE TABLE IF NOT EXISTS mi_ep_catalyst_metrics (
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                q_revenue_yoy_pct DOUBLE PRECISION,
+                extraction_quality TEXT,
+                raw_json JSONB NOT NULL,
+                extracted_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ep_catalyst_metrics_date
+                ON mi_ep_catalyst_metrics(alert_date DESC);
+
             CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
                 ticker TEXT PRIMARY KEY,
                 description TEXT,
