@@ -80,7 +80,9 @@ async def main() -> int:
             continue
 
         try:
-            ok, reason = await _check_safeguards(
+            # 2026-05-18: _check_safeguards returns 3-tuple (ok, reason, multiplier)
+            # post-tiered-drawdown redesign. Preflight only uses ok+reason.
+            ok, reason, _multiplier = await _check_safeguards(
                 account_mode=mode, signal_type=s.signal_type,
             )
         except Exception as e:
