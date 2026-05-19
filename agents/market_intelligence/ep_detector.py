@@ -1180,7 +1180,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if (EARNINGS_REVENUE_GATE_ENABLED
                 and earnings_today_match
                 and catalyst_quality in ("strong", "game_changer")):
-            from agents.market_intelligence.db import get_pool as _get_pool
+            from agents.market_intelligence.db import (
+                get_pool as _get_pool,
+                upsert_fundamental_flags_batch as _upsert_ff,
+            )
             _pool = await _get_pool()
             async with _pool.acquire() as _conn:
                 _ff = await _conn.fetchrow("""
@@ -1193,9 +1196,28 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _sales_yoy = _ff["sales_yoy_latest"] if _ff else None
             _eps_yoy = _ff["eps_yoy_latest"] if _ff else None
 
+            # On-demand fetch if cache missing — AGYS class (nightly fetcher
+            # only covers top-40 RS + active themes; EP universe is broader).
+            # Persist to cache so subsequent scan ticks + tomorrow re-use.
+            if _sales_yoy is None:
+                try:
+                    from agents.market_intelligence.fundamentals import compute_fundamental_flags
+                    _fresh = await compute_fundamental_flags([ticker], today)
+                    if _fresh:
+                        await _upsert_ff(_fresh)
+                        _row = _fresh[0]
+                        _sales_yoy = _row.get("sales_yoy_latest")
+                        _eps_yoy = _row.get("eps_yoy_latest")
+                        logger.info(
+                            f"{ticker}: on-demand fundamentals fetched "
+                            f"sales_yoy={_sales_yoy} eps_yoy={_eps_yoy}"
+                        )
+                except Exception as e:
+                    logger.warning(f"{ticker}: on-demand fundamentals fetch failed: {e}")
+
             _downgrade_reason = None
             if _sales_yoy is None:
-                _downgrade_reason = "fundamentals_missing"
+                _downgrade_reason = "fundamentals_unavailable"
             elif _sales_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
                 _downgrade_reason = f"sales_yoy_{_sales_yoy*100:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY*100:.0f}pct"
 
