@@ -427,6 +427,19 @@ async def submit_trade_entry(
             )
         except Exception:
             pass
+        # Theme membership (C8, 2026-05-19) — append to entry alerts.
+        # Works for BOTH MAGNA53 EP and 9M Day 2 since both go through this
+        # single funnel. 9M doesn't get the catalyst rubric (quant-only) but
+        # DOES benefit from the theme axis surface (Pradeep #1 catalyst type).
+        theme_line = ""
+        try:
+            from agents.market_intelligence.catalyst_rubric_runtime import (
+                get_theme_membership, format_theme_for_telegram,
+            )
+            _theme = await get_theme_membership(ticker)
+            theme_line = "\n" + format_theme_for_telegram(_theme)
+        except Exception as _te:
+            logger.debug(f"entry alert theme lookup failed for {ticker}: {_te}")
         await send_telegram_message(
             f"{mode_prefix(account_mode)}{success_icon} *{success_title}:* {ticker}\n"
             f"Stop-limit BUY @ ${order_spec['entry_price']:.2f} (pending trigger) | "
@@ -434,6 +447,7 @@ async def submit_trade_entry(
             f"Shares: {order_spec['shares']} | "
             f"Risk: ${order_spec['risk_dollars']:.0f}\n"
             f"_Fills if price ≥ ${order_spec['entry_price']:.2f}; cancels 10:00 ET if unfilled._"
+            f"{theme_line}"
         )
         return {"ticker": ticker, "action": ACTION_AUTO_ENTERED, "trade_id": trade_id}
 

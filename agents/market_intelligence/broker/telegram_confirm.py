@@ -53,6 +53,18 @@ async def send_trade_proposal(
         header = f"🟡 *STAGED-PAPER ramp — confirm to enter REAL-$:* {ticker}"
     else:
         header = f"{mode_prefix()}📊 *TRADE PROPOSAL: {ticker}*"
+    # Theme membership (C8, 2026-05-19) — surface for live-real trade proposals.
+    # Pradeep #1 catalyst type, helps inform manual Confirm/Skip decision.
+    theme_line = ""
+    try:
+        from agents.market_intelligence.catalyst_rubric_runtime import (
+            get_theme_membership, format_theme_for_telegram,
+        )
+        _theme = await get_theme_membership(ticker)
+        theme_line = "\n" + format_theme_for_telegram(_theme)
+    except Exception as _te:
+        logger.debug(f"trade proposal theme lookup failed for {ticker}: {_te}")
+
     text = (
         f"{header}\n"
         f"Entry: ${entry:.2f} (ORB high)\n"
@@ -61,6 +73,7 @@ async def send_trade_proposal(
         f"Shares: {shares}\n"
         f"Score: {score:.0f} | Catalyst: {catalyst}\n"
         f"Gap: {gap:.1f}% | Regime: {regime}"
+        f"{theme_line}"
     )
 
     keyboard = {
