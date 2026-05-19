@@ -183,8 +183,9 @@ EARNINGS_REVENUE_GATE_ENABLED = os.environ.get(
     "EARNINGS_REVENUE_GATE_ENABLED", "true"
 ).lower() == "true"
 EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
-    "EARNINGS_REVENUE_GATE_MIN_YOY", "0.05"
-))
+    "EARNINGS_REVENUE_GATE_MIN_YOY", "5.0"
+))  # PERCENT (matches mi_fundamental_flags.sales_yoy_latest storage convention,
+    # e.g. 15.6 = 15.6%, NOT 0.156). Default 5.0 = 5% YoY revenue growth.
 
 REGIME_EMOJI = {
     "Bull": "🟢",

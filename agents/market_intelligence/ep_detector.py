@@ -1219,7 +1219,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if _sales_yoy is None:
                 _downgrade_reason = "fundamentals_unavailable"
             elif _sales_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
-                _downgrade_reason = f"sales_yoy_{_sales_yoy*100:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY*100:.0f}pct"
+                # sales_yoy is stored as percent (15.6 = 15.6%); threshold also percent
+                _downgrade_reason = f"sales_yoy_{_sales_yoy:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality
@@ -1249,7 +1250,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
                     _detail = (
-                        f"sales_yoy={_sales_yoy*100:.1f}%" if _sales_yoy is not None
+                        f"sales_yoy={_sales_yoy:.1f}%" if _sales_yoy is not None
                         else "no fundamentals data (fail-closed)"
                     )
                     await send_telegram_message(
