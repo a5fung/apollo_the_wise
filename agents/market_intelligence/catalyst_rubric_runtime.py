@@ -158,14 +158,25 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
             # row 0 isn't the just-announced q0 — it's q1). q1/q2 from yfinance.
             deltas["eps_yoy_q1"] = _eps_yoy(0)
             deltas["eps_yoy_q2"] = _eps_yoy(1)
-            # EPS acceleration if BOTH q0 (extraction) and q1 (yfinance) present
-            if deltas["eps_yoy_q0"] is not None and deltas["eps_yoy_q1"] is not None:
-                deltas["eps_accel"] = deltas["eps_yoy_q0"] - deltas["eps_yoy_q1"]
-            # Small-base guardrail value (eps_qm4 = EPS 4 quarters ago)
-            if 4 < len(cols):
-                qm4_val = eps_row.iloc[4]
+            # Small-base guardrail value (eps_qm4 = EPS 4 quarters ago,
+            # i.e. same fiscal quarter prior year — yfinance row 3 since
+            # row 0 = q1 from our perspective so q-4-of-q1 is row 4...
+            # Actually q0's prior-year is yfinance row 3 (q1=last quarter,
+            # q1-of-q1=row 4 = same-q-of-prior-year-as-q1 — but for q0
+            # specifically, prior-year same quarter would be row 3 since
+            # yfinance lacks q0). Use row 3 as eps_qm4 for the just-
+            # announced q0 quarter.
+            if 3 < len(cols):
+                qm4_val = eps_row.iloc[3]
                 if qm4_val is not None:
                     deltas["eps_qm4"] = float(qm4_val)
+
+            # EPS acceleration if BOTH q0 (set by build_rubric_inputs_hybrid
+            # post-process) and q1 (set just above) are present. The q0
+            # derivation happens AFTER augment returns — see
+            # build_rubric_inputs_hybrid below.
+            if deltas["eps_yoy_q0"] is not None and deltas["eps_yoy_q1"] is not None:
+                deltas["eps_accel"] = deltas["eps_yoy_q0"] - deltas["eps_yoy_q1"]
 
         # prior_max for milestone axis (use yfinance q1-q7 since q0 is the catalyst)
         prior_yoys = []
@@ -313,6 +324,23 @@ def build_rubric_inputs_hybrid(
     """
     deltas = _extracted_to_q0_deltas(extracted)
     deltas = _augment_with_yfinance_historical(ticker, deltas)
+
+    # Post-process: derive eps_yoy_q0 if extraction has q_eps.value but
+    # not yoy_pct, AND yfinance gave us eps_qm4 (prior-year same quarter).
+    # Common case: AGYS-class where LLM extracts $0.63 EPS but doesn't
+    # state YoY %; we can compute from $0.63 / prior-year $0.14 → +350%.
+    qe = extracted.get("q_eps") or {}
+    if (deltas.get("eps_yoy_q0") is None
+            and isinstance(qe, dict)
+            and isinstance(qe.get("value"), (int, float))
+            and isinstance(deltas.get("eps_qm4"), (int, float))
+            and abs(deltas["eps_qm4"]) > 0.001):
+        q0_eps = float(qe["value"])
+        qm4 = float(deltas["eps_qm4"])
+        deltas["eps_yoy_q0"] = (q0_eps - qm4) / abs(qm4)
+        # Now also compute eps_accel if q1 is present
+        if deltas.get("eps_yoy_q1") is not None:
+            deltas["eps_accel"] = deltas["eps_yoy_q0"] - deltas["eps_yoy_q1"]
 
     fund = {
         "ticker": ticker,
