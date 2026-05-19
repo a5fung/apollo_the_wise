@@ -291,13 +291,26 @@ async def extract_earnings_metrics(
             "extraction_error": "extraction_call_failed",
             "_polygon_news_count": len(polygon_news),
             "_alpaca_news_count": len(alpaca_news),
+            "_raw_polygon_news": polygon_news,
+            "_raw_alpaca_news": alpaca_news,
+            "_raw_fmp_news": fmp_news or [],
+            "_raw_perplexity_text": perplexity_text,
+            "_raw_claude_analysis": claude_analysis,
         }
 
-    # Tag corpus shape for audit traceability
+    # Tag corpus shape + raw inputs for audit traceability + future B6 backtests
     extracted["_polygon_news_count"] = len(polygon_news)
     extracted["_alpaca_news_count"] = len(alpaca_news)
     extracted["_fmp_news_count"] = len(fmp_news or [])
     extracted["_extracted_at"] = datetime.utcnow().isoformat()
+    # Carry-forward raw corpus snapshot (consumed by persist_catalyst_metrics).
+    # These are stripped before _truncate'd display surfaces so they don't
+    # bloat /why output; they're written to dedicated columns for replay.
+    extracted["_raw_polygon_news"] = polygon_news
+    extracted["_raw_alpaca_news"] = alpaca_news
+    extracted["_raw_fmp_news"] = fmp_news or []
+    extracted["_raw_perplexity_text"] = perplexity_text
+    extracted["_raw_claude_analysis"] = claude_analysis
     return extracted
 
 
@@ -324,23 +337,49 @@ async def persist_catalyst_metrics(
 
     Denormalizes q_revenue_yoy_pct + extraction_quality for cheap gate
     queries; raw_json carries the full extraction for `/why TICKER`.
+    Per-source raw corpus columns (polygon/alpaca/fmp news + perplexity
+    + claude_analysis) enable replay for future B6 backtests against
+    methodology changes — see docs/setups/catalyst_rubric.md.
     """
     q_rev_yoy = get_q_revenue_yoy_pct(extracted)
     eq = extracted.get("extraction_quality", "low")
+
+    # Pop raw corpus from extracted dict before persisting raw_json to
+    # avoid duplication (raw corpus has its own columns).
+    raw_polygon = extracted.pop("_raw_polygon_news", None)
+    raw_alpaca = extracted.pop("_raw_alpaca_news", None)
+    raw_fmp = extracted.pop("_raw_fmp_news", None)
+    raw_perplexity = extracted.pop("_raw_perplexity_text", None)
+    raw_claude = extracted.pop("_raw_claude_analysis", None)
 
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             INSERT INTO mi_ep_catalyst_metrics
                 (ticker, alert_date, q_revenue_yoy_pct, extraction_quality,
-                 raw_json, extracted_at)
-            VALUES ($1, $2, $3, $4, $5::jsonb, NOW())
+                 raw_json, raw_polygon_news_json, raw_alpaca_news_json,
+                 raw_fmp_news_json, raw_perplexity_text,
+                 raw_claude_analysis_text, extracted_at)
+            VALUES ($1, $2, $3, $4, $5::jsonb,
+                    $6::jsonb, $7::jsonb, $8::jsonb, $9, $10, NOW())
             ON CONFLICT (ticker, alert_date) DO UPDATE SET
                 q_revenue_yoy_pct = EXCLUDED.q_revenue_yoy_pct,
                 extraction_quality = EXCLUDED.extraction_quality,
                 raw_json = EXCLUDED.raw_json,
+                raw_polygon_news_json = EXCLUDED.raw_polygon_news_json,
+                raw_alpaca_news_json = EXCLUDED.raw_alpaca_news_json,
+                raw_fmp_news_json = EXCLUDED.raw_fmp_news_json,
+                raw_perplexity_text = EXCLUDED.raw_perplexity_text,
+                raw_claude_analysis_text = EXCLUDED.raw_claude_analysis_text,
                 extracted_at = EXCLUDED.extracted_at
-        """, ticker, alert_date, q_rev_yoy, eq, json.dumps(extracted))
+        """, ticker, alert_date, q_rev_yoy, eq,
+            json.dumps(extracted),
+            json.dumps(raw_polygon) if raw_polygon is not None else None,
+            json.dumps(raw_alpaca) if raw_alpaca is not None else None,
+            json.dumps(raw_fmp) if raw_fmp is not None else None,
+            raw_perplexity,
+            raw_claude,
+        )
 
 
 async def lookup_cached_metrics(ticker: str, alert_date: date) -> dict[str, Any] | None:

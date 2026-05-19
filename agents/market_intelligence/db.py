@@ -456,6 +456,19 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_ep_catalyst_metrics_date
                 ON mi_ep_catalyst_metrics(alert_date DESC);
+            -- Carry-forward raw input persistence (2026-05-19 — see B6 plan).
+            -- Per-source columns so we can SELECT raw_alpaca_news_json IS NOT NULL
+            -- to track when each source started populating.
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS raw_polygon_news_json JSONB;
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS raw_alpaca_news_json JSONB;
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS raw_fmp_news_json JSONB;
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS raw_perplexity_text TEXT;
+            ALTER TABLE mi_ep_catalyst_metrics
+                ADD COLUMN IF NOT EXISTS raw_claude_analysis_text TEXT;
 
             CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
                 ticker TEXT PRIMARY KEY,
