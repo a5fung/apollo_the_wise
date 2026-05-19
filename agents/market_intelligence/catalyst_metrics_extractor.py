@@ -178,18 +178,26 @@ async def extract_earnings_metrics(
     claude_analysis: str | None = None,
     perplexity_text: str | None = None,
     fmp_news: list[dict] | None = None,
+    news_on_or_before: date | None = None,
 ) -> dict[str, Any]:
     """Multi-source earnings-metrics extraction.
 
     Fetches Polygon news on-demand (FMP + Perplexity + Claude analysis are
     passed by caller since ep_detector already has them).
 
+    `news_on_or_before` constrains the Polygon news window for historical
+    re-extraction (fixture re-validation, backtests). Default None = today.
+    Perplexity has no time-travel; callers doing historical work should
+    pass perplexity_text=None and accept degraded extraction quality.
+
     Returns the extraction dict (per schema in _EXTRACTION_PROMPT) plus
     `_raw_corpus` for audit traceability. If extraction completely fails,
     returns a minimal dict with extraction_quality='low' so callers can
     apply fail-closed logic uniformly.
     """
-    polygon_news = await get_polygon_news(ticker, lookback_days=7, limit=15)
+    polygon_news = await get_polygon_news(
+        ticker, lookback_days=7, limit=15, on_or_before=news_on_or_before,
+    )
 
     # Wider Perplexity query if first call returned sparse — try a second
     # query with a more specific catalyst-focused phrasing.
