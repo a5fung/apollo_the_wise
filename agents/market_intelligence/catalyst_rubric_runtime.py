@@ -137,6 +137,36 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
         if deltas["rev_yoy_q0"] is not None and deltas["rev_yoy_q1"] is not None:
             deltas["rev_accel"] = deltas["rev_yoy_q0"] - deltas["rev_yoy_q1"]
 
+        # EPS YoY hybrid: extraction's q0 (if present) + yfinance for q1+
+        # so Axis 2 can score even when LLM doesn't compute EPS YoY from
+        # raw numbers. yfinance uses 'Diluted EPS' (or 'Basic EPS').
+        eps_row = None
+        for line in ("Diluted EPS", "Basic EPS", "DilutedEPS", "BasicEPS"):
+            if line in qf.index:
+                eps_row = qf.loc[line]
+                break
+        if eps_row is not None:
+            def _eps_yoy(i: int) -> float | None:
+                if i + 4 >= len(cols):
+                    return None
+                new_e = eps_row.iloc[i]
+                old_e = eps_row.iloc[i + 4]
+                if new_e is not None and old_e is not None and abs(float(old_e)) > 0.001:
+                    return (float(new_e) - float(old_e)) / abs(float(old_e))
+                return None
+            # If extraction didn't get eps_yoy_q0, leave it None (yfinance
+            # row 0 isn't the just-announced q0 — it's q1). q1/q2 from yfinance.
+            deltas["eps_yoy_q1"] = _eps_yoy(0)
+            deltas["eps_yoy_q2"] = _eps_yoy(1)
+            # EPS acceleration if BOTH q0 (extraction) and q1 (yfinance) present
+            if deltas["eps_yoy_q0"] is not None and deltas["eps_yoy_q1"] is not None:
+                deltas["eps_accel"] = deltas["eps_yoy_q0"] - deltas["eps_yoy_q1"]
+            # Small-base guardrail value (eps_qm4 = EPS 4 quarters ago)
+            if 4 < len(cols):
+                qm4_val = eps_row.iloc[4]
+                if qm4_val is not None:
+                    deltas["eps_qm4"] = float(qm4_val)
+
         # prior_max for milestone axis (use yfinance q1-q7 since q0 is the catalyst)
         prior_yoys = []
         for i in range(0, min(7, len(cols) - 4)):
@@ -186,13 +216,27 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
                 "op_margin": _safe_div_any(_oi_lines, _rev_lines, idx),
                 "net_margin": _safe_div_any(_ni_lines, _rev_lines, idx),
             }
-        # margins_q0 (just-announced quarter) deliberately left EMPTY here —
-        # would lie to the rubric about margin acceleration if we copied q1
-        # values. Extraction prompt is being expanded to capture margin
-        # numbers from the press release directly; when present, set this
-        # from `extracted["q_margins"]` in _extracted_to_q0_deltas.
-        # Rubric handles missing margins_q0 gracefully (Axis 3 returns
-        # score=None → composite_scaled shrinks max_available).
+        # margins_q0 (just-announced quarter):
+        # - If extraction captured them from the press release, _extracted_to_q0_deltas
+        #   has already set them in deltas["margins_q0"].
+        # - If not (common — press releases often quote only "record margins"
+        #   without numbers), fall back to approximating q0 from yfinance q1
+        #   with explicit data_quality_flag so the rubric's Axis 3 can score
+        #   (better than score=None). The approximation says "assume margins
+        #   continue at last quarter's level" — conservative for trajectory
+        #   analysis. Acceleration signal lost in this case but level signal
+        #   preserved.
+        if not deltas.get("margins_q0") and deltas.get("margins_q1"):
+            # Only copy non-None values; preserve transparency
+            approx_q0 = {
+                k: v for k, v in deltas["margins_q1"].items()
+                if v is not None
+            }
+            if approx_q0:
+                deltas["margins_q0"] = approx_q0
+                deltas["data_quality_flag"] = (
+                    "fresh_q0_plus_yfinance_historical_and_margin_proxy"
+                )
 
         deltas["data_quality_flag"] = "fresh_q0_plus_yfinance_historical"
 

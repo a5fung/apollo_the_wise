@@ -191,7 +191,17 @@ async def extract_earnings_metrics(
     """
     polygon_news = await get_polygon_news(ticker, lookback_days=7, limit=15)
 
-    prompt = _EXTRACTION_PROMPT.format(
+    # Wider Perplexity query if first call returned sparse — try a second
+    # query with a more specific catalyst-focused phrasing.
+    async def _retry_perplexity_more_specific() -> str:
+        from agents.market_intelligence.collector import search_news_perplexity
+        return await search_news_perplexity(
+            f"{ticker} Q4 earnings results — actual revenue, EPS, YoY growth percentages, "
+            f"guidance, analyst estimate beat. Quote specific dollar amounts.",
+            recency="week",
+        )
+
+    base_prompt = _EXTRACTION_PROMPT.format(
         ticker=ticker,
         today=today.isoformat(),
         polygon_news=_truncate(_format_polygon_news(polygon_news), 4000),
@@ -200,7 +210,45 @@ async def extract_earnings_metrics(
         claude_analysis=_truncate(claude_analysis, 2000),
     )
 
-    extracted = await _call_claude_extraction(prompt)
+    extracted = await _call_claude_extraction(base_prompt)
+
+    # Retry on extraction failure OR low quality (per advisor 2026-05-19):
+    # extraction variance from Perplexity can leave us with sparse data on
+    # one call but rich data on another. Single retry with a more specific
+    # Perplexity query + explicit "re-scan for numbers" instruction.
+    needs_retry = (
+        extracted is None
+        or extracted.get("extraction_quality") == "low"
+        or (extracted.get("q_revenue_usd") is None)
+    )
+    if needs_retry:
+        try:
+            retry_perplexity = await _retry_perplexity_more_specific()
+            if retry_perplexity:
+                retry_prompt = _EXTRACTION_PROMPT.format(
+                    ticker=ticker,
+                    today=today.isoformat(),
+                    polygon_news=_truncate(_format_polygon_news(polygon_news), 4000),
+                    fmp_news=_truncate(_format_fmp_news(fmp_news or []), 3000),
+                    perplexity_text=_truncate(retry_perplexity, 3000),
+                    claude_analysis=_truncate(claude_analysis, 2000),
+                ) + "\n\nNOTE: Earlier extraction returned low quality. Re-scan carefully for explicit dollar amounts, YoY %, and beat-vs-estimate numbers. Press releases ALWAYS contain these — if missing from your prior attempt, look again."
+                retry_extracted = await _call_claude_extraction(retry_prompt)
+                if retry_extracted is not None:
+                    # Keep whichever attempt has more populated fields
+                    def _populated_count(d):
+                        if not d:
+                            return 0
+                        return sum(1 for k in ("q_revenue_usd", "q_eps", "q_margins",
+                                               "guidance_change", "guidance_fy_revenue_usd",
+                                               "subscription_revenue_yoy_pct")
+                                   if d.get(k))
+                    if _populated_count(retry_extracted) > _populated_count(extracted):
+                        logger.info(f"{ticker}: retry extraction higher quality, using retry")
+                        extracted = retry_extracted
+        except Exception as e:
+            logger.warning(f"{ticker}: extraction retry failed: {e}")
+
     if extracted is None:
         return {
             "extraction_quality": "low",
