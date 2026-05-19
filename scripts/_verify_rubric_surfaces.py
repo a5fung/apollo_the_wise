@@ -17,8 +17,21 @@ async def main():
     today = date.today()
     extracted = await lookup_cached_metrics(ticker, today)
     if not extracted:
-        print(f"No cached extraction for {ticker} {today}")
-        return
+        print(f"No cached extraction for {ticker} {today} — running fresh...")
+        from agents.market_intelligence.catalyst_metrics_extractor import (
+            extract_earnings_metrics, persist_catalyst_metrics,
+        )
+        from agents.market_intelligence.collector import get_fmp_news, search_news_perplexity
+        fmp_news = await get_fmp_news(ticker, limit=5)
+        perplexity_text = await search_news_perplexity(
+            f"What caused {ticker} stock to gap up today? Latest catalyst.", recency="week",
+        )
+        extracted = await extract_earnings_metrics(
+            ticker, today, claude_analysis=None,
+            perplexity_text=perplexity_text, fmp_news=fmp_news,
+        )
+        await persist_catalyst_metrics(ticker, today, extracted)
+        print("Extraction persisted.")
 
     print("=" * 60)
     print("COMPACT (EP alert snapshot)")
