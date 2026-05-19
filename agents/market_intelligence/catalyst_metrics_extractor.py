@@ -61,11 +61,13 @@ Articles (multi-source corpus):
 Extract earnings metrics from the article corpus. Return ONLY a JSON object with this exact schema (use null when a number is not stated, use empty array [] when sources cannot be cited):
 
 {{
-  "q_revenue_usd": null OR {{"value": <number>, "yoy_pct": <number>, "sources": ["polygon", "fmp", ...], "confidence": "low" | "medium" | "high"}},
+  "q_revenue_usd": null OR {{"value": <number>, "yoy_pct": <number>, "beat_vs_est_pct": <number or null>, "sources": ["polygon", "fmp", ...], "confidence": "low" | "medium" | "high"}},
   "fy_revenue_usd": null OR {{"value": <number>, "yoy_pct": <number>, "sources": [...], "confidence": "..."}},
   "q_eps": null OR {{"value": <number>, "yoy_pct": <number or null>, "beat_vs_est_pct": <number or null>, "sources": [...], "confidence": "..."}},
   "subscription_revenue_yoy_pct": null OR {{"value": <number>, "sources": [...], "confidence": "..."}},
+  "q_margins": null OR {{"gross_margin": <number 0-1 or null>, "op_margin": <number 0-1 or null>, "net_margin": <number 0-1 or null>, "sources": [...], "confidence": "..."}},
   "guidance_fy_revenue_usd": null OR {{"low": <number>, "high": <number>, "midpoint_yoy_pct": <number or null>, "sources": [...], "confidence": "..."}},
+  "guidance_change": null OR {{"direction": "raised" | "lowered" | "reaffirmed" | "initiated", "raise_pct_vs_consensus": <number or null>, "sources": [...], "confidence": "..."}},
   "disagreement_flags": ["<plain text describing any source disagreement>"],
   "extraction_quality": "low" | "medium" | "high",
   "reasoning_brief": "<one sentence: what evidence supports the primary q_revenue_yoy_pct claim>"
@@ -74,18 +76,24 @@ Extract earnings metrics from the article corpus. Return ONLY a JSON object with
 EXTRACTION RULES:
 - "yoy_pct" should be the explicit YoY growth percentage stated in articles (e.g., "revenue rose 11%" → 11.0). If raw quarter numbers are stated but YoY % is not stated, you MAY compute it (new - old) / old * 100 — but mark confidence "medium" unless multiple articles corroborate.
 - "value" fields are absolute dollars (USD). e.g., $82.9M → 82900000.
+- "beat_vs_est_pct": revenue or EPS beat vs analyst consensus estimate (e.g., "EPS of $0.63 beat estimate of $0.50" → +26.0). Negative if missed. Look for "beat estimate", "vs consensus", "vs analysts expected", "above/below estimate".
 - "subscription_revenue_yoy_pct" is the SEGMENT-LEVEL subscription growth (e.g., "subscription revenue grew 30%"). This is different from total q_revenue YoY — extract both if both are stated. Methodology gates on q_revenue total, not subscription.
+- "q_margins": gross/op/net margins for the just-reported quarter, as DECIMAL fractions 0-1 (e.g. "gross margin of 62.5%" → 0.625). Articles often state margins explicitly OR you can compute from raw numbers (gross profit / revenue, operating income / revenue, net income / revenue). If only one or two are stated, leave the others null.
+- "q_eps.yoy_pct": EPS YoY growth. If articles state "EPS up X%" use that. If raw EPS numbers are given for current and prior-year quarter, you MAY compute. Mark confidence accordingly.
+- "guidance_change": direction is "raised" (above current consensus), "lowered" (below), "reaffirmed" (same), "initiated" (first guidance). raise_pct_vs_consensus is the percentage above/below current Street consensus. Look for: "raises guidance", "lifts forecast", "increases outlook", "cuts guidance", "lowered FY view", "reaffirms outlook".
 - "sources": use short publisher names like "polygon", "fmp", "reuters", "dowjones", "perplexity", "claude". An article passed through Polygon mentioning a Reuters quote → source = "polygon" (the channel we got it through).
 - "confidence":
   * "high" = 2+ corroborating sources OR cited by a primary authority (Reuters, Dow Jones, BusinessWire, PR Newswire)
   * "medium" = 1 source OR computed-from-raw-numbers
   * "low" = extracted by inference from narrative without explicit number
 - "extraction_quality":
-  * "high" = q_revenue_usd.yoy_pct is present with confidence high
-  * "medium" = q_revenue_usd is present (any confidence) OR q_eps is present
-  * "low" = both q_revenue_usd and q_eps are null
+  * "high" = q_revenue_usd.yoy_pct is present with confidence high AND at least one of (q_eps with yoy_pct, q_margins, guidance_change)
+  * "medium" = q_revenue_usd is present (any confidence)
+  * "low" = q_revenue_usd is null
 - "disagreement_flags": when sources cite different numbers for the same field, add a plain-text flag describing the disagreement.
 - "reasoning_brief": one sentence on which article + numbers support the q_revenue_usd claim. Operator visibility — keep concise.
+
+IMPORTANT — push hard for completeness. Earnings press releases ALWAYS contain: q-revenue, q-eps, beat-vs-estimate, guidance direction. If a field is null, that's a strong signal the corpus is sparse OR you missed it on a re-read. Re-scan before returning null.
 
 OUTPUT: just the JSON, no preamble, no markdown fences.
 """

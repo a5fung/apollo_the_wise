@@ -37,6 +37,9 @@ def _extracted_to_q0_deltas(extracted: dict[str, Any]) -> dict[str, Any]:
 
     Extraction stores yoy_pct as PERCENT (11.7 = 11.7%). Rubric expects
     FRACTION (0.117). Convert here.
+
+    Sources the q0 margins block from extraction's q_margins (already in
+    decimal fraction form per the prompt schema).
     """
     deltas: dict[str, Any] = {
         "rev_yoy_q0": None,
@@ -62,6 +65,18 @@ def _extracted_to_q0_deltas(extracted: dict[str, Any]) -> dict[str, Any]:
         yoy = qe.get("yoy_pct")
         if isinstance(yoy, (int, float)):
             deltas["eps_yoy_q0"] = yoy / 100.0
+
+    # q0 margins from extraction (prompt returns decimal fractions 0-1).
+    # Filter out None entries to keep the dict clean for Axis 3 scoring.
+    qm = extracted.get("q_margins") or {}
+    if isinstance(qm, dict):
+        m0 = {}
+        for k in ("gross_margin", "op_margin", "net_margin"):
+            v = qm.get(k)
+            if isinstance(v, (int, float)):
+                m0[k] = float(v)
+        if m0:
+            deltas["margins_q0"] = m0
     return deltas
 
 
@@ -87,9 +102,12 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
         if len(cols) < 5:
             return deltas
 
-        # Pull TotalRevenue series + DilutedEPS / BasicEPS if available
+        # yfinance line names use SPACES ("Total Revenue" not "TotalRevenue") —
+        # debugged 2026-05-19 for AGYS. Both forms tried for cross-version
+        # compatibility, but space-form is the modern shape.
         rev_row = None
-        for line in ("TotalRevenue", "Revenue", "OperatingRevenue"):
+        for line in ("Total Revenue", "Revenue", "Operating Revenue",
+                     "TotalRevenue", "OperatingRevenue"):
             if line in qf.index:
                 rev_row = qf.loc[line]
                 break
@@ -128,24 +146,53 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
         if prior_yoys:
             deltas["rev_yoy_max_prior_7q"] = max(prior_yoys)
 
-        # Margins from yfinance (gross/op/net) for q1, q2, q3 — best-effort
-        def _safe_div(num_line: str, den_line: str, idx: int) -> float | None:
+        # Margins from yfinance (gross/op/net). yfinance line names use
+        # spaces ("Gross Profit"). Try modern form first, fall back to
+        # concatenated for older yfinance versions.
+        def _safe_div_any(num_lines: tuple[str, ...], den_lines: tuple[str, ...], idx: int) -> float | None:
             try:
-                if num_line in qf.index and den_line in qf.index:
-                    n = qf.loc[num_line].iloc[idx]
-                    d = qf.loc[den_line].iloc[idx]
-                    if n is not None and d and d > 0:
-                        return float(n) / float(d)
+                num_val = None
+                for ln in num_lines:
+                    if ln in qf.index:
+                        num_val = qf.loc[ln].iloc[idx]
+                        break
+                den_val = None
+                for ln in den_lines:
+                    if ln in qf.index:
+                        den_val = qf.loc[ln].iloc[idx]
+                        break
+                if num_val is not None and den_val and den_val > 0:
+                    return float(num_val) / float(den_val)
             except Exception:
                 return None
             return None
 
+        # yfinance shape for AGYS Q3 FY26 (confirmed 2026-05-19):
+        #   Gross Profit / Total Revenue → ~62%
+        #   Operating Income / Total Revenue → ~14%
+        #   Net Income / Total Revenue → ~12%
+        _rev_lines = ("Total Revenue", "TotalRevenue", "Operating Revenue")
+        _gp_lines = ("Gross Profit", "GrossProfit")
+        _oi_lines = ("Operating Income", "OperatingIncome")
+        _ni_lines = ("Net Income", "NetIncome", "Net Income Common Stockholders")
+
+        # margins_q1 / q2 = the 2 most-recent yfinance quarters (which are
+        # q1, q2 from our perspective since q0 is the just-announced
+        # catalyst not yet in yfinance). The rubric's score_axis_3 will
+        # use these to compute QoQ deltas.
         for q_key, idx in (("margins_q1", 0), ("margins_q2", 1)):
             deltas[q_key] = {
-                "gross_margin": _safe_div("GrossProfit", "TotalRevenue", idx),
-                "op_margin": _safe_div("OperatingIncome", "TotalRevenue", idx),
-                "net_margin": _safe_div("NetIncome", "TotalRevenue", idx),
+                "gross_margin": _safe_div_any(_gp_lines, _rev_lines, idx),
+                "op_margin": _safe_div_any(_oi_lines, _rev_lines, idx),
+                "net_margin": _safe_div_any(_ni_lines, _rev_lines, idx),
             }
+        # margins_q0 (just-announced quarter) deliberately left EMPTY here —
+        # would lie to the rubric about margin acceleration if we copied q1
+        # values. Extraction prompt is being expanded to capture margin
+        # numbers from the press release directly; when present, set this
+        # from `extracted["q_margins"]` in _extracted_to_q0_deltas.
+        # Rubric handles missing margins_q0 gracefully (Axis 3 returns
+        # score=None → composite_scaled shrinks max_available).
 
         deltas["data_quality_flag"] = "fresh_q0_plus_yfinance_historical"
 
@@ -157,44 +204,55 @@ def _augment_with_yfinance_historical(ticker: str, deltas: dict[str, Any]) -> di
 def _extracted_to_beat(extracted: dict[str, Any]) -> dict[str, Any] | None:
     """Build the beat dict for Axis 4 from extraction.
 
-    Extraction has q_eps.beat_vs_est_pct but not yet q_revenue_beat_vs_est_pct
-    (prompt schema doesn't capture it). Until that's added, rev_beat_pct is
-    None and Axis 4 returns score=None with reason 'partial_consensus_data'.
-    Acceptable for today's ship; add to prompt as follow-up.
+    Both q_revenue.beat_vs_est_pct and q_eps.beat_vs_est_pct are now captured
+    by the expanded extraction prompt (2026-05-19). Return None if BOTH are
+    missing; rubric returns 'partial_consensus_data' (score=None) if only
+    one is present.
     """
+    qr = extracted.get("q_revenue_usd") or {}
     qe = extracted.get("q_eps") or {}
-    if not isinstance(qe, dict):
-        return None
-    eps_beat_pct = qe.get("beat_vs_est_pct")
-    if eps_beat_pct is None:
+    rev_beat = qr.get("beat_vs_est_pct") if isinstance(qr, dict) else None
+    eps_beat = qe.get("beat_vs_est_pct") if isinstance(qe, dict) else None
+    if rev_beat is None and eps_beat is None:
         return None
     return {
-        "rev_beat_pct": None,  # not yet captured in extraction schema
-        "eps_beat_pct": eps_beat_pct / 100.0,  # PERCENT → FRACTION
+        "rev_beat_pct": rev_beat / 100.0 if isinstance(rev_beat, (int, float)) else None,
+        "eps_beat_pct": eps_beat / 100.0 if isinstance(eps_beat, (int, float)) else None,
     }
 
 
 def _extracted_to_guidance(extracted: dict[str, Any]) -> dict[str, Any] | None:
     """Build the guidance dict for Axis 5 from extraction.
 
-    Heuristic: if guidance_fy_revenue_usd has a midpoint_yoy_pct that's
-    above prior-year actual, that's 'raised' with a magnitude. Without an
-    explicit "raised vs consensus" delta in the extraction schema (current
-    LLM doesn't compute that), use midpoint_yoy_pct as proxy for direction.
-    Future: add explicit guidance_change_vs_consensus to the prompt.
+    Primary source: extracted["guidance_change"] (new 2026-05-19 field with
+    explicit direction + raise_pct_vs_consensus).
+
+    Fallback: extracted["guidance_fy_revenue_usd"].midpoint_yoy_pct as a
+    proxy when guidance_change is missing but FY guidance midpoint is.
     """
+    gc = extracted.get("guidance_change")
+    if isinstance(gc, dict) and gc.get("direction"):
+        direction = gc.get("direction")
+        raise_pct = gc.get("raise_pct_vs_consensus")
+        return {
+            "direction": direction,
+            "raise_pct_vs_consensus": (
+                raise_pct / 100.0
+                if isinstance(raise_pct, (int, float))
+                else None
+            ),
+        }
+
+    # Fallback to midpoint_yoy_pct proxy
     gf = extracted.get("guidance_fy_revenue_usd")
     if not isinstance(gf, dict):
         return None
     midpoint_yoy = gf.get("midpoint_yoy_pct")
     if not isinstance(midpoint_yoy, (int, float)):
         return None
-    # Heuristic: any guidance above prior-year is a positive signal.
-    # Raise magnitude relative to YoY growth rate (conservative).
     direction = "raised" if midpoint_yoy > 0 else "lowered"
     return {
         "direction": direction,
-        # raise_pct_vs_consensus: not directly extracted; proxy via midpoint YoY
         "raise_pct_vs_consensus": midpoint_yoy / 100.0 if midpoint_yoy > 0 else None,
     }
 
