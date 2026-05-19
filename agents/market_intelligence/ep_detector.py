@@ -1307,36 +1307,33 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # time + can use /why to inspect full extraction.
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
-                    if _rubric_result and _rubric_result.get("composite_scaled") is not None:
-                        _composite = _rubric_result["composite_scaled"]
-                        _label = _rubric_result.get("label", "?")
-                        _detail = (
-                            f"6-axis rubric composite={_composite:.1f}/39 "
-                            f"(label={_label}) < threshold "
-                            f"{CATALYST_RUBRIC_MIN_COMPOSITE:.0f}"
-                        )
+                    from agents.market_intelligence.catalyst_rubric_runtime import (
+                        format_rubric_for_telegram,
+                    )
+                    # Compose readable downgrade message: headline + rubric breakdown
+                    _msg_lines = [
+                        f"📉 *Earnings catalyst DOWNGRADED: {ticker}*",
+                        f"LLM graded `{_original_quality}` on narrative, "
+                        f"but methodology rubric disagrees.",
+                        "",
+                    ]
+                    _rubric_block = format_rubric_for_telegram(ticker, _extracted, today)
+                    if _rubric_block:
+                        _msg_lines.append(_rubric_block)
                     elif _q_rev_yoy is not None:
-                        _detail = (
-                            f"Q-rev YoY={_q_rev_yoy:.1f}% < "
-                            f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}% threshold "
-                            f"(safety net; quality={_quality})"
+                        _msg_lines.append(
+                            f"Q-rev YoY *{_q_rev_yoy:.1f}%* below "
+                            f"*{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}%* threshold "
+                            f"(safety net; extraction quality={_quality})"
                         )
                     else:
-                        _detail = (
+                        _msg_lines.append(
                             f"Q-rev YoY un-extractable from news "
                             f"(extraction quality={_quality}) — fail-loud"
                         )
-                    _src_str = (
-                        ", ".join(_qr_block.get("sources", []))
-                        if _qr_block.get("sources") else "n/a"
-                    )
-                    await send_telegram_message(
-                        f"📉 *Earnings catalyst downgraded: {ticker}*\n"
-                        f"LLM graded {_original_quality} on narrative, "
-                        f"fresh extraction shows {_detail}.\n"
-                        f"Sources: {_src_str}\n"
-                        f"`/why {ticker}` for full extraction + rubric."
-                    )
+                    _msg_lines.append("")
+                    _msg_lines.append(f"`/rubric {ticker}` for full breakdown.")
+                    await send_telegram_message("\n".join(_msg_lines))
                 except Exception:
                     pass
 

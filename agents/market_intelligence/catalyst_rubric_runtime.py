@@ -309,3 +309,215 @@ def score_ep_with_rubric(
     except Exception as e:
         logger.warning(f"Rubric scoring failed for {ticker}: {e}")
         return None
+
+
+# ── Operator surfaces (human-readable formatting) ────────────────────────────
+
+
+_LABEL_EMOJI = {
+    "game_changer":    "🚀",
+    "strong":          "✅",
+    "routine_correct": "⚠️",
+    "weak":            "🚫",
+}
+
+
+def _fmt_pct(v, places=1) -> str:
+    """Format fraction as percent. None → '—'."""
+    if v is None:
+        return "—"
+    return f"{v*100:+.{places}f}%" if abs(v) < 10 else f"{v:+.{places}f}%"
+
+
+def _fmt_pct_raw(v, places=1) -> str:
+    """Format percent (already in % units) as string. None → '—'."""
+    if v is None:
+        return "—"
+    return f"{v:+.{places}f}%"
+
+
+def format_rubric_for_telegram(
+    ticker: str,
+    extracted: dict[str, Any],
+    today: date,
+) -> str | None:
+    """Compact human-readable rubric snapshot for the EP alert message.
+
+    Format (multi-line, Markdown for Telegram):
+        🧪 *Rubric: 16/39 (routine_correct ⚠️)*
+        Revenue: 2/5 (+11.7% YoY, decelerating from +15.6%)
+        Margins: 2/5 (flat)
+        Beat: 2/5 (rev +1.7%, EPS +26%)
+        Guidance: 3/5 (raised +1.0%)
+        EPS / Milestone: not scored
+        Caps: no_milestone_low_growth
+
+    Returns None if extraction can't be scored.
+    """
+    result = score_ep_with_rubric(ticker, extracted, today)
+    if not result:
+        return None
+
+    comp = result.get("composite_scaled")
+    label = result.get("label", "?")
+    label_e = _LABEL_EMOJI.get(label, "")
+    caps = result.get("caps_applied") or []
+
+    lines = []
+    if comp is not None:
+        lines.append(f"🧪 *Rubric: {comp:.1f}/39 ({label} {label_e})*")
+    else:
+        lines.append(f"🧪 *Rubric: not scored*")
+
+    # Per-axis readable lines — only show axes that scored OR were materially
+    # informative. Skip None axes unless they're "no_X_data" worth surfacing.
+    deltas = (extracted.get("q_revenue_usd") or {})
+    fund_deltas = {}  # rebuilt for display below
+
+    # Axis 1 — Revenue
+    a1_score = result.get("a1_score")
+    a1_reason = result.get("a1_reason", "")
+    if a1_score is not None:
+        # Pull current yoy + prior for human reading
+        # The reason string already has the numbers; surface a cleaner version
+        qr = extracted.get("q_revenue_usd") or {}
+        yoy = qr.get("yoy_pct")
+        # Try to extract accel reading from reason string
+        accel_text = ""
+        if "decelerating" in a1_reason.lower():
+            accel_text = ", decelerating"
+        elif "accel=+" in a1_reason or "accel_streak" in a1_reason:
+            accel_text = ", accelerating"
+        elif "accel unknown" in a1_reason:
+            accel_text = " (accel unknown)"
+        yoy_txt = _fmt_pct_raw(yoy) if yoy is not None else "—"
+        lines.append(f"Revenue: *{a1_score}/5* ({yoy_txt} YoY{accel_text})")
+
+    # Axis 2 — EPS
+    a2_score = result.get("a2_score")
+    if a2_score is not None:
+        qe = extracted.get("q_eps") or {}
+        yoy = qe.get("yoy_pct")
+        yoy_txt = _fmt_pct_raw(yoy) if yoy is not None else "—"
+        lines.append(f"EPS: *{a2_score}/5* ({yoy_txt} YoY)")
+
+    # Axis 3 — Margin
+    a3_score = result.get("a3_score")
+    a3_reason = result.get("a3_reason", "")
+    if a3_score is not None:
+        # The reason string captures it well
+        lines.append(f"Margins: *{a3_score}/5* ({a3_reason[:60]})")
+
+    # Axis 4 — Beat
+    a4_score = result.get("a4_score")
+    if a4_score is not None:
+        qr = extracted.get("q_revenue_usd") or {}
+        qe = extracted.get("q_eps") or {}
+        rev_beat = qr.get("beat_vs_est_pct")
+        eps_beat = qe.get("beat_vs_est_pct")
+        rb_txt = _fmt_pct_raw(rev_beat) if rev_beat is not None else "—"
+        eb_txt = _fmt_pct_raw(eps_beat) if eps_beat is not None else "—"
+        lines.append(f"Beat: *{a4_score}/5* (rev {rb_txt}, EPS {eb_txt})")
+
+    # Axis 5 — Guidance
+    a5_score = result.get("a5_score")
+    a5_reason = result.get("a5_reason", "")
+    if a5_score is not None:
+        lines.append(f"Guidance: *{a5_score}/5* ({a5_reason[:60]})")
+
+    # Axis 6 — Milestone
+    a6_score = result.get("a6_score")
+    if a6_score and a6_score > 0:
+        a6_reason = result.get("a6_reason", "")
+        lines.append(f"Milestone bonus: *+{a6_score}* ({a6_reason[:60]})")
+
+    # Missing axes — collapse into one note
+    missing = []
+    label_map = {"a1": "Revenue", "a2": "EPS", "a3": "Margins",
+                 "a4": "Beat", "a5": "Guidance", "a6": "Milestone"}
+    for ax_key, ax_label in label_map.items():
+        if result.get(f"{ax_key}_score") is None:
+            missing.append(ax_label)
+    if missing:
+        lines.append(f"_Not scored: {', '.join(missing)}_")
+
+    if caps:
+        lines.append(f"_Caps: {', '.join(caps)}_")
+
+    return "\n".join(lines)
+
+
+def format_rubric_full_breakdown(
+    ticker: str,
+    extracted: dict[str, Any],
+    today: date,
+) -> str:
+    """Verbose readable breakdown for /rubric TICKER command.
+
+    Includes everything in the snapshot PLUS source attribution + reasoning
+    + extraction quality + disagreement flags.
+    """
+    result = score_ep_with_rubric(ticker, extracted, today)
+
+    lines = [f"*{ticker} — Catalyst Rubric*"]
+
+    if not result:
+        lines.append("Rubric could not score (q_revenue_yoy_pct not extracted).")
+        eq = extracted.get("extraction_quality", "low")
+        lines.append(f"Extraction quality: {eq}")
+        if extracted.get("reasoning_brief"):
+            lines.append(f"Notes: {extracted['reasoning_brief']}")
+        return "\n".join(lines)
+
+    comp = result.get("composite_scaled")
+    label = result.get("label", "?")
+    label_e = _LABEL_EMOJI.get(label, "")
+    threshold_ok = "PASS" if (comp is not None and comp >= 22) else "DOWNGRADE"
+
+    lines.append(f"Composite: *{comp:.1f} / 39* → *{label}* {label_e} → *{threshold_ok}*")
+    lines.append("")
+
+    # Per-axis detail
+    axis_meta = [
+        ("a1", "Revenue trajectory", 5),
+        ("a2", "EPS trajectory",     5),
+        ("a3", "Margin trajectory",  5),
+        ("a4", "Beat vs consensus",  5),
+        ("a5", "Guidance change",    5),
+        ("a6", "Milestone bonus",    4),
+    ]
+    for ax_key, ax_name, ax_max in axis_meta:
+        score = result.get(f"{ax_key}_score")
+        reason = result.get(f"{ax_key}_reason", "")
+        if score is None:
+            lines.append(f"  {ax_name}: _not scored_ — {reason}")
+        else:
+            lines.append(f"  {ax_name}: *{score}/{ax_max}* — {reason}")
+
+    caps = result.get("caps_applied") or []
+    if caps:
+        lines.append("")
+        lines.append(f"Caps applied: {', '.join(caps)}")
+
+    # Extraction context
+    eq = extracted.get("extraction_quality", "low")
+    lines.append("")
+    lines.append(f"Extraction quality: *{eq}*")
+
+    qr = extracted.get("q_revenue_usd") or {}
+    if isinstance(qr, dict):
+        src = qr.get("sources") or []
+        conf = qr.get("confidence", "—")
+        lines.append(f"Q-rev sources: {', '.join(src) if src else '—'} (confidence: {conf})")
+
+    if extracted.get("reasoning_brief"):
+        lines.append(f"Reasoning: _{extracted['reasoning_brief']}_")
+
+    disagreements = extracted.get("disagreement_flags") or []
+    if disagreements:
+        lines.append("")
+        lines.append("⚠️ Disagreement flags:")
+        for d in disagreements[:5]:
+            lines.append(f"  • {d}")
+
+    return "\n".join(lines)

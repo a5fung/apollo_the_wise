@@ -1811,6 +1811,29 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     if ep.get("confidence_multiplier", 1.0) > 1.0:
         text += f"\n\n_Claude + Perplexity agree — {ep['confidence_multiplier']:.1f}x confidence_"
 
+    # Rubric snapshot (2026-05-19 Phase 5): if we have a structured-metrics
+    # extraction + rubric score, append a readable summary so the operator
+    # sees the methodology assessment alongside the alert.
+    try:
+        from agents.market_intelligence.catalyst_metrics_extractor import (
+            lookup_cached_metrics,
+        )
+        from agents.market_intelligence.catalyst_rubric_runtime import (
+            score_ep_with_rubric, format_rubric_for_telegram,
+        )
+        from datetime import date as _date
+        _today = ep.get("alert_date") or _date.today()
+        if isinstance(_today, str):
+            from datetime import datetime as _dt
+            _today = _dt.fromisoformat(_today).date()
+        _extracted = await lookup_cached_metrics(ep["ticker"], _today)
+        if _extracted:
+            _rubric_text = format_rubric_for_telegram(ep["ticker"], _extracted, _today)
+            if _rubric_text:
+                text += "\n\n" + _rubric_text
+    except Exception as _e:
+        logger.debug(f"Rubric snapshot in EP alert failed (non-critical): {_e}")
+
     await send_telegram_message(text, chat_id)
 
     # Post to Twitter/X

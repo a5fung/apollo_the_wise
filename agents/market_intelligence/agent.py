@@ -3989,6 +3989,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/eps_detail":     self._handle_eps_detail,
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
+            "/rubric":         self._handle_rubric_query,
         }
         handler = dispatch.get(cmd)
         if handler:
@@ -4315,6 +4316,24 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.extend(cleaned[:25])
                 if len(cleaned) > 25:
                     lines.append(f"  …{len(cleaned) - 25} more events")
+
+        # Rubric snapshot (Phase 5, 2026-05-19) — append if cached
+        try:
+            from agents.market_intelligence.catalyst_metrics_extractor import (
+                lookup_cached_metrics,
+            )
+            from agents.market_intelligence.catalyst_rubric_runtime import (
+                format_rubric_for_telegram,
+            )
+            _ru_extracted = await lookup_cached_metrics(ticker, target_date)
+            if _ru_extracted:
+                _ru_text = format_rubric_for_telegram(ticker, _ru_extracted, target_date)
+                if _ru_text:
+                    lines.append("")
+                    lines.append(_ru_text)
+                    lines.append(f"_Full breakdown: `/rubric {ticker}`_")
+        except Exception as _ru_e:
+            logger.debug(f"why rubric block failed for {ticker}: {_ru_e}")
 
         body_text = "\n".join(lines)
 
@@ -4798,6 +4817,69 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("🏦 No 9M sugar babies.")
 
         return self._ok(request, result="\n".join(lines))
+
+    async def _handle_rubric_query(self, request: AgentRequest) -> AgentResponse:
+        """`/rubric TICKER [YYYY-MM-DD]` — full catalyst rubric breakdown.
+
+        Surfaces the 6-axis methodology score + per-axis reasoning + source
+        attribution + extraction quality. Use after an EP alert to dig into
+        the methodology assessment, or to inspect an already-downgraded
+        catalyst.
+        """
+        import re as _re
+        from datetime import date as _date, datetime as _datetime
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.catalyst_metrics_extractor import (
+            lookup_cached_metrics, extract_earnings_metrics,
+        )
+        from agents.market_intelligence.catalyst_rubric_runtime import (
+            format_rubric_full_breakdown,
+        )
+        from agents.market_intelligence.collector import (
+            get_fmp_news, search_news_perplexity,
+        )
+
+        raw = request.task.strip()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', raw.upper())
+        skip = _PREPOSITION_SKIP | {"RUBRIC"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(request, result="Usage: /rubric TICKER [YYYY-MM-DD]")
+
+        target_date: _date | None = None
+        for tok in raw.split():
+            try:
+                target_date = _datetime.strptime(tok, "%Y-%m-%d").date()
+                break
+            except ValueError:
+                continue
+        if target_date is None:
+            target_date = et_today()
+
+        # Try cache first
+        extracted = await lookup_cached_metrics(ticker, target_date)
+        if extracted is None:
+            # No cache for this ticker+date — run fresh extraction
+            try:
+                fmp_news = await get_fmp_news(ticker, limit=5)
+                perplexity_text = await search_news_perplexity(
+                    f"What caused {ticker} stock to gap up? Latest catalyst.",
+                    recency="week",
+                )
+                extracted = await extract_earnings_metrics(
+                    ticker, target_date,
+                    claude_analysis=None,
+                    perplexity_text=perplexity_text,
+                    fmp_news=fmp_news,
+                )
+            except Exception as e:
+                return self._ok(
+                    request,
+                    result=f"{ticker}: extraction failed — {e}",
+                )
+
+        text = format_rubric_full_breakdown(ticker, extracted, target_date)
+        return self._ok(request, result=text)
 
     async def _handle_eps_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /eps_detail {tier} {date_str}"""
