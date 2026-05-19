@@ -14,7 +14,77 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-05-14
+Last updated: 2026-05-19
+
+---
+
+## 🎯 Key Target Dates (Next 30 days)
+
+Three checkpoints. Each lists the trigger date, what to do, and what you can expect.
+
+### 📅 1. Tomorrow — Tue 2026-05-20 (market open, ~9:30 AM ET)
+**FIRST live extraction-pipeline composition smoke test.**
+
+8 commits shipped 2026-05-19 touch the extraction pipeline (Alpaca News wire, carry-forward raw corpus, theme axis, error alerting, Perplexity sanitizer). Individual smoke-tested but never run as a composition on a live alert.
+
+**What to do** (~10 min):
+- On the first HIGH EP alert: eyeball the Telegram message — confirm theme line renders below the rubric snapshot (`Theme: 🔥 ... (Accelerating, score 92)` or `Theme: —`).
+- Check audit log: `docker exec apollo-postgres psql -U apollo -d apollo -c "SELECT * FROM mi_audit_log WHERE event_type IN ('extraction_error', 'naked_position_remediation_fired') AND created_at::date = CURRENT_DATE;"`
+- Verify raw corpus persisted correctly: `SELECT jsonb_typeof(raw_polygon_news_json), jsonb_typeof(raw_alpaca_news_json) FROM mi_ep_catalyst_metrics WHERE alert_date = CURRENT_DATE;` — both should be `array`, not `string` (JSONB encoding sanity check).
+- Run `/rubric TICKER` on the alerted ticker — confirm rubric breakdown + theme line render.
+
+**What to expect**:
+- ✅ Best case: alert lands clean, theme renders, raw corpus stored as proper JSONB arrays.
+- ⚠ Likely case: 1-2 minor display glitches (mid-week theme rebuild edge cases, Markdown escape on theme names with `&` or `_`). Cosmetic — flag for tomorrow-evening fix.
+- 🚨 Bad case: `extraction_error` audit event fires → Q-rev safety-net catches it, but rubric gate unused. Telegram alert tells you immediately; investigate same day.
+
+**Tracker**: `data_gated_reviews.yaml::extraction_pipeline_first_live_run_smoke`
+
+---
+
+### 📅 2. Fri 2026-05-22 — Composite live-cutover decision
+**Existing `live_cutover_decision` review fires. Decision: promote MAGNA53 to phase='live' + live_real_enabled=True, OR defer.**
+
+**Current state** (will almost certainly DEFER):
+- 🔴 **Gate 3 RED** — paper R-expectancy cohort = **-$2,041 over 4 trades**. Need N≥10 AND positive R.
+- 🟡 **Gate 2 PENDING** — FTRE partial-trail verification awaiting a real partial-then-trail cycle in paper.
+- 🟡 **Gate 5 partial** — A/D/E deliverables status unknown (file `gate5_adel_deliverables_status_check` fires 5/21).
+- ✅ Gates 4 (dual-account), 5 B/C/G shipped.
+
+**What to do** when 5/22 review surfaces:
+1. Run `gate5_adel_deliverables_status_check` action steps first — confirms what's shipped vs missing.
+2. Eyeball Gate 3 cohort: `SELECT COUNT(*), SUM(total_pnl), AVG(total_pnl) FROM mi_live_trades WHERE status='closed' AND closed_at >= '2026-05-12' AND pnl_attribution IS NULL;`
+3. If Gate 3 still RED → defer 2-4 more weeks; re-evaluate at next 10-trade milestone.
+4. If Gate 3 GREEN AND all other gates green → user signs off on `docs/incidents/2026-05-14-crmd-naked-position.md` §8, then promote MAGNA53.
+
+**What to expect**: most likely defer to ~mid-June. Paper trade cohort needs 3-5 more weeks at current rate to reach N≥10 AND turn net-positive. This is the right call — Pradeep methodology + tight selectivity inherently fires few trades.
+
+**Tracker**: `data_gated_reviews.yaml::live_cutover_decision` (existing) + `gate5_adel_deliverables_status_check` (filed 5/19)
+
+---
+
+### 📅 3. Thu 2026-06-19 — First B6 backtest + 3 calibration reviews ripen
+**~30 days post the 2026-05-19 multi-source extraction ship. Carry-forward cohort hits ≥30 rows. Four reviews ripen on same date:**
+
+| Review | What |
+|---|---|
+| `b6_forward_backtest_first_eval` | Replay rubric against accumulated cohort. Decision: keep threshold=22 / lower / raise. |
+| `rubric_safety_net_yoy_required` | Count YoY-missing cases. Ship calibration fix if ≥10 cases with fwd-edge signal. |
+| `theme_axis_gating_logic` | Crosstab theme_stage × fwd_return on ≥30 HIGH alerts. Decide gating modifiers. |
+| `nbis_rubric_calibration_gap` | One-fixture investigation (~30 min) — can do anytime after 5/22, doesn't strictly need 30d cohort. |
+
+**What to do** (full session, ~3-4 hours):
+1. Build `scripts/_b6_forward_backtest.py` per `b6_forward_backtest_first_eval` action plan.
+2. Pull crosstab outputs. Read patterns.
+3. Decide: ship calibration changes OR collect 30 more days.
+4. If shipping changes: write to `docs/decisions/0003-ep-selectivity-overhaul.md`, ship with shadow-first gating where possible.
+
+**What to expect**:
+- B6 will give the first REAL signal on whether rubric gate threshold=22 is correctly calibrated. Forward operator feedback over the same window adds qualitative signal.
+- Theme axis gating crosstab likely shows clean Accelerating > Mainstream > Fading ordering — if so, ship shadow-tracked modifier.
+- YoY-safety-net review may not have N≥10 yet (depends on how many post-ship alerts hit this edge case). If <10, defer 30 more days.
+
+**Trackers**: 4 reviews in `data_gated_reviews.yaml` (all filed 2026-05-19)
 
 ---
 
@@ -41,6 +111,9 @@ Sorted by earliest_review_date.
 - [ ] `crmd_naked_position_postmortem_2026_05_14` (5/14, depends on Gate 5 deliverables) → YAML
 
 ### Ripens this week / next week
+- [ ] `extraction_pipeline_first_live_run_smoke` (5/20) — first composition smoke test of 2026-05-19 ship → YAML
+- [ ] `gate5_adel_deliverables_status_check` (5/21) — verify A/D/E before 5/22 cutover review → YAML
+- [ ] `nbis_rubric_calibration_gap` (5/22, no predicate gate — ~30 min investigation) → YAML
 - [ ] `theme_assignment_sndk_class_refinement` (5/15) — diagnosis done, structural fix remaining → YAML
 - [ ] `minute_volume_curves_baseline` (5/15) → YAML
 - [ ] `unified_allocator_phase_1b` (5/15, #44 cross-strategy allocator) → YAML
@@ -73,6 +146,9 @@ Sorted by earliest_review_date.
 - [ ] `flag_ma_pin_filter` (6/15) → YAML
 - [ ] `dead_zone_reevaluation` (6/15) → YAML
 - [ ] `fishhook_v3_first_telemetry_review` (6/15) → YAML
+- [ ] `b6_forward_backtest_first_eval` (6/19, N≥30 cohort) → YAML — **see 🎯 Target Date 3**
+- [ ] `rubric_safety_net_yoy_required` (6/19, N≥10 YoY-missing cases) → YAML
+- [ ] `theme_axis_gating_logic` (6/19, N≥30 HIGH alerts) → YAML
 - [ ] `conviction_floor_extension` (6/28) → YAML
 - [ ] `apollo_trades_dashboard_db_flip` (7/15, gated on ≥30 live trades) → YAML
 - [ ] `orb_cutoff_extension` (7/15) → YAML
