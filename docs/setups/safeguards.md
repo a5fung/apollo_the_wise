@@ -22,30 +22,55 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 
 ## Drawdown breaker — Mechanics
 
+**TIERED REDESIGN 2026-05-18**: The original binary OK/TRIPPED design hard-blocked entries on any -5% drawdown. For a 20-30% win-rate strategy, P(7 consecutive losses) = 13.3% — meaning -7% drawdowns are statistically NORMAL variance, not strategy failure. Hard-blocking during normal variance structurally prevents the methodology from finding the winners that pay for losses. The tiered design adjusts SIZING with drawdown depth instead of fully stopping.
+
 **Equity source**: `alpaca_client.get_account()` returns current `equity` (cash + open-position MTM). Already includes unrealized — open winners' gains lift equity, which is the entire point of the methodology-aware shape.
 
 **Peak source**: `MAX(equity)` over last `DRAWDOWN_PEAK_WINDOW_DAYS` (=30) snapshots in `mi_account_equity_snapshots`, scoped to `account_mode`. Snapshots written daily at 16:12 ET cron (`account_equity_snapshot` job).
 
-**State machine** (`mi_safeguard_state` table, PK `(safeguard, account_mode)`):
+**Tiered state machine** (`mi_safeguard_state` table, PK `(safeguard, account_mode)`):
 
-| Current state | Drawdown condition | New state | Audit event |
-|---|---|---|---|
-| OK | `drawdown_pct ≤ DRAWDOWN_TRIP_PCT` (-5%) | TRIPPED | `drawdown_breaker_tripped` |
-| OK | else | OK | (no event) |
-| TRIPPED | `drawdown_pct ≥ DRAWDOWN_RELEASE_PCT` (-2.5%) | OK | `drawdown_breaker_released` |
-| TRIPPED | else | TRIPPED | (no event) |
+| State | Trip threshold | Release threshold | Sizing multiplier | Audit event (entry) |
+|---|---:|---:|---:|---|
+| OK | — | — | 1.0× | (no event) |
+| WATCH | drawdown ≤ -4% | drawdown ≥ -2.5% | 1.0× | `drawdown_watch_entered` |
+| REDUCE | drawdown ≤ -7% | drawdown ≥ -4% | 0.5× | `drawdown_reduce_entered` |
+| BLOCK | drawdown ≤ -12% | drawdown ≥ -7% | 0.0× | `drawdown_block_entered` |
 
-State-aware threshold check eliminates the `-5.1% → -4.9% → -5.1%` flap-and-spam scenario a stateless comparator would produce. Audit events fire only on transitions.
+**Transition logic** (`_next_state` in `broker/drawdown_breaker.py`):
+
+- **Trip-side**: jump to deepest applicable tier in ONE snapshot. A -15% one-day drop from OK lands directly in BLOCK, not WATCH-REDUCE-BLOCK over three days.
+- **Release-side**: step up at most ONE tier per evaluation, gated on per-tier release threshold (asymmetric hysteresis at each boundary). Prevents flap.
+
+**Sizing composition** (applied in `entry_pipeline.py` post-spec_builder):
+
+```
+final_shares = floor(spec.shares × strategy.position_size_multiplier × drawdown_tier_multiplier)
+```
+
+Per-strategy (#65, e.g. 9M Day 2 at 0.5×) and drawdown tier multipliers compound multiplicatively. A 9M Day 2 trade during REDUCE state = 0.5 × 0.5 = 0.25× sizing. This is methodology-correct — bleed weeks should compound conservative sizing across both axes.
 
 **Account-mode scoping**: paper history doesn't carry over to live. Live cutover starts a fresh peak. `mi_safeguard_state` row is per `(safeguard, account_mode)`.
 
-## Drawdown breaker — Trip & Release
+## Drawdown breaker — Why tiered instead of binary
 
-- **Trip**: `current_equity ≤ peak * 0.95` while state was OK
-- **Release**: `current_equity ≥ peak * 0.975` while state was TRIPPED
-- **Asymmetric thresholds** (5% trip / 2.5% release) prevent flapping — the breaker stays tripped through the noise band before declaring recovery
+For a 20-30% WR momentum strategy with R-expectancy positive:
+
+| Event | Probability | Drawdown |
+|---|---|---|
+| 7 consecutive losses (at 1% each) | 13.3% | -7% |
+| 10 consecutive losses | 5.6% | -10% |
+| 13 consecutive losses | 2.4% | -13% |
+
+The binary -5% trip caught NORMAL variance. After a normal drawdown, the strategy needs to keep trading to find the winners (3-10R) that pay for the losses. Pausing for ~30 days after a normal drawdown structurally breaks the strategy.
+
+The tiered design preserves the safeguard's purpose (catastrophic loss prevention) WITHOUT preventing the methodology from operating during expected variance. WATCH = informational, REDUCE = halve risk (still fishing), BLOCK = true catastrophic floor (rare).
+
+**Daily loss limit (2% of account)** remains in place as the same-day blow-up guard, independent of this tiered cumulative-drawdown logic.
+
 - **Min-history gate** (active phase only): `snapshots_count ≥ MIN_SNAPSHOT_HISTORY_DAYS` (=7). Don't trip on sparse history (new account / mode flip). Shadow always evaluates and emits regardless (calibration data from day 1).
 - **Stale-data fail-open** (advisor-flagged): if most recent snapshot is older than 48 hours, `sufficient_history=False` and the breaker is effectively disabled until data freshens. Protects against silent cron-failure lockouts on a week-old peak. Active-phase reads see `state='OK'` because `recompute_drawdown_state` won't transition without fresh data.
+- **Legacy `TRIPPED` state migration**: pre-2026-05-18 `mi_safeguard_state` rows with `state='TRIPPED'` auto-migrate via `_next_state` on next recompute. Maps to REDUCE state (0.5× multiplier) until the recompute cron repopulates with a proper tier.
 
 ## Drawdown breaker — Design choices
 
@@ -102,6 +127,33 @@ ORDER BY s.snapshot_date DESC;
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
 ## Change log (newest first)
+
+### 2026-05-18 — Drawdown breaker: tiered redesign (OK/WATCH/REDUCE/BLOCK)
+
+**Trigger**: User correctly flagged that the binary -5%/-2.5% breaker design was methodology-incompatible. For a 20-30% WR strategy, P(7 consecutive losses) = 13.3%, making a -7% drawdown statistically NORMAL variance. Hard-blocking on normal variance prevents the methodology from finding the winners that pay for losses. The whole strategy structurally cannot work under the original design.
+
+**Evidence**: 2026-05-18 paper account state — peak $99,271 (5/08), current $93,255, drawdown -6.06% caused by CRMD/KLAR/CSCO/MRAM cumulative damage over 10 days. Under binary design: TRIPPED state, would have blocked entries for ~30 days waiting for peak to age out or equity to recover to -2.5% (= +$3,535 from current). Under tiered design: same drawdown lands in WATCH state (informational only, no sizing impact). The system continues to fish for winners that pay for losses.
+
+**Anticipated effect**:
+- Tier definitions: OK (1.0×), WATCH at -4% (1.0×, alert only), REDUCE at -7% (0.5×), BLOCK at -12% (0.0×).
+- Trip-side: jump to deepest applicable tier in one snapshot.
+- Release-side: step up one tier per evaluation, asymmetric hysteresis.
+- Sizing composition: `final_shares = strategy_multiplier × drawdown_tier_multiplier × base_shares`. 9M Day 2 (0.5×) × REDUCE (0.5×) = 0.25× during bleed weeks — methodology-correct conservative compounding.
+- Audit events: tier-specific (`drawdown_watch_entered`, `drawdown_reduce_entered`, etc.) — no dual-emit since no production readers of legacy event names.
+
+**Why tiered**:
+- Daily loss limit (2%) is the same-day blow-up guard
+- WATCH = telemetry tier (-4% to -7%): alerts but no trading change. Captures cumulative-bleed state for operator visibility.
+- REDUCE = sizing tier (-7% to -12%): halves risk per trade. Strategy keeps fishing for winners but with reduced exposure. The methodology STILL operates.
+- BLOCK = catastrophic tier (-12%+): rare; true emergency floor
+
+**Reversion-flag**: REPLACEMENT of binary design (shipped 2026-05-08, #39). Legacy `DRAWDOWN_TRIP_PCT/RELEASE_PCT` constants kept as aliases for one cycle. Legacy `'TRIPPED'` state auto-migrates to REDUCE via `_next_state` + `get_tier_multiplier`. Rollback path: revert constants to binary values; ALLOWED_WRITERS unchanged; tiered code paths fall through to binary semantics via aliases.
+
+**Promotion / live cutover impact**: this unblocks Gate 1 of live-cutover composite review. Under binary design, today's -6% would have blocked any live cutover for ~30 days. Under tiered: WATCH state, system trades normally at full size. Composite review can evaluate cleanly Friday.
+
+**Status**: SHIPPED 2026-05-18. Live verification: today's -6.06% recomputes into WATCH state (informational); existing-position management unaffected; new entries (in shadow phase) continue at 1.0× sizing. Active-phase promotion still gated on 14d telemetry + acceptance gates.
+
+---
 
 ### 2026-05-18 — Stop-ACK timeout watchdog: first real production catch (GOOGL #56)
 
