@@ -1217,23 +1217,67 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _quality = _extracted.get("extraction_quality", "low")
             _reasoning = _extracted.get("reasoning_brief", "")
 
+            # 6-axis rubric gate (Phase 5 ship 2026-05-19). Runs on fresh
+            # multi-source extraction; composite_scaled < threshold →
+            # downgrade. Falls through to Q-rev safety net if rubric
+            # can't score.
             _downgrade_reason = None
-            if _q_rev_yoy is None:
-                # Extraction couldn't find a Q-rev YoY — fail-loud per advisor.
-                # Default downgrade with explicit reason. Operator can
-                # re-evaluate via /why TICKER which shows the raw extraction.
-                _downgrade_reason = f"q_rev_yoy_unextractable_quality_{_quality}"
-            elif _q_rev_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
-                _downgrade_reason = (
-                    f"q_rev_yoy_{_q_rev_yoy:.1f}pct_below_"
-                    f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
-                )
+            _rubric_result = None
+            from agents.market_intelligence.constants import (
+                CATALYST_RUBRIC_GATE_ENABLED, CATALYST_RUBRIC_MIN_COMPOSITE,
+            )
+            if CATALYST_RUBRIC_GATE_ENABLED:
+                try:
+                    from agents.market_intelligence.catalyst_rubric_runtime import (
+                        score_ep_with_rubric,
+                    )
+                    _rubric_result = score_ep_with_rubric(ticker, _extracted, today)
+                    if _rubric_result:
+                        _composite = _rubric_result.get("composite_scaled")
+                        _label = _rubric_result.get("label")
+                        _caps = _rubric_result.get("caps_applied", [])
+                        logger.info(
+                            f"{ticker}: rubric composite={_composite}/39 "
+                            f"label={_label} caps={_caps}"
+                        )
+                        if _composite is not None and _composite < CATALYST_RUBRIC_MIN_COMPOSITE:
+                            _downgrade_reason = (
+                                f"rubric_composite_{_composite:.1f}_below_"
+                                f"{CATALYST_RUBRIC_MIN_COMPOSITE:.0f}_"
+                                f"label_{_label}"
+                            )
+                except Exception as e:
+                    logger.warning(f"{ticker}: rubric scoring failed: {e}")
+                    _rubric_result = None
+
+            # Safety-net Q-rev threshold gate (fires when rubric couldn't
+            # score, e.g. extraction lacks q_revenue_yoy_pct entirely).
+            if _downgrade_reason is None and _rubric_result is None:
+                if _q_rev_yoy is None:
+                    _downgrade_reason = f"q_rev_yoy_unextractable_quality_{_quality}"
+                elif _q_rev_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
+                    _downgrade_reason = (
+                        f"q_rev_yoy_{_q_rev_yoy:.1f}pct_below_"
+                        f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
+                    )
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality
                 catalyst_quality = "routine"
                 _qr_block = _extracted.get("q_revenue_usd") or {}
                 _gf_block = _extracted.get("guidance_fy_revenue_usd") or {}
+                # Rubric details if available (Phase 5 ship)
+                _rubric_summary = None
+                if _rubric_result:
+                    _rubric_summary = {
+                        "composite_scaled": _rubric_result.get("composite_scaled"),
+                        "label": _rubric_result.get("label"),
+                        "caps_applied": _rubric_result.get("caps_applied"),
+                        "axes_scored": {
+                            f"a{i}": _rubric_result.get(f"a{i}_score")
+                            for i in range(1, 7)
+                        },
+                    }
                 await log_audit_event(
                     "catalyst_earnings_revenue_weak_downgrade",
                     f"{ticker}: {_original_quality} → routine "
@@ -1250,6 +1294,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         "extraction_sources": _qr_block.get("sources"),
                         "extraction_confidence": _qr_block.get("confidence"),
                         "guidance_midpoint_yoy_pct": _gf_block.get("midpoint_yoy_pct"),
+                        "rubric": _rubric_summary,
                         "earnings_source": earnings_src,
                         "gap_pct": c["gap_pct"],
                     }),
@@ -1262,11 +1307,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # time + can use /why to inspect full extraction.
                 try:
                     from agents.market_intelligence.briefing import send_telegram_message
-                    if _q_rev_yoy is not None:
+                    if _rubric_result and _rubric_result.get("composite_scaled") is not None:
+                        _composite = _rubric_result["composite_scaled"]
+                        _label = _rubric_result.get("label", "?")
+                        _detail = (
+                            f"6-axis rubric composite={_composite:.1f}/39 "
+                            f"(label={_label}) < threshold "
+                            f"{CATALYST_RUBRIC_MIN_COMPOSITE:.0f}"
+                        )
+                    elif _q_rev_yoy is not None:
                         _detail = (
                             f"Q-rev YoY={_q_rev_yoy:.1f}% < "
                             f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}% threshold "
-                            f"(extraction quality={_quality})"
+                            f"(safety net; quality={_quality})"
                         )
                     else:
                         _detail = (
@@ -1282,7 +1335,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"LLM graded {_original_quality} on narrative, "
                         f"fresh extraction shows {_detail}.\n"
                         f"Sources: {_src_str}\n"
-                        f"`/why {ticker}` for full extraction."
+                        f"`/why {ticker}` for full extraction + rubric."
                     )
                 except Exception:
                     pass

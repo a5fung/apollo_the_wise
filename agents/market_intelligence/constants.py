@@ -187,6 +187,25 @@ EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
 ))  # PERCENT (matches mi_fundamental_flags.sales_yoy_latest storage convention,
     # e.g. 15.6 = 15.6%, NOT 0.156). Default 5.0 = 5% YoY revenue growth.
 
+# ── 6-axis catalyst rubric runtime gate (2026-05-19, Phase 5 ship) ────────────
+# When earnings-day catalyst extracted to mi_ep_catalyst_metrics, the rubric
+# runs on the fresh structured data and produces composite_scaled (0-39).
+# composite < CATALYST_RUBRIC_MIN_COMPOSITE → downgrade to routine.
+# Falls through to the Q-rev threshold safety net if rubric can't score
+# (no q_revenue_yoy_pct extracted).
+#
+# Label bands (from catalyst_rubric.LABEL_BANDS):
+#   30+: game_changer
+#   22-29: strong            <-- default threshold 22 = strong-or-better
+#   14-21: routine_correct
+#   0-13: weak
+CATALYST_RUBRIC_GATE_ENABLED = os.environ.get(
+    "CATALYST_RUBRIC_GATE_ENABLED", "true"
+).lower() == "true"
+CATALYST_RUBRIC_MIN_COMPOSITE = float(os.environ.get(
+    "CATALYST_RUBRIC_MIN_COMPOSITE", "22"
+))  # Default 22 = strong floor. Below 22 (routine_correct/weak) → downgrade.
+
 REGIME_EMOJI = {
     "Bull": "🟢",
     "Choppy": "🟡",
