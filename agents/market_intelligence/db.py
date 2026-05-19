@@ -2476,6 +2476,18 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           domain). Tag: `ninem_universe_watch`. Env flag
           `NINEM_FLAG_CARRYFORWARD_ENABLED`. 14-day window for multi-
           week tightness observation.
+      (e) **Flag-stage carryforward** (2026-05-19 RVMD-class fix) —
+          tickers in active setup stages (COILED, TIGHTENING) in last
+          5 trading days stay in universe even if RS gates fail today.
+          The flag detector's purpose is catching consolidating leaders
+          BEFORE breakout; knocking out RVMD-class names (3 consecutive
+          COILED days, rs_3m=94 elite) on a one-day rs_1m percentile
+          dip (85.6→70.3 from rotation) is structurally inverted. Tag:
+          `flag_stage_carryforward`. Env flag
+          `FLAG_STAGE_CARRYFORWARD_ENABLED`. 5-day window bridges
+          multi-day RS dips while aging out genuinely-broken setups
+          (state machine handles correctness — carryforward either
+          re-establishes COILED/TIGHTENING or progresses to INVALIDATED).
 
     Common gates (organic paths a+b share):
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
@@ -2595,6 +2607,39 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             """, scan_date)
             for r in ninem_rows:
                 source_map.setdefault(r["ticker"], []).append("ninem_universe_watch")
+
+        # ── Path (e): flag-stage carryforward (2026-05-19 RVMD-class fix) ──
+        # Tickers that were in active setup stages (COILED, TIGHTENING) in
+        # the last 5 trading days stay in the universe even if their RS
+        # gates fail today. The flag detector's whole purpose is catching
+        # consolidating leaders before breakout — knocking RVMD-class names
+        # (3 consecutive COILED days, tight $141-$151 range, rs_3m=94 still
+        # elite) out of the universe when their rs_1m percentile dipped
+        # below 80 on a one-day rotation is structurally inverted.
+        #
+        # 5-day window: long enough to bridge multi-day RS dips, short
+        # enough to age out stale setups that genuinely broke down.
+        # State machine handles correctness — carried-forward tickers
+        # either re-establish COILED/TIGHTENING (consolidation continued)
+        # or progress to INVALIDATED (base broke). Universe expansion
+        # alone doesn't change detection rules.
+        #
+        # Env flag for safety / quick revert. Trigger: RVMD 2026-05-19
+        # dropped from universe (rs_rank 321→499, rs_1m 85.6→70.3 in one
+        # day) despite 3 consecutive COILED scans.
+        flag_carry_enabled = os.environ.get(
+            "FLAG_STAGE_CARRYFORWARD_ENABLED", "true"
+        ).lower() == "true"
+        if flag_carry_enabled:
+            stage_carry_rows = await conn.fetch("""
+                SELECT DISTINCT ticker
+                FROM mi_flag_candidates
+                WHERE scan_date < $1::date
+                  AND scan_date >= ($1::date - INTERVAL '5 days')
+                  AND stage IN ('COILED', 'TIGHTENING')
+            """, scan_date)
+            for r in stage_carry_rows:
+                source_map.setdefault(r["ticker"], []).append("flag_stage_carryforward")
 
     return source_map
 

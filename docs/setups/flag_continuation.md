@@ -12,9 +12,15 @@ This is a long-side continuation pattern — opposite of `parabolic_short.md`. B
 
 ## Universe / eligibility
 
+Organic paths (common-gate enforced):
 - **Top 200 RS** OR **rs_1m percentile ≥ 80** OR **last_close / 10-session min ≥ 1.25** (burst inclusion)
 - Common gates: price ≥ $5, ADV-20 dollar volume ≥ $5M, ≥ 60 sessions of history, security type ∈ (CS, ADRC)
 - Sector enriched via `mi_ticker_overrides`
+
+Carryforward paths (bypass common gates — already vetted on prior admission):
+- **MAGNA53-failed R3** (P7.2 2026-05-17) — R3-stopped MAGNA53 names in last 7d. Env: `MAGNA53_FLAG_CARRYFORWARD_ENABLED`
+- **9M universe-watch** (P7.3b 2026-05-17) — ALL 9M EPs in last 14d. Env: `NINEM_FLAG_CARRYFORWARD_ENABLED`
+- **Flag-stage carryforward** (2026-05-19) — tickers that were COILED or TIGHTENING in last 5 trading days. Bridges one-day RS percentile dips that would otherwise drop consolidating leaders from the universe. Env: `FLAG_STAGE_CARRYFORWARD_ENABLED`
 
 ## Detection criteria (current)
 
@@ -62,6 +68,28 @@ Added 2026-05-04 to catch short-base tight setups that don't fit the early-vs-re
 2. **Trailing-10 burst path** (CLAUDE.md 2026-05-05): currently inert (`rs_1m ≥ 80` carries the burst path on most tickers). Documented in flag_detector docstring; non-action item.
 
 ## Change log (newest first)
+
+### 2026-05-19 — Universe path (e): flag-stage carryforward (RVMD-class fix)
+
+**Trigger**: RVMD on 2026-05-19 was COILED for 3 consecutive scans (5/14, 5/15, 5/18) — textbook tight consolidation in a $141-$151 range with rs_composite=92 and rs_3m=94. Today's scan dropped it entirely (not in mi_flag_candidates at all, not even WATCH). Investigation: rs_rank went 321→499 and rs_1m went 85.6→70.3 in a single day (one-day percentile rotation as bigger-mover names entered the 1-month window). All three organic universe gates (rs_top200 ≤200, rs_1m ≥80, momentum_25pct ≥+25%) failed simultaneously despite price action being identical to prior days (RVMD actually +2% on 5/19). Not in MAGNA53-failed or 9M-watch carryforward paths either.
+
+**Evidence**: N=1 case (RVMD). But this is a STRUCTURAL inversion, not a calibration question — the flag detector's whole purpose is catching consolidating leaders before breakout. A 1-day RS percentile dip dropping a 3-day-COILED textbook setup is the gate logic working against the detector's intent. Sample-size discipline doesn't apply to gate inversions, only to threshold tuning.
+
+**Anticipated effect**: tickers that were COILED or TIGHTENING in last 5 trading days stay in the universe. State machine handles correctness — carried-forward tickers either re-establish COILED/TIGHTENING (consolidation continued) or progress to INVALIDATED (base broke). Universe expansion alone doesn't change detection rules. Expected volume: ~20-50 additional carryforward tickers per scan tick (depending on market regime and recent setup density). Most will be the same names already in organic paths; the marginal admit is RVMD-class names on one-day RS dips.
+
+**Architecture**: new SQL in `get_flag_universe`:
+```sql
+SELECT DISTINCT ticker FROM mi_flag_candidates
+WHERE scan_date < $1::date AND scan_date >= ($1::date - INTERVAL '5 days')
+  AND stage IN ('COILED', 'TIGHTENING')
+```
+Tag: `flag_stage_carryforward`. Same source-tag-list pattern as P7.2 / P7.3b carryforward paths. Multi-source admission preserved (a ticker in top-200 RS AND prior COILED captures both tags).
+
+**Env flag**: `FLAG_STAGE_CARRYFORWARD_ENABLED=true` (default). Set false + docker compose restart to revert.
+
+**Reversion-flag**: NEW (introduces 5th universe pattern).
+
+**Status**: shipped 2026-05-19. Stage 1 verification: confirm RVMD appears in 2026-05-20 mi_flag_candidates with `universe_sources @> ARRAY['flag_stage_carryforward']` (and ideally re-enters COILED). Stage 2 telemetry: count carryforward-admitted tickers that progress to TRIGGERED over next 30d — if ≥10 carryforward-admitted tickers fire TRIGGERED, the fix is empirically validated.
 
 ### 2026-05-17 — P7.2 universe expansion: MAGNA53-failed carryforward
 
