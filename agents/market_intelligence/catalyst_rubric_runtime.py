@@ -383,6 +383,86 @@ def score_ep_with_rubric(
         return None
 
 
+# ── Theme membership (Pradeep #1 catalyst type) ──────────────────────────────
+
+
+async def get_theme_membership(ticker: str) -> dict[str, Any] | None:
+    """Look up active theme membership for `ticker`.
+
+    Returns dict with {name, stage, score, theme_date} of the most recent
+    active theme containing this ticker, or None if not in any active theme.
+
+    Pradeep methodology ranks theme membership as the #1 catalyst type
+    (above policy / shortage / sales acceleration). Currently surfaced as
+    METADATA only on EP alerts — does not modify the rubric gate threshold
+    pending forward calibration. Future iteration: theme-stage may adjust
+    the composite threshold (Accelerating → lower threshold, etc).
+
+    Query semantics:
+    - Active = stage != 'Retired' AND theme_date within last 7 days
+    - Ticker present in the theme's `tickers` ARRAY column
+    - If multiple active themes contain the ticker, returns the one with
+      highest score (most heat)
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT DISTINCT ON (name) name, stage, score, theme_date
+            FROM mi_themes
+            WHERE stage != 'Retired'
+              AND theme_date >= CURRENT_DATE - INTERVAL '7 days'
+              AND $1 = ANY(tickers)
+            ORDER BY name, theme_date DESC, score DESC NULLS LAST
+        """, ticker)
+        if not row:
+            return None
+        # If multiple themes contain ticker, get all and pick highest score
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) name, stage, score, theme_date
+            FROM mi_themes
+            WHERE stage != 'Retired'
+              AND theme_date >= CURRENT_DATE - INTERVAL '7 days'
+              AND $1 = ANY(tickers)
+            ORDER BY name, theme_date DESC
+        """, ticker)
+        # Sort by score descending (treat None as -inf for ordering)
+        best = max(rows, key=lambda r: (r["score"] if r["score"] is not None else -1e9))
+        return {
+            "name": best["name"],
+            "stage": best["stage"],
+            "score": float(best["score"]) if best["score"] is not None else None,
+            "theme_date": best["theme_date"].isoformat() if best["theme_date"] else None,
+        }
+
+
+_THEME_STAGE_EMOJI = {
+    "Nascent":      "🌱",
+    "Accelerating": "🔥",
+    "Mainstream":   "📈",
+    "Fading":       "🍂",
+    "Retired":      "💤",
+}
+
+
+def format_theme_for_telegram(theme: dict[str, Any] | None) -> str:
+    """One-line theme membership snippet for EP alert.
+
+    Examples:
+      Theme: 🔥 Custom AI Silicon & Hyperscale Datacenter (Accelerating, score 92)
+      Theme: 🍂 GLP-1 / Obesity Therapeutics (Fading, score 41)
+      Theme: — (no active theme membership)
+    """
+    if not theme:
+        return "Theme: —"
+    stage = theme.get("stage", "")
+    emoji = _THEME_STAGE_EMOJI.get(stage, "")
+    name = theme.get("name", "")
+    score = theme.get("score")
+    score_txt = f", score {score:.0f}" if score is not None else ""
+    return f"Theme: {emoji} {name} ({stage}{score_txt})"
+
+
 # ── Operator surfaces (human-readable formatting) ────────────────────────────
 
 

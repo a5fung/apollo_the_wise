@@ -4318,12 +4318,14 @@ class MarketIntelligenceAgent(BaseAgent):
                     lines.append(f"  …{len(cleaned) - 25} more events")
 
         # Rubric snapshot (Phase 5, 2026-05-19) — append if cached
+        # Theme membership (C8, 2026-05-19) — append for every /why
         try:
             from agents.market_intelligence.catalyst_metrics_extractor import (
                 lookup_cached_metrics,
             )
             from agents.market_intelligence.catalyst_rubric_runtime import (
                 format_rubric_for_telegram,
+                get_theme_membership, format_theme_for_telegram,
             )
             _ru_extracted = await lookup_cached_metrics(ticker, target_date)
             if _ru_extracted:
@@ -4332,6 +4334,12 @@ class MarketIntelligenceAgent(BaseAgent):
                     lines.append("")
                     lines.append(_ru_text)
                     lines.append(f"_Full breakdown: `/rubric {ticker}`_")
+            # Theme line — independent of rubric
+            try:
+                _theme = await get_theme_membership(ticker)
+                lines.append(format_theme_for_telegram(_theme))
+            except Exception as _te:
+                logger.debug(f"why theme block failed for {ticker}: {_te}")
         except Exception as _ru_e:
             logger.debug(f"why rubric block failed for {ticker}: {_ru_e}")
 
@@ -4879,6 +4887,15 @@ class MarketIntelligenceAgent(BaseAgent):
                 )
 
         text = format_rubric_full_breakdown(ticker, extracted, target_date)
+        # Theme membership (C8) — append for /rubric command
+        try:
+            from agents.market_intelligence.catalyst_rubric_runtime import (
+                get_theme_membership, format_theme_for_telegram,
+            )
+            _theme = await get_theme_membership(ticker)
+            text += "\n\n" + format_theme_for_telegram(_theme)
+        except Exception as _te:
+            logger.debug(f"/rubric theme block failed for {ticker}: {_te}")
         return self._ok(request, result=text)
 
     async def _handle_eps_detail(self, request: AgentRequest) -> AgentResponse:

@@ -1813,13 +1813,15 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
 
     # Rubric snapshot (2026-05-19 Phase 5): if we have a structured-metrics
     # extraction + rubric score, append a readable summary so the operator
-    # sees the methodology assessment alongside the alert.
+    # sees the methodology assessment alongside the alert. Theme membership
+    # (Pradeep #1 catalyst type) surfaced separately as metadata.
     try:
         from agents.market_intelligence.catalyst_metrics_extractor import (
             lookup_cached_metrics,
         )
         from agents.market_intelligence.catalyst_rubric_runtime import (
             score_ep_with_rubric, format_rubric_for_telegram,
+            get_theme_membership, format_theme_for_telegram,
         )
         from datetime import date as _date
         _today = ep.get("alert_date") or _date.today()
@@ -1831,6 +1833,12 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
             _rubric_text = format_rubric_for_telegram(ep["ticker"], _extracted, _today)
             if _rubric_text:
                 text += "\n\n" + _rubric_text
+        # Theme membership — surface for EVERY EP alert (independent of rubric)
+        try:
+            _theme = await get_theme_membership(ep["ticker"])
+            text += "\n" + format_theme_for_telegram(_theme)
+        except Exception as _te:
+            logger.debug(f"Theme membership lookup failed (non-critical): {_te}")
     except Exception as _e:
         logger.debug(f"Rubric snapshot in EP alert failed (non-critical): {_e}")
 
