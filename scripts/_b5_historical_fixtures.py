@@ -103,8 +103,9 @@ async def main():
         else:
             diffs += 1
         comp_str = f"{comp:>5.1f}/39" if comp is not None else "(none)/39"
+        alpaca_n = extracted.get("_alpaca_news_count", 0)
         print(f"{ticker:<6} {alert_date} {expected:<16} {comp_str:<12} {label:<18} {match:<6} {verdict:<10} "
-              f"[polygon_n={polygon_n}, fmp_n={fmp_n}]")
+              f"[polygon_n={polygon_n}, alpaca_n={alpaca_n}, fmp_n={fmp_n}]")
 
     print("-" * 95)
     print(f"Summary: {matches} match, {diffs} diff, {not_scored} not_scored "

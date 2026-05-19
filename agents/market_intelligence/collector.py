@@ -383,7 +383,7 @@ async def get_fmp_news(
                 params["to"] = to_date.isoformat()
             async with httpx.AsyncClient(timeout=15) as client:
                 r = await client.get(
-                    "https://financialmodelingprep.com/stable/news/stock",
+                    "https://financialmodelingprep.com/stable/news/stock-latest",
                     params=params,
                 )
                 r.raise_for_status()
@@ -415,6 +415,71 @@ async def get_fmp_news(
                 for n in news[:limit]]
     except Exception as e:
         logger.warning(f"yfinance news fallback failed for {ticker}: {e}")
+        return []
+
+
+async def get_alpaca_news(
+    ticker: str,
+    *,
+    from_date: Optional[date] = None,
+    to_date: Optional[date] = None,
+    lookback_days: int = 7,
+    limit: int = 20,
+) -> list[dict]:
+    """Stock news via Alpaca News API (`alpaca.data.historical.news.NewsClient`).
+
+    Free with any Alpaca account; Benzinga-sourced content including
+    press releases, analyst notes, and aggregator stories. Supports
+    historical date ranges (start/end) so this is suitable for both
+    live extraction and historical re-validation / backtest.
+
+    Returns list of {title, summary, content, author, source, url, created_at}
+    dicts. Empty list on any failure — never raises.
+    """
+    try:
+        from alpaca.data.historical.news import NewsClient
+        from alpaca.data.requests import NewsRequest
+        from datetime import timezone as _tz
+    except ImportError as e:
+        logger.warning(f"alpaca-py NewsClient import failed: {e}")
+        return []
+
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    if not api_key or not secret:
+        logger.warning("Alpaca credentials not set; skipping Alpaca News")
+        return []
+
+    end = to_date or date.today()
+    start = from_date or (end - timedelta(days=lookback_days))
+    start_dt = datetime(start.year, start.month, start.day, tzinfo=_tz.utc)
+    end_dt = datetime(end.year, end.month, end.day, 23, 59, 59, tzinfo=_tz.utc)
+
+    try:
+        client = NewsClient(api_key=api_key, secret_key=secret)
+        req = NewsRequest(
+            symbols=ticker,
+            start=start_dt,
+            end=end_dt,
+            limit=limit,
+        )
+        loop = asyncio.get_event_loop()
+        resp = await loop.run_in_executor(None, lambda: client.get_news(req))
+        items = resp.dict().get("news", []) if hasattr(resp, "dict") else resp.model_dump().get("news", [])
+        out = []
+        for n in items[:limit]:
+            out.append({
+                "title": n.get("headline", "") or "",
+                "summary": n.get("summary", "") or "",
+                "content": n.get("content", "") or "",
+                "author": n.get("author", "") or "",
+                "source": n.get("source", "") or "",
+                "url": n.get("url", "") or "",
+                "created_at": n.get("created_at", "").isoformat() if hasattr(n.get("created_at", ""), "isoformat") else str(n.get("created_at", "")),
+            })
+        return out
+    except Exception as e:
+        logger.warning(f"Alpaca News failed for {ticker} ({start}..{end}): {e}")
         return []
 
 

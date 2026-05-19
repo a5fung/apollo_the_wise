@@ -32,7 +32,7 @@ from typing import Any
 import httpx
 
 from agents.market_intelligence.collector import (
-    get_polygon_news, get_fmp_news, search_news_perplexity,
+    get_polygon_news, get_fmp_news, search_news_perplexity, get_alpaca_news,
 )
 from agents.market_intelligence.db import get_pool, log_audit_event
 
@@ -47,6 +47,9 @@ Today's date: {today}.
 Articles (multi-source corpus):
 === Polygon news ===
 {polygon_news}
+
+=== Alpaca News (Benzinga-sourced) ===
+{alpaca_news}
 
 === FMP news ===
 {fmp_news}
@@ -128,6 +131,19 @@ def _format_fmp_news(news: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _format_alpaca_news(news: list[dict]) -> str:
+    if not news:
+        return "(no alpaca news)"
+    lines = []
+    for n in news[:10]:
+        title = n.get("title", "")
+        src = n.get("source", "")
+        summary = (n.get("summary", "") or n.get("content", ""))[:400]
+        created = n.get("created_at", "")[:10]  # YYYY-MM-DD
+        lines.append(f"- [{src} {created}] {title}: {summary}")
+    return "\n".join(lines)
+
+
 async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
     """Single Sonnet call returning the structured JSON."""
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -182,24 +198,31 @@ async def extract_earnings_metrics(
 ) -> dict[str, Any]:
     """Multi-source earnings-metrics extraction.
 
-    Fetches Polygon news on-demand (FMP + Perplexity + Claude analysis are
-    passed by caller since ep_detector already has them).
+    Fetches Polygon news AND Alpaca News on-demand, both windowed to
+    `news_on_or_before` for historical re-extraction. FMP + Perplexity
+    + Claude analysis are passed by caller since ep_detector already
+    has them.
 
-    `news_on_or_before` constrains the Polygon news window for historical
-    re-extraction (fixture re-validation, backtests). Default None = today.
-    FMP also supports date filtering — callers doing historical work should
-    pass a date-windowed `fmp_news` (via get_fmp_news with from_date/to_date).
+    `news_on_or_before` constrains the Polygon + Alpaca News window for
+    historical re-extraction (fixture re-validation, backtests).
+    Default None = today. FMP also supports date filtering on plans
+    that include the news endpoint.
+
     Perplexity has no time-travel; historical callers should pass
-    perplexity_text=None and accept somewhat degraded extraction (still has
-    Polygon + FMP press-release coverage).
+    perplexity_text=None. Alpaca News (Benzinga-sourced, historical)
+    substantially compensates for the missing Perplexity synthesis in
+    backtests.
 
-    Returns the extraction dict (per schema in _EXTRACTION_PROMPT) plus
-    `_raw_corpus` for audit traceability. If extraction completely fails,
-    returns a minimal dict with extraction_quality='low' so callers can
-    apply fail-closed logic uniformly.
+    Returns the extraction dict (per schema in _EXTRACTION_PROMPT). If
+    extraction completely fails, returns a minimal dict with
+    extraction_quality='low' so callers can apply fail-closed logic
+    uniformly.
     """
     polygon_news = await get_polygon_news(
         ticker, lookback_days=7, limit=15, on_or_before=news_on_or_before,
+    )
+    alpaca_news = await get_alpaca_news(
+        ticker, lookback_days=7, limit=15, to_date=news_on_or_before,
     )
 
     # Wider Perplexity query if first call returned sparse — try a second
@@ -216,6 +239,7 @@ async def extract_earnings_metrics(
         ticker=ticker,
         today=today.isoformat(),
         polygon_news=_truncate(_format_polygon_news(polygon_news), 4000),
+        alpaca_news=_truncate(_format_alpaca_news(alpaca_news), 4000),
         fmp_news=_truncate(_format_fmp_news(fmp_news or []), 3000),
         perplexity_text=_truncate(perplexity_text, 3000),
         claude_analysis=_truncate(claude_analysis, 2000),
@@ -240,6 +264,7 @@ async def extract_earnings_metrics(
                     ticker=ticker,
                     today=today.isoformat(),
                     polygon_news=_truncate(_format_polygon_news(polygon_news), 4000),
+                    alpaca_news=_truncate(_format_alpaca_news(alpaca_news), 4000),
                     fmp_news=_truncate(_format_fmp_news(fmp_news or []), 3000),
                     perplexity_text=_truncate(retry_perplexity, 3000),
                     claude_analysis=_truncate(claude_analysis, 2000),
@@ -265,10 +290,12 @@ async def extract_earnings_metrics(
             "extraction_quality": "low",
             "extraction_error": "extraction_call_failed",
             "_polygon_news_count": len(polygon_news),
+            "_alpaca_news_count": len(alpaca_news),
         }
 
     # Tag corpus shape for audit traceability
     extracted["_polygon_news_count"] = len(polygon_news)
+    extracted["_alpaca_news_count"] = len(alpaca_news)
     extracted["_fmp_news_count"] = len(fmp_news or [])
     extracted["_extracted_at"] = datetime.utcnow().isoformat()
     return extracted
