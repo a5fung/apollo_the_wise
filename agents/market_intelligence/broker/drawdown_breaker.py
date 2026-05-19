@@ -43,8 +43,13 @@ from typing import Optional
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.constants import (
     DRAWDOWN_PEAK_WINDOW_DAYS,
-    DRAWDOWN_RELEASE_PCT,
-    DRAWDOWN_TRIP_PCT,
+    DRAWDOWN_WATCH_TRIP_PCT,
+    DRAWDOWN_WATCH_RELEASE_PCT,
+    DRAWDOWN_REDUCE_TRIP_PCT,
+    DRAWDOWN_REDUCE_RELEASE_PCT,
+    DRAWDOWN_BLOCK_TRIP_PCT,
+    DRAWDOWN_BLOCK_RELEASE_PCT,
+    DRAWDOWN_TIER_MULTIPLIER,
     MIN_SNAPSHOT_HISTORY_DAYS,
     current_account_mode,
 )
@@ -53,9 +58,91 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 logger = logging.getLogger(__name__)
 
 _SAFEGUARD_NAME = "drawdown_breaker"
+
+# State enum (tiered 2026-05-18)
 _STATE_OK = "OK"
-_STATE_TRIPPED = "TRIPPED"
+_STATE_WATCH = "WATCH"
+_STATE_REDUCE = "REDUCE"
+_STATE_BLOCK = "BLOCK"
+_STATES = (_STATE_OK, _STATE_WATCH, _STATE_REDUCE, _STATE_BLOCK)
+_STATE_DEPTH = {_STATE_OK: 0, _STATE_WATCH: 1, _STATE_REDUCE: 2, _STATE_BLOCK: 3}
+
+# Legacy state name (pre-2026-05-18) — auto-migrated to WATCH on first
+# recompute under tiered design (today's drawdown -6% lands in WATCH).
+_LEGACY_STATE_TRIPPED = "TRIPPED"
+
 _STALE_DATA_HOURS = 48
+
+
+def _next_state(prev_state: str, drawdown_pct: float) -> str:
+    """Compute next state given previous state + current drawdown.
+
+    Trip-side: jump to deepest applicable tier immediately (a -15% one-day
+    drop from OK lands in BLOCK, not WATCH).
+
+    Release-side: step up at most ONE tier per evaluation, gated on the
+    per-tier release threshold (asymmetric hysteresis).
+
+    Legacy 'TRIPPED' state auto-migrates: treats as REDUCE for transition
+    logic (closest tier to old binary semantics).
+    """
+    # Auto-migrate legacy TRIPPED to REDUCE for transition computation
+    if prev_state == _LEGACY_STATE_TRIPPED:
+        prev_state = _STATE_REDUCE
+
+    # Determine the deepest applicable tier given current drawdown (trip-side
+    # is one-step: a deep drop crosses all relevant thresholds in one snapshot).
+    if drawdown_pct <= DRAWDOWN_BLOCK_TRIP_PCT:
+        deepest = _STATE_BLOCK
+    elif drawdown_pct <= DRAWDOWN_REDUCE_TRIP_PCT:
+        deepest = _STATE_REDUCE
+    elif drawdown_pct <= DRAWDOWN_WATCH_TRIP_PCT:
+        deepest = _STATE_WATCH
+    else:
+        deepest = _STATE_OK
+
+    # If deepest is strictly deeper than prev, jump straight to it.
+    if _STATE_DEPTH[deepest] > _STATE_DEPTH[prev_state]:
+        return deepest
+
+    # If deepest is same as prev, stay.
+    if _STATE_DEPTH[deepest] == _STATE_DEPTH[prev_state]:
+        return prev_state
+
+    # Otherwise we may release UP one tier per evaluation. Check per-tier
+    # release threshold for the step-up boundary.
+    if prev_state == _STATE_BLOCK:
+        # BLOCK → REDUCE if drawdown ≥ -7%
+        if drawdown_pct >= DRAWDOWN_BLOCK_RELEASE_PCT:
+            return _STATE_REDUCE
+        return _STATE_BLOCK
+    if prev_state == _STATE_REDUCE:
+        # REDUCE → WATCH if drawdown ≥ -4%
+        if drawdown_pct >= DRAWDOWN_REDUCE_RELEASE_PCT:
+            return _STATE_WATCH
+        return _STATE_REDUCE
+    if prev_state == _STATE_WATCH:
+        # WATCH → OK if drawdown ≥ -2.5%
+        if drawdown_pct >= DRAWDOWN_WATCH_RELEASE_PCT:
+            return _STATE_OK
+        return _STATE_WATCH
+
+    # Default safety
+    return prev_state
+
+
+def get_tier_multiplier(state: str) -> float:
+    """Return the sizing multiplier for a given drawdown state.
+
+    Used by entry_pipeline to scale entry_shares post-spec_builder.
+    Composes with mi_strategies.position_size_multiplier (#65).
+
+    Legacy 'TRIPPED' state maps to REDUCE multiplier (0.5×) until next
+    recompute migrates to the new state enum.
+    """
+    if state == _LEGACY_STATE_TRIPPED:
+        return DRAWDOWN_TIER_MULTIPLIER[_STATE_REDUCE]
+    return DRAWDOWN_TIER_MULTIPLIER.get(state, 1.0)
 
 
 @dataclass
@@ -247,16 +334,11 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
         )
     prev_state = existing["state"] if existing else _STATE_OK
 
-    # State-aware threshold check (hysteresis):
-    #   OK → TRIPPED only when drawdown ≤ TRIP threshold
-    #   TRIPPED → OK only when drawdown ≥ RELEASE threshold
-    new_state = prev_state
-    if prev_state == _STATE_OK:
-        if state_obj.drawdown_pct <= DRAWDOWN_TRIP_PCT:
-            new_state = _STATE_TRIPPED
-    else:  # TRIPPED
-        if state_obj.drawdown_pct >= DRAWDOWN_RELEASE_PCT:
-            new_state = _STATE_OK
+    # Tiered state machine (2026-05-18). See _next_state docstring:
+    #   Trip-side: jump to deepest applicable tier in one snapshot
+    #   Release-side: step up one tier per evaluation, gated on per-tier
+    #                 release threshold (asymmetric hysteresis at each boundary)
+    new_state = _next_state(prev_state, state_obj.drawdown_pct)
 
     transitioned = new_state != prev_state
     now = datetime.now(timezone.utc)
@@ -314,23 +396,42 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
     }
 
     if transitioned:
-        if new_state == _STATE_TRIPPED:
-            await log_audit_event(
-                "drawdown_breaker_tripped",
-                f"{mode}: drawdown {state_obj.drawdown_pct*100:.2f}% "
-                f"(peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})",
-                json.dumps(details),
+        # Tiered audit events (2026-05-18). Distinct event per tier
+        # entry/exit; downstream filters can key on event_type for tier
+        # context. No legacy dual-emit (verified 0 production readers of
+        # the old event names at refactor time).
+        prev_depth = _STATE_DEPTH.get(prev_state, _STATE_DEPTH[_STATE_OK])
+        new_depth = _STATE_DEPTH[new_state]
+        direction_is_deeper = new_depth > prev_depth
+
+        event_map_deeper = {
+            _STATE_WATCH:  "drawdown_watch_entered",
+            _STATE_REDUCE: "drawdown_reduce_entered",
+            _STATE_BLOCK:  "drawdown_block_entered",
+        }
+        event_map_released = {
+            _STATE_OK:     "drawdown_watch_released",   # WATCH → OK
+            _STATE_WATCH:  "drawdown_reduce_released",  # REDUCE → WATCH
+            _STATE_REDUCE: "drawdown_block_released",   # BLOCK → REDUCE
+        }
+        if direction_is_deeper:
+            event_name = event_map_deeper.get(new_state, "drawdown_state_change")
+            summary = (
+                f"{mode}: {prev_state} → {new_state} "
+                f"(dd {state_obj.drawdown_pct*100:.2f}%, "
+                f"peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})"
             )
         else:
-            await log_audit_event(
-                "drawdown_breaker_released",
-                f"{mode}: drawdown recovered to {state_obj.drawdown_pct*100:.2f}% "
-                f"(peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})",
-                json.dumps(details),
+            event_name = event_map_released.get(new_state, "drawdown_state_change")
+            summary = (
+                f"{mode}: {prev_state} → {new_state} "
+                f"(recovered to {state_obj.drawdown_pct*100:.2f}%, "
+                f"peak ${state_obj.peak:,.2f} → current ${state_obj.current:,.2f})"
             )
+        await log_audit_event(event_name, summary, json.dumps(details))
         logger.info(
             f"Drawdown breaker transition {mode}: {prev_state} → {new_state} "
-            f"(dd={state_obj.drawdown_pct*100:.2f}%)"
+            f"(dd={state_obj.drawdown_pct*100:.2f}%, event={event_name})"
         )
 
     return prev_state, new_state, details

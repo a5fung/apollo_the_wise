@@ -102,10 +102,12 @@ async def _emit_pdt_warning_once(daytrade_count: int, equity: float) -> None:
 async def _check_safeguards(
     account_mode: str | None = None,
     signal_type: str | None = None,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, float]:
     """
     Check all safety gates before proposing a new trade.
-    Returns (ok, reason) — reason is None if ok.
+    Returns (ok, reason, sizing_multiplier).
+      - ok=True, reason=None, multiplier in [0.0, 1.0]: allow with possibly-reduced sizing
+      - ok=False, reason=<block:*>, multiplier=0.0: blocked
 
     Dual-account aware (#66, 2026-05-10): when account_mode is passed,
     all mi_live_trades queries filter by AND account_mode = $1, and
@@ -117,10 +119,15 @@ async def _check_safeguards(
     row has max_concurrent_positions set, enforces a per-strategy slot
     budget within the per-mode global envelope. NULL on the strategy row
     means "share the global cap" — no per-strategy gate.
+
+    Tiered drawdown breaker (2026-05-18): active phase returns the tier's
+    sizing multiplier (1.0 for OK/WATCH, 0.5 for REDUCE, 0.0 for BLOCK).
+    Shadow phase always returns 1.0. Composes with mi_strategies
+    .position_size_multiplier in entry_pipeline.
     """
     if not LIVE_TRADING_ENABLED:
         logger.debug("Safeguard: live trading disabled")
-        return False, "live_trading_disabled"
+        return False, "live_trading_disabled", 0.0
 
     if account_mode is None:
         from agents.market_intelligence.constants import current_account_mode
@@ -143,7 +150,7 @@ async def _check_safeguards(
             return False, (
                 f"{BLOCK_MAX_POSITIONS}: {open_count}/{MAX_CONCURRENT_LIVE_POSITIONS} "
                 f"(mode={account_mode})"
-            )
+            ), 0.0
 
         # Per-strategy concurrent-position cap (#65). Enforced WITHIN the
         # per-mode global envelope above. NULL on mi_strategies = share
@@ -169,7 +176,7 @@ async def _check_safeguards(
                     return False, (
                         f"{BLOCK_STRATEGY_POSITION_CAP}: {signal_type} "
                         f"{strat_open}/{strat_cap} (mode={account_mode})"
-                    )
+                    ), 0.0
 
         # Daily loss limit (per-mode)
         try:
@@ -177,7 +184,7 @@ async def _check_safeguards(
             equity = account["equity"]
         except Exception as e:
             logger.error(f"Safeguard [{account_mode}]: cannot get account equity: {e}")
-            return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}"
+            return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}", 0.0
 
         # PDT guard: at < $25K equity, the 4th day-trade in a rolling 5-business-day
         # window flips the account to liquidation-only for 90 days. Block the 4th
@@ -201,7 +208,7 @@ async def _check_safeguards(
                 return False, (
                     f"{BLOCK_PDT_LOCKOUT_ACTIVE}: equity=${equity:,.0f} "
                     f"daytrade_count={daytrade_count}"
-                )
+                ), 0.0
             if daytrade_count >= 3:
                 logger.warning(
                     f"Safeguard blocked: PDT lockout imminent "
@@ -218,7 +225,7 @@ async def _check_safeguards(
                 return False, (
                     f"{BLOCK_PDT_LOCKOUT_IMMINENT}: daytrade_count={daytrade_count}/3 "
                     f"equity=${equity:,.0f}"
-                )
+                ), 0.0
             # One-shot daily warning at 2/3 — dedup via audit-log presence.
             if daytrade_count >= 2:
                 await _emit_pdt_warning_once(daytrade_count, equity)
@@ -239,7 +246,7 @@ async def _check_safeguards(
             return False, (
                 f"{BLOCK_DAILY_LOSS}: ${today_losses:+,.0f} >= ${daily_limit:.0f} "
                 f"(mode={account_mode})"
-            )
+            ), 0.0
 
         # Circuit breaker: N consecutive losses, per mode (so a paper losing
         # streak doesn't gate live entries). Time-based escape valve mirrors
@@ -268,27 +275,36 @@ async def _check_safeguards(
                     return False, (
                         f"{BLOCK_CIRCUIT_BREAKER}: cooldown until "
                         f"{cooldown_until.isoformat()}"
-                    )
+                    ), 0.0
 
     # Drawdown breaker — active phase only (env DRAWDOWN_BREAKER_PHASE='active').
-    # Shadow phase emits transition events from the daily 16:12 ET cron;
-    # _check_safeguards stays no-op for shadow to avoid per-call work.
-    # State is per-mode (mi_safeguard_state PK = (safeguard, account_mode));
-    # this is just a cheap PK lookup. Fail-safe: read_breaker_state returns
-    # 'OK' on any error. SSoT: docs/setups/safeguards.md.
+    # Tiered (2026-05-18): BLOCK state hard-blocks new entries; REDUCE state
+    # returns ok=True with 0.5× multiplier (entry_pipeline halves shares);
+    # WATCH/OK return 1.0×. Shadow phase always returns 1.0× (informational
+    # only). SSoT: docs/setups/safeguards.md.
+    drawdown_multiplier = 1.0
     from agents.market_intelligence.constants import DRAWDOWN_BREAKER_PHASE
     if DRAWDOWN_BREAKER_PHASE == "active":
-        from agents.market_intelligence.broker.drawdown_breaker import read_breaker_state
+        from agents.market_intelligence.broker.drawdown_breaker import (
+            read_breaker_state, get_tier_multiplier,
+        )
         from agents.market_intelligence.broker.skip_reasons import BLOCK_DRAWDOWN_BREAKER
         dd_state = await read_breaker_state(account_mode)
-        if dd_state == "TRIPPED":
-            logger.info(f"Safeguard [{account_mode}] blocked: drawdown breaker TRIPPED")
+        drawdown_multiplier = get_tier_multiplier(dd_state)
+        if drawdown_multiplier == 0.0:
+            # BLOCK tier — hard block
+            logger.info(f"Safeguard [{account_mode}] blocked: drawdown {dd_state}")
             return False, (
-                f"{BLOCK_DRAWDOWN_BREAKER}: tripped (mode={account_mode}, "
+                f"{BLOCK_DRAWDOWN_BREAKER}: {dd_state} (mode={account_mode}, "
                 f"see mi_safeguard_state)"
+            ), 0.0
+        if drawdown_multiplier < 1.0:
+            logger.info(
+                f"Safeguard [{account_mode}]: drawdown {dd_state} → "
+                f"sizing multiplier {drawdown_multiplier}×"
             )
 
-    return True, None
+    return True, None, drawdown_multiplier
 
 
 # ── New Alerts (Day 1) ───────────────────────────────────────────────────────

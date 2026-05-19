@@ -117,21 +117,58 @@ CIRCUIT_BREAKER_CONSEC_LOSSES = 10   # Pause after N consecutive losses (EP win 
                                      # (task #39). This threshold-bump is the interim stand-in.
 CIRCUIT_BREAKER_COOLDOWN_DAYS = 1    # Block resumes after this window past last loss
 
-# ── Drawdown-based circuit breaker (#39) ──────────────────────────────────────
+# ── Drawdown-based circuit breaker (#39, tiered 2026-05-18) ──────────────────
 # Replaces count-based breaker on flip day. Methodology-aware: trips on equity
 # drawdown from recent peak (Alpaca account.equity includes unrealized — open
 # winners' MTM lifts equity, prevents false trips). State-machine evaluated
 # once daily at 16:10 ET, persisted in mi_safeguard_state. _check_safeguards()
 # reads cached state via cheap PK lookup. SSoT: docs/setups/safeguards.md.
-DRAWDOWN_PEAK_WINDOW_DAYS  = 30      # Rolling N-day peak window
-DRAWDOWN_TRIP_PCT          = -0.05   # Trip when drawdown ≤ -5% (from peak)
-DRAWDOWN_RELEASE_PCT       = -0.025  # Release at ≥ -2.5% (asymmetric → no flap)
+#
+# TIERED REDESIGN 2026-05-18: 25% WR strategy sees P(7 losses) = 13.3% — a
+# -7% drawdown is statistically NORMAL variance, not strategy failure. Hard
+# block during normal variance prevents finding the winners that pay for the
+# losses. Methodology-correct: ADJUST SIZING with drawdown, don't stop.
+#
+# Tier transitions (asymmetric hysteresis at each boundary):
+#   OK → WATCH at -4%; WATCH → OK at -2.5%      (informational only)
+#   WATCH → REDUCE at -7%; REDUCE → WATCH at -4% (half-sized entries)
+#   REDUCE → BLOCK at -12%; BLOCK → REDUCE at -7% (catastrophic; block entries)
+# Trip-side: jump to deepest applicable tier in one snapshot.
+# Release-side: step up at most one tier per evaluation.
+DRAWDOWN_PEAK_WINDOW_DAYS = 30
+
+# Tier trip thresholds (drawdown_pct must be ≤ to trip into deeper tier)
+DRAWDOWN_WATCH_TRIP_PCT    = -0.04
+DRAWDOWN_REDUCE_TRIP_PCT   = -0.07
+DRAWDOWN_BLOCK_TRIP_PCT    = -0.12
+
+# Tier release thresholds (drawdown_pct must be ≥ to step up to lighter tier)
+DRAWDOWN_WATCH_RELEASE_PCT  = -0.025  # WATCH → OK
+DRAWDOWN_REDUCE_RELEASE_PCT = -0.04   # REDUCE → WATCH
+DRAWDOWN_BLOCK_RELEASE_PCT  = -0.07   # BLOCK → REDUCE
+
+# Sizing multiplier per state — applied to entry_shares + risk_dollars in
+# entry_pipeline AFTER spec_builder. Composes multiplicatively with the
+# per-strategy `mi_strategies.position_size_multiplier` (#65) — e.g. 9M Day 2
+# at 0.5× × REDUCE 0.5× = 0.25× during bleed weeks. Conservative-by-design.
+DRAWDOWN_TIER_MULTIPLIER = {
+    "OK":     1.0,
+    "WATCH":  1.0,   # informational only — no sizing change
+    "REDUCE": 0.5,   # halve new entries
+    "BLOCK":  0.0,   # no entries (hard block via skip_reason)
+}
+
 MIN_SNAPSHOT_HISTORY_DAYS  = 7       # Active-phase fail-safe; don't trip on sparse history.
                                      # Shadow always evaluates and emits regardless (calibration).
 DRAWDOWN_BREAKER_PHASE = os.environ.get("DRAWDOWN_BREAKER_PHASE", "shadow").lower()
                                      # 'shadow' | 'active' — env-driven flip.
                                      # Shadow: daily cron emits transition events; _check_safeguards no-op.
-                                     # Active: _check_safeguards reads state, blocks on TRIPPED.
+                                     # Active: _check_safeguards reads state, gates entries per tier.
+
+# DEPRECATED — legacy binary thresholds (pre-2026-05-18). Kept for one cycle
+# in case any imports remain. Will remove after tiered design ships clean.
+DRAWDOWN_TRIP_PCT          = DRAWDOWN_WATCH_TRIP_PCT     # legacy alias
+DRAWDOWN_RELEASE_PCT       = DRAWDOWN_WATCH_RELEASE_PCT  # legacy alias
 
 REGIME_EMOJI = {
     "Bull": "🟢",

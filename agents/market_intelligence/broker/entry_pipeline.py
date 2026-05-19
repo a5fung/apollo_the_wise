@@ -285,7 +285,7 @@ async def submit_trade_entry(
         _safeguard_mode = resolve_account_mode_for_strategy(strategy)
     else:
         _safeguard_mode = current_account_mode()
-    ok, sg_reason = await _check_safeguards(
+    ok, sg_reason, drawdown_multiplier = await _check_safeguards(
         account_mode=_safeguard_mode, signal_type=signal_type,
     )
     if not ok:
@@ -322,33 +322,40 @@ async def submit_trade_entry(
         msg = spec_reason or "order spec failed"
         return await _skip(msg, audit_event="orb_skipped")
 
-    # 5b. Per-strategy sizing multiplier (#65). Applied uniformly across
-    # spec_builders (prepare_orb_order, prepare_9m_day2_orb_order, ...) so
-    # 9M Day 2 can ramp at e.g. position_size_multiplier=0.5 without
-    # touching its own builder. Skipped when strategy is None (legacy
-    # pre-registry path) or multiplier is 1.0 (no-op).
+    # 5b. Composite sizing multiplier:
+    #     final = per_strategy_multiplier (#65) × drawdown_tier_multiplier (2026-05-18)
+    #
+    # Per-strategy (#65): 9M Day 2 ramps at e.g. 0.5× without touching its
+    # builder. Drawdown tier (2026-05-18): REDUCE = 0.5×, WATCH/OK = 1.0×.
+    # Composition is methodology-correct — bleed weeks compound conservative
+    # sizing across both axes (e.g. 9M Day 2 0.5× × REDUCE 0.5× = 0.25×).
+    strategy_multiplier = 1.0
     if strategy is not None:
-        multiplier = float(getattr(strategy, "position_size_multiplier", None) or 1.0)
-        if multiplier != 1.0 and order_spec.get("shares"):
-            new_shares = math.floor(int(order_spec["shares"]) * multiplier)
-            if new_shares < 1:
-                return await _skip(
-                    f"setup:size_too_small: post-multiplier ({multiplier}x) shares < 1",
-                    audit_event="orb_skipped",
-                )
-            risk_per_share = float(order_spec.get("risk_per_share") or 0)
-            entry_price = float(order_spec.get("entry_price") or 0)
-            order_spec["shares"] = new_shares
-            order_spec["position_size"] = round(new_shares * entry_price, 2)
-            order_spec["risk_dollars"] = round(new_shares * risk_per_share, 2)
-            try:
-                await log_audit_event(
-                    "per_strategy_sizing_applied",
-                    f"{strategy_label} {ticker} multiplier={multiplier}x → "
-                    f"shares={new_shares} risk=${order_spec['risk_dollars']:.0f}",
-                )
-            except Exception:
-                pass
+        strategy_multiplier = float(getattr(strategy, "position_size_multiplier", None) or 1.0)
+    composite_multiplier = strategy_multiplier * drawdown_multiplier
+    if composite_multiplier != 1.0 and order_spec.get("shares"):
+        new_shares = math.floor(int(order_spec["shares"]) * composite_multiplier)
+        if new_shares < 1:
+            return await _skip(
+                f"setup:size_too_small: post-multiplier ({composite_multiplier:.2f}x "
+                f"= strategy {strategy_multiplier:.2f}x × drawdown {drawdown_multiplier:.2f}x) "
+                f"shares < 1",
+                audit_event="orb_skipped",
+            )
+        risk_per_share = float(order_spec.get("risk_per_share") or 0)
+        entry_price = float(order_spec.get("entry_price") or 0)
+        order_spec["shares"] = new_shares
+        order_spec["position_size"] = round(new_shares * entry_price, 2)
+        order_spec["risk_dollars"] = round(new_shares * risk_per_share, 2)
+        try:
+            await log_audit_event(
+                "per_strategy_sizing_applied",
+                f"{strategy_label} {ticker} composite={composite_multiplier:.2f}x "
+                f"(strategy {strategy_multiplier:.2f}x × drawdown {drawdown_multiplier:.2f}x) → "
+                f"shares={new_shares} risk=${order_spec['risk_dollars']:.0f}",
+            )
+        except Exception:
+            pass
 
     # 6. Insert trade row. account_mode already resolved at safeguard step.
     account_mode = _safeguard_mode
