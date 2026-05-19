@@ -352,6 +352,12 @@ async def persist_catalyst_metrics(
     raw_perplexity = extracted.pop("_raw_perplexity_text", None)
     raw_claude = extracted.pop("_raw_claude_analysis", None)
 
+    # asyncpg has a JSONB codec registered at pool init (db.py:90) — passing
+    # Python dict/list directly stores correctly typed JSONB (queryable with
+    # jsonb_array_length, ->, ->>, etc). Passing json.dumps() would
+    # double-encode (codec re-serializes the string). The existing raw_json
+    # column has this latent issue; lookup_cached_metrics defensively
+    # json.loads on read. New columns use direct-pass for correct typing.
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -360,8 +366,8 @@ async def persist_catalyst_metrics(
                  raw_json, raw_polygon_news_json, raw_alpaca_news_json,
                  raw_fmp_news_json, raw_perplexity_text,
                  raw_claude_analysis_text, extracted_at)
-            VALUES ($1, $2, $3, $4, $5::jsonb,
-                    $6::jsonb, $7::jsonb, $8::jsonb, $9, $10, NOW())
+            VALUES ($1, $2, $3, $4, $5,
+                    $6, $7, $8, $9, $10, NOW())
             ON CONFLICT (ticker, alert_date) DO UPDATE SET
                 q_revenue_yoy_pct = EXCLUDED.q_revenue_yoy_pct,
                 extraction_quality = EXCLUDED.extraction_quality,
@@ -373,10 +379,10 @@ async def persist_catalyst_metrics(
                 raw_claude_analysis_text = EXCLUDED.raw_claude_analysis_text,
                 extracted_at = EXCLUDED.extracted_at
         """, ticker, alert_date, q_rev_yoy, eq,
-            json.dumps(extracted),
-            json.dumps(raw_polygon) if raw_polygon is not None else None,
-            json.dumps(raw_alpaca) if raw_alpaca is not None else None,
-            json.dumps(raw_fmp) if raw_fmp is not None else None,
+            extracted,
+            raw_polygon,
+            raw_alpaca,
+            raw_fmp,
             raw_perplexity,
             raw_claude,
         )
