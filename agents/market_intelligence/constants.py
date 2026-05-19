@@ -170,6 +170,22 @@ DRAWDOWN_BREAKER_PHASE = os.environ.get("DRAWDOWN_BREAKER_PHASE", "shadow").lowe
 DRAWDOWN_TRIP_PCT          = DRAWDOWN_WATCH_TRIP_PCT     # legacy alias
 DRAWDOWN_RELEASE_PCT       = DRAWDOWN_WATCH_RELEASE_PCT  # legacy alias
 
+# ── Earnings revenue-growth gate (2026-05-19, AGYS hotfix) ────────────────────
+# LLM catalyst classifier returns 'strong' on narrative ("24% beat, record Q4")
+# without decomposing into revenue substance. Pradeep + Phase 5 rubric: revenue
+# growth IS the substance of earnings catalysts. AGYS 2026-05-19 fired HIGH
+# on ~1% revenue growth → exactly the non-EP-in-EP-clothing class. Gate
+# downgrades earnings 'strong'/'game_changer' to 'routine' when
+# sales_yoy_latest < threshold (fail-closed if missing). Score-50 floor
+# filters naturally post-downgrade. 5% threshold is conservative
+# ("company actually growing"); refine via Phase 5 calibration.
+EARNINGS_REVENUE_GATE_ENABLED = os.environ.get(
+    "EARNINGS_REVENUE_GATE_ENABLED", "true"
+).lower() == "true"
+EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
+    "EARNINGS_REVENUE_GATE_MIN_YOY", "0.05"
+))
+
 REGIME_EMOJI = {
     "Bull": "🟢",
     "Choppy": "🟡",

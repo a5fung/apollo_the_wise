@@ -1156,6 +1156,88 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
             )
 
+        # ── Revenue-growth gate (2026-05-19, AGYS hotfix) ──────────────
+        # The LLM catalyst classifier returns 'strong' based on overall
+        # earnings narrative (beat %, qualitative factors like "record Q4",
+        # "SaaS growth", "AI innovation"). AGYS 2026-05-19 fired HIGH on
+        # 24% earnings beat + record-revenue prose despite ~1% revenue
+        # growth. The Pradeep catalyst hierarchy + weekend Phase-5 rubric
+        # work established: revenue growth IS the substance of earnings
+        # catalysts; narrative-only "strong" without revenue substance is
+        # a non-EP wearing EP clothing.
+        #
+        # Gate logic: for earnings catalysts (LLM 'strong' or 'game_changer'
+        # on is_earnings_day=True), look up mi_fundamental_flags.sales_yoy_latest.
+        # If < 5% (or missing — fail-closed; can't verify substance), downgrade
+        # to 'routine'. The 50-score threshold will then filter naturally.
+        #
+        # 5% threshold is conservative ("company actually growing"). Refine
+        # via Phase 5 calibration with operator labels. Env flag for fast
+        # rollback if a real EP gets blocked.
+        from agents.market_intelligence.constants import (
+            EARNINGS_REVENUE_GATE_ENABLED, EARNINGS_REVENUE_GATE_MIN_YOY,
+        )
+        if (EARNINGS_REVENUE_GATE_ENABLED
+                and earnings_today_match
+                and catalyst_quality in ("strong", "game_changer")):
+            from agents.market_intelligence.db import get_pool as _get_pool
+            _pool = await _get_pool()
+            async with _pool.acquire() as _conn:
+                _ff = await _conn.fetchrow("""
+                    SELECT sales_yoy_latest, eps_yoy_latest
+                    FROM mi_fundamental_flags
+                    WHERE ticker = $1
+                    ORDER BY flag_date DESC
+                    LIMIT 1
+                """, ticker)
+            _sales_yoy = _ff["sales_yoy_latest"] if _ff else None
+            _eps_yoy = _ff["eps_yoy_latest"] if _ff else None
+
+            _downgrade_reason = None
+            if _sales_yoy is None:
+                _downgrade_reason = "fundamentals_missing"
+            elif _sales_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
+                _downgrade_reason = f"sales_yoy_{_sales_yoy*100:.1f}pct_below_{EARNINGS_REVENUE_GATE_MIN_YOY*100:.0f}pct"
+
+            if _downgrade_reason:
+                _original_quality = catalyst_quality
+                catalyst_quality = "routine"
+                await log_audit_event(
+                    "catalyst_earnings_revenue_weak_downgrade",
+                    f"{ticker}: {_original_quality} → routine "
+                    f"(earnings catalyst, {_downgrade_reason})",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "from_quality": _original_quality,
+                        "to_quality": "routine",
+                        "reason": _downgrade_reason,
+                        "sales_yoy_latest": _sales_yoy,
+                        "eps_yoy_latest": _eps_yoy,
+                        "earnings_source": earnings_src,
+                        "gap_pct": c["gap_pct"],
+                    }),
+                )
+                _catalyst_cache[ticker] = (
+                    catalyst_quality, confidence_multiplier,
+                    news_summary, claude_analysis,
+                )
+                # Telegram surface so operator sees the downgrade in real
+                # time (matches the prose-mismatch surface pattern below).
+                try:
+                    from agents.market_intelligence.briefing import send_telegram_message
+                    _detail = (
+                        f"sales_yoy={_sales_yoy*100:.1f}%" if _sales_yoy is not None
+                        else "no fundamentals data (fail-closed)"
+                    )
+                    await send_telegram_message(
+                        f"📉 *Earnings catalyst downgraded: {ticker}*\n"
+                        f"LLM graded {_original_quality} on earnings narrative, "
+                        f"but {_detail}. Downgraded to routine."
+                    )
+                except Exception:
+                    pass
+
         # Prose-mismatch downgrade (#72, 2026-05-11). Strong-graded alerts
         # whose prose explicitly says "no catalyst / no fresh news" are
         # late-stage retail-driven gappers (MRAM 5/11 class). The classifier
