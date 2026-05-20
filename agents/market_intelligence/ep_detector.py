@@ -1216,8 +1216,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # exercised. (Item #15, 2026-05-19.)
                     logger.warning(f"{ticker}: catalyst metrics extraction failed: {e}")
                     _extracted = {"extraction_quality": "low", "extraction_error": str(e)[:200]}
+                    # NOTE: do NOT do `from agents.market_intelligence.db import log_audit_event`
+                    # here — log_audit_event is imported at module level (line 53) and a local
+                    # import INSIDE this 1000+ line function would make `log_audit_event` a local
+                    # variable, causing UnboundLocalError at ALL prior references in run_ep_scan.
+                    # This is the 2026-05-20 bug class. Use the module-level import directly.
                     try:
-                        from agents.market_intelligence.db import log_audit_event
                         await log_audit_event(
                             "extraction_error",
                             f"{ticker}: catalyst extraction failed — {str(e)[:200]} "
