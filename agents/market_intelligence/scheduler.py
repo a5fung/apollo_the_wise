@@ -644,7 +644,63 @@ async def _ep_scan_job():
 
     except Exception as e:
         import traceback
-        logger.error(f"EP scan failed: {e}\n{traceback.format_exc()}")
+        tb_str = traceback.format_exc()
+        logger.error(f"EP scan failed: {e}\n{tb_str}")
+
+        # Durable audit-log record FIRST — guarantees a DB row even if
+        # Telegram fails (silent-failure class fix: don't rely on a single
+        # surfacing channel for trading-path failures).
+        # 2026-05-20: morning EP-scan UnboundLocalError fired 17× over
+        # 1h21m. Operator noticed via missing-alerts symptom, not via the
+        # existing notify_job_failure call. Adding redundant durable
+        # surfacing + escalated framing + dedup.
+        exc_type = type(e).__name__
+        try:
+            await log_audit_event(
+                "ep_scan_failed",
+                f"{exc_type}: {str(e)[:300]}",
+                # detail param accepts JSON string
+                __import__('json').dumps({
+                    "exception_type": exc_type,
+                    "traceback_tail": tb_str[-1500:],
+                }),
+            )
+        except Exception as audit_e:
+            logger.error(f"audit_log write also failed: {audit_e}")
+
+        # Dedup Telegram: identical-exception failures within the last 1h
+        # → audit-only (no Telegram spam). FIRST occurrence is LOUD with
+        # escalated framing. EP-scan failure = no alerts fire = missed
+        # trades. Trading-path class, treated like CRMD.
+        _suppress_tg = False
+        try:
+            pool_d = await get_pool()
+            async with pool_d.acquire() as conn_d:
+                prior = await conn_d.fetchrow("""
+                    SELECT 1 FROM mi_audit_log
+                    WHERE event_type = 'ep_scan_failed'
+                      AND summary LIKE $1
+                      AND created_at > NOW() - INTERVAL '1 hour'
+                      AND created_at < NOW() - INTERVAL '1 second'
+                    LIMIT 1
+                """, f"{exc_type}:%")
+                _suppress_tg = prior is not None
+        except Exception:
+            _suppress_tg = False  # fail-open
+
+        if not _suppress_tg:
+            try:
+                await send_telegram_message(
+                    f"🚨 *EP SCAN DOWN — TRADING IMPACTED*\n"
+                    f"`{exc_type}`: {str(e)[:200]}\n"
+                    f"_No HIGH EP alerts will fire until this is fixed._\n"
+                    f"_Logs: `docker logs apollo-market --since 5m`_"
+                )
+            except Exception as tg_e:
+                # Telegram itself failed — log loud. The audit-log row above
+                # is the durable record either way.
+                logger.error(f"EP_SCAN_DOWN Telegram alert also failed: {tg_e}")
+
         await notify_job_failure("ep_scan", str(e))
 
 
