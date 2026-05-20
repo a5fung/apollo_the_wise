@@ -413,8 +413,32 @@ async def get_fmp_news(
             # module-level flag — resets on container restart so operator
             # is re-alerted each deploy (intentional).
             if "402" in str(e):
+                # Dedup via DB query (not in-process flag) so that
+                # docker-exec scripts + batch jobs sharing the same
+                # codebase don't each fire their own "first" alert.
+                # Window: 24h sliding. Re-alerts daily (operator gets
+                # reminded the paywall persists without spam).
+                # 2026-05-20: per-process flag fired 3× same morning
+                # (main agent + hotfix restart + my manual verify scan).
                 global _fmp_paywall_alerted
-                if not _fmp_paywall_alerted:
+                already_alerted_in_window = _fmp_paywall_alerted
+                if not already_alerted_in_window:
+                    try:
+                        from agents.market_intelligence.db import get_pool, log_audit_event
+                        pool = await get_pool()
+                        async with pool.acquire() as conn:
+                            row = await conn.fetchrow("""
+                                SELECT 1 FROM mi_audit_log
+                                WHERE event_type = 'fmp_news_paywalled'
+                                  AND created_at > NOW() - INTERVAL '24 hours'
+                                LIMIT 1
+                            """)
+                            already_alerted_in_window = row is not None
+                    except Exception:
+                        # If DB lookup fails, fall back to in-process flag
+                        # behavior (still better than spamming).
+                        pass
+                if not already_alerted_in_window:
                     _fmp_paywall_alerted = True
                     try:
                         from agents.market_intelligence.briefing import send_telegram_message
@@ -435,6 +459,10 @@ async def get_fmp_news(
                         )
                     except Exception:
                         pass
+                else:
+                    # Already alerted in window — set in-process flag to
+                    # short-circuit future checks without re-querying DB
+                    _fmp_paywall_alerted = True
             # fall through to yfinance fallback
 
     # yfinance fallback (degraded — no date filter)
