@@ -25,6 +25,13 @@ logger = logging.getLogger(__name__)
 POLYGON_BASE = "https://api.polygon.io"
 FMP_BASE = "https://financialmodelingprep.com/api"
 
+# Once-per-session config-error dedup flag. Set True after first 402
+# Payment Required from FMP news endpoint surfaces via Telegram, so
+# subsequent calls don't spam the channel with the same alert. Reset
+# only on container restart (which is intentional — operator should
+# know about the paywall again after each deploy).
+_fmp_paywall_alerted: bool = False
+
 # Polygon Starter: unlimited calls, but keep a small delay to be polite
 _polygon_lock = asyncio.Semaphore(1)
 _polygon_last_call: float = 0.0
@@ -400,6 +407,34 @@ async def get_fmp_news(
                 ]
         except Exception as e:
             logger.warning(f"FMP news failed for {ticker} ({from_date}..{to_date}): {e}")
+            # Config-error class: 402 Payment Required → endpoint paywalled
+            # on our plan. Loud once-per-session Telegram alert so operator
+            # knows the historical-news capability is degraded. Dedup via
+            # module-level flag — resets on container restart so operator
+            # is re-alerted each deploy (intentional).
+            if "402" in str(e):
+                global _fmp_paywall_alerted
+                if not _fmp_paywall_alerted:
+                    _fmp_paywall_alerted = True
+                    try:
+                        from agents.market_intelligence.briefing import send_telegram_message
+                        from agents.market_intelligence.db import log_audit_event
+                        await log_audit_event(
+                            "fmp_news_paywalled",
+                            f"FMP /stable/news/stock-latest returned 402 on {ticker} "
+                            f"({from_date}..{to_date}). Plan does not include news endpoint. "
+                            f"Historical news fetches falling back to yfinance (current-only, "
+                            f"no date filter)."
+                        )
+                        await send_telegram_message(
+                            "⚠️ *FMP news endpoint paywalled* — historical news fetches "
+                            "falling back to yfinance (current-only, no date filter). "
+                            "Live alerts still get Polygon + Alpaca News (Benzinga). "
+                            "Backtest paths (B5/B6) are silently degraded. "
+                            "_Consider FMP plan upgrade OR mark FMP news as unavailable._"
+                        )
+                    except Exception:
+                        pass
             # fall through to yfinance fallback
 
     # yfinance fallback (degraded — no date filter)

@@ -114,6 +114,7 @@ Sorted by earliest_review_date.
 - [ ] `extraction_pipeline_first_live_run_smoke` (5/20) — first composition smoke test of 2026-05-19 ship → YAML
 - [ ] `gate5_adel_deliverables_status_check` (5/21) — verify A/D/E before 5/22 cutover review → YAML
 - [ ] `nbis_rubric_calibration_gap` (5/22, no predicate gate — ~30 min investigation) → YAML
+- [ ] `silent_failure_taxonomy_audit` (5/26 — taxonomy + critical-path audit + batch ship by class) → YAML
 - [ ] `theme_assignment_sndk_class_refinement` (5/15) — diagnosis done, structural fix remaining → YAML
 - [ ] `minute_volume_curves_baseline` (5/15) → YAML
 - [ ] `unified_allocator_phase_1b` (5/15, #44 cross-strategy allocator) → YAML

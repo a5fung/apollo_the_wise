@@ -3706,6 +3706,69 @@ reviews:
     status: pending
     added_on: 2026-05-19
 
+  - review_id: silent_failure_taxonomy_audit
+    title: "Silent-failure taxonomy + systematic audit (recurring pattern)"
+    question: |
+      `feedback_no_silent_trading_failures.md` says every trading failure
+      must Telegram + audit. In practice we eat too many errors silently:
+        - 2026-04-29 false L1 (naive datetime, no surface)
+        - 2026-05-13 outage (KeyError 'ALPACA_LIVE_API_KEY', no Telegram)
+        - 2026-05-14 CRMD (3 stream-handler errors fired but generic
+          framing didn't convey 'POSITION IS NAKED' → naked 1h34m)
+        - 2026-05-19 FMP 402 paywalled (logged WARNING, fell back to
+          yfinance silently — only caught during active B5 testing)
+
+      The principle "every failure must Telegram" is too coarse — applied
+      literally it spams Telegram on transient timeouts; applied loosely
+      we miss config issues. We need a TAXONOMY that discriminates.
+
+      Proposed taxonomy (refine before enforcing):
+        | Class | Examples | Treatment |
+        |---|---|---|
+        | Equivalent fallback | Alpaca News fails → Polygon same window | DEBUG, no surface |
+        | Degraded fallback | FMP date → yfinance current (data quality changed) | Audit + Telegram once/day |
+        | Config error | 402, missing env var, auth failure | Audit + Telegram once/session |
+        | Actionable transient | timeout > N retries, rate limit > N min | Audit + Telegram immediately |
+        | Pure transient | first-retry timeout, normal 429 | Audit only |
+        | Trading-path failure | any exception in entry/exit/stop | Telegram immediately, ESCALATED framing |
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-05-26
+    action_when_ready: |
+      Spent a week spotting more examples + thinking about edge cases.
+      Then ship in phases:
+
+      Phase 1 — Finalize taxonomy (~30 min):
+        - Review proposed taxonomy in question field against any new
+          incidents that happened between 2026-05-19 and review date.
+        - Refine class boundaries (probably need a 7th class for
+          "data-quality silent corruption" like the splits_ingest
+          phantom-check bug — distinct from "API call failed").
+        - Write taxonomy to feedback_no_silent_trading_failures.md OR
+          a new feedback_silent_failure_taxonomy.md memory file.
+
+      Phase 2 — Critical-path audit (~2-3 hr, FRESH not at hour 7):
+        grep -rn "except Exception as e:" agents/market_intelligence/{collector,ep_detector,broker/,trade_stream,scheduler,ninem_detector,flag_detector,theme_engine}.py
+        For each occurrence, classify against taxonomy. Spreadsheet:
+          file:line | exception_type | current_treatment | correct_class | action_required
+
+      Phase 3 — Batch ship by class (~1 hr per batch):
+        Ship Config errors first (small, high-value, easy dedup).
+        Then degraded-fallback class (need dedup keys).
+        Then transient/timeout class (need retry-count thresholds).
+        Trading-path class likely already covered by CRMD remediation.
+
+      Phase 4 — Codify in CLAUDE.md or pre-commit hook:
+        New "except Exception" in critical paths needs a classification
+        comment explaining which taxonomy class + why. Pre-commit hook
+        could enforce.
+
+      Status check: shipping FMP 402 alert tonight (2026-05-19) as proof
+      we take this seriously. That's Phase 1 of Phase 3 — config-error
+      class, one instance. Systematic audit deferred to this review.
+    status: pending
+    added_on: 2026-05-19
+
   - review_id: gate5_adel_deliverables_status_check
     title: "Gate 5 A/D/E status verification before 2026-05-22 cutover review"
     question: |
