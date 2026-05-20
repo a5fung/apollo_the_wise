@@ -78,21 +78,39 @@ def _check_calendar_sync(ticker: str, scan_date: date) -> bool:
     return any(_within_window(d, scan_date) for d in candidates)
 
 
-def _check_revenue_stage_sync(ticker: str) -> bool:
-    """True if company has non-zero expected revenue (revenue-stage business),
-    False if pre-revenue (clinical-stage biotech, SPAC, blank-check, etc.).
+import os as _os
 
-    Reads yfinance's Ticker.calendar.Revenue Average. Pre-revenue companies
-    have Revenue Average = 0 because no analyst expects revenue.
+# $5M Q-revenue threshold for "revenue-stage" classification. Below this,
+# the company is functionally pre-revenue or pipeline-driven (clinical-
+# stage biotech, SPAC, holding company with token royalties). The Q-rev
+# YoY rubric gate is structurally inapplicable to these.
+#
+# IMVT 2026-05-20: $0 Revenue Average → blocked.
+# ROIV 2026-05-20: $3M Revenue Average → blocked (clinical-stage holding).
+# Real small-cap revenue businesses (SaaS at IPO, small industrial) have
+# analyst estimates well above $5M quarterly.
+#
+# Env var for fast rollback if calibration over-blocks: REVENUE_STAGE_MIN_USD.
+_REVENUE_STAGE_MIN_USD = float(_os.environ.get("REVENUE_STAGE_MIN_USD", "5000000"))
+
+
+def _check_revenue_stage_sync(ticker: str) -> bool:
+    """True if company has revenue-stage business (Revenue Average ≥ $5M),
+    False if pre-revenue / pipeline-driven (clinical-stage biotech, SPAC,
+    holding company with token revenue).
+
+    Reads yfinance's Ticker.calendar.Revenue Average. The $5M threshold
+    (env-tunable) captures the IMVT/ROIV class: loss-making with tiny
+    pipeline royalties where Q-rev YoY is structurally meaningless.
 
     Fail-soft to True (assume revenue-stage) on any error — the earnings
     boost is methodology-defensive, better to over-boost on data outage
     than miss a real earnings EP.
 
-    2026-05-20: shipped after IMVT (clinical-stage biotech, $0 revenue)
-    got boosted strong→downgraded routine, producing confusing operator
-    message 'Q-rev YoY un-extractable from news'. Real issue was the
-    earnings boost shouldn't have fired for a pre-revenue company.
+    2026-05-20: shipped after IMVT ($0 Revenue Average) and ROIV ($3M
+    Revenue Average) both got boosted strong→downgraded routine, producing
+    confusing 'Q-rev YoY un-extractable from news' operator messages.
+    Real issue: earnings boost + rubric assume revenue-stage business.
     """
     import yfinance as yf
     try:
@@ -102,7 +120,7 @@ def _check_revenue_stage_sync(ticker: str) -> bool:
         rev_avg = cal.get("Revenue Average", None)
         if rev_avg is None:
             return True
-        return float(rev_avg) > 0
+        return float(rev_avg) >= _REVENUE_STAGE_MIN_USD
     except Exception:
         return True
 

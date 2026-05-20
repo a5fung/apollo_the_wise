@@ -79,7 +79,7 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 **Bug class**: structural gate inversion (same as 2026-05-19 RVMD flag-universe fix). The earnings boost + Q-rev gate assume revenue-stage business. Pre-revenue companies (clinical-stage biotech, SPAC, blank-check) structurally can't satisfy the gate; applying it produces misleading downgrades. Sample-size discipline doesn't apply to gate inversions — fix is correctness, not threshold tuning.
 
 **Architecture**:
-- New helper `is_revenue_stage(ticker)` in `earnings_calendar.py` — reads `yfinance.Ticker.calendar.Revenue Average`. Returns True if > 0 (revenue-stage), False if 0/None (pre-revenue). Fail-soft to True on any error.
+- New helper `is_revenue_stage(ticker)` in `earnings_calendar.py` — reads `yfinance.Ticker.calendar.Revenue Average`. Returns True if ≥ `$5M` (revenue-stage), False otherwise (pre-revenue / pipeline-driven). Threshold env-tunable via `REVENUE_STAGE_MIN_USD`. Fail-soft to True on any error. The $5M floor catches both IMVT ($0) and ROIV ($3M, clinical-stage holding) while leaving real small-cap revenue businesses through.
 - Earnings boost in `ep_detector.py` now gated on `earnings_today_match AND revenue_stage`. Pre-revenue companies on earnings day get `catalyst_earnings_boost_skipped` audit event (operator visibility — explains why no boost fired).
 - Q-rev rubric gate ALSO gated on `revenue_stage` (belt-and-suspenders). Even if Claude graded strong on an organic clinical-stage catalyst (FDA, trial, M&A), the rubric won't engage and produce misleading downgrades. Claude's verdict stands.
 - Per-ticker cache `_REV_STAGE_CACHE` (same lifecycle as `_CACHE` in earnings_calendar.py) — single yfinance call per ticker per day.
