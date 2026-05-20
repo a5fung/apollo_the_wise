@@ -11,7 +11,7 @@ Integration shape:
   fund_dict = build_rubric_inputs_hybrid(ticker, extracted_metrics, today)
   result = score_ticker(fund_dict, beat=..., guidance=...)
   → result["composite_scaled"] (0-39); < CATALYST_RUBRIC_MIN_COMPOSITE → downgrade
-  → result["label"] in {game_changer, strong, routine_correct, weak}
+  → result["label"] in {game_changer, strong, routine, weak}
 
 ============================================================================
 
@@ -33,9 +33,9 @@ Weighting (Gemini-locked 2026-05-16):
 
 Hard caps:
   1. growth_milestone=False AND rev_yoy_q0 < 25% → cap at 'strong'
-  2. Axis 1 score = 0 (rev contracting) → cap at 'routine_correct'
-  3. Axis 3 score = 0 (all margins contracting) → cap at 'routine_correct'
-  4. Axis 5 score = 0 (guidance LOWERED, not missing) → cap at 'routine_correct'
+  2. Axis 1 score = 0 (rev contracting) → cap at 'routine'
+  3. Axis 3 score = 0 (all margins contracting) → cap at 'routine'
+  4. Axis 5 score = 0 (guidance LOWERED, not missing) → cap at 'routine'
 
 Missing-data: scale composite by axes available.
   composite_scaled = sum_available × 39 / max_available
@@ -70,7 +70,7 @@ MAX_COMPOSITE = sum(AXIS_MAX[k] * AXIS_WEIGHT[k] for k in AXIS_MAX)  # = 39
 LABEL_BANDS = [
     (30, "game_changer"),
     (22, "strong"),
-    (14, "routine_correct"),
+    (14, "routine"),
     (0, "weak"),
 ]
 
@@ -334,11 +334,11 @@ def composite_with_scaling(axes: dict, raw_axis_scores: dict) -> dict:
     if label is None:
         label = "weak"
 
-    # Caps that floor to routine_correct
+    # Caps that floor to routine
     routine_caps = {"rev_contracting", "all_margins_contracting", "guidance_lowered"}
     if any(c in routine_caps for c in caps):
         if label in ("game_changer", "strong"):
-            label = "routine_correct"
+            label = "routine"
     # Cap that floors to strong
     if "no_milestone_low_growth" in caps and label == "game_changer":
         label = "strong"
@@ -390,8 +390,8 @@ def score_ticker(fund: dict, beat: dict | None = None,
 # Expected fixture labels (per design doc)
 FIXTURES = {
     "NBIS": "game_changer",
-    "CSCO": "routine_correct",
-    "KLAR": "routine_correct",
+    "CSCO": "routine",
+    "KLAR": "routine",
     "TRT": "strong",     # delayed-EP, real catalyst
     "ONDS": "strong",    # moved on real catalyst even if filtered
     "CPA": "strong",     # we expect at least strong; actual cohort label tbd
@@ -463,7 +463,7 @@ def main() -> None:
     lines.append("")
     lines.append("| Label | N | Share |")
     lines.append("|---|---:|---:|")
-    for label in ["game_changer", "strong", "routine_correct", "weak"]:
+    for label in ["game_changer", "strong", "routine", "weak"]:
         n = label_dist.get(label, 0)
         lines.append(f"| {label} | {n} | {n / len(rows) * 100:.1f}% |")
     lines.append("")

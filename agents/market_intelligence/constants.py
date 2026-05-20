@@ -197,14 +197,14 @@ EARNINGS_REVENUE_GATE_MIN_YOY = float(os.environ.get(
 # Label bands (from catalyst_rubric.LABEL_BANDS):
 #   30+: game_changer
 #   22-29: strong            <-- default threshold 22 = strong-or-better
-#   14-21: routine_correct
+#   14-21: routine
 #   0-13: weak
 CATALYST_RUBRIC_GATE_ENABLED = os.environ.get(
     "CATALYST_RUBRIC_GATE_ENABLED", "true"
 ).lower() == "true"
 CATALYST_RUBRIC_MIN_COMPOSITE = float(os.environ.get(
     "CATALYST_RUBRIC_MIN_COMPOSITE", "22"
-))  # Default 22 = strong floor. Below 22 (routine_correct/weak) → downgrade.
+))  # Default 22 = strong floor. Below 22 (routine/weak) → downgrade.
 
 REGIME_EMOJI = {
     "Bull": "🟢",

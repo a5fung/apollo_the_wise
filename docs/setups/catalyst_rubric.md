@@ -140,7 +140,7 @@ composite = (
 |---:|---|---|
 | 30+ | `game_changer` | ~5-10 per quarter (NBIS-class) |
 | 22-29 | `strong` | ~30-50 per quarter |
-| 14-21 | `routine_correct` | low-action; watchlist only |
+| 14-21 | `routine` | low-action; watchlist only |
 | <14 | `weak` | filter out entirely |
 
 ## Missing-data scaling (Option A — LOCKED)
@@ -166,10 +166,10 @@ Applied AFTER composite computation, regardless of score:
 
 1. **Axis 6 `growth_milestone=False` AND `rev_yoy_q0 < 25%`** → cap
    at `strong` (no game_changer without crossing a magnitude threshold)
-2. **Axis 1 = 0 (rev contracting)** → cap at `routine_correct`
-3. **Axis 3 = 0 (all margins contracting)** → cap at `routine_correct`
+2. **Axis 1 = 0 (rev contracting)** → cap at `routine`
+3. **Axis 3 = 0 (all margins contracting)** → cap at `routine`
 4. **Axis 5 = 0 (guidance LOWERED, not missing)** → cap at
-   `routine_correct` (institutional algos sell lowered guidance
+   `routine` (institutional algos sell lowered guidance
    unconditionally; setup will fail)
 
 ## Known limitations / open questions

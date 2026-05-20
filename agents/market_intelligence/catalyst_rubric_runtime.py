@@ -469,7 +469,8 @@ def format_theme_for_telegram(theme: dict[str, Any] | None) -> str:
 _LABEL_EMOJI = {
     "game_changer":    "🚀",
     "strong":          "✅",
-    "routine_correct": "⚠️",
+    "routine":         "⚠️",
+    "routine_correct": "⚠️",  # legacy alias (pre-2026-05-20 raw_json rows)
     "weak":            "🚫",
 }
 
@@ -496,7 +497,7 @@ def format_rubric_for_telegram(
     """Compact human-readable rubric snapshot for the EP alert message.
 
     Format (multi-line, Markdown for Telegram):
-        🧪 *Rubric: 16/39 (routine_correct ⚠️)*
+        🧪 *Rubric: 16/39 (routine ⚠️)*
         Revenue: 2/5 (+11.7% YoY, decelerating from +15.6%)
         Margins: 2/5 (flat)
         Beat: 2/5 (rev +1.7%, EPS +26%)
