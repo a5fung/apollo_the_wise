@@ -1375,37 +1375,63 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 # Telegram surface so operator sees the downgrade in real
                 # time + can use /why to inspect full extraction.
+                # Dedup repeated rubric-downgrade Telegrams across consecutive
+                # scan ticks. EP scans run every 5 min; without dedup, the
+                # same ticker generates a fresh downgrade message each tick
+                # until cooldown — CAVA 2026-05-20 fired 4 times this morning.
+                # Audit event still fires for telemetry; only Telegram is
+                # suppressed when an identical downgrade was logged in the
+                # last 1h for the same ticker+alert_date.
+                _suppress_telegram = False
                 try:
-                    from agents.market_intelligence.briefing import send_telegram_message
-                    from agents.market_intelligence.catalyst_rubric_runtime import (
-                        format_rubric_for_telegram,
-                    )
-                    # Compose readable downgrade message: headline + rubric breakdown
-                    _msg_lines = [
-                        f"📉 *Earnings catalyst DOWNGRADED: {ticker}*",
-                        f"LLM graded `{_original_quality}` on narrative, "
-                        f"but methodology rubric disagrees.",
-                        "",
-                    ]
-                    _rubric_block = format_rubric_for_telegram(ticker, _extracted, today)
-                    if _rubric_block:
-                        _msg_lines.append(_rubric_block)
-                    elif _q_rev_yoy is not None:
-                        _msg_lines.append(
-                            f"Q-rev YoY *{_q_rev_yoy:.1f}%* below "
-                            f"*{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}%* threshold "
-                            f"(safety net; extraction quality={_quality})"
-                        )
-                    else:
-                        _msg_lines.append(
-                            f"Q-rev YoY un-extractable from news "
-                            f"(extraction quality={_quality}) — fail-loud"
-                        )
-                    _msg_lines.append("")
-                    _msg_lines.append(f"`/rubric {ticker}` for full breakdown.")
-                    await send_telegram_message("\n".join(_msg_lines))
+                    pool = await get_pool()
+                    async with pool.acquire() as conn:
+                        prior = await conn.fetchrow("""
+                            SELECT 1 FROM mi_audit_log
+                            WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
+                              AND summary LIKE $1
+                              AND created_at > NOW() - INTERVAL '1 hour'
+                              AND created_at < NOW() - INTERVAL '1 second'
+                            LIMIT 1
+                        """, f"{ticker}:%")
+                        _suppress_telegram = prior is not None
                 except Exception:
-                    pass
+                    # On DB error fail-open (send Telegram) — better to over-
+                    # alert than miss a real downgrade signal.
+                    _suppress_telegram = False
+
+                if not _suppress_telegram:
+                    try:
+                        from agents.market_intelligence.briefing import send_telegram_message
+                        from agents.market_intelligence.catalyst_rubric_runtime import (
+                            format_rubric_for_telegram,
+                        )
+                        # Compose readable downgrade message: headline + rubric breakdown
+                        _msg_lines = [
+                            f"📉 *Earnings catalyst DOWNGRADED: {ticker}*",
+                            f"LLM graded `{_original_quality}` on narrative, "
+                            f"but methodology rubric disagrees.",
+                            "",
+                        ]
+                        _rubric_block = format_rubric_for_telegram(ticker, _extracted, today)
+                        if _rubric_block:
+                            _msg_lines.append(_rubric_block)
+                        elif _q_rev_yoy is not None:
+                            _msg_lines.append(
+                                f"Q-rev YoY *{_q_rev_yoy:.1f}%* below "
+                                f"*{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}%* threshold "
+                                f"(safety net; extraction quality={_quality})"
+                            )
+                        else:
+                            _msg_lines.append(
+                                f"Q-rev YoY un-extractable from news "
+                                f"(extraction quality={_quality}) — fail-loud"
+                            )
+                        _msg_lines.append("")
+                        _msg_lines.append(f"`/rubric {ticker}` for full breakdown.")
+                        await send_telegram_message("\n".join(_msg_lines))
+                    except Exception:
+                        pass
 
         # Prose-mismatch downgrade (#72, 2026-05-11). Strong-graded alerts
         # whose prose explicitly says "no catalyst / no fresh news" are
