@@ -886,20 +886,51 @@ async def _top_event_deltas(
     for row in today_rows:
         event_type = row["event_type"]
         today_n = row["n"]
-        daily_counts = history_by_type.get(event_type, [])
-        # Pad missing days with 0 so events that don't fire daily still
-        # produce a meaningful baseline (zero-firing days are real signal)
-        while len(daily_counts) < expected_days:
-            daily_counts.append(0.0)
-        p50, _, _, _ = _trimmed_median_mad(daily_counts)
-        is_new = p50 == 0
-        # Floor at 0.5 to handle zero-baseline events without division-by-zero
+        # Firing-day counts (one entry per day the event fired, pre-padding)
+        firing_day_counts = history_by_type.get(event_type, [])
+        firing_days = len(firing_day_counts)
+        total_window_count = sum(firing_day_counts)
+
+        # `is_new` should mean "truly never fired in the window", not
+        # "median is zero". The latter triggers for sparse-firing events
+        # (Mon/Wed/Fri theme validation, weekly cron jobs) that fire
+        # regularly but on fewer than half the days. 2026-05-19 bug:
+        # ticker_revalidated_out fired 129×/14d but reported as NEW
+        # because median=0 from zero-pad dominating sparse firings.
+        is_new = total_window_count == 0
+
+        # Baseline: switch between median-of-all-days and
+        # mean-of-firing-days based on firing density.
+        # - Daily-ish event (fires on ≥half the days): trimmed median
+        #   captures normal day-to-day variation; spike-detection works.
+        # - Sparse event (Mon/Wed/Fri pattern, weekly cron): median is
+        #   structurally 0 from zero-pad; use mean of firing days as
+        #   "expected magnitude when it does fire" — today's count is
+        #   anomalous only if it deviates from typical firing magnitude.
+        sparse = firing_days < expected_days / 2 and firing_days > 0
+        if sparse:
+            baseline = total_window_count / firing_days
+            baseline_label = "firing_day_mean"
+        else:
+            # Pad to expected_days for the median calculation. Padding
+            # zeros is correct here — the event fires most days, so a
+            # zero day IS a real signal of "below normal."
+            padded = list(firing_day_counts)
+            while len(padded) < expected_days:
+                padded.append(0.0)
+            p50, _, _, _ = _trimmed_median_mad(padded)
+            baseline = p50
+            baseline_label = "median"
+        # Floor at 0.5 to handle zero-baseline events without div-by-zero
         # and to dampen the "infinite ratio" effect on very-rare events
-        ratio = today_n / max(p50, 0.5)
+        ratio = today_n / max(baseline, 0.5)
         results.append({
             "event_type": event_type,
             "today_count": today_n,
-            "baseline_median": p50,
+            "baseline_median": baseline,
+            "baseline_label": baseline_label,
+            "firing_days": firing_days,
+            "window_total": int(total_window_count),
             "ratio": ratio,
             "is_new": is_new,
         })
@@ -1129,10 +1160,25 @@ def _format_l2_alert(
             event_type = d["event_type"]
             today_n = d["today_count"]
             base = d["baseline_median"]
+            label = d.get("baseline_label", "median")
+            firing_days = d.get("firing_days", 0)
+            window_total = d.get("window_total", 0)
             if d["is_new"]:
-                tag = f"baseline 0, NEW today"
+                tag = f"window_total=0, NEW today"
+            elif label == "firing_day_mean":
+                # Sparse-firing event — disclose firing pattern so 'baseline'
+                # number reads correctly (mean on firing days, not on all
+                # days). Fix shipped 2026-05-19 after ticker_revalidated_out
+                # falsely flagged as NEW due to Mon/Wed/Fri firing pattern.
+                # 13d trailing window matches _top_event_deltas expected_days
+                # (window_days=14 default, minus today).
+                tag = (
+                    f"firing-day mean {base:.1f} "
+                    f"(fired {firing_days}/13d, total {window_total}), "
+                    f"{d['ratio']:.1f}× normal"
+                )
             else:
-                tag = f"baseline {base:.1f}, {d['ratio']:.1f}× normal"
+                tag = f"median {base:.1f}, {d['ratio']:.1f}× normal"
             lines.append(f"  • {event_type:30s} {today_n:4d}  ({tag})")
         lines.append("")
     lines.append("Drill-down:")
