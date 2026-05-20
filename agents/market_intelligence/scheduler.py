@@ -619,7 +619,10 @@ async def _ep_scan_job():
                     except Exception as ins_e:
                         logger.error(f"Could not insert out-of-ORB skip for {ep['ticker']}: {ins_e}")
                     try:
-                        from agents.market_intelligence.db import log_audit_event
+                        # NOTE: do NOT `from ... import log_audit_event` here —
+                        # it's imported at module level + referenced earlier in
+                        # this function, so a local import would shadow and
+                        # cause UnboundLocalError (2026-05-20 ep_detector bug).
                         await log_audit_event("orb_out_of_window", f"{ep['ticker']} — {skip_msg}")
                     except Exception:
                         pass
@@ -1808,7 +1811,9 @@ async def _9m_day2_orb_job() -> None:
         to_skip = candidates_sorted[budget:]
 
         if to_skip:
-            from agents.market_intelligence.db import log_audit_event
+            # NOTE: log_audit_event imported at module level + referenced earlier
+            # in this function. Local import would shadow → UnboundLocalError on
+            # prior refs (2026-05-20 ep_detector bug class).
             await log_audit_event(
                 "9m_day2_partial_skipped_high_ep_reserve",
                 f"Took top-{budget} of {len(candidates)} sugar babies; "

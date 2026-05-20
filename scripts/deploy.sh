@@ -96,4 +96,16 @@ if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
 fi
 
 echo ""
+echo "=== [5d/5] Preflight import-shadowing check (2026-05-20 outage class) ==="
+if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; then
+  echo ""
+  echo "DEPLOY FAILED — function-local 'from X import Y' shadows module-level import."
+  echo "This is the 2026-05-20 UnboundLocalError outage class. Python makes the name"
+  echo "a LOCAL variable for the entire function, so any reference BEFORE the local"
+  echo "import raises UnboundLocalError at runtime. EP scans died for 1h21m this way."
+  echo "Fix: remove the redundant function-local import. Module-level binding suffices."
+  exit 7
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
