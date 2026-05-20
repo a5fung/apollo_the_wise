@@ -36,7 +36,7 @@ EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evalua
 
 LLM classifier returns one of: `game_changer`, `strong`, `routine`, `mna`, or None.
 
-**Earnings-day pre-score boost**: when `is_earnings_day(ticker, today)` returns True (within {yesterday, today}), upgrade catalyst from `routine` or None → `strong` BEFORE score computation. Audit event: `catalyst_earnings_boost`. This handles cases where the news scrape is hedged/hollow but yfinance confirms earnings (DDOG/AAON 5/07 class).
+**Earnings-day pre-score boost**: when `is_earnings_day(ticker, today)` returns True (within {yesterday, today}) AND `is_revenue_stage(ticker)` returns True (yfinance Revenue Average > 0), upgrade catalyst from `routine` or None → `strong` BEFORE score computation. Audit event: `catalyst_earnings_boost`. This handles cases where the news scrape is hedged/hollow but yfinance confirms earnings (DDOG/AAON 5/07 class). **Pre-revenue companies** (clinical-stage biotech, SPAC, blank-check — Revenue Average == 0): boost is SKIPPED with `catalyst_earnings_boost_skipped` audit event. Their "earnings" event is pipeline / trial commentary, not a Q-rev catalyst — applying the boost causes the rubric to engage and produce misleading "Q-rev YoY un-extractable" downgrades. The Q-rev rubric gate ALSO skips for pre-revenue companies (belt-and-suspenders) so Claude's organic catalyst grade stands. Trigger: IMVT 2026-05-20.
 
 **Hedge-phrase downgrade**: if Perplexity answer contains hedge phrases ("no specific information", "couldn't find", etc.) AND catalyst is `game_changer`/`strong`, downgrade one notch. Audit event: `catalyst_pplx_hedge_downgrade`.
 
@@ -71,6 +71,24 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-05-20 — Pre-revenue gate: skip earnings boost + rubric for clinical-stage / SPAC
+
+**Trigger**: IMVT 2026-05-20 morning. Catalyst classifier graded `routine` (no qualifying news), but `is_earnings_day=True` boosted it to `strong`. Q-rev YoY rubric then engaged, found no revenue data in news (because IMVT is a clinical-stage biotech with $0 expected revenue per yfinance Revenue Average), downgraded back to `routine` with reason `q_rev_yoy_unextractable_quality_low`. Net: same final state (routine) but operator-facing message blamed the wrong cause — implied rubric/extraction problem when the real issue was that the boost shouldn't have fired for a pre-revenue company.
+
+**Bug class**: structural gate inversion (same as 2026-05-19 RVMD flag-universe fix). The earnings boost + Q-rev gate assume revenue-stage business. Pre-revenue companies (clinical-stage biotech, SPAC, blank-check) structurally can't satisfy the gate; applying it produces misleading downgrades. Sample-size discipline doesn't apply to gate inversions — fix is correctness, not threshold tuning.
+
+**Architecture**:
+- New helper `is_revenue_stage(ticker)` in `earnings_calendar.py` — reads `yfinance.Ticker.calendar.Revenue Average`. Returns True if > 0 (revenue-stage), False if 0/None (pre-revenue). Fail-soft to True on any error.
+- Earnings boost in `ep_detector.py` now gated on `earnings_today_match AND revenue_stage`. Pre-revenue companies on earnings day get `catalyst_earnings_boost_skipped` audit event (operator visibility — explains why no boost fired).
+- Q-rev rubric gate ALSO gated on `revenue_stage` (belt-and-suspenders). Even if Claude graded strong on an organic clinical-stage catalyst (FDA, trial, M&A), the rubric won't engage and produce misleading downgrades. Claude's verdict stands.
+- Per-ticker cache `_REV_STAGE_CACHE` (same lifecycle as `_CACHE` in earnings_calendar.py) — single yfinance call per ticker per day.
+
+**Anticipated effect**: clinical-stage biotechs, SPACs, blank-check companies gapping on earnings-day news will no longer get spurious "Q-rev YoY un-extractable" downgrades. Catalyst grade stays at Claude's organic verdict. Final HIGH-alert behavior unchanged for the IMVT-class (catalyst remained routine pre-fix, will remain routine post-fix — just with cleaner audit message).
+
+**Reversion-flag**: NEW (introduces revenue-stage check). To revert: set the gate booleans to `revenue_stage=True` unconditionally.
+
+**Status**: shipped 2026-05-20.
 
 ### 2026-05-17 PM — P7.2: MAGNA53→flag carryforward (R3 alpha-slip hedge)
 

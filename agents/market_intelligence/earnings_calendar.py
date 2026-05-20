@@ -78,6 +78,52 @@ def _check_calendar_sync(ticker: str, scan_date: date) -> bool:
     return any(_within_window(d, scan_date) for d in candidates)
 
 
+def _check_revenue_stage_sync(ticker: str) -> bool:
+    """True if company has non-zero expected revenue (revenue-stage business),
+    False if pre-revenue (clinical-stage biotech, SPAC, blank-check, etc.).
+
+    Reads yfinance's Ticker.calendar.Revenue Average. Pre-revenue companies
+    have Revenue Average = 0 because no analyst expects revenue.
+
+    Fail-soft to True (assume revenue-stage) on any error — the earnings
+    boost is methodology-defensive, better to over-boost on data outage
+    than miss a real earnings EP.
+
+    2026-05-20: shipped after IMVT (clinical-stage biotech, $0 revenue)
+    got boosted strong→downgraded routine, producing confusing operator
+    message 'Q-rev YoY un-extractable from news'. Real issue was the
+    earnings boost shouldn't have fired for a pre-revenue company.
+    """
+    import yfinance as yf
+    try:
+        cal = yf.Ticker(ticker).calendar
+        if not isinstance(cal, dict):
+            return True
+        rev_avg = cal.get("Revenue Average", None)
+        if rev_avg is None:
+            return True
+        return float(rev_avg) > 0
+    except Exception:
+        return True
+
+
+# Per-process cache for revenue-stage lookup. Cleared with main _CACHE
+# when scan_date rolls over (same lifecycle).
+_REV_STAGE_CACHE: dict[str, bool] = {}
+
+
+async def is_revenue_stage(ticker: str) -> bool:
+    """Async wrapper for revenue-stage check. Cached per-ticker per-day."""
+    if ticker in _REV_STAGE_CACHE:
+        return _REV_STAGE_CACHE[ticker]
+    try:
+        result = await asyncio.to_thread(_check_revenue_stage_sync, ticker)
+    except Exception:
+        result = True  # fail-soft
+    _REV_STAGE_CACHE[ticker] = result
+    return result
+
+
 async def is_earnings_day(ticker: str, scan_date: date) -> tuple[bool, str]:
     """
     Returns (matched, source). Source is one of:
@@ -89,6 +135,7 @@ async def is_earnings_day(ticker: str, scan_date: date) -> tuple[bool, str]:
     global _CACHE_DATE
     if _CACHE_DATE != scan_date:
         _CACHE.clear()
+        _REV_STAGE_CACHE.clear()
         _CACHE_DATE = scan_date
 
     key = (ticker, scan_date)

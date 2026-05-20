@@ -63,7 +63,7 @@ from agents.market_intelligence.broker.skip_reasons import (
     FILTER_SESSION_RVOL_TOO_LOW,
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
-from agents.market_intelligence.earnings_calendar import is_earnings_day
+from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
 
 logger = logging.getLogger(__name__)
 
@@ -1136,7 +1136,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             earnings_today_match, earnings_src = await is_earnings_day(ticker, today)
         except Exception:
             earnings_today_match, earnings_src = True, "unavailable"
-        if earnings_today_match and catalyst_quality in ("routine", None):
+
+        # Revenue-stage check (2026-05-20): pre-revenue companies (clinical-
+        # stage biotech, SPACs, blank-check) shouldn't be earnings-boosted.
+        # Their "earnings" event is really management commentary on pipeline
+        # / trials, not a Q-rev catalyst. Triggering the boost makes the
+        # rubric gate engage and produces misleading "Q-rev YoY un-extractable"
+        # downgrades. Fail-soft to revenue-stage on data outage.
+        # IMVT 2026-05-20 was the trigger case.
+        if earnings_today_match:
+            try:
+                revenue_stage = await is_revenue_stage(ticker)
+            except Exception:
+                revenue_stage = True
+        else:
+            revenue_stage = True  # not used when not earnings day
+
+        if earnings_today_match and revenue_stage and catalyst_quality in ("routine", None):
             original_quality = catalyst_quality
             catalyst_quality = "strong"
             await log_audit_event(
@@ -1154,6 +1170,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Also update cache so subsequent scan ticks see the boosted grade.
             _catalyst_cache[ticker] = (
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+            )
+        elif earnings_today_match and not revenue_stage and catalyst_quality in ("routine", None):
+            # Pre-revenue company on earnings day — log the skip so operator
+            # can see WHY the boost didn't fire. Catalyst grade stays at
+            # Claude's original verdict (likely routine, no HIGH alert).
+            await log_audit_event(
+                "catalyst_earnings_boost_skipped",
+                f"{ticker}: pre-revenue company on earnings day, boost skipped "
+                f"(catalyst stays {catalyst_quality}, source={earnings_src})",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": today.isoformat(),
+                    "catalyst_quality": catalyst_quality,
+                    "earnings_source": earnings_src,
+                    "reason": "pre_revenue_company",
+                    "gap_pct": c["gap_pct"],
+                }),
             )
 
         # ── Revenue-growth gate (2026-05-19, AGYS hotfix) ──────────────
@@ -1177,8 +1210,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         from agents.market_intelligence.constants import (
             EARNINGS_REVENUE_GATE_ENABLED, EARNINGS_REVENUE_GATE_MIN_YOY,
         )
+        # Belt-and-suspenders: also skip the revenue gate entirely for
+        # pre-revenue companies (clinical-stage biotechs, SPACs). Even if
+        # Claude graded the catalyst strong on its own merit (e.g. FDA
+        # news, trial readout, M&A), the Q-rev YoY check is structurally
+        # inapplicable. Without this, the rubric would always downgrade
+        # pre-revenue strong-catalyst names with the misleading "Q-rev YoY
+        # un-extractable" reason. 2026-05-20 IMVT trigger case.
         if (EARNINGS_REVENUE_GATE_ENABLED
                 and earnings_today_match
+                and revenue_stage
                 and catalyst_quality in ("strong", "game_changer")):
             # Multi-source FRESH extraction (2026-05-19, AGYS hotfix).
             # yfinance quarterly_financials lags announcements by 24-72h →
