@@ -1321,9 +1321,41 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
             # Safety-net Q-rev threshold gate (fires when rubric couldn't
             # score, e.g. extraction lacks q_revenue_yoy_pct entirely).
+            #
+            # 2026-05-20 #51: disambiguate WHY q_rev_yoy is missing so the
+            # operator-facing message names the actual cause. Three causes:
+            #
+            #   (a) extraction_error — the API call itself raised (Sonnet
+            #       error, timeout). The rubric never got a chance.
+            #   (b) sparse news corpus — extraction ran but the news scrape
+            #       was thin (no press release indexed yet, e.g. pre-market
+            #       on earnings day before announcement). Quality stays low.
+            #   (c) non-earnings catalyst — extraction ran, news corpus had
+            #       content, but no Q-rev numbers because the catalyst is
+            #       FDA / M&A / partnership / pipeline rather than earnings.
+            #       Quality medium+ usually (other fields populated).
+            #
+            # Previous reason 'q_rev_yoy_unextractable_quality_X' conflated
+            # all three, leading to operator confusion (IMVT/ROIV reports).
             if _downgrade_reason is None and _rubric_result is None:
                 if _q_rev_yoy is None:
-                    _downgrade_reason = f"q_rev_yoy_unextractable_quality_{_quality}"
+                    extraction_error = _extracted.get("extraction_error")
+                    _qr_block_check = _extracted.get("q_revenue_usd") or {}
+                    has_q_rev_value = isinstance(_qr_block_check.get("value"), (int, float))
+                    if extraction_error:
+                        _downgrade_reason = f"extraction_failed_{extraction_error[:60]}"
+                    elif _quality == "low" and not has_q_rev_value:
+                        _downgrade_reason = "news_corpus_sparse_no_q_rev"
+                    elif has_q_rev_value:
+                        # Got a revenue value but no YoY — KLAR-class (IPO,
+                        # no prior-year comparable). Rubric returns None
+                        # because Axis 1 needs YoY.
+                        _downgrade_reason = "q_rev_yoy_missing_no_prior_year_comparable"
+                    else:
+                        # Extraction succeeded with non-revenue content —
+                        # likely non-earnings catalyst (FDA/M&A/partnership)
+                        # that yfinance happens to flag as earnings_day.
+                        _downgrade_reason = "non_earnings_catalyst_no_q_rev_in_news"
                 elif _q_rev_yoy < EARNINGS_REVENUE_GATE_MIN_YOY:
                     _downgrade_reason = (
                         f"q_rev_yoy_{_q_rev_yoy:.1f}pct_below_"
@@ -1422,10 +1454,40 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 f"(safety net; extraction quality={_quality})"
                             )
                         else:
-                            _msg_lines.append(
-                                f"Q-rev YoY un-extractable from news "
-                                f"(extraction quality={_quality}) — fail-loud"
-                            )
+                            # Disambiguate by downgrade reason (2026-05-20 #51).
+                            # Operator-facing text names the actual cause rather
+                            # than the generic 'un-extractable / fail-loud'.
+                            if _downgrade_reason.startswith("extraction_failed"):
+                                _msg_lines.append(
+                                    f"⚠️ Extraction error — Sonnet call failed "
+                                    f"or returned malformed JSON. Rubric not "
+                                    f"exercised; Q-rev safety-net engaged."
+                                )
+                            elif _downgrade_reason == "news_corpus_sparse_no_q_rev":
+                                _msg_lines.append(
+                                    f"📭 News corpus sparse — no Q-rev numbers "
+                                    f"found (possibly delayed press release or "
+                                    f"thin news indexing). Quality: {_quality}."
+                                )
+                            elif _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable":
+                                _msg_lines.append(
+                                    f"📊 Q-rev value extracted but YoY missing "
+                                    f"— likely recent IPO with no prior-year "
+                                    f"comparable. Methodology can't score; "
+                                    f"manual judgment required."
+                                )
+                            elif _downgrade_reason == "non_earnings_catalyst_no_q_rev_in_news":
+                                _msg_lines.append(
+                                    f"📰 Non-earnings catalyst — news has "
+                                    f"content but no Q-rev numbers (likely "
+                                    f"FDA / M&A / partnership / pipeline). "
+                                    f"Rubric structurally N/A here."
+                                )
+                            else:
+                                _msg_lines.append(
+                                    f"Q-rev YoY missing from extraction "
+                                    f"(reason: {_downgrade_reason}, quality: {_quality})"
+                                )
                         _msg_lines.append("")
                         _msg_lines.append(f"`/rubric {ticker}` for full breakdown.")
                         await send_telegram_message("\n".join(_msg_lines))
