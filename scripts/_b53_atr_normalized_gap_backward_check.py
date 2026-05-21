@@ -62,11 +62,14 @@ async def main():
         # alert_date (no look-ahead) + forward 5d return.
         rows = await conn.fetch("""
             WITH alerts AS (
-                -- Exclude non-stock (ETFs, ETNs, warrants, etc.). Pre-2026-05-17
-                -- the P2.0b fix wasn't shipped, so the cohort contains legacy
-                -- USAX/USGG-class ETF alerts that shouldn't have been emitted.
-                -- Backward checks must exclude them or the analysis is polluted.
-                SELECT a.ticker, a.alert_date, a.gap_pct, a.ep_score, a.catalyst_quality
+                -- Hygiene rules (#59 2026-05-21):
+                -- (1) Exclude non-stock (ETFs, ETNs, warrants). Pre-P2.0b fix
+                --     5/17 leaked USAX/USGG-class alerts.
+                -- (2) DISTINCT ON (ticker, alert_date) — same EP fired multiple
+                --     times in a session creates duplicate rows. Dedup keeps the
+                --     first (highest ep_score) row per ticker+date.
+                SELECT DISTINCT ON (a.ticker, a.alert_date)
+                       a.ticker, a.alert_date, a.gap_pct, a.ep_score, a.catalyst_quality
                 FROM mi_ep_alerts a
                 LEFT JOIN mi_security_types st ON st.ticker = a.ticker
                 WHERE a.alert_date >= CURRENT_DATE - INTERVAL '60 days'
@@ -74,6 +77,7 @@ async def main():
                   AND a.gap_pct IS NOT NULL
                   AND (st.security_type IS NULL
                        OR st.security_type IN ('CS', 'ADRC'))
+                ORDER BY a.ticker, a.alert_date, a.ep_score DESC NULLS LAST
             ),
             atr_bars AS (
                 SELECT a.ticker, a.alert_date,

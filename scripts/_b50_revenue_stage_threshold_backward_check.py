@@ -78,17 +78,23 @@ async def main():
     # want EVERY HIGH alert (entered or not).
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            -- Exclude non-stock (ETFs, ETNs, warrants). Pre-2026-05-17
-            -- P2.0b fix shipped, legacy ETF entries can pollute cohort.
-            -- Hygiene rule from task #59 (2026-05-21).
+            -- Hygiene rules from task #59 (2026-05-21):
+            -- (1) Exclude non-stock (ETFs, ETNs, warrants). Pre-2026-05-17
+            --     P2.0b fix shipped, legacy ETF entries can pollute cohort.
+            -- (2) DISTINCT ON (ticker, alert_date) — same EP fired multiple
+            --     times in a session creates duplicate rows. TH 4/01 had
+            --     16 dups, KOD 3/26 had 12. Counting each as a separate
+            --     trade outcome inflates distributional concentration.
             WITH alerts AS (
-                SELECT a.ticker, a.alert_date, a.ep_score, a.catalyst_quality
+                SELECT DISTINCT ON (a.ticker, a.alert_date)
+                       a.ticker, a.alert_date, a.ep_score, a.catalyst_quality
                 FROM mi_ep_alerts a
                 LEFT JOIN mi_security_types st ON st.ticker = a.ticker
                 WHERE a.alert_date >= CURRENT_DATE - INTERVAL '60 days'
                   AND a.score_tier = 'HIGH'
                   AND (st.security_type IS NULL
                        OR st.security_type IN ('CS', 'ADRC'))
+                ORDER BY a.ticker, a.alert_date, a.ep_score DESC NULLS LAST
             )
             SELECT a.ticker, a.alert_date, a.ep_score, a.catalyst_quality,
                    d0.open_price                      AS open_d0,
