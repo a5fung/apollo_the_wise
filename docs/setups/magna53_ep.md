@@ -72,7 +72,15 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
-### 2026-05-21 — REVENUE_STAGE_MIN_USD code default lowered to $0.01 (advisor flagged)
+### 2026-05-21 PM — REVENUE_STAGE_MIN_USD code default REVERTED to $5M (#68, advisor flagged)
+
+**Trigger**: Today's earlier #63 ship (lower default to $0.01) was based on yesterday's #50 verdict that pre-revenue ($0 Revenue Avg) band had 67% 5d WR. Today's #59 hygiene fix (dedup mi_ep_alerts duplicates) revealed yesterday's cohort was polluted by KOD ×6 + KPTI ×4 + TH ×16 duplicate rows. Clean cohort puts $0 band at 14% WR / -8% avg — a LOSER band, not a winner.
+
+**Decision**: The evidence supporting #63 ($0.01 default) has been retracted. At N=7 clean we don't have evidence supporting EITHER threshold, so the code default reverts to the conservative-block stance ($5M, what the original IMVT/ROIV ratchet aimed at). Prod env override stays at `REVENUE_STAGE_MIN_USD=0.01` as operator-pinned, explicitly provisional pending #55 at 2026-06-20.
+
+**Status**: shipped 2026-05-21 PM (pending).
+
+### 2026-05-21 AM — REVENUE_STAGE_MIN_USD code default lowered to $0.01 (#63, since reverted)
 
 **Trigger**: Advisor review 2026-05-20 PM flagged that the code default ($5M) and prod env-var override ($0.01) had diverged. A fresh prod rebuild without the env-var set would silently regress to the over-blocking $5M value. Backward check (#50, 2026-05-20) showed the $0 Revenue Avg band had 67% 5d WR — $5M would have over-blocked profitable EPs.
 

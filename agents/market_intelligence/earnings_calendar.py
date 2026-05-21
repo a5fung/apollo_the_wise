@@ -80,26 +80,30 @@ def _check_calendar_sync(ticker: str, scan_date: date) -> bool:
 
 import os as _os
 
-# Default threshold: $0.01 (effectively "block only literally-$0 cases like
-# IMVT-class pre-revenue biotechs"). Per 2026-05-20 backward check (#50),
-# the $0 Revenue Avg band had 67% 5d WR — a higher threshold would over-
-# block profitable EPs. The original $5M ratchet was shipped on N=2 cases
-# during market hours and rolled back via env var the same day.
-#
-# Code default kept conservative ($0.01) so a fresh prod rebuild doesn't
-# silently regress to a higher value if the env var isn't set. Operators
-# wanting to TIGHTEN (experiment with higher thresholds) override via env.
+# Default threshold: $5M. The conservative-block stance reflects what
+# little evidence we have — the original IMVT/ROIV ratchet (N=2) is what
+# initially motivated it. Yesterday's #50 backward check appeared to
+# support a much lower default ($0 band 67% WR), but the dedup hygiene
+# fix (#59, 2026-05-21) revealed that finding was polluted by duplicate
+# alert rows. Clean cohort puts $0 band at 14% WR / -8% avg — a LOSER
+# band. Neither N=2 nor N=7 is enough to ship a directional change, so
+# the code default reverts to the conservative-block stance pending
+# clean-cohort N≥10 evidence (next eval ~2026-06-20).
 #
 # History:
 #   2026-05-20: shipped at >0 default (IMVT-only blocked)
 #   2026-05-20: ratcheted to $5M on N=2 (IMVT, ROIV) — advisor caught
 #   2026-05-20: rolled back via prod .env REVENUE_STAGE_MIN_USD=0.01
-#   2026-05-21: code default lowered to 0.01 (advisor flagged the env-only
-#               pin as fragile — prod rebuild would re-introduce $5M)
+#   2026-05-21: code default lowered to 0.01 to match env (#63)
+#   2026-05-21: hygiene fix invalidated supporting evidence — code default
+#               REVERTED to $5M (#68); prod env stays at 0.01 (operator-
+#               pinned, explicitly provisional). At N=7 clean we don't
+#               know which is right; conservative-block is the default.
 #
 # Backward check to re-evaluate: scripts/_b50_revenue_stage_threshold_backward_check.py
-# Quarterly sweep auto-runs Feb/May/Aug/Nov 1st.
-_REVENUE_STAGE_MIN_USD = float(_os.environ.get("REVENUE_STAGE_MIN_USD", "0.01"))
+# Quarterly sweep auto-runs Feb/May/Aug/Nov 1st. Re-evaluate at #55 on
+# 2026-06-20 with N≥10 clean cohort.
+_REVENUE_STAGE_MIN_USD = float(_os.environ.get("REVENUE_STAGE_MIN_USD", "5000000"))
 
 
 def _check_revenue_stage_sync(ticker: str) -> bool:
@@ -108,9 +112,8 @@ def _check_revenue_stage_sync(ticker: str) -> bool:
     holding company with token revenue).
 
     Reads yfinance's Ticker.calendar.Revenue Average. Default threshold
-    $0.01 effectively blocks only literally-$0 cases (IMVT-class). Operators
-    can tighten via REVENUE_STAGE_MIN_USD env var if backward-check evidence
-    supports a higher value.
+    $5M (conservative-block). Prod env override `REVENUE_STAGE_MIN_USD=0.01`
+    currently pinned by operator as provisional pending #55 6/20 review.
 
     Fail-soft to True (assume revenue-stage) on any error — the earnings
     boost is methodology-defensive, better to over-boost on data outage

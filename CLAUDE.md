@@ -310,12 +310,14 @@ LIVE_TRADING_ENABLED=false  # Master kill switch — disables ALL submits
 ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
 
-# Methodology calibration overrides (OPTIONAL — code defaults are conservative)
-REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; CODE DEFAULT (2026-05-21).
-                             # Override only if backward-check evidence supports a
-                             # higher value. Code default is intentionally conservative
-                             # to prevent rebuild regressions. Re-evaluate quarterly
-                             # via scripts/_b50_revenue_stage_threshold_backward_check.py.
+# Methodology calibration overrides
+REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR PIN.
+                             # Code default is $5M (conservative-block). This env
+                             # override loosens to admit pre-revenue names pending
+                             # backward-check evidence. 2026-05-20/21 N=2 ratchet
+                             # was rolled back; N=7 clean cohort is still below
+                             # ship threshold. Re-evaluate at #55 on 2026-06-20.
+                             # Quarterly sweep auto-runs Feb/May/Aug/Nov 1st.
 ```
 
 ---
