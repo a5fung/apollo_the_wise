@@ -704,8 +704,11 @@ async def _ep_scan_job():
                 # Telegram itself failed — log loud. The audit-log row above
                 # is the durable record either way.
                 logger.error(f"EP_SCAN_DOWN Telegram alert also failed: {tg_e}")
-
-        await notify_job_failure("ep_scan", str(e))
+        # NOTE: not calling notify_job_failure here — the escalated TG above
+        # IS the failure notification, with explicit trading-impact framing.
+        # notify_job_failure was the previous (less loud) version; adding it
+        # AGAIN would produce a second un-deduped Telegram per scan tick
+        # (3-message spam pattern observed during synthetic test 2026-05-20).
 
 
 async def _paper_trade_tracker_job():
