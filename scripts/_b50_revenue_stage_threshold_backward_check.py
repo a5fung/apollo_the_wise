@@ -78,11 +78,17 @@ async def main():
     # want EVERY HIGH alert (entered or not).
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
+            -- Exclude non-stock (ETFs, ETNs, warrants). Pre-2026-05-17
+            -- P2.0b fix shipped, legacy ETF entries can pollute cohort.
+            -- Hygiene rule from task #59 (2026-05-21).
             WITH alerts AS (
-                SELECT ticker, alert_date, ep_score, catalyst_quality
-                FROM mi_ep_alerts
-                WHERE alert_date >= CURRENT_DATE - INTERVAL '60 days'
-                  AND score_tier = 'HIGH'
+                SELECT a.ticker, a.alert_date, a.ep_score, a.catalyst_quality
+                FROM mi_ep_alerts a
+                LEFT JOIN mi_security_types st ON st.ticker = a.ticker
+                WHERE a.alert_date >= CURRENT_DATE - INTERVAL '60 days'
+                  AND a.score_tier = 'HIGH'
+                  AND (st.security_type IS NULL
+                       OR st.security_type IN ('CS', 'ADRC'))
             )
             SELECT a.ticker, a.alert_date, a.ep_score, a.catalyst_quality,
                    d0.open_price                      AS open_d0,
@@ -143,24 +149,19 @@ async def main():
             "max_high_5d": r["max_high_5d"],
         })
 
-    # Report by band
-    print("=" * 90)
-    print(f"{'BAND':<55} {'N':<5} {'%':<6} {'avg_5d%':<10} {'winners≥+5%':<14}")
-    print("-" * 90)
+    # Report by band — uses shared helpers (#59 hygiene)
+    from scripts._backward_check_utils import band_stats, format_band_row, format_header
+    print("=" * 130)
+    print(format_header())
+    print("-" * 130)
     total = len(rows)
     for _, band_label in REVENUE_BANDS + [(None, "  N/A         (no yfinance data)")]:
         items = by_band.get(band_label, [])
         n = len(items)
         if n == 0:
             continue
-        with_return = [it for it in items if it["ret_5d"] is not None]
-        avg_5d = (sum(it["ret_5d"] for it in with_return) / len(with_return)) if with_return else None
-        winners = sum(1 for it in with_return if it["ret_5d"] is not None and it["ret_5d"] >= 5)
-        win_pct = (winners / len(with_return) * 100) if with_return else None
-        pct = n / total * 100
-        avg_str = f"{avg_5d:+.2f}%" if avg_5d is not None else "—"
-        win_str = f"{winners}/{len(with_return)} ({win_pct:.0f}%)" if with_return else "no outcomes yet"
-        print(f"{band_label:<55} {n:<5} {pct:>4.1f}% {avg_str:<10} {win_str:<14}")
+        stats = band_stats([it["ret_5d"] for it in items])
+        print(format_band_row(band_label, n, total, stats))
     print()
 
     # Show the tickers in low bands (decision-critical)

@@ -145,26 +145,19 @@ async def main():
             "ret_5d": r["ret_5d"],
         })
 
-    # Report
-    print("=" * 100)
-    print(f"{'BAND':<55} {'N':<5} {'%':<6} {'avg_5d%':<11} {'winners ≥+5%':<14} {'≥+10%':<8}")
-    print("-" * 100)
+    # Report — uses shared helpers (#59 hygiene)
+    from scripts._backward_check_utils import band_stats, format_band_row, format_header
+    print("=" * 130)
+    print(format_header())
+    print("-" * 130)
     total = len(rows)
     for _, band_label in GAP_ATR_BANDS + [(None, "  N/A             (insufficient history)")]:
         items = by_band.get(band_label, [])
         n = len(items)
         if n == 0:
             continue
-        with_return = [it for it in items if it["ret_5d"] is not None]
-        n_ret = len(with_return)
-        avg_5d = (sum(it["ret_5d"] for it in with_return) / n_ret) if n_ret else None
-        winners5 = sum(1 for it in with_return if it["ret_5d"] >= 5)
-        winners10 = sum(1 for it in with_return if it["ret_5d"] >= 10)
-        pct = n / total * 100
-        avg_str = f"{avg_5d:+.2f}%" if avg_5d is not None else "—"
-        win5_str = f"{winners5}/{n_ret} ({winners5/n_ret*100:.0f}%)" if n_ret else "no outcomes"
-        win10_str = f"{winners10}/{n_ret} ({winners10/n_ret*100:.0f}%)" if n_ret else "—"
-        print(f"{band_label:<55} {n:<5} {pct:>4.1f}% {avg_str:<11} {win5_str:<14} {win10_str:<8}")
+        stats = band_stats([it["ret_5d"] for it in items])
+        print(format_band_row(band_label, n, total, stats))
     print()
 
     # Detailed view of low-ratio band (the ones a normalization would block/downscore)
