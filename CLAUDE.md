@@ -324,6 +324,61 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-05-21 (Wed) — Backward-check hygiene exposed methodology error; data-gated review workflow expanded; 9M Day 2 mechanical-vs-Pradeep gap filed
+
+**Trigger**: User pushed for closure / live-readiness via multi-day hard push. Advisor reframe (logged): "Code is not the rate-limit. Trade outcomes are." Live readiness = Gate 3 paper R+ over N≥10. Current cohort -$1,541 over 4 trades, 75% loss rate. 3-5 weeks calendar minimum regardless of code velocity. Today's work was "improve evidence quality," not "accelerate readiness."
+
+**The hygiene-fix discovery (`#59` shipped earlier, dedup applied today)**: yesterday's #50 verdict ("pre-revenue $0 band has 67% 5d WR — keep code default at $0.01") was based on polluted cohort. mi_ep_alerts had 32 duplicate rows of 3 events (TH×16 on 4/01, KOD×12 on 3/26, KPTI×4 on 3/24) inflating band-level WR. Post-dedup: $0 band → 14% WR / -8% avg. The opposite of yesterday's read.
+
+Cascading effects:
+- **#63 reverted (#68)** — code default lowered to 0.01 in AM was built on retracted evidence. Reverted to $5M conservative-block; prod env override stays at 0.01 (operator-pinned, explicitly provisional). Runtime unchanged.
+- **#53 verdict shifted but held direction** — gap/ATR 5x+ band went 73% → 42% WR after dedup (TH-like duplicates landed there). Still says "don't ship ATR-normalized gap scoring," for a different reason (no band shows >60% WR cleanly).
+- **Duplicate root cause already fixed 2026-04-01** (`c0bcb48` "Add same-day dedup in ep_detector to prevent 16x duplicate inserts"). Two-layer dedup at insert site (already_alerted set + same-day check). Zero new duplicates in 50+ days. #67 closed without UNIQUE constraint — legacy rows carry trajectory data (score 80↔96 across scan ticks) that constraint would destroy.
+
+**Data-gated review workflow expansion (#64)**: `data_gated_reviews.yaml` schema now documents three statuses (pending/done/deferred) with explicit `deferred_reason`/`deferred_until` fields. Parser (`data_gated_reviews.py`) updated to re-evaluate deferred entries on their new `earliest_review_date`. Tomorrow's `live_cutover_decision` review will use this pattern: `status: deferred`, `deferred_reason: "Gate 3 RED -$1,541 over 4 trades"`, `deferred_until: 2026-06-22`.
+
+**ROIV 9M Day 2 trigger surfaces methodology gap (#65 filed)**: ROIV (clinical-stage biotech, $0 yfinance Revenue Avg) entered 9M Day 2 at 9:31 ET ($32.34 entry, $29.35 stop, 286 shares). MAGNA53 path would block via revenue-stage gate; **9M Day 2 path is quant-only, applies no catalyst-driven filter**. Per `user_pradeep_9m_universe_methodology.md`, 9M EP is a *watchlist* not an entry trigger; our mechanical Day-2 ORB doesn't match the methodology. Architectural review filed for N≥10 closed cohort (earliest 2026-07-15). Phase 1 = cohort outcome by revenue-stage class + concurrent-flag-state. Phase 2 = decide deprecate / gate / rename.
+
+**Fixture re-review (#57) — operator labels systematically more generous than rubric**: 6/6 weekend fixtures show rubric verdict ≤ operator label (1 game_changer + 3 strong + 2 routine → 5 weak + 1 safety-net). Not an error — operator reads narrative/chart/theme/intuition; rubric reads structured earnings metrics. The gap measures the discretion layer, informing Phase 5 meta-rubric work (currently scoped 2026-09 per `phase5_meta_rubric_calibration`). Don't relabel fixtures — the diff IS the calibration signal.
+
+**Operator-UX cleanup**: `routine_correct` rubric label renamed to `routine` (yesterday). CAVA-class downgrade Telegram now deduped via 1h DB-query (shipped yesterday — verified working today; #69 confirmed Telegram-side dedup pattern is correct, no spam).
+
+**Followups filed today**: #65 (9M Day 2 methodology, N≥10 closed earliest 7/15), #66 (audit trail of #50 correction), #67 (closed without ship — already deduped), #68 (urgent revert per advisor — shipped), #69 (closed — duplicates are legacy pre-fix), #70 (meta-rubric calibration evidence — operator vs rubric gap).
+
+**Meta-lessons captured in `feedback_sample_size_discipline.md`**:
+- Hygiene-revealed methodology errors are MORE valuable than the methodology change they prevented. #50/#53 verdict revisions both went through this loop today.
+- "Structural framing" doesn't bypass sample-size discipline. Distinguishing "should the gate exist" (structural, low-N OK) from "where should the threshold sit" (calibration, N≥10) is the key separation.
+- Status-quo bias dressed as discipline ("hold the most recent ship") is a real failure mode. The advisor caught me on it today — defending #63's code default on the same N-evidence basis that I'd just rejected for the $5M ratchet.
+- Code velocity is not the live-readiness rate-limit. Trade outcomes are. Hard-push sessions produce evidence quality, not calendar compression.
+
+### 2026-05-20 (Tue) — UnboundLocalError outage + 4 backward-checks all said "don't ship" + Gate 5 verified complete
+
+**Outage**: morning EP scans failed 7:00-8:21 ET (1h21m) on `cannot access variable 'log_audit_event'`. Root cause: 2026-05-19 commit `bb17e69` added `from ... import log_audit_event` inside `run_ep_scan` — Python made the name LOCAL for the entire 1000+ line function, blowing UnboundLocalError on every prior reference. Hotfix `b3df5a5`.
+
+**Preflight `[5d/5]` shipped same day**: AST-based shadowing check (`scripts/preflight_import_shadowing.py`) flagging Mode A (prior-ref shadow) + Mode B (conditional shadow). Caught 10 additional latent landmines across `scheduler.py`, `live_tracker.py`, `ep_detector.py`, `catalyst_metrics_extractor.py` — all fixed in same session. Wired into `deploy.sh` step `[5d/5]`.
+
+**EP scan failure surfacing hardened (#49)**: durable `ep_scan_failed` audit row + escalated `🚨 EP SCAN DOWN — TRADING IMPACTED` Telegram + 1h dedup. Removed duplicate `notify_job_failure` call after synthetic test surfaced 3-message spam pattern.
+
+**Downgrade audit message disambiguated (#51)**: 4 branches replace generic "Q-rev YoY un-extractable":
+- `extraction_failed_*` — Sonnet call raised
+- `news_corpus_sparse_no_q_rev` — extraction ran, thin news
+- `q_rev_yoy_missing_no_prior_year_comparable` — KLAR-class, IPO no prior year
+- `non_earnings_catalyst_no_q_rev_in_news` — FDA/M&A/partnership
+
+**Four backward checks all concluded "don't ship methodology change"** (#50, #53, #54, #39):
+- **#50 revenue-stage threshold**: pre-revenue $0 band 67% WR (this verdict overturned 5/21 by dedup — actually 14% WR)
+- **#53 ATR-normalized gap**: low-ratio band 43% WR, mid 17%, 5x+ 73% (this verdict shifted 5/21 — 5x+ band 42% post-dedup)
+- **#54 9M Day 2 stop/ATR**: cohort too thin (N=4 entered), distributional check showed PURR's 1.17x ratio not anomalous
+- **#39 NBIS rubric calibration**: methodology-correct given data; corp-action distortion in axis 2 surfaced as known limitation (#56 filed)
+
+**Gate 5 verified all 6 deliverables shipped** (#43): A naked-position remediation, B DB UPDATE prepare validation, C escalated alert, D stuck-fill watchdog, E column-type regression pytest, F operator sign-off 5/18, G column-write authority preflight. Gate 5 fully closed. Gate 3 (paper R+) is the sole remaining live-cutover blocker.
+
+**Quarterly backward-check sweep wired (#62)**: APScheduler job runs Feb/May/Aug/Nov 1st 8:00 AM ET. Aggregates all backward-check scripts' output into one Telegram digest. First scheduled fire: 2026-08-01. On-demand: `docker exec apollo-market python -m agents.market_intelligence.quarterly_review`.
+
+**Followups filed**: #55-60 (date/N-gated future reviews), #61 (5/22 cutover deferral), #62 (quarterly sweep), #63/#64 (advisor flags).
+
+**Meta-pattern**: 4 backward checks ran. All 4 said "don't ship." Each one prevented a methodology change that intuition would have shipped. The discipline is anti-velocity — anti-shipping-on-intuition. Same shape as 2026-05-08 days_up_streak ship→revert→restore loop the discipline was originally designed to prevent.
+
 ### 2026-05-17 (Sun) — Track 1 trade-state ownership refactor + Gate 5 G column-write authority preflight (live-cutover blocker closed)
 
 **Trigger**: Five trade-state corruption bugs in May (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to the same column with no ownership rule, last-write-wins by accident. Friday's Phase 1 audit (`docs/architecture/trade-state-ownership.md`) enumerated every writer; Sunday Phase 2 refactored three hot-path bug surfaces + shipped the static-analysis gate. Gate 5 G was the final unshipped Gate 5 deliverable — composite `live_cutover_decision` review now has all four gates ready for 2026-05-22 evaluation.
