@@ -3798,3 +3798,56 @@ reviews:
       F (operator sign-off) → flag to user separately at 5/22.
     status: pending
     added_on: 2026-05-19
+
+  - review_id: l2_baseline_window_trending_metrics
+    title: "L2 baseline window too sluggish for trending metrics (earnings-season transitions)"
+    question: |
+      30d trailing median lags on metrics with secular trend, producing
+      false-positive L2 alerts during transitions (post-earnings tail-off,
+      etc). Confirmed evidence (2026-05-20):
+        - 2026-05-19 L2 9m_alerts_per_day: today=8, 30d median=17.5,
+          z=-3.17. Verified FP — earnings season ended, monotonic
+          decline 45 → 8 over 13 days.
+        - 2026-05-12 L2 HIGH_ep_entry_rate: today=10, fired against
+          baseline trending down. Likely FP — same range as 5/06=10,
+          5/14=11 during the burst.
+
+      Candidate fixes:
+        (a) Shorter window (7-14d) for trending metrics
+        (b) EWMA (exponentially weighted MA) — recent days weighted more
+        (c) Trend-aware test — if 30d shows monotonic decline, treat
+            current as within trend rather than anomalous
+        (d) Seasonal-aware — flag known transition periods (earnings
+            close, holiday weeks) and use conditional baselines
+
+      Need cohort evidence to pick. Each fix has tradeoffs (shorter
+      window = more noise; EWMA = lag drift; trend-aware = false-
+      negative risk during real anomalies).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'anomaly_detected'
+        AND summary LIKE 'L2%'
+        AND created_at >= NOW() - INTERVAL '90 days'
+    threshold: 6
+    earliest_review_date: 2026-08-20
+    action_when_ready: |
+      With ≥6 L2 events in last 90d, categorize each:
+        - FP (false positive, metric in transition): supports change
+        - TP (real anomaly correctly surfaced): cautions against
+            window change
+
+      If ≥4 of 6 are FPs from trending-metric class:
+        Phase 1 — Telemetry-only ship: tag each L2 with a `trending`
+          classifier (monotonic-3-of-5d?, regression slope?) and emit
+          an audit event for FP-likely L2s. Keep firing the alert but
+          downgrade the framing. 30d telemetry.
+        Phase 2 — Threshold change: shift to EWMA OR shorter window
+          for metrics flagged trending, based on cohort outcomes.
+
+      If <4 of 6 are FPs: keep current 30d window. The L2 sensitivity
+      is doing its job.
+
+      Cross-reference: silent_failure_taxonomy_audit (this is the
+      observability-class case: alarm fires but signal is noise).
+    status: pending
+    added_on: 2026-05-20
