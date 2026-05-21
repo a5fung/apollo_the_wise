@@ -80,28 +80,37 @@ def _check_calendar_sync(ticker: str, scan_date: date) -> bool:
 
 import os as _os
 
-# $5M Q-revenue threshold for "revenue-stage" classification. Below this,
-# the company is functionally pre-revenue or pipeline-driven (clinical-
-# stage biotech, SPAC, holding company with token royalties). The Q-rev
-# YoY rubric gate is structurally inapplicable to these.
+# Default threshold: $0.01 (effectively "block only literally-$0 cases like
+# IMVT-class pre-revenue biotechs"). Per 2026-05-20 backward check (#50),
+# the $0 Revenue Avg band had 67% 5d WR — a higher threshold would over-
+# block profitable EPs. The original $5M ratchet was shipped on N=2 cases
+# during market hours and rolled back via env var the same day.
 #
-# IMVT 2026-05-20: $0 Revenue Average → blocked.
-# ROIV 2026-05-20: $3M Revenue Average → blocked (clinical-stage holding).
-# Real small-cap revenue businesses (SaaS at IPO, small industrial) have
-# analyst estimates well above $5M quarterly.
+# Code default kept conservative ($0.01) so a fresh prod rebuild doesn't
+# silently regress to a higher value if the env var isn't set. Operators
+# wanting to TIGHTEN (experiment with higher thresholds) override via env.
 #
-# Env var for fast rollback if calibration over-blocks: REVENUE_STAGE_MIN_USD.
-_REVENUE_STAGE_MIN_USD = float(_os.environ.get("REVENUE_STAGE_MIN_USD", "5000000"))
+# History:
+#   2026-05-20: shipped at >0 default (IMVT-only blocked)
+#   2026-05-20: ratcheted to $5M on N=2 (IMVT, ROIV) — advisor caught
+#   2026-05-20: rolled back via prod .env REVENUE_STAGE_MIN_USD=0.01
+#   2026-05-21: code default lowered to 0.01 (advisor flagged the env-only
+#               pin as fragile — prod rebuild would re-introduce $5M)
+#
+# Backward check to re-evaluate: scripts/_b50_revenue_stage_threshold_backward_check.py
+# Quarterly sweep auto-runs Feb/May/Aug/Nov 1st.
+_REVENUE_STAGE_MIN_USD = float(_os.environ.get("REVENUE_STAGE_MIN_USD", "0.01"))
 
 
 def _check_revenue_stage_sync(ticker: str) -> bool:
-    """True if company has revenue-stage business (Revenue Average ≥ $5M),
+    """True if company has revenue-stage business (Revenue Average ≥ threshold),
     False if pre-revenue / pipeline-driven (clinical-stage biotech, SPAC,
     holding company with token revenue).
 
-    Reads yfinance's Ticker.calendar.Revenue Average. The $5M threshold
-    (env-tunable) captures the IMVT/ROIV class: loss-making with tiny
-    pipeline royalties where Q-rev YoY is structurally meaningless.
+    Reads yfinance's Ticker.calendar.Revenue Average. Default threshold
+    $0.01 effectively blocks only literally-$0 cases (IMVT-class). Operators
+    can tighten via REVENUE_STAGE_MIN_USD env var if backward-check evidence
+    supports a higher value.
 
     Fail-soft to True (assume revenue-stage) on any error — the earnings
     boost is methodology-defensive, better to over-boost on data outage
