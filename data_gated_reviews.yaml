@@ -3886,3 +3886,86 @@ reviews:
       observability-class case: alarm fires but signal is noise).
     status: pending
     added_on: 2026-05-20
+
+  - review_id: ninem_day2_mechanical_vs_methodology_alignment
+    title: "9M Day 2 ORB mechanical entry vs Pradeep watchlist methodology — architectural gap"
+    question: |
+      Per `user_pradeep_9m_universe_methodology.md`: "9M EP = universe-to-
+      watch (1% rare event), NOT entry trigger. Entry comes from
+      tightness→expansion (flag-class pattern). Telemetry-first."
+
+      But our 9M Day 2 path is MECHANICAL: yesterday's 9M event → today's
+      ORB high breakout = entry. No pattern recognition step. No catalyst
+      grade. No revenue-stage check (which protects MAGNA53 from clinical-
+      stage biotech misalignments).
+
+      Two paths currently coexist with overlapping ticker pools:
+        - 9M Day 2 ORB (mechanical, fires next-day at ORB high) — NOT
+          methodologically aligned
+        - 9M → flag detector via `ninem_universe_watch` tag (P7.3b 5/17) —
+          methodologically aligned (tightness→expansion state machine)
+
+      Concrete trigger cases:
+        - ROIV 2026-05-21 (clinical-stage biotech, $0 yfinance Revenue Avg).
+          MAGNA53 path would block via revenue-stage gate. 9M Day 2 path
+          mechanically entered at 9:31 ET ($32.34, stop $29.35). Trade
+          currently open (paper).
+        - PURR 2026-05-20: similar profile, also mechanical entry, also
+          open (paper).
+        - Closed 9M Day 2 cohort (N=4 over 90d, methodology-attribution):
+          KLAR -$854, KLAR -$914, ARM -$392, GOOGL +$619. Net -$1,541.
+          3/4 losers (75% loss rate).
+
+      Question: should we
+        (A) deprecate 9M Day 2 mechanical, rely on flag-detector→ninem-watch
+            for methodologically-aligned 9M-watchlist entries
+        (B) add gating to 9M Day 2 (e.g., require concurrent COILED/
+            TIGHTENING in flag detector, OR exclude clinical-stage names)
+        (C) accept current 9M Day 2 mechanical as a SEPARATE strategy (not
+            Pradeep methodology) and rename/reframe honestly
+
+      Cross-references:
+        - feedback_sample_size_discipline.md (N≥10-30 required)
+        - user_pradeep_9m_universe_methodology.md (canonical methodology)
+        - flag carryforward path (e) shipped 2026-05-19 (carries
+          flag-detector setups across RS dips — alternative entry mechanism)
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE signal_type = '9m_day2'
+        AND status = 'closed'
+        AND account_mode = 'paper'
+        AND alert_date >= '2026-04-01'
+        AND pnl_attribution IS NULL
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      With N≥10 closed 9M Day 2 trades (methodology-attribution):
+
+      Phase 1 — Cohort outcome analysis (~30 min):
+        - Compute win rate, R-expectancy, max-favorable-excursion
+        - Separate cohort by "would-have-passed-flag-detector" vs not
+          (i.e., did the ticker show COILED/TIGHTENING on the entry day?)
+        - Separate by revenue-stage class (pre-revenue / small-cap /
+          mid-cap / large-cap)
+
+      Phase 2 — Methodology decision:
+        - If 9M Day 2 cohort R is positive AND comparable to MAGNA53
+          R: methodology-correct enough, keep mechanical path
+        - If 9M Day 2 cohort R is negative AND flag-detector subset
+          shows positive: deprecate mechanical, rely on flag-detector
+        - If 9M Day 2 cohort R is negative AND no flag-detector subset
+          shows edge: deprecate entirely (Option A)
+
+      Phase 3 — Ship decision:
+        (A) Deprecate: set 9m_day2 strategy phase='shadow', rely on
+            flag detector. SSoT update in docs/setups/ninem.md.
+        (B) Gate: add concurrent-flag-state filter OR revenue-stage
+            filter (use is_revenue_stage from earnings_calendar.py).
+        (C) Rename: clarify in SSoT that 9M Day 2 is "Day-2-volume-
+            anomaly-continuation," distinct from Pradeep 9M methodology.
+
+      DO NOT ship a change without N≥10 + advisor review. Today's ROIV
+      and PURR are the trigger events; future closed-cohort data drives
+      the decision.
+    status: pending
+    added_on: 2026-05-21

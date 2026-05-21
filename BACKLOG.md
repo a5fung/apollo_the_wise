@@ -150,6 +150,7 @@ Sorted by earliest_review_date.
 - [ ] `b6_forward_backtest_first_eval` (6/19, N≥30 cohort) → YAML — **see 🎯 Target Date 3**
 - [ ] `rubric_safety_net_yoy_required` (6/19, N≥10 YoY-missing cases) → YAML
 - [ ] `theme_axis_gating_logic` (6/19, N≥30 HIGH alerts) → YAML
+- [ ] `ninem_day2_mechanical_vs_methodology_alignment` (7/15, N≥10 9M Day 2 closed) → YAML — architectural question filed 5/21 after ROIV trigger case
 - [ ] `conviction_floor_extension` (6/28) → YAML
 - [ ] `apollo_trades_dashboard_db_flip` (7/15, gated on ≥30 live trades) → YAML
 - [ ] `orb_cutoff_extension` (7/15) → YAML
