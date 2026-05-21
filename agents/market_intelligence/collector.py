@@ -25,12 +25,9 @@ logger = logging.getLogger(__name__)
 POLYGON_BASE = "https://api.polygon.io"
 FMP_BASE = "https://financialmodelingprep.com/api"
 
-# Once-per-session config-error dedup flag. Set True after first 402
-# Payment Required from FMP news endpoint surfaces via Telegram, so
-# subsequent calls don't spam the channel with the same alert. Reset
-# only on container restart (which is intentional — operator should
-# know about the paywall again after each deploy).
-_fmp_paywall_alerted: bool = False
+# (Removed 2026-05-21: _fmp_paywall_alerted flag and FMP-paywall alerting.
+# FMP news call stripped entirely — get_fmp_news now goes straight to yfinance.
+# See get_fmp_news docstring.)
 
 # Polygon Starter: unlimited calls, but keep a small delay to be polite
 _polygon_lock = asyncio.Semaphore(1)
@@ -367,105 +364,29 @@ async def get_fmp_news(
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
 ) -> list[dict]:
-    """Stock news via FMP `/stable/news/stock` endpoint.
+    """Stock news — historically called FMP `/stable/news/stock-latest`.
 
-    Supports date-windowed historical lookup via `from_date`/`to_date`
-    (FMP's `from`/`to` query params, YYYY-MM-DD). Default = latest.
+    2026-05-21: FMP news is paywalled on our plan (402). Stripped the FMP
+    attempt entirely — was producing daily paywall warnings with no
+    operator action available. The yfinance.news fallback (which was the
+    de-facto behavior anyway) is what this function returns now.
 
-    yfinance fallback retained for resilience if FMP errors — yfinance
-    has no date filter, so historical callers should treat the fallback
-    as degraded.
+    Naming kept as `get_fmp_news` for caller-compatibility (extract_earnings_metrics,
+    backward-check scripts). The "FMP" label is now historical — implementation
+    is purely yfinance.news.
+
+    Live extraction has Polygon (date-windowed) + Alpaca News (Benzinga,
+    date-windowed) as the primary sources. yfinance here adds marginal
+    current-news coverage (~5 items per ticker). Historical backward
+    checks should NOT rely on this function — it's current-time only.
+
+    Date params (`from_date`/`to_date`) accepted for caller-compat but
+    ignored. Future: if FMP plan is upgraded, restore the FMP call path
+    (see git history pre-2026-05-21).
     """
-    api_key = os.environ.get("FMP_API_KEY", "")
-    if api_key:
-        try:
-            params: dict[str, Any] = {
-                "symbols": ticker,
-                "limit": limit,
-                "apikey": api_key,
-            }
-            if from_date is not None:
-                params["from"] = from_date.isoformat()
-            if to_date is not None:
-                params["to"] = to_date.isoformat()
-            async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.get(
-                    "https://financialmodelingprep.com/stable/news/stock-latest",
-                    params=params,
-                )
-                r.raise_for_status()
-                data = r.json()
-            if isinstance(data, list) and data:
-                return [
-                    {
-                        "title": n.get("title", "") or "",
-                        "text": n.get("text", "") or n.get("content", "") or "",
-                        "publishedDate": n.get("publishedDate", "") or "",
-                        "site": n.get("site", "") or n.get("publisher", "") or "",
-                    }
-                    for n in data[:limit]
-                ]
-        except Exception as e:
-            logger.warning(f"FMP news failed for {ticker} ({from_date}..{to_date}): {e}")
-            # Config-error class: 402 Payment Required → endpoint paywalled
-            # on our plan. Loud once-per-session Telegram alert so operator
-            # knows the historical-news capability is degraded. Dedup via
-            # module-level flag — resets on container restart so operator
-            # is re-alerted each deploy (intentional).
-            if "402" in str(e):
-                # Dedup via DB query (not in-process flag) so that
-                # docker-exec scripts + batch jobs sharing the same
-                # codebase don't each fire their own "first" alert.
-                # Window: 24h sliding. Re-alerts daily (operator gets
-                # reminded the paywall persists without spam).
-                # 2026-05-20: per-process flag fired 3× same morning
-                # (main agent + hotfix restart + my manual verify scan).
-                global _fmp_paywall_alerted
-                already_alerted_in_window = _fmp_paywall_alerted
-                if not already_alerted_in_window:
-                    try:
-                        from agents.market_intelligence.db import get_pool, log_audit_event
-                        pool = await get_pool()
-                        async with pool.acquire() as conn:
-                            row = await conn.fetchrow("""
-                                SELECT 1 FROM mi_audit_log
-                                WHERE event_type = 'fmp_news_paywalled'
-                                  AND created_at > NOW() - INTERVAL '24 hours'
-                                LIMIT 1
-                            """)
-                            already_alerted_in_window = row is not None
-                    except Exception:
-                        # If DB lookup fails, fall back to in-process flag
-                        # behavior (still better than spamming).
-                        pass
-                if not already_alerted_in_window:
-                    _fmp_paywall_alerted = True
-                    try:
-                        from agents.market_intelligence.briefing import send_telegram_message
-                        from agents.market_intelligence.db import log_audit_event
-                        await log_audit_event(
-                            "fmp_news_paywalled",
-                            f"FMP /stable/news/stock-latest returned 402 on {ticker} "
-                            f"({from_date}..{to_date}). Plan does not include news endpoint. "
-                            f"Historical news fetches falling back to yfinance (current-only, "
-                            f"no date filter)."
-                        )
-                        await send_telegram_message(
-                            "⚠️ *FMP news endpoint paywalled* — historical news fetches "
-                            "falling back to yfinance (current-only, no date filter). "
-                            "Live alerts still get Polygon + Alpaca News (Benzinga). "
-                            "Backtest paths (B5/B6) are silently degraded. "
-                            "_Consider FMP plan upgrade OR mark FMP news as unavailable._"
-                        )
-                    except Exception:
-                        pass
-                else:
-                    # Already alerted in window — set in-process flag to
-                    # short-circuit future checks without re-querying DB
-                    _fmp_paywall_alerted = True
-            # fall through to yfinance fallback
-
-    # yfinance fallback (degraded — no date filter)
+    # FMP attempt removed 2026-05-21 — paywalled on current plan, was
+    # producing daily 402 + Telegram noise with no operator action.
+    # Restore the FMP try-block from git history if plan is ever upgraded.
     try:
         import yfinance as yf
         loop = asyncio.get_event_loop()
@@ -477,7 +398,7 @@ async def get_fmp_news(
                  "text":  n.get("content", {}).get("summary", "")}
                 for n in news[:limit]]
     except Exception as e:
-        logger.warning(f"yfinance news fallback failed for {ticker}: {e}")
+        logger.warning(f"yfinance news failed for {ticker}: {e}")
         return []
 
 
