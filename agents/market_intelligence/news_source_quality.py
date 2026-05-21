@@ -256,17 +256,19 @@ async def run_quality_check() -> dict:
 if __name__ == "__main__":
     import asyncio
     from agents.market_intelligence.collector import et_today
-    today_d = et_today()
-    print(f"News source quality — current 7d ({today_d - timedelta(days=6)}..{today_d})")
-    print()
-    current = asyncio.run(collect_source_stats(today_d - timedelta(days=6), today_d))
-    print(format_quality_report(current, "current 7d"))
-    print()
-    drift = asyncio.run(detect_drift())
-    alert = format_drift_alert(drift)
-    if alert:
+
+    async def _main():
+        today_d = et_today()
+        print(f"News source quality — current 7d ({today_d - timedelta(days=6)}..{today_d})")
         print()
-        print(alert)
-    else:
+        current = await collect_source_stats(today_d - timedelta(days=6), today_d)
+        print(format_quality_report(current, "current 7d"))
         print()
-        print("✅ No drift events detected.")
+        drift = await detect_drift()
+        alert = format_drift_alert(drift)
+        if alert:
+            print(alert)
+        else:
+            print("✅ No drift events detected.")
+
+    asyncio.run(_main())
