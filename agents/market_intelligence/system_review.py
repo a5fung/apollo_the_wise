@@ -186,6 +186,7 @@ async def _gather_and_aggregate(
     strategy_promotions = await _aggregate_promotion_checks()
     pending_reviews = await _aggregate_pending_reviews(today)
     missed_opps = await _aggregate_missed_opportunities(window_days)
+    news_quality = await _aggregate_news_source_quality(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -208,7 +209,32 @@ async def _gather_and_aggregate(
         "strategy_promotions": strategy_promotions,
         "pending_reviews": pending_reviews,
         "missed_opportunities": missed_opps,
+        "news_source_quality": news_quality,
     }
+
+
+async def _aggregate_news_source_quality(window_days: int) -> dict:
+    """Roll up per-source quality (coverage/density/attribution) for the
+    weekly window + drift detection vs trailing baseline. Surfaces
+    silent-quality-degradation per 2026-05-21 user-stated discipline."""
+    try:
+        from agents.market_intelligence.news_source_quality import (
+            collect_source_stats, detect_drift,
+        )
+        from agents.market_intelligence.collector import et_today
+        today_d = et_today()
+        current_start = today_d - timedelta(days=window_days - 1)
+        current = await collect_source_stats(current_start, today_d)
+        drift = await detect_drift()
+        return {
+            "current_stats": current,
+            "drift_events": drift.get("drift_events") or [],
+            "current_window": drift.get("current_window"),
+            "baseline_window": drift.get("baseline_window"),
+        }
+    except Exception:
+        logger.exception("news_source_quality aggregator failed")
+        return {"current_stats": {}, "drift_events": []}
 
 
 async def _aggregate_missed_opportunities(window_days: int) -> dict:
