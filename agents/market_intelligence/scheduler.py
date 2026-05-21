@@ -2509,6 +2509,27 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=86400,  # 24h grace — quarterly missed once isn't critical
     )
 
+    # News source quality drift check (2026-05-21 #71/#72 trigger):
+    # Daily 4:30 PM ET (post-market-close, pre-EOD-cleanup at 5pm). Runs
+    # the drift detector; emits news_source_quality_drift audit + Telegram
+    # when any source's coverage/attribution drops >40pp week-over-week.
+    # 24h Telegram dedup so persistent drift doesn't spam — audit row
+    # writes daily regardless for durable telemetry.
+    # Sunday weekly review also surfaces current 7d quality stats.
+    # Quarterly sweep (Feb/May/Aug/Nov 1st) surfaces 90d quarter-wide view.
+    async def _news_quality_drift_check_job():
+        from agents.market_intelligence.news_source_quality import run_quality_check
+        await run_quality_check()
+
+    _scheduler.add_job(
+        audit_wrap(_news_quality_drift_check_job, "news_quality_drift_check"),
+        CronTrigger(hour=16, minute=30, day_of_week="mon-fri",
+                    timezone="America/New_York"),
+        id="news_quality_drift_check",
+        replace_existing=True,
+        misfire_grace_time=3600,  # 1h grace; missed once is fine, next day runs
+    )
+
     # Theme round-trip outcome validator: 6:00 AM ET daily (Area 2,
     # 2026-05-15). Defense-in-depth secondary catch for hallucinated
     # themes where ≥50% of members are stripped within 3 days of

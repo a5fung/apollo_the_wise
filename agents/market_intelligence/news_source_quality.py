@@ -233,31 +233,82 @@ def format_drift_alert(drift_report: dict) -> str | None:
     return "\n".join(lines)
 
 
+async def _drift_telegram_already_sent_recently() -> bool:
+    """24h DB-dedup so daily quality-check job doesn't re-Telegram the
+    same persistent drift every day. Audit event still fires (durable
+    telemetry); Telegram is suppressed when one was sent in last 24h.
+    Same pattern as the CAVA rubric-downgrade dedup and other 24h windows.
+    """
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'news_source_quality_drift'
+                  AND created_at > NOW() - INTERVAL '24 hours'
+                  AND created_at < NOW() - INTERVAL '1 second'
+                LIMIT 1
+            """)
+            return row is not None
+    except Exception:
+        return False  # fail-open: send Telegram on DB error
+
+
 async def run_quality_check() -> dict:
     """Run on-demand or from scheduler — returns full report dict + sends
-    drift Telegram if events present. Returns dict for caller use.
+    drift Telegram if events present. 24h dedup on Telegram (audit always
+    fires).
     """
     drift_report = await detect_drift()
     drift_alert = format_drift_alert(drift_report)
     if drift_alert:
         try:
-            from agents.market_intelligence.briefing import send_telegram_message
             from agents.market_intelligence.db import log_audit_event
+            # Always log audit (durable telemetry, even if Telegram dedup'd)
             await log_audit_event(
                 "news_source_quality_drift",
                 f"{len(drift_report['drift_events'])} drift event(s) detected",
             )
-            await send_telegram_message(drift_alert)
+            # 24h dedup on Telegram only
+            if not await _drift_telegram_already_sent_recently():
+                from agents.market_intelligence.briefing import send_telegram_message
+                await send_telegram_message(drift_alert)
         except Exception as e:
-            logger.warning(f"drift alert send failed: {e}")
+            logger.warning(f"drift alert handling failed: {e}")
     return drift_report
+
+
+async def print_quarterly_summary() -> None:
+    """Quarter-wide (90d) per-source quality summary + drift detection.
+    Called by the quarterly sweep job alongside the 3 backward-check
+    scripts. Prints to stdout for the sweep's aggregation step.
+    """
+    from agents.market_intelligence.collector import et_today
+    today_d = et_today()
+    window_start = today_d - timedelta(days=89)
+    print("=" * 60)
+    print(f"News source quality — quarter-wide (90d, {window_start}..{today_d})")
+    print("=" * 60)
+    stats = await collect_source_stats(window_start, today_d)
+    print(format_quality_report(stats, "quarter (90d)"))
+    print()
+    drift = await detect_drift()
+    alert = format_drift_alert(drift)
+    if alert:
+        print(alert)
+    else:
+        print("✅ No drift events detected (current 7d vs trailing 23d baseline).")
 
 
 if __name__ == "__main__":
     import asyncio
+    import sys
     from agents.market_intelligence.collector import et_today
 
-    async def _main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "weekly"
+
+    async def _weekly():
         today_d = et_today()
         print(f"News source quality — current 7d ({today_d - timedelta(days=6)}..{today_d})")
         print()
@@ -271,4 +322,7 @@ if __name__ == "__main__":
         else:
             print("✅ No drift events detected.")
 
-    asyncio.run(_main())
+    if mode == "quarterly":
+        asyncio.run(print_quarterly_summary())
+    else:
+        asyncio.run(_weekly())

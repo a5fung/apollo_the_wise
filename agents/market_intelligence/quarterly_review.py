@@ -35,13 +35,21 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
+# Each entry: (display_label, module, extra_args).
+# extra_args is appended to `python -m <module>` invocation.
 QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     ("Revenue-stage threshold (#50)",
-     "scripts._b50_revenue_stage_threshold_backward_check"),
+     "scripts._b50_revenue_stage_threshold_backward_check", []),
     ("ATR-normalized gap scoring (#53)",
-     "scripts._b53_atr_normalized_gap_backward_check"),
+     "scripts._b53_atr_normalized_gap_backward_check", []),
     ("9M Day 2 stop/ATR distribution (#54)",
-     "scripts._b54_9m_day2_stop_atr_distribution"),
+     "scripts._b54_9m_day2_stop_atr_distribution", []),
+    # News source quality (2026-05-21 #71/#72 trigger) — 90d view of
+    # per-source coverage/density/attribution + drift detection. Surfaces
+    # silent degradation in news sources (Polygon, Alpaca, yfinance,
+    # Perplexity, Claude analysis). Loud-not-silent discipline.
+    ("News source quality (90d)",
+     "agents.market_intelligence.news_source_quality", ["quarterly"]),
 ]
 
 
@@ -79,12 +87,19 @@ async def run_quarterly_sweep() -> dict:
     started_at = datetime.utcnow()
     results: list[dict] = []
 
-    for label, module in QUARTERLY_BACKWARD_CHECK_SCRIPTS:
-        logger.info(f"Quarterly sweep: running {module} ({label})")
+    for entry in QUARTERLY_BACKWARD_CHECK_SCRIPTS:
+        # Tuple shape: (label, module, extra_args). Pre-2026-05-21 entries
+        # were 2-tuples; back-compat to 3rd element default to empty list.
+        if len(entry) == 3:
+            label, module, extra_args = entry
+        else:
+            label, module = entry
+            extra_args = []
+        logger.info(f"Quarterly sweep: running {module} {extra_args} ({label})")
         try:
             proc = await asyncio.to_thread(
                 subprocess.run,
-                ["python", "-m", module],
+                ["python", "-m", module, *extra_args],
                 capture_output=True,
                 text=True,
                 timeout=600,  # 10 min per script
