@@ -2493,6 +2493,22 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
 
+    # Quarterly backward-check sweep (#62, 2026-05-20): re-runs all
+    # backward-check scripts + sends aggregated Telegram digest. Cadence
+    # = 1st of Feb / May / Aug / Nov at 8:00 AM ET (matches the quarterly
+    # rule-review discipline per user_quarterly_rule_review.md). Date-
+    # gated YAML reviews handle specific triggers; this handles the
+    # systematic baseline calibration sweep.
+    from agents.market_intelligence.quarterly_review import quarterly_backward_check_sweep_job
+    _scheduler.add_job(
+        audit_wrap(quarterly_backward_check_sweep_job, "quarterly_backward_check_sweep"),
+        CronTrigger(month="2,5,8,11", day=1, hour=8, minute=0,
+                    timezone="America/New_York"),
+        id="quarterly_backward_check_sweep",
+        replace_existing=True,
+        misfire_grace_time=86400,  # 24h grace — quarterly missed once isn't critical
+    )
+
     # Theme round-trip outcome validator: 6:00 AM ET daily (Area 2,
     # 2026-05-15). Defense-in-depth secondary catch for hallucinated
     # themes where ≥50% of members are stripped within 3 days of

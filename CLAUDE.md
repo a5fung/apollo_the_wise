@@ -309,6 +309,13 @@ ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_PAPER=true
 LIVE_TRADING_ENABLED=false  # Master kill switch — disables ALL submits
 ALPACA_DATA_FEED=iex        # "sip" only when Algo Trader Plus ($99/mo) active
 POSTGRES_PASSWORD, REDIS_PASSWORD, INTERNAL_API_SECRET, TRADINGVIEW_WEBHOOK_SECRET
+
+# Methodology calibration overrides (set explicitly on prod to override code defaults)
+REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; 2026-05-20 rolled back from
+                             # code default $5M after backward check showed pre-revenue
+                             # ($0 Revenue Avg) cohort had 67% 5d WR. 0.01 effectively
+                             # blocks only literally-$0 cases. Re-evaluate quarterly
+                             # via scripts/_b50_revenue_stage_threshold_backward_check.py.
 ```
 
 ---
