@@ -58,7 +58,12 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
     pending: list[dict] = []
 
     for e in entries:
-        if e.get("status") != "pending":
+        # Process pending AND deferred entries (deferred = previously surfaced,
+        # operator chose "wait" rather than "act now," with new
+        # earliest_review_date set to the deferred_until date).
+        # status=done entries are skipped entirely (audit trail only).
+        # 2026-05-21: added deferred status per #64 advisor flag.
+        if e.get("status") not in ("pending", "deferred"):
             continue
         review_id = e.get("review_id") or "<unknown>"
         earliest = e.get("earliest_review_date")

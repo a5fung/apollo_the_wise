@@ -13,13 +13,48 @@
 #   threshold: int — predicate must reach this for ready=true
 #   earliest_review_date: ISO date — never surface as ready before this
 #   action_when_ready: what the user should do when surfaced
-#   status: pending | ready | done — flip to done after action taken
+#   status: pending | done | deferred
 #   added_on: ISO date when entry was created (for audit)
 #
+#   Optional fields for status=deferred:
+#     deferred_reason: short string explaining why deferral (e.g. "Gate 3
+#                       paper R still negative; need more cohort growth")
+#     deferred_on: ISO date deferral was decided
+#     deferred_until: ISO date for next evaluation (also reflected in
+#                     earliest_review_date so weekly surfacing respects it)
+#
+# Status semantics:
+#   pending  — review hasn't fired ready yet (predicate not met OR date not reached)
+#   done     — review has been acted on; decision made; no further action.
+#              Parser skips done entries when checking ready. Kept as audit trail.
+#   deferred — review fired ready, operator looked, decision is "not yet — wait
+#              for more data / time / cohort." Sets earliest_review_date to a
+#              new date (deferred_until). Parser treats deferred similarly to
+#              pending: re-evaluates on the new date. Distinct from pending so
+#              audit trail captures the explicit deferral decision.
+#
 # Update flow:
-#   - New item: append entry, set status=pending
-#   - When Sunday digest surfaces ready: act, then set status=done
-#   - Done entries are kept (audit trail); parser skips them
+#   - New item: append entry, set status=pending, added_on=today
+#   - Weekly Sunday digest surfaces ready (predicate met + date reached) items
+#   - Operator acts when surfaced. Options:
+#       (a) Decision made → set status=done. Keep entry for audit.
+#       (b) Decision deferred (more data needed) → set status=deferred,
+#           add deferred_reason + deferred_on + deferred_until, AND
+#           bump earliest_review_date to deferred_until so it doesn't
+#           keep surfacing every Sunday in the meantime.
+#       (c) Decision made + creates new review question →
+#           set this status=done, append NEW review entry for the next
+#           question.
+#   - Done + deferred entries are kept (audit trail). Parser skips done.
+#
+# Example deferral (live_cutover_decision 2026-05-22):
+#   - Gate 3 paper R is RED (-$2,175 over 3 trades)
+#   - Operator decides to wait 4 weeks for cohort growth
+#   - Set status=deferred
+#   - deferred_reason: "Gate 3 paper_r_expectancy negative; need N≥10 closed methodology trades + positive R"
+#   - deferred_on: 2026-05-22
+#   - deferred_until: 2026-06-22
+#   - earliest_review_date: bump to 2026-06-22 (will re-surface then)
 
 reviews:
 
