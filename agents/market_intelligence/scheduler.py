@@ -412,7 +412,6 @@ async def _nightly_data_pull():
     try:
         from agents.market_intelligence.missed_outcomes import refresh_missed_outcomes
         missed_summary = await refresh_missed_outcomes(window_days=30)
-        from agents.market_intelligence.db import log_audit_event
         await log_audit_event(
             "missed_outcomes_refreshed",
             f"window {missed_summary['window_start']}..{missed_summary['window_end']}: "
@@ -558,7 +557,9 @@ async def _ep_scan_job():
         from agents.market_intelligence.collector import et_today, _ET
         from agents.market_intelligence.broker import bar_stream
         today = et_today()
-        from agents.market_intelligence.db import get_pool
+        # get_pool already imported at module level (line 24); local import
+        # here would shadow + cause UnboundLocalError in later refs (e.g.
+        # the except handler) if a prior line raised first.
         pool = await get_pool()
         async with pool.acquire() as conn:
             already_alerted = {
@@ -588,7 +589,10 @@ async def _ep_scan_job():
                 already_alerted.add(ep["ticker"])
                 logger.info(f"Sent HIGH EP alert: {ep['ticker']}")
                 try:
-                    from agents.market_intelligence.db import log_audit_event
+                    # log_audit_event already imported at module level (line 24)
+                    # — local import here would shadow + cause UnboundLocalError
+                    # in any later-in-function ref that runs when this branch
+                    # is skipped (e.g. the except handler at end of function).
                     await log_audit_event(
                         "ep_alert",
                         summary=f"HIGH EP: {ep['ticker']} gap={ep.get('gap_pct', 0):.1f}% score={ep['ep_score']:.0f}",
@@ -1286,7 +1290,6 @@ async def _crypto_category_refresh_job():
     logger.info("Crypto category refresh starting...")
     try:
         from agents.market_intelligence.crypto.categories import refresh_category_membership
-        from agents.market_intelligence.db import get_pool
         pool = await get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
@@ -1571,7 +1574,6 @@ async def _post_validation_check_job():
     logger.info("Post-validation check starting...")
     try:
         from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.db import get_pool
         from datetime import timedelta
 
         yesterday = et_today() - timedelta(days=1)
@@ -1696,7 +1698,6 @@ async def _ep_scan_watchdog():
                 "Run manually: tell Apollo \"run EP scan\""
             )
         else:
-            from agents.market_intelligence.db import get_pool
             pool = await get_pool()
             async with pool.acquire() as conn:
                 alert_count = await conn.fetchval(
@@ -1745,7 +1746,7 @@ async def _9m_day2_orb_job() -> None:
         return
     try:
         from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
-        from agents.market_intelligence.db import get_pending_9m_sugar_babies, get_pool
+        from agents.market_intelligence.db import get_pending_9m_sugar_babies
         from agents.market_intelligence.collector import prev_trading_days
         from agents.market_intelligence.constants import MAX_CONCURRENT_LIVE_POSITIONS
         yesterday = prev_trading_days(1, from_date=today)[0]
@@ -1829,7 +1830,6 @@ async def _9m_day2_orb_job() -> None:
         budget = MAX_CONCURRENT_LIVE_POSITIONS - active_count - high_ep_pending
 
         if budget <= 0:
-            from agents.market_intelligence.db import log_audit_event
             skipped_tickers = ", ".join(c["ticker"] for c in candidates[:5])
             if len(candidates) > 5:
                 skipped_tickers += f" + {len(candidates) - 5} more"
@@ -1906,7 +1906,6 @@ async def _9m_day2_orb_job() -> None:
                     tkr = candidate.get("ticker", "<unknown>")
                     logger.exception(f"9M Day2 {tkr}: per-candidate crash — {ce}")
                     try:
-                        from agents.market_intelligence.db import log_audit_event
                         await log_audit_event(
                             "9m_day2_pipeline_crash",
                             f"{tkr} — {type(ce).__name__}: {ce}",

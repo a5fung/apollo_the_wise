@@ -246,7 +246,6 @@ catalyst, say so explicitly."""
                 except anthropic.RateLimitError:
                     if attempt == 1:
                         raise
-                    from agents.market_intelligence.db import log_audit_event
                     await log_audit_event("anthropic_rate_limited", ticker, "retrying ep catalyst")
                     await asyncio.sleep(2 + random.random() * 3)
         tool_block = next(b for b in response.content if b.type == "tool_use")

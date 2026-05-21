@@ -130,7 +130,6 @@ async def _check_safeguards(
         return False, "live_trading_disabled", 0.0
 
     if account_mode is None:
-        from agents.market_intelligence.constants import current_account_mode
         account_mode = current_account_mode()
 
     pool = await get_pool()

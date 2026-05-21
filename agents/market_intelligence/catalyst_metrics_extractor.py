@@ -228,7 +228,6 @@ async def extract_earnings_metrics(
     # Wider Perplexity query if first call returned sparse — try a second
     # query with a more specific catalyst-focused phrasing.
     async def _retry_perplexity_more_specific() -> str:
-        from agents.market_intelligence.collector import search_news_perplexity
         return await search_news_perplexity(
             f"{ticker} Q4 earnings results — actual revenue, EPS, YoY growth percentages, "
             f"guidance, analyst estimate beat. Quote specific dollar amounts.",

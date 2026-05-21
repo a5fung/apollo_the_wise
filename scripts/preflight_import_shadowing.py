@@ -129,14 +129,30 @@ def _name_references_before(fn_node, target_name: str, before_line: int) -> list
 
 
 class ShadowingVisitor(ast.NodeVisitor):
-    """Walks each function body; flags `from X import Y` where:
-      1. Y is also imported at module level (so the function-local import
-         shadows the module binding)
-      2. Y is REFERENCED somewhere in the function body BEFORE its local
-         import line (the UnboundLocalError landmine condition)
+    """Walks each function body; flags `from X import Y` where Y is also
+    imported at module level.
 
-    Without condition 2, a function-local import that's the FIRST reference
-    of the name in the function is technically redundant but not a bug.
+    Two failure modes both produce UnboundLocalError at runtime:
+
+    Mode A (prior-ref shadowing): name referenced BEFORE the local import
+      line. This is the 2026-05-20 ep_detector bug shape — Python sees the
+      local binding and treats name as LOCAL for the whole function, so
+      the earlier ref blows up.
+
+    Mode B (conditional shadowing): local import lives inside a conditional
+      branch (if/try/for/with) and is referenced OUTSIDE that branch.
+      When the branch doesn't execute, the local name is unbound, and the
+      later ref raises. This is the 2026-05-20 #49 except-handler shape —
+      run_ep_scan raised before reaching the HIGH-alert if-block that
+      contained the local import, so when the except handler later
+      referenced log_audit_event, it was unbound.
+
+    Both modes are caught by the same rule: NO function-local `from X import
+    Y` if Y is also module-level imported. Module-level is always sufficient;
+    the local import is redundant in success paths and a landmine in others.
+
+    Friction by design (same as Gate 5 G). Adding a new local import of a
+    module-level name blocks deploy until removed.
     """
 
     def __init__(self, module_imports: set[str], filepath: str):
@@ -171,19 +187,20 @@ class ShadowingVisitor(ast.NodeVisitor):
         for stmt in node.body:
             _walk_excluding_nested(stmt)
 
-        # For each local-shadowing import, check if the name was referenced
-        # BEFORE the local-import line in this function.
+        # Strict rule (post-2026-05-20 #49 bug): flag ALL function-local
+        # imports of module-shadowed names. Both prior-ref shadowing AND
+        # conditional shadowing cause UnboundLocalError. The fix is always
+        # the same (remove the local import; module-level binding works).
         for local_name, import_lineno, from_module in local_imports:
             prior_refs = _name_references_before(node, local_name, import_lineno)
-            if prior_refs:
-                self.violations.append({
-                    "file": self.filepath,
-                    "function": " > ".join(self._fn_stack),
-                    "line": import_lineno,
-                    "shadowed_name": local_name,
-                    "from_module": from_module,
-                    "prior_ref_lines": prior_refs,
-                })
+            self.violations.append({
+                "file": self.filepath,
+                "function": " > ".join(self._fn_stack),
+                "line": import_lineno,
+                "shadowed_name": local_name,
+                "from_module": from_module,
+                "prior_ref_lines": prior_refs,
+            })
         # Recurse to visit nested defs
         self.generic_visit(node)
         self._fn_stack.pop()
@@ -224,12 +241,14 @@ def main() -> int:
         print(f"  {v['file']}:{v['line']}")
         print(f"    function: {v['function']}")
         print(f"    shadows:  `from {v['from_module']} import {v['shadowed_name']}`")
-        print(f"    but `{v['shadowed_name']}` is referenced earlier on line(s): "
-              f"{', '.join(map(str, v['prior_ref_lines'][:5]))}"
-              + (f" (+{len(v['prior_ref_lines'])-5} more)" if len(v['prior_ref_lines']) > 5 else ""))
-        print(f"    fix: remove the function-local import. The module-level binding")
-        print(f"         is sufficient — the local import makes the name a LOCAL")
-        print(f"         variable, raising UnboundLocalError on the prior refs.")
+        if v['prior_ref_lines']:
+            print(f"    Mode A (prior-ref): `{v['shadowed_name']}` referenced earlier on line(s): "
+                  f"{', '.join(map(str, v['prior_ref_lines'][:5]))}"
+                  + (f" (+{len(v['prior_ref_lines'])-5} more)" if len(v['prior_ref_lines']) > 5 else ""))
+        else:
+            print(f"    Mode B (conditional): local import may not execute on all "
+                  f"paths; later refs raise UnboundLocalError when this branch is skipped.")
+        print(f"    fix: remove the function-local import. Module-level binding works.")
         print()
     print("This pattern caused the 2026-05-20 UnboundLocalError outage.")
     print("Python treats the function-local import as making the name a LOCAL")
