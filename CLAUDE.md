@@ -266,6 +266,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
 | 4:45 PM | Position update |
 | 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
+| 5:22 PM (mon-fri) | **Sugar Babies cohort refresh** (Pradeep persistent watchlist — observational, `/sugarbabies`) |
 | 5:25 PM | **Continuation flag scan** (shadow — VCP/Qullamaggie tightening) |
 | 5:30 PM | **Post-nightly audit** (theme/cooldown/regime L2/L3) |
 | 6:00 PM (Fri) | **Friday watchlist** (curated chart-review aggregator + TV import block) |

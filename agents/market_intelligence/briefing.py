@@ -877,6 +877,7 @@ def _format_evening_briefing(
     fishhook_settled_60d: int = 0,
     fishhook_median_r_60d: float | None = None,
     fishhook_hit_rate_60d: float | None = None,
+    cohort_babies: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -955,6 +956,24 @@ def _format_evening_briefing(
         if sb_section:
             sections.append(sb_section)
             sections.append("")
+
+    # Persistent Sugar Babies cohort (Pradeep-class watchlist — distinct from
+    # the single-day sugar_babies block above. Top 10 by count desc; full list
+    # via /sugarbabies. Header says "Persistent" so both surfaces can coexist
+    # until #82 renames mi_9m_sugar_babies → mi_9m_day2_candidates.).
+    if cohort_babies:
+        try:
+            today_d = date.fromisoformat(briefing_date) if briefing_date else date.today()
+        except (ValueError, TypeError):
+            today_d = date.today()
+        lines = [f"🍬 *Persistent Sugar Babies* ({len(cohort_babies)} top — full: `/sugarbabies`)"]
+        for r in cohort_babies:
+            last = r.get("last_9m_alert")
+            days_since = (today_d - last).days if last else None
+            ds_s = f"{days_since}d ago" if days_since is not None else "—"
+            lines.append(f"  `{r['ticker']:<6}` {r['n']}× · {ds_s}")
+        sections.append("\n".join(lines))
+        sections.append("")
 
     if ninem_anticipations:
         tks = ", ".join(f"`{a['ticker']}`" for a in ninem_anticipations[:20])
@@ -1062,6 +1081,14 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"9M sugar babies fetch failed: {e}")
 
+    # Persistent Sugar Babies cohort (Pradeep-class — ≥3 9M EOD prints / 180d)
+    cohort_babies: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_sugar_babies_cohort_latest
+        cohort_babies = await get_sugar_babies_cohort_latest(limit=10)
+    except Exception as e:
+        logger.warning(f"Sugar babies cohort fetch failed: {e}")
+
     # 9M anticipation-only alerts — surface silent pace-projected alerts so nothing goes unseen
     ninem_anticipations: list[dict] = []
     try:
@@ -1146,6 +1173,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         fishhook_settled_60d=fishhook_settled_60d,
         fishhook_median_r_60d=fishhook_median_r_60d,
         fishhook_hit_rate_60d=fishhook_hit_rate_60d,
+        cohort_babies=cohort_babies,
     )
 
     success = await send_telegram_message(text, chat_id)

@@ -1890,6 +1890,45 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Drill-down: `/flags TICKER` for 14-day history_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_sugar_babies_query(self, request: AgentRequest) -> AgentResponse:
+        """`/sugarbabies` — current Pradeep-class persistent watchlist.
+
+        Tickers that printed 9M+ EOD volume ≥3 times in trailing 180 days.
+        Refreshed daily 5:22 PM ET via `_sugar_babies_cohort_refresh_job`.
+        Pure observational watchlist — no auto-entry. Operator decides when
+        a member shows a VCP / tight-base setup worth taking.
+        """
+        from agents.market_intelligence.db import get_sugar_babies_cohort_latest, get_pool
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            latest = await conn.fetchval("SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort")
+        if not latest:
+            return self._ok(
+                request,
+                result="_Sugar Babies cohort empty. Daily 5:22 PM ET refresh will populate._",
+            )
+        rows = await get_sugar_babies_cohort_latest(limit=60)
+        if not rows:
+            return self._ok(request, result=f"_No tickers in cohort on {latest}._")
+        lines = [
+            f"🍬 *Sugar Babies — Pradeep persistent cohort* ({latest})",
+            f"_{len(rows)} tickers with ≥3 9M-vol EOD prints in trailing 180d._",
+            "",
+        ]
+        for r in rows[:30]:  # Pradeep watchlist size ~25-30
+            days_since = (latest - r["last_9m_alert"]).days
+            gap = r.get("latest_gap_pct")
+            gap_s = f" · gap {float(gap):.1f}%" if gap is not None else ""
+            lines.append(
+                f"  `{r['ticker']:<6}` {r['n']}× 9M · last {days_since}d ago{gap_s}"
+            )
+        if len(rows) > 30:
+            lines.append(f"  …{len(rows) - 30} more")
+        lines.append("")
+        lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_setup_query(self, request: AgentRequest) -> AgentResponse:
         """`/setup TICKER [days]` — reverse-lookup detector chronology.
 
@@ -3981,6 +4020,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/fishhook":       self._handle_fishhook_query,
             "/flags":          self._handle_flag_query,
             "/flag":           self._handle_flag_query,
+            "/sugarbabies":    self._handle_sugar_babies_query,
+            "/sugarbaby":      self._handle_sugar_babies_query,
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,

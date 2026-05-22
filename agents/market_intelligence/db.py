@@ -531,6 +531,27 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS sma50_slope_pct FLOAT;
             ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prior_sessions INT;
 
+            -- Persistent Sugar Babies cohort (Pradeep-class watchlist):
+            -- tickers that printed 9M+ EOD volume ≥3 times in trailing 180d.
+            -- Different concept from mi_9m_sugar_babies (single-day Day 2
+            -- candidate). Pure observability — no trade impact.
+            CREATE TABLE IF NOT EXISTS mi_sugar_babies_cohort (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                cohort_date DATE NOT NULL,
+                count_9m_alerts_180d INT NOT NULL,
+                first_9m_alert_in_window DATE,
+                last_9m_alert DATE,
+                latest_volume BIGINT,
+                latest_gap_pct FLOAT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, cohort_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_sugar_babies_cohort_date
+                ON mi_sugar_babies_cohort(cohort_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_sugar_babies_cohort_ticker
+                ON mi_sugar_babies_cohort(ticker, cohort_date DESC);
+
             CREATE TABLE IF NOT EXISTS mi_data_quality (
                 run_date DATE NOT NULL,
                 step TEXT NOT NULL,
@@ -1849,6 +1870,29 @@ async def get_eod_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
         if is_9m_directional(float(r["prev_close"]), float(r["open_price"]), float(r["close_price"]))
         and is_green_close(float(r["prev_close"]), float(r["close_price"]))
     ]
+
+
+async def get_sugar_babies_cohort_latest(limit: int = 30) -> list[dict]:
+    """Return current persistent Sugar Babies cohort (Pradeep-class watchlist).
+    Tickers that printed 9M+ EOD vol ≥3 times in trailing 180d.
+    Ordered by count desc, then most-recent last_9m_alert.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker,
+                   count_9m_alerts_180d AS n,
+                   first_9m_alert_in_window,
+                   last_9m_alert,
+                   latest_volume,
+                   latest_gap_pct
+            FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date)
+                                  FROM mi_sugar_babies_cohort)
+            ORDER BY count_9m_alerts_180d DESC, last_9m_alert DESC
+            LIMIT $1
+        """, limit)
+    return [dict(r) for r in rows]
 
 
 async def get_eod_9m_wick_candidates(trade_date: "str | date") -> list[dict]:
@@ -4449,6 +4493,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_intraday_bars": today - timedelta(days=120),
             "mi_9m_ep_alerts":   today - timedelta(days=90),
             "mi_9m_sugar_babies": today - timedelta(days=90),
+            "mi_sugar_babies_cohort": today - timedelta(days=365),
             "mi_ep_catalyst_metrics": today - timedelta(days=180),
         }
         date_cols = {
@@ -4462,6 +4507,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_intraday_bars": "bar_time",
             "mi_9m_ep_alerts":   "alert_date",
             "mi_9m_sugar_babies": "alert_date",
+            "mi_sugar_babies_cohort": "cohort_date",
             "mi_ep_catalyst_metrics": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
