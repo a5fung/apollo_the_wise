@@ -263,6 +263,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:05 PM | EOD cleanup |
 | 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
 | 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
+| 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
 | 4:45 PM | Position update |
 | 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
 | 5:25 PM | **Continuation flag scan** (shadow — VCP/Qullamaggie tightening) |
@@ -271,7 +272,8 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 8:00 PM | Evening briefing |
 | 9:00 PM | **Evening position backstop** (2nd `sync_positions` — catches late EXPIRED events) |
 | 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
-| Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up → Telegram digest) |
+| Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up + news-source-quality section → Telegram digest) |
+| Feb/May/Aug/Nov 1st 8:00 AM | **Quarterly backward-check sweep** (#62 — re-runs #50/#53/#54 + news quality 90d view) |
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
