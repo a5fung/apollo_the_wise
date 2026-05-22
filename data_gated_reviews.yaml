@@ -1228,7 +1228,7 @@ reviews:
         HAVING COUNT(DISTINCT snapshot_date) >= 14
       )
     threshold: 1
-    earliest_review_date: 2026-05-22
+    earliest_review_date: 2026-06-22  # 2026-05-22 deferred — see deferred_reason at end of entry
     action_when_ready: |
       ## Pre-flight gate verification
 
@@ -1386,7 +1386,28 @@ reviews:
       requirement for 3-tier maturation pipeline (Gate 4 dual-account
       shipped 2026-05-10 c79abd6→9bcaba6). Gate 5 added 2026-05-14
       following CRMD naked-position P0 incident.
-    status: pending
+    status: deferred
+    deferred_reason: |
+      Gate 3 (paper R-expectancy) is RED: cohort -$1,541 net pnl across
+      4 closed methodology-attribution trades (KLAR ×2 -$1,768, ARM
+      -$392, GOOGL +$619), 75% loss rate. Need N≥10 closed methodology
+      trades AND positive R-expectancy. At ~1 closed trade per 2.7
+      days, need ~3-5 more weeks of cohort growth. Earnings-season
+      tail-off may slow further.
+
+      All other gates green or shipped:
+        - Gate 5 (architectural hardening): all 6 deliverables A-G
+          shipped + signed (verified #43, 2026-05-20).
+        - Gate 4 (dual-account architecture): code shipped 2026-05-10.
+        - Gate 1 (drawdown breaker): predicate met.
+        - Gate 2 (FTRE partial-trail): still pending — needs real
+          partial-then-trail cycle in paper.
+
+      No code-velocity action will accelerate Gate 3. Cohort grows
+      with trade outcomes only.
+    deferred_on: 2026-05-22
+    deferred_until: 2026-06-22
+    earliest_review_date: 2026-06-22
     added_on: 2026-05-10
 
   - review_id: stop_too_wide_outcome_cohort
