@@ -273,7 +273,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 9:00 PM | **Evening position backstop** (2nd `sync_positions` — catches late EXPIRED events) |
 | 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
 | Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up + news-source-quality section → Telegram digest) |
-| Feb/May/Aug/Nov 1st 8:00 AM | **Quarterly backward-check sweep** (#62 — re-runs #50/#53/#54 + news quality 90d view) |
+| Monthly 1st 8:00 AM | **Monthly backward-check sweep** (regime-shift monitor — re-runs #50/#53/#54/#77 + news quality 90d view) |
 
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`

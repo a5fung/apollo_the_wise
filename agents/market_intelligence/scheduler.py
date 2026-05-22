@@ -2493,20 +2493,21 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
 
-    # Quarterly backward-check sweep (#62, 2026-05-20): re-runs all
-    # backward-check scripts + sends aggregated Telegram digest. Cadence
-    # = 1st of Feb / May / Aug / Nov at 8:00 AM ET (matches the quarterly
-    # rule-review discipline per user_quarterly_rule_review.md). Date-
-    # gated YAML reviews handle specific triggers; this handles the
-    # systematic baseline calibration sweep.
+    # Monthly backward-check sweep — regime-shift monitor.
+    # 2026-05-20 originally shipped at quarterly cadence (#62).
+    # 2026-05-22 converted to monthly per user — backward checks ARE the
+    # regime-change-detection mechanism, not just methodology tuning.
+    # Same scripts as before + #77 Pradeep rally bands. Per-band WR
+    # shifts month-over-month surface regime inflections that quarterly
+    # would miss by ~60 days. Methodology ship still requires N≥10-30
+    # per script per the existing sample-size discipline.
     from agents.market_intelligence.quarterly_review import quarterly_backward_check_sweep_job
     _scheduler.add_job(
-        audit_wrap(quarterly_backward_check_sweep_job, "quarterly_backward_check_sweep"),
-        CronTrigger(month="2,5,8,11", day=1, hour=8, minute=0,
-                    timezone="America/New_York"),
-        id="quarterly_backward_check_sweep",
+        audit_wrap(quarterly_backward_check_sweep_job, "monthly_backward_check_sweep"),
+        CronTrigger(day=1, hour=8, minute=0, timezone="America/New_York"),
+        id="monthly_backward_check_sweep",
         replace_existing=True,
-        misfire_grace_time=86400,  # 24h grace — quarterly missed once isn't critical
+        misfire_grace_time=86400,  # 24h grace — missed once isn't critical
     )
 
     # News source quality drift check (2026-05-21 #71/#72 trigger):

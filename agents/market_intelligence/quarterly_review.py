@@ -1,17 +1,18 @@
-"""Quarterly methodology backward-check sweep (#62, 2026-05-20).
+"""Monthly methodology backward-check sweep (#62 + #77 regime-monitor).
 
-Per user_quarterly_rule_review.md discipline: rules-as-SSoT + quarterly
-review (NOT frequent tuning). Anti-overfit; batch N≥30 evidence, not
-single-case reactions.
+2026-05-20 originally shipped as quarterly. 2026-05-22 converted to
+monthly cadence after the Pradeep-quote backward check (#77) made the
+regime-change framing explicit: backward checks are regime-shift
+monitors, NOT methodology-tuning loops. Monthly gives faster signal
+without inviting frequent tuning (sample-size discipline still applies
+before any methodology ship).
 
-The quarterly sweep re-runs all backward-check scripts shipped by
-backward-check work, captures their stdout, aggregates findings, and
-sends one Telegram digest. Operator reviews the digest to spot drift
-between quarters.
+Per user_quarterly_rule_review.md: rules-as-SSoT, anti-overfit; batch
+N≥30 evidence, not single-case reactions. Monthly cadence + per-band
+WR drift is the right "regime check" granularity.
 
-Cadence: every 90 days. Compatible with the existing data_gated_reviews
-mechanism — that handles per-question specific-trigger reviews
-(predicate_sql), this handles the systematic baseline sweep.
+Module name retained as `quarterly_review` for caller-compat; the
+cadence moved monthly per the 2026-05-22 ship.
 
 Scripts run:
   - _b50_revenue_stage_threshold_backward_check.py
@@ -37,6 +38,8 @@ logger = logging.getLogger(__name__)
 
 # Each entry: (display_label, module, extra_args).
 # extra_args is appended to `python -m <module>` invocation.
+# Monthly cadence as regime-check; methodology ship still requires
+# per-script backward-check + sample-size discipline.
 QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     ("Revenue-stage threshold (#50)",
      "scripts._b50_revenue_stage_threshold_backward_check", []),
@@ -44,6 +47,13 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
      "scripts._b53_atr_normalized_gap_backward_check", []),
     ("9M Day 2 stop/ATR distribution (#54)",
      "scripts._b54_9m_day2_stop_atr_distribution", []),
+    # Pradeep "rallying-into-catalyst" bands (#77, added 2026-05-22).
+    # Regime-shift monitor: which pre-20d-return bands have highest WR?
+    # Pradeep claims sideways-into-catalyst (RKLB-class) is highest WR;
+    # our 60d cohort shows the OPPOSITE for late-cycle bull regime.
+    # Monthly cadence will catch the inversion if regime shifts.
+    ("Pradeep rally bands (#77)",
+     "scripts._b77_pradeep_neglect_backward_check", []),
     # News source quality (2026-05-21 #71/#72 trigger) — 90d view of
     # per-source coverage/density/attribution + drift detection. Surfaces
     # silent degradation in news sources (Polygon, Alpaca, yfinance,
@@ -123,9 +133,10 @@ async def run_quarterly_sweep() -> dict:
     # Aggregate into one Telegram digest
     elapsed = (datetime.utcnow() - started_at).total_seconds()
     lines = [
-        f"📊 *Quarterly methodology backward-check sweep*",
+        f"📊 *Monthly backward-check sweep* — regime-shift monitor",
         f"_{started_at.strftime('%Y-%m-%d %H:%M')} UTC · "
         f"{len(results)} scripts · {elapsed:.0f}s_",
+        "_Watch for band-level WR shifts vs prior month — that's the regime signal._",
         "",
     ]
     for r in results:
