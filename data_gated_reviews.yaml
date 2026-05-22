@@ -2765,9 +2765,11 @@ reviews:
     predicate_sql: |
       -- Predicate: VIX column present in mi_market_regime with at
       -- least 5 days of non-null values.
+      -- 2026-05-22 fix: column is `regime_date`, not `record_date`
+      -- (predicate was always failing silently before this edit).
       SELECT COUNT(*) FROM mi_market_regime
       WHERE vix IS NOT NULL
-        AND record_date > CURRENT_DATE - INTERVAL '14 days';
+        AND regime_date > CURRENT_DATE - INTERVAL '14 days';
     threshold: 5
     earliest_review_date: 2026-05-20
     action_when_ready: |
@@ -2784,8 +2786,22 @@ reviews:
       Memo: project_market_intelligence_backlog P19 — "binary captures
       ~80% of benefit today; revisit after 3+ months live." So this is
       genuinely lower-urgency than other items.
-    status: pending
+    status: done
     added_on: 2026-05-14
+    closed_on: 2026-05-22
+    closure_note: |
+      VIX ingest has been shipped (date unrecorded; predicate column-name
+      bug masked review readiness). Verified 2026-05-22:
+        - mi_market_regime.vix column exists (DOUBLE PRECISION)
+        - 10/10 most-recent days populated (non-null vix value)
+        - constants.vix_scaled_risk_pct helper actively reads
+          regime_record["vix"] in broker/order_manager.py at two
+          call sites (lines 107-108 and 2039-2040)
+        - P19 continuous sizing is ENGAGED in prod; falls back to
+          binary RISK_PCT only when vix is NULL (no longer the case)
+      Predicate column-name typo also fixed in same edit
+      (`record_date` → `regime_date`) so the YAML reflects truth.
+      Surfaced by daily-backlog cadence cleanup 2026-05-22.
 
   - review_id: gate5_tomorrow_verifications
     title: "Tomorrow-morning verifications for tonight's shipped fixes"
@@ -3990,3 +4006,72 @@ reviews:
       the decision.
     status: pending
     added_on: 2026-05-21
+
+  - review_id: b50_revenue_stage_verdict_audit_trail
+    title: "Audit trail: #50 revenue-stage threshold verdict ship-revert-correction cycle"
+    question: |
+      The pre-revenue $5M ratchet question (`is_revenue_stage` block on
+      MAGNA53 EPs with yfinance Revenue Avg < $5M) went through three
+      verdict-state changes in 36 hours. Future readers of this YAML
+      need durable visibility into the cycle — CLAUDE.md change log
+      captures it but rotates out into CHANGELOG.md after ~2 weeks. This
+      review IS the audit trail (not a question awaiting evidence).
+
+      Chronology:
+
+      2026-05-20 (Tue PM): b50 backward check ran on 60d MAGNA53 HIGH
+        cohort. Reported "$0 pre-revenue band 67% 5d WR (N=9), keep
+        code default at $0.01 (operator-pinned env override)." Code
+        default stayed at $5M conservative-block.
+
+      2026-05-21 (Wed AM): #63 advisor flagged "code default should
+        match evidence, not stay at $5M." Lowered code default to
+        REVENUE_STAGE_MIN_USD = 0.01 in earnings_calendar.py.
+
+      2026-05-21 (Wed PM): #59 dedup hygiene fix shipped. Discovered
+        the b50 cohort was polluted — mi_ep_alerts had 32 duplicate
+        rows of 3 events (TH×16 on 4/01, KOD×12 on 3/26, KPTI×4 on
+        3/24) ALL of which fell in the $0 band. Post-dedup the $0 band
+        had only 14% 5d WR / -8% avg ret. The OPPOSITE of yesterday's
+        read. #66 logged as "urgent flag — code default revert."
+
+      2026-05-21 (Wed PM): #68 reverted REVENUE_STAGE_MIN_USD code
+        default back to $5M (commit deferred-noted; the prod env
+        override stays at 0.01 — operator-pinned PROVISIONAL).
+
+      Two cascading methodology lessons (carried in
+      `feedback_sample_size_discipline.md`):
+        (a) Hygiene-fix-revealed methodology error is MORE valuable
+            than the methodology change it prevented (b50 verdict
+            revision was the discovery that drove #67 dedup constraint
+            consideration + #59 hygiene SSoT).
+        (b) Status-quo bias dressed as discipline ("keep #63's lowered
+            code default because that's what we shipped most recently")
+            is a real failure mode — the advisor caught it; #68 revert
+            was the right call.
+
+      Current state (2026-05-22 verified):
+        - earnings_calendar.REVENUE_STAGE_MIN_USD = $5M (code default)
+        - prod env override REVENUE_STAGE_MIN_USD=0.01 (operator-pinned)
+        - Runtime behavior is the env override; code default is
+          documentary / safe-default for fresh installs
+        - #55 re-check scheduled 2026-06-20 at next 30-60d cohort growth
+          (the proper N≥10 trigger window for this question)
+    predicate_sql: |
+      -- This review IS the audit trail; predicate never fires
+      -- (status: done at creation). Keeping a sentinel query so the
+      -- registry tool still loads the entry cleanly.
+      SELECT 0 AS audit_trail_only;
+    threshold: 999999  -- never auto-promote; documentation entry
+    earliest_review_date: 9999-12-31
+    status: done
+    added_on: 2026-05-22
+    closed_on: 2026-05-22
+    closure_note: |
+      Created as audit trail entry — no methodology decision pending.
+      Surfaces the #50 ship→revert→restore cycle in YAML so it's
+      durable beyond the CLAUDE.md change log rotation (~2wk).
+      Cross-reference: #55 (next re-check 2026-06-20), #59 (dedup
+      hygiene fix that triggered the correction), #66/#68 (urgent
+      flag + revert commits), feedback_sample_size_discipline.md
+      (meta-lessons captured).
