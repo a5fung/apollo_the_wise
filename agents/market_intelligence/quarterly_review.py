@@ -54,6 +54,14 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Monthly cadence will catch the inversion if regime shifts.
     ("Pradeep rally bands (#77)",
      "scripts._b77_pradeep_neglect_backward_check", []),
+    # M&A filter Path B FP-rate drift detection (#88, added 2026-05-23).
+    # 2026-05-23 ship validated 2/2 TPs kept, 8/10 FPs blocked vs 13
+    # historical cases. Monthly re-evaluation classifies post-ship
+    # events to detect TP regression (Polygon insights API changes)
+    # or new FP patterns (sympathy-merger reasoning bleed, direction-
+    # blindness via descriptions per #90).
+    ("M&A filter Path B FP-rate (#88)",
+     "scripts._b88_mna_filter_path_b_fp_rate", []),
     # Decliner-band bounce signal deep-dive (#78, added 2026-05-23).
     # Sub-band analysis (-5/-10/-20 splits) + catalyst-quality breakdown.
     # 2026-05-23 first run: -10 to -20% sub-band is sweet spot (83% WR
