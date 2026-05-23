@@ -62,6 +62,7 @@ JOB_FISHHOOK_EOD = "fishhook_eod_pass"
 JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
+JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -1548,6 +1549,35 @@ async def _sugar_babies_cohort_refresh_job():
         return None
 
 
+async def _flag_break_scan_job():
+    """Run every 5 min during market hours. Intraday flag-break detector
+    (#94, ADR 0005, 2026-05-23 ship Commit 1).
+
+    Cron fires hourly minute=*/5 9-15 (Mon-Fri); this function gates
+    internally to 9:35 AM – 3:55 PM ET so we skip pre-9:35 (opening
+    range settles) and post-3:55 (closing-auction noise). Pattern
+    matches run_9m_scan's internal time gate.
+
+    Telemetry-only first ship: writes mi_flag_breaks rows + audit events +
+    Telegram alert. No entry execution. Forward-return validation gated
+    on N>=10 settled breaks (data_gated_reviews.yaml::intraday_flag_break
+    review, filed in Commit 2).
+    """
+    from datetime import datetime, time as _time
+    from agents.market_intelligence.collector import _ET
+    now_et = datetime.now(_ET)
+    if not (_time(9, 35) <= now_et.time() <= _time(15, 55)):
+        return 0
+    try:
+        from agents.market_intelligence.flag_detector import run_intraday_flag_break_scan
+        n = await run_intraday_flag_break_scan(now_et)
+        return int(n) if n is not None else 0
+    except Exception as e:
+        logger.error(f"intraday_flag_break_scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_FLAG_BREAK_SCAN, str(e))
+        return None
+
+
 async def _flag_scan_job():
     """Run at 5:25 PM ET. Continuation-flag detector daily pass.
 
@@ -2704,6 +2734,21 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_FLAG_SCAN,
         replace_existing=True,
         misfire_grace_time=900,
+    )
+
+    # Intraday flag-break scan: every 5 min, 9-15 hour (cron product-set),
+    # Mon-Fri. The job function gates internally to 9:35 AM – 3:55 PM ET to
+    # skip pre-9:35 (opening range settles) and post-3:55 (closing-auction
+    # noise). #94 ship Commit 1 — telemetry-only shadow phase per ADR 0005.
+    _scheduler.add_job(
+        audit_wrap(_flag_break_scan_job, JOB_FLAG_BREAK_SCAN),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_FLAG_BREAK_SCAN,
+        replace_existing=True,
+        misfire_grace_time=120,
     )
 
     # Wick-fill forward returns: 5:45 PM ET — slots after post_nightly_audit

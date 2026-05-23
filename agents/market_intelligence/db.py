@@ -1302,6 +1302,55 @@ async def initialize_schema() -> None:
             -- organic patterns wouldn't have caught?"
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS
                 universe_sources TEXT[] DEFAULT '{}';
+
+            -- Intraday flag-break detections (#94, ADR 0005, 2026-05-23).
+            -- EOD flag_candidates is the IDENTIFICATION layer (which stocks
+            -- have tight bases + base_high boundary); mi_flag_breaks is the
+            -- EXECUTION layer (catches the intraday MOMENT price breaks
+            -- base_high with volume confirmation). The two together replace
+            -- the broken EOD TRIGGERED entry (entered after the move had
+            -- already played out — see #92 evidence, -2.66% realistic 10d
+            -- with -2.03% overnight fade).
+            --
+            -- First ship is telemetry-only (shadow phase): rows accumulate,
+            -- no entry execution. Forward-return analysis at N>=10 settled
+            -- via _b94_intraday_flag_break_evidence.py (filed separately
+            -- in Commit 2).
+            CREATE TABLE IF NOT EXISTS mi_flag_breaks (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                break_date DATE NOT NULL,                 -- ET date of break
+                break_time TIMESTAMPTZ NOT NULL,          -- moment of detection (UTC)
+                minutes_since_open INT NOT NULL,          -- 0 at 9:30 ET, 390 at 16:00 ET
+                -- Snapshot of flag-detector state at moment of break
+                parent_stage TEXT NOT NULL,               -- TIGHTENING | COILED | TRIGGERED
+                parent_scan_date DATE NOT NULL,           -- MAX(scan_date) WHERE < CURRENT_DATE
+                base_high FLOAT NOT NULL,                 -- the boundary that was broken
+                base_low FLOAT,                           -- for future stop placement
+                base_age INT,                             -- days since pivot
+                -- Break event data
+                break_price FLOAT NOT NULL,               -- current_price at detection
+                pct_above_base_high FLOAT NOT NULL,       -- (break_price - base_high) / base_high * 100
+                today_volume BIGINT,                      -- cumulative day volume at detection
+                adv_20 BIGINT,                            -- 20d avg daily volume (context)
+                volume_pct_of_adv FLOAT,                  -- today_volume / adv_20 * 100
+                projected_full_day_volume BIGINT,         -- volume-pace projection
+                -- Cohort context (read-side display only — NOT detector coupling)
+                in_sugar_baby_cohort BOOLEAN DEFAULT FALSE,
+                cohort_count_180d INT,
+                -- Post-EOD reconciliation (Gemini contract 2026-05-23):
+                -- run_flag_scan flips this TRUE for any same-day break
+                -- whose parent ticker classified INVALIDATED at 5:25 PM.
+                -- Backward-check filters via parent_invalidated_eod = FALSE.
+                parent_invalidated_eod BOOLEAN DEFAULT FALSE,
+                invalidated_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, break_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_flag_breaks_date
+                ON mi_flag_breaks(break_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_flag_breaks_ticker
+                ON mi_flag_breaks(ticker, break_date DESC);
         """)
 
         # ── Strategy maturity registry ───────────────────────────────────
@@ -4595,6 +4644,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_9m_ep_alerts":   today - timedelta(days=90),
             "mi_9m_day2_candidates": today - timedelta(days=90),
             "mi_sugar_babies_cohort": today - timedelta(days=365),
+            "mi_flag_breaks": today - timedelta(days=365),
             "mi_ep_catalyst_metrics": today - timedelta(days=180),
         }
         date_cols = {
@@ -4609,6 +4659,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_9m_ep_alerts":   "alert_date",
             "mi_9m_day2_candidates": "alert_date",
             "mi_sugar_babies_cohort": "cohort_date",
+            "mi_flag_breaks": "break_date",
             "mi_ep_catalyst_metrics": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())

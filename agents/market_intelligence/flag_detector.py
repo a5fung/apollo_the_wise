@@ -855,6 +855,17 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     # TRIGGERED rows surface in the digest's TRIGGERED section (same minute,
     # same details). Per-ticker alerts deleted as duplicate noise.
     await send_flag_digest(by_stage, scan_date, yesterday_map=yesterday_map)
+
+    # Post-EOD reconciliation for intraday flag-breaks (#94, ADR 0005,
+    # 2026-05-23). Flips mi_flag_breaks.parent_invalidated_eod=TRUE for
+    # any same-day break whose parent ticker is now INVALIDATED. Backward-
+    # check evidence script filters via parent_invalidated_eod=FALSE.
+    # Non-blocking; reconciliation failure doesn't break flag scan output.
+    try:
+        await reconcile_flag_breaks_post_eod(scan_date)
+    except Exception as e:
+        logger.warning(f"reconcile_flag_breaks_post_eod failed (non-critical): {e}")
+
     return by_stage
 
 
@@ -1033,3 +1044,289 @@ async def send_flag_digest(
             lines.append(f"  …{len(invalidated) - 5} more")
 
     await send_telegram_message("\n".join(lines))
+
+
+# ────────────────────────────────────────────────────────────────────────
+# Intraday flag-break detector (#94, ADR 0005, 2026-05-23 ship Commit 1)
+# ────────────────────────────────────────────────────────────────────────
+#
+# The EOD `run_flag_scan` above is the IDENTIFICATION layer — it knows
+# which stocks have tight bases + persists `base_high` and `base_low`
+# per ticker. But classifying TRIGGERED at 5:25 PM ET means we observe
+# the breakout AFTER intraday move has played out. Per #92 evidence,
+# entering at next-day open shows -2.66% avg 10d returns + -2.03%
+# overnight fade — the EOD measurement is structurally post-hoc.
+#
+# This detector adds the EXECUTION layer: real-time 5-min scan during
+# market hours that fires when price tags base_high with volume
+# confirmation. Telemetry-only first ship (shadow phase). Forward-
+# return analysis at N>=10 settled (filed via data_gated_reviews YAML
+# in Commit 2).
+
+# Volume gate thresholds (per Gemini 2026-05-23 review):
+_INTRADAY_BREAK_OPENING_MIN_VOL_FRAC = 0.15  # before 10:00 AM ET, today_vol >= 15% ADV
+_INTRADAY_BREAK_OPENING_WINDOW_MIN = 30      # apply opening guard for first 30 min
+
+
+async def run_intraday_flag_break_scan(scan_time):
+    """Intraday range-break detection on TIGHTENING/COILED/TRIGGERED tickers.
+
+    Reads the most-recent flag-classification (MAX(scan_date) WHERE
+    scan_date < CURRENT_DATE — trading-session-aware), filters to
+    stage IN (TIGHTENING, COILED, TRIGGERED). For each candidate
+    ticker, checks if current price > base_high AND volume-pace
+    projection clears ADV (with opening-30min raw-volume floor to
+    prevent block-trade false positives). New breaks are inserted
+    into mi_flag_breaks (UNIQUE on ticker+break_date) and the
+    consolidated Telegram alert fires.
+
+    Args:
+        scan_time: datetime in ET timezone
+
+    Returns:
+        int: count of new breaks inserted this scan
+    """
+    from datetime import time as _time, datetime as _dt
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    # Time gate (the cron is */5; we don't want pre-9:35 or post-3:55)
+    if not (_time(9, 35) <= scan_time.time() <= _time(15, 55)):
+        return 0
+
+    minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
+    if minutes_since_open <= 0:
+        return 0
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        # 1. Load latest pre-today flag classification for TIGHTENING/COILED/TRIGGERED.
+        # MAX(scan_date) WHERE < CURRENT_DATE handles Memorial Day Monday correctly
+        # (Tuesday morning reads Friday's scan, not Monday calendar-day).
+        candidates = await conn.fetch("""
+            WITH latest AS (
+                SELECT MAX(scan_date) AS d FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            )
+            SELECT DISTINCT ON (ticker)
+                   ticker, scan_date, stage, base_high, base_low, base_age
+            FROM mi_flag_candidates
+            WHERE scan_date = (SELECT d FROM latest)
+              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND base_high IS NOT NULL
+              AND base_high > 0
+            ORDER BY ticker, scan_date DESC
+        """)
+        if not candidates:
+            return 0
+
+        watchlist = {r["ticker"]: dict(r) for r in candidates}
+
+        # 2. Sugar Baby cohort membership (read-side decoration only, NOT filter)
+        cohort_rows = await conn.fetch("""
+            SELECT ticker, count_9m_alerts_180d
+            FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
+        """)
+        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+
+        # 3. Pre-fetch ADV-20 for the watchlist tickers (single batch query).
+        # Approximation: average of last 20 daily volumes from mi_daily_closes.
+        adv_rows = await conn.fetch("""
+            SELECT ticker, AVG(volume)::bigint AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+            ) sub
+            WHERE rn <= 20
+            GROUP BY ticker
+        """, list(watchlist.keys()))
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        # 4. Tickers already broken today (skip — UNIQUE-constraint dedup)
+        already_broken = await conn.fetch("""
+            SELECT ticker FROM mi_flag_breaks WHERE break_date = CURRENT_DATE
+        """)
+        already_set = {r["ticker"] for r in already_broken}
+
+    # 5. Batch snapshot fetch (single Polygon API call).
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning("intraday_flag_break_scan: empty snapshot fetch; skipping")
+        return 0
+
+    # 6. Per-ticker detection
+    new_breaks: list[dict] = []
+    for ticker, cand in watchlist.items():
+        if ticker in already_set:
+            continue
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+        # Same price fallback chain as 9M scan
+        current_price = (
+            snap.get("day", {}).get("c")
+            or snap.get("min", {}).get("c")
+            or snap.get("lastTrade", {}).get("p")
+            or 0
+        )
+        if current_price <= 0:
+            continue
+
+        base_high = float(cand["base_high"])
+        if current_price <= base_high:
+            continue  # no break
+
+        today_volume = int(snap.get("day", {}).get("v") or 0)
+        adv_20 = adv_map.get(ticker, 0)
+        if adv_20 <= 0 or today_volume <= 0:
+            continue  # need volume context
+
+        # Volume-pace projection: full-day pace must meet ADV
+        projected_full_day = int(today_volume * (390.0 / minutes_since_open))
+        if projected_full_day < adv_20:
+            continue
+
+        # Opening-30min block-trade guard (per Gemini 2026-05-23):
+        # before 10:00 AM ET, additionally require raw absolute floor
+        # to prevent single-print institutional blocks forging false projections.
+        if minutes_since_open < _INTRADAY_BREAK_OPENING_WINDOW_MIN:
+            if today_volume < adv_20 * _INTRADAY_BREAK_OPENING_MIN_VOL_FRAC:
+                continue
+
+        pct_above = (current_price - base_high) / base_high * 100.0
+        volume_pct = today_volume / adv_20 * 100.0
+        in_cohort = ticker in cohort_map
+
+        new_breaks.append({
+            "ticker": ticker,
+            "minutes_since_open": minutes_since_open,
+            "parent_stage": cand["stage"],
+            "parent_scan_date": cand["scan_date"],
+            "base_high": base_high,
+            "base_low": float(cand["base_low"]) if cand["base_low"] else None,
+            "base_age": cand["base_age"],
+            "break_price": current_price,
+            "pct_above_base_high": pct_above,
+            "today_volume": today_volume,
+            "adv_20": adv_20,
+            "volume_pct_of_adv": volume_pct,
+            "projected_full_day_volume": projected_full_day,
+            "in_sugar_baby_cohort": in_cohort,
+            "cohort_count_180d": cohort_map.get(ticker),
+        })
+
+    if not new_breaks:
+        return 0
+
+    # 7. Persist + audit + Telegram (consolidated single message)
+    async with pool.acquire() as conn:
+        for b in new_breaks:
+            await conn.execute("""
+                INSERT INTO mi_flag_breaks (
+                    ticker, break_date, break_time, minutes_since_open,
+                    parent_stage, parent_scan_date, base_high, base_low, base_age,
+                    break_price, pct_above_base_high,
+                    today_volume, adv_20, volume_pct_of_adv, projected_full_day_volume,
+                    in_sugar_baby_cohort, cohort_count_180d
+                ) VALUES (
+                    $1, CURRENT_DATE, NOW(), $2,
+                    $3, $4, $5, $6, $7,
+                    $8, $9,
+                    $10, $11, $12, $13,
+                    $14, $15
+                )
+                ON CONFLICT (ticker, break_date) DO NOTHING
+            """,
+                b["ticker"], b["minutes_since_open"],
+                b["parent_stage"], b["parent_scan_date"],
+                b["base_high"], b["base_low"], b["base_age"],
+                b["break_price"], b["pct_above_base_high"],
+                b["today_volume"], b["adv_20"], b["volume_pct_of_adv"],
+                b["projected_full_day_volume"],
+                b["in_sugar_baby_cohort"], b["cohort_count_180d"],
+            )
+            # Audit event — contract per ADR 0005 §discipline:
+            #   {TICKER} stage={stage} pct_above={X.X}% vol_pct_adv={Y}%
+            try:
+                await db.log_audit_event(
+                    "intraday_flag_break",
+                    f"{b['ticker']} stage={b['parent_stage']} "
+                    f"pct_above={b['pct_above_base_high']:+.1f}% "
+                    f"vol_pct_adv={b['volume_pct_of_adv']:.0f}%"
+                )
+            except Exception as e:
+                logger.debug(f"intraday_flag_break audit failed (non-critical): {e}")
+
+    # Telegram alert (consolidated)
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        clock = scan_time.strftime("%H:%M")
+        lines = [
+            f"🎯 *Intraday Flag-Breaks ({len(new_breaks)} new)*",
+            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+            "",
+        ]
+        for b in new_breaks:
+            cohort_marker = "🍬 " if b["in_sugar_baby_cohort"] else ""
+            lines.append(
+                f"• {cohort_marker}`{b['ticker']}` — broke ${b['base_high']:.2f} "
+                f"at {b['pct_above_base_high']:+.1f}% "
+                f"(base {b['base_age']}d {b['parent_stage']}, "
+                f"vol {b['volume_pct_of_adv']:.0f}% ADV)"
+            )
+        lines.append("")
+        lines.append("_Drill-down: `/flagbreaks` for today's full list + recent history_")
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"intraday_flag_break Telegram failed (non-critical): {e}")
+
+    logger.info(f"intraday_flag_break_scan: {len(new_breaks)} new breaks detected")
+    return len(new_breaks)
+
+
+async def reconcile_flag_breaks_post_eod(scan_date):
+    """Post-EOD reconciliation per Gemini contract 2026-05-23.
+
+    After run_flag_scan commits its EOD classification (5:25 PM ET), flip
+    parent_invalidated_eod = TRUE for any same-day break whose parent ticker
+    is now classified INVALIDATED. Backward-check evidence script filters
+    via parent_invalidated_eod = FALSE to evaluate structurally-surviving
+    breakouts only.
+
+    Args:
+        scan_date: the date being classified (today in ET)
+
+    Returns:
+        int: count of break rows invalidated by this reconciliation
+    """
+    from agents.market_intelligence import db
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("""
+            UPDATE mi_flag_breaks
+               SET parent_invalidated_eod = TRUE,
+                   invalidated_at = NOW()
+             WHERE break_date = $1
+               AND parent_invalidated_eod = FALSE
+               AND ticker IN (
+                   SELECT ticker FROM mi_flag_candidates
+                    WHERE scan_date = $1
+                      AND stage = 'INVALIDATED'
+               )
+        """, scan_date)
+    # asyncpg returns "UPDATE N"
+    count = int(result.split()[-1]) if result else 0
+    if count:
+        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {count} break rows")
+        try:
+            await db.log_audit_event(
+                "flag_breaks_reconciled",
+                f"{count} intraday breaks marked parent_invalidated_eod=TRUE for {scan_date}",
+            )
+        except Exception:
+            pass
+    return count
