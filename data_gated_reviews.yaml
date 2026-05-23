@@ -4076,6 +4076,59 @@ reviews:
       flag + revert commits), feedback_sample_size_discipline.md
       (meta-lessons captured).
 
+  - review_id: rally_band_u_shape_observation
+    title: "Pradeep rally-band U-shape — sideways/modest-uptrend dead zone (#79 + #78 complementary observation)"
+    question: |
+      Complementary observation to #78 (decliner-band bounce signal).
+      60d HIGH-tier MAGNA53 cohort exhibits U-shape across pre_20d
+      return axis, NOT Pradeep's monotonic "sideways best" ordering:
+
+        Decliner (<-5%):       64% WR  +9.06% avg  ← outperforms
+        Sideways (-5 to +5%):  29% WR  -0.03%      ← dead zone
+        Modest up (+5-20%):    28% WR  -0.81%      ← dead zone
+        Rallying (+20-40%):    38% WR  +3.98%
+        Strong rally (+40%+):  50% WR  +6.31%      ← outperforms
+
+      Within sideways band (N=17, all `strong` catalyst): winners had
+      bigger gaps (avg 23.8% vs losers 14.7%) and higher ep_scores
+      (avg 92 vs 77). Confirms #78's hypothesis that catalyst-strength
+      filter is the load-bearing dimension — sideways band accumulates
+      the lower-strength HIGH alerts because they didn't have to
+      overcome adverse trend (decliner) or carry strong-rally
+      momentum (strong-rally band).
+
+      Pradeep's "sideways-best" framing is for GENERAL momentum trading,
+      not our HIGH-tier-filtered universe. The pre_20d return signal
+      may already be captured implicitly by the catalyst-quality grade.
+
+      No separate methodology action needed beyond #78. This entry is
+      observational documentation of the U-shape so future operators
+      reading the YAML registry see #79 was investigated and concluded
+      consistent with #78's hypothesis.
+    predicate_sql: |
+      -- Observation-only entry — no methodology decision pending.
+      -- The #78 N>=30 gate is the actionable decision point. Sentinel
+      -- query so registry tool loads the entry cleanly.
+      SELECT 0 AS observation_only;
+    threshold: 999999  -- never auto-promote
+    earliest_review_date: 9999-12-31
+    status: done
+    added_on: 2026-05-23
+    closed_on: 2026-05-23
+    closure_note: |
+      Investigation done 2026-05-23. Conclusion: NOT a methodology
+      change; the sideways band's 29% WR is a consequence of how
+      catalyst-strength + rally-state interact in our HIGH-tier
+      filter, not a sign Pradeep's framing should override our cohort
+      definition. Future re-evaluation rides on #78's monthly
+      auto-refresh (same dataset).
+
+      Cross-references:
+      - #78 (decliner_band_bounce_signal_n30) — owns the N>=30 gate
+      - #77 (Pradeep rally bands) — parent script
+      - ADR 0004 §6 (User-vs-Apollo) — the U-shape would inform any
+        future bounce-signal vs strong-rally automation_class split
+
   - review_id: decliner_band_bounce_signal_n30
     title: "Decliner-into-catalyst bounce signal — N≥30 settled methodology decision"
     question: |
