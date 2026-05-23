@@ -16,14 +16,16 @@ Method:
        revision (criteria too aggressive, regime mismatch, etc.)
      - TRIGGERED N<30: continue observing
 
-Current state (2026-05-23, ~19 days of data since 5/04 shadow ship):
+Current state (2026-05-23, ~19 days of data since 5/04 shadow ship,
+entry = D+1 open per realistic-entry fix):
 
-  Stage      | N    | avg 5d  | avg 10d | WR_5pct  | comment
-  -----------+------+---------+---------+----------+---------
-  TRIGGERED  | 5-8  | -4.84%  | -4.51%  | 0.0%     | N too small
-  COILED     | 26-45| -2.29%  | -1.94%  | 23.1%    | below baseline
-  TIGHTENING | 198  | -1.01%  | +1.14%  | 24.4%    | ★ best stage
-  WATCH      | 896  | -0.89%  | -2.23%  | 20.6%    | baseline floor
+  Stage      | N    | avg 10d  | WR_5pct  | comment
+  -----------+------+----------+----------+---------
+  TRIGGERED  |   5  |  -2.66%  |    0.0%  | N too small + signal weak
+  COILED     |  23  |  -2.27%  |   26.1%  | below baseline
+  TIGHTENING | 104  |  +1.73%  |   28.8%  | ★ best stage, gets better
+                                            with realistic entry
+  WATCH      | ~400 | ~ -2%    | ~25%     | baseline floor
 
 Bright spot: TIGHTENING shows positive 10d returns. Matches Qullamaggie
 "enter the base before breakout" framing. Worth a separate alert-class
@@ -46,6 +48,18 @@ async def main():
     print("=" * 100)
     print()
 
+    # ENTRY CONVENTION (2026-05-23 user-caught look-ahead bug fixed):
+    # Flag scan runs at 5:25 PM ET — AFTER scan_date's close. So entry
+    # cannot fire on scan_date itself; the earliest realistic entry is
+    # the NEXT trading day's open. Using D+1 open as entry corrects for
+    # the look-ahead bias that the original close-to-close calc had.
+    #
+    # The bias varied by stage. TRIGGERED stocks fade ~2% overnight on
+    # average (sellers-into-strength after breakout-day close); COILED
+    # gaps up slightly (+0.4%); TIGHTENING fades slightly (-0.7%). Net:
+    # realistic D+1-open returns are different from D-close drift by
+    # +1.85% (TRIGGERED), -0.32% (COILED), +0.59% (TIGHTENING). Honest
+    # entry-aware metric per feedback_validate_metric_before_decision.
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             WITH stage_rows AS (
@@ -57,18 +71,25 @@ async def main():
                 ORDER BY ticker, scan_date, stage
             )
             SELECT s.ticker, s.scan_date, s.stage,
-                   CASE WHEN d0.close > 0 AND d5.close IS NOT NULL
-                        THEN (d5.close / d0.close - 1) * 100 END AS ret_5d,
-                   CASE WHEN d0.close > 0 AND d10.close IS NOT NULL
-                        THEN (d10.close / d0.close - 1) * 100 END AS ret_10d
+                   -- Entry = D+1 open (first trading day after classification)
+                   CASE WHEN d_entry.open_price > 0 AND d5.close IS NOT NULL
+                        THEN (d5.close / d_entry.open_price - 1) * 100 END AS ret_5d,
+                   CASE WHEN d_entry.open_price > 0 AND d10.close IS NOT NULL
+                        THEN (d10.close / d_entry.open_price - 1) * 100 END AS ret_10d
             FROM stage_rows s
-            LEFT JOIN mi_daily_closes d0
-                ON d0.ticker = s.ticker AND d0.trade_date = s.scan_date
+            -- d_entry: next trading day's open (realistic entry)
+            LEFT JOIN LATERAL (
+                SELECT open_price FROM mi_daily_closes
+                WHERE ticker = s.ticker AND trade_date > s.scan_date
+                ORDER BY trade_date ASC LIMIT 1
+            ) d_entry ON TRUE
+            -- d5: 5 trading days after entry (so OFFSET 4 from D+1 = D+5 total)
             LEFT JOIN LATERAL (
                 SELECT close FROM mi_daily_closes
                 WHERE ticker = s.ticker AND trade_date > s.scan_date
                 ORDER BY trade_date ASC OFFSET 4 LIMIT 1
             ) d5 ON TRUE
+            -- d10: 10 trading days after entry
             LEFT JOIN LATERAL (
                 SELECT close FROM mi_daily_closes
                 WHERE ticker = s.ticker AND trade_date > s.scan_date
