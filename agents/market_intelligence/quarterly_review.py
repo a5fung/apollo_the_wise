@@ -54,6 +54,16 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Monthly cadence will catch the inversion if regime shifts.
     ("Pradeep rally bands (#77)",
      "scripts._b77_pradeep_neglect_backward_check", []),
+    # Flag detector graduation evidence (#92, added 2026-05-23).
+    # First evaluation 2026-05-23 showed inverted forward returns by
+    # stage — WATCH < TIGHTENING < COILED < TRIGGERED with returns
+    # DECREASING as stage advances. TRIGGERED N=5 settled 10d showed
+    # 0% WR, -4.51% avg. Anti-graduation evidence; continue shadow.
+    # Monthly re-run tracks evolution toward N>=30 settled TRIGGERED.
+    # TIGHTENING bright-spot (+1.14% 10d / 24.4% WR) flagged for
+    # separate alert-class surface consideration if cohort grows.
+    ("Flag detector graduation (#92)",
+     "scripts._b92_flag_detector_graduation_evidence", []),
     # M&A filter Path B FP-rate drift detection (#88, added 2026-05-23).
     # 2026-05-23 ship validated 2/2 TPs kept, 8/10 FPs blocked vs 13
     # historical cases. Monthly re-evaluation classifies post-ship
