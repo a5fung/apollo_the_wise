@@ -37,7 +37,7 @@ async def test_tables(conn) -> bool:
     """Verify new tables and mi_daily_closes columns exist."""
     ok = True
 
-    for table in ("mi_9m_ep_alerts", "mi_9m_sugar_babies"):
+    for table in ("mi_9m_ep_alerts", "mi_9m_day2_candidates"):
         exists = await conn.fetchval(
             "SELECT to_regclass($1::text) IS NOT NULL", f"public.{table}"
         )
@@ -113,7 +113,7 @@ async def test_sugar_baby_roundtrip(conn) -> bool:
     )
 
     await conn.execute(
-        "DELETE FROM mi_9m_sugar_babies WHERE ticker = $1 AND alert_date = $2",
+        "DELETE FROM mi_9m_day2_candidates WHERE ticker = $1 AND alert_date = $2",
         _TEST_TICKER, _TEST_DATE,
     )
 
@@ -139,7 +139,7 @@ async def test_sugar_baby_roundtrip(conn) -> bool:
 
     await update_9m_sugar_baby_status(_TEST_TICKER, _TEST_DATE, "traded")
     status = await conn.fetchval(
-        "SELECT day2_status FROM mi_9m_sugar_babies WHERE ticker = $1 AND alert_date = $2",
+        "SELECT day2_status FROM mi_9m_day2_candidates WHERE ticker = $1 AND alert_date = $2",
         _TEST_TICKER, _TEST_DATE,
     )
     if status != "traded":
@@ -291,7 +291,7 @@ def test_imports() -> bool:
 
 
 async def teardown(conn) -> None:
-    for table in ("mi_9m_ep_alerts", "mi_9m_sugar_babies"):
+    for table in ("mi_9m_ep_alerts", "mi_9m_day2_candidates"):
         await conn.execute(
             f"DELETE FROM {table} WHERE ticker = $1 AND alert_date = $2",
             _TEST_TICKER, _TEST_DATE,

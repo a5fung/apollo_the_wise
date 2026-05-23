@@ -9,7 +9,7 @@ Two functions drive the pipeline:
   run_9m_eod_sweep() — called once after 5 PM nightly data pull
 
 Sugar Babies (stocks completing a 9M day with a strong close) are stored in
-mi_9m_sugar_babies and surfaced in the evening briefing as Day 2 ORB candidates.
+mi_9m_day2_candidates and surfaced in the evening briefing as Day 2 ORB candidates.
 """
 from __future__ import annotations
 
@@ -494,7 +494,7 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
       out, and long-uptrend shapes through). Backfilled 60d: filters
       ATEC 5/07, BRBR 5/06, EGO 4/30 — none had day2_status='traded'.
 
-    Inserts qualifying stocks into mi_9m_sugar_babies for Day 2 ORB.
+    Inserts qualifying stocks into mi_9m_day2_candidates for Day 2 ORB.
     Returns count of sugar babies stored.
     """
     if isinstance(trade_date, date):

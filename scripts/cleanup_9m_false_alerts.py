@@ -8,7 +8,7 @@ A false positive is any ticker the current ninem_detector.py would now reject:
   2. Non-CS/ADRC type    — ETFs, warrants, etc. per mi_security_types
   3. Bad ticker format   — length > 5 chars or contains "." (ETF share classes)
 
-Also removes derived mi_9m_sugar_babies rows for the same tickers.
+Also removes derived mi_9m_day2_candidates rows for the same tickers.
 
 Usage:
   python scripts/cleanup_9m_false_alerts.py           # dry run — preview only
@@ -72,7 +72,7 @@ async def main(delete: bool) -> None:
         # Sugar babies derived from false alert tickers
         sugar_rows = await conn.fetch("""
             SELECT ticker, alert_date, day2_status
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE ticker = ANY($1::text[])
             ORDER BY alert_date, ticker
         """, list(all_false))
@@ -114,7 +114,7 @@ async def main(delete: bool) -> None:
     false_list = list(all_false)
     async with pool.acquire() as conn:
         n_sb = await conn.fetchval(
-            "WITH d AS (DELETE FROM mi_9m_sugar_babies WHERE ticker = ANY($1::text[]) RETURNING 1)"
+            "WITH d AS (DELETE FROM mi_9m_day2_candidates WHERE ticker = ANY($1::text[]) RETURNING 1)"
             " SELECT count(*) FROM d",
             false_list,
         )
@@ -125,7 +125,7 @@ async def main(delete: bool) -> None:
         )
 
     print(f"\nDeleted {n_alerts} rows from mi_9m_ep_alerts")
-    print(f"Deleted {n_sb} rows from mi_9m_sugar_babies")
+    print(f"Deleted {n_sb} rows from mi_9m_day2_candidates")
     await pool.close()
 
 

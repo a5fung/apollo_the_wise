@@ -961,7 +961,10 @@ def _format_evening_briefing(
     # Persistent Sugar Babies cohort (Pradeep-class watchlist — distinct from
     # the single-day sugar_babies block above. Top 10 by count desc; full list
     # via /sugarbabies. Header says "Persistent" so both surfaces can coexist
-    # until #82 renames mi_9m_sugar_babies → mi_9m_day2_candidates.).
+    # The single-day mi_9m_day2_candidates table (renamed from
+    # mi_9m_sugar_babies via #82 on 2026-05-23) feeds the existing
+    # `sugar_babies` block above; this cohort_babies surface is the
+    # persistent Pradeep-class watchlist (mi_sugar_babies_cohort).
     if cohort_babies:
         try:
             today_d = date.fromisoformat(briefing_date) if briefing_date else date.today()

@@ -109,7 +109,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - **Intraday and EOD use identical filters** — both apply 3× ADV ratio, $50M turnover, $5 price, directional conviction. Any divergence creates phantom sugar babies.
 - **Sugar Baby** = 9M day + green (close > open) + close in top 25% of range → Day 2 ORB candidate
 - **Stop = prior day's low** (breakout day's low), NOT ORB low or ATR-based
-- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_sugar_babies` (EOD confirmed)
+- **Tables**: `mi_9m_ep_alerts` (intraday), `mi_9m_day2_candidates` (EOD confirmed)
 - **`mi_daily_closes`** now has `open_price`, `high_price`, `low_price` — required for sugar baby filter
 - **`ingest_daily_closes()`** stores o/h/l from Polygon grouped daily payload with COALESCE guard
 - Do NOT import from `ep_detector.py` — use `collector.get_snapshot_all()` directly in `ninem_detector.py`
@@ -183,7 +183,7 @@ Completely parallel EP track — zero changes to existing MAGNA53 logic.
 **DB additions (`db.py`):**
 - `mi_daily_closes` gains `open_price`, `high_price`, `low_price` (ALTER TABLE, COALESCE-guarded upsert)
 - `mi_9m_ep_alerts` — intraday detection log; `UNIQUE (ticker, alert_date)`
-- `mi_9m_sugar_babies` — EOD Day 2 watchlist; `UNIQUE (ticker, alert_date)`; `day2_status`: pending/traded/skipped
+- `mi_9m_day2_candidates` — EOD Day 2 watchlist; `UNIQUE (ticker, alert_date)`; `day2_status`: pending/traded/skipped
 - New functions: `insert_9m_ep_alert`, `get_today_9m_ep_alerts`, `insert_9m_sugar_baby`, `get_eod_9m_sugar_babies`, `get_pending_9m_sugar_babies`, `update_9m_sugar_baby_status`, `get_9m_ep_history`, `get_9m_live_trades`
 
 **Broker (new functions only, no modifications to existing):**
@@ -301,7 +301,7 @@ WHERE ticker = 'KURA' AND status = 'filled';
 
 **⚠️ MUST-RUN on production before deploy — 100+ false 9M EP alerts in DB:**
 The 9M ETF/non-stock filter was added on 2026-04-20 (session 6), but alerts fired before
-that fix are still in `mi_9m_ep_alerts` and `mi_9m_sugar_babies`. Run the cleanup script
+that fix are still in `mi_9m_ep_alerts` and `mi_9m_day2_candidates`. Run the cleanup script
 on the server after `git pull`:
 ```bash
 # Dry run first — review output carefully
@@ -356,7 +356,7 @@ Gap display auto-switches to intraday_gain when the intraday leg is what qualifi
 After first session with new filters:
 1. Alert count should land in 2–5 on a typical day, 6–10 on a risk-on day.
 2. Spot-check `mi_9m_ep_alerts` for today: no flat/red tapes, no sub-$5, no mega-caps.
-3. Sugar babies count in `mi_9m_sugar_babies` for today should be ≤ 5.
+3. Sugar babies count in `mi_9m_day2_candidates` for today should be ≤ 5.
 4. Mid-ADV genuine catalysts (e.g. a 4M ADV name doing 15M+ shares on news) must appear
    in **both** intraday alerts **and** EOD sugar-baby query.
 
@@ -768,7 +768,7 @@ green day triggers, no structural basis for continuation.
 **Decision:** don't tighten the filter yet — capture the metrics, bucket at
 query time, build 30+ outcome dataset, then gate. Telemetry-first.
 
-### A. New columns on `mi_9m_sugar_babies`
+### A. New columns on `mi_9m_day2_candidates`
 Six idempotent `ALTER TABLE ADD COLUMN IF NOT EXISTS` in `initialize_schema`:
 
 | Column | Meaning |
@@ -828,7 +828,7 @@ historical rows — raw metrics are the source of truth on disk.
 ### ⚠️ Post-deploy verification
 1. After next nightly `_nightly_data_pull` (5 PM ET), query
    `SELECT ticker, prev_5d_pct, prev_20d_pct, prev_vs_sma50, sma50_slope_pct,
-   prior_sessions FROM mi_9m_sugar_babies WHERE alert_date = CURRENT_DATE` —
+   prior_sessions FROM mi_9m_day2_candidates WHERE alert_date = CURRENT_DATE` —
    all six columns populated for every row.
 2. Evening brief 🍭 section shows `5d / 20d / tag` suffix on each ticker.
 3. Historical rows (pre-deploy): columns are NULL, tag is empty, raw

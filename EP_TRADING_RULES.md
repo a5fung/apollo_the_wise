@@ -270,7 +270,7 @@ Same shared pool as MAGNA53:
 | File | Purpose |
 |------|---------|
 | `ninem_detector.py` | `run_9m_scan()` — intraday scan every 5 min; `run_9m_eod_sweep()` — EOD sugar baby confirmation |
-| `db.py` | Tables: `mi_9m_ep_alerts`, `mi_9m_sugar_babies`; functions: `insert_9m_ep_alert`, `get_pending_9m_sugar_babies`, etc. |
+| `db.py` | Tables: `mi_9m_ep_alerts`, `mi_9m_day2_candidates`; functions: `insert_9m_ep_alert`, `get_pending_9m_sugar_babies`, etc. |
 | `broker/live_tracker.py` | `submit_9m_day2_trade()` — Day 2 ORB execution |
 | `broker/order_manager.py` | `prepare_9m_day2_orb_order()` — order spec with prior-day-low stop |
 | `outcome_tracker.py` | `_compute_9m_ep_outcomes()` — nightly forward returns (1D/1W/1M) → `mi_signal_outcomes` |

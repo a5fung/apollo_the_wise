@@ -4,7 +4,7 @@
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
 **Code**:
 - Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`)
-- EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull → writes `mi_9m_sugar_babies`
+- EOD sweep: `run_9m_eod_sweep` called from nightly_data_pull → writes `mi_9m_day2_candidates`
 - Day 2 ORB execution: `_9m_day2_orb_job` 9:31 ET cron + `submit_9m_day2_trade` via `entry_pipeline.submit_trade_entry`
 
 ## Definition
@@ -62,7 +62,7 @@ Mirrors intraday gates against `mi_daily_closes` data (final EOD bars):
 
 A virgin 9M needs uptrending or fresh-news context. A destroyed name bouncing on heavy volume is distressed unwinding, not institutional accumulation. ANY one of the three passing keeps the candidate (allows pullback-from-highs / recently-broke-out / long-uptrend shapes through). Missing data → keep (insufficient data to judge as destroyed).
 
-Confirmed Sugar Babies → `mi_9m_sugar_babies` table. They become Day 2 ORB candidates.
+Confirmed Sugar Babies → `mi_9m_day2_candidates` table. They become Day 2 ORB candidates.
 
 ### Stage 3 — Day 2 ORB (next morning)
 

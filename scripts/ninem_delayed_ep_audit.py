@@ -43,7 +43,7 @@ async def day2_status_distribution() -> dict:
         # Distribution of day2_status values over 60d
         rows = await conn.fetch("""
             SELECT day2_status, COUNT(*) AS n
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE alert_date >= CURRENT_DATE - 60
             GROUP BY day2_status
             ORDER BY n DESC
@@ -53,7 +53,7 @@ async def day2_status_distribution() -> dict:
         # Among pending rows, how many are >1 day old? (alert_date < today-1)
         pending_rows = await conn.fetch("""
             SELECT alert_date, CURRENT_DATE - alert_date AS age_days
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE alert_date >= CURRENT_DATE - 60
               AND day2_status = 'pending'
             ORDER BY alert_date DESC
@@ -126,7 +126,7 @@ async def ninem_alpha_cohort_audit() -> dict:
                    AND stage IN ('COILED', 'TRIGGERED', 'WATCH'))
                  AS next_flag_date
             FROM mi_9m_ep_alerts e
-            LEFT JOIN mi_9m_sugar_babies sb
+            LEFT JOIN mi_9m_day2_candidates sb
               ON sb.ticker = e.ticker AND sb.alert_date = e.alert_date
             WHERE e.alert_date >= CURRENT_DATE - 60
               AND (sb.day2_status IS NULL OR sb.day2_status != 'traded')
@@ -193,7 +193,7 @@ async def main() -> None:
         "",
         "## §1 day2_status semantic check",
         "",
-        "Distribution of `mi_9m_sugar_babies.day2_status` values over the "
+        "Distribution of `mi_9m_day2_candidates.day2_status` values over the "
         "last 60d:",
         "",
         "| Status | N |",

@@ -83,7 +83,7 @@ async def score_one_day(conn, target: date, sugar_date: date) -> dict:
         SELECT ticker, open_price, close_price, high_price, low_price,
                volume, close_in_range_pct, prev_20d_pct,
                (close_price-open_price)/NULLIF(open_price,0)*100 AS gap_proxy
-        FROM mi_9m_sugar_babies WHERE alert_date = $1
+        FROM mi_9m_day2_candidates WHERE alert_date = $1
     """, sugar_date)
 
     sb_tickers = [r["ticker"] for r in sb_rows]

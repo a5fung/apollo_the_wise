@@ -10,7 +10,7 @@ For each MAGNA53 HIGH alert in the 60d cohort that FAILED Day 1
 and check whether the same ticker appeared in:
 
   - mi_9m_ep_alerts          (9M EP same-day pickup)
-  - mi_9m_sugar_babies       (9M EP day → Day-2 ORB candidate)
+  - mi_9m_day2_candidates       (9M EP day → Day-2 ORB candidate)
   - mi_flag_candidates       (COILED / TRIGGERED basing pattern)
   - mi_ep_alerts (subsequent)  (a later MAGNA53 EP, e.g. TRT 4/23 → 5/15)
 
@@ -80,7 +80,7 @@ SELECT
        WHERE ticker = d.ticker
          AND alert_date BETWEEN d.alert_date + 1 AND d.alert_date + 21)
         AS next_9m_ep_date,
-    (SELECT MIN(alert_date) FROM mi_9m_sugar_babies
+    (SELECT MIN(alert_date) FROM mi_9m_day2_candidates
        WHERE ticker = d.ticker
          AND alert_date BETWEEN d.alert_date + 1 AND d.alert_date + 21)
         AS next_sugar_baby_date,

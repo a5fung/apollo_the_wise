@@ -380,7 +380,7 @@ async def _compute_9m_ep_outcomes(today: date) -> int:
 
             babies = await conn.fetch("""
                 SELECT ticker, alert_date, volume, close_in_range_pct, gap_pct
-                FROM mi_9m_sugar_babies
+                FROM mi_9m_day2_candidates
                 WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '3 days'
             """, baby_date_approx)
             if not babies:

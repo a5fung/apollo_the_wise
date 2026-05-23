@@ -505,7 +505,22 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_9m_ep_alerts_date ON mi_9m_ep_alerts(alert_date);
 
-            CREATE TABLE IF NOT EXISTS mi_9m_sugar_babies (
+            -- Idempotent rename: mi_9m_sugar_babies → mi_9m_day2_candidates
+            -- (#82, 2026-05-23). Original name was misleading per CLAUDE.md:
+            -- this table holds single-day Day 2 ORB candidates (close > open
+            -- + top 25% of range + net up ≥3%), DISTINCT from the persistent
+            -- Pradeep Sugar Babies cohort in mi_sugar_babies_cohort. The
+            -- ALTERs below are IF EXISTS so they no-op on fresh installs
+            -- (where the CREATE IF NOT EXISTS below makes the new name
+            -- directly); on existing prod they atomically rename the table,
+            -- indexes, constraint, and sequence to the new identifiers.
+            ALTER TABLE IF EXISTS mi_9m_sugar_babies RENAME TO mi_9m_day2_candidates;
+            ALTER INDEX IF EXISTS idx_9m_sugar_babies_date RENAME TO idx_9m_day2_candidates_date;
+            ALTER INDEX IF EXISTS mi_9m_sugar_babies_pkey RENAME TO mi_9m_day2_candidates_pkey;
+            ALTER INDEX IF EXISTS mi_9m_sugar_babies_ticker_alert_date_key RENAME TO mi_9m_day2_candidates_ticker_alert_date_key;
+            ALTER SEQUENCE IF EXISTS mi_9m_sugar_babies_id_seq RENAME TO mi_9m_day2_candidates_id_seq;
+
+            CREATE TABLE IF NOT EXISTS mi_9m_day2_candidates (
                 id SERIAL PRIMARY KEY,
                 ticker TEXT NOT NULL,
                 alert_date DATE NOT NULL,
@@ -519,21 +534,21 @@ async def initialize_schema() -> None:
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 UNIQUE (ticker, alert_date)
             );
-            CREATE INDEX IF NOT EXISTS idx_9m_sugar_babies_date ON mi_9m_sugar_babies(alert_date);
+            CREATE INDEX IF NOT EXISTS idx_9m_day2_candidates_date ON mi_9m_day2_candidates(alert_date);
             -- Going-in shape: captured at EOD sweep so weekly review can slice
             -- outcomes by setup geometry (quiet breakout vs pullback reversal
             -- vs falling knife vs extended continuation). Bucketing is derived
             -- at query time from raw metrics so definitions can evolve.
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_5d_pct FLOAT;
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_20d_pct FLOAT;
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_vs_sma10 FLOAT;
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prev_vs_sma50 FLOAT;
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS sma50_slope_pct FLOAT;
-            ALTER TABLE mi_9m_sugar_babies ADD COLUMN IF NOT EXISTS prior_sessions INT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS prev_5d_pct FLOAT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS prev_20d_pct FLOAT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS prev_vs_sma10 FLOAT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS prev_vs_sma50 FLOAT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS sma50_slope_pct FLOAT;
+            ALTER TABLE mi_9m_day2_candidates ADD COLUMN IF NOT EXISTS prior_sessions INT;
 
             -- Persistent Sugar Babies cohort (Pradeep-class watchlist):
             -- tickers that printed 9M+ EOD volume ≥3 times in trailing 180d.
-            -- Different concept from mi_9m_sugar_babies (single-day Day 2
+            -- Different concept from mi_9m_day2_candidates (single-day Day 2
             -- candidate). Pure observability — no trade impact.
             CREATE TABLE IF NOT EXISTS mi_sugar_babies_cohort (
                 id SERIAL PRIMARY KEY,
@@ -1474,7 +1489,7 @@ async def initialize_schema() -> None:
 
         # ── Backfill mi_live_trades.signal_type (one-shot; idempotent) ────
         # Pre-framework rows lack signal_type. Classify by alert provenance:
-        # row appearing in mi_9m_sugar_babies for the same (ticker, date) is
+        # row appearing in mi_9m_day2_candidates for the same (ticker, date) is
         # 9M Day 2; everything else is MAGNA53. After this runs once, new
         # inserts via entry_pipeline.submit_trade_entry write signal_type
         # directly — no further backfill needed.
@@ -1482,7 +1497,7 @@ async def initialize_schema() -> None:
             UPDATE mi_live_trades lt
             SET signal_type = CASE
                 WHEN EXISTS (
-                    SELECT 1 FROM mi_9m_sugar_babies sb
+                    SELECT 1 FROM mi_9m_day2_candidates sb
                     WHERE sb.ticker = lt.ticker
                       AND sb.alert_date = lt.alert_date
                 ) THEN '9m_day2'
@@ -1750,7 +1765,7 @@ async def insert_9m_sugar_baby(record: dict[str, Any]) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO mi_9m_sugar_babies
+            INSERT INTO mi_9m_day2_candidates
                 (ticker, alert_date, open_price, close_price, high_price, low_price,
                  volume, close_in_range_pct,
                  prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
@@ -2341,7 +2356,7 @@ async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                    low_price, volume, close_in_range_pct,
                    prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
                    sma50_slope_pct, prior_sessions
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE alert_date = $1 AND day2_status = 'pending'
             ORDER BY volume DESC
         """, trade_date)
@@ -2363,7 +2378,7 @@ async def get_all_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
                    low_price, volume, close_in_range_pct, day2_status,
                    prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
                    sma50_slope_pct, prior_sessions
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE alert_date = $1
             ORDER BY volume DESC
         """, trade_date)
@@ -2377,7 +2392,7 @@ async def update_9m_sugar_baby_status(ticker: str, alert_date: "str | date", sta
         alert_date = date.fromisoformat(alert_date)
     async with pool.acquire() as conn:
         await conn.execute("""
-            UPDATE mi_9m_sugar_babies SET day2_status = $1
+            UPDATE mi_9m_day2_candidates SET day2_status = $1
             WHERE ticker = $2 AND alert_date = $3
         """, status, ticker, alert_date)
 
@@ -2395,7 +2410,7 @@ async def get_9m_ep_history(days: int = 14) -> list[dict]:
                    sb.prev_5d_pct, sb.prev_20d_pct, sb.prev_vs_sma10,
                    sb.prev_vs_sma50, sb.sma50_slope_pct, sb.prior_sessions,
                    a.today_volume AS intraday_volume, a.gap_pct
-            FROM mi_9m_sugar_babies sb
+            FROM mi_9m_day2_candidates sb
             LEFT JOIN mi_9m_ep_alerts a
                 ON a.ticker = sb.ticker AND a.alert_date = sb.alert_date
             WHERE sb.alert_date >= (now() AT TIME ZONE 'America/New_York')::date - $1::int
@@ -2723,7 +2738,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # machine handles the tightness→expansion lifecycle that
         # produces the eventual entry.
         # 14-day rolling window — multi-week tightness observation.
-        # Source: mi_9m_ep_alerts (NOT mi_9m_sugar_babies; sugar-baby
+        # Source: mi_9m_ep_alerts (NOT mi_9m_day2_candidates; Day-2-candidate
         # filter is unrelated to the watchlist decision).
         ninem_enabled = os.environ.get(
             "NINEM_FLAG_CARRYFORWARD_ENABLED", "true"
@@ -3066,7 +3081,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
     (asyncpg refuses concurrent queries on a single Connection), so total
     roundtrip ≈ slowest subquery.
 
-    Tables covered: mi_ep_alerts, mi_9m_ep_alerts, mi_9m_sugar_babies,
+    Tables covered: mi_ep_alerts, mi_9m_ep_alerts, mi_9m_day2_candidates,
     mi_wick_candidates, mi_parabolic_candidates, mi_flag_candidates,
     mi_themes (array containment), mi_live_trades, mi_paper_trades,
     mi_weekly_watchlists. Plus latest mi_stock_scores row for context.
@@ -3118,7 +3133,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         "9m_sugar": _q("""
             SELECT alert_date, day2_status, close_in_range_pct, prev_5d_pct,
                    prev_20d_pct, volume
-            FROM mi_9m_sugar_babies
+            FROM mi_9m_day2_candidates
             WHERE ticker = $1
               AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
             ORDER BY alert_date DESC LIMIT 50
@@ -4578,7 +4593,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_signal_outcomes": today - timedelta(days=365),
             "mi_intraday_bars": today - timedelta(days=120),
             "mi_9m_ep_alerts":   today - timedelta(days=90),
-            "mi_9m_sugar_babies": today - timedelta(days=90),
+            "mi_9m_day2_candidates": today - timedelta(days=90),
             "mi_sugar_babies_cohort": today - timedelta(days=365),
             "mi_ep_catalyst_metrics": today - timedelta(days=180),
         }
@@ -4592,7 +4607,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_signal_outcomes": "signal_date",
             "mi_intraday_bars": "bar_time",
             "mi_9m_ep_alerts":   "alert_date",
-            "mi_9m_sugar_babies": "alert_date",
+            "mi_9m_day2_candidates": "alert_date",
             "mi_sugar_babies_cohort": "cohort_date",
             "mi_ep_catalyst_metrics": "alert_date",
         }

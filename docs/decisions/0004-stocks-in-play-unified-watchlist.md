@@ -17,7 +17,7 @@ Apollo currently exposes ~7 fragmented detector surfaces:
 | Wick fill candidates | `wick_tracker` | `/wick` | shadow |
 | Parabolic shorts | `parabolic_detector` | `/parabolic` | shadow |
 | Fishhook V3 anchors | `fishhook_detector` | `/fishhook` | shadow |
-| 9M sugar baby Day 2 candidates | `mi_9m_sugar_babies` (#82 rename pending) | (in evening briefing) | paper |
+| 9M Day 2 candidates | `mi_9m_day2_candidates` (renamed from `mi_9m_sugar_babies` 2026-05-23 #82) | (in evening briefing) | paper |
 | EP HIGH alerts | `ep_detector` + `ninem_detector` | (live Telegram) | paper/live |
 
 Each surface has its own command, its own evening-briefing section, its own promotion threshold, and its own implicit notion of "ready." The operator must mentally aggregate across these surfaces to answer "what's actionable today?"
