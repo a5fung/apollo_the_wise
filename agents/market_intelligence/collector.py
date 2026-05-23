@@ -492,12 +492,19 @@ async def get_polygon_news(
             "sort": "published_utc",
         }
         data = await _polygon_get("/v2/reference/news", params)
+        # `tickers` and `insights` (per-ticker sentiment_reasoning) are the
+        # load-bearing fields for the M&A filter's multi-ticker-tag-bleed fix
+        # (#88 2026-05-23). Previously dropped these; QBTS/RGTI got M&A-
+        # filtered off a Motley Fool sector roundup tagged with their symbols
+        # but only insighted on IONQ. See ma_filter.polygon_news_has_mna_headline.
         return [
             {
                 "title": r.get("title", ""),
                 "description": r.get("description", ""),
                 "published_utc": r.get("published_utc", ""),
                 "publisher": (r.get("publisher") or {}).get("name", ""),
+                "tickers": r.get("tickers") or [],
+                "insights": r.get("insights") or [],
             }
             for r in data.get("results", [])
         ]

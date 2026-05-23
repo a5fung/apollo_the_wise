@@ -73,11 +73,42 @@ async def polygon_news_has_mna_headline(
     lookback_days: int = 14,
     on_or_before: Optional[date] = None,
 ) -> Optional[dict]:
-    """Fetch recent Polygon news titles and scan for M&A keywords.
+    """Fetch recent Polygon news and scan for M&A keywords with the
+    multi-ticker-tag-bleed discriminator (#88 fix, 2026-05-23).
 
-    Returns the first matching headline dict ({title, kw, published_utc, ...})
-    or None. Local import of `get_polygon_news` to avoid module-load circularity
-    (collector imports nothing from this file, but better safe).
+    Two-path acceptance:
+
+      Path A (title match) — M&A keyword in article TITLE. High specificity:
+      title is the article's primary topic; if M&A keyword appears there
+      it's almost certainly about *one* of the tagged tickers' M&A activity.
+      We accept and let the broader filter graph + downstream
+      direction-blindness fixes (#90) handle acquirer-side leaks.
+
+      Path B (description-only match) — M&A keyword in description but NOT
+      in title. The article may be tagged with multiple tickers; require:
+        (i)  filtering ticker present in article's `insights` array
+             (Polygon's per-ticker AI tagging — proxy for "article is
+             relevant to this ticker, not just multi-tagged"), AND
+        (ii) that ticker's `sentiment_reasoning` text itself contains an
+             M&A keyword (proxy for "Polygon's AI thinks this ticker's
+             move is M&A-related").
+
+    If `insights` field is missing entirely (Polygon hasn't AI-graded the
+    article — rare for recent ≤21d window where Polygon Insights has
+    near-100% coverage), Path B SKIPS the article entirely (conservative;
+    avoids resurrecting the QBTS-class bug for un-graded articles). Emits
+    `polygon_news_insights_missing` audit event for future false-negative
+    quantification.
+
+    Loop semantics: when Path B rejects an article (description-only match
+    but ticker not in insights or reasoning lacks M&A kw), continue to next
+    article. Don't terminate on first rejection.
+
+    Returns the first qualifying headline dict or None.
+
+    Pre-ship backward verification (#88, 2026-05-23): 9 of 9 classified
+    historical cases (2 TP + 7 FP from 90d audit) behave as expected
+    under this logic. Replay script: scripts/_replay_88_mna_filter_fix.py
     """
     from agents.market_intelligence.collector import get_polygon_news
 
@@ -85,15 +116,69 @@ async def polygon_news_has_mna_headline(
         ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20
     )
     for item in items:
-        kw = matches_mna_keywords(item.get("title")) or matches_mna_keywords(item.get("description"))
-        if kw:
+        title = item.get("title", "")
+        description = item.get("description", "")
+
+        title_kw = matches_mna_keywords(title)
+        if title_kw:
+            # Path A: title match — accept
             return {
                 "ticker": ticker,
-                "matched_keyword": kw,
-                "title": item.get("title", "")[:200],
+                "matched_keyword": title_kw,
+                "match_path": "title",
+                "title": title[:200],
                 "published_utc": item.get("published_utc", ""),
                 "publisher": item.get("publisher", ""),
             }
+
+        desc_kw = matches_mna_keywords(description)
+        if not desc_kw:
+            continue  # neither title nor description matched — try next article
+
+        # Path B: description match — verify ticker is article subject
+        insights = item.get("insights") or []
+        if not insights:
+            # Polygon hasn't AI-graded this article. Skip Path B (conservative
+            # missing-insights handling per advisor 2026-05-23). Emit audit so
+            # we can quantify the false-negative risk over time. Use lazy import
+            # to avoid circularity (ma_filter is imported by detectors that
+            # also import db).
+            try:
+                from agents.market_intelligence.db import log_audit_event
+                await log_audit_event(
+                    "polygon_news_insights_missing",
+                    f"{ticker} skipped Path B — no insights field on '{title[:120]}'",
+                )
+            except Exception:
+                pass
+            continue
+
+        # Ticker must be in article's insights list (filtering ticker is a
+        # subject of Polygon's AI tagging, not just a multi-tag bleed).
+        ticker_insight = next(
+            (i for i in insights if i.get("ticker") == ticker),
+            None,
+        )
+        if ticker_insight is None:
+            continue  # ticker tagged on article but not insighted — QBTS class
+
+        # Ticker's per-ticker sentiment_reasoning must contain an M&A keyword
+        # (Polygon's AI thinks THIS ticker's move is M&A-related).
+        reasoning = ticker_insight.get("sentiment_reasoning") or ""
+        reasoning_kw = matches_mna_keywords(reasoning)
+        if not reasoning_kw:
+            continue  # ticker insighted but not for M&A reason — MNST/ONDS/INFQ class
+
+        return {
+            "ticker": ticker,
+            "matched_keyword": desc_kw,
+            "match_path": "description+insights",
+            "title": title[:200],
+            "published_utc": item.get("published_utc", ""),
+            "publisher": item.get("publisher", ""),
+            "insight_reasoning": reasoning[:200],
+            "insight_reasoning_kw": reasoning_kw,
+        }
     return None
 
 

@@ -72,6 +72,31 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-05-23 — M&A filter: Polygon news multi-ticker-tag-bleed fix (#88)
+
+**Trigger**: 2026-05-22 L2 anomaly fired `mna_filter_fired` at 210 events vs 10 median (21× normal). Investigation surfaced 3 of 4 affected tickers (INFQ/QBTS/RGTI — all quantum names in our persistent Sugar Babies cohort) were false positives from a single 2026-05-11 Motley Fool sector roundup tagged with their symbols but only *about* IonQ/SkyWater. QBTS — the Pradeep Sugar Baby example shipped 2026-05-22 #80 — was being silently filtered out of 9M EP alerts. 90d audit walk surfaced ~77% FP rate on this polygon_news layer (3 TPs / 13 cases = 23% TP rate).
+
+**Bug class**: Polygon's `/v2/reference/news` API returns articles tagged with multiple tickers. The previous filter ran `matches_mna_keywords(title) or matches_mna_keywords(description)` on each tagged article without verifying that *this* ticker was the article's M&A subject. Distinct from the closed `perplexity_hallucination_keyword_leak` review (Perplexity disclaimer text leak; that's catalyst_texts path, not polygon_news path) and from the 2026-05-13 NBIS direction-blindness fix (which removed keywords; this preserves keywords but adds an article-subject discriminator).
+
+**Fix** (`ma_filter.polygon_news_has_mna_headline`, two-path acceptance):
+- **Path A — title match**: M&A keyword in article TITLE → accept (high specificity, preserves existing behavior for explicit-target articles like EL "Walks Away From Merger Talks").
+- **Path B — description-only match**: requires (i) ticker in article's `insights` array (Polygon's per-ticker AI tagging, a proxy for "article is about this ticker"), AND (ii) ticker's `sentiment_reasoning` itself contains an M&A keyword (proxy for "Polygon's AI thinks this ticker's move is M&A-driven").
+- Missing `insights` field → SKIP article (conservative; emits `polygon_news_insights_missing` audit event for false-negative quantification).
+- Loop semantics: continue past Path-B-rejected articles, don't terminate at first rejection.
+
+Companion change in `collector.get_polygon_news`: expose `tickers` array + `insights` per-ticker structure that the API already returns (previously dropped).
+
+**Evidence (backward-replay against 13 historical mi_audit_log cases via `scripts/_replay_88_mna_filter_fix.py`)**:
+- 2/2 TPs preserved (D ×2 Dominion, EL via Path A)
+- 8/10 FPs blocked (QBTS, MNST, ONDS, INFQ, NBIS, NXT, IREN, FOUR) — including the QBTS Pradeep-cohort case
+- 2 still-FP: RGTI sympathy-merger reasoning bleed (Polygon's AI tagged "IonQ's merger" in RGTI's reasoning); PINS article not found in 21d window (data gap, not logic gap)
+
+**Residual class** filed as #90 (M&A filter direction-blindness through Polygon news description matches) — covers RGTI sympathy-bleed + future cases where reasoning text mentions a competitor's M&A.
+
+**Reversion flag**: REFINEMENT (narrowing FP class without changing detection criteria semantics). No backward action required if reverted — filter would just over-fire as before.
+
+**Status**: shipped 2026-05-23.
+
 ### 2026-05-21 PM — REVENUE_STAGE_MIN_USD code default REVERTED to $5M (#68, advisor flagged)
 
 **Trigger**: Today's earlier #63 ship (lower default to $0.01) was based on yesterday's #50 verdict that pre-revenue ($0 Revenue Avg) band had 67% 5d WR. Today's #59 hygiene fix (dedup mi_ep_alerts duplicates) revealed yesterday's cohort was polluted by KOD ×6 + KPTI ×4 + TH ×16 duplicate rows. Clean cohort puts $0 band at 14% WR / -8% avg — a LOSER band, not a winner.
