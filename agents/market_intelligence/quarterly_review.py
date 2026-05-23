@@ -54,6 +54,14 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Monthly cadence will catch the inversion if regime shifts.
     ("Pradeep rally bands (#77)",
      "scripts._b77_pradeep_neglect_backward_check", []),
+    # Decliner-band bounce signal deep-dive (#78, added 2026-05-23).
+    # Sub-band analysis (-5/-10/-20 splits) + catalyst-quality breakdown.
+    # 2026-05-23 first run: -10 to -20% sub-band is sweet spot (83% WR
+    # N=6, +12.42% avg); deep -20%+ band is capitulation regime (no
+    # bounce). Auto-refresh tracks signal strength as cohort grows
+    # toward the N≥30 settled decision gate.
+    ("Decliner band bounce signal (#78)",
+     "scripts._b78_decliner_band_bounce_signal", []),
     # News source quality (2026-05-21 #71/#72 trigger) — 90d view of
     # per-source coverage/density/attribution + drift detection. Surfaces
     # silent degradation in news sources (Polygon, Alpaca, yfinance,

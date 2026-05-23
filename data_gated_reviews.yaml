@@ -4076,6 +4076,112 @@ reviews:
       flag + revert commits), feedback_sample_size_discipline.md
       (meta-lessons captured).
 
+  - review_id: decliner_band_bounce_signal_n30
+    title: "Decliner-into-catalyst bounce signal — N≥30 settled methodology decision"
+    question: |
+      2026-05-22 #77 Pradeep rally-bands backward check surfaced an
+      unexpected finding: the `pre_20d < -5%` (declining) band in our
+      HIGH-tier MAGNA53 cohort has materially higher 5d forward returns
+      than ANY other rally-state band. 2026-05-23 deep-dive (#78,
+      `scripts/_b78_decliner_band_bounce_signal.py`) at N=14 settled:
+
+        Decliner band         N=14    avg +9.06%    64% WR
+        Sideways band         N=17    avg -0.03%    29% WR
+        Modest uptrend        N=32    avg -0.81%    28% WR
+        Rallying band         N=21    avg +3.98%    38% WR
+        Strong rally band     N=18    avg +6.31%    50% WR
+
+      Sub-band analysis within decliner shows U-shape, not monotonic:
+        -5 to -10% (shallow):   N=6   avg +8.78%   50% WR
+        -10 to -20% (moderate): N=6   avg +12.42%  83% WR  ← SWEET SPOT
+        -20%+ (deep capitul.):  N=2   avg -0.20%   50% WR
+
+      Working hypothesis: HIGH-tier catalyst on a declining stock
+      indicates a truly game-changing catalyst (news strong enough to
+      overcome adverse trend = high-conviction reversal signal). The
+      catalyst-quality filter is already doing the rally-state work
+      implicitly; adding a rally-state filter on top would over-fit.
+      Deep declines (-20%+) appear to be capitulation regime where
+      the catalyst can't reverse the trend cleanly.
+
+      This is the OPPOSITE of Pradeep's "sideways-into-catalyst best"
+      framing for general momentum trading — but the cohort is
+      already HIGH-tier-filtered, which is a meaningfully different
+      universe than Pradeep's broader screen.
+    predicate_sql: |
+      -- N≥30 settled decliner-band cases (5d outcome populated).
+      WITH alerts AS (
+        SELECT DISTINCT ON (a.ticker, a.alert_date)
+               a.ticker, a.alert_date
+        FROM mi_ep_alerts a
+        LEFT JOIN mi_security_types st ON st.ticker = a.ticker
+        WHERE a.alert_date >= CURRENT_DATE - INTERVAL '120 days'
+          AND a.score_tier = 'HIGH'
+          AND (st.security_type IS NULL OR st.security_type IN ('CS','ADRC'))
+        ORDER BY a.ticker, a.alert_date, a.ep_score DESC NULLS LAST
+      )
+      SELECT COUNT(*) FROM alerts a
+      LEFT JOIN LATERAL (
+        SELECT close FROM mi_daily_closes
+        WHERE ticker = a.ticker AND trade_date < a.alert_date
+        ORDER BY trade_date DESC LIMIT 1
+      ) d_pre1 ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT close FROM mi_daily_closes
+        WHERE ticker = a.ticker AND trade_date < a.alert_date
+        ORDER BY trade_date DESC OFFSET 20 LIMIT 1
+      ) d_pre21 ON TRUE
+      LEFT JOIN mi_daily_closes d0
+        ON d0.ticker = a.ticker AND d0.trade_date = a.alert_date
+      LEFT JOIN LATERAL (
+        SELECT close FROM mi_daily_closes
+        WHERE ticker = a.ticker AND trade_date > a.alert_date
+        ORDER BY trade_date ASC OFFSET 4 LIMIT 1
+      ) d5 ON TRUE
+      WHERE d_pre21.close > 0
+        AND d_pre1.close IS NOT NULL
+        AND (d_pre1.close / d_pre21.close - 1) * 100 < -5
+        AND d5.close IS NOT NULL;
+    threshold: 30
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Re-run scripts/_b78_decliner_band_bounce_signal.py at N≥30. The
+      built-in decision gate in the script triggers one of:
+
+      1. N≥30 + decliner-band WR ≥55% + avg ≥+5%: PROMOTE to
+         methodology review.
+         - File followup to design a 'catalyst-driven bounce' tag in
+           evening briefing + Stocks in Play surface (per ADR 0004
+           §4 source_detector enum). automation_class=operator_only.
+         - Shadow-phase telemetry for 30d to validate at higher N
+         - DO NOT auto-promote past operator_only without N≥10 settled
+           positive outcomes from the shadow phase
+         - Per validate_metric_before_decision discipline, the
+           shadow-phase metric MUST be ORB-entry simulation P&L, not
+           open-to-close drift (which is what the 5d return measures
+           today)
+
+      2. N≥30 + WR <50%: signal was small-N noise. Close investigation.
+
+      3. N≥30 + WR ∈ [50, 55): marginal. Continue observing at N≥50.
+
+      Wired into monthly quarterly_review.py sweep
+      (`Decliner band bounce signal (#78)`) so this runs automatically
+      on the 1st of every month. Quarterly Telegram digest surfaces
+      the band stats; operator decides when to act based on the gate.
+
+      Cross-references:
+      - #77 (parent observation: full Pradeep rally-bands check)
+      - #79 (sister: sideways-band underperformance — same dataset,
+             different sub-question)
+      - ADR 0004 §4 Stocks in Play (where any future "bounce signal"
+        source_detector would slot in)
+      - feedback_sample_size_discipline.md (N≥30 gate)
+      - feedback_validate_metric_before_decision.md (ORB sim required,
+        not drift)
+    status: pending
+    added_on: 2026-05-23
+
   - review_id: sugar_baby_convergence_backtest_first_eval
     title: "Sugar Baby Convergence — backtest forward returns once N≥10 fires settle"
     question: |
