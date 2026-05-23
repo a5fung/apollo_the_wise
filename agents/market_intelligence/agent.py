@@ -1942,6 +1942,75 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_stocks_in_play_query(self, request: AgentRequest) -> AgentResponse:
+        """`/inplay` — unified Stocks-in-Play surface (#99, ADR 0004 Phase 1).
+
+        Surfaces active mi_stocks_in_play rows (expires_at > NOW()) grouped
+        by automation_class. Phase 1: only sugar_baby_cohort sources are
+        migrated. Future ships add flag stages, convergence, EP, intraday
+        breaks, etc.
+        """
+        from agents.market_intelligence.db import get_stocks_in_play
+
+        rows = await get_stocks_in_play(active_only=True)
+        if not rows:
+            return self._ok(
+                request,
+                result=(
+                    "_No active Stocks-in-Play entries._\n\n"
+                    "Daily refresh at 5:22 PM ET (Sugar Baby cohort); other "
+                    "detector sources migrate in future ships."
+                ),
+            )
+
+        # Group by automation_class
+        from collections import defaultdict
+        by_class: dict[str, list[dict]] = defaultdict(list)
+        # Track distinct tickers to surface multi-detector convergence
+        ticker_sources: dict[str, list[str]] = defaultdict(list)
+        for r in rows:
+            by_class[r["automation_class"]].append(r)
+            ticker_sources[r["ticker"]].append(r["source_detector"])
+
+        n_unique_tickers = len(ticker_sources)
+        n_multi = sum(1 for srcs in ticker_sources.values() if len(srcs) > 1)
+
+        class_emoji = {
+            "apollo_eligible": "🚨",
+            "operator_only": "👤",
+            "informational": "ℹ️",
+        }
+        class_label = {
+            "apollo_eligible": "*apollo_eligible*",
+            "operator_only": "*operator_only* — needs your judgment",
+            "informational": "*informational* — context only",
+        }
+
+        lines = [
+            f"🎯 *Stocks in Play* ({n_unique_tickers} unique tickers, "
+            f"{len(rows)} rows{', ' + str(n_multi) + ' multi-detector' if n_multi else ''})",
+            "",
+        ]
+
+        for cls in ("apollo_eligible", "operator_only", "informational"):
+            cls_rows = by_class.get(cls, [])
+            if not cls_rows:
+                continue
+            lines.append(f"{class_emoji[cls]} {class_label[cls]} ({len(cls_rows)})")
+            # Show up to 20 rows per class (cap noise for big informational tier)
+            for r in cls_rows[:20]:
+                src_short = r["source_detector"].replace("_", " ")
+                lines.append(f"  `{r['ticker']:<6}` {src_short} — {r['reason']}")
+            if len(cls_rows) > 20:
+                lines.append(f"  _…{len(cls_rows) - 20} more_")
+            lines.append("")
+
+        lines.append(
+            "_Phase 1: sugar_baby_cohort migrated. Future ships add flag stages, "
+            "convergence, EP, intraday breaks._"
+        )
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_watchlist_query(self, request: AgentRequest) -> AgentResponse:
         """`/watch` — proactive tight-range watchlist with entry-technique
         annotations (#93, ADR 0005 §3 + memory/user_tight_range_entry_techniques).
@@ -4376,6 +4445,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/flagbreaks":     self._handle_flag_breaks_query,
             "/flagbreak":      self._handle_flag_breaks_query,
             "/watch":          self._handle_watchlist_query,
+            "/inplay":         self._handle_stocks_in_play_query,
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,

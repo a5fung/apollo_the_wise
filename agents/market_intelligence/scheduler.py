@@ -13,7 +13,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, time as _dt_time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -1541,6 +1542,50 @@ async def _sugar_babies_cohort_refresh_job():
             "sugar_babies_cohort_refreshed",
             f"Cohort size: {n} tickers (≥3 9M EOD prints in trailing 180d)",
         )
+
+        # Stocks-in-Play dual-write (#99, ADR 0004 Phase 1 first migration,
+        # 2026-05-23). For each cohort member, upsert into mi_stocks_in_play
+        # as 'sugar_baby_cohort' methodology-presence signal with
+        # automation_class='informational'. Failure here MUST NOT break
+        # the upstream sugar_babies_cohort write (telemetry decoupling).
+        try:
+            from agents.market_intelligence.db import upsert_stocks_in_play
+            from agents.market_intelligence.stocks_in_play_sources import (
+                SOURCE_SUGAR_BABY_COHORT, CLASS_INFORMATIONAL,
+            )
+            # Expiry: cohort rebuilt daily; 4-day TTL covers long weekends
+            # (e.g. Memorial Day Mon refresh skipped, so Friday's rows must
+            # stay valid through Tuesday). Per ADR 0004 §3 expiry policy.
+            # datetime/timedelta/ZoneInfo imported at module level per
+            # preflight [5d/5] import-shadowing rule.
+            _ET = ZoneInfo("America/New_York")
+            expires_at = datetime.combine(today + timedelta(days=4),
+                                          _dt_time(23, 59), tzinfo=_ET)
+            cohort_rows = await conn.fetch("""
+                SELECT ticker, count_9m_alerts_180d, first_9m_alert_in_window, last_9m_alert
+                FROM mi_sugar_babies_cohort
+                WHERE cohort_date = $1
+            """, today)
+            sip_count = 0
+            for r in cohort_rows:
+                await upsert_stocks_in_play(
+                    ticker=r["ticker"],
+                    source_detector=SOURCE_SUGAR_BABY_COHORT,
+                    automation_class=CLASS_INFORMATIONAL,
+                    reason=f"Pradeep persistent cohort — {r['count_9m_alerts_180d']}× 9M+ EOD prints in trailing 180d",
+                    readiness_signal={
+                        "count_9m_alerts_180d": r["count_9m_alerts_180d"],
+                        "first_9m_alert_in_window": str(r["first_9m_alert_in_window"]),
+                        "last_9m_alert": str(r["last_9m_alert"]),
+                    },
+                    expires_at=expires_at,
+                    entry_date=today,
+                )
+                sip_count += 1
+            logger.info(f"mi_stocks_in_play: upserted {sip_count} sugar_baby_cohort rows")
+        except Exception as e:
+            logger.warning(f"mi_stocks_in_play dual-write failed (non-critical): {e}")
+
         logger.info(f"Sugar Babies cohort refreshed: {n} tickers")
         return int(n) if n is not None else None
     except Exception as e:
@@ -1825,7 +1870,7 @@ async def _post_validation_check_job():
     logger.info("Post-validation check starting...")
     try:
         from agents.market_intelligence.collector import et_today
-        from datetime import timedelta
+        # timedelta imported at module level per preflight [5d/5]
 
         yesterday = et_today() - timedelta(days=1)
         y_str = str(yesterday)

@@ -1351,6 +1351,42 @@ async def initialize_schema() -> None:
                 ON mi_flag_breaks(break_date DESC);
             CREATE INDEX IF NOT EXISTS idx_flag_breaks_ticker
                 ON mi_flag_breaks(ticker, break_date DESC);
+
+            -- Stocks-in-Play unified watchlist (#99 / ADR 0004 Phase 1,
+            -- 2026-05-23). Three-axis maturity model captured here:
+            --   1. Per-strategy phase: mi_strategies.phase (separate table)
+            --   2. Per-stock maturity: stage = ready (this table is the
+            --      "ready" state — earlier stages stay in detector-internal
+            --      tables: mi_flag_candidates, mi_sugar_babies_cohort, etc.)
+            --   3. Per-entry automation_class: column on this row
+            -- See docs/decisions/0004-stocks-in-play-unified-watchlist.md
+            -- + memory/project_stocks_in_play_architecture.md for full
+            -- framing. source_detector / automation_class enums + validators
+            -- live in agents/market_intelligence/stocks_in_play_sources.py
+            -- (constants module — drift prevention pattern).
+            CREATE TABLE IF NOT EXISTS mi_stocks_in_play (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                entry_date DATE NOT NULL,         -- ET date when ticker entered ready state
+                source_detector TEXT NOT NULL,    -- VALID_SOURCES enum value
+                automation_class TEXT NOT NULL,   -- informational | operator_only | apollo_eligible
+                reason TEXT NOT NULL,             -- one-line human-readable
+                readiness_signal JSONB,           -- detector-specific structured detail
+                source_phase TEXT,                -- 'paper' | 'live' | 'shadow' at entry time
+                expires_at TIMESTAMPTZ NOT NULL,  -- NOT NULL by design (Gemini contract)
+                promoted_at TIMESTAMPTZ,          -- automation_class flip operator_only → apollo_eligible
+                promoted_to_trade_at TIMESTAMPTZ, -- when this row became a real trade
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, entry_date, source_detector)
+            );
+            CREATE INDEX IF NOT EXISTS idx_stocks_in_play_date
+                ON mi_stocks_in_play(entry_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_stocks_in_play_ticker
+                ON mi_stocks_in_play(ticker, entry_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_stocks_in_play_class
+                ON mi_stocks_in_play(automation_class, entry_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_stocks_in_play_expires
+                ON mi_stocks_in_play(expires_at);
         """)
 
         # ── Strategy maturity registry ───────────────────────────────────
@@ -1986,6 +2022,99 @@ async def get_sugar_babies_cohort_latest(limit: int = 30) -> list[dict]:
                      c.last_9m_alert DESC
             LIMIT $1
         """, limit)
+    return [dict(r) for r in rows]
+
+
+async def upsert_stocks_in_play(
+    *,
+    ticker: str,
+    source_detector: str,
+    automation_class: str,
+    reason: str,
+    readiness_signal: dict | None = None,
+    source_phase: str | None = None,
+    expires_at,  # timezone-aware datetime
+    entry_date=None,  # defaults to ET today
+) -> None:
+    """Upsert a row into mi_stocks_in_play (ADR 0004 Phase 1).
+
+    Per source_detector enum: validates source + class via constants module
+    (drift prevention). Per ADR 0004 §3: expires_at NOT NULL by design;
+    every caller MUST set it explicitly with a detector-appropriate TTL.
+
+    UPSERT semantics: re-firing within the same (ticker, entry_date,
+    source_detector) replaces expires_at + readiness_signal + reason
+    (latest detection's state wins; never re-fires automation_class).
+    """
+    from agents.market_intelligence.stocks_in_play_sources import (
+        validate_source, validate_class,
+    )
+    from agents.market_intelligence.collector import et_today
+    validate_source(source_detector)
+    validate_class(automation_class)
+    if entry_date is None:
+        entry_date = et_today()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_stocks_in_play (
+                ticker, entry_date, source_detector, automation_class,
+                reason, readiness_signal, source_phase, expires_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (ticker, entry_date, source_detector) DO UPDATE
+                SET reason = EXCLUDED.reason,
+                    readiness_signal = EXCLUDED.readiness_signal,
+                    expires_at = EXCLUDED.expires_at,
+                    source_phase = COALESCE(EXCLUDED.source_phase, mi_stocks_in_play.source_phase)
+        """, ticker, entry_date, source_detector, automation_class,
+            reason, readiness_signal, source_phase, expires_at)
+
+
+async def get_stocks_in_play(
+    *,
+    automation_class: str | None = None,
+    source_detector: str | None = None,
+    active_only: bool = True,
+) -> list[dict]:
+    """Return mi_stocks_in_play rows (ADR 0004 Phase 1 read helper).
+
+    active_only=True (default): only rows where expires_at > NOW().
+    automation_class: filter by 'informational' / 'operator_only' /
+                     'apollo_eligible'. None = all classes.
+    source_detector: filter by single source_detector value. None = all.
+
+    Rows are ordered by automation_class (apollo_eligible first), then
+    entry_date DESC. Multi-detector entries on same ticker render as
+    multiple rows; caller aggregates per-ticker if needed.
+    """
+    where = []
+    args: list = []
+    if active_only:
+        where.append("expires_at > NOW()")
+    if automation_class:
+        args.append(automation_class)
+        where.append(f"automation_class = ${len(args)}")
+    if source_detector:
+        args.append(source_detector)
+        where.append(f"source_detector = ${len(args)}")
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT ticker, entry_date, source_detector, automation_class,
+                   reason, readiness_signal, source_phase, expires_at,
+                   promoted_at, promoted_to_trade_at, created_at
+            FROM mi_stocks_in_play
+            {where_sql}
+            ORDER BY
+                CASE automation_class
+                    WHEN 'apollo_eligible' THEN 1
+                    WHEN 'operator_only' THEN 2
+                    ELSE 3
+                END,
+                entry_date DESC,
+                ticker
+        """, *args)
     return [dict(r) for r in rows]
 
 
@@ -4645,6 +4774,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_9m_day2_candidates": today - timedelta(days=90),
             "mi_sugar_babies_cohort": today - timedelta(days=365),
             "mi_flag_breaks": today - timedelta(days=365),
+            "mi_stocks_in_play": today - timedelta(days=180),
             "mi_ep_catalyst_metrics": today - timedelta(days=180),
         }
         date_cols = {
@@ -4660,6 +4790,7 @@ async def purge_old_data() -> dict[str, int]:
             "mi_9m_day2_candidates": "alert_date",
             "mi_sugar_babies_cohort": "cohort_date",
             "mi_flag_breaks": "break_date",
+            "mi_stocks_in_play": "entry_date",
             "mi_ep_catalyst_metrics": "alert_date",
         }
         _valid_tables = frozenset(cutoffs.keys())
