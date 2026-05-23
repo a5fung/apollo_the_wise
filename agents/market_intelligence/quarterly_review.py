@@ -72,6 +72,13 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # blindness via descriptions per #90).
     ("M&A filter Path B FP-rate (#88)",
      "scripts._b88_mna_filter_path_b_fp_rate", []),
+    # Intraday flag-break detector evidence (#94, added 2026-05-23).
+    # Shadow-phase monthly re-evaluation. Tracks signal sustainment for
+    # decision-gate at N>=10 settled breaks. Graduation to Phase 2
+    # (operator-confirm entry) requires N>=10 + avg ret_10d >+3% +
+    # WR>=35%. Per feedback_methodology_insights_need_periodic_revalidation.
+    ("Intraday flag-break evidence (#94)",
+     "scripts._b94_intraday_flag_break_evidence", []),
     # Decliner-band bounce signal deep-dive (#78, added 2026-05-23).
     # Sub-band analysis (-5/-10/-20 splits) + catalyst-quality breakdown.
     # 2026-05-23 first run: -10 to -20% sub-band is sweet spot (83% WR

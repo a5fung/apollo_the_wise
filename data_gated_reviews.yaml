@@ -4251,6 +4251,98 @@ reviews:
     status: pending
     added_on: 2026-05-23
 
+  - review_id: intraday_flag_break_signal_n10
+    title: "Intraday flag-break detector — N≥10 graduation to Phase 2 entry (#94 / ADR 0005)"
+    question: |
+      #94 ADR 0005 shipped 2026-05-23 (Commit 1 telemetry-only +
+      Commit 2 operator-surface). Detects intraday moment when a
+      TIGHTENING/COILED/TRIGGERED ticker breaks above its base_high
+      with volume-pace projection clearing ADV + opening-30min
+      block-trade guard.
+
+      Telemetry-only shadow phase: validates signal quality before
+      designing entry execution (Phase 2 = operator-confirm via
+      /flagbreak ENTER TICKER + bracket order with base_low stop).
+
+      Graduation decision at N≥10 settled 10d-forward breaks (filtered
+      via parent_invalidated_eod=FALSE per Gemini contract — excludes
+      structurally-failed breakouts where the EOD scan reclassified
+      INVALIDATED).
+
+      Smoke-test evidence (2026-05-23 against Friday snapshot — not
+      real intraday data, but proves detector logic works):
+        7 breaks detected from yesterday's TIGHTENING/COILED cohort
+        Top: DELL +13.30% on 246% ADV (clean strong break)
+             HLIT +9.75% on 492% ADV (huge volume confirmation)
+        Marginal: 5 tickers at 0.02-3.09% above base_high
+
+      Live evidence accumulates Tuesday 2026-05-27 onward (Memorial
+      Day Monday closed).
+    predicate_sql: |
+      -- N>=10 settled 10d-forward intraday flag-breaks, excluding
+      -- structurally-failed breakouts (parent_invalidated_eod = TRUE)
+      SELECT COUNT(*) FROM mi_flag_breaks b
+      LEFT JOIN mi_daily_closes d0
+          ON d0.ticker = b.ticker AND d0.trade_date = b.break_date
+      LEFT JOIN LATERAL (
+          SELECT close FROM mi_daily_closes
+          WHERE ticker = b.ticker AND trade_date > b.break_date
+          ORDER BY trade_date ASC OFFSET 9 LIMIT 1
+      ) d10 ON TRUE
+      WHERE b.break_date <= CURRENT_DATE - INTERVAL '12 days'
+        AND b.parent_invalidated_eod = FALSE
+        AND d0.open_price > 0
+        AND d10.close IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Re-run scripts/_b94_intraday_flag_break_evidence.py. Built-in
+      decision gate at the end fires one of:
+
+      1. N≥10 + avg_10d ≥ +3% + WR≥+5% ≥ 35%: PROMOTE to Phase 2
+         - Design operator-confirm entry: /flagbreak ENTER TICKER
+           submits bracket order
+         - Stop placement: base_low (already captured in mi_flag_breaks)
+         - Sizing: per-strategy multiplier via mi_strategies registry
+           (start at multiplier=0.5, cap=2 per #65 pattern)
+         - Audit event time_stop_executed-style record
+         - File data-gated follow-up for Phase 3 auto-entry at N≥30
+           settled positive
+
+      2. N≥10 + signal weak (WR<25% OR avg<0): REVISE detector before
+         Phase 2:
+         - Tighten volume-pace threshold (currently ≥100% ADV projection)?
+         - Tighten opening-30min guard (currently ≥15% raw ADV floor)?
+         - Add minimum pct_above_base_high (currently ANY positive value)?
+         - Filter to specific parent_stage (TRIGGERED-only? avoids COILED
+           false-breaks where the base wasn't actually compressed enough)?
+         - Cohort × break overlay (in_sugar_baby_cohort = TRUE only)?
+
+      3. N≥10 + MARGINAL (avg 0-3%, WR 25-35%): continue observing
+         at N≥30 before promoting.
+
+      4. N<10: bump earliest_review_date +30d.
+
+      DO NOT graduate to entry execution without N≥10 + advisor review
+      + minute-bar entry simulation per feedback_validate_metric_before_
+      decision (current 10d return uses break-day OPEN as entry proxy;
+      actual fill at detection moment may be better or worse).
+
+      Cross-references:
+      - ADR 0005 (this detector's design doc)
+      - #92 (flag detector graduation — superseded by THIS review when
+        the intraday path matures)
+      - #47 (Flag carryforward path stage 2 telemetry — earlier study)
+      - ADR 0004 §4 (Stocks in Play source_detector enum — adds
+        'flag_break_intraday' value when Phase 2 ships)
+      - feedback_methodology_insights_need_periodic_revalidation.md
+        (this entry IS the periodic re-evaluation; monthly auto-refresh
+        via quarterly_review.py sweep)
+      - feedback_validate_metric_before_decision.md (Phase 2 must use
+        minute-bar entry simulation, not break-day open approximation)
+    status: pending
+    added_on: 2026-05-23
+
   - review_id: rally_band_u_shape_observation
     title: "Pradeep rally-band U-shape — sideways/modest-uptrend dead zone (#79 + #78 complementary observation)"
     question: |

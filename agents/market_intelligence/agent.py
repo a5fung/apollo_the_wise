@@ -1942,6 +1942,115 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_flag_breaks_query(self, request: AgentRequest) -> AgentResponse:
+        """`/flagbreaks` — intraday flag-break detector surface (#94, ADR 0005).
+
+        Modes:
+          /flagbreaks           — today's breaks + last 7-day summary
+          /flagbreaks TICKER    — 30-day history for one ticker
+
+        Shadow phase: telemetry-only, no entries submitted. Forward-return
+        validation at N≥10 settled via monthly auto-revalidation per
+        feedback_methodology_insights_need_periodic_revalidation.md.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        # Single-ticker history mode if TICKER provided
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"FLAGBREAKS", "FLAGBREAK"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                rows = await conn.fetch("""
+                    SELECT break_date, break_time, minutes_since_open,
+                           parent_stage, base_high, break_price,
+                           pct_above_base_high, volume_pct_of_adv,
+                           in_sugar_baby_cohort, parent_invalidated_eod
+                    FROM mi_flag_breaks
+                    WHERE ticker = $1
+                      AND break_date >= CURRENT_DATE - INTERVAL '30 days'
+                    ORDER BY break_date DESC, break_time DESC
+                """, ticker)
+                if not rows:
+                    return self._ok(
+                        request,
+                        result=f"_No intraday flag-breaks for `{ticker}` in last 30d._"
+                    )
+                lines = [f"🎯 *{ticker} — Intraday flag-break history (30d)*", ""]
+                for r in rows:
+                    et_clock = r["break_time"].astimezone().strftime("%H:%M")
+                    inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                    cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
+                    lines.append(
+                        f"  {r['break_date']} {et_clock}{cohort} — "
+                        f"{r['parent_stage']} broke ${r['base_high']:.2f} "
+                        f"at {r['pct_above_base_high']:+.1f}% "
+                        f"(vol {r['volume_pct_of_adv']:.0f}% ADV){inval}"
+                    )
+                return self._ok(request, result="\n".join(lines))
+
+            # Default: today's breaks + 7-day summary
+            today_rows = await conn.fetch("""
+                SELECT ticker, break_time, minutes_since_open,
+                       parent_stage, base_high, break_price,
+                       pct_above_base_high, volume_pct_of_adv,
+                       in_sugar_baby_cohort, parent_invalidated_eod
+                FROM mi_flag_breaks
+                WHERE break_date = CURRENT_DATE
+                ORDER BY break_time
+            """)
+            recent_summary = await conn.fetch("""
+                SELECT break_date,
+                       COUNT(*) AS n_breaks,
+                       COUNT(*) FILTER (WHERE in_sugar_baby_cohort) AS n_cohort,
+                       COUNT(*) FILTER (WHERE parent_invalidated_eod) AS n_invalidated
+                FROM mi_flag_breaks
+                WHERE break_date BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                     AND CURRENT_DATE - INTERVAL '1 day'
+                GROUP BY break_date
+                ORDER BY break_date DESC
+            """)
+
+        lines = ["🎯 *Intraday Flag-Breaks*", ""]
+        if today_rows:
+            lines.append(f"*Today ({len(today_rows)})*:")
+            for r in today_rows:
+                et_clock = r["break_time"].astimezone().strftime("%H:%M")
+                cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                lines.append(
+                    f"  {et_clock} {cohort}`{r['ticker']}` — "
+                    f"{r['parent_stage']} broke ${r['base_high']:.2f} "
+                    f"at {r['pct_above_base_high']:+.1f}% "
+                    f"(vol {r['volume_pct_of_adv']:.0f}% ADV){inval}"
+                )
+        else:
+            lines.append("_No breaks today (yet)._")
+
+        if recent_summary:
+            lines.append("")
+            lines.append("*Last 7 days (excl. today):*")
+            for r in recent_summary:
+                inval_note = (
+                    f" ({r['n_invalidated']} invalidated_eod)"
+                    if r["n_invalidated"] else ""
+                )
+                cohort_note = (
+                    f" {r['n_cohort']} 🍬"
+                    if r["n_cohort"] else ""
+                )
+                lines.append(
+                    f"  {r['break_date']}: {r['n_breaks']} breaks{cohort_note}{inval_note}"
+                )
+
+        lines.append("")
+        lines.append("_Drill-down: `/flagbreaks TICKER` for 30-day history per ticker_")
+        lines.append("_Shadow phase — telemetry only, no entries submitted_")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
         """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
 
@@ -4182,6 +4291,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/sugarbabies":    self._handle_sugar_babies_query,
             "/sugarbaby":      self._handle_sugar_babies_query,
             "/timestop":       self._handle_time_stop_command,
+            "/flagbreaks":     self._handle_flag_breaks_query,
+            "/flagbreak":      self._handle_flag_breaks_query,
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,
