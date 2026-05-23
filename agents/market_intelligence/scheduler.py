@@ -1561,11 +1561,15 @@ async def _sugar_babies_cohort_refresh_job():
             _ET = ZoneInfo("America/New_York")
             expires_at = datetime.combine(today + timedelta(days=4),
                                           _dt_time(23, 59), tzinfo=_ET)
-            cohort_rows = await conn.fetch("""
-                SELECT ticker, count_9m_alerts_180d, first_9m_alert_in_window, last_9m_alert
-                FROM mi_sugar_babies_cohort
-                WHERE cohort_date = $1
-            """, today)
+            # NOTE: the original `async with pool.acquire() as conn` block
+            # exits at the previous fetchval — `conn` is stale here. Open
+            # a fresh connection for the dual-write fetch.
+            async with pool.acquire() as conn2:
+                cohort_rows = await conn2.fetch("""
+                    SELECT ticker, count_9m_alerts_180d, first_9m_alert_in_window, last_9m_alert
+                    FROM mi_sugar_babies_cohort
+                    WHERE cohort_date = $1
+                """, today)
             sip_count = 0
             for r in cohort_rows:
                 await upsert_stocks_in_play(
