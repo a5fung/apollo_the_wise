@@ -195,6 +195,10 @@ async def run_9m_scan() -> list[dict]:
     # events stay; only the user-facing Telegram is batched.
     digest_actual: list[str] = []
     digest_pace: list[str] = []
+    # Sugar Baby Convergence — track cohort × recent-flag-stage tickers that
+    # ping into the digest. Composed into a section header in the Telegram
+    # message (not per-line prefix) to keep multi-convergence digests clean.
+    converging_tickers: list[tuple[str, dict]] = []
 
     for ticker, snap in snaps.items():
         if len(ticker) > 5 or "." in ticker:
@@ -369,6 +373,45 @@ async def run_9m_scan() -> list[dict]:
                 digest_actual.append(line)
             else:
                 digest_pace.append(line)
+            # Sugar Baby Convergence — telemetry-only. DB failure MUST NOT
+            # break the underlying 9M alert (the trading signal). Fail-open.
+            conv: dict | None = None
+            try:
+                from agents.market_intelligence.db import check_sugar_baby_convergence
+                conv = await check_sugar_baby_convergence(ticker)
+            except Exception as _ce:
+                try:
+                    await log_audit_event(
+                        "sugar_baby_convergence_check_failed",
+                        f"{ticker}: {type(_ce).__name__}: {str(_ce)[:200]}",
+                    )
+                except Exception:
+                    pass
+            if conv:
+                converging_tickers.append((ticker, conv))
+                # Same-day dedup — 9M scans tick every 5 min and re-fire
+                # the same ticker as projections evolve. Inflates audit
+                # count 5-20× without dedup.
+                try:
+                    pool = await get_pool()
+                    async with pool.acquire() as conn:
+                        prior = await conn.fetchrow("""
+                            SELECT 1 FROM mi_audit_log
+                            WHERE event_type = 'sugar_baby_convergence_alert'
+                              AND summary LIKE $1
+                              AND created_at > NOW() - INTERVAL '1 hour'
+                              AND created_at < NOW() - INTERVAL '1 second'
+                            LIMIT 1
+                        """, f"{ticker} 9M_HIGH%")
+                        if prior is None:
+                            await log_audit_event(
+                                "sugar_baby_convergence_alert",
+                                f"{ticker} 9M_HIGH — "
+                                f"class={conv['convergence_class']} "
+                                f"cohort={conv['cohort_n']}x stage={conv['flag_stage']}",
+                            )
+                except Exception as _ae:
+                    logger.debug(f"9M convergence audit failed (non-critical): {_ae}")
         logger.info(
             f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f} "
             f"pinged={should_ping}"
@@ -384,6 +427,26 @@ async def run_9m_scan() -> list[dict]:
     if digest_actual or digest_pace:
         clock = now_et.strftime("%H:%M")
         parts = [f"🏦 *9M EP — {clock} ET*"]
+        # Sugar Baby Convergence section header(s) — split by class so the
+        # operator scans anticipatory vs breakout convergences separately.
+        # Inserted right after main header so the banner is the second line.
+        if converging_tickers:
+            breakouts = [(t, c) for t, c in converging_tickers
+                         if c["convergence_class"] == "breakout"]
+            anticipators = [(t, c) for t, c in converging_tickers
+                            if c["convergence_class"] == "anticipatory"]
+            if breakouts:
+                tk_str = ", ".join(f"`{t}`" for t, _ in breakouts)
+                parts.append(
+                    f"🎯🎯 *Breakout convergences ({len(breakouts)}):* {tk_str}"
+                )
+            if anticipators:
+                tk_str = ", ".join(
+                    f"`{t}` ({c['flag_stage']})" for t, c in anticipators
+                )
+                parts.append(
+                    f"🍬🌀🎯 *Sugar Baby convergences ({len(anticipators)}):* {tk_str}"
+                )
         if digest_actual:
             parts.append(f"\n*Actual ({len(digest_actual)})*")
             parts.extend(digest_actual)

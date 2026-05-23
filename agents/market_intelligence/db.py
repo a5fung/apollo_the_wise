@@ -1925,6 +1925,62 @@ async def get_sugar_babies_cohort_latest(limit: int = 30) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def check_sugar_baby_convergence(ticker: str) -> dict | None:
+    """Return Sugar Baby Convergence dict if ticker is in latest persistent
+    Sugar Babies cohort AND has been in COILED/TIGHTENING/TRIGGERED stage
+    within last 5 calendar days. Else None.
+
+    Returned dict shape:
+        cohort_n            INT  — count_9m_alerts_180d for this ticker
+        flag_stage          TEXT — TRIGGERED | COILED | TIGHTENING
+        stage_scan_date     DATE — most-recent qualifying scan_date
+        days_since_stage    INT  — CURRENT_DATE - stage_scan_date
+        convergence_class   TEXT — 'breakout' if TRIGGERED else 'anticipatory'
+
+    Caller MUST wrap in try/except — telemetry failure (pool exhaustion,
+    asyncpg transient) cannot break the underlying EP/9M alert (the
+    trading signal). Helper itself only raises on DB-level errors; missing
+    cohort or missing recent flag stage both return None cleanly.
+
+    Note: 5 *calendar* days via `INTERVAL '5 days'`. Memorial Day weekend
+    compresses this to ~2 trading scans — acceptable for prototype scope.
+    ADR will harden to trading-session subquery when generalizing to
+    mi_stocks_in_play.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            WITH latest_cohort_date AS (
+                SELECT MAX(cohort_date) AS d FROM mi_sugar_babies_cohort
+            ),
+            in_cohort AS (
+                SELECT count_9m_alerts_180d
+                FROM mi_sugar_babies_cohort
+                WHERE ticker = $1
+                  AND cohort_date = (SELECT d FROM latest_cohort_date)
+            ),
+            recent_flag AS (
+                SELECT stage, scan_date,
+                       (CURRENT_DATE - scan_date)::int AS days_since
+                FROM mi_flag_candidates
+                WHERE ticker = $1
+                  AND scan_date >= CURRENT_DATE - INTERVAL '5 days'
+                  AND stage IN ('COILED', 'TIGHTENING', 'TRIGGERED')
+                ORDER BY scan_date DESC
+                LIMIT 1
+            )
+            SELECT c.count_9m_alerts_180d AS cohort_n,
+                   f.stage                AS flag_stage,
+                   f.scan_date            AS stage_scan_date,
+                   f.days_since           AS days_since_stage,
+                   CASE WHEN f.stage = 'TRIGGERED' THEN 'breakout'
+                        ELSE 'anticipatory' END AS convergence_class
+            FROM in_cohort c
+            CROSS JOIN recent_flag f
+        """, ticker)
+    return dict(row) if row else None
+
+
 async def get_eod_9m_wick_candidates(trade_date: "str | date") -> list[dict]:
     """Wick-fill candidates (P22): 9M day, green body, close in [0.50, 0.75)
     of intraday range. Same gates as sugar babies — only the range-position

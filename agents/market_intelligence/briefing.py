@@ -39,6 +39,7 @@ from agents.market_intelligence.db import (
     get_fundamental_flags,
     get_rs_for_tickers,
     get_prior_theme_scores,
+    get_pool,
     log_audit_event,
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
@@ -1886,7 +1887,63 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     catalyst_text = re.sub(r"gapped (?:up |down )?[\d.]+%", "gapped up", catalyst_text)
     catalyst_text = _sanitize_perplexity_filler(catalyst_text)
 
+    # Sugar Baby Convergence tag — operator escalation cue. Pure telemetry:
+    # DB failure here MUST NEVER break the underlying EP alert (the trading
+    # signal). Default to no-tag on any exception, log loud audit, proceed.
+    conv: dict | None = None
+    try:
+        from agents.market_intelligence.db import check_sugar_baby_convergence
+        conv = await check_sugar_baby_convergence(ep["ticker"])
+    except Exception as _ce:
+        try:
+            await log_audit_event(
+                "sugar_baby_convergence_check_failed",
+                f"{ep['ticker']}: {type(_ce).__name__}: {str(_ce)[:200]}"
+            )
+        except Exception:
+            pass
+    conv_tag = ""
+    if conv:
+        if conv["convergence_class"] == "breakout":
+            conv_tag = (
+                f"🎯🎯 *BREAKOUT CONVERGENCE* — "
+                f"cohort {conv['cohort_n']}× · "
+                f"TRIGGERED {conv['days_since_stage']}d ago\n\n"
+            )
+        else:
+            conv_tag = (
+                f"🍬🌀🎯 *SUGAR BABY CONVERGENCE* — "
+                f"cohort {conv['cohort_n']}× · "
+                f"{conv['flag_stage']} {conv['days_since_stage']}d ago\n\n"
+            )
+        # Same-day audit dedup — EP scans tick every 5 min and re-fire HIGH
+        # alerts as ep_score evolves. Without dedup, convergence audit count
+        # inflates 5-20× per converging ticker. Same shape as the 1h dedup
+        # pattern used by catalyst_earnings_revenue_weak_downgrade alerts.
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                prior = await conn.fetchrow("""
+                    SELECT 1 FROM mi_audit_log
+                    WHERE event_type = 'sugar_baby_convergence_alert'
+                      AND summary LIKE $1
+                      AND created_at > NOW() - INTERVAL '1 hour'
+                      AND created_at < NOW() - INTERVAL '1 second'
+                    LIMIT 1
+                """, f"{ep['ticker']} MAGNA53_HIGH%")
+                if prior is None:
+                    await log_audit_event(
+                        "sugar_baby_convergence_alert",
+                        f"{ep['ticker']} MAGNA53_HIGH — "
+                        f"class={conv['convergence_class']} "
+                        f"cohort={conv['cohort_n']}x stage={conv['flag_stage']}"
+                    )
+        except Exception as _ae:
+            # Audit dedup/insert failure is also telemetry — don't block alert
+            logger.debug(f"Convergence audit log failed (non-critical): {_ae}")
+
     text = (
+        conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {cat_e} {ep.get('catalyst_quality', '').replace('_', ' ').title()}\n"
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
