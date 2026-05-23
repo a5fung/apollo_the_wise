@@ -122,26 +122,53 @@ CREATE INDEX idx_stocks_in_play_class ON mi_stocks_in_play(automation_class, ent
 
 Each detector defines its own promotion threshold. This ADR doesn't lock the predicates — each detector owner defines via SSoT update — but documents current expected thresholds.
 
+**Methodology presence vs entry technique** (user direction 2026-05-23): the `source_detector` enum has TWO conceptual classes:
+
+- **Methodology presence** signals (e.g. `flag_tightening`, `sugar_baby_cohort`) say "this stock is in play under methodology X." They don't specify HOW to enter — multiple legitimate entry mechanics exist (see `memory/user_tight_range_entry_techniques.md` for the 5-technique taxonomy: Breakout / Support-test / MA pullback / Low-volume rest / U&R).
+- **Entry-technique** signals (e.g. `flag_break_intraday`, `flag_undercut_rally`, `convergence_breakout`) say "an actionable trigger fired using mechanism Y." Each is a distinct detector class.
+
+Multiple entry-technique rows can fire on the same ticker during its presence window — operator picks the entry style. Phase 1 implementation surfaces both classes; future Phase 5 (when Stocks-in-Play migrates from telemetry to entry execution) automates only the entry-technique signals, never the methodology-presence ones.
+
 **Constants module** (Phase 1 creates this file to prevent magic-string drift across N insert sites — same lesson as `agents/market_intelligence/broker/skip_reasons.py`):
 
 ```python
 # agents/market_intelligence/stocks_in_play_sources.py
+
+# ── Methodology / pattern presence (which stocks show meaningful setups) ──
+# These say "this stock is in play under methodology X" — they DON'T
+# specify entry technique. A tight-range stock admits multiple legitimate
+# entries (see methodology source: user_tight_range_entry_techniques.md).
 SOURCE_SUGAR_BABY_COHORT        = "sugar_baby_cohort"
 SOURCE_SUGAR_BABY_RIPE          = "sugar_baby_ripe"           # cohort × flag stage
-SOURCE_CONVERGENCE_ANTICIPATORY = "convergence_anticipatory"  # cohort × COILED/TIGHTENING × EP
-SOURCE_CONVERGENCE_BREAKOUT     = "convergence_breakout"      # cohort × TRIGGERED × EP
-SOURCE_FLAG_COILED              = "flag_coiled"
-SOURCE_FLAG_TRIGGERED           = "flag_triggered"
+SOURCE_FLAG_TIGHTENING          = "flag_tightening"           # in tight range, pre-breakout
+SOURCE_FLAG_COILED              = "flag_coiled"               # late-base, max compression
 SOURCE_WICK_FILL                = "wick_fill"
 SOURCE_PARABOLIC_SHORT          = "parabolic_short"
 SOURCE_FISHHOOK_V3              = "fishhook_v3"
-SOURCE_MAGNA53_EP_HIGH          = "magna53_ep_high"
-SOURCE_NINEM_EP_HIGH            = "ninem_ep_high"
+
+# ── Entry-technique triggers (HOW to enter a stock that's in play) ──
+# Multiple may fire on the same ticker — operator picks the entry style.
+# See memory/user_tight_range_entry_techniques.md for the 5-row taxonomy
+# (Breakout / Support-test / MA pullback / Low-vol rest / U&R).
+SOURCE_CONVERGENCE_ANTICIPATORY = "convergence_anticipatory"  # cohort × COILED/TIGHTENING × EP
+SOURCE_CONVERGENCE_BREAKOUT     = "convergence_breakout"      # cohort × TRIGGERED × EP
+SOURCE_FLAG_BREAK_INTRADAY      = "flag_break_intraday"       # ADR 0005 #94 — Entry #1 Breakout
+SOURCE_FLAG_TRIGGERED           = "flag_triggered"            # EOD post-hoc; superseded by intraday
+# Reserved for future entry-technique detectors (user 2026-05-23):
+SOURCE_FLAG_SUPPORT_TEST        = "flag_support_test"         # Entry #2 — base_low tests + hold
+SOURCE_FLAG_MA_PULLBACK         = "flag_ma_pullback"          # Entry #3 — MA10/20/50 pullback
+SOURCE_FLAG_LOWVOL_REST         = "flag_lowvol_rest"          # Entry #4 — mid-range vol contraction
+SOURCE_FLAG_UNDERCUT_RALLY      = "flag_undercut_rally"       # Entry #5 — U&R Stamatoudis pattern
+SOURCE_MAGNA53_EP_HIGH          = "magna53_ep_high"           # EP catalyst entry
+SOURCE_NINEM_EP_HIGH            = "ninem_ep_high"             # 9M anomaly entry
 
 VALID_SOURCES = frozenset({
     SOURCE_SUGAR_BABY_COHORT, SOURCE_SUGAR_BABY_RIPE,
+    SOURCE_FLAG_TIGHTENING, SOURCE_FLAG_COILED,
     SOURCE_CONVERGENCE_ANTICIPATORY, SOURCE_CONVERGENCE_BREAKOUT,
-    SOURCE_FLAG_COILED, SOURCE_FLAG_TRIGGERED,
+    SOURCE_FLAG_BREAK_INTRADAY, SOURCE_FLAG_TRIGGERED,
+    SOURCE_FLAG_SUPPORT_TEST, SOURCE_FLAG_MA_PULLBACK,
+    SOURCE_FLAG_LOWVOL_REST, SOURCE_FLAG_UNDERCUT_RALLY,
     SOURCE_WICK_FILL, SOURCE_PARABOLIC_SHORT, SOURCE_FISHHOOK_V3,
     SOURCE_MAGNA53_EP_HIGH, SOURCE_NINEM_EP_HIGH,
 })

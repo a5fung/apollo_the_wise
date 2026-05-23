@@ -35,6 +35,18 @@ The TIGHTENING bright-spot is the move "leaking out" while we wait for EOD class
 
 ## 3. Detection logic
 
+**Scope (load-bearing — captured 2026-05-23 user direction):** this detector handles ONE entry mechanic — the breakout trigger. A tight-range consolidation admits at least 5 distinct entry techniques per `memory/user_tight_range_entry_techniques.md`:
+
+| # | Entry technique | This detector? |
+|---|---|---|
+| 1 | **Breakout** (price tags `base_high` with volume) | **YES — this detector** |
+| 2 | Support-test bottom (price tests `base_low` and holds) | No — future detector class |
+| 3 | MA pullback (retrace to MA10/20/50 on light volume) | No — future detector class |
+| 4 | Low-volume rest (mid-range drift, institutional pause) | No — future detector class |
+| 5 | U&R — Undercut & Rally (quick undercut of `base_low` or key MA, then rally back above) | No — future detector class; Stamatoudis "shake the tree" pattern |
+
+These are distinct signal mechanics on the SAME stock — Stocks-in-Play (ADR 0004) surfaces the stock once; multiple entry-technique detectors can fire independently. This ADR scopes to #1; the other 4 are filed for future detector work and explicitly reserved as source_detector enum slots in ADR 0004 §4.
+
 ### Volume-pace projection (primary gate)
 
 ```
@@ -131,12 +143,20 @@ A stock that broke intraday but is reclassified INVALIDATED by the same evening'
 - `automation_class = apollo_eligible` migration via SQL UPDATE
 - Drawdown breaker integration
 
+### Other entry-technique detectors (sibling classes, filed for future)
+- **Support-test detector** — fires when price tests `base_low` intraday and holds (close > test_low + minimum bounce). Tightest stop placement; counter-trend signal mechanic
+- **MA-pullback detector** — fires when price pulls back to MA10/MA20/MA50 inside the range on light volume. Classic VCP entry; requires MA-distance + volume-contraction logic
+- **Low-volume rest detector** — fires when mid-range drift on contracting volume (`vol_contraction_ratio` already in COILED stage). Sniper entry; hardest to automate; may stay operator-only longer
+- **U&R (Undercut & Rally) detector** — fires when ticker undercuts `base_low` or key MA AND rallies back above within N bars. Stamatoudis pattern. Counter-intuitive risk profile (tightest stop, biggest cushion). Most-complex shape; likely last to detect automatically
+
+Each is a distinct detector class with different signal mechanics; per `feedback_sample_size_discipline.md`, each ships shadow-first with N≥10 settled before paper-phase consideration.
+
 ### Other deferred concerns
 - Stop placement design (base_low vs ATR-based) — Phase 2
 - Cancellation logic if break fades intraday — Phase 2 (depends on entry mechanism)
 - Multi-day re-break tracking — defer until data shows the pattern matters
 - Backward-replay against historical 1-min bars — requires minute-bar storage we don't have; forward-data accumulates
-- **TIGHTENING watchlist surface (#93)** — separate ship; rides alongside #94 but doesn't block first phase
+- **TIGHTENING watchlist surface (#93)** — refined per user 2026-05-23 to "TIGHTENING watchlist + entry-technique annotation": each watched ticker tagged with which of the 5 entry techniques are currently valid (operator picks the entry style). Rides alongside #94 but doesn't block first phase.
 
 ## 8. Critical files
 
