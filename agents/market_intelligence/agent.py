@@ -1911,17 +1911,30 @@ class MarketIntelligenceAgent(BaseAgent):
         rows = await get_sugar_babies_cohort_latest(limit=60)
         if not rows:
             return self._ok(request, result=f"_No tickers in cohort on {latest}._")
+        # Stage emoji vocabulary matches /flags handler conventions
+        # (🎯 TRIGGERED / 🌀 COILED / 🔧 TIGHTENING). Space-pad when no
+        # recent flag stage so column alignment is preserved.
+        stage_emoji = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
+        ripe_count = sum(1 for r in rows if r.get("current_flag_stage"))
         lines = [
             f"🍬 *Sugar Babies — Pradeep persistent cohort* ({latest})",
-            f"_{len(rows)} tickers with ≥3 9M-vol EOD prints in trailing 180d._",
+            f"_{len(rows)} tickers · {ripe_count} ripe (🎯=breakout 🌀=coiled 🔧=tightening)_",
             "",
         ]
         for r in rows[:30]:  # Pradeep watchlist size ~25-30
             days_since = (latest - r["last_9m_alert"]).days
             gap = r.get("latest_gap_pct")
             gap_s = f" · gap {float(gap):.1f}%" if gap is not None else ""
+            stage = r.get("current_flag_stage")
+            emoji = stage_emoji.get(stage, " ")  # space-pad alignment
+            base_age = r.get("flag_base_age")
+            stage_s = (
+                f" · {stage} {base_age}d"
+                if stage and base_age is not None
+                else (f" · {stage}" if stage else "")
+            )
             lines.append(
-                f"  `{r['ticker']:<6}` {r['n']}× 9M · last {days_since}d ago{gap_s}"
+                f"  {emoji} `{r['ticker']:<6}` {r['n']}× 9M · last {days_since}d ago{gap_s}{stage_s}"
             )
         if len(rows) > 30:
             lines.append(f"  …{len(rows) - 30} more")

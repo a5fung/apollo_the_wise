@@ -966,12 +966,25 @@ def _format_evening_briefing(
             today_d = date.fromisoformat(briefing_date) if briefing_date else date.today()
         except (ValueError, TypeError):
             today_d = date.today()
-        lines = [f"🍬 *Persistent Sugar Babies* ({len(cohort_babies)} top — full: `/sugarbabies`)"]
+        # Stage emoji vocabulary matches /flags + /sugarbabies conventions
+        # (🎯 TRIGGERED / 🌀 COILED / 🔧 TIGHTENING). DB-side ripeness sort
+        # means ripe entries (TRIGGERED > COILED > TIGHTENING) already top
+        # the list; this just decorates them visually.
+        stage_emoji = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
+        ripe_count = sum(1 for r in cohort_babies if r.get("current_flag_stage"))
+        header = (
+            f"🍬 *Persistent Sugar Babies* "
+            f"({len(cohort_babies)} top, {ripe_count} ripe — full: `/sugarbabies`)"
+        )
+        lines = [header]
         for r in cohort_babies:
             last = r.get("last_9m_alert")
             days_since = (today_d - last).days if last else None
             ds_s = f"{days_since}d ago" if days_since is not None else "—"
-            lines.append(f"  `{r['ticker']:<6}` {r['n']}× · {ds_s}")
+            stage = r.get("current_flag_stage")
+            emoji = stage_emoji.get(stage, " ")  # space-pad alignment
+            stage_s = f" · {stage}" if stage else ""
+            lines.append(f"  {emoji} `{r['ticker']:<6}` {r['n']}× · {ds_s}{stage_s}")
         sections.append("\n".join(lines))
         sections.append("")
 
