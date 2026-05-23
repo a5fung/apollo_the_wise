@@ -2,8 +2,35 @@
 
 Trigger: 2026-05-23 #92 first graduation review. Evaluates whether the
 continuation-flag detector (shadow phase since 2026-05-04) earns
-graduation to paper trading. Initial finding: NO — forward returns
-DECREASE as stage advances toward TRIGGERED.
+graduation to paper trading. **Final finding: STRUCTURAL NO-GO.**
+
+KEY METHODOLOGY CORRECTION (2026-05-23 user-flagged):
+
+TRIGGERED-as-implemented is a POST-HOC EOD CLASSIFICATION — not a
+trading trigger. The shadow detector runs at 5:25 PM ET and asks
+"did the close end above the base high?" By that time, the actual
+breakout moment (intraday range-break) has already occurred, the
+move has played out for hours, and overnight selling has begun.
+
+The proper trading mechanic for a continuation-flag breakout is
+INTRADAY — when price first breaks above the established range with
+volume confirmation, enter AT that moment. Our current EOD scan
+cannot execute that mechanic; it can only confirm post-hoc whether
+the breakout held to close.
+
+This re-interprets the -2.66% TRIGGERED return (realistic D+1 open
+entry) NOT as "breakout methodology is bad" but as **"EOD entry
+after the move has already played out is structurally wrong."**
+TIGHTENING's +1.73% drift is the average move that LEAKS away while
+we wait for EOD classification.
+
+Graduation requires architectural work: build a real-time intraday
+range-break detector (similar surface to 9M intraday scan + ORB
+monitor) that fires at the moment of break, not at EOD. Until that
+ships, the EOD scan is useful as the IDENTIFICATION layer (knowing
+which stocks have tight bases) but NOT as the entry trigger.
+
+Filed as followup: intraday flag-break detector ADR 0005 (#94).
 
 Method:
   1. For each (ticker, scan_date, stage) row in mi_flag_candidates,
@@ -143,20 +170,30 @@ async def main():
     avg_t = triggered.get("avg_10d", 0)
     wr_t = triggered.get("wr5_10d", 0)
 
-    if n_t < 30:
-        print(f"→ N<30 ({n_t} TRIGGERED settled 10d). CONTINUE OBSERVING in shadow.")
-        print(f"  Current rate ≈ 5-8 TRIGGERED/month — N≥30 needs ~3-6 more months.")
-        print(f"  Re-evaluate via this script monthly via quarterly_review.py.")
-    elif avg_t > 3 and wr_t > 35:
-        print(f"→ PROMOTE to paper. TRIGGERED N={n_t}, avg={avg_t:+.2f}%, WR={wr_t}%.")
-        print(f"  Design paper-phase implementation: entry trigger, sizing, stop placement.")
-    else:
-        print(f"→ TRIGGERED at N≥30 but signal weak (avg={avg_t:+.2f}%, WR={wr_t}%).")
-        print(f"  Detector NEEDS REVISION before graduation. Investigation areas:")
-        print(f"    - COILED/TRIGGERED criteria may be too aggressive")
-        print(f"    - Regime mismatch (continuation flags underperform in choppy markets)")
-        print(f"    - Forward-window mismatch (10d may be too short for continuation hold)")
-        print(f"    - Consider TIGHTENING × cohort overlap as more selective signal")
+    print(f"→ STRUCTURAL NO-GO — regardless of N.")
+    print()
+    print("  The EOD-classified TRIGGERED stage is a POST-HOC measurement,")
+    print("  not an entry trigger. By the time our 5:25 PM scan flags a")
+    print("  ticker as TRIGGERED:")
+    print("    - The intraday breakout moment has already passed (hours ago)")
+    print("    - Move has played out through the trading day")
+    print("    - Overnight selling-into-strength has begun (TRIGGERED stocks")
+    print(f"      fade ~2% from D close to D+1 open on average — see script)")
+    print()
+    print(f"  Current N={n_t} TRIGGERED + avg={avg_t:+.2f}% / WR={wr_t}% is")
+    print("  consistent with this structural read: even a cheaper D+1-open")
+    print("  entry can't recover the move that already happened intraday.")
+    print()
+    print("  → To trade flag breakouts, build an INTRADAY range-break detector")
+    print("    (real-time 5-min scan; alert when price > base_high with volume")
+    print("    confirmation; bracket entry at that moment). See ADR 0005 (#94,")
+    print("    intraday flag-break detector). Until that ships, this EOD")
+    print("    scan stays useful as the IDENTIFICATION layer (TIGHTENING /")
+    print("    COILED watchlist) but NOT as an entry trigger.")
+    print()
+    print("  Monthly re-runs of this script track whether TIGHTENING-stage")
+    print("  signal sustains (it's the bright spot — see below) so the")
+    print("  intraday detector ships against current evidence, not stale.")
     print()
 
     # TIGHTENING bright-spot callout

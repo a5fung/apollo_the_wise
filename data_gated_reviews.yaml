@@ -4077,12 +4077,21 @@ reviews:
       (meta-lessons captured).
 
   - review_id: flag_detector_graduation_evidence_n30
-    title: "Flag detector COILED→TRIGGERED graduation — N≥30 settled TRIGGERED decision (#92)"
+    title: "Flag detector TRIGGERED-as-EOD-classification is structurally wrong (#92 — re-framed)"
     question: |
+      INITIAL FRAMING (2026-05-23 AM): "Does TRIGGERED stage earn
+      paper-phase graduation at N≥30 settled cases with positive
+      forward returns?"
+
+      RE-FRAMED (2026-05-23 PM, user-corrected): TRIGGERED-as-currently-
+      implemented is a POST-HOC EOD CLASSIFICATION, not an entry
+      trigger. The 5:25 PM ET scan asks "did close > base_high?"
+      AFTER the actual intraday breakout moment has passed. Our
+      detector can't execute the methodology-correct entry; we're
+      measuring an artifact, not a trading signal.
+
       Continuation-flag detector (`mi_flag_candidates`, shipped shadow
-      phase 2026-05-04) earns paper-phase graduation IF the TRIGGERED
-      stage shows materially better forward returns than baseline at
-      N≥30 settled cases. 2026-05-23 first evaluation (#92):
+      phase 2026-05-04) initial evaluation:
 
         Stage      | N    | avg 10d  | WR≥+5% 10d
         -----------+------+----------+-----------
@@ -4091,21 +4100,30 @@ reviews:
         TIGHTENING |  123 |  +1.14%  |   24.4%
         WATCH      |  486 |  -2.23%  |   20.6%
 
-      Inverted pattern: forward returns DECREASE as stage advances
-      toward TRIGGERED. Anti-graduation evidence. Either the COILED/
-      TRIGGERED criteria are too aggressive (false-positive on
-      breakouts that fade), the regime has been choppy (May 2026),
-      OR continuation-flag holds need a longer forward window (5d/10d
-      may be too short — Qullamaggie methodology targets 10-20 days).
+      Re-framed conclusion: STRUCTURAL NO-GO regardless of N. The
+      -2.66% TRIGGERED return at realistic D+1-open entry isn't
+      evidence the breakout methodology is bad — it's evidence that
+      EOD-entry-after-the-intraday-move is structurally wrong. The
+      data signature confirms: TRIGGERED stocks fade -2.03% from D
+      close to D+1 open on average (sellers-into-strength after
+      breakout-day close). The move plays out intraday; by EOD it's
+      done.
 
-      Bright spot: TIGHTENING (pre-breakout stage) shows +1.14% avg
-      10d / 24.4% WR — positive expected value at N=123. Matches
-      "enter the base before breakout" methodology. Cross-reference
-      to ADR 0004 §4 as candidate source_detector for alert-class
-      surface if cohort grows.
+      To trade flag breakouts properly requires an INTRADAY range-
+      break detector (real-time 5-min scan; alert when price >
+      base_high with volume confirmation; bracket entry at that
+      moment). Filed as ADR 0005 / #94 separately. TIGHTENING
+      watchlist surface filed as #93.
 
-      Re-evaluation auto-refreshes monthly via quarterly_review.py
-      (`Flag detector graduation (#92)` entry).
+      Bright spot: TIGHTENING (pre-breakout stage) shows +1.73% avg
+      10d / 28.8% WR / 21.2% big-winners ≥+10% — entry-aware metric.
+      This is the move "leaking out" while we wait for EOD
+      classification. Confirms breakouts ARE happening intraday;
+      our scan just can't catch them.
+
+      Re-evaluation auto-refreshes monthly via quarterly_review.py.
+      Monthly script tracks whether TIGHTENING signal sustains so
+      the intraday detector ships against current evidence, not stale.
     predicate_sql: |
       -- N>=30 settled TRIGGERED cases (10d forward window populated)
       WITH stage_rows AS (
@@ -4126,47 +4144,43 @@ reviews:
     threshold: 30
     earliest_review_date: 2026-08-15
     action_when_ready: |
-      Re-run scripts/_b92_flag_detector_graduation_evidence.py.
-      Built-in decision gate triggers one of:
+      RE-FRAMED 2026-05-23 PM: this review's structural conclusion
+      DOES NOT change with more N. EOD TRIGGERED classification is
+      not an entry trigger; more N just confirms the same artifact.
 
-      1. N>=30 TRIGGERED + avg ret_10d > +3% + WR_5pct_10d > 35%:
-         PROMOTE to paper. Design paper-phase implementation:
-         - Entry: TRIGGERED scan_date close OR next-open
-         - Sizing: per-strategy position_size_multiplier (start 0.5)
-         - Stop: base low OR ATR-based (study which works in cohort)
-         - max_concurrent_positions: 2 initially (per #65 pattern)
-         - Audit + Telegram surface
+      Action at every monthly re-run:
+      1. Verify TRIGGERED-EOD signal remains weak (negative or near-
+         zero forward returns at D+1-open entry). Drift to positive
+         would warrant investigation but is not expected given the
+         structural nature of the issue.
+      2. Track TIGHTENING-stage signal sustainment. If +1%/25% WR
+         holds steadily over the next 3+ months, it confirms the
+         "move leaks out before EOD" thesis and strengthens the case
+         for the intraday detector.
+      3. Once intraday flag-break detector (ADR 0005 / #93) ships,
+         this review can be CLOSED and superseded by an intraday-
+         entry-aware evaluation review.
 
-      2. N>=30 TRIGGERED + signal still negative: REVISE detector
-         before graduation. Investigation:
-         - Are COILED/TRIGGERED criteria too aggressive (gap + vol
-           thresholds need tightening)?
-         - Did regime shift since 2026-05? Re-evaluate in different
-           market regime
-         - Does longer forward window (20d) change verdict?
-         - Cross-reference: do TRIGGERED on theme-member tickers
-           outperform random TRIGGERED?
-
-      3. N<30 at review date: continue observing; bump
-         earliest_review_date +30d. Current rate ~5-8 TRIGGERED/month
-         suggests N=30 reached around 2026-08 to 2026-09.
-
-      4. TIGHTENING signal validation (separate review path):
-         If TIGHTENING N >= 200 settled AND avg ret_10d > +1% AND
-         WR_5pct_10d > 25% holds steadily: file followup to ship
-         TIGHTENING as alert-class signal in mi_stocks_in_play
-         (informational tier per ADR 0004 §4 — too many candidates
-         for entry-class).
-
-      DO NOT promote any stage to entry-class without N>=30 settled
-      AND positive expected value AND baseline comparison per
-      validate_metric_before_decision discipline.
+      Decision branches:
+      - Intraday detector (#93) ships and accumulates N≥30 settled
+        intraday-entry cohort: file NEW review evaluating that
+        cohort's R-expectancy. Close this review.
+      - Intraday detector NOT shipped by 2026-08-15: re-evaluate
+        the urgency in light of other strategy priorities.
+      - TIGHTENING signal degrades to baseline: re-evaluate whether
+        the consolidation-entry thesis holds at all in current regime.
 
       Cross-references:
+      - #94 (intraday flag-break detector / ADR 0005 — supersedes
+        this review's scope when it ships)
+      - #93 (TIGHTENING watchlist surface — informational tier per
+        ADR 0004 §4; rides alongside #94)
       - #47 (Flag carryforward path stage 2 telemetry — earlier study)
-      - #92 (this review's parent investigation)
       - ADR 0004 §7 Phase 4 (flag detector migration to
-        mi_stocks_in_play awaits this validation)
+        mi_stocks_in_play awaits intraday-entry-aware validation)
+      - feedback_validate_metric_before_decision.md (this re-framing
+        IS the discipline applied — original metric was post-hoc
+        classification, not entry-aware P&L)
       - feedback_methodology_insights_need_periodic_revalidation.md
         (this entry IS the periodic re-evaluation)
     status: pending
