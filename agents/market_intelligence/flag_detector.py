@@ -1288,6 +1288,212 @@ async def run_intraday_flag_break_scan(scan_time):
     return len(new_breaks)
 
 
+# ────────────────────────────────────────────────────────────────────────
+# Entry-technique annotation (#93, 2026-05-23 ship)
+# ────────────────────────────────────────────────────────────────────────
+#
+# For each TIGHTENING/COILED watchlist ticker, compute which of the 5
+# tight-range entry techniques are currently eligible based on real-time
+# price + the EOD candidate row. Pure compute — no DB calls. Caller
+# provides snapshot + candidate; helper returns annotation list.
+#
+# See memory/user_tight_range_entry_techniques.md for the 5-row taxonomy.
+# Only 4 of 5 implemented in this first ship:
+#   1. Breakout-near    🎯  price within 3% of base_high
+#   2. Support-test     🛡  price within 3% of base_low
+#   3. MA-pullback      📉  price within 2% of sma_10 OR sma_20
+#   4. Low-vol-rest     💤  today's vol <50% ADV AND price mid-range
+#   5. U&R-recent       (deferred — needs swing-low logic not in current schema)
+
+# Annotation thresholds (proximity gates; small enough that "near" means
+# "actionable today" but loose enough that operator has 1-2 days to chart-review)
+_BREAKOUT_NEAR_PCT     = 3.0   # price within 3% below base_high
+_SUPPORT_TEST_NEAR_PCT = 3.0   # price within 3% above base_low
+_MA_PULLBACK_NEAR_PCT  = 2.0   # price within 2% of MA
+_LOWVOL_REST_VOL_PCT   = 50.0  # today's vol < 50% of ADV
+_LOWVOL_REST_MID_BAND  = 0.25  # price within middle 50% of [base_low, base_high]
+
+
+def compute_entry_technique_annotations(snap, candidate, adv_20=None):
+    """Pure compute. Returns list of (technique, emoji, detail) tuples
+    indicating which entry techniques are currently eligible for this ticker.
+
+    Args:
+        snap: Polygon snapshot dict (from get_snapshot_all)
+        candidate: mi_flag_candidates row (must have base_high, base_low,
+                   sma_10, sma_20; sma values may be None)
+        adv_20: optional pre-fetched ADV; if None, low-vol-rest is skipped
+
+    Returns:
+        list[tuple[technique_name, emoji, detail_str]]
+    """
+    if not snap or not candidate:
+        return []
+
+    current_price = (
+        snap.get("day", {}).get("c")
+        or snap.get("min", {}).get("c")
+        or snap.get("lastTrade", {}).get("p")
+    )
+    if not current_price or current_price <= 0:
+        return []
+
+    base_high = candidate.get("base_high")
+    base_low = candidate.get("base_low")
+    if not base_high or not base_low or base_high <= base_low:
+        return []
+
+    annotations: list[tuple[str, str, str]] = []
+
+    # Entry #1 — Breakout-near (price near top of range, eligible for break alert)
+    dist_to_high = (base_high - current_price) / current_price * 100.0
+    if 0 < dist_to_high <= _BREAKOUT_NEAR_PCT:
+        annotations.append((
+            "breakout_near", "🎯",
+            f"{dist_to_high:.1f}% below ${base_high:.2f}"
+        ))
+
+    # Entry #2 — Support-test (price near bottom; tightest stop)
+    dist_above_low = (current_price - base_low) / current_price * 100.0
+    if 0 < dist_above_low <= _SUPPORT_TEST_NEAR_PCT:
+        annotations.append((
+            "support_test", "🛡",
+            f"{dist_above_low:.1f}% above ${base_low:.2f}"
+        ))
+
+    # Entry #3 — MA-pullback (price near MA10 or MA20 inside range)
+    for ma_label, ma_value in (("MA10", candidate.get("sma_10")),
+                                ("MA20", candidate.get("sma_20"))):
+        if ma_value and ma_value > 0:
+            # Only eligible if price is INSIDE the base (MA within range)
+            if base_low < ma_value < base_high:
+                dist_pct = abs(current_price - ma_value) / current_price * 100.0
+                if dist_pct <= _MA_PULLBACK_NEAR_PCT:
+                    side = "at" if abs(current_price - ma_value) < 0.01 else (
+                        "above" if current_price > ma_value else "below"
+                    )
+                    annotations.append((
+                        f"ma_pullback_{ma_label.lower()}", "📉",
+                        f"{dist_pct:.1f}% {side} {ma_label} ${ma_value:.2f}"
+                    ))
+                    break  # one MA-pullback callout per ticker
+
+    # Entry #4 — Low-volume rest (mid-range drift, contracting volume)
+    if adv_20 and adv_20 > 0:
+        today_volume = snap.get("day", {}).get("v") or 0
+        vol_pct = today_volume / adv_20 * 100.0
+        range_size = base_high - base_low
+        if range_size > 0:
+            position_in_range = (current_price - base_low) / range_size
+            mid_band_low = 0.5 - _LOWVOL_REST_MID_BAND  # 0.25
+            mid_band_high = 0.5 + _LOWVOL_REST_MID_BAND  # 0.75
+            if (vol_pct < _LOWVOL_REST_VOL_PCT and
+                mid_band_low <= position_in_range <= mid_band_high):
+                annotations.append((
+                    "lowvol_rest", "💤",
+                    f"vol {vol_pct:.0f}% ADV, mid-range"
+                ))
+
+    # Entry #5 — U&R deferred (needs swing-low logic + recent undercut
+    # tracking that isn't in current schema — see memory file + task #98)
+
+    return annotations
+
+
+async def get_flag_watchlist(scan_date=None):
+    """Return current TIGHTENING/COILED watchlist with entry-technique
+    annotations per ticker.
+
+    Reads MAX(scan_date) WHERE < CURRENT_DATE from mi_flag_candidates
+    (trading-session-aware per ADR 0004 Gemini contract). Calls
+    get_snapshot_all() for live prices. Computes annotations via
+    compute_entry_technique_annotations.
+
+    Args:
+        scan_date: optional override; defaults to latest pre-today
+                   scan_date in mi_flag_candidates
+
+    Returns:
+        list[dict] — one per watchlist ticker, with annotations list
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        if scan_date is None:
+            scan_date = await conn.fetchval("""
+                SELECT MAX(scan_date) FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            """)
+        if not scan_date:
+            return []
+
+        candidates = await conn.fetch("""
+            SELECT ticker, stage, base_age, base_high, base_low,
+                   sma_10, sma_20, runup_pct, range_contraction_ratio,
+                   vol_contraction_ratio
+            FROM mi_flag_candidates
+            WHERE scan_date = $1
+              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND base_high IS NOT NULL
+            ORDER BY
+                CASE stage WHEN 'TRIGGERED' THEN 1 WHEN 'COILED' THEN 2
+                           WHEN 'TIGHTENING' THEN 3 END,
+                base_age DESC
+        """, scan_date)
+
+        if not candidates:
+            return []
+
+        ticker_list = [c["ticker"] for c in candidates]
+        adv_rows = await conn.fetch("""
+            SELECT ticker, AVG(volume)::bigint AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+            ) sub
+            WHERE rn <= 20
+            GROUP BY ticker
+        """, ticker_list)
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+    # Single Polygon batch call
+    snapshots = await get_snapshot_all()
+
+    watchlist: list[dict] = []
+    for cand in candidates:
+        ticker = cand["ticker"]
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+        current_price = (
+            snap.get("day", {}).get("c")
+            or snap.get("min", {}).get("c")
+            or snap.get("lastTrade", {}).get("p")
+        )
+        if not current_price or current_price <= 0:
+            continue
+        annotations = compute_entry_technique_annotations(
+            snap, dict(cand), adv_20=adv_map.get(ticker)
+        )
+        watchlist.append({
+            "ticker": ticker,
+            "stage": cand["stage"],
+            "base_age": cand["base_age"],
+            "base_high": float(cand["base_high"]),
+            "base_low": float(cand["base_low"]) if cand["base_low"] else None,
+            "current_price": float(current_price),
+            "annotations": annotations,
+            "scan_date": scan_date,
+        })
+
+    return watchlist
+
+
 async def reconcile_flag_breaks_post_eod(scan_date):
     """Post-EOD reconciliation per Gemini contract 2026-05-23.
 

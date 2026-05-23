@@ -1942,6 +1942,88 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_watchlist_query(self, request: AgentRequest) -> AgentResponse:
+        """`/watch` — proactive tight-range watchlist with entry-technique
+        annotations (#93, ADR 0005 §3 + memory/user_tight_range_entry_techniques).
+
+        Shows TIGHTENING/COILED/TRIGGERED tickers from the most-recent EOD
+        flag scan, with annotations indicating which of the 5 tight-range
+        entry techniques are currently eligible per ticker:
+            🎯 breakout-near (price within 3% of base_high)
+            🛡 support-test (price within 3% of base_low)
+            📉 MA-pullback (price near MA10/MA20 inside range)
+            💤 low-vol-rest (vol <50% ADV + price mid-range)
+            (U&R deferred — needs swing-low logic per #98)
+
+        The detector for entry #1 (breakout-near) is the intraday flag-break
+        scan (#94) shipped 2026-05-23. Other entry techniques are operator-
+        judgment until #95-#98 ship.
+        """
+        from agents.market_intelligence.flag_detector import get_flag_watchlist
+
+        watchlist = await get_flag_watchlist()
+        if not watchlist:
+            return self._ok(
+                request,
+                result=(
+                    "_No tight-range watchlist available._\n\n"
+                    "EOD flag scan runs 5:25 PM ET Mon-Fri. Try again after market close."
+                ),
+            )
+
+        scan_date = watchlist[0]["scan_date"]
+        n_total = len(watchlist)
+        n_with_annot = sum(1 for w in watchlist if w["annotations"])
+        n_breakout = sum(1 for w in watchlist
+                         if any(a[0] == "breakout_near" for a in w["annotations"]))
+        n_support = sum(1 for w in watchlist
+                        if any(a[0] == "support_test" for a in w["annotations"]))
+        n_ma = sum(1 for w in watchlist
+                   if any(a[0].startswith("ma_pullback") for a in w["annotations"]))
+        n_lowvol = sum(1 for w in watchlist
+                       if any(a[0] == "lowvol_rest" for a in w["annotations"]))
+
+        lines = [
+            f"🎯 *Tight-Range Watchlist* ({scan_date})",
+            f"_{n_total} tickers · {n_with_annot} with actionable entry annotations_",
+            f"_Eligible: {n_breakout} breakout-near · {n_support} support-test · "
+            f"{n_ma} MA-pullback · {n_lowvol} low-vol-rest_",
+            "",
+        ]
+
+        # Group by stage for display
+        stage_emoji = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
+        for stage in ["TRIGGERED", "COILED", "TIGHTENING"]:
+            stage_rows = [w for w in watchlist if w["stage"] == stage]
+            if not stage_rows:
+                continue
+            # Surface tickers WITH annotations first within each stage
+            stage_rows.sort(key=lambda w: (not w["annotations"], -w["base_age"]))
+            lines.append(f"*{stage_emoji[stage]} {stage} ({len(stage_rows)})*")
+            for w in stage_rows[:15]:  # cap per stage
+                annot_str = ""
+                if w["annotations"]:
+                    annot_str = " " + " ".join(
+                        f"{emoji} {detail}" for _, emoji, detail in w["annotations"]
+                    )
+                lines.append(
+                    f"  `{w['ticker']:<5}` ${w['current_price']:.2f} "
+                    f"(base {w['base_age']}d){annot_str}"
+                )
+            if len(stage_rows) > 15:
+                lines.append(f"  _…{len(stage_rows) - 15} more (no annotations or older base)_")
+            lines.append("")
+
+        lines.append(
+            "_Annotation legend_: 🎯 breakout-near · 🛡 support-test · "
+            "📉 MA-pullback · 💤 low-vol-rest"
+        )
+        lines.append(
+            "_Detector for breakout-near = intraday flag-break (#94, shadow). "
+            "Other entries = operator judgment until #95-#98 ship._"
+        )
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_flag_breaks_query(self, request: AgentRequest) -> AgentResponse:
         """`/flagbreaks` — intraday flag-break detector surface (#94, ADR 0005).
 
@@ -4293,6 +4375,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/timestop":       self._handle_time_stop_command,
             "/flagbreaks":     self._handle_flag_breaks_query,
             "/flagbreak":      self._handle_flag_breaks_query,
+            "/watch":          self._handle_watchlist_query,
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,
