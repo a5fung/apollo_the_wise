@@ -4075,3 +4075,75 @@ reviews:
       hygiene fix that triggered the correction), #66/#68 (urgent
       flag + revert commits), feedback_sample_size_discipline.md
       (meta-lessons captured).
+
+  - review_id: sugar_baby_convergence_backtest_first_eval
+    title: "Sugar Baby Convergence — backtest forward returns once N≥10 fires settle"
+    question: |
+      Sugar Baby Convergence shipped 2026-05-22 (#83 Stage 1 + #84
+      Stage 2) as pure observability — tags HIGH MAGNA53/9M EP alerts
+      that fire on a Pradeep-cohort ticker recently in COILED/
+      TIGHTENING/TRIGGERED. Two visual classes:
+        - convergence_class='breakout'     (TRIGGERED + EP fire)
+        - convergence_class='anticipatory' (COILED/TIGHTENING + EP fire)
+
+      Hypothesis: convergence-tagged HIGH alerts have measurably
+      better 5d forward returns than non-convergence HIGH alerts.
+      Pradeep's "day one of swing + catalyst" framing predicts the
+      breakout class outperforms; anticipatory class is the
+      Qullamaggie-style "ripe base + catalyst" pattern.
+
+      Earliest review: 2026-08-01 (estimated 6-10 weeks for N≥10 to
+      accumulate given 0-2 convergences/week initial fire rate).
+
+      MUST validate via feedback_validate_metric_before_decision.md
+      discipline: compare convergence-tagged 5d returns vs baseline
+      non-convergence HIGH-alert 5d returns over the same period.
+      If both score similarly, the tag is drift-dominated and the
+      convergence signal is noise. Don't ship anything based on
+      convergence alone scoring high — the comparison is the data.
+    predicate_sql: |
+      -- Predicate: ≥10 distinct (ticker, alert_date) convergence fires.
+      -- Counts unique ticker-day pairs to avoid per-scan-tick inflation
+      -- (audit dedup is 1h-window via mi_audit_log on the write path,
+      -- but reads should still COUNT DISTINCT to be defensive — see
+      -- Monday-fix followup re: 1h-vs-trading-day dedup window).
+      SELECT COUNT(*) FROM (
+          SELECT DISTINCT
+                 SUBSTRING(summary FROM '^([A-Z]+)') AS ticker,
+                 created_at::date AT TIME ZONE 'America/New_York' AS et_date
+          FROM mi_audit_log
+          WHERE event_type = 'sugar_baby_convergence_alert'
+            AND created_at >= NOW() - INTERVAL '90 days'
+      ) sub;
+    threshold: 10
+    earliest_review_date: 2026-08-01
+    action_when_ready: |
+      1. Pull all convergence fires (mi_audit_log event_type=
+         'sugar_baby_convergence_alert'), parse ticker + alert_date +
+         class from summary string (format contract: "{TICKER}
+         {SOURCE} — class={class} cohort={N}x stage={stage}").
+      2. Join to mi_daily_closes for forward 5d returns from
+         open_d0 → close_d+5.
+      3. Build baseline cohort: HIGH MAGNA53/9M alerts in same window
+         that did NOT fire convergence tag. Apply mi_security_types
+         filter (CS/ADRC only) + dedup per #59 hygiene.
+      4. Stratify by class — breakout vs anticipatory vs neither.
+      5. Decision per feedback_sample_size_discipline:
+         - If breakout class shows ≥+5% better 5d returns over baseline
+           at N≥10: file followup to consider promoting convergence
+           from operator_only → escalation tier in mi_stocks_in_play
+           (ADR work).
+         - If anticipatory class shows similar lift at N≥10: same.
+         - If both classes score within ±2% of baseline: convergence
+           is informational only; keep operator_only, don't promote.
+         - If sample still N<10 at review_date: re-set
+           earliest_review_date +30d and continue accumulating.
+
+      DO NOT ship any methodology change off convergence tagging
+      without this backward check + advisor review.
+
+      Origin: 2026-05-22 #84 ship plan ("File as data-gated review at
+      first convergence fire"). Filed retroactively 2026-05-22 PM per
+      advisor review of the day's ship list.
+    status: pending
+    added_on: 2026-05-22
