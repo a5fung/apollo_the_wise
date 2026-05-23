@@ -505,10 +505,13 @@ class MarketIntelligenceAgent(BaseAgent):
                     "trading_blocked": account["trading_blocked"],
                     "paper": current_account_mode() == "paper",
                 }
-                # 2. Get a market data bar (AAPL yesterday)
-                from datetime import date, timedelta
-                yesterday = date.today() - timedelta(days=1)
-                bar = await alpaca.get_first_bar("AAPL", yesterday)
+                # 2. Get a market data bar (AAPL one week back — reliably
+                # closed even across weekends/holidays. ET-anchored so the
+                # post-8-PM-ET UTC rollover doesn't shift the date.)
+                from datetime import timedelta
+                from agents.market_intelligence.collector import et_today
+                target = et_today() - timedelta(days=7)
+                bar = await alpaca.get_first_bar("AAPL", target)
                 results["market_data"] = {"AAPL_bar": bar}
                 # 3. Check positions
                 positions = await alpaca.get_all_positions()
@@ -2112,6 +2115,7 @@ class MarketIntelligenceAgent(BaseAgent):
         skip = _PREPOSITION_SKIP | {"FLAGBREAKS", "FLAGBREAK"}
         ticker = next((t for t in cands if t not in skip), None)
 
+        from agents.market_intelligence.collector import _ET
         pool = await get_pool()
         async with pool.acquire() as conn:
             if ticker:
@@ -2132,7 +2136,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     )
                 lines = [f"🎯 *{ticker} — Intraday flag-break history (30d)*", ""]
                 for r in rows:
-                    et_clock = r["break_time"].astimezone().strftime("%H:%M")
+                    et_clock = r["break_time"].astimezone(_ET).strftime("%H:%M")
                     inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
                     cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
                     lines.append(
@@ -2169,7 +2173,7 @@ class MarketIntelligenceAgent(BaseAgent):
         if today_rows:
             lines.append(f"*Today ({len(today_rows)})*:")
             for r in today_rows:
-                et_clock = r["break_time"].astimezone().strftime("%H:%M")
+                et_clock = r["break_time"].astimezone(_ET).strftime("%H:%M")
                 cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
                 inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
                 lines.append(

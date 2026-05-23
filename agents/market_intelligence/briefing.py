@@ -967,9 +967,9 @@ def _format_evening_briefing(
     # persistent Pradeep-class watchlist (mi_sugar_babies_cohort).
     if cohort_babies:
         try:
-            today_d = date.fromisoformat(briefing_date) if briefing_date else date.today()
+            today_d = date.fromisoformat(briefing_date) if briefing_date else _et_today()
         except (ValueError, TypeError):
-            today_d = date.today()
+            today_d = _et_today()
         # Stage emoji vocabulary matches /flags + /sugarbabies conventions
         # (🎯 TRIGGERED / 🌀 COILED / 🔧 TIGHTENING). DB-side ripeness sort
         # means ripe entries (TRIGGERED > COILED > TIGHTENING) already top

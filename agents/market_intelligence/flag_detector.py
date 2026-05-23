@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import date
+from datetime import date, datetime, time as _dt_time
 from statistics import median as _median_stat
 from typing import Any, Optional
 
@@ -1086,12 +1086,11 @@ async def run_intraday_flag_break_scan(scan_time):
     Returns:
         int: count of new breaks inserted this scan
     """
-    from datetime import time as _time, datetime as _dt
     from agents.market_intelligence import db
     from agents.market_intelligence.collector import get_snapshot_all
 
     # Time gate (the cron is */5; we don't want pre-9:35 or post-3:55)
-    if not (_time(9, 35) <= scan_time.time() <= _time(15, 55)):
+    if not (_dt_time(9, 35) <= scan_time.time() <= _dt_time(15, 55)):
         return 0
 
     minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
@@ -1131,15 +1130,20 @@ async def run_intraday_flag_break_scan(scan_time):
         cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
 
         # 3. Pre-fetch ADV-20 for the watchlist tickers (single batch query).
-        # Approximation: average of last 20 daily volumes from mi_daily_closes.
+        # PERCENTILE_CONT(0.5) median, matching db.get_adv_from_daily_closes
+        # SSoT — median is spike-immune (a single 5x-volume day distorts
+        # mean but not median). Mean ADV would silently let block-trade
+        # gappers fail the volume gate during normal sessions.
         adv_rows = await conn.fetch("""
-            SELECT ticker, AVG(volume)::bigint AS adv_20
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
             FROM (
                 SELECT ticker, volume,
                        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
                 FROM mi_daily_closes
                 WHERE ticker = ANY($1::text[])
                   AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+                  AND volume > 0
             ) sub
             WHERE rn <= 20
             GROUP BY ticker
@@ -1447,14 +1451,17 @@ async def get_flag_watchlist(scan_date=None):
             return []
 
         ticker_list = [c["ticker"] for c in candidates]
+        # PERCENTILE_CONT(0.5) — see ADV-20 SSoT note in run_intraday_flag_break_scan.
         adv_rows = await conn.fetch("""
-            SELECT ticker, AVG(volume)::bigint AS adv_20
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
             FROM (
                 SELECT ticker, volume,
                        ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
                 FROM mi_daily_closes
                 WHERE ticker = ANY($1::text[])
                   AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+                  AND volume > 0
             ) sub
             WHERE rn <= 20
             GROUP BY ticker

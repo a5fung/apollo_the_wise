@@ -16,6 +16,8 @@ import logging
 from datetime import datetime, time as _dt_time, timedelta
 from zoneinfo import ZoneInfo
 
+_ET = ZoneInfo("America/New_York")
+
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -1553,12 +1555,9 @@ async def _sugar_babies_cohort_refresh_job():
             from agents.market_intelligence.stocks_in_play_sources import (
                 SOURCE_SUGAR_BABY_COHORT, CLASS_INFORMATIONAL,
             )
-            # Expiry: cohort rebuilt daily; 4-day TTL covers long weekends
-            # (e.g. Memorial Day Mon refresh skipped, so Friday's rows must
-            # stay valid through Tuesday). Per ADR 0004 §3 expiry policy.
-            # datetime/timedelta/ZoneInfo imported at module level per
-            # preflight [5d/5] import-shadowing rule.
-            _ET = ZoneInfo("America/New_York")
+            # Expiry: 4-day TTL covers long weekends (Memorial Day Mon
+            # refresh skipped → Friday rows must stay valid through Tuesday).
+            # Per ADR 0004 §3 expiry policy.
             expires_at = datetime.combine(today + timedelta(days=4),
                                           _dt_time(23, 59), tzinfo=_ET)
             # NOTE: the original `async with pool.acquire() as conn` block
@@ -1612,10 +1611,8 @@ async def _flag_break_scan_job():
     on N>=10 settled breaks (data_gated_reviews.yaml::intraday_flag_break
     review, filed in Commit 2).
     """
-    from datetime import datetime, time as _time
-    from agents.market_intelligence.collector import _ET
     now_et = datetime.now(_ET)
-    if not (_time(9, 35) <= now_et.time() <= _time(15, 55)):
+    if not (_dt_time(9, 35) <= now_et.time() <= _dt_time(15, 55)):
         return 0
     try:
         from agents.market_intelligence.flag_detector import run_intraday_flag_break_scan
