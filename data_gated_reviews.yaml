@@ -4076,6 +4076,71 @@ reviews:
       flag + revert commits), feedback_sample_size_discipline.md
       (meta-lessons captured).
 
+  - review_id: time_stop_9m_day2_effectiveness_n10
+    title: "Time-stop on 9M Day 2 meanderers — did exiting improve cohort P&L? (#91)"
+    question: |
+      2026-05-23 #91 shipped operator-confirm time-stop on 9M Day 2
+      positions held ≥5 trading days with highest_price_seen excursion
+      <+3%. Hypothesis: the meandering pattern (small unrealized loss,
+      stop not hit, no real run) has negative expected value once the
+      position has failed to confirm continuation; the opportunity cost
+      of the held slot exceeds the chance of late recovery.
+
+      Trigger observation (2026-05-23 user-flagged): 3 of 4 current
+      open positions are 9M Day 2 meanderers (IBM/ROIV/PURR-class).
+      Stops at prior-day-low + smaller sizing means small dollar bleed
+      but slots locked for 1-3+ weeks. PURR specifically had a brief
+      +13% excursion (excluded from time-stop class — not a meanderer,
+      partial-take logic issue). GOOGL historical example: 17 days held,
+      +6.8% peak, closed +3.17% — slow runner that would NOT trigger
+      the time-stop (peak >+3%).
+
+      Question: at N≥10 time_stop_executed events, did the time-stop
+      cohort outperform a counterfactual "hold to natural stop or
+      hard exit" path?
+    predicate_sql: |
+      -- N≥10 time_stop_executed audit events
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type = 'time_stop_executed'
+        AND created_at > NOW() - INTERVAL '180 days';
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Re-run analysis at N≥10:
+
+      1. Pull all time_stop_executed events (parse exit price + entry
+         price + hold days from audit detail or join to mi_live_trades
+         where exits[]->'reason' = 'time_stop').
+      2. For each, compute actual exit P&L vs counterfactual:
+         (a) Held to natural hard stop OR (b) held to 20 trading days
+         then market exit at close. Counterfactual price is closing
+         price on whichever event fired first.
+      3. Aggregate: did time-stop average outcomes beat
+         counterfactual?
+         - Time-stop avg P&L < counterfactual avg P&L: time-stop
+           DESTROYED value (we exited winners too early). RETRACT.
+         - Time-stop avg P&L > counterfactual + opportunity-cost
+           premium: time-stop CREATED value. Promote — consider
+           auto-execute (drop the operator-confirm gate).
+         - Within ±5% of counterfactual: marginal. Continue observing
+           at N=20.
+      4. Per validate_metric_before_decision: the metric MUST include
+         the opportunity-cost dimension (slot occupancy). If two cohorts
+         have similar exit P&L but time-stop cohort freed slots that
+         enabled X additional trades, that's net value.
+
+      Cross-references:
+      - #65 9M Day 2 methodology alignment (parent — Pradeep framing
+        says 9M Day 2 mechanical entry is wrong shape; time-stop
+        addresses the meandering symptom)
+      - ADR 0004 §2 axis 2 (per-stock maturity) — time-stop reflects
+        "ticker failed to advance from pattern-meeting to ready"
+        within a reasonable window
+      - feedback_methodology_insights_need_periodic_revalidation.md
+        — this entry IS the periodic re-evaluation
+    status: pending
+    added_on: 2026-05-23
+
   - review_id: rally_band_u_shape_observation
     title: "Pradeep rally-band U-shape — sideways/modest-uptrend dead zone (#79 + #78 complementary observation)"
     question: |

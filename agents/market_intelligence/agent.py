@@ -1942,6 +1942,152 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Watchlist only — entry via VCP/tight-base setup is operator discretion._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
+        """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
+
+        The EOD scan job (#91, 2026-05-23) flags 9M Day 2 positions held
+        ≥5 trading days with highest_price_seen excursion <+3%. Operator
+        reviews the alert + chart and confirms via this command, which:
+
+        1. Re-fetches the trade row from DB (defensive: don't trust the
+           alert payload; ensures highest_price_seen reflects any
+           overnight WebSocket fills since the EOD alert composed)
+        2. Re-checks the discriminator (defensive against stale alerts —
+           if the position rallied since the alert, we DON'T exit)
+        3. Submits TimeInForce.OPG market sell via alpaca_client; fills
+           at next regular-session open (Alpaca queues across weekends/
+           holidays — Friday submit on Memorial Day weekend fills Tuesday)
+        4. Tags the exit jsonb row with reason='time_stop'
+        5. Emits time_stop_executed audit event for the
+           time_stop_9m_day2_effectiveness_n10 data-gated review
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        # Parse ticker from task. Strip /timestop prefix, take the first
+        # 2-5 char uppercase token.
+        task_text = request.task.strip()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', task_text.upper())
+        skip = _PREPOSITION_SKIP | {"TIMESTOP"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(
+                request,
+                result=(
+                    "Usage: `/timestop TICKER`\n\n"
+                    "Exits a flagged 9M Day 2 meanderer at next market open. "
+                    "Candidates are surfaced via the daily 4:55 PM ET EOD scan."
+                ),
+            )
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            # Re-fetch trade row fresh at command time (not from alert payload).
+            row = await conn.fetchrow("""
+                SELECT id, ticker, alert_date, filled_at::date AS filled_d,
+                       entry_price, stop_price, remaining_shares,
+                       highest_price_seen, signal_type, account_mode, status,
+                       (SELECT COUNT(*)::int FROM generate_series(
+                            filled_at::date + 1, CURRENT_DATE, '1 day') s
+                        WHERE EXTRACT(DOW FROM s) BETWEEN 1 AND 5) AS trading_days
+                FROM mi_live_trades
+                WHERE ticker = $1
+                  AND status = 'filled'
+                  AND signal_type = '9m_day2'
+                ORDER BY filled_at DESC LIMIT 1
+            """, ticker)
+
+        if row is None:
+            return self._ok(
+                request,
+                result=(
+                    f"_No open 9M Day 2 position for `{ticker}`._\n\n"
+                    "`/timestop` only operates on currently-filled 9m_day2 trades. "
+                    "Check `/trades` for current open positions."
+                ),
+            )
+
+        if row["highest_price_seen"] is None or row["entry_price"] is None:
+            return self._ok(
+                request,
+                result=f"_`{ticker}` has incomplete excursion tracking; cannot evaluate time-stop. Manual exit recommended._",
+            )
+
+        entry = float(row["entry_price"])
+        high = float(row["highest_price_seen"])
+        high_excur_pct = (high - entry) / entry * 100.0
+        trading_days = row["trading_days"] or 0
+
+        # Defensive re-check: if position rallied since the alert, DON'T exit.
+        # Soft warning rather than hard reject — operator may still want to
+        # exit a position that briefly rallied then died.
+        if trading_days < 5 or high_excur_pct >= 3.0:
+            return self._ok(
+                request,
+                result=(
+                    f"⚠️ `{ticker}` no longer meets time-stop criteria:\n"
+                    f"  • trading days held: {trading_days} (need ≥5)\n"
+                    f"  • peak excursion: {high_excur_pct:+.2f}% (need <+3%)\n\n"
+                    f"Position rallied since the EOD alert OR is too fresh. "
+                    f"Not exiting. Re-check tomorrow if the meander resumes."
+                ),
+            )
+
+        # Submit market-on-open sell via alpaca_client.
+        shares = float(row["remaining_shares"]) if row["remaining_shares"] else 0
+        if shares <= 0:
+            return self._ok(
+                request,
+                result=f"_`{ticker}` has zero remaining shares — already exited?_",
+            )
+
+        try:
+            from agents.market_intelligence.broker.alpaca_client import (
+                place_market_on_open_sell, make_client_order_id,
+            )
+            account_mode = row["account_mode"] or "paper"
+            coid = make_client_order_id(account_mode, "9m_day2_timestop", ticker)
+            order = await place_market_on_open_sell(
+                ticker, qty=shares, account_mode=account_mode,
+                client_order_id=coid,
+            )
+        except Exception as e:
+            return self._ok(
+                request,
+                result=(
+                    f"❌ Market-on-open sell submit failed for `{ticker}`: {e}\n\n"
+                    f"Common causes: outside OPG submission window "
+                    f"(7 PM ET prior day → 9:25 AM ET next day), or Alpaca API issue. "
+                    f"Try again pre-market or submit a manual exit during market hours."
+                ),
+            )
+
+        # Audit event — load-bearing for the
+        # time_stop_9m_day2_effectiveness_n10 data-gated review.
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "time_stop_executed",
+            f"{ticker} 9m_day2 — "
+            f"trading_days={trading_days} "
+            f"high_excur={high_excur_pct:+.2f}% "
+            f"entry=${entry:.2f} "
+            f"shares={shares:.0f} "
+            f"order_id={order.get('id', '?')}",
+        )
+
+        return self._ok(
+            request,
+            result=(
+                f"✅ *Time-stop submitted for `{ticker}`*\n\n"
+                f"  • Trading days held: {trading_days}\n"
+                f"  • Peak excursion: {high_excur_pct:+.2f}%\n"
+                f"  • Shares: {shares:.0f} · entry ${entry:.2f}\n"
+                f"  • Order: TimeInForce.OPG market sell (id `{order.get('id', '?')}`)\n"
+                f"  • Account mode: {account_mode}\n\n"
+                f"_Fills at next regular-session open. Slot freed once filled._"
+            ),
+        )
+
     async def _handle_setup_query(self, request: AgentRequest) -> AgentResponse:
         """`/setup TICKER [days]` — reverse-lookup detector chronology.
 
@@ -4035,6 +4181,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/flag":           self._handle_flag_query,
             "/sugarbabies":    self._handle_sugar_babies_query,
             "/sugarbaby":      self._handle_sugar_babies_query,
+            "/timestop":       self._handle_time_stop_command,
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,

@@ -327,6 +327,44 @@ async def place_stop_order(
         raise
 
 
+async def place_market_on_open_sell(
+    ticker: str,
+    qty: float,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Place a market-on-open sell (TimeInForce.OPG) — fills at the NEXT
+    opening auction. Used by the time-stop path (#91, 2026-05-23): an
+    EOD-flagged 9M Day 2 meanderer is exited at the next regular-session
+    open, freeing the slot for fresh entries.
+
+    Submission window per Alpaca: OPG orders must be submitted between
+    7:00 PM ET prior day and 9:25 AM ET next day. Intraday submissions
+    are rejected. Caller must surface that error to the operator.
+
+    Across long weekends / holidays, OPG queues for the next ACTUAL
+    trading session — so Friday-evening submit on a 3-day weekend (e.g.
+    Memorial Day Monday closed) correctly fills at Tuesday's open.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        req_kwargs = dict(
+            symbol=ticker,
+            qty=qty,
+            side=OrderSide.SELL,
+            type=OrderType.MARKET,
+            time_in_force=TimeInForce.OPG,
+        )
+        if client_order_id:
+            req_kwargs["client_order_id"] = client_order_id
+        order = client.submit_order(MarketOrderRequest(**req_kwargs))
+        logger.info(f"Market-on-open sell placed: {ticker} qty={qty} id={order.id}")
+        return _order_to_dict(order)
+    except Exception as e:
+        logger.error(f"Failed to place market-on-open sell for {ticker}: {e}")
+        raise
+
+
 async def place_market_sell(
     ticker: str,
     qty: float,

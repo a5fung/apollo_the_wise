@@ -61,6 +61,7 @@ JOB_WICK_FORWARD_RETURNS = "wick_forward_returns"
 JOB_FISHHOOK_EOD = "fishhook_eod_pass"
 JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
+JOB_TIME_STOP_SCAN = "time_stop_scan"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -807,6 +808,139 @@ async def _morning_stop_refresh_job():
     except Exception as e:
         logger.error(f"Morning stop refresh failed: {e}")
         await notify_job_failure("morning_stop_refresh", str(e))
+
+
+async def _time_stop_scan_job():
+    """Run at 4:55 PM ET (Mon-Fri). Identify 9M Day 2 meanderers eligible
+    for operator-confirm time-stop and Telegram-alert them.
+
+    Discriminator (#91, 2026-05-23):
+      - signal_type = '9m_day2' (narrow scope; MAGNA53 has different
+        hold-time dynamics — BW at day 11 still working)
+      - trading days since fill >= 5 (gives the slow-runner shape
+        room to start, e.g. GOOGL +6.8% peak at later days)
+      - highest_price_seen excursion < +3% (excludes positions that
+        had a real run — PURR-class +13% spike followed by fade is
+        a partial-take/breakeven-trail issue, not a meanderer issue)
+      - status = 'filled' (only currently-open positions)
+
+    No actual exit fired — operator confirms via /timestop TICKER
+    command (operator_only automation_class per ADR 0004).
+
+    Slots after live_position_update (4:45) + shadow_orb_exit (4:50)
+    + before data_pull (5:00). Single-pass query; lightweight.
+    """
+    pool = await get_pool()
+    candidates: list[dict] = []
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, alert_date, filled_at::date AS filled_d,
+                   entry_price, stop_price, remaining_shares,
+                   highest_price_seen, lowest_price_seen,
+                   -- Compute trading-days-since-fill explicitly (hold_days
+                   -- is calendar days, weekends inflate it).
+                   (SELECT COUNT(*)::int FROM generate_series(
+                        filled_at::date + 1, CURRENT_DATE, '1 day') s
+                    WHERE EXTRACT(DOW FROM s) BETWEEN 1 AND 5) AS trading_days
+            FROM mi_live_trades
+            WHERE status = 'filled'
+              AND signal_type = '9m_day2'
+              AND filled_at IS NOT NULL
+              AND entry_price > 0
+              AND highest_price_seen IS NOT NULL
+        """)
+        for r in rows:
+            entry = float(r["entry_price"])
+            high = float(r["highest_price_seen"]) if r["highest_price_seen"] is not None else None
+            if high is None or entry <= 0:
+                continue
+            high_excur_pct = (high - entry) / entry * 100.0
+            trading_days = r["trading_days"] or 0
+            # Discriminator gate: >=5 trading days AND high excursion <+3%
+            if trading_days >= 5 and high_excur_pct < 3.0:
+                candidates.append({
+                    "id": r["id"],
+                    "ticker": r["ticker"],
+                    "trading_days": trading_days,
+                    "entry": entry,
+                    "stop": float(r["stop_price"]) if r["stop_price"] else None,
+                    "shares": float(r["remaining_shares"]) if r["remaining_shares"] else 0,
+                    "high_excur_pct": high_excur_pct,
+                    "low_excur_pct": (
+                        (float(r["lowest_price_seen"]) - entry) / entry * 100.0
+                        if r["lowest_price_seen"] else None
+                    ),
+                })
+
+    if not candidates:
+        logger.info("time_stop_scan: no candidates")
+        return 0
+
+    # Same-day audit dedup pattern (#85/#89 shape) — log time_stop_candidate
+    # once per (ticker, ET date). Re-runs of the EOD scan don't inflate the
+    # audit count and don't re-Telegram the same set.
+    new_candidates: list[dict] = []
+    async with pool.acquire() as conn:
+        for c in candidates:
+            prior = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'time_stop_candidate'
+                  AND summary LIKE $1
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+                LIMIT 1
+            """, f"{c['ticker']} 9m_day2%")
+            if prior is None:
+                await log_audit_event(
+                    "time_stop_candidate",
+                    f"{c['ticker']} 9m_day2 — "
+                    f"trading_days={c['trading_days']} "
+                    f"high_excur={c['high_excur_pct']:+.2f}% "
+                    f"low_excur={c['low_excur_pct']:+.2f}%"
+                    if c['low_excur_pct'] is not None else
+                    f"{c['ticker']} 9m_day2 — "
+                    f"trading_days={c['trading_days']} "
+                    f"high_excur={c['high_excur_pct']:+.2f}%"
+                )
+                new_candidates.append(c)
+
+    # Telegram alert (one consolidated message). Even if all candidates
+    # were already audit-deduped today (e.g. job re-fires), do not spam
+    # the Telegram channel. send_telegram_message imported at module
+    # level (line 39-43) per preflight [5d/5] import-shadowing rule.
+    if new_candidates:
+        lines = [
+            f"⏱️ *Time-Stop Candidates — 9M Day 2 meanderers ({len(new_candidates)})*",
+            "_Held ≥5 trading days, peak excursion <+3% — failed to confirm continuation._",
+            "",
+        ]
+        for c in new_candidates:
+            stop_dist_pct = (
+                (c['stop'] - c['entry']) / c['entry'] * 100.0
+                if c['stop'] else None
+            )
+            notional = c['shares'] * c['entry']
+            lines.append(
+                f"• `{c['ticker']}` day {c['trading_days']} · "
+                f"entry ${c['entry']:.2f} · peak {c['high_excur_pct']:+.1f}%"
+            )
+            if c['low_excur_pct'] is not None:
+                lines.append(
+                    f"   trough {c['low_excur_pct']:+.1f}% · "
+                    f"sized ${notional:,.0f}"
+                    + (f" · stop {stop_dist_pct:+.1f}% away" if stop_dist_pct else "")
+                )
+            lines.append(f"   `/timestop {c['ticker']}` to exit at market on open")
+            lines.append("")
+        lines.append(
+            "_Operator-only: /timestop submits TimeInForce.OPG to Alpaca; "
+            "fills at next regular-session open. Submission window: "
+            "7 PM ET prior day → 9:25 AM ET next day._"
+        )
+        await send_telegram_message("\n".join(lines))
+        logger.info(f"time_stop_scan: alerted on {len(new_candidates)} candidates")
+
+    return len(new_candidates)
 
 
 async def _live_position_update_job():
@@ -2411,6 +2545,20 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_shadow_orb_exit_job, "shadow_orb_exit"),
         CronTrigger(hour=16, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
         id="shadow_orb_exit",
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # Time-stop candidate scan: 4:55 PM ET — after live_position_update
+    # (4:45) + shadow_orb_exit (4:50), before data_pull (5:00). Identifies
+    # 9M Day 2 meanderers eligible for operator-confirm time-stop. Pure
+    # observability + Telegram alert; operator confirms via /timestop
+    # TICKER which submits TimeInForce.OPG sell for next-open fill.
+    # #91 ship 2026-05-23.
+    _scheduler.add_job(
+        audit_wrap(_time_stop_scan_job, JOB_TIME_STOP_SCAN),
+        CronTrigger(hour=16, minute=55, day_of_week="mon-fri", timezone="America/New_York"),
+        id=JOB_TIME_STOP_SCAN,
         replace_existing=True,
         misfire_grace_time=900,
     )
