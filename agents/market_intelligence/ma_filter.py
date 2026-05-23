@@ -67,6 +67,45 @@ def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, in
     return None
 
 
+async def should_log_mna_filter_fired(ticker: str, detector_tag: str) -> bool:
+    """Return True if `mna_filter_fired` audit should fire for (ticker,
+    detector_tag) today. False if an audit row for this combination already
+    exists in mi_audit_log for the current trading day (ET).
+
+    Per #89 ship 2026-05-23: without this dedup, M&A filter audit events
+    inflate 5-20x per converging ticker because detectors call is_likely_ma
+    every scan tick (every 5 min over 3-hour scan window). 2026-05-22 L2
+    anomaly fired with mna_filter_fired at 210 events vs 10 median (21x
+    normal) — investigation showed 4 tickers (INFQ/RGTI/QBTS/EL) accounted
+    for 201 of 210 fires. Same shape as the catalyst-downgrade dedup (1h)
+    and the sugar_baby_convergence_alert dedup (#85, also trading-day).
+
+    Summary contract: every mna_filter_fired call site MUST write a summary
+    matching `{ticker} via%({detector_tag})%` so this LIKE-based dedup
+    works. Standardized 2026-05-23 across all 5 detector sites
+    (9m_intraday, 9m_sugar_baby, ep, flag, flag deal_pin).
+
+    Fail-open: any DB error returns True (caller proceeds to log). Better
+    to over-log than silently drop a filter decision audit.
+    """
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            prior = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'mna_filter_fired'
+                  AND summary LIKE $1
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+                LIMIT 1
+            """, f"{ticker} via%({detector_tag})%")
+        return prior is None
+    except Exception as e:
+        logger.debug(f"mna_filter audit dedup check failed (non-critical): {e}")
+        return True  # fail-open: log if dedup check fails
+
+
 async def polygon_news_has_mna_headline(
     ticker: str,
     *,

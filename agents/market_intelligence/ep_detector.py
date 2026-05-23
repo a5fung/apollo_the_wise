@@ -1003,18 +1003,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 pplx_task.cancel()
                 reason = "M&A/buyout catalyst — no momentum trade"
                 logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
-                await log_audit_event(
-                    "mna_filter_fired",
-                    f"{ticker} via {(mna_meta or {}).get('source', 'unknown')}",
-                    json.dumps({
-                        "ticker": ticker,
-                        "alert_date": today.isoformat(),
-                        "detector": "ep",
-                        "catalyst_quality": catalyst_quality,
-                        "news_summary": (news_summary or "")[:200],
-                        **(mna_meta or {}),
-                    }),
-                )
+                # Filter behavior is ALWAYS applied; only audit log is
+                # deduped (#89, 2026-05-23). Summary now includes (ep)
+                # suffix matching the 4 other detector sites for
+                # consistent should_log_mna_filter_fired LIKE-keying.
+                from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                if await should_log_mna_filter_fired(ticker, "ep"):
+                    await log_audit_event(
+                        "mna_filter_fired",
+                        f"{ticker} via {(mna_meta or {}).get('source', 'unknown')} (ep)",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "detector": "ep",
+                            "catalyst_quality": catalyst_quality,
+                            "news_summary": (news_summary or "")[:200],
+                            **(mna_meta or {}),
+                        }),
+                    )
                 _log_filtered(c, reason)
                 continue
 

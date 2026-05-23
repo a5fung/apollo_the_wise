@@ -1916,10 +1916,15 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
                 f"cohort {conv['cohort_n']}× · "
                 f"{conv['flag_stage']} {conv['days_since_stage']}d ago\n\n"
             )
-        # Same-day audit dedup — EP scans tick every 5 min and re-fire HIGH
-        # alerts as ep_score evolves. Without dedup, convergence audit count
-        # inflates 5-20× per converging ticker. Same shape as the 1h dedup
-        # pattern used by catalyst_earnings_revenue_weak_downgrade alerts.
+        # Same-trading-day audit dedup — EP scans tick every 5 min and
+        # re-fire HIGH alerts as ep_score evolves over the 3-hour scan
+        # window. The original 1h dedup (copied from
+        # catalyst_earnings_revenue_weak_downgrade) was wrong shape for
+        # convergence telemetry: a ticker firing at 7:00, 8:05, 9:10 over
+        # the scan window generates 3 audit rows instead of 1, inflating
+        # backtest N denominator ~3x. Trading-day check (ET) gives
+        # exactly-once-per-converging-ticker semantics. Advisor flagged
+        # 2026-05-22 PM (#85, shipped 2026-05-23).
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
@@ -1927,8 +1932,8 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
                     SELECT 1 FROM mi_audit_log
                     WHERE event_type = 'sugar_baby_convergence_alert'
                       AND summary LIKE $1
-                      AND created_at > NOW() - INTERVAL '1 hour'
-                      AND created_at < NOW() - INTERVAL '1 second'
+                      AND (created_at AT TIME ZONE 'America/New_York')::date
+                          = (NOW() AT TIME ZONE 'America/New_York')::date
                     LIMIT 1
                 """, f"{ep['ticker']} MAGNA53_HIGH%")
                 if prior is None:

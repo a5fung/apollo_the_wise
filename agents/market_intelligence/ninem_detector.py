@@ -328,16 +328,22 @@ async def run_9m_scan() -> list[dict]:
                 polygon_lookback_days=21,
             )
             if is_mna_intraday:
-                await log_audit_event(
-                    "mna_filter_fired",
-                    f"{ticker} via {(mna_meta_intraday or {}).get('source', 'unknown')} (9m_intraday)",
-                    json.dumps({
-                        "detector": "9m_intraday",
-                        "ticker": ticker,
-                        "alert_date": today_str,
-                        **(mna_meta_intraday or {}),
-                    })[:500],
-                )
+                # Same-trading-day audit dedup (#89) — without it, EP/9M
+                # scans tick every 5 min and re-fire mna_filter_fired
+                # 5-20x per ticker. Logs first-of-day; subsequent ticks
+                # still filter (continue below) but skip audit row write.
+                from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                if await should_log_mna_filter_fired(ticker, "9m_intraday"):
+                    await log_audit_event(
+                        "mna_filter_fired",
+                        f"{ticker} via {(mna_meta_intraday or {}).get('source', 'unknown')} (9m_intraday)",
+                        json.dumps({
+                            "detector": "9m_intraday",
+                            "ticker": ticker,
+                            "alert_date": today_str,
+                            **(mna_meta_intraday or {}),
+                        })[:500],
+                    )
                 continue
         except Exception as e:
             logger.warning(f"9m_intraday: M&A check failed for {ticker}: {e}")
@@ -389,9 +395,13 @@ async def run_9m_scan() -> list[dict]:
                     pass
             if conv:
                 converging_tickers.append((ticker, conv))
-                # Same-day dedup — 9M scans tick every 5 min and re-fire
-                # the same ticker as projections evolve. Inflates audit
-                # count 5-20× without dedup.
+                # Same-trading-day audit dedup (ET). 9M scans tick every
+                # 5 min and re-fire as projections evolve over the
+                # pre-market window. 1h dedup was wrong shape (3 audit
+                # rows per converging ticker over 3h scan window);
+                # trading-day check gives exactly-once semantics so
+                # future backtest N denominator is unique-firings.
+                # #85 ship 2026-05-23.
                 try:
                     pool = await get_pool()
                     async with pool.acquire() as conn:
@@ -399,8 +409,8 @@ async def run_9m_scan() -> list[dict]:
                             SELECT 1 FROM mi_audit_log
                             WHERE event_type = 'sugar_baby_convergence_alert'
                               AND summary LIKE $1
-                              AND created_at > NOW() - INTERVAL '1 hour'
-                              AND created_at < NOW() - INTERVAL '1 second'
+                              AND (created_at AT TIME ZONE 'America/New_York')::date
+                                  = (NOW() AT TIME ZONE 'America/New_York')::date
                             LIMIT 1
                         """, f"{ticker} 9M_HIGH%")
                         if prior is None:
@@ -553,16 +563,22 @@ async def run_9m_eod_sweep(trade_date: "str | date") -> int:
                 polygon_lookback_days=21,
             )
             if is_mna:
-                await log_audit_event(
-                    "mna_filter_fired",
-                    f"{row['ticker']} via {(meta or {}).get('source', 'unknown')} (9m_sugar_baby)",
-                    json.dumps({
-                        "detector": "9m_sugar_baby",
-                        "ticker": row["ticker"],
-                        "alert_date": trade_date_str,
-                        **(meta or {}),
-                    })[:500],
-                )
+                # Filter behavior is ALWAYS applied; only the audit log is
+                # deduped (#89). Critical: don't gate `continue` on dedup
+                # result — that would let already-logged M&A tickers slip
+                # through the filter on subsequent ticks.
+                from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                if await should_log_mna_filter_fired(row["ticker"], "9m_sugar_baby"):
+                    await log_audit_event(
+                        "mna_filter_fired",
+                        f"{row['ticker']} via {(meta or {}).get('source', 'unknown')} (9m_sugar_baby)",
+                        json.dumps({
+                            "detector": "9m_sugar_baby",
+                            "ticker": row["ticker"],
+                            "alert_date": trade_date_str,
+                            **(meta or {}),
+                        })[:500],
+                    )
                 continue
         except Exception as e:
             logger.warning(f"9m_sugar_baby: M&A check failed for {row['ticker']}: {e}")

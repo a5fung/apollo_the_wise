@@ -763,11 +763,17 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     # _score already inserted the row as COILED/TRIGGERED.
                     # Re-upsert so the persisted row reflects the flip.
                     await db.insert_flag_candidate(r)
-                    await db.log_audit_event(
-                        "mna_filter_fired",
-                        f"{r['ticker']} via {(meta or {}).get('source', 'unknown')} (flag)",
-                        detail=str({"detector": "flag", "stage": r['original_stage'], **(meta or {})})[:500],
-                    )
+                    # Filter behavior is ALWAYS applied (re-upsert above);
+                    # only audit log is deduped (#89, 2026-05-23). Flag scan
+                    # runs once daily but bundle ships consistency across
+                    # all 5 mna_filter_fired sites.
+                    from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                    if await should_log_mna_filter_fired(r["ticker"], "flag"):
+                        await db.log_audit_event(
+                            "mna_filter_fired",
+                            f"{r['ticker']} via {(meta or {}).get('source', 'unknown')} (flag)",
+                            detail=str({"detector": "flag", "stage": r['original_stage'], **(meta or {})})[:500],
+                        )
             except Exception as e:
                 logger.warning(f"flag_scan: M&A check failed for {r['ticker']}: {e}")
 
@@ -805,18 +811,25 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                         r["stage"] = "unqualified"
                         r["reason"] = "mna_filter:deal_pin_signature"
                         await db.insert_flag_candidate(r)
-                        await db.log_audit_event(
-                            "mna_filter_fired",
-                            f"{r['ticker']} via deal_pin_signature (flag) — "
-                            f"median {sig['median_range_pct']:.3%}, "
-                            f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%",
-                            detail=str({
-                                "detector": "flag",
-                                "stage": r["original_stage"],
-                                "source": "deal_pin_signature",
-                                **sig,
-                            })[:500],
-                        )
+                        # Same-trading-day audit dedup (#89). Same detector
+                        # tag as the keyword-match flag site above — both
+                        # share `(flag)` suffix; dedup is per (ticker,
+                        # detector) so first-of-day wins regardless of
+                        # which sub-path (keyword vs deal_pin) fires first.
+                        from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+                        if await should_log_mna_filter_fired(r["ticker"], "flag"):
+                            await db.log_audit_event(
+                                "mna_filter_fired",
+                                f"{r['ticker']} via deal_pin_signature (flag) — "
+                                f"median {sig['median_range_pct']:.3%}, "
+                                f"{sig['sub_threshold_days']}/{sig['total_days']} sub-0.5%",
+                                detail=str({
+                                    "detector": "flag",
+                                    "stage": r["original_stage"],
+                                    "source": "deal_pin_signature",
+                                    **sig,
+                                })[:500],
+                            )
                 except Exception as e:
                     logger.warning(
                         f"flag_scan: deal-pin check failed for {r['ticker']}: {e}"
