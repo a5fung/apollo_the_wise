@@ -788,6 +788,26 @@ reviews:
       setups Apollo's existing _compute_fresh_tightening misses, OR
       is redundant with it. Earliest review 2026-06-09 (Phase 1 +
       30 trading days).
+
+      Predicate status 2026-05-24: 1543 rmv-populated rows / 200
+      threshold (7.7x over). 530 rows qualify as RMV-low (≤10) +
+      structurally-valid + Apollo at WATCH/TIGHTENING (not COILED) —
+      strong divergence signal. Forward-return evaluation IS the
+      remaining work; calendar floor is the only blocker.
+
+      **Concrete forward-looking example (2026-05-22)**: BB Q-rev
+      breakout — Richard Moglen tweet flagged "low RMV the day
+      before BB broke out from the range" plus "range sitting on
+      the 10ema (moving average of note)". Our data confirms:
+      BB rmv_15d hit 0 (floor) on 5/20; 5/22 saw rmv_15d=100
+      (expansion / breakout). BB was at WATCH the whole window
+      because range_contraction_ratio and vol_contraction_ratio
+      stayed ~1.0 — `_compute_fresh_tightening` missed it.
+      Moglen's MA-anchored framing matches our locked Phase 2
+      structural guards (`breakout_close > sma_10 AND sma_10 >
+      sma_20`) — when the review fires, BB should appear in
+      `rmv_catches_apollo_misses` with a measurable forward edge
+      if RMV is the right additional axis.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_flag_candidates
       WHERE rmv_5d IS NOT NULL
