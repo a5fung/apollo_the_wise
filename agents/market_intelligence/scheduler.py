@@ -66,6 +66,7 @@ JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
+JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -1624,6 +1625,56 @@ async def _flag_break_scan_job():
         return None
 
 
+async def _backup_health_check_job():
+    """Daily check that off-site backup completed within last 36h.
+
+    Cron runs nightly at 02:00 ET (host-level /home/apollo/backup.sh).
+    Success writes `gdrive_backup_success` audit row; failure writes
+    `gdrive_backup_failed` + Telegrams from the bash script directly.
+    This check is the BACKSTOP: if the cron itself stops firing (host
+    reboot, cron daemon down), no audit row gets written at all —
+    silent failure. This job alerts on absence.
+
+    Fires at 04:30 ET (2.5 hours after backup runs at 02:00 ET) so a
+    slow upload has time to complete. Stale threshold: 36h covers
+    weekend + Memorial-Day-class gaps without flapping.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        last_success = await conn.fetchval("""
+            SELECT MAX(created_at) FROM mi_audit_log
+            WHERE event_type = 'gdrive_backup_success'
+        """)
+        last_failure = await conn.fetchval("""
+            SELECT created_at FROM mi_audit_log
+            WHERE event_type IN ('gdrive_backup_failed', 'backup_failed')
+            ORDER BY created_at DESC LIMIT 1
+        """)
+
+    now = datetime.now(_ET)
+    if last_success is None:
+        await send_telegram_message(
+            "🚨 *Apollo off-site backup MISSING*\n"
+            "No `gdrive_backup_success` event ever recorded.\n"
+            "Run `/home/apollo/backup.sh` manually to surface the failure mode.",
+            parse_mode="Markdown",
+        )
+        return
+
+    hours_since = (now - last_success.astimezone(_ET)).total_seconds() / 3600.0
+    if hours_since > 36:
+        recent_fail_note = ""
+        if last_failure and last_failure > last_success:
+            recent_fail_note = f"\nLast failure: {last_failure.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')}"
+        await send_telegram_message(
+            f"🚨 *Apollo off-site backup STALE*\n"
+            f"Last successful upload: {last_success.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')} "
+            f"({hours_since:.1f}h ago){recent_fail_note}\n"
+            f"Check `/home/apollo/backups/gdrive.log` on prod.",
+            parse_mode="Markdown",
+        )
+
+
 async def _flag_scan_job():
     """Run at 5:25 PM ET. Continuation-flag detector daily pass.
 
@@ -2795,6 +2846,17 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_FLAG_BREAK_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
+    )
+
+    # Backup health check: 4:30 AM ET daily — 2.5h after host cron backup
+    # (02:00 ET). Telegrams if no `gdrive_backup_success` audit row in the
+    # last 36h. Backstops the case where the host cron itself stops firing.
+    _scheduler.add_job(
+        audit_wrap(_backup_health_check_job, JOB_BACKUP_HEALTH_CHECK),
+        CronTrigger(hour=4, minute=33, timezone="America/New_York"),
+        id=JOB_BACKUP_HEALTH_CHECK,
+        replace_existing=True,
+        misfire_grace_time=3600,
     )
 
     # Wick-fill forward returns: 5:45 PM ET — slots after post_nightly_audit
