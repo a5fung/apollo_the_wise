@@ -281,6 +281,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
+- **Disaster recovery**: if the host dies, follow `docs/ops/disaster_recovery.md` (operator runbook + `infra/restore.sh` driver). RTO ~95 min. Nightly cron writes pg_dump + GPG-encrypted secrets bundle to gdrive; `_backup_health_check_job` (04:33 ET) Telegrams if either blob is stale >36h. OAuth recovery (gdrive upload failing): `docs/ops/gdrive_backup_recovery.md`.
 
 **Canonical deploy command** — preflight is chained inside the script so the deploy fails loudly if entry-pipeline safeguards can't authenticate. **Use the script, not raw `docker compose` commands.** The 2026-05-13 outage was caused by deploying without the verification step.
 ```bash

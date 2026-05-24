@@ -683,6 +683,22 @@ See `docker/docker-compose.prod.yml` and the deployment notes in the project mem
 
 ---
 
+## Disaster Recovery
+
+**If the prod host dies**, follow [`docs/ops/disaster_recovery.md`](docs/ops/disaster_recovery.md) — operator runbook with provisioning + restore + validation steps. RTO target ~95 min focused work, 3h with slack.
+
+Nightly cron at 02:00 ET writes two files to Google Drive:
+- `apollo-YYYYMMDD.sql.gz` — full postgres dump (~100 MB)
+- `apollo-secrets-YYYYMMDD.tar.gz.gpg` — encrypted bundle of `.env` + `gdrive-token.json` + nginx config + crontab
+
+Recovery driver lives at `infra/restore.sh` — runs on a fresh Ubuntu 22.04+ box, walks 11 idempotent phases. Operator pastes GPG passphrase (stored in Google Password Manager). Health check at 04:33 ET Telegrams if either blob is stale >36h.
+
+If asking Claude during an outage: point it at `docs/ops/disaster_recovery.md` and tell it which Phase you're stuck on.
+
+OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/ops/gdrive_backup_recovery.md`](docs/ops/gdrive_backup_recovery.md).
+
+---
+
 ## Security Model
 
 | Concern | Mitigation |
