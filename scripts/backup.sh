@@ -39,11 +39,11 @@ telegram_alert() {
 }
 
 audit_event() {
-    # $1 = event_type; $2 = summary
+    # $1 = event_type; $2 = summary (will be truncated by call site to 500)
     local event="$1"
-    local summary="$2"
+    local summary="${2:0:500}"
     docker exec -i apollo-postgres psql -U apollo -d apollo -v ON_ERROR_STOP=1 \
-        -c "INSERT INTO mi_audit_log (event_type, ticker, summary) VALUES ('$event', '_backup', \$\$${summary}\$\$);" \
+        -c "INSERT INTO mi_audit_log (event_type, summary, detail) VALUES ('$event', \$\$${summary}\$\$, '');" \
         >/dev/null 2>&1 || true
 }
 
