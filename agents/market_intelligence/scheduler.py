@@ -1641,18 +1641,24 @@ async def _backup_health_check_job():
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        last_success = await conn.fetchval("""
+        last_pg = await conn.fetchval("""
             SELECT MAX(created_at) FROM mi_audit_log
             WHERE event_type = 'gdrive_backup_success'
         """)
+        last_secrets = await conn.fetchval("""
+            SELECT MAX(created_at) FROM mi_audit_log
+            WHERE event_type = 'gdrive_secrets_success'
+        """)
         last_failure = await conn.fetchval("""
             SELECT created_at FROM mi_audit_log
-            WHERE event_type IN ('gdrive_backup_failed', 'backup_failed')
+            WHERE event_type IN ('gdrive_backup_failed', 'gdrive_secrets_failed',
+                                 'backup_failed', 'secrets_backup_skipped')
             ORDER BY created_at DESC LIMIT 1
         """)
 
     now = datetime.now(_ET)
-    if last_success is None:
+
+    if last_pg is None:
         await send_telegram_message(
             "🚨 *Apollo off-site backup MISSING*\n"
             "No `gdrive_backup_success` event ever recorded.\n"
@@ -1661,16 +1667,35 @@ async def _backup_health_check_job():
         )
         return
 
-    hours_since = (now - last_success.astimezone(_ET)).total_seconds() / 3600.0
-    if hours_since > 36:
-        recent_fail_note = ""
-        if last_failure and last_failure > last_success:
-            recent_fail_note = f"\nLast failure: {last_failure.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')}"
+    pg_hours = (now - last_pg.astimezone(_ET)).total_seconds() / 3600.0
+    secrets_hours = (
+        (now - last_secrets.astimezone(_ET)).total_seconds() / 3600.0
+        if last_secrets else None
+    )
+
+    fail_note = ""
+    if last_failure and last_failure > last_pg:
+        fail_note = f"\nLast failure: {last_failure.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')}"
+
+    if pg_hours > 36:
         await send_telegram_message(
             f"🚨 *Apollo off-site backup STALE*\n"
-            f"Last successful upload: {last_success.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')} "
-            f"({hours_since:.1f}h ago){recent_fail_note}\n"
+            f"Last `gdrive_backup_success`: {last_pg.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')} "
+            f"({pg_hours:.1f}h ago){fail_note}\n"
             f"Check `/home/apollo/backups/gdrive.log` on prod.",
+            parse_mode="Markdown",
+        )
+    elif secrets_hours is None or secrets_hours > 36:
+        # pg_dump fresh but encrypted secrets blob stale → passphrase file
+        # probably missing or GPG failing. Defense in depth per advisor 2026-05-23.
+        secrets_summary = (
+            "never recorded" if secrets_hours is None
+            else f"last {last_secrets.astimezone(_ET).strftime('%Y-%m-%d %H:%M ET')} ({secrets_hours:.1f}h ago)"
+        )
+        await send_telegram_message(
+            f"🚨 *Apollo secrets backup STALE*\n"
+            f"pg_dump is current ({pg_hours:.1f}h ago) but encrypted secrets blob is {secrets_summary}.\n"
+            f"Recreate `/home/apollo/.backup-passphrase` per `docs/ops/disaster_recovery.md` Phase 6.{fail_note}",
             parse_mode="Markdown",
         )
 
