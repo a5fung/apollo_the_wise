@@ -3457,6 +3457,59 @@ reviews:
       more closed cohort trades).
 
 
+  - review_id: rel_volume_small_cap_biotech_floor_evidence
+    title: "rel_volume floor 0.5× for small-cap biotech/pharma EP entries"
+    question: |
+      Weekly review 2026-05-24 proposal #1: RLAY 2026-05-21 had
+      rel_volume=0.14 at ORB-entry time, vol_percentile=0.0,
+      stopped out at -$642 in 5.4 min, highest_price_seen ==
+      entry_price (zero post-fill uplift). Sister case to CSCO
+      2026-05-14 (large-cap variant tracked at
+      `rel_volume_large_cap_floor_evidence`) at rel_volume=0.04.
+
+      Hypothesis: small-cap biotech/pharma gapping with
+      rel_volume < 0.5x at ORB time has no follow-through —
+      gap is sentiment without participation. ADV gate at $50M
+      separates this from the large-cap class (which has its
+      own pending review). Sector restriction to biotech/pharma
+      reflects the observed pattern; expand to other sectors
+      ONLY if evidence supports broader bug class.
+
+      Per feedback_sample_size_discipline: N≥10 before ship.
+    predicate_sql: |
+      SELECT COUNT(*)
+        FROM mi_ep_alerts a
+        JOIN mi_stock_scores s
+          ON s.ticker = a.ticker AND s.score_date <= a.alert_date
+       WHERE a.alert_date >= CURRENT_DATE - 90
+         AND a.score_tier = 'HIGH'
+         AND a.rel_volume IS NOT NULL
+         AND a.rel_volume < 0.5
+         AND s.adv_20 IS NOT NULL
+         AND (s.adv_20 * s.close) < 50000000
+         AND (s.sector ILIKE '%biotech%'
+              OR s.sector ILIKE '%pharma%'
+              OR s.sector ILIKE '%health%');
+    threshold: 10
+    earliest_review_date: 2026-07-01
+    action_when_ready: |
+      Pull N≥10 cohort with `mi_live_trades` join (entry-aware,
+      per the large-cap review's 2026-05-18 methodology
+      correction — close-to-close fwd_5d_pct is drift-not-entry).
+
+      Decision matrix:
+        WR < 30% → ship `rel_volume ≥ 0.5x AND ADV < $50M AND
+          sector IN biotech/pharma` filter for HIGH alerts.
+          Audit event `filter:orb_rvol_too_low_smallcap_biotech`.
+        WR 30-50% → defer, evidence borderline.
+        WR > 50% → small sample unlucky; don't ship, retire review.
+
+      Cross-check with large-cap variant outcome: if BOTH ship,
+      consider unifying as `rel_volume ≥ 0.5x` floor agnostic of
+      ADV/sector. If only one ships, keep them targeted.
+    status: pending
+    added_on: 2026-05-24
+
   - review_id: gate_5g_historical_coverage
     title: "Gate 5 G retroactive coverage — would the gate have caught CRMD/KLAR/ARM/BW/AIXI?"
     question: |
