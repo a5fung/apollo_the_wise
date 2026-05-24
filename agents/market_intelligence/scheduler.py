@@ -1641,20 +1641,17 @@ async def _backup_health_check_job():
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        last_pg = await conn.fetchval("""
-            SELECT MAX(created_at) FROM mi_audit_log
-            WHERE event_type = 'gdrive_backup_success'
+        row = await conn.fetchrow("""
+            SELECT
+              MAX(CASE WHEN event_type='gdrive_backup_success'  THEN created_at END) AS last_pg,
+              MAX(CASE WHEN event_type='gdrive_secrets_success' THEN created_at END) AS last_secrets,
+              MAX(CASE WHEN event_type IN (
+                  'gdrive_backup_failed','gdrive_secrets_failed',
+                  'backup_failed','secrets_backup_skipped'
+              ) THEN created_at END) AS last_failure
+            FROM mi_audit_log
         """)
-        last_secrets = await conn.fetchval("""
-            SELECT MAX(created_at) FROM mi_audit_log
-            WHERE event_type = 'gdrive_secrets_success'
-        """)
-        last_failure = await conn.fetchval("""
-            SELECT created_at FROM mi_audit_log
-            WHERE event_type IN ('gdrive_backup_failed', 'gdrive_secrets_failed',
-                                 'backup_failed', 'secrets_backup_skipped')
-            ORDER BY created_at DESC LIMIT 1
-        """)
+    last_pg, last_secrets, last_failure = row["last_pg"], row["last_secrets"], row["last_failure"]
 
     now = datetime.now(_ET)
 

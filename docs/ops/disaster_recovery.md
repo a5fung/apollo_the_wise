@@ -114,10 +114,9 @@ The script runs `phase_validate` automatically. Cross-check these manually too:
 - [ ] **Telegram `/status`** — bot responds within 5s; per-mode equity matches Alpaca web UI within $1
 - [ ] **Telegram `/trades`** — open position list matches Alpaca portfolio page exactly (symbol + qty)
 - [ ] **Telegram `/account`** — daytrade_count and drawdown_breaker state plausible
-- [ ] **Manual sync_positions trigger** for both modes (commands printed by restore.sh):
+- [ ] **Manual sync_positions trigger** (iterates both paper + live modes internally):
    ```bash
-   docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.live_tracker import sync_positions; asyncio.run(sync_positions('paper'))"
-   docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.live_tracker import sync_positions; asyncio.run(sync_positions('live'))"
+   docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.order_manager import sync_positions; print(asyncio.run(sync_positions()))"
    ```
    Verify no discrepancy in resulting Telegram alert.
 - [ ] **Recent audit log** — no `*_failed` or `*_error` events after restore start:

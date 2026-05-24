@@ -26,8 +26,24 @@ APP_DIR="$APP_HOME/apollo_the_wise"
 MARKER_DIR=/var/lib/apollo-restore
 COMPOSE_FILE="docker/docker-compose.prod.yml"
 
-# Force-re-run support: `bash restore.sh --force phase_clone` clears
-# markers from phase_clone onward so subsequent phases re-run.
+# Ordered phase list — single source of truth for execution order AND
+# for --force <phase> downstream-marker-clearing semantics.
+PHASES=(
+    phase_apt
+    phase_user
+    phase_clone
+    phase_prompt
+    phase_decrypt_secrets
+    phase_nginx_reload
+    phase_db_up
+    phase_restore_sql
+    phase_app_up
+    phase_validate
+    phase_finish
+)
+
+# Force-re-run support: `bash restore.sh --force phase_clone` clears markers
+# from phase_clone AND all later phases so the whole tail re-runs.
 FORCE_FROM=""
 if [ "${1:-}" = "--force" ] && [ -n "${2:-}" ]; then
     FORCE_FROM="$2"
@@ -50,15 +66,21 @@ mkdir -p "$MARKER_DIR"
 
 phase_marker() { echo "$MARKER_DIR/$1.done"; }
 
+# If --force <phase> was given, clear that phase's marker AND every later
+# phase's marker so the whole downstream tail re-runs. Without this,
+# --force only forces the named phase and later phases silently skip on
+# their stale markers.
+if [ -n "$FORCE_FROM" ]; then
+    seen_force=false
+    for p in "${PHASES[@]}"; do
+        if [ "$p" = "$FORCE_FROM" ]; then seen_force=true; fi
+        if $seen_force; then rm -f "$MARKER_DIR/${p}.done"; fi
+    done
+    $seen_force || err "--force phase '$FORCE_FROM' not in PHASES list"
+fi
+
 should_run() {
-    local phase="$1"
-    if [ -n "$FORCE_FROM" ] && [ "$phase" = "$FORCE_FROM" ]; then
-        # Clear this and all later markers
-        rm -f "$MARKER_DIR/${phase}.done"
-        # Best-effort: clear later markers too (operator must know order)
-        FORCE_FROM=""  # only force the named phase + downstream
-        return 0
-    fi
+    local phase="${FUNCNAME[1]}"  # phase function knows its own name
     if [ -f "$(phase_marker "$phase")" ]; then
         ok "Skipping $phase (already complete — delete $(phase_marker "$phase") to re-run)"
         return 1
@@ -66,12 +88,12 @@ should_run() {
     return 0
 }
 
-mark_done() { touch "$(phase_marker "$1")"; }
+mark_done() { touch "$(phase_marker "${FUNCNAME[1]}")"; }
 
 # ── Phase 1: apt install ──────────────────────────────────────────────
 phase_apt() {
     banner "Phase 1: apt install (docker, git, gnupg, postgres-client, nginx)"
-    if ! should_run "phase_apt"; then return 0; fi
+    if ! should_run; then return 0; fi
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         docker.io docker-compose-plugin git python3 python3-pip \
@@ -79,14 +101,14 @@ phase_apt() {
         || err "apt-get install failed"
     systemctl enable docker
     systemctl start docker
-    mark_done "phase_apt"
+    mark_done
     ok "Phase 1 complete"
 }
 
 # ── Phase 2: apollo user ──────────────────────────────────────────────
 phase_user() {
     banner "Phase 2: create apollo user (uid 1000, docker group)"
-    if ! should_run "phase_user"; then return 0; fi
+    if ! should_run; then return 0; fi
     if ! id -u "$APP_USER" >/dev/null 2>&1; then
         useradd -m -u 1000 -s /bin/bash "$APP_USER" || err "useradd failed"
     fi
@@ -95,14 +117,14 @@ phase_user() {
     chmod 700 "$APP_HOME/.ssh"
     chown -R "$APP_USER:$APP_USER" "$APP_HOME/.ssh"
     warn "Operator: paste your ssh pubkey into $APP_HOME/.ssh/authorized_keys (chmod 0600) before disconnecting"
-    mark_done "phase_user"
+    mark_done
     ok "Phase 2 complete"
 }
 
 # ── Phase 3: clone repo ──────────────────────────────────────────────
 phase_clone() {
     banner "Phase 3: clone repo to $APP_DIR (branch $REPO_BRANCH)"
-    if ! should_run "phase_clone"; then return 0; fi
+    if ! should_run; then return 0; fi
     if [ -d "$APP_DIR/.git" ]; then
         ok "Repo already cloned; pulling latest"
         sudo -u "$APP_USER" git -C "$APP_DIR" pull origin "$REPO_BRANCH"
@@ -110,7 +132,7 @@ phase_clone() {
         sudo -u "$APP_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$APP_DIR" \
             || err "git clone failed"
     fi
-    mark_done "phase_clone"
+    mark_done
     ok "Phase 3 complete"
 }
 
@@ -119,16 +141,19 @@ phase_clone() {
 # Idempotent: re-prompts only if env vars not provided OR marker missing.
 phase_prompt() {
     banner "Phase 4: collect operator inputs"
-    if ! should_run "phase_prompt"; then
-        # Even if marker present, we need values in memory for this run
-        if [ ! -f "$MARKER_DIR/restore_inputs" ]; then
-            warn "Marker present but inputs file missing; re-prompting"
-        else
-            # shellcheck disable=SC1091
-            . "$MARKER_DIR/restore_inputs"
-            export GPG_PASSPHRASE SECRETS_BLOB_PATH SQL_DUMP_PATH
-            return 0
-        fi
+
+    # Re-prompt for passphrase even when marker exists — it lives only in the
+    # current shell (never persisted to disk). Paths persist; passphrase doesn't.
+    if [ -f "$(phase_marker "$FUNCNAME")" ] && [ -f "$MARKER_DIR/restore_inputs" ]; then
+        # shellcheck disable=SC1091
+        . "$MARKER_DIR/restore_inputs"
+        echo -n "GPG passphrase (paths cached from prior run; no echo): "
+        read -rs GPG_PASSPHRASE
+        echo ""
+        [ -n "$GPG_PASSPHRASE" ] || err "Empty passphrase"
+        export GPG_PASSPHRASE SECRETS_BLOB_PATH SQL_DUMP_PATH
+        ok "Phase 4: paths reused, passphrase collected"
+        return 0
     fi
 
     echo -n "GPG passphrase (paste from Google Password Manager; no echo): "
@@ -144,7 +169,6 @@ phase_prompt() {
     read -r SQL_DUMP_PATH
     [ -r "$SQL_DUMP_PATH" ] || err "File not readable: $SQL_DUMP_PATH"
 
-    # Persist paths (NOT passphrase) for idempotent re-runs
     umask 077
     {
         printf 'SECRETS_BLOB_PATH=%q\n' "$SECRETS_BLOB_PATH"
@@ -152,14 +176,14 @@ phase_prompt() {
     } > "$MARKER_DIR/restore_inputs"
     export GPG_PASSPHRASE SECRETS_BLOB_PATH SQL_DUMP_PATH
 
-    mark_done "phase_prompt"
+    mark_done
     ok "Phase 4 complete"
 }
 
 # ── Phase 5: decrypt secrets bundle ──────────────────────────────────
 phase_decrypt_secrets() {
     banner "Phase 5: decrypt secrets bundle + place files"
-    if ! should_run "phase_decrypt_secrets"; then return 0; fi
+    if ! should_run; then return 0; fi
 
     local decrypt_dir
     decrypt_dir=$(mktemp -d)
@@ -215,27 +239,27 @@ phase_decrypt_secrets() {
     find "$decrypt_dir" -type f -exec shred -u {} \; 2>/dev/null || true
     rmdir "$decrypt_dir" 2>/dev/null || true
 
-    mark_done "phase_decrypt_secrets"
+    mark_done
     ok "Phase 5 complete"
 }
 
 # ── Phase 6: nginx reload ────────────────────────────────────────────
 phase_nginx_reload() {
     banner "Phase 6: reload nginx"
-    if ! should_run "phase_nginx_reload"; then return 0; fi
+    if ! should_run; then return 0; fi
     if nginx -t 2>&1; then
         systemctl reload nginx || systemctl start nginx
         ok "Phase 6 complete"
     else
         warn "nginx -t failed; TradingView webhook unavailable until fixed manually"
     fi
-    mark_done "phase_nginx_reload"
+    mark_done
 }
 
 # ── Phase 7: bring up postgres + redis ───────────────────────────────
 phase_db_up() {
     banner "Phase 7: docker compose up postgres + redis (300s pg_isready)"
-    if ! should_run "phase_db_up"; then return 0; fi
+    if ! should_run; then return 0; fi
     cd "$APP_DIR"
     sudo -u "$APP_USER" docker compose -f "$COMPOSE_FILE" up -d postgres redis \
         || err "docker compose up postgres redis failed"
@@ -245,7 +269,7 @@ phase_db_up() {
     while [ $elapsed -lt 300 ]; do
         if docker exec apollo-postgres pg_isready -U apollo >/dev/null 2>&1; then
             ok "Postgres ready after ${elapsed}s"
-            mark_done "phase_db_up"
+            mark_done
             return 0
         fi
         sleep 5
@@ -257,7 +281,7 @@ phase_db_up() {
 # ── Phase 8: restore SQL dump ────────────────────────────────────────
 phase_restore_sql() {
     banner "Phase 8: restore SQL dump from $SQL_DUMP_PATH"
-    if ! should_run "phase_restore_sql"; then return 0; fi
+    if ! should_run; then return 0; fi
 
     # Drop and recreate database for clean target
     docker exec apollo-postgres psql -U apollo -d postgres -v ON_ERROR_STOP=1 \
@@ -280,24 +304,24 @@ phase_restore_sql() {
     [ "$audit_count" -gt 0 ] || err "mi_audit_log row count zero after restore"
     ok "Restored: mi_audit_log=$audit_count rows, mi_live_trades=$trade_count rows"
 
-    mark_done "phase_restore_sql"
+    mark_done
 }
 
 # ── Phase 9: bring up apollo services ────────────────────────────────
 phase_app_up() {
     banner "Phase 9: deploy.sh both (runs 5-gate preflight chain)"
-    if ! should_run "phase_app_up"; then return 0; fi
+    if ! should_run; then return 0; fi
     cd "$APP_DIR"
     sudo -u "$APP_USER" bash scripts/deploy.sh both \
         || err "deploy.sh failed; inspect output and re-run with --force phase_app_up"
-    mark_done "phase_app_up"
+    mark_done
     ok "Phase 9 complete"
 }
 
 # ── Phase 10: validation ─────────────────────────────────────────────
 phase_validate() {
     banner "Phase 10: post-restore validation"
-    if ! should_run "phase_validate"; then return 0; fi
+    if ! should_run; then return 0; fi
 
     cd "$APP_DIR"
     echo -e "\n${CYAN}--- readiness_check.py --verbose ---${NC}"
@@ -322,15 +346,14 @@ The following checks require operator action (no automation possible):
   2. Telegram /trades — open position list matches Alpaca portfolio page
      exactly (symbol + qty).
   3. Telegram /account — daytrade_count and drawdown_breaker state plausible.
-  4. Trigger sync_positions manually for both modes:
-       docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.live_tracker import sync_positions; asyncio.run(sync_positions('paper'))"
-       docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.live_tracker import sync_positions; asyncio.run(sync_positions('live'))"
+  4. Trigger sync_positions manually (iterates both paper + live modes internally):
+       docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.order_manager import sync_positions; print(asyncio.run(sync_positions()))"
      Verify no discrepancy in Telegram alert.
   5. Recent audit log (no errors post-restore start):
        docker exec apollo-postgres psql -U apollo -d apollo -c "SELECT event_type, created_at FROM mi_audit_log WHERE created_at > NOW() - INTERVAL '1 hour' ORDER BY created_at DESC LIMIT 20;"
 
 EOF
-    mark_done "phase_validate"
+    mark_done
     ok "Phase 10 complete"
 }
 
@@ -375,16 +398,8 @@ echo "Marker dir: $MARKER_DIR"
 
 [ "$(id -u)" -eq 0 ] || err "Must run as root"
 
-phase_apt
-phase_user
-phase_clone
-phase_prompt
-phase_decrypt_secrets
-phase_nginx_reload
-phase_db_up
-phase_restore_sql
-phase_app_up
-phase_validate
-phase_finish
+for p in "${PHASES[@]}"; do
+    "$p"
+done
 
 echo "Finished: $(date -Iseconds)"
