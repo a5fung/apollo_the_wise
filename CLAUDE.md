@@ -108,6 +108,12 @@ shared/        models.py, registry.py, secrets.py
 2. Dispatch → `core/orchestrator.py` → `_dispatch_tool()`
 3. Handler → inline in orchestrator OR delegate to market agent's `execute_task()`
 
+## Adding a Telegram slash command (`/foo`)
+Three places must be updated **in the same commit** or the command is hidden from operators:
+1. **Handler** in `agents/market_intelligence/agent.py` — `_handle_foo_query(self, request)` method.
+2. **Dispatch** in `agent.py` — entry in the command-to-handler dict (e.g. `"/foo": self._handle_foo_query`).
+3. **Bot command list** in `channels/telegram.py::_register_commands` — `BotCommand("foo", "<short description>")`. This is what makes the command appear in the Telegram `/` menu (operator-discoverability). Multiple commands in 2026-05 shipped without this step and were invisible to the operator until called out (2026-05-24).
+
 ## Market Agent Routing (`execute_task`)
 Order matters — first match wins:
 1. watchlist / 2. theme engine rerun / 3. refresh / 4. history

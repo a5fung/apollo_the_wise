@@ -4409,6 +4409,73 @@ reviews:
     status: pending
     added_on: 2026-05-23
 
+  - review_id: intraday_support_test_signal_n10
+    title: "Intraday support-test detector — N≥10 graduation review (#95)"
+    question: |
+      #95 shipped 2026-05-24 — entry-technique #2 from
+      memory/user_tight_range_entry_techniques.md (Wyckoff Spring /
+      Livermore Shakeout / Morales OWL pattern). Detects intraday
+      moment when a TIGHTENING/COILED/TRIGGERED ticker tags base_low
+      within ±1% tolerance (no more than 2% undercut) AND price has
+      bounced back above base_low + 0.5%.
+
+      Critical design departure from #94: NO volume gate. Per Morales
+      methodology — "volume is generally not a factor" for support-
+      test/U&R patterns. Filtering on volume would shed valid setups.
+
+      Telemetry-only shadow phase (mi_flag_support_tests writes +
+      Telegram digest + /supporttests command). Forward-return
+      analysis at N≥10 settled, structurally-surviving cases (filtered
+      via parent_invalidated_eod = FALSE — sister to #94's gate).
+
+      Live evidence accumulates Tuesday 2026-05-27 onward.
+    predicate_sql: |
+      -- N>=10 settled 10d-forward support-tests, excluding
+      -- structurally-invalidated cases.
+      SELECT COUNT(*) FROM mi_flag_support_tests t
+      LEFT JOIN mi_daily_closes d0
+          ON d0.ticker = t.ticker AND d0.trade_date = t.test_date
+      LEFT JOIN LATERAL (
+          SELECT close FROM mi_daily_closes
+          WHERE ticker = t.ticker AND trade_date > t.test_date
+          ORDER BY trade_date ASC OFFSET 9 LIMIT 1
+      ) d10 ON TRUE
+      WHERE t.test_date <= CURRENT_DATE - INTERVAL '12 days'
+        AND t.parent_invalidated_eod = FALSE
+        AND d0.close > 0
+        AND d10.close IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Pull cohort. Compute 5d/10d forward returns from current_price
+      (the bounce-detection price, NOT next-day open like #94 — this
+      detector fires intraday and an operator-confirm entry would
+      execute near the bounce, not at next-day open).
+
+      Decision gate:
+      1. N≥10 + median 5d return ≥ +2% + WR≥+5% ≥ 40%: PROMOTE
+         - Stop placement: just below base_low (Morales selling guide)
+         - Design operator-confirm entry: /supporttest ENTER TICKER
+      2. N≥10 + signal weak (median <0%): revise detector — possibly:
+         - Tighten tag-tolerance gate (currently ±1% may be too loose)
+         - Add minimum hold-time confirmation (multi-tick)
+         - Sector / regime filter (counter-trend works better in
+           specific conditions per memory file)
+      3. N<10: bump earliest_review_date +30d.
+
+      DO NOT graduate without minute-bar entry simulation per
+      feedback_validate_metric_before_decision.md — current bounce-
+      detection is from snapshot close, not the actual fill point.
+
+      Cross-references:
+      - memory/user_tight_range_entry_techniques.md Entry #2
+      - #94 (sibling intraday detector — breakout shape)
+      - #96/#97/#98 (future entry-technique detectors)
+      - ADR 0004 §4 source_detector enum (flag_support_test slot)
+      - ADR 0005 (#94 design template this detector mirrors)
+    status: pending
+    added_on: 2026-05-24
+
   - review_id: rally_band_u_shape_observation
     title: "Pradeep rally-band U-shape — sideways/modest-uptrend dead zone (#79 + #78 complementary observation)"
     question: |

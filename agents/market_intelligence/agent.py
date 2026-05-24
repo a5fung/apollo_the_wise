@@ -2206,6 +2206,112 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_support_tests_query(self, request: AgentRequest) -> AgentResponse:
+        """`/supporttests` — intraday support-test detector surface (#95).
+
+        Modes:
+          /supporttests           — today's tests + last 7-day summary
+          /supporttests TICKER    — 30-day history for one ticker
+
+        Shadow phase: telemetry-only, no entries. Counter-trend entry mechanic
+        per memory/user_tight_range_entry_techniques.md Entry #2.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"SUPPORTTESTS", "SUPPORTTEST"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        from agents.market_intelligence.collector import _ET
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                rows = await conn.fetch("""
+                    SELECT test_date, test_time, minutes_since_open,
+                           parent_stage, base_low, day_low, current_price,
+                           pct_below_base_low, bounce_pct_from_low,
+                           in_sugar_baby_cohort, parent_invalidated_eod
+                    FROM mi_flag_support_tests
+                    WHERE ticker = $1
+                      AND test_date >= CURRENT_DATE - INTERVAL '30 days'
+                    ORDER BY test_date DESC, test_time DESC
+                """, ticker)
+                if not rows:
+                    return self._ok(
+                        request,
+                        result=f"_No intraday support-tests for `{ticker}` in last 30d._"
+                    )
+                lines = [f"🛡 *{ticker} — Intraday support-test history (30d)*", ""]
+                for r in rows:
+                    et_clock = r["test_time"].astimezone(_ET).strftime("%H:%M")
+                    inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                    cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
+                    lines.append(
+                        f"  {r['test_date']} {et_clock}{cohort} — "
+                        f"{r['parent_stage']} tested ${r['base_low']:.2f} "
+                        f"({r['pct_below_base_low']:+.2f}%), bounced "
+                        f"+{r['bounce_pct_from_low']:.2f}%{inval}"
+                    )
+                return self._ok(request, result="\n".join(lines))
+
+            today_rows = await conn.fetch("""
+                SELECT ticker, test_time, parent_stage, base_low, day_low,
+                       current_price, pct_below_base_low, bounce_pct_from_low,
+                       in_sugar_baby_cohort, parent_invalidated_eod
+                FROM mi_flag_support_tests
+                WHERE test_date = CURRENT_DATE
+                ORDER BY test_time
+            """)
+            recent_summary = await conn.fetch("""
+                SELECT test_date,
+                       COUNT(*) AS n_tests,
+                       COUNT(*) FILTER (WHERE in_sugar_baby_cohort) AS n_cohort,
+                       COUNT(*) FILTER (WHERE parent_invalidated_eod) AS n_invalidated
+                FROM mi_flag_support_tests
+                WHERE test_date BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                    AND CURRENT_DATE - INTERVAL '1 day'
+                GROUP BY test_date
+                ORDER BY test_date DESC
+            """)
+
+        lines = ["🛡 *Intraday Support-Tests*", ""]
+        if today_rows:
+            lines.append(f"*Today ({len(today_rows)})*:")
+            for r in today_rows:
+                et_clock = r["test_time"].astimezone(_ET).strftime("%H:%M")
+                cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                lines.append(
+                    f"  {et_clock} {cohort}`{r['ticker']}` — "
+                    f"{r['parent_stage']} tested ${r['base_low']:.2f} "
+                    f"({r['pct_below_base_low']:+.2f}%), bounced "
+                    f"+{r['bounce_pct_from_low']:.2f}%{inval}"
+                )
+        else:
+            lines.append("_No support-tests today (yet)._")
+
+        if recent_summary:
+            lines.append("")
+            lines.append("*Last 7 days (excl. today):*")
+            for r in recent_summary:
+                inval_note = (
+                    f" ({r['n_invalidated']} invalidated_eod)"
+                    if r["n_invalidated"] else ""
+                )
+                cohort_note = (
+                    f" {r['n_cohort']} 🍬"
+                    if r["n_cohort"] else ""
+                )
+                lines.append(
+                    f"  {r['test_date']}: {r['n_tests']} tests{cohort_note}{inval_note}"
+                )
+
+        lines.append("")
+        lines.append("_Drill-down: `/supporttests TICKER` for 30-day history per ticker_")
+        lines.append("_Shadow phase — telemetry only, no entries submitted_")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
         """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
 
@@ -4448,6 +4554,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/timestop":       self._handle_time_stop_command,
             "/flagbreaks":     self._handle_flag_breaks_query,
             "/flagbreak":      self._handle_flag_breaks_query,
+            "/supporttests":   self._handle_support_tests_query,
+            "/supporttest":    self._handle_support_tests_query,
             "/watch":          self._handle_watchlist_query,
             "/inplay":         self._handle_stocks_in_play_query,
             "/setup":          self._handle_setup_query,

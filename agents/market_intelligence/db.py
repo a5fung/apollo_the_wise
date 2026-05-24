@@ -1352,6 +1352,49 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_flag_breaks_ticker
                 ON mi_flag_breaks(ticker, break_date DESC);
 
+            -- Intraday support-test detections (#95, entry-technique #2 from
+            -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
+            -- price tags base_low within tolerance and bounces. Per Morales
+            -- methodology, volume is NOT a required factor — this is the
+            -- design departure from #94 (breakout requires volume confirmation).
+            -- Telemetry-only shadow phase; N>=10 settled before paper.
+            CREATE TABLE IF NOT EXISTS mi_flag_support_tests (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                test_date DATE NOT NULL,                  -- ET date of support test
+                test_time TIMESTAMPTZ NOT NULL,           -- moment of detection (UTC)
+                minutes_since_open INT NOT NULL,
+                -- Snapshot of flag-detector state at moment of test
+                parent_stage TEXT NOT NULL,               -- TIGHTENING | COILED | TRIGGERED
+                parent_scan_date DATE NOT NULL,
+                base_high FLOAT,                          -- context
+                base_low FLOAT NOT NULL,                  -- the boundary being tested
+                base_age INT,
+                -- Test event data
+                day_low FLOAT NOT NULL,                   -- intraday low (the actual tag)
+                current_price FLOAT NOT NULL,             -- price at detection (the bounce)
+                pct_below_base_low FLOAT NOT NULL,        -- (day_low - base_low) / base_low * 100; negative = undercut
+                bounce_pct_from_low FLOAT NOT NULL,       -- (current_price - day_low) / day_low * 100
+                today_volume BIGINT,                      -- context only — no volume gate
+                adv_20 BIGINT,
+                volume_pct_of_adv FLOAT,
+                -- Cohort context (display only)
+                in_sugar_baby_cohort BOOLEAN DEFAULT FALSE,
+                cohort_count_180d INT,
+                -- Post-EOD reconciliation (same pattern as mi_flag_breaks):
+                -- run_flag_scan flips this TRUE if parent ticker classified
+                -- INVALIDATED at 5:25 PM. Backward-check filters via
+                -- parent_invalidated_eod = FALSE.
+                parent_invalidated_eod BOOLEAN DEFAULT FALSE,
+                invalidated_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, test_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_support_tests_date
+                ON mi_flag_support_tests(test_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_support_tests_ticker
+                ON mi_flag_support_tests(ticker, test_date DESC);
+
             -- Stocks-in-Play unified watchlist (#99 / ADR 0004 Phase 1,
             -- 2026-05-23). Three-axis maturity model captured here:
             --   1. Per-strategy phase: mi_strategies.phase (separate table)

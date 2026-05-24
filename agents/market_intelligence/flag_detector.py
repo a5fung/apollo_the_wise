@@ -1293,6 +1293,259 @@ async def run_intraday_flag_break_scan(scan_time):
 
 
 # ────────────────────────────────────────────────────────────────────────
+# Intraday support-test detector (#95, entry-technique #2)
+# ────────────────────────────────────────────────────────────────────────
+#
+# Counter-trend mechanic within established range. Detects when price
+# intraday tags base_low (or undercuts within tolerance) AND bounces
+# back above it — the classic Wyckoff/Livermore/Morales "Spring" /
+# "Shakeout" / "Springboard" pattern.
+#
+# Per memory/user_tight_range_entry_techniques.md Entry #2:
+#   "Tightest stop placement (just below `base_low`); BEST R:R if it
+#    works; low signal/noise"
+# Per Morales: "Volume is generally not a factor" — design departure
+# from #94 (breakout requires volume confirmation).
+#
+# Stateless within-snapshot detection — uses day.l (intraday low so
+# far) + day.c (current close) instead of multi-tick state.
+
+# Support-test thresholds
+_SUPPORT_TEST_TAG_TOL_PCT       = 1.0  # day_low within ±1% of base_low counts as a tag
+_SUPPORT_TEST_MAX_UNDERCUT_PCT  = 2.0  # day_low no more than 2% BELOW base_low (else falling knife)
+_SUPPORT_TEST_BOUNCE_FLOOR_PCT  = 0.5  # current_price at least 0.5% above day_low
+_SUPPORT_TEST_HOLD_FLOOR_PCT    = 0.5  # current_price at least 0.5% above base_low (currently holding)
+
+
+async def run_intraday_support_test_scan(scan_time):
+    """Intraday support-test detection on TIGHTENING/COILED/TRIGGERED tickers.
+
+    Reads the most-recent flag-classification (MAX(scan_date) WHERE
+    scan_date < CURRENT_DATE — trading-session-aware), filters to
+    stage IN (TIGHTENING, COILED, TRIGGERED). For each candidate
+    ticker, evaluates whether the day's intraday low tested base_low
+    AND price has bounced back above it. NO volume gate (per Morales
+    methodology). New tests inserted into mi_flag_support_tests
+    (UNIQUE on ticker+test_date) and a consolidated Telegram digest
+    fires.
+
+    Gates (stateless within-snapshot):
+      1. day.l ≤ base_low × 1.01 — tested low (within tolerance)
+      2. day.l ≥ base_low × 0.98 — clean test, not falling knife
+      3. day.c ≥ base_low × 1.005 — currently holding above base_low
+      4. (day.c − day.l) / day.l ≥ 0.005 — minimum bounce magnitude
+
+    Args:
+        scan_time: datetime in ET timezone
+
+    Returns:
+        int: count of new support tests inserted this scan
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    if not (_dt_time(9, 35) <= scan_time.time() <= _dt_time(15, 55)):
+        return 0
+
+    minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
+    if minutes_since_open <= 0:
+        return 0
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        candidates = await conn.fetch("""
+            WITH latest AS (
+                SELECT MAX(scan_date) AS d FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            )
+            SELECT DISTINCT ON (ticker)
+                   ticker, scan_date, stage, base_high, base_low, base_age
+            FROM mi_flag_candidates
+            WHERE scan_date = (SELECT d FROM latest)
+              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND base_low IS NOT NULL
+              AND base_low > 0
+            ORDER BY ticker, scan_date DESC
+        """)
+        if not candidates:
+            return 0
+
+        watchlist = {r["ticker"]: dict(r) for r in candidates}
+
+        cohort_rows = await conn.fetch("""
+            SELECT ticker, count_9m_alerts_180d
+            FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
+        """)
+        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+
+        adv_rows = await conn.fetch("""
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+                  AND volume > 0
+            ) sub
+            WHERE rn <= 20
+            GROUP BY ticker
+        """, list(watchlist.keys()))
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        already_tested = await conn.fetch("""
+            SELECT ticker FROM mi_flag_support_tests WHERE test_date = CURRENT_DATE
+        """)
+        already_set = {r["ticker"] for r in already_tested}
+
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning("intraday_support_test_scan: empty snapshot fetch; skipping")
+        return 0
+
+    new_tests: list[dict] = []
+    for ticker, cand in watchlist.items():
+        if ticker in already_set:
+            continue
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+
+        day = snap.get("day") or {}
+        day_low = day.get("l")
+        current_price = (
+            day.get("c")
+            or snap.get("min", {}).get("c")
+            or snap.get("lastTrade", {}).get("p")
+            or 0
+        )
+        if not day_low or day_low <= 0 or current_price <= 0:
+            continue
+
+        base_low = float(cand["base_low"])
+
+        # Gate 1: day_low tested base_low within tolerance
+        tag_upper = base_low * (1.0 + _SUPPORT_TEST_TAG_TOL_PCT / 100.0)
+        if day_low > tag_upper:
+            continue  # never tested
+
+        # Gate 2: no falling-knife — day_low not too far below base_low
+        undercut_floor = base_low * (1.0 - _SUPPORT_TEST_MAX_UNDERCUT_PCT / 100.0)
+        if day_low < undercut_floor:
+            continue  # too deep an undercut to be a clean test
+
+        # Gate 3: currently holding above base_low (not still under it)
+        hold_target = base_low * (1.0 + _SUPPORT_TEST_HOLD_FLOOR_PCT / 100.0)
+        if current_price < hold_target:
+            continue
+
+        # Gate 4: minimum bounce magnitude from the day's low
+        bounce_pct = (current_price - day_low) / day_low * 100.0
+        if bounce_pct < _SUPPORT_TEST_BOUNCE_FLOOR_PCT:
+            continue
+
+        today_volume = int(day.get("v") or 0)
+        adv_20 = adv_map.get(ticker, 0)
+        volume_pct = (today_volume / adv_20 * 100.0) if adv_20 > 0 else None
+        pct_below_base_low = (day_low - base_low) / base_low * 100.0  # negative if undercut
+        in_cohort = ticker in cohort_map
+
+        new_tests.append({
+            "ticker": ticker,
+            "minutes_since_open": minutes_since_open,
+            "parent_stage": cand["stage"],
+            "parent_scan_date": cand["scan_date"],
+            "base_high": float(cand["base_high"]) if cand["base_high"] else None,
+            "base_low": base_low,
+            "base_age": cand["base_age"],
+            "day_low": float(day_low),
+            "current_price": float(current_price),
+            "pct_below_base_low": pct_below_base_low,
+            "bounce_pct_from_low": bounce_pct,
+            "today_volume": today_volume or None,
+            "adv_20": adv_20 or None,
+            "volume_pct_of_adv": volume_pct,
+            "in_sugar_baby_cohort": in_cohort,
+            "cohort_count_180d": cohort_map.get(ticker),
+        })
+
+    if not new_tests:
+        return 0
+
+    async with pool.acquire() as conn:
+        for t in new_tests:
+            await conn.execute("""
+                INSERT INTO mi_flag_support_tests (
+                    ticker, test_date, test_time, minutes_since_open,
+                    parent_stage, parent_scan_date, base_high, base_low, base_age,
+                    day_low, current_price, pct_below_base_low, bounce_pct_from_low,
+                    today_volume, adv_20, volume_pct_of_adv,
+                    in_sugar_baby_cohort, cohort_count_180d
+                ) VALUES (
+                    $1, CURRENT_DATE, NOW(), $2,
+                    $3, $4, $5, $6, $7,
+                    $8, $9, $10, $11,
+                    $12, $13, $14,
+                    $15, $16
+                )
+                ON CONFLICT (ticker, test_date) DO NOTHING
+            """,
+                t["ticker"], t["minutes_since_open"],
+                t["parent_stage"], t["parent_scan_date"],
+                t["base_high"], t["base_low"], t["base_age"],
+                t["day_low"], t["current_price"],
+                t["pct_below_base_low"], t["bounce_pct_from_low"],
+                t["today_volume"], t["adv_20"], t["volume_pct_of_adv"],
+                t["in_sugar_baby_cohort"], t["cohort_count_180d"],
+            )
+            try:
+                undercut_note = (
+                    f"undercut={t['pct_below_base_low']:+.2f}%"
+                    if t["pct_below_base_low"] < 0
+                    else f"tag={t['pct_below_base_low']:+.2f}%"
+                )
+                await db.log_audit_event(
+                    "intraday_support_test",
+                    f"{t['ticker']} stage={t['parent_stage']} "
+                    f"{undercut_note} bounce={t['bounce_pct_from_low']:+.2f}%"
+                )
+            except Exception as e:
+                logger.debug(f"intraday_support_test audit failed (non-critical): {e}")
+
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        clock = scan_time.strftime("%H:%M")
+        lines = [
+            f"🛡 *Intraday Support-Tests ({len(new_tests)} new)*",
+            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+            "",
+        ]
+        for t in new_tests:
+            cohort_marker = "🍬 " if t["in_sugar_baby_cohort"] else ""
+            undercut_label = (
+                f"undercut {t['pct_below_base_low']:+.2f}%"
+                if t["pct_below_base_low"] < 0
+                else f"tag {t['pct_below_base_low']:+.2f}%"
+            )
+            lines.append(
+                f"• {cohort_marker}`{t['ticker']}` — tested ${t['base_low']:.2f} "
+                f"({undercut_label}), bounced +{t['bounce_pct_from_low']:.2f}% "
+                f"to ${t['current_price']:.2f} "
+                f"(base {t['base_age']}d {t['parent_stage']})"
+            )
+        lines.append("")
+        lines.append("_Drill-down: `/supporttests` for today's full list + recent history_")
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"intraday_support_test Telegram failed (non-critical): {e}")
+
+    logger.info(f"intraday_support_test_scan: {len(new_tests)} new tests detected")
+    return len(new_tests)
+
+
+# ────────────────────────────────────────────────────────────────────────
 # Entry-technique annotation (#93, 2026-05-23 ship)
 # ────────────────────────────────────────────────────────────────────────
 #
@@ -1510,16 +1763,20 @@ async def reconcile_flag_breaks_post_eod(scan_date):
     via parent_invalidated_eod = FALSE to evaluate structurally-surviving
     breakouts only.
 
+    Also reconciles support-test rows (#95) by the same rule — a tested
+    support that immediately invalidates structurally isn't worth counting
+    in forward-return analysis.
+
     Args:
         scan_date: the date being classified (today in ET)
 
     Returns:
-        int: count of break rows invalidated by this reconciliation
+        tuple[int, int]: (breaks_invalidated, support_tests_invalidated)
     """
     from agents.market_intelligence import db
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        result = await conn.execute("""
+        breaks_result = await conn.execute("""
             UPDATE mi_flag_breaks
                SET parent_invalidated_eod = TRUE,
                    invalidated_at = NOW()
@@ -1531,15 +1788,36 @@ async def reconcile_flag_breaks_post_eod(scan_date):
                       AND stage = 'INVALIDATED'
                )
         """, scan_date)
-    # asyncpg returns "UPDATE N"
-    count = int(result.split()[-1]) if result else 0
-    if count:
-        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {count} break rows")
+        tests_result = await conn.execute("""
+            UPDATE mi_flag_support_tests
+               SET parent_invalidated_eod = TRUE,
+                   invalidated_at = NOW()
+             WHERE test_date = $1
+               AND parent_invalidated_eod = FALSE
+               AND ticker IN (
+                   SELECT ticker FROM mi_flag_candidates
+                    WHERE scan_date = $1
+                      AND stage = 'INVALIDATED'
+               )
+        """, scan_date)
+    breaks_count = int(breaks_result.split()[-1]) if breaks_result else 0
+    tests_count = int(tests_result.split()[-1]) if tests_result else 0
+    if breaks_count:
+        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {breaks_count} break rows")
         try:
             await db.log_audit_event(
                 "flag_breaks_reconciled",
-                f"{count} intraday breaks marked parent_invalidated_eod=TRUE for {scan_date}",
+                f"{breaks_count} intraday breaks marked parent_invalidated_eod=TRUE for {scan_date}",
             )
         except Exception:
             pass
-    return count
+    if tests_count:
+        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {tests_count} support-test rows")
+        try:
+            await db.log_audit_event(
+                "flag_support_tests_reconciled",
+                f"{tests_count} intraday support-tests marked parent_invalidated_eod=TRUE for {scan_date}",
+            )
+        except Exception:
+            pass
+    return (breaks_count, tests_count)

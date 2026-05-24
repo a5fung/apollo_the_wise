@@ -66,6 +66,7 @@ JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
+JOB_SUPPORT_TEST_SCAN = "support_test_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 
 _scheduler: AsyncIOScheduler | None = None
@@ -1625,6 +1626,28 @@ async def _flag_break_scan_job():
         return None
 
 
+async def _support_test_scan_job():
+    """Run every 5 min during market hours. Intraday support-test detector
+    (#95, entry-technique #2, 2026-05-24 ship).
+
+    Counter-trend mechanic — detects when price tests base_low and bounces.
+    Cron fires minute=*/5 9-15 (Mon-Fri); function gates internally to
+    9:35 AM – 3:55 PM ET. NO volume gate per Morales methodology.
+    Telemetry-only shadow phase; N>=10 settled before paper.
+    """
+    now_et = datetime.now(_ET)
+    if not (_dt_time(9, 35) <= now_et.time() <= _dt_time(15, 55)):
+        return 0
+    try:
+        from agents.market_intelligence.flag_detector import run_intraday_support_test_scan
+        n = await run_intraday_support_test_scan(now_et)
+        return int(n) if n is not None else 0
+    except Exception as e:
+        logger.error(f"intraday_support_test_scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_SUPPORT_TEST_SCAN, str(e))
+        return None
+
+
 async def _backup_health_check_job():
     """Daily check that off-site backup completed within last 36h.
 
@@ -2866,6 +2889,21 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_FLAG_BREAK_SCAN,
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
+    # Intraday support-test scan: every 5 min during market hours
+    # (gate internally 9:35-15:55 ET). Entry-technique #2 per
+    # memory/user_tight_range_entry_techniques.md. Telemetry-only
+    # shadow phase; N>=10 settled before paper.
+    _scheduler.add_job(
+        audit_wrap(_support_test_scan_job, JOB_SUPPORT_TEST_SCAN),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_SUPPORT_TEST_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
     )
