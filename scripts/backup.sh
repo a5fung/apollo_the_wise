@@ -58,6 +58,63 @@ fi
 dump_size=$(stat -c %s "$BACKUP_FILE" 2>/dev/null || echo "?")
 dump_mb=$((dump_size / 1024 / 1024))
 
+# Step 1b — Encrypted secrets bundle (.env + gdrive-token.json + nginx + crontab)
+# Skipped if BACKUP_PASSPHRASE_FILE absent (e.g., post-restore before operator
+# recreates the passphrase file). Failure here NEVER blocks pg_dump path.
+SECRETS_BLOB=$BACKUP_DIR/apollo-secrets-$(date +%Y%m%d).tar.gz.gpg
+if [ -r "${BACKUP_PASSPHRASE_FILE:-}" ]; then
+    bundle_dir=$(mktemp -d)
+    chmod 700 "$bundle_dir"
+    {
+        cp "$ENV_FILE" "$bundle_dir/.env" 2>/dev/null || true
+        cp /home/apollo/gdrive-token.json "$bundle_dir/gdrive-token.json" 2>/dev/null || true
+        cp /etc/nginx/sites-available/apollo.conf "$bundle_dir/apollo.conf" 2>/dev/null || true
+        crontab -u apollo -l > "$bundle_dir/crontab.txt" 2>/dev/null || true
+        {
+            printf 'apollo-secrets bundle %s\n' "$(date -Iseconds)"
+            printf 'includes (best-effort):\n'
+            ls -la "$bundle_dir" | awk 'NR>1 {print "  " $NF " (" $5 " bytes)"}'
+        } > "$bundle_dir/MANIFEST.txt"
+    } 2>>"$LOG_FILE"
+
+    if tar -czf "$bundle_dir/bundle.tar.gz" -C "$bundle_dir" .env gdrive-token.json apollo.conf crontab.txt MANIFEST.txt 2>>"$LOG_FILE" && \
+       gpg --batch --yes \
+           --passphrase-file "$BACKUP_PASSPHRASE_FILE" \
+           --symmetric --cipher-algo AES256 \
+           -o "$SECRETS_BLOB" "$bundle_dir/bundle.tar.gz" 2>>"$LOG_FILE"; then
+        # Wipe staged plaintext from tmpdir
+        find "$bundle_dir" -type f -exec shred -u {} \; 2>/dev/null || true
+        rmdir "$bundle_dir" 2>/dev/null || true
+
+        # Upload encrypted blob via existing OAuth path
+        secrets_log_tmp=$(mktemp)
+        if GDRIVE_TOKEN_FILE=/home/apollo/gdrive-token.json \
+           GDRIVE_FOLDER_ID=1kXY1LAld1_ZwFa28ZAh3cLVNft7agamb \
+           python3 /home/apollo/gdrive_backup.py "$SECRETS_BLOB" >"$secrets_log_tmp" 2>&1; then
+            secrets_file_id=$(grep -oE '[A-Za-z0-9_-]{20,}' "$secrets_log_tmp" | tail -1)
+            cat "$secrets_log_tmp" >> "$LOG_FILE"
+            rm -f "$secrets_log_tmp"
+            secrets_size=$(stat -c %s "$SECRETS_BLOB" 2>/dev/null || echo "?")
+            audit_event "gdrive_secrets_success" "Uploaded $(basename "$SECRETS_BLOB") (${secrets_size}B) → drive_file_id=${secrets_file_id}"
+        else
+            secrets_err=$(tail -10 "$secrets_log_tmp" | tr '\n' ' ' | cut -c1-300)
+            cat "$secrets_log_tmp" >> "$LOG_FILE"
+            rm -f "$secrets_log_tmp"
+            telegram_alert "🚨 *Apollo secrets backup FAILED (upload step)*%0A\`\`\`%0A${secrets_err}%0A\`\`\`%0A%0Apg_dump succeeded; encrypted blob exists locally at ${SECRETS_BLOB}."
+            audit_event "gdrive_secrets_failed" "Upload failed: ${secrets_err}"
+        fi
+    else
+        bundle_err=$(tail -10 "$LOG_FILE" | tr '\n' ' ' | cut -c1-300)
+        find "$bundle_dir" -type f -exec shred -u {} \; 2>/dev/null || true
+        rmdir "$bundle_dir" 2>/dev/null || true
+        telegram_alert "🚨 *Apollo secrets backup FAILED (encrypt step)*%0A\`\`\`%0A${bundle_err}%0A\`\`\`"
+        audit_event "gdrive_secrets_failed" "Encryption failed: ${bundle_err}"
+    fi
+else
+    telegram_alert "⚠️ *Apollo secrets backup SKIPPED* — \`BACKUP_PASSPHRASE_FILE\` unset or unreadable. Recreate per \`docs/ops/disaster_recovery.md\` Phase 6."
+    audit_event "secrets_backup_skipped" "BACKUP_PASSPHRASE_FILE unset/unreadable; secrets not encrypted this run"
+fi
+
 # Step 2 — Google Drive upload
 upload_log_tmp=$(mktemp)
 if GDRIVE_TOKEN_FILE=/home/apollo/gdrive-token.json \
@@ -81,5 +138,9 @@ else
     # Don't exit non-zero — local dump succeeded, retention still runs
 fi
 
-# Step 3 — Local retention (7 days)
-find "$BACKUP_DIR" -name '*.sql.gz' -mtime +7 -delete 2>>"$LOG_FILE"
+# Step 3 — Local retention
+#   pg_dump:        7 days  (large files, can re-fetch from gdrive if older)
+#   secrets blob:  30 days  (tiny encrypted blobs, wider rollback if a cred
+#                            rotation breaks something)
+find "$BACKUP_DIR" -name 'apollo-*.sql.gz' -mtime +7 -delete 2>>"$LOG_FILE"
+find "$BACKUP_DIR" -name 'apollo-secrets-*.tar.gz.gpg' -mtime +30 -delete 2>>"$LOG_FILE"
