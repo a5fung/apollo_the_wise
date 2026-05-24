@@ -185,9 +185,19 @@ phase_decrypt_secrets() {
     banner "Phase 5: decrypt secrets bundle + place files"
     if ! should_run; then return 0; fi
 
-    local decrypt_dir
-    decrypt_dir=$(mktemp -d)
+    # Stage decrypted plaintext in tmpfs (/dev/shm) so .env + gdrive-token
+    # never touch disk. Function-scoped trap removes the dir on RETURN
+    # whether the placements below succeed or err out.
+    local stage_root decrypt_dir
+    if [ -d /dev/shm ] && [ -w /dev/shm ]; then
+        stage_root=/dev/shm
+    else
+        stage_root=${TMPDIR:-/tmp}
+    fi
+    decrypt_dir=$(mktemp -d -p "$stage_root")
     chmod 700 "$decrypt_dir"
+    # shellcheck disable=SC2064
+    trap "rm -rf '$decrypt_dir'" RETURN
 
     printf '%s' "$GPG_PASSPHRASE" | \
         gpg --batch --yes --passphrase-fd 0 \
@@ -235,9 +245,9 @@ phase_decrypt_secrets() {
         cat "$decrypt_dir/MANIFEST.txt"
     fi
 
-    # Wipe decrypted plaintext
-    find "$decrypt_dir" -type f -exec shred -u {} \; 2>/dev/null || true
-    rmdir "$decrypt_dir" 2>/dev/null || true
+    # Cleanup handled by function-scoped trap RETURN above (tmpfs has no
+    # persistence, no shred needed). Old shred + rmdir kept as belt-and-
+    # suspenders for the fallback /tmp path, but the trap is authoritative.
 
     mark_done
     ok "Phase 5 complete"
