@@ -1413,7 +1413,7 @@ async def initialize_schema() -> None:
                 base_low FLOAT,
                 base_age INT,
                 -- MA being tested (SMA10 preferred over SMA20 when both fire)
-                ma_label TEXT NOT NULL,                   -- 'SMA10' | 'SMA20'
+                ma_label TEXT NOT NULL CHECK (ma_label IN ('SMA10', 'SMA20')),
                 ma_value FLOAT NOT NULL,
                 -- Test event data
                 day_low FLOAT NOT NULL,                   -- intraday low (the actual tag)
@@ -1435,6 +1435,26 @@ async def initialize_schema() -> None:
                 ON mi_flag_ma_pullbacks(pullback_date DESC);
             CREATE INDEX IF NOT EXISTS idx_ma_pullbacks_ticker
                 ON mi_flag_ma_pullbacks(ticker, pullback_date DESC);
+
+            -- Idempotent: add CHECK constraint on existing mi_flag_ma_pullbacks
+            -- tables that pre-date the constraint (table was created
+            -- 2026-05-24; constraint added same day post-/simplify review).
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'mi_flag_ma_pullbacks'
+                      AND constraint_name = 'mi_flag_ma_pullbacks_ma_label_check'
+                ) THEN
+                    BEGIN
+                        ALTER TABLE mi_flag_ma_pullbacks
+                            ADD CONSTRAINT mi_flag_ma_pullbacks_ma_label_check
+                            CHECK (ma_label IN ('SMA10', 'SMA20'));
+                    EXCEPTION WHEN check_violation THEN
+                        RAISE NOTICE 'mi_flag_ma_pullbacks has rows violating ma_label check; constraint not added';
+                    END;
+                END IF;
+            END $$;
 
             -- Stocks-in-Play unified watchlist (#99 / ADR 0004 Phase 1,
             -- 2026-05-23). Three-axis maturity model captured here:

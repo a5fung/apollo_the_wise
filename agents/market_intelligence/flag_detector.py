@@ -862,9 +862,9 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     # check evidence script filters via parent_invalidated_eod=FALSE.
     # Non-blocking; reconciliation failure doesn't break flag scan output.
     try:
-        await reconcile_flag_breaks_post_eod(scan_date)
+        await reconcile_flag_state_post_eod(scan_date)
     except Exception as e:
-        logger.warning(f"reconcile_flag_breaks_post_eod failed (non-critical): {e}")
+        logger.warning(f"reconcile_flag_state_post_eod failed (non-critical): {e}")
 
     return by_stage
 
@@ -2033,7 +2033,7 @@ async def get_flag_watchlist(scan_date=None):
     return watchlist
 
 
-async def reconcile_flag_breaks_post_eod(scan_date):
+async def reconcile_flag_state_post_eod(scan_date):
     """Post-EOD reconciliation per Gemini contract 2026-05-23.
 
     After run_flag_scan commits its EOD classification (5:25 PM ET), flip
@@ -2095,7 +2095,7 @@ async def reconcile_flag_breaks_post_eod(scan_date):
     tests_count = int(tests_result.split()[-1]) if tests_result else 0
     pullbacks_count = int(pullbacks_result.split()[-1]) if pullbacks_result else 0
     if breaks_count:
-        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {breaks_count} break rows")
+        logger.info(f"reconcile_flag_state_post_eod: invalidated {breaks_count} break rows")
         try:
             await db.log_audit_event(
                 "flag_breaks_reconciled",
@@ -2104,7 +2104,7 @@ async def reconcile_flag_breaks_post_eod(scan_date):
         except Exception:
             pass
     if tests_count:
-        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {tests_count} support-test rows")
+        logger.info(f"reconcile_flag_state_post_eod: invalidated {tests_count} support-test rows")
         try:
             await db.log_audit_event(
                 "flag_support_tests_reconciled",
@@ -2113,7 +2113,7 @@ async def reconcile_flag_breaks_post_eod(scan_date):
         except Exception:
             pass
     if pullbacks_count:
-        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {pullbacks_count} ma-pullback rows")
+        logger.info(f"reconcile_flag_state_post_eod: invalidated {pullbacks_count} ma-pullback rows")
         try:
             await db.log_audit_event(
                 "flag_ma_pullbacks_reconciled",

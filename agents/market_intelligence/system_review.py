@@ -288,6 +288,17 @@ async def _aggregate_promotion_checks() -> dict:
     return {"checks": out}
 
 
+def _token_variants(token: str) -> tuple[str, ...]:
+    """Return search variants for a metric-name token to absorb plural/singular
+    variance ('cooldowns' should match 'cooldown' in change text). Conservative —
+    only strips a trailing 's' when removal leaves ≥4 chars to avoid over-
+    matching short tokens.
+    """
+    if len(token) >= 5 and token.endswith("s"):
+        return (token, token[:-1])
+    return (token,)
+
+
 def _match_drift_to_recent_changes(metric_key: str, recent_changes: list[str]) -> str | None:
     """Detect whether a drifting metric's subsystem has a recent improvement
     in CLAUDE.md (#112, 2026-05-24). The audit layer can't distinguish good
@@ -295,8 +306,14 @@ def _match_drift_to_recent_changes(metric_key: str, recent_changes: list[str]) -
     cross-referencing the metric name against recent change descriptions
     gives the operator the context to interpret correctly.
 
-    Matches any 4+ character token from the metric_key (split on '_') as
-    a case-insensitive substring of the change body.
+    Tightened post-/simplify (2026-05-24): a single-token match on short
+    common words like "entry" or "rate" produced false positives — almost
+    every change in the codebase mentions "entry" in some form. Require:
+      (a) the FIRST token (subsystem prefix) to match, OR
+      (b) ≥2 tokens to match in the same change line.
+
+    Tokens absorb plural/singular variance via `_token_variants`
+    ('cooldowns' → ['cooldowns', 'cooldown']).
 
     Returns the matching change entry (date + first line) or None.
     """
@@ -305,9 +322,18 @@ def _match_drift_to_recent_changes(metric_key: str, recent_changes: list[str]) -
     tokens = [t.lower() for t in metric_key.split("_") if len(t) >= 4]
     if not tokens:
         return None
+
+    def _token_in(token: str, hay: str) -> bool:
+        return any(v in hay for v in _token_variants(token))
+
+    first_token = tokens[0]
     for change in recent_changes:
         change_lower = change.lower()
-        if any(t in change_lower for t in tokens):
+        if _token_in(first_token, change_lower):
+            return change
+        # Fallback: require ≥2 token hits in the same change
+        hits = sum(1 for t in tokens if _token_in(t, change_lower))
+        if hits >= 2:
             return change
     return None
 
