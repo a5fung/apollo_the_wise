@@ -336,415 +336,61 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-05-21 (Wed) — Backward-check hygiene exposed methodology error; data-gated review workflow expanded; 9M Day 2 mechanical-vs-Pradeep gap filed
+### 2026-05-24 (Sun) — 9-commit ship-day: 3 weekly-review fixes + 3 new intraday detectors + DR-secrets tmpfs + L3 drift annotation + 2 regression bugs caught
 
-**Trigger**: User pushed for closure / live-readiness via multi-day hard push. Advisor reframe (logged): "Code is not the rate-limit. Trade outcomes are." Live readiness = Gate 3 paper R+ over N≥10. Current cohort -$1,541 over 4 trades, 75% loss rate. 3-5 weeks calendar minimum regardless of code velocity. Today's work was "improve evidence quality," not "accelerate readiness."
+Weekend session covering: weekly review fixes, methodology investigations, two new intraday shadow detectors (third detector ships next session), DR-secrets hardening, /simplify post-ship review. 9 commits (`b52e3e6` → `76693df`).
 
-**The hygiene-fix discovery (`#59` shipped earlier, dedup applied today)**: yesterday's #50 verdict ("pre-revenue $0 band has 67% 5d WR — keep code default at $0.01") was based on polluted cohort. mi_ep_alerts had 32 duplicate rows of 3 events (TH×16 on 4/01, KOD×12 on 3/26, KPTI×4 on 3/24) inflating band-level WR. Post-dedup: $0 band → 14% WR / -8% avg. The opposite of yesterday's read.
+**Weekly review fixes (4 blocks)**:
+- **Block 1** — synthetic-test events from #48/#49 verification drills false-alarmed in audit-error roll-up. `_aggregate_audit_errors` now filters rows whose summary starts with "SYNTHETIC TEST". Verified Perplexity disclaimer sanitizer post-fix: 11 pre-fix → 0 post-fix FPs in 90d (already shipped 5/14, surfaced as ready in this week's digest — turned out to be a YAML bug, see Block 3). L2/L3 baseline trust review deferred 60d (3 of 5 random metrics ≥14, 2 below — predicate too strict for rare-event metrics; refined criterion on next review).
+- **Block 2** — duplicate_scan-path missed-opps rows showing as if missed signals. Investigation: QBTS/QUBT 5/21 BOTH scored 64.8 MODERATE in mi_ep_alerts; "Already scored today" rows are just dedup-path audit trail with `ep_score=NULL` by design. Display dedup: `top_missed_winners` + `missed_by_category` suppress duplicate_scan rows when same (ticker, alert_date) has non-duplicate sibling.
+- **Block 3** — **YAML duplicate-key bug found** in `data_gated_reviews.yaml`. Three review entries had duplicate `status` or `earliest_review_date` keys silently overwriting earlier values (YAML last-wins). `theme_assignment_sndk_class_refinement` had `status: done` + `closed_on: 2026-05-18` + outcome block, then a stray `status: pending` 50 lines later — parser saw `pending` → re-surfaced this week as ready. Fixed all 3 entries. Shipped new `[5e/5]` preflight `scripts/preflight_yaml_dupe_keys.py` so this class can't ship silently again. The "Sonnet narrator hallucination" hypothesis (#111) was wrong; the real bug was in the YAML itself.
+- **Block 4** — rel_volume small-cap-biotech sister review filed (RLAY 5/21 + CSCO 5/14 = N=2 trap pattern below ship threshold; large-cap variant already pending at N=7 trade-aware methodology).
 
-Cascading effects:
-- **#63 reverted (#68)** — code default lowered to 0.01 in AM was built on retracted evidence. Reverted to $5M conservative-block; prod env override stays at 0.01 (operator-pinned, explicitly provisional). Runtime unchanged.
-- **#53 verdict shifted but held direction** — gap/ATR 5x+ band went 73% → 42% WR after dedup (TH-like duplicates landed there). Still says "don't ship ATR-normalized gap scoring," for a different reason (no band shows >60% WR cleanly).
-- **Duplicate root cause already fixed 2026-04-01** (`c0bcb48` "Add same-day dedup in ep_detector to prevent 16x duplicate inserts"). Two-layer dedup at insert site (already_alerted set + same-day check). Zero new duplicates in 50+ days. #67 closed without UNIQUE constraint — legacy rows carry trajectory data (score 80↔96 across scan ticks) that constraint would destroy.
+**Three new intraday shadow detectors** (entry-technique taxonomy, fire Tuesday 5/27 first):
+- **#95 Support-test** (`mi_flag_support_tests`): price tests base_low within ±1% tolerance (max 2% undercut) AND bounces back above. **No volume gate** per Morales OWL methodology — "volume is generally not a factor" for support-test patterns.
+- **#96 MA pullback** (`mi_flag_ma_pullbacks`): price tests SMA10 or SMA20 inside the range and bounces. **Light-volume gate (today_pace ≤ 100% ADV)** — defining characteristic of pullback vs distribution. SMA10 preferred over SMA20 when both fire.
+- Both mirror #94 architecture (every 5 min 9:35-15:55 ET, stateless within-snapshot, telemetry-only shadow phase, N≥10 settled before paper). Post-EOD reconciliation extended to all 3 tables. Three new `/flagbreaks`, `/supporttests`, `/mapullbacks` Telegram commands + BotCommand registration. New YAML reviews `intraday_support_test_signal_n10` + `intraday_ma_pullback_signal_n10` (earliest 2026-07-15).
 
-**Data-gated review workflow expansion (#64)**: `data_gated_reviews.yaml` schema now documents three statuses (pending/done/deferred) with explicit `deferred_reason`/`deferred_until` fields. Parser (`data_gated_reviews.py`) updated to re-evaluate deferred entries on their new `earliest_review_date`. Tomorrow's `live_cutover_decision` review will use this pattern: `status: deferred`, `deferred_reason: "Gate 3 RED -$1,541 over 4 trades"`, `deferred_until: 2026-06-22`.
+**#107 + #108 DR-secrets tmpfs hardening**: `backup.sh` Step 1b + `restore.sh phase_decrypt_secrets` now stage plaintext `.env` / `gdrive-token.json` in `/dev/shm` (RAM-backed tmpfs) so they never touch disk. Function-scoped `trap RETURN` for unconditional cleanup. Dropped `find -exec shred -u` (tmpfs has no persistence). Verified on prod: encrypted secrets blob uploaded successfully, `/dev/shm` empty post-run.
 
-**ROIV 9M Day 2 trigger surfaces methodology gap (#65 filed)**: ROIV (clinical-stage biotech, $0 yfinance Revenue Avg) entered 9M Day 2 at 9:31 ET ($32.34 entry, $29.35 stop, 286 shares). MAGNA53 path would block via revenue-stage gate; **9M Day 2 path is quant-only, applies no catalyst-driven filter**. Per `user_pradeep_9m_universe_methodology.md`, 9M EP is a *watchlist* not an entry trigger; our mechanical Day-2 ORB doesn't match the methodology. Architectural review filed for N≥10 closed cohort (earliest 2026-07-15). Phase 1 = cohort outcome by revenue-stage class + concurrent-flag-state. Phase 2 = decide deprecate / gate / rename.
+**#112 L3 drift annotation + Sonnet-context regex bug surfaced**: when an L3 drift fires on a metric whose subsystem has a recent CLAUDE.md change, weekly digest now adds "⚠ may be intentional (improvement landed {hint})" so operator distinguishes good drift from regression. `_match_drift_to_recent_changes` first-token-priority + plural/singular variance via `_token_variants`. **Pre-existing bug**: `_CLAUDEMD_HEADER_RE` looked for `## Changes Made YYYY-MM-DD` but actual format is `### YYYY-MM-DD (Day) — title`. The function has been returning `[]` silently for unknown duration — Sonnet L2 hypothesis call was getting empty recent-context this whole time. Fixed regex + added regression test `tests/test_system_audit_recent_changes.py`.
 
-**Fixture re-review (#57) — operator labels systematically more generous than rubric**: 6/6 weekend fixtures show rubric verdict ≤ operator label (1 game_changer + 3 strong + 2 routine → 5 weak + 1 safety-net). Not an error — operator reads narrative/chart/theme/intuition; rubric reads structured earnings metrics. The gap measures the discretion layer, informing Phase 5 meta-rubric work (currently scoped 2026-09 per `phase5_meta_rubric_calibration`). Don't relabel fixtures — the diff IS the calibration signal.
+**Three followups filed for after Tuesday's first-fire** (#115/#116/#117): 3-detector boilerplate refactor (~400 lines dedup, rule-of-three crossed), hot-path caches (snapshot + universe), audit-event constants module. Plus #118 Tuesday Telegram-density assessment. Discipline: **don't refactor active hot-path code day-before-firing** — validate first, refactor after.
 
-**Operator-UX cleanup**: `routine_correct` rubric label renamed to `routine` (yesterday). CAVA-class downgrade Telegram now deduped via 1h DB-query (shipped yesterday — verified working today; #69 confirmed Telegram-side dedup pattern is correct, no spam).
+**Patterns**:
+- /simplify caught 2 real bugs today (YAML duplicate keys, CLAUDE.md regex). Both pre-existed; would not have been caught by code review alone. Pattern: cross-cutting review across many commits surfaces stale assumptions invisible to per-commit review.
+- Three independent /simplify agents converged on the same biggest finding (rule-of-three for detector boilerplate). High signal when independent reviewers agree.
+- New rule shipped in CLAUDE.md "Adding a Telegram slash command" — three places must be updated together (handler + dispatch + BotCommand). Six commands had shipped this month without BotCommand registration before the user called it out.
 
-**Followups filed today**: #65 (9M Day 2 methodology, N≥10 closed earliest 7/15), #66 (audit trail of #50 correction), #67 (closed without ship — already deduped), #68 (urgent revert per advisor — shipped), #69 (closed — duplicates are legacy pre-fix), #70 (meta-rubric calibration evidence — operator vs rubric gap).
+### 2026-05-23 (Sat) — DR layer ship + Stocks-in-Play Phase 1 + #94 intraday flag-break detector
 
-**Meta-lessons captured in `feedback_sample_size_discipline.md`**:
-- Hygiene-revealed methodology errors are MORE valuable than the methodology change they prevented. #50/#53 verdict revisions both went through this loop today.
-- "Structural framing" doesn't bypass sample-size discipline. Distinguishing "should the gate exist" (structural, low-N OK) from "where should the threshold sit" (calibration, N≥10) is the key separation.
-- Status-quo bias dressed as discipline ("hold the most recent ship") is a real failure mode. The advisor caught me on it today — defending #63's code default on the same N-evidence basis that I'd just rejected for the $5M ratchet.
-- Code velocity is not the live-readiness rate-limit. Trade outcomes are. Hard-push sessions produce evidence quality, not calendar compression.
+Multi-track session. Three significant ships + Polygon coverage investigation closure.
 
-### 2026-05-20 (Tue) — UnboundLocalError outage + 4 backward-checks all said "don't ship" + Gate 5 verified complete
+**Disaster Recovery layer (`docs/ops/disaster_recovery.md` + `infra/restore.sh` + extended `backup.sh`)**: prior to this, only postgres pg_dump was backed up. Host death = lose all API keys, OAuth tokens, nginx config. Added encrypted secrets bundle: `.env` + `gdrive-token.json` + `apollo.conf` + crontab → tar → gpg AES256 → uploaded alongside nightly pg_dump. Passphrase stored in Google Password Manager. New `infra/restore.sh` driver (idempotent, 11 phases) for fresh-box restore in ~95 min focused work. `_backup_health_check_job` 4:33 ET requires BOTH `gdrive_backup_success` AND `gdrive_secrets_success` audit rows in last 36h. **HARD GATE shipped**: §6 decryption roundtrip on laptop proves recoverability against actual encrypted bytes, not against intent. Caught a real bug — user pasted placeholder string `<paste-from-google-pw-manager>` into the file initially (gpg "Bad session key" error surfaced during the roundtrip drill — exactly what the gate exists to catch).
 
-**Outage**: morning EP scans failed 7:00-8:21 ET (1h21m) on `cannot access variable 'log_audit_event'`. Root cause: 2026-05-19 commit `bb17e69` added `from ... import log_audit_event` inside `run_ep_scan` — Python made the name LOCAL for the entire 1000+ line function, blowing UnboundLocalError on every prior reference. Hotfix `b3df5a5`.
+**#94 Intraday flag-break detector (ADR 0005)**: every 5 min during market hours scans TIGHTENING/COILED/TRIGGERED tickers for break above `base_high` with volume-pace projection clearing ADV + opening-30min raw-volume floor (block-trade guard). Telemetry-only shadow phase. Post-EOD reconciliation flips `parent_invalidated_eod=TRUE` for breaks whose parent ticker classifies INVALIDATED at 5:25 PM scan. Forward-return analysis gated N≥10 settled, earliest 2026-07-15.
 
-**Preflight `[5d/5]` shipped same day**: AST-based shadowing check (`scripts/preflight_import_shadowing.py`) flagging Mode A (prior-ref shadow) + Mode B (conditional shadow). Caught 10 additional latent landmines across `scheduler.py`, `live_tracker.py`, `ep_detector.py`, `catalyst_metrics_extractor.py` — all fixed in same session. Wired into `deploy.sh` step `[5d/5]`.
+**#99 Stocks-in-Play Phase 1**: `mi_stocks_in_play` unified table — methodology-presence signals (sugar_baby_cohort first migration) + entry-technique triggers (flag_break_intraday slot). Per ADR 0004 three-axis maturity model. `stocks_in_play_sources.py` constants module for source_detector + automation_class enums with `validate_source/class` (friction-by-design like `broker/skip_reasons.py`).
 
-**EP scan failure surfacing hardened (#49)**: durable `ep_scan_failed` audit row + escalated `🚨 EP SCAN DOWN — TRADING IMPACTED` Telegram + 1h dedup. Removed duplicate `notify_job_failure` call after synthetic test surfaced 3-message spam pattern.
+**Polygon coverage investigation (#71/#72/#73) closed**: 25-45% coverage is structural floor for our EP cohort, not regression. Direct API probe confirmed Polygon doesn't index AAP/LION/IMVT (mid-caps), plus extraction-timing-vs-roundup lag. Other sources (Alpaca 100%, yfinance 100%, Perplexity 100%, Claude 100%) compensate. Filed `feedback_polygon_coverage_structural_floor.md` so future-Claude doesn't re-loop.
 
-**Downgrade audit message disambiguated (#51)**: 4 branches replace generic "Q-rev YoY un-extractable":
-- `extraction_failed_*` — Sonnet call raised
-- `news_corpus_sparse_no_q_rev` — extraction ran, thin news
-- `q_rev_yoy_missing_no_prior_year_comparable` — KLAR-class, IPO no prior year
-- `non_earnings_catalyst_no_q_rev_in_news` — FDA/M&A/partnership
+**/simplify post-ship**: caught bare `.astimezone()` UTC bug in `/flagbreaks` Telegram, ADV-20 used AVG vs SSoT median, AmbiguousParameter risk (false positive verified). Plus #93 TIGHTENING watchlist + entry-technique annotation + #92 flag detector graduation review (NO-GO at N=5).
 
-**Four backward checks all concluded "don't ship methodology change"** (#50, #53, #54, #39):
-- **#50 revenue-stage threshold**: pre-revenue $0 band 67% WR (this verdict overturned 5/21 by dedup — actually 14% WR)
-- **#53 ATR-normalized gap**: low-ratio band 43% WR, mid 17%, 5x+ 73% (this verdict shifted 5/21 — 5x+ band 42% post-dedup)
-- **#54 9M Day 2 stop/ATR**: cohort too thin (N=4 entered), distributional check showed PURR's 1.17x ratio not anomalous
-- **#39 NBIS rubric calibration**: methodology-correct given data; corp-action distortion in axis 2 surfaced as known limitation (#56 filed)
+### 2026-05-22 (Fri) — Weekly review surfacing fixes (#109/#110) + flag detector graduation review (#92)
 
-**Gate 5 verified all 6 deliverables shipped** (#43): A naked-position remediation, B DB UPDATE prepare validation, C escalated alert, D stuck-fill watchdog, E column-type regression pytest, F operator sign-off 5/18, G column-write authority preflight. Gate 5 fully closed. Gate 3 (paper R+) is the sole remaining live-cutover blocker.
+Mid-week ship covering display-quality issues in last weekend's review + flag detector evidence-quality framing.
 
-**Quarterly backward-check sweep wired (#62)**: APScheduler job runs Feb/May/Aug/Nov 1st 8:00 AM ET. Aggregates all backward-check scripts' output into one Telegram digest. First scheduled fire: 2026-08-01. On-demand: `docker exec apollo-market python -m agents.market_intelligence.quarterly_review`.
+- **#109 by-skip-reason avg/top always NULL at 7d window**: SQL aggregates `ret_5d` which is NULL for any alert <5 trading days old. At 7-day window basically no alert has matured. `max_high_5d` doesn't have this problem (LIMIT 6 on existing bars). Fix: surface `avg_max_high_5d` + `top_max_high_5d` columns; rank `ranked` CTE on `COALESCE(ret_5d, max_high_5d)`.
+- **#110 Loser post-mortem unreadable at low N**: "5m-wider: 100%" at N=1 reads statistically loaded but is "1 of 1". Aggregate row now switches to "X/N" form when N<5. Header explains 5m == `shadow_orb_5m` strategy.
+- **#92 flag detector graduation review NO-GO at N=5**: TRIGGERED-as-EOD-state measurement was post-hoc (close > base_high at 5:25 PM scan, not at break moment). Re-frame: #94 ships the moment-of-break detector; #92 superseded.
 
-**Followups filed**: #55-60 (date/N-gated future reviews), #61 (5/22 cutover deferral), #62 (quarterly sweep), #63/#64 (advisor flags).
 
-**Meta-pattern**: 4 backward checks ran. All 4 said "don't ship." Each one prevented a methodology change that intuition would have shipped. The discipline is anti-velocity — anti-shipping-on-intuition. Same shape as 2026-05-08 days_up_streak ship→revert→restore loop the discipline was originally designed to prevent.
+### Older entries graduated to CHANGELOG.md
 
-### 2026-05-17 (Sun) — Track 1 trade-state ownership refactor + Gate 5 G column-write authority preflight (live-cutover blocker closed)
+- Compressed 2026-05-17: 2026-04-30 through 2026-05-08.
+- Compressed 2026-05-24: 2026-05-10 (#66 dual-account), 2026-05-11 (missed-EP telemetry), 2026-05-13 (`ALPACA_LIVE_API_KEY` outage + M&A direction-blind + 9M sugar-baby M&A coverage + theme assignment silent_stop + theme cross_run_dup rename + preflight smoke test #84), 2026-05-14 (CRMD naked-position incident + Gate 5 + EP selectivity deep-dive + 3-parallel-bugs), 2026-05-17 (Track 1 trade-state ownership refactor + Gate 5 G column-write authority preflight), 2026-05-20 (UnboundLocalError outage + preflight `[5d/5]` import-shadowing + 4 backward-checks said don't ship), 2026-05-21 (backward-check hygiene exposed polluted-cohort verdict + 4-checks-don't-ship discipline win).
 
-**Trigger**: Five trade-state corruption bugs in May (CRMD/KLAR/ARM/BW/AIXI), same root cause every time — multiple writers to the same column with no ownership rule, last-write-wins by accident. Friday's Phase 1 audit (`docs/architecture/trade-state-ownership.md`) enumerated every writer; Sunday Phase 2 refactored three hot-path bug surfaces + shipped the static-analysis gate. Gate 5 G was the final unshipped Gate 5 deliverable — composite `live_cutover_decision` review now has all four gates ready for 2026-05-22 evaluation.
-
-**Three refactors shipped** (atomic commit chain — each deployed + Gate 5 B prepare validation re-verified between commits):
-- **T1.1** (commit `68096bc` + fixup `223ec92`) — `trade_stream._process_entry_fill` no longer writes `stop_price` / `hard_stop`. Entry-fill is NOT the authorized writer; INSERT at `entry_pipeline._skip` sets initial value, `update_stop()` owns trail. KLAR/ARM bug root cause. Cuts stop_price writers 7→4. Param count 6→5.
-- **T1.2** (commit `67c3257`) — `live_tracker.update_open_positions_live` partial-fired branch no longer writes `stop_price`. `update_stop()` at the same call site is the authorized writer; when it FAILED (returning False + nulling stop_order_id per naked-position protocol), the wrapping write previously falsely reported a stop_price the broker no longer held. Cuts 4→3. Param count 4→3.
-- **T1.4** (commit `f3539d2`) — `live_tracker.update_open_positions_live` no-partial branch no longer writes `stop_price`, `total_pnl`, `partial_taken`, or `remaining_shares`. In this branch `step.new_X == state[X]` (no change when no partial fires), so the "idempotent no-op write" was actually a LOST UPDATE hazard if a WS fill arrived concurrently between state-load and UPDATE. Cuts 3→2 effective. Param count 8→4.
-
-**Gate 5 G ship** (commit `fd31e5b`):
-- `scripts/audit_column_writes.py check` mode + `ALLOWED_WRITERS` dict (35 columns) + `deploy.sh` step `[5c/5]` wire.
-- Walks every UPDATE/INSERT site touching `mi_live_trades`, fails deploy non-zero on any (column, function) pair not in `ALLOWED_WRITERS`. Exit code 6 reserved.
-- Synthetic violation test PASSED (rogue_writer correctly flagged with full diagnostic output).
-- End-to-end exit-code test PASSED (check returns 1 on violation, 0 on clean — triggers `deploy.sh exit 6`).
-- Friction by design: adding a new writer requires updating `ALLOWED_WRITERS` in the same commit. Explicit ack.
-
-**Gate 5 G retroactive coverage walked** (`gate_5g_historical_coverage` data-gated review closed same day):
-- 1 of 5 May bugs caught: BW under today's narrowed partial_taken allow-list.
-- Other 4 are different bug classes covered by different gates: CRMD → Gate 5 B prepare validation; KLAR → wrong-value-by-authorized-writer (no current gate); ARM → routing/SELECT (purpose-tagged orders, shipped); AIXI → cross-table.
-- Gate 5 G is necessary but not sufficient. Future-work proposal: "value-invariant" Gate 5 H for sensitive columns (`stop_price > 0`, `stop_price < entry_price` for long, `hard_stop <= stop_price`, etc.). Defensive belt-and-suspenders. Not blocking live cutover.
-
-**Deferred to next session**:
-- T1.3 — `live_tracker.update_open_positions_live` close path delegation. Complex (WS-vs-fallback ownership for Alpaca-confirms-gone case). ALLOWED_WRITERS entry is TEMPORARY pending T1.3 ship.
-- T1.5a — `set_stop_order_id` helper consolidation. 12 solo writes (not 24 as originally framed). Per advisor: cosmetic-not-safety; Gate 5 G's enforcement value identical with or without.
-
-**Discipline that worked at hour 3+ of fatigued architectural work**:
-- Advisor consult before EVERY commit (not just at start + end)
-- Deploy + Gate 5 B prepare validation between EVERY commit (catches issues before compounding)
-- Atomic commit-per-refactor (T1.1 → T1.1 fixup → T1.2 → T1.4 → T1.5+SSoT)
-- Honest scope reduction when investigation surfaced complexity (T1.3 deferred mid-session per drop-priority)
-
-**Lesson**: a column-ownership bug class needs a column-ownership gate. Type-mismatch (Gate 5 B), wrong-value (no current gate), routing (purpose-tagged orders), and ownership (Gate 5 G) are DIFFERENT bug classes that need DIFFERENT gates. Single-gate thinking ("Gate 5 G will catch all DB write bugs") is wrong; layered-gate thinking is right. Today's three refactors + Gate 5 G close the multi-writer ownership class; the other classes are addressed elsewhere.
-
-### 2026-05-14 (session 6) — 3 bugs fixed in parallel + recurring "DB tracks attempt not outcome" pattern surfaced
-
-User flagged three issues; all three diagnosed + shipped + reconciled in one session:
-
-**Bug 1: Phantom split check formula error (broadest impact, 10 tickers affected)**
-
-`splits_ingest._apply_one` checked `close_pre / close_post ≈ split_from / split_to` from Polygon's `adjusted=true` fetch. **The math is wrong for adjusted-feed data**: with `adjusted=true`, real splits have pre-split bars RE-ADJUSTED to current units, so `close_pre / close_post ≈ 1.0` (not 20 for a 20:1 reverse). Phantom splits also yield ~1.0 (no adjustment applied either way). The check couldn't discriminate, and EVERY real split since 2026-05-08 ship was wrongly flagged phantom and skipped. 10 tickers affected: AIXI/ASBP/DKI/KALA/SMX (5/11), BNZI/CVNA/OLOX (5/08), MHVIY (5/13), SLMT (5/14).
-
-**Fix**: compare the fresh adjusted-feed pre-split close against the un-adjusted (or stale) value currently in `mi_daily_closes`. Real split → new/old ≈ split_factor. Phantom → new/old ≈ 1.0. Tight 10% tolerance because comparing same-date across two fetches. Added `_get_old_close(ticker, date)` helper.
-
-**Damage**: AIXI's RS was scored at 100 with 2-week of "below SMAs" actually showing $0.60-$1.60 raw vs corrected $12-$15 adjusted. CVNA similarly. Downstream: every detector reading `mi_daily_closes` (RS, EP, parabolic, theme) for these 10 tickers used wrong-units data for up to 6 days.
-
-**Reconciliation**: `scripts/_reconcile_2026_05_14_bugs.py` reset `adjustment_applied=FALSE` on the 10 split rows and called `_apply_one` with the fixed check — all 10 successfully wrote 79-173 adjusted bars each. AIXI's 5/05-5/14 closes now show coherent $16.20 → $12.20 → $11.73 progression matching the user's "trending down" observation. Tomorrow's nightly RS scoring will use correct data.
-
-**Bug 2: BW pre-fill state mutation (`live_tracker.py:591-602`)**
-
-Post-close partial-profit logic at 16:45 ET submitted 3 orders to Alpaca (cancel old stop, partial sell 387, new stop 776) — all `ACCEPTED`, queued for next-day open. `execute_partial_exit` correctly deferred state mutation to the WS fill handler. **But the wrapping UPDATE at lines 591-602 wrote the optimistic `step` outcome unconditionally**: `partial_taken=TRUE`, `total_pnl=$1613.79`, `remaining_shares=776`. Then `sync_positions` later overwrote `remaining_shares` back to 1163 (broker truth) but didn't touch `partial_taken` or `total_pnl`. Result: Frankenstein row showing partial-done + realized P&L + full open shares.
-
-**Fix**: when `step.partial_fired=True`, skip partial-specific fields in the UPDATE. Only update stop_price, hold_days, running_closes. The partial-specific fields will be populated by `finalize_partial_exit` on actual WS fill.
-
-**Reconciliation**: reverted BW #119 to `partial_taken=FALSE`, `total_pnl=0`, `exits=[]`. Tomorrow's WS fill will repopulate correctly.
-
-**Bug 3: SNDK theme misclassification (operational)**
-
-2026-05-14 nightly theme run moved SanDisk from `AI Memory & Storage` to a new theme `Semiconductor Front-End Interconnect & Wafer Processing Equipment`. Wrong — SanDisk = memory products. Manual reassignment via SQL (remove from wrong) + `assign_ticker_to_theme` (add to correct). Filed `theme_assignment_sndk_class_refinement` review to diagnose the assignment mechanism and ship a structural fix.
-
----
-
-**Recurring architectural pattern** (now sub-weekly cadence; flagged by advisor):
-
-| Date | Bug | The flag/field tracked... | ...instead of the actual outcome |
-|---|---|---|---|
-| 2026-05-04 | `update_stop` audit | "we tried to update stop" | "stop is actually placed" |
-| 2026-05-07 | `splits_ingest` premature-apply | `adjustment_applied=TRUE` "step ran" | "data is correctly adjusted" |
-| 2026-05-13 | strategy `phase='live'` redefinition | "row says phase=live" | "Alpaca client for live mode exists" |
-| 2026-05-14 (CRMD) | `_process_entry_fill` UPDATE | "UPDATE statement issued" | "DB matches broker fill state" |
-| 2026-05-14 (BW) | `step.new_partial_taken` | "decision logic said partial" | "broker actually filled the partial" |
-| 2026-05-14 (AIXI) | phantom check `expected_ratio` | "ratio formula matched a constant" | "Polygon actually applied the adjustment" |
-
-Same shape every time: a flag/field semantically named for the OUTCOME (data adjusted, position filled, mode active) but mechanically gated only on the ATTEMPT (procedure ran, decision made, formula matched).
-
-**Prophylactic discipline** (going forward, especially before live cutover):
-- Every new boolean flag on a hot-path table needs a paired invariant query that surfaces the row state when the flag's mechanical condition is met but the semantic outcome ISN'T.
-- Boot-time UPDATE prepare validation (Gate 5 deliverable B from CRMD post-mortem) addresses one slice. The broader principle: distinguish "we ran the step" from "the outcome is correct" by validating outcome state in a separate query, not by trusting the flag.
-
-### 2026-05-14 (session 5) — EP selectivity review expanded to be exhaustive (user mandate)
-User pushed back on initial review: needs to be MORE exhaustive, include every tracked variable already in code — specifically called out 5-min ORB shadow (`mi_orb_shadow_trades`) which has parallel telemetry running since shipped earlier this year.
-
-Expanded the review to cover **6 lettered sections of dimensions** (was 5 numbered):
-- **§A — Existing entry filters** (17 items: gap floor, RVOL@T anchors, pm-shares floor, ADV/mcap/ATR floors, extension cap, cooldown, M&A filter, stop-too-wide, fade guard, ORB window, position cap, daily-loss/circuit/drawdown — note these are gates not selectivity dials per se)
-- **§B — Existing scoring weights** (12 items: gap pts, catalyst pts, rel_vol pts, neglect pts, vol conviction, analyst upgrades, low float, bull regime mult, perplexity mult, score threshold, earnings boost, MODERATE→HIGH override)
-- **§C — Entry-mechanic dimensions** (7 items: 5-min vs 1-min ORB, re-entry attempts, stop placement source, sizing, order type, ORB cutoff, fade guard tier)
-- **§D — NEW filter dimensions** (7 user-specified items: fundamentals magnitude, gap-above-MAs, gap-above-congestion, round-number distance, base shape, 52w-high distance, multi-quarter context)
-- **§E — Setup-context dimensions** (5 items: theme membership, sector rotation, COILED overlap, 9M Day 2 comparison, missed-EP outcomes per skip-reason)
-- **§F — Already-shipped recent gate changes to evaluate** (5 items: hedge-phrase downgrade, earnings boost, cooldown bypass, re-entry gap-through, pm-shares carve-out)
-
-**Phase 1 expanded** to produce a master cohort table joining `mi_ep_alerts × mi_ep_scan_log × mi_live_trades × mi_ep_scan_outcomes × mi_orb_shadow_trades × mi_ep_missed_outcomes × mi_themes × mi_flag_candidates × mi_daily_closes`. Output: `docs/decisions/0003-ep-selectivity-overhaul.md` with cohort breakdowns + recommended filter set + scoring weight adjustments.
-
-**Phase 1 deliverables broken into 5 substeps**: P1.1 master cohort, P1.2 per-dimension outcome breakdown, P1.3 new-dimension feasibility prototypes (D1-D6), P1.4 catalyst-prose labeled training set (~400-500 alerts hand-labeled), P1.5 score-weight recalibration via regression.
-
-**Earliest review date**: 2026-05-17 (Friday). User signaled "tomorrow or over the weekend" → 5/15-5/17 window for Phase 1.
-
-**Cross-references to existing reviews documented** in YAML to avoid duplication (`stop_too_wide_outcome_cohort`, `orb_cutoff_extension`, `adv_probe_retirement`, `conviction_floor_extension`, `perplexity_hallucination_keyword_leak`).
-
-**Scope discipline warning embedded**: "this review is EXHAUSTIVE intentionally — but not every dimension ships. Phase 1 picks ~3-5 highest-signal dimensions. Avoid scope creep — shipping all 30+ filters at once is overfit and unsupportable."
-
-### 2026-05-14 (session 4) — Filed EP selectivity deep-dive review (user mandate: rare EPs, not 100+/quarter)
-User flagged that EP detection is over-firing during earnings season. Past 10 trading days: **87 HIGH alerts** (8.7/day average; 11 on 5/14 alone). Almost all graded `catalyst_quality='strong'` — near-zero `game_changer` discrimination. Extrapolated: ~180/month → **~550/quarter** vs the methodology-correct "handful per quarter."
-
-NBIS example: 700%+ annual revenue growth = textbook game-changer, but (a) was filtered by the M&A direction-blind bug (fixed earlier today) AND (b) would have only been graded `strong` not `game_changer` by current LLM grader. The grader doesn't see fundamentals magnitude.
-
-Filed `ep_selectivity_deep_dive` data-gated review with phased plan:
-- **Phase 1 — diagnostic baseline**: cohort outcome distribution by score_tier × catalyst_quality, gap-size buckets, pm_rvol buckets, catalyst-prose labeled training set
-- **Phase 2 — shadow filter telemetry**: 30 days of `ep_selectivity_filter_shadow` audit events; measure alert reduction ratio + win-rate on shadow-admitted cohort
-- **Phase 3 — ship**: N≥20 shadow settled with measurably better R-expectancy
-
-Selectivity dimensions to investigate (user-specified):
-1. **Catalyst quality grading — fundamentals magnitude** (revenue growth tier, guidance raise, margin inflection — likely needs structured earnings data fetch, not just LLM-grading press release)
-2. **Gap size tiers** — non-linear scoring (25%+ structurally different from 10%+)
-3. **Technical structure** — gap above MAs, above congestion, distance to round numbers, prior base shape, distance from 52-week high
-4. **Volume conviction floors** — raise pm_rvol min from 1.0× to 5×+
-5. **Multi-quarter context** — EPs off bases vs extended uptrends (current `neglect_period` scoring is loose)
-
-**Working hypothesis** (test before shipping): fundamentals-magnitude filter alone might drop alert volume 80%+ while keeping the best setups (NBIS-class). Technical structure adds modest further selectivity. Volume + multi-quarter are tiebreakers.
-
-**Relation to live cutover**: NOT a hard blocker, but if Gate 3 paper_r_expectancy stays red (cohort -$2,041 over 4 trades currently), this review is the natural unblock path. Even if Gate 3 turns green at current selectivity, completing this review reduces live-$ risk meaningfully.
-
-**Earliest review date 2026-05-21** (gated on 100 EP alerts + 30d paper trade history — both metrics likely met by then). Predicate counts EP scans + closed paper trades in lookback windows.
-
-### 2026-05-14 (session 3) — P&L attribution column to exclude CRMD bug damage from methodology metrics
-User flagged that the CRMD bug damage will distort P/L performance reviews. Shipped a generic exclusion mechanism rather than ad-hoc adjustments:
-
-**Schema**: `mi_live_trades.pnl_attribution TEXT` (nullable, idempotent migration). NULL = methodology (default). Non-NULL names the incident (`'incident_2026_05_14_naked_position'` for CRMD #137 today). Account equity still reflects actual -$778 hit; only methodology-evaluation queries filter on this column.
-
-**Filter applied to** (methodology evaluation):
-- Gate 3 `paper_r_expectancy_validation` predicate + action SQL
-- `system_review.py::_aggregate_postmortem_narratives` (weekly digest best/worst)
-- `system_review.py::_aggregate_loser_breakdown` (weekly loser deep-dive)
-
-**Filter NOT applied to** (account safety + accounting visibility — must reflect reality):
-- `daily_loss_limit` safeguard (live_tracker.py:226)
-- Daily Telegram summary (live_tracker.py:673)
-- `/status`, `/pnl`, `/trades` user commands
-- Account equity / drawdown breaker
-
-**Why this shape over alternatives**: (a) preserves account-truth in the row; (b) one query filter applies uniformly to all methodology analytics; (c) explicitly names the incident in the column value — auditable years later; (d) handles future incidents the same way without code changes.
-
-**Pre-fix cohort impact**: CRMD's -$778 was ~-$220 methodology + ~-$558 bug damage. Gate 3 cohort now reads -$2,041 methodology vs -$2,599 actual. Still deeply negative, but methodology evaluation is no longer distorted by bug damage going forward.
-
-### 2026-05-14 (session 2) — Post-mortem filed + Gate 5 live-cutover blocker
-Following the CRMD incident, formal post-mortem document `docs/incidents/2026-05-14-crmd-naked-position.md` written: full timeline, 5-whys, damage assessment, what-went-right/wrong, action items §6, sign-off §8. Filed as P0 live-cutover blocker.
-
-**Gate 5 added to `live_cutover_decision` review** (`data_gated_reviews.yaml`): NO strategy may promote to `phase='live'` + `live_real_enabled=True` until 5 deliverables ship + verify:
-- (A) Naked-position remediation: when entry-fill UPDATE raises ANY exception, IMMEDIATELY submit a fallback stop-market at `trade["orb_low"]` BEFORE any other action. Emit `naked_position_remediation_fired` audit event.
-- (B) Boot-time DB UPDATE prepare validation: extend preflight to walk every parameterized UPDATE via `connection.prepare(sql)`. Deploy blocks on `AmbiguousParameterError` etc.
-- (C) Escalated naked-position alert for `partial_fill` (fill already shipped 96fd7ee).
-- (D) Stuck-fill watchdog cron: every 60s during market hours, surface `entry_order_id IS NOT NULL AND status='filling' AND filled_at IS NULL AND created_at < NOW() - INTERVAL '2 min'`.
-- (E) Regression pytest for schema column-type additions against mi_live_trades.
-- (F) Operator sign-off on post-mortem doc.
-
-**Verification protocol** (must pass before status=done on `crmd_naked_position_postmortem_2026_05_14` review):
-1. Paper-mode synthetic test: patch entry-fill UPDATE to raise AmbiguousParameterError; confirm remediation path submits fallback stop within 5s + Telegram escalation fires + DB reconciles.
-2. Preflight test: insert a synthetic ambiguous UPDATE; confirm deploy BLOCKS.
-3. Stuck-fill watchdog: insert a synthetic stuck row; confirm watchdog surfaces it.
-
-**Why this gate is HARD-blocker**: live-$ projection on same setup = $5K-$25K loss per unstopped position at planned account sizes. `daily_loss_limit` doesn't catch a single naked position — it gates new entries, not exits. A runaway gap-down on one position could exceed account equity. The architectural lesson generalizes: boot-time preflight needs to walk hot DB-mutation paths, not just credentials.
-
-### 2026-05-14 — INCIDENT: CRMD entered naked, bled to -$778 (asyncpg type ambiguity since 2026-05-10)
-**Trigger**: User Telegram alert "Apollo entered CRMD this morning without a stop and now it's way below stop price!" Three stream-handler error alerts had fired earlier (CRMD/KLAR/CSCO) — "inconsistent types deduced for parameter $2 / numeric versus double precision" — but the generic error framing didn't convey "POSITION IS NAKED."
-
-**Root cause** (commit `35c1f6c` 2026-05-10 — "Track worst-price / best-price per trade for setup-quality analytics"): added `lowest_price_seen` / `highest_price_seen` as **NUMERIC** columns and reused `$2` in `_process_entry_fill` UPDATE for them. `entry_price` is `double precision`. `$2` overloaded across both types → `AmbiguousParameterError` at asyncpg `prepare` time.
-
-```sql
-entry_price = $2,                                    -- double precision
-lowest_price_seen = COALESCE(lowest_price_seen, $2), -- numeric ← collides
-highest_price_seen = COALESCE(highest_price_seen, $2) -- numeric ← collides
-```
-
-**Silent damage** (4 trades since 2026-05-10 22:43 PT): every entry fill UPDATE in this window failed → `filled_at` NULL on MRAM/KLAR/CSCO/CRMD. KLAR/CSCO got into `status='closed'` via the stop-fill code path (different UPDATE, no type collision). CRMD got stuck — its OTO stop leg was canceled by Alpaca when the entry-fill WS callback threw, position became naked from 09:34 ET to 11:08 ET (1h34m).
-
-**Damage assessment**:
-- CRMD: 2214 sh, entry $8.36 → manual market SELL $8.01 = **-$778.02** (intended stop $8.45 would have lost -$220; bug cost ~-$558 extra)
-- KLAR -$914, CSCO -$407 (stop-hit at proper price — bug didn't worsen these, just left filled_at NULL)
-- Total day P&L: **-$2,099** → triggered daily_loss_limit safeguard ($1,897 cap), system correctly blocked further entries
-
-**Fix** (commit `96fd7ee`): explicit `::numeric` casts on the two `lowest/highest_price_seen` assignments. `$2` now deduces to `double precision` (from `entry_price`); the casts handle conversion to numeric for the NUMERIC columns at write time. Verified live by re-running the same UPDATE shape on KLAR/CSCO during backfill — no error.
-
-**Defensive escalation**: when `event=='fill'` exception fires, Telegram now says "🚨 POSITION MAY BE NAKED — INTERVENTION REQUIRED" with explicit broker-check instruction. Generic "Stream handler error" framing was easy to dismiss during today's incident.
-
-**Reconciliation scripts** (kept for evidence):
-- `scripts/_emergency_close_crmd.py` — submits market SELL for the naked position (used today)
-- `scripts/_reconcile_crmd_close.py` — backfills CRMD row from Alpaca order data (entry_price, filled_at, exits, total_pnl)
-- `scripts/_backfill_filled_at.py` — backfills filled_at on KLAR/CSCO from entry orders (separate run)
-
-**This would have been a $5K+ live loss had it happened post-cutover.** The daily_loss_limit safeguard caught it in paper (correctly blocked at -$2,099), but a single naked position with no stop could blow through that on a one-name basis if the trade size were larger.
-
-**Pre-live-cutover hardening to file as followup data-gated reviews**:
-- `_process_entry_fill` (and other DB-mutation paths in `trade_stream.py`) should have an **explicit naked-position remediation** branch: if UPDATE raises any DB error, IMMEDIATELY submit a stop-market order at the intended stop price BEFORE any other action. Don't trust the OTO bracket to remain intact when the WS callback throws.
-- Add a CI/test that exercises every `mi_live_trades.*` UPDATE statement against a fresh DB schema. asyncpg's AmbiguousParameter is a prepare-time error — discoverable by running each statement once at boot.
-- Boot-time validation: `_bootstrap_alpaca_credentials` already runs at startup. Add a parallel `_validate_db_update_statements` that prepares each parameterized UPDATE without executing (asyncpg `connection.prepare()` is cheap) and refuses to start if any prepare fails.
-
-**Lesson**: a column-type addition to a hot UPDATE path is a SCHEMA CHANGE that requires regression coverage. The bug was a parameter overload — same value passed for both a `double precision` and `numeric` column. asyncpg's prepare-time type deduction caught it correctly, but the error was thrown at first execution (entry fill), not at boot. Same shape as the 2026-05-13 outage where strategy `phase='live'` redefinition broke entry pipelines silently at first ORB attempt. Both classes are catchable by a preflight that walks every hot path at boot time, not just the credential check. The 2026-05-13 preflight (#84) was a first step in this direction — needs expansion to DB UPDATE prepare validation.
-
-### 2026-05-13 (session 7) — Theme orphan_sub remediation (parent dropped → sub survives top-level)
-Followup on yesterday's session 6 — filed `theme_orphan_sub_mechanism` review then immediately worked the fix. 7 firings in 14d, all oil/E&P sector: parent theme (Hydraulic Fracturing / Permian E&P) dropped during merge or cap stage while sub-theme survives with stale `parent_theme` reference. Today's case: sub `Independent E&P Operators` [37 oil tickers] points at parent `Hydraulic Fracturing & Well Completion Services` (last seen 5/11 with the same 37 tickers — semantically the same theme renamed by Sonnet).
-
-**Fix** (`theme_engine.py::_emit_pipeline_diagnostic` orphan-detection block): after the audit event fires, mutate the orphaned child in place to clear `parent_theme=None` AND drop the entry from the `sub_theme_parents` dict (caller-mutating, so the next-stage diagnostic sees the cleaned-up state and doesn't re-fire). Sub-theme survives as a top-level theme; only the broken metadata is lost. Function docstring updated from "Non-mutating" to "diagnostic + bounded orphan remediation" with rationale.
-
-**Why option (b) clear-parent_theme over (a) block-parent-drop or (c) drop-orphan-along-with-parent**: (a) is too coupled to merge/cap logic (each stage has valid reasons to drop themes); (c) loses real information (the E&P sub is a valid theme on its own merits). (b) is defensive and generic — handles ALL orphan classes (rename-induced AND real-merge-induced) uniformly.
-
-**Separate review filed** `canonicalize_ticker_set_evolution`: surfaced while diagnosing — `_canonicalize_theme_names` uses `DISTINCT ON (name) ORDER BY name, theme_date ASC` (earliest snapshot per name) which misses ticker-set evolution cases. The earliest `Hydraulic Fracturing` snapshot had 5 tickers (4/23); today's `Independent E&P Operators` has 37 tickers matching the 5/11 `Hydraulic Fracturing` snapshot. Canonicalize misses because the EARLIEST snapshot doesn't share today's ticker set. Proper fix would query all snapshots, group by `frozenset(tickers)`, pick earliest unique name. Threshold N≥3 distinct days observed via a new probe event; earliest review 2026-06-01. Separate scope because it touches the canonicalize SSoT helper and needs its own backtest + advisor consult.
-
-**C2 stays closed** — advisor confirmed: the C2 framing ("find mechanism cited by ≥2 incidents") was about the cross-run probe over-emission (which IS noise). The canonicalize gap is a different finding that surfaces only on close inspection of specific cases. Don't reopen C2 — file separately.
-
-**Lesson**: a diagnostic that's purely "audit-only" leaves the bad state in the pipeline for downstream stages. Sometimes the right pattern is "audit + bounded remediation" — fix the local symptom uniformly while filing the root cause for proper investigation. Same shape as the 2026-05-04 update_stop audit + null-stop_order_id remediation: audit captures the failure class, but the remediation is what lets reconciliation continue working downstream.
-
-### 2026-05-13 (session 6) — Theme `cross_run_dup_candidate` was over-firing (no fix needed); filed orphan_sub separately
-C2 diagnostic walk on `theme_engine_dup_incident` review (10 days of probe events, threshold 2). 60d audit walk surfaced that the YAML's premise was wrong — **the "incidents" weren't incidents.** Zero true same-day dups exist (`mi_themes` has 0 `(theme_date, ticker_set)` pairs with multiple names in 14d; `theme_save_dedup` audit event has 0 firings in 60d). The probe `theme_cross_run_dup_candidate` was emitting 7-9 "candidates" per day, all canonicalization-handled and most being false positives — fires whenever a ticker set has had a different name in 14d, even when today's name IS the earliest canonical and `_canonicalize_theme_names` correctly leaves it alone.
-
-Worked through the data: for AMD/ARM/MRVL, today's name `Custom AI Silicon...` matches the earliest canonical (4/29, used 11 of 13 days). The 5/12 `AI Datacenter Silicon` rename was the one-day anomaly. Canonicalize correctly kept today's name unchanged. Probe still flagged it. Same shape for DOCN/FSLY, ONTO/TER, ADEA/RYAM, and the 5 other "candidates" today. The "10 incidents" were noise.
-
-**Action**: per the YAML's hard rule "no semantic fix until ≥2 incidents agree," zero incidents = zero fix. Just renamed the misleading probe event:
-- `theme_cross_run_dup_candidate` → `theme_name_variant_observed` (honest semantic: "Sonnet name-drift telemetry"). Same data, accurate name. Summary text reframed as informational.
-- Docstring rewrites explain why the probe over-emits and points to `theme_save_dedup` as the TRUE dup signal (which is correctly silent because canonicalize works).
-- YAML review closed with full diagnostic outcome.
-
-**Filed separately as new data-gated review** `theme_orphan_sub_mechanism`: 7 firings of `theme_orphan_sub` in 14d. Real bug — parent theme dropped during merge/cap leaves sub-theme stranded with `parent_theme` referencing a name not in the final list. Today: sub=`Independent E&P Operators` parent=`Hydraulic Fracturing & Well Completion Services` (parent dropped). Threshold N=14 already met; earliest review 2026-05-13 — predicate met but the right next step is reading the merge/cap code to identify the dropping branch (block parent-drop when sub references it / promote orphan / drop both — three candidate fixes).
-
-**Advisor blocked the obvious "telemetry fix"** (silencing the probe when canonicalize would handle): the cross-run probe's current over-fire is conservative (false-positive nuisance, not false-negative blind spot). Replacing it with a tighter predicate trades a known nuisance for an unknown blind spot. Renaming is the lowest-risk move — preserves visibility into Sonnet drift rate while honest about what's reported. The TRUE dup signal (`theme_save_dedup`) was already in place since the safety net at theme_engine.py:836; we just hadn't been reading it as the right alarm.
-
-**Lesson**: an audit event's NAME shapes how operators triage it. `theme_cross_run_dup_candidate` (with "dup" in the name) read as an active problem and accumulated a 10-day "incident" framing in the YAML review. The same data renamed `theme_name_variant_observed` reads correctly as informational drift telemetry. Naming carries authority — keep audit names honest about what they actually represent, especially when downstream tooling/YAML/digests will cite them verbatim. Same shape as the 2026-05-07 splits_ingest premature-apply lesson: a flag that names the PROCEDURE (we ran the check) rather than the OUTCOME (the data is consistent) silently misleads downstream readers.
-
-### 2026-05-13 (session 5) — #46 theme assignment silent_stop fix (max_tokens + prompt restructure)
-**Root cause** of the 2026-05-09 user-flagged under-anchoring (MU/SNDK/MRAM/SIMO/MXL missing from themes despite top-30 RS): `max_tokens=1000` truncated Sonnet's response BEFORE the `assign_stocks_to_themes` tool call could emit. Pattern surfaced by the silent-skip telemetry that shipped 5/9 (commit 6647669) — 5/12 and 5/13 both fired `assignment_silent_stop` with `advisor_calls=0` and response text "I'll systematically analyze each uncovered stock..." (21 candidates × ~50 tokens of inline analysis = ~1050 tokens, exhausting the budget). The 5/11 successful run with `advisor_calls=3, proposed=0` confirms the loop itself works when Sonnet routes through advisor instead of inline analysis — Sonnet's reasoning path is temperature-variant.
-
-User-reported tickers (MU/SNDK/MRAM/SIMO/MXL) all anchored to AI Memory & Storage + AI Datacenter Optical Transceivers themes by 5/13 via manual `/theme assign` + subsequent nightly runs. Coverage gap closed before the fix shipped.
-
-**Fix** (`theme_engine.py::_assign_uncovered_to_themes`):
-(A) `max_tokens` 1000 → 4000 — headroom for scratchpad + verbose runs, prevents future truncation as universe grows.
-(B) Prompt restructured: replaced "Before calling X, ask yourself..." (which invited pre-tool free text) with explicit "Do NOT write any free-text analysis before your tool call. All per-ticker reasoning belongs INSIDE the `assign_stocks_to_themes` tool's `analysis_scratchpad` field." Advisor consultation reserved for genuine ambiguity (2+ plausible themes / ambiguous description) — preserves the 5/11 working pattern where Sonnet uses the advisor for hard calls.
-
-**Monitoring**: watch `assignment_silent_stop` count over next ≥7 days. Zero events = fix worked. Reappearance = look at structural loop changes (retry on silent_stop). YAML review `theme_assignment_telemetry_review` closed with full diagnostic outcome.
-
-**Lesson**: an LLM tool-use loop without sufficient `max_tokens` headroom fails silently — the response gets truncated mid-stream, the tool_use block never materializes, the code-side "no tool call" branch treats it as legitimate "no proposals" rather than truncation. Same shape as the 2026-05-07 splits_ingest premature-apply bug: a flag (here, "Sonnet didn't call the tool") tracked the procedure-ran outcome rather than the semantic outcome (here, "the response wasn't truncated"). Defensive headroom + telemetry to detect the failure are both required. Advisor's recommendation to also restructure the prompt (B) was the structural fix — A alone would fail again at larger candidate-pool sizes.
-
-### 2026-05-13 (session 4) — 9M sugar baby M&A coverage closure (WEN-class) + stop_too_wide cohort review filed
-Followups from morning's M&A filter ship. **Coverage gap surfaced by WEN 5/13**: take-private rumor was correctly filtered on EP path (10× `mna_filter_fired` audit events) but the same name passed 9M sugar baby logging on 5/12 EOD and surfaced as a Day-2 ORB candidate on 5/13. Entry attempt only failed on `setup:faded_from_orb` shape rejection (coincidence — if WEN had held ORB high, system would have entered a take-private target with no follow-through available). Grep confirmed `is_likely_ma` not called in `ninem_detector.py` or `broker/entry_pipeline.py` — 9M Day 2 path had zero M&A coverage.
-
-**Fix** (`ninem_detector.py::run_9m_eod_sweep`): added `is_likely_ma` check between destroyed-name trend gate and `insert_9m_sugar_baby`. Polygon-news-only path (9M is pure-quant, no LLM catalyst grading); 21-day lookback (matches flag detector). Fail-open on news fetch error — don't block sugar baby on Polygon outage. Emits `mna_filter_fired (9m_sugar_baby)` audit event. SSoT updated: `docs/setups/ninem.md` change log.
-
-**Intraday 9M scan (`run_9m_scan`) intentionally NOT filtered** — informational alerts only, no trade triggered directly. Filed as future scope if intraday FP becomes an issue.
-
-**Tier A telemetry reviews verified + closed** (`data_gated_reviews.yaml`, commit 113f0db):
-- `dead_zone_telemetry_smoke` — all 4 writers populating (3541 scan_log rows / 0 NULL, 330 multi-row pairs, 63 alerts with detected_at, 587 outcome rows through 5/08)
-- `fishhook_v3_first_eod_pass_verify` — EOD pass running daily 17:20 ET with state transitions firing (5/13: new_pending=6, invalidated=1, reclaimed=5, promoted=5); registry seeded phase=shadow
-- `ep_adv_probe_volume_sanity` — emit path proven on 5/06 (1131) / 5/07 (922) in expected 400-1000/day range; thin days are universe-width driven (not a code bug). Recalibrated downstream `adv_probe_retirement` gate to cohort N≥30 instead of absolute 50/day floor.
-- `ftre_partial_trail_verification` (GATE 2 live cutover) — predicate tightened to `partial_taken=true` (exits>=2 had false-positive on re-entry cases like MRAM 5/11). Status stays pending until a real partial-then-trail completes in paper.
-
-**`stop_too_wide` cohort review filed** (`data_gated_reviews.yaml`): N=2 cases (STRL 5/05 +17%/+22% 5d, AIP 5/13 today). Per `feedback_sample_size_discipline` N=2 is below the N≥10 backtest threshold, so file rather than ship. Threshold=10 settled cases (≥20d outcomes) before review; predicate joins `mi_live_trades.skip_reason LIKE 'setup:stop_too_wide%'` to `mi_ep_missed_outcomes` for forward returns. Decision matrix in YAML: 5d hit-rate ≥30% + median max_high_5d ≥+8% → revisit (widen multiple / change stop anchor / score-conditional looseness); below those bands → keep. Earliest review 2026-06-13.
-
-**Lesson**: a filter applied at one detector site but not its sibling sites is a coverage gap waiting to fire. Today's WEN-class was caught by the EP path while the 9M Day 2 path silently allowed it through — same as 2026-05-04 update_stop audit-logging gap and 2026-05-06 stale `stop_order_id` cleanup. When a SSoT primitive exists (`ma_filter.is_likely_ma`), every actionable detector path should call it; sibling-site coverage audit should be standard practice when shipping a filter ship.
-
-### 2026-05-13 (session 3) — M&A filter direction-blindness: NBIS-class FP (drop bare "acquire"/"acquisition")
-User flagged NBIS not flagged as EP today despite +15.79% gap, pm_rvol 6.4×. Audit log surfaced 10 `mna_filter_fired` events between 7:55 and 9:31 ET — every catalyst text described **NBIS as acquirer** (bought Eigen AI for $643M) but `ma_filter._MNA_KEYWORDS` matched bare `"acquire"` / `"acquisition"` regardless of direction. Direction-blind substring scan is the bug class.
-
-**90d backtest** (90d `mna_filter_fired` audit events, bare `acquire`/`acquisition` matches): 16 distinct tickers — **13 false positives** (NBIS, WAT, MNST, FOUR, RKLB, IREN, VEEV, KGS, NXT, PINS, QBTS, QUBT, RAL) and **3 nominal TPs** where:
-- EBAY → caught independently by Claude `catalyst_quality='mna'` classifier branch (LLM understands direction)
-- WEN → recovered by adding `"take-private"` and `"private deal for"` keywords (Trian buyout rumor)
-- GLIBK → keyword accidentally matched in unrelated biotech chatter (Perplexity returned "no info on GLIBK"); structurally a FP that landed on a real target by coincidence
-
-**Fix** (`ma_filter.py`): dropped `"acquisition"` and `"acquire"` from `_MNA_KEYWORDS`; added `"take-private"` and `"private deal for"`. Other keywords (`buyout`, `takeover`, `merger`, `halper sadeh`, `to go private`, etc.) spot-checked across 90d and retained — true-positive yield holds. Inline comment documents the NBIS-class trigger.
-
-**SSoT updated**: `docs/setups/magna53_ep.md` change log entry covers full ledger (TPs, FPs, evidence, anticipated effect, reversion-flag=REFINEMENT). Filter is also gated for flag/9M/convergence detectors via same SSoT — fix applies uniformly.
-
-**Filed followup** (not addressed today): Perplexity hallucination leak. RAL/P caught by `merger`/`strategic transaction` keywords matched not against actual catalyst content but against "no info found... nearest match is X" filler text Perplexity returns when ticker is unknown. Separate bug class; affects every detector that feeds Perplexity output to keyword scanners. Lower priority (N=2 in 90d).
-
-**Lesson**: a keyword-substring filter that gates trade entry must be **direction-aware**, especially for verbs whose object switches sides (acquire X vs acquired by X). The fix shape generalizes: when a substring is grammatically ambiguous about which party is which, replace it with the unambiguous phrasings (`"to be acquired"`, `"bought by"`, `"taken private"` — passive voice = ticker is target). Same shape as past SSoT lessons where a flag tracked "we ran the step" rather than "the outcome is correct" (2026-05-07 splits_ingest premature-apply, 2026-05-04 update_stop audit, 2026-05-06 stale stop_order_id).
-
-### 2026-05-13 (session 2) — Preflight smoke test (#84) + #10 STRL/EVER outcome
-**#84 ship** (commit `face09d`): new `scripts/preflight_check.py` walks every enabled non-shadow strategy through `_check_safeguards` (the exact code path that fires on real ORB entries — auth, account fetch, position cap, daily loss, drawdown breaker). Run as the final step of every deploy touching broker / strategies / safeguards / alpaca_client / entry_pipeline. CLAUDE.md "Production Deploy" section updated with the command.
-
-Two preflight bugs the first run caught (both fixed in `face09d`):
-1. `docker exec` subprocesses don't inherit the boot-time `ALPACA_API_KEY → ALPACA_PAPER_*` remap. Preflight now calls `_bootstrap_alpaca_credentials()` itself so the legacy fallback fires in the subprocess too — otherwise it false-alarms on a healthy container.
-2. Initial version printed "PREFLIGHT OK" even when every strategy was BLOCKED by `setup:account_fetch_failed`. Added `_BENIGN_BLOCK_PREFIXES = ("block:",)` so only the proper portfolio safeguards (max positions, daily loss, circuit breakers, drawdown breaker) count as benign blocks; anything `setup:*` / `infra:*` is treated as an infra failure that fails the preflight.
-
-Verified end-to-end on prod: both `magna53` and `9m_day2` now report PASS via the preflight after the morning outage was fixed.
-
-**#10 closure** — STRL/EVER 5d outcomes (5/05 alerts, both rejected by `setup:stop_too_wide`):
-- **STRL**: open $727 → 5d close $851 (**+17.0%**), 5d max $889 (**+22.2%**). Stop-too-wide rejected a clean winner.
-- **EVER**: open $19.09 → 5d close $19.12 (**+0.2%**), 5d max $23.98 (**+25.6%**). Move was real intraday but fully gave back.
-
-STRL is the trigger condition for #11 (Reconsider ATR Part 2 — fires when stop_too_wide rejects a winner). Filing for later investigation; one case (N=1) is not enough to ship a methodology change per `feedback_sample_size_discipline`, but it IS enough to start tracking the pattern.
-
-### 2026-05-13 — Outage: every paper trade failed with `'ALPACA_LIVE_API_KEY'` KeyError (seed × dual-account mismatch)
-**Incident**: 9:31 ET ORB monitor logged `0 entered, 10 skipped` across AMBQ/HLIT/PACS/SE/SIBN/TE/VG/VPG/VSTS/ZBRA. Every HIGH alert blocked with `setup:account_fetch_failed: 'ALPACA_LIVE_API_KEY'`. Live paper-trading completely down for the morning session. User flagged: "this could easily be prevented with proper test and validation."
-
-**Root cause** — three-layer bug:
-1. `_seed_strategies_registry()` (db.py:103-155) seeded magna53 and 9m_day2 with `phase='live'`. Pre-dual-account-architecture this meant "submit to the single Alpaca account configured by ALPACA_PAPER env var" (implicitly paper).
-2. The 2026-05-10 dual-account ship (#66) **redefined** `phase='live'` to mean the literal LIVE Alpaca TradingClient. `resolve_account_mode_for_strategy()` now returns `'live'` for those rows.
-3. Container runs with `ENABLE_LIVE_MODE=false` (per #68 deploy plan) → `ALPACA_LIVE_API_KEY` env var never set. `get_trading_client('live')` → `os.environ['ALPACA_LIVE_API_KEY']` → KeyError → safeguard returns `SETUP_ACCOUNT_FETCH_FAILED` → every entry blocked.
-
-The 2026-05-12 deploy verification (#68) confirmed container BOOTED clean but never exercised the entry pipeline on a paper-phase strategy. A boot smoke test isn't an end-to-end test.
-
-**Immediate fix** (SQL on prod): `UPDATE mi_strategies SET phase='paper' WHERE strategy_id IN ('magna53','9m_day2');`. Restored paper trading for the next session.
-
-**Structural fixes** (commit 78c5fa3):
-- `_seed_strategies_registry()` now seeds magna53 + 9m_day2 with `phase='paper'` so fresh installs don't repeat. Existing DBs unaffected (ON CONFLICT DO NOTHING) — operator must run the SQL above. Inline comments document why the legacy default is wrong.
-- **Boot consistency check** in `agent.py` post-credential bootstrap: queries `mi_strategies WHERE enabled=TRUE AND phase='live'`. If any rows exist AND `ENABLE_LIVE_MODE=false`, raises `RuntimeError` with explicit remediation (set ENABLE_LIVE_MODE=true + creds OR demote rows). Emits `strategy_phase_mode_mismatch` audit event.
-
-**Why fail-loud instead of silent auto-downgrade**: if an operator intended to promote magna53 to live but forgot to set ALPACA_LIVE_API_KEY, auto-downgrade silently demotes the strategy and the operator never realizes. Boot-block forces explicit acknowledgment.
-
-**Lesson**: a feature whose semantics change (`phase='live'` meant paper, now means live) needs a database migration — not just a code change. Seeds left behind in their old denomination become live landmines. Same shape as the 2026-05-07 splits_ingest premature-apply bug where `adjustment_applied=TRUE` meant "we ran the step" but the operator-visible semantic was "the data is adjusted." Re-defining a column's meaning without migrating existing values is the foundational error.
-
-**Deploy verification gap to fix**: post-deploy verification (#68 and future) MUST include a real entry-pipeline exercise — e.g., a `/dryrun TICKER` Telegram command that walks every gate including safeguards. Today's boot smoke test confirmed credentials worked at startup; it did NOT confirm credentials worked when `_check_safeguards()` actually queried account equity. Boot ≠ runtime.
-
-### 2026-05-11 — Missed-EP opportunity-cost telemetry (3-step ship)
-New `missed_outcomes.py` + `mi_ep_missed_outcomes` table tracks every EP the system saw but didn't enter (scan_filter, MODERATE-tier, HIGH-unentered) with forward returns from gap-day open to d+1/d+5/d+20 close plus max-favorable-excursion within each window. User flagged INOD/HIMX/FTNT/DDOG/BAND/TWLO as huge winners not entered — needed systematic surface for "which gate bled the most upside" instead of single-trade anecdotes.
-
-**Three integration points:**
-- Refresh: `refresh_missed_outcomes(window_days=30)` runs after step 7 of `_nightly_data_pull` (5pm ET) — slots between `run_outcome_tracker` and `detect_state_changes`, after `mi_daily_closes` is current. UPSERT on `(ticker, alert_date, source)`; forward returns recompute each night so newly-settled d+5/d+20 bars flow into rows written when the alert fired. Emits `missed_outcomes_refreshed` audit event with per-source counts.
-- `/missed [days]` Telegram: top 15 ranked by 5d (or `20d`/`1d` horizon) return. `/missed by reason` switches to per-category roll-up (n, avg ret_5d, count of ≥10% winners, top ticker). Routes before generic "why didn't we trade" single-ticker handler.
-- Weekly review appendix: `_aggregate_missed_opportunities` → `format_missed_section_for_weekly` adds "🔍 *Missed Opportunities*" block right after the loser breakdown — top 5 winners we didn't enter + per-skip-reason roll-up. Methodology-tuning context lives next to the loser-side post-mortem for symmetric review.
-
-**Skip-category buckets** (SQL CASE mirrors `_categorize_skip_reason` Python helper): `cooldown`, `score_below_50`, `pm_rvol_low`, `session_rvol_low`, `adv_low`, `atr_high`, `mcap_low`, `catalyst_downgrade`, `extension_gate`, `outside_top20`, `duplicate_scan`, `filter_other`, plus source-derived `moderate_tier` / `high_unentered`. Stable taxonomy so weekly category counts are comparable run-over-run.
-
-**Forward-return basis: gap-day open** — measures from `open_price[alert_date]` (what a day-2 chaser would've paid) to `close[alert_date+N]`, with `max_high_5d/20d` for max-favorable-excursion. All computed as one SQL `INSERT...SELECT` with five `LEFT JOIN LATERAL` subqueries against `mi_daily_closes` — single round-trip vs N+1 per ticker.
-
-**Backfill**: `python -m scripts.refresh_missed_outcomes 90` for immediate population on first deploy (90d window). Nightly refresh then uses the 30-day sliding window; rows older than 30d freeze once the 20d return is settled.
-
-**Pure observability**: zero methodology change. No new entries admitted, no filters loosened. The table only records what the existing pipeline already filtered, joined to data already in `mi_daily_closes`. Exempt from the methodology-shipping freeze per `feedback_sample_size_discipline.md`.
-
-### 2026-05-10 — Dual-account architecture #66 + per-strategy sizing #65 (BLOCKER for live cutover)
-Bundled ship of two coupled changes (advisor 2026-05-10: bundle is right call since both touch mi_strategies + safeguard/sizer paths; threading account_mode hits the same call sites where sizing multipliers apply).
-
-**#66 dual-account**: one Apollo container subscribes to BOTH Alpaca paper + live accounts simultaneously. Strategies route per their `mi_strategies.phase`: `phase='paper'` → paper Alpaca, `phase='live' + live_real_enabled=True` → live Alpaca, `phase='live' + live_real_enabled=False` → STAGED-PAPER Telegram proposal. Enables 3-tier maturation pipeline (shadow → paper → real-$) without losing real Alpaca paper execution feedback when MAGNA53 promotes to live.
-
-Architecture (see "Dual-Account Architecture" section above for full detail):
-- `alpaca_client.get_trading_client(account_mode)` returns per-mode TradingClient singletons with independent HTTP sessions
-- `make_client_order_id()` enforces strict mode-bound `apollo_{mode}_{strategy}_{ticker}_{ms_epoch}` format (cross-account COID collision prevention)
-- `trade_stream.py` runs two TradingStream instances; `_dispatch_trade_event` validates `mi_live_trades.account_mode == stream_account_mode` before any DB mutation; mismatches drop the event + emit `cross_account_event_rejected` audit
-- `_check_safeguards(account_mode, signal_type)` per-mode isolated (paper at-cap doesn't constrain live) + per-strategy `max_concurrent_positions` enforcement
-- `sync_positions()` iterates `['paper','live']` via `_sync_positions_for_mode(mode)` helper — independent reconciliation per account
-- `account_equity_snapshot_job` (16:12 ET) iterates both modes → two `mi_account_equity_snapshots` rows daily; drawdown breaker state per mode
-
-Boot bootstrap (`agent.py::_bootstrap_alpaca_credentials`) hard-requires both `ALPACA_PAPER_*` AND `ALPACA_LIVE_*` env var pairs when `ENABLE_LIVE_MODE=true`. Dev opt-out: `ENABLE_LIVE_MODE=false` requires only paper. Legacy `ALPACA_API_KEY/SECRET` remapped to `ALPACA_PAPER_*` at boot (one-deploy-cycle rollback safety; emits `legacy_alpaca_creds_fallback` audit; remove after dual-mode is stable).
-
-**#65 per-strategy sizing/cap**: two new `mi_strategies` columns:
-- `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline post-spec-builder so it covers BOTH `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly
-- `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`
-- Use case: 9M Day 2 promotes to live with multiplier=0.5 + cap=2 (smaller size, restricted slot count)
-
-**Migration deploy steps** (Hetzner): set `ALPACA_PAPER_API_KEY/SECRET` + `ALPACA_LIVE_API_KEY/SECRET` env vars BEFORE container restart. OR set `ENABLE_LIVE_MODE=false` for paper-only (legacy `ALPACA_API_KEY` continues working as paper). Boot will FAIL with clear message if env vars missing under `ENABLE_LIVE_MODE=true`.
-
-**All strategies stay at `phase='paper'` initially.** Verify ≥48h regression-free paper trading before flipping any strategy to `phase='live'` (this is the dual-mode validation gate, separate from the live cutover composite gate #64). Live cutover sequencing remains: drawdown breaker active → paper R+ over N≥10 → dual-account verified → MAGNA53 phase='live' + live_real_enabled=True.
-
-**Lesson**: the cleanest place to apply per-strategy parameters (sizing multiplier, position cap) is at the orchestration layer (entry_pipeline + _check_safeguards), NOT inside each strategy's spec_builder. Single application point covers all current and future strategies. Same architectural pattern as the 2026-05-04 limit-buffer SSoT cleanup.
-
-
-### Older entries graduated to CHANGELOG.md (compressed 2026-05-17)
-
-2026-04-30 through 2026-05-08 moved to `CHANGELOG.md` with one-liner format `topic — key change & lesson`. Search there for any concept above (e.g. "Continuation Flag", "M&A filter", "split handling", "purpose-tagged stop", "drawdown breaker", "EP earnings boost", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
+Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filter", "CRMD", "dual-account", "Gate 5", "purpose-tagged stop", "drawdown breaker", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
 
 ---
 
