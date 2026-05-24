@@ -458,7 +458,18 @@ async def top_missed_winners(
 
 
 async def missed_by_category(window_days: int = 30) -> list[dict]:
-    """Per-category roll-up: count, median ret_5d, top winner."""
+    """Per-category roll-up: count, avg/top of ret_5d AND max_high_5d.
+
+    Both metrics returned because ret_5d (close[alert+5d] / open[alert] - 1)
+    is NULL for any alert < 5 trading days old — Postgres returns NULL when
+    the future close doesn't exist yet, so a 7-day window produces all-NULL
+    ret_5d aggregates. max_high_5d uses LIMIT 6 on existing bars; partial
+    windows still produce a value. Surface BOTH so the weekly digest is
+    actionable on recent alerts (#109).
+
+    Ranking uses COALESCE(ret_5d, max_high_5d) so the top ticker is
+    meaningful even when ret_5d hasn't matured.
+    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -470,8 +481,10 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
             ),
             ranked AS (
                 SELECT skip_category, ticker, alert_date, ret_5d, max_high_5d,
-                       ROW_NUMBER() OVER (PARTITION BY skip_category
-                                          ORDER BY ret_5d DESC NULLS LAST) AS rn
+                       ROW_NUMBER() OVER (
+                           PARTITION BY skip_category
+                           ORDER BY COALESCE(ret_5d, max_high_5d) DESC NULLS LAST
+                       ) AS rn
                 FROM base
             )
             SELECT
@@ -480,16 +493,18 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
                 COUNT(*) FILTER (WHERE b.ret_5d > 0)::INT AS n_winners,
                 COUNT(*) FILTER (WHERE b.ret_5d > 0.10)::INT AS n_10pct_plus,
                 COUNT(*) FILTER (WHERE b.ret_5d > 0.20)::INT AS n_20pct_plus,
+                COUNT(*) FILTER (WHERE b.max_high_5d > 0.10)::INT AS n_peak_10pct_plus,
                 AVG(b.ret_5d) AS avg_ret_5d,
                 MAX(b.ret_5d) AS max_ret_5d,
                 AVG(b.max_high_5d) AS avg_max_high_5d,
                 MAX(r.ticker) FILTER (WHERE r.rn = 1) AS top_ticker,
-                MAX(r.ret_5d) FILTER (WHERE r.rn = 1) AS top_ret_5d
+                MAX(r.ret_5d) FILTER (WHERE r.rn = 1) AS top_ret_5d,
+                MAX(r.max_high_5d) FILTER (WHERE r.rn = 1) AS top_max_high_5d
             FROM base b
             LEFT JOIN ranked r
               ON r.skip_category = b.skip_category AND r.rn = 1
             GROUP BY b.skip_category
-            ORDER BY n_10pct_plus DESC, avg_ret_5d DESC NULLS LAST
+            ORDER BY n_peak_10pct_plus DESC, avg_max_high_5d DESC NULLS LAST
         """, window_days)
     return [dict(r) for r in rows]
 
@@ -636,17 +651,23 @@ def format_missed_section_for_weekly(missed: dict) -> str:
 
     if cats:
         parts.append("")
-        parts.append("_By skip reason:_")
+        parts.append("_By skip reason (peak = max intraday high over 5 days):_")
         parts.append("```")
-        parts.append("reason                    n    avg    ≥10%  top")
+        parts.append("reason                  n  peak-avg  ≥10%  top")
         for c in cats[:6]:
             n = c.get("n") or 0
-            avg = _fmt_pct_fixed(c.get("avg_ret_5d"))
-            n10 = c.get("n_10pct_plus") or 0
+            # Prefer peak metrics — ret_5d is NULL for alerts <5 trading days
+            # old (close[+5d] doesn't exist yet), so at 7d window almost
+            # everything aggregates to NULL. max_high_5d uses LIMIT 6 on
+            # existing bars, populates faster (#109).
+            peak_avg = _fmt_pct_fixed(c.get("avg_max_high_5d"))
+            n10 = c.get("n_peak_10pct_plus") or 0
             top_t = (c.get("top_ticker") or "—")[:5]
-            top_r = _fmt_pct_fixed(c.get("top_ret_5d"))
-            label = _humanize_category(c.get("skip_category"))[:24].ljust(24)
-            parts.append(f"{label}  {n:>3}  {avg}  {n10:>3}   {top_t} {top_r}")
+            top_v = _fmt_pct_fixed(
+                c.get("top_max_high_5d") or c.get("top_ret_5d")
+            )
+            label = _humanize_category(c.get("skip_category"))[:22].ljust(22)
+            parts.append(f"{label}  {n:>3}  {peak_avg}     {n10:>3}   {top_t} {top_v}")
         parts.append("```")
         return "\n".join(parts)
     return "\n".join(parts)

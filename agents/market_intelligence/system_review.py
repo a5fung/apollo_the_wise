@@ -636,6 +636,13 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
     aggregates = {
         "n_losers": n,
         "total_loss": round(total_loss, 2),
+        # Raw counts surfaced alongside pcts so the formatter can switch to
+        # "X/N" form at low N (single-trade "100%" reads as statistically
+        # significant when it's literally one trade — see #110).
+        "n_5m_would_block": n_blocked_by_5m,
+        "n_5m_wider_stop": n_wider_stop_5m,
+        "n_prose_mismatch": n_prose_mismatch,
+        "n_fast_stop_lt_10min": n_fast_stop,
         "pct_5m_would_block": round(100.0 * n_blocked_by_5m / n, 1) if n else 0.0,
         "pct_5m_wider_stop": round(100.0 * n_wider_stop_5m / n, 1) if n else 0.0,
         "pct_prose_mismatch": round(100.0 * n_prose_mismatch / n, 1) if n else 0.0,
@@ -1190,6 +1197,9 @@ def _format_loser_section(loser_breakdown: dict) -> str:
     lines = [
         f"❌ *Losers post-mortem ({agg.get('n_losers', 0)} trades · "
         f"${agg.get('total_loss', 0):+,.0f})*",
+        "_5m refs the `shadow_orb_5m` strategy — telemetry-only 5-min ORB "
+        "tracker. Per-row 🪜 / ⛔ flags show what that strategy would have "
+        "done differently vs. the live 1-min ORB._",
     ]
     # Per-trade rows — most recent / largest loss first (already sorted ASC by pnl).
     # Cap to top 10 to keep digest scannable; aggregates capture the tail.
@@ -1218,14 +1228,22 @@ def _format_loser_section(loser_breakdown: dict) -> str:
     if len(losers) > 10:
         lines.append(f"_(+ {len(losers) - 10} more losers, see DB row)_")
 
-    # Aggregate roll-up — the methodology signals worth tracking week-over-week.
+    # Aggregate roll-up — week-over-week methodology signals.
+    # At N<5, single-trade "100%" is misleading; show raw counts instead.
     n = agg.get("n_losers", 0)
     median_gt = agg.get("median_gap_through_dollars")
+
+    def _agg(label: str, count_key: str, pct_key: str) -> str:
+        cnt = agg.get(count_key, 0)
+        if n < 5:
+            return f"{label}: {cnt}/{n}"
+        return f"{label}: {agg.get(pct_key, 0):.0f}%"
+
     agg_bits = [
-        f"5m-blocked: {agg.get('pct_5m_would_block', 0):.0f}%",
-        f"5m-wider: {agg.get('pct_5m_wider_stop', 0):.0f}%",
-        f"prose-mismatch: {agg.get('pct_prose_mismatch', 0):.0f}%",
-        f"fast-stop<10m: {agg.get('pct_fast_stop_lt_10min', 0):.0f}%",
+        _agg("5m-blocked",     "n_5m_would_block",     "pct_5m_would_block"),
+        _agg("5m-wider",       "n_5m_wider_stop",      "pct_5m_wider_stop"),
+        _agg("prose-mismatch", "n_prose_mismatch",     "pct_prose_mismatch"),
+        _agg("fast-stop<10m",  "n_fast_stop_lt_10min", "pct_fast_stop_lt_10min"),
     ]
     if median_gt is not None:
         agg_bits.append(f"med gap-thru ${median_gt:.2f}")
