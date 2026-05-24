@@ -215,48 +215,72 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
         except (json.JSONDecodeError, TypeError):
             bm = {}
 
-    # Primary: daily 4% counts (colored) + ratios (raw numbers)
+    # Breadth — paired up/down counts grouped by time horizon.
+    # Color rules (see data_gated_reviews.yaml::breadth_cluster_view_ideation):
+    #   Class A paired metrics: green when up>down, red when down>up.
+    #   Class C T2108 contrarian: low<20 green (oversold setup),
+    #     high>85 amber (overbought caution).
     r5 = bm.get("ratio_5d") or pct4_5d
     r10 = bm.get("ratio_10d") or pct4_10d
     up4 = bm.get("today_up4", regime.get("full_up4_count"))
     down4 = bm.get("today_down4", regime.get("full_down4_count"))
 
-    primary_parts = ["Primary"]
-    if up4 is not None and down4 is not None:
-        count_emoji = "🟢" if up4 > down4 else "🔴"
-        primary_parts.append(f"{count_emoji} {up4}↑ {down4}↓")
-    ratio_parts = []
-    if r5 is not None:
-        ratio_parts.append(f"5d {r5:.2f}x")
-    if r10 is not None:
-        ratio_parts.append(f"10d {r10:.2f}x")
-    if ratio_parts:
-        primary_parts.append("  ".join(ratio_parts))
-    lines.append("  " + "  |  ".join(primary_parts))
+    def _paired(up, down):
+        if up is None or down is None:
+            return ""
+        emoji = "🟢" if up > down else "🔴"
+        return f"{emoji} {up}↑/{down}↓"
 
-    # Secondary: T2108 (contrarian — green when oversold <20) + momentum counts (colored)
+    # Line 1 — today (daily 4% moves + ratios)
+    today_bits = []
+    if up4 is not None and down4 is not None:
+        today_bits.append(_paired(up4, down4))
+    ratios = []
+    if r5 is not None:
+        ratios.append(f"5d {r5:.2f}x")
+    if r10 is not None:
+        ratios.append(f"10d {r10:.2f}x")
+    if ratios:
+        today_bits.append("ratio " + " · ".join(ratios))
+    if today_bits:
+        lines.append("  *Today (±4%)*  " + "   ".join(today_bits))
+
+    # Line 2 — 1-month momentum (±25% and ±50%)
+    up25m = bm.get("up_25_1m")
+    down25m = bm.get("down_25_1m")
+    up50 = bm.get("up_50_1m", regime.get("pradeep_1m_50"))
+    down50 = bm.get("down_50_1m")
+    month_bits = []
+    if up25m is not None and down25m is not None:
+        month_bits.append(f"±25% {_paired(up25m, down25m)}")
+    if up50 is not None and down50 is not None:
+        month_bits.append(f"±50% {_paired(up50, down50)}")
+    elif up50 is not None:
+        month_bits.append(f"±50% {up50}↑")
+    if month_bits:
+        lines.append("  *1M*  " + "   ".join(month_bits))
+
+    # Line 3 — 3-month momentum (±25%) + T2108
+    up25q = bm.get("up_25_3m", regime.get("pradeep_3m_25"))
+    down25q = bm.get("down_25_3m")
     t2108 = bm.get("t2108") or regime.get("t2108")
     consec_bd = bm.get("consec_breakdown_days") or regime.get("consec_breakdown_days") or 0
 
-    secondary_parts = ["Secondary"]
-    if t2108 is not None:
-        t_emoji = "🟢" if t2108 < 20 else ""
-        secondary_parts.append(f"T2108 {t_emoji}{t2108:.0f}%")
-    up50 = bm.get("up_50_1m", regime.get("pradeep_1m_50"))
-    down50 = bm.get("down_50_1m")
-    if up50 is not None and down50 is not None:
-        m_emoji = "🟢" if up50 > down50 else "🔴"
-        secondary_parts.append(f"50%/M {m_emoji}{up50}↑/{down50}↓")
-    elif up50 is not None:
-        secondary_parts.append(f"50%/M {up50}↑")
-    up25q = bm.get("up_25_3m", regime.get("pradeep_3m_25"))
-    down25q = bm.get("down_25_3m")
+    quarter_bits = []
     if up25q is not None and down25q is not None:
-        q_emoji = "🟢" if up25q > down25q else "🔴"
-        secondary_parts.append(f"25%/Q {q_emoji}{up25q}↑/{down25q}↓")
+        quarter_bits.append(f"±25% {_paired(up25q, down25q)}")
     elif up25q is not None:
-        secondary_parts.append(f"25%/Q {up25q}↑")
-    lines.append("  " + "  |  ".join(secondary_parts))
+        quarter_bits.append(f"±25% {up25q}↑")
+    if t2108 is not None:
+        if t2108 < 20:
+            t_emoji = "🟢 "
+        elif t2108 > 85:
+            t_emoji = "🟠 "
+        else:
+            t_emoji = ""
+        quarter_bits.append(f"T2108 {t_emoji}{t2108:.0f}%")
+    if quarter_bits:
+        lines.append("  *3M*  " + "   ".join(quarter_bits))
 
     if consec_bd > 0:
         lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")

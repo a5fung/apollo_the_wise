@@ -3136,13 +3136,58 @@ reviews:
 
          TRULY MISSING — not computed:
             - up/down 13%+ in 34 days (Wm O'Neil thrust-style)
+            - up 20%+ in 5 days (Pradeep thrust — see 2026-05-24 SPY
+              annotation, Screenshot 2026-05-24 161935.png)
             - Worden Common Stocks (closed-source; needs A/D-line
               or similar proxy if we want to fill the column)
 
          Two-tier work: (i) low-cost surfacing of already-computed
          25%/1M into the briefing breadth section closes the most
-         obvious user-visible gap; (ii) compute 13%+/34d from
-         `mi_daily_closes` if cluster matrix becomes the render.
+         obvious user-visible gap; (ii) compute 13%+/34d + 20%+/5d
+         from `mi_daily_closes` if cluster matrix becomes the render.
+
+      Reference matrix (2026-05-24 Pradeep screenshot 162223 —
+      full Stockbee cluster view we want to render):
+         Primary (4 cols): up_4%_today · down_4%_today ·
+                           5d_ratio · 10d_ratio
+         Secondary (6 cols): up_25%/Q · down_25%/Q ·
+                             up_25%/M · down_25%/M ·
+                             up_50%/M · down_50%/M
+         Far right (3 cols): Worden_common · T2108 · S&P
+         Rows: 10 most-recent trading dates (newest on top).
+         Per-cell color encoding visible — green / pale yellow
+         neutral / red. Operator can spot vertical-run signals
+         (e.g., past 5 days red in down-cols).
+
+      Color-rule design constraint (2026-05-24 evidence):
+        Metrics do NOT all share a monotone "high=green, low=red"
+        rule. Four distinct classes; cluster-matrix render cannot
+        ship until the per-metric rule table is explicit:
+
+         CLASS A — Paired up/down counts (matrix columns above)
+            up_X%/N and down_X%/N are SIBLING columns. Up cell
+            green when high; down cell red when high. Both can
+            light up independently. This covers MOST of the
+            cluster-matrix cells.
+
+         CLASS B — Unpaired thrust metric (NOT in matrix; separate
+                   signal class)
+            up_20%+/5d alone, up_13%+/34d alone — single-direction
+            surge counts without a paired sibling. Pradeep
+            2026-05-24 SPY annotation (Screenshot 162223 sibling
+            162038): "historically such high readings result in
+            stalling action / pullbacks." High isn't green, it's
+            amber exhaustion-warning. RSI-shape logic.
+
+         CLASS C — Contrarian extremes (T2108)
+            low <20 = green (oversold-bounce setup, ALREADY in
+            briefing.py:243 today); high >85 = amber (overbought
+            caution, NOT yet wired).
+
+         CLASS D — Persistence (sequence-as-signal)
+            Consecutive 700+ down-4% days — single-day color not
+            meaningful; the SEQUENCE is the signal. Render as
+            count-of-consecutive at far right of date row.
 
       Open design questions:
         - Render target: Telegram monospace table, or a new dashboard
@@ -3155,18 +3200,18 @@ reviews:
         - Pradeep's signal-of-signals: 5+ consecutive red days in
           primary + first red in secondary = regime warning. Should
           this become an explicit L2/L3 audit event?
+        - Per-class color rule SSoT: build as a small Python module
+          (`breadth_color_rules.py`) with one function per metric
+          name → (level, color_class) so briefing + future cluster-
+          matrix renderer + future audit-event detector all read
+          from one place.
     predicate_sql: |
-      -- Ideation review, gated on prerequisites being done — NOT
-      -- a calendar date. Unblocks when both of these are complete:
-      --   (a) EP Selectivity Phase 1 (`ep_selectivity_deep_dive`)
-      --   (b) Trade-state ownership refactor (Gate 5 G)
-      -- Status check is manual until those reviews close.
+      -- Ideation review on calendar date. Pure observability
+      -- feature — same data we already compute, new shape. No
+      -- technical dependency on other reviews.
       SELECT 0;
     threshold: 0
-    earliest_review_date: null  # gated on prerequisites, not calendar
-    blocked_by:
-      - ep_selectivity_deep_dive
-      - gate_5g_column_write_audit  # see BACKLOG.md live-cutover blockers
+    earliest_review_date: 2026-05-31
     action_when_ready: |
       Decide on render target (Telegram vs dashboard) + missing-
       indicator priority. Spec out:
@@ -3182,9 +3227,11 @@ reviews:
       Origin: 2026-05-15 user-shared Pradeep tweet
       (Screenshot 2026-05-15 222517.png). Pure observability —
       no methodology change, no entry/exit decision impact.
-      Unblocks immediately after EP Selectivity Phase 1 and
-      trade-state ownership refactor (Gate 5 G) are done — no
-      arbitrary calendar floor.
+      2026-05-24 user pushback: original `blocked_by` list
+      (ep_selectivity_deep_dive + gate_5g_column_write_audit) was
+      priority-sequencing not technical dependency; removed in
+      favor of a concrete calendar date so it can surface in
+      Sunday weekly review on its own.
     status: pending
     added_on: 2026-05-15
 
