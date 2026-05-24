@@ -108,4 +108,18 @@ if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; the
 fi
 
 echo ""
+echo "=== [5e/5] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
+if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
+  echo ""
+  echo "DEPLOY FAILED — data_gated_reviews.yaml has entries with duplicate top-level"
+  echo "keys. YAML last-wins silently overwrites earlier values, causing reviews to"
+  echo "surface in weekly digest with the wrong status (caught 2026-05-24 when"
+  echo "theme_assignment_sndk_class_refinement showed up as pending despite being"
+  echo "closed_on: 2026-05-18 with a full outcome block — a stray 'status: pending'"
+  echo "appeared 50 lines later in the same entry)."
+  echo "Fix: remove redundant key lines and re-run."
+  exit 8
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="

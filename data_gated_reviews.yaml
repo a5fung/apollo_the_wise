@@ -181,7 +181,6 @@ reviews:
       SELECT COUNT(DISTINCT as_of_date) FROM mi_metric_baselines
       WHERE as_of_date > CURRENT_DATE - 60
     threshold: 30
-    earliest_review_date: 2026-05-24
     action_when_ready: |
       Spot-check 5 random metrics: query mi_metric_baselines for sample_n,
       verify ≥ 14 across all 5. Cross-check that 7d L2/L3 alert rate is
@@ -1424,7 +1423,6 @@ reviews:
       with trade outcomes only.
     deferred_on: 2026-05-22
     deferred_until: 2026-06-22
-    earliest_review_date: 2026-06-22
     added_on: 2026-05-10
 
   - review_id: stop_too_wide_outcome_cohort
@@ -2096,8 +2094,6 @@ reviews:
       are "wrong ticker in theme despite signals" symptoms of the
       same root cause class. Sunday refactor or next-session focused
       session.
-    status: pending
-    added_on: 2026-05-14
 
   - review_id: ep_selectivity_deep_dive
     title: "EP entry selectivity overhaul — EXHAUSTIVE review of every tracked variable"
