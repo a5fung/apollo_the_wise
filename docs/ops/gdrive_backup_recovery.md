@@ -22,14 +22,20 @@ python3 scripts/gdrive_backup.py --setup credentials.json
 
 ### Step 2 — Push the new token to prod
 
+Two separate commands (don't chain with `+` — that's a literal filename to scp):
+
 ```bash
 scp gdrive-token.json apollo@87.99.134.162:/home/apollo/gdrive-token.json
-ssh apollo@87.99.134.162 'chmod 600 /home/apollo/gdrive-token.json'
-
-# Verify the upload manually:
-ssh apollo@87.99.134.162 'GDRIVE_TOKEN_FILE=/home/apollo/gdrive-token.json GDRIVE_FOLDER_ID=1kXY1LAld1_ZwFa28ZAh3cLVNft7agamb python3 /home/apollo/gdrive_backup.py /home/apollo/backups/apollo-20260524.sql.gz'
-# Expect: "Uploaded apollo-20260524.sql.gz → <fileId>"
+ssh apollo@87.99.134.162 "chmod 600 /home/apollo/gdrive-token.json"
 ```
+
+Then verify the upload manually (single command, all one line):
+
+```bash
+ssh apollo@87.99.134.162 "GDRIVE_TOKEN_FILE=/home/apollo/gdrive-token.json GDRIVE_FOLDER_ID=1kXY1LAld1_ZwFa28ZAh3cLVNft7agamb python3 /home/apollo/gdrive_backup.py /home/apollo/backups/apollo-20260524.sql.gz"
+```
+
+Expected output: `Uploaded apollo-20260524.sql.gz → <fileId>`. If you see a Google file ID, the OAuth flow worked and tonight's 02:00 ET cron will succeed.
 
 ### Step 3 — Move app to Production mode (prevents the 7-day expiry trap)
 
