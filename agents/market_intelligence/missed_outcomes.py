@@ -425,8 +425,8 @@ async def top_missed_winners(
     col = {"1d": "ret_1d", "5d": "ret_5d", "20d": "ret_20d"}.get(horizon, "ret_5d")
     max_col = "max_high_5d" if horizon != "20d" else "max_high_20d"
     untradeable_clause = "" if include_untradeable else (
-        f"AND skip_category NOT IN {_UNTRADEABLE_CATEGORIES} "
-        f"AND COALESCE(open_d0, 0) >= {_DEFAULT_PRICE_FLOOR} "
+        f"AND m.skip_category NOT IN {_UNTRADEABLE_CATEGORIES} "
+        f"AND COALESCE(m.open_d0, 0) >= {_DEFAULT_PRICE_FLOOR} "
     )
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -443,9 +443,25 @@ async def top_missed_winners(
                        MAX(COALESCE({col}, {max_col})) OVER (
                            PARTITION BY skip_category
                        ) AS cat_rank_metric
-                FROM mi_ep_missed_outcomes
-                WHERE alert_date >= CURRENT_DATE - $1::INT
+                FROM mi_ep_missed_outcomes m
+                WHERE m.alert_date >= CURRENT_DATE - $1::INT
                   AND ({col} IS NOT NULL OR {max_col} IS NOT NULL)
+                  -- Suppress duplicate_scan rows when a non-duplicate sibling
+                  -- exists for the same ticker+date — the dedup path records
+                  -- ep_score=NULL by design (the alert already scored on an
+                  -- earlier scan tick); surfacing it alongside the real
+                  -- moderate_alert / high_unentered row is redundant noise.
+                  -- Stand-alone duplicate_scan rows (no sibling) still surface
+                  -- so legitimately suppressed-only cases remain visible.
+                  AND NOT (
+                      m.skip_category = 'duplicate_scan'
+                      AND EXISTS (
+                          SELECT 1 FROM mi_ep_missed_outcomes sib
+                          WHERE sib.ticker = m.ticker
+                            AND sib.alert_date = m.alert_date
+                            AND sib.skip_category <> 'duplicate_scan'
+                      )
+                  )
                   {untradeable_clause}
             )
             SELECT * FROM base
@@ -476,8 +492,19 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
             WITH base AS (
                 SELECT skip_category, ticker, alert_date,
                        ret_5d, max_high_5d
-                FROM mi_ep_missed_outcomes
+                FROM mi_ep_missed_outcomes m
                 WHERE alert_date >= CURRENT_DATE - $1::INT
+                  -- Suppress redundant duplicate_scan sibling rows; see
+                  -- top_missed_winners for full rationale.
+                  AND NOT (
+                      m.skip_category = 'duplicate_scan'
+                      AND EXISTS (
+                          SELECT 1 FROM mi_ep_missed_outcomes sib
+                          WHERE sib.ticker = m.ticker
+                            AND sib.alert_date = m.alert_date
+                            AND sib.skip_category <> 'duplicate_scan'
+                      )
+                  )
             ),
             ranked AS (
                 SELECT skip_category, ticker, alert_date, ret_5d, max_high_5d,
