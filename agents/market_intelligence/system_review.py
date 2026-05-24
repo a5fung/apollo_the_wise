@@ -90,7 +90,7 @@ Rules:
 - Every bullet must cite a number from the metrics JSON.
 - Keep Telegram Markdown: *bold*, `code`, no tables.
 - When `postmortem_best` or `postmortem_worst` is present, weave one concrete insight from each into the ✅/⚠️ sections (e.g. "{ticker}'s exit followed through {pnl}…"). Do not paste the full postmortem — extract the takeaway.
-- When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. Do not invent transitions if the count is 0; omit the line entirely.
+- When `anomalies.l3_drifts.count > 0`, append a "📉 *Drift:*" line after 🔁 listing up to 3 metrics whose from_band → to_band transition this week (silent during the week, surfaces here only). Use the format `metric_name: from_band→to_band (current vs p50)`. If a transition has `recent_change_hint`, append `— ⚠ may be intentional (improvement landed {hint})` to that line so the operator interprets the drift as deliberate-improvement-settle rather than regression. Do not invent transitions if the count is 0; omit the line entirely.
 - `anomalies.l1_invariants` and `anomalies.l2_anomalies` already pinged Telegram during the week — cite their counts in ⚠️ *Broken* if non-zero so the user sees the week's invariant/anomaly footprint at a glance.
 - The `crypto` field in the metrics is surfaced separately as a deterministic appendix below your output. Do NOT mention crypto in the four sections above — that surface is handled.
 - When `strategy_promotions.checks` is non-empty AND any entry has `next_phase` != null, append a "📈 *Strategy promotion check:*" line after 🔁 listing each non-top-of-ladder strategy on its own indented bullet: `<strategy_id>: <eligible '✓ ready' OR top blocking_reason>` (e.g. `shadow_orb_5m: need 30 paired closed (have 12)`). Skip strategies already at the top of the ladder. Omit the section entirely if every strategy is at top-of-ladder.
@@ -288,12 +288,40 @@ async def _aggregate_promotion_checks() -> dict:
     return {"checks": out}
 
 
+def _match_drift_to_recent_changes(metric_key: str, recent_changes: list[str]) -> str | None:
+    """Detect whether a drifting metric's subsystem has a recent improvement
+    in CLAUDE.md (#112, 2026-05-24). The audit layer can't distinguish good
+    drift (deliberate improvement settling into new norm) from regression;
+    cross-referencing the metric name against recent change descriptions
+    gives the operator the context to interpret correctly.
+
+    Matches any 4+ character token from the metric_key (split on '_') as
+    a case-insensitive substring of the change body.
+
+    Returns the matching change entry (date + first line) or None.
+    """
+    if not metric_key or not recent_changes:
+        return None
+    tokens = [t.lower() for t in metric_key.split("_") if len(t) >= 4]
+    if not tokens:
+        return None
+    for change in recent_changes:
+        change_lower = change.lower()
+        if any(t in change_lower for t in tokens):
+            return change
+    return None
+
+
 async def _aggregate_anomalies(days: int) -> dict:
     """Roll up the week's L1/L2/L3 anomaly_detected audit rows.
 
     L1/L2 already pinged Telegram during the week. L3 drift was silent —
     Sunday digest is the only place it surfaces. Body shape mirrors what
     system_audit._emit_l1/l2/l3 writes.
+
+    Each L3 drift transition is annotated with `recent_change_hint` when
+    the metric name matches a recent CLAUDE.md change — distinguishes
+    deliberate-improvement drift from regression (#112).
     """
     since_hours = days * 24
     rows = await get_audit_log(
@@ -324,17 +352,29 @@ async def _aggregate_anomalies(days: int) -> dict:
             "by_key": [{"key": k, "count": c} for k, c in keys.most_common(8)],
         }
 
-    l3_drifts = [
-        {
+    # Recent CLAUDE.md change context for drift-vs-improvement disambiguation (#112).
+    try:
+        from agents.market_intelligence.system_audit import _recent_changes_context
+        recent_changes = _recent_changes_context(limit=7)
+    except Exception:
+        recent_changes = []
+
+    l3_drifts = []
+    for i in by_level[3]:
+        if i.get("from_band") == i.get("to_band"):
+            continue
+        item = {
             "key": i["key"],
             "from_band": i.get("from_band"),
             "to_band": i.get("to_band"),
             "current": i.get("current"),
             "p50": i.get("p50"),
         }
-        for i in by_level[3]
-        if i.get("from_band") != i.get("to_band")
-    ]
+        hint = _match_drift_to_recent_changes(i["key"] or "", recent_changes)
+        if hint:
+            item["recent_change_hint"] = hint
+        l3_drifts.append(item)
+
     return {
         "l1_invariants": _summarize(by_level[1]),
         "l2_anomalies": _summarize(by_level[2]),

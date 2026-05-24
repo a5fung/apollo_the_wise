@@ -740,13 +740,23 @@ async def _regime_conditional_baseline(conn, metric: MetricSpec, current_regime:
 # ── Recent context (for Sonnet hypothesis injection) ─────────────────────────
 
 
-_CLAUDEMD_HEADER_RE = re.compile(r"^## Changes Made (\d{4}-\d{2}-\d{2})", re.MULTILINE)
+_CLAUDEMD_HEADER_RE = re.compile(
+    r"^### (\d{4}-\d{2}-\d{2})(?:\s*\([^)]+\))?\s*(?:—\s*)?(.*)$",
+    re.MULTILINE,
+)
 
 
 def _recent_changes_context(repo_root: Path | None = None, limit: int = 5) -> list[str]:
-    """Last N `## Changes Made YYYY-MM-DD` headers from CLAUDE.md, plus the
-    first ~80 chars of body text following each header. Used to ground the
-    Sonnet hypothesis call in what the user actually shipped recently.
+    """Last N `### YYYY-MM-DD` change entries from CLAUDE.md "Changes Made
+    — Recent" section. Each entry's header line is captured (date + the
+    title text after the em-dash). Used to ground the Sonnet hypothesis
+    call AND the L3 drift "may be intentional" disambiguation (#112) in
+    what the user actually shipped recently.
+
+    Pre-2026-05-24 the regex looked for "## Changes Made YYYY-MM-DD" which
+    didn't match the actual CLAUDE.md format ("### YYYY-MM-DD (Day) — title").
+    Returned empty list silently; downstream hypothesis calls got no
+    recent context. Fixed in #112.
     """
     if repo_root is None:
         # this file is at agents/market_intelligence/system_audit.py
@@ -760,11 +770,17 @@ def _recent_changes_context(repo_root: Path | None = None, limit: int = 5) -> li
     out: list[str] = []
     for m in matches[:limit]:
         date_str = m.group(1)
-        body_start = m.end()
-        # Grab the first non-blank line within ~250 chars after the header.
-        snippet = text[body_start: body_start + 250].strip().splitlines()
-        first_line = next((s.strip("# ").strip() for s in snippet if s.strip() and not s.startswith("##")), "")
-        out.append(f"{date_str}: {first_line[:80]}")
+        title = m.group(2).strip()
+        # Header alone is usually informative enough. If empty, fall back
+        # to the next non-blank body line (older entries without em-dash titles).
+        if not title:
+            body_start = m.end()
+            snippet = text[body_start: body_start + 250].strip().splitlines()
+            title = next(
+                (s.strip("# ").strip() for s in snippet if s.strip() and not s.startswith("##")),
+                "",
+            )
+        out.append(f"{date_str}: {title[:120]}")
     return out
 
 
