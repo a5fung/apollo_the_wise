@@ -4409,6 +4409,63 @@ reviews:
     status: pending
     added_on: 2026-05-23
 
+  - review_id: intraday_ma_pullback_signal_n10
+    title: "Intraday MA-pullback detector — N≥10 graduation review (#96)"
+    question: |
+      #96 shipped 2026-05-24 — entry-technique #3 from
+      memory/user_tight_range_entry_techniques.md (classic VCP/Minervini
+      pullback to SMA10/SMA20 inside the established range).
+
+      Critical design departure from #94/#95: LIGHT-VOLUME gate
+      (today_pace ≤ 100% ADV). Pullbacks should NOT happen on heavy
+      volume — heavy volume = distribution, not the desired
+      institutional-pause signal.
+
+      MA selection prefers SMA10 over SMA20 when both fire (shorter-
+      term, fresher signal). Both must be INSIDE the range
+      (base_low < ma < base_high) for the pullback to be within-range.
+
+      Telemetry-only shadow phase. Forward-return analysis at N≥10
+      settled, structurally-surviving cases (parent_invalidated_eod
+      = FALSE).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_ma_pullbacks p
+      LEFT JOIN mi_daily_closes d0
+          ON d0.ticker = p.ticker AND d0.trade_date = p.pullback_date
+      LEFT JOIN LATERAL (
+          SELECT close FROM mi_daily_closes
+          WHERE ticker = p.ticker AND trade_date > p.pullback_date
+          ORDER BY trade_date ASC OFFSET 9 LIMIT 1
+      ) d10 ON TRUE
+      WHERE p.pullback_date <= CURRENT_DATE - INTERVAL '12 days'
+        AND p.parent_invalidated_eod = FALSE
+        AND d0.close > 0
+        AND d10.close IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Pull cohort. Compute 5d/10d forward returns from current_price
+      (the bounce-detection price).
+
+      Decision gate:
+      1. N≥10 + median 5d return ≥ +2% + WR≥+5% ≥ 40%: PROMOTE
+         - Stop placement: just below MA (medium stop, classic VCP)
+         - Design operator-confirm entry: /mapullback ENTER TICKER
+      2. N≥10 + signal weak: revise detector — possibly:
+         - Adjust volume ceiling (currently ≤100% ADV)
+         - Add MA-anchoring strictness (SMA50 variant?)
+         - Sector filter
+      3. N<10: bump earliest_review_date +30d.
+
+      DO NOT graduate without minute-bar entry simulation.
+
+      Cross-references:
+      - memory/user_tight_range_entry_techniques.md Entry #3
+      - #94 (breakout), #95 (support-test), #97 (low-vol rest), #98 (U&R)
+      - ADR 0004 §4 source_detector enum (flag_ma_pullback slot)
+    status: pending
+    added_on: 2026-05-24
+
   - review_id: intraday_support_test_signal_n10
     title: "Intraday support-test detector — N≥10 graduation review (#95)"
     question: |

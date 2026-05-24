@@ -1546,6 +1546,285 @@ async def run_intraday_support_test_scan(scan_time):
 
 
 # ────────────────────────────────────────────────────────────────────────
+# Intraday MA-pullback detector (#96, entry-technique #3)
+# ────────────────────────────────────────────────────────────────────────
+#
+# Classic VCP/Minervini pullback: price retraces inside the range to
+# SMA10 or SMA20, tags the MA, bounces back above. KEY differentiator
+# from #94/#95: LIGHT-VOLUME gate (today_pace ≤ ADV) — pullbacks should
+# NOT happen on heavy volume. Heavy volume on a pullback = distribution,
+# not the desired institutional-pause signal.
+#
+# Stateless within-snapshot using day.l + day.c, same shape as #95.
+
+_MA_PULLBACK_TAG_TOL_PCT       = 1.0   # day_low within ±1% of MA counts as a tag
+_MA_PULLBACK_MAX_UNDERCUT_PCT  = 2.0   # day_low no more than 2% BELOW MA
+_MA_PULLBACK_BOUNCE_FLOOR_PCT  = 0.5   # day_close at least 0.5% above day_low
+_MA_PULLBACK_HOLD_FLOOR_PCT    = 0.5   # day_close at least 0.5% above MA
+_MA_PULLBACK_VOL_CEIL_PCT      = 100.0 # full-day projected pace must be ≤ 100% ADV
+
+
+async def run_intraday_ma_pullback_scan(scan_time):
+    """Intraday MA-pullback detection on TIGHTENING/COILED/TRIGGERED tickers.
+
+    Reads the most-recent flag-classification (MAX(scan_date) WHERE
+    scan_date < CURRENT_DATE), filters to stage IN (TIGHTENING, COILED,
+    TRIGGERED) with non-null sma_10/sma_20. For each candidate ticker,
+    evaluates whether the day's intraday low tested SMA10 or SMA20
+    (preferring SMA10 if both fire), AND price has bounced back above
+    it, AND the day's volume is LIGHT (pace ≤ ADV).
+
+    Args:
+        scan_time: datetime in ET timezone
+
+    Returns:
+        int: count of new MA pullbacks inserted this scan
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    if not (_dt_time(9, 35) <= scan_time.time() <= _dt_time(15, 55)):
+        return 0
+
+    minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
+    if minutes_since_open <= 0:
+        return 0
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        # Universe: at least one of sma_10 / sma_20 populated
+        candidates = await conn.fetch("""
+            WITH latest AS (
+                SELECT MAX(scan_date) AS d FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            )
+            SELECT DISTINCT ON (ticker)
+                   ticker, scan_date, stage,
+                   base_high, base_low, base_age,
+                   sma_10, sma_20
+            FROM mi_flag_candidates
+            WHERE scan_date = (SELECT d FROM latest)
+              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND base_low IS NOT NULL AND base_low > 0
+              AND base_high IS NOT NULL AND base_high > 0
+              AND (sma_10 IS NOT NULL OR sma_20 IS NOT NULL)
+            ORDER BY ticker, scan_date DESC
+        """)
+        if not candidates:
+            return 0
+
+        watchlist = {r["ticker"]: dict(r) for r in candidates}
+
+        cohort_rows = await conn.fetch("""
+            SELECT ticker, count_9m_alerts_180d
+            FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
+        """)
+        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+
+        adv_rows = await conn.fetch("""
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+                  AND volume > 0
+            ) sub
+            WHERE rn <= 20
+            GROUP BY ticker
+        """, list(watchlist.keys()))
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        already_pulled = await conn.fetch("""
+            SELECT ticker FROM mi_flag_ma_pullbacks WHERE pullback_date = CURRENT_DATE
+        """)
+        already_set = {r["ticker"] for r in already_pulled}
+
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning("intraday_ma_pullback_scan: empty snapshot fetch; skipping")
+        return 0
+
+    new_pullbacks: list[dict] = []
+    for ticker, cand in watchlist.items():
+        if ticker in already_set:
+            continue
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+
+        day = snap.get("day") or {}
+        day_low = day.get("l")
+        current_price = (
+            day.get("c")
+            or snap.get("min", {}).get("c")
+            or snap.get("lastTrade", {}).get("p")
+            or 0
+        )
+        if not day_low or day_low <= 0 or current_price <= 0:
+            continue
+
+        adv_20 = adv_map.get(ticker, 0)
+        if adv_20 <= 0:
+            continue
+        today_volume = int(day.get("v") or 0)
+        if today_volume <= 0:
+            continue
+
+        # Light-volume gate — defining characteristic of pullback pattern
+        projected_full_day = int(today_volume * (390.0 / minutes_since_open))
+        if projected_full_day > adv_20 * (_MA_PULLBACK_VOL_CEIL_PCT / 100.0):
+            continue
+
+        base_low = float(cand["base_low"])
+        base_high = float(cand["base_high"])
+
+        # Try SMA10 first, then SMA20. First MA that passes all gates wins.
+        chosen_ma = None
+        chosen_label = None
+        for ma_label, ma_value in (("SMA10", cand["sma_10"]),
+                                    ("SMA20", cand["sma_20"])):
+            if ma_value is None or ma_value <= 0:
+                continue
+            ma_value = float(ma_value)
+
+            # MA must be INSIDE the range — otherwise it's not a within-range pullback
+            if not (base_low < ma_value < base_high):
+                continue
+
+            tag_upper = ma_value * (1.0 + _MA_PULLBACK_TAG_TOL_PCT / 100.0)
+            if day_low > tag_upper:
+                continue  # never tested
+            undercut_floor = ma_value * (1.0 - _MA_PULLBACK_MAX_UNDERCUT_PCT / 100.0)
+            if day_low < undercut_floor:
+                continue  # too-deep undercut
+            hold_target = ma_value * (1.0 + _MA_PULLBACK_HOLD_FLOOR_PCT / 100.0)
+            if current_price < hold_target:
+                continue  # not currently holding above
+            bounce_pct = (current_price - day_low) / day_low * 100.0
+            if bounce_pct < _MA_PULLBACK_BOUNCE_FLOOR_PCT:
+                continue
+
+            chosen_ma = ma_value
+            chosen_label = ma_label
+            break
+
+        if chosen_ma is None:
+            continue
+
+        pct_below_ma = (day_low - chosen_ma) / chosen_ma * 100.0
+        bounce_pct = (current_price - day_low) / day_low * 100.0
+        volume_pct = today_volume / adv_20 * 100.0
+        in_cohort = ticker in cohort_map
+
+        new_pullbacks.append({
+            "ticker": ticker,
+            "minutes_since_open": minutes_since_open,
+            "parent_stage": cand["stage"],
+            "parent_scan_date": cand["scan_date"],
+            "base_high": base_high,
+            "base_low": base_low,
+            "base_age": cand["base_age"],
+            "ma_label": chosen_label,
+            "ma_value": chosen_ma,
+            "day_low": float(day_low),
+            "current_price": float(current_price),
+            "pct_below_ma": pct_below_ma,
+            "bounce_pct_from_low": bounce_pct,
+            "today_volume": today_volume,
+            "adv_20": adv_20,
+            "volume_pct_of_adv": volume_pct,
+            "projected_full_day_volume": projected_full_day,
+            "in_sugar_baby_cohort": in_cohort,
+            "cohort_count_180d": cohort_map.get(ticker),
+        })
+
+    if not new_pullbacks:
+        return 0
+
+    async with pool.acquire() as conn:
+        for p in new_pullbacks:
+            await conn.execute("""
+                INSERT INTO mi_flag_ma_pullbacks (
+                    ticker, pullback_date, pullback_time, minutes_since_open,
+                    parent_stage, parent_scan_date,
+                    base_high, base_low, base_age,
+                    ma_label, ma_value,
+                    day_low, current_price, pct_below_ma, bounce_pct_from_low,
+                    today_volume, adv_20, volume_pct_of_adv, projected_full_day_volume,
+                    in_sugar_baby_cohort, cohort_count_180d
+                ) VALUES (
+                    $1, CURRENT_DATE, NOW(), $2,
+                    $3, $4,
+                    $5, $6, $7,
+                    $8, $9,
+                    $10, $11, $12, $13,
+                    $14, $15, $16, $17,
+                    $18, $19
+                )
+                ON CONFLICT (ticker, pullback_date) DO NOTHING
+            """,
+                p["ticker"], p["minutes_since_open"],
+                p["parent_stage"], p["parent_scan_date"],
+                p["base_high"], p["base_low"], p["base_age"],
+                p["ma_label"], p["ma_value"],
+                p["day_low"], p["current_price"],
+                p["pct_below_ma"], p["bounce_pct_from_low"],
+                p["today_volume"], p["adv_20"], p["volume_pct_of_adv"],
+                p["projected_full_day_volume"],
+                p["in_sugar_baby_cohort"], p["cohort_count_180d"],
+            )
+            try:
+                undercut_note = (
+                    f"undercut={p['pct_below_ma']:+.2f}%"
+                    if p["pct_below_ma"] < 0
+                    else f"tag={p['pct_below_ma']:+.2f}%"
+                )
+                await db.log_audit_event(
+                    "intraday_ma_pullback",
+                    f"{p['ticker']} stage={p['parent_stage']} "
+                    f"ma={p['ma_label']} {undercut_note} "
+                    f"bounce={p['bounce_pct_from_low']:+.2f}% "
+                    f"vol_pct_adv={p['volume_pct_of_adv']:.0f}%"
+                )
+            except Exception as e:
+                logger.debug(f"intraday_ma_pullback audit failed (non-critical): {e}")
+
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        clock = scan_time.strftime("%H:%M")
+        lines = [
+            f"📉 *Intraday MA-Pullbacks ({len(new_pullbacks)} new)*",
+            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+            "",
+        ]
+        for p in new_pullbacks:
+            cohort_marker = "🍬 " if p["in_sugar_baby_cohort"] else ""
+            undercut_label = (
+                f"undercut {p['pct_below_ma']:+.2f}%"
+                if p["pct_below_ma"] < 0
+                else f"tag {p['pct_below_ma']:+.2f}%"
+            )
+            lines.append(
+                f"• {cohort_marker}`{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
+                f"({undercut_label}), bounced +{p['bounce_pct_from_low']:.2f}% "
+                f"to ${p['current_price']:.2f} "
+                f"(vol {p['volume_pct_of_adv']:.0f}% ADV)"
+            )
+        lines.append("")
+        lines.append("_Drill-down: `/mapullbacks` for today's full list + recent history_")
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"intraday_ma_pullback Telegram failed (non-critical): {e}")
+
+    logger.info(f"intraday_ma_pullback_scan: {len(new_pullbacks)} new pullbacks detected")
+    return len(new_pullbacks)
+
+
+# ────────────────────────────────────────────────────────────────────────
 # Entry-technique annotation (#93, 2026-05-23 ship)
 # ────────────────────────────────────────────────────────────────────────
 #
@@ -1800,8 +2079,21 @@ async def reconcile_flag_breaks_post_eod(scan_date):
                       AND stage = 'INVALIDATED'
                )
         """, scan_date)
+        pullbacks_result = await conn.execute("""
+            UPDATE mi_flag_ma_pullbacks
+               SET parent_invalidated_eod = TRUE,
+                   invalidated_at = NOW()
+             WHERE pullback_date = $1
+               AND parent_invalidated_eod = FALSE
+               AND ticker IN (
+                   SELECT ticker FROM mi_flag_candidates
+                    WHERE scan_date = $1
+                      AND stage = 'INVALIDATED'
+               )
+        """, scan_date)
     breaks_count = int(breaks_result.split()[-1]) if breaks_result else 0
     tests_count = int(tests_result.split()[-1]) if tests_result else 0
+    pullbacks_count = int(pullbacks_result.split()[-1]) if pullbacks_result else 0
     if breaks_count:
         logger.info(f"reconcile_flag_breaks_post_eod: invalidated {breaks_count} break rows")
         try:
@@ -1820,4 +2112,13 @@ async def reconcile_flag_breaks_post_eod(scan_date):
             )
         except Exception:
             pass
-    return (breaks_count, tests_count)
+    if pullbacks_count:
+        logger.info(f"reconcile_flag_breaks_post_eod: invalidated {pullbacks_count} ma-pullback rows")
+        try:
+            await db.log_audit_event(
+                "flag_ma_pullbacks_reconciled",
+                f"{pullbacks_count} intraday ma-pullbacks marked parent_invalidated_eod=TRUE for {scan_date}",
+            )
+        except Exception:
+            pass
+    return (breaks_count, tests_count, pullbacks_count)

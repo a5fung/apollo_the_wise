@@ -1395,6 +1395,47 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_support_tests_ticker
                 ON mi_flag_support_tests(ticker, test_date DESC);
 
+            -- Intraday MA-pullback detections (#96, entry-technique #3 from
+            -- user_tight_range_entry_techniques.md). Classic VCP/Minervini
+            -- mechanic: price retraces to SMA10 or SMA20 inside the range and
+            -- bounces. KEY differentiator from #94/#95: light-volume gate
+            -- (today_pace ≤ ADV) — pullbacks should NOT happen on heavy volume.
+            -- Telemetry-only shadow phase; N>=10 settled before paper.
+            CREATE TABLE IF NOT EXISTS mi_flag_ma_pullbacks (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                pullback_date DATE NOT NULL,
+                pullback_time TIMESTAMPTZ NOT NULL,
+                minutes_since_open INT NOT NULL,
+                parent_stage TEXT NOT NULL,
+                parent_scan_date DATE NOT NULL,
+                base_high FLOAT,
+                base_low FLOAT,
+                base_age INT,
+                -- MA being tested (SMA10 preferred over SMA20 when both fire)
+                ma_label TEXT NOT NULL,                   -- 'SMA10' | 'SMA20'
+                ma_value FLOAT NOT NULL,
+                -- Test event data
+                day_low FLOAT NOT NULL,                   -- intraday low (the actual tag)
+                current_price FLOAT NOT NULL,             -- price at detection (the bounce)
+                pct_below_ma FLOAT NOT NULL,              -- (day_low - ma) / ma * 100; negative = undercut
+                bounce_pct_from_low FLOAT NOT NULL,
+                today_volume BIGINT,
+                adv_20 BIGINT,
+                volume_pct_of_adv FLOAT,                  -- gate enforces ≤100% (light volume)
+                projected_full_day_volume BIGINT,
+                in_sugar_baby_cohort BOOLEAN DEFAULT FALSE,
+                cohort_count_180d INT,
+                parent_invalidated_eod BOOLEAN DEFAULT FALSE,
+                invalidated_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, pullback_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_ma_pullbacks_date
+                ON mi_flag_ma_pullbacks(pullback_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_ma_pullbacks_ticker
+                ON mi_flag_ma_pullbacks(ticker, pullback_date DESC);
+
             -- Stocks-in-Play unified watchlist (#99 / ADR 0004 Phase 1,
             -- 2026-05-23). Three-axis maturity model captured here:
             --   1. Per-strategy phase: mi_strategies.phase (separate table)

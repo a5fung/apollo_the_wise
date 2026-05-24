@@ -67,6 +67,7 @@ JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 JOB_SUPPORT_TEST_SCAN = "support_test_scan"
+JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 
 _scheduler: AsyncIOScheduler | None = None
@@ -1648,6 +1649,27 @@ async def _support_test_scan_job():
         return None
 
 
+async def _ma_pullback_scan_job():
+    """Run every 5 min during market hours. Intraday MA-pullback detector
+    (#96, entry-technique #3, 2026-05-24 ship).
+
+    Classic VCP/Minervini pullback to SMA10 or SMA20 inside the range.
+    LIGHT-VOLUME gate (today_pace ≤ ADV) — the defining characteristic.
+    Telemetry-only shadow phase; N>=10 settled before paper.
+    """
+    now_et = datetime.now(_ET)
+    if not (_dt_time(9, 35) <= now_et.time() <= _dt_time(15, 55)):
+        return 0
+    try:
+        from agents.market_intelligence.flag_detector import run_intraday_ma_pullback_scan
+        n = await run_intraday_ma_pullback_scan(now_et)
+        return int(n) if n is not None else 0
+    except Exception as e:
+        logger.error(f"intraday_ma_pullback_scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_MA_PULLBACK_SCAN, str(e))
+        return None
+
+
 async def _backup_health_check_job():
     """Daily check that off-site backup completed within last 36h.
 
@@ -2904,6 +2926,21 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_SUPPORT_TEST_SCAN,
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
+    # Intraday MA-pullback scan: every 5 min during market hours
+    # (gate internally 9:35-15:55 ET). Entry-technique #3 per
+    # memory/user_tight_range_entry_techniques.md. Light-volume gate
+    # is the defining characteristic. Telemetry-only shadow phase.
+    _scheduler.add_job(
+        audit_wrap(_ma_pullback_scan_job, JOB_MA_PULLBACK_SCAN),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_MA_PULLBACK_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
     )

@@ -2312,6 +2312,114 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_ma_pullbacks_query(self, request: AgentRequest) -> AgentResponse:
+        """`/mapullbacks` — intraday MA-pullback detector surface (#96).
+
+        Modes:
+          /mapullbacks           — today's pullbacks + last 7-day summary
+          /mapullbacks TICKER    — 30-day history for one ticker
+
+        Classic VCP/Minervini pullback to SMA10 or SMA20. Shadow phase.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"MAPULLBACKS", "MAPULLBACK"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        from agents.market_intelligence.collector import _ET
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                rows = await conn.fetch("""
+                    SELECT pullback_date, pullback_time, parent_stage,
+                           ma_label, ma_value, day_low, current_price,
+                           pct_below_ma, bounce_pct_from_low, volume_pct_of_adv,
+                           in_sugar_baby_cohort, parent_invalidated_eod
+                    FROM mi_flag_ma_pullbacks
+                    WHERE ticker = $1
+                      AND pullback_date >= CURRENT_DATE - INTERVAL '30 days'
+                    ORDER BY pullback_date DESC, pullback_time DESC
+                """, ticker)
+                if not rows:
+                    return self._ok(
+                        request,
+                        result=f"_No intraday MA-pullbacks for `{ticker}` in last 30d._"
+                    )
+                lines = [f"📉 *{ticker} — Intraday MA-pullback history (30d)*", ""]
+                for r in rows:
+                    et_clock = r["pullback_time"].astimezone(_ET).strftime("%H:%M")
+                    inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                    cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
+                    lines.append(
+                        f"  {r['pullback_date']} {et_clock}{cohort} — "
+                        f"{r['parent_stage']} pulled to {r['ma_label']} "
+                        f"${r['ma_value']:.2f} ({r['pct_below_ma']:+.2f}%), "
+                        f"bounced +{r['bounce_pct_from_low']:.2f}% "
+                        f"(vol {r['volume_pct_of_adv']:.0f}% ADV){inval}"
+                    )
+                return self._ok(request, result="\n".join(lines))
+
+            today_rows = await conn.fetch("""
+                SELECT ticker, pullback_time, parent_stage,
+                       ma_label, ma_value, day_low, current_price,
+                       pct_below_ma, bounce_pct_from_low, volume_pct_of_adv,
+                       in_sugar_baby_cohort, parent_invalidated_eod
+                FROM mi_flag_ma_pullbacks
+                WHERE pullback_date = CURRENT_DATE
+                ORDER BY pullback_time
+            """)
+            recent_summary = await conn.fetch("""
+                SELECT pullback_date,
+                       COUNT(*) AS n_pullbacks,
+                       COUNT(*) FILTER (WHERE in_sugar_baby_cohort) AS n_cohort,
+                       COUNT(*) FILTER (WHERE parent_invalidated_eod) AS n_invalidated
+                FROM mi_flag_ma_pullbacks
+                WHERE pullback_date BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                        AND CURRENT_DATE - INTERVAL '1 day'
+                GROUP BY pullback_date
+                ORDER BY pullback_date DESC
+            """)
+
+        lines = ["📉 *Intraday MA-Pullbacks*", ""]
+        if today_rows:
+            lines.append(f"*Today ({len(today_rows)})*:")
+            for r in today_rows:
+                et_clock = r["pullback_time"].astimezone(_ET).strftime("%H:%M")
+                cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                lines.append(
+                    f"  {et_clock} {cohort}`{r['ticker']}` — "
+                    f"{r['parent_stage']} pulled to {r['ma_label']} "
+                    f"${r['ma_value']:.2f}, bounced "
+                    f"+{r['bounce_pct_from_low']:.2f}% "
+                    f"(vol {r['volume_pct_of_adv']:.0f}% ADV){inval}"
+                )
+        else:
+            lines.append("_No MA-pullbacks today (yet)._")
+
+        if recent_summary:
+            lines.append("")
+            lines.append("*Last 7 days (excl. today):*")
+            for r in recent_summary:
+                inval_note = (
+                    f" ({r['n_invalidated']} invalidated_eod)"
+                    if r["n_invalidated"] else ""
+                )
+                cohort_note = (
+                    f" {r['n_cohort']} 🍬"
+                    if r["n_cohort"] else ""
+                )
+                lines.append(
+                    f"  {r['pullback_date']}: {r['n_pullbacks']} pullbacks{cohort_note}{inval_note}"
+                )
+
+        lines.append("")
+        lines.append("_Drill-down: `/mapullbacks TICKER` for 30-day history per ticker_")
+        lines.append("_Shadow phase — telemetry only, no entries submitted_")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
         """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
 
@@ -4556,6 +4664,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/flagbreak":      self._handle_flag_breaks_query,
             "/supporttests":   self._handle_support_tests_query,
             "/supporttest":    self._handle_support_tests_query,
+            "/mapullbacks":    self._handle_ma_pullbacks_query,
+            "/mapullback":     self._handle_ma_pullbacks_query,
             "/watch":          self._handle_watchlist_query,
             "/inplay":         self._handle_stocks_in_play_query,
             "/setup":          self._handle_setup_query,
