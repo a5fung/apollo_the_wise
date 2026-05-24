@@ -737,10 +737,22 @@ async def _aggregate_audit_errors(days: int) -> dict:
     for weeks because it logged only via logger.error and never hit
     audit. Going forward, any try/except path that catches a job-level
     failure must emit an audit event ending in _error or _failed —
-    this aggregator surfaces them unconditionally in the weekly digest."""
+    this aggregator surfaces them unconditionally in the weekly digest.
+
+    Synthetic test events (rows whose summary starts with 'SYNTHETIC TEST'
+    — emitted by #48/#49 preflight verifications) are filtered out so the
+    digest doesn't false-alarm on operator-triggered exception drills.
+    """
     since_hours = days * 24
     err_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%error%")
     failed_rows = await get_audit_log(limit=500, since_hours=since_hours, event_type_like="%_failed%")
+
+    def _is_real(r: dict) -> bool:
+        s = (r.get("summary") or "").upper()
+        return not s.startswith("SYNTHETIC TEST")
+
+    err_rows = [r for r in err_rows if _is_real(r)]
+    failed_rows = [r for r in failed_rows if _is_real(r)]
     # Merge + de-dup (a single event_type matching both globs counts once)
     merged: dict[str, int] = {}
     for r in err_rows:

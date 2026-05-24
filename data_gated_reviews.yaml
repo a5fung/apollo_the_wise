@@ -188,7 +188,24 @@ reviews:
       < 5/week (false-positive sanity). If both pass, post a CLAUDE.md
       Recent entry confirming the audit layer is now load-bearing.
       Origin: 2026-04-24 session 5, deferred per backlog P24.
-    status: pending
+    status: deferred
+    deferred_reason: |
+      2026-05-24 spot-check: 3 of 5 random metrics ≥14 (skip_count_setup
+      n=22, validation_rate_limited_count n=22, audit_errors_per_day
+      n=22) but 2 of 5 below (HIGH_ep_entry_rate n=5,
+      fishhook_promotion_rate_30d n=2). L2 alert rate 3/week ✓ within
+      <5/week FP-sanity bar. L3 drifts 7/week (informational).
+
+      Low-volume metrics (entries, promotions) are inherently slow to
+      accumulate. Predicate "≥14 across ALL 5 random" is too strict —
+      a random sample can hit a rare metric and fail forever. Refined
+      criterion on next review: top-quartile-volume metrics ≥14
+      uniformly + a tracked watchlist of inherently-low-volume metrics
+      with metric-specific n thresholds. Defer 60 days to let the
+      low-volume metrics accumulate, then revisit the criterion.
+    deferred_on: 2026-05-24
+    deferred_until: 2026-07-23
+    earliest_review_date: 2026-07-23
     added_on: 2026-04-29
 
   - review_id: correlation_engine_revalidation
