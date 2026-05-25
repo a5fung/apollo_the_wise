@@ -3800,7 +3800,13 @@ async def upsert_regime(record: dict[str, Any]) -> None:
         )
 
 
-async def get_latest_regime() -> Optional[dict[str, Any]]:
+async def get_latest_regime(
+    include_breadth_history: bool = False,
+) -> Optional[dict[str, Any]]:
+    """Most-recent regime row. Set `include_breadth_history=True` to also
+    attach `breadth_history_5d` (last CLUSTER_WINDOW days of parsed
+    breadth_monitor) — only the briefing composer needs this; defaulting
+    False avoids an extra fetch on every EP-scan/regime-handler tick."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -3809,31 +3815,38 @@ async def get_latest_regime() -> Optional[dict[str, Any]]:
         if not row:
             return None
         result = dict(row)
-        # Attach last 5 days of breadth_monitor for cluster-signal detection
-        # in the briefing breadth section (read by breadth_color_rules).
-        history_rows = await conn.fetch(
-            """
-            SELECT regime_date, breadth_monitor
-            FROM mi_market_regime
-            WHERE breadth_monitor IS NOT NULL
-            ORDER BY regime_date DESC
-            LIMIT 5
-            """
-        )
-        import json as _json
-        history: list[dict] = []
-        for hr in history_rows:
-            bm = hr["breadth_monitor"]
-            if isinstance(bm, str):
-                try:
-                    bm = _json.loads(bm)
-                except (_json.JSONDecodeError, TypeError):
-                    bm = {}
-            if not isinstance(bm, dict):
-                bm = {}
-            history.append({"date": hr["regime_date"], **bm})
-        result["breadth_history_5d"] = history
+        if include_breadth_history:
+            result["breadth_history_5d"] = await _fetch_breadth_history(conn)
         return result
+
+
+async def _fetch_breadth_history(conn: Any, limit: Optional[int] = None) -> list[dict]:
+    """Last N days of breadth_monitor JSONB parsed into dicts. Each row carries
+    a `date` key (regime_date) plus all JSONB fields. Returned newest-first."""
+    from agents.market_intelligence.breadth_color_rules import (
+        CLUSTER_WINDOW, coerce_breadth_monitor,
+    )
+    rows = await conn.fetch(
+        """
+        SELECT regime_date, breadth_monitor
+        FROM mi_market_regime
+        WHERE breadth_monitor IS NOT NULL
+        ORDER BY regime_date DESC
+        LIMIT $1
+        """,
+        limit or CLUSTER_WINDOW,
+    )
+    return [
+        {"date": r["regime_date"], **coerce_breadth_monitor(r["breadth_monitor"])}
+        for r in rows
+    ]
+
+
+async def get_breadth_history(limit: int) -> list[dict]:
+    """Public history fetcher for /breadth command + other consumers."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await _fetch_breadth_history(conn, limit=limit)
 
 
 def _to_date(d: "str | date") -> "date":

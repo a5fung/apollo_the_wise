@@ -206,14 +206,10 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if vix is not None:
         lines.append(f"  VIX {vix:.1f} — {_vix_context(vix)}")
 
-    # Stockbee Market Monitor — asyncpg may return JSONB as string
-    bm = regime.get("breadth_monitor") or {}
-    if isinstance(bm, str):
-        import json
-        try:
-            bm = json.loads(bm)
-        except (json.JSONDecodeError, TypeError):
-            bm = {}
+    # Stockbee Market Monitor — coerce via SSoT helper (handles asyncpg's
+    # JSONB-as-string quirk).
+    from agents.market_intelligence.breadth_color_rules import coerce_breadth_monitor
+    bm = coerce_breadth_monitor(regime.get("breadth_monitor"))
 
     # Breadth — paired up/down counts grouped by time horizon.
     # Color rules in `breadth_color_rules.py` (SSoT shared with /breadth +
@@ -229,10 +225,11 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     down4 = bm.get("today_down4", regime.get("full_down4_count"))
 
     def _paired(up, down):
-        emoji = paired_color(up, down)
-        if not emoji or up is None or down is None:
+        if up is None or down is None:
             return ""
-        return f"{emoji} {up}↑/{down}↓"
+        emoji = paired_color(up, down)
+        prefix = f"{emoji} " if emoji else ""
+        return f"{prefix}{up}↑/{down}↓"
 
     # Line 1 — today (daily 4% moves + ratios)
     today_bits = []
@@ -1088,7 +1085,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
 
     regime, rs_leaders, themes, velocity, pullbacks, turners, fund_flags, prior_theme_scores, warnings, cooldowns = (
         await asyncio.gather(
-            get_latest_regime(),
+            get_latest_regime(include_breadth_history=True),
             get_rs_leaders(today_str, limit=30),
             get_today_themes(today_str),
             get_rs_velocity(today_str, min_rs=40.0, limit=15),

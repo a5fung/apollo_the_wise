@@ -14,7 +14,8 @@ Four metric classes per `data_gated_reviews.yaml::breadth_cluster_view_ideation`
 """
 from __future__ import annotations
 
-from typing import Optional
+import json
+from typing import Any, Optional
 
 # --- thresholds (single source of truth) -----------------------------------
 
@@ -35,11 +36,32 @@ CAUTION = "🟠"
 NEUTRAL = ""
 
 
+# --- JSONB coercion -------------------------------------------------------
+
+def coerce_breadth_monitor(value: Any) -> dict:
+    """Normalize a `mi_market_regime.breadth_monitor` value to a dict.
+
+    asyncpg sometimes returns JSONB as a string (especially when no codec
+    registered). Tolerates None, parse errors, and non-dict shapes; always
+    returns a dict so call sites can use `.get()` safely.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
 # --- Class A: paired up/down ----------------------------------------------
 
 def paired_color(up: Optional[int], down: Optional[int]) -> str:
     """Paired metric color. Green if up>down, red if down>up, neutral if tied
-    or missing."""
+    or missing. Tied is genuinely neutral — call sites must render the count
+    even when emoji is empty (don't drop the row)."""
     if up is None or down is None:
         return NEUTRAL
     if up > down:

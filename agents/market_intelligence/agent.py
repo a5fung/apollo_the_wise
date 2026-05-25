@@ -2434,46 +2434,22 @@ class MarketIntelligenceAgent(BaseAgent):
         Cluster signal status reported at the bottom: ≥3 red days in
         last 5 with recency filter → 'cluster deterioration' note.
 
-        Tier 2 ship of breadth_cluster_view_ideation (yaml). Uses only
-        existing data computed nightly; missing thrust metrics (up
+        Uses existing data computed nightly; missing thrust metrics (up
         20%+/5d, up 13%+/34d) filed as separate follow-ups.
         """
-        import json as _json
-        from agents.market_intelligence.db import get_pool
+        from agents.market_intelligence.db import get_breadth_history
         from agents.market_intelligence.breadth_color_rules import (
             paired_color, t2108_color, cluster_fires,
             red_count_in_window, secondary_first_red,
             CLUSTER_WINDOW, CLUSTER_RED_THRESHOLD,
         )
 
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT regime_date, breadth_monitor
-                FROM mi_market_regime
-                WHERE breadth_monitor IS NOT NULL
-                ORDER BY regime_date DESC
-                LIMIT 10
-            """)
-
-        if not rows:
+        monitors = await get_breadth_history(limit=10)
+        if not monitors:
             return self._ok(
                 request,
                 result="_No breadth history available — nightly job may not have run yet._"
             )
-
-        # Parse the JSONB (asyncpg sometimes returns it as string)
-        monitors: list[dict] = []
-        for r in rows:
-            bm = r["breadth_monitor"]
-            if isinstance(bm, str):
-                try:
-                    bm = _json.loads(bm)
-                except (_json.JSONDecodeError, TypeError):
-                    bm = {}
-            if not isinstance(bm, dict):
-                bm = {}
-            monitors.append({"date": r["regime_date"], **bm})
 
         # Header — Telegram monospace block with fixed-width columns.
         # Paired counts allotted 4 digits each side (handles spikes like
