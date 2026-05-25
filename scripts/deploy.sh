@@ -73,7 +73,7 @@ if ! docker exec apollo-market python -m scripts.preflight_check; then
 fi
 
 echo ""
-echo "=== [5b/5] Preflight DB UPDATE prepare validation ==="
+echo "=== [5b/6] Preflight DB UPDATE prepare validation ==="
 if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
   echo ""
   echo "DEPLOY FAILED — DB UPDATE prepare validation reported type/schema error(s)."
@@ -84,7 +84,7 @@ if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
 fi
 
 echo ""
-echo "=== [5c/5] Preflight column-write authority check (Gate 5 G) ==="
+echo "=== [5c/6] Preflight column-write authority check (Gate 5 G) ==="
 if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
   echo ""
   echo "DEPLOY FAILED — unauthorized writer to mi_live_trades column(s)."
@@ -96,7 +96,7 @@ if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
 fi
 
 echo ""
-echo "=== [5d/5] Preflight import-shadowing check (2026-05-20 outage class) ==="
+echo "=== [5d/6] Preflight import-shadowing check (2026-05-20 outage class) ==="
 if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; then
   echo ""
   echo "DEPLOY FAILED — function-local 'from X import Y' shadows module-level import."
@@ -108,7 +108,7 @@ if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; the
 fi
 
 echo ""
-echo "=== [5e/5] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
+echo "=== [5e/6] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
 if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
   echo ""
   echo "DEPLOY FAILED — data_gated_reviews.yaml has entries with duplicate top-level"
@@ -119,6 +119,21 @@ if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
   echo "appeared 50 lines later in the same entry)."
   echo "Fix: remove redundant key lines and re-run."
   exit 8
+fi
+
+echo ""
+echo "=== [5f/6] Preflight command-parity check (2026-05-25 /breadth class) ==="
+# Run on host (not inside container) because it reads channels/telegram.py +
+# agent.py source files directly. Both are in the repo so host has access.
+if ! python3 scripts/preflight_command_parity.py; then
+  echo ""
+  echo "DEPLOY FAILED — Telegram slash command registration is inconsistent."
+  echo "BotCommand / CommandHandler / agent dispatch dict diverged (caught 2026-05-25"
+  echo "when /breadth + 7 other commands had BotCommand + agent dispatch but no"
+  echo "CommandHandler → Telegram silently dropped them all)."
+  echo "Fix: align the four places per the script's output, or add an explicit"
+  echo "allowlist entry in scripts/preflight_command_parity.py with a comment."
+  exit 9
 fi
 
 echo ""
