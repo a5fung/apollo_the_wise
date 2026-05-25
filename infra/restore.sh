@@ -380,12 +380,18 @@ phase_validate() {
     if ! should_run; then return 0; fi
 
     cd "$APP_DIR"
+    # These scripts import `agents.market_intelligence.*` and depend on the
+    # container's bundled site-packages + PYTHONPATH=/app. Running them on
+    # the host fails with ModuleNotFoundError. Always exec inside the
+    # market-agent container. Caught 2026-05-25 DR drill.
     echo -e "\n${CYAN}--- readiness_check.py --verbose ---${NC}"
-    sudo -u "$APP_USER" python3 scripts/readiness_check.py --verbose || \
+    sudo -u "$APP_USER" docker exec apollo-market \
+        python scripts/readiness_check.py --verbose || \
         warn "readiness_check.py exited non-zero — review L1 invariants above"
 
     echo -e "\n${CYAN}--- preflight_check.py ---${NC}"
-    sudo -u "$APP_USER" python3 scripts/preflight_check.py || \
+    sudo -u "$APP_USER" docker exec apollo-market \
+        python scripts/preflight_check.py || \
         warn "preflight_check.py exited non-zero — Alpaca creds or safeguards issue"
 
     echo -e "\n${CYAN}--- docker compose ps ---${NC}"
