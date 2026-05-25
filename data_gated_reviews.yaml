@@ -328,10 +328,41 @@ reviews:
       proximity check (~18 FP avoided per quarter). Polygon's AI
       sometimes puts the ticker in one half-sentence and tangential
       M&A reference in another, so M&A keyword anywhere in per-
-      ticker reasoning is too loose. Tighten to: keyword must
-      appear within 50 chars of the ticker symbol mention in the
-      reasoning text. Backward-check against QBTS/RGTI/INFQ events;
-      expect block.
+      ticker reasoning is too loose.
+
+      STEP 0 (REQUIRED before designing the heuristic) — Extract
+      the actual sentiment_reasoning corpus for the affected FP
+      cases. The audit rows only store final decision + title; the
+      reasoning text the proximity check would operate on is opaque
+      AI-generated text we haven't inspected yet.
+
+        Procedure:
+          re-fetch Polygon news for QBTS / RGTI / INFQ around
+          2026-05-22 (lookback_days=21), extract
+          insights[].sentiment_reasoning for each affected ticker,
+          dump to /tmp/path_b_corpus.txt.
+
+        Then *look at the text* — is ticker mention near or far
+        from M&A keyword? One-sentence or multi-sentence reasoning?
+        How wide is the proximity gap on real FPs vs real TPs?
+
+        Without this step, the heuristic (50-char window? sentence-
+        split? token window?) is guesswork. Part A+C worked from
+        synthetics because the bug patterns were observable in
+        titles. Part B's bug is in opaque AI text — corpus first.
+
+      STEP 1 — Design proximity rule from observed corpus. Likely
+      a sentence-level rule (sentence containing ticker must also
+      contain M&A keyword) rather than char window, but confirm
+      after Step 0.
+
+      STEP 2 — Backward-check against QBTS/RGTI/INFQ events;
+      expect block. Add a real-TP case (one we know was correct)
+      and verify it still accepts.
+
+      Order matters: ship Step 0 + Step 1 + Step 2 in the same
+      focused session so the corpus context stays fresh. Estimate:
+      ~30 min Step 0, ~1 hr Step 1+2.
 
       PARTS A + C — SHIPPED 2026-05-25 (commits below). Implementation:
         Part A: classify_direction(reasoning) helper in ma_filter.py;
