@@ -3387,6 +3387,41 @@ reviews:
 
       Phase 5 ships an ADVISORY meta_rubric_score on every alert.
       Does NOT yet gate entries — that's Phase 6.
+
+      📍 2026-05-25 EVIDENCE PIN (Task #70): Re-ran
+      `_fixture_relabel_review` against the 6 weekend-labeled fixtures.
+      Rubric is SYSTEMATICALLY STRICTER than operator labels — 5 of 5
+      scored fixtures graded as "weak" by the rubric vs operator's
+      game_changer / strong / routine. The 6th (KLAR) refused to score
+      due to no-yoy-data safety net.
+
+        TICKER  OPERATOR       RUBRIC       COMPOSITE
+        NBIS    game_changer   weak         13.8/39
+        CSCO    routine        weak         13.0/39
+        KLAR    routine        no-yoy-data  — (refused)
+        TRT     strong         weak         12.3/39
+        ONDS    strong         weak         13.4/39
+        CPA     strong         weak         13.4/39
+
+      One-directional bias: rubric never grades OVER the operator
+      (would expect ~50/50 if calibration were neutral). Root cause
+      visible in NBIS axis breakdown:
+        a1: 3/5 (revenue +684% YoY)  ← strong
+        a2: 0/5 (EPS yoy −109%)       ← KILLS the score
+        a3-a6: low
+
+      The rubric penalizes high-growth pre-profitability companies in
+      a2 EPS axis. Operators correctly recognize them as game_changer
+      via revenue/theme/AI-infra context. This is methodologically the
+      same shape as #55 (revenue-stage threshold) and #56 (Axis 2 corp-
+      action EPS distortion). Phase 5 calibration is the fix venue;
+      don't tune at N=6.
+
+      Implication for the Phase 5 fit: the regression must NOT use
+      "operator label" as the sole target — logical-OR with "actual
+      forward return ≥+X%" to avoid baking in operator generosity if
+      operators are themselves miscalibrated. Also: weight a2 less,
+      or apply revenue-stage exemption per #55.
     predicate_sql: |
       -- Need 30 alerts with ALL 4 inputs scored + 5d forward returns
       -- settled. At ~1.7 HIGH/day post-filters and ≥3 weeks for
