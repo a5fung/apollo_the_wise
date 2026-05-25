@@ -272,6 +272,69 @@ reviews:
       Origin: project_rs_theme_dash_backlog.md.
     status: pending
 
+  - review_id: gap_atr_3_5x_band_negative_ev
+    title: "gap/ATR 3-5x band — negative avg 5d return despite normal WR"
+    question: |
+      Surfaced 2026-05-25 during Task #58 re-run of
+      `_b53_atr_normalized_gap_backward_check` on current 60d cohort:
+
+        Band              N    avg_5d    WR ≥+5%    WR ≥+10%
+        gap/ATR <1.5x     5    +9.01%    50%        50%
+        gap/ATR 1.5-2x    8    +3.58%    40%        20%
+        gap/ATR 2-3x     30    +5.74%    40%        36%
+        gap/ATR 3-5x     42    -0.75%    35%        20%    ⬅ outlier
+        gap/ATR 5x+      27    +4.54%    42%        31%
+
+      3-5x is the LARGEST band (N=42, statistically robust) AND the ONLY
+      band with negative average return. Win rate at +5% is 35% — close
+      to other bands — so losers must be substantially larger than
+      winners in this band. The other bands all average positive.
+
+      What's specific to the 3-5x ratio? Hypotheses to test:
+      (1) These are "obvious" gappers that crowd out their own fuel —
+          retail FOMO + algo pile-on at ORB high, then sellers in
+          afternoon. Drift-down on day 1, capitulation by day 3.
+      (2) Catalyst-quality skew — 3-5x band might be over-represented
+          in 'routine' / 'noise' catalysts (vs game_changer concentrated
+          in 5x+ band).
+      (3) Sector skew — biotech FDA announcements often print in this
+          range and reverse hard in 2-3 sessions.
+      (4) Mid-cap-bias — large enough to attract attention but not
+          institutional-grade.
+    predicate_sql: |
+      -- N≥40 already exists; predicate is a no-op trigger so this
+      -- surfaces on the calendar floor. Re-pull at review time to
+      -- confirm sample hasn't degraded.
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-06-01
+    action_when_ready: |
+      Pull the 3-5x band cohort with full attribute join:
+        - catalyst_quality distribution
+        - sector distribution
+        - market_cap_band distribution
+        - day-by-day path (when does the avg-negative drift land?)
+        - paper trade outcomes if any were entered
+
+      Compare against the 2-3x and 5x+ bands as control groups (same
+      query, different ratio band).
+
+      Decision branches:
+        (a) Clear attribute skew explains it (e.g. 70% biotech, or
+            70% routine catalyst) → file a methodology gate change
+            (ATR-band × catalyst_quality interaction term).
+        (b) No skew, just market noise in a small window → close
+            with "60d cohort drift, re-evaluate at next 90d sweep."
+        (c) Path analysis reveals consistent day-1-up / day-3-down
+            pattern → consider a partial-take rule for 3-5x band.
+
+      Origin: Task #58 dead-zone investigation 2026-05-25 surfaced this
+      as a sister-finding while closing the 1.5-2x hypothesis. Sample
+      already large enough; calendar gate is for session sequencing,
+      not data accrual.
+    status: pending
+    added_on: 2026-05-25
+
   - review_id: dead_zone_reevaluation
     title: "Dead-zone analysis re-eval (post-2026-03-20 cohort)"
     question: |
@@ -279,6 +342,15 @@ reviews:
       yielded 8 missed winners across 29 unique HIGH_missed tuples. ORB extension
       to 10:00 had NEGATIVE EV (12.5% precision vs ~20% baseline). Re-run with
       a fatter cohort to confirm the conclusion holds.
+
+      📍 2026-05-25 SISTER-HYPOTHESIS CLOSED — Task #58 (gap/ATR 1.5-2x =
+      "dead zone"). Original framing claimed 17% WR at N=8 for the 1.5-2x band.
+      Re-ran `_b53_atr_normalized_gap_backward_check` on current 60d cohort:
+      band now shows 40% WR (N=5 returns, 8 alerts total, 3 too recent for
+      fwd_5d). Roughly in line with neighbors at 40%/40%/35%/42%. Original
+      17% was small-N noise. NO ACTION on this sister hypothesis; the
+      original dead_zone investigation (ORB extension precision) remains
+      open for 6/15.
     predicate_sql: |
       SELECT COUNT(*) FROM (
         SELECT DISTINCT a.ticker, a.alert_date
