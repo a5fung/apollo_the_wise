@@ -319,9 +319,25 @@ phase_db_up() {
 }
 
 # ── Phase 8: restore SQL dump ────────────────────────────────────────
+# Roles that pg_dump references via GRANT/OWNER but does NOT recreate.
+# Pre-creating them prevents ON_ERROR_STOP=1 halting the restore. Caught
+# 2026-05-25 DR drill (role "dashboard_ro" does not exist on fresh DB).
+# Long-term: backup.sh could bundle `pg_dumpall --roles-only` so this list
+# stays in sync automatically; for now we maintain it explicitly.
+EXPECTED_ROLES=(dashboard_ro)
+
 phase_restore_sql() {
     banner "Phase 8: restore SQL dump from $SQL_DUMP_PATH"
     if ! should_run; then return 0; fi
+
+    # Pre-create roles referenced by the dump (idempotent).
+    for role in "${EXPECTED_ROLES[@]}"; do
+        docker exec apollo-postgres psql -U apollo -d postgres -v ON_ERROR_STOP=1 \
+            -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='$role') THEN CREATE ROLE $role; END IF; END \$\$;" \
+            >/dev/null \
+            || err "Pre-create role $role failed"
+    done
+    ok "Pre-created roles: ${EXPECTED_ROLES[*]}"
 
     # Drop and recreate database for clean target
     docker exec apollo-postgres psql -U apollo -d postgres -v ON_ERROR_STOP=1 \
