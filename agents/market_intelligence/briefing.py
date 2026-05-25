@@ -216,19 +216,21 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
             bm = {}
 
     # Breadth — paired up/down counts grouped by time horizon.
-    # Color rules (see data_gated_reviews.yaml::breadth_cluster_view_ideation):
-    #   Class A paired metrics: green when up>down, red when down>up.
-    #   Class C T2108 contrarian: low<20 green (oversold setup),
-    #     high>85 amber (overbought caution).
+    # Color rules in `breadth_color_rules.py` (SSoT shared with /breadth +
+    # cluster audit detector).
+    from agents.market_intelligence.breadth_color_rules import (
+        paired_color, t2108_color,
+    )
+
     r5 = bm.get("ratio_5d") or pct4_5d
     r10 = bm.get("ratio_10d") or pct4_10d
     up4 = bm.get("today_up4", regime.get("full_up4_count"))
     down4 = bm.get("today_down4", regime.get("full_down4_count"))
 
     def _paired(up, down):
-        if up is None or down is None:
+        emoji = paired_color(up, down)
+        if not emoji or up is None or down is None:
             return ""
-        emoji = "🟢" if up > down else "🔴"
         return f"{emoji} {up}↑/{down}↓"
 
     # Line 1 — today (daily 4% moves + ratios)
@@ -272,13 +274,9 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     elif up25q is not None:
         quarter_bits.append(f"±25% {up25q}↑")
     if t2108 is not None:
-        if t2108 < 20:
-            t_emoji = "🟢 "
-        elif t2108 > 85:
-            t_emoji = "🟠 "
-        else:
-            t_emoji = ""
-        quarter_bits.append(f"T2108 {t_emoji}{t2108:.0f}%")
+        t_emoji = t2108_color(t2108)
+        t_prefix = f"{t_emoji} " if t_emoji else ""
+        quarter_bits.append(f"T2108 {t_prefix}{t2108:.0f}%")
     if quarter_bits:
         lines.append("  *3M*  " + "   ".join(quarter_bits))
 
