@@ -2475,8 +2475,10 @@ class MarketIntelligenceAgent(BaseAgent):
                 bm = {}
             monitors.append({"date": r["regime_date"], **bm})
 
-        # Header — Telegram monospace block with fixed-width columns
-        header = "Date    4%↑/↓     5d    1M±25%    1M±50%    T2108"
+        # Header — Telegram monospace block with fixed-width columns.
+        # Paired counts allotted 4 digits each side (handles spikes like
+        # 1090 down-4% days). Format: "emoji 1234/1234".
+        header = "Date    4%   ↑/↓        5d    1M±25%       1M±50%       T2108"
         sep = "─" * len(header)
         lines = [
             "📊 *Breadth Matrix — last 10 trading days*",
@@ -2486,36 +2488,26 @@ class MarketIntelligenceAgent(BaseAgent):
             sep,
         ]
 
+        def _paired_cell(up, down):
+            if up is None or down is None:
+                return " " * 11  # width: emoji(1) + " "(1) + "1234/1234"(9) = 11
+            emoji = paired_color(up, down) or " "
+            return f"{emoji} {up:>4}/{down:<4}"
+
+        def _t2108_cell(value):
+            if value is None:
+                return "  -  "
+            emoji = t2108_color(value) or " "
+            return f"{emoji} {value:>3.0f}%"
+
         for m in monitors:
             d_str = m["date"].strftime("%m/%d")
-            up4 = m.get("today_up4")
-            down4 = m.get("today_down4")
+            today_cell = _paired_cell(m.get("today_up4"), m.get("today_down4"))
             r5 = m.get("ratio_5d")
-            up25m = m.get("up_25_1m")
-            down25m = m.get("down_25_1m")
-            up50 = m.get("up_50_1m")
-            down50 = m.get("down_50_1m")
-            t2108 = m.get("t2108")
-
-            # Render each cell with consistent width
-            today_emoji = paired_color(up4, down4) or " "
-            today_cell = (
-                f"{today_emoji}{up4 or 0:>3}/{down4 or 0:<3}"
-                if up4 is not None and down4 is not None else "        "
-            )
             r5_cell = f"{r5:>4.2f}" if r5 is not None else "  - "
-            m25_emoji = paired_color(up25m, down25m) or " "
-            m25_cell = (
-                f"{m25_emoji}{up25m or 0:>3}/{down25m or 0:<3}"
-                if up25m is not None and down25m is not None else "        "
-            )
-            m50_emoji = paired_color(up50, down50) or " "
-            m50_cell = (
-                f"{m50_emoji}{up50 or 0:>3}/{down50 or 0:<3}"
-                if up50 is not None and down50 is not None else "        "
-            )
-            t_emoji = t2108_color(t2108) or " "
-            t_cell = f"{t_emoji}{t2108:>4.0f}%" if t2108 is not None else "  -  "
+            m25_cell = _paired_cell(m.get("up_25_1m"), m.get("down_25_1m"))
+            m50_cell = _paired_cell(m.get("up_50_1m"), m.get("down_50_1m"))
+            t_cell = _t2108_cell(m.get("t2108"))
 
             lines.append(f"{d_str:6}  {today_cell}  {r5_cell}  {m25_cell}  {m50_cell}  {t_cell}")
 
