@@ -38,10 +38,10 @@ echo "=== [1/5] git pull origin main ==="
 git pull origin main
 
 echo "=== [2/5] Building images: $SERVICES ==="
-docker compose -f "$COMPOSE_FILE" build --no-cache $SERVICES
+docker compose --env-file .env -f "$COMPOSE_FILE" build --no-cache $SERVICES
 
 echo "=== [3/5] Restarting containers: $SERVICES ==="
-docker compose -f "$COMPOSE_FILE" up -d $SERVICES
+docker compose --env-file .env -f "$COMPOSE_FILE" up -d $SERVICES
 
 # Only wait for market-agent boot if it was actually restarted in step 3.
 # Orchestrator-only deploys don't touch market-agent — the boot marker
