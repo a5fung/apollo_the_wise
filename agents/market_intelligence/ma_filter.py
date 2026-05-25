@@ -146,6 +146,28 @@ def classify_direction(reasoning: Optional[str]) -> str:
     return "ambiguous"
 
 
+def _ticker_is_acquirer(item: dict, ticker: str, reasoning: Optional[str] = None) -> bool:
+    """Return True if Polygon insights identify this ticker as the deal buyer.
+
+    Used by both title-match (Path A) and description-match (Path B) acceptance
+    to suppress acquirer-side fires (CECO-class). Missing insights → return
+    False (conservative: preserve title-match acceptance when no signal).
+
+    `reasoning` may be passed by callers that already extracted it; else
+    looked up here from the per-ticker insight entry.
+    """
+    if reasoning is None:
+        insights = item.get("insights") or []
+        ticker_insight = next(
+            (i for i in insights if i.get("ticker") == ticker),
+            None,
+        )
+        if ticker_insight is None:
+            return False
+        reasoning = ticker_insight.get("sentiment_reasoning") or ""
+    return classify_direction(reasoning) == "acquirer"
+
+
 def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, int]]:
     """Scan multiple text blobs; return (keyword, index_of_first_hit) or None.
 
@@ -250,30 +272,15 @@ async def polygon_news_has_mna_headline(
         title = item.get("title", "")
         description = item.get("description", "")
 
-        # #90 Part C — shareholder-investigation firm prefix reject.
-        # These notices typically follow already-announced deals and don't
-        # indicate fade-risk for the tagged tickers.
+        # Shareholder-investigation notices reference prior deals, not new
+        # fade-risk events.
         if is_shareholder_litigation_notice(title):
             continue
 
         title_kw = matches_mna_keywords(title)
         if title_kw:
-            # #90 Part A — direction check via per-ticker insights reasoning
-            # (when available). Title-match alone was direction-blind and
-            # mis-fired on acquirer-side announcements (CECO 2026-05-15).
-            insights = item.get("insights") or []
-            ticker_insight = next(
-                (i for i in insights if i.get("ticker") == ticker),
-                None,
-            )
-            if ticker_insight is not None:
-                direction = classify_direction(
-                    ticker_insight.get("sentiment_reasoning") or ""
-                )
-                if direction == "acquirer":
-                    continue  # ticker is the buyer — not a fade-risk target
-
-            # Path A: title match (+ direction check passed or ambiguous) — accept
+            if _ticker_is_acquirer(item, ticker):
+                continue
             return {
                 "ticker": ticker,
                 "matched_keyword": title_kw,
@@ -321,9 +328,8 @@ async def polygon_news_has_mna_headline(
         if not reasoning_kw:
             continue  # ticker insighted but not for M&A reason — MNST/ONDS/INFQ class
 
-        # #90 Part A — also apply direction check on Path B for symmetry.
-        if classify_direction(reasoning) == "acquirer":
-            continue  # ticker is the buyer — not a fade-risk target
+        if _ticker_is_acquirer(item, ticker, reasoning=reasoning):
+            continue
 
         return {
             "ticker": ticker,
