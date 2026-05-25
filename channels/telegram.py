@@ -1590,7 +1590,13 @@ class TelegramChannel:
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
                      "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook", "dryrun",
-                     "missed", "trade"):
+                     "missed", "trade",
+                     # 2026-05-22+ new commands — must be registered here AND have a
+                     # BotCommand entry above. Missing this list = silent drop in Telegram
+                     # (BotCommand only affects autocomplete; CommandHandler is the actual route).
+                     "sugarbabies", "sugarbaby", "timestop", "inplay",
+                     "flagbreaks", "flagbreak", "supporttests", "supporttest",
+                     "mapullbacks", "mapullback", "breadth", "watch", "rubric"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
