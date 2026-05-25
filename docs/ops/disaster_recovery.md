@@ -45,7 +45,7 @@ No action needed. Proceed to Phase 1.
 2. **Project** → existing project or new one.
 3. **Add server** → CPX21 minimum (4 GB RAM, 2 vCPU, 80 GB SSD).
 4. **Image**: Ubuntu 22.04 LTS.
-5. **Location**: Falkenstein (current prod) or any EU/US datacenter.
+5. **Location**: Ashburn, Virginia (current prod — low-latency to Alpaca/Polygon US-east). Verify with `curl ipinfo.io/<prod-ip>` if uncertain.
 6. **SSH key**: upload your laptop's public key. Note: this is the operator key for the restore session.
 7. Create server. Note the new **public IPv4** (e.g., `1.2.3.4`).
 8. Optional: assign a Floating IP if you want to preserve the old IP — saves the TradingView-webhook-URL-update step.
