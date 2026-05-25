@@ -1800,6 +1800,29 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
 
 # ── Telegram delivery ──────────────────────────────────────────────────────────
 
+def _strip_markdown_markers(text: str) -> str:
+    """Strip Telegram-Markdown control chars so a parse-failure plain-text
+    fallback doesn't show literal *Foo* / _bar_ / `code` to the user.
+
+    Preserves the content INSIDE markers (drops only the markers themselves).
+    Triple-backtick code blocks are kept as-is (the content inside is
+    typically tabular/monospace data the user wants verbatim — we drop the
+    fences but leave the body).
+    """
+    import re as _re
+    # Drop triple-backtick fences (keep body)
+    text = _re.sub(r"```[a-zA-Z]*\n?", "", text)
+    text = text.replace("```", "")
+    # Drop inline `code` markers (keep body)
+    text = _re.sub(r"`([^`]+)`", r"\1", text)
+    # Drop bold/italic markers (keep body). Use a regex so we only strip
+    # what looks like paired markers — avoid stripping a stray * or _ inside
+    # a word like "/foo_bar_baz".
+    text = _re.sub(r"\*(?=\S)([^*\n]*?)(?<=\S)\*", r"\1", text)
+    text = _re.sub(r"_(?=\S)([^_\n]*?)(?<=\S)_", r"\1", text)
+    return text
+
+
 async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
     """Send a message directly via Telegram Bot API. Splits if over 4000 chars."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -1832,9 +1855,17 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
             chunks.append(remaining)
 
     async def _post(client: httpx.AsyncClient, chunk: str, use_markdown: bool) -> httpx.Response:
+        # Plain-text fallback strips Markdown control chars so users don't
+        # see literal *Foo* and _bar_ all over the message. Keep code-block
+        # content (backticks span code spans the user expects to read as-is)
+        # by replacing only the markers themselves with nothing.
+        # Caught 2026-05-25: user reported "lots of * and _ everywhere" after
+        # Telegram returned 400 ("Can't find end of entity") and we fell
+        # back to plain text without stripping the markers.
+        text = chunk if use_markdown else _strip_markdown_markers(chunk)
         payload: dict[str, Any] = {
             "chat_id": chat_id,
-            "text": chunk,
+            "text": text,
             "disable_web_page_preview": True,
         }
         if use_markdown:
