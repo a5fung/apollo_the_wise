@@ -3409,6 +3409,47 @@ async def run_theme_engine(
         all_themes = await _enforce_max_themes_per_stock(all_themes)
         await _emit_pipeline_diagnostic(all_themes, "after_cap_2", sub_theme_parents=combined_sub_parents)
 
+    # Synthesize Retired rows for previously-active themes that were dropped
+    # during merge passes (Pass1 protect_strip → cap_drop, or Pass1.5
+    # absorption). Without this, themes silently vanish from emission with
+    # their last row stuck at Mainstream/Accelerating — trips the L1
+    # zombie_theme invariant in system_audit.py. Engine-side equivalent
+    # of what canonicalization (R3) would do; until R3 ships, this stub
+    # keeps the lifecycle ledger consistent.
+    final_names = {t["name"] for t in all_themes}
+    lost = [
+        t for t in existing
+        if t.get("stage") != "Retired" and t["name"] not in final_names
+    ]
+    if lost:
+        retire_rows = [
+            {
+                "theme_date": today,
+                "name": t["name"],
+                "stage": "Retired",
+                "score": 0.0,
+                "rs_avg": None,
+                "description": (
+                    f"Auto-retired {today_str}: dropped during merge/absorption "
+                    f"(prior stage {t.get('stage', 'Unknown')}). Prior tickers: "
+                    f"{', '.join(t.get('tickers') or []) or '(none)'}."
+                ),
+                "tickers": [],
+                "pct_above_20sma": None,
+            }
+            for t in lost
+        ]
+        all_themes = all_themes + retire_rows
+        await log_audit_event(
+            "theme_auto_retired",
+            summary=f"Auto-retired {len(lost)} theme(s) dropped during merge passes",
+            detail="\n".join(
+                f"'{t['name']}' (prior {t.get('stage')}, {len(t.get('tickers') or [])} tickers)"
+                for t in lost
+            ),
+        )
+        logger.info(f"Theme engine: auto-retired {len(lost)} dropped theme(s)")
+
     if all_themes:
         await _save_themes(all_themes)
 
