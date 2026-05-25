@@ -91,14 +91,38 @@ should_run() {
 mark_done() { touch "$(phase_marker "${FUNCNAME[1]}")"; }
 
 # ── Phase 1: apt install ──────────────────────────────────────────────
+# Docker's apt repo is required for docker-compose-plugin (Compose v2);
+# Ubuntu 22.04's `docker.io` package doesn't include it. Caught 2026-05-25
+# during DR drill (E: Unable to locate package docker-compose-plugin).
 phase_apt() {
     banner "Phase 1: apt install (docker, git, gnupg, postgres-client, nginx)"
     if ! should_run; then return 0; fi
+
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-        docker.io docker-compose-plugin git python3 python3-pip \
-        gnupg curl gzip postgresql-client nginx \
-        || err "apt-get install failed"
+        ca-certificates curl gnupg git python3 python3-pip \
+        gzip postgresql-client nginx \
+        || err "apt-get install (base packages) failed"
+
+    # Add Docker's official apt repository (Ubuntu 22.04+).
+    install -m 0755 -d /etc/apt/keyrings
+    if [[ ! -s /etc/apt/keyrings/docker.asc ]]; then
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            -o /etc/apt/keyrings/docker.asc \
+            || err "Docker GPG key fetch failed"
+        chmod a+r /etc/apt/keyrings/docker.asc
+    fi
+    local codename
+    codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $codename stable" \
+        > /etc/apt/sources.list.d/docker.list
+
+    apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        docker-ce docker-ce-cli containerd.io \
+        docker-buildx-plugin docker-compose-plugin \
+        || err "apt-get install (docker) failed"
+
     systemctl enable docker
     systemctl start docker
     mark_done
