@@ -291,11 +291,17 @@ phase_nginx_reload() {
 }
 
 # ── Phase 7: bring up postgres + redis ───────────────────────────────
+# docker-compose v2 does NOT auto-load .env from the project root when -f points
+# to a subdirectory file (docker/docker-compose.prod.yml here). Must pass
+# --env-file explicitly or POSTGRES_PASSWORD/REDIS_PASSWORD substitute to empty
+# and postgres exits with "superuser password is not specified". Caught
+# 2026-05-25 DR drill.
 phase_db_up() {
     banner "Phase 7: docker compose up postgres + redis (300s pg_isready)"
     if ! should_run; then return 0; fi
     cd "$APP_DIR"
-    sudo -u "$APP_USER" docker compose -f "$COMPOSE_FILE" up -d postgres redis \
+    sudo -u "$APP_USER" docker compose --env-file .env -f "$COMPOSE_FILE" \
+        up -d postgres redis \
         || err "docker compose up postgres redis failed"
 
     # Poll pg_isready — 300s headroom for slow boxes (advisor 2026-05-23)
@@ -367,7 +373,7 @@ phase_validate() {
         warn "preflight_check.py exited non-zero — Alpaca creds or safeguards issue"
 
     echo -e "\n${CYAN}--- docker compose ps ---${NC}"
-    sudo -u "$APP_USER" docker compose -f "$COMPOSE_FILE" ps
+    sudo -u "$APP_USER" docker compose --env-file .env -f "$COMPOSE_FILE" ps
 
     cat <<EOF
 
