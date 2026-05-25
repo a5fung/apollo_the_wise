@@ -145,6 +145,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ### Theme Engine
 - Bottom-up from price action — themes emerge from RS, not hypotheses
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
+- **Engine-drop themes skip Fading**: when a theme is removed during Pass1 cap_drop (size→0 after protect_strip) or Pass1.5 absorption, `run_theme_engine` writes a synthetic Retired row directly (with `parent_theme=successor` recovered from `theme_pass1_5_absorption` / `theme_pass1_protect_strip` audit events). The normal Fading→Retired 5-day transition can't complete here — the 7d recency cap in `get_active_themes` ages the theme out of `existing` before day 5. Stub until canonicalization (R3) ships. Audit event: `theme_auto_retired`.
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — bad descriptions caused TSEM to be permanently banned from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.

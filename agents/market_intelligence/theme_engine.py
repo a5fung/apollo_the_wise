@@ -3413,42 +3413,79 @@ async def run_theme_engine(
     # during merge passes (Pass1 protect_strip → cap_drop, or Pass1.5
     # absorption). Without this, themes silently vanish from emission with
     # their last row stuck at Mainstream/Accelerating — trips the L1
-    # zombie_theme invariant in system_audit.py. Engine-side equivalent
-    # of what canonicalization (R3) would do; until R3 ships, this stub
-    # keeps the lifecycle ledger consistent.
+    # zombie_theme invariant in system_audit.py.
+    #
+    # Lifecycle note: these jump directly Mainstream/Accelerating → Retired
+    # (skip Fading). The normal 5-day Fading→Retired transition can't
+    # complete here because once the theme stops being re-emitted, the 7d
+    # recency cap in get_active_themes ages it out of `existing` before
+    # day 5 of Fading can be reached. Engine-side equivalent of what
+    # canonicalization (R3) would do; until R3 ships, this stub keeps
+    # the lifecycle ledger consistent.
     final_names = {t["name"] for t in all_themes}
     lost = [
         t for t in existing
         if t.get("stage") != "Retired" and t["name"] not in final_names
     ]
     if lost:
-        retire_rows = [
-            {
+        # Recover successor pointers from today's audit log so the Retired
+        # row carries parent_theme. theme_pass1_5_absorption summary format:
+        # "Pass1.5: '<lost>' -> '<successor>'". theme_pass1_protect_strip
+        # detail format: "i='<protector>' ... j='<lost>' ...".
+        successor_by_lost: dict[str, str] = {}
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT event_type, summary, detail
+                FROM mi_audit_log
+                WHERE event_type IN ('theme_pass1_5_absorption', 'theme_pass1_protect_strip')
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+            """)
+        import re as _re
+        for r in rows:
+            if r["event_type"] == "theme_pass1_5_absorption":
+                m = _re.search(r"'([^']+)' -> '([^']+)'", r["summary"] or "")
+                if m:
+                    successor_by_lost.setdefault(m.group(1), m.group(2))
+            else:  # theme_pass1_protect_strip
+                im = _re.search(r"i='([^']+)'", r["detail"] or "")
+                jm = _re.search(r"j='([^']+)'", r["detail"] or "")
+                if im and jm:
+                    successor_by_lost.setdefault(jm.group(1), im.group(1))
+
+        retire_rows = []
+        for t in lost:
+            successor = successor_by_lost.get(t["name"])
+            note = (
+                f"Auto-retired {today_str}: "
+                + (f"absorbed/superseded by '{successor}'" if successor
+                   else f"dropped during merge/absorption (no successor found)")
+                + f" (prior stage {t.get('stage', 'Unknown')}, "
+                + f"{len(t.get('tickers') or [])} tickers)."
+            )
+            retire_rows.append({
                 "theme_date": today,
                 "name": t["name"],
                 "stage": "Retired",
                 "score": 0.0,
                 "rs_avg": None,
-                "description": (
-                    f"Auto-retired {today_str}: dropped during merge/absorption "
-                    f"(prior stage {t.get('stage', 'Unknown')}). Prior tickers: "
-                    f"{', '.join(t.get('tickers') or []) or '(none)'}."
-                ),
+                "description": note,
                 "tickers": [],
+                "parent_theme": successor,
                 "pct_above_20sma": None,
-            }
-            for t in lost
-        ]
+            })
         all_themes = all_themes + retire_rows
+        with_successor = sum(1 for r in retire_rows if r["parent_theme"])
         await log_audit_event(
             "theme_auto_retired",
-            summary=f"Auto-retired {len(lost)} theme(s) dropped during merge passes",
+            summary=f"Auto-retired {len(lost)} theme(s) dropped during merge passes ({with_successor} with successor pointer)",
             detail="\n".join(
-                f"'{t['name']}' (prior {t.get('stage')}, {len(t.get('tickers') or [])} tickers)"
-                for t in lost
+                f"'{r['name']}' -> parent='{r.get('parent_theme') or '(unknown)'}'"
+                for r in retire_rows
             ),
         )
-        logger.info(f"Theme engine: auto-retired {len(lost)} dropped theme(s)")
+        logger.info(f"Theme engine: auto-retired {len(lost)} dropped theme(s), {with_successor} with successor")
 
     if all_themes:
         await _save_themes(all_themes)
