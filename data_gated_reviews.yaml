@@ -272,6 +272,92 @@ reviews:
       Origin: project_rs_theme_dash_backlog.md.
     status: pending
 
+  - review_id: mna_filter_direction_blindness_path_a
+    title: "M&A filter — Path A direction-blindness + residual multi-ticker bleed (#90)"
+    question: |
+      2026-05-25 90d audit of `mna_filter_fired` events (25 fires)
+      surfaced three distinct FP sub-classes the #88 multi-ticker
+      discriminator (Path B insights+reasoning) does NOT cover:
+
+      SUB-BUG 1 — Path A direction-blindness
+        CECO fired on title "CECO Environmental and Thermon Group
+        Holdings Announce Election Deadline for Thermon Stockholders
+        to Elect Form of Merger Consideration." CECO is the ACQUIRER
+        of THR. Filter SHOULD only fire on TARGET (premium-pop fade
+        risk); acquirer firing on its own deal-announcement title
+        suppresses legitimate price action.
+        Path A (title-match) accepts BOTH directions blindly.
+
+      SUB-BUG 2 — Shareholder-investigation drift via Path B
+        KALV fired on "BRODSKY & SMITH SHAREHOLDER UPDATE: Notifying
+        Investors of Investigations: KalVista Pharmaceuticals, Inc.
+        (Nasdaq – KALV)..." Article is a multi-ticker investigation
+        notice (typically follows class-action filings on PRIOR M&A
+        deals), not an active M&A event for KALV. "halper sadeh" is
+        in `_MNA_KEYWORDS` (line 41) as a shareholder-investigation
+        firm shorthand, but BRODSKY & SMITH isn't. Both firms
+        operate on the same "post-merger litigation notice" pattern.
+
+      SUB-BUG 3 — Path B residual bleed despite insights check
+        QBTS / RGTI / INFQ firing on "Stock Market Today, May 11:
+        IonQ Rises as SkyWater Vote Advances Semiconductor Manuf-
+        acturing Deal." Polygon's per-ticker `sentiment_reasoning`
+        for these quantum tickers tangentially mentions M&A keywords
+        in roundup-style articles. #88 Path B check (ticker in
+        insights AND reasoning has M&A kw) was meant to gate this,
+        but Polygon's AI is being more liberal in reasoning text
+        than expected.
+
+      Bug-class breakdown of 25 events over 90d:
+        ~18 events: sub-bug 3 (QBTS/RGTI/INFQ multi-ticker bleed)
+        ~3-4 events: sub-bug 1 (CECO-class acquirer-side)
+        ~1 event: sub-bug 2 (KALV shareholder-investigation)
+
+      The duplicates across 9m_intraday detector come from the same
+      ticker hitting scan ticks — #89 dedup mitigates Telegram spam
+      but mna_filter_fired audit rows still accumulate.
+    predicate_sql: |
+      -- Evidence already in. Predicate is a calendar floor for a
+      -- focused implementation session, not data-accrual.
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-06-08
+    action_when_ready: |
+      Three-part fix in priority order (each independently shippable):
+
+      PART A — Path A direction-aware title parser (highest yield,
+      ~3-4 FP avoided per quarter). Two-stage:
+        1. Heuristic regex: title starts with "[TICKER] Announces
+           [acquisition|merger|buyout]" → ticker is ACQUIRER, skip.
+           Title contains "[TICKER] Stockholders" or "Election
+           Deadline for [TICKER]" → ticker is TARGET, accept.
+        2. If neither pattern matches → fall through to Path B
+           insights+reasoning check (currently only runs on desc-
+           only matches).
+        Backward-check via scripts/_replay_90_mna_path_a_direction.py
+        on the 25-event audit log; expect CECO blocked, THR still
+        accepted.
+
+      PART B — Tighter Path B sentiment_reasoning proximity check
+      (~18 FP avoided per quarter). Currently requires M&A keyword
+      anywhere in per-ticker reasoning. Tighten to: keyword must
+      appear within 50 chars of the ticker symbol mention in the
+      reasoning text. Polygon's AI tends to put the ticker in one
+      half-sentence and tangential M&A reference in another.
+      Backward-check against QBTS/RGTI/INFQ events; expect block.
+
+      PART C — Expand shareholder-investigation-firm list (~1 FP/qtr).
+      Add "BRODSKY & SMITH", "POMERANTZ", "JOHNSON FISTEL",
+      "MONTEVERDE", "BRAGAR EAGEL" to a new `_SHAREHOLDER_LITIGATION_FIRMS`
+      tuple. If title starts with any of these → reject regardless
+      of M&A keyword match. (These firms file investigations on
+      already-announced deals; their notice is informational, not
+      indicative of an active fade-risk M&A event.)
+
+      Origin: 2026-05-25 Task #90 90d audit analysis.
+    status: pending
+    added_on: 2026-05-25
+
   - review_id: gap_atr_3_5x_band_negative_ev
     title: "gap/ATR 3-5x band — negative avg 5d return despite normal WR"
     question: |
