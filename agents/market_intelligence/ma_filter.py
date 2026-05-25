@@ -42,6 +42,22 @@ _MNA_KEYWORDS: tuple[str, ...] = (
     "take-private", "private deal for",
 )
 
+# Shareholder-investigation firms — their press releases list multiple tickers
+# (often class-action notices on already-announced deals, NOT new M&A events).
+# Title-prefix match → reject regardless of M&A keyword. Caught 2026-05-25
+# Task #90 audit (KALV via BRODSKY & SMITH SHAREHOLDER UPDATE).
+_SHAREHOLDER_LITIGATION_PREFIXES: tuple[str, ...] = (
+    "brodsky & smith",
+    "halper sadeh",       # already in _MNA_KEYWORDS but also gets prefix reject
+    "pomerantz",
+    "johnson fistel",
+    "monteverde",
+    "bragar eagel",
+    "robbins llp",
+    "schall law",
+    "rosen law",
+)
+
 
 def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
     """Return the first M&A keyword found in `text` (lowercased), else None."""
@@ -52,6 +68,82 @@ def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
         if kw in low:
             return kw
     return None
+
+
+def is_shareholder_litigation_notice(title: Optional[str]) -> bool:
+    """Title starts with a known shareholder-litigation firm name → True.
+
+    These firms publish multi-ticker investigation notices on
+    *already-announced* deals; their press releases are informational, not
+    indicative of an active fade-risk M&A event for any tagged ticker.
+    """
+    if not title:
+        return False
+    low = title.strip().lower()
+    return any(low.startswith(prefix) for prefix in _SHAREHOLDER_LITIGATION_PREFIXES)
+
+
+# Direction-detection patterns for ticker's per-article role.
+# Operate on Polygon's per-ticker `sentiment_reasoning` (richer than title
+# alone — it's the AI's contextualized take on this specific ticker's role
+# in the article). All matches case-insensitive substring.
+_TARGET_DIRECTION_PATTERNS: tuple[str, ...] = (
+    "to be acquired",
+    "being acquired",
+    "acquired by",
+    "stockholders to receive",
+    "shareholders to receive",
+    "merger consideration",
+    "go-private",
+    "going private",
+    "taken private",
+    "premium to ",
+    "tender offer for ",
+    "agreed to sell",
+    "to be sold to",
+    "sold to ",
+    "buyout offer",
+    "all-cash offer",
+)
+
+_ACQUIRER_DIRECTION_PATTERNS: tuple[str, ...] = (
+    " to acquire ",
+    " acquires ",
+    " acquiring ",
+    "announces acquisition",
+    "announced acquisition",
+    "announces the acquisition",
+    "completes acquisition",
+    "completed acquisition",
+    "agreed to acquire",
+    "agreement to acquire",
+    " to purchase ",
+    "announces purchase",
+    "to buy ",
+    " buys ",
+    "announces the purchase",
+)
+
+
+def classify_direction(reasoning: Optional[str]) -> str:
+    """Classify ticker's deal direction from per-ticker reasoning text.
+
+    Returns one of: "target" / "acquirer" / "ambiguous".
+
+    Target patterns checked BEFORE acquirer because " to acquire " can appear
+    in target-side reasoning (e.g. "X agreed to be acquired by Y" — ticker X
+    is target despite "acquire" in the sentence).
+    """
+    if not reasoning:
+        return "ambiguous"
+    low = reasoning.lower()
+    for p in _TARGET_DIRECTION_PATTERNS:
+        if p in low:
+            return "target"
+    for p in _ACQUIRER_DIRECTION_PATTERNS:
+        if p in low:
+            return "acquirer"
+    return "ambiguous"
 
 
 def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, int]]:
@@ -158,9 +250,30 @@ async def polygon_news_has_mna_headline(
         title = item.get("title", "")
         description = item.get("description", "")
 
+        # #90 Part C — shareholder-investigation firm prefix reject.
+        # These notices typically follow already-announced deals and don't
+        # indicate fade-risk for the tagged tickers.
+        if is_shareholder_litigation_notice(title):
+            continue
+
         title_kw = matches_mna_keywords(title)
         if title_kw:
-            # Path A: title match — accept
+            # #90 Part A — direction check via per-ticker insights reasoning
+            # (when available). Title-match alone was direction-blind and
+            # mis-fired on acquirer-side announcements (CECO 2026-05-15).
+            insights = item.get("insights") or []
+            ticker_insight = next(
+                (i for i in insights if i.get("ticker") == ticker),
+                None,
+            )
+            if ticker_insight is not None:
+                direction = classify_direction(
+                    ticker_insight.get("sentiment_reasoning") or ""
+                )
+                if direction == "acquirer":
+                    continue  # ticker is the buyer — not a fade-risk target
+
+            # Path A: title match (+ direction check passed or ambiguous) — accept
             return {
                 "ticker": ticker,
                 "matched_keyword": title_kw,
@@ -207,6 +320,10 @@ async def polygon_news_has_mna_headline(
         reasoning_kw = matches_mna_keywords(reasoning)
         if not reasoning_kw:
             continue  # ticker insighted but not for M&A reason — MNST/ONDS/INFQ class
+
+        # #90 Part A — also apply direction check on Path B for symmetry.
+        if classify_direction(reasoning) == "acquirer":
+            continue  # ticker is the buyer — not a fade-risk target
 
         return {
             "ticker": ticker,
