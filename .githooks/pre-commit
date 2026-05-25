@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Apollo pre-commit hook — fast local-side gates that mirror deploy.sh
+# preflight gates. Goal: catch class-bug regressions at `git commit` time
+# instead of during deploy or at runtime.
+#
+# Activation (one-time per clone):
+#   git config core.hooksPath .githooks
+#
+# Bypass for a single commit (rarely needed):
+#   git commit --no-verify ...
+#
+# Add new gates BELOW. Keep each gate fast (<1s) — slow gates push
+# operators toward --no-verify, which defeats the point.
+set -uo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+# ── Gate 1: YAML duplicate-key check (mirrors deploy.sh [5e/5]) ──────
+# Only fires when data_gated_reviews.yaml is staged. Catches the
+# 2026-05-24 SNDK class bug (YAML last-wins silently overwriting
+# status fields) at commit time, not at deploy time.
+if git diff --cached --name-only | grep -qx 'data_gated_reviews.yaml'; then
+    if ! python scripts/preflight_yaml_dupe_keys.py >/dev/null 2>&1; then
+        echo "✘ pre-commit: data_gated_reviews.yaml has duplicate keys within a review entry."
+        echo "  Run: python scripts/preflight_yaml_dupe_keys.py"
+        echo "  Fix the duplicates, re-stage, re-commit."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    fi
+fi
+
+exit 0

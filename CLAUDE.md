@@ -284,6 +284,16 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up + news-source-quality section → Telegram digest) |
 | Monthly 1st 8:00 AM | **Monthly backward-check sweep** (regime-shift monitor — re-runs #50/#53/#54/#77 + news quality 90d view) |
 
+## Pre-commit hooks (one-time setup per clone)
+After fresh clone, activate the local pre-commit gates:
+```bash
+git config core.hooksPath .githooks
+```
+Currently enforces:
+- **YAML dupe-key check** on `data_gated_reviews.yaml` (mirrors deploy.sh `[5e/5]`; catches the 2026-05-24 SNDK class bug at `git commit` time instead of at deploy or runtime)
+
+Hooks are vanilla shell + fast (<1s). Bypass with `--no-verify` only if you really know what you're doing.
+
 ## Production Deploy
 - Server: `ssh apollo@87.99.134.162`, dir: `/home/apollo/apollo_the_wise/`
 - Service names: `orchestrator`, `market-agent`, `postgres`, `redis`, `uptime-kuma`
