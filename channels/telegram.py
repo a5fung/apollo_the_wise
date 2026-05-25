@@ -1630,6 +1630,7 @@ class TelegramChannel:
             BotCommand("flagbreaks",   "🎯 Intraday flag-breaks (#94 shadow) — today + 7d summary"),
             BotCommand("supporttests", "🛡 Intraday support-tests (#95 shadow) — today + 7d summary"),
             BotCommand("mapullbacks", "📉 Intraday MA-pullbacks (#96 shadow) — today + 7d summary"),
+            BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),
             BotCommand("inplay",       "Stocks in Play — unified methodology-wide watchlist (ADR 0004)"),

@@ -2420,6 +2420,122 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_breadth_query(self, request: AgentRequest) -> AgentResponse:
+        """`/breadth` — Stockbee cluster-matrix breadth view.
+
+        Renders last 10 trading days × 6 column matrix in Telegram
+        monospace, colored per breadth_color_rules.py SSoT:
+          - daily 4% counts (paired up/down)
+          - 5d ratio
+          - 1M ±25% paired
+          - 1M ±50% paired
+          - T2108 (contrarian)
+
+        Cluster signal status reported at the bottom: ≥3 red days in
+        last 5 with recency filter → 'cluster deterioration' note.
+
+        Tier 2 ship of breadth_cluster_view_ideation (yaml). Uses only
+        existing data computed nightly; missing thrust metrics (up
+        20%+/5d, up 13%+/34d) filed as separate follow-ups.
+        """
+        import json as _json
+        from agents.market_intelligence.db import get_pool
+        from agents.market_intelligence.breadth_color_rules import (
+            paired_color, t2108_color, cluster_fires,
+            red_count_in_window, secondary_first_red,
+            CLUSTER_WINDOW, CLUSTER_RED_THRESHOLD,
+        )
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT regime_date, breadth_monitor
+                FROM mi_market_regime
+                WHERE breadth_monitor IS NOT NULL
+                ORDER BY regime_date DESC
+                LIMIT 10
+            """)
+
+        if not rows:
+            return self._ok(
+                request,
+                result="_No breadth history available — nightly job may not have run yet._"
+            )
+
+        # Parse the JSONB (asyncpg sometimes returns it as string)
+        monitors: list[dict] = []
+        for r in rows:
+            bm = r["breadth_monitor"]
+            if isinstance(bm, str):
+                try:
+                    bm = _json.loads(bm)
+                except (_json.JSONDecodeError, TypeError):
+                    bm = {}
+            if not isinstance(bm, dict):
+                bm = {}
+            monitors.append({"date": r["regime_date"], **bm})
+
+        # Header — Telegram monospace block with fixed-width columns
+        header = "Date    4%↑/↓     5d    1M±25%    1M±50%    T2108"
+        sep = "─" * len(header)
+        lines = [
+            "📊 *Breadth Matrix — last 10 trading days*",
+            "",
+            "```",
+            header,
+            sep,
+        ]
+
+        for m in monitors:
+            d_str = m["date"].strftime("%m/%d")
+            up4 = m.get("today_up4")
+            down4 = m.get("today_down4")
+            r5 = m.get("ratio_5d")
+            up25m = m.get("up_25_1m")
+            down25m = m.get("down_25_1m")
+            up50 = m.get("up_50_1m")
+            down50 = m.get("down_50_1m")
+            t2108 = m.get("t2108")
+
+            # Render each cell with consistent width
+            today_emoji = paired_color(up4, down4) or " "
+            today_cell = (
+                f"{today_emoji}{up4 or 0:>3}/{down4 or 0:<3}"
+                if up4 is not None and down4 is not None else "        "
+            )
+            r5_cell = f"{r5:>4.2f}" if r5 is not None else "  - "
+            m25_emoji = paired_color(up25m, down25m) or " "
+            m25_cell = (
+                f"{m25_emoji}{up25m or 0:>3}/{down25m or 0:<3}"
+                if up25m is not None and down25m is not None else "        "
+            )
+            m50_emoji = paired_color(up50, down50) or " "
+            m50_cell = (
+                f"{m50_emoji}{up50 or 0:>3}/{down50 or 0:<3}"
+                if up50 is not None and down50 is not None else "        "
+            )
+            t_emoji = t2108_color(t2108) or " "
+            t_cell = f"{t_emoji}{t2108:>4.0f}%" if t2108 is not None else "  -  "
+
+            lines.append(f"{d_str:6}  {today_cell}  {r5_cell}  {m25_cell}  {m50_cell}  {t_cell}")
+
+        lines.append("```")
+        lines.append("")
+
+        # Cluster signal status
+        red_count = red_count_in_window(monitors)
+        if cluster_fires(monitors):
+            lines.append(
+                f"⚠️ *Cluster deterioration*: {red_count} red days in last "
+                f"{CLUSTER_WINDOW} (threshold ≥{CLUSTER_RED_THRESHOLD}, recent)"
+            )
+            if secondary_first_red(monitors):
+                lines.append("⚠️ *First red in secondary today* — signal-of-signals")
+        else:
+            lines.append(f"_Cluster status: {red_count}/{CLUSTER_WINDOW} red days (no fire)_")
+
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
         """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
 
@@ -4666,6 +4782,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/supporttest":    self._handle_support_tests_query,
             "/mapullbacks":    self._handle_ma_pullbacks_query,
             "/mapullback":     self._handle_ma_pullbacks_query,
+            "/breadth":        self._handle_breadth_query,
             "/watch":          self._handle_watchlist_query,
             "/inplay":         self._handle_stocks_in_play_query,
             "/setup":          self._handle_setup_query,

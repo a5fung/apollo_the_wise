@@ -3806,7 +3806,34 @@ async def get_latest_regime() -> Optional[dict[str, Any]]:
         row = await conn.fetchrow(
             "SELECT * FROM mi_market_regime ORDER BY regime_date DESC LIMIT 1"
         )
-        return dict(row) if row else None
+        if not row:
+            return None
+        result = dict(row)
+        # Attach last 5 days of breadth_monitor for cluster-signal detection
+        # in the briefing breadth section (read by breadth_color_rules).
+        history_rows = await conn.fetch(
+            """
+            SELECT regime_date, breadth_monitor
+            FROM mi_market_regime
+            WHERE breadth_monitor IS NOT NULL
+            ORDER BY regime_date DESC
+            LIMIT 5
+            """
+        )
+        import json as _json
+        history: list[dict] = []
+        for hr in history_rows:
+            bm = hr["breadth_monitor"]
+            if isinstance(bm, str):
+                try:
+                    bm = _json.loads(bm)
+                except (_json.JSONDecodeError, TypeError):
+                    bm = {}
+            if not isinstance(bm, dict):
+                bm = {}
+            history.append({"date": hr["regime_date"], **bm})
+        result["breadth_history_5d"] = history
+        return result
 
 
 def _to_date(d: "str | date") -> "date":
