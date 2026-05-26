@@ -939,7 +939,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         cached = _catalyst_cache.get(ticker)
         if cached:
-            catalyst_quality, confidence_multiplier, news_summary, claude_analysis = cached
+            # 5-tuple as of 2026-05-26 hotfix: pplx_quality added because the
+            # cached path skips the pplx_task creation/await block (lines
+            # ~948-1075), which left pplx_quality unbound when a cached
+            # ticker survived all filters and hit the result-build at L1683
+            # → UnboundLocalError that took down EP scans 11:45 + 13:55 ET.
+            catalyst_quality, confidence_multiplier, news_summary, claude_analysis, pplx_quality = cached
             profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
             logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
@@ -1121,8 +1126,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality = downgraded
                 confidence_multiplier = 1.0  # cancel any agreement boost
 
-            # Store in cache for subsequent scans today
-            _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
+            # Store in cache for subsequent scans today (5-tuple as of 2026-05-26
+            # hotfix — pplx_quality MUST be in the cache or the cached-path
+            # unpack at L941 crashes when the ticker survives all filters).
+            _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis, pplx_quality)
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
         # Existing earnings-day override (below) only fires for MODERATE→HIGH
@@ -1175,6 +1182,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Also update cache so subsequent scan ticks see the boosted grade.
             _catalyst_cache[ticker] = (
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+                pplx_quality,
             )
         elif earnings_today_match and not revenue_stage and catalyst_quality in ("routine", None):
             # Pre-revenue company on earnings day — log the skip so operator
@@ -1408,7 +1416,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 _catalyst_cache[ticker] = (
                     catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis,
+                    news_summary, claude_analysis, pplx_quality,
                 )
                 # Telegram surface so operator sees the downgrade in real
                 # time + can use /why to inspect full extraction.
@@ -1543,7 +1551,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 _catalyst_cache[ticker] = (
                     catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis,
+                    news_summary, claude_analysis, pplx_quality,
                 )
                 # Visibility surface (advisor 2026-05-11): user needs to see
                 # the new behavior in action, not discover it by missing
