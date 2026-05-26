@@ -1600,14 +1600,12 @@ async def run_intraday_ma_pullback_scan(scan_time):
             )
             SELECT DISTINCT ON (ticker)
                    ticker, scan_date, stage,
-                   base_high, base_low, base_age,
-                   sma_10, sma_20
+                   base_high, base_low, base_age
             FROM mi_flag_candidates
             WHERE scan_date = (SELECT d FROM latest)
               AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
               AND base_low IS NOT NULL AND base_low > 0
               AND base_high IS NOT NULL AND base_high > 0
-              AND (sma_10 IS NOT NULL OR sma_20 IS NOT NULL)
             ORDER BY ticker, scan_date DESC
         """)
         if not candidates:
@@ -1637,6 +1635,29 @@ async def run_intraday_ma_pullback_scan(scan_time):
             GROUP BY ticker
         """, list(watchlist.keys()))
         adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        # Fetch last 19 prior-day closes per ticker for fresh SMA computation
+        # at scan time. Stored sma_10/sma_20 on mi_flag_candidates comes from
+        # the 5:25 PM ET flag scan on the prior business day — that's a SMA
+        # that doesn't include today's intraday price action. Chart platforms
+        # (TradingView etc.) compute SMA10 over the rolling last-10-bar
+        # window INCLUDING today's running close. The divergence makes our
+        # reported "pct_below_ma" mismatch the chart visibly. Caught
+        # 2026-05-26 (GLW: stored SMA10=$193.32 vs chart-style ~$192.39).
+        # Drop the oldest of 10, append current_price.
+        closes_rows = await conn.fetch("""
+            SELECT ticker, array_agg(close ORDER BY trade_date DESC) AS closes
+            FROM (
+                SELECT ticker, trade_date, close,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+            ) sub
+            WHERE rn <= 19
+            GROUP BY ticker
+        """, list(watchlist.keys()))
+        prior_closes_map = {r["ticker"]: list(r["closes"]) for r in closes_rows}
 
         already_pulled = await conn.fetch("""
             SELECT ticker FROM mi_flag_ma_pullbacks WHERE pullback_date = CURRENT_DATE
@@ -1682,11 +1703,25 @@ async def run_intraday_ma_pullback_scan(scan_time):
         base_low = float(cand["base_low"])
         base_high = float(cand["base_high"])
 
+        # Fresh SMA10 / SMA20 at scan time — drop oldest prior close, append
+        # today's current_price as the running close (matches chart-style
+        # rolling SMA). Falls back to None if insufficient history; the
+        # ma_value loop skips None entries.
+        prior_closes = prior_closes_map.get(ticker, [])
+        fresh_sma10 = (
+            (sum(prior_closes[:9]) + current_price) / 10.0
+            if len(prior_closes) >= 9 else None
+        )
+        fresh_sma20 = (
+            (sum(prior_closes[:19]) + current_price) / 20.0
+            if len(prior_closes) >= 19 else None
+        )
+
         # Try SMA10 first, then SMA20. First MA that passes all gates wins.
         chosen_ma = None
         chosen_label = None
-        for ma_label, ma_value in (("SMA10", cand["sma_10"]),
-                                    ("SMA20", cand["sma_20"])):
+        for ma_label, ma_value in (("SMA10", fresh_sma10),
+                                    ("SMA20", fresh_sma20)):
             if ma_value is None or ma_value <= 0:
                 continue
             ma_value = float(ma_value)
