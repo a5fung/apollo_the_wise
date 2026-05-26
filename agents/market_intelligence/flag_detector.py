@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import date, datetime, time as _dt_time
 from statistics import median as _median_stat
 from typing import Any, Optional
@@ -1514,32 +1515,38 @@ async def run_intraday_support_test_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_support_test audit failed (non-critical): {e}")
 
-    try:
-        from agents.market_intelligence.briefing import send_telegram_message
-        clock = scan_time.strftime("%H:%M")
-        lines = [
-            f"🛡 *Intraday Support-Tests ({len(new_tests)} new)*",
-            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
-            "",
-        ]
-        for t in new_tests:
-            cohort_marker = "🍬 " if t["in_sugar_baby_cohort"] else ""
-            undercut_label = (
-                f"undercut {t['pct_below_base_low']:+.2f}%"
-                if t["pct_below_base_low"] < 0
-                else f"tag {t['pct_below_base_low']:+.2f}%"
-            )
-            lines.append(
-                f"• {cohort_marker}`{t['ticker']}` — tested ${t['base_low']:.2f} "
-                f"({undercut_label}), bounced +{t['bounce_pct_from_low']:.2f}% "
-                f"to ${t['current_price']:.2f} "
-                f"(base {t['base_age']}d {t['parent_stage']})"
-            )
-        lines.append("")
-        lines.append("_Drill-down: `/supporttests` for today's full list + recent history_")
-        await send_telegram_message("\n".join(lines))
-    except Exception as e:
-        logger.error(f"intraday_support_test Telegram failed (non-critical): {e}")
+    # Telegram digest gated by SHADOW_DETECTOR_TELEGRAM_ENABLED env (default
+    # True). DB writes + audit events still fire — only the Telegram surface
+    # is silenced. Flipped to False 2026-05-26 evening pending #124 rework
+    # (day_low cumulative-state firing stale "tested base_low" alerts hours
+    # after the actual test).
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            clock = scan_time.strftime("%H:%M")
+            lines = [
+                f"🛡 *Intraday Support-Tests ({len(new_tests)} new)*",
+                f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+                "",
+            ]
+            for t in new_tests:
+                cohort_marker = "🍬 " if t["in_sugar_baby_cohort"] else ""
+                undercut_label = (
+                    f"undercut {t['pct_below_base_low']:+.2f}%"
+                    if t["pct_below_base_low"] < 0
+                    else f"tag {t['pct_below_base_low']:+.2f}%"
+                )
+                lines.append(
+                    f"• {cohort_marker}`{t['ticker']}` — tested ${t['base_low']:.2f} "
+                    f"({undercut_label}), bounced +{t['bounce_pct_from_low']:.2f}% "
+                    f"to ${t['current_price']:.2f} "
+                    f"(base {t['base_age']}d {t['parent_stage']})"
+                )
+            lines.append("")
+            lines.append("_Drill-down: `/supporttests` for today's full list + recent history_")
+            await send_telegram_message("\n".join(lines))
+        except Exception as e:
+            logger.error(f"intraday_support_test Telegram failed (non-critical): {e}")
 
     logger.info(f"intraday_support_test_scan: {len(new_tests)} new tests detected")
     return len(new_tests)
@@ -1828,32 +1835,35 @@ async def run_intraday_ma_pullback_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_ma_pullback audit failed (non-critical): {e}")
 
-    try:
-        from agents.market_intelligence.briefing import send_telegram_message
-        clock = scan_time.strftime("%H:%M")
-        lines = [
-            f"📉 *Intraday MA-Pullbacks ({len(new_pullbacks)} new)*",
-            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
-            "",
-        ]
-        for p in new_pullbacks:
-            cohort_marker = "🍬 " if p["in_sugar_baby_cohort"] else ""
-            undercut_label = (
-                f"undercut {p['pct_below_ma']:+.2f}%"
-                if p["pct_below_ma"] < 0
-                else f"tag {p['pct_below_ma']:+.2f}%"
-            )
-            lines.append(
-                f"• {cohort_marker}`{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
-                f"({undercut_label}), bounced +{p['bounce_pct_from_low']:.2f}% "
-                f"to ${p['current_price']:.2f} "
-                f"(vol {p['volume_pct_of_adv']:.0f}% ADV)"
-            )
-        lines.append("")
-        lines.append("_Drill-down: `/mapullbacks` for today's full list + recent history_")
-        await send_telegram_message("\n".join(lines))
-    except Exception as e:
-        logger.error(f"intraday_ma_pullback Telegram failed (non-critical): {e}")
+    # Gated by SHADOW_DETECTOR_TELEGRAM_ENABLED env (see support_test
+    # equivalent above). Silenced 2026-05-26 pending #124 rework.
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            clock = scan_time.strftime("%H:%M")
+            lines = [
+                f"📉 *Intraday MA-Pullbacks ({len(new_pullbacks)} new)*",
+                f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+                "",
+            ]
+            for p in new_pullbacks:
+                cohort_marker = "🍬 " if p["in_sugar_baby_cohort"] else ""
+                undercut_label = (
+                    f"undercut {p['pct_below_ma']:+.2f}%"
+                    if p["pct_below_ma"] < 0
+                    else f"tag {p['pct_below_ma']:+.2f}%"
+                )
+                lines.append(
+                    f"• {cohort_marker}`{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
+                    f"({undercut_label}), bounced +{p['bounce_pct_from_low']:.2f}% "
+                    f"to ${p['current_price']:.2f} "
+                    f"(vol {p['volume_pct_of_adv']:.0f}% ADV)"
+                )
+            lines.append("")
+            lines.append("_Drill-down: `/mapullbacks` for today's full list + recent history_")
+            await send_telegram_message("\n".join(lines))
+        except Exception as e:
+            logger.error(f"intraday_ma_pullback Telegram failed (non-critical): {e}")
 
     logger.info(f"intraday_ma_pullback_scan: {len(new_pullbacks)} new pullbacks detected")
     return len(new_pullbacks)
