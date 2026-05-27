@@ -4628,6 +4628,21 @@ reviews:
 
       Live evidence accumulates Tuesday 2026-05-27 onward (Memorial
       Day Monday closed).
+
+      First-fire verification 2026-05-27 (clean):
+        - Universe loaded: 100 TIGHTENING/COILED/TRIGGERED tickers
+          from 5/26 scan.
+        - Scheduler: 47/47 successful flag_break_scan runs from 09:00
+          ET, zero failures.
+        - Audit + DB: 19 breaks fired, 19 unique tickers, first at
+          09:50:03 ET (5-min after first scan window — expected),
+          last at 11:05 ET. pct_above range 0.03% to 15.47%,
+          volume_pct_of_adv range 7.7% to 66.2%.
+        - Borderline-trigger observation: QS fired at +0.03% above
+          base_high ($0.0023), ASYS at +0.18% ($0.042). Trigger is
+          `current_price > base_high` with zero margin; surfaces
+          weak-edge fires. Worth considering a minimum %-above
+          (e.g., 0.5% or ATR-fractional) at graduation review.
     predicate_sql: |
       -- N>=10 settled 10d-forward intraday flag-breaks, excluding
       -- structurally-failed breakouts (parent_invalidated_eod = TRUE)
