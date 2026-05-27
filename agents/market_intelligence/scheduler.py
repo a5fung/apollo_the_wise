@@ -1758,7 +1758,6 @@ async def _9m_pace_digest_job():
 
     Empty hour → no Telegram.
     """
-    from datetime import timedelta
     pool = await get_pool()
     now_et = datetime.now(_ET)
     window_end = now_et.replace(minute=0, second=0, microsecond=0)
@@ -1820,7 +1819,6 @@ async def _9m_pace_digest_job():
             f"${r['current_price']:.2f} +{(r['gap_pct'] or 0):.1f}%"
         )
     try:
-        from agents.market_intelligence.briefing import send_telegram_message
         await send_telegram_message("\n".join(parts))
     except Exception as e:
         logger.error(f"9m_pace_digest Telegram failed: {e}")
