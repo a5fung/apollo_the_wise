@@ -34,6 +34,7 @@ import json
 import logging
 import os
 import random
+import re
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
@@ -132,6 +133,30 @@ def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
         return False
     _audit_dedupe.add(key)
     return True
+
+
+# Heuristic: does Claude's analysis text describe an earnings catalyst?
+# Used as a textual fallback when yfinance earnings_dates / forward calendar
+# don't surface today (CRSR 2026-05-27 — clean Q1 numbers in Claude prose,
+# but yfinance no_match → extraction never ran → no rubric). Catches the
+# "ingest lag" class the AGYS hotfix was designed for, one layer earlier.
+_EARNINGS_TEXT_SIGNAL_RE = re.compile(
+    r"\b(?:"
+    r"reported\s+(?:Q[1-4]|first[- ]quarter|second[- ]quarter|third[- ]quarter|fourth[- ]quarter|quarterly|annual|full[- ]year)"
+    r"|Q[1-4]\s+(?:20\d{2}|FY\d{2,4})\s+earnings"
+    r"|(?:beat|missed|matched)\s+(?:consensus|estimates|analyst\s+estimates)"
+    r"|revenue\s+(?:of\s+)?\$[\d.]+\s*[BMK]"
+    r"|EPS\s+of\s+\$[\d.]+"
+    r"|earnings\s+(?:release|report|results)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _claude_text_signals_earnings(claude_analysis: str | None) -> bool:
+    if not claude_analysis:
+        return False
+    return bool(_EARNINGS_TEXT_SIGNAL_RE.search(claude_analysis))
 
 
 async def _should_log_catalyst_earnings_event_today(event_type: str, ticker: str) -> bool:
@@ -1274,8 +1299,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # inapplicable. Without this, the rubric would always downgrade
         # pre-revenue strong-catalyst names with the misleading "Q-rev YoY
         # un-extractable" reason. 2026-05-20 IMVT trigger case.
+        # Extract on earnings-day OR when Claude's analysis textually signals
+        # earnings (CRSR 2026-05-27 case: yfinance earnings_dates missed the
+        # date, but Claude prose had revenue + Q-period markers). The earlier
+        # `is_earnings_day` gate is yfinance-only; ingest lag there silently
+        # skipped extraction → no rubric on real earnings EPs.
+        _claude_signals_earn = _claude_text_signals_earnings(claude_analysis)
         if (EARNINGS_REVENUE_GATE_ENABLED
-                and earnings_today_match
+                and (earnings_today_match or _claude_signals_earn)
                 and revenue_stage
                 and catalyst_quality in ("strong", "game_changer")):
             # Multi-source FRESH extraction (2026-05-19, AGYS hotfix).
@@ -1666,24 +1697,78 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 earnings_match, earnings_source = True, "unavailable"
 
             if earnings_match:
-                logger.info(
-                    f"{ticker}: earnings-day override MODERATE→HIGH "
-                    f"(gap={c['gap_pct']:.1f}% source={earnings_source})"
-                )
-                await log_audit_event(
-                    "earnings_override_applied",
-                    f"{ticker} MODERATE→HIGH via {earnings_source}",
-                    json.dumps({
-                        "ticker": ticker,
-                        "alert_date": today.isoformat(),
-                        "gap_pct": round(c["gap_pct"], 2),
-                        "ep_score": round(ep_score, 1),
-                        "ep_threshold": ep_threshold,
-                        "catalyst_quality": catalyst_quality,
-                        "source": earnings_source,
-                    }),
-                )
-                tier = "HIGH"
+                # Respect explicit data-quality downgrade (#132). The override
+                # is designed for the "news ingest lag" case where catalyst
+                # is routine because no headlines yet — over-promoting is
+                # safe per Pradeep. But when the revenue-growth gate ran
+                # AND chose to downgrade for missing YoY data
+                # (catalyst_earnings_revenue_weak_downgrade), that's an
+                # active quality decision; overriding it back to HIGH
+                # defeats the gate. BBWI 2026-05-27 was the symptom case.
+                _downgrade_logged_today = False
+                try:
+                    pool = await get_pool()
+                    async with pool.acquire() as conn:
+                        prior_dg = await conn.fetchrow(
+                            """
+                            SELECT 1 FROM mi_audit_log
+                            WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
+                              AND summary LIKE $1
+                              AND (created_at AT TIME ZONE 'America/New_York')::date
+                                  = (NOW() AT TIME ZONE 'America/New_York')::date
+                            LIMIT 1
+                            """,
+                            f"{ticker}:%",
+                        )
+                        _downgrade_logged_today = prior_dg is not None
+                except Exception as _dg_err:
+                    # Fail-open (do NOT skip the override on DB error) —
+                    # better to over-promote than miss a real earnings EP.
+                    logger.debug(
+                        f"earnings_override downgrade-check failed: {_dg_err}"
+                    )
+                    _downgrade_logged_today = False
+
+                if _downgrade_logged_today:
+                    logger.info(
+                        f"{ticker}: earnings-day override SKIPPED — "
+                        f"catalyst already downgraded for data-quality today"
+                    )
+                    if _audit_dedupe_check(
+                        ticker, today, "earnings_override_skipped_post_downgrade",
+                    ):
+                        await log_audit_event(
+                            "earnings_override_skipped_post_downgrade",
+                            f"{ticker}: MODERATE stays MODERATE — downgrade respected",
+                            json.dumps({
+                                "ticker": ticker,
+                                "alert_date": today.isoformat(),
+                                "gap_pct": round(c["gap_pct"], 2),
+                                "ep_score": round(ep_score, 1),
+                                "catalyst_quality": catalyst_quality,
+                                "source": earnings_source,
+                            }),
+                        )
+                    # tier stays MODERATE
+                else:
+                    logger.info(
+                        f"{ticker}: earnings-day override MODERATE→HIGH "
+                        f"(gap={c['gap_pct']:.1f}% source={earnings_source})"
+                    )
+                    await log_audit_event(
+                        "earnings_override_applied",
+                        f"{ticker} MODERATE→HIGH via {earnings_source}",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "gap_pct": round(c["gap_pct"], 2),
+                            "ep_score": round(ep_score, 1),
+                            "ep_threshold": ep_threshold,
+                            "catalyst_quality": catalyst_quality,
+                            "source": earnings_source,
+                        }),
+                    )
+                    tier = "HIGH"
             else:
                 event = (
                     "earnings_override_unavailable"
