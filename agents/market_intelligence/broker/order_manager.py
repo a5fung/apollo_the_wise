@@ -1750,12 +1750,8 @@ _TERMINAL_ORDER_STATUSES = frozenset({
     "filled", "canceled", "cancelled", "expired", "rejected", "replaced", "done_for_day",
 })
 
-# Non-terminal statuses we expect to see in mi_live_orders rows. Anything in
-# this set should reconcile to Alpaca on a periodic basis.
-_TRANSITIONAL_ORDER_STATUSES = frozenset({
-    "pending_new", "new", "accepted", "held", "pending_replace", "pending_cancel",
-    "accepted_for_bidding", "stopped", "suspended", "calculated",
-})
+# Subset that means "order ended without filling" — used to derive cancelled_at.
+_CANCEL_LIKE_ORDER_STATUSES = frozenset({"canceled", "cancelled", "expired", "rejected"})
 
 
 async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> dict:
@@ -1798,72 +1794,71 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
             account_mode,
         )
 
-    if not rows:
-        return {"examined": 0, "updated": 0, "errors": 0}
+        if not rows:
+            return {"examined": 0, "updated": 0, "errors": 0}
 
-    for r in rows:
-        order_id = r["alpaca_order_id"]
-        db_status_norm = _canonical_order_status(r["status"])
-        # Skip already-terminal rows; they leaked through somehow but no work to do.
-        if db_status_norm in _TERMINAL_ORDER_STATUSES:
-            continue
-        examined += 1
+        for r in rows:
+            order_id = r["alpaca_order_id"]
+            db_status_norm = _canonical_order_status(r["status"])
+            if db_status_norm in _TERMINAL_ORDER_STATUSES:
+                continue
+            examined += 1
 
-        try:
-            alpaca_order = await alpaca.get_order(order_id, account_mode=account_mode)
-        except Exception as e:
-            errors += 1
-            await log_audit_event(
-                "order_status_reconcile_failed",
-                f"{r['ticker']} order={order_id[:8]}: {type(e).__name__}",
-                f"order_id={order_id} db_status={r['status']!r} error={e}",
-            )
-            continue
+            try:
+                alpaca_order = await alpaca.get_order(order_id, account_mode=account_mode)
+            except Exception as e:
+                errors += 1
+                await log_audit_event(
+                    "order_status_reconcile_failed",
+                    f"{r['ticker']} order={order_id[:8]}: {type(e).__name__}",
+                    f"order_id={order_id} db_status={r['status']!r} error={e}",
+                )
+                continue
 
-        if alpaca_order is None:
-            # alpaca.get_order swallows all errors → None. Could be 404
-            # (order gone from broker) or transient 5xx. Audit + skip; will
-            # retry next cycle.
-            await log_audit_event(
-                "order_status_reconcile_failed",
-                f"{r['ticker']} order={order_id[:8]} alpaca_returned_none",
-                f"order_id={order_id} db_status={r['status']!r}",
-            )
-            errors += 1
-            continue
+            if alpaca_order is None:
+                # alpaca.get_order swallows all errors → None. Could be 404
+                # or transient 5xx. Audit + retry next cycle.
+                await log_audit_event(
+                    "order_status_reconcile_failed",
+                    f"{r['ticker']} order={order_id[:8]} alpaca_returned_none",
+                    f"order_id={order_id} db_status={r['status']!r}",
+                )
+                errors += 1
+                continue
 
-        alpaca_status_norm = _canonical_order_status(alpaca_order.get("status"))
-        if alpaca_status_norm == db_status_norm:
-            continue  # in sync
+            alpaca_status_norm = _canonical_order_status(alpaca_order.get("status"))
+            if alpaca_status_norm == db_status_norm:
+                continue
 
-        # Divergence — update DB to match Alpaca + audit
-        async with pool.acquire() as conn:
+            mark_filled = alpaca_status_norm == "filled"
+            mark_cancelled = alpaca_status_norm in _CANCEL_LIKE_ORDER_STATUSES
             await conn.execute(
                 """
                 UPDATE mi_live_orders
                 SET status = $1,
                     filled_qty = COALESCE($2, filled_qty),
                     filled_avg_price = COALESCE($3, filled_avg_price),
-                    filled_at = CASE WHEN $1 = 'filled' THEN COALESCE(filled_at, NOW()) ELSE filled_at END,
-                    cancelled_at = CASE WHEN $1 IN ('canceled','cancelled','expired','rejected')
-                                        THEN COALESCE(cancelled_at, NOW()) ELSE cancelled_at END
+                    filled_at = CASE WHEN $5 THEN COALESCE(filled_at, NOW()) ELSE filled_at END,
+                    cancelled_at = CASE WHEN $6 THEN COALESCE(cancelled_at, NOW()) ELSE cancelled_at END
                 WHERE alpaca_order_id = $4
                 """,
                 alpaca_status_norm,
                 alpaca_order.get("filled_qty"),
                 alpaca_order.get("filled_avg_price"),
                 order_id,
+                mark_filled,
+                mark_cancelled,
             )
-        updated += 1
-        await log_audit_event(
-            "order_status_reconciled",
-            f"{r['ticker']} order={order_id[:8]}: {db_status_norm} -> {alpaca_status_norm} "
-            f"({account_mode})",
-            f"order_id={order_id} trade_id={r['trade_id']} purpose={r['purpose']} "
-            f"db_was={r['status']!r} alpaca_now={alpaca_status_norm} "
-            f"filled_qty={alpaca_order.get('filled_qty')} "
-            f"filled_avg_price={alpaca_order.get('filled_avg_price')}",
-        )
+            updated += 1
+            await log_audit_event(
+                "order_status_reconciled",
+                f"{r['ticker']} order={order_id[:8]}: {db_status_norm} -> {alpaca_status_norm} "
+                f"({account_mode})",
+                f"order_id={order_id} trade_id={r['trade_id']} purpose={r['purpose']} "
+                f"db_was={r['status']!r} alpaca_now={alpaca_status_norm} "
+                f"filled_qty={alpaca_order.get('filled_qty')} "
+                f"filled_avg_price={alpaca_order.get('filled_avg_price')}",
+            )
 
     return {"examined": examined, "updated": updated, "errors": errors}
 

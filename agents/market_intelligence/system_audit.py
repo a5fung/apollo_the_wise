@@ -630,6 +630,31 @@ def _trimmed_median_mad(values: list[float], trim_pct: float = _BASELINE_TRIM_PC
     return (float(p50), float(p95), float(mad), n)
 
 
+def _values_from_metric_sample_rows(rows) -> list[float]:
+    """Parse `metric_sample` audit rows → list of numeric values. Defense in
+    depth: drops samples whose `as_of` falls on a non-trading day so older
+    history written before the holiday-gate landed can't contaminate the
+    baseline (#120)."""
+    out: list[float] = []
+    for r in rows:
+        try:
+            payload = json.loads(r["detail"] or "{}")
+            v = payload.get("value")
+            if v is None:
+                continue
+            as_of_str = payload.get("as_of")
+            if as_of_str:
+                try:
+                    if _is_non_trading_day(date.fromisoformat(as_of_str)):
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            out.append(float(v))
+        except (ValueError, TypeError):
+            continue
+    return out
+
+
 async def _fetch_history(conn, metric: MetricSpec, *, lookback_days: int = _BASELINE_LOOKBACK_DAYS) -> list[float]:
     """Read trailing daily samples for `metric` from `mi_audit_log`.
 
@@ -662,27 +687,7 @@ async def _fetch_history(conn, metric: MetricSpec, *, lookback_days: int = _BASE
             """,
             metric.name, str(lookback_days),
         )
-    out: list[float] = []
-    for r in rows:
-        try:
-            payload = json.loads(r["detail"] or "{}")
-            v = payload.get("value")
-            if v is None:
-                continue
-            # Defense in depth (#120, 2026-05-26): older history may
-            # contain holiday samples written before the skip-gate landed.
-            # Filter them out at read time.
-            as_of_str = payload.get("as_of")
-            if as_of_str:
-                try:
-                    if _is_non_trading_day(date.fromisoformat(as_of_str)):
-                        continue
-                except (ValueError, TypeError):
-                    pass
-            out.append(float(v))
-        except (ValueError, TypeError):
-            continue
-    return out
+    return _values_from_metric_sample_rows(rows)
 
 
 def _is_non_trading_day(d: date) -> bool:
@@ -763,23 +768,7 @@ async def _regime_conditional_baseline(conn, metric: MetricSpec, current_regime:
         """,
         current_regime, _REGIME_BASELINE_DAYS, metric.name,
     )
-    values: list[float] = []
-    for r in rows:
-        try:
-            payload = json.loads(r["detail"] or "{}")
-            v = payload.get("value")
-            if v is None:
-                continue
-            as_of_str = payload.get("as_of")
-            if as_of_str:
-                try:
-                    if _is_non_trading_day(date.fromisoformat(as_of_str)):
-                        continue
-                except (ValueError, TypeError):
-                    pass
-            values.append(float(v))
-        except (ValueError, TypeError):
-            continue
+    values = _values_from_metric_sample_rows(rows)
     if len(values) < _REGIME_BASELINE_DAYS:
         return None
     return _trimmed_median_mad(values)
