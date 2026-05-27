@@ -21,6 +21,7 @@ price signature — median daily (H-L)/close < ~0.3% across 7+ of 10 sessions.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import date
 from typing import Iterable, Optional
 
@@ -220,6 +221,71 @@ async def should_log_mna_filter_fired(ticker: str, detector_tag: str) -> bool:
         return True  # fail-open: log if dedup check fails
 
 
+_POSSESSIVE_RE = re.compile(r"\b([A-Z][a-zA-Z]+)['’]s\b")
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def reasoning_other_entity_owns_deal(
+    reasoning: str,
+    mna_keyword: str,
+    filing_ticker: str,
+    insight_tickers: Iterable[str],
+) -> bool:
+    """Sister-ticker possessive proximity check (#119 Part B, 2026-05-27).
+
+    Return True when the M&A keyword appears in a sentence preceded by a
+    `[Sister]'s ` possessive — where `Sister` (case-insensitive prose
+    form) matches a different ticker symbol in the article's
+    `insight_tickers` list.
+
+    Narrow by design: catches the QBTS/RGTI 5/11 class where Polygon's
+    sentiment_reasoning attributes the M&A activity to a tagged sibling
+    (`"...driven by IonQ's acquisition..."` for QBTS, IONQ in insights).
+    Does NOT attempt to recognize possessive prose forms of arbitrary
+    company names (we have no name→ticker map; "Hewlett-Packard's deal"
+    for an HPQ-tagged article won't fire). For those, upstream
+    layers (direction check, catalyst_quality classifier) remain
+    responsible.
+
+    Implementation notes:
+    - Sentence-bounded look-back (split on `. ` etc.), not arbitrary
+      char window — keeps semantics interpretable.
+    - Sister-ticker set strips the `.WS` warrant suffix
+      (`IONQ.WS` → also matches the bare `IONQ` prose form).
+    - Only `[A-Z][a-zA-Z]+'s` shapes — single capitalized prose token.
+      Multi-word company names (Estée Lauder) aren't handled, but those
+      would only fire if the company's first word matched a sister
+      ticker, which is the bug class we ALREADY catch.
+    """
+    if not reasoning or not mna_keyword:
+        return False
+    filing_upper = filing_ticker.upper()
+    sisters: set[str] = set()
+    for t in insight_tickers:
+        if not t:
+            continue
+        u = t.upper()
+        if u == filing_upper:
+            continue
+        sisters.add(u)
+        if "." in u:
+            sisters.add(u.split(".", 1)[0])
+    if not sisters:
+        return False
+
+    kw_low = mna_keyword.lower()
+    for sentence in _SENTENCE_SPLIT_RE.split(reasoning):
+        slow = sentence.lower()
+        idx = slow.find(kw_low)
+        if idx < 0:
+            continue
+        before = sentence[:idx]
+        for m in _POSSESSIVE_RE.finditer(before):
+            if m.group(1).upper() in sisters:
+                return True
+    return False
+
+
 async def polygon_news_has_mna_headline(
     ticker: str,
     *,
@@ -327,6 +393,16 @@ async def polygon_news_has_mna_headline(
         reasoning_kw = matches_mna_keywords(reasoning)
         if not reasoning_kw:
             continue  # ticker insighted but not for M&A reason — MNST/ONDS/INFQ class
+
+        # Part B proximity check (#119): if the M&A keyword is sentence-
+        # preceded by a sister-ticker possessive (e.g. "IonQ's acquisition"
+        # in QBTS reasoning), the M&A activity is attributed to another
+        # tagged entity, not this ticker. Reject.
+        insight_ticker_list = [i.get("ticker") for i in insights if i.get("ticker")]
+        if reasoning_other_entity_owns_deal(
+            reasoning, reasoning_kw, ticker, insight_ticker_list,
+        ):
+            continue
 
         if _ticker_is_acquirer(item, ticker, reasoning=reasoning):
             continue
