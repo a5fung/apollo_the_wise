@@ -824,7 +824,6 @@ async def _process_entry_fill(
         f"Stop: ${trade['orb_low']:.2f}"
     )
     try:
-        from agents.market_intelligence.db import log_audit_event
         await log_audit_event(
             "trade_lifecycle_telegram_attempted",
             f"fill {ticker} @${filled_price:.2f} x{filled_qty:.0f}",
@@ -899,7 +898,6 @@ async def _process_stop_fill(
         # WS stop fired, DB closed, but operator couldn't tell if Telegram
         # delivered — there was no audit trail on success path.
         try:
-            from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 "trade_lifecycle_telegram_attempted",
                 f"stop_out {ticker} @${stop_fill_price:.2f} pnl=${pnl:+,.2f}",
