@@ -140,6 +140,20 @@ async def replay_case(case: dict) -> dict:
             "reasoning": reasoning[:120],
         }
 
+    # Part B proximity check (#119, 2026-05-27)
+    from agents.market_intelligence.ma_filter import reasoning_other_entity_owns_deal
+    insight_tickers = [i.get("ticker") for i in insights if i.get("ticker")]
+    if reasoning_other_entity_owns_deal(reasoning, reasoning_kw, ticker, insight_tickers):
+        return {
+            "ticker": ticker,
+            "label": case["label"],
+            "actual": "blocked (Part B: sister-ticker possessive)",
+            "expected": "kept" if case["label"] == "TP" else "blocked",
+            "match": case["label"] == "FP",
+            "title": title[:100],
+            "reasoning": reasoning[:120],
+        }
+
     return {
         "ticker": ticker,
         "label": case["label"],

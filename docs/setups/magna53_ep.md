@@ -74,6 +74,16 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-05-27 — M&A filter Part B: sister-ticker possessive proximity check (#119)
+
+**Trigger**: RGTI 2026-05-11 EP alert path still saw Polygon news-tagged M&A interpretation after Part A (#88) shipped. Part A required ticker in `insights` array AND M&A keyword in `sentiment_reasoning`. But the article's `reasoning` for RGTI was "Stock gained 8.29%...following IonQ's merger approval" — keyword present, but the deal belonged to IonQ (a sister-tagged ticker), not RGTI.
+
+**Fix**: `reasoning_other_entity_owns_deal` — sentence-bounded look-back for `[CapitalizedWord]'s` possessive immediately preceding the M&A keyword. Block only when the possessor (case-insensitive) matches a sister ticker symbol from `insight_tickers` (with `.WS` warrant suffix stripped). Narrow by design — does NOT catch arbitrary company-name possessives (no name→ticker map available; e.g., "Hewlett-Packard's deal" on HPQ-tagged article passes through).
+
+**11-case replay verification** (`scripts/_replay_88_mna_filter_fix.py`): 11/11 pass. D + EL TPs kept (zero regression), QBTS/RGTI/MNST/ONDS/INFQ/NBIS/NXT/IREN/FOUR FPs blocked (one via Part B specifically, others via existing Path B keyword-absent gate). PINS = ARTICLE_NOT_FOUND in Polygon (corpus issue, not logic).
+
+**Position in Path B flow**: between the `matches_mna_keywords(reasoning)` check and the existing direction check — additive gate, doesn't restructure Part A. Per advisor 2026-05-27.
+
 ### 2026-05-27 — Override respects revenue-weak downgrade + Claude text fallback (#131/#132)
 
 **Trigger**: BBWI 2026-05-27 fired HIGH EP at 9:51 ET despite the revenue-growth gate downgrading it at 7:20 ET (`q_rev_yoy_missing_no_prior_year_comparable`). Override path was unconditional on catalyst quality.
