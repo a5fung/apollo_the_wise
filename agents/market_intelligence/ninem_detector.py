@@ -90,11 +90,6 @@ _ma10_cache_date: str = ""
 _MIN_RANGE_PCT = 0.02                # intraday range ≥ 2% of current price
 _MAX_EXTENSION_FROM_MA10 = 1.20      # current price ≤ 1.20× 10d SMA
 
-# Anticipation (pace-projected) alerts ping Telegram only if one of these is met.
-# Actuals always ping. Others write to DB silently — still visible via /9m and evening brief.
-_ANTICIPATION_PING_GAP_PCT = 10.0
-_ANTICIPATION_PING_PROJ_VOL = 25_000_000
-
 _ET = ZoneInfo("America/New_York")
 
 
@@ -365,19 +360,8 @@ async def run_9m_scan() -> list[dict]:
         # Per-ticker line; sections add their own header in the digest.
         line = f"• `{ticker}` Vol {vol_str} ({dv_str}){rvol_str} ${current_price:.2f} +{display_pct:.1f}%"
 
-        # High-conviction anticipation carve-out: pace alerts join the digest
-        # only if gap or projected volume is clearly above baseline. Weaker
-        # anticipations stay DB-only (visible via /9m and evening brief).
-        is_high_conviction_anticipation = is_9m_anticipation and (
-            gap_pct >= _ANTICIPATION_PING_GAP_PCT
-            or (projected_vol or 0) >= _ANTICIPATION_PING_PROJ_VOL
-        )
-        # Pace alerts no longer ride the per-scan-tick digest — they're
-        # accumulated and emitted by the hourly _9m_pace_digest_job
-        # (#133, 2026-05-27). Pace was 89% of yesterday's pinged volume
-        # but not realtime-actionable. should_ping kept for audit trail
-        # symmetry; only actual goes to digest.
-        should_ping = is_9m_actual or is_high_conviction_anticipation
+        # Pace alerts emit via the hourly _9m_pace_digest_job; the per-
+        # scan-tick digest now carries only actual 9M crossings.
         if is_9m_actual:
             digest_actual.append(line)
             # Sugar Baby Convergence — telemetry-only. DB failure MUST NOT
@@ -425,12 +409,12 @@ async def run_9m_scan() -> list[dict]:
                     logger.debug(f"9M convergence audit failed (non-critical): {_ae}")
         logger.info(
             f"9M EP alert: {ticker} vol={today_volume:,} price=${current_price:.2f} "
-            f"pinged={should_ping}"
+            f"actual={is_9m_actual}"
         )
         await log_audit_event(
             "9m_ep_detected",
             f"{ticker} vol={today_volume/1_000_000:.1f}M price=${current_price:.2f} gap={gap_pct:.1f}%",
-            f"is_anticipation={is_anticipation} projected={projected_vol} pinged={should_ping}",
+            f"is_anticipation={is_anticipation} projected={projected_vol} actual={is_9m_actual}",
         )
 
     # Single Telegram per scan tick — sections by tier. Quiet scans send

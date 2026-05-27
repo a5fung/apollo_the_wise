@@ -15,40 +15,7 @@ of remediation.
 These tests pin the new behavior using the existing alpaca-stub pattern
 from test_order_status_reconcile.py.
 """
-import sys
-import types
-from unittest.mock import AsyncMock, MagicMock
-
-
-class _MockModule(types.ModuleType):
-    def __getattr__(self, name):
-        v = MagicMock(name=f"{self.__name__}.{name}")
-        setattr(self, name, v)
-        return v
-
-
-for mod_name in [
-    "alpaca", "alpaca.trading", "alpaca.trading.client", "alpaca.trading.requests",
-    "alpaca.trading.enums", "alpaca.trading.models", "alpaca.trading.stream",
-    "alpaca.data", "alpaca.data.historical", "alpaca.data.requests",
-    "alpaca.data.timeframe", "alpaca.data.enums", "alpaca.common",
-    "alpaca.common.exceptions",
-]:
-    sys.modules.setdefault(mod_name, _MockModule(mod_name))
-
-sys.modules.setdefault(
-    "agents.market_intelligence.backtester",
-    types.ModuleType("agents.market_intelligence.backtester"),
-)
-_filters_stub = sys.modules.get(
-    "agents.market_intelligence.backtester.filters",
-    types.ModuleType("agents.market_intelligence.backtester.filters"),
-)
-if not hasattr(_filters_stub, "validate_orb_entry"):
-    _filters_stub.validate_orb_entry = MagicMock(name="validate_orb_entry")
-if not hasattr(_filters_stub, "check_filters"):
-    _filters_stub.check_filters = MagicMock(name="check_filters")
-sys.modules["agents.market_intelligence.backtester.filters"] = _filters_stub
+# Alpaca SDK + backtester.filters stubbing handled by tests/conftest.py.
 
 
 # ── Coverage classifier (the core decision) ─────────────────────────────────

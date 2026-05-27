@@ -4,28 +4,7 @@ Pace alerts (89% of pinged 9M volume on 2026-05-27) moved from the
 per-5-min digest in ninem_detector to an hourly rollup. Tests pin the
 selection/dedup/ranking logic by exercising the SQL result handling.
 """
-import sys
-import types
-from unittest.mock import AsyncMock, MagicMock
-
-
-# Reuse the alpaca-SDK stubbing pattern from sibling tests so loading
-# scheduler.py doesn't fail in dev environments without the broker SDK.
-class _MockModule(types.ModuleType):
-    def __getattr__(self, name):
-        v = MagicMock(name=f"{self.__name__}.{name}")
-        setattr(self, name, v)
-        return v
-
-
-for mod_name in [
-    "alpaca", "alpaca.trading", "alpaca.trading.client", "alpaca.trading.requests",
-    "alpaca.trading.enums", "alpaca.trading.models", "alpaca.trading.stream",
-    "alpaca.data", "alpaca.data.historical", "alpaca.data.requests",
-    "alpaca.data.timeframe", "alpaca.data.enums", "alpaca.common",
-    "alpaca.common.exceptions",
-]:
-    sys.modules.setdefault(mod_name, _MockModule(mod_name))
+# Alpaca SDK + backtester.filters stubbing handled by tests/conftest.py.
 
 
 # Replicate the in-job selection logic as a pure helper so tests don't

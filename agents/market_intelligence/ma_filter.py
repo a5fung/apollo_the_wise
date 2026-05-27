@@ -222,7 +222,10 @@ async def should_log_mna_filter_fired(ticker: str, detector_tag: str) -> bool:
 
 
 _POSSESSIVE_RE = re.compile(r"\b([A-Z][a-zA-Z]+)['’]s\b")
-_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+# Abbreviation-safe split: requires 2+ lowercase/digit chars before the
+# terminator and a capital letter following, so "U.S. acquisition" / "a.m."
+# / "Dr. Smith" don't split mid-abbreviation. Mirrors briefing.py's pattern.
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[a-z0-9][a-z0-9][.!?])\s+(?=[A-Z])")
 
 
 def reasoning_other_entity_owns_deal(
