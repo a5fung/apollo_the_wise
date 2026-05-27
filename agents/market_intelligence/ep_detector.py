@@ -149,7 +149,6 @@ async def _should_log_catalyst_earnings_event_today(event_type: str, ticker: str
     to over-log than silently drop a catalyst-grade decision audit.
     """
     try:
-        from agents.market_intelligence.db import get_pool
         pool = await get_pool()
         async with pool.acquire() as conn:
             prior = await conn.fetchrow("""
