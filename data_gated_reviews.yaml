@@ -5103,3 +5103,77 @@ reviews:
       the measurement; track but don't block this predicate.
     status: pending
     added_on: 2026-05-26
+
+  - review_id: theme_clustering_coherence_guard
+    title: Theme clustering-coherence guard (#126)
+    question: |
+      Does the theme engine produce semantically-incoherent clusters
+      often enough to justify a coherence guard? LINC (Lincoln
+      Educational Services) appeared in the "Firearms & Personal
+      Defense Manufacturing" theme alongside SWBI on 2026-05-26 — clear
+      sector mismatch (Consumer Defensive / Education vs Industrials /
+      Aerospace & Defense). Description-quality guard #125 doesn't
+      catch this (both tickers mentioned, description not malformed).
+    predicate_sql: |
+      -- Count active theme-ticker pairs where ticker's sector differs
+      -- from the modal sector of all theme members. Requires sector
+      -- data on ≥2 members; themes with all-unknown sectors are
+      -- excluded as not yet evaluable.
+      WITH theme_members AS (
+          SELECT DISTINCT t.name, t.theme_date, unnest(t.tickers) AS ticker
+          FROM mi_themes t
+          WHERE t.theme_date > NOW()::date - INTERVAL '30 days'
+            AND t.stage != 'Retired'
+      ),
+      with_sector AS (
+          SELECT tm.name, tm.theme_date, tm.ticker, o.sector
+          FROM theme_members tm
+          LEFT JOIN mi_ticker_overrides o ON o.ticker = tm.ticker
+          WHERE o.sector IS NOT NULL AND o.sector != ''
+      ),
+      sector_counts AS (
+          SELECT name, theme_date, sector, COUNT(*) AS n_in_sector
+          FROM with_sector
+          GROUP BY name, theme_date, sector
+      ),
+      modal_sector AS (
+          SELECT name, theme_date,
+                 (SELECT sector FROM sector_counts sc
+                  WHERE sc.name = ws.name AND sc.theme_date = ws.theme_date
+                  ORDER BY n_in_sector DESC, sector LIMIT 1) AS modal,
+                 COUNT(*) AS total_with_sector
+          FROM with_sector ws
+          GROUP BY name, theme_date
+          HAVING COUNT(*) >= 2
+      )
+      SELECT COUNT(DISTINCT (ws.name, ws.ticker))
+      FROM with_sector ws
+      JOIN modal_sector ms ON ms.name = ws.name AND ms.theme_date = ws.theme_date
+      WHERE ws.sector != ms.modal;
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      1. Pull the 30-day cohort of sector-mismatch theme-ticker pairs
+         via the predicate SQL.
+      2. Audit each pair: legitimate cross-sector theme (rare; some
+         macro themes like "AI Infrastructure" span Tech + Industrials)
+         vs accidental RS-correlation cluster (LINC/SWBI class).
+      3. If ≥70% are accidental: design the coherence guard. Options:
+         (a) sector-coherence gate at theme ASSIGNMENT (require modal
+             sector match within theme), (b) Sonnet "is this coherent"
+             judge at validation, (c) tighter description-segment
+             keyword overlap rule. Pick from data — cheapest first.
+      4. If <70%: defer permanently; the cluster outputs aren't
+         systematically broken, just have occasional outliers operators
+         can spot from the theme name + members list.
+      5. Consult advisor before shipping any guard — methodology
+         change at theme detection requires the same N≥10 + backtest
+         discipline as setup detection.
+
+      Sector-data hygiene fix shipped same day (#126): rs_engine's
+      nightly _enrich_sectors now also pulls active theme members
+      (was top-300-RS only, leaving ~19% of theme tickers without
+      sector). One-shot backfill ran on 2026-05-27 (26/32 tickers
+      enriched, 6 unmatched are ETFs or deprecated tickers).
+    status: pending
+    added_on: 2026-05-27

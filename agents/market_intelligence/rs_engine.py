@@ -458,13 +458,32 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     await upsert_tracked_stocks_batch(leader_records)
     await mark_tracked_stocks_weak_batch(weak_records)
 
-    # Enrich top 300 leaders with sector/industry data for industry RS ranking
+    # Enrich top 300 leaders with sector/industry data for industry RS ranking.
+    # Also enrich active theme members (#126, 2026-05-27): tickers outside the
+    # top 300 that get assigned to themes via description-driven paths still
+    # need sector data for the existing sector-coherence checks. Without this,
+    # 19% of theme members (32/168 on 2026-05-27 audit) had empty sector,
+    # blinding the theme validation pass to obvious cluster errors
+    # (e.g. LINC — Lincoln Educational — sitting in a firearms theme).
     top_leader_tickers = [
         stock_data[i]["ticker"]
         for i in range(len(stock_data))
         if rank_position[i] <= 300
     ]
-    await _enrich_sectors(top_leader_tickers, today)
+    try:
+        async with pool.acquire() as conn:
+            theme_member_rows = await conn.fetch("""
+                SELECT DISTINCT unnest(tickers) AS ticker
+                FROM mi_themes
+                WHERE theme_date > CURRENT_DATE - INTERVAL '14 days'
+                  AND stage != 'Retired'
+            """)
+        theme_members = [r["ticker"] for r in theme_member_rows]
+    except Exception as e:
+        logger.warning(f"theme-member sector enrichment lookup failed: {e}")
+        theme_members = []
+    enrichment_universe = list(set(top_leader_tickers) | set(theme_members))
+    await _enrich_sectors(enrichment_universe, today)
 
     logger.info(
         f"RS Engine complete: scored {len(stock_data)} stocks for {today_str} "
