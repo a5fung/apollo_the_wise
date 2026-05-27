@@ -309,8 +309,9 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     async with pool.acquire() as conn:
         # Latest scan date within last 7d. Mirrors the /flags resolver
         # so weekend / pre-scan timing doesn't return empty.
-        from datetime import date as _date, timedelta as _td
-        today = _date.today()
+        from datetime import timedelta as _td
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
         cutoff = today - _td(days=7)
         scan_date = await conn.fetchval(
             """

@@ -51,7 +51,9 @@ async def _evaluate_predicate(sql: str) -> int | None:
 
 async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
     """Walk the registry; return ready + pending summaries for the digest."""
-    today = today or date.today()
+    if today is None:
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
     entries = _load_registry()
 
     ready: list[dict] = []

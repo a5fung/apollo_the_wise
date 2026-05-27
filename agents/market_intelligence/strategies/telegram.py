@@ -97,7 +97,8 @@ async def render_strategy_detail(strategy_id: str) -> str:
     # for eligibility, the "Recent closed" list slices to 30d below.
     all_rows = await get_outcomes(strategy_id, window_days=WINDOW_DAYS)
     v = await check_promotion_eligibility(strategy_id, rows=all_rows)
-    cutoff = date.today() - timedelta(days=30)
+    from agents.market_intelligence.collector import et_today
+    cutoff = et_today() - timedelta(days=30)
     rows = [r for r in all_rows if r.alert_date >= cutoff]
 
     lines = [

@@ -124,7 +124,11 @@ async def refresh_missed_outcomes(
     """
     await ensure_missed_outcomes_schema()
 
-    end = end_date or date.today()
+    if end_date is None:
+        from agents.market_intelligence.collector import et_today
+        end = et_today()
+    else:
+        end = end_date
     start = end - timedelta(days=window_days)
 
     pool = await get_pool()

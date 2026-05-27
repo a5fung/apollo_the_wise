@@ -434,7 +434,7 @@ async def get_alpaca_news(
         logger.warning("Alpaca credentials not set; skipping Alpaca News")
         return []
 
-    end = to_date or date.today()
+    end = to_date or et_today()
     start = from_date or (end - timedelta(days=lookback_days))
     start_dt = datetime(start.year, start.month, start.day, tzinfo=_tz.utc)
     end_dt = datetime(end.year, end.month, end.day, 23, 59, 59, tzinfo=_tz.utc)
@@ -481,7 +481,7 @@ async def get_polygon_news(
     Empty list on any failure — never raises.
     """
     try:
-        end = on_or_before or date.today()
+        end = on_or_before or et_today()
         start = end - timedelta(days=lookback_days)
         params = {
             "ticker": ticker,

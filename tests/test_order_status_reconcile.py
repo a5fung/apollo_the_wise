@@ -39,9 +39,15 @@ sys.modules.setdefault(
     "agents.market_intelligence.backtester",
     types.ModuleType("agents.market_intelligence.backtester"),
 )
-_filters_stub = types.ModuleType("agents.market_intelligence.backtester.filters")
-_filters_stub.validate_orb_entry = MagicMock(name="validate_orb_entry")
-sys.modules.setdefault("agents.market_intelligence.backtester.filters", _filters_stub)
+_filters_stub = sys.modules.get(
+    "agents.market_intelligence.backtester.filters",
+    types.ModuleType("agents.market_intelligence.backtester.filters"),
+)
+if not hasattr(_filters_stub, "validate_orb_entry"):
+    _filters_stub.validate_orb_entry = MagicMock(name="validate_orb_entry")
+if not hasattr(_filters_stub, "check_filters"):
+    _filters_stub.check_filters = MagicMock(name="check_filters")
+sys.modules["agents.market_intelligence.backtester.filters"] = _filters_stub
 
 from agents.market_intelligence.broker.order_manager import (
     _canonical_order_status,

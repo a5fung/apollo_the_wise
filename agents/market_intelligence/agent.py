@@ -1340,8 +1340,8 @@ class MarketIntelligenceAgent(BaseAgent):
             rows = await list_parabolic_exclusions()
             if not rows:
                 return self._ok(request, result="No parabolic-short exclusions set.")
-            from datetime import date as _date
-            today = _date.today()
+            from agents.market_intelligence.collector import et_today
+            today = et_today()
             lines = ["*Parabolic-short Exclusions*"]
             for r in rows:
                 until = r.get("excluded_until")

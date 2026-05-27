@@ -5895,7 +5895,8 @@ async def assign_ticker_to_theme(
     Returns {"matched": bool, "before": list, "after": list, "lifted_cooldown": bool}.
     """
     if scan_date is None:
-        scan_date = date.today()
+        from agents.market_intelligence.collector import et_today
+        scan_date = et_today()
     elif isinstance(scan_date, str):
         scan_date = date.fromisoformat(scan_date)
     ticker = ticker.upper()

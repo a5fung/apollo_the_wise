@@ -105,7 +105,8 @@ Rules:
 
 async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     """Execute the weekly review: gather, aggregate, synthesize, persist, send."""
-    today = date.today()
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
     window_start = today - timedelta(days=window_days)
 
     metrics = await _gather_and_aggregate(window_start, today, window_days)
