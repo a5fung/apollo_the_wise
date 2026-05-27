@@ -1135,6 +1135,64 @@ async def _validate_theme_membership(
         return tickers
 
 
+def _check_description_quality(
+    name: str, tickers: list[str], description: str | None,
+) -> tuple[bool, str]:
+    """Validate Sonnet-generated theme description for the bug class caught
+    2026-05-26 (GLW report on 'LOVE SEAT' hallucination). Returns (ok, reason).
+
+    Three rules per advisor 2026-05-26 review, calibrated against 30d
+    corpus of 26 two-member Accelerating/Mainstream themes (27% clear
+    noise rate — fix shape is description guard, not 2-member cap):
+
+      A. Concat detection — substring `"{T1} {T2}"` or `"{T2} {T1}"`
+         indicates Sonnet treated two distinct tickers as one entity.
+         Catches "LOVE SEAT" / "WLTH LIFE". Legit descriptions use
+         "Datadog (DDOG) and Fortinet (FTNT)" style which has `and`,
+         comma, or parenthetical between symbols — won't false-positive.
+
+      B. At-least-one-member-mentioned — description must reference
+         AT LEAST ONE theme ticker. Catches CLMT/CF themes where
+         Sonnet's description talks about LYB/BW/DOW (totally wrong
+         stocks). Strict "no non-members" would false-positive on
+         legitimate peer-context mentions; relaxed lower bound avoids
+         that while catching the categorical-mismatch class.
+
+      C. Empty-description block — empty/whitespace-only description
+         can't advance past Nascent. 5/5 empty-description themes in
+         the 30d sample were reaching Accelerating without validation;
+         this rule is load-bearing.
+    """
+    if not description or not description.strip():
+        return False, "empty_description"
+
+    descr = description
+    # Need ticker tokens; uppercase + word-boundary-safe matching
+    ticker_set = {t.upper() for t in tickers if t}
+    if len(ticker_set) < 2:
+        # Sub-2 themes are rare in active state but possible — concat
+        # check is N/A. Only the at-least-one rule applies. Empty
+        # already handled above.
+        for t in ticker_set:
+            if t in descr.upper():
+                return True, ""
+        return False, "no_member_ticker_mentioned"
+
+    # Rule A: concat detection
+    descr_upper = descr.upper()
+    ticker_list = sorted(ticker_set)
+    for i, t1 in enumerate(ticker_list):
+        for t2 in ticker_list[i + 1:]:
+            if f"{t1} {t2}" in descr_upper or f"{t2} {t1}" in descr_upper:
+                return False, f"ticker_concat:{t1}_{t2}"
+
+    # Rule B: at least one member mentioned
+    if not any(t in descr_upper for t in ticker_set):
+        return False, "no_member_ticker_mentioned"
+
+    return True, ""
+
+
 async def _rescore_existing_theme(
     theme: dict,
     stocks_by_ticker: dict[str, dict],
@@ -1371,6 +1429,26 @@ async def _rescore_existing_theme(
         )
         stage = "Fading"
 
+    # Description-quality cap (#125, 2026-05-26): if Sonnet-generated
+    # description fails validation (ticker concat / no member mention /
+    # empty), cap stage at Nascent. Don't downgrade score — get_active_themes
+    # will naturally fade Nascent themes via the 7d recency cap.
+    final_tickers = list(set(tickers) | set(strong_stocks))
+    descr_ok, descr_reason = _check_description_quality(name, final_tickers, description)
+    if not descr_ok and stage in ("Accelerating", "Mainstream"):
+        await log_audit_event(
+            "theme_low_quality_description",
+            f"Theme '{name}': capped {stage} → Nascent ({descr_reason})",
+            f"prior_stage={stage} reason={descr_reason} "
+            f"tickers={sorted(final_tickers)} description_excerpt="
+            f"{(description or '')[:200]!r}",
+        )
+        logger.info(
+            f"Theme '{name}': stage capped {stage} → Nascent "
+            f"(description quality: {descr_reason})"
+        )
+        stage = "Nascent"
+
     if stage != prev_stage:
         changelog.append({
             "type": "stage_change",
@@ -1391,7 +1469,7 @@ async def _rescore_existing_theme(
         "score": total_score,
         "rs_avg": round(momentum, 1),
         "description": description,
-        "tickers": list(set(tickers) | set(strong_stocks)),  # keep known + add strong
+        "tickers": final_tickers,
         "pct_above_20sma": pct_breadth,
     }, changelog
 
