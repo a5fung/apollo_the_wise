@@ -116,7 +116,13 @@ _audit_dedupe_date: "date | None" = None
 
 
 def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
-    """Returns True if (ticker, date, event) hasn't been logged this session."""
+    """Returns True if (ticker, date, event) hasn't been logged this session.
+
+    In-memory only — wiped on container restart. Use the DB-backed
+    `_should_log_catalyst_earnings_event_today` for events that must
+    survive restarts (the catalyst-earnings family is restart-sensitive
+    because _catalyst_cache also gets wiped).
+    """
     global _audit_dedupe, _audit_dedupe_date
     if _audit_dedupe_date != scan_date:
         _audit_dedupe.clear()
@@ -126,6 +132,38 @@ def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
         return False
     _audit_dedupe.add(key)
     return True
+
+
+async def _should_log_catalyst_earnings_event_today(event_type: str, ticker: str) -> bool:
+    """DB-backed dedup for catalyst_earnings_* family. Returns True iff no
+    prior row exists for (event_type, ticker) on the current ET trading day.
+
+    Why DB-backed instead of `_audit_dedupe_check`: the in-memory dedup is
+    wiped on container restart, but _catalyst_cache is ALSO wiped, so the
+    boost block re-fires on the first scan tick after each restart. 2026-05-26
+    had 3 restarts and JOYY/MOD/ESLT boost-event counts of 28/15/14 (vs 1
+    each expected). DB-backed dedup is restart-immune. Same shape as #89
+    M&A filter and #85 convergence-alert dedups.
+
+    Fail-open: any DB error returns True (caller proceeds to log). Better
+    to over-log than silently drop a catalyst-grade decision audit.
+    """
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            prior = await conn.fetchrow("""
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = $1
+                  AND summary LIKE $2
+                  AND (created_at AT TIME ZONE 'America/New_York')::date
+                      = (NOW() AT TIME ZONE 'America/New_York')::date
+                LIMIT 1
+            """, event_type, f"{ticker}:%")
+        return prior is None
+    except Exception as e:
+        logger.debug(f"catalyst earnings dedup check failed (non-critical): {e}")
+        return True
 
 _claude = None
 # Cap concurrent Anthropic calls — earnings days can gap 30+ stocks simultaneously,
@@ -1167,18 +1205,25 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if earnings_today_match and revenue_stage and catalyst_quality in ("routine", None):
             original_quality = catalyst_quality
             catalyst_quality = "strong"
-            await log_audit_event(
-                "catalyst_earnings_boost",
-                f"{ticker}: {original_quality} → strong (earnings_day, source={earnings_src})",
-                json.dumps({
-                    "ticker": ticker,
-                    "alert_date": today.isoformat(),
-                    "from_quality": original_quality,
-                    "to_quality": "strong",
-                    "earnings_source": earnings_src,
-                    "gap_pct": c["gap_pct"],
-                }),
-            )
+            # Per-trading-day-per-ticker dedup. Without this, 3 container
+            # restarts today wiped _catalyst_cache 3x; each restart's first
+            # scan tick re-fired the boost for JOYY/MOD/ESLT = 57 events
+            # for what should be 3. Same shape as #89 M&A filter dedup.
+            if await _should_log_catalyst_earnings_event_today(
+                "catalyst_earnings_boost", ticker
+            ):
+                await log_audit_event(
+                    "catalyst_earnings_boost",
+                    f"{ticker}: {original_quality} → strong (earnings_day, source={earnings_src})",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "from_quality": original_quality,
+                        "to_quality": "strong",
+                        "earnings_source": earnings_src,
+                        "gap_pct": c["gap_pct"],
+                    }),
+                )
             # Also update cache so subsequent scan ticks see the boosted grade.
             _catalyst_cache[ticker] = (
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
@@ -1393,27 +1438,30 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             for i in range(1, 7)
                         },
                     }
-                await log_audit_event(
-                    "catalyst_earnings_revenue_weak_downgrade",
-                    f"{ticker}: {_original_quality} → routine "
-                    f"(earnings catalyst, {_downgrade_reason})",
-                    json.dumps({
-                        "ticker": ticker,
-                        "alert_date": today.isoformat(),
-                        "from_quality": _original_quality,
-                        "to_quality": "routine",
-                        "reason": _downgrade_reason,
-                        "q_revenue_yoy_pct": _q_rev_yoy,
-                        "extraction_quality": _quality,
-                        "extraction_reasoning": _reasoning,
-                        "extraction_sources": _qr_block.get("sources"),
-                        "extraction_confidence": _qr_block.get("confidence"),
-                        "guidance_midpoint_yoy_pct": _gf_block.get("midpoint_yoy_pct"),
-                        "rubric": _rubric_summary,
-                        "earnings_source": earnings_src,
-                        "gap_pct": c["gap_pct"],
-                    }),
-                )
+                if await _should_log_catalyst_earnings_event_today(
+                    "catalyst_earnings_revenue_weak_downgrade", ticker
+                ):
+                    await log_audit_event(
+                        "catalyst_earnings_revenue_weak_downgrade",
+                        f"{ticker}: {_original_quality} → routine "
+                        f"(earnings catalyst, {_downgrade_reason})",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "from_quality": _original_quality,
+                            "to_quality": "routine",
+                            "reason": _downgrade_reason,
+                            "q_revenue_yoy_pct": _q_rev_yoy,
+                            "extraction_quality": _quality,
+                            "extraction_reasoning": _reasoning,
+                            "extraction_sources": _qr_block.get("sources"),
+                            "extraction_confidence": _qr_block.get("confidence"),
+                            "guidance_midpoint_yoy_pct": _gf_block.get("midpoint_yoy_pct"),
+                            "rubric": _rubric_summary,
+                            "earnings_source": earnings_src,
+                            "gap_pct": c["gap_pct"],
+                        }),
+                    )
                 _catalyst_cache[ticker] = (
                     catalyst_quality, confidence_multiplier,
                     news_summary, claude_analysis, pplx_quality,
