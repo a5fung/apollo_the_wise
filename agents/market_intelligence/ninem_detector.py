@@ -194,7 +194,6 @@ async def run_9m_scan() -> list[dict]:
     # on hot days (Wave C #5, 2026-05-07). Per-ticker DB inserts + audit
     # events stay; only the user-facing Telegram is batched.
     digest_actual: list[str] = []
-    digest_pace: list[str] = []
     # Sugar Baby Convergence — track cohort × recent-flag-stage tickers that
     # ping into the digest. Composed into a section header in the Telegram
     # message (not per-line prefix) to keep multi-convergence digests clean.
@@ -373,12 +372,14 @@ async def run_9m_scan() -> list[dict]:
             gap_pct >= _ANTICIPATION_PING_GAP_PCT
             or (projected_vol or 0) >= _ANTICIPATION_PING_PROJ_VOL
         )
+        # Pace alerts no longer ride the per-scan-tick digest — they're
+        # accumulated and emitted by the hourly _9m_pace_digest_job
+        # (#133, 2026-05-27). Pace was 89% of yesterday's pinged volume
+        # but not realtime-actionable. should_ping kept for audit trail
+        # symmetry; only actual goes to digest.
         should_ping = is_9m_actual or is_high_conviction_anticipation
-        if should_ping:
-            if is_9m_actual:
-                digest_actual.append(line)
-            else:
-                digest_pace.append(line)
+        if is_9m_actual:
+            digest_actual.append(line)
             # Sugar Baby Convergence — telemetry-only. DB failure MUST NOT
             # break the underlying 9M alert (the trading signal). Fail-open.
             conv: dict | None = None
@@ -434,7 +435,7 @@ async def run_9m_scan() -> list[dict]:
 
     # Single Telegram per scan tick — sections by tier. Quiet scans send
     # nothing.
-    if digest_actual or digest_pace:
+    if digest_actual:
         clock = now_et.strftime("%H:%M")
         parts = [f"🏦 *9M EP — {clock} ET*"]
         # Sugar Baby Convergence section header(s) — split by class so the
@@ -457,12 +458,8 @@ async def run_9m_scan() -> list[dict]:
                 parts.append(
                     f"🍬🌀🎯 *Sugar Baby convergences ({len(anticipators)}):* {tk_str}"
                 )
-        if digest_actual:
-            parts.append(f"\n*Actual ({len(digest_actual)})*")
-            parts.extend(digest_actual)
-        if digest_pace:
-            parts.append(f"\n*Pace ({len(digest_pace)})*")
-            parts.extend(digest_pace)
+        parts.append(f"\n*Actual ({len(digest_actual)})*")
+        parts.extend(digest_actual)
         await send_telegram_message("\n".join(parts))
 
     return new_alerts

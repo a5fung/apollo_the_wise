@@ -70,6 +70,7 @@ JOB_SUPPORT_TEST_SCAN = "support_test_scan"
 JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
+JOB_9M_PACE_DIGEST = "9m_pace_digest"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -1742,6 +1743,90 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _9m_pace_digest_job():
+    """Hourly rollup of 9M EP pace (anticipation) alerts (#133, 2026-05-27).
+
+    Pace alerts are projection-based — "this ticker is on track to hit 9M
+    by close" — not realtime-actionable. They were 89% of yesterday's
+    pinged 9M volume (16/18). Removed from the per-5-min digest in
+    ninem_detector; this job rolls them up at top of hour for 10/11/12
+    ET, querying mi_9m_ep_alerts for the prior 60-min ET window.
+
+    Dedup: skip tickers that ALSO fired as actual in the same hour (they
+    already got a realtime ping). Cap at 10 lines (rare, but avoids
+    runaway digest).
+
+    Empty hour → no Telegram.
+    """
+    from datetime import timedelta
+    pool = await get_pool()
+    now_et = datetime.now(_ET)
+    window_end = now_et.replace(minute=0, second=0, microsecond=0)
+    window_start = window_end - timedelta(hours=1)
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, projected_vol, current_price, gap_pct
+            FROM mi_9m_ep_alerts
+            WHERE is_anticipation = TRUE
+              AND created_at AT TIME ZONE 'America/New_York' >= $1
+              AND created_at AT TIME ZONE 'America/New_York' <  $2
+            """,
+            window_start, window_end,
+        )
+        actual_tickers_row = await conn.fetch(
+            """
+            SELECT DISTINCT ticker
+            FROM mi_9m_ep_alerts
+            WHERE is_anticipation = FALSE
+              AND created_at AT TIME ZONE 'America/New_York' >= $1
+              AND created_at AT TIME ZONE 'America/New_York' <  $2
+            """,
+            window_start, window_end,
+        )
+
+    if not rows:
+        return 0
+
+    actual_set = {r["ticker"] for r in actual_tickers_row}
+    seen: dict[str, dict] = {}
+    for r in rows:
+        if r["ticker"] in actual_set:
+            continue
+        # Most-recent row per ticker wins (highest projection within window)
+        prior = seen.get(r["ticker"])
+        if prior is None or (r["projected_vol"] or 0) > (prior["projected_vol"] or 0):
+            seen[r["ticker"]] = dict(r)
+
+    if not seen:
+        return 0
+
+    ranked = sorted(
+        seen.values(),
+        key=lambda r: (r["projected_vol"] or 0),
+        reverse=True,
+    )[:10]
+
+    clock_start = window_start.strftime("%H:%M")
+    clock_end = window_end.strftime("%H:%M")
+    parts = [
+        f"🏦 *9M EP Pace — {clock_start}–{clock_end} ET ({len(ranked)})*",
+    ]
+    for r in ranked:
+        proj_m = (r["projected_vol"] or 0) / 1_000_000
+        parts.append(
+            f"• `{r['ticker']}` ~{proj_m:.1f}M proj "
+            f"${r['current_price']:.2f} +{(r['gap_pct'] or 0):.1f}%"
+        )
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message("\n".join(parts))
+    except Exception as e:
+        logger.error(f"9m_pace_digest Telegram failed: {e}")
+    return len(ranked)
+
+
 async def _order_status_reconcile_job():
     """Periodic DB↔Alpaca order-status reconciliation (#123, 2026-05-26).
 
@@ -3056,6 +3141,22 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_ORDER_STATUS_RECONCILE,
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # 9M EP Pace digest: hourly rollup at 10/11/12 ET (#133, 2026-05-27).
+    # Pace alerts (89% of pinged 9M volume on 2026-05-27) aren't realtime
+    # actionable — bundle them at top of hour. Actual 9M still rides the
+    # per-5-min digest in ninem_detector. Afternoon hours skipped: pace
+    # signal value drops after midday (no Day-2 setup window).
+    _scheduler.add_job(
+        audit_wrap(_9m_pace_digest_job, JOB_9M_PACE_DIGEST),
+        CronTrigger(
+            hour="10-12", minute=0,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_9M_PACE_DIGEST,
         replace_existing=True,
         misfire_grace_time=300,
     )
