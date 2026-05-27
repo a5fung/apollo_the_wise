@@ -82,7 +82,10 @@ _PERPLEXITY_WHOLESALE_DISCARD_PATTERNS = [
     r"don'?t have (?:reliable|up[ -]?to[ -]?date|specific|current)\s+(?:news|data|information)",
     r"none of the (?:results|sources|search results) (?:shown |found |returned )?are about (?:the |this )?(?:stock|ticker|company)",
     r"here'?s how I'?d approach it as an analyst",
-    r"If you meant [A-Z]{2,6}",
+    # 3+ char minimum: real US tickers start at 3 chars (rare 1-2 char
+    # legacy listings aside). Q1/Q2/Q3/Q4 would false-positive at 2-char
+    # ("If you meant Q1, the comparison..." is legit analyst prose).
+    r"If you meant [A-Z]{3,6}\b",
     r"the search results point to [A-Z][a-zA-Z]+ (?:Global|Inc|Corp)",
 ]
 _PERPLEXITY_WHOLESALE_DISCARD_RE = re.compile(

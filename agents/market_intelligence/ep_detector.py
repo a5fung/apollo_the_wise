@@ -1226,7 +1226,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         else:
             revenue_stage = True  # not used when not earnings day
 
-        if earnings_today_match and revenue_stage and catalyst_quality in ("routine", None):
+        # Boost gate: same yfinance-or-text fallback as the extraction gate
+        # (#131). If yfinance earnings_dates miss and Claude prose clearly
+        # describes earnings, treat as earnings day so a real earnings EP
+        # isn't silently de-classified as routine.
+        _boost_earnings_signal = (
+            earnings_today_match
+            or _claude_text_signals_earnings(claude_analysis)
+        )
+        if _boost_earnings_signal and revenue_stage and catalyst_quality in ("routine", None):
             original_quality = catalyst_quality
             catalyst_quality = "strong"
             # Per-trading-day-per-ticker dedup. Without this, 3 container

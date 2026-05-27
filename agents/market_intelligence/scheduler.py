@@ -1167,7 +1167,18 @@ async def _stop_ack_timeout_watchdog_job():
                 o for o in existing
                 if str(o.get("side", "")).lower().endswith("sell")
             ]
-            covered = sum(float(o.get("qty") or 0) for o in sell_orders)
+            # Use REMAINING unfilled qty, not original order qty. A
+            # partially-filled stop (388 of 776 already sold) has already
+            # reduced the position to 388 shares; only 388 are still
+            # broker-protected. Summing original qty would falsely classify
+            # a half-naked position as fully covered.
+            covered = sum(
+                max(
+                    float(o.get("qty") or 0) - float(o.get("filled_qty") or 0),
+                    0.0,
+                )
+                for o in sell_orders
+            )
             if qty > 0 and covered >= qty:
                 stop_o = next(
                     (o for o in sell_orders

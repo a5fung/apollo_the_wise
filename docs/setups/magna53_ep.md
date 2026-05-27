@@ -56,6 +56,8 @@ Score thresholds:
 
 If `tier == MODERATE` AND `gap_pct ≥ 10%` AND `is_earnings_day` → promote to HIGH. Audit event: `earnings_override_applied`. This complements the pre-score boost — boost handles `routine` not reaching 50; override handles `strong` reaching 50-65 in non-Bull regimes.
 
+**Override-respects-downgrade rule (2026-05-27, #132).** If the same-ET-day `catalyst_earnings_revenue_weak_downgrade` event was logged for this ticker — the revenue-growth gate actively classified the earnings as low-quality (e.g. `q_rev_yoy_missing_no_prior_year_comparable`) — the override does NOT fire. Tier stays MODERATE. Audit event: `earnings_override_skipped_post_downgrade`. Origin: BBWI 2026-05-27 fired HIGH at 9:51 ET despite an explicit data-quality downgrade at 7:20 ET. The override is designed for the "news ingest lag" case where catalyst stayed `routine` because no headlines yet; an explicit data-quality downgrade is the opposite signal and must be respected. Fail-open on DB error (preserves news-ingest-lag tolerance).
+
 ### Submission window
 
 HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup cancels any unfilled `order_placed`.
@@ -71,6 +73,21 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 4. **Stop-limit gap-through on fast movers** (FLEX 5/06 class): 0.5% buffer can't span 4%-in-60-seconds moves. Telemetry filed (task #22) before considering wider buffer or stop-market.
 
 ## Change log (newest first)
+
+### 2026-05-27 — Override respects revenue-weak downgrade + Claude text fallback (#131/#132)
+
+**Trigger**: BBWI 2026-05-27 fired HIGH EP at 9:51 ET despite the revenue-growth gate downgrading it at 7:20 ET (`q_rev_yoy_missing_no_prior_year_comparable`). Override path was unconditional on catalyst quality.
+
+**Fix #132** (override-respects-downgrade): before applying `earnings_override_applied`, query mi_audit_log for a same-ET-day `catalyst_earnings_revenue_weak_downgrade` row for this ticker. If present, skip the override + emit `earnings_override_skipped_post_downgrade`. Tier stays MODERATE. Fail-open on DB error (preserves news-ingest-lag tolerance — the original override design goal).
+
+**Fix #131** (Claude text fallback for extraction + boost): CRSR 2026-05-27 had no rubric block — extraction gated on `earnings_today_match` from yfinance, which missed CRSR's Q1 date. Added `_claude_text_signals_earnings(claude_analysis)` regex (conservative — only matches `Q[1-4] earnings`, `EPS of $X`, `revenue of $XM`, `beat/missed consensus`, `earnings release`). Applied to BOTH the boost gate (line 1229) AND the extraction gate (line 1280) so yfinance ingest-lag doesn't silently kill the rubric OR the catalyst quality lift.
+
+**Override hierarchy after these fixes** (in evaluation order on a MODERATE+gap≥10 alert):
+1. `is_earnings_day` via yfinance OR Claude text signal → check
+2. If revenue-weak downgrade present today → skip override (tier stays MODERATE), audit `earnings_override_skipped_post_downgrade`
+3. Else → fire `earnings_override_applied`, tier=HIGH
+
+**Why these aren't band-aids**: BBWI's downgrade was an active quality decision (no prior-year revenue comparable = can't verify YoY growth = can't grade the earnings). Honoring it preserves the rubric's gating value. CRSR's missing rubric was pure ingest lag at yfinance — Claude's prose had the data the structured-metrics extractor needed.
 
 ### 2026-05-23 — M&A filter: Polygon news multi-ticker-tag-bleed fix (#88)
 

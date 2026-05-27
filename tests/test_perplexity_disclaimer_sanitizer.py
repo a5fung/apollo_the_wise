@@ -96,6 +96,19 @@ def test_partial_phrase_match_not_overgreedy():
     assert _sanitize_perplexity_filler(text) == text
 
 
+def test_if_you_meant_quarter_not_ticker_preserved():
+    """Advisor 2026-05-27: 'If you meant Q1, the comparison is...' is legit
+    analyst prose discussing quarter — must NOT wholesale-discard. The
+    `If you meant [A-Z]{3,6}` pattern requires 3+ char minimum to skip
+    Q1/Q2/Q3/Q4 false-positives."""
+    text = (
+        "FOO posted earnings yesterday. If you meant Q1 results, "
+        "revenue grew 18% YoY to $200M."
+    )
+    out = _sanitize_perplexity_filler(text)
+    assert out != "See news", "must not wholesale-discard legit analyst prose"
+
+
 # ── Smart truncation (replaces [:300] mid-word cut) ──────────────────────────
 
 def test_truncate_at_sentence_boundary():
