@@ -102,6 +102,45 @@ _SMA20_WINDOW         = 20
 
 _STAGE_ORDER = ("unqualified", "WATCH", "TIGHTENING", "COILED", "TRIGGERED")
 
+# Recency window for "is this a fresh pullback / support test?" Replaces
+# day_low (cumulative high-water) with min(low) over last K minutes per
+# advisor 2026-05-26 review + #124 backward-check data. Distribution of
+# today's 27 events showed median staleness 31min, max 367min; K=30
+# preserves bulk of legitimate touches while blocking stale tails.
+# Applies to BOTH #95 support-test and #96 MA-pullback.
+_INTRADAY_TOUCH_RECENCY_MIN = 30
+
+
+async def _recent_low_in_window(
+    ticker: str, scan_time: datetime, k_minutes: int = _INTRADAY_TOUCH_RECENCY_MIN,
+) -> tuple[Optional[float], Optional[datetime]]:
+    """Fetch 1-min bars over last k_minutes and return (min_low, low_time).
+
+    Returns (None, None) on fetch failure or no bars in window — caller
+    should skip the ticker for the current scan.
+
+    Cost note: 1 Polygon API call per ticker per scan tick. Invoked only
+    AFTER existing snapshot-based gates pass, so cost is bounded to
+    actual alert candidates (~5-10/scan), not the full watchlist (~25).
+    """
+    from agents.market_intelligence.collector import _polygon_get
+    end_ms = int(scan_time.timestamp() * 1000)
+    start_ms = end_ms - (k_minutes * 60_000)
+    try:
+        data = await _polygon_get(
+            f"/v2/aggs/ticker/{ticker}/range/1/minute/{start_ms}/{end_ms}",
+            {"adjusted": "true", "sort": "asc", "limit": 100},
+        )
+    except Exception as e:
+        logger.debug(f"recent-low fetch failed for {ticker}: {e}")
+        return None, None
+    bars = data.get("results") or []
+    if not bars:
+        return None, None
+    lowest = min(bars, key=lambda b: b["l"])
+    low_time = datetime.fromtimestamp(lowest["t"] / 1000, tz=scan_time.tzinfo)
+    return float(lowest["l"]), low_time
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers (operate on ascending OHLCV row lists)
@@ -1427,14 +1466,27 @@ async def run_intraday_support_test_scan(scan_time):
 
         base_low = float(cand["base_low"])
 
-        # Gate 1: day_low tested base_low within tolerance
+        # Cheap snapshot-based pre-screen on day_low — if even the day's low
+        # didn't touch base_low, skip without the Polygon recency fetch.
         tag_upper = base_low * (1.0 + _SUPPORT_TEST_TAG_TOL_PCT / 100.0)
         if day_low > tag_upper:
-            continue  # never tested
+            continue  # never tested today at all
 
-        # Gate 2: no falling-knife — day_low not too far below base_low
+        # Recency check — replace day_low with min(low) over last K minutes.
+        # day_low is cumulative-state; once a ticker touches base_low at 10:00
+        # AM, day_low gates fire all afternoon. recent_low gates fire only
+        # while the test is still LIVE (advisor 2026-05-26 + #124 data).
+        recent_low, recent_low_time = await _recent_low_in_window(ticker, scan_time)
+        if recent_low is None:
+            continue  # fetch failed or no bars — skip rather than fall back
+
+        # Gate 1: recent_low tested base_low within tolerance
+        if recent_low > tag_upper:
+            continue  # touch was too far back, recent action above tolerance
+
+        # Gate 2: no falling-knife — recent_low not too far below base_low
         undercut_floor = base_low * (1.0 - _SUPPORT_TEST_MAX_UNDERCUT_PCT / 100.0)
-        if day_low < undercut_floor:
+        if recent_low < undercut_floor:
             continue  # too deep an undercut to be a clean test
 
         # Gate 3: currently holding above base_low (not still under it)
@@ -1442,15 +1494,19 @@ async def run_intraday_support_test_scan(scan_time):
         if current_price < hold_target:
             continue
 
-        # Gate 4: minimum bounce magnitude from the day's low
-        bounce_pct = (current_price - day_low) / day_low * 100.0
+        # Gate 4: minimum bounce magnitude from the RECENT low
+        bounce_pct = (current_price - recent_low) / recent_low * 100.0
         if bounce_pct < _SUPPORT_TEST_BOUNCE_FLOOR_PCT:
             continue
 
         today_volume = int(day.get("v") or 0)
         adv_20 = adv_map.get(ticker, 0)
         volume_pct = (today_volume / adv_20 * 100.0) if adv_20 > 0 else None
-        pct_below_base_low = (day_low - base_low) / base_low * 100.0  # negative if undercut
+        # pct_below_base_low now reports the RECENT low's depth (state-current),
+        # not day_low (cumulative). User sees the touch the alert is actually about.
+        pct_below_base_low = (recent_low - base_low) / base_low * 100.0
+        # current state above MA (positive when bouncing) — for the new alert wording
+        pct_current_above_base = (current_price - base_low) / base_low * 100.0
         in_cohort = ticker in cohort_map
 
         new_tests.append({
@@ -1461,9 +1517,11 @@ async def run_intraday_support_test_scan(scan_time):
             "base_high": float(cand["base_high"]) if cand["base_high"] else None,
             "base_low": base_low,
             "base_age": cand["base_age"],
-            "day_low": float(day_low),
+            "day_low": float(recent_low),  # column kept for back-compat, now holds recent_low
+            "recent_low_time": recent_low_time,
             "current_price": float(current_price),
             "pct_below_base_low": pct_below_base_low,
+            "pct_current_above_base": pct_current_above_base,
             "bounce_pct_from_low": bounce_pct,
             "today_volume": today_volume or None,
             "adv_20": adv_20 or None,
@@ -1531,16 +1589,19 @@ async def run_intraday_support_test_scan(scan_time):
             ]
             for t in new_tests:
                 cohort_marker = "🍬 " if t["in_sugar_baby_cohort"] else ""
-                undercut_label = (
-                    f"undercut {t['pct_below_base_low']:+.2f}%"
-                    if t["pct_below_base_low"] < 0
-                    else f"tag {t['pct_below_base_low']:+.2f}%"
+                touch_clock = (
+                    t["recent_low_time"].strftime("%H:%M")
+                    if t.get("recent_low_time") else "?"
                 )
+                # Current-state wording: where price IS now relative to base_low,
+                # plus when the recent test happened. Replaces cumulative-state
+                # "day_low undercut X%" which was stale by hours (advisor 2026-05-26).
                 lines.append(
                     f"• {cohort_marker}`{t['ticker']}` — tested ${t['base_low']:.2f} "
-                    f"({undercut_label}), bounced +{t['bounce_pct_from_low']:.2f}% "
-                    f"to ${t['current_price']:.2f} "
-                    f"(base {t['base_age']}d {t['parent_stage']})"
+                    f"at {touch_clock} ({t['pct_below_base_low']:+.2f}% deep), "
+                    f"now {t['pct_current_above_base']:+.2f}% above base "
+                    f"(${t['current_price']:.2f}; "
+                    f"base {t['base_age']}d {t['parent_stage']})"
                 )
             lines.append("")
             lines.append("_Drill-down: `/supporttests` for today's full list + recent history_")
@@ -1724,6 +1785,26 @@ async def run_intraday_ma_pullback_scan(scan_time):
             if len(prior_closes) >= 19 else None
         )
 
+        # Cheap snapshot-based pre-screen: if neither MA could conceivably
+        # be tagged today (day_low > both MAs' upper tolerances), skip the
+        # recency fetch entirely. The MA range gate already filters to
+        # ma INSIDE base range, so MAs span ~base_low to ~base_high; if
+        # day_low is above max(MA) × (1+tol), no MA can be tagged today.
+        if all(
+            (ma is None or ma <= 0
+             or day_low > ma * (1.0 + _MA_PULLBACK_TAG_TOL_PCT / 100.0))
+            for ma in (fresh_sma10, fresh_sma20)
+        ):
+            continue
+
+        # Recency check — replace day_low with min(low) over last K minutes
+        # (advisor 2026-05-26 + #124 backward-check data). day_low is
+        # cumulative-state; recent_low fires only while the pullback is
+        # LIVE. Fetch once per ticker, reuse across MA loop iterations.
+        recent_low, recent_low_time = await _recent_low_in_window(ticker, scan_time)
+        if recent_low is None:
+            continue  # fetch failed or no bars
+
         # Try SMA10 first, then SMA20. First MA that passes all gates wins.
         chosen_ma = None
         chosen_label = None
@@ -1738,15 +1819,15 @@ async def run_intraday_ma_pullback_scan(scan_time):
                 continue
 
             tag_upper = ma_value * (1.0 + _MA_PULLBACK_TAG_TOL_PCT / 100.0)
-            if day_low > tag_upper:
-                continue  # never tested
+            if recent_low > tag_upper:
+                continue  # touch was too far back, recent action above tolerance
             undercut_floor = ma_value * (1.0 - _MA_PULLBACK_MAX_UNDERCUT_PCT / 100.0)
-            if day_low < undercut_floor:
+            if recent_low < undercut_floor:
                 continue  # too-deep undercut
             hold_target = ma_value * (1.0 + _MA_PULLBACK_HOLD_FLOOR_PCT / 100.0)
             if current_price < hold_target:
                 continue  # not currently holding above
-            bounce_pct = (current_price - day_low) / day_low * 100.0
+            bounce_pct = (current_price - recent_low) / recent_low * 100.0
             if bounce_pct < _MA_PULLBACK_BOUNCE_FLOOR_PCT:
                 continue
 
@@ -1757,8 +1838,11 @@ async def run_intraday_ma_pullback_scan(scan_time):
         if chosen_ma is None:
             continue
 
-        pct_below_ma = (day_low - chosen_ma) / chosen_ma * 100.0
-        bounce_pct = (current_price - day_low) / day_low * 100.0
+        # State-current metrics for the alert: recent_low's depth + where
+        # price IS now relative to the MA.
+        pct_below_ma = (recent_low - chosen_ma) / chosen_ma * 100.0
+        pct_current_above_ma = (current_price - chosen_ma) / chosen_ma * 100.0
+        bounce_pct = (current_price - recent_low) / recent_low * 100.0
         volume_pct = today_volume / adv_20 * 100.0
         in_cohort = ticker in cohort_map
 
@@ -1772,9 +1856,11 @@ async def run_intraday_ma_pullback_scan(scan_time):
             "base_age": cand["base_age"],
             "ma_label": chosen_label,
             "ma_value": chosen_ma,
-            "day_low": float(day_low),
+            "day_low": float(recent_low),  # column kept for back-compat, now holds recent_low
+            "recent_low_time": recent_low_time,
             "current_price": float(current_price),
             "pct_below_ma": pct_below_ma,
+            "pct_current_above_ma": pct_current_above_ma,
             "bounce_pct_from_low": bounce_pct,
             "today_volume": today_volume,
             "adv_20": adv_20,
@@ -1848,16 +1934,18 @@ async def run_intraday_ma_pullback_scan(scan_time):
             ]
             for p in new_pullbacks:
                 cohort_marker = "🍬 " if p["in_sugar_baby_cohort"] else ""
-                undercut_label = (
-                    f"undercut {p['pct_below_ma']:+.2f}%"
-                    if p["pct_below_ma"] < 0
-                    else f"tag {p['pct_below_ma']:+.2f}%"
+                touch_clock = (
+                    p["recent_low_time"].strftime("%H:%M")
+                    if p.get("recent_low_time") else "?"
                 )
+                # Current-state wording: where price IS now vs MA, plus when
+                # the recent test happened. Replaces cumulative-state "day_low
+                # undercut X%" which could be hours old (advisor 2026-05-26).
                 lines.append(
                     f"• {cohort_marker}`{p['ticker']}` — {p['ma_label']} ${p['ma_value']:.2f} "
-                    f"({undercut_label}), bounced +{p['bounce_pct_from_low']:.2f}% "
-                    f"to ${p['current_price']:.2f} "
-                    f"(vol {p['volume_pct_of_adv']:.0f}% ADV)"
+                    f"tested at {touch_clock} ({p['pct_below_ma']:+.2f}% deep), "
+                    f"now {p['pct_current_above_ma']:+.2f}% above MA "
+                    f"(${p['current_price']:.2f}; vol {p['volume_pct_of_adv']:.0f}% ADV)"
                 )
             lines.append("")
             lines.append("_Drill-down: `/mapullbacks` for today's full list + recent history_")
