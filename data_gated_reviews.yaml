@@ -5192,3 +5192,92 @@ reviews:
       enriched, 6 unmatched are ETFs or deprecated tickers).
     status: pending
     added_on: 2026-05-27
+
+  - review_id: robinhood_agentic_trading_explore
+    title: "Robinhood Agentic Trading — revisit fit for Apollo (post-beta)"
+    question: |
+      Robinhood launched Agentic Trading on 2026-05-27 (MCP-based,
+      equities-only beta, dedicated agentic account, preview-confirm
+      mandatory on every order). User already has personal capital at
+      Robinhood, so the funding-friction argument for using it over
+      Alpaca is non-trivial.
+
+      Initial assessment 2026-05-27 (this session): WRONG SHAPE for
+      Apollo's current autonomous trading loop.
+
+      Findings:
+        - Interface is MCP server, not REST + WebSocket. Designed for
+          conversational agents (Claude, ChatGPT, Codex, Cursor) where
+          a human is in the loop. Apollo is the opposite — APScheduler
+          cron fires `submit_trade_entry` at 9:31 AM with sub-second
+          ORB targeting; no conversation, no preview step.
+        - Preview-confirm is mandatory by design: "Agents will preview
+          orders with customers whenever they ask to place a trade so
+          customers can see all the details of the order before it's
+          processed." This breaks the sub-second ORB trigger.
+        - Bracket / OTO support not confirmed in any public docs.
+          Apollo's single-submit OTO (buy-stop-limit + stop-loss as
+          one atomic order) is the safety property the CRMD naked-
+          position incident 2026-05-14 was designed around. Two-leg
+          orchestration from app code = regression.
+        - Beta + equities-only (options/crypto/futures/event contracts
+          "coming soon"). Apollo is equities-only too so the asset
+          coverage is fine, but the broader maturity question matters.
+
+      Narrow potential wedge (single non-trading use case):
+        - Read-only RH portfolio visibility inside Apollo Telegram
+          (`/portfolio` showing RH holdings alongside `mi_live_trades`).
+          Low-risk, no execution path. Unifies two views user currently
+          checks separately.
+
+      Reasons to revisit at 3 months:
+        - Robinhood may exit beta and clarify order-type support
+          (bracket OTO, stop-limit, etc.).
+        - Options/crypto/futures expansion may surface autonomous-mode
+          capability (preview-bypass for trusted agents, headless API).
+        - User behavior may shift (e.g. operator decides to move
+          personal capital to Alpaca and the funding-friction argument
+          dissolves).
+        - Competitive pressure may force RH to expose programmatic
+          (non-conversational) endpoints.
+    predicate_sql: |
+      -- Ideation review on calendar date. No technical predicate;
+      -- gated on Robinhood's beta maturing and on whether
+      -- order-type / autonomous-mode capability emerges.
+      SELECT 0;
+    threshold: 0
+    earliest_review_date: 2026-08-27
+    action_when_ready: |
+      1. Re-check Robinhood Agentic Trading docs:
+         (a) Bracket / OTO order support? Stop-limit?
+         (b) Any programmatic / preview-bypass mode for trusted agents?
+         (c) Rate limits + safeguards for headless use?
+         (d) Beta exit status; what's been added since launch?
+
+      2. Re-evaluate the read-only `/portfolio` wedge in isolation:
+         is integrating RH MCP for portfolio visibility (no execution
+         path) worth scoping as a small standalone Apollo feature?
+         If yes: small ADR + scoped ship. If no: defer.
+
+      3. If autonomous-mode capability HAS emerged: scope migration
+         cost vs current Alpaca dual-account architecture.
+         Cost dimensions:
+           - mode-bound `client_order_id` semantics (RH equivalent?)
+           - per-strategy `account_mode` resolution
+           - `trade_stream` WebSocket equivalent for fills
+           - `mi_live_trades` schema changes
+           - safeguard mode-isolation (drawdown breaker per mode)
+           - bracket OTO contract preservation
+         If migration cost < expected benefit: file ADR + scoped
+         plan. Otherwise close as "Alpaca remains the right venue."
+
+      4. If nothing materially changed: defer +6 months (re-evaluate
+         2027-02). Don't keep this open as a perpetual surface
+         drag — close as deferred with explicit re-evaluation date.
+
+      Origin: 2026-05-27 session — user noted RH launched agentic
+      trading same day, wanted to explore given personal use.
+      Conclusion: wrong shape for autonomous trading loop today;
+      revisit when product matures.
+    status: pending
+    added_on: 2026-05-27

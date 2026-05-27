@@ -14,7 +14,7 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-05-19
+Last updated: 2026-05-27
 
 ---
 
@@ -155,6 +155,7 @@ Sorted by earliest_review_date.
 - [ ] `apollo_trades_dashboard_db_flip` (7/15, gated on ≥30 live trades) → YAML
 - [ ] `orb_cutoff_extension` (7/15) → YAML
 - [ ] `fishhook_v3_promotion_check` (7/15) → YAML
+- [ ] `robinhood_agentic_trading_explore` (8/27, revisit post-beta) → YAML
 - [ ] `rs_theme_dash_forward_returns` (10/1) → YAML
 - [ ] `fishhook_TI3_revisit` (10/29) → YAML
 
@@ -205,6 +206,7 @@ Stage 3 live.
 Smaller items embedded in session change logs that aren't yet formalized
 into reviews. Listed by surfacing date.
 
+- [ ] **Robinhood Agentic Trading exploration** (2026-05-27) — RH launched Agentic Trading same day (MCP-based, equities-only beta, preview-confirm mandatory, dedicated agentic account). User has personal capital at RH; explored fit for Apollo's autonomous trading loop. Verdict: wrong shape today — MCP-only interface + mandatory preview-confirm breaks Apollo's 9:31 AM sub-second ORB bracket-OTO trigger; bracket support unconfirmed in launch docs; rolling back to two-leg orchestration regresses CRMD naked-position safety property. Narrow potential wedge: read-only `/portfolio` visibility inside Apollo Telegram. Filed for 3-month revisit at `data_gated_reviews.yaml::robinhood_agentic_trading_explore` (2026-08-27) — re-check bracket/autonomous-mode emergence + scope `/portfolio` integration in isolation.
 - [ ] **Breadth cluster-view + surface/compute gap** (2026-05-15) — Pradeep tweet showed Stockbee Market Monitor as CLUSTER-MATRIX (date × indicator), red-cluster runs visually obvious. Inventory: compute-AND-surface: 50%/M, 25%/Q. Compute-but-not-surfaced in evening brief: 25%/M, +/-4% 5d/10d, T2108, consec 700-down-4%. Truly missing: 13%+/34d, Worden. Two prongs: (a) cluster-matrix render, (b) low-cost surface 25%/M into briefing + compute 13%+/34d. Pure observability — ideation in `data_gated_reviews.yaml::breadth_cluster_view_ideation`.
 - [ ] **Leveraged ETF upstream filter gap** (2026-05-17) — USAX + USGG admitted to MAGNA53 EP cohort 2026-04-20. Leveraged ETFs should never be EP candidates; gap appears to be in universe selection (no security_type filter on grouped daily ingest). Quick fix likely. Surfaced from catalyst-label review §8.
 - [ ] ~~**M&A buyouts past direction-aware filter** (2026-05-17)~~ ✓ **investigated 2026-05-17 PM** — ma_filter not actually broken. BZH 5/11 alert preceded the Dream Finders hostile-bid news by 2 days (Polygon: 0 items in 90d window before alert; first M&A headline 5/13). KALV 4/29 preceded M&A class-action notices by 13 days (first headline 5/12). Both labels were hindsight-correct from news that surfaced AFTER alert time. Filter is working correctly.
