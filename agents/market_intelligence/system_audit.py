@@ -38,6 +38,7 @@ _ET = ZoneInfo("America/New_York")
 
 from agents.market_intelligence.audit_invariants import all_invariants
 from agents.market_intelligence.collector import et_today
+from agents.market_intelligence.trading_calendar import get_market_status
 from agents.market_intelligence.db import (
     add_baseline_reset,  # noqa: F401  re-exported for callers
     count_today_anomalies,
@@ -666,21 +667,59 @@ async def _fetch_history(conn, metric: MetricSpec, *, lookback_days: int = _BASE
         try:
             payload = json.loads(r["detail"] or "{}")
             v = payload.get("value")
-            if v is not None:
-                out.append(float(v))
+            if v is None:
+                continue
+            # Defense in depth (#120, 2026-05-26): older history may
+            # contain holiday samples written before the skip-gate landed.
+            # Filter them out at read time.
+            as_of_str = payload.get("as_of")
+            if as_of_str:
+                try:
+                    if _is_non_trading_day(date.fromisoformat(as_of_str)):
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            out.append(float(v))
         except (ValueError, TypeError):
             continue
     return out
 
 
+def _is_non_trading_day(d: date) -> bool:
+    """Wraps trading_calendar.get_market_status as a holiday-aware skip gate
+    for the L2/L3 anomaly detector. Returns True on weekends + market holidays.
+
+    Used to avoid recording structurally-zero samples on closed days and to
+    short-circuit the classifier — a baseline trained on Memorial Day's 0
+    fires false-positive L2 the next trading day (#120). exchange_calendars
+    is the same source used by trading_calendar; failure path is fail-open
+    (treat as trading day) so genuine breakage still alerts.
+    """
+    try:
+        return not get_market_status(d).is_trading_day
+    except Exception as e:
+        logger.warning(f"_is_non_trading_day({d}) failed: {e}; treating as trading day")
+        return False
+
+
 async def _record_metric_sample(metric_name: str, value: float) -> None:
     """Persist today's value as a `metric_sample` audit event so future
     baseline refreshes can compute against history without re-running every
-    metric query for every historical day."""
+    metric query for every historical day.
+
+    Skips on non-trading days (#120, 2026-05-26) so a 0-value Memorial Day
+    doesn't contaminate the 30d trimmed-median baseline.
+    """
+    today = et_today()
+    if _is_non_trading_day(today):
+        logger.debug(
+            f"_record_metric_sample skipped for {metric_name}: {today} non-trading"
+        )
+        return
     await log_audit_event(
         "metric_sample",
         summary=metric_name,
-        detail=json.dumps({"value": float(value), "as_of": str(et_today())}),
+        detail=json.dumps({"value": float(value), "as_of": str(today)}),
     )
 
 
@@ -727,9 +766,18 @@ async def _regime_conditional_baseline(conn, metric: MetricSpec, current_regime:
     values: list[float] = []
     for r in rows:
         try:
-            v = json.loads(r["detail"] or "{}").get("value")
-            if v is not None:
-                values.append(float(v))
+            payload = json.loads(r["detail"] or "{}")
+            v = payload.get("value")
+            if v is None:
+                continue
+            as_of_str = payload.get("as_of")
+            if as_of_str:
+                try:
+                    if _is_non_trading_day(date.fromisoformat(as_of_str)):
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            values.append(float(v))
         except (ValueError, TypeError):
             continue
     if len(values) < _REGIME_BASELINE_DAYS:
@@ -1037,6 +1085,17 @@ async def _compute_anomaly(
     --baseline-as-of backfill harness so today's spike isn't already in the
     reference distribution.
     """
+    # Non-trading-day short-circuit (#120, 2026-05-26): structurally-zero
+    # values on holidays/weekends are not anomalies. Skip fetch + record +
+    # classify entirely. The `as_of` arg pins to a historical date (backfill
+    # harness) so honor that when present; otherwise check today.
+    check_date = as_of if as_of is not None else et_today()
+    if _is_non_trading_day(check_date):
+        logger.debug(
+            f"_compute_anomaly skipped for {metric.name}: {check_date} non-trading"
+        )
+        return None
+
     current = await metric.fetch_today(conn)
     # None signals "denominator too small / not informative today" — skip
     # both sample recording (would pollute the baseline) and anomaly check.

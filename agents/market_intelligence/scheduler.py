@@ -69,6 +69,7 @@ JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 JOB_SUPPORT_TEST_SCAN = "support_test_scan"
 JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
+JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -1670,6 +1671,33 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _order_status_reconcile_job():
+    """Periodic DB↔Alpaca order-status reconciliation (#123, 2026-05-26).
+
+    Catches silent stops (Apollo never sees the trade_update stream event)
+    and stuck PENDING_NEW/new/accepted orders that diverge from Alpaca's
+    authoritative state. Runs every 15 min during market hours +
+    one-shot on container boot.
+
+    Audit-only — no Telegram (advisor 2026-05-26: retroactive 'stop fired
+    hours ago' alerts are operationally confusing; operator drills via
+    `/audit order_status_reconciled`).
+    """
+    try:
+        from agents.market_intelligence.broker.order_manager import reconcile_all_modes
+        result = await reconcile_all_modes()
+        if result.get("updated", 0) > 0 or result.get("errors", 0) > 0:
+            logger.info(
+                f"order_status_reconcile: examined={result['examined']} "
+                f"updated={result['updated']} errors={result['errors']}"
+            )
+        return result.get("updated", 0)
+    except Exception as e:
+        logger.error(f"order_status_reconcile_job failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_ORDER_STATUS_RECONCILE, str(e))
+        return None
+
+
 async def _backup_health_check_job():
     """Daily check that off-site backup completed within last 36h.
 
@@ -2945,6 +2973,22 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=120,
     )
 
+    # Order-status reconcile: every 15 min during market hours (mon-fri).
+    # Polls Alpaca for orders in non-terminal DB status; updates rows where
+    # broker state has diverged. Catches silent stops + stuck PENDING_NEW
+    # (#123, 2026-05-26). Audit-only — no Telegram. Misfire grace short
+    # since the next cycle is only 15 min away.
+    _scheduler.add_job(
+        audit_wrap(_order_status_reconcile_job, JOB_ORDER_STATUS_RECONCILE),
+        CronTrigger(
+            hour="9-16", minute="*/15",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_ORDER_STATUS_RECONCILE,
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
     # Backup health check: 4:30 AM ET daily — 2.5h after host cron backup
     # (02:00 ET). Telegrams if no `gdrive_backup_success` audit row in the
     # last 36h. Backstops the case where the host cron itself stops firing.
@@ -3122,6 +3166,21 @@ def start_scheduler() -> AsyncIOScheduler:
 
     _scheduler.start()
     logger.info("Market Intelligence scheduler started (ET timezone)")
+
+    # One-shot post-boot order reconcile (#123, 2026-05-26): closes the
+    # deploy-during-market-hours gap where a container restart loses live
+    # WebSocket trade_update events. Runs 60 seconds after boot to let
+    # Alpaca clients finish their dual-account verification first.
+    now_et_for_boot = datetime.now(_ET)
+    if now_et_for_boot.weekday() < 5 and _dt_time(9, 30) <= now_et_for_boot.time() <= _dt_time(16, 5):
+        _scheduler.add_job(
+            audit_wrap(_order_status_reconcile_job, JOB_ORDER_STATUS_RECONCILE + "_boot"),
+            "date",
+            run_date=now_et_for_boot + timedelta(seconds=60),
+            id=JOB_ORDER_STATUS_RECONCILE + "_boot",
+            replace_existing=True,
+            misfire_grace_time=600,
+        )
 
     # SIGTERM handler — wait for in-flight jobs to reach their finally path
     # before exiting. Without this, Docker stop/restart kills `await` inside

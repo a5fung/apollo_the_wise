@@ -5047,3 +5047,59 @@ reviews:
       advisor review of the day's ship list.
     status: pending
     added_on: 2026-05-22
+
+  - review_id: orb_bar1_wick_outlier_persistence_filter
+    title: ORB bar-1 high single-tick outlier filter (#122)
+    question: |
+      Does the 9:30-9:31 minute bar high suffer from single-tick outliers
+      (wick prints that don't hold) often enough to justify a structural
+      filter on ORB entry triggers? Spec: persistence filter (≥3 sec at
+      high) OR fall back to second-highest 1s bar high OR wick_ratio cap
+      on bar-1.
+    predicate_sql: |
+      -- Count last-90d ORB-triggered entries where bar-1 wick_ratio ≥ 0.70.
+      -- wick_ratio = (high − max(open, close)) / (high − low), computed
+      -- from mi_intraday_bars 9:30 minute bar.
+      -- NOTE: 2026-05-26 measurement found N=1 across 90d (OMCL 4/28).
+      -- Also surfaced that mi_intraday_bars is missing 9:30 data for
+      -- ~87% of live ORB entries — separate issue, doesn't block this
+      -- predicate from accruing once coverage improves OR as more
+      -- live trades land. Re-run at threshold.
+      WITH bars AS (
+          SELECT ticker,
+                 bar_time::date AS bar_date,
+                 open AS o, high AS h, low AS l, close AS c
+          FROM mi_intraday_bars
+          WHERE bar_time::date > NOW()::date - INTERVAL '90 days'
+            AND EXTRACT(hour FROM bar_time AT TIME ZONE 'America/New_York') = 9
+            AND EXTRACT(minute FROM bar_time AT TIME ZONE 'America/New_York') = 30
+      )
+      SELECT COUNT(*)
+      FROM mi_live_trades lt
+      JOIN bars b ON b.ticker = lt.ticker AND b.bar_date = lt.alert_date
+      WHERE lt.alert_date > NOW()::date - INTERVAL '90 days'
+        AND lt.entry_price IS NOT NULL
+        AND (b.h - b.l) > 0
+        AND ((b.h - GREATEST(b.o, b.c)) / (b.h - b.l)) >= 0.70;
+    threshold: 10
+    earliest_review_date: 2026-08-15
+    action_when_ready: |
+      1. Re-run scripts/orb_wick_outlier_backwardcheck.py on prod to get
+         the full cohort with stop-out vs winner breakdown.
+      2. If wick-outliers + same-day stop-out signature dominates (≥70%
+         of the cohort): design fix from data — pick between (a)
+         persistence filter via 1-second bars, (b) bar-1 close gate (e.g.
+         require close ≥ 50% of range), (c) wick_ratio cap on the bar-1
+         high used as orb_high. Cheapest first.
+      3. If counter-evidence (held/winner outliers) is ≥30% of cohort:
+         the filter would harm more than help — defer permanently with
+         "filter hurts winners" note + close.
+      4. Consult advisor before writing a 1-second-bar fetcher — that's
+         a new data path and may be unnecessary if (b) or (c) work.
+
+      Origin: 2026-05-26 measurement showed N=1 across 90d live ORB
+      entries — too thin to ship. mi_intraday_bars coverage gap (87%
+      missing 9:30 bars) is a separate hygiene issue that also limits
+      the measurement; track but don't block this predicate.
+    status: pending
+    added_on: 2026-05-26

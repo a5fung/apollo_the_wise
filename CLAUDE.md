@@ -273,6 +273,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
 | 4:45 PM | Position update |
 | 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches moment TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
+| 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
 | 4:55 PM (mon-fri) | **Time-stop scan** (9M Day 2 meanderers ≥5 trading days + peak excursion <+3%; operator-confirm via `/timestop TICKER`, #91) |
 | 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
 | 5:22 PM (mon-fri) | **Sugar Babies cohort refresh** (Pradeep persistent watchlist — observational, `/sugarbabies`) |
@@ -346,6 +347,23 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 ---
 
 ## Changes Made — Recent
+
+### 2026-05-26 (Tue) — Session B ship-day: #123 DB↔Alpaca order-status reconcile
+
+**#123 DB order-status reconciliation**: 49 stuck mi_live_orders rows discovered in production, oldest from April 16 (40 days). Pattern is NOT rare — silent WebSocket gaps + container restarts during market hours leave DB out of sync with broker's authoritative state. Drift is endemic, so this is periodic + post-deploy, not deploy-only.
+
+- New `reconcile_order_states(account_mode, lookback_days=90)` in `broker/order_manager.py`. Polls `alpaca.get_order` for every non-terminal mi_live_orders row in last 90d (filed by account_mode via JOIN to mi_live_trades), updates DB + writes `order_status_reconciled` audit row when broker state diverges.
+- Helper `_canonical_order_status` normalizes both Python SDK enum repr ('OrderStatus.PENDING_NEW') and bare lowercase ('new') to canonical form so comparisons are stable.
+- Two trigger paths: APScheduler cron `*/15 9-16 mon-fri` (every 15 min during market hours), plus one-shot 60s post-boot during market hours to close the deploy-during-market-hours WebSocket gap.
+- **Audit-only, no Telegram** per advisor 2026-05-26 — retroactive "stop fired hours ago" alerts are operationally confusing; operator drills via `/audit order_status_reconciled` instead.
+- Scope deliberately bounded to order-status. Trade-state derive-close (ROIV class — `mi_live_trades.status` divergence from Alpaca position state) is a follow-up if drift in 'filled'-but-not-closed trades persists 1wk after this lands. Per advisor "smallest viable → ship → measure → expand."
+- 11/11 tests pass (`test_order_status_reconcile.py`), including divergence → UPDATE + audit, terminal-row skip, Alpaca-returns-None tolerance, raised-exception isolation.
+
+**#122 ORB single-tick outlier — filed as data-gated review, NOT shipped**: advisor pushed back on plan-line "Option A persistence filter via 1-second bars" — no seed case in BACKLOG, ship-from-hypothesis. Wrote `scripts/orb_wick_outlier_backwardcheck.py`, ran on prod: **N=1 across 90d live cohort** (OMCL 2026-04-28, wick=0.86, same-day stop-out). Per discipline, filed as `orb_bar1_wick_outlier_persistence_filter` (threshold=10, earliest 2026-08-15). The right outcome — measurement-first prevented a 1-second-bar fetcher being shipped on a phantom.
+
+**#127 mi_intraday_bars 9:30 coverage gap (caught during #122 measurement)**: 87% of last-90d live ORB entries had no 9:30 bar in `mi_intraday_bars`. Root cause: `alpaca.get_first_bar` (live path) fetches via Alpaca data API but never persists; the table is only written by Polygon-backed backtester + Pradeep tracker. Fix: 5-line write-through inside `get_first_bar` — INSERT bar after Alpaca fetch, ON CONFLICT DO NOTHING, error-wrapped so persistence failure doesn't break the entry trigger. Per advisor 2026-05-26: forward-only (historical gap stays a gap; live cohort grows fast enough that #122 predicate accrues on its own). Verify next-day: first ORB entry tomorrow should add a row.
+
+**#120 L2 detector market-closed-day awareness**: Memorial Day 2026-05-25 wrote a 0-value `metric_sample` for `9m_alerts_per_day` (intraday scans are `mon-fri` so they didn't actually run, but the audit job DID record the day's 0). That 0 then contaminates the 30d trimmed-median baseline → next trading day's return-to-normal value drifts upward against a depressed median → false-positive L2. Advisor pushed back on the original "source-job registry" plan: too wide a scope when the actual condition is just "today is a market holiday." Fix: `_is_non_trading_day(d)` thin wrapper around existing `trading_calendar.get_market_status()` (uses `exchange_calendars` NYSE rules — no hardcoded list). Applied at 3 sites: (1) `_compute_anomaly` short-circuits to `None` on non-trading days; (2) `_record_metric_sample` no-ops on non-trading days (prevents future contamination); (3) `_fetch_history` + `_regime_conditional_baseline` filter out any already-recorded holiday samples at read time (defense in depth — corrects existing baselines without destructive SQL). 6/6 tests pass (`test_l2_holiday_awareness.py`), including fail-open behavior when the calendar library errors. Memorial Day weekend already cost one false-positive class; this prevents July 4, Labor Day, Thanksgiving, Christmas going forward.
 
 ### 2026-05-24 (Sun) — 9-commit ship-day: 3 weekly-review fixes + 3 new intraday detectors + DR-secrets tmpfs + L3 drift annotation + 2 regression bugs caught
 

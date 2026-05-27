@@ -1731,6 +1731,159 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
     return cancelled
 
 
+def _canonical_order_status(raw: str | None) -> str | None:
+    """Normalize order status to lowercase canonical form. Handles both Python
+    SDK enum repr ('OrderStatus.PENDING_NEW') and bare lowercase ('new').
+
+    Returns None for empty input. Examples:
+      'OrderStatus.PENDING_NEW' -> 'pending_new'
+      'new' -> 'new'
+      'OrderStatus.FILLED' -> 'filled'
+    """
+    if not raw:
+        return None
+    return raw.split(".")[-1].lower()
+
+
+# Statuses that are terminal — order is done, no further state changes expected.
+_TERMINAL_ORDER_STATUSES = frozenset({
+    "filled", "canceled", "cancelled", "expired", "rejected", "replaced", "done_for_day",
+})
+
+# Non-terminal statuses we expect to see in mi_live_orders rows. Anything in
+# this set should reconcile to Alpaca on a periodic basis.
+_TRANSITIONAL_ORDER_STATUSES = frozenset({
+    "pending_new", "new", "accepted", "held", "pending_replace", "pending_cancel",
+    "accepted_for_bidding", "stopped", "suspended", "calculated",
+})
+
+
+async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> dict:
+    """Reconcile mi_live_orders.status against Alpaca for orders in transitional
+    states. Updates DB rows where Alpaca's authoritative status differs.
+
+    Smallest-viable version (#123, 2026-05-26): order-status only — does not
+    derive trade close-out from Alpaca position state. If drift in 'filled'
+    trades persists after 1wk of this running, expand scope to include
+    trade-state derive-close (ROIV class). Per advisor 2026-05-26.
+
+    Bounded to last `lookback_days` to avoid scanning the entire order history;
+    49 stuck orders dating back to April surfaced today are well within 90d.
+
+    Returns: {'examined': N, 'updated': M, 'errors': E}. Audit row per
+    divergence ('order_status_reconciled') + 'order_status_reconcile_failed'
+    on per-order fetch errors.
+
+    Skip Telegram per advisor — retroactive 'stop fired hours ago' alerts
+    are operationally confusing. Operator can drill via /audit or /trades.
+    """
+    pool = await get_pool()
+    examined = 0
+    updated = 0
+    errors = 0
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT lo.alpaca_order_id, lo.ticker, lo.status, lo.trade_id, lo.purpose
+            FROM mi_live_orders lo
+            JOIN mi_live_trades lt ON lt.id = lo.trade_id
+            WHERE lo.alpaca_order_id IS NOT NULL
+              AND lt.account_mode = $1
+              AND lo.submitted_at > NOW() - INTERVAL '{lookback_days} days'
+              AND lo.filled_at IS NULL
+              AND lo.cancelled_at IS NULL
+            ORDER BY lo.submitted_at DESC
+            """,
+            account_mode,
+        )
+
+    if not rows:
+        return {"examined": 0, "updated": 0, "errors": 0}
+
+    for r in rows:
+        order_id = r["alpaca_order_id"]
+        db_status_norm = _canonical_order_status(r["status"])
+        # Skip already-terminal rows; they leaked through somehow but no work to do.
+        if db_status_norm in _TERMINAL_ORDER_STATUSES:
+            continue
+        examined += 1
+
+        try:
+            alpaca_order = await alpaca.get_order(order_id, account_mode=account_mode)
+        except Exception as e:
+            errors += 1
+            await log_audit_event(
+                "order_status_reconcile_failed",
+                f"{r['ticker']} order={order_id[:8]}: {type(e).__name__}",
+                f"order_id={order_id} db_status={r['status']!r} error={e}",
+            )
+            continue
+
+        if alpaca_order is None:
+            # alpaca.get_order swallows all errors → None. Could be 404
+            # (order gone from broker) or transient 5xx. Audit + skip; will
+            # retry next cycle.
+            await log_audit_event(
+                "order_status_reconcile_failed",
+                f"{r['ticker']} order={order_id[:8]} alpaca_returned_none",
+                f"order_id={order_id} db_status={r['status']!r}",
+            )
+            errors += 1
+            continue
+
+        alpaca_status_norm = _canonical_order_status(alpaca_order.get("status"))
+        if alpaca_status_norm == db_status_norm:
+            continue  # in sync
+
+        # Divergence — update DB to match Alpaca + audit
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE mi_live_orders
+                SET status = $1,
+                    filled_qty = COALESCE($2, filled_qty),
+                    filled_avg_price = COALESCE($3, filled_avg_price),
+                    filled_at = CASE WHEN $1 = 'filled' THEN COALESCE(filled_at, NOW()) ELSE filled_at END,
+                    cancelled_at = CASE WHEN $1 IN ('canceled','cancelled','expired','rejected')
+                                        THEN COALESCE(cancelled_at, NOW()) ELSE cancelled_at END
+                WHERE alpaca_order_id = $4
+                """,
+                alpaca_status_norm,
+                alpaca_order.get("filled_qty"),
+                alpaca_order.get("filled_avg_price"),
+                order_id,
+            )
+        updated += 1
+        await log_audit_event(
+            "order_status_reconciled",
+            f"{r['ticker']} order={order_id[:8]}: {db_status_norm} -> {alpaca_status_norm} "
+            f"({account_mode})",
+            f"order_id={order_id} trade_id={r['trade_id']} purpose={r['purpose']} "
+            f"db_was={r['status']!r} alpaca_now={alpaca_status_norm} "
+            f"filled_qty={alpaca_order.get('filled_qty')} "
+            f"filled_avg_price={alpaca_order.get('filled_avg_price')}",
+        )
+
+    return {"examined": examined, "updated": updated, "errors": errors}
+
+
+async def reconcile_all_modes() -> dict:
+    """Run reconcile_order_states for paper + live (or paper only if
+    ENABLE_LIVE_MODE=false). Aggregate counts across modes."""
+    modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
+    totals = {"examined": 0, "updated": 0, "errors": 0}
+    for mode in modes:
+        try:
+            result = await reconcile_order_states(mode)
+            for k in totals:
+                totals[k] += result.get(k, 0)
+        except Exception as e:
+            logger.error(f"reconcile_order_states[{mode}] failed: {e}", exc_info=True)
+            totals["errors"] += 1
+    return totals
+
+
 async def sync_positions() -> list[str]:
     """
     Reconcile DB vs Alpaca positions per account_mode (dual-account #66).

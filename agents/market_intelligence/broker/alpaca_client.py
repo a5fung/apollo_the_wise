@@ -508,6 +508,32 @@ async def get_first_bar(ticker: str, trade_date: date) -> dict | None:
             return None
         b = bar_set[0]
         logger.info(f"ORB bar for {ticker}: {b.timestamp} O={b.open} H={b.high} L={b.low} C={b.close} V={b.volume}")
+        # Write-through to mi_intraday_bars (#127, 2026-05-26) so future
+        # backward-checks have the live cohort's 9:30 bar. Same source the
+        # entry trigger saw. Wrapped — persistence failure must not break
+        # the fetch (live ORB monitor is the hot path).
+        if b.timestamp is not None:
+            try:
+                from agents.market_intelligence.db import get_pool
+                pool = await get_pool()
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO mi_intraday_bars
+                            (ticker, bar_time, open, high, low, close, volume, vwap)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                        ON CONFLICT (ticker, bar_time) DO NOTHING
+                        """,
+                        ticker, b.timestamp,
+                        float(b.open), float(b.high), float(b.low), float(b.close),
+                        int(b.volume),
+                        float(b.vwap) if getattr(b, "vwap", None) is not None else None,
+                    )
+            except Exception as persist_err:
+                logger.warning(
+                    f"mi_intraday_bars write-through failed for {ticker} "
+                    f"{b.timestamp}: {persist_err}"
+                )
         return {
             "open": float(b.open),
             "high": float(b.high),
