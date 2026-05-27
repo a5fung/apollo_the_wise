@@ -1465,15 +1465,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     catalyst_quality, confidence_multiplier,
                     news_summary, claude_analysis, pplx_quality,
                 )
-                # Telegram surface so operator sees the downgrade in real
-                # time + can use /why to inspect full extraction.
-                # Dedup repeated rubric-downgrade Telegrams across consecutive
-                # scan ticks. EP scans run every 5 min; without dedup, the
-                # same ticker generates a fresh downgrade message each tick
-                # until cooldown — CAVA 2026-05-20 fired 4 times this morning.
-                # Audit event still fires for telemetry; only Telegram is
-                # suppressed when an identical downgrade was logged in the
-                # last 1h for the same ticker+alert_date.
+                # Dedup repeated rubric-downgrade Telegrams. Audit dedup is
+                # daily ET (see _should_log_catalyst_earnings_event_today);
+                # the Telegram dedup must match that window or scan ticks
+                # after the audit row's first hour fire Telegram repeatedly
+                # — BBWI 2026-05-27 sent 12+ alerts under the old 1h window
+                # (audit row aged past 1h, suppress check passed, Telegram
+                # re-fired every 5 min for the remaining scan window).
                 _suppress_telegram = False
                 try:
                     pool = await get_pool()
@@ -1482,7 +1480,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             SELECT 1 FROM mi_audit_log
                             WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
                               AND summary LIKE $1
-                              AND created_at > NOW() - INTERVAL '1 hour'
+                              AND (created_at AT TIME ZONE 'America/New_York')::date
+                                  = (NOW() AT TIME ZONE 'America/New_York')::date
                               AND created_at < NOW() - INTERVAL '1 second'
                             LIMIT 1
                         """, f"{ticker}:%")

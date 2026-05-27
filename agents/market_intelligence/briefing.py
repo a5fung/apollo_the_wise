@@ -68,22 +68,50 @@ _PERPLEXITY_FILLER_PATTERNS = [
     r"(?:Please|I (?:recommend|suggest)) (?:check|consult|visit|refer to)[^.]*\.\s*$",
 ]
 
+# Phrases that signal Perplexity's ENTIRE response is unreliable (#130, 2026-05-27).
+# CRSR/DY case: Perplexity returns a disclaimer ("I don't have reliable data" /
+# "is likely a ticker mismatch") followed by speculative prose ("Given that,
+# here's how I'd approach it as an analyst", "If you meant DIDIY..."). The
+# per-sentence stripping above removes the disclaimer but lets the
+# speculative prose through. When any of these signals appear, replace the
+# whole catalyst block with "See news" — hypothetical analysis is worse than
+# none.
+_PERPLEXITY_WHOLESALE_DISCARD_PATTERNS = [
+    r"is likely a ticker mismatch",
+    r"don'?t have any reliable",
+    r"don'?t have (?:reliable|up[ -]?to[ -]?date|specific|current)\s+(?:news|data|information)",
+    r"none of the (?:results|sources|search results) (?:shown |found |returned )?are about (?:the |this )?(?:stock|ticker|company)",
+    r"here'?s how I'?d approach it as an analyst",
+    r"If you meant [A-Z]{2,6}",
+    r"the search results point to [A-Z][a-zA-Z]+ (?:Global|Inc|Corp)",
+]
+_PERPLEXITY_WHOLESALE_DISCARD_RE = re.compile(
+    "|".join(_PERPLEXITY_WHOLESALE_DISCARD_PATTERNS), re.IGNORECASE
+)
+
 
 def _sanitize_perplexity_filler(text: str) -> str:
     """Strip Perplexity hedge/filler patterns from operator-visible text.
 
     Returns sanitized text; if everything gets stripped (text was 100%
-    filler), returns "See news" as a clean fallback so the alert line
-    still renders meaningfully.
+    filler) OR a wholesale-discard pattern matched anywhere, returns
+    "See news" as a clean fallback so the alert line still renders
+    meaningfully.
 
     Examples (input → output):
       "I cannot find specific info on XYZ. The nearest match is ABC..."
         → "" → "See news"
       "AGYS reported Q4 earnings up 12%. As of my knowledge cutoff..."
         → "AGYS reported Q4 earnings up 12%."
+      "DY is likely a ticker mismatch here: the search results point to
+        DiDi Global..." → "See news"
     """
     if not text:
         return text
+    # Wholesale-discard if the text contains any signal that Perplexity
+    # didn't actually find the ticker / is speculating (#130).
+    if _PERPLEXITY_WHOLESALE_DISCARD_RE.search(text):
+        return "See news"
     cleaned = text
     for pattern in _PERPLEXITY_FILLER_PATTERNS:
         cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
@@ -1951,10 +1979,12 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
     gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
 
-    # Strip conflicting gap% from catalyst text (Perplexity may say "18%" while actual gap is 27%)
-    catalyst_text = ep.get("catalyst", "See news")[:300]
+    # Sanitize before truncation — disclaimer detection works on full text;
+    # truncating first risks cutting before a signal phrase (#130).
+    catalyst_text = ep.get("catalyst", "See news") or "See news"
     catalyst_text = re.sub(r"gapped (?:up |down )?[\d.]+%", "gapped up", catalyst_text)
     catalyst_text = _sanitize_perplexity_filler(catalyst_text)
+    catalyst_text = _truncate_sentence(catalyst_text, 300)
 
     # Sugar Baby Convergence tag — operator escalation cue. Pure telemetry:
     # DB failure here MUST NEVER break the underlying EP alert (the trading

@@ -1134,7 +1134,8 @@ async def _stop_ack_timeout_watchdog_job():
             already = await conn.fetchval(
                 "SELECT 1 FROM mi_audit_log "
                 "WHERE event_type IN ('stop_ack_timeout_remediated', "
-                "                     'stop_ack_remediation_failed') "
+                "                     'stop_ack_remediation_failed', "
+                "                     'stop_ack_broker_covered') "
                 "AND summary LIKE $1 "
                 "AND created_at > NOW() - INTERVAL '1 day' LIMIT 1",
                 f"{ticker} #{trade_id}%",
@@ -1144,6 +1145,65 @@ async def _stop_ack_timeout_watchdog_job():
 
             qty = float(row["remaining_shares"] or row["entry_shares"] or 0)
             stop_target = float(row["orb_low"]) if row["orb_low"] is not None else None
+
+            # Broker-side coverage check (#128, 2026-05-27): DB stop_order_id
+            # being NULL is a flawed proxy for "naked". After partial-exit
+            # cycles or stop-replacement timing gaps, DB can show NULL while
+            # broker has a working sell order covering the position. Before
+            # placing a redundant stop (which Alpaca rejects with
+            # `insufficient qty available`, surfacing as the BW #119 false
+            # CRITICAL on 2026-05-27), confirm with the broker.
+            try:
+                existing = await alpaca.get_open_orders(
+                    ticker, account_mode=account_mode,
+                )
+            except Exception as get_err:
+                existing = []
+                logger.warning(
+                    f"stop_ack_watchdog: get_open_orders({ticker}) failed: "
+                    f"{get_err} — proceeding with remediation (fail-open)"
+                )
+            sell_orders = [
+                o for o in existing
+                if str(o.get("side", "")).lower().endswith("sell")
+            ]
+            covered = sum(float(o.get("qty") or 0) for o in sell_orders)
+            if qty > 0 and covered >= qty:
+                stop_o = next(
+                    (o for o in sell_orders
+                     if "stop" in str(o.get("type", "")).lower()
+                     or o.get("stop_price") is not None),
+                    None,
+                )
+                if stop_o:
+                    from agents.market_intelligence.broker.order_manager import (
+                        set_stop_order_id,
+                    )
+                    await set_stop_order_id(
+                        trade_id, stop_o["id"],
+                        reason="watchdog_synced_from_broker",
+                        account_mode=account_mode,
+                    )
+                await log_audit_event(
+                    "stop_ack_broker_covered",
+                    f"{ticker} #{trade_id}: broker has {covered} sh covering "
+                    f"{qty} remaining "
+                    f"(stop_order_id={'synced' if stop_o else 'no_stop_only_market'})",
+                    detail=_json.dumps({
+                        "trade_id": trade_id,
+                        "ticker": ticker,
+                        "account_mode": account_mode,
+                        "remaining_shares": qty,
+                        "broker_covered": covered,
+                        "synced_stop_order_id": stop_o["id"] if stop_o else None,
+                        "open_sell_orders": [
+                            {"id": o["id"], "type": str(o.get("type")),
+                             "qty": o.get("qty"), "stop_price": o.get("stop_price")}
+                            for o in sell_orders
+                        ],
+                    }),
+                )
+                continue
 
             if qty <= 0 or stop_target is None:
                 await log_audit_event(
