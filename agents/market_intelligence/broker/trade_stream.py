@@ -818,11 +818,22 @@ async def _process_entry_fill(
         """, str(order.id), filled_qty, filled_price)
 
     attempt = trade.get("entry_attempt", 1)
-    await send_telegram_message(
+    msg = (
         f"{mode_prefix(account_mode)}✅ *FILLED:* {ticker} (attempt {attempt})\n"
         f"Entry: ${filled_price:.2f} x {filled_qty:.0f} shares\n"
         f"Stop: ${trade['orb_low']:.2f}"
     )
+    try:
+        from agents.market_intelligence.db import log_audit_event
+        await log_audit_event(
+            "trade_lifecycle_telegram_attempted",
+            f"fill {ticker} @${filled_price:.2f} x{filled_qty:.0f}",
+            f"trade_id={trade['id']} account={account_mode} attempt={attempt} "
+            f"message_len={len(msg)}",
+        )
+    except Exception as e:
+        logger.debug(f"trade-lifecycle audit failed (non-critical): {e}")
+    await send_telegram_message(msg)
     logger.info(f"WS fill [{account_mode}]: {ticker} @${filled_price:.2f} x{filled_qty:.0f}")
 
 
@@ -876,10 +887,28 @@ async def _process_stop_fill(
             """, trade["id"], json.dumps(exits), total_pnl)
 
         reason = "max attempts" if is_day1 else f"stop hit ({trade.get('hold_days', 0)}d)"
-        await send_telegram_message(
+        msg = (
             f"{mode_prefix(account_mode)}❌ *Stopped out:* {ticker} @${stop_fill_price:.2f}\n"
             f"P&L: ${pnl:+,.2f} | {reason}"
         )
+        # Audit row BEFORE the send, with the message text — gives operator a
+        # ground-truth record that the stop-out handler reached the Telegram
+        # step. The actual Telegram delivery is a separate question (mi_audit_log
+        # 'telegram_send_failed' / 'telegram_markdown_fallback' track failures;
+        # silent success was previously invisible). Caught 2026-05-26 ROIV:
+        # WS stop fired, DB closed, but operator couldn't tell if Telegram
+        # delivered — there was no audit trail on success path.
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "trade_lifecycle_telegram_attempted",
+                f"stop_out {ticker} @${stop_fill_price:.2f} pnl=${pnl:+,.2f}",
+                f"trade_id={trade['id']} account={account_mode} reason={reason} "
+                f"message_len={len(msg)}",
+            )
+        except Exception as e:
+            logger.debug(f"trade-lifecycle audit failed (non-critical): {e}")
+        await send_telegram_message(msg)
         logger.info(
             f"WS stop-out [{account_mode}]: {ticker} @${stop_fill_price:.2f} "
             f"pnl=${pnl:+,.2f}"
