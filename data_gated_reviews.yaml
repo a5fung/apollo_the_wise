@@ -5417,13 +5417,38 @@ reviews:
           TradingView chart visually confirmed price above $204.86 at
           6:48 AM PT (09:48 ET); Alpaca SIP API minute bar fetch
           confirms identical (high $207.20). Not chart-vs-system disagreement.
+        triage_outcomes_2026_05_28:
+          alpaca_web_ui: "Order no longer visible (aged out / cancelled). Cannot inspect richer Alpaca-side reason."
+          alpaca_status_page: "No reliability notes for 2026-05-28. No documented incident."
         misclassified_as: clean_miss
         misclassification_root_cause: |
           classify_orb_cancellation was called with
           `limit_price=trade["entry_price"]` (= trigger, not actual
           stop-limit ceiling). Compounded by Polygon bar source
-          under-reporting max_h ($203 vs SIP $211). Both fixed
-          (limit_price arg) / filed (Polygon source) separately.
+          under-reporting max_h ($203 vs SIP $211). limit_price arg
+          fixed in `611ca9e`; Polygon source issue still open.
+
+      # Historical clean_miss cohort cross-check (2026-05-28 investigation,
+      # before threshold=3 ripens). Of 6 prior clean_miss cases in 30d:
+      historical_cross_check:
+        n_confirmed_silent_trigger_failure: 1  # AVAV only
+        n_ambiguous: 1                          # AGYS — cross at 09:31:00 bar boundary
+        n_true_clean_miss: 4                    # BZH, GEMI, EOSE, PPTA
+        polygon_vs_sip_max_h_delta_typical: "3-15¢ for legitimate misses"
+        polygon_vs_sip_max_h_delta_avav: "$8.50 — anomalous outlier"
+        notes: |
+          AGYS 2026-05-19: SIP shows 09:31:00 bar H=$94.77 (above
+          trigger $94.52), but order submit was at 09:31:10ish — the
+          intra-bar timing means trigger-after-submission can't be
+          determined from minute granularity. Reported as ambiguous,
+          not confirmed silent failure. Investigation predicate
+          should require ≥1 minute between submit and first cross to
+          eliminate the same-bar ambiguity class.
+
+      # Going-forward: the classifier limit_price fix (`611ca9e`) means
+      # future clean_miss vs would_have_filled vs gap_through labels
+      # will be accurate. Cohort grows organically. Re-run cross-check
+      # against SIP at 2026-06-15 review ripening.
 
     status: pending
     added_on: 2026-05-28
