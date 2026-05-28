@@ -1812,6 +1812,9 @@ async def _catalyst_downgrade_digest_job():
     Audit log retains per-ticker rows for `/rubric TICKER` drilldown.
     """
     from agents.market_intelligence.collector import _ET
+    from agents.market_intelligence.audit_events import (
+        CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
+    )
     now_et = datetime.now(_ET)
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1819,11 +1822,12 @@ async def _catalyst_downgrade_digest_job():
             """
             SELECT summary, detail, created_at
             FROM mi_audit_log
-            WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
+            WHERE event_type = $2
               AND (created_at AT TIME ZONE 'America/New_York')::date = $1
             ORDER BY created_at ASC
             """,
             now_et.date(),
+            CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
         )
 
     if not rows:

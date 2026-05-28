@@ -2764,8 +2764,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 result=f"❌ `/partialnow {ticker}` raised: {type(e).__name__}: {e}",
             )
 
+        from agents.market_intelligence.audit_events import PARTIAL_NOW_OPERATOR_CONFIRMED
         await log_audit_event(
-            "partial_now_operator_confirmed",
+            PARTIAL_NOW_OPERATOR_CONFIRMED,
             f"{ticker} trade_id={row['id']} qty={sell_qty} success={ok}",
         )
 
@@ -2831,8 +2832,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 result=f"❌ `/syncnow` raised: {type(e).__name__}: {e}",
             )
 
+        from agents.market_intelligence.audit_events import SYNC_NOW_OPERATOR_CONFIRMED
         await log_audit_event(
-            "sync_now_operator_confirmed",
+            SYNC_NOW_OPERATOR_CONFIRMED,
             f"mode={mode_label} discrepancies={len(messages)}",
         )
 

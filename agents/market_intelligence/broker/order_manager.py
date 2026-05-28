@@ -1822,8 +1822,9 @@ async def _maybe_alert_stuck_pending_new(
         ticker = row["ticker"]
         purpose = row.get("purpose") if hasattr(row, "get") else (row["purpose"] if "purpose" in row.keys() else None)
 
+        from agents.market_intelligence.audit_events import STUCK_PENDING_NEW_DETECTED
         await log_audit_event(
-            "stuck_pending_new_detected",
+            STUCK_PENDING_NEW_DETECTED,
             f"{ticker} order={order_id[:8]} stuck {age_minutes:.0f}min "
             f"({account_mode}, purpose={purpose})",
             f"order_id={order_id} trade_id={row['trade_id']} "

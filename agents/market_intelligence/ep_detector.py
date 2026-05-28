@@ -1567,11 +1567,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             for i in range(1, 7)
                         },
                     }
+                from agents.market_intelligence.audit_events import (
+                    CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
+                )
                 if await _should_log_catalyst_earnings_event_today(
-                    "catalyst_earnings_revenue_weak_downgrade", ticker
+                    CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE, ticker
                 ):
                     await log_audit_event(
-                        "catalyst_earnings_revenue_weak_downgrade",
+                        CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
                         f"{ticker}: {_original_quality} → routine "
                         f"(earnings catalyst, {_downgrade_reason})",
                         json.dumps({
