@@ -5294,6 +5294,51 @@ reviews:
       Scheduled 16:45 ET cron unchanged — its window falls inside the safe
       band, cohort confirms it fills cleanly. No need to widen the guard.
 
+  - review_id: intraday_failed_break_signal_n10
+    title: "Intraday failed-break detector (#94 follow-up class)"
+    question: |
+      Sister detector to #94 (intraday flag-break) and complement to #145
+      (idempotency guard for already-broken candidates).
+
+      Mechanic: a ticker that triggers #94 (price crosses base_high with
+      volume) but then closes back BELOW base_high before EOD has
+      structurally failed the breakout. Operationally distinct from the
+      EOD-classified INVALIDATED stage — captured in real-time the
+      moment the failure occurs, not at 5:25 PM.
+
+      Hypothesis: failed-break signal predicts negative forward returns
+      stronger than just "didn't break" or "broke and held". If
+      confirmed, gives operator a real-time exit/avoid signal for
+      tickers already in active scrutiny.
+
+      Why deferred (filed 2026-05-28, not shipped same day): adding a
+      new methodology detector late in a heavy ship day risks subtle
+      bugs that surface only at next-day first-fire (the #94/#95/#96
+      shipped detectors all had subtle bugs caught at first-fire).
+      Design properly in a fresh session.
+
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_breaks
+      WHERE break_date >= CURRENT_DATE - INTERVAL '90 days'
+        AND parent_invalidated_eod = TRUE;  -- proxy: these failed by EOD
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Phase 1: ship shadow detector that adds 3 columns to
+      mi_flag_breaks: `failed_at`, `low_after_break`, `bars_until_fail`.
+      Extend existing run_intraday_flag_break_scan to poll today's
+      breaks and update on reversal-below-base_high.
+
+      Phase 2 at N≥10: forward-return analysis. Did failed breaks
+      avoid losses vs holding through EOD? If signal is positive
+      (failed-flag forward return is significantly worse), ship as
+      operator-facing alert.
+
+      Phase 3: paper-phase entry/exit gating. Defer to N≥30.
+
+    status: pending
+    added_on: 2026-05-28
+
   - review_id: orb_entry_stuck_pending_new
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28
