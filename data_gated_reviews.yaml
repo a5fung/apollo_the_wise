@@ -5339,6 +5339,95 @@ reviews:
     status: pending
     added_on: 2026-05-28
 
+  - review_id: alpaca_stop_trigger_reliability
+    title: "Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
+    question: |
+      AVAV 2026-05-28 surfaced a NEW entry-reliability bug class distinct
+      from RDW #142 (stuck-pending_new):
+
+      - 09:31:10 ET: ORB stop-limit buy submitted (stop $204.86, limit $205.88)
+      - 09:45:00 ET: Alpaca status pending_new → new (in book)
+      - 09:48:00 ET: AVAV high $207.20 per Alpaca SIP feed (volume 86K)
+                    User visually confirmed on TradingView chart.
+      - 09:48–10:00: Price stayed above trigger entire remainder of window
+      - 10:00:00 ET: Status new → canceled (orb_window_cleanup) — never triggered
+
+      Expected: stop trigger fires when price ≥ $204.86, order becomes
+      limit at $205.88, may not fill if price gapped past limit
+      (gap_through). What ACTUALLY happened: status went directly
+      `new → canceled` with no `accepted_for_bidding` or any trigger-
+      fired state in between.
+
+      Hypotheses:
+        (a) Alpaca paper sim's stop-trigger logic ignores prints from
+            certain exchanges/feeds
+        (b) Apollo's submitted stop_price wasn't correctly persisted
+            to Alpaca's book (submission worked but storage didn't)
+        (c) Some paper-trading-restricted ticker class quirk
+        (d) Race condition: order moved to `new` only at 09:45 (15min
+            after submission) — maybe the trigger logic only watches
+            prints AFTER status moves to `new`. The 09:48 cross happened
+            3min after `new` status, so this isn't quite right either.
+
+      Triage steps before classifying as P0:
+        1. Check Alpaca web UI for AVAV order — paper sim sometimes
+           shows richer reason than the API returns
+        2. Check Alpaca status page for paper-routing reliability notes
+        3. Run cohort scan: orders that went `new → canceled` at the
+           10:00 cleanup, joined against fresh SIP bars showing
+           trigger-crossing prints. If N≥3, this class is structural.
+
+    predicate_sql: |
+      -- ORB entries that cancelled at the 10:00 cleanup with
+      -- filled_qty=0. Live-population proxy; refinement requires SIP
+      -- bar-fetch join (manual investigation step).
+      SELECT COUNT(*) FROM mi_live_orders lo
+      JOIN mi_live_trades lt ON lt.id = lo.trade_id
+      WHERE lo.side = 'buy'
+        AND lo.order_type = 'stop_limit'
+        AND lo.status = 'canceled'
+        AND lo.filled_qty = 0
+        AND lo.submitted_at::date >= CURRENT_DATE - INTERVAL '30 days'
+        AND lo.cancelled_at - lo.submitted_at BETWEEN
+              INTERVAL '25 minutes' AND INTERVAL '35 minutes';
+
+    threshold: 3
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      For each candidate (predicate fires N≥3), manually fetch the
+      Alpaca SIP minute bars across the order's submitted→cancelled
+      window and verify whether price crossed trigger. If ≥3 cases
+      cross-confirmed: file P0 (Alpaca-paper stop reliability blocks
+      live cutover until verified on live account). If <3: keep
+      monitoring + extend window 30d.
+
+      Note for the manual fetch script: use `_get_data_client()` after
+      `_bootstrap_alpaca_credentials()` per the AVAV investigation
+      pattern.
+
+    case_log:
+      - ticker: AVAV
+        alert_date: 2026-05-28
+        order_id: ea918c50-3621-4cae-b785-05b34ef79d14
+        trigger_price: 204.86
+        limit_price: 205.88
+        first_cross_et: "09:48:00"
+        max_h_in_window_sip: 211.50
+        user_visual_confirmation: |
+          TradingView chart visually confirmed price above $204.86 at
+          6:48 AM PT (09:48 ET); Alpaca SIP API minute bar fetch
+          confirms identical (high $207.20). Not chart-vs-system disagreement.
+        misclassified_as: clean_miss
+        misclassification_root_cause: |
+          classify_orb_cancellation was called with
+          `limit_price=trade["entry_price"]` (= trigger, not actual
+          stop-limit ceiling). Compounded by Polygon bar source
+          under-reporting max_h ($203 vs SIP $211). Both fixed
+          (limit_price arg) / filed (Polygon source) separately.
+
+    status: pending
+    added_on: 2026-05-28
+
   - review_id: orb_entry_stuck_pending_new
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28

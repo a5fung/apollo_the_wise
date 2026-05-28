@@ -1695,10 +1695,18 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
                 ))
                 # Gap-through telemetry (task #22): classify why the limit
                 # didn't fill — clean_miss vs gap_through vs would_have_filled.
-                # Trigger price = orb_high (per submit_entry, the buy-stop trigger
-                # is set slightly below orb_high but orb_high is the reference);
-                # limit_price = entry_price (set via stop_limit_buy_price helper).
-                # Fire-and-forget; bar fetch failure logs and continues.
+                #
+                # Bug fix 2026-05-28 (AVAV investigation): previously this
+                # passed `entry_price` as the `limit_price` arg, which is the
+                # TRIGGER (= orb_high), not the LIMIT (= stop_limit_buy_price
+                # of orb_high). Effect: classifier couldn't tell `would_have_
+                # filled` from `gap_through` since both args were identical,
+                # so any cross-trigger case was mis-labelled `clean_miss`.
+                # AVAV 2026-05-28 was the surfacing case: SIP showed high
+                # $207.20 at 09:48 ET vs trigger $204.86 — should have been
+                # `would_have_filled` or `gap_through`, was logged as
+                # `clean_miss` due to this bug. Fire-and-forget; bar fetch
+                # failure logs and continues.
                 if trade.get("orb_high") and trade.get("entry_price"):
                     asyncio.create_task(classify_orb_cancellation(
                         trade_id=int(trade["id"]),
@@ -1706,7 +1714,7 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
                         alert_date=trade["alert_date"],
                         proposed_at=trade["proposed_at"],
                         trigger_price=float(trade["orb_high"]),
-                        limit_price=float(trade["entry_price"]),
+                        limit_price=stop_limit_buy_price(float(trade["orb_high"])),
                         cancelled_at=cancellation_time,
                         pm_rvol=trade.get("pm_rvol"),
                     ))
