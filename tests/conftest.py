@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import sys
 import types
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 
 class _MockModule(types.ModuleType):
@@ -70,3 +70,24 @@ for _attr in ("run_paper_trade_tracker", "format_tracker_telegram"):
     if not hasattr(_tracker_stub, _attr):
         setattr(_tracker_stub, _attr, MagicMock(name=_attr))
 sys.modules["agents.market_intelligence.backtester.tracker"] = _tracker_stub
+
+
+# ─── Shared asyncpg pool mock builder ──────────────────────────────────────
+# Origin: 3 test files rolling their own near-identical version
+# (test_ep_scan_watchdog, test_downgrade_digest, test_sync_positions_safety_guard).
+# Per /simplify 2026-05-28 advisor review, rule-of-three crossed.
+def make_mock_pool():
+    """Build a MagicMock asyncpg pool. Returns `(pool, conn)`.
+
+    Caller configures `conn.fetch`, `conn.fetchval`, `conn.execute` etc. with
+    their own AsyncMocks (return_value or side_effect). This helper owns only
+    the acquire-context-manager wiring — the actual rule-of-three duplication.
+    """
+    conn = MagicMock()
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=acquire_cm)
+    return pool, conn
+

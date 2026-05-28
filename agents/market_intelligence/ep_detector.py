@@ -1529,26 +1529,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
                 and _should_apply_yoy_carveout(_extracted)
             ):
-                _qr_carve = _extracted.get("q_revenue_usd") or {}
-                _gc_carve = _extracted.get("guidance_change") or {}
-                _downgrade_reason = None  # carve-out: keep LLM grade
+                qr = _extracted.get("q_revenue_usd") or {}
+                gc = _extracted.get("guidance_change") or {}
+                _downgrade_reason = None
                 try:
                     await log_audit_event(
                         "catalyst_downgrade_carveout_applied",
                         f"{ticker}: kept {catalyst_quality} "
-                        f"(beat {_qr_carve.get('beat_vs_est_pct'):.1f}% + "
-                        f"{_gc_carve.get('direction')}:{_gc_carve.get('confidence')})",
+                        f"(beat {qr.get('beat_vs_est_pct'):.1f}% + "
+                        f"{gc.get('direction')}:{gc.get('confidence')})",
                         json.dumps({
                             "ticker": ticker,
                             "alert_date": today.isoformat(),
                             "kept_quality": catalyst_quality,
-                            "beat_vs_est_pct": _qr_carve.get("beat_vs_est_pct"),
-                            "guidance_direction": _gc_carve.get("direction"),
-                            "guidance_confidence": _gc_carve.get("confidence"),
+                            "beat_vs_est_pct": qr.get("beat_vs_est_pct"),
+                            "guidance_direction": gc.get("direction"),
+                            "guidance_confidence": gc.get("confidence"),
                         }),
                     )
                 except Exception:
-                    pass  # audit failure must not block detection
+                    pass
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality

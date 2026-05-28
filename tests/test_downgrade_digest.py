@@ -8,20 +8,17 @@ in-process-state-vs-restart fix pattern as the EP scan watchdog.
 
 Tests pin: empty-day silent, populated digest renders summary lines.
 """
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from tests.conftest import make_mock_pool
+
 
 def _make_pool(audit_rows: list[dict]):
-    """Mock asyncpg pool whose conn.fetch returns the given rows."""
-    conn = MagicMock()
+    """Wire `conn.fetch` to return the given rows."""
+    pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(return_value=audit_rows)
-    acquire_cm = MagicMock()
-    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
-    acquire_cm.__aexit__ = AsyncMock(return_value=None)
-    pool = MagicMock()
-    pool.acquire = MagicMock(return_value=acquire_cm)
     return pool, conn
 
 

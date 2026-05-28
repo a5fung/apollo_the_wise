@@ -32,14 +32,10 @@ def _make_db_trade(trade_id, ticker, remaining=10, status="filled"):
 
 
 def _stub_pool(db_trades):
-    conn = MagicMock()
+    from tests.conftest import make_mock_pool
+    pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(return_value=db_trades)
     conn.execute = AsyncMock()
-    ctx = AsyncMock()
-    ctx.__aenter__.return_value = conn
-    ctx.__aexit__.return_value = None
-    pool = MagicMock()
-    pool.acquire = MagicMock(return_value=ctx)
     return pool, conn
 
 

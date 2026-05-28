@@ -16,22 +16,17 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from agents.market_intelligence import scheduler
+from tests.conftest import make_mock_pool
 
 
 _ET = ZoneInfo("America/New_York")
 
 
 def _make_pool(scan_count: int, alert_count: int = 0):
-    """Build a mock asyncpg pool whose conn.fetchval returns scan_count
-    on the first call (the ep_scan job count) and alert_count on the
-    second (the mi_ep_alerts count, only queried on OK branch)."""
-    conn = MagicMock()
+    """Wire `conn.fetchval` to return scan_count on call 1, alert_count on
+    call 2 — matches the EP watchdog's query order."""
+    pool, conn = make_mock_pool()
     conn.fetchval = AsyncMock(side_effect=[scan_count, alert_count])
-    acquire_cm = MagicMock()
-    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
-    acquire_cm.__aexit__ = AsyncMock(return_value=None)
-    pool = MagicMock()
-    pool.acquire = MagicMock(return_value=acquire_cm)
     return pool, conn
 
 
