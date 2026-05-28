@@ -29,6 +29,7 @@ from alpaca.trading.requests import (
     GetOrdersRequest,
     LimitOrderRequest,
     MarketOrderRequest,
+    ReplaceOrderRequest,
     StopLimitOrderRequest,
     StopLossRequest,
     StopOrderRequest,
@@ -390,6 +391,47 @@ async def place_market_sell(
     except Exception as e:
         logger.error(f"Failed to place market sell for {ticker}: {e}")
         raise
+
+
+async def replace_order(
+    order_id: str,
+    *,
+    qty: float | None = None,
+    stop_price: float | None = None,
+    limit_price: float | None = None,
+    account_mode: str | None = None,
+    client_order_id: str | None = None,
+) -> dict:
+    """Atomically replace an existing order's qty/stop_price/limit_price.
+
+    Used by partial-exit flow to reduce stop-order qty without the
+    cancel-then-new race that releases-and-re-reserves shares (IBM
+    2026-05-27 false-naked: 43ms between cancel + new submit, Alpaca's
+    share reservation hadn't cleared → "insufficient qty available").
+    Replace is atomic on broker side: no share release window.
+
+    Alpaca issues a new order_id on replace; caller must persist the
+    returned id. The original order is auto-cancelled by Alpaca.
+
+    Raises on broker error (caller handles fallback).
+    """
+    client = get_trading_client(account_mode)
+    kwargs: dict = {}
+    if qty is not None:
+        kwargs["qty"] = str(qty)
+    if stop_price is not None:
+        kwargs["stop_price"] = str(stop_price)
+    if limit_price is not None:
+        kwargs["limit_price"] = str(limit_price)
+    if client_order_id is not None:
+        kwargs["client_order_id"] = client_order_id
+    request = ReplaceOrderRequest(**kwargs)
+    new_order = client.replace_order_by_id(order_id, request)
+    logger.info(
+        f"Order replaced: {order_id} → {new_order.id} "
+        f"(qty={qty} stop_price={stop_price})"
+    )
+    return _order_to_dict(new_order)
 
 
 async def cancel_order(order_id: str, account_mode: str | None = None) -> bool:

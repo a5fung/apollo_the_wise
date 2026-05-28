@@ -1047,39 +1047,22 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
         }),
     )
 
-    # Step 1: Replace stop order for new_remaining before unlocking shares.
-    # Cancelling the full-qty stop frees shares held-for-orders; the new
-    # smaller stop immediately re-establishes protection for what we keep.
+    # Step 1: Atomically REPLACE stop with reduced qty. Replace is race-free
+    # vs cancel+new (IBM 2026-05-27 false-naked: 43ms between cancel + new
+    # submit; Alpaca's share-reservation system hadn't cleared so the new
+    # stop was rejected with "insufficient qty available" — held_for_orders
+    # = 26). Alpaca's replace_order_by_id is atomic broker-side: no share
+    # release window.
     new_stop_id = None
     if old_stop_id and stop_price and new_remaining > 0:
-        cancelled = await alpaca.cancel_order(old_stop_id, account_mode=account_mode)
-        if not cancelled:
-            # Old stop still live — all shares held-for-orders, sell will fail.
-            # Abort cleanly; morning_stop_refresh will retry tomorrow.
-            logger.error(
-                f"execute_partial_exit: cancel failed for stop {old_stop_id} on {ticker} — aborting"
-            )
-            await log_audit_event(
-                "partial_exit_aborted",
-                f"{ticker}: cancel failed for stop {old_stop_id}",
-                json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "old_stop_id": old_stop_id, "shares": shares,
-                    "stage": "cancel_old_stop",
-                }),
-            )
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}⚠️ Partial exit ABORTED for {ticker}: "
-                f"could not cancel existing stop (order {old_stop_id}). "
-                f"Will retry next position update."
-            )
-            return False
-
         try:
             coid_stop = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-            new_stop_order = await alpaca.place_stop_order(
-                ticker, new_remaining, float(stop_price),
-                account_mode=account_mode, client_order_id=coid_stop,
+            new_stop_order = await alpaca.replace_order(
+                old_stop_id,
+                qty=new_remaining,
+                stop_price=float(stop_price),
+                account_mode=account_mode,
+                client_order_id=coid_stop,
             )
             new_stop_id = new_stop_order["id"]
             # Persist immediately — if we crash after this, sync_positions sees correct qty.
