@@ -368,6 +368,8 @@ Full post-mortem: [`docs/incidents/2026-05-27-ibm-partial-sync-cascade.md`](docs
 
 **Verification pending:** tomorrow (5/28) 4:45 PM ET — IBM partial-exit must execute cleanly using `replace_order` + same-window retry. Success validates P1 fixes; failure means prevention is premature.
 
+**Related P0 — RDW stuck `pending_new` (task #142):** 2026-05-26 RDW ORB entry sat in Alpaca `pending_new` the entire session, then expired overnight. ~$2,100 paper missed winner. Different mechanism from IBM but same operational severity tier. Filed P0 with full investigation plan. **Hard live-cutover gate**: must root-cause + ship stuck-pending_new watchdog before flipping any strategy from `phase='paper'` to `phase='live'`. Predicate filed in data-gated review `orb_entry_stuck_pending_new` (threshold=1; even one recurrence = structural).
+
 ### 2026-05-26 (Tue) — Session B ship-day: #123 DB↔Alpaca order-status reconcile
 
 **#123 DB order-status reconciliation**: 49 stuck mi_live_orders rows discovered in production, oldest from April 16 (40 days). Pattern is NOT rare — silent WebSocket gaps + container restarts during market hours leave DB out of sync with broker's authoritative state. Drift is endemic, so this is periodic + post-deploy, not deploy-only.

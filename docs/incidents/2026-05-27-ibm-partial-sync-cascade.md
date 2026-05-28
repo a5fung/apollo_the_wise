@@ -182,9 +182,24 @@ If verification fails: write addendum to this incident doc with the new findings
 
 ---
 
+## Related: RDW stuck-pending_new bug (separate incident, same operational priority)
+
+Discovered later same evening while investigating "why wasn't RDW entered yesterday." Different mechanism, same severity tier:
+
+- 2026-05-26 09:31 ET: RDW ORB entry submitted on Alpaca, status `pending_new`
+- 2026-05-26 entire session: order never advanced to `new`/`accepted`/live; sat in `pending_new`
+- 2026-05-26 close: Tuesday's price action crossed entry trigger many times (open $19.645, high $23.10, close $22.04 vs entry $19.68)
+- 2026-05-27 09:00 ET: Wednesday pre-market reconcile detected `pending_new → expired` (Alpaca expired the day order overnight)
+- **Result:** ~$2,100 paper missed Tuesday + Wednesday continuation. With low-WR-by-design methodology, missing winners is fatal.
+
+Filed as P0 task #142 + data-gated review `orb_entry_stuck_pending_new`. **Hard gate on live cutover**: must root-cause + ship stuck-pending_new watchdog before flipping any strategy from `phase='paper'` to `phase='live'`.
+
+This is operationally the same class as today's incidents: silent failure on the trade path that the operator only discovers after the fact. The discipline rule (`STOP and CONSULT`) applies the same way — investigation continues tomorrow with full advisor review, not tonight's tired ad-hoc patching.
+
 ## References
 
-- Commits: `d3d092d` (morning triage start), `fa70976` (#136 replace_order), `fa49304` (#137 sync_positions guard), `f236976` (#136 retry). All on `main` deployed to prod 2026-05-27.
+- Commits: `d3d092d` (morning triage start), `fa70976` (#136 replace_order), `fa49304` (#137 sync_positions guard), `f236976` (#136 retry), `91e0b89` (this post-mortem). All on `main` deployed to prod 2026-05-27.
 - Audit rows: `manual_db_restore` 2026-05-28 01:09:53 UTC, `manual_stop_order_id_resync` 2026-05-28 01:38:xx UTC.
-- Tasks: #136, #137 in TaskList.
-- Related: `feedback_ground_truth_verification.md`, `feedback_no_silent_trading_failures.md`.
+- Tasks: #136, #137, #142 (RDW stuck-pending_new), #138/#139/#140/#141 (prevention followups).
+- Data-gated reviews: `orb_entry_stuck_pending_new` (threshold=1, live cutover gate).
+- Related: `feedback_ground_truth_verification.md`, `feedback_no_silent_trading_failures.md`, `feedback_no_docker_exec_for_trade_state.md` (new tonight).
