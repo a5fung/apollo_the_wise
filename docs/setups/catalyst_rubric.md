@@ -261,6 +261,13 @@ Scope deliberately narrow: only the `q_rev_yoy_missing_no_prior_year_comparable`
 
 **Per advisor 2026-05-28**: discipline rule (`feedback_sample_size_discipline.md`) for methodology changes (N≥10 backtest) IS met here via the data-gated review's `action_when_ready` clause; the review's predicate and forward-return criteria are the backtest. Honest count: full cohort N=10, carve-out subset N=6, mature carve-out N=3 (all positive). Conservative ship size; widening cohort over the next 30 days will validate.
 
+**Architectural note (operator reframe 2026-05-28)**: this carve-out is a band-aid, not the principled fix. Missing data is its own state — `UNKNOWN`, not evidence of weakness. The right architecture treats:
+- "Strong evidence of weak catalyst" (lowered guidance, miss, sparse news) → downgrade
+- "Strong evidence of strong catalyst" (full rubric ≥ threshold) → keep grade
+- "Missing data" → **fill the gap upstream**, then grade; only fall back to safety-net when the data is genuinely unrecoverable (recent IPO, restated, ticker change)
+
+The carve-out is necessary today because the upstream data-fill isn't reliable. It should become belt-and-suspenders once `fetch_ep_fundamentals.py` is audited and the recoverable-but-missing cases are plumbed correctly. Filed as `data_gated_reviews.yaml::yoy_missing_data_quality_investigation` (earliest 2026-06-28). Until that investigation completes, the carve-out is load-bearing.
+
 ### 2026-05-17 — PROVISIONAL doc created
 
 **Trigger**: Phase 2 SSoT discipline. ADR 0003 §5 produced Phase 1

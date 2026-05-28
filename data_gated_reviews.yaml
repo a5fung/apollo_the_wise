@@ -4103,6 +4103,56 @@ reviews:
           multi-source corroboration) corroborate the catalyst. Cohort-
           ripeness gating may need shortening per operator urgency call.
 
+  - review_id: yoy_missing_data_quality_investigation
+    title: "Missing-YoY root cause — fill the data, don't layer carve-outs"
+    question: |
+      Operator reframe 2026-05-28: missing data ≠ weak signal. It's UNKNOWN.
+      The catalyst safety-net (and its 5/28 carve-out) treats missing
+      q_revenue.yoy_pct as evidence of weakness or — post-carve-out — as
+      evidence to bypass if OTHER signals are strong. Both are band-aids.
+      The principled fix is to find WHY YoY was missing and fill the gap
+      upstream, so the rubric grades complete inputs.
+
+      For each cohort case (SNOW/BBWI/JOYY/etc), classify the root cause:
+        (a) fetcher tried Polygon-only and didn't fall back to FMP / yfinance
+        (b) fiscal_year/fiscal_period mismatch breaking the Y/Y join
+        (c) stale fundamentals cache (Q-4 didn't exist at extraction time)
+        (d) genuinely UNKNOWN (recent IPO, restated, ticker change) — no
+            local fix possible, safety-net or carve-out IS correct response
+
+      Quantify the (a)+(b)+(c) class: how many of the 10 known cohort
+      cases had recoverable prior-year data via a source we didn't try
+      hard enough? Each one represents a fixable plumbing gap.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_audit_log
+      WHERE event_type IN (
+        'catalyst_earnings_revenue_weak_downgrade',
+        'catalyst_downgrade_carveout_applied'
+      )
+      AND created_at >= NOW() - INTERVAL '30 days'
+      AND (detail::jsonb ->> 'reason' = 'q_rev_yoy_missing_no_prior_year_comparable'
+           OR event_type = 'catalyst_downgrade_carveout_applied');
+    threshold: 5
+    earliest_review_date: 2026-06-28
+    action_when_ready: |
+      For ≥5 representative cases: manually trace through
+      `fetch_ep_fundamentals.py` execution path. Check:
+      - Which sources were tried (Polygon, FMP, yfinance)?
+      - Which sources have Q-4 data for that ticker today?
+      - Did fetcher abort early on first None?
+      - Are fiscal_year/fiscal_period attributes populated correctly?
+
+      Then quantify the (a/b/c/d) class breakdown. If (a)+(b)+(c) ≥
+      60% of cases — fix the plumbing per class. If majority (d) —
+      safety-net + carve-out architecture is actually correct, no
+      further code change. Either way: the architectural question is
+      answered with data, not assumed.
+
+      Post-fix: revisit whether the carve-out shipped 2026-05-28
+      becomes redundant (belt-and-suspenders) or stays load-bearing.
+    status: pending
+    added_on: 2026-05-28
+
   - review_id: theme_axis_gating_logic
     title: "Theme axis: graduate from metadata-only to gating logic"
     question: |
