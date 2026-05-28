@@ -5275,6 +5275,30 @@ reviews:
 
   - review_id: orb_entry_stuck_pending_new
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
+    closed_on: 2026-05-28
+    outcome: |
+      Predicate threshold hit at N=1 (RDW). Cohort scan (90d) confirmed
+      RDW was the only genuine same-session stuck-pending_new — 9 other
+      hits were #123 reconcile job catching pre-existing DB drift, not
+      same-session broker stalls.
+
+      Root cause identified: APScheduler misfired the 10:00:00 ET tick
+      on 2026-05-26. mi_job_runs shows orb_window_cleanup missing for
+      that exact day (ran every other weekday in the window). Multiple
+      other 10:00:00 jobs (stop_ack_timeout_watchdog, stuck_fill_watchdog)
+      also skipped the same tick — scheduler-side hiccup, not code-logic.
+
+      Fix shape: defensive watchdog inside existing reconcile_order_states
+      (#123 job, 15-min cadence). When Alpaca confirms a pending_new
+      order is older than 15 min during market hours, emit
+      `stuck_pending_new_detected` audit + Telegram alert. Per-day dedup
+      so we don't re-alert the same ticker. No auto-cancel — operator
+      decides per post-mortem STOP-and-CONSULT discipline.
+
+      Live-cutover gate UNBLOCKED. Scheduler-misfire root cause filed
+      separately as #147 for further investigation (sibling restart at
+      10:04:31 same day; pattern suggests a host-level event).
+
     question: |
       RDW ORB entry submitted 2026-05-26 09:31:02 ET stayed in Alpaca
       `pending_new` state the entire session, never routed to exchange,

@@ -11,7 +11,7 @@ import json
 import logging
 import math
 import os
-from datetime import date, datetime
+from datetime import date, datetime, time as datetime_time
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
@@ -1759,6 +1759,95 @@ _TERMINAL_ORDER_STATUSES = frozenset({
 # Subset that means "order ended without filling" — used to derive cancelled_at.
 _CANCEL_LIKE_ORDER_STATUSES = frozenset({"canceled", "cancelled", "expired", "rejected"})
 
+# Stuck-pending_new watchdog (#142, 2026-05-28). RDW ORB entry 2026-05-26
+# stayed in Alpaca pending_new the entire session despite cleanup cron firing
+# 10:00 ET — scheduler misfired on the 10:00:00 tick that day. Defensive
+# layer here catches the gap regardless of why cleanup missed.
+#
+# Threshold: 15 min. Alpaca paper routing typically <1s; >5 min is anomalous;
+# >15 min during market hours means routing is dead. 15 min also matches the
+# reconcile cron cadence (so first reconcile after the failed-routing window
+# catches it). No auto-cancel — operator decides per post-mortem discipline
+# (STOP and CONSULT, not ATTEMPT and RECOVER).
+_STUCK_PENDING_NEW_THRESHOLD_MINUTES = 15
+
+
+async def _maybe_alert_stuck_pending_new(
+    conn, row, account_mode: str, *, submitted_at
+) -> None:
+    """Telegram + audit when an order has been Alpaca-confirmed pending_new
+    for >_STUCK_PENDING_NEW_THRESHOLD_MINUTES during market hours. Once
+    per (ticker, day) dedup against `stuck_pending_new_detected` audit rows.
+
+    Fail-open: any exception inside swallowed so the parent reconcile loop
+    can't be broken by alerting infrastructure.
+    """
+    from zoneinfo import ZoneInfo
+    try:
+        if submitted_at is None:
+            return
+        ET = ZoneInfo("America/New_York")
+        now_et = datetime.now(ET)
+
+        # Market-hours gate. Pending_new outside market hours is common for
+        # pre-market submissions awaiting open routing — not a bug.
+        from agents.market_intelligence.trading_calendar import get_market_status
+        market_status = get_market_status(now_et.date())
+        if not market_status.is_trading_day:
+            return
+        if not (datetime_time(9, 30) <= now_et.time() <= datetime_time(16, 0)):
+            return
+
+        # Age threshold
+        age_minutes = (now_et - submitted_at.astimezone(ET)).total_seconds() / 60.0
+        if age_minutes < _STUCK_PENDING_NEW_THRESHOLD_MINUTES:
+            return
+
+        # Per-day dedup: don't re-alert same ticker today
+        existing = await conn.fetchval(
+            """
+            SELECT 1 FROM mi_audit_log
+            WHERE event_type = 'stuck_pending_new_detected'
+              AND summary LIKE $1
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+            LIMIT 1
+            """,
+            f"{row['ticker']}%",
+            now_et.date(),
+        )
+        if existing:
+            return
+
+        order_id = row["alpaca_order_id"]
+        ticker = row["ticker"]
+        purpose = row.get("purpose") if hasattr(row, "get") else (row["purpose"] if "purpose" in row.keys() else None)
+
+        await log_audit_event(
+            "stuck_pending_new_detected",
+            f"{ticker} order={order_id[:8]} stuck {age_minutes:.0f}min "
+            f"({account_mode}, purpose={purpose})",
+            f"order_id={order_id} trade_id={row['trade_id']} "
+            f"submitted_at={submitted_at.isoformat()} "
+            f"age_minutes={age_minutes:.1f}",
+        )
+
+        try:
+            await send_telegram_message(
+                f"⚠️ *Order stuck pending_new — {ticker}*\n"
+                f"Alpaca {account_mode} hasn't routed the order in "
+                f"{age_minutes:.0f} min. Apollo's submission was clean; "
+                f"broker-side routing stalled.\n\n"
+                f"Order ID: `{order_id[:12]}…`\n"
+                f"Purpose: `{purpose}`\n"
+                f"Submitted: `{submitted_at.astimezone(ET).strftime('%Y-%m-%d %H:%M:%S ET')}`\n\n"
+                f"_Operator decision: cancel via Alpaca web UI if "
+                f"setup is no longer valid. Reconcile job will keep checking._"
+            )
+        except Exception as e:
+            logger.error(f"stuck_pending_new Telegram failed for {ticker}: {e}")
+    except Exception as e:
+        logger.error(f"_maybe_alert_stuck_pending_new failed: {e}", exc_info=True)
+
 
 async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> dict:
     """Reconcile mi_live_orders.status against Alpaca for orders in transitional
@@ -1787,7 +1876,8 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             f"""
-            SELECT lo.alpaca_order_id, lo.ticker, lo.status, lo.trade_id, lo.purpose
+            SELECT lo.alpaca_order_id, lo.ticker, lo.status, lo.trade_id, lo.purpose,
+                   lo.submitted_at
             FROM mi_live_orders lo
             JOIN mi_live_trades lt ON lt.id = lo.trade_id
             WHERE lo.alpaca_order_id IS NOT NULL
@@ -1833,6 +1923,16 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
                 continue
 
             alpaca_status_norm = _canonical_order_status(alpaca_order.get("status"))
+
+            # Stuck-pending_new watchdog (#142). If Alpaca confirms the order
+            # is still pending_new and it's been stuck for >threshold during
+            # market hours, alert operator. Fires once per (ticker, day) via
+            # audit dedup. No auto-cancel — operator decides.
+            if alpaca_status_norm == "pending_new":
+                await _maybe_alert_stuck_pending_new(
+                    conn, r, account_mode, submitted_at=r["submitted_at"]
+                )
+
             if alpaca_status_norm == db_status_norm:
                 continue
 

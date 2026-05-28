@@ -1,0 +1,210 @@
+"""Regression tests for the stuck-pending_new watchdog (#142, 2026-05-28).
+
+Triggered by RDW 2026-05-26: ORB entry stayed in Alpaca pending_new the
+entire session because APScheduler misfired the 10:00 ET orb_window_cleanup
+job that day. Defensive layer in reconcile_order_states catches stuck
+orders regardless of why cleanup missed.
+
+Threshold: 15 min stuck during market hours = alert. No auto-cancel
+(operator decides per post-mortem discipline).
+"""
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
+
+import pytest
+
+from tests.conftest import make_mock_pool
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _row(submitted_at, ticker="RDW", purpose="orb_entry"):
+    """Build a row-like dict the reconcile loop yields."""
+    return {
+        "alpaca_order_id": "3e234281-1283-4ed8-8083-00c74f05c815",
+        "ticker": ticker,
+        "status": "pending_new",
+        "trade_id": 169,
+        "purpose": purpose,
+        "submitted_at": submitted_at,
+    }
+
+
+def _market_open():
+    return MagicMock(is_trading_day=True, reason="open")
+
+
+def _holiday():
+    return MagicMock(is_trading_day=False, reason="holiday: Memorial Day")
+
+
+@pytest.mark.asyncio
+async def test_alerts_on_15min_stuck_during_market_hours():
+    """RDW pattern: stuck 30 min at 10:00 AM ET → Telegram + audit fire."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)  # no prior dedup row
+
+    now = datetime(2026, 5, 26, 10, 0, tzinfo=_ET)
+    submitted = now - timedelta(minutes=30)
+    row = _row(submitted_at=submitted)
+
+    sent = []
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(order_manager, "send_telegram_message", new=_fake_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_market_open()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    assert audit_mock.called
+    audit_args = audit_mock.call_args[0]
+    assert audit_args[0] == "stuck_pending_new_detected"
+    assert "RDW" in audit_args[1]
+    assert len(sent) == 1
+    assert "RDW" in sent[0]
+    assert "pending_new" in sent[0].lower()
+
+
+@pytest.mark.asyncio
+async def test_no_alert_when_under_threshold():
+    """5 min stuck = within normal routing variance → no alert."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+
+    now = datetime(2026, 5, 26, 10, 0, tzinfo=_ET)
+    submitted = now - timedelta(minutes=5)
+    row = _row(submitted_at=submitted)
+
+    sent = []
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(order_manager, "send_telegram_message", new=_fake_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_market_open()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    assert not audit_mock.called
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_no_alert_outside_market_hours():
+    """Pre-market / after-hours pending_new is legitimate (orders queued
+    awaiting open routing). Don't alert."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+
+    now = datetime(2026, 5, 26, 7, 0, tzinfo=_ET)  # 7 AM ET, pre-market
+    submitted = now - timedelta(minutes=60)
+    row = _row(submitted_at=submitted)
+
+    sent = []
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(order_manager, "send_telegram_message", new=_fake_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_market_open()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    assert not audit_mock.called
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_no_alert_on_non_trading_day():
+    """Market holiday → no alert even if stuck >15 min."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+
+    now = datetime(2026, 5, 25, 11, 0, tzinfo=_ET)  # Memorial Day Monday
+    submitted = now - timedelta(minutes=60)
+    row = _row(submitted_at=submitted)
+
+    sent = []
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(order_manager, "send_telegram_message", new=_fake_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_holiday()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    assert not audit_mock.called
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_dedups_via_existing_audit_row():
+    """Already alerted today (audit row exists) → silent."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    # fetchval returns 1 (dedup row exists)
+    conn.fetchval = AsyncMock(return_value=1)
+
+    now = datetime(2026, 5, 26, 14, 0, tzinfo=_ET)
+    submitted = now - timedelta(minutes=120)  # very stuck
+    row = _row(submitted_at=submitted)
+
+    sent = []
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(order_manager, "send_telegram_message", new=_fake_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_market_open()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    # Audit log call should not happen (dedup'd)
+    assert not audit_mock.called
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_telegram_failure_does_not_break_audit():
+    """If Telegram throws, the audit row was already written — guarantees
+    durable record of the detection per `feedback_no_silent_trading_failures`."""
+    from agents.market_intelligence.broker import order_manager
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=None)
+
+    now = datetime(2026, 5, 26, 10, 0, tzinfo=_ET)
+    submitted = now - timedelta(minutes=20)
+    row = _row(submitted_at=submitted)
+
+    async def _broken_send(text, *args, **kwargs):
+        raise RuntimeError("telegram down")
+
+    with patch.object(order_manager, "send_telegram_message", new=_broken_send), \
+         patch.object(order_manager, "log_audit_event", new=AsyncMock()) as audit_mock, \
+         patch("agents.market_intelligence.trading_calendar.get_market_status",
+               return_value=_market_open()), \
+         patch("agents.market_intelligence.broker.order_manager.datetime") as dt_mock:
+        dt_mock.now.return_value = now
+        # Should not raise
+        await order_manager._maybe_alert_stuck_pending_new(conn, row, "paper", submitted_at=submitted)
+
+    # Audit must have been written before Telegram attempt
+    assert audit_mock.called
