@@ -5273,6 +5273,27 @@ reviews:
     status: pending
     added_on: 2026-05-27
 
+  - review_id: after_hours_partial_exit_reliability
+    title: "P4 — After-hours partial-exit reliability (IBM cascade R4 class)"
+    closed_on: 2026-05-28
+    outcome: |
+      Investigation complete. Cohort scan (90d): 6 after-hours partial-exit
+      orders, ALL filled successfully — 5 at exactly 16:45 ET (scheduled
+      partial-take cron), 1 manual late-night. IBM 2026-05-27 cascade was
+      a singleton with two root causes:
+        R1 cancel-new race at 16:45 ET → FIXED by #136 atomic replace_order
+        R4 late-night retry hitting Alpaca paper share-reservation quirk
+            → was caused by docker-exec abuse, now replaced by /partialnow
+            which IS the right operator path
+
+      Remaining gap: /partialnow (shipped today as #138) lacked a market-
+      hours guard. Operator could invoke at 9 PM and hit the same R4-class
+      Alpaca paper quirk. Shipped 2026-05-28: command refuses outside
+      9:30–16:50 ET unless suffixed with explicit `CONFIRM` token.
+
+      Scheduled 16:45 ET cron unchanged — its window falls inside the safe
+      band, cohort confirms it fills cleanly. No need to widen the guard.
+
   - review_id: orb_entry_stuck_pending_new
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28

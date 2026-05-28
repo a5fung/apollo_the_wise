@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import anthropic
@@ -2651,7 +2651,7 @@ class MarketIntelligenceAgent(BaseAgent):
         )
 
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
-        """`/partialnow TICKER` — operator-confirm immediate partial exit.
+        """`/partialnow TICKER [CONFIRM]` — operator-confirm immediate partial exit.
 
         Post-IBM-cascade follow-up (#138, 2026-05-28). Pre-fix: operator
         had to manually trigger partial exits via `docker exec python -c`
@@ -2659,24 +2659,65 @@ class MarketIntelligenceAgent(BaseAgent):
         sync_positions mass-close cascade. This command goes through the
         agent process + existing `execute_partial_exit` (which has the
         post-#136 atomic replace_order + same-window retry).
+
+        After-hours guard (#141, 2026-05-28): The IBM cascade R4 root
+        cause was Alpaca paper share-reservation quirks on after-hours
+        retries. Outside the safe 9:30-16:50 ET window, the command
+        requires explicit `CONFIRM` suffix to proceed.
         """
         import re as _re
+        from zoneinfo import ZoneInfo
         from agents.market_intelligence.db import get_pool, log_audit_event
         from agents.market_intelligence.broker.order_manager import execute_partial_exit
 
         task_text = request.task.strip()
-        cands = _re.findall(r'\b([A-Z]{2,5})\b', task_text.upper())
-        skip = _PREPOSITION_SKIP | {"PARTIALNOW", "PARTIAL"}
+        upper = task_text.upper()
+        confirmed = "CONFIRM" in upper
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', upper)
+        skip = _PREPOSITION_SKIP | {"PARTIALNOW", "PARTIAL", "CONFIRM"}
         ticker = next((t for t in cands if t not in skip), None)
         if not ticker:
             return self._ok(
                 request,
                 result=(
-                    "Usage: `/partialnow TICKER`\n\n"
+                    "Usage: `/partialnow TICKER [CONFIRM]`\n\n"
                     "Immediate partial exit (1/3 sell) for a filled position. "
                     "Goes through existing execute_partial_exit safeguards (atomic "
                     "stop replace, same-window retry, dedup against pending exits). "
-                    "Replaces the docker-exec workaround that caused the 2026-05-27 cascade."
+                    "Replaces the docker-exec workaround that caused the 2026-05-27 cascade.\n\n"
+                    "Outside 9:30-16:50 ET, append `CONFIRM` to acknowledge "
+                    "the after-hours Alpaca paper share-reservation risk class "
+                    "(IBM cascade R4)."
+                ),
+            )
+
+        # After-hours guard (#141): Alpaca paper's after-hours share-reservation
+        # quirks caused the IBM cascade R4. Steady-state safe window is 9:30
+        # AM ET (market open) to 16:50 ET (10 min after close — covers the
+        # 16:45 ET scheduled partial-take cron, which has filled cleanly N=5
+        # in 90d cohort). Outside that window, require explicit CONFIRM.
+        ET = ZoneInfo("America/New_York")
+        now_et = datetime.now(ET)
+        weekday = now_et.weekday()  # Mon=0..Sun=6
+        in_safe_window = (
+            weekday < 5
+            and 9 * 60 + 30 <= (now_et.hour * 60 + now_et.minute) <= 16 * 60 + 50
+        )
+        if not in_safe_window and not confirmed:
+            return self._ok(
+                request,
+                result=(
+                    f"⚠️ *`/partialnow {ticker}` blocked — outside safe window*\n\n"
+                    f"Current ET: `{now_et.strftime('%a %H:%M')}`\n"
+                    f"Safe window: Mon-Fri 09:30–16:50 ET\n\n"
+                    f"Outside this window, Alpaca paper's share-reservation "
+                    f"system can deadlock partial-exit retries (IBM cascade R4 "
+                    f"root cause). Steady-state cron at 16:45 ET fills cleanly; "
+                    f"random late-night attempts hit the quirk.\n\n"
+                    f"Either:\n"
+                    f"  • Wait for next market open\n"
+                    f"  • Append `CONFIRM` if you accept the risk: "
+                    f"`/partialnow {ticker} CONFIRM`"
                 ),
             )
 

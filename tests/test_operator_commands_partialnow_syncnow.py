@@ -40,15 +40,21 @@ async def test_partialnow_no_ticker_returns_usage():
 
 @pytest.mark.asyncio
 async def test_partialnow_no_open_position():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
     from tests.conftest import make_mock_pool
 
     pool, conn = make_mock_pool()
     conn.fetchrow = AsyncMock(return_value=None)
 
+    fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
-    with patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
+    with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
+        dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
             agent, _request("/partialnow AAPL"),
         )
@@ -58,7 +64,10 @@ async def test_partialnow_no_open_position():
 
 @pytest.mark.asyncio
 async def test_partialnow_skips_already_partial():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
     from tests.conftest import make_mock_pool
 
@@ -69,8 +78,11 @@ async def test_partialnow_skips_already_partial():
         "signal_type": "magna53", "account_mode": "paper",
     })
 
+    fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
-    with patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
+    with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
+        dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
             agent, _request("/partialnow IBM"),
         )
@@ -78,8 +90,64 @@ async def test_partialnow_skips_already_partial():
 
 
 @pytest.mark.asyncio
-async def test_partialnow_executes_and_returns_summary():
+async def test_partialnow_blocks_after_hours_without_confirm():
+    """#141 guard: outside 9:30-16:50 ET, /partialnow without CONFIRM returns
+    a warning explaining the after-hours Alpaca paper risk class."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence import agent as agent_mod
+
+    agent = _FakeAgent()
+    # 21:00 ET (after-hours)
+    fake_now = datetime(2026, 5, 28, 21, 0, tzinfo=ZoneInfo("America/New_York"))
+    with patch.object(agent_mod, "datetime") as dt_mock:
+        dt_mock.now.return_value = fake_now
+        resp = await MarketIntelligenceAgent._handle_partial_now_command(
+            agent, _request("/partialnow IBM"),
+        )
+    assert "outside safe window" in resp.result.lower()
+    assert "CONFIRM" in resp.result
+    assert "IBM" in resp.result
+
+
+@pytest.mark.asyncio
+async def test_partialnow_after_hours_with_confirm_proceeds():
+    """#141 guard: append CONFIRM, get past the gate; then normal execution path."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence import agent as agent_mod
+    from agents.market_intelligence import db as db_mod
+    from agents.market_intelligence.broker import order_manager
+    from tests.conftest import make_mock_pool
+
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value={
+        "id": 99, "ticker": "IBM", "remaining_shares": 60,
+        "partial_taken": False, "entry_price": 250.0, "stop_price": 245.0,
+        "signal_type": "magna53", "account_mode": "paper",
+    })
+
+    fake_now = datetime(2026, 5, 28, 21, 0, tzinfo=ZoneInfo("America/New_York"))
+    agent = _FakeAgent()
+    with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(order_manager, "execute_partial_exit", new=AsyncMock(return_value=True)), \
+         patch.object(db_mod, "log_audit_event", new=AsyncMock()):
+        dt_mock.now.return_value = fake_now
+        resp = await MarketIntelligenceAgent._handle_partial_now_command(
+            agent, _request("/partialnow IBM CONFIRM"),
+        )
+    assert "Partial exit submitted" in resp.result
+
+
+@pytest.mark.asyncio
+async def test_partialnow_executes_and_returns_summary():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
     from agents.market_intelligence.broker import order_manager
     from tests.conftest import make_mock_pool
@@ -91,10 +159,13 @@ async def test_partialnow_executes_and_returns_summary():
         "signal_type": "magna53", "account_mode": "paper",
     })
 
+    fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
-    with patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)), \
+    with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)), \
          patch.object(order_manager, "execute_partial_exit", new=AsyncMock(return_value=True)), \
          patch.object(db_mod, "log_audit_event", new=AsyncMock()) as audit_mock:
+        dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
             agent, _request("/partialnow AAPL"),
         )
