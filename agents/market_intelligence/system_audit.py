@@ -1169,6 +1169,66 @@ async def _compute_anomaly(
 # ── Formatters ───────────────────────────────────────────────────────────────
 
 
+def _format_naked_position_alert(body: dict) -> str:
+    """Render naked-position L1 alert with DB-drift vs real-naked partition.
+
+    Spec (#140, 2026-05-28):
+      - 🚨 NAKED POSITION (real $ risk): broker has NO stop order
+      - ⚠️ DB-DRIFT (operational): broker HAS a stop order; Apollo's DB
+        just lost track of stop_order_id
+
+    Real-naked is the original severe alert. DB-drift is a quieter
+    operational warning prompting sync_positions reconciliation, not
+    emergency intervention.
+    """
+    real_naked = body.get("real_naked") or []
+    db_drift = body.get("db_drift") or []
+    drill = body.get("drill_sql", "")
+
+    sections = []
+    if real_naked:
+        sections.append(
+            f"🚨 *NAKED POSITION [L1]* — broker confirms NO stop order "
+            f"({len(real_naked)} rows)"
+        )
+        sections.append("")
+        sections.append("These positions have real $ exposure with no broker-side stop:")
+        for r in real_naked[:6]:
+            sections.append(
+                f"  • {r.get('ticker')} alert_date={r.get('alert_date')} "
+                f"filled_at={r.get('filled_at')}"
+            )
+        sections.append("")
+        sections.append("Immediate operator action: place stop via Alpaca web UI.")
+
+    if db_drift:
+        if sections:
+            sections.append("")
+            sections.append("─" * 30)
+            sections.append("")
+        sections.append(
+            f"⚠️ *DB-DRIFT [L1]* — broker has stop but Apollo's DB lost track "
+            f"({len(db_drift)} rows)"
+        )
+        sections.append("")
+        sections.append("These positions are broker-protected; only Apollo's DB is wrong:")
+        for r in db_drift[:6]:
+            sections.append(
+                f"  • {r.get('ticker')} alert_date={r.get('alert_date')}"
+            )
+        sections.append("")
+        sections.append(
+            "Recovery: next `sync_positions` should re-attach the stop_order_id. "
+            "No emergency intervention needed."
+        )
+
+    if drill:
+        sections.append("")
+        sections.append("Drill-down:")
+        sections.append(drill)
+    return "\n".join(sections)
+
+
 def _format_l1_alert(name: str, body: dict) -> str:
     summary = body.get("summary", "")
     offending = body.get("offending") or []
@@ -1261,7 +1321,16 @@ def _format_l2_alert(
 async def _emit_l1(name: str, body: dict) -> None:
     if await count_today_anomalies(name) > 0:
         return
-    text = _format_l1_alert(name, body)
+    # Naked-position invariant (#140): classify each suspect row by querying
+    # broker for actual stop coverage. Real-naked → 🚨 keeps the severe
+    # alert. DB-drift → ⚠️ downgrades to operational warning. Operator
+    # severity is now informative, not uniform.
+    if name == "naked_position":
+        from agents.market_intelligence.audit_invariants import classify_naked_positions
+        body = await classify_naked_positions(body)
+        text = _format_naked_position_alert(body)
+    else:
+        text = _format_l1_alert(name, body)
     await log_audit_event(
         _AUDIT_EVENT,
         summary=f"L1 {name}",

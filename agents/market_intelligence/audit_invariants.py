@@ -60,6 +60,7 @@ async def check_naked_position(conn) -> tuple[bool, dict]:
         "name": INV_NAKED_POSITION,
         "count": len(rows),
         "summary": f"{len(rows)} filled rows without stop_order_id past 60s grace",
+        "offending_rows": [dict(r) for r in rows[:10]],  # for downstream classifier
         "offending": [
             f"{r['ticker']} {r['alert_date']} filled_at={r['filled_at']}"
             for r in rows[:10]
@@ -76,6 +77,60 @@ async def check_naked_position(conn) -> tuple[bool, dict]:
             "agents/market_intelligence/broker/trade_stream.py::_process_entry_fill",
         ],
     })
+
+
+async def classify_naked_positions(body: dict) -> dict:
+    """Distinguish real-naked from DB-drift cases (#140, 2026-05-28).
+
+    For each row flagged by `check_naked_position`, query broker for open
+    stop orders on that ticker.
+      - Broker confirms NO stop order → 🚨 REAL NAKED (real $ risk)
+      - Broker DOES have a stop order → ⚠️ DB-DRIFT (operational, no risk)
+
+    Adds 'real_naked' and 'db_drift' lists to body. Fail-open: if broker
+    query throws, treat as REAL NAKED (safer to over-alert).
+
+    Triggered by IBM cascade 2026-05-27 post-mortem (#140): after manual
+    SQL re-sync mismatched DB↔broker state, the existing invariant fired
+    🚨 even when broker had stops. Operator-visible severity was
+    indistinguishable from a genuine naked position.
+    """
+    from agents.market_intelligence.broker import alpaca_client
+
+    rows = body.get("offending_rows") or []
+    real_naked: list[dict] = []
+    db_drift: list[dict] = []
+
+    for r in rows:
+        ticker = r.get("ticker")
+        if not ticker:
+            continue
+        try:
+            open_orders = await alpaca_client.get_open_orders(ticker=ticker)
+            # An open sell-side stop or stop-limit on the position is broker
+            # coverage. get_open_orders returns standalone orders (not OTO
+            # parents) so we check the order's own fields directly — using
+            # extract_stop_leg_id here would always return None because it
+            # walks .legs which standalone stops don't have.
+            has_stop = any(
+                (o.get("side") or "").lower() == "sell"
+                and (
+                    bool(o.get("stop_price"))
+                    or "stop" in str(o.get("type") or "").lower()
+                )
+                for o in open_orders
+            )
+        except Exception:
+            has_stop = False  # fail-open to REAL NAKED
+
+        if has_stop:
+            db_drift.append(r)
+        else:
+            real_naked.append(r)
+
+    body["real_naked"] = real_naked
+    body["db_drift"] = db_drift
+    return body
 
 
 async def check_reason_coverage(conn, *, since: date) -> tuple[bool, dict]:
