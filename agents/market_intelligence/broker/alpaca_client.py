@@ -107,6 +107,29 @@ def _resolve_account_mode(account_mode: str | None) -> str:
     return current_account_mode()
 
 
+def _require_alpaca_env(name: str, account_mode: str) -> str:
+    """Boot-guard for Alpaca env vars (#139, 2026-05-28).
+
+    Returns os.environ[name] with a diagnostic-rich RuntimeError when
+    missing. The 2026-05-13 outage was caused by bare `os.environ[K]`
+    raising KeyError with no context — operator couldn't tell whether
+    boot bootstrap failed, env var was misspelled, or
+    ENABLE_LIVE_MODE was off. This helper makes the cause explicit.
+    """
+    val = os.environ.get(name)
+    if val:
+        return val
+    raise RuntimeError(
+        f"Required Alpaca credential env var {name!r} is not set "
+        f"(needed for account_mode={account_mode!r}). The boot bootstrap "
+        f"(agent._bootstrap_alpaca_credentials) should have set this. "
+        f"If you bypassed the boot path (e.g. docker exec python -c), "
+        f"run via the agent process instead. If ENABLE_LIVE_MODE=false, "
+        f"only ALPACA_PAPER_* vars are required — verify the strategy's "
+        f"phase resolves to 'paper'. See CLAUDE.md 'Required Env Vars'."
+    )
+
+
 def get_trading_client(account_mode: str | None = None) -> TradingClient:
     """Return the per-mode TradingClient singleton.
 
@@ -118,12 +141,14 @@ def get_trading_client(account_mode: str | None = None) -> TradingClient:
     Credentials sourced from ALPACA_{PAPER,LIVE}_API_KEY / _SECRET_KEY.
     The boot bootstrap (agent._bootstrap_alpaca_credentials) guarantees
     these are set OR remaps legacy ALPACA_API_KEY → ALPACA_PAPER_*.
+    Bare os.environ[K] would raise KeyError with no context if bootstrap
+    is bypassed — `_require_alpaca_env` raises with diagnostic detail.
     """
     mode = _resolve_account_mode(account_mode)
     if mode not in _TRADING_CLIENTS:
         env_prefix = f"ALPACA_{mode.upper()}_"
-        api_key = os.environ[f"{env_prefix}API_KEY"]
-        secret_key = os.environ[f"{env_prefix}SECRET_KEY"]
+        api_key = _require_alpaca_env(f"{env_prefix}API_KEY", mode)
+        secret_key = _require_alpaca_env(f"{env_prefix}SECRET_KEY", mode)
         # paper= flag tells alpaca-py which API URL family to use:
         #   True  → paper-api.alpaca.markets
         #   False → api.alpaca.markets
@@ -150,8 +175,8 @@ def _get_data_client() -> StockHistoricalDataClient:
     """
     global _data_client
     if _data_client is None:
-        api_key = os.environ["ALPACA_PAPER_API_KEY"]
-        secret_key = os.environ["ALPACA_PAPER_SECRET_KEY"]
+        api_key = _require_alpaca_env("ALPACA_PAPER_API_KEY", "paper")
+        secret_key = _require_alpaca_env("ALPACA_PAPER_SECRET_KEY", "paper")
         _data_client = StockHistoricalDataClient(api_key, secret_key)
         logger.info("Alpaca StockHistoricalDataClient initialized")
     return _data_client
