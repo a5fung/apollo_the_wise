@@ -1744,41 +1744,64 @@ async def _ma_pullback_scan_job():
 async def _catalyst_downgrade_digest_job():
     """Morning roll-up of catalyst-downgrade alerts (#143, 2026-05-28).
 
-    Drains the in-process accumulator in ep_detector. Sends a single
-    compact digest at 10:10 ET (5 min after EP scan window closes at
-    10:00) so the 10:00 scan tick has finished mid-flight. Empty day →
-    no Telegram (matches #133 pattern).
+    Queries mi_audit_log for today's `catalyst_earnings_revenue_weak_downgrade`
+    events and renders them into a compact digest at 10:10 ET (5 min
+    after EP scan window closes at 10:00). Empty day → no Telegram.
+
+    2026-05-28 ship-day bug: original implementation drained an
+    in-process accumulator in ep_detector, which got reset on the
+    10:04:31 container restart and lost the morning's 9 downgrades.
+    Same in-process-state-vs-restart bug class as the IBM `sync_positions`
+    fix (#137) and the EP watchdog (commit 99f66f1). The audit row is
+    the source of truth; sourcing the digest from it survives any
+    restart, deploy, or process-recycle event.
 
     Audit log retains per-ticker rows for `/rubric TICKER` drilldown.
     """
-    from agents.market_intelligence.ep_detector import drain_downgrade_digest
-    entries = drain_downgrade_digest()
-    if not entries:
+    from agents.market_intelligence.collector import _ET
+    now_et = datetime.now(_ET)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT summary, detail, created_at
+            FROM mi_audit_log
+            WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+            ORDER BY created_at ASC
+            """,
+            now_et.date(),
+        )
+
+    if not rows:
         return 0
 
     lines = [
-        f"📉 *Catalyst downgrades — morning digest ({len(entries)})*",
+        f"📉 *Catalyst downgrades — morning digest ({len(rows)})*",
         "_LLM-graded narrative strong, methodology rubric disagrees._",
         "",
     ]
-    for e in entries:
-        composite = e.get("rubric_composite")
-        label = e.get("rubric_label")
-        from_q = e.get("from_quality") or "?"
-        if composite is not None:
-            score_str = f"rubric {composite:.0f}/39 ({label})"
-        elif e.get("q_rev_yoy") is not None:
-            score_str = f"Q-rev YoY {e['q_rev_yoy']:.1f}%"
+    for r in rows:
+        # Summary shape from ep_detector audit emit:
+        #   "{TICKER}: {from_quality} → routine (earnings catalyst, {reason})"
+        # e.g.: "BBY: strong → routine (earnings catalyst, rubric_composite_11.0_below_22_label_weak)"
+        # We render the same shape minus the parenthetical (already shown in /rubric drilldown).
+        summary = r["summary"] or ""
+        # Strip "(earnings catalyst, " prefix and trailing ")" if present, surface inner reason
+        inner = summary.split("(earnings catalyst, ", 1)
+        if len(inner) == 2:
+            head = inner[0].rstrip(" (")
+            reason = inner[1].rstrip(")")
+            lines.append(f"• {head} — {reason}")
         else:
-            score_str = e.get("reason", "extraction issue")
-        lines.append(f"• `{e['ticker']}` {from_q} → routine — {score_str}")
+            lines.append(f"• {summary}")
     lines.append("")
     lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
     try:
         await send_telegram_message("\n".join(lines))
     except Exception as e:
         logger.error(f"catalyst_downgrade_digest Telegram failed: {e}")
-    return len(entries)
+    return len(rows)
 
 
 async def _9m_pace_digest_job():
@@ -1801,14 +1824,19 @@ async def _9m_pace_digest_job():
     window_end = now_et.replace(minute=0, second=0, microsecond=0)
     window_start = window_end - timedelta(hours=1)
 
+    # `created_at` is TIMESTAMPTZ — compare directly against tz-aware
+    # datetime params. Original SQL applied `AT TIME ZONE 'America/New_York'`
+    # to the column (yielding naive TIMESTAMP) while passing tz-aware params,
+    # which asyncpg refuses with "can't subtract offset-naive and offset-aware
+    # datetimes" — caught 2026-05-28 first-fire, job failed in 89ms.
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
             SELECT ticker, projected_vol, current_price, gap_pct
             FROM mi_9m_ep_alerts
             WHERE is_anticipation = TRUE
-              AND created_at AT TIME ZONE 'America/New_York' >= $1
-              AND created_at AT TIME ZONE 'America/New_York' <  $2
+              AND created_at >= $1
+              AND created_at <  $2
             """,
             window_start, window_end,
         )
@@ -1817,8 +1845,8 @@ async def _9m_pace_digest_job():
             SELECT DISTINCT ticker
             FROM mi_9m_ep_alerts
             WHERE is_anticipation = FALSE
-              AND created_at AT TIME ZONE 'America/New_York' >= $1
-              AND created_at AT TIME ZONE 'America/New_York' <  $2
+              AND created_at >= $1
+              AND created_at <  $2
             """,
             window_start, window_end,
         )

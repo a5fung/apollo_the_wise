@@ -1,93 +1,43 @@
-"""Regression tests for the catalyst-downgrade morning digest (#143, 2026-05-28).
+"""Regression tests for the catalyst-downgrade morning digest (#143).
 
-Pre-#143 behavior: every catalyst downgrade fired a rich per-ticker
-Telegram immediately. Today's 9 downgrades = 9 alerts.
+Post-2026-05-28 incident: original ship used an in-process accumulator
+that was reset on the 10:04 ET container restart, losing 9 morning
+downgrades. Replaced with a DB query against mi_audit_log
+`catalyst_earnings_revenue_weak_downgrade` events at digest time — same
+in-process-state-vs-restart fix pattern as the EP scan watchdog.
 
-Post-#143: per-downgrade Telegram replaced with an in-process
-accumulator append. Scheduled job at 10:10 ET drains the accumulator
-and sends one digest. Audit log unchanged (per-ticker rows preserved
-for `/rubric` drilldown).
-
-Tests pin the accumulator behavior + digest composition.
+Tests pin: empty-day silent, populated digest renders summary lines.
 """
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from agents.market_intelligence import ep_detector
 
+def _make_pool(audit_rows: list[dict]):
+    """Mock asyncpg pool whose conn.fetch returns the given rows."""
+    conn = MagicMock()
+    conn.fetch = AsyncMock(return_value=audit_rows)
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=acquire_cm)
+    return pool, conn
 
-def _reset_accumulator():
-    """Helper — wipe module-level state between tests so order doesn't matter."""
-    ep_detector._downgrade_digest_pending = []
-    ep_detector._downgrade_digest_date = None
-
-
-# ── Accumulator semantics ────────────────────────────────────────────────────
-
-def test_enqueue_appends_to_accumulator():
-    _reset_accumulator()
-    ep_detector._enqueue_downgrade_for_digest({"ticker": "FOO", "from_quality": "strong"})
-    ep_detector._enqueue_downgrade_for_digest({"ticker": "BAR", "from_quality": "game_changer"})
-    assert len(ep_detector._downgrade_digest_pending) == 2
-    assert [e["ticker"] for e in ep_detector._downgrade_digest_pending] == ["FOO", "BAR"]
-
-
-def test_drain_returns_and_clears():
-    _reset_accumulator()
-    ep_detector._enqueue_downgrade_for_digest({"ticker": "FOO"})
-    ep_detector._enqueue_downgrade_for_digest({"ticker": "BAR"})
-    items = ep_detector.drain_downgrade_digest()
-    assert len(items) == 2
-    assert ep_detector._downgrade_digest_pending == []
-
-
-def test_drain_empty_returns_empty_list():
-    _reset_accumulator()
-    assert ep_detector.drain_downgrade_digest() == []
-    assert ep_detector._downgrade_digest_pending == []
-
-
-def test_new_day_clears_yesterday():
-    """If the accumulator carries entries from a previous date (e.g.,
-    container restart spanning midnight), the next enqueue clears stale
-    state before appending."""
-    from datetime import date as _date
-    _reset_accumulator()
-    # Manually plant a yesterday-bucketed entry
-    ep_detector._downgrade_digest_pending = [{"ticker": "STALE"}]
-    ep_detector._downgrade_digest_date = _date(2026, 5, 27)  # yesterday
-    # enqueue uses et_today() — patch to return a different date
-    with patch.object(ep_detector, "et_today", return_value=_date(2026, 5, 28)):
-        ep_detector._enqueue_downgrade_for_digest({"ticker": "FRESH"})
-    assert [e["ticker"] for e in ep_detector._downgrade_digest_pending] == ["FRESH"]
-    assert ep_detector._downgrade_digest_date == _date(2026, 5, 28)
-
-
-def test_same_day_appends_without_clearing():
-    """Multiple enqueues on the same ET date all accumulate."""
-    from datetime import date as _date
-    _reset_accumulator()
-    with patch.object(ep_detector, "et_today", return_value=_date(2026, 5, 28)):
-        ep_detector._enqueue_downgrade_for_digest({"ticker": "A"})
-        ep_detector._enqueue_downgrade_for_digest({"ticker": "B"})
-        ep_detector._enqueue_downgrade_for_digest({"ticker": "C"})
-    assert len(ep_detector._downgrade_digest_pending) == 3
-
-
-# ── Digest job (end-to-end) ──────────────────────────────────────────────────
 
 @pytest.mark.asyncio
 async def test_digest_job_empty_no_telegram():
-    """No accumulated entries → digest job returns 0 + no Telegram."""
-    _reset_accumulator()
+    """Empty mi_audit_log result → returns 0 + no Telegram."""
     from agents.market_intelligence import scheduler
 
+    pool, _conn = _make_pool([])
     sent = []
+
     async def _fake_send(text, *args, **kwargs):
         sent.append(text)
 
-    with patch.object(scheduler, "send_telegram_message", new=_fake_send):
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
         count = await scheduler._catalyst_downgrade_digest_job()
 
     assert count == 0
@@ -96,29 +46,29 @@ async def test_digest_job_empty_no_telegram():
 
 @pytest.mark.asyncio
 async def test_digest_job_renders_compact_per_ticker_lines():
-    """Accumulated entries → single Telegram with one line per ticker.
-    Verifies header + drilldown footer + correct ticker rendering."""
-    _reset_accumulator()
+    """Populated audit rows → single Telegram with one line per ticker."""
     from agents.market_intelligence import scheduler
 
-    ep_detector._enqueue_downgrade_for_digest({
-        "ticker": "FOO", "from_quality": "strong",
-        "rubric_composite": 14.0, "rubric_label": "weak",
-        "q_rev_yoy": None, "extraction_quality": "high",
-        "reason": "rubric_composite_14.0_below_22_label_weak",
-    })
-    ep_detector._enqueue_downgrade_for_digest({
-        "ticker": "BAR", "from_quality": "game_changer",
-        "rubric_composite": None, "rubric_label": None,
-        "q_rev_yoy": None, "extraction_quality": "medium",
-        "reason": "q_rev_yoy_missing_no_prior_year_comparable",
-    })
-
+    audit_rows = [
+        {
+            "summary": "FOO: strong → routine (earnings catalyst, rubric_composite_14.0_below_22_label_weak)",
+            "detail": None,
+            "created_at": None,
+        },
+        {
+            "summary": "BAR: game_changer → routine (earnings catalyst, q_rev_yoy_missing_no_prior_year_comparable)",
+            "detail": None,
+            "created_at": None,
+        },
+    ]
+    pool, _conn = _make_pool(audit_rows)
     sent = []
+
     async def _fake_send(text, *args, **kwargs):
         sent.append(text)
 
-    with patch.object(scheduler, "send_telegram_message", new=_fake_send):
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
         count = await scheduler._catalyst_downgrade_digest_job()
 
     assert count == 2
@@ -128,8 +78,35 @@ async def test_digest_job_renders_compact_per_ticker_lines():
     assert "(2)" in msg
     assert "FOO" in msg
     assert "BAR" in msg
-    assert "14" in msg  # rubric composite shown for FOO
-    assert "q_rev_yoy_missing" in msg  # reason fallback for BAR
-    assert "/rubric" in msg  # drilldown footer
-    # Accumulator drained
-    assert ep_detector._downgrade_digest_pending == []
+    # Inner reason surfaces post the "(earnings catalyst, " split:
+    assert "rubric_composite_14.0_below_22_label_weak" in msg
+    assert "q_rev_yoy_missing_no_prior_year_comparable" in msg
+    # Drilldown footer present
+    assert "/rubric" in msg
+
+
+@pytest.mark.asyncio
+async def test_digest_job_handles_unparseable_summary_gracefully():
+    """Audit row with off-format summary → falls back to verbatim line, no crash."""
+    from agents.market_intelligence import scheduler
+
+    audit_rows = [
+        {
+            "summary": "WEIRD: unstructured downgrade reason no earnings tag",
+            "detail": None,
+            "created_at": None,
+        },
+    ]
+    pool, _conn = _make_pool(audit_rows)
+    sent = []
+
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
+        count = await scheduler._catalyst_downgrade_digest_job()
+
+    assert count == 1
+    assert len(sent) == 1
+    assert "WEIRD: unstructured downgrade reason no earnings tag" in sent[0]

@@ -115,37 +115,6 @@ _PROSE_NEGATIVE_MARKERS = NEGATIVE_CATALYST_MARKERS_BASE + (
 _audit_dedupe: set[tuple[str, "date", str]] = set()
 _audit_dedupe_date: "date | None" = None
 
-# Catalyst-downgrade digest accumulator (#143, 2026-05-28). Pre-fix, every
-# downgrade fired a rich per-ticker Telegram immediately; 9 unique downgrades
-# on 2026-05-28 morning = 9 alerts. The scheduled _catalyst_downgrade_digest_job
-# in scheduler.py drains this buffer at ~10:10 ET and sends one digest.
-# In-memory only — restart between 7-10 ET drops pending entries; acceptable
-# tradeoff per advisor 2026-05-28 (audit_log still has per-ticker rows for
-# /rubric drilldown, so the data is never lost).
-_downgrade_digest_pending: list[dict] = []
-_downgrade_digest_date: "date | None" = None
-
-
-def _enqueue_downgrade_for_digest(entry: dict) -> None:
-    """Append a downgrade record for the morning digest. Date-bucketed —
-    yesterday's leftover entries get cleared on first call of a new ET day."""
-    global _downgrade_digest_pending, _downgrade_digest_date
-    today = et_today()
-    if _downgrade_digest_date != today:
-        _downgrade_digest_pending = []
-        _downgrade_digest_date = today
-    _downgrade_digest_pending.append(entry)
-
-
-def drain_downgrade_digest() -> list[dict]:
-    """Pop + return the day's accumulated downgrade entries. Caller (the
-    scheduled digest job) is responsible for sending the Telegram + clearing."""
-    global _downgrade_digest_pending
-    items = list(_downgrade_digest_pending)
-    _downgrade_digest_pending = []
-    return items
-
-
 def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
     """Returns True if (ticker, date, event) hasn't been logged this session.
 
@@ -1560,27 +1529,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     catalyst_quality, confidence_multiplier,
                     news_summary, claude_analysis, pplx_quality,
                 )
-                # Accumulate for morning digest (#143). Pre-fix, this code
-                # sent a rich per-ticker Telegram immediately; with 5-10
-                # downgrades typical per morning, that's noisy. Audit row
-                # already written above carries the full payload for the
-                # `/rubric TICKER` drilldown — accumulator only carries the
-                # compact summary used by the 10:10 ET digest job.
-                _enqueue_downgrade_for_digest({
-                    "ticker": ticker,
-                    "from_quality": _original_quality,
-                    "reason": _downgrade_reason,
-                    "rubric_composite": (
-                        _rubric_result.get("composite_scaled")
-                        if _rubric_result else None
-                    ),
-                    "rubric_label": (
-                        _rubric_result.get("label")
-                        if _rubric_result else None
-                    ),
-                    "q_rev_yoy": _q_rev_yoy,
-                    "extraction_quality": _quality,
-                })
+                # Per-ticker Telegram suppressed (was 5-10 noise alerts per
+                # morning). Audit event above is the source of truth — the
+                # 10:10 ET _catalyst_downgrade_digest_job reads mi_audit_log
+                # directly so the digest survives container restart (#143
+                # post-mortem 2026-05-28).
 
         # Prose-mismatch downgrade (#72, 2026-05-11). Strong-graded alerts
         # whose prose explicitly says "no catalyst / no fresh news" are
