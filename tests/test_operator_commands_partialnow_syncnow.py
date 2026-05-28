@@ -93,16 +93,11 @@ async def test_partialnow_skips_already_partial():
 async def test_partialnow_blocks_after_hours_without_confirm():
     """#141 guard: outside 9:30-16:50 ET, /partialnow without CONFIRM returns
     a warning explaining the after-hours Alpaca paper risk class."""
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
     from agents.market_intelligence.agent import MarketIntelligenceAgent
-    from agents.market_intelligence import agent as agent_mod
+    from agents.market_intelligence import trading_calendar
 
     agent = _FakeAgent()
-    # 21:00 ET (after-hours)
-    fake_now = datetime(2026, 5, 28, 21, 0, tzinfo=ZoneInfo("America/New_York"))
-    with patch.object(agent_mod, "datetime") as dt_mock:
-        dt_mock.now.return_value = fake_now
+    with patch.object(trading_calendar, "is_market_hours_now_et", return_value=False):
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
             agent, _request("/partialnow IBM"),
         )
@@ -114,10 +109,8 @@ async def test_partialnow_blocks_after_hours_without_confirm():
 @pytest.mark.asyncio
 async def test_partialnow_after_hours_with_confirm_proceeds():
     """#141 guard: append CONFIRM, get past the gate; then normal execution path."""
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
     from agents.market_intelligence.agent import MarketIntelligenceAgent
-    from agents.market_intelligence import agent as agent_mod
+    from agents.market_intelligence import trading_calendar
     from agents.market_intelligence import db as db_mod
     from agents.market_intelligence.broker import order_manager
     from tests.conftest import make_mock_pool
@@ -129,13 +122,11 @@ async def test_partialnow_after_hours_with_confirm_proceeds():
         "signal_type": "magna53", "account_mode": "paper",
     })
 
-    fake_now = datetime(2026, 5, 28, 21, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
-    with patch.object(agent_mod, "datetime") as dt_mock, \
+    with patch.object(trading_calendar, "is_market_hours_now_et", return_value=False), \
          patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)), \
          patch.object(order_manager, "execute_partial_exit", new=AsyncMock(return_value=True)), \
          patch.object(db_mod, "log_audit_event", new=AsyncMock()):
-        dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
             agent, _request("/partialnow IBM CONFIRM"),
         )

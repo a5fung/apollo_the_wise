@@ -113,6 +113,35 @@ def _get_holiday_name(cal, d: date) -> str | None:
         return None
 
 
+def is_market_hours_now_et(end_buffer_minutes: int = 0) -> bool:
+    """True iff `now` is inside the regular-session window in America/New_York,
+    on a trading day (weekday + not a holiday).
+
+    Extracted 2026-05-28 /simplify pass — three call sites had emerged
+    (`/partialnow`, `_maybe_alert_stuck_pending_new`, `_today_market_hours_boots`
+    SQL) each with slightly different windows and inconsistent holiday handling.
+
+    Args:
+        end_buffer_minutes: tail buffer past 16:00 ET. e.g. `50` for the
+            `/partialnow` 16:50 cutoff that covers the 16:45 ET partial-
+            take cron. Default 0 = strict 9:30–16:00 ET.
+
+    Returns False on calendar-library failure (fail-closed: don't claim
+    market is open if we can't prove it).
+    """
+    from datetime import datetime, time as _time
+    from zoneinfo import ZoneInfo
+    try:
+        now_et = datetime.now(ZoneInfo("America/New_York"))
+        if not get_market_status(now_et.date()).is_trading_day:
+            return False
+        end_mins = 16 * 60 + end_buffer_minutes
+        cur_mins = now_et.hour * 60 + now_et.minute
+        return (9 * 60 + 30) <= cur_mins <= end_mins
+    except Exception:
+        return False
+
+
 def _check_early_close(cal, d_str: str) -> str | None:
     """Return a note if the market closes early on this day, else None."""
     try:

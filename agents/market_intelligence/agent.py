@@ -2666,9 +2666,9 @@ class MarketIntelligenceAgent(BaseAgent):
         requires explicit `CONFIRM` suffix to proceed.
         """
         import re as _re
-        from zoneinfo import ZoneInfo
         from agents.market_intelligence.db import get_pool, log_audit_event
         from agents.market_intelligence.broker.order_manager import execute_partial_exit
+        from agents.market_intelligence.trading_calendar import is_market_hours_now_et
 
         task_text = request.task.strip()
         upper = task_text.upper()
@@ -2691,19 +2691,13 @@ class MarketIntelligenceAgent(BaseAgent):
                 ),
             )
 
-        # After-hours guard (#141): Alpaca paper's after-hours share-reservation
-        # quirks caused the IBM cascade R4. Steady-state safe window is 9:30
-        # AM ET (market open) to 16:50 ET (10 min after close — covers the
-        # 16:45 ET scheduled partial-take cron, which has filled cleanly N=5
-        # in 90d cohort). Outside that window, require explicit CONFIRM.
-        ET = ZoneInfo("America/New_York")
-        now_et = datetime.now(ET)
-        weekday = now_et.weekday()  # Mon=0..Sun=6
-        in_safe_window = (
-            weekday < 5
-            and 9 * 60 + 30 <= (now_et.hour * 60 + now_et.minute) <= 16 * 60 + 50
-        )
-        if not in_safe_window and not confirmed:
+        # After-hours guard (#141): /partialnow needs the 16:50 ET tail
+        # buffer so the 16:45 ET scheduled partial-take still fits inside
+        # the safe window. Outside that, Alpaca paper's share-reservation
+        # quirks deadlock partial-exit retries (IBM cascade R4).
+        if not is_market_hours_now_et(end_buffer_minutes=50) and not confirmed:
+            from zoneinfo import ZoneInfo
+            now_et = datetime.now(ZoneInfo("America/New_York"))
             return self._ok(
                 request,
                 result=(

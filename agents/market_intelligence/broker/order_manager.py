@@ -1778,40 +1778,33 @@ async def _maybe_alert_stuck_pending_new(
     """Telegram + audit when an order has been Alpaca-confirmed pending_new
     for >_STUCK_PENDING_NEW_THRESHOLD_MINUTES during market hours. Once
     per (ticker, day) dedup against `stuck_pending_new_detected` audit rows.
-
-    Fail-open: any exception inside swallowed so the parent reconcile loop
-    can't be broken by alerting infrastructure.
     """
     from zoneinfo import ZoneInfo
+    from agents.market_intelligence.audit_events import STUCK_PENDING_NEW_DETECTED
+    from agents.market_intelligence.trading_calendar import is_market_hours_now_et
+
+    if submitted_at is None or not is_market_hours_now_et():
+        return
+
+    ET = ZoneInfo("America/New_York")
+    now_et = datetime.now(ET)
+    age_minutes = (now_et - submitted_at.astimezone(ET)).total_seconds() / 60.0
+    if age_minutes < _STUCK_PENDING_NEW_THRESHOLD_MINUTES:
+        return
+
+    # Surrounding try-block guards only the DB+Telegram interactions —
+    # the parent reconcile loop must keep iterating other orders even if
+    # alerting infrastructure throws.
     try:
-        if submitted_at is None:
-            return
-        ET = ZoneInfo("America/New_York")
-        now_et = datetime.now(ET)
-
-        # Market-hours gate. Pending_new outside market hours is common for
-        # pre-market submissions awaiting open routing — not a bug.
-        from agents.market_intelligence.trading_calendar import get_market_status
-        market_status = get_market_status(now_et.date())
-        if not market_status.is_trading_day:
-            return
-        if not (datetime_time(9, 30) <= now_et.time() <= datetime_time(16, 0)):
-            return
-
-        # Age threshold
-        age_minutes = (now_et - submitted_at.astimezone(ET)).total_seconds() / 60.0
-        if age_minutes < _STUCK_PENDING_NEW_THRESHOLD_MINUTES:
-            return
-
-        # Per-day dedup: don't re-alert same ticker today
         existing = await conn.fetchval(
             """
             SELECT 1 FROM mi_audit_log
-            WHERE event_type = 'stuck_pending_new_detected'
-              AND summary LIKE $1
-              AND (created_at AT TIME ZONE 'America/New_York')::date = $2
+            WHERE event_type = $1
+              AND summary LIKE $2
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $3
             LIMIT 1
             """,
+            STUCK_PENDING_NEW_DETECTED,
             f"{row['ticker']}%",
             now_et.date(),
         )
@@ -1820,9 +1813,8 @@ async def _maybe_alert_stuck_pending_new(
 
         order_id = row["alpaca_order_id"]
         ticker = row["ticker"]
-        purpose = row.get("purpose") if hasattr(row, "get") else (row["purpose"] if "purpose" in row.keys() else None)
+        purpose = row["purpose"]
 
-        from agents.market_intelligence.audit_events import STUCK_PENDING_NEW_DETECTED
         await log_audit_event(
             STUCK_PENDING_NEW_DETECTED,
             f"{ticker} order={order_id[:8]} stuck {age_minutes:.0f}min "
@@ -1831,21 +1823,17 @@ async def _maybe_alert_stuck_pending_new(
             f"submitted_at={submitted_at.isoformat()} "
             f"age_minutes={age_minutes:.1f}",
         )
-
-        try:
-            await send_telegram_message(
-                f"⚠️ *Order stuck pending_new — {ticker}*\n"
-                f"Alpaca {account_mode} hasn't routed the order in "
-                f"{age_minutes:.0f} min. Apollo's submission was clean; "
-                f"broker-side routing stalled.\n\n"
-                f"Order ID: `{order_id[:12]}…`\n"
-                f"Purpose: `{purpose}`\n"
-                f"Submitted: `{submitted_at.astimezone(ET).strftime('%Y-%m-%d %H:%M:%S ET')}`\n\n"
-                f"_Operator decision: cancel via Alpaca web UI if "
-                f"setup is no longer valid. Reconcile job will keep checking._"
-            )
-        except Exception as e:
-            logger.error(f"stuck_pending_new Telegram failed for {ticker}: {e}")
+        await send_telegram_message(
+            f"⚠️ *Order stuck pending_new — {ticker}*\n"
+            f"Alpaca {account_mode} hasn't routed the order in "
+            f"{age_minutes:.0f} min. Apollo's submission was clean; "
+            f"broker-side routing stalled.\n\n"
+            f"Order ID: `{order_id[:12]}…`\n"
+            f"Purpose: `{purpose}`\n"
+            f"Submitted: `{submitted_at.astimezone(ET).strftime('%Y-%m-%d %H:%M:%S ET')}`\n\n"
+            f"_Operator decision: cancel via Alpaca web UI if "
+            f"setup is no longer valid. Reconcile job will keep checking._"
+        )
     except Exception as e:
         logger.error(f"_maybe_alert_stuck_pending_new failed: {e}", exc_info=True)
 

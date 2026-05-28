@@ -5,17 +5,23 @@ names cause silent failures — the row gets written with the wrong type
 and the predicate SQL / drill-down query / weekly review aggregator
 never matches it.
 
-**Scope of this initial pass**: events with 2+ call sites across the
-codebase + all new events introduced in today's session. Single-caller
-events (175 of them) stay as literals — the rule-of-three discipline
-isn't crossed, and a constant per single-caller event would be more
-overhead than value.
+**Scope of this initial pass**: the constants module DEFINES names for
+all events with 2+ call sites + new events from the 2026-05-28 session.
+Call-site MIGRATION is partial — only the events introduced today and
+a few referenced in today's PRs (CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
+STUCK_PENDING_NEW_DETECTED, PARTIAL_NOW_OPERATOR_CONFIRMED,
+SYNC_NOW_OPERATOR_CONFIRMED) have been migrated. Pre-existing 2+-caller
+events like NAKED_POSITION_DETECTED, PARTIAL_EXIT_ABORTED, STOP_UPDATE_FAILED,
+MNA_FILTER_FIRED still have string-literal call sites — those get
+adopted opportunistically when touching the relevant files.
 
 **Future migrations**: when touching a file that emits an audit event
 already in this module, switch the call site to the constant. When
 adding a NEW event that will have 2+ callers, add the constant here
 first. The unit test `tests/test_audit_event_constants.py` pins
-uniqueness + naming pattern.
+uniqueness + naming pattern but deliberately does NOT enforce that
+every call site uses the constant — that would block opportunistic
+adoption.
 
 **Naming convention**: SCREAMING_SNAKE_CASE Python identifier, value
 is lowercase-snake-case matching the existing audit_log convention.
