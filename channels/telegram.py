@@ -1596,7 +1596,9 @@ class TelegramChannel:
                      # (BotCommand only affects autocomplete; CommandHandler is the actual route).
                      "sugarbabies", "sugarbaby", "timestop", "inplay",
                      "flagbreaks", "flagbreak", "supporttests", "supporttest",
-                     "mapullbacks", "mapullback", "breadth", "watch", "rubric"):
+                     "mapullbacks", "mapullback", "breadth", "watch", "rubric",
+                     # 2026-05-28 #138 operator-confirm commands
+                     "partialnow", "syncnow"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
