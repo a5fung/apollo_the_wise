@@ -349,6 +349,25 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-05-27 (Wed evening) — INCIDENT: IBM partial-exit + DB mass-close cascade
+
+Full post-mortem: [`docs/incidents/2026-05-27-ibm-partial-sync-cascade.md`](docs/incidents/2026-05-27-ibm-partial-sync-cascade.md).
+
+**Sequence:** (1) IBM partial-exit hit a pre-existing cancel-new race at 4:45 PM ET (R1); (2) Claude ran `sync_positions` via `docker exec python -c` to investigate, bypassed the credential bootstrap, Alpaca returned `[]`, code mass-closed 3 trades in DB (R3 — Claude judgment error); (3) manual SQL restore; (4) Claude pushed forward with after-hours partial-exit retry, hit Alpaca paper extended-hours share-reservation quirks, IBM stop_order_id corrupted again (R4 — Claude judgment error); (5) manual SQL re-sync.
+
+**Broker protection intact throughout.** DB consistency damaged twice, recovered both times.
+
+**Shipped (P1):**
+- `fa70976` — `alpaca_client.replace_order_by_id` atomic replace; closes R1 cancel-new race.
+- `fa49304` — `sync_positions` safety guard refuses mass-close when Alpaca returns `[]` AND DB has N>0 active filled trades; closes R2 + would have prevented R3 damage.
+- `f236976` — same-window 2-attempt retry inside `execute_partial_exit` with 1.5s backoff.
+
+**Filed (P2/P3/P4):** #138 `/partialnow` + `/syncnow` operator-confirm Telegram commands; #139 `alpaca_client` boot-guard for missing bootstrap; #140 Telegram alert taxonomy (`⚠️ DB-DRIFT` vs `🚨 NAKED POSITION`); #141 after-hours partial reliability data-gated review.
+
+**Discipline rule (codified):** on live trade state, default is STOP and CONSULT, not ATTEMPT and RECOVER. Memory: `feedback_no_docker_exec_for_trade_state.md`.
+
+**Verification pending:** tomorrow (5/28) 4:45 PM ET — IBM partial-exit must execute cleanly using `replace_order` + same-window retry. Success validates P1 fixes; failure means prevention is premature.
+
 ### 2026-05-26 (Tue) — Session B ship-day: #123 DB↔Alpaca order-status reconcile
 
 **#123 DB order-status reconciliation**: 49 stuck mi_live_orders rows discovered in production, oldest from April 16 (40 days). Pattern is NOT rare — silent WebSocket gaps + container restarts during market hours leave DB out of sync with broker's authoritative state. Drift is endemic, so this is periodic + post-deploy, not deploy-only.
