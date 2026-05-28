@@ -1905,6 +1905,39 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
               AND account_mode = $1
         """, account_mode)
 
+    # Safety: if Alpaca returned zero positions but DB has N>0 active
+    # filled trades, that's almost certainly a broker-side failure
+    # (creds bootstrap failed, 5xx, network hiccup) — NOT a real "user
+    # liquidated everything" event. Mass-closing the DB on this signal
+    # destroys state (2026-05-27 23:01 ET incident: docker exec python
+    # one-shot ran sync without _bootstrap_alpaca_credentials → 0
+    # positions returned → 3 active trades wrongly closed in DB; manual
+    # SQL restore required). Audit + abort.
+    active_db_trades = [
+        t for t in db_trades
+        if t["status"] == "filled" and (t["remaining_shares"] or 0) > 0
+    ]
+    if not alpaca_positions and active_db_trades:
+        await log_audit_event(
+            "sync_positions_aborted_alpaca_empty",
+            f"[{account_mode}] Alpaca returned 0 positions but DB has "
+            f"{len(active_db_trades)} active filled trades — refusing to "
+            f"mass-close (likely creds/API failure). Investigate manually.",
+            detail=json.dumps({
+                "account_mode": account_mode,
+                "db_active_count": len(active_db_trades),
+                "db_active_tickers": [t["ticker"] for t in active_db_trades],
+            }),
+        )
+        logger.error(
+            f"sync_positions [{account_mode}]: 0 Alpaca / "
+            f"{len(active_db_trades)} DB-active → ABORT (refusing mass-close)"
+        )
+        return [
+            f"[{account_mode}] ABORTED: 0 Alpaca positions vs "
+            f"{len(active_db_trades)} DB-active — likely broker-side failure"
+        ]
+
     discrepancies = []
 
     # Check each DB trade against Alpaca
