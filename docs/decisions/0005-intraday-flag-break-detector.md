@@ -73,6 +73,16 @@ require: current_price > base_high
 
 Trivial but load-bearing. `base_high` is captured at EOD per the existing flag detector's `compute_flag_metrics`. The intraday detector reads yesterday's value; doesn't recompute.
 
+### Idempotency guard (#145, 2026-05-28)
+
+```
+require: yesterday's close <= base_high  (or close missing)
+```
+
+Universe-side filter applied to the SQL that loads candidates. Excludes tickers whose prior bar already closed above `base_high` — the break already happened yesterday, so today's `current_price > base_high` is trivially satisfied and would emit a stale alert. Triggered by ADTN + IREN 2026-05-28 false-fires: both broke TIGHTENING→post-break-price yesterday but the state machine's TRIGGERED branch (`compute_flag_metrics` line 630) requires a COILED prerequisite that neither ticker reached, so they stayed labelled TIGHTENING. Sister detectors (#95 support-test, #96 MA-pullback) get the same guard — once the range resolves upward, the consolidation structure no longer exists for any entry technique.
+
+The deeper fix (drop or weaken the COILED prerequisite) is filed as task #146 — requires N≥10 backtest of direct-TIGHTENING-break cohort. If shipped, the guard here becomes belt-and-suspenders.
+
 ### Dedup
 
 `UNIQUE (ticker, break_date)` constraint on `mi_flag_breaks`. First break of the day wins; subsequent breaks of the same ticker on the same trading day are no-ops at the INSERT layer (via `ON CONFLICT DO NOTHING`).

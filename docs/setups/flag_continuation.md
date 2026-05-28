@@ -69,6 +69,24 @@ Added 2026-05-04 to catch short-base tight setups that don't fit the early-vs-re
 
 ## Change log (newest first)
 
+### 2026-05-28 — Intraday detector idempotency guard (#145, ADTN/IREN-class false-fire)
+
+**Trigger**: ADTN + IREN false-fired in this morning's intraday flag-break scan. Both tickers had broken their TIGHTENING range yesterday 2026-05-27 with conviction (ADTN +21% above base_high on 4× volume; IREN +10% on 2× volume), but the EOD state machine left them at TIGHTENING because the TRIGGERED branch in `compute_flag_metrics` (flag_detector.py:630-635) requires `coiled_today OR was_coiled_recent` — neither ticker had reached COILED. Today's intraday detector loaded yesterday's TIGHTENING row and saw `current_price > base_high` trivially satisfied → emitted false "fresh break" alerts.
+
+**Evidence**: N=2 confirmed (ADTN, IREN). DB sweep across today's universe surfaced 7 more candidates in the same shape (TVTX +3.9%, UCTT +3.5%, WULF +3.1%, ARCB +2.1%, QS +0.8%, PAYS +0.6%, PLPC +0.4%) — 9/92 = ~10% of yesterday's eligible candidates had already-realized breaks. Pattern is recurring, not single-case.
+
+**Architecture**: SQL guard in all three intraday loaders (`run_intraday_flag_break_scan`, `run_intraday_support_test_scan`, `run_intraday_ma_pullback_scan`). Each candidate query LEFT JOINs `mi_daily_closes` on `(ticker, scan_date)` and excludes rows where `prior_close > base_high`. `dc.close IS NULL` rows kept (fail-open for missing data, matches existing universe behavior).
+
+**Anticipated effect**: ~10% of the daily intraday candidate universe stops false-firing on Day-2-of-breakout. Sister detectors (#95 support-test, #96 MA-pullback) get the same guard — both gate on stage labels that, post-bug, label these tickers as "still pre-break" when they aren't.
+
+**User principle** (2026-05-28): "a flag is a tight trading range; if it breaks that range, it's a flag break." Idempotency guard codifies the corollary: a break realized yesterday isn't a fresh break today.
+
+**Reversion-flag**: NEW (universe-side filter, doesn't change detection logic itself).
+
+**Related — Fix A filed as #146**: the EOD state machine's COILED prerequisite is the deeper bug per the user principle — direct TIGHTENING→TRIGGERED on close > base_high_close + vol should be allowed. Filed as #146 methodology investigation requiring N≥10 backtest cohort. If Fix A ships, the universe guard here becomes belt-and-suspenders.
+
+**Status**: shipped 2026-05-28. Verification: tomorrow's 9:35 AM intraday scan should NOT fire on any of ADTN/IREN/TVTX/UCTT/WULF/ARCB/QS/PAYS/PLPC (assuming they remain above base_high — most will).
+
 ### 2026-05-19 — Universe path (e): flag-stage carryforward (RVMD-class fix)
 
 **Trigger**: RVMD on 2026-05-19 was COILED for 3 consecutive scans (5/14, 5/15, 5/18) — textbook tight consolidation in a $141-$151 range with rs_composite=92 and rs_3m=94. Today's scan dropped it entirely (not in mi_flag_candidates at all, not even WATCH). Investigation: rs_rank went 321→499 and rs_1m went 85.6→70.3 in a single day (one-day percentile rotation as bigger-mover names entered the 1-month window). All three organic universe gates (rs_top200 ≤200, rs_1m ≥80, momentum_25pct ≥+25%) failed simultaneously despite price action being identical to prior days (RVMD actually +2% on 5/19). Not in MAGNA53-failed or 9M-watch carryforward paths either.

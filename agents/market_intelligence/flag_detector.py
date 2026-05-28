@@ -1142,19 +1142,32 @@ async def run_intraday_flag_break_scan(scan_time):
         # 1. Load latest pre-today flag classification for TIGHTENING/COILED/TRIGGERED.
         # MAX(scan_date) WHERE < CURRENT_DATE handles Memorial Day Monday correctly
         # (Tuesday morning reads Friday's scan, not Monday calendar-day).
+        # Idempotency guard (#145, 2026-05-28): exclude candidates whose prior
+        # bar already closed above base_high. ADTN/IREN 2026-05-27 broke from
+        # TIGHTENING with no intervening COILED stage; flag_detector's TRIGGERED
+        # branch requires COILED prerequisite (line 635) so they stayed
+        # TIGHTENING despite close > base_high_close. Without this guard,
+        # the next day's intraday detector treats them as still-pre-break and
+        # false-fires. Per user principle 2026-05-28: "if it breaks the range,
+        # it's a flag break" — a break already realized yesterday isn't a
+        # fresh break today.
         candidates = await conn.fetch("""
             WITH latest AS (
                 SELECT MAX(scan_date) AS d FROM mi_flag_candidates
                 WHERE scan_date < CURRENT_DATE
             )
-            SELECT DISTINCT ON (ticker)
-                   ticker, scan_date, stage, base_high, base_low, base_age
-            FROM mi_flag_candidates
-            WHERE scan_date = (SELECT d FROM latest)
-              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
-              AND base_high IS NOT NULL
-              AND base_high > 0
-            ORDER BY ticker, scan_date DESC
+            SELECT DISTINCT ON (c.ticker)
+                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age
+            FROM mi_flag_candidates c
+            LEFT JOIN mi_daily_closes dc
+                   ON dc.ticker = c.ticker
+                  AND dc.trade_date = c.scan_date
+            WHERE c.scan_date = (SELECT d FROM latest)
+              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND c.base_high IS NOT NULL
+              AND c.base_high > 0
+              AND (dc.close IS NULL OR dc.close <= c.base_high)
+            ORDER BY c.ticker, c.scan_date DESC
         """)
         if not candidates:
             return 0
@@ -1393,19 +1406,24 @@ async def run_intraday_support_test_scan(scan_time):
 
     pool = await db.get_pool()
     async with pool.acquire() as conn:
+        # Idempotency guard (#145, 2026-05-28) — see flag-break loader for context.
         candidates = await conn.fetch("""
             WITH latest AS (
                 SELECT MAX(scan_date) AS d FROM mi_flag_candidates
                 WHERE scan_date < CURRENT_DATE
             )
-            SELECT DISTINCT ON (ticker)
-                   ticker, scan_date, stage, base_high, base_low, base_age
-            FROM mi_flag_candidates
-            WHERE scan_date = (SELECT d FROM latest)
-              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
-              AND base_low IS NOT NULL
-              AND base_low > 0
-            ORDER BY ticker, scan_date DESC
+            SELECT DISTINCT ON (c.ticker)
+                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age
+            FROM mi_flag_candidates c
+            LEFT JOIN mi_daily_closes dc
+                   ON dc.ticker = c.ticker
+                  AND dc.trade_date = c.scan_date
+            WHERE c.scan_date = (SELECT d FROM latest)
+              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND c.base_low IS NOT NULL
+              AND c.base_low > 0
+              AND (c.base_high IS NULL OR dc.close IS NULL OR dc.close <= c.base_high)
+            ORDER BY c.ticker, c.scan_date DESC
         """)
         if not candidates:
             return 0
@@ -1660,21 +1678,26 @@ async def run_intraday_ma_pullback_scan(scan_time):
 
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        # Universe: at least one of sma_10 / sma_20 populated
+        # Universe: at least one of sma_10 / sma_20 populated.
+        # Idempotency guard (#145, 2026-05-28) — see flag-break loader for context.
         candidates = await conn.fetch("""
             WITH latest AS (
                 SELECT MAX(scan_date) AS d FROM mi_flag_candidates
                 WHERE scan_date < CURRENT_DATE
             )
-            SELECT DISTINCT ON (ticker)
-                   ticker, scan_date, stage,
-                   base_high, base_low, base_age
-            FROM mi_flag_candidates
-            WHERE scan_date = (SELECT d FROM latest)
-              AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
-              AND base_low IS NOT NULL AND base_low > 0
-              AND base_high IS NOT NULL AND base_high > 0
-            ORDER BY ticker, scan_date DESC
+            SELECT DISTINCT ON (c.ticker)
+                   c.ticker, c.scan_date, c.stage,
+                   c.base_high, c.base_low, c.base_age
+            FROM mi_flag_candidates c
+            LEFT JOIN mi_daily_closes dc
+                   ON dc.ticker = c.ticker
+                  AND dc.trade_date = c.scan_date
+            WHERE c.scan_date = (SELECT d FROM latest)
+              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND c.base_low IS NOT NULL AND c.base_low > 0
+              AND c.base_high IS NOT NULL AND c.base_high > 0
+              AND (dc.close IS NULL OR dc.close <= c.base_high)
+            ORDER BY c.ticker, c.scan_date DESC
         """)
         if not candidates:
             return 0
