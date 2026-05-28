@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, time as _dt_time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -1741,6 +1742,41 @@ async def _ma_pullback_scan_job():
         return None
 
 
+# Machine reason → human prose map (#143/#148 2026-05-28). Used by the
+# downgrade digest so operator-facing lines read as English instead of
+# `rubric_composite_11.0_below_22_label_weak`.
+_DOWNGRADE_REASON_STATIC = {
+    "q_rev_yoy_missing_no_prior_year_comparable": "Q-rev YoY missing (no prior-year comparable)",
+    "news_corpus_sparse_no_q_rev": "news corpus sparse, no Q-rev data",
+    "extraction_quality_low": "catalyst extraction confidence low",
+}
+
+_DOWNGRADE_REASON_RUBRIC_RE = re.compile(
+    r"^rubric_composite_(?P<score>[\d.]+)_below_(?P<thresh>\d+)_label_(?P<label>\w+)$"
+)
+
+
+def _humanize_downgrade_reason(reason: str) -> str:
+    """Convert machine reason code to operator-facing prose.
+
+    Examples:
+    - `rubric_composite_11.0_below_22_label_weak` → `rubric 11/39 below 22 floor (weak)`
+    - `q_rev_yoy_missing_no_prior_year_comparable` → `Q-rev YoY missing (no prior-year comparable)`
+    - unrecognized → reason verbatim with underscores spaced
+    """
+    if not reason:
+        return ""
+    if reason in _DOWNGRADE_REASON_STATIC:
+        return _DOWNGRADE_REASON_STATIC[reason]
+    m = _DOWNGRADE_REASON_RUBRIC_RE.match(reason)
+    if m:
+        score = m.group("score").rstrip("0").rstrip(".") or m.group("score")
+        return f"rubric {score}/39 below {m.group('thresh')} floor ({m.group('label')})"
+    # Fallback: replace underscores with spaces so the raw reason is at
+    # least readable, even if we don't have a templated translation.
+    return reason.replace("_", " ")
+
+
 async def _catalyst_downgrade_digest_job():
     """Morning roll-up of catalyst-downgrade alerts (#143, 2026-05-28).
 
@@ -1785,14 +1821,14 @@ async def _catalyst_downgrade_digest_job():
         # Summary shape from ep_detector audit emit:
         #   "{TICKER}: {from_quality} → routine (earnings catalyst, {reason})"
         # e.g.: "BBY: strong → routine (earnings catalyst, rubric_composite_11.0_below_22_label_weak)"
-        # We render the same shape minus the parenthetical (already shown in /rubric drilldown).
+        # Surface as: "BBY: strong → routine — rubric 11/39 below 22 floor (weak)"
         summary = r["summary"] or ""
-        # Strip "(earnings catalyst, " prefix and trailing ")" if present, surface inner reason
         inner = summary.split("(earnings catalyst, ", 1)
         if len(inner) == 2:
             head = inner[0].rstrip(" (")
-            reason = inner[1].rstrip(")")
-            lines.append(f"• {head} — {reason}")
+            reason_raw = inner[1].rstrip(")")
+            reason_human = _humanize_downgrade_reason(reason_raw)
+            lines.append(f"• {head} — {reason_human}")
         else:
             lines.append(f"• {summary}")
     lines.append("")
