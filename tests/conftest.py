@@ -61,3 +61,12 @@ for _attr in ("validate_orb_entry", "check_filters"):
     if not hasattr(_filters_stub, _attr):
         setattr(_filters_stub, _attr, MagicMock(name=_attr))
 sys.modules["agents.market_intelligence.backtester.filters"] = _filters_stub
+
+_tracker_stub = sys.modules.get(
+    "agents.market_intelligence.backtester.tracker",
+    types.ModuleType("agents.market_intelligence.backtester.tracker"),
+)
+for _attr in ("run_paper_trade_tracker", "format_tracker_telegram"):
+    if not hasattr(_tracker_stub, _attr):
+        setattr(_tracker_stub, _attr, MagicMock(name=_attr))
+sys.modules["agents.market_intelligence.backtester.tracker"] = _tracker_stub

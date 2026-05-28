@@ -71,6 +71,7 @@ JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 JOB_9M_PACE_DIGEST = "9m_pace_digest"
+JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -1743,6 +1744,46 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _catalyst_downgrade_digest_job():
+    """Morning roll-up of catalyst-downgrade alerts (#143, 2026-05-28).
+
+    Drains the in-process accumulator in ep_detector. Sends a single
+    compact digest at 10:10 ET (5 min after EP scan window closes at
+    10:00) so the 10:00 scan tick has finished mid-flight. Empty day →
+    no Telegram (matches #133 pattern).
+
+    Audit log retains per-ticker rows for `/rubric TICKER` drilldown.
+    """
+    from agents.market_intelligence.ep_detector import drain_downgrade_digest
+    entries = drain_downgrade_digest()
+    if not entries:
+        return 0
+
+    lines = [
+        f"📉 *Catalyst downgrades — morning digest ({len(entries)})*",
+        "_LLM-graded narrative strong, methodology rubric disagrees._",
+        "",
+    ]
+    for e in entries:
+        composite = e.get("rubric_composite")
+        label = e.get("rubric_label")
+        from_q = e.get("from_quality") or "?"
+        if composite is not None:
+            score_str = f"rubric {composite:.0f}/39 ({label})"
+        elif e.get("q_rev_yoy") is not None:
+            score_str = f"Q-rev YoY {e['q_rev_yoy']:.1f}%"
+        else:
+            score_str = e.get("reason", "extraction issue")
+        lines.append(f"• `{e['ticker']}` {from_q} → routine — {score_str}")
+    lines.append("")
+    lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
+    try:
+        await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"catalyst_downgrade_digest Telegram failed: {e}")
+    return len(entries)
+
+
 async def _9m_pace_digest_job():
     """Hourly rollup of 9M EP pace (anticipation) alerts (#133, 2026-05-27).
 
@@ -3155,6 +3196,22 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_9M_PACE_DIGEST,
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # Catalyst-downgrade morning digest: 10:10 ET (#143, 2026-05-28).
+    # Drains the in-process accumulator from ep_detector. Bundles all the
+    # morning's downgrades into one Telegram instead of 5-10 per-ticker
+    # alerts. 10:10 vs 10:00 to clear the last EP scan tick in-flight.
+    # Audit log retains per-ticker rows for `/rubric` drilldown.
+    _scheduler.add_job(
+        audit_wrap(_catalyst_downgrade_digest_job, JOB_CATALYST_DOWNGRADE_DIGEST),
+        CronTrigger(
+            hour=10, minute=10,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_CATALYST_DOWNGRADE_DIGEST,
         replace_existing=True,
         misfire_grace_time=300,
     )

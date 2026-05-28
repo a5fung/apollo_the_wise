@@ -115,6 +115,36 @@ _PROSE_NEGATIVE_MARKERS = NEGATIVE_CATALYST_MARKERS_BASE + (
 _audit_dedupe: set[tuple[str, "date", str]] = set()
 _audit_dedupe_date: "date | None" = None
 
+# Catalyst-downgrade digest accumulator (#143, 2026-05-28). Pre-fix, every
+# downgrade fired a rich per-ticker Telegram immediately; 9 unique downgrades
+# on 2026-05-28 morning = 9 alerts. The scheduled _catalyst_downgrade_digest_job
+# in scheduler.py drains this buffer at ~10:10 ET and sends one digest.
+# In-memory only — restart between 7-10 ET drops pending entries; acceptable
+# tradeoff per advisor 2026-05-28 (audit_log still has per-ticker rows for
+# /rubric drilldown, so the data is never lost).
+_downgrade_digest_pending: list[dict] = []
+_downgrade_digest_date: "date | None" = None
+
+
+def _enqueue_downgrade_for_digest(entry: dict) -> None:
+    """Append a downgrade record for the morning digest. Date-bucketed —
+    yesterday's leftover entries get cleared on first call of a new ET day."""
+    global _downgrade_digest_pending, _downgrade_digest_date
+    today = et_today()
+    if _downgrade_digest_date != today:
+        _downgrade_digest_pending = []
+        _downgrade_digest_date = today
+    _downgrade_digest_pending.append(entry)
+
+
+def drain_downgrade_digest() -> list[dict]:
+    """Pop + return the day's accumulated downgrade entries. Caller (the
+    scheduled digest job) is responsible for sending the Telegram + clearing."""
+    global _downgrade_digest_pending
+    items = list(_downgrade_digest_pending)
+    _downgrade_digest_pending = []
+    return items
+
 
 def _audit_dedupe_check(ticker: str, scan_date: "date", event: str) -> bool:
     """Returns True if (ticker, date, event) hasn't been logged this session.
@@ -1530,94 +1560,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     catalyst_quality, confidence_multiplier,
                     news_summary, claude_analysis, pplx_quality,
                 )
-                # Dedup repeated rubric-downgrade Telegrams. Audit dedup is
-                # daily ET (see _should_log_catalyst_earnings_event_today);
-                # the Telegram dedup must match that window or scan ticks
-                # after the audit row's first hour fire Telegram repeatedly
-                # — BBWI 2026-05-27 sent 12+ alerts under the old 1h window
-                # (audit row aged past 1h, suppress check passed, Telegram
-                # re-fired every 5 min for the remaining scan window).
-                _suppress_telegram = False
-                try:
-                    pool = await get_pool()
-                    async with pool.acquire() as conn:
-                        prior = await conn.fetchrow("""
-                            SELECT 1 FROM mi_audit_log
-                            WHERE event_type = 'catalyst_earnings_revenue_weak_downgrade'
-                              AND summary LIKE $1
-                              AND (created_at AT TIME ZONE 'America/New_York')::date
-                                  = (NOW() AT TIME ZONE 'America/New_York')::date
-                              AND created_at < NOW() - INTERVAL '1 second'
-                            LIMIT 1
-                        """, f"{ticker}:%")
-                        _suppress_telegram = prior is not None
-                except Exception:
-                    # On DB error fail-open (send Telegram) — better to over-
-                    # alert than miss a real downgrade signal.
-                    _suppress_telegram = False
-
-                if not _suppress_telegram:
-                    try:
-                        from agents.market_intelligence.briefing import send_telegram_message
-                        from agents.market_intelligence.catalyst_rubric_runtime import (
-                            format_rubric_for_telegram,
-                        )
-                        # Compose readable downgrade message: headline + rubric breakdown
-                        _msg_lines = [
-                            f"📉 *Earnings catalyst DOWNGRADED: {ticker}*",
-                            f"LLM graded `{_original_quality}` on narrative, "
-                            f"but methodology rubric disagrees.",
-                            "",
-                        ]
-                        _rubric_block = format_rubric_for_telegram(ticker, _extracted, today)
-                        if _rubric_block:
-                            _msg_lines.append(_rubric_block)
-                        elif _q_rev_yoy is not None:
-                            _msg_lines.append(
-                                f"Q-rev YoY *{_q_rev_yoy:.1f}%* below "
-                                f"*{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}%* threshold "
-                                f"(safety net; extraction quality={_quality})"
-                            )
-                        else:
-                            # Disambiguate by downgrade reason (2026-05-20 #51).
-                            # Operator-facing text names the actual cause rather
-                            # than the generic 'un-extractable / fail-loud'.
-                            if _downgrade_reason.startswith("extraction_failed"):
-                                _msg_lines.append(
-                                    f"⚠️ Extraction error — Sonnet call failed "
-                                    f"or returned malformed JSON. Rubric not "
-                                    f"exercised; Q-rev safety-net engaged."
-                                )
-                            elif _downgrade_reason == "news_corpus_sparse_no_q_rev":
-                                _msg_lines.append(
-                                    f"📭 News corpus sparse — no Q-rev numbers "
-                                    f"found (possibly delayed press release or "
-                                    f"thin news indexing). Quality: {_quality}."
-                                )
-                            elif _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable":
-                                _msg_lines.append(
-                                    f"📊 Q-rev value extracted but YoY missing "
-                                    f"— likely recent IPO with no prior-year "
-                                    f"comparable. Methodology can't score; "
-                                    f"manual judgment required."
-                                )
-                            elif _downgrade_reason == "non_earnings_catalyst_no_q_rev_in_news":
-                                _msg_lines.append(
-                                    f"📰 Non-earnings catalyst — news has "
-                                    f"content but no Q-rev numbers (likely "
-                                    f"FDA / M&A / partnership / pipeline). "
-                                    f"Rubric structurally N/A here."
-                                )
-                            else:
-                                _msg_lines.append(
-                                    f"Q-rev YoY missing from extraction "
-                                    f"(reason: {_downgrade_reason}, quality: {_quality})"
-                                )
-                        _msg_lines.append("")
-                        _msg_lines.append(f"`/rubric {ticker}` for full breakdown.")
-                        await send_telegram_message("\n".join(_msg_lines))
-                    except Exception:
-                        pass
+                # Accumulate for morning digest (#143). Pre-fix, this code
+                # sent a rich per-ticker Telegram immediately; with 5-10
+                # downgrades typical per morning, that's noisy. Audit row
+                # already written above carries the full payload for the
+                # `/rubric TICKER` drilldown — accumulator only carries the
+                # compact summary used by the 10:10 ET digest job.
+                _enqueue_downgrade_for_digest({
+                    "ticker": ticker,
+                    "from_quality": _original_quality,
+                    "reason": _downgrade_reason,
+                    "rubric_composite": (
+                        _rubric_result.get("composite_scaled")
+                        if _rubric_result else None
+                    ),
+                    "rubric_label": (
+                        _rubric_result.get("label")
+                        if _rubric_result else None
+                    ),
+                    "q_rev_yoy": _q_rev_yoy,
+                    "extraction_quality": _quality,
+                })
 
         # Prose-mismatch downgrade (#72, 2026-05-11). Strong-graded alerts
         # whose prose explicitly says "no catalyst / no fresh news" are
