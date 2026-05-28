@@ -1055,15 +1055,38 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
     # release window.
     new_stop_id = None
     if old_stop_id and stop_price and new_remaining > 0:
+        # Same-window retry (#136 follow-through). replace_order is atomic
+        # so the original cancel-new race shouldn't recur, but other
+        # transient broker failures (5xx, network blip) still warrant
+        # a single same-tick retry before aborting. Skipping methodology
+        # window costs an extra trading day at next-open price — too
+        # expensive vs a 1s wait + retry.
+        new_stop_order = None
+        last_err: Exception | None = None
+        for attempt in (1, 2):
+            try:
+                coid_stop = alpaca.make_client_order_id(
+                    account_mode, signal_type, ticker,
+                )
+                new_stop_order = await alpaca.replace_order(
+                    old_stop_id,
+                    qty=new_remaining,
+                    stop_price=float(stop_price),
+                    account_mode=account_mode,
+                    client_order_id=coid_stop,
+                )
+                break
+            except Exception as e:
+                last_err = e
+                logger.warning(
+                    f"execute_partial_exit: replace attempt {attempt} failed "
+                    f"for {ticker}: {e}"
+                )
+                if attempt < 2:
+                    await asyncio.sleep(1.5)
         try:
-            coid_stop = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-            new_stop_order = await alpaca.replace_order(
-                old_stop_id,
-                qty=new_remaining,
-                stop_price=float(stop_price),
-                account_mode=account_mode,
-                client_order_id=coid_stop,
-            )
+            if new_stop_order is None:
+                raise last_err if last_err else RuntimeError("replace_order unreached")
             new_stop_id = new_stop_order["id"]
             # Persist immediately — if we crash after this, sync_positions sees correct qty.
             await set_stop_order_id(
