@@ -1756,6 +1756,23 @@ _DOWNGRADE_REASON_RUBRIC_RE = re.compile(
 )
 
 
+def _md_escape(s: str) -> str:
+    """Escape Telegram Markdown V1 control chars (`_`, `*`) in dynamic content.
+
+    Filed as #148, 2026-05-28: the downgrade digest's reason strings
+    (e.g. `news_corpus_sparse_no_q_rev`) and `from_quality` values
+    (e.g. `game_changer`) contain `_` which Markdown V1 reads as italic
+    delimiters. Unbalanced `_` count → Telegram 400. send_telegram_message
+    has a plain-text fallback but the cosmetic gap is visible.
+
+    Backticks deliberately NOT escaped — code spans are useful and
+    they're already escaped at template time when present.
+    """
+    if not s:
+        return ""
+    return s.replace("_", r"\_").replace("*", r"\*")
+
+
 def _humanize_downgrade_reason(reason: str) -> str:
     """Convert machine reason code to operator-facing prose.
 
@@ -1820,17 +1837,18 @@ async def _catalyst_downgrade_digest_job():
     for r in rows:
         # Summary shape from ep_detector audit emit:
         #   "{TICKER}: {from_quality} → routine (earnings catalyst, {reason})"
-        # e.g.: "BBY: strong → routine (earnings catalyst, rubric_composite_11.0_below_22_label_weak)"
-        # Surface as: "BBY: strong → routine — rubric 11/39 below 22 floor (weak)"
+        # Markdown-escape the dynamic content — `from_quality` (e.g.
+        # `game_changer`) and the humanized reason can both contain `_`
+        # which Markdown V1 parses as italic delimiters (#148).
         summary = r["summary"] or ""
         inner = summary.split("(earnings catalyst, ", 1)
         if len(inner) == 2:
             head = inner[0].rstrip(" (")
             reason_raw = inner[1].rstrip(")")
             reason_human = _humanize_downgrade_reason(reason_raw)
-            lines.append(f"• {head} — {reason_human}")
+            lines.append(f"• {_md_escape(head)} — {_md_escape(reason_human)}")
         else:
-            lines.append(f"• {summary}")
+            lines.append(f"• {_md_escape(summary)}")
     lines.append("")
     lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
     try:

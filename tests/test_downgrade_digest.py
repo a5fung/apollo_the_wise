@@ -58,6 +58,8 @@ async def test_digest_job_renders_compact_per_ticker_lines():
             "created_at": None,
         },
     ]
+    # NB: the message renders `game\_changer` (#148 escape) — same readable
+    # text in the Telegram client, but parser-safe.
     pool, _conn = _make_pool(audit_rows)
     sent = []
 
@@ -105,6 +107,19 @@ def test_humanize_static_reason_map():
     assert _humanize_downgrade_reason(
         "news_corpus_sparse_no_q_rev"
     ) == "news corpus sparse, no Q-rev data"
+
+
+def test_md_escape_underscores_and_stars():
+    """#148: dynamic content with `_` or `*` must be escaped before joining
+    into Markdown V1 digest lines, else Telegram 400."""
+    from agents.market_intelligence.scheduler import _md_escape
+    assert _md_escape("game_changer") == r"game\_changer"
+    assert _md_escape("a_b_c") == r"a\_b\_c"
+    assert _md_escape("Q-rev YoY missing (no prior-year comparable)") == \
+        "Q-rev YoY missing (no prior-year comparable)"
+    assert _md_escape("emphasis*stars*") == r"emphasis\*stars\*"
+    assert _md_escape("") == ""
+    assert _md_escape(None) == ""
 
 
 def test_humanize_unknown_reason_falls_back_to_spaced():
