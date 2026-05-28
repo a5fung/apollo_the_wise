@@ -75,7 +75,6 @@ JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
-_ep_scans_completed_today: int = 0  # Tracks successful scan runs for watchdog
 
 
 async def _nightly_data_pull():
@@ -563,7 +562,6 @@ async def _ep_scan_job():
 
     Pre-market new HIGHs: subscribed to bar stream for real-time first-bar ORB entry.
     Post-open new HIGHs: bar already closed, ORB entry triggered inline immediately."""
-    global _ep_scans_completed_today
     logger.info("EP scan starting...")
     try:
         from agents.market_intelligence.collector import et_today, _ET
@@ -581,7 +579,6 @@ async def _ep_scan_job():
                 )
             }
         eps = await run_ep_scan()
-        _ep_scans_completed_today += 1
         high_count = sum(1 for ep in eps if ep.get("score_tier") == "HIGH")
         logger.info(f"EP scan complete: {len(eps)} candidates, {high_count} HIGH")
 
@@ -2306,8 +2303,6 @@ async def _weekly_system_review_job():
 
 async def _start_ep_scanning():
     """Kept for /status display. Scanning is controlled by cron window, not this flag."""
-    global _ep_scans_completed_today
-    _ep_scans_completed_today = 0
     logger.info("EP scan window open (7:00 AM ET)")
 
 
@@ -2317,7 +2312,15 @@ async def _stop_ep_scanning():
 
 
 async def _ep_scan_watchdog():
-    """Run at 10:05 AM ET. Alert if scans failed to run. No alert for zero EPs (normal)."""
+    """Run at 10:05 AM ET. Alert if scans failed to run. No alert for zero EPs (normal).
+
+    Ground-truth check against `mi_job_runs` (NOT the in-process
+    `_ep_scans_completed_today` counter). 2026-05-28 false-positive
+    incident: container restarted at 10:04:31 ET (29s before watchdog),
+    in-process counter reset to 0 on module reload while morning scans
+    had all run successfully in the prior container — same bug class
+    as the IBM cascade `sync_positions` mass-close (#137 fix pattern).
+    """
     from agents.market_intelligence.collector import _ET
     now = datetime.now(_ET)
     if now.weekday() >= 5:
@@ -2327,22 +2330,29 @@ async def _ep_scan_watchdog():
         logger.info(f"EP scan watchdog: skipping — {market_status.reason}")
         return
     try:
-        if _ep_scans_completed_today == 0:
-            logger.warning("EP scan watchdog: NO scans completed today!")
-            await send_telegram_message(
-                "⚠️ *EP Scan Watchdog*\n"
-                "No EP scan completed today. The scanner may have failed or "
-                "the container restarted after the scan window.\n"
-                "Run manually: tell Apollo \"run EP scan\""
-            )
-        else:
-            pool = await get_pool()
-            async with pool.acquire() as conn:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            scan_count = await conn.fetchval(
+                """SELECT COUNT(*) FROM mi_job_runs
+                   WHERE job_id = 'ep_scan'
+                     AND status = 'success'
+                     AND (started_at AT TIME ZONE 'America/New_York')::date = $1""",
+                now.date(),
+            ) or 0
+            if scan_count == 0:
+                logger.warning("EP scan watchdog: NO scans completed today!")
+                await send_telegram_message(
+                    "⚠️ *EP Scan Watchdog*\n"
+                    "No EP scan completed today. The scanner may have failed or "
+                    "the container restarted after the scan window.\n"
+                    "Run manually: tell Apollo \"run EP scan\""
+                )
+            else:
                 alert_count = await conn.fetchval(
                     "SELECT COUNT(*) FROM mi_ep_alerts WHERE alert_date = $1",
                     now.date(),
                 )
-            logger.info(f"EP scan watchdog: {_ep_scans_completed_today} scans ran, {alert_count} alerts — OK")
+                logger.info(f"EP scan watchdog: {scan_count} scans ran, {alert_count} alerts — OK")
     except Exception as e:
         logger.error(f"EP scan watchdog failed: {e}")
 
