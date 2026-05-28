@@ -5340,7 +5340,16 @@ reviews:
     added_on: 2026-05-28
 
   - review_id: alpaca_stop_trigger_reliability
-    title: "Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
+    title: "P0 — Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
+    severity: P0
+    live_cutover_blocker: true
+    escalation_note_2026_05_28: |
+      Initially filed with threshold=3 per default N=1 protocol. Operator
+      pushed back same session: the failure chain (detect → alert → submit
+      → price hits trigger → status `new → canceled` with no trigger
+      event) is a confirmed execution-path bug, not an ambiguous methodology
+      signal. N=1 with this severity is sufficient evidence to dig in.
+      Threshold reduced to 1; status reclassified as live-cutover blocker.
     question: |
       AVAV 2026-05-28 surfaced a NEW entry-reliability bug class distinct
       from RDW #142 (stuck-pending_new):
@@ -5391,8 +5400,8 @@ reviews:
         AND lo.cancelled_at - lo.submitted_at BETWEEN
               INTERVAL '25 minutes' AND INTERVAL '35 minutes';
 
-    threshold: 3
-    earliest_review_date: 2026-06-15
+    threshold: 1
+    earliest_review_date: 2026-05-29  # IMMEDIATE — escalated by operator 2026-05-28
     action_when_ready: |
       For each candidate (predicate fires N≥3), manually fetch the
       Alpaca SIP minute bars across the order's submitted→cancelled

@@ -133,3 +133,37 @@ async def classify_orb_cancellation(
             "pm_rvol": pm_rvol,
         }),
     )
+
+    # Real-time silent-trigger / gap-through alert (2026-05-28, AVAV).
+    # Operator-escalated P0: when the cancellation classifier finds the
+    # price actually crossed the trigger (would_have_filled or gap_through),
+    # that's a missed-fill signal that needs immediate operator visibility
+    # — not a weekly-review artifact. AVAV was mis-labelled `clean_miss`
+    # due to a separate bug; this alert path catches the genuine cases
+    # going forward.
+    if classification in ("would_have_filled", "gap_through"):
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            severity = (
+                "🚨 SILENT TRIGGER FAILURE"
+                if classification == "would_have_filled"
+                else "⚠️ Gap-through"
+            )
+            reachable_line = (
+                f"  • Min trade after trigger: ${min_trade_after_trigger:.2f}\n"
+                if min_trade_after_trigger is not None else ""
+            )
+            await send_telegram_message(
+                f"{severity} — *{ticker}* {alert_date}\n\n"
+                f"  • Trigger: ${trigger_price:.2f}\n"
+                f"  • Limit:   ${limit_price:.2f}\n"
+                f"  • Max high in window: ${max_h_in_window:.2f}\n"
+                f"  • First trigger hit: {trigger_first_t.strftime('%H:%M:%S') if trigger_first_t else '?'}\n"
+                f"{reachable_line}"
+                f"  • Window: {t0.strftime('%H:%M')}–{t1.strftime('%H:%M')} ET\n\n"
+                f"_{'Order never triggered despite price crossing the limit-reachable zone — '  if classification == 'would_have_filled' else 'Trigger fired but price gapped past limit before fill — '}"
+                f"investigate via Alpaca order history + SIP bar fetch.\n"
+                f"Linked to data_gated_reviews.yaml::alpaca_stop_trigger_reliability (P0)._"
+            )
+        except Exception as e:
+            logger.error(f"silent_trigger Telegram failed for {ticker}: {e}")
