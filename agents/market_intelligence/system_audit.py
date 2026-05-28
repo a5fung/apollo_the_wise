@@ -292,6 +292,26 @@ async def _today_bar_stream_disconnect_24h(conn) -> float:
     return float(row["n"] or 0)
 
 
+async def _today_market_hours_boots(conn) -> float:
+    """Count container boots during regular market hours today (#147).
+
+    A regular operator-deploy day will be 0 — deploys happen pre-market or
+    post-market. Boots during 9:30–16:00 ET signal one of: emergency
+    deploy, healthcheck restart, OOM kill, host event. Each one is a
+    candidate for missing a scheduled cron tick (the 2026-05-26 10:04
+    RDW failure shape)."""
+    row = await conn.fetchrow(
+        """
+        SELECT COUNT(*) AS n FROM mi_audit_log
+        WHERE event_type = 'dual_account_boot_verified'
+          AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE
+          AND (created_at AT TIME ZONE 'America/New_York')::time
+              BETWEEN '09:30' AND '16:00'
+        """
+    )
+    return float(row["n"] or 0)
+
+
 # Tagged by which scan owns them — post_eod (trade-side) vs post_nightly
 # (theme/cooldown/regime). Topic command maps onto the same tags.
 _TRADE_METRICS: list[MetricSpec] = [
@@ -369,6 +389,22 @@ _TRADE_METRICS: list[MetricSpec] = [
         "WHERE event_type='bar_stream_disconnect' "
         "  AND created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC;",
         ["agents/market_intelligence/broker/bar_stream.py::_run_stream"],
+    ),
+    MetricSpec(
+        # Market-hours container boots (#147, 2026-05-28). The 2026-05-26
+        # 10:04:31 ET unexplained restart misfired the 10:00 cron tick that
+        # would have cancelled RDW's stuck pending_new. Defensive metric:
+        # baseline + L2 detection so the NEXT mid-market-hours restart is
+        # surfaced immediately instead of being noticed via downstream
+        # symptoms days later.
+        "market_hours_boot_count", _today_market_hours_boots,
+        "SELECT created_at AT TIME ZONE 'America/New_York' AS et "
+        "FROM mi_audit_log "
+        "WHERE event_type = 'dual_account_boot_verified' "
+        "  AND (created_at AT TIME ZONE 'America/New_York')::date = CURRENT_DATE "
+        "  AND (created_at AT TIME ZONE 'America/New_York')::time BETWEEN '09:30' AND '16:00' "
+        "ORDER BY created_at;",
+        ["docker-compose / host healthcheck / OOM kills"],
     ),
 ]
 
