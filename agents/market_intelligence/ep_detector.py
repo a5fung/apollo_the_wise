@@ -158,6 +158,27 @@ def _claude_text_signals_earnings(claude_analysis: str | None) -> bool:
     return bool(_EARNINGS_TEXT_SIGNAL_RE.search(claude_analysis))
 
 
+def _should_apply_yoy_carveout(extracted: dict) -> bool:
+    """Carve-out predicate (2026-05-28): when the only downgrade reason is
+    missing YoY but the extraction captured a positive beat + a directional
+    guidance signal with high/medium confidence, the LLM grade is more
+    trustworthy than the safety net.
+
+    Returns True iff downgrade should be SKIPPED. See
+    `docs/setups/catalyst_rubric.md` 2026-05-28 entry for full spec + evidence.
+    """
+    qr = extracted.get("q_revenue_usd") or {}
+    gc = extracted.get("guidance_change") or {}
+    beat = qr.get("beat_vs_est_pct")
+    g_dir = gc.get("direction")
+    g_conf = gc.get("confidence")
+    return (
+        isinstance(beat, (int, float)) and beat > 0
+        and g_dir in ("raised", "initiated", "reaffirmed")
+        and g_conf in ("high", "medium")
+    )
+
+
 async def _revenue_weak_downgrade_logged_today(ticker: str) -> bool:
     """Returns True iff a `catalyst_earnings_revenue_weak_downgrade` audit
     row exists for `ticker` on the current ET trading day. Fail-open: any
@@ -1483,6 +1504,51 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"q_rev_yoy_{_q_rev_yoy:.1f}pct_below_"
                         f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct"
                     )
+
+            # Carve-out (2026-05-28, data-gated review
+            # `rubric_safety_net_yoy_required` ripened at N=10): when the
+            # downgrade reason is purely missing-YoY but OTHER positive
+            # signals corroborate the catalyst strength (beat vs estimate
+            # + raised/initiated/reaffirmed guidance with high/medium
+            # confidence), the LLM's original game_changer/strong grade
+            # is more trustworthy than the missing-data safety net.
+            #
+            # Cohort evidence: N=10 cases since 2026-05-14. Carve-out subset
+            # = 6 (SNOW/BBWI/JOYY/RL/TATT/KLAR); mature N=3 (RL/TATT/KLAR)
+            # all positive fwd_5d (+4.59 / +5.87 / +1.08%), mean +3.85%.
+            # The 4 cases still downgraded (QFIN, ESLT, LION big-beat-no-
+            # guidance, ROIV miss) showed flat-to-negative forward returns,
+            # confirming the safety net's intended catch zone.
+            #
+            # Triggered by SNOW 2026-05-28 false negative: +37.5% gap on
+            # a guidance-raised beat got downgraded to routine purely
+            # because Q1 YoY% wasn't extracted, suppressing the HIGH-tier
+            # alert + ORB pipeline. Operator-identified blast radius =
+            # lost-alpha, not cosmetic.
+            if (
+                _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
+                and _should_apply_yoy_carveout(_extracted)
+            ):
+                _qr_carve = _extracted.get("q_revenue_usd") or {}
+                _gc_carve = _extracted.get("guidance_change") or {}
+                _downgrade_reason = None  # carve-out: keep LLM grade
+                try:
+                    await log_audit_event(
+                        "catalyst_downgrade_carveout_applied",
+                        f"{ticker}: kept {catalyst_quality} "
+                        f"(beat {_qr_carve.get('beat_vs_est_pct'):.1f}% + "
+                        f"{_gc_carve.get('direction')}:{_gc_carve.get('confidence')})",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "kept_quality": catalyst_quality,
+                            "beat_vs_est_pct": _qr_carve.get("beat_vs_est_pct"),
+                            "guidance_direction": _gc_carve.get("direction"),
+                            "guidance_confidence": _gc_carve.get("confidence"),
+                        }),
+                    )
+                except Exception:
+                    pass  # audit failure must not block detection
 
             if _downgrade_reason:
                 _original_quality = catalyst_quality

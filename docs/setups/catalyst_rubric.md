@@ -225,6 +225,42 @@ trade reactions.
 
 ## Change log (newest first)
 
+### 2026-05-28 — Safety-net carve-out: guidance + beat overrides missing-YoY downgrade
+
+**Trigger**: SNOW 2026-05-28 false negative. +37.5% gap on a Q1 beat (revenue $1.39B, +5.3% vs est) with raised guidance (4-source corroboration, high confidence) got downgraded to `routine` by the safety net in `ep_detector` purely because `q_revenue_usd.yoy_pct` was null (no prior-year SNOW Q1 in the structured fundamentals fetcher). Operator-identified blast radius: downgrade dropped `score_tier` from HIGH to MODERATE → Telegram alert suppressed → ORB entry pipeline never fired. Lost-alpha class, not cosmetic mislabeling.
+
+**Evidence (data-gated review `rubric_safety_net_yoy_required` predicate fired N=10)**:
+- Cohort: 10 cases since 2026-05-14 where extraction captured Q-rev value + beat-vs-est but `yoy_pct` was null
+- Carve-out subset (beat>0 + guidance signal + conf ≥ medium): 6 — SNOW, BBWI, JOYY, RL, TATT, KLAR
+- Mature subset of carve-out: 3 cases with ≥5d fwd returns settled — all positive (RL +4.59% / TATT +5.87% / KLAR +1.08%, +8.56% fwd_10d). Mean +3.85% fwd_5d.
+- 4 cases still downgrade (no guidance signal): QFIN, ESLT, LION (+11.9% beat but no guidance → flat +0.37% fwd), ROIV (−34% miss → correctly suppressed). Confirms the safety net's intended catch zone.
+
+**Spec** (in `ep_detector` downgrade block, applied AFTER `_downgrade_reason` is set):
+```
+SKIP downgrade IF:
+  _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
+  AND q_revenue.beat_vs_est_pct > 0
+  AND guidance.direction IN ("raised", "initiated", "reaffirmed")
+  AND guidance.confidence IN ("high", "medium")
+```
+
+Scope deliberately narrow: only the `q_rev_yoy_missing_no_prior_year_comparable` reason is carved. Other downgrade reasons (`news_corpus_sparse_no_q_rev`, `extraction_failed_*`, `non_earnings_catalyst_no_q_rev_in_news`, `q_rev_yoy_X%_below_floor`) still fire as before — the safety net only loosens for the specific case where structured-extraction succeeded enough to capture a beat + guidance but couldn't compute YoY.
+
+**Note on dropped clause**: original spec included `q_revenue.confidence == "high"` but verification showed 28/28 of beat-extracted alerts since 2026-04-15 have `confidence='high'` — the clause is decorative. Dropped to keep the spec honest. If future extraction calibration starts producing medium/low-confidence beat values, re-evaluate.
+
+**Anticipated effect**:
+- Today: SNOW would have stayed `game_changer` → HIGH score_tier → ORB-eligible (SNOW's existing 5/28 row is not retroactively updated, see ship discipline below)
+- Forward: ~6 of every 10 missing-YoY-with-beat cases re-promote. The other 4 of 10 (no guidance signal) still downgrade per safety-net intent.
+- Audit event `catalyst_downgrade_carveout_applied` emitted whenever carve-out fires, for telemetry/calibration.
+
+**Reversion-flag**: NEW (loosens an existing filter; revert by removing the `if _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"` block in ep_detector.py).
+
+**Status**: shipped 2026-05-28. Closes `data_gated_reviews.yaml::rubric_safety_net_yoy_required` with cohort evidence locked. Operator sign-off on the 4-case still-downgrade list confirmed 2026-05-28 in-session.
+
+**Ship discipline note**: today's SNOW row in `mi_ep_alerts` stays `MODERATE`/`routine` by operator decision — the fix protects future cases only. Re-firing the rubric retroactively against today's row was offered but declined (operator: "leave SNOW as is for today").
+
+**Per advisor 2026-05-28**: discipline rule (`feedback_sample_size_discipline.md`) for methodology changes (N≥10 backtest) IS met here via the data-gated review's `action_when_ready` clause; the review's predicate and forward-return criteria are the backtest. Honest count: full cohort N=10, carve-out subset N=6, mature carve-out N=3 (all positive). Conservative ship size; widening cohort over the next 30 days will validate.
+
 ### 2026-05-17 — PROVISIONAL doc created
 
 **Trigger**: Phase 2 SSoT discipline. ADR 0003 §5 produced Phase 1

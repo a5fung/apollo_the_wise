@@ -4070,8 +4070,38 @@ reviews:
         (c) softer gate: allow scoring on Axes 4+5+6 alone
         Backtest before shipping.
       If <10 cases: extend window 30d.
-    status: pending
+    status: closed
+    closed_on: 2026-05-28
+    outcome: |
+      Predicate hit N=10 on 2026-05-28 (SNOW-triggered). Carve-out subset
+      (beat>0 + guidance signal + conf ≥ medium) = 6 cases. Mature subset
+      N=3 (RL, TATT, KLAR) all returned positive fwd_5d (mean +3.85%).
+      4 cases still downgrade (QFIN/ESLT/LION no-guidance + ROIV miss) —
+      flat fwd returns confirm safety net's intended catch zone.
+      Shipped fix in same session: ep_detector carve-out + SSoT
+      catalyst_rubric.md change-log + tests. Operator sign-off on the
+      4-case still-downgrade partition confirmed in-session 2026-05-28.
     added_on: 2026-05-19
+    case_log:
+      - ticker: SNOW
+        alert_date: 2026-05-28
+        gap_pct: 37.54
+        extraction_quality: medium
+        extraction_confidence: high
+        signals_captured: "Q-rev $1.39B (+5.3% beat) | Q-EPS $0.39 (+21.9% beat) | guidance RAISED (4 sources high-conf) | 23 headlines"
+        downgrade_reason: q_rev_yoy_missing_no_prior_year_comparable
+        operator_flag: |
+          BLAST RADIUS NOTE 2026-05-28: operator flagged that data-extraction-
+          gap false negatives don't just mislabel — they prevent HIGH tier
+          qualification, suppress the Telegram alert, and block ORB pipeline
+          submission. Lost-alpha class, not cosmetic. This case is the
+          prototype: every positive signal the extractor CAN capture fired
+          strong; only the derived YoY% was null because we don't persist
+          prior-year SNOW Q1 to compute it locally. The right fix shape is
+          option (a) — score with reduced max_available when yoy_pct missing
+          AND other strong signals (guidance_raised, beat_vs_est ≥5%,
+          multi-source corroboration) corroborate the catalyst. Cohort-
+          ripeness gating may need shortening per operator urgency call.
 
   - review_id: theme_axis_gating_logic
     title: "Theme axis: graduate from metadata-only to gating logic"
