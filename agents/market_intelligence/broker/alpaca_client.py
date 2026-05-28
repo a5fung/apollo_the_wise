@@ -442,12 +442,19 @@ async def replace_order(
     """
     client = get_trading_client(account_mode)
     kwargs: dict = {}
+    # NOTE: pass numerics as numbers, not str(...). The original #136 ship
+    # wrapped these as `str(qty)` etc., which fires `TypeError: '<=' not
+    # supported between instances of 'str' and 'int'` in alpaca-py's
+    # Pydantic validation. The Pydantic failure happens BEFORE the HTTP
+    # call, so the original order stays alive broker-side; Apollo clears
+    # stop_order_id thinking it's already cancelled → false-naked alert.
+    # IBM 2026-05-28 16:45 fired this path. Fixed 2026-05-28 evening.
     if qty is not None:
-        kwargs["qty"] = str(qty)
+        kwargs["qty"] = qty
     if stop_price is not None:
-        kwargs["stop_price"] = str(stop_price)
+        kwargs["stop_price"] = stop_price
     if limit_price is not None:
-        kwargs["limit_price"] = str(limit_price)
+        kwargs["limit_price"] = limit_price
     if client_order_id is not None:
         kwargs["client_order_id"] = client_order_id
     request = ReplaceOrderRequest(**kwargs)
