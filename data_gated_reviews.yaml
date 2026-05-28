@@ -5339,6 +5339,67 @@ reviews:
     status: pending
     added_on: 2026-05-28
 
+  - review_id: partial_exit_hardening_n7_clean_cycles
+    title: "P0 — Partial-exit architecture stable for N=7 consecutive paper cycles"
+    severity: P0
+    live_cutover_blocker: true
+    question: |
+      The partial-exit code path has shipped two distinct bug classes
+      in two days (2026-05-27 cancel→new race, 2026-05-28 str-vs-numeric
+      Pydantic). Each "fix" broke a different assumed-invariant. Per
+      advisor 2026-05-28, the permanent solution is architectural:
+      split execute_partial_exit into named pure steps with PERSISTED
+      state between each, plus preflight G6 integration test, plus
+      outcome-history circuit breaker.
+
+      Full proposal in task #151.
+
+      This review predicate gates live-cutover on PROOF that the
+      architecture survives real broker variance — N=7 consecutive
+      scheduled partial-exits complete cleanly on paper AFTER the
+      architectural split lands.
+
+    predicate_sql: |
+      -- Count partial_exit_committed audit events that landed without a
+      -- partial_exit_aborted/partial_exit_sell_failed/partial_exit_rollback_failed
+      -- companion event for the same trade_id, after the architectural
+      -- split commit. The commit SHA of the split goes in the WHERE
+      -- clause once it lands.
+      SELECT COUNT(*) FROM (
+        SELECT (detail::jsonb)->>'trade_id' AS trade_id
+        FROM mi_audit_log
+        WHERE event_type = 'partial_exit_committed'
+          AND created_at >= (SELECT MAX(created_at) FROM mi_audit_log
+                              WHERE event_type = 'partial_exit_architecture_split_deployed')
+          AND NOT EXISTS (
+            SELECT 1 FROM mi_audit_log e
+            WHERE e.event_type IN (
+              'partial_exit_aborted',
+              'partial_exit_sell_failed',
+              'partial_exit_rollback_failed'
+            )
+            AND (e.detail::jsonb)->>'trade_id' = (mi_audit_log.detail::jsonb)->>'trade_id'
+            AND e.created_at::date = mi_audit_log.created_at::date
+          )
+      ) clean;
+
+    threshold: 7
+    earliest_review_date: 2026-06-15
+    action_when_ready: |
+      Gate evaluates whether the partial-exit architecture is stable
+      enough to flip ANY strategy to live. N=7 because the rate of
+      execute_partial_exit invocations is ~1-2/day with current
+      cohort size; 7 cycles = ~7-10 trading days post-split-deploy.
+
+      If N=7 clean: gate satisfied for live cutover (in combination
+      with the other live-cutover gates — Gate 1-5 + #150).
+
+      If <N=7 within 30 days of split-deploy: investigate failures,
+      extend the gate window, or escalate architecture review.
+
+    status: pending
+    added_on: 2026-05-28
+
   - review_id: alpaca_stop_trigger_reliability
     title: "P0 — Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
     severity: P0
