@@ -2650,6 +2650,170 @@ class MarketIntelligenceAgent(BaseAgent):
             ),
         )
 
+    async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
+        """`/partialnow TICKER` — operator-confirm immediate partial exit.
+
+        Post-IBM-cascade follow-up (#138, 2026-05-28). Pre-fix: operator
+        had to manually trigger partial exits via `docker exec python -c`
+        which bypassed the credential bootstrap — caused the 2026-05-27
+        sync_positions mass-close cascade. This command goes through the
+        agent process + existing `execute_partial_exit` (which has the
+        post-#136 atomic replace_order + same-window retry).
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool, log_audit_event
+        from agents.market_intelligence.broker.order_manager import execute_partial_exit
+
+        task_text = request.task.strip()
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', task_text.upper())
+        skip = _PREPOSITION_SKIP | {"PARTIALNOW", "PARTIAL"}
+        ticker = next((t for t in cands if t not in skip), None)
+        if not ticker:
+            return self._ok(
+                request,
+                result=(
+                    "Usage: `/partialnow TICKER`\n\n"
+                    "Immediate partial exit (1/3 sell) for a filled position. "
+                    "Goes through existing execute_partial_exit safeguards (atomic "
+                    "stop replace, same-window retry, dedup against pending exits). "
+                    "Replaces the docker-exec workaround that caused the 2026-05-27 cascade."
+                ),
+            )
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT id, ticker, remaining_shares, partial_taken,
+                       entry_price, stop_price, signal_type, account_mode
+                FROM mi_live_trades
+                WHERE ticker = $1 AND status = 'filled'
+                ORDER BY filled_at DESC LIMIT 1
+            """, ticker)
+
+        if row is None:
+            return self._ok(
+                request,
+                result=f"_No open filled position for `{ticker}`. Check `/trades`._",
+            )
+        if row["partial_taken"]:
+            return self._ok(
+                request,
+                result=(
+                    f"_`{ticker}` already has partial_taken=TRUE._\n\n"
+                    f"This position has already had its 1/3 sell. Use Alpaca web "
+                    f"UI for additional exits if needed."
+                ),
+            )
+
+        remaining = int(row["remaining_shares"] or 0)
+        if remaining < 3:
+            return self._ok(
+                request,
+                result=(
+                    f"_`{ticker}` has only {remaining} shares — too few for 1/3 partial._"
+                ),
+            )
+        sell_qty = remaining // 3
+
+        try:
+            ok = await execute_partial_exit(int(row["id"]), sell_qty)
+        except Exception as e:
+            return self._ok(
+                request,
+                result=f"❌ `/partialnow {ticker}` raised: {type(e).__name__}: {e}",
+            )
+
+        await log_audit_event(
+            "partial_now_operator_confirmed",
+            f"{ticker} trade_id={row['id']} qty={sell_qty} success={ok}",
+        )
+
+        if ok:
+            return self._ok(
+                request,
+                result=(
+                    f"✅ *Partial exit submitted for `{ticker}`*\n\n"
+                    f"  • Sell: {sell_qty} of {remaining} shares (1/3)\n"
+                    f"  • Strategy: `{row['signal_type']}` · mode: `{row['account_mode']}`\n"
+                    f"  • Stop pre-replaced on remaining {remaining - sell_qty} shares\n\n"
+                    f"_Watch Telegram for fill confirmation._"
+                ),
+            )
+        return self._ok(
+            request,
+            result=(
+                f"❌ Partial exit returned False for `{ticker}`. "
+                f"Check `/audit partial_exit` for details."
+            ),
+        )
+
+    async def _handle_sync_now_command(self, request: AgentRequest) -> AgentResponse:
+        """`/syncnow [mode]` — operator-confirm DB↔Alpaca sync_positions.
+
+        Post-IBM-cascade follow-up (#138, 2026-05-28). The 2026-05-27
+        incident had Claude running sync_positions via `docker exec` to
+        investigate, which bypassed the credential bootstrap; Alpaca
+        returned [] and 3 trades got mass-closed before the safety guard
+        was added (commit fa49304 / #137).
+
+        This command runs the same code path through the agent process,
+        with the #137 safety guard intact. Optional mode arg restricts
+        to paper or live; default = both.
+        """
+        import re as _re
+        from agents.market_intelligence.broker.order_manager import (
+            sync_positions, _sync_positions_for_mode,
+        )
+        from agents.market_intelligence.db import log_audit_event
+
+        task_text = request.task.lower()
+        if " paper" in task_text:
+            modes = ["paper"]
+        elif " live" in task_text:
+            modes = ["live"]
+        else:
+            modes = None  # use sync_positions() default
+
+        try:
+            if modes is None:
+                messages = await sync_positions()
+                mode_label = "all modes"
+            else:
+                messages = []
+                for m in modes:
+                    msgs = await _sync_positions_for_mode(m)
+                    messages.extend([f"[{m}] {x}" for x in (msgs or [])])
+                mode_label = ", ".join(modes)
+        except Exception as e:
+            return self._ok(
+                request,
+                result=f"❌ `/syncnow` raised: {type(e).__name__}: {e}",
+            )
+
+        await log_audit_event(
+            "sync_now_operator_confirmed",
+            f"mode={mode_label} discrepancies={len(messages)}",
+        )
+
+        if not messages:
+            return self._ok(
+                request,
+                result=f"✅ `/syncnow {mode_label}` — no DB↔broker discrepancies.",
+            )
+        body = "\n".join(f"  • {m}" for m in messages[:20])
+        more = (
+            f"\n\n_…and {len(messages) - 20} more (truncated)_"
+            if len(messages) > 20 else ""
+        )
+        return self._ok(
+            request,
+            result=(
+                f"⚠️ *`/syncnow {mode_label}` — {len(messages)} discrepancies handled*\n\n"
+                f"{body}{more}\n\n"
+                f"_Safety guard intact (won't mass-close on broker [] when DB has active trades)._"
+            ),
+        )
+
     async def _handle_setup_query(self, request: AgentRequest) -> AgentResponse:
         """`/setup TICKER [days]` — reverse-lookup detector chronology.
 
@@ -4744,6 +4908,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/sugarbabies":    self._handle_sugar_babies_query,
             "/sugarbaby":      self._handle_sugar_babies_query,
             "/timestop":       self._handle_time_stop_command,
+            "/partialnow":     self._handle_partial_now_command,
+            "/syncnow":        self._handle_sync_now_command,
             "/flagbreaks":     self._handle_flag_breaks_query,
             "/flagbreak":      self._handle_flag_breaks_query,
             "/supporttests":   self._handle_support_tests_query,
