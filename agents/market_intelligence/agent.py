@@ -2751,7 +2751,9 @@ class MarketIntelligenceAgent(BaseAgent):
         sell_qty = remaining // 3
 
         try:
-            ok = await execute_partial_exit(int(row["id"]), sell_qty)
+            # force=True: operator-confirmed attended action bypasses the #151c
+            # circuit breaker (which exists to pause UNATTENDED cron retries).
+            ok = await execute_partial_exit(int(row["id"]), sell_qty, force=True)
         except Exception as e:
             return self._ok(
                 request,
