@@ -5894,15 +5894,14 @@ class MarketIntelligenceAgent(BaseAgent):
         if not filtered:
             return self._ok(request, result=f"No {tier} EP alerts for {date_str}.")
 
-        lines = [f"🎯 *{tier} EPs — {date_str}* ({len(filtered)})"]
-        for ep in filtered:
-            lines.append(
-                f"\n• *{ep['ticker']}* — score {ep['ep_score']:.0f} | gap {ep.get('gap_pct', 0):.1f}%"
-                f" | {ep.get('catalyst_quality', '?')}"
-            )
-            if ep.get("claude_analysis"):
-                lines.append(f"  {ep['claude_analysis'][:120]}")
-        return self._ok(request, result="\n".join(lines))
+        # Shared EP block formatter so this drill-down matches the HUD/keyword
+        # `_handle_ep_query` and the morning briefing exactly (2026-05-29: the
+        # two EP views had drifted in both layout and fields). Carries the
+        # rubric grade + truncated italic catalyst; blank line between tickers.
+        from agents.market_intelligence.briefing import _format_ep_ticker_block
+        header = f"🎯 *{tier} EPs — {date_str}* ({len(filtered)})"
+        blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in filtered]
+        return self._ok(request, result=header + "\n\n" + "\n\n".join(blocks))
 
     async def _handle_themes_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /themes_detail {stage|SUMMARY}"""

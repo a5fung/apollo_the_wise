@@ -342,6 +342,10 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     tier = ep.get("score_tier", "")
     tier_e = TIER_EMOJI.get(tier, "")
     cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
+    # Rubric grade (the catalyst_quality the operator wants visible). Sanitize
+    # the underscore so 'game_changer' can't break Markdown italics → 400 →
+    # plaintext fallback (the parse-fragility class). cat_e keeps a quick visual.
+    quality = (ep.get("catalyst_quality") or "?").replace("_", " ")
     gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
     out: list[str] = []
@@ -349,12 +353,12 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
         out.append(
             f"{lead}{tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
             f"rv {ep.get('rel_volume') or '?'}x "
-            f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
+            f"score *{ep['ep_score']:.0f}* {cat_e} {quality}{gem}{conf}"
         )
     else:
         out.append(
             f"{lead}{tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e}"
+            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality}"
         )
     if ep.get("claude_analysis"):
         out.append(f"{lead}  _{_truncate_sentence(ep['claude_analysis'], 180)}_")
