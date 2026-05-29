@@ -14,52 +14,32 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-05-19
+Last updated: 2026-05-29 (reconciled — folds in #136–154 + IBM cascade + safety/formatting work since 5/19; older items below 'Filed followups' NOT individually re-verified, treat with caution)
 
 ---
 
-## 🎯 Key Target Dates (Next 30 days)
+## 🎯 Key Target Dates
 
-Three checkpoints. Each lists the trigger date, what to do, and what you can expect.
+### ✅ Resolved since last refresh
+- **5/20 extraction-pipeline smoke** — passed (composition ran clean on live alerts; no `extraction_error` storm). Closed.
+- **5/22 live-cutover decision** — **DEFERRED** as expected (#61). Gate 3 still RED (paper R-expectancy N≈4, net negative). Re-evaluates when cohort reaches N≥10 positive — realistically mid-June+. Pradeep selectivity fires few trades; this is expected.
 
-### 📅 1. Tomorrow — Tue 2026-05-20 (market open, ~9:30 AM ET)
-**FIRST live extraction-pipeline composition smoke test.**
+### 🔴 NEW hard live-cutover gates from the 2026-05-27/28 IBM cascade (block flip until clean)
+- **Partial-exit hardening N=7 clean cycles** (`partial_exit_hardening_n7_clean_cycles`) — safety trio shipped + verified 5/29 (G6 + verify-stop-live + circuit breaker + durable integration test); IBM canary clean (+$226.37, cycle 1/7). Need 6 more clean cycles post-breaker-success-awareness. 16:45 cron PAUSED until Monday re-enable sequence (memory `project_151_partial_exit_hardening_wip`).
+- **#150 Alpaca stop-trigger / share-reservation race** — CONFIRMED 5/29 (held_for_orders lag after atomic replace); verify-poll incidentally mitigates. Explicit sell-retry fix → Monday. Threshold=1 = structural.
+- **#142 RDW stuck pending_new watchdog** — must root-cause + ship before flip (`orb_entry_stuck_pending_new`, threshold=1).
 
-8 commits shipped 2026-05-19 touch the extraction pipeline (Alpaca News wire, carry-forward raw corpus, theme axis, error alerting, Perplexity sanitizer). Individual smoke-tested but never run as a composition on a live alert.
+### 📅 Thu 2026-06-19 — First B6 backtest + 3 calibration reviews ripen
+~30 days post the 2026-05-19 multi-source extraction ship; carry-forward cohort hits ≥30 rows. Four reviews ripen same date:
 
-**What to do** (~10 min):
-- On the first HIGH EP alert: eyeball the Telegram message — confirm theme line renders below the rubric snapshot (`Theme: 🔥 ... (Accelerating, score 92)` or `Theme: —`).
-- Check audit log: `docker exec apollo-postgres psql -U apollo -d apollo -c "SELECT * FROM mi_audit_log WHERE event_type IN ('extraction_error', 'naked_position_remediation_fired') AND created_at::date = CURRENT_DATE;"`
-- Verify raw corpus persisted correctly: `SELECT jsonb_typeof(raw_polygon_news_json), jsonb_typeof(raw_alpaca_news_json) FROM mi_ep_catalyst_metrics WHERE alert_date = CURRENT_DATE;` — both should be `array`, not `string` (JSONB encoding sanity check).
-- Run `/rubric TICKER` on the alerted ticker — confirm rubric breakdown + theme line render.
+| Review | What |
+|---|---|
+| `b6_forward_backtest_first_eval` | Replay rubric vs accumulated cohort. Decision: keep threshold=22 / lower / raise. |
+| `rubric_safety_net_yoy_required` | Count YoY-missing cases. Ship calibration fix if ≥10 with fwd-edge. |
+| `theme_axis_gating_logic` | Crosstab theme_stage × fwd_return on ≥30 HIGH alerts. Decide gating modifiers. |
+| `nbis_rubric_calibration_gap` | One-fixture investigation (~30 min) — doesn't strictly need 30d cohort. |
 
-**What to expect**:
-- ✅ Best case: alert lands clean, theme renders, raw corpus stored as proper JSONB arrays.
-- ⚠ Likely case: 1-2 minor display glitches (mid-week theme rebuild edge cases, Markdown escape on theme names with `&` or `_`). Cosmetic — flag for tomorrow-evening fix.
-- 🚨 Bad case: `extraction_error` audit event fires → Q-rev safety-net catches it, but rubric gate unused. Telegram alert tells you immediately; investigate same day.
-
-**Tracker**: `data_gated_reviews.yaml::extraction_pipeline_first_live_run_smoke`
-
----
-
-### 📅 2. Fri 2026-05-22 — Composite live-cutover decision
-**Existing `live_cutover_decision` review fires. Decision: promote MAGNA53 to phase='live' + live_real_enabled=True, OR defer.**
-
-**Current state** (will almost certainly DEFER):
-- 🔴 **Gate 3 RED** — paper R-expectancy cohort = **-$2,041 over 4 trades**. Need N≥10 AND positive R.
-- 🟡 **Gate 2 PENDING** — FTRE partial-trail verification awaiting a real partial-then-trail cycle in paper.
-- 🟡 **Gate 5 partial** — A/D/E deliverables status unknown (file `gate5_adel_deliverables_status_check` fires 5/21).
-- ✅ Gates 4 (dual-account), 5 B/C/G shipped.
-
-**What to do** when 5/22 review surfaces:
-1. Run `gate5_adel_deliverables_status_check` action steps first — confirms what's shipped vs missing.
-2. Eyeball Gate 3 cohort: `SELECT COUNT(*), SUM(total_pnl), AVG(total_pnl) FROM mi_live_trades WHERE status='closed' AND closed_at >= '2026-05-12' AND pnl_attribution IS NULL;`
-3. If Gate 3 still RED → defer 2-4 more weeks; re-evaluate at next 10-trade milestone.
-4. If Gate 3 GREEN AND all other gates green → user signs off on `docs/incidents/2026-05-14-crmd-naked-position.md` §8, then promote MAGNA53.
-
-**What to expect**: most likely defer to ~mid-June. Paper trade cohort needs 3-5 more weeks at current rate to reach N≥10 AND turn net-positive. This is the right call — Pradeep methodology + tight selectivity inherently fires few trades.
-
-**Tracker**: `data_gated_reviews.yaml::live_cutover_decision` (existing) + `gate5_adel_deliverables_status_check` (filed 5/19)
+Build `scripts/_b6_forward_backtest.py`, pull crosstabs, decide ship-vs-collect-more. **Trackers**: 4 reviews in `data_gated_reviews.yaml` (filed 2026-05-19).
 
 ---
 
@@ -92,7 +72,8 @@ Three checkpoints. Each lists the trigger date, what to do, and what you can exp
 
 Live-$ flip cannot happen until ALL of these are green.
 
-- [ ] **Gate 5 G — Column-write audit invariant** (added 2026-05-15 after KLAR/ARM stop_price clobber). Refactor write sites per `docs/architecture/trade-state-ownership.md` + ship `scripts/audit_column_writes.py check` mode + wire into `deploy.sh` as `[5c/5]`. Sunday focused.
+- [x] ~~**Gate 5 G — Column-write audit invariant**~~ ✅ SHIPPED — `scripts/audit_column_writes.py check` wired into `deploy.sh` as `[5c/6]` (runs green every deploy).
+- [ ] **NEW (IBM cascade 5/27-28) — partial-exit hardening N=7 + #150 stop-trigger + #142 RDW pending_new** — see 🎯 Key Target Dates "NEW hard gates" above. Safety trio shipped 5/29; need N=7 clean cycles + #150 explicit fix + #142 watchdog before flip.
 - [ ] **Gate 5 F — Operator sign-off on CRMD post-mortem** → `docs/incidents/2026-05-14-crmd-naked-position.md` §8
 - [ ] **Gate 3 — Paper R-expectancy N≥10** (currently 4 methodology trades since 5/12, need 6 more) → `data_gated_reviews.yaml::paper_r_expectancy_validation` (earliest 2026-05-22)
 - [ ] **Gate 2 — FTRE partial-trail verification** (waiting for real partial-then-trail in paper) → `data_gated_reviews.yaml::ftre_partial_trail_verification`
@@ -290,6 +271,24 @@ work later.
 ## ✅ Done — rolling (last 14 days)
 
 Pruned monthly. Newest first.
+
+### 2026-05-29 (push-through session — see CLAUDE.md "Changes Made" for detail)
+- [x] **#151 partial-exit hardening safety trio** — G6 deploy gate (`scripts/preflight_replace_order_smoke.py`) + verify-stop-live runtime check (`execute_partial_exit` Step 1b) + outcome-history circuit breaker. Plus durable integration test (`scripts/integration_test_partial_exit.py`). IBM `/partialnow` canary clean (+$226.37). Cron PAUSED until Monday.
+- [x] **#150 share-reservation race CONFIRMED** — mechanism nailed (held_for_orders lag); explicit sell-retry fix → Monday.
+- [x] **#153 Telegram polling-bot watchdog** — `HeartbeatExtBot` + market-agent `_telegram_poll_watchdog_job`; detection 7d→~5min; verified advances/trips/dedupes/recovers.
+- [x] **#154 deploy.sh scope-drift guard** — no-arg errors (tier-1) + pull-diff abort if scope excludes changed-service (tier-2); locally tested.
+- [x] **Telegram formatting** — EP fully unified (HUD = `/ep` = briefing via shared `_format_ep_ticker_block`, rubric grade everywhere, single-message); L2 anomaly + parabolic-scan markdown offenders escaped/fenced (top of the 51-fallback/30d list). Directive: `feedback_telegram_formatting_systematic`.
+- [x] **Leveraged-ETF filter** — verified already-resolved (5/17 P2.0b); closed stale index entry.
+- [ ] **Monday opener** (memory `project_151_partial_exit_hardening_wip`): breaker success-awareness (close-on-success) → #150 explicit sell-retry → grep `execute_full_exit`/`update_stop` → re-enable 16:45 cron watched. Then bake integration-test script into image.
+
+### 2026-05-22 → 2026-05-28 (compressed — detail in CLAUDE.md/CHANGELOG)
+- [x] DR layer (encrypted secrets backup + `infra/restore.sh` + runbook + tmpfs hardening) #102–108
+- [x] 3 intraday entry-technique detectors: flag-break #94, support-test #95, MA-pullback #96/#124
+- [x] Stocks-in-Play Phase 1 #99 + Sugar Baby cohort #80/#83/#84
+- [x] #123 DB↔Alpaca order-status reconcile; #127 mi_intraday_bars 9:30 write-through; #120 L2 holiday-awareness
+- [x] #133 9M Pace hourly digest; #143 downgrade-alert morning digest; #148 digest markdown escape
+- [x] Theme engine 2-member grading #125 + clustering-coherence guard #126
+- [x] IBM cascade P1 fixes #136/#137 (atomic replace_order + sync_positions mass-close guard); #138 `/partialnow`+`/syncnow`; #139 boot-guard; #140 alert taxonomy
 
 ### 2026-05-15
 - [x] Weekend scope plan filed (`docs/plans/2026-05-15-weekend-scope.md`, 3dad03f)
