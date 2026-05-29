@@ -65,67 +65,81 @@ async def run() -> bool:
 
     try:
         from agents.market_intelligence.broker import alpaca_client
-        from agents.market_intelligence.integration.paper_alpaca import paper_test_stop
+        from agents.market_intelligence.integration.paper_alpaca import (
+            paper_test_stop,
+            _make_test_coid,
+            _normalize_status,
+        )
     except Exception as e:
         logger.error(f"import failed: {e}\n{traceback.format_exc()}")
         return False
+
+    # Statuses a freshly replaced order can legitimately hold. A broker-side
+    # rejection still issues a new order_id, so we must assert the order is
+    # actually live — without this, a rejection passes G6 (the "looked
+    # successful, actually broken" shape the gate exists to catch). Both the
+    # SDK enum repr ('OrderStatus.NEW') and bare wire form ('new') normalize
+    # to the same bare token via _normalize_status.
+    _LIVE_STATUSES = {
+        "accepted", "new", "accepted_for_bidding",
+        "pending_new", "held", "pending_replace",
+    }
 
     try:
         async with paper_test_stop() as old_order_id:
             logger.info(f"G6: test order placed id={old_order_id}")
 
-            # Exercise the production replace_order code path. This is
-            # what failed via TypeError on 2026-05-28 (str→numeric bug).
-            new_order = await alpaca_client.replace_order(
-                old_order_id,
-                qty=2,
-                stop_price=998.0,
-                limit_price=999.0,
-                account_mode="paper",
-            )
-
-            new_order_id = new_order.get("id")
-            if not new_order_id:
-                logger.error(f"G6 FAIL: replace_order returned no id: {new_order}")
-                return False
-            if new_order_id == old_order_id:
-                logger.error(
-                    f"G6 FAIL: replace returned same id (no new order created): "
-                    f"{new_order_id}"
-                )
-                return False
-
-            # Status assertion (advisor 2026-05-29): broker can issue a new
-            # order_id and still REJECT or CANCEL it (e.g., invalid Pydantic
-            # field that passes serialization but fails broker-side validation,
-            # or extended-hours restrictions). Without this check, a rejection
-            # passes G6 — exactly the "looked successful, actually broken"
-            # bug shape the gate exists to catch.
-            _LIVE_STATUSES = {
-                "accepted", "new", "accepted_for_bidding",
-                "pending_new", "held", "pending_replace",
-            }
-            status = (new_order.get("status") or "").lower()
-            if status not in _LIVE_STATUSES:
-                logger.error(
-                    f"G6 FAIL: replace returned non-live status: '{status}' "
-                    f"(expected one of {sorted(_LIVE_STATUSES)})"
-                )
-                return False
-
-            logger.info(
-                f"G6: replace ok — old={old_order_id[:8]} new={new_order_id[:8]} "
-                f"status={status}"
-            )
-
-            # Best-effort cancel the NEW order (the harness only knows the OLD id
-            # and will sweep it via the sentinel COID prefix on the NEXT run,
-            # but cancelling now reduces sweep noise).
+            new_order_id = None
             try:
-                await alpaca_client.cancel_order(new_order_id, account_mode="paper")
-                logger.info(f"G6: cancelled new order {new_order_id[:8]}")
-            except Exception as e:
-                logger.info(f"G6: cancel new order non-fatal: {e}")
+                # Exercise the production replace_order code path. This is
+                # what failed via TypeError on 2026-05-28 (str→numeric bug).
+                # Pass a sentinel COID so the replace's new order is sweepable
+                # by the harness on the next run (Alpaca otherwise assigns a
+                # fresh non-sentinel COID that the sweep can't recognize).
+                new_order = await alpaca_client.replace_order(
+                    old_order_id,
+                    qty=2,
+                    stop_price=998.0,
+                    limit_price=999.0,
+                    account_mode="paper",
+                    client_order_id=_make_test_coid(suffix="replace"),
+                )
+
+                new_order_id = new_order.get("id")
+                if not new_order_id:
+                    logger.error(f"G6 FAIL: replace_order returned no id: {new_order}")
+                    return False
+                if new_order_id == old_order_id:
+                    logger.error(
+                        f"G6 FAIL: replace returned same id (no new order created): "
+                        f"{new_order_id}"
+                    )
+                    return False
+
+                status = _normalize_status(new_order.get("status"))
+                if status not in _LIVE_STATUSES:
+                    logger.error(
+                        f"G6 FAIL: replace returned non-live status: '{status}' "
+                        f"(expected one of {sorted(_LIVE_STATUSES)})"
+                    )
+                    return False
+
+                logger.info(
+                    f"G6: replace ok — old={old_order_id[:8]} new={new_order_id[:8]} "
+                    f"status={status}"
+                )
+            finally:
+                # Cancel the NEW order even on the assertion-fail path, so a
+                # red G6 doesn't leak a resting order. The harness's own
+                # cleanup only knows the OLD id.
+                if new_order_id:
+                    try:
+                        await alpaca_client.cancel_order(
+                            new_order_id, account_mode="paper"
+                        )
+                        logger.info(f"G6: cancelled new order {new_order_id[:8]}")
+                    except Exception as e:
+                        logger.info(f"G6: cancel new order non-fatal: {e}")
 
         logger.info("G6 PASS — replace_order code path validated end-to-end")
         return True
