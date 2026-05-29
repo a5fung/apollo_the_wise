@@ -365,6 +365,14 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     return out
 
 
+def format_ep_message(header: str, eps: list[dict]) -> str:
+    """Assemble a full EP message: header + one shared block per ticker,
+    blank-line separated. Single source for the HUD `/ep`, the `/eps_detail`
+    drill-down, and any other full-list EP view so they can't drift."""
+    blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in eps]
+    return header + "\n\n" + "\n\n".join(blocks)
+
+
 def _format_ep_section(
     ep_alerts: list[dict],
     section_num: int = 1,

@@ -70,12 +70,12 @@ _REPLACEABLE_STATUSES = {"new", "accepted", "held", "partially_filled"}
 
 
 def _normalize_status(raw: str | None) -> str:
-    """Normalize Alpaca status to bare lowercase token.
-
-    Handles both the SDK enum repr ('OrderStatus.PENDING_NEW') and the bare
-    wire form ('pending_new'). Mirrors order_manager._canonical_order_status.
-    """
-    return (raw or "").lower().split(".")[-1]
+    """Normalize Alpaca status to bare lowercase token (delegates to the prod
+    canonical normalizer so the harness can't drift). Returns "" (not None) for
+    empty input since callers do set-membership checks. Handles both the SDK
+    enum repr ('OrderStatus.PENDING_NEW') and the bare wire form ('pending_new')."""
+    from agents.market_intelligence.broker.order_manager import _canonical_order_status
+    return _canonical_order_status(raw) or ""
 
 
 def _make_test_coid(suffix: str = "") -> str:

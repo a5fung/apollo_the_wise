@@ -4041,15 +4041,12 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             high = [e for e in alerts if e.get("score_tier") == "HIGH"]
             moderate = [e for e in alerts if e.get("score_tier") == "MODERATE"]
-            # Use the shared EP block formatter (briefing._format_ep_ticker_block)
-            # so the HUD /ep view matches the briefing: code-ticker / bold-gap
-            # headline + a TRUNCATED italic catalyst, with a blank line between
-            # tickers. Fixes the 2026-05-29 wall-of-text (raw headline + full
-            # untruncated catalyst jammed together, single-newline join).
-            from agents.market_intelligence.briefing import _format_ep_ticker_block
+            # Shared EP message builder so the HUD /ep view, the /eps_detail
+            # drill-down, and the briefing all render identically (code-ticker /
+            # bold-gap headline + truncated italic catalyst, blank-line separated).
+            from agents.market_intelligence.briefing import format_ep_message
             header = f"*EP alerts for {query_str}*{data_tag} — {len(high)} HIGH, {len(moderate)} MODERATE"
-            blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in alerts]
-            result = header + "\n\n" + "\n\n".join(blocks)
+            result = format_ep_message(header, alerts)
 
         return self._ok(request, result=result, data={"ep_alerts": alerts})
 
@@ -5885,7 +5882,9 @@ class MarketIntelligenceAgent(BaseAgent):
         date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
 
         alerts = await get_today_ep_alerts(date_str)
-        from agents.market_intelligence.briefing import _format_ep_ticker_block
+        # Shared EP message builder so this drill-down matches the HUD/keyword
+        # `_handle_ep_query` and the morning briefing exactly.
+        from agents.market_intelligence.briefing import format_ep_message
 
         high = [a for a in alerts if a.get("score_tier") == "HIGH"]
         mod = [a for a in alerts if a.get("score_tier") == "MODERATE"]
@@ -5899,23 +5898,15 @@ class MarketIntelligenceAgent(BaseAgent):
             # HIGH first, then MODERATE; the block's tier emoji (🔥/⚡) marks each.
             if not (high or mod):
                 return self._ok(request, result=f"No EP alerts for {date_str}.")
-            out = [f"🎯 *EP Alerts — {date_str}* — {len(high)} HIGH, {len(mod)} MODERATE"]
-            for ep in high + mod:
-                out.append("")
-                out.extend(_format_ep_ticker_block(ep))
-            return self._ok(request, result="\n".join(out))
+            header = f"🎯 *EP Alerts — {date_str}* — {len(high)} HIGH, {len(mod)} MODERATE"
+            return self._ok(request, result=format_ep_message(header, high + mod))
 
         filtered = [a for a in alerts if a.get("score_tier") == tier]
         if not filtered:
             return self._ok(request, result=f"No {tier} EP alerts for {date_str}.")
 
-        # Shared EP block formatter so this drill-down matches the HUD/keyword
-        # `_handle_ep_query` and the morning briefing exactly (2026-05-29: the
-        # two EP views had drifted in both layout and fields). Carries the
-        # rubric grade + truncated italic catalyst; blank line between tickers.
         header = f"🎯 *{tier} EPs — {date_str}* ({len(filtered)})"
-        blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in filtered]
-        return self._ok(request, result=header + "\n\n" + "\n\n".join(blocks))
+        return self._ok(request, result=format_ep_message(header, filtered))
 
     async def _handle_themes_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /themes_detail {stage|SUMMARY}"""
