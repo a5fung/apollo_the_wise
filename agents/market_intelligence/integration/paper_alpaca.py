@@ -59,6 +59,24 @@ DEFAULT_TEST_TICKER = "F"
 _FAR_STOP_PRICE = 999.0
 _FAR_LIMIT_PRICE = 1000.0
 
+# Alpaca statuses from which an order can be replaced/cancelled. A freshly
+# submitted order transits pending_new → new before it's replaceable; calling
+# replace during pending_new returns 422 "cannot replace order in pending_new
+# status". The harness waits for one of these before yielding so consumers
+# (G6, #151 (a) integration tests) get a SETTLED order — faithfully matching
+# production, where execute_partial_exit replaces a stop that's been resting on
+# the book since the 9:31 bracket entry (long since accepted).
+_REPLACEABLE_STATUSES = {"new", "accepted", "held", "partially_filled"}
+
+
+def _normalize_status(raw: str | None) -> str:
+    """Normalize Alpaca status to bare lowercase token.
+
+    Handles both the SDK enum repr ('OrderStatus.PENDING_NEW') and the bare
+    wire form ('pending_new'). Mirrors order_manager._canonical_order_status.
+    """
+    return (raw or "").lower().split(".")[-1]
+
 
 def _make_test_coid(suffix: str = "") -> str:
     """Build a sentinel-prefixed client_order_id unique per test run.
@@ -102,6 +120,38 @@ async def _sweep_orphaned_test_orders() -> int:
         except Exception as e:
             logger.warning(f"harness sweep: cancel {order_id} failed: {e}")
     return cancelled
+
+
+async def _wait_until_replaceable(
+    order_id: str,
+    *,
+    timeout_s: float = 5.0,
+    poll_interval_s: float = 0.25,
+) -> str:
+    """Poll the order until it reaches a replaceable status, then return it.
+
+    A fresh order sits in pending_new for a few hundred ms before the broker
+    accepts it. Replace/cancel during that window returns 422. Polls
+    get_order until status ∈ _REPLACEABLE_STATUSES or timeout.
+
+    Raises:
+        TimeoutError: order never became replaceable within timeout_s. The
+            caller's finally-block + next-run sweep still clean it up.
+    """
+    from agents.market_intelligence.broker import alpaca_client
+
+    deadline = time.monotonic() + timeout_s
+    last_status = "unknown"
+    while time.monotonic() < deadline:
+        order = await alpaca_client.get_order(order_id, account_mode="paper")
+        last_status = _normalize_status(order.get("status") if order else None)
+        if last_status in _REPLACEABLE_STATUSES:
+            return last_status
+        await asyncio.sleep(poll_interval_s)
+    raise TimeoutError(
+        f"test order {order_id} not replaceable after {timeout_s}s "
+        f"(last status: {last_status})"
+    )
 
 
 @asynccontextmanager
@@ -172,6 +222,11 @@ async def paper_test_stop(
     )
 
     try:
+        # 2b. Wait for the order to settle out of pending_new before yielding.
+        # Replace/cancel during pending_new returns 422; production stops are
+        # always long-since-accepted by the time a partial-exit replaces them.
+        settled = await _wait_until_replaceable(order_id)
+        logger.info(f"harness: test order {order_id} replaceable (status={settled})")
         yield order_id
     finally:
         # 3. Cleanup — best-effort cancel. Sweep handles failures.
