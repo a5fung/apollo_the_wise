@@ -137,4 +137,29 @@ if ! python3 scripts/preflight_command_parity.py; then
 fi
 
 echo ""
+echo "=== [5g/6] Preflight G6 — paper-Alpaca replace_order integration smoke ==="
+# Catches the bug classes from 2026-05-27 (cancel→new race) + 2026-05-28
+# (str→numeric Pydantic). Both shipped to source without ever exercising the
+# production code path against the real broker. Each fired the next day at
+# 16:45 ET cron on the actual IBM trade. G6 fires the same path against a
+# synthetic test order on every deploy — non-bypassable.
+#
+# Only runs when SCOPE includes market-agent (the container that holds the
+# alpaca-py request constructors + paper credentials). Orchestrator-only
+# deploys skip — no relevant code surface changed.
+if [[ "$SERVICES" == *"market-agent"* ]]; then
+  if ! docker exec apollo-market python -m scripts.preflight_replace_order_smoke; then
+    echo ""
+    echo "DEPLOY FAILED — paper-Alpaca replace_order integration smoke failed."
+    echo "This is the IBM 2026-05-27 / 2026-05-28 bug class — replace_order"
+    echo "code path is broken in a way that mocked unit tests don't catch."
+    echo "Fix the production replace_order path before deploying, or the next"
+    echo "scheduled partial-exit cron will fail silently against a real trade."
+    exit 10
+  fi
+else
+  echo "=== [5g/6] Skipped — market-agent not in this deploy scope ==="
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
