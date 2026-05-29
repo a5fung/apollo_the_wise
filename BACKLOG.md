@@ -186,6 +186,15 @@ Stage 3 live.
 Smaller items embedded in session change logs that aren't yet formalized
 into reviews. Listed by surfacing date.
 
+> **Spot-check 2026-05-29** (cross-referenced against git log since 5/17): SHIPPED
+> since filing — M&A direction-awareness (#90 Parts A/B/C + #119), theme
+> misclassification mitigations (#125 2-member grading + #126 coherence guard),
+> Perplexity-disclaimer display sanitizer (#130). CORRECTLY OPEN — the EP-rollout
+> Phases 3–9 (date-gated, see "EP rollout" subsection), the 8 catalyst-extraction
+> misses (Phase 8), and the parked R4/R5/R7 dispositions (await Phase 5/9
+> evidence). The remaining items below are genuine open investigations/ideations,
+> not yet individually re-verified line-by-line.
+
 - [ ] **Breadth cluster-view + surface/compute gap** (2026-05-15) — Pradeep tweet showed Stockbee Market Monitor as CLUSTER-MATRIX (date × indicator), red-cluster runs visually obvious. Inventory: compute-AND-surface: 50%/M, 25%/Q. Compute-but-not-surfaced in evening brief: 25%/M, +/-4% 5d/10d, T2108, consec 700-down-4%. Truly missing: 13%+/34d, Worden. Two prongs: (a) cluster-matrix render, (b) low-cost surface 25%/M into briefing + compute 13%+/34d. Pure observability — ideation in `data_gated_reviews.yaml::breadth_cluster_view_ideation`.
 - [x] ~~**Leveraged ETF upstream filter gap** (2026-05-17)~~ ✅ **RESOLVED same-day (P2.0b)** — fix shipped in `ep_detector.py:608-700` the same day this note was filed (note never closed). Two layers: `_non_stock_tickers` excludes classified ETF/ETP, AND a fail-safe skips *unclassified* candidates (the actual USAX/USGG path — weekly-refresh gap). Verified in prod 2026-05-29: USAX/USGG now classified `ETF`; ZERO non-CS/ADRC tickers in `mi_ep_alerts` since 5/17.
 - [ ] ~~**M&A buyouts past direction-aware filter** (2026-05-17)~~ ✓ **investigated 2026-05-17 PM** — ma_filter not actually broken. BZH 5/11 alert preceded the Dream Finders hostile-bid news by 2 days (Polygon: 0 items in 90d window before alert; first M&A headline 5/13). KALV 4/29 preceded M&A class-action notices by 13 days (first headline 5/12). Both labels were hindsight-correct from news that surfaced AFTER alert time. Filter is working correctly.
