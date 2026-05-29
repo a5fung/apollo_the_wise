@@ -4041,14 +4041,15 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             high = [e for e in alerts if e.get("score_tier") == "HIGH"]
             moderate = [e for e in alerts if e.get("score_tier") == "MODERATE"]
-            lines = [f"EP alerts for {query_str}:{data_tag} {len(high)} HIGH, {len(moderate)} MODERATE\n"]
-            for ep in alerts:
-                lines.append(
-                    f"• *{ep['ticker']}* — {ep['score_tier']} (score {ep['ep_score']:.0f}) "
-                    f"gap {ep['gap_pct']:.1f}% | {ep.get('catalyst_quality', '?')} catalyst\n"
-                    f"  {ep.get('claude_analysis', '')}"
-                )
-            result = "\n".join(lines)
+            # Use the shared EP block formatter (briefing._format_ep_ticker_block)
+            # so the HUD /ep view matches the briefing: code-ticker / bold-gap
+            # headline + a TRUNCATED italic catalyst, with a blank line between
+            # tickers. Fixes the 2026-05-29 wall-of-text (raw headline + full
+            # untruncated catalyst jammed together, single-newline join).
+            from agents.market_intelligence.briefing import _format_ep_ticker_block
+            header = f"*EP alerts for {query_str}*{data_tag} — {len(high)} HIGH, {len(moderate)} MODERATE"
+            blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in alerts]
+            result = header + "\n\n" + "\n\n".join(blocks)
 
         return self._ok(request, result=result, data={"ep_alerts": alerts})
 

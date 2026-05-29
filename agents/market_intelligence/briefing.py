@@ -331,6 +331,36 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     return "\n".join(lines)
 
 
+def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
+    """Format ONE EP alert as a list of lines — the single source of truth for
+    EP per-ticker rendering, shared by the morning-briefing section AND the HUD
+    `/ep` command so they can't drift. The 2026-05-29 wall-of-text was the HUD
+    path rendering a raw headline + full untruncated catalyst; this gives both
+    paths the code-ticker / bold-gap headline + a truncated italic catalyst
+    sub-line. `lead` is the per-line indent prefix (briefing nests under a
+    section; the standalone /ep view uses none)."""
+    tier = ep.get("score_tier", "")
+    tier_e = TIER_EMOJI.get(tier, "")
+    cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
+    gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
+    conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
+    out: list[str] = []
+    if tier == "HIGH":
+        out.append(
+            f"{lead}{tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
+            f"rv {ep.get('rel_volume') or '?'}x "
+            f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
+        )
+    else:
+        out.append(
+            f"{lead}{tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
+            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e}"
+        )
+    if ep.get("claude_analysis"):
+        out.append(f"{lead}  _{_truncate_sentence(ep['claude_analysis'], 180)}_")
+    return out
+
+
 def _format_ep_section(
     ep_alerts: list[dict],
     section_num: int = 1,
@@ -357,26 +387,8 @@ def _format_ep_section(
     lines = [header]
 
     for ep in ep_alerts:
-        tier = ep.get("score_tier", "")
-        tier_e = TIER_EMOJI.get(tier, "")
-        cat_e = CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), "")
-        gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
-        conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
-        if tier == "HIGH":
-            lines.append(
-                f"  {tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
-                f"rv {ep.get('rel_volume') or '?'}x "
-                f"score *{ep['ep_score']:.0f}* {cat_e}{gem}{conf}"
-            )
-            if ep.get("claude_analysis"):
-                lines.append(f"    _{_truncate_sentence(ep['claude_analysis'], 180)}_")
-        else:
-            lines.append(
-                f"  {tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-                f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e}"
-            )
-            if ep.get("claude_analysis"):
-                lines.append(f"    _{_truncate_sentence(ep['claude_analysis'], 180)}_")
+        # Shared per-ticker formatter (lead="  " preserves this section's nesting).
+        lines.extend(_format_ep_ticker_block(ep, lead="  "))
 
     # Near-miss line — compact, one per line max 5, skip top-20-cap noise
     near_misses = [
