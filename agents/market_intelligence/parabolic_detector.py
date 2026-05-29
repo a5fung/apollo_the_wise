@@ -746,6 +746,10 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
     transparency footer so the operator can see what was filtered and why.
     """
     from agents.market_intelligence.briefing import send_telegram_message
+    # Reuse the canonical Markdown escaper (#148) for free-text fields below
+    # (source like `mna_filter`, news-derived exclusion reasons) — their `_`/`*`
+    # otherwise break Markdown → 400 → plaintext fallback (4 of 51 fallbacks/30d).
+    from agents.market_intelligence.scheduler import _md_escape
 
     climaxes = sorted(
         by_stage.get("climax", []),
@@ -781,7 +785,10 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
             stage = r.get("stage", "?")
             source = r.get("excluded_source") or "?"
             reason = (r.get("excluded_reason") or "").strip()
-            lines.append(f"  • `{ticker}` ({stage}) — {source}: {reason[:120]}")
+            lines.append(
+                f"  • `{ticker}` ({_md_escape(stage)}) — "
+                f"{_md_escape(source)}: {_md_escape(reason[:120])}"
+            )
         if len(excluded) > 5:
             lines.append(f"  …{len(excluded) - 5} more")
     # If everything got filtered there's no actionable signal, but we still
