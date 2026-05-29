@@ -1307,7 +1307,10 @@ def _format_l2_alert(
     ratio = body.get("ratio")
     regime_tag = " (regime-conditional)" if body.get("regime_conditional") else ""
     lines = [
-        f"🟠 ANOMALY [L2] · {metric.name}{regime_tag}",
+        # Backtick the metric name — identifiers like `HIGH_ep_entry_rate` /
+        # `cooldowns_per_day` contain underscores that break Markdown italics
+        # → Telegram 400 → plaintext fallback (7 of the 51 fallbacks/30d, #121).
+        f"🟠 ANOMALY [L2] · `{metric.name}`{regime_tag}",
         "",
         f"Today: {current} · 30d median: {p50} · MAD: {mad}"
         + (f" · z={z}" if z is not None else "")
@@ -1339,15 +1342,19 @@ def _format_l2_alert(
                 )
             else:
                 tag = f"median {base:.1f}, {d['ratio']:.1f}× normal"
-            lines.append(f"  • {event_type:30s} {today_n:4d}  ({tag})")
+            # Backtick the event_type (underscore identifier) — same Markdown
+            # break class as metric.name above.
+            lines.append(f"  • `{event_type:30s}` {today_n:4d}  ({tag})")
         lines.append("")
     lines.append("Drill-down:")
-    lines.append(metric.drill_sql)
+    # Fence the SQL — it contains `*` (SELECT *) and `_` that otherwise break
+    # Markdown; a code block makes them literal and reads as monospace.
+    lines.append(f"```\n{metric.drill_sql}\n```")
     if metric.code_pointers:
         lines.append("")
         lines.append("Code pointers:")
         for p in metric.code_pointers:
-            lines.append(f"  {p}")
+            lines.append(f"  `{p}`")
     return "\n".join(lines)
 
 
