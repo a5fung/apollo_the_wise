@@ -5885,10 +5885,25 @@ class MarketIntelligenceAgent(BaseAgent):
         date_str = parts[2] if len(parts) > 2 else last_trading_day().isoformat()
 
         alerts = await get_today_ep_alerts(date_str)
+        from agents.market_intelligence.briefing import _format_ep_ticker_block
+
+        high = [a for a in alerts if a.get("score_tier") == "HIGH"]
+        mod = [a for a in alerts if a.get("score_tier") == "MODERATE"]
+
         if tier == "SUMMARY":
-            high_ct = sum(1 for a in alerts if a.get("score_tier") == "HIGH")
-            mod_ct  = sum(1 for a in alerts if a.get("score_tier") == "MODERATE")
-            return self._ok(request, result=f"🎯 *EP Alerts — {date_str}*\n{high_ct} HIGH · {mod_ct} MODERATE")
+            return self._ok(request, result=f"🎯 *EP Alerts — {date_str}*\n{len(high)} HIGH · {len(mod)} MODERATE")
+
+        if tier == "ALL":
+            # Unified single-message view (2026-05-29): /ep shows ALL EPs at once
+            # instead of a summary + [View HIGH]/[View MODERATE] drill-down step.
+            # HIGH first, then MODERATE; the block's tier emoji (🔥/⚡) marks each.
+            if not (high or mod):
+                return self._ok(request, result=f"No EP alerts for {date_str}.")
+            out = [f"🎯 *EP Alerts — {date_str}* — {len(high)} HIGH, {len(mod)} MODERATE"]
+            for ep in high + mod:
+                out.append("")
+                out.extend(_format_ep_ticker_block(ep))
+            return self._ok(request, result="\n".join(out))
 
         filtered = [a for a in alerts if a.get("score_tier") == tier]
         if not filtered:
@@ -5898,7 +5913,6 @@ class MarketIntelligenceAgent(BaseAgent):
         # `_handle_ep_query` and the morning briefing exactly (2026-05-29: the
         # two EP views had drifted in both layout and fields). Carries the
         # rubric grade + truncated italic catalyst; blank line between tickers.
-        from agents.market_intelligence.briefing import _format_ep_ticker_block
         header = f"🎯 *{tier} EPs — {date_str}* ({len(filtered)})"
         blocks = ["\n".join(_format_ep_ticker_block(ep)) for ep in filtered]
         return self._ok(request, result=header + "\n\n" + "\n\n".join(blocks))

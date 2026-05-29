@@ -868,7 +868,9 @@ class TelegramChannel:
     async def _handle_ep_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
-        """/ep — compact summary with [View HIGH] [View MODERATE] drill-down buttons.
+        """/ep — all EP alerts in one message (2026-05-29: dropped the summary +
+        [View HIGH]/[View MODERATE] drill-down step per operator; the extra tap
+        wasn't needed). Renders via the shared EP block (`/eps_detail ALL`).
         (/eps routes here too as a silent alias for back-compat with pinned messages.)"""
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
@@ -885,7 +887,7 @@ class TelegramChannel:
             return
 
         req = AgentRequest(
-            task=f"/eps_detail SUMMARY {today_str}",
+            task=f"/eps_detail ALL {today_str}",
             user_id=update.effective_user.id,
             conversation_id=str(update.effective_user.id),
         )
@@ -897,18 +899,12 @@ class TelegramChannel:
                     headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
                 )
                 resp.raise_for_status()
-                summary_text = resp.json().get("result") or "No EP data."
+                ep_text = resp.json().get("result") or "No EP data."
         except Exception as e:
             await update.message.reply_text(f"Error: {e}")
             return
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("View HIGH", callback_data=f"eps:HIGH:{today_str}"),
-                InlineKeyboardButton("View MODERATE", callback_data=f"eps:MODERATE:{today_str}"),
-            ]
-        ])
-        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        await update.message.reply_text(ep_text, parse_mode=ParseMode.MARKDOWN)
 
     async def _handle_themes_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
