@@ -15,7 +15,17 @@
 # this script makes the preflight non-bypassable from the canonical path.
 set -euo pipefail
 
-SCOPE="${1:-market-agent}"
+# #154 tier-1: no silent default. A no-arg `deploy.sh` used to pick
+# 'market-agent', which silently left the orchestrator on stale code when an
+# orchestrator-side change (e.g. a new slash command's CommandHandler) was in
+# the deploy — the 2026-05-28 /partialnow "nothing happens" gap. Force a
+# conscious scope choice.
+if [ $# -eq 0 ]; then
+  echo "Usage: bash scripts/deploy.sh <market-agent|orchestrator|both>"
+  echo "No default scope — choose explicitly to avoid leaving a service stale (#154)."
+  exit 2
+fi
+SCOPE="$1"
 COMPOSE_FILE="docker/docker-compose.prod.yml"
 
 case "$SCOPE" in
@@ -35,7 +45,39 @@ case "$SCOPE" in
 esac
 
 echo "=== [1/5] git pull origin main ==="
+BEFORE_PULL=$(git rev-parse HEAD)
 git pull origin main
+AFTER_PULL=$(git rev-parse HEAD)
+
+# #154 tier-2: scope-drift guard. If this pull brought changes to files owned by
+# a service NOT in this deploy's scope, abort — deploying anyway would leave that
+# service on stale code (the 2026-05-28 /partialnow gap: orchestrator-side
+# CommandHandler change arrived in a market-agent-only deploy). Ownership is
+# coarse and biased safe: shared/ambiguous paths require BOTH services.
+if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
+  CHANGED=$(git diff --name-only "$BEFORE_PULL".."$AFTER_PULL")
+  NEED_ORCH=0; NEED_MARKET=0
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    case "$f" in
+      channels/*|core/*|main.py)              NEED_ORCH=1 ;;
+      agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
+      *)                                      NEED_ORCH=1; NEED_MARKET=1 ;;  # shared/, docker/, requirements/, … → both
+    esac
+  done <<< "$CHANGED"
+  MISSING=""
+  if [ "$NEED_ORCH" = 1 ] && [[ "$SERVICES" != *orchestrator* ]]; then MISSING="orchestrator"; fi
+  if [ "$NEED_MARKET" = 1 ] && [[ "$SERVICES" != *market-agent* ]]; then MISSING="${MISSING:+$MISSING }market-agent"; fi
+  if [ -n "$MISSING" ]; then
+    echo ""
+    echo "DEPLOY ABORTED — this pull changed files owned by: $MISSING"
+    echo "but scope '$SCOPE' excludes them. Deploying would leave that service on"
+    echo "stale code (the 2026-05-28 /partialnow silent gap). Changed files:"
+    echo "$CHANGED" | sed 's/^/  /'
+    echo "Re-run with a scope that covers it, e.g.: bash scripts/deploy.sh both"
+    exit 11
+  fi
+fi
 
 echo "=== [2/5] Building images: $SERVICES ==="
 docker compose --env-file .env -f "$COMPOSE_FILE" build --no-cache $SERVICES

@@ -304,15 +304,18 @@ Hooks are vanilla shell + fast (<1s). Bypass with `--no-verify` only if you real
 
 **Canonical deploy command** — preflight is chained inside the script so the deploy fails loudly if entry-pipeline safeguards can't authenticate. **Use the script, not raw `docker compose` commands.** The 2026-05-13 outage was caused by deploying without the verification step.
 ```bash
-# Market agent only (default):
-bash scripts/deploy.sh
-
-# Both services:
-bash scripts/deploy.sh both
-
-# Orchestrator only:
-bash scripts/deploy.sh orchestrator
+# Scope is REQUIRED (no default) — #154 tier-1, so you never silently leave a
+# service on stale code. deploy.sh also aborts (exit 11) if the pull brought
+# changes to files owned by a service outside your chosen scope (#154 tier-2).
+bash scripts/deploy.sh market-agent    # market agent only
+bash scripts/deploy.sh orchestrator    # orchestrator only
+bash scripts/deploy.sh both            # both services
 ```
+Ownership map for the scope-drift guard: `channels/ core/ main.py` → orchestrator;
+`agents/market_intelligence/ scripts/` → market-agent; anything else (`shared/`,
+`docker/`, `requirements/`) → both. New Telegram slash commands change
+`channels/telegram.py` (orchestrator-owned) → need `orchestrator` or `both`, not
+the market-agent default that silently dropped `/partialnow` on 2026-05-28.
 
 The script runs git pull → build → up → wait-for-boot → preflight in one chain with `set -euo pipefail`. Any step that fails exits non-zero (with a specific code per failure mode). The preflight (`scripts/preflight_check.py`) walks every enabled non-shadow strategy through `_check_safeguards` — the exact code path that fires on real ORB entries (auth, account fetch, position cap, daily loss, drawdown breaker). Treats `setup:*` / `infra:*` as failures; only `block:*` reasons count as pass-through. Failure here = deploy is not green.
 
