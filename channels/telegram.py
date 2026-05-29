@@ -16,6 +16,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
+    ExtBot,
     MessageHandler,
     filters,
 )
@@ -36,6 +37,44 @@ logger = logging.getLogger(__name__)
 
 # How long (seconds) to wait between "typing..." indicator updates
 TYPING_INTERVAL = 4
+
+# ── Polling-health heartbeat (#153) ──────────────────────────────────────────
+# A persistent NetworkError can wedge PTB's long-poll loop silently — updates
+# stop arriving with no error surfaced (the 2026-05-22→05-29 7-day outage). The
+# market-agent watchdog (separate container) alarms if this Redis key goes
+# stale. The signal is written on each SUCCESSFUL get_updates return — an empty
+# poll still returns successfully, so the heartbeat advances even with zero user
+# traffic, and it stays stale if the poll loop wedges/retries-forever (which a
+# plain event-loop timer would NOT catch). Missing key (webhook mode / pre-boot)
+# is treated as "not polling" by the watchdog, never an alarm.
+POLL_HEARTBEAT_KEY = "apollo:telegram:poll_heartbeat"
+
+
+async def _write_poll_heartbeat() -> None:
+    """Fire-and-forget Redis heartbeat. Swallows every error so a Redis blip
+    can never break the poll loop."""
+    try:
+        import time
+        from core.confirmations import get_redis
+        r = await get_redis()
+        await r.set(POLL_HEARTBEAT_KEY, int(time.time()))
+    except Exception:
+        pass
+
+
+class HeartbeatExtBot(ExtBot):
+    """ExtBot that records a polling-liveness heartbeat on each successful
+    get_updates return (#153). Class-level override (PTB 22.x Bot uses
+    __slots__, so instance monkeypatch is blocked). Injected via
+    ApplicationBuilder().bot(...) in build_application."""
+
+    async def get_updates(self, *args, **kwargs):
+        updates = await super().get_updates(*args, **kwargs)
+        try:
+            asyncio.create_task(_write_poll_heartbeat())
+        except Exception:
+            pass
+        return updates
 
 
 def _safe(s: str) -> str:
@@ -1565,9 +1604,12 @@ class TelegramChannel:
 
     def build_application(self) -> Application:
         """Build and configure the python-telegram-bot Application."""
+        # Inject the heartbeat-writing bot so the poll loop emits a liveness
+        # signal the market-agent watchdog can monitor (#153). Behaviour is
+        # otherwise identical to a default-token ExtBot.
         app = (
             Application.builder()
-            .token(self._secrets.telegram_bot_token)
+            .bot(HeartbeatExtBot(self._secrets.telegram_bot_token))
             .build()
         )
 

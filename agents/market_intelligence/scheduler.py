@@ -2852,6 +2852,62 @@ async def _reap_stale_running_runs() -> None:
         logger.error(f"Stale-run reap failed: {e}", exc_info=True)
 
 
+# ── Telegram polling-bot health watchdog (#153) ──────────────────────────────
+# The orchestrator's PTB long-poll loop can wedge on a persistent NetworkError
+# and silently stop receiving updates (the 2026-05-22→05-29 7-day outage). The
+# orchestrator writes a Redis heartbeat (apollo:telegram:poll_heartbeat) on each
+# successful get_updates. This watchdog runs in the MARKET-AGENT — a separate
+# container, so it survives an orchestrator poll-wedge — and alarms if the
+# heartbeat goes stale. Missing key = not polling / pre-boot (never alarm);
+# stale key = poll loop died (alarm). Detection latency drops from days to mins.
+_TG_POLL_HEARTBEAT_KEY = "apollo:telegram:poll_heartbeat"
+_TG_POLL_ALERT_KEY = "apollo:telegram:poll_watchdog_alerted"
+_TG_POLL_STALE_SECONDS = 300       # ≈30 missed ~10s polls — unambiguous
+_TG_POLL_ALERT_COOLDOWN = 1800     # ≤1 Telegram + audit per 30 min during outage
+_tg_watchdog_redis = None
+
+
+async def _telegram_poll_watchdog_job():
+    """Alarm if the orchestrator's Telegram poll heartbeat is stale (#153).
+    Alerts via sendMessage — a different Bot API call than the wedged
+    getUpdates, on the market-agent's own network path, so it gets through —
+    plus a durable audit row as backstop if the whole Telegram path is down."""
+    global _tg_watchdog_redis
+    try:
+        import time
+        if _tg_watchdog_redis is None:
+            import redis.asyncio as _redis
+            from shared.secrets import get_secrets
+            _tg_watchdog_redis = _redis.from_url(
+                get_secrets().redis_url, decode_responses=True,
+            )
+        r = _tg_watchdog_redis
+        raw = await r.get(_TG_POLL_HEARTBEAT_KEY)
+        if raw is None:
+            return  # not polling / pre-boot — never alarm on a missing key
+        age = int(time.time()) - int(raw)
+        if age <= _TG_POLL_STALE_SECONDS:
+            await r.delete(_TG_POLL_ALERT_KEY)  # healthy → reset dedup for next outage
+            return
+        if await r.get(_TG_POLL_ALERT_KEY):
+            return  # already alerted this outage (cooldown active)
+        await log_audit_event(
+            "telegram_poll_stale",
+            f"Telegram poll heartbeat stale {age}s (>{_TG_POLL_STALE_SECONDS}s) — "
+            f"bot may have silently stopped receiving",
+            json.dumps({"age_seconds": age, "stale_threshold": _TG_POLL_STALE_SECONDS}),
+        )
+        await send_telegram_message(
+            f"🚨 *Telegram bot health alert*\n"
+            f"Polling heartbeat is *{age // 60}m {age % 60}s* stale — the bot may have "
+            f"silently stopped receiving messages (the 7-day-outage class).\n\n"
+            f"If commands/alerts aren't flowing, restart `apollo-orchestrator`."
+        )
+        await r.set(_TG_POLL_ALERT_KEY, int(time.time()), ex=_TG_POLL_ALERT_COOLDOWN)
+    except Exception as e:
+        logger.warning(f"telegram poll watchdog error: {e}")
+
+
 def start_scheduler() -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
@@ -2867,6 +2923,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=5000),
         CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
+        replace_existing=True,
+    )
+
+    # Telegram polling-bot health watchdog: every 2 min, 24/7 (#153). Raw (not
+    # audit_wrap'd) — it's a high-frequency liveness check that self-guards and
+    # would otherwise spam mi_job_runs. Telegram is not market-hours gated.
+    _scheduler.add_job(
+        _telegram_poll_watchdog_job,
+        CronTrigger(minute="*/2", timezone="America/New_York"),
+        id="telegram_poll_watchdog",
         replace_existing=True,
     )
 
