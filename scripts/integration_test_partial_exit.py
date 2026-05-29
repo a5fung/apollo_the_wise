@@ -83,33 +83,57 @@ async def _poll_order_status(order_id, account_mode, want, *, budget_s=8.0, inte
     return last
 
 
+async def _open_test_orders(account_mode):
+    from agents.market_intelligence.broker import alpaca_client
+    orders = await alpaca_client.get_open_orders(account_mode=account_mode)
+    return [o for o in orders if (o.get("symbol") or o.get("ticker")) == _TEST_TICKER]
+
+
 async def _flatten_test_position(account_mode):
-    """Close any open position in the test ticker (idempotent)."""
+    """Close any open position in the test ticker, then WAIT until the
+    position is actually flat. close_position places a market sell that
+    doesn't fill instantly; proceeding before it fills triggers Alpaca's
+    wash-trade guard ("opposite side order exists") on the next buy, and
+    leaves the share count reserved. Idempotent."""
     from agents.market_intelligence.broker import alpaca_client
     pos = await alpaca_client.get_position(_TEST_TICKER, account_mode=account_mode)
-    if pos:
-        qty = abs(int(float(pos.get("qty", 0))))
-        if qty > 0:
-            try:
-                await alpaca_client.close_position(_TEST_TICKER, account_mode=account_mode)
-                logger.info(f"sweep/teardown: closed {qty} {_TEST_TICKER} position")
-            except Exception as e:
-                logger.warning(f"sweep/teardown: close_position {_TEST_TICKER} failed: {e}")
+    if not pos:
+        return
+    qty = abs(int(float(pos.get("qty", 0))))
+    if qty <= 0:
+        return
+    await alpaca_client.close_position(_TEST_TICKER, account_mode=account_mode)
+    logger.info(f"sweep/teardown: close {qty} {_TEST_TICKER} submitted — waiting for flat")
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        p = await alpaca_client.get_position(_TEST_TICKER, account_mode=account_mode)
+        if not p or abs(int(float(p.get("qty", 0)))) == 0:
+            logger.info(f"sweep/teardown: {_TEST_TICKER} position flat")
+            return
+        await asyncio.sleep(0.4)
+    logger.warning(f"sweep/teardown: {_TEST_TICKER} position not confirmed flat within budget")
 
 
 async def _cancel_test_ticker_orders(account_mode):
-    """Cancel any open orders on the test ticker (idempotent)."""
+    """Cancel any open orders on the test ticker, then WAIT until they clear.
+    Alpaca's share reservation (held_for_orders) lags the cancel ack by a few
+    hundred ms — proceeding to close_position immediately fails with
+    'insufficient qty available' (the same race that bit IBM). Idempotent."""
     from agents.market_intelligence.broker import alpaca_client
-    orders = await alpaca_client.get_open_orders(account_mode=account_mode)
-    for o in orders:
-        if (o.get("symbol") or o.get("ticker")) == _TEST_TICKER:
-            oid = o.get("id")
-            if oid:
-                try:
-                    await alpaca_client.cancel_order(oid, account_mode=account_mode)
-                    logger.info(f"sweep/teardown: cancelled {_TEST_TICKER} order {oid}")
-                except Exception as e:
-                    logger.warning(f"sweep/teardown: cancel {oid} failed: {e}")
+    for o in await _open_test_orders(account_mode):
+        oid = o.get("id")
+        if oid:
+            try:
+                await alpaca_client.cancel_order(oid, account_mode=account_mode)
+                logger.info(f"sweep/teardown: cancelled {_TEST_TICKER} order {oid}")
+            except Exception as e:
+                logger.warning(f"sweep/teardown: cancel {oid} failed: {e}")
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline:
+        if not await _open_test_orders(account_mode):
+            return
+        await asyncio.sleep(0.3)
+    logger.warning(f"sweep/teardown: {_TEST_TICKER} open orders did not clear within budget")
 
 
 async def _delete_sentinel_rows(trade_id=None):
