@@ -1155,6 +1155,105 @@ async def execute_partial_exit(trade_id: int, shares: int) -> bool:
             )
             return False
 
+    # Step 1b: VERIFY the replacement stop is actually live on the broker
+    # BEFORE freeing shares via the market sell. A replace can return a new
+    # order_id that the broker then rejects/cancels — "looked successful,
+    # actually dead". G6 guards that shape at deploy time; this is its runtime
+    # analog on the production path. Selling against a dead stop = naked.
+    #
+    # Tolerate the pending_replace → new settling window (≤~1s observed) so we
+    # don't manufacture a false-naked on a stop that's merely still settling
+    # (the lesson the paper-Alpaca harness taught us 2026-05-29). Poll a short
+    # budget, then classify: live → sell; dead → abort+null+remediate; still
+    # pending after budget → abort WITHOUT nulling (keep the best-guess stop,
+    # ask operator to verify) since we have NOT sold and the stop likely lives.
+    if new_stop_id:
+        verify_status = None
+        verify_outcome = "uncertain"  # live | dead | uncertain
+        for _ in range(12):  # ~3s budget at 0.25s/poll
+            chk = await alpaca.get_order(new_stop_id, account_mode=account_mode)
+            verify_status = _canonical_order_status(chk.get("status") if chk else None)
+            if verify_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                verify_outcome = "live"
+                break
+            if verify_status in _STOP_DEAD_STATUSES or verify_status == "filled":
+                verify_outcome = "dead"
+                break
+            await asyncio.sleep(0.25)
+
+        if verify_outcome != "live":
+            logger.error(
+                f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
+                f"not confirmed live before sell (outcome={verify_outcome}, "
+                f"last_status={verify_status}) — aborting sell"
+            )
+            if verify_outcome == "dead":
+                # Stop is gone broker-side. Null so sync_positions Path C
+                # detects the orphan and re-places protection.
+                await set_stop_order_id(
+                    trade_id, None,
+                    reason="partial_verify_stop_dead",
+                    account_mode=account_mode,
+                )
+                await log_audit_event(
+                    "partial_exit_aborted",
+                    f"{ticker}: replacement stop confirmed DEAD before sell "
+                    f"(status={verify_status}) — nulled for remediation",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                        "stop_price": float(stop_price) if stop_price else None,
+                        "stage": "verify_stop_live", "verify_outcome": verify_outcome,
+                        "last_status": verify_status,
+                        "stale_stop_id_cleared": new_stop_id,
+                    }),
+                )
+                await log_audit_event(
+                    "naked_position_detected",
+                    f"{ticker}: replacement stop dead pre-sell; sync_positions will remediate",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "stop_price": float(stop_price) if stop_price else None,
+                        "remaining_shares": float(full_remaining),
+                        "source": "execute_partial_exit_verify",
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
+                    f"Replacement stop confirmed dead before sell (status={verify_status}).\n"
+                    f"No shares sold. *stop_order_id nulled — sync_positions will re-place; "
+                    f"verify on Alpaca.*"
+                )
+            else:
+                # Uncertain (still pending after budget). We did NOT sell, so the
+                # full position is intact. Keep new_stop_id persisted (it likely
+                # IS live, just slow to settle) rather than null it and trigger a
+                # false-naked that could cancel a good stop. Ask operator to eyeball.
+                await log_audit_event(
+                    "partial_exit_aborted",
+                    f"{ticker}: replacement stop not confirmed live within budget "
+                    f"(status={verify_status}) — sell skipped, stop kept",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                        "stop_price": float(stop_price) if stop_price else None,
+                        "stage": "verify_stop_live", "verify_outcome": verify_outcome,
+                        "last_status": verify_status,
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
+                    f"replacement stop not confirmed live (status={verify_status}).\n"
+                    f"No shares sold; stop {new_stop_id[:8]} kept for {new_remaining} sh. "
+                    f"_Verify on Alpaca; cron will retry next window._"
+                )
+            return False
+
+        logger.info(
+            f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
+            f"confirmed live (status={verify_status}) — proceeding to sell"
+        )
+
     # Step 2: Market sell the partial (shares are now free from the stop).
     try:
         coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
@@ -1766,6 +1865,18 @@ _TERMINAL_ORDER_STATUSES = frozenset({
 
 # Subset that means "order ended without filling" — used to derive cancelled_at.
 _CANCEL_LIKE_ORDER_STATUSES = frozenset({"canceled", "cancelled", "expired", "rejected"})
+
+# Statuses that confirm a replacement stop is LIVE and protecting the position.
+# Used by execute_partial_exit's pre-sell verify-check: we only free shares via
+# the market sell once the reduced-qty stop is confirmed resting on the broker.
+_STOP_CONFIRMED_LIVE_STATUSES = frozenset({
+    "new", "accepted", "held", "partially_filled", "accepted_for_bidding",
+})
+# Statuses that confirm the stop is DEAD (rejected/cancelled-away) — selling now
+# would leave the position naked, so we abort + null the stop for remediation.
+_STOP_DEAD_STATUSES = frozenset({
+    "canceled", "cancelled", "expired", "rejected", "replaced", "done_for_day",
+})
 
 # Stuck-pending_new watchdog (#142, 2026-05-28). RDW ORB entry 2026-05-26
 # stayed in Alpaca pending_new the entire session despite cleanup cron firing
