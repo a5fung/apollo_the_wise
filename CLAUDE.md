@@ -352,6 +352,16 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-05-29 (Fri) — #151 partial-exit hardening + #150 confirmed + #153 bot watchdog + #154 deploy guard
+
+Push-through session closing the IBM "partial broken 2 days" P0. Detail + Monday sequence in memory `project_151_partial_exit_hardening_wip.md`; all deployed+verified on prod unless noted.
+
+- **#151 safety TRIO** (not the originally-planned architectural split — advisor reframe: both IBM bugs were leaf-level in `alpaca_client.replace_order`, closed by G6): (1) **G6** deploy gate `scripts/preflight_replace_order_smoke.py` (deploy.sh `[5g/6]`) exercises replace_order vs real paper broker, via harness `agents/market_intelligence/integration/paper_alpaca.py`; (2) **verify-stop-live** in `execute_partial_exit` Step 1b — poll-confirm new stop live before the sell; (3) **circuit breaker** `_recent_partial_exit_failures()` (≥3/7d → refuse + Telegram; `force=True` bypass for `/partialnow`). Plus **durable integration test** `scripts/integration_test_partial_exit.py` (broker-ground-truth asserts, hardened teardown; green ×2). IBM `/partialnow` canary clean (+$226.37). **16:45 cron PAUSED until Monday**; architectural split deferred to before LIVE cutover.
+- **#150 share-reservation race CONFIRMED**: Alpaca releases the share-hold ~ms after the atomic replace → immediate sell sees `available:0, held_for_orders:26`. verify-poll incidentally mitigates, not guaranteed. Explicit sell-retry fix → Monday.
+- **#153 bot watchdog** (silent 7-day-outage class): `HeartbeatExtBot` writes Redis heartbeat on each successful get_updates (survives retry-forever wedge; class override — PTB 22.7 `__slots__`); market-agent `_telegram_poll_watchdog_job` (every 2 min, separate container) alarms stale>5min. Verified advances/trips/dedupes/recovers. 7d→~5min.
+- **#154 deploy scope-drift guard**: no-arg deploy.sh now errors (tier-1); aborts if the pull touched files owned by a service outside scope (tier-2). Tooling — no deploy.
+- **Monday opener** (memory): breaker success-aware (close-on-success, not rolling window); #150 explicit fix; grep `execute_full_exit`/`update_stop`; then re-enable cron watched. CLAUDE.md is over the 40k ceiling (pre-existing) — compress oldest Recent entries → CHANGELOG.
+
 ### 2026-05-27 (Wed evening) — INCIDENT: IBM partial-exit + DB mass-close cascade
 
 Full post-mortem: [`docs/incidents/2026-05-27-ibm-partial-sync-cascade.md`](docs/incidents/2026-05-27-ibm-partial-sync-cascade.md).
