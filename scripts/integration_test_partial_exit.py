@@ -132,10 +132,16 @@ async def _delete_sentinel_rows(trade_id=None):
                 "SELECT id FROM mi_live_trades WHERE signal_type = $1",
                 _SENTINEL_SIGNAL_TYPE)]
         for tid in ids:
-            await conn.execute("DELETE FROM mi_live_orders WHERE trade_id = $1", tid)
-            await conn.execute(
-                "DELETE FROM mi_live_trades WHERE id = $1 AND signal_type = $2",
-                tid, _SENTINEL_SIGNAL_TYPE)
+            # The trade tables carry a BEFORE-DELETE trigger (protect_trade_tables,
+            # post-2026-05-27 cascade guard) that blocks DELETE unless the session
+            # var is set. SET LOCAL is transaction-scoped so it auto-resets — the
+            # guard is never left disabled for other connections.
+            async with conn.transaction():
+                await conn.execute("SET LOCAL mi.allow_trade_delete = 'yes'")
+                await conn.execute("DELETE FROM mi_live_orders WHERE trade_id = $1", tid)
+                await conn.execute(
+                    "DELETE FROM mi_live_trades WHERE id = $1 AND signal_type = $2",
+                    tid, _SENTINEL_SIGNAL_TYPE)
             logger.info(f"teardown: deleted sentinel trade row {tid} (+ its orders)")
     return len(ids)
 
@@ -300,15 +306,18 @@ async def run() -> int:
         return 1
     finally:
         # Teardown — survives partial failure; loudly reports residue.
+        # Order matters: cancel orders FIRST to release shares held_for_orders
+        # by the stop, THEN flatten the position (else close_position fails with
+        # "insufficient qty available").
         residue = []
-        try:
-            await _flatten_test_position(_ACCOUNT_MODE)
-        except Exception as e:
-            residue.append(f"position flatten failed: {e}")
         try:
             await _cancel_test_ticker_orders(_ACCOUNT_MODE)
         except Exception as e:
             residue.append(f"order cancel failed: {e}")
+        try:
+            await _flatten_test_position(_ACCOUNT_MODE)
+        except Exception as e:
+            residue.append(f"position flatten failed: {e}")
         try:
             if trade_id is not None:
                 await _delete_sentinel_rows(trade_id=trade_id)
