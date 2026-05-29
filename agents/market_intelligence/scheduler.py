@@ -3442,12 +3442,29 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # Live position update: 4:45 PM ET — SMA trail, partials, stop updates
-    _scheduler.add_job(
-        audit_wrap(_live_position_update_job, "live_position_update"),
-        CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
-        id="live_position_update",
-        replace_existing=True,
-    )
+    # PAUSED 2026-05-29 per task #151 (advisor decision Option D). Two consecutive
+    # days of automated partial-take failure on IBM via distinct bug classes
+    # (5/27 cancel→new race fixed by #136; 5/28 str→numeric in #136's fix; today
+    # surfaced 4th class: replace_order_by_id non-atomic on Alpaca paper,
+    # share-hold release lags ~10ms after API returns successfully).
+    #
+    # Restoration gated on #151:
+    #   (a) execute_partial_exit architectural split with verify-broker-state
+    #       between each step (specifically: verify old_stop_id released before
+    #       submit_partial_sell)
+    #   (b) Preflight Gate G6 — integration test against paper Alpaca in deploy
+    #   (c) Outcome-history circuit breaker — auto-halt on N=2 consecutive fails
+    #
+    # In the meantime: operator uses /partialnow TICKER for any qualifying
+    # partial-take. Each invocation is a single explicit confirmation, not an
+    # automated batch hitting 3+ trades simultaneously.
+    #
+    # _scheduler.add_job(
+    #     audit_wrap(_live_position_update_job, "live_position_update"),
+    #     CronTrigger(hour=16, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+    #     id="live_position_update",
+    #     replace_existing=True,
+    # )
 
     # 9M EP intraday scan: every 5 min, 9:30 AM – 4:00 PM ET (regular session)
     _scheduler.add_job(
