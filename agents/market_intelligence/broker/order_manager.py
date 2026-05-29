@@ -982,12 +982,20 @@ _PARTIAL_EXIT_BREAKER_THRESHOLD = 3
 _PARTIAL_EXIT_BREAKER_WINDOW_DAYS = 7
 
 
-async def _recent_partial_exit_failures(window_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS) -> int:
-    """Count GENUINE partial-exit failures in the trailing window.
+async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS) -> int:
+    """Count GENUINE partial-exit failures SINCE THE LAST SUCCESSFUL partial exit.
+
+    Success-aware breaker semantics (advisor 2026-05-29): a clean
+    `partial_exit_committed` closes the breaker — only failures accrued *after*
+    the most recent success count. This is the standard open→half-open→close
+    model; a rolling fixed-window (the prior implementation) would stay open on
+    stale already-remediated failures even after clean cycles resumed. `floor_days`
+    bounds the lookback when there is NO recorded success yet (fresh system / never
+    succeeded), so ancient history can't trip it.
 
     Counts only broker-interaction failures — NOT benign aborts (dedup against a
-    pending exit, trade-not-found), which use the same `partial_exit_aborted`
-    event_type but a non-failure `stage`. Genuine signals:
+    pending exit, trade-not-found), which share the `partial_exit_aborted`
+    event_type but carry a non-failure `stage`. Genuine signals:
       - partial_exit_sell_failed       (market sell raised)
       - partial_exit_rollback_failed   (sell failed AND stop rollback failed)
       - partial_exit_aborted with stage in {place_new_stop, verify_stop_live}
@@ -998,7 +1006,11 @@ async def _recent_partial_exit_failures(window_days: int = _PARTIAL_EXIT_BREAKER
         row = await conn.fetchrow(
             """
             SELECT COUNT(*) AS n FROM mi_audit_log
-            WHERE created_at > NOW() - ($1 || ' days')::interval
+            WHERE created_at > COALESCE(
+                    (SELECT MAX(created_at) FROM mi_audit_log
+                     WHERE event_type = 'partial_exit_committed'),
+                    NOW() - ($1 || ' days')::interval
+                  )
               AND (
                 event_type IN ('partial_exit_sell_failed', 'partial_exit_rollback_failed')
                 OR (
@@ -1008,7 +1020,7 @@ async def _recent_partial_exit_failures(window_days: int = _PARTIAL_EXIT_BREAKER
                 )
               )
             """,
-            str(window_days),
+            str(floor_days),
         )
     return int(row["n"]) if row else 0
 
@@ -1026,51 +1038,52 @@ async def execute_partial_exit(
     scheduled cron path passes force=False so a string of recent failures pauses
     automatic retries instead of re-failing into the same fault daily.
     """
-    # Circuit breaker (#151 c): if recent partial-exit attempts have failed at the
-    # broker-interaction stages, refuse this UNATTENDED attempt and alert. Skipped
-    # when force=True (operator explicitly chose to act); the override is recorded.
-    recent_failures = await _recent_partial_exit_failures()
-    if recent_failures >= _PARTIAL_EXIT_BREAKER_THRESHOLD:
+    # Circuit breaker (#151 c): if partial-exit attempts have failed at the
+    # broker-interaction stages SINCE THE LAST SUCCESSFUL partial, refuse this
+    # UNATTENDED attempt and alert. Success-aware (advisor 2026-05-29): a clean
+    # partial_exit_committed resets the count, so resumed clean cycles close the
+    # breaker rather than staying open on stale already-remediated failures.
+    # Skipped when force=True (operator chose to act); the override is recorded.
+    fail_count = await _consecutive_partial_exit_failures()
+    if fail_count >= _PARTIAL_EXIT_BREAKER_THRESHOLD:
         if not force:
             logger.error(
                 f"execute_partial_exit: circuit breaker OPEN "
-                f"({recent_failures} failures in {_PARTIAL_EXIT_BREAKER_WINDOW_DAYS}d) "
+                f"({fail_count} consecutive failures since last success) "
                 f"— refusing trade {trade_id}"
             )
             await log_audit_event(
                 "partial_exit_circuit_open",
-                f"breaker OPEN: {recent_failures} partial-exit failures in "
-                f"{_PARTIAL_EXIT_BREAKER_WINDOW_DAYS}d — trade {trade_id} skipped",
+                f"breaker OPEN: {fail_count} partial-exit failures since last "
+                f"success — trade {trade_id} skipped",
                 json.dumps({
                     "trade_id": trade_id, "shares": int(shares),
-                    "recent_failures": recent_failures,
+                    "consecutive_failures": fail_count,
                     "threshold": _PARTIAL_EXIT_BREAKER_THRESHOLD,
-                    "window_days": _PARTIAL_EXIT_BREAKER_WINDOW_DAYS,
                 }),
             )
             await send_telegram_message(
                 f"🛑 *Partial-exit circuit breaker OPEN*\n"
-                f"{recent_failures} partial-exit failures in the last "
-                f"{_PARTIAL_EXIT_BREAKER_WINDOW_DAYS} days — automatic partial "
-                f"exits are PAUSED to stop daily retries into the same fault.\n\n"
-                f"Trade {trade_id} was skipped. Investigate the failures "
-                f"(`show errors 7d`), then use `/partialnow TICKER CONFIRM` to act "
-                f"manually (bypasses the breaker)."
+                f"{fail_count} partial-exit failures since the last clean exit — "
+                f"automatic partial exits are PAUSED to stop retries into the same "
+                f"fault.\n\n"
+                f"Trade {trade_id} was skipped. Investigate (`show errors 7d`), then "
+                f"`/partialnow TICKER CONFIRM` to act manually (bypasses the breaker "
+                f"+ a clean run closes it)."
             )
             return False
         # force=True: operator override — record it but proceed.
         logger.warning(
-            f"execute_partial_exit: circuit breaker OPEN ({recent_failures} "
-            f"failures/{_PARTIAL_EXIT_BREAKER_WINDOW_DAYS}d) — OVERRIDDEN (force=True) "
-            f"for trade {trade_id}"
+            f"execute_partial_exit: circuit breaker OPEN ({fail_count} consecutive "
+            f"failures) — OVERRIDDEN (force=True) for trade {trade_id}"
         )
         await log_audit_event(
             "partial_exit_circuit_overridden",
-            f"breaker open ({recent_failures} failures) but force=True — "
-            f"trade {trade_id} proceeding",
+            f"breaker open ({fail_count} failures since last success) but "
+            f"force=True — trade {trade_id} proceeding",
             json.dumps({
                 "trade_id": trade_id, "shares": int(shares),
-                "recent_failures": recent_failures,
+                "consecutive_failures": fail_count,
             }),
         )
 
