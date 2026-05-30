@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 CATALYST_TYPES: tuple[str, ...] = (
     "theme", "policy", "shortage",
     "sales_acceleration", "new_product", "management_change",
+    "pre_catalyst_anticipation",  # gap AHEAD of an imminent-but-unannounced catalyst
     "other", "none",
 )
 
@@ -75,13 +76,18 @@ _CATALYST_TYPE_TOOL = {
                     "inflection or beat-and-raise, idiosyncratic (no theme/policy). "
                     "new_product: launch of a TAM-expanding product or platform. "
                     "management_change: high-profile leadership change. "
+                    "pre_catalyst_anticipation: the gap is AHEAD of an imminent but "
+                    "NOT-yet-public catalyst (gapping INTO unreleased earnings, an awaited "
+                    "ruling/data readout) — positioning/anticipation, NOT a reaction to "
+                    "already-announced news. Distinct from 'none' (no catalyst at all) and "
+                    "from a post-announcement reaction. "
                     "other: real but pedestrian company news — in-line/small beat, minor "
                     "contract, buyback, routine partnership/PR with no concrete metrics. "
                     "none: no identifiable concrete catalyst (vague/generic news, or the "
                     "gap has no explained reason). "
                     "If MULTIPLE apply, pick the HIGHEST in the hierarchy "
                     "(theme > policy > shortage > sales_acceleration > new_product > "
-                    "management_change > other > none)."
+                    "management_change > pre_catalyst_anticipation > other > none)."
                 ),
             },
             "rationale": {

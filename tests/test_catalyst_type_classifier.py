@@ -100,6 +100,12 @@ def test_all_enum_values_are_distinct_and_ranked():
     assert ctc.CATALYST_TYPE_RANK["none"] == len(ctc.CATALYST_TYPES) - 1
     assert ctc.CATALYST_TYPE_RANK["policy"] < ctc.CATALYST_TYPE_RANK["sales_acceleration"]
     assert len(set(ctc.CATALYST_TYPES)) == len(ctc.CATALYST_TYPES)
+    # pre_catalyst_anticipation: distinct slot (the backfill found the 'none' bucket
+    # was really pre-earnings gaps) — ranks below operational, above other/none.
+    assert "pre_catalyst_anticipation" in ctc.CATALYST_TYPES
+    assert (ctc.CATALYST_TYPE_RANK["management_change"]
+            < ctc.CATALYST_TYPE_RANK["pre_catalyst_anticipation"]
+            < ctc.CATALYST_TYPE_RANK["other"])
 
 
 def test_catalyst_type_renders_in_ep_block():
