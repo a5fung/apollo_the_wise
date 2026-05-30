@@ -355,7 +355,8 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     _ct = ep.get("catalyst_type")
     ct_suffix = ""
     if _ct:
-        _ctmark = "🎯" if _ct in ("theme", "policy", "shortage") else "▫️"
+        _ctmark = ("🎯" if _ct in ("theme", "policy", "shortage")
+                   else "❓" if _ct == "unknown" else "▫️")
         ct_suffix = f" {_ctmark}{_ct.replace('_', ' ')}"
     out: list[str] = []
     if tier == "HIGH":
@@ -2088,7 +2089,8 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     _ct = ep.get("catalyst_type")
     ct_line = ""
     if _ct:
-        _ctmark = "🎯" if _ct in ("theme", "policy", "shortage") else "▫️"
+        _ctmark = ("🎯" if _ct in ("theme", "policy", "shortage")
+                   else "❓" if _ct == "unknown" else "▫️")
         ct_line = f"{_ctmark} Type: *{_ct.replace('_', ' ').title()}*\n"
 
     text = (

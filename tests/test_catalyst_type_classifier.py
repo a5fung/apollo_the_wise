@@ -55,10 +55,10 @@ def _with_client(client):
 
 
 # ── tests ────────────────────────────────────────────────────────────────────
-def test_no_input_is_genuine_none():
-    # No catalyst text + no analysis → "none" (a real classification, not failure).
+def test_no_input_is_unknown_not_none():
+    # No text → "unknown" (a coverage/knowledge gap), NOT "none", NOT None(failure).
     res = _run(ctc.classify_catalyst_type("XYZ", None, None))
-    assert res["catalyst_type"] == "none"
+    assert res["catalyst_type"] == "unknown"
     assert res["rationale"]  # explains why
 
 
@@ -97,7 +97,8 @@ def test_happy_path_returns_type_and_rationale():
 def test_all_enum_values_are_distinct_and_ranked():
     # Hierarchy sanity: theme is most-powerful (rank 0), none is least.
     assert ctc.CATALYST_TYPE_RANK["theme"] == 0
-    assert ctc.CATALYST_TYPE_RANK["none"] == len(ctc.CATALYST_TYPES) - 1
+    assert ctc.CATALYST_TYPE_RANK["unknown"] == len(ctc.CATALYST_TYPES) - 1
+    assert "none" not in ctc.CATALYST_TYPES  # no false absence-of-catalyst class
     assert ctc.CATALYST_TYPE_RANK["policy"] < ctc.CATALYST_TYPE_RANK["sales_acceleration"]
     assert len(set(ctc.CATALYST_TYPES)) == len(ctc.CATALYST_TYPES)
     # pre_catalyst_anticipation: distinct slot (the backfill found the 'none' bucket
@@ -124,6 +125,10 @@ def test_catalyst_type_renders_in_ep_block():
     blk2 = "\n".join(_format_ep_ticker_block({**base, "ticker": "OMCL",
                                               "catalyst_type": "sales_acceleration"}))
     assert "▫️sales acceleration" in blk2
+    # unknown (knowledge gap) → ❓ marker (cue the operator to investigate coverage)
+    blku = "\n".join(_format_ep_ticker_block({**base, "ticker": "ZBRA",
+                                              "catalyst_type": "unknown"}))
+    assert "❓unknown" in blku
     # no catalyst_type (classifier unavailable) → no type-suffix marker, renders cleanly
     blk3 = "\n".join(_format_ep_ticker_block(base))
     assert "🎯" not in blk3 and "▫️" not in blk3

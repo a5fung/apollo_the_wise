@@ -22,8 +22,11 @@ that is exactly what the forward data must teach (layer-2/3, not now).
 
 Fail-open: any hard error → catalyst_type=None (NULL in DB), never raises to
 the caller. Telemetry must never jeopardize the alert. NOTE the distinction:
-None = classifier failed/unavailable; "none" = the model genuinely found no
-concrete catalyst.
+None (NULL) = the classifier FAILED/was unavailable (infra). "unknown" = the
+classifier RAN but couldn't identify a catalyst — a KNOWLEDGE/coverage GAP
+(the catalyst almost certainly exists for a hard +vol gap; our info just didn't
+surface it), NOT a claim that no catalyst exists. We deliberately do NOT have a
+"none" class — absence-of-evidence is not evidence-of-absence (operator 2026-05-30).
 
 Uses tool_choice structured output (not raw-JSON parsing) per the codebase's
 silent-failure discipline — schema-valid output guaranteed, no string parsing.
@@ -45,7 +48,11 @@ CATALYST_TYPES: tuple[str, ...] = (
     "theme", "policy", "shortage",
     "sales_acceleration", "new_product", "management_change",
     "pre_catalyst_anticipation",  # gap AHEAD of an imminent-but-unannounced catalyst
-    "other", "none",
+    "other",
+    # "unknown" — NOT "none": a +vol gap almost always HAS a catalyst; we just
+    # couldn't identify it (news-coverage / extraction gap). Honest agnosticism,
+    # and a queryable signal of WHERE our information pipeline is blind (→ #149).
+    "unknown",
 )
 
 # Rank for downstream ordering/analysis (lower = more powerful per Pradeep).
@@ -83,11 +90,14 @@ _CATALYST_TYPE_TOOL = {
                     "from a post-announcement reaction. "
                     "other: real but pedestrian company news — in-line/small beat, minor "
                     "contract, buyback, routine partnership/PR with no concrete metrics. "
-                    "none: no identifiable concrete catalyst (vague/generic news, or the "
-                    "gap has no explained reason). "
+                    "unknown: you could NOT identify the catalyst from the available info. "
+                    "Use this honestly — a stock gapping hard on volume almost always HAS a "
+                    "catalyst; 'unknown' means OUR information didn't surface it (a coverage/"
+                    "knowledge gap), NOT that no catalyst exists. Prefer 'unknown' over forcing "
+                    "a weak guess. "
                     "If MULTIPLE apply, pick the HIGHEST in the hierarchy "
                     "(theme > policy > shortage > sales_acceleration > new_product > "
-                    "management_change > pre_catalyst_anticipation > other > none)."
+                    "management_change > pre_catalyst_anticipation > other > unknown)."
                 ),
             },
             "rationale": {
@@ -139,8 +149,8 @@ async def classify_catalyst_type(
     ) if p)
 
     if not (catalyst_text or claude_analysis):
-        # Nothing to classify — a genuine 'none', not a failure.
-        return {"catalyst_type": "none", "rationale": "no catalyst text available"}
+        # No text to work from → we don't know (a coverage gap), not "no catalyst".
+        return {"catalyst_type": "unknown", "rationale": "no catalyst text available"}
 
     prompt = (
         "Classify the structural TYPE of this stock gap-up catalyst per the "
