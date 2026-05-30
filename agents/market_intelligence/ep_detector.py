@@ -1912,4 +1912,39 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         f"regime={regime_label} threshold={ep_threshold}"
     )
 
+    # ── North Star C1 (2026-05-30): catalyst-TYPE classification (ADVISORY) ──
+    # Fire-identity signal (Pradeep hierarchy: theme > policy > shortage >
+    # operational). Runs AFTER the candidate loop + per-candidate
+    # insert/gating/alert-decision (all byte-identical + unblocked — DECOUPLED
+    # from the `quality` gating call). Concurrent (semaphore-capped inside the
+    # classifier) → ~one Haiku round-trip total, not per-candidate, before the
+    # caller sends alerts → catalyst_type surfaces on the alert. Uses the SAME
+    # day-of inputs (catalyst summary + claude_analysis) the historical backfill
+    # used → backfill↔live input parity (feedback_backfill_llm_label_lookahead).
+    # FAIL-OPEN: any error leaves catalyst_type NULL; NEVER blocks/breaks alerts.
+    try:
+        from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
+        from agents.market_intelligence.db import set_ep_alert_catalyst_type
+
+        async def _classify_type(r: dict) -> None:
+            try:
+                res = await classify_catalyst_type(
+                    r["ticker"], r.get("catalyst"), r.get("claude_analysis"),
+                    sector=(r.get("sector") or None),
+                )
+                r["catalyst_type"] = res.get("catalyst_type")
+                r["catalyst_type_rationale"] = res.get("rationale")
+                await set_ep_alert_catalyst_type(
+                    r["ticker"], r["alert_date"],
+                    r.get("catalyst_type"), r.get("catalyst_type_rationale"),
+                )
+            except Exception as _te:
+                logger.warning(f"catalyst_type classify failed for {r.get('ticker')}: {_te}")
+
+        _alerted = high + moderate
+        if _alerted:
+            await asyncio.gather(*[_classify_type(r) for r in _alerted])
+    except Exception as _e:
+        logger.warning(f"catalyst_type post-scan block failed (non-critical): {_e}")
+
     return results

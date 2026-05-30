@@ -348,17 +348,25 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     quality = (ep.get("catalyst_quality") or "?").replace("_", " ")
     gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
+    # North Star C1 (2026-05-30): catalyst TYPE — the "fire" (Pradeep hierarchy).
+    # ADVISORY. 🔥 marks the high-conviction types (theme/policy/shortage); ▫️ the
+    # rest. Shown only when classified (NULL = classifier unavailable → omitted).
+    _ct = ep.get("catalyst_type")
+    ct_suffix = ""
+    if _ct:
+        _fire = "🔥" if _ct in ("theme", "policy", "shortage") else "▫️"
+        ct_suffix = f" {_fire}{_ct.replace('_', ' ')}"
     out: list[str] = []
     if tier == "HIGH":
         out.append(
             f"{lead}{tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
             f"rv {ep.get('rel_volume') or '?'}x "
-            f"score *{ep['ep_score']:.0f}* {cat_e} {quality}{gem}{conf}"
+            f"score *{ep['ep_score']:.0f}* {cat_e} {quality}{gem}{conf}{ct_suffix}"
         )
     else:
         out.append(
             f"{lead}{tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality}"
+            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality}{ct_suffix}"
         )
     if ep.get("claude_analysis"):
         out.append(f"{lead}  _{_truncate_sentence(ep['claude_analysis'], 180)}_")
@@ -2073,10 +2081,20 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
             # Audit dedup/insert failure is also telemetry — don't block alert
             logger.debug(f"Convergence audit log failed (non-critical): {_ae}")
 
+    # North Star C1 (2026-05-30): surface catalyst TYPE — the "fire" (Pradeep
+    # hierarchy: theme > policy > shortage > operational). ADVISORY — does not
+    # gate; complements the magnitude grade (catalyst_quality) above.
+    _ct = ep.get("catalyst_type")
+    ct_line = ""
+    if _ct:
+        _fire = "🔥" if _ct in ("theme", "policy", "shortage") else "▫️"
+        ct_line = f"{_fire} Type: *{_ct.replace('_', ' ').title()}*\n"
+
     text = (
         conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {cat_e} {ep.get('catalyst_quality', '').replace('_', ' ').title()}\n"
+        f"{ct_line}"
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n\n"

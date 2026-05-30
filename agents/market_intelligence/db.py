@@ -1861,14 +1861,25 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'"
         )
+        # North Star C1 (2026-05-30): catalyst TYPE (Pradeep hierarchy) — ADVISORY,
+        # never gates entries. Idempotent add (matches the `source` pattern); the
+        # column auto-creates on the first insert after deploy. catalyst_type is
+        # NULL when the isolated classifier failed/unavailable (fail-open).
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT"
+        )
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
                  catalyst, catalyst_quality, claude_analysis, gemini_validation,
                  confidence_multiplier, vol_percentile, source,
-                 pm_rvol, pm_rvol_baseline_n, detected_at)
+                 pm_rvol, pm_rvol_baseline_n, detected_at,
+                 catalyst_type, catalyst_type_rationale)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                    COALESCE($16::TIMESTAMPTZ, NOW()))
+                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -1880,7 +1891,32 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("pm_rvol"),
             record.get("pm_rvol_baseline_n"),
             record.get("detected_at"),
+            record.get("catalyst_type"),
+            record.get("catalyst_type_rationale"),
         )
+
+
+async def set_ep_alert_catalyst_type(
+    ticker: str, alert_date: "date", catalyst_type: str | None,
+    rationale: str | None = None,
+) -> None:
+    """Advisory: write catalyst_type (Pradeep hierarchy) onto an EP alert row.
+
+    North Star C1 (2026-05-30). ADVISORY telemetry only — catalyst_type NEVER
+    gates entries. Called post-scan (decoupled from the gating path). Idempotent
+    column-ensure mirrors insert_ep_alert. No-op when catalyst_type is NULL
+    (classifier fail-open) so we never overwrite a value with NULL.
+    """
+    if not catalyst_type:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT")
+        await conn.execute("ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT")
+        await conn.execute("""
+            UPDATE mi_ep_alerts SET catalyst_type = $3, catalyst_type_rationale = $4
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date, catalyst_type, rationale)
 
 
 async def delete_historical_alerts(from_date: date, to_date: date) -> int:
