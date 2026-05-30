@@ -3489,6 +3489,19 @@ reviews:
   - review_id: phase5_meta_rubric_calibration
     title: "Phase 5 — meta-rubric composition + threshold calibration"
     question: |
+      ⚠ REFRAME 2026-05-30 (methodology-fidelity — operator reinforced 3×):
+      we IMPLEMENT a known methodology, we do NOT discover one from data. The
+      composite SHIPS ADVISORY with METHODOLOGY-ORDERED weights as its inputs
+      come online (theme dominant > policy > shortage > operational; theme ≥
+      fundamentals 1.5-2× per user_pradeep_catalyst_hierarchy / meta_rubric_
+      architecture) — it is NOT blocked until this review. The sequencing gate
+      is INPUTS (catalyst_type ✓ shipped 2026-05-30 / theme ✓ live / technical-
+      structure / fundamentals-coverage #149), NOT an N/calendar threshold. This
+      review REFINES the documented priors (within the known structure) + decides
+      Phase-6 GATING. The regression below TUNES known weights against outcomes;
+      it does NOT author the composition from blank. See
+      feedback_methodology_fidelity_over_stability.
+
       With ≥30 settled paired-score alerts (catalyst + theme +
       technical + gap all populated, plus settled 5d forward return),
       fit composition weights via logistic regression against
