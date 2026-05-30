@@ -349,13 +349,14 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
     # North Star C1 (2026-05-30): catalyst TYPE — the "fire" (Pradeep hierarchy).
-    # ADVISORY. 🔥 marks the high-conviction types (theme/policy/shortage); ▫️ the
-    # rest. Shown only when classified (NULL = classifier unavailable → omitted).
+    # ADVISORY. 🎯 marks the high-conviction types (theme/policy/shortage); ▫️ the
+    # rest. (NOT 🔥 — that's the HIGH-tier emoji; avoid a double-🔥 collision.)
+    # Shown only when classified (NULL = classifier unavailable → omitted).
     _ct = ep.get("catalyst_type")
     ct_suffix = ""
     if _ct:
-        _fire = "🔥" if _ct in ("theme", "policy", "shortage") else "▫️"
-        ct_suffix = f" {_fire}{_ct.replace('_', ' ')}"
+        _ctmark = "🎯" if _ct in ("theme", "policy", "shortage") else "▫️"
+        ct_suffix = f" {_ctmark}{_ct.replace('_', ' ')}"
     out: list[str] = []
     if tier == "HIGH":
         out.append(
@@ -2087,8 +2088,8 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     _ct = ep.get("catalyst_type")
     ct_line = ""
     if _ct:
-        _fire = "🔥" if _ct in ("theme", "policy", "shortage") else "▫️"
-        ct_line = f"{_fire} Type: *{_ct.replace('_', ' ').title()}*\n"
+        _ctmark = "🎯" if _ct in ("theme", "policy", "shortage") else "▫️"
+        ct_line = f"{_ctmark} Type: *{_ct.replace('_', ' ').title()}*\n"
 
     text = (
         conv_tag +

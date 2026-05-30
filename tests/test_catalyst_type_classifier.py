@@ -102,6 +102,27 @@ def test_all_enum_values_are_distinct_and_ranked():
     assert len(set(ctc.CATALYST_TYPES)) == len(ctc.CATALYST_TYPES)
 
 
+def test_catalyst_type_renders_in_ep_block():
+    """The shared /EP block surfaces catalyst_type with the right fire marker."""
+    try:
+        from agents.market_intelligence.briefing import _format_ep_ticker_block
+    except Exception as e:  # pragma: no cover - local dep gaps
+        import pytest
+        pytest.skip(f"briefing import unavailable locally: {e}")
+    base = {"ticker": "RCAT", "score_tier": "HIGH", "gap_pct": 16.1, "ep_score": 100.8,
+            "rel_volume": 5, "catalyst_quality": "strong"}
+    # high-tier type → 🎯 (NOT 🔥 — that's the HIGH tier emoji)
+    blk = "\n".join(_format_ep_ticker_block({**base, "catalyst_type": "policy"}))
+    assert "RCAT" in blk and "🎯policy" in blk
+    # operational type → muted marker
+    blk2 = "\n".join(_format_ep_ticker_block({**base, "ticker": "OMCL",
+                                              "catalyst_type": "sales_acceleration"}))
+    assert "▫️sales acceleration" in blk2
+    # no catalyst_type (classifier unavailable) → no type-suffix marker, renders cleanly
+    blk3 = "\n".join(_format_ep_ticker_block(base))
+    assert "🎯" not in blk3 and "▫️" not in blk3
+
+
 def test_gating_call_untouched():
     # The catalyst_type classifier must NOT have reached into the gating call's
     # tool schema. Assert the gating tool still has exactly its original fields

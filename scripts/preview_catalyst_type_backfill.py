@@ -60,7 +60,8 @@ async def main() -> int:
         print("ERROR: ANTHROPIC_API_KEY not found (env or .env)", file=sys.stderr)
         return 1
 
-    cohort_path = Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / "scripts" / "_catalyst_type_cohort.json"
+    _positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    cohort_path = Path(_positional[0]) if _positional else REPO / "scripts" / "_catalyst_type_cohort.json"
     if not cohort_path.exists():
         print(f"ERROR: cohort file not found: {cohort_path}\n"
               f"Export it first via the read-only ssh psql pull.", file=sys.stderr)
@@ -83,6 +84,40 @@ async def main() -> int:
         return {**r, **res}
 
     classified = await asyncio.gather(*[_one(r) for r in rows])
+
+    # Optional: stage the Monday backfill UPDATE as a .sql file (NOT applied here —
+    # this is read-only weekend; apply Monday via `ssh ... psql < <file>`). The
+    # UPDATE only fills NULLs (`AND catalyst_type IS NULL`) so it can NEVER clobber
+    # a forward-classified (live, clean) row — and historical/backfill rows stay
+    # distinguishable from clean forward rows by alert_date >= deploy day. See
+    # feedback_backfill_llm_label_lookahead (theme/policy backfill is hindsight-optimistic).
+    if "--emit-sql" in sys.argv:
+        i = sys.argv.index("--emit-sql")
+        out_sql = Path(sys.argv[i + 1]) if i + 1 < len(sys.argv) else REPO / "scripts" / "_backfill_catalyst_type.sql"
+
+        def _q(s):  # single-quote SQL-escape, or NULL
+            if s is None:
+                return "NULL"
+            return "'" + str(s).replace("'", "''") + "'"
+
+        stmts = ["-- STAGED Monday backfill (hindsight-caveated; fills NULLs only). NOT auto-applied.",
+                 "-- apply: ssh apollo@... \"docker exec -i apollo-postgres psql -U apollo -d apollo\" < this_file",
+                 "BEGIN;"]
+        n_emit = 0
+        for c in classified:
+            ct = c.get("catalyst_type")
+            if not ct:
+                continue  # never write NULL/failed
+            stmts.append(
+                f"UPDATE mi_ep_alerts SET catalyst_type={_q(ct)}, "
+                f"catalyst_type_rationale={_q(c.get('rationale'))} "
+                f"WHERE ticker={_q(c['ticker'])} AND alert_date='{c['alert_date']}' "
+                f"AND catalyst_type IS NULL;"
+            )
+            n_emit += 1
+        stmts.append("COMMIT;")
+        out_sql.write_text("\n".join(stmts) + "\n", encoding="utf-8")
+        print(f"\nSTAGED {n_emit} backfill UPDATE statements → {out_sql} (NOT applied — Monday).")
 
     # Aggregate fwd_5d_pct by catalyst_type
     by_type: dict[str, list[float]] = defaultdict(list)
