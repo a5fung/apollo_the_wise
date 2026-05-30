@@ -30,18 +30,13 @@ sys.path.insert(0, str(REPO))
 
 
 def _load_env() -> None:
-    """Minimal .env loader (ANTHROPIC_API_KEY) — no external dep."""
-    env = REPO / ".env"
-    if not env.exists():
-        return
-    for line in env.read_text(encoding="utf-8", errors="ignore").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, _, v = line.partition("=")
-        k, v = k.strip(), v.strip().strip('"').strip("'")
-        if k and k not in os.environ:
-            os.environ[k] = v
+    """Load .env (for ANTHROPIC_API_KEY) via python-dotenv (a base dependency).
+    Does not override already-set shell env (load_dotenv override=False)."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(REPO / ".env")
+    except Exception:
+        pass  # key may already be in the shell env; classify path checks it
 
 
 def _fmt(xs: list[float]) -> str:
@@ -74,7 +69,7 @@ async def main() -> int:
     print(f"Classifying {len(rows)} settled-HIGH alerts (read-only, advisory)...\n")
 
     from agents.market_intelligence.catalyst_type_classifier import (
-        classify_catalyst_type, CATALYST_TYPES, CATALYST_TYPE_RANK,
+        classify_catalyst_type, CATALYST_TYPES, CATALYST_TYPE_RANK, HIGH_CONVICTION_TYPES,
     )
 
     async def _one(r: dict) -> dict:
@@ -136,7 +131,7 @@ async def main() -> int:
     print("=" * 78)
     order = list(CATALYST_TYPES) + ["FAILED(None)"]
     for ct in sorted(by_type, key=lambda t: CATALYST_TYPE_RANK.get(t, 99)):
-        star = "*" if ct in ("theme", "policy", "shortage") else " "
+        star = "*" if ct in HIGH_CONVICTION_TYPES else " "
         tag10 = ""
         if by_type_10d.get(ct):
             tag10 = f"   |10d avg={statistics.mean(by_type_10d[ct]):+6.2f}%"
@@ -144,13 +139,13 @@ async def main() -> int:
 
     # High-tier (theme/policy/shortage) vs operational vs none — the headline cut
     print("\n" + "-" * 78)
-    hi = [x for ct in ("theme", "policy", "shortage") for x in by_type.get(ct, [])]
+    hi = [x for ct in HIGH_CONVICTION_TYPES for x in by_type.get(ct, [])]
     op = [x for ct in ("sales_acceleration", "new_product", "management_change")
           for x in by_type.get(ct, [])]
-    lo = [x for ct in ("other", "none") for x in by_type.get(ct, [])]
+    lo = [x for ct in ("other", "unknown") for x in by_type.get(ct, [])]
     print(f"  THEME/POLICY/SHORTAGE (Pradeep top-3) : {_fmt(hi)}")
     print(f"  OPERATIONAL (sales/product/mgmt)      : {_fmt(op)}")
-    print(f"  OTHER / NONE                          : {_fmt(lo)}")
+    print(f"  OTHER / UNKNOWN                       : {_fmt(lo)}")
     print("-" * 78)
 
     # Per-name table (eyeball the spot-checks: MNDY/KLAR/RCAT/OMCL/AMD/BW/CRSR)

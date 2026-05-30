@@ -331,6 +331,19 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     return "\n".join(lines)
 
 
+def _catalyst_type_mark(ct: str | None) -> str:
+    """Marker emoji for the catalyst-TYPE 'fire' (Pradeep hierarchy): 🎯 high-
+    conviction (theme/policy/shortage) · ❓ unknown (coverage gap) · ▫️ rest;
+    "" when unclassified. (NOT 🔥 — that's the HIGH-tier emoji; avoid a double-🔥.)
+    SSoT for the high-conviction set is catalyst_type_classifier.HIGH_CONVICTION_TYPES,
+    so both EP surfaces (the immediate alert + the /ep block) share one mapping and
+    can't drift."""
+    if not ct:
+        return ""
+    from agents.market_intelligence.catalyst_type_classifier import HIGH_CONVICTION_TYPES
+    return "🎯" if ct in HIGH_CONVICTION_TYPES else "❓" if ct == "unknown" else "▫️"
+
+
 def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     """Format ONE EP alert as a list of lines — the single source of truth for
     EP per-ticker rendering, shared by the morning-briefing section AND the HUD
@@ -348,16 +361,10 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     quality = (ep.get("catalyst_quality") or "?").replace("_", " ")
     gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
-    # North Star C1 (2026-05-30): catalyst TYPE — the "fire" (Pradeep hierarchy).
-    # ADVISORY. 🎯 marks the high-conviction types (theme/policy/shortage); ▫️ the
-    # rest. (NOT 🔥 — that's the HIGH-tier emoji; avoid a double-🔥 collision.)
-    # Shown only when classified (NULL = classifier unavailable → omitted).
+    # North Star C1: catalyst TYPE — the "fire" (Pradeep). ADVISORY, shown only
+    # when classified. Marker via the shared _catalyst_type_mark helper.
     _ct = ep.get("catalyst_type")
-    ct_suffix = ""
-    if _ct:
-        _ctmark = ("🎯" if _ct in ("theme", "policy", "shortage")
-                   else "❓" if _ct == "unknown" else "▫️")
-        ct_suffix = f" {_ctmark}{_ct.replace('_', ' ')}"
+    ct_suffix = f" {_catalyst_type_mark(_ct)}{_ct.replace('_', ' ')}" if _ct else ""
     out: list[str] = []
     if tier == "HIGH":
         out.append(
@@ -2087,11 +2094,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # hierarchy: theme > policy > shortage > operational). ADVISORY — does not
     # gate; complements the magnitude grade (catalyst_quality) above.
     _ct = ep.get("catalyst_type")
-    ct_line = ""
-    if _ct:
-        _ctmark = ("🎯" if _ct in ("theme", "policy", "shortage")
-                   else "❓" if _ct == "unknown" else "▫️")
-        ct_line = f"{_ctmark} Type: *{_ct.replace('_', ' ').title()}*\n"
+    ct_line = f"{_catalyst_type_mark(_ct)} Type: *{_ct.replace('_', ' ').title()}*\n" if _ct else ""
 
     text = (
         conv_tag +

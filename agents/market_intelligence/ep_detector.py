@@ -1943,7 +1943,14 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         _alerted = high + moderate
         if _alerted:
-            await asyncio.gather(*[_classify_type(r) for r in _alerted])
+            # Bounded: this advisory signal must NEVER delay the latency-sensitive
+            # HIGH alert (9:45 ORB cutoff). wait_for cancels stragglers on timeout;
+            # classifications that already completed keep their values (fail-open
+            # on latency, not just on exception). Outer except handles TimeoutError.
+            await asyncio.wait_for(
+                asyncio.gather(*[_classify_type(r) for r in _alerted]),
+                timeout=25,
+            )
     except Exception as _e:
         logger.warning(f"catalyst_type post-scan block failed (non-critical): {_e}")
 

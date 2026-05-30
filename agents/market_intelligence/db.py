@@ -1903,16 +1903,15 @@ async def set_ep_alert_catalyst_type(
     """Advisory: write catalyst_type (Pradeep hierarchy) onto an EP alert row.
 
     North Star C1 (2026-05-30). ADVISORY telemetry only — catalyst_type NEVER
-    gates entries. Called post-scan (decoupled from the gating path). Idempotent
-    column-ensure mirrors insert_ep_alert. No-op when catalyst_type is NULL
-    (classifier fail-open) so we never overwrite a value with NULL.
+    gates entries. Called post-scan (decoupled from the gating path). No-op when
+    catalyst_type is NULL (classifier fail-open) so we never overwrite a value
+    with NULL. Columns are guaranteed by insert_ep_alert, which always runs for
+    this (ticker, alert_date) earlier in the same scan — so no ADD COLUMN here.
     """
     if not catalyst_type:
         return
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute("ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT")
-        await conn.execute("ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT")
         await conn.execute("""
             UPDATE mi_ep_alerts SET catalyst_type = $3, catalyst_type_rationale = $4
             WHERE ticker = $1 AND alert_date = $2

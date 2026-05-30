@@ -58,6 +58,11 @@ CATALYST_TYPES: tuple[str, ...] = (
 # Rank for downstream ordering/analysis (lower = more powerful per Pradeep).
 CATALYST_TYPE_RANK: dict[str, int] = {t: i for i, t in enumerate(CATALYST_TYPES)}
 
+# The high-conviction subset (Pradeep's top 3) — SSoT for "is this a fire."
+# Consumed by the EP alert/briefing markers + analysis cuts so the displayed
+# 🎯 set and the analyzed set can't drift (re-tiered here once, not per-site).
+HIGH_CONVICTION_TYPES: frozenset[str] = frozenset({"theme", "policy", "shortage"})
+
 _CATALYST_TYPE_TOOL = {
     "name": "classify_catalyst_type",
     "description": (
@@ -86,8 +91,8 @@ _CATALYST_TYPE_TOOL = {
                     "pre_catalyst_anticipation: the gap is AHEAD of an imminent but "
                     "NOT-yet-public catalyst (gapping INTO unreleased earnings, an awaited "
                     "ruling/data readout) — positioning/anticipation, NOT a reaction to "
-                    "already-announced news. Distinct from 'none' (no catalyst at all) and "
-                    "from a post-announcement reaction. "
+                    "already-announced news. Distinct from 'unknown' (catalyst not "
+                    "identified) and from a post-announcement reaction. "
                     "other: real but pedestrian company news — in-line/small beat, minor "
                     "contract, buyback, routine partnership/PR with no concrete metrics. "
                     "unknown: you could NOT identify the catalyst from the available info. "
@@ -112,7 +117,7 @@ _CATALYST_TYPE_TOOL = {
 _SYSTEM = (
     "You are a precise market-microstructure classifier identifying the "
     "STRUCTURAL TYPE of an episodic-pivot catalyst, not its size. Be skeptical: "
-    "vague or generic news with no concrete driver is 'none'; a routine in-line "
+    "vague or generic news with no identifiable driver is 'unknown'; a routine in-line "
     "beat or a metric-free partnership/PR is 'other'. Reserve theme / policy / "
     "shortage for genuine sector-wide, regulatory, or supply-imbalance drivers."
 )
