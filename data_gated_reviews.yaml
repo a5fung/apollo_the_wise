@@ -3578,6 +3578,106 @@ reviews:
     status: pending
     added_on: 2026-05-17
 
+  - review_id: catalyst_type_forward_signal
+    title: "catalyst_type (fire-identity) forward signal + unknown-rate discovery KPI"
+    question: |
+      catalyst_type (Pradeep hierarchy) shipped ADVISORY 2026-05-30 (North Star C1,
+      commit dd86e6d). Once enough FORWARD (post-deploy, clean — NOT the hindsight
+      backfill) settled HIGH alerts carry catalyst_type, review:
+      (a) catalyst_type -> forward outcome, BETA-STRIPPED (excess vs QQQ; raw return
+          is bull-confounded — proven 2026-05-30);
+      (b) the `unknown` RATE as the catalyst-DISCOVERY KPI — sub-goal: shrink
+          unknown-among-HIGH-quality-moves toward 0 (real coverage gap, ->#149); a
+          truly-none floor on marginal moves is expected & accepted.
+      Count ONLY alert_date >= 2026-06-02 (clean forward; pre-date = hindsight-labeled,
+      see feedback_backfill_llm_label_lookahead). Feeds phase5 composition.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_ep_alerts a
+      JOIN mi_ep_scan_outcomes o ON o.ticker = a.ticker AND o.scan_date = a.alert_date
+      WHERE a.score_tier = 'HIGH' AND a.catalyst_type IS NOT NULL
+        AND a.alert_date >= '2026-06-02' AND o.fwd_5d_pct IS NOT NULL;
+    threshold: 20
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      1. Excess-vs-QQQ (+ longer horizon if settled) by catalyst_type; median + WR.
+      2. unknown-rate trend + unknown x move-quality split (gap/RVOL/$vol):
+         high-quality unknown = coverage failure (->#149); marginal = truly-none floor.
+      3. Validate classifier forward behavior (distribution, hard-failure rate).
+      4. Feed catalyst_type as a dimension into phase5_meta_rubric_calibration.
+    status: pending
+    added_on: 2026-05-30
+
+  - review_id: theme_engine_narrative_blindness
+    title: "Theme engine misses cross-sector / nascent / policy themes (drone case)"
+    question: |
+      VERIFIED 2026-05-30: theme engine (RS-sector clustering) fails narrative/policy
+      themes 3 ways — (1) FRAGMENTS cross-sector themes into 2-member micro-themes;
+      (2) mislabels igniting themes FADING (lifecycle inverted); (3) anchors on
+      LAGGARDS, misses LEADERS. Drone/defense proof: UMAC rs-rank 23 (+109% vs SMA50),
+      SWMR 49, ONDS 346, RCAT uncaptured; fragments held KTOS(rs32)/ISSC(rs2)/
+      KYTX(rs18, healthcare-misclassified), both labeled Fading, while RCAT/AVAV/KTOS
+      gapped 5/28 unseen as a cluster. catalyst_type (C1) routes AROUND this (reads
+      narrative from text) so lower urgency — but theme-context input stays lossy until
+      fixed. Layer-2 architecture (free params) -> DESIGN before build, not a cram.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_themes WHERE theme_date >= CURRENT_DATE - 7;
+    threshold: 1
+    earliest_review_date: 2026-06-16
+    action_when_ready: |
+      Design: cross-sector narrative clustering + nascent/policy lifecycle (stop
+      anchoring on laggards / mislabeling Fading). Consider LLM-narrative-tag +
+      co-gap-cluster as theme-membership inputs independent of RS clustering.
+      Backtest N>=10; update SSoT theme docs. Pairs with theme_axis_gating_logic.
+    status: pending
+    added_on: 2026-05-30
+
+  - review_id: theme_as_ep_signal
+    title: "Theme membership as an EP scoring signal (n=13 -> confirm forward)"
+    question: |
+      2026-05-30 full-cohort test: theme-member HIGH alerts forward-returned ~2x
+      theme-less (avg 5d +15.6% vs +8.5%, 13/13 WR) — direction-confirming for
+      Pradeep theme#1, but n=13 + bull-only + 5-10d (too short for the multi-week
+      theme trend) -> NOT calibratable yet. Confirm forward (regime-diverse, longer
+      horizon). Theme-centrality is a LAYER-1 tenet (not up for downgrade by our N) —
+      this CONFIRMS the mechanism/weight for phase5, does not relitigate the tenet
+      (feedback_methodology_fidelity_over_stability).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_ep_alerts a
+      JOIN mi_ep_scan_outcomes o ON o.ticker = a.ticker AND o.scan_date = a.alert_date
+      WHERE a.score_tier = 'HIGH' AND o.fwd_10d_pct IS NOT NULL
+        AND a.alert_date >= '2026-06-02';
+    threshold: 40
+    earliest_review_date: 2026-08-01
+    action_when_ready: |
+      Theme-member vs theme-less forward returns (excess-vs-index, 10-20d) on the
+      forward cohort; if the lift holds, set the theme axis weight in phase5 (>=
+      fundamentals per user_pradeep_catalyst_hierarchy). Cross-ref theme_axis_gating_logic.
+    status: pending
+    added_on: 2026-05-30
+
+  - review_id: orb_5m_reentry_hybrid_replay
+    title: "1m-entry + 5m-RE-entry hybrid — bounded replay (R3 untested variant)"
+    question: |
+      R3 (2026-05-17) disabled MAGNA53 same-day re-entry on 0/7 — but that is 1m-entry
+      + 1m-RE-entry. A 5m-RE-entry (re-enter only if price clears the more-selective
+      5-min range post-stop, filtering dead-cat 1-min pokes) is a mechanism R3 never
+      tested (advisor 2026-05-30 "real gap"). NOT a built track — bounded replay over
+      the FULL Day-1-stop-out set (NOT the losers): for each stop-out, did price clear
+      the 5-min range same day + forward outcome. 0-for-N -> dies free; real signal ->
+      file a forward shadow track. Reversal discipline: show R3 was WRONG before re-enable.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_live_trades
+      WHERE signal_type = 'magna53' AND status IN ('closed','stopped_out')
+        AND created_at < CURRENT_DATE - INTERVAL '7 days';
+    threshold: 20
+    earliest_review_date: 2026-07-01
+    action_when_ready: |
+      Replay 5m-re-entry over the full Day-1-stop-out set (shadow_orb_tracker fetches
+      the bars); report fill-rate + forward outcome vs the 1m-re-entry 0/7. Symmetric
+      (full set, not losers). Only file a forward track if it shows real signal.
+    status: pending
+    added_on: 2026-05-30
+
   - review_id: phase6_meta_rubric_gating
     title: "Phase 6 — meta-rubric gating ship (production filter)"
     question: |
