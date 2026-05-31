@@ -268,6 +268,23 @@ async def _get_sector(ticker: str) -> str:
     return sector
 
 
+def _all_candidate_pool(
+    leaders: list[dict],
+    velocity_all: list[dict] | None,
+    turners_all: list[dict] | None,
+) -> list[dict]:
+    """Union of all discovery candidate-pool stock dicts (ADR 0007 vectors c/c2).
+
+    Sector-enrichment and description-fetch must cover EVERY pool the discovery
+    LLM can see (uncovered/velocity/turners + future accelerators), not just the
+    top-60 `leaders`. A velocity/turner candidate with a blank sector is
+    unclusterable, and one with no description is silently dropped from discovery
+    (`_discover_new_themes` ~line 2356) — which is how the igniting drone/software
+    leaders below the top-60 cut never reached clustering on 5/28 (see ADR 0007).
+    """
+    return [*leaders, *(velocity_all or []), *(turners_all or [])]
+
+
 async def _ensure_descriptions(tickers: list[str]) -> None:
     """
     For any ticker missing a trading-relevant description, fetch from yfinance
@@ -3134,21 +3151,33 @@ async def run_theme_engine(
         return [], []
 
     # Enrich with sector data (concurrent, rate-limited by semaphore)
-    logger.info(f"Theme engine: enriching {len(leaders)} stocks with sector data...")
-
     async def _enrich_sector(stock: dict) -> None:
         if not stock.get("sector"):
             async with _SECTOR_SEM:
                 stock["sector"] = await _get_sector(stock["ticker"])
 
-    await asyncio.gather(*[_enrich_sector(s) for s in leaders])
+    # ADR 0007 (c): enrich sector for ALL discovery candidate pools (uncovered/
+    # velocity/turners + future accelerators), not just the top-60 `leaders`. A
+    # candidate with a blank sector is unclusterable — the drone/software leaders
+    # below the top-60 cut were all blank-sector on 5/28. _enrich_sector no-ops on
+    # already-set sectors, so this only fetches the genuinely-blank ones.
+    _enrich_pool = _all_candidate_pool(leaders, velocity_all, turners_all)
+    logger.info(f"Theme engine: enriching sector for {len(_enrich_pool)} candidate-pool stocks...")
+    await asyncio.gather(*[_enrich_sector(s) for s in _enrich_pool])
 
     stocks_by_ticker = {s["ticker"]: s for s in leaders}
 
-    # --- Step 0.5: Ensure every RS leader has a description before clustering ---
+    # --- Step 0.5: Ensure every discovery candidate has a description before clustering ---
     # Fetches from yfinance + Claude Haiku for any stock missing one, persists to DB.
     # Stocks that still have no description after this step are excluded from clustering.
-    await _ensure_descriptions([s["ticker"] for s in leaders])
+    # ADR 0007 (c2): cover ALL candidate pools, not just leaders — a velocity/turner/
+    # accelerator candidate with no description is silently dropped from discovery
+    # (`_discover_new_themes` ~line 2356), so an igniting name below the top-60 leader
+    # cut (RCAT/AVAV/ONDS on 5/28) never reaches clustering. `_ensure_descriptions`
+    # dedups + early-returns on already-described, so the wider list is cheap.
+    await _ensure_descriptions(
+        list({s["ticker"] for s in _all_candidate_pool(leaders, velocity_all, turners_all)})
+    )
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
     existing = await get_active_themes()
