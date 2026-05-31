@@ -386,6 +386,19 @@ async def _nightly_data_pull():
         logger.error(f"Theme engine failed: {e}")
         failures.append(f"Theme engine: {e}")
 
+    # 5b. Theme-discovery SHADOW pass (ADR 0007) — runs the new nascent-discovery
+    # selectors (a/a2) on the widened assembly (c/c2) into mi_theme_candidates_shadow,
+    # WITHOUT touching live mi_themes / the brief. ERROR-WRAPPED + non-fatal: a failure
+    # here must NEVER break the live theme run above. Shadow-only until the N-night diff
+    # validates promotion (ADR 0007 §5). Skips non-trading days with the rest of this job.
+    try:
+        from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
+        shadow_summary = await run_theme_discovery_shadow(_today)
+        logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
+        summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
+    except Exception as e:
+        logger.warning(f"Theme shadow pass failed (non-fatal, ADR 0007): {e}")
+
     # 6. Fundamental flags — fetch for top RS stocks + theme constituents
     try:
         from agents.market_intelligence.db import get_active_themes
