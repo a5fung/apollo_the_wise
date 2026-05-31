@@ -285,6 +285,31 @@ def _all_candidate_pool(
     return [*leaders, *(velocity_all or []), *(turners_all or [])]
 
 
+def _should_revive_theme(
+    stage: str,
+    member_rs_1m: list,
+    days_since_last_revive: "int | None" = None,
+    *, hot_rs_1m: float = 90.0, min_hot_members: int = 2, cooldown_days: int = 10,
+) -> bool:
+    """ADR 0007 (b/d): revive a Fading theme ONLY on disciplined evidence — designed to
+    avoid the fade->revive->fade oscillation the 2026-05-31 replay quantified (a naive
+    "any member rs_1m>=90" trigger fired on 26% of Fading-theme-days). Hysteresis:
+      1. stage must be 'Fading' (nothing else revives),
+      2. at least `min_hot_members` (>=2) members are hot — NOT a single transient spike
+         (the 26% was single-member; requiring >=2 collapses it),
+      3. not within `cooldown_days` of the last revive (one-way latch).
+    NB: a 2-member Fading fragment with only ONE hot member (e.g. {KYTX,SWMR}: SWMR hot,
+    KYTX cold) does NOT self-revive — it must first gain hot members via accelerator
+    assignment (vector a). Revive and assignment are complementary, by design.
+    """
+    if stage != "Fading":
+        return False
+    if days_since_last_revive is not None and days_since_last_revive < cooldown_days:
+        return False
+    hot = sum(1 for v in member_rs_1m if v is not None and v >= hot_rs_1m)
+    return hot >= min_hot_members
+
+
 async def _ensure_descriptions(tickers: list[str]) -> None:
     """
     For any ticker missing a trading-relevant description, fetch from yfinance
