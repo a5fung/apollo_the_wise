@@ -89,8 +89,13 @@ The sensitivity change is in *candidate selection*; the precision guard stays in
 
 ## 5. Sequencing + build status
 
-**BUILT 2026-05-31 (committed `ec721a7`; NOT yet deployed — theme engine next runs Mon 5 PM ET on a trading day, so deploy is Monday in-hours, zero benefit to deploying sooner):**
-- **(c) + (c2)** — sector-enrich + description-fetch widened to ALL discovery candidate pools via `_all_candidate_pool`, not just `leaders[:60]`. Additive/idempotent; does NOT change theme formation. 3/3 unit tests, py_compile clean.
+**BUILT 2026-05-31 (downtime session — committed, unit-tested, NOT deployed; theme engine next runs Mon 5 PM ET so deploy/verify is Monday in-hours, zero benefit to deploying sooner). ALL of ADR-0007's pure decision LOGIC is now built + tested:**
+- **(c) + (c2)** (`ec721a7`) — sector-enrich + description-fetch widened to ALL candidate pools via `_all_candidate_pool`, not just `leaders[:60]`. Additive/idempotent.
+- **shadow table + (a)/(a2) selectors** (`14205c3`) — `mi_theme_candidates_shadow` DDL; `get_rs_accelerators` + `get_rs_recovery_slope` with pure predicates `_is_rank_accelerator` / `_is_recovery_slope`. Tests pin the RCAT-59.4 floor lesson + the NOW/MDB threshold edges.
+- **(b/d) revive hysteresis** (`e1036cb`) — `_should_revive_theme`: Fading-only + ≥2 hot members + cooldown latch; collapses the measured 26% naive-trigger rate.
+- 21/21 unit tests across the suite; py_compile clean. DB query wrappers verified Monday on the server (no local DB).
+
+**REMAINING = orchestration wiring only (the Monday integration task):** a `run_theme_discovery_shadow(today)` that threads the existing setup + the two new selectors + the (f) ignition prompt + the `_should_revive_theme` flags + a persist-to-`mi_theme_candidates_shadow`, hooked into the nightly job. This piece has NO locally-testable logic (it is pure runtime integration — DB + LLM), and the (f) prompt wording is empirical (set via the shadow A/B vs the live prompt). So unlike the self-contained logic above, building it blind tonight ≈ building it Monday minus the verification — Monday (with DB+LLM to verify each step + A/B the prompt) is strictly better, and fast because every piece it threads is already built + tested.
 
 **SHADOW LANE — answers the advisor's forking question: YES, build it.**
 The live-behavior vectors write to `mi_themes` (which feeds the brief + the +10 EP bonus), so they get a real shadow lane, not just a flag:
