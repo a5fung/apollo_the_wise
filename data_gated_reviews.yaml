@@ -3668,6 +3668,10 @@ reviews:
       (Pradeep: themes emerge from price action + the operator's read). Backtest N>=10
       against BOTH test cases (drones + software-AI); SSoT theme docs. Pairs with
       theme_axis_gating_logic + phase5.
+      DESIGN HOME: docs/decisions/0006-catalyst-discovery-loop.md — the investigator+advisor
+      loop is the dynamic version of this synthesis pass; its §6 acceptance test validates
+      against BOTH this review's test cases (drones + software-AI). Build sequencing tracked
+      separately in catalyst_discovery_loop_sequencing.
     status: pending
     added_on: 2026-05-30
 
@@ -3715,6 +3719,36 @@ reviews:
       Replay 5m-re-entry over the full Day-1-stop-out set (shadow_orb_tracker fetches
       the bars); report fill-rate + forward outcome vs the 1m-re-entry 0/7. Symmetric
       (full set, not losers). Only file a forward track if it shows real signal.
+    status: pending
+    added_on: 2026-05-30
+
+  - review_id: catalyst_discovery_loop_sequencing
+    title: "Catalyst-discovery loop (investigator + advisor) — C2/C3 build sequencing gate (ADR 0006)"
+    question: |
+      Design captured in docs/decisions/0006-catalyst-discovery-loop.md (2026-05-30).
+      Per-ticker C1 (catalyst_type) shipped advisory 2026-05-30; THIS is the cross-ticker,
+      multi-turn half — a tool-grounded INVESTIGATOR reviewed by an independent ADVISOR
+      (rung 1.5, the in-session advisor() pattern), the dynamic version of the theme
+      synthesis pass. This entry is the SEQUENCING gate (WHEN to start the build), not the
+      design. Gated on C1 accruing FORWARD (regime-diverse, post-deploy clean) settled data
+      AND being past the 2026-06-22 live-cutover decision — do NOT open a new LLM subsystem
+      mid-cutover. Build = smallest-viable per ADR 0006 §7. NEVER gates entries (advisory/
+      shadow; entry-gating is Phase 6).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_ep_alerts a
+      JOIN mi_ep_scan_outcomes o ON o.ticker = a.ticker AND o.scan_date = a.alert_date
+      WHERE a.catalyst_type IS NOT NULL AND o.fwd_5d_pct IS NOT NULL
+        AND a.alert_date >= '2026-06-02';
+    threshold: 30
+    earliest_review_date: 2026-06-22
+    action_when_ready: |
+      Build per ADR 0006 §7 smallest-viable sequence: (1) cohort accessor + RS-slope filter
+      (reuse correlation_engine + mi_stock_scores rs_1m/rs_6m), (2) rung-1 investigator on a
+      SINGLE case, (3) rung-1.5 advisor pass (Sonnet critique + bounded revise), (4) nightly
+      job + mi_catalyst_dossiers + Telegram surface (advisory/shadow). ACCEPTANCE TEST =
+      reproduce the drones + software-AI cohorts read-only (ADR 0006 §6) — that IS the proof
+      of capability the operator asked for. Advisor + go-live sequencing review BEFORE any
+      code. Cross-ref ADR 0006, theme_engine_narrative_blindness, theme_as_ep_signal.
     status: pending
     added_on: 2026-05-30
 
