@@ -310,6 +310,104 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
+async def run_theme_discovery_shadow(today=None) -> dict:
+    """ADR 0007 SHADOW PASS — DRAFT 2026-05-31; VERIFY + TUNE MONDAY on the server.
+
+    Runs the NEW nascent-discovery selectors (a/a2) on top of the widened assembly
+    (c/c2) through the EXISTING discovery prompt, and writes PROPOSED themes to
+    `mi_theme_candidates_shadow` — WITHOUT touching live `mi_themes` / the brief.
+    (b/d) revive is computed as a `would_revive` FLAG only (not applied). The (f)
+    ignition prompt is a LATER shadow iteration — this baseline first isolates whether
+    the selector + assembly fixes ALONE surface the cohorts.
+
+    *** CANNOT be unit-tested locally (needs DB + LLM). MONDAY VERIFY CHECKLIST: ***
+      1. `get_rs_accelerators` / `get_rs_recovery_slope` return sane rows on fresh data.
+      2. the drone + software cohorts now ENTER `uncovered` (Step-1 recall, read the logs).
+      3. shadow themes form; count themes-formed vs live `mi_themes` (Step-3 flood check).
+      4. eyeball `mi_theme_candidates_shadow` for a drone/software theme that live missed.
+      5. THEN iterate: add the (f) ignition-prompt variant + A/B vs this baseline;
+         only after the N-night diff looks right, wire into the 5 PM nightly job + promote.
+    Run manually first (NOT cron-wired yet — verify-before-cron):
+      `python -c "import asyncio; from agents.market_intelligence.theme_engine import run_theme_discovery_shadow; print(asyncio.run(run_theme_discovery_shadow()))"`
+    """
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import (
+        get_rs_leaders, get_rs_velocity, get_rs_turners,
+        get_rs_accelerators, get_rs_recovery_slope,
+        get_active_themes, persist_theme_candidates_shadow,
+    )
+    today = today or et_today()
+    today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
+
+    # 1. base pools (same as live) + the NEW selectors (a/a2)
+    leaders, velocity_all, turners_all = await asyncio.gather(
+        get_rs_leaders(today_str, limit=60),
+        get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30),
+        get_rs_turners(today_str, max_rs_4w_ago=30.0, min_consecutive_weeks=3, limit=30),
+    )
+    accelerators, recovery = await asyncio.gather(
+        get_rs_accelerators(today_str),
+        get_rs_recovery_slope(today_str),
+    )
+    if not leaders:
+        logger.warning("[theme shadow] no RS data — skipping")
+        return {"skipped": "no_rs_data"}
+
+    # 2. enrich sector + descriptions for ALL pools incl. the new selectors (c/c2)
+    _pool = _all_candidate_pool(leaders, velocity_all, turners_all) + list(accelerators) + list(recovery)
+
+    async def _enrich(s: dict) -> None:
+        if not s.get("sector"):
+            async with _SECTOR_SEM:
+                s["sector"] = await _get_sector(s["ticker"])
+    await asyncio.gather(*[_enrich(s) for s in _pool])
+    await _ensure_descriptions(list({s["ticker"] for s in _pool}))
+
+    # 3. existing themes — context + covered set + revive flags
+    existing = await get_active_themes()
+    covered = {tk for t in existing if t.get("stage") != "Fading" for tk in (t.get("tickers") or [])}
+
+    # 4. candidate pools for discovery (the NEW selectors fold into `uncovered`)
+    stocks_by_ticker: dict = {}
+    for s in _pool:
+        stocks_by_ticker.setdefault(s["ticker"], s)
+    _seen: set = set()
+    uncovered = []
+    for s in [*leaders[:40], *accelerators, *recovery]:
+        tk = s["ticker"]
+        if tk in covered or tk in _seen:
+            continue
+        if (s.get("rs_composite") or s.get("rs_now") or 0) >= THEME_RS_MIN:
+            _seen.add(tk)
+            uncovered.append(s)
+    velocity_leaders = [s for s in velocity_all if s["ticker"] not in covered]
+    turners = [s for s in turners_all if s["ticker"] not in covered]
+
+    # 5. discovery — EXISTING prompt (baseline; (f) ignition variant is a Monday A/B step)
+    new_raw = await _discover_new_themes(
+        uncovered, existing, stocks_by_ticker,
+        velocity_leaders=velocity_leaders, turners=turners,
+    )
+
+    # 6. (b/d) would_revive flags — computed only, NOT applied to live mi_themes
+    would_revive: dict = {}
+    for t in existing:
+        if t.get("stage") == "Fading":
+            rs1m = [stocks_by_ticker.get(tk, {}).get("rs_1m") for tk in (t.get("tickers") or [])]
+            would_revive[t["name"]] = _should_revive_theme("Fading", rs1m)
+
+    # 7. persist to the SHADOW table (never mi_themes / the brief)
+    n = await persist_theme_candidates_shadow(today, new_raw, would_revive)
+    summary = {
+        "shadow_themes": n,
+        "would_revive": sum(1 for v in would_revive.values() if v),
+        "accelerators": len(accelerators), "recovery_slope": len(recovery),
+        "uncovered_in": len(uncovered),
+    }
+    logger.info(f"[theme shadow] {summary}")
+    return summary
+
+
 async def _ensure_descriptions(tickers: list[str]) -> None:
     """
     For any ticker missing a trading-relevant description, fetch from yfinance

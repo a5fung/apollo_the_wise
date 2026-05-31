@@ -4111,6 +4111,38 @@ async def get_rs_recovery_slope(
         return out
 
 
+async def persist_theme_candidates_shadow(
+    run_date: "str | date", themes: list[dict], would_revive: "dict | None" = None,
+) -> int:
+    """ADR 0007 shadow lane — write PROPOSED themes to mi_theme_candidates_shadow (NOT
+    mi_themes / the brief). Re-runnable: clears prior rows for run_date first. Returns
+    rows written. `would_revive` maps existing-theme-name -> bool flag (computed, not applied)."""
+    if not themes:
+        return 0
+    would_revive = would_revive or {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rd = _to_date(run_date)
+        await conn.execute("DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1", rd)
+        n = 0
+        for t in themes:
+            name = t.get("name")
+            tickers = t.get("tickers") or []
+            if not name or not tickers:
+                continue
+            await conn.execute("""
+                INSERT INTO mi_theme_candidates_shadow
+                    (run_date, name, thesis, tickers, source, would_revive)
+                VALUES ($1, $2, $3, $4, 'shadow_v2', $5)
+                ON CONFLICT (run_date, name) DO UPDATE
+                  SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers,
+                      would_revive = EXCLUDED.would_revive
+            """, rd, name, t.get("thesis") or t.get("rationale"),
+                 list(tickers), bool(would_revive.get(name, False)))
+            n += 1
+        return n
+
+
 async def get_recent_rs_batch(
     tickers: list[str], d: "str | date", days: int = 3,
 ) -> dict[str, list[float]]:
