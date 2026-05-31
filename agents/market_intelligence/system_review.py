@@ -108,7 +108,7 @@ Rules:
 - When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
 - When `fishhook.n_settled >= 10`, append a "🪝 *Fishhook:*" line after 🔁 summarizing gap-up undercut & reclaim telemetry. Cite `n_total` anchors, `n_settled`, `median_r`, `hit_rate`, and the shallow-vs-deep slice when both have data: `45 anchors, 12 settled; R 1.18, hit 17%; shallow R 1.31 (n=8) vs deep R 0.61 (n=4)`. The shallow-vs-deep gap matters — Stage-0 evidence said deeper drift inverts the edge; if deep starts winning, threshold revisit. If `n_settled < 10`, omit the line entirely.
 - When `pending_reviews.ready` is non-empty, append a "📅 *Reviews ready:*" section after 🔁 listing each ready entry on its own line: `<title> — <action_when_ready first sentence>`. These are data-gated reviews from `data_gated_reviews.yaml` whose threshold flipped this week — the user needs to act. If `pending_reviews.ready` is empty, omit the section entirely.
-- When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count>`. These are non-fatal errors caught by try/except in jobs that didn't crash hard but indicate something silently broken (e.g. EP scan outcomes typo lurked weeks before surfacing). Even 1 fire merits inclusion — silent failures compound. If `audit_errors.total == 0`, omit the section entirely.
+- When `audit_errors.total > 0`, append a "🔴 *Silent failures (7d):*" section after 🔁 listing each `top_types` entry on its own line: `<event_type> ×<count> (last seen <last_seen>, <days_ago>d ago)`. **Use `days_ago` to judge live-vs-resolved: if a type's `days_ago` is STALE relative to the 7-day window (it stopped firing days back), label it LIKELY-RESOLVED and do NOT treat it as a live concern — a mid-week hotfix shows up exactly as a count that went silent (e.g. ep_scan_failed last 5/26). Only call a type live-concerning when `days_ago` is small (fired in the last day or two).** These are non-fatal errors caught by try/except in jobs that didn't crash hard. If `audit_errors.total == 0`, omit the section entirely.
 - When `strategy_promotions.checks` includes a strategy with `eligible=false` AND its top blocking_reason references a 0-count metric (e.g. "have 0"), the line MUST include the diagnostic context from `metrics.cohort_breakdown` if present (e.g. `shadow_orb_5m: have 0 paired closed (1 shadow vs 3 live, zero overlap)`). The 0-count number alone forces a follow-up question; the breakdown answers it inline.
 """
 
@@ -831,17 +831,53 @@ async def _aggregate_audit_errors(days: int) -> dict:
     err_rows = [r for r in err_rows if _is_real(r)]
     failed_rows = [r for r in failed_rows if _is_real(r)]
     # Merge + de-dup (a single event_type matching both globs counts once)
+    # Recency per type (weekly-review fix 2026-05-31): the narrator needs last-seen
+    # to apply its "count dropped to 0 after a date → likely resolved" rule — e.g.
+    # ep_scan_failed hotfixed mid-week 5/26 should read as resolved, not re-surfaced
+    # as open. Track max(created_at) per event_type alongside the count.
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+
+    def _ts(r: dict):
+        t = r.get("created_at")
+        if isinstance(t, str):
+            try:
+                t = datetime.fromisoformat(t.replace("Z", "+00:00"))
+            except Exception:
+                return None
+        if t is not None and getattr(t, "tzinfo", None) is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return t
+
     merged: dict[str, int] = {}
+    last_seen: dict = {}
+
+    def _bump_last(et: str, r: dict) -> None:
+        t = _ts(r)
+        if t and (et not in last_seen or t > last_seen[et]):
+            last_seen[et] = t
+
     for r in err_rows:
         merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
+        _bump_last(r["event_type"], r)
+    seen_err_types = {er["event_type"] for er in err_rows}
     for r in failed_rows:
         # Avoid double-counting events that match both filters
-        if r["event_type"] not in {er["event_type"] for er in err_rows}:
+        if r["event_type"] not in seen_err_types:
             merged[r["event_type"]] = merged.get(r["event_type"], 0) + 1
+        _bump_last(r["event_type"], r)
     top5 = sorted(merged.items(), key=lambda kv: -kv[1])[:5]
+
+    def _entry(t: str, c: int) -> dict:
+        ls = last_seen.get(t)
+        return {
+            "event_type": t, "count": c,
+            "last_seen": ls.date().isoformat() if ls else None,
+            "days_ago": (now - ls).days if ls else None,
+        }
     return {
         "total": sum(merged.values()),
-        "top_types": [{"event_type": t, "count": c} for t, c in top5],
+        "top_types": [_entry(t, c) for t, c in top5],
     }
 
 
