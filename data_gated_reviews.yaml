@@ -3685,7 +3685,7 @@ reviews:
       (Pradeep: themes emerge from price action + the operator's read). Backtest N>=10
       against BOTH test cases (drones + software-AI); SSoT theme docs. Pairs with
       theme_axis_gating_logic + phase5.
-      DESIGN HOME: docs/decisions/0006-catalyst-discovery-loop.md — the investigator+advisor
+      DESIGN HOME: docs/decisions/0007-theme-engine-nascent-discovery-fix.md (the fix design — 5 vectors + read-only validation plan, advisor-reviewed 2026-05-31) + 0006-catalyst-discovery-loop.md — the investigator+advisor
       loop is the dynamic version of this synthesis pass; its §6 acceptance test validates
       against BOTH this review's test cases (drones + software-AI). Build sequencing tracked
       separately in catalyst_discovery_loop_sequencing.
