@@ -3632,15 +3632,42 @@ reviews:
       gapped 5/28 unseen as a cluster. catalyst_type (C1) routes AROUND this (reads
       narrative from text) so lower urgency — but theme-context input stays lossy until
       fixed. Layer-2 architecture (free params) -> DESIGN before build, not a cram.
+
+      2ND TEST CASE (2026-05-30, operator-spotted) — SOFTWARE re-rating INTO the AI
+      theme (punished on "AI eats SaaS" -> recovering on "SaaS ships AI"). RS slope
+      (rs_1m vs rs_6m) confirms a broad coordinated recovery: NOW 33->97, TEAM 17->92,
+      ESTC 28->95, MDB 20->88, SNOW 80->99, OKTA 87->98; CRWD/DDOG/PANW/FTNT 94-98
+      throughout. 12/15 top-decile rs_1m. Engine captured ONLY a 2-member {DDOG,FTNT}
+      "Network Security" fragment — OKTA/CRWD/SNOW/NOW/PANW/NET/MDB/TEAM/ESTC/ORCL all
+      theme-less. ROOT CAUSE visible: most have BLANK sector (outside top-300 RS sector
+      enrichment) -> RS-by-sector clustering structurally CANNOT group a cross-name
+      narrative rotation with no shared sector label. This is why OKTA's 5/29 gap scored
+      routine/28.8/filtered (fundamentals-only, theme-blind) — a likely methodology
+      false-negative (theme #1). Fix must validate against THIS cohort.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_themes WHERE theme_date >= CURRENT_DATE - 7;
     threshold: 1
     earliest_review_date: 2026-06-16
     action_when_ready: |
-      Design: cross-sector narrative clustering + nascent/policy lifecycle (stop
-      anchoring on laggards / mislabeling Fading). Consider LLM-narrative-tag +
-      co-gap-cluster as theme-membership inputs independent of RS clustering.
-      Backtest N>=10; update SSoT theme docs. Pairs with theme_axis_gating_logic.
+      Design (cross-sector narrative themes the RS-sector clustering can't see):
+      1. TOP-DOWN LLM emerging-theme SYNTHESIS pass (the capability gap operator flagged
+         2026-05-30): Apollo HAS the data to GENERATE candidate cohorts (coordinated
+         RS-slope: names with rs_1m >> rs_6m, or co-gappers same day) but NO tool
+         SYNTHESIZES "these move together — what's the story — is it a theme." Build:
+         feed each coordinated cohort + members' catalyst narratives to an LLM ->
+         propose + name emerging themes. GROUNDED in RS/price (not free-form theme
+         invention) + validated like the existing theme-validation (anti-hallucination).
+         This is the bottom-up RS-clustering's missing TOP-DOWN complement.
+      2. catalyst_type (C1) is the per-ticker half (narrative->type, routes around the
+         blank-sector blindness); the synthesis pass is the cross-ticker half. Together
+         = the reasoning a human did in the 2026-05-30 OKTA/software conversation.
+      3. Fix the sector-enrichment gap (blank sector outside top-300) OR cluster on
+         narrative/co-movement independent of sector. Nascent/policy lifecycle (stop
+         anchoring on laggards / mislabeling Fading). co-gap-cluster as a membership input.
+      AUGMENT not automate: surface candidate emerging themes for operator judgment
+      (Pradeep: themes emerge from price action + the operator's read). Backtest N>=10
+      against BOTH test cases (drones + software-AI); SSoT theme docs. Pairs with
+      theme_axis_gating_logic + phase5.
     status: pending
     added_on: 2026-05-30
 
