@@ -3502,6 +3502,14 @@ reviews:
       it does NOT author the composition from blank. See
       feedback_methodology_fidelity_over_stability.
 
+      UPSTREAM DEP (2026-05-31): "theme ✓ live" above is necessary-but-not-sufficient —
+      theme MEMBERSHIP was live but theme DISCOVERY was broken (drones/software mislabeled).
+      ADR 0007 (theme_engine_narrative_blindness) fixes discovery; the advisory composite's
+      theme axis is garbage-in until that promotes from shadow. So phase5-ADVISORY BUILDS
+      right behind the ADR-0007 promotion (pulls FORWARD from ~9/8, which was the
+      CALIBRATION date) — build on the clean signal; weight-calibration stays
+      forward-data-gated.
+
       With ≥30 settled paired-score alerts (catalyst + theme +
       technical + gap all populated, plus settled 5d forward return),
       fit composition weights via logistic regression against
@@ -3726,6 +3734,11 @@ reviews:
       Theme-member vs theme-less forward returns (excess-vs-index, 10-20d) on the
       forward cohort; if the lift holds, set the theme axis weight in phase5 (>=
       fundamentals per user_pradeep_catalyst_hierarchy). Cross-ref theme_axis_gating_logic.
+      UPSTREAM DEP (2026-05-31): the theme-member vs theme-less SPLIT is only valid once
+      theme DISCOVERY is accurate — ADR 0007 (theme_engine_narrative_blindness) fixes the
+      engine that mislabeled the drone/software cohorts as theme-less. The CLEAN forward
+      evidence is rows AFTER that fix promotes from shadow; pre-promotion rows carry
+      contaminated theme labels. Data quality here is gated on the ADR-0007 promotion.
     status: pending
     added_on: 2026-05-30
 
