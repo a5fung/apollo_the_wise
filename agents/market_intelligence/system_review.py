@@ -130,7 +130,8 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
         "regime": metrics.get("regime", {}).get("current"),
         "summary": summary,
         "metrics": metrics,
-        "suggestions": _extract_suggestions(summary),
+        # legacy key/column name — now holds last week's ⚠️ anomalies for the 🔁 check
+        "suggestions": _extract_anomalies(summary),
     }
     await insert_system_review(review)
 
@@ -835,6 +836,9 @@ async def _aggregate_audit_errors(days: int) -> dict:
     # to apply its "count dropped to 0 after a date → likely resolved" rule — e.g.
     # ep_scan_failed hotfixed mid-week 5/26 should read as resolved, not re-surfaced
     # as open. Track max(created_at) per event_type alongside the count.
+    # CAVEAT: days_ago is a "hasn't-fired-recently" proxy, NOT a true resolution signal —
+    # a weekly-recurring error reads as stale mid-week. Safe because every anomaly line is
+    # tagged UNVERIFIED downstream, but don't treat days_ago as proof an error was fixed.
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
 
@@ -1441,7 +1445,7 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
     if prior:
         prior_block = (
             f"\n\nPREVIOUS REVIEW ({prior['review_date']}, window={prior['window_days']}d):\n"
-            f"Suggestions last week: {prior.get('suggestions')}\n"
+            f"Anomalies flagged last week: {prior.get('suggestions')}\n"
             f"Metrics last week: {prior.get('metrics')}\n"
         )
     user_prompt = (
@@ -1466,13 +1470,15 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
     return "".join(block.text for block in resp.content if hasattr(block, "text")).strip()
 
 
-def _extract_suggestions(summary: str) -> list[str]:
-    """Parse the '💡 Proposed changes' block — numbered list of 1-2 lines."""
+def _extract_anomalies(summary: str) -> list[str]:
+    """Parse the '⚠️ Anomalies to verify' block — its • bullets — so next week's run can
+    feed them into the 🔁 persistence check (did they clear?). Replaces the removed
+    '💡 Proposed changes' parser (2026-05-31: the review surfaces facts, never prescribes)."""
     out: list[str] = []
     in_block = False
     for line in summary.splitlines():
         stripped = line.strip()
-        if "Proposed changes" in stripped:
+        if "Anomalies to verify" in stripped:
             in_block = True
             continue
         if in_block:

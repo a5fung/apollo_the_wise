@@ -297,7 +297,10 @@ def _should_revive_theme(
       1. stage must be 'Fading' (nothing else revives),
       2. at least `min_hot_members` (>=2) members are hot — NOT a single transient spike
          (the 26% was single-member; requiring >=2 collapses it),
-      3. not within `cooldown_days` of the last revive (one-way latch).
+      3. not within `cooldown_days` of the last revive (one-way latch) — NOT YET WIRED:
+         no last-revive timestamp is persisted on `mi_themes`, so the only caller passes
+         `days_since_last_revive=None` and this arm is inert. The param is here for when
+         revive goes live (persist a `revived_at`, then thread the delta in).
     NB: a 2-member Fading fragment with only ONE hot member (e.g. {KYTX,SWMR}: SWMR hot,
     KYTX cold) does NOT self-revive — it must first gain hot members via accelerator
     assignment (vector a). Revive and assignment are complementary, by design.
@@ -323,7 +326,12 @@ async def run_theme_discovery_shadow(today=None) -> dict:
     *** CANNOT be unit-tested locally (needs DB + LLM). MONDAY VERIFY CHECKLIST: ***
       1. `get_rs_accelerators` / `get_rs_recovery_slope` return sane rows on fresh data.
       2. the drone + software cohorts now ENTER `uncovered` (Step-1 recall, read the logs).
-      3. shadow themes form; count themes-formed vs live `mi_themes` (Step-3 flood check).
+      3. shadow themes form; count themes-formed (Step-3 flood check). NB this is NOT
+         apples-to-apples vs live `mi_themes`: the shadow assembly deliberately skips the
+         live assignment-pass (`_assign_uncovered_to_themes`), the global-ban, and the
+         carryforward strip, so shadow `uncovered` is systematically LARGER and it will
+         over-form themes. Read the count as "selector recall + headroom", NOT as "live
+         would have formed N" — for that comparison, add those filters to the shadow path.
       4. eyeball `mi_theme_candidates_shadow` for a drone/software theme that live missed.
       5. THEN iterate: add the (f) ignition-prompt variant + A/B vs this baseline;
          only after the N-night diff looks right, wire into the 5 PM nightly job + promote.
@@ -339,13 +347,12 @@ async def run_theme_discovery_shadow(today=None) -> dict:
     today = today or et_today()
     today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
 
-    # 1. base pools (same as live) + the NEW selectors (a/a2)
-    leaders, velocity_all, turners_all = await asyncio.gather(
+    # 1. base pools (same as live) + the NEW selectors (a/a2) — one gather; all five
+    #    queries are independent, so there's nothing to serialize across two awaits.
+    leaders, velocity_all, turners_all, accelerators, recovery = await asyncio.gather(
         get_rs_leaders(today_str, limit=60),
         get_rs_velocity(today_str, min_rs=THEME_RS_MIN, limit=30),
         get_rs_turners(today_str, max_rs_4w_ago=30.0, min_consecutive_weeks=3, limit=30),
-    )
-    accelerators, recovery = await asyncio.gather(
         get_rs_accelerators(today_str),
         get_rs_recovery_slope(today_str),
     )
@@ -3299,7 +3306,7 @@ async def run_theme_engine(
     # cut (RCAT/AVAV/ONDS on 5/28) never reaches clustering. `_ensure_descriptions`
     # dedups + early-returns on already-described, so the wider list is cheap.
     await _ensure_descriptions(
-        list({s["ticker"] for s in _all_candidate_pool(leaders, velocity_all, turners_all)})
+        list({s["ticker"] for s in _enrich_pool})  # same pool the sector-enrich above built
     )
 
     # --- Step 1: Re-score existing themes (concurrent, Tavily rate-limited by semaphore) ---
