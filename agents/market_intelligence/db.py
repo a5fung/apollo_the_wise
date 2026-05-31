@@ -937,6 +937,26 @@ async def initialize_schema() -> None:
                 ON mi_journal_entries(created_at DESC);
         """)
 
+        # ── Theme-discovery SHADOW lane (ADR 0007) — proposed themes from the new
+        # nascent-discovery logic (rank-accel + recovery-slope selectors + ignition
+        # prompt), written WITHOUT touching live mi_themes / the brief. Diffed against
+        # the live engine for N nights before any vector is promoted to live.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_candidates_shadow (
+                id SERIAL PRIMARY KEY,
+                run_date DATE NOT NULL,
+                name TEXT NOT NULL,
+                thesis TEXT,
+                tickers TEXT[] NOT NULL,
+                source TEXT NOT NULL DEFAULT 'shadow_v2',
+                would_revive BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (run_date, name)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_shadow_run_date
+                ON mi_theme_candidates_shadow(run_date DESC);
+        """)
+
         # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_correlation_clusters (
@@ -3969,6 +3989,126 @@ async def get_rs_for_tickers(
             WHERE score_date = $1 AND ticker = ANY($2)
         """, score_date, tickers)
         return {r["ticker"]: dict(r) for r in rows}
+
+
+# ── ADR 0007 nascent-discovery selectors (pure predicates + DB queries) ──────────
+# These add discovery candidate pools the top-40 RS gate structurally misses. The
+# PREDICATES are pure + unit-tested; the DB wrappers are verified Monday on the server
+# (no local DB). Defaults are seeded from the 2026-05-31 replay; tune on shadow data.
+
+def _is_rank_accelerator(
+    rank_now, rank_prior, rs_now, rs_prior,
+    *, min_rank_improve: int = 800, min_rs_delta: float = 25.0, min_rs_now: float = 50.0,
+) -> bool:
+    """ADR 0007 (a): an igniting candidate — sharp rank improvement OR rs jump over the
+    lookback, at a meaningful current RS. OR-combined (not AND) per the 5/31 replay:
+    RCAT cleared the rank arm at rs_composite 59.4, which an rs-floor >= 60 would have
+    wrongly dropped — so min_rs_now stays a LOW floor (<= 50)."""
+    if rs_now is None or rs_now < min_rs_now:
+        return False
+    rank_ok = (rank_prior is not None and rank_now is not None
+               and (rank_prior - rank_now) >= min_rank_improve)
+    rs_ok = (rs_prior is not None and (rs_now - rs_prior) >= min_rs_delta)
+    return bool(rank_ok or rs_ok)
+
+
+def _is_recovery_slope(
+    rs_1m, rs_6m, *, min_rs_1m: float = 90.0, max_rs_6m: float = 30.0,
+) -> bool:
+    """ADR 0007 (a2): a re-rating off a low base — strong short-term RS while medium-term
+    is still weak (rs_1m >> rs_6m). Catches the recovering software-AI cohort (NOW/ESTC/
+    TEAM/MDB) that rank-acceleration misses. Established names (high rs_6m) are intentionally
+    NOT caught here — they need the narrative layer (e)."""
+    return bool(rs_1m is not None and rs_6m is not None
+                and rs_1m >= min_rs_1m and rs_6m <= max_rs_6m)
+
+
+async def get_rs_accelerators(
+    d: "str | date", lookback_days: int = 2, min_rank_improve: int = 800,
+    min_rs_delta: float = 25.0, min_rs_now: float = 50.0,
+    min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+) -> list[dict[str, Any]]:
+    """ADR 0007 (a): liquid names igniting fast over `lookback_days` trading days
+    (rank-acceleration OR rs jump), at meaningful current RS. Defaults seeded from the
+    5/31 replay (impr>=800 ∨ rs_delta>=25, rs_now>=50); tune on shadow flood-count
+    before promoting to live."""
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+        prior = await conn.fetchval("""
+            SELECT score_date FROM mi_stock_scores
+            WHERE score_date < $1 GROUP BY score_date
+            ORDER BY score_date DESC OFFSET $2 LIMIT 1
+        """, score_date, max(0, lookback_days - 1))
+        if prior is None:
+            return []
+        rows = await conn.fetch("""
+            SELECT t.*, p.rs_rank AS prior_rank, p.rs_composite AS prior_rs
+            FROM mi_stock_scores t
+            JOIN mi_stock_scores p ON p.ticker = t.ticker AND p.score_date = $2
+            WHERE t.score_date = $1
+              AND t.adv_20 IS NOT NULL AND t.adv_20 >= $3
+              AND t.close IS NOT NULL AND t.close >= $4
+              AND t.ticker != ALL($5)
+              AND t.rs_composite IS NOT NULL AND t.rs_composite >= $6
+              AND NOT EXISTS (
+                  SELECT 1 FROM mi_tracked_stocks ts
+                  WHERE ts.ticker = t.ticker AND ts.quote_type IS NOT NULL AND ts.quote_type != 'EQUITY'
+              )
+        """, score_date, prior, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_now)
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            row = dict(r)
+            if is_sector_filtered(row.get("sector"), row.get("close")):
+                continue
+            if _is_rank_accelerator(
+                row.get("rs_rank"), row.get("prior_rank"),
+                row.get("rs_composite"), row.get("prior_rs"),
+                min_rank_improve=min_rank_improve, min_rs_delta=min_rs_delta, min_rs_now=min_rs_now,
+            ):
+                rk, prk = row.get("rs_rank"), row.get("prior_rank")
+                row["rank_improve"] = (prk - rk) if (rk is not None and prk is not None) else None
+                out.append(row)
+        out.sort(key=lambda x: (x.get("rank_improve") or 0), reverse=True)
+        return out[:limit]
+
+
+async def get_rs_recovery_slope(
+    d: "str | date", min_rs_1m: float = 90.0, max_rs_6m: float = 30.0,
+    min_adv: float = 500_000, min_price: float = 10.0, limit: int = 30,
+) -> list[dict[str, Any]]:
+    """ADR 0007 (a2): liquid names re-rating off a low base (rs_1m high, rs_6m low) —
+    the recovering-cohort signal rank-acceleration misses. Defaults seeded from the 5/31
+    replay (rs_1m>=90 ∧ rs_6m<=30); tune on shadow flood-count before promoting to live."""
+    from agents.market_intelligence.constants import SKIP_TICKERS_LIST, is_sector_filtered
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        score_date = await _resolve_score_date(conn, _to_date(d))
+        rows = await conn.fetch("""
+            SELECT * FROM mi_stock_scores
+            WHERE score_date = $1
+              AND adv_20 IS NOT NULL AND adv_20 >= $2
+              AND close IS NOT NULL AND close >= $3
+              AND ticker != ALL($4)
+              AND rs_1m IS NOT NULL AND rs_6m IS NOT NULL
+              AND rs_1m >= $5 AND rs_6m <= $6
+              AND NOT EXISTS (
+                  SELECT 1 FROM mi_tracked_stocks ts
+                  WHERE ts.ticker = mi_stock_scores.ticker AND ts.quote_type IS NOT NULL AND ts.quote_type != 'EQUITY'
+              )
+            ORDER BY rs_1m DESC NULLS LAST
+            LIMIT $7
+        """, score_date, min_adv, min_price, SKIP_TICKERS_LIST, min_rs_1m, max_rs_6m, limit * 2)
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            row = dict(r)
+            if is_sector_filtered(row.get("sector"), row.get("close")):
+                continue
+            out.append(row)
+            if len(out) >= limit:
+                break
+        return out
 
 
 async def get_recent_rs_batch(
