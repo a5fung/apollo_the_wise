@@ -5715,27 +5715,27 @@ reviews:
           under-reporting max_h ($203 vs SIP $211). limit_price arg
           fixed in `611ca9e`; Polygon source issue still open.
 
-      # Historical clean_miss cohort cross-check (2026-05-28 investigation,
-      # before threshold=3 ripens). Of 6 prior clean_miss cases in 30d:
-      historical_cross_check:
-        n_confirmed_silent_trigger_failure: 1  # AVAV only
-        n_ambiguous: 1                          # AGYS — cross at 09:31:00 bar boundary
-        n_true_clean_miss: 4                    # BZH, GEMI, EOSE, PPTA
-        polygon_vs_sip_max_h_delta_typical: "3-15¢ for legitimate misses"
-        polygon_vs_sip_max_h_delta_avav: "$8.50 — anomalous outlier"
-        notes: |
-          AGYS 2026-05-19: SIP shows 09:31:00 bar H=$94.77 (above
-          trigger $94.52), but order submit was at 09:31:10ish — the
-          intra-bar timing means trigger-after-submission can't be
-          determined from minute granularity. Reported as ambiguous,
-          not confirmed silent failure. Investigation predicate
-          should require ≥1 minute between submit and first cross to
-          eliminate the same-bar ambiguity class.
+    # Historical clean_miss cohort cross-check (2026-05-28 investigation,
+    # before threshold=3 ripens). Of 6 prior clean_miss cases in 30d:
+    historical_cross_check:
+      n_confirmed_silent_trigger_failure: 1  # AVAV only
+      n_ambiguous: 1                          # AGYS — cross at 09:31:00 bar boundary
+      n_true_clean_miss: 4                    # BZH, GEMI, EOSE, PPTA
+      polygon_vs_sip_max_h_delta_typical: "3-15¢ for legitimate misses"
+      polygon_vs_sip_max_h_delta_avav: "$8.50 — anomalous outlier"
+      notes: |
+        AGYS 2026-05-19: SIP shows 09:31:00 bar H=$94.77 (above
+        trigger $94.52), but order submit was at 09:31:10ish — the
+        intra-bar timing means trigger-after-submission can't be
+        determined from minute granularity. Reported as ambiguous,
+        not confirmed silent failure. Investigation predicate
+        should require ≥1 minute between submit and first cross to
+        eliminate the same-bar ambiguity class.
 
-      # Going-forward: the classifier limit_price fix (`611ca9e`) means
-      # future clean_miss vs would_have_filled vs gap_through labels
-      # will be accurate. Cohort grows organically. Re-run cross-check
-      # against SIP at 2026-06-15 review ripening.
+    # Going-forward: the classifier limit_price fix (`611ca9e`) means
+    # future clean_miss vs would_have_filled vs gap_through labels
+    # will be accurate. Cohort grows organically. Re-run cross-check
+    # against SIP at 2026-06-15 review ripening.
 
     status: pending
     added_on: 2026-05-28
