@@ -3644,10 +3644,27 @@ reviews:
       narrative rotation with no shared sector label. This is why OKTA's 5/29 gap scored
       routine/28.8/filtered (fundamentals-only, theme-blind) — a likely methodology
       false-negative (theme #1). Fix must validate against THIS cohort.
+
+      MECHANISM PINNED 2026-05-31 (read-only prod trace of the 5/28 drone ignition):
+      cohort was IGNITING (UMAC rank 933->50->23 over 5/26-5/29, ONDS 2772->412, RCAT
+      3751->1619, SWMR 165->57; rs_1m 95-100 / rs_6m ~0 = textbook nascent). EVERY discovery
+      path required ALREADY-ESTABLISHED status: (1) uncovered pool = leaders[:40] — on 5/28
+      ZERO drone names cleared top-40 (best UMAC 50, SWMR 57); (2) the theme existed only as
+      two FADING 2-member fragments ({KYTX,SWMR} score 1.1; {ISSC,KTOS} score 0) whose
+      'covered' members are STRIPPED from all discovery pools -> the stub both blocked the
+      real theme AND decayed; (3) correlation pre-pass = 0 drone clusters (blind to staggered
+      ignition by its 0.85/20d/>=4 design). Names WERE caught individually (RCAT EP HIGH 101,
+      AVAV 72, UMAC 9M +32.8%) — only the THEME was missed. Confirmed lifecycle bug: 'Fading'
+      while SWMR rs_1m=100. NET: structurally surfaces the obvious, misses the nascent
+      (inverse of purpose). Mechanism = candidate #1 (rank-gate) + #4 (covered-Fading trap);
+      #3 (correlation) ruled out. DESIGN PULLED FORWARD to North Star week (operator
+      2026-05-31) — confirmed months-running defect in a STANDALONE-INTELLIGENCE product
+      (evening brief), decoupled from the 6/22 trading cutover. Residual unknown:
+      velocity/turners pool contents (not persisted) — minor.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_themes WHERE theme_date >= CURRENT_DATE - 7;
     threshold: 1
-    earliest_review_date: 2026-06-16
+    earliest_review_date: 2026-06-01  # pulled fwd from 06-16: mechanism PINNED 05-31, design = North Star week (operator call)
     action_when_ready: |
       Design (cross-sector narrative themes the RS-sector clustering can't see):
       1. TOP-DOWN LLM emerging-theme SYNTHESIS pass (the capability gap operator flagged
@@ -3672,6 +3689,19 @@ reviews:
       loop is the dynamic version of this synthesis pass; its §6 acceptance test validates
       against BOTH this review's test cases (drones + software-AI). Build sequencing tracked
       separately in catalyst_discovery_loop_sequencing.
+
+      PINNED FIX VECTORS (2026-05-31, from the trace — design THIS WEEK, build still gated):
+      (a) discovery candidate selection must admit RANK-ACCELERATION, not just top-40
+          absolute RS (UMAC 933->23 in 3d must enter); velocity/turners pools exist but are
+          too shallow (top-30) and starved by the covered-exclusion. (b) a stale 2-member
+          FADING fragment must NOT 'cover'/block the igniting leaders — absorb/revive, not
+          cover-and-decay. (c) blank-sector enrichment (UMAC/ONDS/RCAT/AVAV all blank ->
+          unclusterable) — fallback not reaching them. (d) lifecycle-inversion bug (Fading
+          while rs_1m=100). (e) nascent-sensitive cohort signal (co-gap / rank-accel) to
+          complement the established-only correlation pre-pass = the ADR-0006 layer.
+      DISCIPLINE: design this week; build still gated on advisor + SSoT/CHANGE_PROCESS +
+      validate against BOTH cohorts (no single-case overfit) + grounding/validation so
+      higher sensitivity does NOT flood the brief with noise. Decoupled from the 6/22 cutover.
     status: pending
     added_on: 2026-05-30
 
