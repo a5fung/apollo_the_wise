@@ -87,11 +87,24 @@ The sensitivity change is in *candidate selection*; the precision guard stays in
 3. **Anti-noise / precision check — measured at the RIGHT stage:** count **themes FORMED + validated** (post LLM-thesis-grounding, post `_validate_theme_membership`), NOT candidates surfaced. Operator-visible noise is themes in the brief, not candidates entered; counting candidates overcounts noise and tempts over-tightening selection (which reintroduces the recall miss). A large jump in *validated themes/day* vs today = real noise → tighten.
 4. **Lifecycle / oscillation check:** confirm the (b) revive rule re-promotes the drone fragments given member `rs_1m` on 5/28 **without** oscillating (run across several consecutive days) or reviving genuinely-dead themes, and **without amplifying** the existing constituent churn.
 
-## 5. Sequencing (smallest-viable first)
-- **(c) blank-sector enrichment of all candidates** — smallest, lowest-risk, near-isolated; ship first.
-- **(a) rank-acceleration pool** — the core recall fix; ship after the §4 anti-noise replay passes.
-- **(b)+(d) Fading revive / lifecycle-from-momentum** — medium; pairs together.
-- **(e) co-gap/co-acceleration cohort signal** — overlaps ADR-0006; the minimal version here, full version there.
+## 5. Sequencing + build status
+
+**BUILT 2026-05-31 (committed `ec721a7`; NOT yet deployed — theme engine next runs Mon 5 PM ET on a trading day, so deploy is Monday in-hours, zero benefit to deploying sooner):**
+- **(c) + (c2)** — sector-enrich + description-fetch widened to ALL discovery candidate pools via `_all_candidate_pool`, not just `leaders[:60]`. Additive/idempotent; does NOT change theme formation. 3/3 unit tests, py_compile clean.
+
+**SHADOW LANE — answers the advisor's forking question: YES, build it.**
+The live-behavior vectors write to `mi_themes` (which feeds the brief + the +10 EP bonus), so they get a real shadow lane, not just a flag:
+- New table `mi_theme_candidates_shadow` (theme_date, name, thesis, tickers[], `source='shadow_v2'`, `would_revive` flag).
+- The nightly job runs a SECOND discovery pass with the new logic (a/a2 selectors + (f) ignition prompt) and writes PROPOSED themes to the shadow table. Live `mi_themes` + the brief stay on the current engine — **zero live impact.**
+- **(b/d) revive runs as a shadow FLAG first:** compute "would this Fading theme re-promote (with hysteresis)" and log it; do NOT mutate the live stage — so the 26% oscillation concern is measured on real forward data before any live lifecycle change.
+- **Promote gate (diff-validation):** for N nightly runs, diff shadow vs live — (i) does shadow surface the drone/software cohorts live missed? (ii) themes-FORMED-and-validated count vs live (the real anti-noise metric §4.3 — flood check); (iii) does `would_revive` oscillate (§4.4)? Promote a vector to live only after its diff looks right + advisor.
+
+**Remaining build order (behind the shadow lane — start FRESH per §6):**
+1. `mi_theme_candidates_shadow` + the shadow discovery pass (the harness).
+2. **(a)/(a2) selectors** — `get_rs_accelerators` (rank-improve, OR-combined per the RCAT-59.4 lesson) + recovery-slope (`rs_1m ≫ rs_6m`); thresholds seeded from §4 (impr≥800 ∧ rs≥50; rs_1m≥90 ∧ rs_6m≤30) then tuned on the shadow flood-count.
+3. **(f) ignition-aware prompt.**
+4. **(b/d) revive** — shadow-flag → live only after hysteresis validated against the 26%.
+5. **(e) narrative/co-gap** — mainly for the software-AI established+recovering case; full version = ADR-0006.
 
 ## 6. Discipline / gates (build, not design)
 Per `feedback_methodology_fidelity_over_stability` + `feedback_sample_size_discipline` + CLAUDE.md Trading-Setup-Changes: advisor sign-off, SSoT update (CLAUDE.md Theme Engine section / this ADR), and the §4 replay green against **both** cohorts before any code ships. Shadow/observe before it changes what the operator sees in the brief. **Design is done now; build ships when §4 passes.**
