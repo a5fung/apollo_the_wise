@@ -124,6 +124,7 @@ One mental model — **stocks in play, surfaced from any setup; some Apollo auto
 4. **Graduate-or-not calls:** which Layer-2 detectors are *meant* to reach live (flag class?) vs stay data-only forever (5m-ORB as just a selectivity study?).
 5. **Naming:** rename "MAGNA53 EP" to reflect it's a gap-momentum scorer, not the EP setup? (separate, non-urgent)
 6. **RMV (6/9)** is the qualifier that makes "trade the cohort via consolidation" concrete — it's the tightness trigger. Sequencing: does the 9M re-architecture wait on RMV Phase-2?
+7. **Entry-alert NOISE → actionability filter (WS-C; operator 2026-06-01, task #168):** flag-break (#94, ~5/day) + MA-pullback (#96, ~10/day) fire on *any* tightening/coiling flag candidate — ~15+/day, too noisy. Need a **selection-quality overlay** (high RS / theme-backed / 9M-EP cohort / catalyst present / liquid) so only *buyable* names surface, not raw pattern fires. Telemetry-first: measure which quality dims separate forward-winners before filtering. Same "quality overlay" idea as #65's flag-confirmation discriminator. WS-C × Layer-3.
 
 ---
 
