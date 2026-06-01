@@ -18,6 +18,8 @@
 
 **On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run the OPEN reconciliation immediately, in any session phase — pull today's calendar (PDT) + `next-session-pickup` + open #-tasks + the roster, reconcile, and report true state (done / in-flight / slipped). One phrase covers every surface; the operator never has to pick "backlog vs task list." (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
 
+**Capture (operator trigger):** "**track it**" / "**track this**" = log it as a #-task immediately (the SoT). Route to `data_gated_reviews.yaml` if evidence-gated, the roster if a big-rock, or a memory if it's a fact/feedback — and confirm back WHERE it went + the #. Default to over-capturing; this is the operator's guarantee a passing idea isn't lost. (Capture should also happen automatically in-flow — this trigger is the explicit backstop for asides.)
+
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
 ## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
