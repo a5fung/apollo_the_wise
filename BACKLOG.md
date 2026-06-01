@@ -14,7 +14,7 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-05-31 (added the Active Major Projects roster; Stocks-in-Play project named + unified with ADR 0004; #65 9M analysis; U&R #98 shipped)
+Last updated: 2026-06-01 (roster refreshed: partial-exit hardening + 16:45 cron re-enable shipped & verified; drawdown-breaker → #174 (6/2); #170 cooldown re-setup shadow live; #173 theme-shadow-dead found; Apollo Trades dashboard promoted to P2)
 
 ---
 
@@ -27,9 +27,10 @@ tracked — add it. Priority: **P0** = blocks live $ / safety · **P1** = core g
 | Project | Pri | Status | Next milestone(s) | Master / detail |
 |---|---|---|---|---|
 | **Stocks in Play** — setups + entries umbrella (some Apollo-traded, some inform-operator; a stock can combine setups) | **P1** | framing AGREED; WS-A SIP-infra barely built (mi_stocks_in_play holds only sugar_baby_cohort) | **#167 kickoff Tue 6/2** · RMV-qualifier 6/9 · entry-technique graduation 7/15 · #65 9M re-arch · #170 cooldown re-setup admission (6/8, evidence exists) · #171 /setup+/why filter-reason observability | `docs/setups/PORTFOLIO.md` · memory `stocks-in-play-project` |
-| **Live-money cutover** (MAGNA53 first) | **P1** | paper-validating; realized history weak (−$9,475), leans on unbanked open winners | **⭐ 6/22 GO/NO-GO** · blockers: #151 N=7 (6/15) · #150 stop-trigger · #142 pending_new · drawdown-breaker→active | memory `north-star-and-live-readiness-timeline` (Track A) · `live_cutover_decision` review |
+| **Live-money cutover** (MAGNA53 first) | **P1** | paper-validating; realized history weak (−$9,475), leans on unbanked open winners | **⭐ 6/22 GO/NO-GO** · blockers: #151 N=7 (6/15) · #150 stop-trigger · #142 pending_new · #174 drawdown-breaker→active (6/2 in-hours) | memory `north-star-and-live-readiness-timeline` (Track A) · `live_cutover_decision` review |
 | **North Star** — theme/narrative load-bearing in EP | **P1** | C1 catalyst_type LIVE; theme-discovery shadow (ADR 0007) | theme-as-EP-signal n≥40 ~8/1 · phase5 advisory composite · ⭐ phase6 GATING ~Q4 | memory `north-star…` (Track B) · `phase5/phase6` reviews · `ep-conviction-floor…` |
-| **Operational safety / hardening** | **P0** | safety trio shipped (G6 + watchdog #153 + deploy-guard #154); residuals open | #150 (P0 stop-trigger) · #149 missing-data · #152 news-drift | BACKLOG "🚧 Live-cutover blockers" + tasks |
+| **Operational safety / hardening** | **P0** | partial-exit hardening trilogy SHIPPED + paper-validated 6/1 (sub-penny round + false-naked fix + #150 sell-retry); 16:45 cron re-enabled & first run verified clean; G6/#153/#154 prior | residuals: #149 missing-data · #152 news-drift · #173 theme-shadow-dead · ZS silent-trigger obs | BACKLOG "🚧 Live-cutover blockers" + tasks |
+| **Apollo Trades dashboard** (portfolio-app2 — Tradervue-style P&L calendar + setup stats) | **P2** | Phase-1 scaffold shipped 5/09 (mock data, runnable now); db-mode stubbed | **operator wants it back soon (6/1)** — Phase 2 (equity curve · top-10 · holding histogram · trade drill-down) buildable NOW on mock; db-mode gated on live + ≥30 closed live trades (~Jul) + Tailscale exposure (shared w/ RS-theme-dash R1) | memory `Apollo Trades dashboard tab (portfolio-app2)` · SEPARATE repo `portfolio-app2` |
 
 *(Lower-pri / dormant projects — crypto track, RS-theme dashboard, portfolio app, parabolic-short TI1 — live in their own memories; promote here if they reactivate.)*
 

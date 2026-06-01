@@ -10,7 +10,7 @@
 3. STATE the day's plan (timed/planned items + ready #-tasks) before reacting to the first message.
 
 **CLOSE** (when the operator wraps, or before ending):
-1. Reconcile done-vs-planned against the calendar + the day's #-tasks.
+1. Reconcile done-vs-planned against the calendar + the day's #-tasks. If a big-rock project advanced / completed / shifted timeline, update the **Active Major Projects roster** in `BACKLOG.md` (the operator's progress + completion-timeline view).
 2. Roll EVERY undone planned item forward — reschedule on the calendar AND/OR add to `next-session-pickup`. Name any unplanned work that displaced the plan, so nothing slips silently.
 3. If code changed: `git add <files>` → commit → `git push origin main`.
 
