@@ -4394,6 +4394,24 @@ reviews:
       pattern, calibrate threshold modifiers.
       Ship shadow-first: theme_gate_shadow_admit/reject audit events,
       observe 30 more days, promote to live gate.
+    example_cases:
+      - ticker: ALOY
+        date: 2026-06-01
+        note: |
+          HIGH (score 86.4, gap 14.25%, catalyst_quality=strong,
+          catalyst_type=policy) on a rare-earth supply MOU/offtake
+          (REalloys × Ramaco Brook Mine; 15yr Tanbreez heavy-REE offtake).
+          NON-earnings catalyst, so the 6-axis earnings rubric never ran —
+          audit trail is only conviction_floor_eligible -> ep_alert ->
+          orb_out_of_window (zero extraction/rubric events). Scored purely
+          on the conviction floor (gap + LLM catalyst enum); no
+          fundamentals/structure/theme verification behind the HIGH. This is
+          exactly the gap this review targets: non-earnings catalysts
+          (policy/M&A/partnership/FDA) have NO structured quality assessment
+          and ride the floor. Plausibly a legit EP (rare-earth = hot theme +
+          policy = Pradeep #2) but the system did not verify that — it
+          floored it. Cross-ref phase5_meta_rubric_calibration + memory
+          project_ep_conviction_floor_overrides_theme.
     status: pending
     added_on: 2026-05-19
 
