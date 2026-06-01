@@ -1,12 +1,16 @@
-# Apollo Setup Portfolio — Taxonomy, Treatment, Priority & Relationship Map
+# Stocks in Play — Project Master
 
-> **STATUS: FRAMING AGREED (operator "aligned", 2026-05-31).** The SELECTION ≠ ENTRY ≠
-> QUALIFIER structure, the layer assignments, and the relationship map are endorsed as the
-> portfolio's mental model. **Per-item DECISIONS (the redline agenda) are still OPEN** — and
-> this doc is **NOT** a change-authorizing SSoT: any actual setup change still follows
-> `docs/setups/CHANGE_PROCESS.md` (evidence, advisor, per-setup SSoT). Built per task #167 /
-> memory `project_setup_portfolio_taxonomy`. Phases verified vs `mi_strategies` 2026-05-31;
-> items marked **? = confirm** are still unverified.
+> **The umbrella for ALL setup/entry work (operator-named 2026-05-31).** One idea: we surface
+> **stocks in play** from any setup; some Apollo **auto-trades**, some **inform the operator**
+> to act; each stock-in-play can combine multiple setups. This project **unifies** the prior
+> Stocks-in-Play workstream (ADR 0004 — the `mi_stocks_in_play` table + 3-axis maturity model)
+> with the setup/entry **taxonomy + relationship map** below. `automation_class` (apollo-traded
+> vs inform-operator) is the ADR-0004 axis; **SELECTION ≠ ENTRY ≠ QUALIFIER** is the anatomy.
+>
+> **STATUS:** framing AGREED (operator "aligned", 2026-05-31); per-item decisions OPEN.
+> **NOT change-authorizing** — actual setup changes follow `docs/setups/CHANGE_PROCESS.md`.
+> Kickoff = task #167; tracks + dates in §Workstreams. Phases verified vs `mi_strategies`
+> 2026-05-31.
 
 ---
 
@@ -18,7 +22,23 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 - **ENTRY** — *how/when to get in*, on an already-selected stock. (ORB, flag-breakout, support-test, MA-pullback, U&R, fishhook, wick-fill, low-vol-rest.)
 - **QUALIFIER** — *a score/filter that gates or ranks* selection or entry, never traded alone. (catalyst_type, theme membership, RMV, regime.)
 
-**The core defect this exposes:** today MAGNA53 and 9M each hardcode ONE entry (1-min ORB; Day-2 ORB w/ prior-low stop). The methodology says selection should produce a watch-cohort, and entry should be *chosen* from the entry layer based on how the stock sets up. That mismatch **is** the 9M problem (#65) and is why the entry-technique detectors exist but aren't wired to the cohorts yet.
+**The core defect this exposes:** today MAGNA53 and 9M each hardcode ONE entry (1-min ORB; Day-2 ORB w/ prior-low stop). The methodology says selection should produce a watch-cohort, and entry should be *chosen* from the entry layer based on how the stock sets up. That mismatch **is** the 9M problem (#65) and is why the entry-technique detectors exist but only run in shadow today (the 9M cohort IS wired into their universe via P7.3b — see the relationship map — they just don't *trade* yet).
+
+---
+
+## Workstreams, priority & dates (the project tracks)
+
+One mental model — **stocks in play, surfaced from any setup; some Apollo auto-trades, some inform the operator; each can combine setups** — across these tracks:
+
+| WS | Track | What | Priority | Key dates / gates |
+|---|---|---|---|---|
+| **A** | **SIP infrastructure** | Make `mi_stocks_in_play` ingest ALL selection signals + carry `automation_class` (apollo-traded vs inform-operator). TODAY it holds only `sugar_baby_cohort` (193, all `informational`) — ADR 0004's multi-source/3-axis vision is under-built. The literal "combine the two." | **P1 (enabler)** | scope in #167 |
+| **B** | **Selection** (Layer 1) | MAGNA53 EP · 9M EP · themes · parabolic — cohort generators | P1: MAGNA53 + theme/narrative (North Star) | MAGNA53 cutover 6/22; theme gate ~Q4 |
+| **C** | **Entry techniques** (Layer 2) | the 5 tight-range (#94–98) + ORB variants + fishhook + wick | **P2** (your #2-to-trade = flag/consolidation class) | graduation N≥10 **7/15** |
+| **D** | **9M re-architecture** (#65) | standing 9M-entry telemetry + Day-2-ORB-legacy → flag-path decision | P2 | telemetry build in #167; gate 7/15 |
+| **E** | **Qualifiers** (Layer 3) | catalyst_type · RMV · theme-membership-gating | P2/P3 | RMV Phase-2 **6/9**; theme gate ~Q4 |
+
+**Kickoff** = the #167 session (deep prioritization + relationship map + per-WS task breakdown). **Reminders** ride the data-gated-review dates above — the Sunday weekly review surfaces ripe items automatically. Existing tasks bucket in: #65→D · #97/#98/#134/#146→C · #160-166 (theme/U&R)→B/C · #149/#152→B-quality · #167 = kickoff.
 
 ---
 
@@ -55,8 +75,8 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 | **Theme membership** | EP score (+10) | live (decorative) | → load-bearing gate (Phase 6) |
 | **Regime** | `mi_regime` | live | calibration input |
 
-## Unifying surface
-- **Stocks-in-Play** (`mi_stocks_in_play`, ADR 0004) — the methodology-wide watchlist that surfaces a *stock* (from any Layer-1 signal); the *entry technique* (Layer 2) is the orthogonal axis. This IS the architecture that resolves the selection≠entry conflation — it's Phase 1, needs the entry layer wired in.
+## Unifying surface — the project spine
+- **Stocks-in-Play** (`mi_stocks_in_play`, ADR 0004) — the methodology-wide watchlist that surfaces a *stock* (from any Layer-1 signal); the *entry technique* (Layer 2) is the orthogonal axis, and `automation_class` marks **apollo-traded vs inform-operator**. This IS the project's spine — the table that resolves the selection≠entry conflation. **But it's barely built: today it ingests only `sugar_baby_cohort` (193 rows, all `informational`).** Wiring all selection signals + the entry layer into it, with the automation_class axis = **WS-A** (the literal "combine the two prior workstreams").
 
 ---
 
@@ -107,8 +127,8 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 
 ---
 
-## Confirm / gaps (my read may be stale — flag for correction)
-- ? Exact RMV Phase-2 scope + whether it's a flag-candidate filter or a standalone trigger.
-- ? Whether `mi_stocks_in_play` currently ingests all Layer-1 signals or only sugar-baby + flag-break slots (ADR 0004 said phased).
-- ? Parabolic-short current telemetry state (TI1, deployed 4/25 — settled cohort?).
-- ? Convergence (sugar-baby × flag) — currently an alert *tag*; is it a setup or just decoration?
+## Resolved confirms (2026-05-31, read-only)
+- **RMV Phase-2** (`rmv_phase2_evaluation`, earliest 6/9): a **qualifier on flag candidates** — `rmv_5d/15d` persisted per `mi_flag_candidates` row since Phase-1 (5/9). Phase-2 tests whether RMV-low catches tight setups `_compute_fresh_tightening` MISSES, or is redundant. So it's a tightness *score*, not a standalone trigger. (WS-E)
+- **`mi_stocks_in_play` ingest**: TODAY only `sugar_baby_cohort` (193, all `automation_class=informational`). NOT multi-source — ADR 0004's other source slots are unbuilt. → the core **WS-A** gap.
+- **Parabolic short**: real tables exist (`mi_parabolic_candidates` / `mi_parabolic_exclusions`); `parabolic_short` strategy = shadow. (WS-B, P-low.)
+- **Convergence** (sugar-baby × flag): an **alert TAG** (Stage-2 prepend), not a standalone setup — a qualifier-style co-occurrence flag, not its own WS.
