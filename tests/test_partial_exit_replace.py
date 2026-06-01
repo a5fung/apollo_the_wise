@@ -58,8 +58,11 @@ async def test_replace_order_passes_qty_and_stop_price():
             account_mode="paper",
         )
 
-    assert captured["qty"] == "18"
-    assert captured["stop_price"] == "230.94"
+    # Numerics stay numeric — the #136 str(x) wrapping was the bug (fixed
+    # 2026-05-28; see test_replace_order_kwargs_numeric.py). These assertions
+    # were stale on the old str contract.
+    assert captured["qty"] == 18
+    assert captured["stop_price"] == 230.94
     fake_client.replace_order_by_id.assert_called_once()
     assert fake_client.replace_order_by_id.call_args.args[0] == "old_stop_id_xyz"
     assert result["id"] == "new_order_id"
@@ -118,5 +121,56 @@ async def test_replace_order_omits_unset_fields():
             "old", qty=10, account_mode="paper",
         )
 
-    assert captured.get("qty") == "10"
+    assert captured.get("qty") == 10  # numeric (stale str assertion fixed)
     assert "stop_price" not in captured  # not passed, must not appear
+
+
+def test_round_stop_to_tick_floors_away_from_trigger():
+    """RCAT 2026-06-01: the partial-exit replace submitted a 3-decimal stop
+    (11.955, from the ORB low) raw → Alpaca rejected it (42210000 sub-penny)
+    → atomic replace failed, the old stop stayed live, but the abort handler
+    fired a false-naked alert. _round_stop_to_tick floors to Alpaca's tick
+    (>$1 → $0.01; <=$1 → $0.0001), away from the trigger so a protective
+    sell-stop never rounds toward current price."""
+    from agents.market_intelligence.broker.alpaca_client import _round_stop_to_tick
+    assert _round_stop_to_tick(11.955) == 11.95     # the RCAT case
+    assert _round_stop_to_tick(8.40) == 8.40        # already valid — untouched
+    assert _round_stop_to_tick(230.94) == 230.94    # already valid — untouched
+    assert _round_stop_to_tick(5.001) == 5.00       # floors to penny
+    assert _round_stop_to_tick(0.50055) == 0.5005   # sub-$1 keeps 4 decimals
+
+
+@pytest.mark.asyncio
+async def test_replace_order_rounds_subpenny_stop_before_submit():
+    """The submission-boundary guard: replace_order must round stop_price to
+    the tick BEFORE building ReplaceOrderRequest, so a sub-penny value can
+    never reach Alpaca (which rejects it, failing the atomic replace)."""
+    from agents.market_intelligence.broker import alpaca_client
+
+    fake_client = MagicMock()
+    fake_client.replace_order_by_id.return_value = MagicMock(
+        id="new_id", client_order_id=None, symbol="RCAT",
+        side="sell", type="stop", qty="1020", filled_qty="0",
+        filled_avg_price=None, stop_price="11.95", limit_price=None,
+        status="new", created_at=None, filled_at=None, legs=None,
+    )
+
+    captured: dict = {}
+    def _stub_request_ctor(**kwargs):
+        captured.update(kwargs)
+        return MagicMock(**kwargs)
+
+    with patch.object(
+        alpaca_client, "get_trading_client", return_value=fake_client,
+    ), patch.object(
+        alpaca_client, "ReplaceOrderRequest", side_effect=_stub_request_ctor,
+    ):
+        await alpaca_client.replace_order(
+            "old_stop_id", qty=1020, stop_price=11.955, account_mode="paper",
+        )
+
+    assert captured["stop_price"] == 11.95, (
+        f"sub-penny 11.955 must be floored to 11.95 before submit; "
+        f"got {captured['stop_price']!r}"
+    )
+    assert not isinstance(captured["stop_price"], str)

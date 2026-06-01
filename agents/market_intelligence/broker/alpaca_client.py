@@ -418,6 +418,25 @@ async def place_market_sell(
         raise
 
 
+def _round_stop_to_tick(price: float) -> float:
+    """Round a protective sell-stop to Alpaca's minimum tick, flooring AWAY
+    from the trigger so rounding can never nudge a stop toward current price
+    (which could trip it). Alpaca tick rules: prices > $1.00 must be whole
+    cents ($0.01); prices <= $1.00 allow sub-penny ($0.0001).
+
+    RCAT 2026-06-01: a 3-decimal stop (11.955, from the ORB low) was submitted
+    raw to replace_order → Alpaca rejected it (42210000 sub-penny) → the atomic
+    replace failed leaving the OLD stop live, but the abort handler
+    false-flagged the position naked. Rounding at this submission boundary
+    removes the trigger. (place_stop_order / bracket legs already round; this
+    was the lone unrounded boundary.)
+    """
+    from decimal import Decimal, ROUND_DOWN
+    d = Decimal(str(price))
+    tick = Decimal("0.01") if d >= Decimal("1") else Decimal("0.0001")
+    return float(d.quantize(tick, rounding=ROUND_DOWN))
+
+
 async def replace_order(
     order_id: str,
     *,
@@ -452,7 +471,11 @@ async def replace_order(
     if qty is not None:
         kwargs["qty"] = qty
     if stop_price is not None:
-        kwargs["stop_price"] = stop_price
+        # Round to Alpaca's tick before submit. An unrounded 3+ decimal stop
+        # (e.g. ORB-low 11.955) is rejected (42210000 sub-penny); the atomic
+        # replace then fails, leaving the OLD stop live but tripping the abort
+        # handler's false-naked. RCAT 2026-06-01.
+        kwargs["stop_price"] = _round_stop_to_tick(stop_price)
     if limit_price is not None:
         kwargs["limit_price"] = limit_price
     if client_order_id is not None:

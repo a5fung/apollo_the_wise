@@ -234,6 +234,15 @@ async def run() -> int:
         logger.info(f"test stop placed: {_TEST_QTY} sh @ ${stop_price} id={stop_id}")
 
         # 3. INSERT the synthetic trade row. RETURNING id is the teardown anchor.
+        #    Store a deliberately SUB-PENNY stop (3 decimals) — the RCAT
+        #    2026-06-01 shape (ORB-low 11.955). execute_partial_exit reads this
+        #    into replace_order; pre-fix Alpaca rejected it (42210000 sub-penny)
+        #    and the partial aborted with a false-naked. The _round_stop_to_tick
+        #    boundary guard must floor it to a valid tick so the replace SUCCEEDS
+        #    — i.e. this row failing the run pre-fix and passing post-fix is the
+        #    regression assertion for the rounding fix.
+        db_stop_price = round(stop_price + 0.005, 3)  # e.g. 9.90 -> 9.905
+        logger.info(f"synthetic row stop set SUB-PENNY @ ${db_stop_price} (rounding-fix probe)")
         pool = await get_pool()
         async with pool.acquire() as conn:
             trade_id = await conn.fetchval("""
@@ -245,7 +254,7 @@ async def run() -> int:
                         $4, $5, $6, $7, 3, FALSE, NOW())
                 RETURNING id
             """, _TEST_TICKER, _ACCOUNT_MODE, _SENTINEL_SIGNAL_TYPE,
-                _TEST_QTY, fill_price, stop_price, stop_id)
+                _TEST_QTY, fill_price, db_stop_price, stop_id)
         logger.info(f"synthetic trade row id={trade_id} inserted")
 
         # 4. THE FUNCTION UNDER TEST. force=True (operator-attended path; also

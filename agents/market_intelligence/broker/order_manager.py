@@ -1225,10 +1225,51 @@ async def execute_partial_exit(
                 }),
             )
         except Exception as e:
-            # Old stop cancelled but new one failed — position momentarily unprotected.
+            # Replacement stop failed. CRITICAL: replace_order_by_id is ATOMIC —
+            # a REJECTED replace (validation error like sub-penny stop, or a
+            # pre-HTTP Pydantic failure) leaves the ORIGINAL stop (old_stop_id)
+            # LIVE and unchanged broker-side. The old handler assumed
+            # "old cancelled → naked" and fired a 🚨 manual-stop alert; that is a
+            # FALSE naked (RCAT 2026-06-01: sub-penny 11.955 rejected, original
+            # 11.96 stop intact the whole time — exact shape this fn's L445-451
+            # comment already documented for the str(qty) trigger). Verify the
+            # old stop on the broker BEFORE alarming. No sell has happened yet.
             logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
-            # Null stop_order_id (still pointing to the now-cancelled old_stop_id)
-            # so sync_positions Path C can detect the orphan and remediate.
+            old_stop_live = False
+            if old_stop_id:
+                try:
+                    _chk = await alpaca.get_order(old_stop_id, account_mode=account_mode)
+                    _old_status = _canonical_order_status(_chk.get("status") if _chk else None)
+                    old_stop_live = _old_status in _STOP_CONFIRMED_LIVE_STATUSES
+                except Exception as _verr:
+                    logger.warning(
+                        f"execute_partial_exit: could not verify old stop {old_stop_id} "
+                        f"for {ticker} after replace failure: {_verr}"
+                    )
+            if old_stop_live:
+                # Atomic replace was rejected → original stop still protects the
+                # full position. NOT naked. Keep stop_order_id, abort cleanly,
+                # retry next window. Calm message (no manual-stop call to action,
+                # which would create a duplicate-stop oversell).
+                await log_audit_event(
+                    "partial_exit_aborted",
+                    f"{ticker}: replacement stop rejected ({type(e).__name__}); "
+                    f"original stop {old_stop_id} still LIVE — position protected, no action",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "old_stop_id": old_stop_id, "new_remaining": new_remaining,
+                        "stop_price": float(stop_price), "stage": "place_new_stop",
+                        "old_stop_intact": True, "error": str(e)[:500],
+                    }),
+                )
+                await send_telegram_message(
+                    f"{mode_prefix(account_mode)}⚠️ Partial exit skipped for {ticker}: "
+                    f"replacement stop rejected ({type(e).__name__}).\n"
+                    f"_Original stop still live — position protected, no shares sold. "
+                    f"Cron will retry next window._"
+                )
+                return False
+            # Old stop NOT confirmed live → genuine naked risk → remediate + alert.
             await set_stop_order_id(
                 trade_id, None,
                 reason="partial_naked",
@@ -1236,7 +1277,7 @@ async def execute_partial_exit(
             )
             await log_audit_event(
                 "partial_exit_aborted",
-                f"{ticker}: replacement stop failed — position naked, {type(e).__name__}",
+                f"{ticker}: replacement stop failed AND old stop not live — position naked, {type(e).__name__}",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,
                     "old_stop_id": old_stop_id, "new_remaining": new_remaining,
