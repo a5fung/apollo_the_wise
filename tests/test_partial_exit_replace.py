@@ -174,3 +174,24 @@ async def test_replace_order_rounds_subpenny_stop_before_submit():
         f"got {captured['stop_price']!r}"
     )
     assert not isinstance(captured["stop_price"], str)
+
+
+def test_is_share_reservation_lag_matches_only_clean_rejection():
+    """#150: the sell-retry must fire on Alpaca's share-reservation lag
+    ('insufficient qty available' / held_for_orders) — a clean rejection where
+    NO order was placed (safe to retry) — but NOT on ambiguous errors like a
+    network timeout (which may have placed the order → retry would oversell)."""
+    from agents.market_intelligence.broker.order_manager import (
+        _is_share_reservation_lag,
+    )
+    # Retryable: clean broker rejection, no order placed.
+    assert _is_share_reservation_lag(Exception("insufficient qty available")) is True
+    assert _is_share_reservation_lag(
+        Exception('{"code":40310000,"message":"insufficient qty available for RCAT"}')
+    ) is True
+    assert _is_share_reservation_lag(Exception("held_for_orders: 26")) is True
+    # NOT retryable: ambiguous/hard errors must fall through to rollback so we
+    # never re-submit a sell that might have already been accepted.
+    assert _is_share_reservation_lag(Exception("Read timed out")) is False
+    assert _is_share_reservation_lag(Exception("connection reset by peer")) is False
+    assert _is_share_reservation_lag(Exception("order already filled")) is False

@@ -1025,6 +1025,21 @@ async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BRE
     return int(row["n"]) if row else 0
 
 
+def _is_share_reservation_lag(err: Exception) -> bool:
+    """#150: after an atomic stop-replace frees shares, Alpaca's
+    held_for_orders can lag the replace ack by ~ms, so an immediate market
+    sell transiently rejects with "insufficient qty available" (confirmed
+    2026-05-29). True = that retryable race. Deliberately narrow: it matches
+    only a clean REJECTION (no order was placed → retry can't oversell), NOT a
+    network timeout/ambiguous error (which must fall through to rollback)."""
+    msg = str(err).lower()
+    return (
+        "insufficient" in msg
+        or "held_for_orders" in msg
+        or "qty available" in msg
+    )
+
+
 async def execute_partial_exit(
     trade_id: int, shares: int, *, force: bool = False,
 ) -> bool:
@@ -1405,10 +1420,33 @@ async def execute_partial_exit(
     # Step 2: Market sell the partial (shares are now free from the stop).
     try:
         coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-        order = await alpaca.place_market_sell(
-            ticker, shares,
-            account_mode=account_mode, client_order_id=coid_sell,
-        )
+        # #150: the atomic replace frees the shares, but Alpaca's share-hold
+        # (held_for_orders) can lag the replace ack by ~ms, so an immediate
+        # sell transiently rejects with "insufficient qty available" (confirmed
+        # 2026-05-29). Retry that SPECIFIC clean rejection a few times with
+        # backoff before the outer except rolls the partial back. Fresh COID
+        # per attempt avoids dup-COID rejection. Non-lag errors re-raise
+        # immediately (no retry) so genuine failures still roll back fast.
+        order = None
+        for _attempt in range(3):
+            try:
+                order = await alpaca.place_market_sell(
+                    ticker, shares,
+                    account_mode=account_mode, client_order_id=coid_sell,
+                )
+                break
+            except Exception as _se:
+                if _is_share_reservation_lag(_se) and _attempt < 2:
+                    logger.warning(
+                        f"execute_partial_exit: {ticker} sell hit share-reservation "
+                        f"lag (attempt {_attempt + 1}/3): {_se} — retry in 0.5s"
+                    )
+                    await asyncio.sleep(0.5)
+                    coid_sell = alpaca.make_client_order_id(
+                        account_mode, signal_type, ticker,
+                    )
+                    continue
+                raise
         async with pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO mi_live_orders
