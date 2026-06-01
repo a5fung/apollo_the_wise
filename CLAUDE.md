@@ -22,6 +22,16 @@
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
+## Default to DOING, not tracking (bias to action)
+
+When you discover an issue or a worth-doing improvement, **default to fixing/building it in the same session.** Filing-to-backlog is the EXCEPTION, allowed only with a NAMED reason from this closed list:
+1. Needs evidence/backtest we don't have yet (methodology / detection-criterion change → CHANGE_PROCESS).
+2. Needs a validation that genuinely can't run now (e.g. market-hours-only) AND no safe shadow/subset exists.
+3. Blocked on an unfinished piece or an operator decision.
+4. A big-rock that needs its own scoping/sequencing session.
+
+NOT reasons (these mean *just do it*): "it's late / after-hours," "it's minor/quick," "let me batch it," habit. When the FULL change is legitimately gated, **ship the SAFE SUBSET now** (shadow / telemetry / read-only analysis) and defer only the gated part — never the whole thing (e.g. 2026-06-01 cooldown: shipped the shadow now, gated only the live-flip on realized-R). This bias NEVER overrides the safety line (no bypassing safety gates, no untested trade-state, no fabricated evidence) — those gates route you to the safe version, NOT to the backlog. Doing-now shrinks the backlog and is the surest way to not lose things.
+
 ## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
 
 When the user asks about backlog, todo, tasks, what's ready, what's open,
