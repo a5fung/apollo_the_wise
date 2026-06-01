@@ -14,7 +14,26 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-05-29 (reconciled — folds in #136–154 + IBM cascade + safety/formatting work since 5/19; older items below 'Filed followups' NOT individually re-verified, treat with caution)
+Last updated: 2026-05-31 (added the Active Major Projects roster; Stocks-in-Play project named + unified with ADR 0004; #65 9M analysis; U&R #98 shipped)
+
+---
+
+## 🎛 Active Major Projects — at-a-glance roster
+
+Project-level view (item/date detail is in the sections below + linked files). The weekly
+"Apollo project night" (Tue, calendar) scans this; if a project isn't here, it isn't being
+tracked — add it. Priority: **P0** = blocks live $ / safety · **P1** = core goal · **P2** = important, not blocking.
+
+| Project | Pri | Status | Next milestone(s) | Master / detail |
+|---|---|---|---|---|
+| **Stocks in Play** — setups + entries umbrella (some Apollo-traded, some inform-operator; a stock can combine setups) | **P1** | framing AGREED; WS-A SIP-infra barely built (mi_stocks_in_play holds only sugar_baby_cohort) | **#167 kickoff Tue 6/2** · RMV-qualifier 6/9 · entry-technique graduation 7/15 · #65 9M re-arch | `docs/setups/PORTFOLIO.md` · memory `stocks-in-play-project` |
+| **Live-money cutover** (MAGNA53 first) | **P1** | paper-validating; realized history weak (−$9,475), leans on unbanked open winners | **⭐ 6/22 GO/NO-GO** · blockers: #151 N=7 (6/15) · #150 stop-trigger · #142 pending_new · drawdown-breaker→active | memory `north-star-and-live-readiness-timeline` (Track A) · `live_cutover_decision` review |
+| **North Star** — theme/narrative load-bearing in EP | **P1** | C1 catalyst_type LIVE; theme-discovery shadow (ADR 0007) | theme-as-EP-signal n≥40 ~8/1 · phase5 advisory composite · ⭐ phase6 GATING ~Q4 | memory `north-star…` (Track B) · `phase5/phase6` reviews · `ep-conviction-floor…` |
+| **Operational safety / hardening** | **P0** | safety trio shipped (G6 + watchdog #153 + deploy-guard #154); residuals open | #150 (P0 stop-trigger) · #149 missing-data · #152 news-drift | BACKLOG "🚧 Live-cutover blockers" + tasks |
+
+*(Lower-pri / dormant projects — crypto track, RS-theme dashboard, portfolio app, parabolic-short TI1 — live in their own memories; promote here if they reactivate.)*
+
+**Reminder coverage:** dated milestones auto-surface in the Sunday weekly self-audit; the recurring Tue "project night" (calendar) nudges weekly progress; durable detail in each memory/doc above.
 
 ---
 
