@@ -82,6 +82,26 @@ MIN_PREV_DAY_VOLUME = 50_000   # Skip illiquid stocks — stale quotes create ph
 # Auto-disqualifiers (hard filters — applied before scoring)
 MAX_EXTENSION_PCT = 50.0   # Skip if already up 50%+ in last 5 trading days before the gap
 EP_COOLDOWN_DAYS = 60       # Skip if this ticker had an EP alert in last 60 days
+# #170 shadow (2026-06-01): a cooldown-suppressed candidate that gapped hard
+# >= this many days after its prior alert is likely a RE-SETUP (the prior EP has
+# played out), not a re-fire — backward-check 2026-06-01 showed these ran ~2x
+# the alerted cohort. Telemetry-only for now (cooldown_resetup_admit_shadow);
+# live admission gated on realized-R per CHANGE_PROCESS (#170).
+EP_COOLDOWN_RESETUP_MIN_DAYS = 10
+
+
+def _is_cooldown_resetup(gap_pct: float, days_since_prior_alert: int | None,
+                         min_days: int = EP_COOLDOWN_RESETUP_MIN_DAYS) -> bool:
+    """#170 telemetry classifier: True if a cooldown-suppressed candidate looks
+    like a RE-SETUP rather than a still-extended re-fire — a hard gap (>=15%)
+    far enough (>= min_days) after the prior alert that the prior EP has played
+    out. Shadow-only; does NOT change suppression."""
+    return (
+        days_since_prior_alert is not None
+        and days_since_prior_alert >= min_days
+        and gap_pct >= 15.0
+    )
+
 
 # Leveraged/inverse ETFs and broad ETFs — never real EPs
 _SKIP_TICKERS = SKIP_TICKERS
@@ -853,6 +873,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Batch-fetch recent EP alerts for cooldown check (same ticker in last 60 days)
     # Also check today — skip re-scoring tickers already alerted in an earlier scan run
     cooldown_tickers: set[str] = set()
+    cooldown_last_alert: dict = {}  # #170 shadow: ticker -> most-recent prior alert_date
     already_today: set[str] = set()
     try:
         async with pool.acquire() as conn:
@@ -868,6 +889,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             already_today = {r["ticker"] for r in rows_today}
     except Exception as e:
         logger.warning(f"Failed to fetch EP cooldown data: {e}")
+
+    # #170 shadow: prior-alert dates for the re-setup classifier. SEPARATE query,
+    # independently fail-open, so it can NEVER affect the cooldown suppression
+    # above (on any failure the dict stays empty -> the shadow simply no-ops).
+    try:
+        async with pool.acquire() as conn:
+            _date_rows = await conn.fetch("""
+                SELECT ticker, MAX(alert_date) AS last_alert FROM mi_ep_alerts
+                WHERE ticker = ANY($1) AND alert_date >= $2 AND alert_date < $3
+                GROUP BY ticker
+            """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
+            cooldown_last_alert = {r["ticker"]: r["last_alert"] for r in _date_rows}
+    except Exception as e:
+        logger.warning(f"#170 shadow: failed to fetch cooldown last-alert dates: {e}")
 
     # Score each candidate (rate-limited FMP calls)
     results = []
@@ -998,6 +1033,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         }),
                     )
             if not cooldown_bypass:
+                # #170 SHADOW (telemetry-only, fail-open): if this suppressed
+                # candidate looks like a RE-SETUP (hard gap, weeks since the
+                # prior alert), record it — it is STILL suppressed live; this
+                # only accrues the cohort for the realized-R review. Wrapped so
+                # a shadow failure can never affect the suppression below.
+                try:
+                    _last = cooldown_last_alert.get(ticker)
+                    _dsince = (today - _last).days if _last else None
+                    if _is_cooldown_resetup(c["gap_pct"], _dsince):
+                        await log_audit_event(
+                            "cooldown_resetup_admit_shadow",
+                            f"{ticker}: SHADOW re-setup — gap {c['gap_pct']:.1f}%, "
+                            f"{_dsince}d since prior alert (suppressed by "
+                            f"{EP_COOLDOWN_DAYS}d cooldown; #170)",
+                            json.dumps({
+                                "ticker": ticker, "alert_date": today.isoformat(),
+                                "gap_pct": c["gap_pct"],
+                                "days_since_prior_alert": _dsince,
+                                "prev_close": c.get("prev_close"),
+                            }),
+                        )
+                except Exception as _e:
+                    logger.warning(f"#170 shadow emit failed for {ticker}: {_e}")
                 reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
                 logger.info(f"Skip {ticker}: {reason}")
                 _log_filtered(c, reason)
