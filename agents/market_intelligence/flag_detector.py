@@ -1849,9 +1849,12 @@ async def run_intraday_undercut_rally_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_undercut_rally audit failed (non-critical): {e}")
 
-    # Telegram FYI gated by SHADOW_DETECTOR_TELEGRAM_ENABLED (shared with the other
-    # shadow detectors). DB writes + audit always fire; only the surface is silenced.
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+    # Intraday FYI is OFF by default (operator 2026-05-31): during the shadow phase
+    # U&R surfaces in the QUIET evening-brief roundup (get_undercut_rallies), not as
+    # intraday pings. DB writes + audit always fire regardless. Flip
+    # UNDERCUT_RALLY_INTRADAY_FYI=true to also ping live (e.g. once U&R graduates to a
+    # tradeable, real-time setup where the moment-of-reclaim matters for entry).
+    if os.environ.get("UNDERCUT_RALLY_INTRADAY_FYI", "false").lower() == "true":
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")

@@ -46,8 +46,13 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
 
 ## Tables / surfaces
 - `mi_flag_undercut_rally` — one row per detected U&R (audit: `intraday_undercut_rally`).
-- Telegram FYI digest gated by `SHADOW_DETECTOR_TELEGRAM_ENABLED` (shared with the
-  other shadow detectors). `/undercutrally` (`/ur`) command — today + 7d + per-ticker 30d.
+- **Evening-brief roundup (primary surface, operator 2026-05-31):** a quiet daily
+  block in `send_evening_briefing` (via `get_undercut_rallies`) listing today's
+  structurally-surviving U&Rs — chosen over intraday pings for the shadow phase.
+- **Intraday Telegram FYI is OFF by default**, gated by `UNDERCUT_RALLY_INTRADAY_FYI`
+  (default false — NOT the shared `SHADOW_DETECTOR_TELEGRAM_ENABLED`). Flip on when
+  U&R graduates to a tradeable real-time setup (the reclaim moment then matters for
+  entry). `/undercutrally` (`/ur`) — today + 7d + per-ticker 30d, always on demand.
 - EOD reconciliation in `reconcile_flag_state_post_eod` flips `parent_invalidated_eod`
   if the parent ticker classified INVALIDATED at the 5:25 PM scan (audit:
   `flag_undercut_rally_reconciled`). Backward-check filters `parent_invalidated_eod = FALSE`.
@@ -61,6 +66,10 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
 - Arbitrary swing-low universe (beyond `mi_flag_candidates`) — needs a swing-low detector.
 
 ## Change log
+- **2026-05-31 (same day, post-ship)** — surfacing set to **evening-brief roundup +
+  on-demand `/undercutrally`**; intraday Telegram FYI gated OFF by default
+  (`UNDERCUT_RALLY_INTRADAY_FYI`, NOT the shared shadow env), per operator (quiet
+  shadow phase; flip on at graduation). `get_undercut_rallies` getter + brief block.
 - **2026-05-31** — V1 shipped (shadow). Table + predicate + 5-min scan + EOD
   reconcile + `/undercutrally` + 12/12 predicate tests. Thresholds seeded
   (2%/8%/0%); tune on `undercut_rally_signal_n10`. Built per operator directive

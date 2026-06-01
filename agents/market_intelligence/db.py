@@ -5003,6 +5003,26 @@ async def seed_theme(name: str, thesis: str, tickers: list[str], today: "date") 
         """, today, name, thesis, tickers_upper)
 
 
+async def get_undercut_rallies(d: "str | date") -> list[dict[str, Any]]:
+    """Today's U&R (Undercut & Rally) detections (#98) for the evening-brief roundup.
+
+    Reads the mi_flag_undercut_rally detector table for ur_date = d (ET date),
+    excluding EOD-invalidated rows (parent_invalidated_eod=TRUE). Shadow telemetry —
+    surfaced as a quiet daily digest, NOT intraday pings.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, parent_stage, base_low, undercut_low, undercut_pct,
+                   current_price, reclaim_pct_above_base, in_sugar_baby_cohort
+            FROM mi_flag_undercut_rally
+            WHERE ur_date = $1
+              AND parent_invalidated_eod = FALSE
+            ORDER BY ur_time
+        """, _to_date(d))
+        return [dict(r) for r in rows]
+
+
 async def get_ma_pullbacks(
     d: "str | date",
     tickers: list[str] | None = None,

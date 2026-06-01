@@ -986,6 +986,7 @@ def _format_evening_briefing(
     fishhook_median_r_60d: float | None = None,
     fishhook_hit_rate_60d: float | None = None,
     cohort_babies: list[dict] | None = None,
+    undercut_rallies: list[dict] | None = None,
 ) -> str:
     next_num = 4
 
@@ -1141,6 +1142,27 @@ def _format_evening_briefing(
         sections.append(" · ".join(parts))
         sections.append("")
 
+    # U&R (Undercut & Rally, #98 shadow telemetry): today's structurally-surviving
+    # detections, quiet daily roundup (intraday FYI is off by default — see the
+    # flag_detector UNDERCUT_RALLY_INTRADAY_FYI gate).
+    if undercut_rallies:
+        ur_lines = [f"🪤 *U&R — Undercut & Rally ({len(undercut_rallies)} today)*"]
+        for u in undercut_rallies[:10]:
+            cohort = "🍬 " if u.get("in_sugar_baby_cohort") else ""
+            ur_lines.append(
+                f"  {cohort}`{u['ticker']:<6}` {u['parent_stage']} — "
+                f"undercut ${u['base_low']:.2f}→${u['undercut_low']:.2f} "
+                f"(-{u['undercut_pct']:.1f}%), reclaimed +{u['reclaim_pct_above_base']:.1f}% "
+                f"(stop ${u['undercut_low']:.2f})"
+            )
+        ur_lines.append(
+            f"  _+{len(undercut_rallies) - 10} more — `/undercutrally`_"
+            if len(undercut_rallies) > 10
+            else "  _shadow — `/undercutrally` for history_"
+        )
+        sections.append("\n".join(ur_lines))
+        sections.append("")
+
     sections.append("_Do your review. Pull up charts. Apply your judgment._")
     return "\n".join(sections)
 
@@ -1212,6 +1234,15 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         cohort_babies = await get_sugar_babies_cohort_latest(limit=10)
     except Exception as e:
         logger.warning(f"Sugar babies cohort fetch failed: {e}")
+
+    # U&R (Undercut & Rally, #98) — today's detections for the quiet roundup
+    # (separate fetch like sugar_babies to avoid disrupting the positional gather)
+    undercut_rallies: list[dict] = []
+    try:
+        from agents.market_intelligence.db import get_undercut_rallies
+        undercut_rallies = await get_undercut_rallies(today_str)
+    except Exception as e:
+        logger.warning(f"U&R fetch failed: {e}")
 
     # 9M anticipation-only alerts — surface silent pace-projected alerts so nothing goes unseen
     ninem_anticipations: list[dict] = []
@@ -1298,6 +1329,7 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         fishhook_median_r_60d=fishhook_median_r_60d,
         fishhook_hit_rate_60d=fishhook_hit_rate_60d,
         cohort_babies=cohort_babies,
+        undercut_rallies=undercut_rallies,
     )
 
     success = await send_telegram_message(text, chat_id)
