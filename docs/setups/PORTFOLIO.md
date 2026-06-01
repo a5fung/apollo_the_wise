@@ -28,7 +28,7 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 |---|---|---|---|---|
 | **MAGNA53 EP** (gap + catalyst-enum + conviction floor) | `mi_ep_alerts` | **paper** (auto 1m-ORB) | → live (6/22 gate) | **P1** — the live-$ candidate. *But* theme/narrative-blind (North Star defect) → admits beta gappers. Naming is wrong (it's a gap-momentum scorer, not "EP"). |
 | **9M EP** (Pradeep volume anomaly) | `mi_9m_ep_alerts` (intraday) → `mi_9m_day2_candidates` (EOD sugar baby) | **paper** (auto Day-2 ORB, prior-low stop) | **re-architect (#65)** | **P2/P3** — *selection is good; the hardcoded Day-2 ORB entry is the problem.* |
-| **Persistent 9M-volume cohort** | `mi_sugar_babies_cohort` (41) | **inform-only** (observational) | stays a watch-universe | P2 — *this is the cohort you want to trade, via the entry layer — no entry wired yet.* |
+| **Persistent 9M-volume cohort** | `mi_sugar_babies_cohort` (41) | **inform-only** (observational) | stays a watch-universe | P2 — the watch-universe. **ALREADY wired into the flag universe (P7.3b, shadow):** every 9M EP enters `mi_flag_candidates` tagged `ninem_universe_watch` (today: 18 WATCH / 7 TIGHTENING). The entry-techniques that would trade them are shadow (graduate 7/15). |
 | **Theme engine** (RS + sector clustering) | `mi_themes` (+ shadow `mi_theme_candidates_shadow`) | live (feeds EP +10) + **shadow** (nascent discovery, ADR 0007) | advisory → **gating** (Phase 6, ~Q4) | **P1-adjacent** — North Star; theme = Pradeep's #1 catalyst. |
 | **Parabolic short** (TI1) | (shadow telemetry) | **shadow** | → paper on its own evidence | P-low (short-side; separate track) |
 
@@ -86,7 +86,7 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 ```
 
 **Worked examples (yours):**
-- **9M EP → watch-cohort → consolidation (low RMV) → flag-breakout entry.** Today we instead force the Day-2 ORB. *The fix is to route 9M into the entry layer, not hardcode one entry.* (#65)
+- **9M EP → watch-cohort → consolidation (low RMV) → flag-breakout entry.** This path is **ALREADY wired (P7.3b, shadow)** — 9M EPs enter the flag universe and some progress to TIGHTENING. The mechanical **Day-2 ORB is a LEGACY/BRIDGE** entry running in *parallel* (paper). #65 = *which mechanism trades the cohort, and when* (the entry-techniques graduate 7/15) — NOT a missing wire.
 - **Fishhook = delayed EP entry** — for EPs that failed day 1; the entry comes on a later-day pullback/reclaim. Tied to the EP setup, not standalone.
 - **MAGNA53 EP** currently = selection **and** entry (1m ORB) fused. Same conflation as 9M.
 
@@ -94,8 +94,12 @@ The single most useful reframe (your own framing, made explicit): a setup is one
 
 ## Open decisions for the session (the redline agenda)
 
-1. **#65 — how to trade 9M (URGENT, first):** keep mechanical Day-2 ORB, or route the persistent cohort into the entry layer (consolidation → low-RMV → flag/U&R/support-test)? Pause `9m_day2` paper meanwhile? **(My lean: re-architect toward the entry layer; the cohort is the watch-universe.)**
-2. **The cohort has no wired entry.** The 41-name `mi_sugar_babies_cohort` is observational; nothing connects it to the entry-technique detectors. That wiring is the concrete missing piece.
+1. **#65 — how to trade 9M (analyzed 2026-05-31, advisor-reviewed):** methodology direction is **SETTLED** (9M = watch-universe; entry = tightness→expansion / flag class) and **already wired in shadow** (P7.3b). The mechanical **Day-2 ORB is a legacy/bridge** running in parallel (paper): N=4 clean-closed = **−$1,541, 75% loss**, and it mechanically enters clinical biotechs (ROIV/PURR) the EP revenue-stage gate would block. *Which mechanism trades the cohort* is a **layer-2 evidence-gated call — NOT a tenet call** — so it does **not** justify demoting on N=4. Operational 3-way (operator's call, not pre-committed):
+   - **(a)** leave Day-2 ORB running to the #65 gate (N≥10, earliest 7/15);
+   - **(b)** add the **revenue-stage gate now** (mirror MAGNA53 `is_revenue_stage`; kills the ROIV/PURR class, lets the rest accrue) — *recommended if we ship anything today*;
+   - **(c)** demote `9m_day2`→shadow now — **but this FREEZES the cohort at N=4 forever** (shadow = no fills → #65 never gets its evidence). Highest-cost; do only if we're certain we'll never trade the mechanical path.
+   Caveat: at ~4 closed / 2 months, **N≥10 likely isn't reached by 7/15** → the decision may be made on methodology + qualitative cohort review at whatever N exists. Another reason (b) > (c): the gate keeps the slow accrual alive while de-risking it.
+2. **The 9M→entry wiring already EXISTS** (P7.3b `ninem_universe_watch`, shadow) — *corrects this strawman's earlier "no wired entry" premise.* The real gap is (i) entry-techniques are shadow (graduate 7/15) and (ii) the legacy Day-2 ORB trades in parallel. It's a **graduation + legacy-retirement sequence**, not a missing wire.
 3. **Priority of the flag/consolidation class (your stated #2 after MAGNA53)** — should it get a paper strategy once an entry technique graduates (N≥10, 7/15)?
 4. **Graduate-or-not calls:** which Layer-2 detectors are *meant* to reach live (flag class?) vs stay data-only forever (5m-ORB as just a selectivity study?).
 5. **Naming:** rename "MAGNA53 EP" to reflect it's a gap-momentum scorer, not the EP setup? (separate, non-urgent)
