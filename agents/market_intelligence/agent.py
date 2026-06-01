@@ -2312,6 +2312,110 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_undercut_rally_query(self, request: AgentRequest) -> AgentResponse:
+        """`/undercutrally` (`/ur`) — intraday U&R detector surface (#98, Morales/OWL).
+
+        Modes:
+          /undercutrally           — today's U&Rs + last 7-day summary
+          /undercutrally TICKER    — 30-day history for one ticker
+
+        Shadow phase: telemetry-only, no entries. Undercut-and-rally entry mechanic
+        per memory/user_tight_range_entry_techniques.md Entry #5. Stop = undercut low.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"UNDERCUTRALLY", "UR"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        from agents.market_intelligence.collector import _ET
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                rows = await conn.fetch("""
+                    SELECT ur_date, ur_time, minutes_since_open,
+                           parent_stage, base_low, undercut_low, undercut_pct,
+                           current_price, reclaim_pct_above_base,
+                           in_sugar_baby_cohort, parent_invalidated_eod
+                    FROM mi_flag_undercut_rally
+                    WHERE ticker = $1
+                      AND ur_date >= CURRENT_DATE - INTERVAL '30 days'
+                    ORDER BY ur_date DESC, ur_time DESC
+                """, ticker)
+                if not rows:
+                    return self._ok(
+                        request,
+                        result=f"_No intraday U&Rs for `{ticker}` in last 30d._"
+                    )
+                lines = [f"🪤 *{ticker} — Intraday U&R history (30d)*", ""]
+                for r in rows:
+                    et_clock = r["ur_time"].astimezone(_ET).strftime("%H:%M")
+                    inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                    cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
+                    lines.append(
+                        f"  {r['ur_date']} {et_clock}{cohort} — "
+                        f"{r['parent_stage']} undercut ${r['base_low']:.2f}→${r['undercut_low']:.2f} "
+                        f"(-{r['undercut_pct']:.2f}%), reclaimed +{r['reclaim_pct_above_base']:.2f}%{inval}"
+                    )
+                return self._ok(request, result="\n".join(lines))
+
+            today_rows = await conn.fetch("""
+                SELECT ticker, ur_time, parent_stage, base_low, undercut_low,
+                       undercut_pct, current_price, reclaim_pct_above_base,
+                       in_sugar_baby_cohort, parent_invalidated_eod
+                FROM mi_flag_undercut_rally
+                WHERE ur_date = CURRENT_DATE
+                ORDER BY ur_time
+            """)
+            recent_summary = await conn.fetch("""
+                SELECT ur_date,
+                       COUNT(*) AS n_urs,
+                       COUNT(*) FILTER (WHERE in_sugar_baby_cohort) AS n_cohort,
+                       COUNT(*) FILTER (WHERE parent_invalidated_eod) AS n_invalidated
+                FROM mi_flag_undercut_rally
+                WHERE ur_date BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                  AND CURRENT_DATE - INTERVAL '1 day'
+                GROUP BY ur_date
+                ORDER BY ur_date DESC
+            """)
+
+        lines = ["🪤 *Intraday U&R — Undercut & Rally*", ""]
+        if today_rows:
+            lines.append(f"*Today ({len(today_rows)})*:")
+            for r in today_rows:
+                et_clock = r["ur_time"].astimezone(_ET).strftime("%H:%M")
+                cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                lines.append(
+                    f"  {et_clock} {cohort}`{r['ticker']}` — "
+                    f"{r['parent_stage']} undercut ${r['base_low']:.2f}→${r['undercut_low']:.2f} "
+                    f"(-{r['undercut_pct']:.2f}%), reclaimed +{r['reclaim_pct_above_base']:.2f}%{inval}"
+                )
+        else:
+            lines.append("_No U&Rs today (yet)._")
+
+        if recent_summary:
+            lines.append("")
+            lines.append("*Last 7 days (excl. today):*")
+            for r in recent_summary:
+                inval_note = (
+                    f" ({r['n_invalidated']} invalidated_eod)"
+                    if r["n_invalidated"] else ""
+                )
+                cohort_note = (
+                    f" {r['n_cohort']} 🍬"
+                    if r["n_cohort"] else ""
+                )
+                lines.append(
+                    f"  {r['ur_date']}: {r['n_urs']} U&Rs{cohort_note}{inval_note}"
+                )
+
+        lines.append("")
+        lines.append("_Drill-down: `/undercutrally TICKER` for 30-day history per ticker_")
+        lines.append("_Shadow phase — telemetry only, no entries submitted (stop = undercut low)_")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_ma_pullbacks_query(self, request: AgentRequest) -> AgentResponse:
         """`/mapullbacks` — intraday MA-pullback detector surface (#96).
 
@@ -4951,6 +5055,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/flagbreak":      self._handle_flag_breaks_query,
             "/supporttests":   self._handle_support_tests_query,
             "/supporttest":    self._handle_support_tests_query,
+            "/undercutrally":  self._handle_undercut_rally_query,
+            "/ur":             self._handle_undercut_rally_query,
             "/mapullbacks":    self._handle_ma_pullbacks_query,
             "/mapullback":     self._handle_ma_pullbacks_query,
             "/breadth":        self._handle_breadth_query,

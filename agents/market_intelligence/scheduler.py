@@ -69,6 +69,7 @@ JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 JOB_SUPPORT_TEST_SCAN = "support_test_scan"
 JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
+JOB_UNDERCUT_RALLY_SCAN = "undercut_rally_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 JOB_9M_PACE_DIGEST = "9m_pace_digest"
@@ -1755,6 +1756,27 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _undercut_rally_scan_job():
+    """Run every 5 min during market hours. Intraday U&R (Undercut & Rally)
+    detector (#98, entry-technique #5, Morales/OWL, 2026-05-31 ship).
+
+    A shallow stop-run BELOW base_low (deeper than the support-test ≤2% band)
+    that then reclaims back above it. NO volume gate (Morales). Telemetry-only
+    shadow phase; N>=10 settled before paper.
+    """
+    now_et = datetime.now(_ET)
+    if not (_dt_time(9, 35) <= now_et.time() <= _dt_time(15, 55)):
+        return 0
+    try:
+        from agents.market_intelligence.flag_detector import run_intraday_undercut_rally_scan
+        n = await run_intraday_undercut_rally_scan(now_et)
+        return int(n) if n is not None else 0
+    except Exception as e:
+        logger.error(f"intraday_undercut_rally_scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_UNDERCUT_RALLY_SCAN, str(e))
+        return None
+
+
 # Machine reason → human prose map (#143/#148 2026-05-28). Used by the
 # downgrade digest so operator-facing lines read as English instead of
 # `rubric_composite_11.0_below_22_label_weak`.
@@ -3339,6 +3361,21 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_MA_PULLBACK_SCAN,
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
+    # Intraday U&R (Undercut & Rally) scan: every 5 min during market hours
+    # (gate internally 9:35-15:55 ET). Entry-technique #5 per
+    # memory/user_tight_range_entry_techniques.md (Morales/OWL). Depth band is
+    # adjacent to support-test (deeper undercut). Telemetry-only shadow phase.
+    _scheduler.add_job(
+        audit_wrap(_undercut_rally_scan_job, JOB_UNDERCUT_RALLY_SCAN),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_UNDERCUT_RALLY_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
     )

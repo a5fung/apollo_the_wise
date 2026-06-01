@@ -1415,6 +1415,50 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_support_tests_ticker
                 ON mi_flag_support_tests(ticker, test_date DESC);
 
+            -- Intraday U&R (Undercut & Rally) detections (#98, entry-technique #5
+            -- from user_tight_range_entry_techniques.md — Morales/OWL methodology).
+            -- A SHALLOW stop-run BELOW base_low (deeper than the support-test ≤2%
+            -- band, so the two never double-count) that then RECLAIMS back above it.
+            -- Stop / "selling guide" = the undercut low. NO volume gate (Morales:
+            -- "volume is generally not a factor"). Telemetry-only shadow phase;
+            -- N>=10 settled before paper.
+            CREATE TABLE IF NOT EXISTS mi_flag_undercut_rally (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                ur_date DATE NOT NULL,                    -- ET date of the U&R
+                ur_time TIMESTAMPTZ NOT NULL,             -- moment of detection (UTC)
+                minutes_since_open INT NOT NULL,
+                -- Flag-detector state at the moment of detection
+                parent_stage TEXT NOT NULL,               -- TIGHTENING | COILED | TRIGGERED
+                parent_scan_date DATE NOT NULL,
+                base_high FLOAT,                          -- context
+                base_low FLOAT NOT NULL,                  -- the prior low that was undercut
+                base_age INT,
+                -- U&R event data
+                undercut_low FLOAT NOT NULL,              -- day's low = deepest probe = STOP / selling guide
+                undercut_pct FLOAT NOT NULL,              -- (base_low - undercut_low) / base_low * 100; +ve = depth below base_low
+                current_price FLOAT NOT NULL,             -- reclaim price at detection
+                reclaim_pct_above_base FLOAT NOT NULL,    -- (current_price - base_low) / base_low * 100
+                today_volume BIGINT,                      -- context only — NO volume gate
+                adv_20 BIGINT,
+                volume_pct_of_adv FLOAT,
+                -- Cohort context (display only)
+                in_sugar_baby_cohort BOOLEAN DEFAULT FALSE,
+                cohort_count_180d INT,
+                -- Post-EOD reconciliation (same pattern as mi_flag_support_tests):
+                -- reconcile_flag_state_post_eod flips this TRUE if the parent ticker
+                -- classified INVALIDATED at the 5:25 PM scan. Backward-check filters
+                -- via parent_invalidated_eod = FALSE.
+                parent_invalidated_eod BOOLEAN DEFAULT FALSE,
+                invalidated_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, ur_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_undercut_rally_date
+                ON mi_flag_undercut_rally(ur_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_undercut_rally_ticker
+                ON mi_flag_undercut_rally(ticker, ur_date DESC);
+
             -- Intraday MA-pullback detections (#96, entry-technique #3 from
             -- user_tight_range_entry_techniques.md). Classic VCP/Minervini
             -- mechanic: price retraces to SMA10 or SMA20 inside the range and

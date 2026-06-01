@@ -1634,7 +1634,8 @@ class TelegramChannel:
                      # (BotCommand only affects autocomplete; CommandHandler is the actual route).
                      "sugarbabies", "sugarbaby", "timestop", "inplay",
                      "flagbreaks", "flagbreak", "supporttests", "supporttest",
-                     "mapullbacks", "mapullback", "breadth", "watch", "rubric",
+                     "mapullbacks", "mapullback", "undercutrally", "ur",
+                     "breadth", "watch", "rubric",
                      # 2026-05-28 #138 operator-confirm commands
                      "partialnow", "syncnow"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
@@ -1676,6 +1677,7 @@ class TelegramChannel:
             BotCommand("flagbreaks",   "🎯 Intraday flag-breaks (#94 shadow) — today + 7d summary"),
             BotCommand("supporttests", "🛡 Intraday support-tests (#95 shadow) — today + 7d summary"),
             BotCommand("mapullbacks", "📉 Intraday MA-pullbacks (#96 shadow) — today + 7d summary"),
+            BotCommand("undercutrally", "🪤 Intraday U&R undercut-and-rally (#98 shadow) — today + 7d"),
             BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),

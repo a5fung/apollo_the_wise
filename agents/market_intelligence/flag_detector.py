@@ -1369,6 +1369,45 @@ _SUPPORT_TEST_MAX_UNDERCUT_PCT  = 2.0  # day_low no more than 2% BELOW base_low 
 _SUPPORT_TEST_BOUNCE_FLOOR_PCT  = 0.5  # current_price at least 0.5% above day_low
 _SUPPORT_TEST_HOLD_FLOOR_PCT    = 0.5  # current_price at least 0.5% above base_low (currently holding)
 
+# U&R (Undercut & Rally) — #98, entry-technique #5 (Morales / OWL). The depth band
+# is ADJACENT to (deeper than) the support-test ≤2% band above, so the two detectors
+# never fire on the same bar — the DEPTH of the probe is what distinguishes a U&R
+# (a real stop-run that reclaims) from a support-test (a shallow touch that holds).
+_UR_MIN_UNDERCUT_PCT  = 2.0   # must undercut base_low by MORE than this (else it's a support-test)
+_UR_MAX_UNDERCUT_PCT  = 8.0   # ...but no deeper than this — beyond is a breakdown, not a shakeout
+_UR_RECLAIM_FLOOR_PCT = 0.0   # current price back at/above base_low (reclaimed the undercut level)
+
+
+def is_undercut_rally(
+    base_low: float,
+    undercut_low: float,
+    current_price: float,
+    *,
+    min_undercut_pct: float = _UR_MIN_UNDERCUT_PCT,
+    max_undercut_pct: float = _UR_MAX_UNDERCUT_PCT,
+    reclaim_floor_pct: float = _UR_RECLAIM_FLOOR_PCT,
+) -> bool:
+    """U&R (Undercut & Rally) — Morales/OWL, entry-technique #5. Pure predicate.
+
+    A SHALLOW stop-run BELOW a prior low (`base_low`) that then RECLAIMS back above
+    it. The undercut depth band is adjacent to — and deeper than — the support-test
+    detector's ≤2% touch, so the two never double-count the same bar:
+      - undercut depth in (min_undercut_pct, max_undercut_pct]  → a real probe, not a
+        shallow tag (support-test territory) and not a breakdown
+      - current_price reclaimed at/above base_low × (1 + reclaim_floor_pct/100)
+
+    `undercut_low` is the day's low (the deepest point of the shakeout) and doubles as
+    the STOP / Morales "selling guide". NO volume input — per Morales, "volume is
+    generally not a factor". Returns True iff the shape matches.
+    """
+    if base_low <= 0 or undercut_low <= 0 or current_price <= 0:
+        return False
+    undercut_pct = (base_low - undercut_low) / base_low * 100.0  # +ve = below base_low
+    if not (min_undercut_pct < undercut_pct <= max_undercut_pct):
+        return False
+    reclaim_target = base_low * (1.0 + reclaim_floor_pct / 100.0)
+    return current_price >= reclaim_target
+
 
 async def run_intraday_support_test_scan(scan_time):
     """Intraday support-test detection on TIGHTENING/COILED/TRIGGERED tickers.
@@ -1629,6 +1668,215 @@ async def run_intraday_support_test_scan(scan_time):
 
     logger.info(f"intraday_support_test_scan: {len(new_tests)} new tests detected")
     return len(new_tests)
+
+
+async def run_intraday_undercut_rally_scan(scan_time):
+    """Intraday U&R (Undercut & Rally) detection on TIGHTENING/COILED/TRIGGERED tickers.
+
+    Sibling of run_intraday_support_test_scan (same Morales/OWL no-volume lineage).
+    For each flag candidate, fires when the day's low UNDERCUT base_low by more than
+    the support-test band (2%) but not so deep it's a breakdown (≤ _UR_MAX_UNDERCUT_PCT),
+    AND price has RECLAIMED back above base_low. The undercut low is the stop / selling
+    guide. NO volume gate (per Morales). One row per ticker/day (UNIQUE ticker+ur_date).
+
+    Gates (stateless within-snapshot — `is_undercut_rally` predicate):
+      1. (base_low - day_low) / base_low ∈ (_UR_MIN_UNDERCUT_PCT, _UR_MAX_UNDERCUT_PCT]
+      2. current_price ≥ base_low × (1 + _UR_RECLAIM_FLOOR_PCT/100)   — reclaimed
+
+    Args:
+        scan_time: datetime in ET timezone
+
+    Returns:
+        int: count of new U&Rs inserted this scan
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    if not (_dt_time(9, 35) <= scan_time.time() <= _dt_time(15, 55)):
+        return 0
+
+    minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
+    if minutes_since_open <= 0:
+        return 0
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        # Same universe + idempotency shape as the support-test scan (#145).
+        candidates = await conn.fetch("""
+            WITH latest AS (
+                SELECT MAX(scan_date) AS d FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            )
+            SELECT DISTINCT ON (c.ticker)
+                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age
+            FROM mi_flag_candidates c
+            LEFT JOIN mi_daily_closes dc
+                   ON dc.ticker = c.ticker
+                  AND dc.trade_date = c.scan_date
+            WHERE c.scan_date = (SELECT d FROM latest)
+              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND c.base_low IS NOT NULL
+              AND c.base_low > 0
+              AND (c.base_high IS NULL OR dc.close IS NULL OR dc.close <= c.base_high)
+            ORDER BY c.ticker, c.scan_date DESC
+        """)
+        if not candidates:
+            return 0
+
+        watchlist = {r["ticker"]: dict(r) for r in candidates}
+
+        cohort_rows = await conn.fetch("""
+            SELECT ticker, count_9m_alerts_180d
+            FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
+        """)
+        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+
+        adv_rows = await conn.fetch("""
+            SELECT ticker,
+                   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days'
+                  AND volume > 0
+            ) sub
+            WHERE rn <= 20
+            GROUP BY ticker
+        """, list(watchlist.keys()))
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        already = await conn.fetch("""
+            SELECT ticker FROM mi_flag_undercut_rally WHERE ur_date = CURRENT_DATE
+        """)
+        already_set = {r["ticker"] for r in already}
+
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning("intraday_undercut_rally_scan: empty snapshot fetch; skipping")
+        return 0
+
+    new_urs: list[dict] = []
+    for ticker, cand in watchlist.items():
+        if ticker in already_set:
+            continue
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+
+        day = snap.get("day") or {}
+        day_low = day.get("l")
+        current_price = (
+            day.get("c")
+            or snap.get("min", {}).get("c")
+            or snap.get("lastTrade", {}).get("p")
+            or 0
+        )
+        if not day_low or day_low <= 0 or current_price <= 0:
+            continue
+
+        base_low = float(cand["base_low"])
+
+        # The day's low is the undercut probe (per advisor 2026-05-31 same-day trigger).
+        # Predicate enforces the depth band + reclaim; one row per ticker/day handles
+        # the cumulative-state staleness (we record the U&R once, when first detected).
+        if not is_undercut_rally(base_low, float(day_low), float(current_price)):
+            continue
+
+        undercut_pct = (base_low - day_low) / base_low * 100.0
+        reclaim_pct = (current_price - base_low) / base_low * 100.0
+        today_volume = int(day.get("v") or 0)
+        adv_20 = adv_map.get(ticker, 0)
+        volume_pct = (today_volume / adv_20 * 100.0) if adv_20 > 0 else None
+
+        new_urs.append({
+            "ticker": ticker,
+            "minutes_since_open": minutes_since_open,
+            "parent_stage": cand["stage"],
+            "parent_scan_date": cand["scan_date"],
+            "base_high": float(cand["base_high"]) if cand["base_high"] else None,
+            "base_low": base_low,
+            "base_age": cand["base_age"],
+            "undercut_low": float(day_low),
+            "undercut_pct": undercut_pct,
+            "current_price": float(current_price),
+            "reclaim_pct_above_base": reclaim_pct,
+            "today_volume": today_volume or None,
+            "adv_20": adv_20 or None,
+            "volume_pct_of_adv": volume_pct,
+            "in_sugar_baby_cohort": ticker in cohort_map,
+            "cohort_count_180d": cohort_map.get(ticker),
+        })
+
+    if not new_urs:
+        return 0
+
+    async with pool.acquire() as conn:
+        for u in new_urs:
+            await conn.execute("""
+                INSERT INTO mi_flag_undercut_rally (
+                    ticker, ur_date, ur_time, minutes_since_open,
+                    parent_stage, parent_scan_date, base_high, base_low, base_age,
+                    undercut_low, undercut_pct, current_price, reclaim_pct_above_base,
+                    today_volume, adv_20, volume_pct_of_adv,
+                    in_sugar_baby_cohort, cohort_count_180d
+                ) VALUES (
+                    $1, CURRENT_DATE, NOW(), $2,
+                    $3, $4, $5, $6, $7,
+                    $8, $9, $10, $11,
+                    $12, $13, $14,
+                    $15, $16
+                )
+                ON CONFLICT (ticker, ur_date) DO NOTHING
+            """,
+                u["ticker"], u["minutes_since_open"],
+                u["parent_stage"], u["parent_scan_date"],
+                u["base_high"], u["base_low"], u["base_age"],
+                u["undercut_low"], u["undercut_pct"],
+                u["current_price"], u["reclaim_pct_above_base"],
+                u["today_volume"], u["adv_20"], u["volume_pct_of_adv"],
+                u["in_sugar_baby_cohort"], u["cohort_count_180d"],
+            )
+            try:
+                await db.log_audit_event(
+                    "intraday_undercut_rally",
+                    f"{u['ticker']} stage={u['parent_stage']} "
+                    f"undercut=-{u['undercut_pct']:.2f}% reclaim=+{u['reclaim_pct_above_base']:.2f}% "
+                    f"stop=${u['undercut_low']:.2f}"
+                )
+            except Exception as e:
+                logger.debug(f"intraday_undercut_rally audit failed (non-critical): {e}")
+
+    # Telegram FYI gated by SHADOW_DETECTOR_TELEGRAM_ENABLED (shared with the other
+    # shadow detectors). DB writes + audit always fire; only the surface is silenced.
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            clock = scan_time.strftime("%H:%M")
+            lines = [
+                f"🪤 *Intraday U&R — Undercut & Rally ({len(new_urs)} new)*",
+                f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+                "",
+            ]
+            for u in new_urs:
+                cohort_marker = "🍬 " if u["in_sugar_baby_cohort"] else ""
+                lines.append(
+                    f"• {cohort_marker}`{u['ticker']}` — undercut ${u['base_low']:.2f} "
+                    f"to ${u['undercut_low']:.2f} (-{u['undercut_pct']:.2f}%), "
+                    f"reclaimed +{u['reclaim_pct_above_base']:.2f}% above base "
+                    f"(${u['current_price']:.2f}; stop ${u['undercut_low']:.2f}; "
+                    f"base {u['base_age']}d {u['parent_stage']})"
+                )
+            lines.append("")
+            lines.append("_Drill-down: `/undercutrally` for today's full list + recent history_")
+            await send_telegram_message("\n".join(lines))
+        except Exception as e:
+            logger.error(f"intraday_undercut_rally Telegram failed (non-critical): {e}")
+
+    logger.info(f"intraday_undercut_rally_scan: {len(new_urs)} new U&Rs detected")
+    return len(new_urs)
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -2247,9 +2495,22 @@ async def reconcile_flag_state_post_eod(scan_date):
                       AND stage = 'INVALIDATED'
                )
         """, scan_date)
+        urs_result = await conn.execute("""
+            UPDATE mi_flag_undercut_rally
+               SET parent_invalidated_eod = TRUE,
+                   invalidated_at = NOW()
+             WHERE ur_date = $1
+               AND parent_invalidated_eod = FALSE
+               AND ticker IN (
+                   SELECT ticker FROM mi_flag_candidates
+                    WHERE scan_date = $1
+                      AND stage = 'INVALIDATED'
+               )
+        """, scan_date)
     breaks_count = int(breaks_result.split()[-1]) if breaks_result else 0
     tests_count = int(tests_result.split()[-1]) if tests_result else 0
     pullbacks_count = int(pullbacks_result.split()[-1]) if pullbacks_result else 0
+    urs_count = int(urs_result.split()[-1]) if urs_result else 0
     if breaks_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {breaks_count} break rows")
         try:
@@ -2277,4 +2538,13 @@ async def reconcile_flag_state_post_eod(scan_date):
             )
         except Exception:
             pass
-    return (breaks_count, tests_count, pullbacks_count)
+    if urs_count:
+        logger.info(f"reconcile_flag_state_post_eod: invalidated {urs_count} undercut-rally rows")
+        try:
+            await db.log_audit_event(
+                "flag_undercut_rally_reconciled",
+                f"{urs_count} intraday U&Rs marked parent_invalidated_eod=TRUE for {scan_date}",
+            )
+        except Exception:
+            pass
+    return (breaks_count, tests_count, pullbacks_count, urs_count)

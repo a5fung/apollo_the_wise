@@ -5062,6 +5062,64 @@ reviews:
     status: pending
     added_on: 2026-05-24
 
+  - review_id: intraday_undercut_rally_signal_n10
+    title: "Intraday U&R (Undercut & Rally) detector — N≥10 graduation review (#98)"
+    question: |
+      #98 shipped 2026-05-31 — entry-technique #5 from
+      memory/user_tight_range_entry_techniques.md (Wyckoff Spring /
+      Livermore Shakeout-Plus-Three / Morales OWL). Detects intraday
+      same-day undercut of base_low by (2%, 8%] — DEEPER than the
+      support-test ≤2% band, so the two never double-count — followed
+      by a reclaim back above base_low.
+
+      Critical design point: NO volume gate (Morales: "volume is
+      generally not a factor"). Stop = the undercut low ("selling
+      guide"). DEPTH is what distinguishes U&R from support-test (#95).
+
+      Telemetry-only shadow phase. Forward-return analysis at N≥10
+      settled, structurally-surviving cases (parent_invalidated_eod
+      = FALSE).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_flag_undercut_rally u
+      LEFT JOIN mi_daily_closes d0
+          ON d0.ticker = u.ticker AND d0.trade_date = u.ur_date
+      LEFT JOIN LATERAL (
+          SELECT close FROM mi_daily_closes
+          WHERE ticker = u.ticker AND trade_date > u.ur_date
+          ORDER BY trade_date ASC OFFSET 9 LIMIT 1
+      ) d10 ON TRUE
+      WHERE u.ur_date <= CURRENT_DATE - INTERVAL '12 days'
+        AND u.parent_invalidated_eod = FALSE
+        AND d0.close > 0
+        AND d10.close IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      Pull cohort. Compute 5d/10d forward returns from current_price
+      (the reclaim-detection price). Risk is measured against the
+      undercut_low stop (the U&R's defining tight invalidation).
+
+      Decision gate:
+      1. N≥10 + median 5d return ≥ +2% + WR≥+5% ≥ 40%: PROMOTE
+         - Stop placement: just below the undercut low (Morales selling guide)
+         - Design operator-confirm entry: /undercutrally ENTER TICKER
+      2. N≥10 + signal weak: revise — tune the depth band (2%/8%),
+         require a reclaim buffer (>0%), or add a recent-undercut recency
+         window (v1 uses the cumulative day low).
+      3. N<10: bump earliest_review_date +30d.
+
+      DO NOT graduate without minute-bar entry simulation (v1 uses the
+      day low as the undercut proxy + current_price as the reclaim;
+      actual fill at the reclaim moment may differ).
+
+      Cross-references:
+      - memory/user_tight_range_entry_techniques.md Entry #5
+      - docs/setups/undercut_rally.md (this detector's SSoT)
+      - #94 (breakout), #95 (support-test), #96 (MA-pullback), #97 (low-vol rest)
+      - ADR 0004 §4 source_detector enum (undercut_rally slot when Phase 2 ships)
+    status: pending
+    added_on: 2026-05-31
+
   - review_id: intraday_support_test_signal_n10
     title: "Intraday support-test detector — N≥10 graduation review (#95)"
     question: |
