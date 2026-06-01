@@ -4608,6 +4608,28 @@ reviews:
         (C) accept current 9M Day 2 mechanical as a SEPARATE strategy (not
             Pradeep methodology) and rename/reframe honestly
 
+      PRELIMINARY PHASE-1 READ (2026-05-31, read-only daily-bar backfill —
+      directional ONLY, NOT the decision): split last-120d sugar babies by
+      whether the ticker was COILED/TIGHTENING in the flag detector (±3d).
+        - flag-confirmed: 4 triggered, +0.72 avg-R at Day-2 close, 4/4 positive
+        - no-flag:       60 triggered, +0.07 avg-R, 50%
+      Flag-confirmation looks like the discriminator (consistent with the
+      methodology thesis). CAVEATS: N=4 on the decisive cell (noise-dominated);
+      daily-bar CLOSE proxy (no trailing stop / intraday stop-vs-high sequencing,
+      soft per #94 rule); simulated across ALL sugar babies incl. gate-skipped
+      (ungated universe, not the exact traded strategy); ±3d window heuristic.
+      VERDICT: promising -> make it STANDING telemetry + accrue; do NOT act at N=4.
+
+      CORRECTED FRAMING (2026-05-31, advisor + operator): tracking and demoting
+      are INDEPENDENT. Telemetry != paper-trading, so we ADD the dual outcome
+      telemetry (Day-2-ORB + flag-entry-on-9M) NOW with zero phase change, and
+      KEEP 9m_day2 paper running as the hard broker-ground-truth stream (sim-from-
+      bars is the soft proxy we don't over-trust). The demote is a SEPARATE later
+      call once standing telemetry shows whether flag beats ORB at real N — do NOT
+      bundle it. NOTE: the entry-technique tables carry NO 9M-origin label today;
+      "flag entries on 9M EPs" is reconstructable only via join (16 incidental
+      detections found) — first-class labeling + outcome accrual is the build.
+
       Cross-references:
         - feedback_sample_size_discipline.md (N≥10-30 required)
         - user_pradeep_9m_universe_methodology.md (canonical methodology)
