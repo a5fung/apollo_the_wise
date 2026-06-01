@@ -23,6 +23,7 @@ import logging
 import os
 import time
 from datetime import date, datetime, timedelta
+from decimal import Decimal, ROUND_DOWN
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import (
@@ -431,7 +432,6 @@ def _round_stop_to_tick(price: float) -> float:
     removes the trigger. (place_stop_order / bracket legs already round; this
     was the lone unrounded boundary.)
     """
-    from decimal import Decimal, ROUND_DOWN
     d = Decimal(str(price))
     tick = Decimal("0.01") if d >= Decimal("1") else Decimal("0.0001")
     return float(d.quantize(tick, rounding=ROUND_DOWN))
