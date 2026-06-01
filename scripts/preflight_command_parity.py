@@ -65,6 +65,7 @@ HIDDEN_OK = {
     "flagbreak",
     "supporttest",
     "mapullback",
+    "ur",  # short alias for /undercutrally (#98 U&R); /undercutrally is the menu entry
     "sugarbaby",
     "flag",
     "setup",
