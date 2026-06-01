@@ -5795,6 +5795,39 @@ reviews:
           under-reporting max_h ($203 vs SIP $211). limit_price arg
           fixed in `611ca9e`; Polygon source issue still open.
 
+      - ticker: ZS
+        alert_date: 2026-06-01
+        order_id: 4cbcefee-b7e0-474c-a27d-bed20a0d7fb6
+        trigger_price: 145.50
+        limit_price: 146.23
+        first_cross_et: "09:32:00"
+        max_h_in_window: 151.66
+        signal_type: 9m_day2   # paper — no real money
+        verdict: confirming_case_2_but_AMBIGUOUS_mechanism
+        analysis_2026_06_01: |
+          would_have_filled #2 in 35d (MNDY 5/11 = #1). Mechanism MORE ambiguous
+          than AVAV, not stronger:
+          - ZS crossed $145.50 at 09:32 — INSIDE the blind 09:31-09:45 window
+            (AVAV crossed 09:48, AFTER its confirmed activation). So we CANNOT
+            confirm ZS's order was working at the cross. "pending_new -> new at
+            09:45" is a POLLING ARTIFACT (reconcile runs :00/:15/:30/:45; first
+            poll after a 09:31 order is always 09:45), NOT Alpaca's activation time.
+          - FPS order 9169740f, SAME 6/1 09:45 reconcile batch, went
+            `pending_new -> FILLED` — PROOF the DB pending_new is a stale-WebSocket
+            artifact: Alpaca activates AND fills while our DB is blind. Core defect
+            = an OBSERVABILITY gap during the ORB window; #142 (stuck) + #150
+            (silent trigger) CONVERGE here. Recommend MERGE.
+          - ZS is a tight stop-LIMIT (limit +0.5% over stop): on a fast move to
+            $151.66 a "triggered-but-limit-skipped" non-fill is plausible and
+            distinct from a silent trigger; would_have_filled (max_h>=limit=>fill)
+            is likely over-optimistic here.
+          - WATCHDOG MIS-CAL: ZS stuck ~14 min, JUST under the #142 stuck-pending_new
+            watchdog's 15-min threshold. For an ORB entry needing liveness in ~2 min
+            a 15-min detector is decorative — recalibrate for the ORB window.
+          - TOOLING GAP: read-only Alpaca get_order is NOT reachable via docker-exec
+            (creds bootstrapped in-process; #139 guard fired). Build the order-event
+            forensic IN-AGENT (Alpaca activities API); do NOT bypass the boot path.
+
     # Historical clean_miss cohort cross-check (2026-05-28 investigation,
     # before threshold=3 ripens). Of 6 prior clean_miss cases in 30d:
     historical_cross_check:
