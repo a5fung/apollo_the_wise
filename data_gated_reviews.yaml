@@ -4457,6 +4457,34 @@ reviews:
           wrongly suppressed as a re-fire; caught by the 9M intraday track at
           1:45 PM instead. Also a flag-breakout — cross-ref #94/#95/#98 +
           Stocks-in-Play (re-based structure + fresh catalyst + EP gap in one).
+    backward_check_2026_06_01: |
+      Read-only backward-check (mi_ep_scan_log, ~6wk since 4/20). DIRECTIONAL,
+      not ship-ready (see caveats).
+      COHORT: 55 cooldown-suppressed ticker-days; 22 at gap>=15%, 9 at >=20%
+      (~3-4 significant/wk — not rare).
+      DISCRIMINATOR = days-since-prior-alert, and it is SHARP:
+        - days_since <=7 (~10: FLNC 5/08, CRSR 5/28, VCX, RDW, MRAM, TE, PCT):
+          day-after continuation of the SAME EP, still extended -> suppress CORRECT.
+        - days_since >=10 (~12, several 25-59d: HIMX 56d +31%, YSS 59d, FLNC 25d
+          +36%, CMPS 28d +28%, APLD 28d, HLIT 14d, ELPW 53d): fresh weeks-later
+          gap -> re-setup -> suppress WRONG.
+      FORWARD EXCURSION (max high over next ~7td, suppressed re-setups w/ data):
+      YSS +40%, HIMX +36% & +22%, ELPW +42%, CMPS +18%, HLIT +16% — 6 of 10 ran
+      >=+16% after suppression = lost-alpha signal. (INBX/MICC fizzled.)
+      IMPLICATION: 60-day cooldown is ~6-8x longer than the ~7-10d that actually
+      separates extended-continuation (suppress) from re-setup (admit). Candidate
+      fix: shorten cooldown to ~10d, OR a re-based/not-extended + fresh-catalyst
+      override beyond ~10d.
+      CAVEATS — do NOT ship on this alone:
+        (1) fwd_max is BEST-CASE excursion, not realized R (ORB entry+stop gets
+            only part; ELPW +42% high but -87% low = $6 lottery ticket, not a win).
+        (2) NO alerted-cohort baseline yet -> some upside is bull-tape beta; run
+            the same fwd_max on the ALERTED cohort to net it out
+            (feedback_validate_metric_before_decision).
+        (3) small N + mixed quality (small-caps inflate).
+      #167 TODO: alerted-cohort baseline; realized-R model; re-based/extension
+      classifier (confirm pullback vs still-extended); THEN CHANGE_PROCESS ship
+      decision on cooldown length / override.
     cross_refs: [theme_axis_gating_logic, "task #170", "task #171 (/setup+/why observability)"]
     status: pending
     added_on: 2026-06-01
