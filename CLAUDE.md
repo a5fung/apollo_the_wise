@@ -1,9 +1,22 @@
 # Apollo the Wise — Claude Context
 
-## Session Sync Protocol
-At the start of every session: `git pull origin main`
-Read "Changes Made — Recent" sections to understand prior sessions.
-Older session details live in git history; see compressed log below for a roadmap.
+## Session Protocol (open + close — the anti-drift ritual)
+
+**SoT for active work = the #-task tracker.** The calendar (dated/timed plan), `BACKLOG.md` (human cross-view), and `data_gated_reviews.yaml` (evidence-gated lane) all REFERENCE #IDs — they never own task state. On conflict, the #-tracker wins; reconcile the others to it. (Why: with ~7 logging surfaces and no single owner, planned work slips between them — 2026-06-01 the calendar's drawdown-breaker flip + theme-shadow verify slipped silently because nothing reconciled them.)
+
+**OPEN** (first actions, every session):
+1. `git pull origin main`.
+2. Pull TODAY's calendar (operator is on **PDT** — memory `feedback-operator-timezone-pdt`; harness/git timestamps are UTC) + the `next-session-pickup` memory + read "Changes Made — Recent".
+3. STATE the day's plan (timed/planned items + ready #-tasks) before reacting to the first message.
+
+**CLOSE** (when the operator wraps, or before ending):
+1. Reconcile done-vs-planned against the calendar + the day's #-tasks.
+2. Roll EVERY undone planned item forward — reschedule on the calendar AND/OR add to `next-session-pickup`. Name any unplanned work that displaced the plan, so nothing slips silently.
+3. If code changed: `git add <files>` → commit → `git push origin main`.
+
+**"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. Silent-failure class this catches: gdrive backup (5/24–31), #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.
+
+Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
 ## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
 
