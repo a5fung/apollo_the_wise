@@ -16,6 +16,8 @@
 
 **"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. Silent-failure class this catches: gdrive backup (5/24–31), #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.
 
+**On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run the OPEN reconciliation immediately, in any session phase — pull today's calendar (PDT) + `next-session-pickup` + open #-tasks + the roster, reconcile, and report true state (done / in-flight / slipped). One phrase covers every surface; the operator never has to pick "backlog vs task list." (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
+
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
 ## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
