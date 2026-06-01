@@ -1,11 +1,12 @@
 # Apollo Setup Portfolio — Taxonomy, Treatment, Priority & Relationship Map
 
-> **STATUS: STRAWMAN / DRAFT (2026-05-31) — for operator redline, NOT canonical yet.**
-> Built per task #167 / memory `project_setup_portfolio_taxonomy`. Purpose: get every
-> setup onto one page so we can decide *treatment* (trade / data / inform), *graduation*
-> intent, *priority*, and — the part nothing documented before — how setups *feed each
-> other*. Redline freely; we canonize after review. Phases verified vs `mi_strategies`
-> 2026-05-31; everything else is my best read — **? = confirm**.
+> **STATUS: FRAMING AGREED (operator "aligned", 2026-05-31).** The SELECTION ≠ ENTRY ≠
+> QUALIFIER structure, the layer assignments, and the relationship map are endorsed as the
+> portfolio's mental model. **Per-item DECISIONS (the redline agenda) are still OPEN** — and
+> this doc is **NOT** a change-authorizing SSoT: any actual setup change still follows
+> `docs/setups/CHANGE_PROCESS.md` (evidence, advisor, per-setup SSoT). Built per task #167 /
+> memory `project_setup_portfolio_taxonomy`. Phases verified vs `mi_strategies` 2026-05-31;
+> items marked **? = confirm** are still unverified.
 
 ---
 
