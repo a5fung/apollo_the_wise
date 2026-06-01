@@ -352,6 +352,14 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
+### 2026-06-01 (Mon) — partial-exit hardening trio (sub-penny + false-naked + #150) + 16:45 cron RE-ENABLED
+
+RCAT `/partialnow` surfaced a sub-penny stop bug: the stored ORB-low stop `11.955` (3 decimals) hit `replace_order` raw → Alpaca rejected (42210000) → the **atomic** replace failed leaving the old stop LIVE, but the abort handler false-flagged the position naked (the shape `replace_order`'s own comment already documented for the #136 `str(qty)` trigger). Shipped + validated (paper integration ×2, G6 ×2, 21 unit green):
+- **Rounding** (`2215615`): `alpaca_client._round_stop_to_tick()` floors sub-penny stops at the `replace_order` submission boundary — the lone unrounded path (bracket/`place_stop_order`/`update_stop` already rounded).
+- **False-naked** (`2215615`): `execute_partial_exit` except handler verifies `old_stop_id` liveness on the broker before declaring naked; atomic-rejection → old stop intact → calm abort (no manual-stop CTA, which risked a duplicate-stop oversell). Fail-safe to naked on verify error.
+- **#150 sell-retry** (`cd7fa27`): Step-2 `place_market_sell` retries the held_for_orders share-reservation lag, narrowly matching the clean rejection only (no oversell), 3× / 0.5s.
+- **16:45 `_live_position_update_job` RE-ENABLED**: paused 5/29 (#151, advisor Option D); restoration conditions met — verify-stop-live = the (a) substance, G6 (b), breaker on the `force=False` cron path (c). Banked CRSR +$1,394 + RCAT +$1,176 partials clean. **Next watch: first unattended automated partial (~FPS 6/4); breaker is the backstop.** (DB-vs-broker stop-price display drift is a known-benign residual.)
+
 ### 2026-05-29 (Fri) — #151 partial-exit hardening + #150 confirmed + #153 bot watchdog + #154 deploy guard
 
 Push-through session closing the IBM "partial broken 2 days" P0. Detail + Monday sequence in memory `project_151_partial_exit_hardening_wip.md`; all deployed+verified on prod unless noted.
