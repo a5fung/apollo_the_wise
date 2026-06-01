@@ -4475,6 +4475,13 @@ reviews:
       separates extended-continuation (suppress) from re-setup (admit). Candidate
       fix: shorten cooldown to ~10d, OR a re-based/not-extended + fresh-catalyst
       override beyond ~10d.
+      BETA BASELINE (run 2026-06-01 — RESOLVES caveat 2): alerted high-gap
+      (>=15%) cohort, SAME window + SAME fwd_max metric (n=105): median +8.8%,
+      avg +13%, 28% ran >=+15%, 13% >=+25%. Suppressed re-setups (n=10): median
+      ~+17%, 60% >=+15%, 30% >=+25% — ~2x the baseline on median AND hit-rate
+      (holds even ex-ELPW). The edge SURVIVES the bull-tape beta check — it is
+      NOT beta. Core thesis GREEN; #167 now owes only realized-R (ORB+stop) +
+      the exact threshold/extension classifier.
       CAVEATS — do NOT ship on this alone:
         (1) fwd_max is BEST-CASE excursion, not realized R (ORB entry+stop gets
             only part; ELPW +42% high but -87% low = $6 lottery ticket, not a win).
