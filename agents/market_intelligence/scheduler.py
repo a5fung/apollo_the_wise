@@ -399,6 +399,17 @@ async def _nightly_data_pull():
         summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
     except Exception as e:
         logger.warning(f"Theme shadow pass failed (non-fatal, ADR 0007): {e}")
+        # Audit the swallowed failure — a bare logger.warning let #173 die silently for
+        # days (it rotates out on container restart; the DB row persists + is queryable).
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "theme_discovery_shadow_failed",
+                summary="Theme discovery shadow raised (non-fatal)",
+                detail=f"{type(e).__name__}: {e}",
+            )
+        except Exception:
+            pass
 
     # 6. Fundamental flags — fetch for top RS stocks + theme constituents
     try:

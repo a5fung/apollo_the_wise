@@ -343,6 +343,7 @@ async def run_theme_discovery_shadow(today=None) -> dict:
         get_rs_leaders, get_rs_velocity, get_rs_turners,
         get_rs_accelerators, get_rs_recovery_slope,
         get_active_themes, persist_theme_candidates_shadow,
+        log_audit_event,
     )
     today = today or et_today()
     today_str = today if isinstance(today, str) else today.strftime("%Y-%m-%d")
@@ -412,6 +413,16 @@ async def run_theme_discovery_shadow(today=None) -> dict:
         "uncovered_in": len(uncovered),
     }
     logger.info(f"[theme shadow] {summary}")
+    # Audit the outcome so a 0-row run is never silent again (#173 wrote 0 rows for days
+    # with only an INFO log that rotated out on each container restart).
+    try:
+        await log_audit_event(
+            "theme_discovery_shadow_ran",
+            summary=f"Theme discovery shadow: {n} candidate themes written",
+            detail=str(summary),
+        )
+    except Exception:
+        pass
     return summary
 
 
@@ -2662,21 +2673,38 @@ If none of these apply, call report_themes directly — advisor consultation is 
         client = _get_anthropic_client()
         messages: list[dict] = [{"role": "user", "content": prompt}]
         advisor_calls = 0
+        force_report = False   # once True, compel report_themes so the model commits its
+                               # best judgment instead of dithering on the advisor or
+                               # stopping silently — the #173 shadow-death class (a real
+                               # drone/UAS cluster was discovered, deliberated, then lost).
+        loop_guard = 0         # hard ceiling — defense in depth against a runaway loop.
 
         while True:
+            loop_guard += 1
+            if loop_guard > 8:
+                logger.warning("Theme discovery: loop guard tripped (>8 iterations) — returning no themes")
+                return []
             response = await client.messages.create(
                 model=THEME_MODEL,
                 max_tokens=1500,
                 tools=[_THEME_DISCOVERY_TOOL, _ADVISOR_TOOL],
-                tool_choice={"type": "auto"},
+                tool_choice=({"type": "tool", "name": "report_themes"} if force_report else {"type": "auto"}),
                 messages=messages,
             )
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
-            # Model stopped without calling a tool — shouldn't happen but handle gracefully
+            # Model produced no tool call. Don't silently discard the whole discovery
+            # pass (#173: the ADR-0007 shadow wrote 0 rows for days this way) — compel one
+            # final report_themes so the model commits its best judgment first. A forced
+            # report can still return themes=[] when there's genuinely no cluster, so this
+            # recovers lost themes without inventing any.
             if not tool_uses:
-                logger.warning("Theme discovery: model stopped without calling report_themes")
+                if not force_report:
+                    logger.warning("Theme discovery: model stopped without calling report_themes — forcing a final report")
+                    force_report = True
+                    continue
+                logger.warning("Theme discovery: no themes even when report_themes was forced — returning empty")
                 return []
 
             # If report_themes was called, we're done
@@ -2745,6 +2773,10 @@ If none of these apply, call report_themes directly — advisor consultation is 
                         "content": advice,
                     })
             messages.append({"role": "user", "content": tool_results})
+            # Advisor budget spent → compel a commit on the next turn rather than let the
+            # model loop on "limit reached, proceed" and ultimately report nothing (#173).
+            if advisor_calls >= _MAX_ADVISOR_CALLS:
+                force_report = True
 
     except Exception as e:
         # Transient Anthropic failures (5xx, network, timeout) resolve next run —
