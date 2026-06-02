@@ -2966,6 +2966,7 @@ class MarketIntelligenceAgent(BaseAgent):
         import re as _re
         from agents.market_intelligence.db import (
             get_ticker_setup_timeline, get_security_exchange_map, get_pool,
+            get_ep_scan_log_for_ticker,
         )
         from agents.market_intelligence.friday_watchlist import (
             _TV_EXCHANGE_MAP, _TG_SAFE_LIMIT,
@@ -3105,6 +3106,30 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"…{raw_count - cap} more events truncated — "
                 f"narrow with /setup {ticker} 30."
             )
+
+        # EP scan outcomes (#171) — surface WHY a ticker did/didn't alert
+        # (cooldown drops etc.). The detector-hit timeline above can't show this:
+        # a dropped ticker leaves no hit, so "why didn't X alert?" was a dead end.
+        try:
+            scan_rows = await get_ep_scan_log_for_ticker(ticker, limit=6)
+        except Exception as _e:
+            scan_rows = []
+            logger.warning(f"/setup scan-log fetch failed for {ticker}: {_e}")
+        if scan_rows:
+            lines.append("")
+            lines.append("📋 EP scan (recent days evaluated):")
+            for r in scan_rows:
+                sd = r["scan_date"]
+                sds = sd.isoformat() if hasattr(sd, "isoformat") else str(sd)
+                fr = r.get("filter_reason")
+                sc = r.get("ep_score")
+                tier = r.get("score_tier")
+                if fr:
+                    lines.append(f"  {sds} · dropped — {fr}")
+                elif sc is not None:
+                    lines.append(f"  {sds} · scored {int(sc)} {tier or ''}".rstrip())
+                else:
+                    lines.append(f"  {sds} · evaluated")
 
         body_text = "\n".join(lines)
 
@@ -5181,8 +5206,17 @@ class MarketIntelligenceAgent(BaseAgent):
                   AND summary ~* ('\m' || $2 || '\M')
                 ORDER BY created_at ASC
             """, target_date, ticker)
+            # #171 — was it scanned but not alerted (cooldown etc.)? answers
+            # "why didn't X alert?" when there's no mi_ep_alerts row.
+            scan = await conn.fetchrow("""
+                SELECT filter_reason, ep_score, gap_pct, score_tier
+                FROM mi_ep_scan_log
+                WHERE ticker = $1 AND scan_date = $2
+                ORDER BY scan_time_et DESC NULLS LAST, id DESC
+                LIMIT 1
+            """, ticker, target_date)
 
-        if not alert and not trade and not events:
+        if not alert and not trade and not events and not scan:
             return self._ok(
                 request,
                 result=f"🔍 {ticker} — no alert / trade / audit events on {target_date}.",
@@ -5210,7 +5244,17 @@ class MarketIntelligenceAgent(BaseAgent):
                     cat = cat_full
                 lines.append(f"   {cat}")
         else:
-            lines.append("🎯 Detected: no mi_ep_alerts row (not a recognised EP)")
+            if scan and scan.get("filter_reason"):
+                # #171 — it WAS scanned, just not alerted; show why (e.g. cooldown).
+                lines.append(f"🎯 Detected: scanned, NOT alerted — {scan['filter_reason']}")
+                scan_bits = [f"gap {float(scan.get('gap_pct') or 0):+.1f}%"]
+                if scan.get("ep_score") is not None:
+                    scan_bits.append(
+                        f"scan score {int(scan['ep_score'])} {scan.get('score_tier') or ''}".rstrip()
+                    )
+                lines.append("   " + ", ".join(scan_bits))
+            else:
+                lines.append("🎯 Detected: no mi_ep_alerts row (not a recognised EP)")
 
         # 💰 Outcome
         lines.append("")

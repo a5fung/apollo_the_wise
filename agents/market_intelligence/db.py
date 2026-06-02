@@ -4632,6 +4632,30 @@ async def get_ep_scan_log(d: "str | date") -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+async def get_ep_scan_log_for_ticker(ticker: str, limit: int = 6) -> list[dict[str, Any]]:
+    """Recent EP-scan outcomes for ONE ticker — most-recent state per scan_date,
+    newest first. Surfaces WHY a ticker did/didn't alert (filter_reason, incl.
+    cooldown drops) for /setup + /why observability (#171) — the detector-hit
+    timeline can't show this because a dropped ticker leaves no hit."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT scan_date, filter_reason, ep_score, score_tier, gap_pct
+               FROM (
+                   SELECT DISTINCT ON (scan_date)
+                          scan_date, filter_reason, ep_score, score_tier, gap_pct,
+                          scan_time_et, id
+                   FROM mi_ep_scan_log
+                   WHERE ticker = $1
+                   ORDER BY scan_date, scan_time_et DESC NULLS LAST, id DESC
+               ) latest
+               ORDER BY scan_date DESC
+               LIMIT $2""",
+            ticker.upper(), limit,
+        )
+    return [dict(r) for r in rows]
+
+
 async def upsert_minute_volume_curves(records: list[dict]) -> int:
     """Batch-upsert per-minute cumulative-volume baselines.
 
