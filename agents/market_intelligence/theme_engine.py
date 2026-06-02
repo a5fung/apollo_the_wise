@@ -313,7 +313,7 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
-async def run_theme_discovery_shadow(today=None) -> dict:
+async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     """ADR 0007 SHADOW PASS — DRAFT 2026-05-31; VERIFY + TUNE MONDAY on the server.
 
     Runs the NEW nascent-discovery selectors (a/a2) on top of the widened assembly
@@ -395,6 +395,7 @@ async def run_theme_discovery_shadow(today=None) -> dict:
     new_raw = await _discover_new_themes(
         uncovered, existing, stocks_by_ticker,
         velocity_leaders=velocity_leaders, turners=turners,
+        correlation_clusters=clusters, recall_mode=True,
     )
 
     # 6. (b/d) would_revive flags — computed only, NOT applied to live mi_themes
@@ -2489,6 +2490,7 @@ async def _discover_new_themes(
     theme_exclusions: dict[str, set[str]] | None = None,
     correlation_clusters: list[dict] | None = None,
     globally_banned: set[str] | None = None,
+    recall_mode: bool = False,
 ) -> list[dict]:
     """
     Ask Claude to identify new themes from uncovered RS leaders + velocity accelerators + turners.
@@ -2632,6 +2634,20 @@ If the correlation reason is unclear, do NOT force a theme — leave the stocks 
 IMPORTANT: If a cluster forms a valid theme, invent a specific descriptive business name (e.g., 'Optical Networking', 'Uranium Miners'). Do NOT name it 'Cluster A', 'Cluster B', or any placeholder — those labels are internal identifiers only.
 """
 
+    # Disposition rules — PRECISION for the live engine (default), RECALL for the ADR-0007
+    # shadow. The shadow is a human-reviewed candidate table, not live themes; instructing
+    # "return zero / exclude when in doubt" (live's precision bias) made it report nothing
+    # even for clean uncovered clusters (#173). recall_mode flips that for the shadow only.
+    recall_disposition = (
+        "- RECALL PASS — this is a shadow candidate-generation run reviewed by a human, NOT live themes.\n"
+        "  Bias toward PROPOSING: surface EVERY plausible nascent cohort, including 2-stock clusters and\n"
+        "  cross-sector narrative/policy themes (e.g. a drone/defense cohort on a govt-funding catalyst).\n"
+        "  Over-surfacing is expected and desired here — a human prunes later.\n"
+        "- Do NOT default to zero — report no themes ONLY if the stocks are genuinely unrelated."
+        if recall_mode else
+        "- When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.\n"
+        "- Return zero themes if no clear cluster exists — that is the correct answer"
+    )
     prompt = f"""You are a market intelligence analyst using Marios Stamatoudis's theme discovery methodology.
 
 Themes emerge BOTTOM-UP from price action. The real alpha is finding sub-themes BEFORE they become common knowledge.
@@ -2657,8 +2673,7 @@ Rules:
 - Name themes specifically ("AI Memory & HBM" not "Technology" or "Semiconductors")
 - A stock CAN move from an existing theme to a new sub-theme if the sub-theme is more specific
 - A stock should appear in at most 2 themes. Do NOT include a stock in a new theme if it already appears in 2+ existing themes (check the list above)
-- When in doubt whether a stock belongs — exclude it. A smaller, correct theme beats a larger, wrong one.
-- Return zero themes if no clear cluster exists — that is the correct answer
+{recall_disposition}
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives
 
 Before calling report_themes, ask yourself: am I genuinely uncertain about any cluster?

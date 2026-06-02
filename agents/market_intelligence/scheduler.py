@@ -394,7 +394,7 @@ async def _nightly_data_pull():
     # validates promotion (ADR 0007 §5). Skips non-trading days with the rest of this job.
     try:
         from agents.market_intelligence.theme_engine import run_theme_discovery_shadow
-        shadow_summary = await run_theme_discovery_shadow(_today)
+        shadow_summary = await run_theme_discovery_shadow(_today, clusters=correlation_clusters)
         logger.info(f"Theme shadow pass (ADR 0007): {shadow_summary}")
         summary_parts.append(f"shadow:{shadow_summary.get('shadow_themes', 0)}")
     except Exception as e:

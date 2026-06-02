@@ -105,3 +105,30 @@ def test_forced_report_can_still_return_empty(monkeypatch):
 
     assert calls[1]["tool_choice"] == {"type": "tool", "name": "report_themes"}
     assert out == []
+
+
+def test_recall_mode_flips_disposition(monkeypatch):
+    # #173: the shadow needs RECALL, not the live engine's precision. recall_mode must
+    # swap the "return zero / exclude when in doubt" instructions the model was obeying.
+    stocks, sbt = _drone_stocks(monkeypatch)
+    client, calls = _fake_client([_resp(_DRONE)])
+    monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
+
+    asyncio.run(te._discover_new_themes(stocks, [], sbt, recall_mode=True))
+
+    prompt = calls[0]["messages"][0]["content"]
+    assert "RECALL PASS" in prompt
+    assert "Return zero themes if no clear cluster exists" not in prompt
+
+
+def test_precision_is_default_live_engine_unchanged(monkeypatch):
+    # Default (live engine) must keep the precision disposition — byte-identical behavior.
+    stocks, sbt = _drone_stocks(monkeypatch)
+    client, calls = _fake_client([_resp(_DRONE)])
+    monkeypatch.setattr(te, "_get_anthropic_client", lambda: client)
+
+    asyncio.run(te._discover_new_themes(stocks, [], sbt))  # recall_mode defaults False
+
+    prompt = calls[0]["messages"][0]["content"]
+    assert "Return zero themes if no clear cluster exists" in prompt
+    assert "RECALL PASS" not in prompt
