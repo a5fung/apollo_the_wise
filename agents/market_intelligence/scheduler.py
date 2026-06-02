@@ -3421,6 +3421,25 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=300,
     )
 
+    # #150 open-window FINE reconcile: every minute 9:31-9:40 ET (mon-fri). The
+    # 15-min cadence above can't resolve WHETHER a stop-limit was WORKING ('new')
+    # during the ~9:31-9:33 fillable window vs still PENDING_NEW. That fork —
+    # paper fill-engine fail (paper-only) vs acceptance-latency (#142-family, may
+    # carry live) — decides #150's live-carry + whether the stop-market mitigation
+    # is needed. Reuses the SAME reconcile job (zero order-handling logic touched);
+    # the tight cadence times the pending_new->new transition via the
+    # order_status_reconciled audit rows. Audit-only, ~10 extra polls/day.
+    _scheduler.add_job(
+        audit_wrap(_order_status_reconcile_job, JOB_ORDER_STATUS_RECONCILE + "_open"),
+        CronTrigger(
+            hour="9", minute="31-40",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_ORDER_STATUS_RECONCILE + "_open",
+        replace_existing=True,
+        misfire_grace_time=60,
+    )
+
     # 9M EP Pace digest: hourly rollup at 10/11/12 ET (#133, 2026-05-27).
     # Pace alerts (89% of pinged 9M volume on 2026-05-27) aren't realtime
     # actionable — bundle them at top of hour. Actual 9M still rides the
