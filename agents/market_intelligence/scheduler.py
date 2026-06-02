@@ -401,8 +401,9 @@ async def _nightly_data_pull():
         logger.warning(f"Theme shadow pass failed (non-fatal, ADR 0007): {e}")
         # Audit the swallowed failure — a bare logger.warning let #173 die silently for
         # days (it rotates out on container restart; the DB row persists + is queryable).
+        # log_audit_event is module-level (line 28); a function-local re-import here would
+        # shadow it and trip the [5d] UnboundLocalError guard (refs at 452/488 precede it).
         try:
-            from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 "theme_discovery_shadow_failed",
                 summary="Theme discovery shadow raised (non-fatal)",
