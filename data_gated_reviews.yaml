@@ -5927,6 +5927,58 @@ reviews:
             (creds bootstrapped in-process; #139 guard fired). Build the order-event
             forensic IN-AGENT (Alpaca activities API); do NOT bypass the boot path.
 
+      - ticker: MRVL
+        alert_date: 2026-06-02
+        order_id: 5414fe28-f92f-4cd8-8744-51e89510d33b
+        trigger_price: 259.80
+        limit_price: 261.10
+        max_h_in_window_sip: 283.14
+        signal_type: magna53   # paper
+        verdict: confirming_case_CLEANEST
+        analysis_2026_06_02: |
+          Cleaner than ZS — resolves the ZS timing ambiguity: Alpaca
+          order.submitted_at = 09:31:26 (fetched DIRECTLY from the order,
+          NOT the 09:45 polling artifact), so the order WAS working from
+          09:31:26. While working, BOTH IEX and SIP printed lows
+          260.35 / 260.14 at 09:33-09:34 — best-ask <= 261.10 limit =
+          NBBO-marketable per Alpaca's own rule — yet filled_qty=0,
+          CANCELED 10:00 by cleanup. So NOT limit-too-tight (price
+          returned below the limit) and NOT feed-divergence (both feeds
+          marketable, refuting hypothesis (a)). MRVL ran 259.8->283
+          (missed ~+9%).
+      - ticker: HPE
+        alert_date: 2026-06-02
+        trigger_price: 63.95
+        limit_price: 64.27
+        max_h_in_window: 64.25   # within limit-reachable zone
+        verdict: confirming_case
+        note: "silent-trigger-failure detector fired; same 09:31:10 batch as MRVL/GRRR; no fill."
+      - ticker: GRRR
+        alert_date: 2026-06-02
+        trigger_price: 23.49
+        limit_price: 23.61
+        max_h_in_window: 23.49
+        verdict: confirming_case
+        note: "silent-trigger-failure detector fired; same 09:31:10 batch; no fill."
+
+    update_2026_06_02: |
+      N=3 in ONE morning (MRVL/HPE/GRRR, all 09:31:10 ORB stop-limits) =
+      reproducible/structural, not a rare race (N=5 total incl. AVAV + ZS).
+      CORRECTED PREMISE (operator-verified, primary source): Alpaca paper
+      fills against NBBO, NOT IEX (docs.alpaca.markets/us/docs/paper-trading:
+      "matched against the best available current market price (NBBO)"); the
+      IEX reference is only the account's data-RECEIVE entitlement, separate
+      from the fill engine. Stop/stop-limit TRIGGER mechanics are UNDOCUMENTED
+      by Alpaca. MRVL refutes hypothesis (a) feed-divergence (both feeds were
+      marketable). STILL OPEN — the deciding diagnostic: elect-vs-fill (did the
+      stop never ELECT, or elect-but-limit-didn't-fill?). Needs the order
+      activities/events log (GET /v2/account/activities), built IN-AGENT per the
+      ZS tooling-gap note (do NOT bypass boot). Advisor framing: the real damage
+      is the Gate-3 realized-R sample (the 6/22 cutover evidence) has a
+      systematic hole; almost certainly a PAPER-SIM artifact (live routes to the
+      real exchange) — do NOT overclaim "live entries broken" nor deflate to
+      "paper noise." HARD GATE: resolve/mitigate before the 6/22 live cutover.
+
     # Historical clean_miss cohort cross-check (2026-05-28 investigation,
     # before threshold=3 ripens). Of 6 prior clean_miss cases in 30d:
     historical_cross_check:
