@@ -7044,7 +7044,21 @@ async def get_open_orb_extension_shadows() -> list[dict]:
             FROM mi_orb_extension_shadow
             WHERE final_status = 'still_open'
         """)
-    return [dict(r) for r in rows]
+    # #177: state was double-encoded on write (insert/update call json.dumps()
+    # AND the jsonb codec encoder runs json.dumps() again), so the codec decoder
+    # json.loads() once yields the inner JSON *string*, not a dict. Normalize
+    # here so the settle job gets a dict. (Write-side root fix tracked separately.)
+    import json
+    out = []
+    for r in rows:
+        d = dict(r)
+        if isinstance(d.get("state"), str):
+            try:
+                d["state"] = json.loads(d["state"])
+            except (ValueError, TypeError):
+                d["state"] = {}
+        out.append(d)
+    return out
 
 
 async def update_orb_extension_shadow_state(
