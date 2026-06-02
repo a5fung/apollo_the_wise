@@ -4214,6 +4214,22 @@ async def persist_narrative_theme_candidates(run_date: "str | date", themes: lis
         return n
 
 
+async def get_narrative_theme_candidates(days: int = 5) -> list[dict]:
+    """#167 — recent narrative-cogap shadow theme proposals (advisory/shadow; NOT live).
+    Surfaced (clearly labeled experimental) in /themes so the operator can evaluate
+    the accruing proposals toward a promote-gate."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT run_date, name, tickers, thesis
+            FROM mi_theme_candidates_shadow
+            WHERE source = 'narrative_cogap'
+              AND run_date >= (CURRENT_DATE - $1::int)
+            ORDER BY run_date DESC, name
+        """, days)
+        return [dict(r) for r in rows]
+
+
 async def get_recent_rs_batch(
     tickers: list[str], d: "str | date", days: int = 3,
 ) -> dict[str, list[float]]:

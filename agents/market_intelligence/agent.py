@@ -4579,6 +4579,21 @@ class MarketIntelligenceAgent(BaseAgent):
             fading_names = " · ".join(t.get("name", "?") for t in fading[:5])
             lines.append(f"\n🔻 _Fading: {fading_names}_")
 
+        # #167 nascent narrative themes (shadow/advisory) — cross-sector / govt-policy
+        # themes the RS+correlation engine structurally misses, grouped from
+        # catalyst-narrative (e.g. the 5/28 drone cohort). NOT live; accruing toward a
+        # promote-gate. Error-wrapped: advisory only, must never break /themes.
+        try:
+            from agents.market_intelligence.db import get_narrative_theme_candidates
+            narr = await get_narrative_theme_candidates(days=5)
+            if narr:
+                lines.append("\n🌱 *Nascent narrative themes* _(shadow — experimental, not live)_")
+                for n in narr[:6]:
+                    tks = " · ".join((n.get("tickers") or [])[:6])
+                    lines.append(f"  • *{n['name']}* ({n['run_date']}): {tks}")
+        except Exception:
+            pass
+
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
     async def _handle_postmortem(self, request: AgentRequest) -> AgentResponse:
