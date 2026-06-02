@@ -412,6 +412,19 @@ async def _nightly_data_pull():
         except Exception:
             pass
 
+    # 5c. #167 NARRATIVE-theme discovery (C2/C3 rung-1, shadow) — groups same-day EP
+    # alerts by SHARED CATALYST-NARRATIVE via one Sonnet call; catches cross-sector /
+    # govt-policy themes the RS+correlation engine structurally misses (validated 6/2:
+    # drone cohort step-b + §5 PASS). discover_narrative_themes is itself fully
+    # error-wrapped; this hook is belt-and-suspenders so it can NEVER break the pull.
+    try:
+        from agents.market_intelligence.theme_engine import discover_narrative_themes
+        narr = await discover_narrative_themes(_today)
+        logger.info(f"Narrative-theme discovery (#167): {narr}")
+        summary_parts.append(f"narrative:{narr.get('themes', 0)}")
+    except Exception as e:
+        logger.warning(f"Narrative-theme discovery failed (non-fatal, #167): {e}")
+
     # 6. Fundamental flags — fetch for top RS stocks + theme constituents
     try:
         from agents.market_intelligence.db import get_active_themes

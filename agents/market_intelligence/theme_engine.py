@@ -313,6 +313,81 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
+async def discover_narrative_themes(scan_date=None) -> dict:
+    """C2/C3 rung-1 NARRATIVE-theme discovery (#167, shadow/advisory).
+
+    Groups the day's EP alerts by SHARED CATALYST-NARRATIVE via one Sonnet call and
+    writes proposals to `mi_theme_candidates_shadow` (source='narrative_cogap').
+    Catches cross-sector / govt-policy themes the RS+correlation engine structurally
+    misses — validated on the 2026-05-28 drone cohort (step-b + the §5 PASS, 6/2).
+    Advisory ONLY: no live `mi_themes` mutation; operator confirms before canonization.
+
+    FULLY error-wrapped — never raises into the caller (the nightly pull).
+    """
+    import json
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import (
+        get_today_ep_alerts, persist_narrative_theme_candidates, log_audit_event,
+    )
+    out = {"date": None, "alerts": 0, "themes": 0, "names": [], "error": None}
+    try:
+        scan_date = scan_date or et_today()
+        out["date"] = scan_date if isinstance(scan_date, str) else scan_date.strftime("%Y-%m-%d")
+        alerts = await get_today_ep_alerts(scan_date)
+        cand = [a for a in alerts
+                if (a.get("ep_score") or 0) >= 50.0 and (a.get("catalyst") or a.get("claude_analysis"))]
+        out["alerts"] = len(cand)
+        if len(cand) < 2:
+            await log_audit_event("narrative_theme_discovery_ran",
+                                  f"{out['date']}: {len(cand)} qualifying alert(s) (<2) — no grouping")
+            return out
+        lines = []
+        for a in cand:
+            cat = (a.get("catalyst") or a.get("claude_analysis") or "")[:280]
+            lines.append(f"- {a['ticker']} (gap {a.get('gap_pct','?')}%, ep {a.get('ep_score')}): {cat}")
+        prompt = (
+            "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
+            "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. Themes MAY span sectors and "
+            "RS levels (e.g. a government-policy theme spanning Industrials + Tech + Defense). A theme "
+            "must be a real shared story/catalyst, NOT a generic sector label. If there is NO genuine "
+            "shared narrative across 2+ of these names, return an EMPTY list — do NOT force groupings.\n\n"
+            "Stocks:\n" + "\n".join(lines) + "\n\n"
+            'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
+            'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],"thesis":"one sentence"}]}. '
+            "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]."
+        )
+        client = _get_anthropic_client()
+        msg = await client.messages.create(
+            model=THEME_MODEL, max_tokens=1500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = _extract_json_object(msg.content[0].text if msg.content else "")
+        parsed = json.loads(raw)
+        themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
+        cand_tk = {a["ticker"] for a in cand}
+        clean = []
+        for t in (themes or []):
+            tks = [x for x in (t.get("tickers") or []) if x in cand_tk]
+            if t.get("name") and len(tks) >= 2:
+                clean.append({"name": str(t["name"])[:80], "tickers": tks,
+                              "thesis": (t.get("thesis") or "")[:500],
+                              "catalyst_type": t.get("catalyst_type")})
+        n = await persist_narrative_theme_candidates(scan_date, clean)
+        out["themes"] = n
+        out["names"] = [t["name"] for t in clean]
+        await log_audit_event("narrative_theme_discovery_ran",
+                              f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
+        return out
+    except Exception as e:
+        logger.warning(f"discover_narrative_themes failed: {e}", exc_info=True)
+        try:
+            await log_audit_event("narrative_theme_discovery_failed", f"{out.get('date')}: {str(e)[:200]}")
+        except Exception:
+            pass
+        out["error"] = str(e)[:200]
+        return out
+
+
 async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     """ADR 0007 SHADOW PASS — DRAFT 2026-05-31; VERIFY + TUNE MONDAY on the server.
 

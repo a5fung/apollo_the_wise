@@ -4187,6 +4187,33 @@ async def persist_theme_candidates_shadow(
         return n
 
 
+async def persist_narrative_theme_candidates(run_date: "str | date", themes: list[dict]) -> int:
+    """#167 narrative-cogap shadow lane. SOURCE-SCOPED — clears/writes only the
+    source='narrative_cogap' rows, so it does NOT clobber the correlation-shadow
+    ('shadow_v2') rows that persist_theme_candidates_shadow writes to the same
+    mi_theme_candidates_shadow table. Re-runnable. Returns rows written."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rd = _to_date(run_date)
+        await conn.execute(
+            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = 'narrative_cogap'", rd)
+        n = 0
+        for t in (themes or []):
+            name = t.get("name")
+            tickers = t.get("tickers") or []
+            if not name or not tickers:
+                continue
+            await conn.execute("""
+                INSERT INTO mi_theme_candidates_shadow
+                    (run_date, name, thesis, tickers, source, would_revive)
+                VALUES ($1, $2, $3, $4, 'narrative_cogap', FALSE)
+                ON CONFLICT (run_date, name) DO UPDATE
+                  SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers, source = 'narrative_cogap'
+            """, rd, name, t.get("thesis"), list(tickers))
+            n += 1
+        return n
+
+
 async def get_recent_rs_batch(
     tickers: list[str], d: "str | date", days: int = 3,
 ) -> dict[str, list[float]]:
