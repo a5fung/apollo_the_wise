@@ -388,6 +388,67 @@ async def discover_narrative_themes(scan_date=None) -> dict:
         return out
 
 
+async def evaluate_narrative_themes(days: int = 30) -> list[dict]:
+    """#167 eval-harness — score the accrued narrative_cogap proposals for the
+    promote-gate (data_gated_reviews::narrative_theme_discovery_promote_gate).
+    Read-only. Each proposal is enriched with:
+      live_unified   — does any SINGLE live theme already group >=2 of these
+                       members? False = live did NOT recognize the cohort (the
+                       recall value: narrative-discovery unifies what the
+                       RS+sector engine fragments — the drone class).
+      avg_return_pct — avg member return since proposed (mi_daily_closes); None
+                       when the proposal is < ~1 trading week old (pending).
+      pending        — True when too fresh for a forward read.
+    """
+    from agents.market_intelligence.db import (
+        get_pool, get_narrative_theme_candidates, get_active_themes,
+    )
+    from agents.market_intelligence.collector import et_today
+
+    proposals = await get_narrative_theme_candidates(days)
+    if not proposals:
+        return []
+    live = await get_active_themes()
+    live_sets = [set(t.get("tickers") or []) for t in live]
+    today = et_today()
+    pool = await get_pool()
+    out = []
+    for p in proposals:
+        members = p.get("tickers") or []
+        mset = set(members)
+        # recall: did any single live theme already group >=2 of these members?
+        live_unified = any(len(mset & ts) >= 2 for ts in live_sets)
+        run_date = p["run_date"]
+        mature = (today - run_date).days >= 7  # ~5 trading days
+        rets = []
+        if mature:
+            async with pool.acquire() as conn:
+                for m in members:
+                    row = await conn.fetchrow(
+                        """
+                        SELECT (SELECT close FROM mi_daily_closes
+                                 WHERE ticker = $1 AND trade_date <= $2
+                                 ORDER BY trade_date DESC LIMIT 1) AS base,
+                               (SELECT close FROM mi_daily_closes
+                                 WHERE ticker = $1
+                                 ORDER BY trade_date DESC LIMIT 1) AS latest
+                        """,
+                        m, run_date,
+                    )
+                    if row and row["base"] and row["latest"]:
+                        rets.append((float(row["latest"]) / float(row["base"]) - 1) * 100)
+        avg = round(sum(rets) / len(rets), 1) if rets else None
+        out.append({
+            "name": p["name"],
+            "run_date": run_date,
+            "tickers": members,
+            "live_unified": live_unified,
+            "avg_return_pct": avg,
+            "pending": not mature,
+        })
+    return out
+
+
 async def run_theme_discovery_shadow(today=None, clusters=None) -> dict:
     """ADR 0007 SHADOW PASS — DRAFT 2026-05-31; VERIFY + TUNE MONDAY on the server.
 

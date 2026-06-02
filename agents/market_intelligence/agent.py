@@ -4584,13 +4584,21 @@ class MarketIntelligenceAgent(BaseAgent):
         # catalyst-narrative (e.g. the 5/28 drone cohort). NOT live; accruing toward a
         # promote-gate. Error-wrapped: advisory only, must never break /themes.
         try:
-            from agents.market_intelligence.db import get_narrative_theme_candidates
-            narr = await get_narrative_theme_candidates(days=5)
+            from agents.market_intelligence.theme_engine import evaluate_narrative_themes
+            narr = await evaluate_narrative_themes(days=5)
             if narr:
                 lines.append("\n🌱 *Nascent narrative themes* _(shadow — experimental, not live)_")
                 for n in narr[:6]:
                     tks = " · ".join((n.get("tickers") or [])[:6])
+                    recall = "live-missed ✓" if not n.get("live_unified") else "in-live"
+                    if n.get("pending"):
+                        act = "ret pending"
+                    elif n.get("avg_return_pct") is not None:
+                        act = f"ret {n['avg_return_pct']:+.1f}%"
+                    else:
+                        act = "ret n/a"
                     lines.append(f"  • *{n['name']}* ({n['run_date']}): {tks}")
+                    lines.append(f"      _{recall} · {act}_")
         except Exception:
             pass
 
