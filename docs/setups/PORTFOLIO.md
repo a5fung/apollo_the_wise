@@ -14,6 +14,22 @@
 
 ---
 
+## ✅ KICKOFF DECISIONS — 2026-06-02 (#167, accelerated)
+
+Operator decisions locked this session. **Ships follow their gates; nothing deployed today.**
+
+1. **#65 — 9M Day-2: add the revenue-stage gate now.** Mirror MAGNA53's `is_revenue_stage` on `9m_day2` → kills the clinical-biotech class (ROIV/PURR) the mechanical ORB wrongly enters, keeps the rest of the cohort accruing toward the #65 evidence gate (N≥10, ~7/15). De-risk without freezing. **NOT** (c) demote-to-shadow (that would freeze the cohort at N=4 forever). → **Ship: next session via CHANGE_PROCESS** (read `ninem.md` SSoT + `safeguards.md`, N-evidence, advisor sign-off, SSoT-in-same-commit). *(Resolves redline agenda item 1.)*
+
+2. **#150 — entry-fill reliability IS a 6/22 cutover gate.** The default 1m-ORB entry silently under-fills ~18% of cancelled entries, winner-skewed (CADL +17%, three +8% missed). Likely a paper-sim artifact (live routes to the real exchange) — but it corrupts the paper Gate-3 realized-R the cutover rests on. **Before 6/22:** (a) run the elect-vs-fill diagnostic (confirm paper-sim, not a live-path defect); (b) correct Gate-3 realized-R for the under-filled winners via #180's would-have-filled cohort. Don't decide the flip on the uncorrected, winner-skewed sample. → **adds a 4th hard cutover gate** alongside Gate-1 / Gate-3 / #151.
+
+3. **Flag/consolidation class → paper at 7/15, gated on #168.** When the first tight-range technique (#94–98) hits N≥10 (~7/15), spin a paper strategy — but only behind the #168 selection-quality overlay (high-RS / theme-backed / 9M-cohort / liquid / catalyst) so only *buyable* names trade, not raw pattern fires. *(Resolves redline item 3; threads item 7/#168.)*
+
+**New axis folded into Layer 2 — entry-execution RELIABILITY.** The doc asked *which* entry technique; #150 showed the *chosen* entry can silently fail to execute. Layer 2 now has two axes: **(i) technique-fit** (which entry the stock's shape calls for) and **(ii) execution-reliability** (does it actually fill, and is the fill measured). The entry-execution-observability thread = #150 (diagnosis + elect-vs-fill mitigation), #177 (fill-shadow settle fixed 6/2), #180 (unified EOD would-have-filled pass — uses the LIMIT not the trigger), #178 (`/setup`+`/why` merge).
+
+**Still open (next pass, not urgent):** naming (MAGNA53 → gap-momentum scorer, redline item 5) · RMV-Phase-2 sequencing vs 9M re-arch (6/9, item 6) · the #168 filter's quality-dim selection (telemetry-first — measure which dims separate forward-winners before filtering).
+
+---
+
 ## The organizing principle: SELECTION ≠ ENTRY ≠ QUALIFIER
 
 The single most useful reframe (your own framing, made explicit): a setup is one of **three different kinds of thing**, and we've been conflating them.
