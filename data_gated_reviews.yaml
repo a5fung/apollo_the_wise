@@ -514,6 +514,39 @@ reviews:
     status: pending
     added_on: 2026-04-30
 
+  - review_id: narrative_theme_discovery_promote_gate
+    title: "#167 narrative-theme discovery — shadow->canonize promote-gate"
+    question: |
+      discover_narrative_themes (shadow since 2026-06-02) groups same-day EP
+      alerts by shared catalyst-narrative into mi_theme_candidates_shadow
+      (source=narrative_cogap), surfaced advisory in /themes. Over the accrued
+      nights, does it clear the bar to PROMOTE shadow -> operator-confirmed
+      canonization into mi_themes? Judge on: (1) PRECISION — proposals are real
+      emerging themes not forced noise (negative-control passed 6/2: declined on
+      unrelated gappers); (2) RECALL — surfaces real themes the live RS+correlation
+      engine MISSES (the drone class), earlier; (3) ACTIONABILITY — proposed-theme
+      members show positive forward returns.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_theme_candidates_shadow
+      WHERE source = 'narrative_cogap'
+        AND run_date > (CURRENT_DATE - 30)
+    threshold: 10
+    earliest_review_date: 2026-06-23
+    action_when_ready: |
+      Evaluate the accrued narrative_cogap proposals on precision/recall/
+      actionability (via the eval-harness if built, else manual): precision =
+      fraction operator-judged real / that became live themes; recall = proposals
+      with NO live mi_themes counterpart (caught what live missed); actionability =
+      member fwd_5/10d. If precise + valuable -> PROMOTE to Stage-2: operator-
+      confirmed canonization into mi_themes (confirm each; never auto-canonize).
+      Else ITERATE (tune the grouping prompt; add the rung-1.5 advisor-review loop).
+      NB: load-bearing EP/TRADE impact is the SEPARATE North Star (~Q4; theme is
+      decorative +10 today, conviction-floor-overridden) — this gate is only
+      shadow->canonization (advisory), NOT trade-gating.
+      Origin: 2026-06-02 #167 narrative-discovery ship.
+    status: pending
+    added_on: 2026-06-02
+
   - review_id: dead_zone_telemetry_smoke
     title: "Dead-zone telemetry deploy — writer smoke test"
     question: |
