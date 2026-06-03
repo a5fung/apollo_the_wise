@@ -31,10 +31,24 @@ tracked — add it. Priority: **P0** = blocks live $ / safety · **P1** = core g
 | **North Star** — theme/narrative load-bearing in EP | **P1** | C1 catalyst_type LIVE; theme-discovery shadow (ADR 0007) | theme-as-EP-signal n≥40 ~8/1 · phase5 advisory composite · ⭐ phase6 GATING ~Q4 | memory `north-star…` (Track B) · `phase5/phase6` reviews · `ep-conviction-floor…` |
 | **Operational safety / hardening** | **P0** | partial-exit hardening trilogy SHIPPED + paper-validated 6/1 (sub-penny round + false-naked fix + #150 sell-retry); 16:45 cron re-enabled & first run verified clean; G6/#153/#154 prior | residuals: #149 missing-data · #152 news-drift · ZS silent-trigger obs | BACKLOG "🚧 Live-cutover blockers" + tasks |
 | **Apollo Trades dashboard** (portfolio-app2 — Tradervue-style P&L calendar + setup stats) | **P2** | Phase-1 scaffold shipped 5/09 (mock data, runnable now); db-mode stubbed | **operator wants it back soon (6/1)** — Phase 2 (equity curve · top-10 · holding histogram · trade drill-down) buildable NOW on mock; db-mode gated on live + ≥10 closed live trades + Tailscale exposure (shared w/ RS-theme-dash R1) | memory `Apollo Trades dashboard tab (portfolio-app2)` · SEPARATE repo `portfolio-app2` |
+| **Miscellaneous** — catch-all for tasks with no home project (keeps the project→task hierarchy complete; nothing floats loose) | **P3** | active catch-all | #121 (shared Telegram formatting layer) · #176 (SoT/roster drift-check tooling) | "Open tasks by project" section below |
 
 *(Lower-pri / dormant projects — crypto track, RS-theme dashboard, portfolio app, parabolic-short TI1 — live in their own memories; promote here if they reactivate.)*
 
 **Reminder coverage:** dated milestones auto-surface in the Sunday weekly self-audit; the recurring Tue "project night" (calendar) nudges weekly progress; durable detail in each memory/doc above.
+
+## 📂 Open tasks by project (hierarchy — no loose tasks)
+
+Every OPEN #-task rolls up to exactly one project here. The #-task tracker stays SoT for task STATE; this is the grouping/hierarchy view. **Rule:** a new open task lands under a project below — or under **Miscellaneous** if it has no home — so nothing floats loose. Swept 2026-06-02 (28 open tasks).
+
+- **Stocks in Play** (detection · setups · entries · 9M · cooldown): #55 #56 #60 #65 #81 #97 #113 #115 #116 #134 #146 #166 #167 #168 #170 #178
+- **Live-money cutover** (MAGNA53): #150 #151 #174 #180
+- **North Star** (theme load-bearing): #165
+- **Operational safety / hardening**: #149 #152 #172 #179
+- **Apollo Trades dashboard**: #175
+- **Miscellaneous** (no home project): #121 (briefing → shared Telegram formatting layer) · #176 (automated SoT/roster drift-check)
+
+_Sweep result: of 28 open tasks, 26 mapped cleanly to the 5 existing projects; only **2** were genuinely unattached (#121, #176) → grouped under Miscellaneous. Judgment calls (re-bucket freely): #56/#113 (EP-detection calibration) → Stocks-in-Play umbrella; #165 (theme-discovery) → North Star; #172 (hardening refactor) → Op-safety. #166 is a past-dated verify-task (U&R 6/1) — confirm + close next session._
 
 ---
 
