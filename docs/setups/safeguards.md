@@ -1,6 +1,6 @@
 # Portfolio Safeguards SSoT
 
-**Phase**: live in production. The drawdown breaker (#6 below) is currently in **shadow phase** — the daily 16:12 ET cron emits transition audit events but `_check_safeguards()` does not block on it. Promotes to active after ≥14 days of post-live-cutover shadow telemetry.
+**Phase**: live in production. The drawdown breaker (#6 below) is **ACTIVE as of 2026-06-03** (flipped pre-cutover on paper, operator decision — validate the full system before live) — the daily 16:12 ET cron emits transition audit events but `_check_safeguards()` now ENFORCES it (size-down by tier: WATCH 1.0× / REDUCE 0.5× / BLOCK 0×). Flipped to active 2026-06-03 (pre-cutover, on paper validation — see change-log).
 **Code**: `agents/market_intelligence/broker/live_tracker.py::_check_safeguards` (lines 101-212+).
 
 ## Definition
@@ -18,7 +18,7 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
    - `BLOCK_PDT_LOCKOUT_IMMINENT` if `daytrade_count ≥ 3` (one more day-trade and the broker locks out)
 4. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of today's closed-trade `total_pnl` ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop. Magnitude-based, not count-based.
 5. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **DEPRECATED**: superseded by drawdown breaker (#6); will be removed after #6 promotes to active. Threshold bumped 5→10 on 2026-05-08 as a stand-in.
-6. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — currently SHADOW. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
+6. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
 
 ## Drawdown breaker — Mechanics
 
@@ -142,7 +142,7 @@ ORDER BY s.snapshot_date DESC;
 
 **Reversion-flag**: REVERSAL of this file's "post-cutover / paper-not-evidence" Promotion-plan text (the pre-2026-05-10 plan). Why the prior was WRONG (not just incomplete): it would let real money trade the highest-risk learning-curve window with the safeguard DISARMED — defeating the safeguard's purpose exactly when most needed; and it treated paper as non-evidence when paper's whole purpose is to validate the full system (incl active-mode safeguards) pre-live. The 5/10 advisor review already reversed this; this file simply wasn't updated (stale SSoT).
 
-**Status**: policy reconciled 2026-06-03. The env flip (`DRAWDOWN_BREAKER_PHASE=active`) is PENDING operator go, slotted pre-cutover; turnkey (add to prod `.env` + redeploy — #174). Acceptance-gate readiness: 3/4 clearly met; trip-rate exceeds the literal "≤1×/quarter" but the trips were justified (real drawdowns) — operator confirms acceptability at flip-time.
+**Status**: policy reconciled 2026-06-03. The env flip (`DRAWDOWN_BREAKER_PHASE=active`) was SHIPPED + VERIFIED 2026-06-03 (operator go): DRAWDOWN_BREAKER_PHASE=active added to prod .env, deploy.sh both GREEN (preflight exercised _check_safeguards with the active breaker + G6 replace-path validated live), confirmed container env=active, state=OK (no immediate behavior change), 4 open positions intact. Effectiveness tracked forward via data_gated_reviews::drawdown_breaker_active_effectiveness. Acceptance-gate readiness: 3/4 clearly met; trip-rate exceeds the literal "≤1×/quarter" but the trips were justified (real drawdowns) — operator confirms acceptability at flip-time.
 
 ---
 

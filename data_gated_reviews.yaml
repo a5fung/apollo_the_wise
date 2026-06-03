@@ -1246,6 +1246,39 @@ reviews:
     status: pending
     added_on: 2026-05-08
 
+  - review_id: drawdown_breaker_active_effectiveness
+    title: "Drawdown breaker — ACTIVE-phase effectiveness (post-2026-06-03 flip)"
+    question: |
+      Breaker flipped shadow->ACTIVE 2026-06-03 (paper, pre-cutover — operator).
+      Now that it ENFORCES (size-down REDUCE 0.5x / block BLOCK 0x), is it
+      net-effective? (a) trips justified (real drawdowns, not noise)? (b) which
+      entries did it size-down (REDUCE -> half-size rows in mi_live_trades) or
+      BLOCK (skip_reason block:drawdown_breaker in the skip audit) during
+      drawdowns — count + outcomes; (c) NET: did its actions preserve capital
+      (shallower drawdowns / cleaner recovery) WITHOUT disproportionately missing
+      the recovery-winners that pay for losses (the tiered design's explicit
+      risk)? Counterfactual = the affected entries' full-size outcomes.
+    predicate_sql: |
+      SELECT COUNT(DISTINCT snapshot_date) FROM mi_account_equity_snapshots
+      WHERE account_mode = 'paper' AND snapshot_date > DATE '2026-06-03'
+    threshold: 14
+    earliest_review_date: 2026-07-01
+    action_when_ready: |
+      Pull the active-phase record since 2026-06-03: tier-transition audit
+      (drawdown_watch/reduce/block_entered + *_released), BLOCKED entries
+      (skip_reason block:drawdown_breaker), and REDUCE-window entries
+      (mi_live_trades during REDUCE, half-size). Assess (a)/(b)/(c). If
+      net-HELPED -> confirm + keep. If net-HURT (missed recovery-winners >
+      capital preserved) -> reconsider tier thresholds via CHANGE_PROCESS
+      (backtest). If the tier-window x entry cross-reference is insufficient, add
+      a per-entry `drawdown_sizing_applied` audit (log the applied
+      drawdown_multiplier when != 1.0; telemetry-only). If the account stayed OK
+      (no trips) the whole window, note "calm period, no effectiveness data yet"
+      + extend.
+      Origin: 2026-06-03 #174 active flip (operator: track effectiveness going forward).
+    status: pending
+    added_on: 2026-06-03
+
   - review_id: flag_ma_pin_filter
     title: "Flag deal-pin price-signature backstop (L2)"
     question: |
