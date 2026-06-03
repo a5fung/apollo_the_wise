@@ -14,7 +14,7 @@ the at-a-glance view.
 - `[x]` done (moves to "Done — rolling" section, pruned monthly)
 - 🚧 live-cutover blocker
 
-Last updated: 2026-06-01 (roster refreshed: partial-exit hardening + 16:45 cron re-enable shipped & verified; drawdown-breaker → #174 (6/2); #170 cooldown re-setup shadow live; #173 theme-shadow-dead found; Apollo Trades dashboard promoted to P2)
+Last updated: 2026-06-01 (roster refreshed: partial-exit hardening + 16:45 cron re-enable shipped & verified; drawdown-breaker → #174 (6/2); #170 cooldown re-setup shadow live; #173 theme-shadow-dead found; Apollo Trades dashboard promoted to P2 → then 6/3 #175 DONE: Phase 1+2 built+deployed to Streamlit Cloud on real paper data + polished)
 
 ---
 
@@ -30,7 +30,7 @@ tracked — add it. Priority: **P0** = blocks live $ / safety · **P1** = core g
 | **Live-money cutover** (MAGNA53 first) | **P1** | paper-validating; realized history weak (−$9,475), leans on unbanked open winners | **⭐ 6/22 GO/NO-GO** · blockers: #151 N=7 (6/15) · #150 stop-trigger · #142 pending_new · #174 drawdown-breaker→active (6/2 in-hours) | memory `north-star-and-live-readiness-timeline` (Track A) · `live_cutover_decision` review |
 | **North Star** — theme/narrative load-bearing in EP | **P1** | C1 catalyst_type LIVE; theme-discovery shadow (ADR 0007) | theme-as-EP-signal n≥40 ~8/1 · phase5 advisory composite · ⭐ phase6 GATING ~Q4 | memory `north-star…` (Track B) · `phase5/phase6` reviews · `ep-conviction-floor…` |
 | **Operational safety / hardening** | **P0** | partial-exit hardening trilogy SHIPPED + paper-validated 6/1 (sub-penny round + false-naked fix + #150 sell-retry); 16:45 cron re-enabled & first run verified clean; G6/#153/#154 prior | residuals: #149 missing-data · #152 news-drift · ZS silent-trigger obs | BACKLOG "🚧 Live-cutover blockers" + tasks |
-| **Apollo Trades dashboard** (portfolio-app2 — Tradervue-style P&L calendar + setup stats) | **P2** | Phase-1 scaffold shipped 5/09 (mock data, runnable now); db-mode stubbed | **operator wants it back soon (6/1)** — Phase 2 (equity curve · top-10 · holding histogram · trade drill-down) buildable NOW on mock; db-mode gated on live + ≥10 closed live trades + Tailscale exposure (shared w/ RS-theme-dash R1) | memory `Apollo Trades dashboard tab (portfolio-app2)` · SEPARATE repo `portfolio-app2` |
+| **Apollo Trades dashboard** (portfolio-app2 — Tradervue-style P&L calendar + setup stats) | **P2** | ✅ Phase 1+2 BUILT + deployed to Streamlit Cloud on real PAPER data (db-mode) + real-data-polished 6/3 (#175 DONE; scratch-bucket + single win-rate definition across all surfaces) | Remaining gated/future: Phase 3 intraday MAE/MFE (Apollo-side `mi_intraday_bars` replay) · live-data cutover (`apollo_trades_dashboard_db_flip` 7/15, ≥30 live trades + Tailscale) · optional API key for Haiku digest | memory `Apollo Trades dashboard tab (portfolio-app2)` · SEPARATE repo `portfolio-app2` |
 | **Miscellaneous** — catch-all for tasks with no home project (keeps the project→task hierarchy complete; nothing floats loose) | **P3** | active catch-all | #121 (shared Telegram formatting layer) · #176 (SoT/roster drift-check tooling) | "Open tasks by project" section below |
 
 *(Lower-pri / dormant projects — crypto track, RS-theme dashboard, portfolio app, parabolic-short TI1 — live in their own memories; promote here if they reactivate.)*
@@ -45,7 +45,7 @@ Every OPEN #-task rolls up to exactly one project here. The #-task tracker stays
 - **Live-money cutover** (MAGNA53): #150 #151 #174 #180
 - **North Star** (theme load-bearing): #165
 - **Operational safety / hardening**: #149 #152 #172 #179
-- **Apollo Trades dashboard**: #175
+- **Apollo Trades dashboard**: (none open — #175 ✅ DONE 6/3, Phase 1+2 built+deployed+polished on real paper data; Phase 3 / live-cutover gated, not yet filed)
 - **Miscellaneous** (no home project): #121 (briefing → shared Telegram formatting layer) · #176 (automated SoT/roster drift-check)
 
 _Sweep result: of 28 open tasks, 26 mapped cleanly to the 5 existing projects; only **2** were genuinely unattached (#121, #176) → grouped under Miscellaneous. Judgment calls (re-bucket freely): #56/#113 (EP-detection calibration) → Stocks-in-Play umbrella; #165 (theme-discovery) → North Star; #172 (hardening refactor) → Op-safety. #166 is a past-dated verify-task (U&R 6/1) — confirm + close next session._
