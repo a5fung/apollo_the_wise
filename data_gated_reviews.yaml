@@ -5907,6 +5907,15 @@ reviews:
       (real-exchange/SIP) path -> cohort representativeness. Filed #182.
       RE-ESCALATE only if an exit-side activation failure (child accepted/active on
       an OPEN position then no-fill) is ever observed.
+      CORRECTION 2026-06-03 (SIP-confirmed, supersedes the IEX/gap-through mechanism
+      above): Apollo's DATA feed = SIP (ALPACA_DATA_FEED=sip, prod-confirmed) — NOT
+      IEX. The ALPACA PAPER account fills off IEX (Alpaca docs). SIP (Polygon) shows
+      AVAV hit 207.20 at 9:48 ET, continuously through the 204.86 trigger + 205.88
+      limit -> it WOULD fill ~205.88 on LIVE (NOT gap-through). Paper missed it only
+      because Alpaca's paper IEX fill-sim didn't see the off-IEX breakout. So: entry
+      fills on real $; #182 (paper under-fills vs live) is CONFIRMED; #183 = the
+      clean_miss classifier reads IEX/wrong-window (logged max_h=203 vs SIP 207.20).
+      #150 downgrade conclusion (no position opened, entry-side) is unchanged.
     escalation_note_2026_05_28: |
       Initially filed with threshold=3 per default N=1 protocol. Operator
       pushed back same session: the failure chain (detect → alert → submit
