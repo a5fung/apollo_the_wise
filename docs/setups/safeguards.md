@@ -95,6 +95,8 @@ These are deliberate, not oversights. Future readers should understand the reaso
 
 ## Promotion plan (shadow → active)
 
+> ⚠ **PROMOTION TIMING DISPUTED — flagged 2026-06-03; operator to confirm; DO NOT flip until resolved.** This section (≥14d POST-cutover, paper-not-evidence) conflicts with `data_gated_reviews.yaml::drawdown_breaker_promotion`, which records an *advisor 2026-05-10 reversal* (paper-evidence-sufficient + arm BEFORE cutover), AND with the composite `live_cutover_decision` review's Step D (arm AT cutover). This SSoT was edited 2026-05-18 — after the claimed 5/10 reversal — without updating this section, so the docs can't be ranked among themselves; the operator (a participant in the 5/10 review) is the tie-breaker. Safe-if-wrong default regardless: **armed BEFORE real money goes live** (arm-on-paper is observable/recoverable; going live disarmed is not). Do NOT rewrite this section to a side until confirmed.
+
 **Trigger**: ≥14 calendar days of post-live-cutover shadow telemetry. Paper telemetry serves as threshold sanity-check only — NOT promotion evidence.
 
 **Validation queries** before flip:

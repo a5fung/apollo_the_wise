@@ -1204,6 +1204,14 @@ reviews:
     threshold: 14
     earliest_review_date: 2026-05-22
     action_when_ready: |
+      ⚠ TIMING DISPUTED vs safeguards.md (flagged 2026-06-03) — safeguards.md
+      Promotion-plan says >=14d POST-cutover + paper-NOT-evidence (its 5/18 edit
+      left that unchanged); this review says paper-OK + arm BEFORE cutover
+      (claimed 5/10 reversal); composite live_cutover_decision Step D says arm AT
+      cutover. Cannot rank from docs. Operator (in the 5/10 review) confirms which
+      is current. DO NOT flip until resolved; do NOT pick a side in either doc.
+      Safe default regardless: armed BEFORE real money goes live.
+
       Run validation queries from docs/setups/safeguards.md "Promotion plan"
       section against paper shadow audit log + snapshot history. If acceptance
       gates pass:
