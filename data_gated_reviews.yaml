@@ -1211,6 +1211,12 @@ reviews:
       cutover. Cannot rank from docs. Operator (in the 5/10 review) confirms which
       is current. DO NOT flip until resolved; do NOT pick a side in either doc.
       Safe default regardless: armed BEFORE real money goes live.
+      ✅ RESOLVED 2026-06-03 (operator, tie-breaker): THIS review's position is
+      current — arm BEFORE cutover, paper evidence sufficient. safeguards.md
+      reconciled (change-log 2026-06-03). Flip PENDING operator go; pre-cutover.
+      The "14d paper snapshots" predicate is therefore the correct readiness
+      proxy (not a bug). Acceptance: 3/4 gates met; trip-rate > literal
+      "<=1x/quarter" but trips justified (real drawdowns) — operator confirms at flip.
 
       Run validation queries from docs/setups/safeguards.md "Promotion plan"
       section against paper shadow audit log + snapshot history. If acceptance

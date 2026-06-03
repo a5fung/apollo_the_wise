@@ -96,6 +96,8 @@ These are deliberate, not oversights. Future readers should understand the reaso
 ## Promotion plan (shadow → active)
 
 > ⚠ **PROMOTION TIMING DISPUTED — flagged 2026-06-03; operator to confirm; DO NOT flip until resolved.** This section (≥14d POST-cutover, paper-not-evidence) conflicts with `data_gated_reviews.yaml::drawdown_breaker_promotion`, which records an *advisor 2026-05-10 reversal* (paper-evidence-sufficient + arm BEFORE cutover), AND with the composite `live_cutover_decision` review's Step D (arm AT cutover). This SSoT was edited 2026-05-18 — after the claimed 5/10 reversal — without updating this section, so the docs can't be ranked among themselves; the operator (a participant in the 5/10 review) is the tie-breaker. Safe-if-wrong default regardless: **armed BEFORE real money goes live** (arm-on-paper is observable/recoverable; going live disarmed is not). Do NOT rewrite this section to a side until confirmed.
+>
+> ✅ **RESOLVED 2026-06-03 (operator — tie-breaker, participant in the 5/10 review):** arm the breaker **BEFORE** live cutover; **paper shadow telemetry IS sufficient validation evidence.** Rationale: paper exists to validate the FULL system — including the breaker in *active* mode — before real money; going live with the safeguard disarmed in the highest-risk window defeats its purpose. The "≥14d post-cutover / paper-not-evidence" text below is the **pre-5/10 plan and is SUPERSEDED** (see change-log 2026-06-03). The actual env flip is pending operator go and slotted pre-cutover (#174).
 
 **Trigger**: ≥14 calendar days of post-live-cutover shadow telemetry. Paper telemetry serves as threshold sanity-check only — NOT promotion evidence.
 
@@ -129,6 +131,20 @@ ORDER BY s.snapshot_date DESC;
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
 ## Change log (newest first)
+
+### 2026-06-03 — Promotion timing RESOLVED: arm BEFORE cutover (paper evidence sufficient)
+
+**Trigger**: prepping #174 (the shadow→active flip), the SSoT-read surfaced a 3-way conflict — this file said ≥14d POST-cutover + paper-not-evidence; `data_gated_reviews.yaml::drawdown_breaker_promotion` recorded an advisor-2026-05-10 reversal (paper-OK + arm BEFORE cutover); the composite `live_cutover_decision` Step D said arm AT cutover. Unrankable from docs (this file was edited 5/18, after the claimed reversal, and still said post-cutover). Operator resolved as tie-breaker (participant in the 5/10 review).
+
+**Evidence**: operator judgment 2026-06-03 — paper exists to validate the FULL system (incl the active-mode breaker) before real money. Plus paper shadow validated the full tier-machine: OK→WATCH→REDUCE (−8.95%, 5/22)→released→OK (5/29); multiple `*_released` events (recovery proven); one isolated `drawdown_check_unavailable` (5/19, not a cluster); 18 snapshots (5/08–6/02); trips justified (real −5 to −9% drawdowns).
+
+**Anticipated effect**: breaker promotes shadow→active BEFORE the 6/22 cutover (on paper) so it's enforcing when real money goes live. Active phase will size-down (REDUCE 0.5×) / block (BLOCK 0×) paper entries during paper drawdowns — intended, and makes the Gate-3 paper cohort reflect the real (breaker-included) system. Currently OK (0% dd, peak $100,684 on 6/2) → no behavior change until the next drawdown.
+
+**Reversion-flag**: REVERSAL of this file's "post-cutover / paper-not-evidence" Promotion-plan text (the pre-2026-05-10 plan). Why the prior was WRONG (not just incomplete): it would let real money trade the highest-risk learning-curve window with the safeguard DISARMED — defeating the safeguard's purpose exactly when most needed; and it treated paper as non-evidence when paper's whole purpose is to validate the full system (incl active-mode safeguards) pre-live. The 5/10 advisor review already reversed this; this file simply wasn't updated (stale SSoT).
+
+**Status**: policy reconciled 2026-06-03. The env flip (`DRAWDOWN_BREAKER_PHASE=active`) is PENDING operator go, slotted pre-cutover; turnkey (add to prod `.env` + redeploy — #174). Acceptance-gate readiness: 3/4 clearly met; trip-rate exceeds the literal "≤1×/quarter" but the trips were justified (real drawdowns) — operator confirms acceptability at flip-time.
+
+---
 
 ### 2026-05-18 — Drawdown breaker: tiered redesign (OK/WATCH/REDUCE/BLOCK)
 
