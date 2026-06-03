@@ -5878,8 +5878,35 @@ reviews:
 
   - review_id: alpaca_stop_trigger_reliability
     title: "P0 — Alpaca paper stop trigger silently fails despite SIP-confirmed cross"
-    severity: P0
-    live_cutover_blocker: true
+    severity: P2  # DOWNGRADED 2026-06-03 from P0
+    live_cutover_blocker: false  # DOWNGRADED 2026-06-03 (operator-ratified, order-record-grounded)
+    resolution_2026_06_03: |
+      DOWNGRADED from P0 live-cutover blocker -> entry fill-rate/opportunity-cost
+      (operator-ratified). RESOLVED via the authoritative Alpaca ORDER RECORD
+      (mi_live_orders.raw_response), NOT the price tape:
+        - Entry ea918c50 (stop_limit, stop 204.86 / limit 205.88): filled_qty=0,
+          status canceled. NO position ever opened.
+        - OTO child stop 1434b7c5 (stop-MARKET 197.31): status HELD throughout
+          (never activated — correct OTO with an unfilled parent), cancelled with
+          the parent at 10:00, filled_qty=0. (raw exit_reason='stop_hit' is a
+          mislabel; filled_qty=0 = never fired.)
+      => ENTRY-side, NOT an exit-side protective-stop/naked-position failure (the
+      child never needed to activate; no position existed). Per advisor criterion
+      "entry never filled -> opportunity cost, reframe earned." NVTS (this session)
+      = same entry-side run-through class.
+      WHY no fill: stop-limit gap/no-trigger — limit (205.88) too tight vs SIP high
+      (207.20, operator TradingView); on Alpaca paper (IEX) the trigger never fired
+      (IEX max ~203 < 204.86). Either way no fill/no position; likely gap-through on
+      live too.
+      FIX (gated, not a safety blocker): entry-tuning — widen limit OR stop-market
+      entry w/ chase cap (CHANGE_PROCESS). #180 = the would-have-filled auto-classifier.
+      EXIT-side safety stays covered by submission stop-leg verify
+      (place_bracket_order:303-315) + #142 + #128 + #137.
+      RESIDUAL (verify-not-relax, separate from this safety gate): Apollo paper uses
+      IEX; IEX can miss crosses SIP shows -> paper may UNDER-fill entries vs the live
+      (real-exchange/SIP) path -> cohort representativeness. Filed #182.
+      RE-ESCALATE only if an exit-side activation failure (child accepted/active on
+      an OPEN position then no-fill) is ever observed.
     escalation_note_2026_05_28: |
       Initially filed with threshold=3 per default N=1 protocol. Operator
       pushed back same session: the failure chain (detect → alert → submit
