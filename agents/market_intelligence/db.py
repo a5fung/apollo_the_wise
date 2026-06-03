@@ -4159,15 +4159,18 @@ async def persist_theme_candidates_shadow(
     run_date: "str | date", themes: list[dict], would_revive: "dict | None" = None,
 ) -> int:
     """ADR 0007 shadow lane — write PROPOSED themes to mi_theme_candidates_shadow (NOT
-    mi_themes / the brief). Re-runnable: clears prior rows for run_date first. Returns
-    rows written. `would_revive` maps existing-theme-name -> bool flag (computed, not applied)."""
+    mi_themes / the brief). Re-runnable: clears prior shadow_v2 rows for run_date first.
+    SOURCE-SCOPED delete — must NOT clobber the source='narrative_cogap' rows that
+    persist_narrative_theme_candidates writes to the same table (#167). Returns rows
+    written. `would_revive` maps existing-theme-name -> bool flag (computed, not applied)."""
     if not themes:
         return 0
     would_revive = would_revive or {}
     pool = await get_pool()
     async with pool.acquire() as conn:
         rd = _to_date(run_date)
-        await conn.execute("DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1", rd)
+        await conn.execute(
+            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = 'shadow_v2'", rd)
         n = 0
         for t in themes:
             name = t.get("name")

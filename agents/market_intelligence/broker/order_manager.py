@@ -2263,14 +2263,14 @@ async def reconcile_order_states(account_mode: str, lookback_days: int = 90) -> 
     return {"examined": examined, "updated": updated, "errors": errors}
 
 
-async def reconcile_all_modes() -> dict:
+async def reconcile_all_modes(lookback_days: int = 90) -> dict:
     """Run reconcile_order_states for paper + live (or paper only if
     ENABLE_LIVE_MODE=false). Aggregate counts across modes."""
     modes = ["paper", "live"] if ENABLE_LIVE_MODE else ["paper"]
     totals = {"examined": 0, "updated": 0, "errors": 0}
     for mode in modes:
         try:
-            result = await reconcile_order_states(mode)
+            result = await reconcile_order_states(mode, lookback_days=lookback_days)
             for k in totals:
                 totals[k] += result.get(k, 0)
         except Exception as e:

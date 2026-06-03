@@ -2009,7 +2009,7 @@ async def _9m_pace_digest_job():
     return len(ranked)
 
 
-async def _order_status_reconcile_job():
+async def _order_status_reconcile_job(lookback_days: int = 90):
     """Periodic DB↔Alpaca order-status reconciliation (#123, 2026-05-26).
 
     Catches silent stops (Apollo never sees the trade_update stream event)
@@ -2023,7 +2023,7 @@ async def _order_status_reconcile_job():
     """
     try:
         from agents.market_intelligence.broker.order_manager import reconcile_all_modes
-        result = await reconcile_all_modes()
+        result = await reconcile_all_modes(lookback_days=lookback_days)
         if result.get("updated", 0) > 0 or result.get("errors", 0) > 0:
             logger.info(
                 f"order_status_reconcile: examined={result['examined']} "
@@ -2034,6 +2034,14 @@ async def _order_status_reconcile_job():
         logger.error(f"order_status_reconcile_job failed: {e}", exc_info=True)
         await notify_job_failure(JOB_ORDER_STATUS_RECONCILE, str(e))
         return None
+
+
+async def _order_status_reconcile_job_open():
+    """#150 open-window variant — 1-day lookback only. The 9:31-9:40 every-minute
+    cadence exists to time TODAY's pending_new->new transition; a 90-day sweep would
+    re-poll every stale non-terminal order ~10x/morning for nothing (/simplify
+    efficiency finding 2026-06-02)."""
+    return await _order_status_reconcile_job(lookback_days=1)
 
 
 async def _backup_health_check_job():
@@ -3428,9 +3436,9 @@ def start_scheduler() -> AsyncIOScheduler:
     # carry live) — decides #150's live-carry + whether the stop-market mitigation
     # is needed. Reuses the SAME reconcile job (zero order-handling logic touched);
     # the tight cadence times the pending_new->new transition via the
-    # order_status_reconciled audit rows. Audit-only, ~10 extra polls/day.
+    # order_status_reconciled audit rows. Audit-only, ~10 extra 1-day-scoped polls/day.
     _scheduler.add_job(
-        audit_wrap(_order_status_reconcile_job, JOB_ORDER_STATUS_RECONCILE + "_open"),
+        audit_wrap(_order_status_reconcile_job_open, JOB_ORDER_STATUS_RECONCILE + "_open"),
         CronTrigger(
             hour="9", minute="31-40",
             day_of_week="mon-fri", timezone="America/New_York",
