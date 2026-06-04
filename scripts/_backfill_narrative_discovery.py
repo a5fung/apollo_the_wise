@@ -14,6 +14,7 @@ Run: docker exec apollo-market python scripts/_backfill_narrative_discovery.py
 """
 from __future__ import annotations
 
+import argparse
 import asyncio
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ from agents.market_intelligence.theme_engine import discover_narrative_themes
 from agents.market_intelligence.db import get_pool
 
 
-async def main():
+async def main(persist: bool):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -32,14 +33,15 @@ async def main():
             "WHERE alert_date > CURRENT_DATE - 35 ORDER BY alert_date"
         )
     dates = [r["alert_date"] for r in rows]
-    print(f"\n#167 narrative-discovery backfill — {len(dates)} alert-days\n")
+    print(f"\n#167 narrative-discovery backfill — {len(dates)} alert-days "
+          f"({'WRITE' if persist else 'DRY (read-only A/B)'})\n")
     print(f"{'date':<12}{'alerts':>7}{'themes':>7}  names")
     print("-" * 70)
 
     total = 0
     days_with = 0
     for d in dates:
-        out = await discover_narrative_themes(d)
+        out = await discover_narrative_themes(d, persist=persist)
         n = out.get("themes", 0) or 0
         total += n
         if n > 0:
@@ -57,4 +59,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry", action="store_true", help="read-only A/B: do NOT persist to shadow table")
+    args = ap.parse_args()
+    asyncio.run(main(persist=not args.dry))

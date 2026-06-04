@@ -313,7 +313,7 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
-async def discover_narrative_themes(scan_date=None) -> dict:
+async def discover_narrative_themes(scan_date=None, persist: bool = True) -> dict:
     """C2/C3 rung-1 NARRATIVE-theme discovery (#167, shadow/advisory).
 
     Groups the day's EP alerts by SHARED CATALYST-NARRATIVE via one Sonnet call and
@@ -349,8 +349,17 @@ async def discover_narrative_themes(scan_date=None) -> dict:
             "Below are today's gap-up momentum stocks and their catalysts. Identify EMERGING "
             "NARRATIVE THEMES that 2 OR MORE of them genuinely SHARE. Themes MAY span sectors and "
             "RS levels (e.g. a government-policy theme spanning Industrials + Tech + Defense). A theme "
-            "must be a real shared story/catalyst, NOT a generic sector label. If there is NO genuine "
-            "shared narrative across 2+ of these names, return an EMPTY list — do NOT force groupings.\n\n"
+            "must be a real shared story/catalyst, NOT a generic sector label.\n"
+            "CRITICAL: a theme is a SPECIFIC shared NARRATIVE / DRIVER (a technology cycle, a "
+            "government policy, a supply shortage, a product category, a specific industry catalyst) "
+            "— NOT a generic CATALYST-TYPE that names coincidentally share because of the calendar. "
+            "'They all beat Q1 earnings', 'broad earnings-beat momentum', 'raised guidance', 'relief "
+            "rally', or a bare 'AI'/'SaaS'/'software' label are NOT themes (those are catalyst "
+            "categories, not emerging narratives). Group ONLY when the names share a SPECIFIC emerging "
+            "story a trader would name as a theme (e.g. 'nuclear/AI power demand', 'defense drone "
+            "expansion', 'quantum computing', 'GLP-1 obesity', 'edge-AI silicon'). "
+            "If there is NO genuine shared narrative across 2+ of these names, return an EMPTY "
+            "list — do NOT force groupings.\n\n"
             "Stocks:\n" + "\n".join(lines) + "\n\n"
             'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
             'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],"thesis":"one sentence"}]}. '
@@ -372,7 +381,7 @@ async def discover_narrative_themes(scan_date=None) -> dict:
                 clean.append({"name": str(t["name"])[:80], "tickers": tks,
                               "thesis": (t.get("thesis") or "")[:500],
                               "catalyst_type": t.get("catalyst_type")})
-        n = await persist_narrative_theme_candidates(scan_date, clean)
+        n = (await persist_narrative_theme_candidates(scan_date, clean)) if persist else len(clean)
         out["themes"] = n
         out["names"] = [t["name"] for t in clean]
         await log_audit_event("narrative_theme_discovery_ran",
