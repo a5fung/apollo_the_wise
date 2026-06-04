@@ -150,14 +150,17 @@ async def main(days: int | None):
     pool = await get_pool()
     where_days = f"AND alert_date >= CURRENT_DATE - INTERVAL '{int(days)} days'" if days else ""
     async with pool.acquire() as conn:
+        # Cohort = ORB entry that was PLACED then CANCELLED unfilled. Keyed on
+        # status='cancelled' + entry_order_id set (NOT skip_reason text — the
+        # cancellation skip_reason is often literally "cancelled", e.g. AVAV/MRVL,
+        # which a skip_reason ILIKE on "ORB window unfilled" silently dropped).
         rows = await conn.fetch(f"""
             SELECT ticker, alert_date, orb_high, orb_low, entry_price,
                    stop_price, entry_shares, skip_reason
             FROM mi_live_trades
-            WHERE (skip_reason ILIKE '%ORB window unfilled%'
-                   OR skip_reason ILIKE '%EOD unfilled%'
-                   OR skip_reason ILIKE '%gap_through%'
-                   OR skip_reason ILIKE '%clean_miss%')
+            WHERE status = 'cancelled'
+              AND entry_order_id IS NOT NULL
+              AND orb_high IS NOT NULL
               {where_days}
             ORDER BY alert_date DESC
         """)
