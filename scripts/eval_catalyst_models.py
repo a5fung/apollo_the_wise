@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
 """#188 model-eval (READ-ONLY analysis; NO DB writes, NO trade state).
 
-Re-grades stored EP catalyst summaries with Haiku (current) vs Sonnet-4-6 on the
-IDENTICAL production classify_catalyst prompt/tool. Controlled same-input comparison:
-feeds the stored `catalyst` summary (Perplexity's synthesized answer) to both models.
+Re-grades stored EP catalyst summaries with Haiku / Sonnet / Opus on the IDENTICAL
+production classify_catalyst prompt/tool. Controlled same-input comparison: feeds the
+stored `catalyst` summary (Perplexity's synthesized answer) to every model.
 
 NOTE (fidelity caveat): production _classify_catalyst_claude feeds the RAW news list
-(each item text[:200]); here we feed the stored summary to BOTH models, so this isolates
+(each item text[:200]); here we feed the stored summary to ALL models, so this isolates
 MODEL quality on identical input (not a reproduction of the exact production grade).
+The grade-the-summary task is expected to CONVERGE across models — the lever for that
+task is the grounded INPUT (sourcing #187), not the model. quality-primary per operator.
 
-Reads cases from /tmp/cases.json (generated via psql json_agg). Prints a grade table,
-the analyses for disagreements + known-failure tickers, and a cost tally.
+Reads cases from /tmp/cases.json (psql json_agg). Per-model try/except so one model's
+failure (e.g. an unavailable id) doesn't drop the case.
 """
 import json
 import os
 
 import anthropic
 
-HAIKU = "claude-haiku-4-5-20251001"
-SONNET = "claude-sonnet-4-6"
-PRICE = {HAIKU: (0.80, 4.00), SONNET: (3.00, 15.00)}  # $/1M tokens (in, out)
-WATCH = {"RUM", "PGY", "CRSR", "DY", "POWI", "GRRR"}  # text-says-no-catalyst but Haiku said strong
+# (label, model_id, ($/1M in, $/1M out))
+MODELS = [
+    ("haiku", "claude-haiku-4-5-20251001", (0.80, 4.00)),
+    ("sonnet", "claude-sonnet-4-6", (3.00, 15.00)),
+    ("opus", "claude-opus-4-8", (15.00, 75.00)),
+]
+WATCH = {"RUM", "PGY", "CRSR", "DY", "POWI", "GRRR"}  # text says no/weak catalyst; prod Haiku stored 'strong'
 
 _CATALYST_TOOL = {
     "name": "classify_catalyst",
@@ -101,43 +106,49 @@ def main():
     with open("/tmp/cases.json") as f:
         cases = json.load(f)
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    tok = {HAIKU: [0, 0], SONNET: [0, 0]}
-    diffs = []
+    tok = {name: [0, 0] for name, _, _ in MODELS}
+    names = [name for name, _, _ in MODELS]
     notable = []
-    print(f"{'TICKER':6} {'DATE':11} {'STORED':5} {'H2':5} {'SON':5} {'PPLX':5}  flags")
-    print("-" * 60)
+    ndiff = 0
+    hdr = f"{'TICKER':6} {'DATE':11} {'STORED':6} " + " ".join(f"{n.upper():8}" for n in names) + " PPLX  flags"
+    print(hdr)
+    print("-" * len(hdr))
     for c in cases:
         t = c["ticker"]
         cat = c.get("catalyst") or ""
-        try:
-            hq, ha, hi, ho = grade(client, HAIKU, t, cat)
-            sq, sa, si, so = grade(client, SONNET, t, cat)
-        except Exception as e:
-            print(f"{t:6} {str(c['date']):11} ERROR: {e}")
-            continue
-        tok[HAIKU][0] += hi; tok[HAIKU][1] += ho
-        tok[SONNET][0] += si; tok[SONNET][1] += so
-        flags = []
-        if sq != hq:
-            flags.append("H!=S")
-            diffs.append((t, c["date"], c.get("haiku"), hq, sq, ha, sa))
+        grades = {}
+        for name, model, _ in MODELS:
+            try:
+                q, a, i, o = grade(client, model, t, cat)
+                grades[name] = (q, a)
+                tok[name][0] += i
+                tok[name][1] += o
+            except Exception as e:
+                grades[name] = ("ERR", str(e)[:50])
+        qs = [grades[n][0] for n in names]
+        diff = len({q for q in qs if q != "ERR"}) > 1
+        if diff:
+            ndiff += 1
+        flags = ("DIFF " if diff else "") + ("WATCH" if t in WATCH else "")
+        print(f"{t:6} {str(c['date']):11} {str(c.get('haiku')):6} " + " ".join(f"{q:8}" for q in qs) + f" {str(c.get('pplx')):5} {flags}")
         if t in WATCH:
-            flags.append("WATCH")
-            notable.append((t, c.get("haiku"), hq, sq, sa))
-        print(f"{t:6} {str(c['date']):11} {str(c.get('haiku')):5} {hq:5} {sq:5} {str(c.get('pplx')):5}  {' '.join(flags)}")
-    print()
-    print("=== COST (this run, both models, N={}) ===".format(len(cases)))
-    for m in (HAIKU, SONNET):
-        ci = tok[m][0] / 1e6 * PRICE[m][0]
-        co = tok[m][1] / 1e6 * PRICE[m][1]
-        per = (ci + co) / max(1, len(cases))
-        print(f"  {m}: in={tok[m][0]} out={tok[m][1]} total=${ci+co:.4f} per-grade=${per:.5f}")
-    print(f"\n=== WATCH cases (text says no/weak catalyst; Haiku stored 'strong') ===")
-    for t, sh, h2, s, sa in notable:
-        print(f"  {t}: stored_haiku={sh} | rerun_haiku={h2} | SONNET={s}\n     sonnet: {sa[:240]}")
-    print(f"\n=== Haiku-vs-Sonnet disagreements: {len(diffs)}/{len(cases)} ===")
-    for t, d, sh, h2, s, ha, sa in diffs:
-        print(f"  {t} {d}: rerun_haiku={h2} -> sonnet={s}")
+            notable.append((t, c.get("haiku"), dict(grades)))
+
+    print(f"\n=== COST (this run, N={len(cases)} cases) ===")
+    for name, model, (pi, po) in MODELS:
+        ci = tok[name][0] / 1e6 * pi
+        co = tok[name][1] / 1e6 * po
+        print(f"  {name:7}: in={tok[name][0]} out={tok[name][1]} total=${ci+co:.4f} per-grade=${(ci+co)/max(1,len(cases)):.5f}")
+
+    print(f"\n=== WATCH cases (text says no/weak catalyst; PRODUCTION Haiku stored 'strong') ===")
+    for t, sh, grades in notable:
+        gl = " | ".join(f"{n}={grades[n][0]}" for n in names)
+        print(f"  {t}: stored_prod_haiku={sh} || {gl}")
+        sa = grades.get("sonnet", ("", ""))[1]
+        if sa:
+            print(f"     sonnet rationale: {sa[:200]}")
+
+    print(f"\n=== cross-model disagreements: {ndiff}/{len(cases)} ===")
 
 
 if __name__ == "__main__":
