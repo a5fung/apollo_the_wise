@@ -940,7 +940,7 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_dryrun(self, request: AgentRequest) -> AgentResponse:
         """`/dryrun` — pre-flight check.
 
-        Surfaces broker account block (mode/equity/PDT/daytrades) plus, for
+        Surfaces broker account block (mode/equity) plus, for
         every trade row inserted today, the stored spec recomputed against
         current equity. The recompute exposes sizing drift if the account
         has moved since the row was written — the moment that matters most

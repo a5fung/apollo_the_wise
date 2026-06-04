@@ -1138,7 +1138,7 @@ class TelegramChannel:
                 hint = agent_hints.get(agent_name, "")
                 lines.append(f"🔴 {display} Agent — {_safe(reason)}" + (f"\n    {hint}" if hint else ""))
 
-        # Account (paper vs live $, equity, PDT)
+        # Account (paper vs live $, equity)
         if account_info:
             lines.append("")
             lines.append("*Account*")
