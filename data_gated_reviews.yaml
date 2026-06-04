@@ -5900,8 +5900,12 @@ reviews:
       live too.
       FIX (gated, not a safety blocker): entry-tuning — widen limit OR stop-market
       entry w/ chase cap (CHANGE_PROCESS). #180 = the would-have-filled auto-classifier.
-      EXIT-side safety stays covered by submission stop-leg verify
-      (place_bracket_order:303-315) + #142 + #128 + #137.
+      EXIT-side protective-stop ACTIVATION (a resting stop on an OPEN position
+      firing when price breaches) is a DISTINCT surface, NOT this gate — and the
+      pure "Alpaca fires a placed stop" is BROKER-side, identical paper vs live
+      (so NOT a cutover-differential risk). It stays covered by #123 order-status
+      reconcile (catches a resting stop diverging from broker state) + submission
+      stop-leg verify (place_bracket_order:303-315) + #142 + #128 + #137.
       RESIDUAL (verify-not-relax, separate from this safety gate): Apollo paper uses
       IEX; IEX can miss crosses SIP shows -> paper may UNDER-fill entries vs the live
       (real-exchange/SIP) path -> cohort representativeness. Filed #182.
