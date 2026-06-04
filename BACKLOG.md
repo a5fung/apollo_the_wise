@@ -42,7 +42,7 @@ tracked — add it. Priority: **P0** = blocks live $ / safety · **P1** = core g
 Every OPEN #-task rolls up to exactly one project here. The #-task tracker stays SoT for task STATE; this is the grouping/hierarchy view. **Rule:** a new open task lands under a project below — or under **Miscellaneous** if it has no home — so nothing floats loose. Swept 2026-06-02 (28 open tasks).
 
 - **Stocks in Play** (detection · setups · entries · 9M · cooldown): #55 #56 #60 #65 #81 #97 #113 #115 #116 #134 #146 #166 #167 #168 #170 #178
-- **Live-money cutover** (MAGNA53): #150 (↓DOWNGRADED 6/3 — entry-tuning, not safety) #151 #180 #181 #182 (#181 = retire PDT safeguard post-Alpaca-Rule-4210, ETA 6/5; #182 = paper IEX-fill fidelity verify; #174 breaker-arm done 6/3)
+- **Live-money cutover** (MAGNA53): #150 (↓DOWNGRADED 6/3 — entry-tuning, not safety) #151 #180 #181 #182 #183 #184 (#181 = retire PDT safeguard post-Alpaca-Rule-4210, ETA 6/5; #182 = paper IEX-fill fidelity verify; #183 = ORB classifier IEX/window mislabel; #184 = live fill-verification mechanism; #174 breaker-arm done 6/3)
 - **North Star** (theme load-bearing): #165
 - **Operational safety / hardening**: #149 #152 #172 #179
 - **Apollo Trades dashboard**: (none open — #175 ✅ DONE 6/3, Phase 1+2 built+deployed+polished on real paper data; Phase 3 / live-cutover gated, not yet filed)
