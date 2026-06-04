@@ -3633,6 +3633,22 @@ reviews:
       forward return ≥+X%" to avoid baking in operator generosity if
       operators are themselves miscalibrated. Also: weight a2 less,
       or apply revenue-stage exemption per #55.
+
+      📍 2026-06-04 WORKED CASE (RUM) + catalyst-validator-gate NULL (advisor-checked):
+      RUM 6/4 scored 84 HIGH purely off the conviction floor (gap 15.49 + Haiku
+      `strong` × Bull 1.2; confidence_multiplier=1) — Perplexity said "no fresh
+      catalyst"/`routine`, rel_volume 0.17, theme none; the floor consumed none of
+      them. Traded magna53 ORB → stopped −1.07R/−$983 (paper). Tested whether the
+      catalyst-validator grade is an actionable floor GATE → NO: cohort of 47
+      strong-enum HIGHs with Perplexity-`routine` dissent (since 3/01) shows fwd-5d
+      +10.76%/96% ≥ strong-agreed +9.29%/93% (dissent not worse; drift-dominated,
+      can't separate), and only ~6 became real closed trades (the already-known
+      OMCL/MNDY/CRMD/DY/RUM losers; selection-on-DV, contradicts the larger-N
+      metric). Evidence INSUFFICIENT to gate on validator agreement (can't rule out
+      either) — the null points back to THIS review's theme/narrative axis, not a
+      grade gate. NB: `gemini_validation` col = Perplexity, not Gemini (misnomer;
+      cleanup task #186). Load-bearing catalyst grade runs on Haiku — Haiku→Sonnet
+      for that one grade is a separate methodology-gated hypothesis.
     predicate_sql: |
       -- Need 30 alerts with ALL 4 inputs scored + 5d forward returns
       -- settled. At ~1.7 HIGH/day post-filters and ≥3 weeks for
