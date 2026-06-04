@@ -332,12 +332,19 @@ async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict
     else:
         news_text = "\n".join([f"- {n.get('title', '')} {n.get('text', '')[:200]}" for n in news[:5]])
     company_desc = profile.get("description", "")[:300]
+    # #189 materiality anchor: deal/contract value is only EP-grade if SIGNIFICANT vs company size.
+    _mc = profile.get("marketCap")
+    try:
+        mktcap_str = f"${float(_mc) / 1e9:.1f}B" if float(_mc) >= 1e9 else f"${float(_mc) / 1e6:.0f}M"
+    except (TypeError, ValueError):
+        mktcap_str = "unknown"
 
     prompt = f"""You are analyzing a stock gap-up for EP (Episodic Pivot) trading.
 This stock is gapping up significantly in pre-market. Your job is to identify the catalyst.
 
 Stock: {ticker}
 Company: {profile.get('companyName', '')} — {profile.get('sector', '')}
+Market cap: {mktcap_str}
 Description: {company_desc}
 
 Recent news (may include earnings announcements, guidance, contracts, upgrades):
@@ -352,6 +359,10 @@ IMPORTANT RULES:
    "tender offer", "going private", "taken private", "strategic transaction", "buyout", "merger agreement".
 4. Broad SECTOR-MOMENTUM, SHORT-SQUEEZE, or non-company-specific technical moves with no concrete
    company event = "routine" (a gap-up alone is not a catalyst).
+5. MATERIALITY — weigh the catalyst's magnitude RELATIVE to the company (market cap above). A contract,
+   deal, or order is game_changer/strong ONLY if its value is SIGNIFICANT vs the company's size (a
+   meaningful fraction of market cap / revenue); a small or routine-sized deal for the company's scale
+   is "routine" however positively worded.
 
 CRITICAL — VERIFY THE CATALYST IS REAL:
 - If the news text mentions "earnings" or "quarterly results" but does NOT include specific numbers
