@@ -119,6 +119,20 @@ class ScreenerRequest(BaseModel):
     max_results: int = 20
 
 
+def _normalize_slash_cmd(token: str) -> str:
+    """Normalize a raw slash-command token to its canonical dispatch key.
+
+    Strips an @botname suffix and any non-[a-z0-9] chars (zero-width spaces,
+    paste artifacts), then re-prefixes "/". Every dispatch key is "/" +
+    lowercase-alnum, so this is a no-op for clean input and can never reject a
+    valid command. Fixes the 2026-06-04 "/syncnow -> Unknown command" while
+    /syncnow was in the Available list — an invisible char made the parsed cmd
+    != the dict key while displaying identically.
+    """
+    import re
+    return "/" + re.sub(r"[^a-z0-9]+", "", (token or "").split("@")[0].lower())
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -5065,7 +5079,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_slash_command(self, request: AgentRequest) -> AgentResponse:
         parts = request.task.strip().split()
-        cmd = parts[0].lower()
+        cmd = _normalize_slash_cmd(parts[0])  # strip hidden chars / @botname (see helper)
         dispatch = {
             "/hud":            self._handle_hud,
             "/eps":            self._handle_ep_query,

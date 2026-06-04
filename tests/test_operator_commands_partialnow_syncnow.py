@@ -221,3 +221,22 @@ async def test_syncnow_mode_arg_routes_to_single_mode():
     mode_mock.assert_called_once_with("paper")
     all_mock.assert_not_called()
     assert "paper" in resp.result
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("/syncnow", "/syncnow"),            # clean → unchanged
+    ("/SyncNow", "/syncnow"),            # case folded
+    ("/syncnow​", "/syncnow"),      # trailing zero-width space (the 2026-06-04 bug)
+    ("​/syncnow", "/syncnow"),      # leading zero-width
+    ("/syncnow@ApolloBot", "/syncnow"),  # @botname suffix (group-chat form)
+    ("/partialnow", "/partialnow"),
+    ("/9m", "/9m"),                      # digits preserved
+    ("/ur", "/ur"),                      # short command preserved
+])
+def test_normalize_slash_cmd_maps_to_dispatch_key(raw, expected):
+    """A valid command must never be silently rejected by an invisible char /
+    @botname / case mismatch — _normalize_slash_cmd folds them to the canonical
+    dispatch key. Regression for 2026-06-04 '/syncnow → Unknown command' while
+    /syncnow WAS in the Available list (an invisible char made cmd != the key)."""
+    from agents.market_intelligence.agent import _normalize_slash_cmd
+    assert _normalize_slash_cmd(raw) == expected
