@@ -49,6 +49,7 @@ from agents.market_intelligence.collector import (
     get_fmp_analyst_ratings,
     get_fmp_news,
     search_news_perplexity,
+    get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
 from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation
@@ -314,7 +315,7 @@ _CATALYST_TOOL = {
 }
 
 
-async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict) -> tuple[str, str]:
+async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None) -> tuple[str, str]:
     """
     Use Claude to classify catalyst quality via structured tool use.
     Returns: (quality, analysis_text)
@@ -323,7 +324,13 @@ async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict
     Uses tool_choice to guarantee schema-valid output — no string parsing,
     no silent fallback to "routine" on format deviations.
     """
-    news_text = "\n".join([f"- {n.get('title', '')} {n.get('text', '')[:200]}" for n in news[:5]])
+    if grounded_text:
+        # Grounded summary (SEC 8-K body + web synthesis), UNTRUNCATED — the catalyst body
+        # lives past the first ~200 chars (after the 8-K iXBRL cover), so the old per-item
+        # [:200] starved the grader and forced confabulation from raw headlines (#190 / RUM 6/4).
+        news_text = grounded_text[:6000]
+    else:
+        news_text = "\n".join([f"- {n.get('title', '')} {n.get('text', '')[:200]}" for n in news[:5]])
     company_desc = profile.get("description", "")[:300]
 
     prompt = f"""You are analyzing a stock gap-up for EP (Episodic Pivot) trading.
@@ -343,6 +350,8 @@ IMPORTANT RULES:
    deal where the company is being acquired — classify as "mna". This is a hard skip: price is capped
    at deal value, there is no momentum trade. Keywords: "definitive agreement", "to be acquired",
    "tender offer", "going private", "taken private", "strategic transaction", "buyout", "merger agreement".
+4. Broad SECTOR-MOMENTUM, SHORT-SQUEEZE, or non-company-specific technical moves with no concrete
+   company event = "routine" (a gap-up alone is not a catalyst).
 
 CRITICAL — VERIFY THE CATALYST IS REAL:
 - If the news text mentions "earnings" or "quarterly results" but does NOT include specific numbers
@@ -364,7 +373,7 @@ catalyst, say so explicitly."""
             for attempt in range(2):
                 try:
                     response = await _get_claude().messages.create(
-                        model="claude-haiku-4-5-20251001",
+                        model="claude-sonnet-4-6",  # #190: grade the grounded summary on Sonnet (Haiku confabulated on raw headlines)
                         max_tokens=300,
                         tools=[_CATALYST_TOOL],
                         tool_choice={"type": "tool", "name": "classify_catalyst"},
@@ -1116,11 +1125,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
         else:
             # Fetch all external data concurrently
-            profile, fmp_news, ratings, perplexity_answer = await asyncio.gather(
+            profile, fmp_news, ratings, perplexity_answer, sec_filings = await asyncio.gather(
                 get_fmp_profile(ticker),
                 get_fmp_news(ticker),
                 get_fmp_analyst_ratings(ticker),
                 search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
+                get_sec_recent_filings(ticker),
             )
             await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
             upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
@@ -1132,8 +1142,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 [n.get("title", "") for n in fmp_news[:3]]
             )
 
+            # Grounded catalyst summary (#187/#190): authoritative SEC 8-K body (the catalyst
+            # the LLMs were blind to — e.g. RUM 6/4 $270M GPU-cloud deal) + the web synthesis,
+            # UNTRUNCATED — the grade reasons on this, not raw 200-char headlines. SEC fetch is
+            # error-wrapped (returns []), so it can never slow or break the scan.
+            sec_8k = next((f for f in sec_filings if f.get("text")), None)
+            grounded_parts = []
+            if sec_8k:
+                grounded_parts.append(
+                    f"[SEC {sec_8k['form']} filed {sec_8k['filed']}, items {sec_8k['items']}] {sec_8k['text']}")
+                news_summary = (f"[SEC {sec_8k['form']} filed {sec_8k['filed']}, items {sec_8k['items']}] "
+                                + news_summary)[:600]
+            if perplexity_answer:
+                grounded_parts.append(f"[Web summary] {perplexity_answer}")
+            grounded_text = "\n\n".join(grounded_parts) or None
+
             # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
-            claude_task = asyncio.create_task(_classify_catalyst_claude(ticker, all_news, profile))
+            claude_task = asyncio.create_task(
+                _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text))
             pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
             catalyst_quality, claude_analysis = await claude_task

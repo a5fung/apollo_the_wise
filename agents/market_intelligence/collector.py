@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 import urllib.parse
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
@@ -510,6 +511,95 @@ async def get_polygon_news(
         ]
     except Exception as e:
         logger.warning(f"Polygon news fetch failed for {ticker}: {e}")
+        return []
+
+
+# ── SEC EDGAR (catalyst sourcing, #187) ──────────────────────────────────────
+# Free/public. Uses the near-real-time submissions endpoint (NOT the laggy efts
+# full-text index). B0 (2026-06-04) confirmed an 8-K is retrievable within ~2 min
+# of acceptance; RUM's $270M GPU-cloud deal 8-K was on EDGAR at 5:04am ET — 4.5h
+# before the 9:40 scan — but we never queried it. SEC requires a descriptive UA.
+_SEC_UA = {
+    "User-Agent": os.environ.get("SEC_USER_AGENT", "Apollo Research lastone99@gmail.com"),
+    "Accept-Encoding": "gzip, deflate",
+}
+_sec_cik_map: Optional[dict[str, str]] = None
+_sec_cik_lock = asyncio.Semaphore(1)
+
+
+def _strip_html(html: str) -> str:
+    """Crude HTML→text for SEC filing docs (no bs4 dependency)."""
+    txt = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", html)
+    txt = re.sub(r"(?s)<[^>]+>", " ", txt)
+    txt = txt.replace("&#160;", " ").replace("&nbsp;", " ").replace("&amp;", "&")
+    return re.sub(r"\s+", " ", txt).strip()
+
+
+async def _sec_cik_for(client: httpx.AsyncClient, ticker: str) -> Optional[str]:
+    """Map ticker → zero-padded CIK via SEC company_tickers.json (cached process-wide)."""
+    global _sec_cik_map
+    async with _sec_cik_lock:
+        if _sec_cik_map is None:
+            r = await client.get("https://www.sec.gov/files/company_tickers.json")
+            r.raise_for_status()
+            _sec_cik_map = {
+                str(row["ticker"]).upper(): str(row["cik_str"]).zfill(10)
+                for row in r.json().values()
+            }
+    return _sec_cik_map.get(ticker.upper())
+
+
+async def get_sec_recent_filings(
+    ticker: str,
+    *,
+    forms: tuple[str, ...] = ("8-K",),
+    lookback_days: int = 4,
+    max_filings: int = 2,
+    want_text: bool = True,
+) -> list[dict]:
+    """Recent SEC filings (default 8-K) for `ticker`, newest first, via the
+    near-real-time submissions endpoint. Returns list of
+    {form, filed, accepted, items, url, text}. Empty list on ANY failure — never
+    raises, so it can't slow or break the EP scan (#187 catalyst sourcing).
+    The 8-K disclosure body is in the PRIMARY doc (after the iXBRL cover header)."""
+    try:
+        async with httpx.AsyncClient(timeout=10, headers=_SEC_UA, follow_redirects=True) as client:
+            cik = await _sec_cik_for(client, ticker)
+            if not cik:
+                return []
+            sub = (await client.get(f"https://data.sec.gov/submissions/CIK{cik}.json")).json()
+            recent = sub["filings"]["recent"]
+            n = len(recent["form"])
+            acc = recent.get("acceptanceDateTime", [""] * n)
+            items = recent.get("items", [""] * n)
+            cutoff = (et_today() - timedelta(days=lookback_days)).isoformat()
+            out: list[dict] = []
+            for i, form in enumerate(recent["form"]):
+                if not any(form.startswith(f) for f in forms):
+                    continue
+                if recent["filingDate"][i] < cutoff:
+                    continue
+                acc_no = recent["accessionNumber"][i].replace("-", "")
+                primary = recent["primaryDocument"][i]
+                url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/{primary}"
+                rec = {
+                    "form": form,
+                    "filed": recent["filingDate"][i],
+                    "accepted": acc[i],
+                    "items": items[i],
+                    "url": url,
+                }
+                if want_text:
+                    try:
+                        rec["text"] = _strip_html((await client.get(url)).text)[:4000]
+                    except Exception:
+                        rec["text"] = ""
+                out.append(rec)
+                if len(out) >= max_filings:
+                    break
+            return out
+    except Exception as e:
+        logger.warning(f"SEC filings fetch failed for {ticker}: {e}")
         return []
 
 
