@@ -114,7 +114,7 @@ The script runs `phase_validate` automatically. Cross-check these manually too:
 
 - [ ] **Telegram `/status`** — bot responds within 5s; per-mode equity matches Alpaca web UI within $1
 - [ ] **Telegram `/trades`** — open position list matches Alpaca portfolio page exactly (symbol + qty)
-- [ ] **Telegram `/account`** — daytrade_count and drawdown_breaker state plausible
+- [ ] **Telegram `/account`** — buying_power and drawdown_breaker state plausible
 - [ ] **Manual sync_positions trigger** (iterates both paper + live modes internally):
    ```bash
    docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.order_manager import sync_positions; print(asyncio.run(sync_positions()))"

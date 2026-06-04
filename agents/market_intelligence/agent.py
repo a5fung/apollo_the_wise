@@ -151,8 +151,6 @@ class MarketIntelligenceAgent(BaseAgent):
                             "account": {            # null on failure
                                 "equity": float,
                                 "buying_power": float,
-                                "pattern_day_trader": bool,
-                                "daytrade_count": int,
                             },
                             "error": str | null,
                         },
@@ -203,8 +201,6 @@ class MarketIntelligenceAgent(BaseAgent):
                     block["account"] = {
                         "equity": float(account.get("equity", 0.0)),
                         "buying_power": float(account.get("buying_power", 0.0)),
-                        "pattern_day_trader": bool(account.get("pattern_day_trader", False)),
-                        "daytrade_count": int(account.get("daytrade_count", 0)),
                     }
                 except Exception as e:
                     block["error"] = str(e)[:200]
@@ -958,15 +954,11 @@ class MarketIntelligenceAgent(BaseAgent):
         # is unreachable (e.g. weekend Alpaca maintenance).
         equity: float | None = None
         buying_power: float | None = None
-        daytrade_count: int = 0
-        pdt_flag = False
         broker_err: str | None = None
         try:
             account = await alpaca.get_account()
             equity = float(account["equity"])
             buying_power = float(account["buying_power"])
-            daytrade_count = int(account.get("daytrade_count") or 0)
-            pdt_flag = bool(account.get("pattern_day_trader") or False)
         except Exception as e:
             broker_err = str(e)
 
@@ -978,8 +970,6 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append(f"  Equity:         ${equity:,.2f}")
             lines.append(f"  Buying power:   ${buying_power:,.2f}")
-            lines.append(f"  PDT flagged:    {pdt_flag}")
-            lines.append(f"  Day-trades:     {daytrade_count}/3 (rolling 5-day)")
         lines.append("")
 
         # Today's trades — any status, including pending/skipped/blocked rows

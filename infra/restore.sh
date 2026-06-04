@@ -407,7 +407,7 @@ The following checks require operator action (no automation possible):
      Alpaca web UI within \$1.
   2. Telegram /trades — open position list matches Alpaca portfolio page
      exactly (symbol + qty).
-  3. Telegram /account — daytrade_count and drawdown_breaker state plausible.
+  3. Telegram /account — buying_power and drawdown_breaker state plausible.
   4. Trigger sync_positions manually (iterates both paper + live modes internally):
        docker exec apollo-market python -c "import asyncio; from agents.market_intelligence.broker.order_manager import sync_positions; print(asyncio.run(sync_positions()))"
      Verify no discrepancy in Telegram alert.

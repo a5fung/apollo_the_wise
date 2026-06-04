@@ -38,8 +38,6 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
     BLOCK_DAILY_LOSS,
     BLOCK_MAX_POSITIONS,
-    BLOCK_PDT_LOCKOUT_ACTIVE,
-    BLOCK_PDT_LOCKOUT_IMMINENT,
     SETUP_ACCOUNT_FETCH_FAILED,
     humanize,
 )
@@ -61,42 +59,6 @@ logger = logging.getLogger(__name__)
 
 
 # ── Safeguards ───────────────────────────────────────────────────────────────
-
-
-async def _emit_pdt_warning_once(daytrade_count: int, equity: float) -> None:
-    """Telegram + audit at daytrade_count >= 2, deduped to once per UTC day.
-
-    Dedup via mi_audit_log presence: we don't want every cron tick to ping the
-    user about the same headroom. The block guard above is the hard stop;
-    this is just the heads-up before we hit it.
-    """
-    today = et_today()
-    pool = await get_pool()
-    try:
-        async with pool.acquire() as conn:
-            already = await conn.fetchval(
-                """
-                SELECT EXISTS (
-                    SELECT 1 FROM mi_audit_log
-                    WHERE event_type = 'pdt_warning_emitted'
-                      AND (created_at AT TIME ZONE 'America/New_York')::date = $1
-                )
-                """,
-                today,
-            )
-        if already:
-            return
-        from agents.market_intelligence.db import log_audit_event
-        await log_audit_event(
-            "pdt_warning_emitted",
-            f"daytrade_count={daytrade_count}/3 equity=${equity:,.0f}",
-        )
-        await send_telegram_message(
-            f"{mode_prefix()}⚠️ *PDT headroom: {daytrade_count}/3 day-trades used* — "
-            f"one more triggers 90-day liquidation-only lockout (equity ${equity:,.0f} < $25K)."
-        )
-    except Exception as e:
-        logger.warning(f"PDT warning emit failed: {e}")
 
 
 async def _check_safeguards(
@@ -185,49 +147,13 @@ async def _check_safeguards(
             logger.error(f"Safeguard [{account_mode}]: cannot get account equity: {e}")
             return False, f"{SETUP_ACCOUNT_FETCH_FAILED}: {e}", 0.0
 
-        # PDT guard: at < $25K equity, the 4th day-trade in a rolling 5-business-day
-        # window flips the account to liquidation-only for 90 days. Block the 4th
-        # before it triggers; also block any new entry once already flagged.
-        daytrade_count = int(account.get("daytrade_count", 0) or 0)
-        is_pdt_flagged = bool(account.get("pattern_day_trader", False))
-        if equity < 25_000:
-            if is_pdt_flagged:
-                logger.warning(
-                    f"Safeguard blocked: PDT lockout active "
-                    f"(equity ${equity:,.0f}, pattern_day_trader=True)"
-                )
-                try:
-                    from agents.market_intelligence.db import log_audit_event
-                    await log_audit_event(
-                        "pdt_lockout_block_active",
-                        f"equity=${equity:,.0f} daytrade_count={daytrade_count}",
-                    )
-                except Exception:
-                    pass
-                return False, (
-                    f"{BLOCK_PDT_LOCKOUT_ACTIVE}: equity=${equity:,.0f} "
-                    f"daytrade_count={daytrade_count}"
-                ), 0.0
-            if daytrade_count >= 3:
-                logger.warning(
-                    f"Safeguard blocked: PDT lockout imminent "
-                    f"(equity ${equity:,.0f}, day-trades {daytrade_count}/3)"
-                )
-                try:
-                    from agents.market_intelligence.db import log_audit_event
-                    await log_audit_event(
-                        "pdt_lockout_block_imminent",
-                        f"equity=${equity:,.0f} daytrade_count={daytrade_count}",
-                    )
-                except Exception:
-                    pass
-                return False, (
-                    f"{BLOCK_PDT_LOCKOUT_IMMINENT}: daytrade_count={daytrade_count}/3 "
-                    f"equity=${equity:,.0f}"
-                ), 0.0
-            # One-shot daily warning at 2/3 — dedup via audit-log presence.
-            if daytrade_count >= 2:
-                await _emit_pdt_warning_once(daytrade_count, equity)
+        # PDT guard RETIRED 2026-06-04 (#181). FINRA Rule 4210 + Alpaca's new
+        # intraday-margin framework eliminated the PDT designation and the $25K
+        # floor (4x intraday BP now from $2K). Alpaca returns pattern_day_trader=
+        # false / daytrade_count=0 (fields removed by 2026-07-06) and enforces
+        # intraday-margin pre-trade checks broker-side (orders into a margin
+        # deficit are rejected). No Apollo-side day-trade-count gate is needed.
+        # See docs/setups/safeguards.md change log 2026-06-04.
 
         today = et_today()
         today_losses = await conn.fetchval("""

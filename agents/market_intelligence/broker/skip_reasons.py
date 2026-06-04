@@ -37,6 +37,9 @@ BLOCK_STRATEGY_DISABLED          = "block:strategy_disabled"
 BLOCK_STRATEGY_IN_SHADOW         = "block:strategy_in_shadow"
 BLOCK_PAPER_STRATEGY_ON_LIVE     = "block:paper_strategy_on_live"
 BLOCK_TICKER_OPEN_POSITION       = "block:ticker_open_position"
+# PDT lockout guards RETIRED 2026-06-04 (#181) — FINRA Rule 4210 eliminated the
+# PDT designation; the guard no longer fires. Constants + labels kept (not removed)
+# so humanize() still renders pre-2026-06-04 historical rows that carry them.
 BLOCK_PDT_LOCKOUT_IMMINENT       = "block:pdt_lockout_imminent"
 BLOCK_PDT_LOCKOUT_ACTIVE         = "block:pdt_lockout_active"
 BLOCK_STRATEGY_POSITION_CAP      = "block:strategy_position_cap"

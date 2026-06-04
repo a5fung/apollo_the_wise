@@ -1256,17 +1256,8 @@ class TelegramChannel:
             if account:
                 equity = account.get("equity", 0.0)
                 buying_power = account.get("buying_power", 0.0)
-                pdt_flag = account.get("pattern_day_trader", False)
-                dt_count = account.get("daytrade_count", 0)
                 lines.append(f"  Equity: ${equity:,.2f}")
                 lines.append(f"  Buying power: ${buying_power:,.2f}")
-                lines.append(f"  PDT flag: {pdt_flag}")
-                if equity < 25_000:
-                    headroom = max(0, 3 - dt_count)
-                    warn = " ⚠️" if dt_count >= 2 else ""
-                    lines.append(f"  Day trades used: {dt_count}/3 (rolling 5d, {headroom} left){warn}")
-                else:
-                    lines.append(f"  Day trades used: {dt_count} (equity ≥ $25K — no PDT cap)")
             elif err:
                 lines.append(f"  ⚠️ Account fetch failed: {err[:100]}")
             lines.append("")

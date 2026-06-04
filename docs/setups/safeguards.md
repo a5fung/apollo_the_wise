@@ -13,9 +13,7 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 
 1. **`live_trading_enabled`** — env-gate kill switch (`LIVE_TRADING_ENABLED`). Returns False if disabled. No skip reason — the entire pipeline early-exits.
 2. **`max_concurrent_positions`** (`BLOCK_MAX_POSITIONS`) — count of open `mi_live_trades` rows in `('filled','order_placed','pending_confirmation','confirmed')` ≥ `MAX_CONCURRENT_LIVE_POSITIONS` (5). Bounds total simultaneous exposure.
-3. **PDT guards** — at equity < $25K:
-   - `BLOCK_PDT_LOCKOUT_ACTIVE` if Alpaca's `pattern_day_trader=True`
-   - `BLOCK_PDT_LOCKOUT_IMMINENT` if `daytrade_count ≥ 3` (one more day-trade and the broker locks out)
+3. **PDT guards** — ⚠️ **RETIRED 2026-06-04 (#181).** FINRA Rule 4210 + Alpaca's new intraday-margin framework eliminated the PDT designation and the $25K floor; the `BLOCK_PDT_LOCKOUT_ACTIVE` / `BLOCK_PDT_LOCKOUT_IMMINENT` guards were removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check (margin-deficit orders rejected) — no Apollo-side day-trade gate replaces it. See change log 2026-06-04. *(Was: at equity < $25K, block if `pattern_day_trader=True` or `daytrade_count ≥ 3`.)*
 4. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of today's closed-trade `total_pnl` ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop. Magnitude-based, not count-based.
 5. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **DEPRECATED**: superseded by drawdown breaker (#6); will be removed after #6 promotes to active. Threshold bumped 5→10 on 2026-05-08 as a stand-in.
 6. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
@@ -131,6 +129,20 @@ ORDER BY s.snapshot_date DESC;
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
 ## Change log (newest first)
+
+### 2026-06-04 — PDT lockout guard RETIRED (FINRA Rule 4210 / Alpaca intraday-margin framework)
+
+**Trigger**: Alpaca operator email 2026-06-04 — "We have officially lifted the Pattern Day Trader rule and replaced it with the new intraday margin framework." FINRA retired the PDT rule; Alpaca confirmed the rollout on our account. This was exactly the gate recorded in memory `pdt_rule_4210_change_2026` ("confirm ALPACA's — not Fidelity's — rollout → relax `BLOCK_PDT_LOCKOUT_*` via CHANGE_PROCESS").
+
+**Evidence**: regulatory change, broker-confirmed (not a backtest/threshold tune). Under the new framework: PDT designation gone regardless of day-trade count; the 4x-intraday-BP minimum equity drops $25K → $2K; the fields `pattern_day_trader`, `daytrade_count`, `last_daytrade_count`, `daytrading_buying_power`, `last_daytrading_buying_power` are deprecated — they return safe placeholders (`pattern_day_trader=false`, `daytrade_count=0`) now and are **removed from the API by 2026-07-06**. So the guard was already inert (can never fire on `false`/`0`) AND the prior direct `account.pattern_day_trader` read in `get_account()` would `AttributeError` after removal.
+
+**Anticipated effect**: the PDT block (`BLOCK_PDT_LOCKOUT_ACTIVE` / `_IMMINENT`) + the `_emit_pdt_warning_once` headroom alert are removed from `live_tracker.py`; the guard never fires. No new Apollo-side day-trade gate replaces it — intraday-margin overextension is Alpaca's broker-side pre-trade check (rejects margin-deficit orders) + intraday margin calls. `/status`, `/account`, `/dryrun` drop the now-meaningless "Day-trades: 0/3" + "PDT flag" lines (buying_power stays, per Alpaca's field-migration guidance). `get_account()` no longer surfaces `pattern_day_trader`/`daytrade_count`. **Zero behavioral change on paper** (fields already 0/false); on live (post-6/22) no PDT throttle on a sub-$25K account.
+
+**Reversion-flag**: REMOVAL of the PDT guard. NOT a reversal of a prior *decision* — the guard was correct for the pre-2026 regulatory regime; the regime itself changed. If a PDT-style rule were reinstated, re-add the guard against the (then-restored) fields. The `BLOCK_PDT_LOCKOUT_*` skip-reason constants + their `humanize()` labels are KEPT (not deleted) so historical `mi_live_trades` rows still render.
+
+**Status**: shipped (code) 2026-06-04 as an **isolated commit**; **deploy HELD** to ride the #189 deploy after Track A's verifying scan — deploying earlier would `git pull` the held #189 grade change into prod (one-change-per-scan-cycle attribution). Hard removal deadline is 2026-07-06, ample margin. Verify on that deploy: clean boot + `/status` renders without PDT lines + a scan's `_check_safeguards` runs without the PDT block.
+
+---
 
 ### 2026-06-03 — Promotion timing RESOLVED: arm BEFORE cutover (paper evidence sufficient)
 

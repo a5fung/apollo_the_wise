@@ -249,12 +249,12 @@ async def get_account(account_mode: str | None = None) -> dict:
             "buying_power": float(account.buying_power),
             "cash": float(account.cash),
             "portfolio_value": float(account.portfolio_value),
-            "pattern_day_trader": account.pattern_day_trader,
             "trading_blocked": account.trading_blocked,
             "account_blocked": account.account_blocked,
-            # daytrade_count: rolling 5-business-day count. PDT lockout fires at
-            # 4 day-trades when equity < $25K. Surfaced for /status PDT headroom.
-            "daytrade_count": int(getattr(account, "daytrade_count", 0) or 0),
+            # PDT fields (pattern_day_trader / daytrade_count) dropped 2026-06-04
+            # (#181): FINRA Rule 4210 retired the PDT designation; Alpaca removes
+            # these fields by 2026-07-06. The prior direct `account.pattern_day_trader`
+            # access would have raised AttributeError post-removal.
         }
     except Exception as e:
         logger.error(f"Failed to get account: {e}")
