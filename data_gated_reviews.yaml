@@ -3649,6 +3649,19 @@ reviews:
       grade gate. NB: `gemini_validation` col = Perplexity, not Gemini (misnomer;
       cleanup task #186). Load-bearing catalyst grade runs on Haiku — Haiku→Sonnet
       for that one grade is a separate methodology-gated hypothesis.
+
+      ⚠ CORRECTION 2026-06-04 (same session, operator + advisor): RUM had a REAL
+      catalyst — SEC 8-K 6/3, $270M GPU-cloud deal (NVIDIA Blackwell B300) — that
+      BOTH Claude (no source → confabulated) and Perplexity (searched 6/4, missed
+      the ~1-day-old filing) MISSED. So RUM is primarily a catalyst-SOURCING failure,
+      NOT a no-catalyst over-admission; the floor scored 84 off Haiku's confabulation
+      and would have done so regardless of a real catalyst (undiscriminating, NOT
+      exonerated). The 47-cohort / fwd-5d / realized-R "validator-gate" probe above
+      is DEMOTED to illustrative/non-conclusive: it is small-data methodology-
+      adjudication (operator directive — we IMPLEMENT the known method, we do NOT
+      validate it from ~30 bull-regime alerts; and discovery-blind catalyst→outcome
+      data is garbage-in). Fix venue stays the theme/narrative axis (this review),
+      ACCELERATED — de-gate from the 9/8 / N≥30 framing → ship advisory now.
     predicate_sql: |
       -- Need 30 alerts with ALL 4 inputs scored + 5d forward returns
       -- settled. At ~1.7 HIGH/day post-filters and ≥3 weeks for
