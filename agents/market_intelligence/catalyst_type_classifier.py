@@ -58,10 +58,21 @@ CATALYST_TYPES: tuple[str, ...] = (
 # Rank for downstream ordering/analysis (lower = more powerful per Pradeep).
 CATALYST_TYPE_RANK: dict[str, int] = {t: i for i, t in enumerate(CATALYST_TYPES)}
 
-# The high-conviction subset (Pradeep's top 3) — SSoT for "is this a fire."
-# Consumed by the EP alert/briefing markers + analysis cuts so the displayed
-# 🎯 set and the analyzed set can't drift (re-tiered here once, not per-site).
+# The high-conviction subset (Pradeep's top 3) — SSoT for "is this a TOP-tier
+# fire." Consumed by the EP alert/briefing markers + analysis cuts so the
+# displayed 🎯 set and the analyzed set can't drift (re-tiered here once).
 HIGH_CONVICTION_TYPES: frozenset[str] = frozenset({"theme", "policy", "shortage"})
+
+# Types that are NOT a confirmed, specific fire — SSoT for the fire panel (#201).
+# `unknown` = couldn't identify (coverage gap); `pre_catalyst_anticipation` =
+# gap AHEAD of an unannounced catalyst (anticipated, not realized). A
+# strong/game_changer name whose type is one of these (or NULL) is "graded big
+# but we cannot point to a realized fire" → it falls to the fire-discovery
+# guardrail rather than counting as fire_seen. The Pradeep #1–4 confirmed
+# catalysts (theme/policy/shortage/sales_acceleration/new_product/
+# management_change) and the catch-all `other` (a catalyst exists, just
+# uncategorized) all REMAIN fires — we must never demote a real earnings/deal EP.
+NON_FIRE_TYPES: frozenset[str] = frozenset({"unknown", "pre_catalyst_anticipation"})
 
 _CATALYST_TYPE_TOOL = {
     "name": "classify_catalyst_type",

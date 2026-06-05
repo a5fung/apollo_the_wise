@@ -655,8 +655,18 @@ def _compute_fire_status(
     if catalyst_type is _FIRE_UNSET:
         catalyst_fire = _material  # first pass — magnitude only
     else:
-        # refine: material AND an identifiable fire type (#155)
-        catalyst_fire = _material and (catalyst_type not in (None, "unknown"))
+        # refine: material AND a CONFIRMED specific fire type. The classifier
+        # always names something (it never returns 'unknown' for strong/gc in
+        # practice — 0/9 in the 30d classifier cohort), so "not unknown" was
+        # inert; gate on the NON_FIRE_TYPES set (unknown / anticipation / NULL)
+        # instead. Real fires (Pradeep #1–4 + the 'other' catch-all) stay fires
+        # so we never demote a real earnings/deal EP (TTAN/AGX = sales_accel).
+        from agents.market_intelligence.catalyst_type_classifier import NON_FIRE_TYPES
+        catalyst_fire = (
+            _material
+            and catalyst_type is not None
+            and catalyst_type not in NON_FIRE_TYPES
+        )
     if catalyst_fire:
         axes.append("catalyst")
     if in_theme:
