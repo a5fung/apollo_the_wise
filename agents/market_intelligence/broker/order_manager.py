@@ -2323,6 +2323,64 @@ async def reconcile_all_modes(lookback_days: int = 90) -> dict:
     return totals
 
 
+async def _try_adopt_existing_stop(
+    trade_id: int,
+    ticker: str,
+    remaining_qty: float,
+    account_mode: str,
+) -> str | None:
+    """#151 Phase 2 / #184 part-a (adopt-only): if the broker ALREADY has a
+    live sell-stop covering this position, adopt it into the DB stop_order_id
+    pointer (a PURE DB WRITE — no broker order placed or cancelled) rather than
+    placing a duplicate. Returns the adopted order id, or None when there is no
+    single positively-confirmed covering stop (caller falls through to the
+    existing place-new remediation — today's behavior).
+
+    Conservative by design (advisor 2026-06-05): adopts ONLY when EXACTLY ONE
+    open order is a confirmed-live sell-stop with qty >= remaining. Zero
+    candidates (nothing to adopt) or >1 (ambiguous) → None; never guess. No
+    cancel/dedup here — that broker-mutating capability is deferred (Phase 2b).
+    """
+    try:
+        open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
+    except Exception as e:
+        logger.warning(f"_try_adopt_existing_stop: get_open_orders failed for {ticker}: {e}")
+        return None
+    candidates = []
+    for o in open_orders:
+        side = str(o.get("side", "")).lower()
+        otype = str(o.get("type", "")).lower()
+        status = _canonical_order_status(o.get("status"))
+        if "sell" not in side or "stop" not in otype:
+            continue
+        if status not in _STOP_CONFIRMED_LIVE_STATUSES:
+            continue
+        oqty = o.get("qty")
+        try:
+            if oqty is not None and float(oqty) >= float(remaining_qty) - 0.5:
+                candidates.append(o)
+        except (TypeError, ValueError):
+            continue
+    if len(candidates) != 1:
+        return None  # 0 = nothing to adopt; >1 = ambiguous → don't guess
+    adopt_id = candidates[0].get("id")
+    if not adopt_id:
+        return None
+    await set_stop_order_id(
+        trade_id, adopt_id, reason="sync_adopt_existing", account_mode=account_mode,
+    )
+    await log_audit_event(
+        "stop_coverage_adopted",
+        f"{ticker}: adopted existing live broker stop {adopt_id[:8]} into DB "
+        f"pointer (no duplicate placed)",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker, "adopted_stop_id": adopt_id,
+            "remaining_qty": float(remaining_qty),
+        }),
+    )
+    return adopt_id
+
+
 async def sync_positions() -> list[str]:
     """
     Reconcile DB vs Alpaca positions per account_mode (dual-account #66).
@@ -2519,6 +2577,24 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                     "source": "sync_positions",
                 }),
             )
+        # #151 Phase 2 / #184 part-a (sync-first, adopt-only): BEFORE placing a
+        # new stop, check whether the broker ALREADY has a live stop covering
+        # this position that the DB merely lost track of (null / just-cleared
+        # pointer). If so, ADOPT it (pure DB write) instead of placing a
+        # duplicate — the FPS 2026-06-05 false-remediation loop (sync kept
+        # trying to add a 2nd stop while df9ff732 already covered the 109).
+        # Conservative: adopts only a single positively-confirmed covering stop;
+        # ambiguity falls through to place. Dedup-cancel deferred (Phase 2b).
+        adopted_id = await _try_adopt_existing_stop(
+            trade["id"], ticker,
+            float(trade["remaining_shares"] or 0), account_mode,
+        )
+        if adopted_id:
+            msg = f"🛡 Adopted existing broker stop for {ticker} ({adopted_id[:8]}) — no duplicate placed"
+            discrepancies.append(msg)
+            logger.info(f"sync_positions: {msg}")
+            continue
+
         # Position is live in Alpaca but has no stop order — remediate
         stop = trade["stop_price"] or trade["orb_low"]
         if not stop:
