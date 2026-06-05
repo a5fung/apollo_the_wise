@@ -625,6 +625,60 @@ def _score_ep(
     return round(final_score, 1), breakdown
 
 
+_FIRE_UNSET = object()
+
+
+def _compute_fire_status(
+    *,
+    in_theme: bool,
+    in_narrative: bool,
+    catalyst_quality: str | None,
+    catalyst_text: str | None,
+    catalyst_type=_FIRE_UNSET,
+) -> tuple[str, list[str]]:
+    """Fire panel (#201) — "did we SEE a fire?" across axes (theme/narrative/
+    catalyst). Pure + testable. Two-pass by design:
+
+    - FIRST PASS (in-loop, catalyst_type not yet classified): omit catalyst_type;
+      the catalyst axis lights on magnitude alone (strong/game_changer). This is
+      the fail-open fallback if the post-loop classify times out.
+    - REFINE (post-loop, catalyst_type known — #201 activation): a name graded
+      strong/game_changer but whose fire TYPE is `unknown`/None is NOT a seen
+      fire — we graded it big but cannot NAME the fire — so it drops to the
+      unknown buckets. That is what gives the fire-discovery guardrail signal.
+
+    Returns (fire_status, fire_axes). fire_status ∈ {fire_seen, real_unknown,
+    no_fire_confirmed}; the unknown split (had-inputs vs not) is the guardrail.
+    """
+    axes: list[str] = []
+    _material = catalyst_quality in ("strong", "game_changer")
+    if catalyst_type is _FIRE_UNSET:
+        catalyst_fire = _material  # first pass — magnitude only
+    else:
+        # refine: material AND an identifiable fire type (#155)
+        catalyst_fire = _material and (catalyst_type not in (None, "unknown"))
+    if catalyst_fire:
+        axes.append("catalyst")
+    if in_theme:
+        axes.append("theme")
+    if in_narrative:
+        axes.append("narrative")
+    if axes:
+        return "fire_seen", axes
+    # No fire on any axis — did we have inputs to judge (discovery gap vs
+    # true negative)? Recompute the disclaimer check from the catalyst text.
+    summary = (catalyst_text or "").strip()
+    try:
+        from agents.market_intelligence.collector import (
+            strip_perplexity_disclaimer as _spd,
+        )
+        _, _disc = _spd(catalyst_text or "")
+    except Exception:
+        _disc = False
+    had_inputs = len(summary) >= 40 and not _disc
+    return ("no_fire_confirmed" if had_inputs else "real_unknown"), axes
+
+
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     """
     Run pre-market EP scan.
@@ -1941,30 +1995,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # recomputed from news_summary (always present). Refine in #202.
         in_narrative = ticker in _in_narrative_cohort_set
         try:
-            _catalyst_fire = catalyst_quality in ("strong", "game_changer")
-            fire_axes = []
-            if _catalyst_fire:
-                fire_axes.append("catalyst")
-            if in_theme:
-                fire_axes.append("theme")
-            if in_narrative:
-                fire_axes.append("narrative")
-            if fire_axes:
-                fire_status = "fire_seen"
-            else:
-                _summary = (news_summary or "").strip()
-                try:
-                    # Re-import locally — the loop's other use is branch-local
-                    # (uncached path only); on a cached ticker the name would be
-                    # unbound here. Cheap idempotent import keeps it always set.
-                    from agents.market_intelligence.collector import (
-                        strip_perplexity_disclaimer as _strip_pplx,
-                    )
-                    _, _is_disclaimer = _strip_pplx(news_summary or "")
-                except Exception:
-                    _is_disclaimer = False
-                _had_inputs = len(_summary) >= 40 and not _is_disclaimer
-                fire_status = "no_fire_confirmed" if _had_inputs else "real_unknown"
+            # First pass — catalyst_type not classified until post-loop; the
+            # refine in the catalyst-type block upgrades this with the fire
+            # identity (#201 activation). This is the fail-open fallback.
+            fire_status, fire_axes = _compute_fire_status(
+                in_theme=in_theme,
+                in_narrative=in_narrative,
+                catalyst_quality=catalyst_quality,
+                catalyst_text=news_summary,
+            )
         except Exception as e:
             logger.warning(f"fire panel compute failed for {ticker}: {e}")
             fire_status = None
@@ -2138,9 +2177,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 r["catalyst_type"] = res.get("catalyst_type")
                 r["catalyst_type_rationale"] = res.get("rationale")
+                # Fire panel REFINE (#201 activation): now that the fire identity
+                # (catalyst_type) is known, recompute fire_status — a name graded
+                # strong/game_changer but with an `unknown` fire type is no longer
+                # counted as a seen fire (populates the discovery guardrail).
+                # Mutate the result dict (surfaces on the alert) + the DB row.
+                _fs, _fa = _compute_fire_status(
+                    in_theme=bool(r.get("in_active_theme")),
+                    in_narrative=bool(r.get("in_narrative_cohort")),
+                    catalyst_quality=r.get("catalyst_quality"),
+                    catalyst_text=r.get("catalyst"),
+                    catalyst_type=r.get("catalyst_type"),
+                )
+                r["fire_status"] = _fs
+                r["fire_axes"] = _fa
                 await set_ep_alert_catalyst_type(
                     r["ticker"], r["alert_date"],
                     r.get("catalyst_type"), r.get("catalyst_type_rationale"),
+                    fire_status=_fs, fire_axes=_fa,
                 )
             except Exception as _te:
                 logger.warning(f"catalyst_type classify failed for {r.get('ticker')}: {_te}")
