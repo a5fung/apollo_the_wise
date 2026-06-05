@@ -171,6 +171,16 @@ async def run() -> int:
         )
         stop_id = stop["id"]
         logger.info(f"live broker stop placed: {_TEST_QTY} sh @ ${stop_price} id={stop_id}")
+        # Wait until the stop is CONFIRMED-LIVE before adopting — the real FPS
+        # shape is an ESTABLISHED stop, not a 12ms-old pending_new one. The
+        # adopt guard correctly declines unconfirmed orders, so the test must
+        # mirror reality (otherwise it fails on its own setup race).
+        _live = {"new", "accepted", "held", "partially_filled", "accepted_for_bidding"}
+        st = await _poll_order_status(stop_id, _ACCOUNT_MODE, _live)
+        if st not in _live:
+            logger.error(f"SETUP FAIL: stop not confirmed live (status={st})")
+            return 2
+        logger.info(f"stop confirmed live (status={st}) — FPS shape established")
 
         # 3. Synthetic trade row with stop_order_id = NULL — the FPS shape:
         #    broker HAS a covering stop, DB pointer is null.
