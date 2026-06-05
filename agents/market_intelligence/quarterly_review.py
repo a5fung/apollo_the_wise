@@ -31,7 +31,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ async def run_quarterly_sweep() -> dict:
     Each script runs in a subprocess so a single failure doesn't abort
     the whole sweep. Output captured + truncated.
     """
-    started_at = datetime.utcnow()
+    started_at = datetime.now(timezone.utc)
     results: list[dict] = []
 
     for entry in QUARTERLY_BACKWARD_CHECK_SCRIPTS:
@@ -164,7 +164,7 @@ async def run_quarterly_sweep() -> dict:
             })
 
     # Aggregate into one Telegram digest
-    elapsed = (datetime.utcnow() - started_at).total_seconds()
+    elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
     lines = [
         f"📊 *Monthly backward-check sweep* — regime-shift monitor",
         f"_{started_at.strftime('%Y-%m-%d %H:%M')} UTC · "

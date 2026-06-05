@@ -1392,8 +1392,8 @@ class TelegramChannel:
 
         # Keep full button set on drill-downs so user can switch views in-place.
         if prefix == "trades":
-            from datetime import date as _date
-            today_str = _date.today().isoformat()
+            from shared.dates import et_today
+            today_str = et_today().isoformat()  # ET trading day (UTC date is tomorrow after 8pm ET)
             markup = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton("Closed Trades", callback_data=f"trades:closed:{today_str}"),

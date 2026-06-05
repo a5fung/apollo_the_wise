@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
@@ -301,7 +301,7 @@ async def extract_earnings_metrics(
     extracted["_polygon_news_count"] = len(polygon_news)
     extracted["_alpaca_news_count"] = len(alpaca_news)
     extracted["_fmp_news_count"] = len(fmp_news or [])
-    extracted["_extracted_at"] = datetime.utcnow().isoformat()
+    extracted["_extracted_at"] = datetime.now(timezone.utc).isoformat()
     # Carry-forward raw corpus snapshot (consumed by persist_catalyst_metrics).
     # These are stripped before _truncate'd display surfaces so they don't
     # bloat /why output; they're written to dedicated columns for replay.

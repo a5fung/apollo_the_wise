@@ -11,7 +11,7 @@ import json
 import logging
 import math
 import os
-from datetime import date, datetime, time as datetime_time
+from datetime import date, datetime, time as datetime_time, timezone
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.backtester.filters import validate_orb_entry
@@ -427,7 +427,7 @@ async def attempt_day1_reentry(
     pnl = (stop_fill_price - entry_price) * shares if entry_price else 0
     exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
     exits.append({
-        "time": datetime.utcnow().isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
         "price": stop_fill_price,
         "reason": "stop_hit",
         "shares": shares,
@@ -1649,7 +1649,7 @@ async def finalize_partial_exit(
     pnl = (filled_price - trade["entry_price"]) * shares if trade["entry_price"] else 0
 
     exits.append({
-        "time": datetime.utcnow().isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
         "price": filled_price,
         "reason": "partial_profit",
         "shares": shares,
@@ -1788,7 +1788,7 @@ async def finalize_full_exit(
     pnl = (filled_price - trade["entry_price"]) * filled_qty if trade["entry_price"] else 0
 
     exits.append({
-        "time": datetime.utcnow().isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
         "price": filled_price,
         "reason": reason,
         "shares": filled_qty,
@@ -1863,7 +1863,7 @@ async def finalize_stop_fill(
     attempt = trade.get("entry_attempt", 1)
 
     exits.append({
-        "time": datetime.utcnow().isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
         "price": filled_price,
         "reason": "stop_hit",
         "shares": filled_qty,

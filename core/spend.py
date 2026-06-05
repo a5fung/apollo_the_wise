@@ -160,7 +160,7 @@ async def get_spend_today() -> dict[str, Any]:
             WHERE created_at >= CURRENT_DATE
         """)
     return {
-        "date": date.today().isoformat(),
+        "date": date.today().isoformat(),  # tz-ok: paired with SQL CURRENT_DATE (server UTC) above
         "by_caller": [dict(r) for r in rows],
         "total": dict(total) if total else {},
     }
@@ -169,7 +169,7 @@ async def get_spend_today() -> dict[str, Any]:
 async def get_spend_month() -> dict[str, Any]:
     """Return current month's spend breakdown."""
     pool = await _get_pool()
-    first_of_month = date.today().replace(day=1)
+    first_of_month = date.today().replace(day=1)  # tz-ok: month-boundary for server-relative cost query ($1 below)
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT

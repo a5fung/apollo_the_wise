@@ -24,7 +24,7 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from alpaca.trading.stream import TradingStream
 
@@ -306,7 +306,7 @@ async def _dispatch_trade_event(data, stream_account_mode: str) -> None:
     and use it to (a) filter mi_live_trades queries, (b) route alpaca
     calls to the correct client, (c) emit Telegram with the right prefix.
     """
-    _last_event_time[stream_account_mode] = datetime.utcnow()
+    _last_event_time[stream_account_mode] = datetime.now(timezone.utc)
 
     event = str(data.event)
     order = data.order
@@ -866,7 +866,7 @@ async def _process_stop_fill(
 
         exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
         exits.append({
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(timezone.utc).isoformat(),
             "price": stop_fill_price,
             "reason": "stop_hit",
             "shares": shares,

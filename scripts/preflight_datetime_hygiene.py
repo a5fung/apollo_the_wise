@@ -23,12 +23,19 @@ makes the footgun mechanically impossible to reintroduce:
     3. bare `.astimezone()` (no arg) — converts to the system LOCAL zone (UTC on
        the container), a silent trap. Pass an explicit zone.
 
+  ALSO BANNED (Phase 2, 2026-06-05 — BAN_NAIVE_UTC=True):
+    4. `datetime.utcnow()` — naive UTC + deprecated in 3.12. Use
+       `datetime.now(timezone.utc)`.
+    5. `date.today()` / `datetime.today()` — returns the container's UTC date
+       (wrong after ~8pm ET). Use `et_today()` (or `# tz-ok` if deliberately
+       paired with a server-side SQL CURRENT_DATE).
+
   Escape hatch: append `# tz-ok: <reason>` on the offending line to whitelist a
   deliberate, reviewed exception.
 
-Phase 2 (filed as a follow-up #-task): once the ~15 in-scope `datetime.utcnow()`
-/ `date.today()` sites are migrated (they need per-comparison-pair care in live
-trade-state code), flip BAN_NAIVE_UTC = True below to extend the gate to them.
+Scope note: the offline `backtester/` is excluded (see EXCLUDE_SUBPATHS) — its
+DB inserts use naive UTC against `timestamp` columns where aware-vs-naive matters
+at the asyncpg boundary, and it carries zero live-trading risk.
 
 Static AST walk (comments mentioning "pytz" are NOT flagged). No runtime needed.
 Run: docker exec apollo-market python -m scripts.preflight_datetime_hygiene
@@ -44,8 +51,15 @@ from pathlib import Path
 # green and the gate would get disabled — a disabled gate is worse than none).
 SCOPED_DIRS = ["agents", "core", "channels", "shared"]
 
-# Phase 2 toggle — flip to True after the utcnow()/date.today() migration lands.
-BAN_NAIVE_UTC = False
+# Excluded subpaths: offline backtester analysis (not live trading). Its DB
+# inserts use naive UTC against `timestamp` columns where aware-vs-naive matters
+# at the asyncpg boundary; policing it here would force a column-type audit for
+# zero live-trading benefit. It is already pytz-free (migrated 2026-06-05).
+EXCLUDE_SUBPATHS = ("backtester/", "backtester\\")
+
+# Phase 2 (2026-06-05): the ~13 live utcnow()/date.today() sites are migrated
+# (utcnow()->now(timezone.utc); date.today()->et_today()), so the full ban is on.
+BAN_NAIVE_UTC = True
 
 ESCAPE = "# tz-ok"
 
@@ -148,6 +162,8 @@ def main() -> int:
         if not root.exists():
             continue
         for filepath in sorted(root.rglob("*.py")):
+            if any(sub in str(filepath) for sub in EXCLUDE_SUBPATHS):
+                continue
             n_files += 1
             all_violations.extend(check_file(filepath))
 

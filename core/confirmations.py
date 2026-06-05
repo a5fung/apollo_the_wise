@@ -13,7 +13,7 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 import redis.asyncio as redis
@@ -77,7 +77,7 @@ async def request_confirmation(
         "action_description": action_description,
         "action_payload": action_payload,
         "status": ConfirmationStatus.PENDING.value,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await r.setex(
         _redis_key(confirmation_id),

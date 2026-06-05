@@ -96,3 +96,28 @@ def test_gate_allows_explicit_astimezone():
 def test_escape_comment_suppresses():
     code = "import pytz  # tz-ok: legacy display only\n"
     assert _violations(code) == []
+
+
+# ── Phase 2 bans (utcnow / date.today) ──────────────────────────────────────
+
+def test_gate_flags_utcnow():
+    codes = {v["code"] for v in _violations(
+        "from datetime import datetime\nx = datetime.utcnow()\n")}
+    assert "utcnow" in codes
+
+
+def test_gate_flags_date_today():
+    codes = {v["code"] for v in _violations(
+        "from datetime import date\nx = date.today()\n")}
+    assert "today" in codes
+
+
+def test_gate_allows_aware_utc():
+    codes = {v["code"] for v in _violations(
+        "from datetime import datetime, timezone\nx = datetime.now(timezone.utc)\n")}
+    assert not ({"utcnow", "naive_now"} & codes)
+
+
+def test_escape_comment_suppresses_today():
+    code = "x = date.today()  # tz-ok: paired with SQL CURRENT_DATE\n"
+    assert _violations(code) == []
