@@ -2152,6 +2152,23 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
             _ctx = "in live theme" if _in_theme else "structure holds"
             tg_line = f"🧪 Theme-gated: *{_tg_tier}*{_score_str} — {_ctx}\n"
 
+    # Fire panel (#201) — "did we SEE a fire?" across axes (theme/narrative/
+    # catalyst). ADVISORY. The unknown split (discovery-gap vs gap-only) is the
+    # guardrail surfaced honestly so the operator can see blind spots per-alert.
+    fire_line = ""
+    _fire = ep.get("fire_status")
+    if _fire:
+        _axes = ep.get("fire_axes") or []
+        if _fire == "fire_seen":
+            # "graded" not "confirmed" — today this mostly = catalyst graded
+            # strong/game_changer (the grade we don't yet fully trust until
+            # materiality #189 feeds it); theme/narrative are the firmer axes.
+            fire_line = f"🔥 Fire: *graded ✓* — {', '.join(_axes) if _axes else 'catalyst'}\n"
+        elif _fire == "real_unknown":
+            fire_line = "🔥 Fire: *❓ UNKNOWN* — no catalyst visible (discovery gap)\n"
+        elif _fire == "no_fire_confirmed":
+            fire_line = "🔥 Fire: *⚠️ none confirmed* — gap-only, no material catalyst\n"
+
     text = (
         conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
@@ -2160,7 +2177,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n"
-        + tg_line + "\n"
+        + fire_line + tg_line + "\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
         f"Catalyst: {catalyst_text}"
     )

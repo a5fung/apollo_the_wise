@@ -1948,6 +1948,20 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN"
         )
+        # Fire panel (#201, 2026-06-05): multi-axis "did we SEE a fire?" advisory.
+        # in_narrative_cohort = the #167 narrative axis (own column — do NOT
+        # overload in_active_theme). fire_status = fire_seen/real_unknown/
+        # no_fire_confirmed (the unknown split is the fire-discovery guardrail).
+        # fire_axes = which axes lit (text[]). Idempotent adds, nullable.
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_narrative_cohort BOOLEAN"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status TEXT"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]"
+        )
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
@@ -1955,9 +1969,11 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                  confidence_multiplier, vol_percentile, source,
                  pm_rvol, pm_rvol_baseline_n, detected_at,
                  catalyst_type, catalyst_type_rationale,
-                 theme_gated_tier, theme_gated_score, in_active_theme)
+                 theme_gated_tier, theme_gated_score, in_active_theme,
+                 in_narrative_cohort, fire_status, fire_axes)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21)
+                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21,
+                    $22, $23, $24)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -1974,6 +1990,9 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("theme_gated_tier"),
             record.get("theme_gated_score"),
             record.get("in_active_theme"),
+            record.get("in_narrative_cohort"),
+            record.get("fire_status"),
+            record.get("fire_axes"),
         )
 
 

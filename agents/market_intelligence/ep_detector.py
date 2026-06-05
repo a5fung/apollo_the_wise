@@ -702,6 +702,25 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     except Exception as e:
         logger.warning(f"EP scan: theme set load failed ({e}) — R4 bonus disabled this tick")
 
+    # Narrative-cohort membership set (#201 fire panel — the #167 narrative axis).
+    # Built once per scan from prior-days narrative_cogap candidates (the lane is
+    # EOD, so same-day cohorts don't exist at premarket; prior days are the
+    # available signal). ADVISORY only — one of several fire axes. Nearly empty
+    # today (lane accrual is slow); the plumbing is forward-ready for the 6/23
+    # narrative promote-gate.
+    _in_narrative_cohort_set: set[str] = set()
+    try:
+        from agents.market_intelligence.db import get_narrative_theme_candidates
+        for _cand in await get_narrative_theme_candidates(days=5):
+            for _t in (_cand.get("tickers") or []):
+                _in_narrative_cohort_set.add(_t)
+        logger.info(
+            f"EP scan: {len(_in_narrative_cohort_set)} tickers in prior-5d "
+            f"narrative cohorts (fire panel narrative axis)"
+        )
+    except Exception as e:
+        logger.warning(f"EP scan: narrative set load failed ({e}) — narrative axis off this tick")
+
     # Minutes since market open — used for projected volume calculation post-open
     from agents.market_intelligence.collector import _ET
     now_et = datetime.now(_ET)
@@ -1906,6 +1925,51 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             theme_gated_tier = None
             in_theme = ticker in _in_active_theme_set
 
+        # ── Fire panel (#201, 2026-06-05) — multi-axis "did we SEE a fire?" ──
+        # ADVISORY only. The EP tenet (Pradeep): a real EP needs a FIRE — theme
+        # (#1) OR govt policy OR supply/shortage OR sales-surprise OR product OR
+        # mgmt change OR M&A/deal. Theme/narrative are TWO axes; the catalyst
+        # grade carries the rest. Backtest 6/5: themeless HIGHs are profitable
+        # (they have NON-theme fires), so we measure fire-PRESENCE, not theme.
+        # 3-state, and the unknown SPLIT is the guardrail on fire-DISCOVERY:
+        #   fire_seen          = a fire is lit on some axis (theme/narrative/catalyst)
+        #   real_unknown       = no axis AND no inputs to judge -> DISCOVERY GAP
+        #   no_fire_confirmed  = had inputs, nothing material -> true negative
+        # Only news_summary + catalyst_quality + in_theme are guaranteed in scope
+        # at this point (catalyst_type is set post-scan; sec/extraction signals
+        # exist only on the uncached branch), so the "had inputs" proxy is
+        # recomputed from news_summary (always present). Refine in #202.
+        in_narrative = ticker in _in_narrative_cohort_set
+        try:
+            _catalyst_fire = catalyst_quality in ("strong", "game_changer")
+            fire_axes = []
+            if _catalyst_fire:
+                fire_axes.append("catalyst")
+            if in_theme:
+                fire_axes.append("theme")
+            if in_narrative:
+                fire_axes.append("narrative")
+            if fire_axes:
+                fire_status = "fire_seen"
+            else:
+                _summary = (news_summary or "").strip()
+                try:
+                    # Re-import locally — the loop's other use is branch-local
+                    # (uncached path only); on a cached ticker the name would be
+                    # unbound here. Cheap idempotent import keeps it always set.
+                    from agents.market_intelligence.collector import (
+                        strip_perplexity_disclaimer as _strip_pplx,
+                    )
+                    _, _is_disclaimer = _strip_pplx(news_summary or "")
+                except Exception:
+                    _is_disclaimer = False
+                _had_inputs = len(_summary) >= 40 and not _is_disclaimer
+                fire_status = "no_fire_confirmed" if _had_inputs else "real_unknown"
+        except Exception as e:
+            logger.warning(f"fire panel compute failed for {ticker}: {e}")
+            fire_status = None
+            fire_axes = []
+
         # Tape-conviction shadow — forward-only baseline for a future tape-only
         # override; one row per ticker per scan_date (deduped across cron ticks).
         proj_vol = c.get("projected_vol_multiple")
@@ -1943,6 +2007,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "theme_gated_tier": theme_gated_tier,
             "theme_gated_score": theme_gated_score,
             "in_active_theme": in_theme,
+            "in_narrative_cohort": in_narrative,
+            "fire_status": fire_status,
+            "fire_axes": fire_axes,
             "alert_date": today,
         }
         results.append(result)
@@ -1973,6 +2040,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "theme_gated_tier": theme_gated_tier,
             "theme_gated_score": theme_gated_score,
             "in_active_theme": in_theme,
+            "in_narrative_cohort": in_narrative,
+            "fire_status": fire_status,
+            "fire_axes": fire_axes,
         })
 
         # Cross-strategy allocator (#31) Phase 1A — shadow enqueue. HIGH and
