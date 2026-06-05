@@ -430,32 +430,51 @@ async def evaluate_narrative_themes(days: int = 30) -> list[dict]:
         # recall: did any single live theme already group >=2 of these members?
         live_unified = any(len(mset & ts) >= 2 for ts in live_sets)
         run_date = p["run_date"]
-        mature = (today - run_date).days >= 7  # ~5 trading days
-        rets = []
-        if mature:
+        days_elapsed = (today - run_date).days
+        # #167 rework: FIXED-horizon forward returns. The old "latest close /
+        # base" measured each proposal over a different elapsed window (older =
+        # longer = looks better) — not comparable across proposals at the gate.
+        # Measure every proposal at the SAME 5d and 10d horizon from run_date.
+        # Batched: ONE query per proposal over all members (was N+1 per member).
+        fwd5_rets: list[float] = []
+        fwd10_rets: list[float] = []
+        if members and days_elapsed >= 7:  # >=~5 trading days → 5d readable
             async with pool.acquire() as conn:
-                for m in members:
-                    row = await conn.fetchrow(
-                        """
-                        SELECT (SELECT close FROM mi_daily_closes
-                                 WHERE ticker = $1 AND trade_date <= $2
-                                 ORDER BY trade_date DESC LIMIT 1) AS base,
-                               (SELECT close FROM mi_daily_closes
-                                 WHERE ticker = $1
-                                 ORDER BY trade_date DESC LIMIT 1) AS latest
-                        """,
-                        m, run_date,
-                    )
-                    if row and row["base"] and row["latest"]:
-                        rets.append((float(row["latest"]) / float(row["base"]) - 1) * 100)
-        avg = round(sum(rets) / len(rets), 1) if rets else None
+                rows = await conn.fetch(
+                    """
+                    SELECT b.close AS base, f5.close AS fwd5, f10.close AS fwd10
+                    FROM unnest($1::text[]) AS t(ticker)
+                    LEFT JOIN LATERAL (
+                        SELECT close FROM mi_daily_closes
+                        WHERE ticker = t.ticker AND trade_date <= $2
+                        ORDER BY trade_date DESC LIMIT 1) b ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT close FROM mi_daily_closes
+                        WHERE ticker = t.ticker AND trade_date > $2
+                        ORDER BY trade_date ASC OFFSET 4 LIMIT 1) f5 ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT close FROM mi_daily_closes
+                        WHERE ticker = t.ticker AND trade_date > $2
+                        ORDER BY trade_date ASC OFFSET 9 LIMIT 1) f10 ON TRUE
+                    """,
+                    members, run_date,
+                )
+            for r in rows:
+                if r["base"] and r["fwd5"]:
+                    fwd5_rets.append((float(r["fwd5"]) / float(r["base"]) - 1) * 100)
+                if r["base"] and r["fwd10"]:
+                    fwd10_rets.append((float(r["fwd10"]) / float(r["base"]) - 1) * 100)
+        fwd_5d = round(sum(fwd5_rets) / len(fwd5_rets), 1) if fwd5_rets else None
+        fwd_10d = round(sum(fwd10_rets) / len(fwd10_rets), 1) if fwd10_rets else None
         out.append({
             "name": p["name"],
             "run_date": run_date,
             "tickers": members,
             "live_unified": live_unified,
-            "avg_return_pct": avg,
-            "pending": not mature,
+            "fwd_5d_pct": fwd_5d,
+            "fwd_10d_pct": fwd_10d,
+            "avg_return_pct": fwd_5d,  # back-compat alias (now fixed-5d horizon)
+            "pending": fwd_5d is None,
         })
     return out
 
