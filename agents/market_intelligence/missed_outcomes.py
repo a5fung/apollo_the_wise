@@ -40,12 +40,31 @@ def _categorize_skip_reason(source: str, raw: Optional[str]) -> str:
     """Bucket the free-form reason into a stable category for grouping."""
     if source == "moderate_alert":
         return "moderate_tier"
+    s = (raw or "").lower()
+    # #199: entry-pipeline skip attribution (block:*/window:*/setup:*) — these
+    # apply to attributed high_unentered rows and scan_filter alike, so they
+    # must be checked before the bare high_unentered fallthrough.
+    if s.startswith("block:max_positions"):
+        return "cap_blocked"
+    if s.startswith("block:circuit_breaker"):
+        return "breaker_blocked"
+    if s.startswith("block:"):
+        return "block_other"
+    if s.startswith("window:"):
+        return "window_missed"
+    if s.startswith("setup:stop_too_wide"):
+        return "stop_too_wide"
+    if s.startswith("setup:faded"):
+        return "faded_from_orb"
+    if s.startswith("setup:account_fetch") or s.startswith("infra:"):
+        return "infra_skip"
+    if s.startswith("setup:"):
+        return "setup_other"
     if source == "high_unentered":
         return "high_unentered"
     # scan_filter — parse the free-form filter_reason
     if not raw:
         return "filter_other"
-    s = raw.lower()
     if "cooldown" in s:
         return "cooldown"
     if "m&a" in s or "buyout" in s or "merger" in s:
@@ -138,8 +157,14 @@ async def refresh_missed_outcomes(
         # UPSERT on (ticker, alert_date, source).
         await conn.execute("""
         WITH traded AS (
+            -- #199: status='skipped' rows are NOT trades. Counting them here
+            -- silently excluded the entire entry-pipeline-skipped cohort
+            -- (block:max_positions, block:circuit_breaker, window:out_of_orb,
+            -- setup:stop_too_wide) from every source via NOT EXISTS(traded) —
+            -- those HIGHs then never appeared in missed-outcomes at all.
             SELECT ticker, alert_date FROM mi_live_trades
             WHERE alert_date >= $1 AND alert_date <= $2
+              AND status IS DISTINCT FROM 'skipped'
             UNION
             SELECT ticker, alert_date FROM mi_paper_trades
             WHERE alert_date >= $1 AND alert_date <= $2
@@ -191,12 +216,21 @@ async def refresh_missed_outcomes(
                 a.ticker,
                 a.alert_date,
                 'high_unentered'::TEXT AS source,
-                NULL::TEXT AS skip_reason,
+                -- #199: attribute WHY the HIGH wasn't entered from the
+                -- entry-pipeline skip row (block:*/window:*/setup:*). NULL
+                -- only when truly unfilled (no skipped row exists at all).
+                sk.skip_reason,
                 a.ep_score,
                 a.gap_pct,
                 NULL::FLOAT AS rel_volume,
                 a.catalyst_quality
             FROM mi_ep_alerts a
+            LEFT JOIN LATERAL (
+                SELECT skip_reason FROM mi_live_trades lt
+                WHERE lt.ticker = a.ticker AND lt.alert_date = a.alert_date
+                  AND lt.status = 'skipped'
+                ORDER BY lt.id DESC LIMIT 1
+            ) sk ON TRUE
             WHERE a.alert_date >= $1 AND a.alert_date <= $2
               AND a.score_tier = 'HIGH'
               AND NOT EXISTS (
@@ -268,6 +302,19 @@ async def refresh_missed_outcomes(
             -- Mirror _categorize_skip_reason mappings in SQL CASE.
             CASE
                 WHEN source = 'moderate_alert' THEN 'moderate_tier'
+                -- #199: entry-pipeline skip attribution. Specific prefixes
+                -- first (they apply to attributed high_unentered rows); the
+                -- bare 'high_unentered' fallthrough is now only for truly
+                -- unfilled HIGHs with no skip row (skip_reason IS NULL).
+                WHEN skip_reason ILIKE 'block:max_positions%' THEN 'cap_blocked'
+                WHEN skip_reason ILIKE 'block:circuit_breaker%' THEN 'breaker_blocked'
+                WHEN skip_reason ILIKE 'block:%' THEN 'block_other'
+                WHEN skip_reason ILIKE 'window:%' THEN 'window_missed'
+                WHEN skip_reason ILIKE 'setup:stop_too_wide%' THEN 'stop_too_wide'
+                WHEN skip_reason ILIKE 'setup:faded%' THEN 'faded_from_orb'
+                WHEN skip_reason ILIKE 'setup:account_fetch%'
+                  OR skip_reason ILIKE 'infra:%' THEN 'infra_skip'
+                WHEN skip_reason ILIKE 'setup:%' THEN 'setup_other'
                 WHEN source = 'high_unentered' THEN 'high_unentered'
                 WHEN skip_reason IS NULL THEN 'filter_other'
                 WHEN skip_reason ILIKE '%cooldown%' THEN 'cooldown'
@@ -391,6 +438,18 @@ _CATEGORY_KIND: dict[str, str] = {
     # Scored-and-passed-to-user but not entered
     "moderate_tier":       "tier",
     "high_unentered":      "tier",
+    # Entry-pipeline blocks (#199) — system WANTED the HIGH but a safeguard /
+    # timing / setup gate stopped it. The should've-entered-winners cohort —
+    # must surface (NOT structural). cap/breaker/window = operational;
+    # stop-too-wide/faded = signal; infra = other.
+    "cap_blocked":         "operational",
+    "breaker_blocked":     "operational",
+    "block_other":         "operational",
+    "window_missed":       "operational",
+    "stop_too_wide":       "signal",
+    "faded_from_orb":      "signal",
+    "setup_other":         "signal",
+    "infra_skip":          "other",
     # Unknown
     "filter_other":        "other",
 }
@@ -573,6 +632,15 @@ _CATEGORY_LABELS: dict[str, str] = {
     "filter_other":       "Other filter",
     "moderate_tier":      "MODERATE — not entered",
     "high_unentered":     "HIGH — no fill",
+    # #199 entry-pipeline blocks (should've-entered cohort)
+    "cap_blocked":        "Max positions (cap full)",
+    "breaker_blocked":    "Circuit breaker cooldown",
+    "block_other":        "Other safeguard block",
+    "window_missed":      "Missed ORB window",
+    "stop_too_wide":      "Stop too wide",
+    "faded_from_orb":     "Faded from ORB",
+    "setup_other":        "Other setup reject",
+    "infra_skip":         "Infra / auth failure",
 }
 
 
