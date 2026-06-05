@@ -1935,15 +1935,29 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT"
         )
+        # North Star Tier 1 (2026-06-05; #200): theme-gated ADVISORY grade —
+        # the tier/score this alert WOULD get if the conviction floor did not
+        # promote names outside a live mi_theme. ADVISORY only, never gates.
+        # NULL when the advisory compute failed (fail-open). Idempotent add.
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS theme_gated_tier TEXT"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS theme_gated_score DOUBLE PRECISION"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN"
+        )
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
                  catalyst, catalyst_quality, claude_analysis, gemini_validation,
                  confidence_multiplier, vol_percentile, source,
                  pm_rvol, pm_rvol_baseline_n, detected_at,
-                 catalyst_type, catalyst_type_rationale)
+                 catalyst_type, catalyst_type_rationale,
+                 theme_gated_tier, theme_gated_score, in_active_theme)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18)
+                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -1957,6 +1971,9 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("detected_at"),
             record.get("catalyst_type"),
             record.get("catalyst_type_rationale"),
+            record.get("theme_gated_tier"),
+            record.get("theme_gated_score"),
+            record.get("in_active_theme"),
         )
 
 

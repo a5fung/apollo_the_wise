@@ -1794,6 +1794,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             continue
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"
+        earnings_override_fired = False  # set True if the earnings-day MOD→HIGH fires below
 
         # Earnings-day HIGH override. The catalyst classifier rates textual
         # news_summary; when news ingest lags the announcement (DOCN 5/05: Q1
@@ -1853,6 +1854,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     }),
                 )
                 tier = "HIGH"
+                earnings_override_fired = True
             else:
                 event = (
                     "earnings_override_unavailable"
@@ -1872,6 +1874,37 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "source": earnings_source,
                         }),
                     )
+
+        # ── Theme-gated ADVISORY grade (North Star Tier 1, 2026-06-05; #200) ──
+        # Shadow/advisory ONLY — does NOT change `tier`, suppresses nothing.
+        # Computes the grade this alert WOULD get if the conviction floor did
+        # not promote names that are NOT in a live mi_theme. The conviction
+        # floor scores HIGH off gap+catalyst alone (theme is a decorative +10);
+        # this exposes how many HIGHs are floor-driven & themeless so we can
+        # decide — on forward-return evidence (weekly review) — whether to make
+        # theme/narrative load-bearing in the live grade. The earnings-day
+        # override is theme-independent (a real earnings gap is a qualified EP
+        # regardless of theme), so it carries through to the gated grade too.
+        # NOTE: themeless here means "not in a live correlation-engine theme" —
+        # the #167 narrative lane may still cover it; themeless ≠ no-thesis.
+        try:
+            effective_mult = regime_multiplier * confidence_multiplier
+            in_theme = ticker in _in_active_theme_set
+            # `.get` is mandatory — conviction_floor key only exists when a
+            # floor fired (see _score_ep); KeyError otherwise.
+            structure_raw = sum(breakdown.values()) - breakdown.get("conviction_floor", 0)
+            theme_gated_raw = sum(breakdown.values()) if in_theme else structure_raw
+            theme_gated_score = round(theme_gated_raw * effective_mult, 1)
+            theme_gated_tier = (
+                "HIGH"
+                if (theme_gated_score >= ep_threshold or earnings_override_fired)
+                else "MODERATE"
+            )
+        except Exception as e:
+            logger.warning(f"theme-gated advisory compute failed for {ticker}: {e}")
+            theme_gated_score = None
+            theme_gated_tier = None
+            in_theme = ticker in _in_active_theme_set
 
         # Tape-conviction shadow — forward-only baseline for a future tape-only
         # override; one row per ticker per scan_date (deduped across cron ticks).
@@ -1907,6 +1940,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
             "score_breakdown": breakdown,
+            "theme_gated_tier": theme_gated_tier,
+            "theme_gated_score": theme_gated_score,
+            "in_active_theme": in_theme,
             "alert_date": today,
         }
         results.append(result)
@@ -1934,6 +1970,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "pm_rvol": c.get("pm_rvol"),
             "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
             "detected_at": now_et,
+            "theme_gated_tier": theme_gated_tier,
+            "theme_gated_score": theme_gated_score,
+            "in_active_theme": in_theme,
         })
 
         # Cross-strategy allocator (#31) Phase 1A — shadow enqueue. HIGH and
