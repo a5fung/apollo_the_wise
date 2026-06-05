@@ -10,7 +10,7 @@
 3. STATE the day's plan (timed/planned items + ready #-tasks) before reacting to the first message.
 
 **CLOSE** (when the operator wraps, or before ending):
-1. Reconcile done-vs-planned against the calendar + the day's #-tasks. If a big-rock project advanced / completed / shifted timeline, update the **Active Major Projects roster** in `BACKLOG.md` (the operator's progress + completion-timeline view).
+1. Reconcile done-vs-planned against the calendar + the day's #-tasks. If a big-rock project advanced / completed / shifted timeline, update the **Active Major Projects roster** in `BACKLOG.md` (the operator's progress + completion-timeline view). **Verify EVERY #-task opened this session is filed under a project** in `BACKLOG.md`'s "Open tasks by project" (Misc if none) — the close is the backstop, not the primary filing point (see the project-filing rule below). No loose tasks.
 2. Roll EVERY undone planned item forward — reschedule on the calendar AND/OR add to `next-session-pickup`. Name any unplanned work that displaced the plan, so nothing slips silently.
 3. If code changed: `git add <files>` → commit → `git push origin main`.
 
@@ -19,6 +19,8 @@
 **On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run the OPEN reconciliation immediately, in any session phase — pull today's calendar (PDT) + `next-session-pickup` + open #-tasks + the roster, reconcile, and report true state (done / in-flight / slipped). One phrase covers every surface; the operator never has to pick "backlog vs task list." (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
 
 **Capture (operator trigger):** "**track it**" / "**track this**" = log it as a #-task immediately (the SoT). Route to `data_gated_reviews.yaml` if evidence-gated, the roster if a big-rock, or a memory if it's a fact/feedback — and confirm back WHERE it went + the #. Default to over-capturing; this is the operator's guarantee a passing idea isn't lost. (Capture should also happen automatically in-flow — this trigger is the explicit backstop for asides.)
+
+**EVERY #-task gets a project AT CREATION — non-negotiable, not deferred to a sweep.** The moment you open a task (TaskCreate, "track it", or in-flow), file it under a project in `BACKLOG.md`'s "Open tasks by project": an existing project, **Miscellaneous** if none fits, or **propose a NEW project to the operator** if it's a genuine new big-rock. Tag the task `metadata.project` in the same action. The #-tracker owns task STATE; the project bucket is filed atomically with creation so nothing floats loose. The CLOSE ritual only VERIFIES this (backstop), it is not the primary filing point. **#176 (automated SoT/roster drift-check) is the mechanical enforcement** — until it ships this is manual discipline at creation. (Why this is bolded: 2026-06-05 — 17 tasks filed since the prior sweep had NO project and needed a catch-up re-sweep; the operator had ALREADY asked for this rule. A passive "a new task lands under a project" note in BACKLOG relied on memory and failed — same class as the timezone bug. Codified here, loaded every session, so it can't be forgotten.)
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
