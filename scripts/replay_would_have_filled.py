@@ -105,7 +105,13 @@ async def replay_one(row: dict) -> dict:
 
     bars = await get_minute_bars(ticker, d.isoformat(), d.isoformat())
     if not bars:
-        return {"ticker": ticker, "date": d, "classification": "data_unavailable"}
+        # trigger/limit/stop are known from the alert (computed above) — only the
+        # bars are missing. Carry them so the result row formats like any other
+        # (the print line formats trigger/limit/stop; a bare dict KeyError'd).
+        return {"ticker": ticker, "date": d, "trigger": trigger, "limit": limit,
+                "stop": stop, "shares": shares, "classification": "data_unavailable",
+                "fill_t": None, "pnl": None, "exit_reason": None,
+                "extended_only_fill": False}
 
     parsed = sorted(
         (_dt.fromtimestamp(b["t"] / 1000, tz=_ET),
