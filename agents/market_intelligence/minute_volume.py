@@ -37,10 +37,9 @@ import asyncio
 import logging
 import math
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.collector import get_minute_bars
 from agents.market_intelligence.db import (
@@ -51,7 +50,7 @@ from agents.market_intelligence.db import (
 
 logger = logging.getLogger(__name__)
 
-_ET = pytz.timezone("US/Eastern")
+_ET = ZoneInfo("America/New_York")
 
 # Anchors
 ANCHOR_PM = "pm"
@@ -85,7 +84,7 @@ _REFRESH_CONCURRENCY = 8
 
 def _epoch_ms_to_et_minute(t_ms: int) -> tuple[date, int]:
     """Return (et_date, et_clock_minute) for a Polygon bar timestamp."""
-    dt_utc = datetime.fromtimestamp(t_ms / 1000.0, tz=pytz.UTC)
+    dt_utc = datetime.fromtimestamp(t_ms / 1000.0, tz=timezone.utc)
     dt_et = dt_utc.astimezone(_ET)
     return dt_et.date(), dt_et.hour * 60 + dt_et.minute
 

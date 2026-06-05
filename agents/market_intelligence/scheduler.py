@@ -19,7 +19,6 @@ from zoneinfo import ZoneInfo
 
 _ET = ZoneInfo("America/New_York")
 
-import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 

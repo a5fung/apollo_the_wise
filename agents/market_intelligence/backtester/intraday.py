@@ -2,16 +2,15 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta
-
-import pytz
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.collector import _polygon_get
 from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
 
-ET = pytz.timezone("US/Eastern")
+ET = ZoneInfo("America/New_York")
 MARKET_OPEN = time(9, 30)
 MARKET_CLOSE = time(16, 0)
 
@@ -37,8 +36,8 @@ async def _get_cached_bars(ticker: str, trade_date: date) -> list[dict]:
     """Check mi_intraday_bars cache for existing data."""
     pool = await get_pool()
     # Build ET date range for the trading day
-    day_start = ET.localize(datetime.combine(trade_date, MARKET_OPEN))
-    day_end = ET.localize(datetime.combine(trade_date, MARKET_CLOSE))
+    day_start = datetime.combine(trade_date, MARKET_OPEN, tzinfo=ET)
+    day_end = datetime.combine(trade_date, MARKET_CLOSE, tzinfo=ET)
 
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -78,7 +77,7 @@ async def _fetch_polygon_bars(ticker: str, trade_date: date) -> list[dict]:
     for r in results:
         # Polygon returns Unix ms timestamps
         ts = r.get("t", 0)
-        bar_dt = datetime.fromtimestamp(ts / 1000, tz=pytz.UTC).astimezone(ET)
+        bar_dt = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).astimezone(ET)
 
         # Filter to market hours only
         bar_time = bar_dt.time()

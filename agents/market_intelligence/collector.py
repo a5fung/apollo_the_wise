@@ -19,7 +19,6 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 import httpx
-import pytz
 
 logger = logging.getLogger(__name__)
 

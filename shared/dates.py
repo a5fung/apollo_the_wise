@@ -8,10 +8,16 @@ the orchestrator container by design).
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
-import pytz
-
-_ET = pytz.timezone("US/Eastern")
+# CANONICAL ET zone for the whole codebase (imported as `from shared.dates import _ET`).
+# MUST be ZoneInfo, never pytz: pytz timezones attached via `tzinfo=` (constructor /
+# datetime.combine / .replace) silently apply the historical LMT offset (-04:56 for
+# New York) instead of EDT/EST, which shifted the ORB window +56 min and recurred for
+# weeks (#180/#183, 2026-06-05). ZoneInfo computes the correct offset for the wall-clock
+# time in EVERY construction path, so `tzinfo=_ET` is always safe. pytz is banned in
+# app code by scripts/preflight_datetime_hygiene.py (deploy gate).
+_ET = ZoneInfo("America/New_York")
 
 
 def et_today() -> date:

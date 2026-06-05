@@ -115,7 +115,7 @@ if ! docker exec apollo-market python -m scripts.preflight_check; then
 fi
 
 echo ""
-echo "=== [5b/6] Preflight DB UPDATE prepare validation ==="
+echo "=== [5b/7] Preflight DB UPDATE prepare validation ==="
 if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
   echo ""
   echo "DEPLOY FAILED — DB UPDATE prepare validation reported type/schema error(s)."
@@ -126,7 +126,7 @@ if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
 fi
 
 echo ""
-echo "=== [5c/6] Preflight column-write authority check (Gate 5 G) ==="
+echo "=== [5c/7] Preflight column-write authority check (Gate 5 G) ==="
 if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
   echo ""
   echo "DEPLOY FAILED — unauthorized writer to mi_live_trades column(s)."
@@ -138,7 +138,7 @@ if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
 fi
 
 echo ""
-echo "=== [5d/6] Preflight import-shadowing check (2026-05-20 outage class) ==="
+echo "=== [5d/7] Preflight import-shadowing check (2026-05-20 outage class) ==="
 if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; then
   echo ""
   echo "DEPLOY FAILED — function-local 'from X import Y' shadows module-level import."
@@ -150,7 +150,7 @@ if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; the
 fi
 
 echo ""
-echo "=== [5e/6] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
+echo "=== [5e/7] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
 if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
   echo ""
   echo "DEPLOY FAILED — data_gated_reviews.yaml has entries with duplicate top-level"
@@ -164,7 +164,7 @@ if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
 fi
 
 echo ""
-echo "=== [5f/6] Preflight command-parity check (2026-05-25 /breadth class) ==="
+echo "=== [5f/7] Preflight command-parity check (2026-05-25 /breadth class) ==="
 # Run on host (not inside container) because it reads channels/telegram.py +
 # agent.py source files directly. Both are in the repo so host has access.
 if ! python3 scripts/preflight_command_parity.py; then
@@ -179,7 +179,7 @@ if ! python3 scripts/preflight_command_parity.py; then
 fi
 
 echo ""
-echo "=== [5g/6] Preflight G6 — paper-Alpaca replace_order integration smoke ==="
+echo "=== [5g/7] Preflight G6 — paper-Alpaca replace_order integration smoke ==="
 # Catches the bug classes from 2026-05-27 (cancel→new race) + 2026-05-28
 # (str→numeric Pydantic). Both shipped to source without ever exercising the
 # production code path against the real broker. Each fired the next day at
@@ -200,7 +200,23 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
     exit 10
   fi
 else
-  echo "=== [5g/6] Skipped — market-agent not in this deploy scope ==="
+  echo "=== [5g/7] Skipped — market-agent not in this deploy scope ==="
+fi
+
+echo ""
+echo "=== [5h/7] Preflight datetime-hygiene check (LMT / naive-UTC bug class) ==="
+# Run on host (reads source files directly via stdlib ast — no container needed,
+# applies to both scopes). Bans the timezone footguns that recurred for weeks:
+# pytz-as-tzinfo (silently applies the LMT -04:56 offset, shifting the ORB window
+# +56 min — #180/#183 2026-06-05), naive datetime.now() (container UTC clock), and
+# bare .astimezone() (system-local). With pytz gone, ZoneInfo makes every
+# tzinfo=_ET construction correct, so the class cannot recur.
+if ! python3 scripts/preflight_datetime_hygiene.py; then
+  echo ""
+  echo "DEPLOY FAILED — a timezone footgun (LMT / naive-UTC class) was introduced."
+  echo "These silently produce WRONG wall-clock times. Fix per the script output,"
+  echo "or annotate a reviewed exception with '# tz-ok: <reason>' on the line."
+  exit 12
 fi
 
 echo ""

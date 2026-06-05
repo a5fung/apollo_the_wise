@@ -84,13 +84,13 @@ def _safe(s: str) -> str:
 
 def _format_market_pipeline(status: dict) -> str:
     """Format the market pipeline section for /status."""
-    import pytz
+    from zoneinfo import ZoneInfo
     from datetime import date, datetime as dt, timedelta
 
     REGIME_EMOJI = {"Bull": "🟢", "Choppy": "🟡", "Correcting": "🔴", "Crisis": "🚨", "Unknown": "⚫"}
 
-    et = pytz.timezone("America/New_York")
-    pt = pytz.timezone("America/Los_Angeles")
+    et = ZoneInfo("America/New_York")
+    pt = ZoneInfo("America/Los_Angeles")
     now_et = dt.now(et)
 
     jobs = status.get("jobs", {})
