@@ -225,6 +225,16 @@ trade reactions.
 
 ## Change log (newest first)
 
+### 2026-06-05 — #149 SHADOW: deterministic yfinance YoY recovery (advisory; gate UNCHANGED)
+
+**Root-cause framing.** The 5/28 carve-out (below) is LLM-corpus-dependent: it skips the downgrade only when the SAME news extraction that failed to produce `yoy_pct` *also* yields a beat + guidance signal. When the corpus is sparse, both fail → carve-out doesn't fire → downgrade stands. So the carve-out is a partial band-aid, not the root fix.
+
+**The data isn't missing in the world.** Probe 2026-06-05 ran the 8 distinct affected names (HSAI, SNOW, BBWI, QFIN, ESLT, JOYY, LION, RL — all `q_rev_yoy_missing_no_prior_year_comparable`, all earnings catalysts) through `fundamentals.get_fundamentals` → `quarterly_revenue[-1].yoy_pct`: **8/8 (100%)** returned a usable prior-year-comparable YoY. The LLM extracts the current-quarter revenue from the press-release corpus but often can't compute the prior-year comparable; yfinance's `quarterly_income_stmt` carries 8 quarters incl. the same quarter 1yr prior — a deterministic, corpus-independent source for exactly the missing piece.
+
+**What shipped (SHADOW only — `ep_detector.run_ep_scan`):** missing-prior-year-YoY earnings downgrades are captured in the gate block (cheap append, no I/O) and processed in a decoupled post-scan block (off the 9:45 ORB-cutoff path, bounded 30s, fail-open) that fetches the yfinance YoY and writes a `catalyst_q_rev_yoy_shadow_recovered` audit row with the recovered YoY + what the gate decision WOULD be (`_yoy_shadow_decision` helper, unit-tested). **The live gate is byte-identical — no name's grade changes.**
+
+**Why the live flip is GATED (not shipped):** reversing the downgrade lets recovered-YoY names clear back to HIGH → auto-enter → real trades. That is a grade-gating change requiring CHANGE_PROCESS + operator sign-off + N≥10 backtest with forward-return evidence. Current cohort N=8 (< 10). Directional caution: 5 of 8 recovered YoYs are positive (would ADMIT more names to HIGH in a system currently over-trading non-EPs at realized −$10,124/24% WR), 3 are below threshold (BBWI −3.2 / QFIN −26.6 / LION −15.3 → correctly STAY DOWN on real data, not a missing-data proxy). The value is **gating better in BOTH directions**, not "un-downgrade more names." Shadow accrues the cohort; re-evaluate the flip at N≥10 with settled forward returns.
+
 ### 2026-05-28 — Safety-net carve-out: guidance + beat overrides missing-YoY downgrade
 
 **Trigger**: SNOW 2026-05-28 false negative. +37.5% gap on a Q1 beat (revenue $1.39B, +5.3% vs est) with raised guidance (4-source corroboration, high confidence) got downgraded to `routine` by the safety net in `ep_detector` purely because `q_revenue_usd.yoy_pct` was null (no prior-year SNOW Q1 in the structured fundamentals fetcher). Operator-identified blast radius: downgrade dropped `score_tier` from HIGH to MODERATE → Telegram alert suppressed → ORB entry pipeline never fired. Lost-alpha class, not cosmetic mislabeling.

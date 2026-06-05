@@ -628,6 +628,23 @@ def _score_ep(
 _FIRE_UNSET = object()
 
 
+def _yoy_shadow_decision(yoy_pct, gate_min_yoy) -> tuple[bool, str]:
+    """#149 SHADOW: would an earnings name downgraded for a MISSING prior-year
+    YoY be KEPT if the deterministic yfinance YoY were used instead?
+
+    Returns (recovered, corrected) where:
+      recovered = a numeric YoY was actually found (the data exists)
+      corrected = "kept"      → recovered AND yoy >= gate threshold
+                  "stay_down" → no YoY found, OR YoY below threshold
+                                (the gate-better-in-both-directions case)
+    Advisory only; the live gate is never changed by this.
+    """
+    recovered = isinstance(yoy_pct, (int, float))
+    if recovered and yoy_pct >= gate_min_yoy:
+        return True, "kept"
+    return recovered, "stay_down"
+
+
 def _compute_fire_status(
     *,
     in_theme: bool,
@@ -1010,6 +1027,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Score each candidate (rate-limited FMP calls)
     results = []
     scan_log: list[dict] = []  # accumulated for batch DB write at end
+    # #149 SHADOW: earnings candidates downgraded purely for a missing prior-year
+    # YoY comparable. Captured in the gate block (cheap, no I/O) → processed in a
+    # decoupled post-scan block that fetches the deterministic yfinance YoY off
+    # the latency-sensitive ORB-cutoff path (advisory; does NOT change the gate).
+    _yoy_shadow_candidates: list[dict] = []
 
     def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
                   tier: str | None, catalyst_quality: str | None) -> dict:
@@ -1732,6 +1754,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 _original_quality = catalyst_quality
                 catalyst_quality = "routine"
                 _qr_block = _extracted.get("q_revenue_usd") or {}
+                # #149 SHADOW capture: earnings name downgraded purely for a
+                # MISSING prior-year YoY comparable (LLM got a current-quarter
+                # revenue but no prior-year number). The post-scan block fetches
+                # the deterministic yfinance YoY off the hot path. Cheap append
+                # only — no I/O here. Advisory; does NOT alter this downgrade.
+                if _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable":
+                    _yoy_shadow_candidates.append({
+                        "ticker": ticker,
+                        "alert_date": today,
+                        "original_quality": _original_quality,
+                        "llm_q_rev_value": _qr_block.get("value"),
+                    })
                 _gf_block = _extracted.get("guidance_fy_revenue_usd") or {}
                 # Rubric details if available (Phase 5 ship)
                 _rubric_summary = None
@@ -2221,5 +2255,63 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             )
     except Exception as _e:
         logger.warning(f"catalyst_type post-scan block failed (non-critical): {_e}")
+
+    # ── #149 SHADOW: deterministic q_rev YoY recovery (ADVISORY) ──────────────
+    # Earnings candidates downgraded purely for a MISSING prior-year YoY
+    # comparable: the LLM news-corpus extraction got a current-quarter revenue
+    # but no prior-year number, so the rubric (Axis 1 needs YoY) couldn't score
+    # → safety-net downgrade to routine. yfinance's quarterly_income_stmt carries
+    # 8 quarters incl. the same quarter 1yr prior — a deterministic, LLM-corpus-
+    # independent source for exactly the missing comparable (probe 2026-06-05:
+    # 8/8 recoverable). Logs what the gate decision WOULD be with real YoY; does
+    # NOT change the live downgrade — gate-reversal is a CHANGE_PROCESS change
+    # gated on N>=10 + forward-return evidence (current cohort N=8). Off the
+    # latency-sensitive 9:45 ORB-cutoff path (post-loop, bounded, fail-open).
+    if _yoy_shadow_candidates:
+        try:
+            from agents.market_intelligence.fundamentals import get_fundamentals
+            from agents.market_intelligence.constants import (
+                EARNINGS_REVENUE_GATE_MIN_YOY as _GATE_MIN_YOY,
+            )
+
+            async def _shadow_recover_yoy(sc: dict) -> None:
+                try:
+                    f = await get_fundamentals(sc["ticker"])
+                    qr = f.get("quarterly_revenue") or []
+                    latest = qr[-1] if qr else {}
+                    yoy = latest.get("yoy_pct")
+                    recovered, corrected = _yoy_shadow_decision(yoy, _GATE_MIN_YOY)
+                    await log_audit_event(
+                        "catalyst_q_rev_yoy_shadow_recovered",
+                        f"{sc['ticker']}: live=downgraded({sc['original_quality']}"
+                        f"→routine) yfinance_yoy="
+                        f"{f'{yoy:+.1f}%' if recovered else 'none'} "
+                        f"→ corrected={corrected}",
+                        json.dumps({
+                            "ticker": sc["ticker"],
+                            "alert_date": sc["alert_date"].isoformat(),
+                            "original_quality": sc["original_quality"],
+                            "live_decision": "downgraded_to_routine",
+                            "llm_q_rev_value": sc["llm_q_rev_value"],
+                            "yfinance_yoy_pct": yoy if recovered else None,
+                            "yfinance_period": latest.get("period"),
+                            "gate_min_yoy": _GATE_MIN_YOY,
+                            "corrected_decision": corrected,
+                            "recovered": recovered,
+                        }),
+                    )
+                except Exception as _se:
+                    logger.warning(
+                        f"#149 yoy shadow recover failed for {sc.get('ticker')}: {_se}"
+                    )
+
+            await asyncio.wait_for(
+                asyncio.gather(
+                    *[_shadow_recover_yoy(sc) for sc in _yoy_shadow_candidates]
+                ),
+                timeout=30,
+            )
+        except Exception as _e:
+            logger.warning(f"#149 q_rev yoy shadow block failed (non-critical): {_e}")
 
     return results
