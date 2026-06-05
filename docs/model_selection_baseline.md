@@ -34,6 +34,19 @@ don't re-evaluate every model from scratch.
 | **Catalyst cross-validation** (one-word GAME_CHANGER/STRONG/ROUTINE, `ep_detector:429`) | base `sonar` | (covered by the sourcing run) | KEEP base sonar. The earlier idea to bump → sonar-pro is CONTRA-indicated: sonar-pro confabulated on the RUM probe. | Same as sourcing row. | `scripts/eval_sourcing_perplexity.py` |
 | **Theme discovery / narrative synthesis** (#167) | (record at next review) | — | NOT YET BASELINED — add when #167 narrative lane is reviewed. | — | — |
 
+## Standing test-case source: the production UNKNOWN / coverage-gap cohort
+
+The richest, self-refreshing source of HARD probes is the real production cohort where
+sourcing/classification could NOT confirm a catalyst — the live analogue of the RUM probe.
+Pull it read-only with **`scripts/dump_unknown_cohort.py [--days N] [--json /tmp/unknown_cohort.json]`**
+(feeds `eval_sourcing_perplexity.py`). Three forward-growing signals (see [[feedback_label_unknown_not_none]]):
+
+- **`catalyst_type = 'unknown'`** — classifier couldn't name a fire type (#155/#190; fwd ~5/30).
+- **`fire_status` non-fire** — `unknown` / `pre_catalyst_anticipation` / `no_fire_confirmed` / `real_unknown` (#201; fwd 6/5).
+- **catalyst-text disclaimer** — Perplexity returned "not clearly identified" / "no specific catalyst found" (the SOURCING-MISS signal; available historically).
+
+**Each is a CANDIDATE probe, not a labeled one** — adjudicate vs the actual filing before scoring a model (the RUM lesson): TRUE-unknown (no real catalyst) → staying unknown is CORRECT; MISSED-catalyst (real, sourcing gap) → a model/tier that surfaces it *verified vs filing* is a WIN. As the classifier/fire columns accrue, promote the clearest adjudicated cases into the fixed Probe Library below. (First pull 2026-06-05: N=14/120d — incl. RUM, and several `strong`/`game_changer` grades with "no catalyst found" text = false-positive candidates that also feed #189/#201.)
+
 ## Probe Library (the discriminating hard cases — accumulate, never reset)
 
 Easy cases (clear earnings beats: TTAN/AGX/DELL/SNOW) converge across all models and carry
