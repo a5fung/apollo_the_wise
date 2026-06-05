@@ -1417,6 +1417,50 @@ async def execute_partial_exit(
             f"confirmed live (status={verify_status}) — proceeding to sell"
         )
 
+    # Step 1c (#151 Phase 1, docs/decisions/0009): VERIFY the shares are
+    # actually FREE before selling. A live new stop (Step 1b) is NOT enough —
+    # the OLD stop can stay stuck in `pending_replace` and keep reserving the
+    # whole position even after replace_order returns a live new order (FPS
+    # 2026-06-04/05: new 109 stop live, old 163 stop stuck pending_replace →
+    # qty_available=0 → sell rejected "insufficient qty" → false-naked +
+    # starved rollback). "New stop is live" passed both days and it still
+    # broke. Poll the broker's qty_available until it covers the partial; if
+    # it never frees within budget, ABORT BEFORE SELLING — the position is
+    # OVER-covered (safe), not naked. Keep the stop, retry next window.
+    avail_ok = False
+    last_avail = None
+    for _ in range(12):  # ~3s budget at 0.25s/poll
+        _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        last_avail = _pos.get("qty_available") if _pos else None
+        if last_avail is not None and last_avail >= shares:
+            avail_ok = True
+            break
+        await asyncio.sleep(0.25)
+    if not avail_ok:
+        logger.error(
+            f"execute_partial_exit: {ticker} qty_available={last_avail} < {shares} "
+            f"after budget — old stop likely still reserving shares "
+            f"(pending_replace limbo); aborting BEFORE sell (over-covered, safe)"
+        )
+        await log_audit_event(
+            "partial_exit_aborted",
+            f"{ticker}: shares not free (qty_available={last_avail} < {shares}) — "
+            f"sell skipped, position over-covered (safe), retry next window",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker, "shares": shares,
+                "qty_available": last_avail, "new_remaining": new_remaining,
+                "new_stop_id": new_stop_id, "old_stop_id": old_stop_id,
+                "stage": "verify_shares_free",
+            }),
+        )
+        await send_telegram_message(
+            f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
+            f"shares not free to sell (available {last_avail} < {shares}).\n"
+            f"_Old stop likely still settling (pending_replace) — position "
+            f"protected, no shares sold. Cron will retry next window._"
+        )
+        return False
+
     # Step 2: Market sell the partial (shares are now free from the stop).
     try:
         coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)

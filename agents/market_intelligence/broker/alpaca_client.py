@@ -797,4 +797,8 @@ def _position_to_dict(pos) -> dict:
         "unrealized_plpc": float(pos.unrealized_plpc),
         "current_price": float(pos.current_price),
         "side": str(pos.side),
+        # #151: shares FREE to sell right now. Differs from qty when an order
+        # is reserving shares — e.g. an old stop stuck in pending_replace after
+        # a partial-exit stop replace (the FPS 2026-06-04/05 failure surface).
+        "qty_available": float(getattr(pos, "qty_available", pos.qty)),
     }
