@@ -92,7 +92,13 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
   echo "=== [4/5] Waiting for market-agent boot to complete ==="
   TIMEOUT=120
   ELAPSED=0
-  while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Missed-outcomes schema initialized'; do
+  # Wait for the LATE boot marker (scheduler started = app fully booted), NOT
+  # the early 'Missed-outcomes schema initialized' (fires ~2s in, while the
+  # heavy agent imports + dual-account Alpaca init are still running). Preflight
+  # G6 does a full second import of the agent stack + Alpaca bootstrap; running
+  # it mid-boot on the small box races/OOM-kills the exec (zero output, false
+  # red — 2026-06-05). Gating on true boot-complete makes preflight reliable.
+  while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Market Intelligence scheduler started'; do
     sleep 2
     ELAPSED=$((ELAPSED + 2))
     if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
@@ -100,7 +106,10 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
       exit 3
     fi
   done
-  echo "market-agent ready (${ELAPSED}s)"
+  # Brief extra settle so the scheduler's first-tick work doesn't contend with
+  # G6's bootstrap+network on the small box.
+  sleep 3
+  echo "market-agent ready (${ELAPSED}s + 3s settle)"
 else
   echo "=== [4/5] Skipped — market-agent not in this deploy scope ==="
 fi
