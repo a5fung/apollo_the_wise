@@ -45,6 +45,7 @@ async def test_partialnow_no_open_position():
     from agents.market_intelligence.agent import MarketIntelligenceAgent
     from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
+    from agents.market_intelligence import trading_calendar
     from tests.conftest import make_mock_pool
 
     pool, conn = make_mock_pool()
@@ -53,6 +54,7 @@ async def test_partialnow_no_open_position():
     fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
     with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(trading_calendar, "is_market_hours_now_et", return_value=True), \
          patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
         dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
@@ -69,6 +71,7 @@ async def test_partialnow_skips_already_partial():
     from agents.market_intelligence.agent import MarketIntelligenceAgent
     from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
+    from agents.market_intelligence import trading_calendar
     from tests.conftest import make_mock_pool
 
     pool, conn = make_mock_pool()
@@ -81,6 +84,7 @@ async def test_partialnow_skips_already_partial():
     fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
     with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(trading_calendar, "is_market_hours_now_et", return_value=True), \
          patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)):
         dt_mock.now.return_value = fake_now
         resp = await MarketIntelligenceAgent._handle_partial_now_command(
@@ -140,6 +144,7 @@ async def test_partialnow_executes_and_returns_summary():
     from agents.market_intelligence.agent import MarketIntelligenceAgent
     from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import db as db_mod
+    from agents.market_intelligence import trading_calendar
     from agents.market_intelligence.broker import order_manager
     from tests.conftest import make_mock_pool
 
@@ -153,6 +158,7 @@ async def test_partialnow_executes_and_returns_summary():
     fake_now = datetime(2026, 5, 28, 14, 0, tzinfo=ZoneInfo("America/New_York"))
     agent = _FakeAgent()
     with patch.object(agent_mod, "datetime") as dt_mock, \
+         patch.object(trading_calendar, "is_market_hours_now_et", return_value=True), \
          patch.object(db_mod, "get_pool", new=AsyncMock(return_value=pool)), \
          patch.object(order_manager, "execute_partial_exit", new=AsyncMock(return_value=True)), \
          patch.object(db_mod, "log_audit_event", new=AsyncMock()) as audit_mock:
