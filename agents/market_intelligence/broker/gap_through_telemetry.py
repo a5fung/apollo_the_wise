@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import Counter
 from datetime import date, datetime, timedelta
 from typing import Optional
 
@@ -24,6 +25,13 @@ from agents.market_intelligence.collector import get_minute_bars, _ET
 from agents.market_intelligence.db import log_audit_event
 
 logger = logging.getLogger(__name__)
+
+# Canonical ORB entry window (matches scripts/replay_would_have_filled.py #180).
+# The intraday classifier keys off [proposed_at, cancelled_at]; the EOD
+# reclassify uses this fixed window so the label is the real fill window, not
+# whatever ad-hoc cancel time the order happened to carry.
+_CANON_OPEN_HHMM = (9, 31)
+_CANON_CUTOFF_HHMM = (10, 0)
 
 
 async def classify_orb_cancellation(
@@ -167,3 +175,112 @@ async def classify_orb_cancellation(
             )
         except Exception as e:
             logger.error(f"silent_trigger Telegram failed for {ticker}: {e}")
+
+
+def _classify_canonical(
+    bars_in_window: list[tuple[datetime, float, float]],
+    trigger: float,
+    limit: float,
+) -> str:
+    """Complete-bar classification over the canonical window — same rule as the
+    intraday classifier + scripts/replay_would_have_filled.py (#180):
+      trigger never hit -> clean_miss
+      trigger hit, a later LOW <= limit -> would_have_filled
+      trigger hit, price ran past limit (never returned) -> gap_through
+    """
+    above = [(t, h, l) for t, h, l in bars_in_window if h >= trigger]
+    if not above:
+        return "clean_miss"
+    first_t = above[0][0]
+    after = [(t, h, l) for t, h, l in bars_in_window if t >= first_t]
+    return "would_have_filled" if min(l for _, _, l in after) <= limit else "gap_through"
+
+
+async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
+    """#183 — EOD re-classification of the day's cancelled ORB entries on
+    COMPLETE bars over the canonical [9:31, 10:00] window.
+
+    The intraday `classify_orb_cancellation` fetches real-time Polygon bars at
+    cancellation (~10:00 ET) which lag ~15 min → INCOMPLETE bars → false
+    `clean_miss` (AVAV 2026-05-28: n_bars=14, max_high 203 vs true 207.20 @
+    09:48). This pass re-runs after close on settled bars and writes an
+    authoritative `orb_cancellation_reclassified` audit event per candidate,
+    recording the prior intraday label so a correction is self-documenting.
+    AUDIT-ONLY (no retroactive Telegram — #123 discipline); flips surface in the
+    weekly review. Read + telemetry only — never mutates trade state.
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, orb_high, entry_price
+            FROM mi_live_trades
+            WHERE status = 'cancelled' AND entry_order_id IS NOT NULL
+              AND orb_high IS NOT NULL AND alert_date = $1
+        """, alert_date)
+
+    summary: Counter = Counter()
+    flips: list[dict] = []
+    for r in rows:
+        ticker = r["ticker"]
+        trigger = float(r["orb_high"] or r["entry_price"] or 0)
+        limit = float(r["entry_price"] or r["orb_high"] or 0)
+        if not trigger or not limit:
+            continue
+        d_str = alert_date.isoformat() if hasattr(alert_date, "isoformat") else str(alert_date)
+        try:
+            bars = await get_minute_bars(ticker, d_str, d_str)
+        except Exception as e:
+            logger.warning(f"reclassify: bar fetch failed for {ticker}: {e}")
+            bars = None
+        if not bars:
+            cls = "data_unavailable"
+        else:
+            base = datetime.combine(alert_date, datetime.min.time(), tzinfo=_ET)
+            open_t = base.replace(hour=_CANON_OPEN_HHMM[0], minute=_CANON_OPEN_HHMM[1])
+            cutoff_t = base.replace(hour=_CANON_CUTOFF_HHMM[0], minute=_CANON_CUTOFF_HHMM[1])
+            canon = [
+                (datetime.fromtimestamp(b["t"] / 1000, tz=_ET), float(b["h"]), float(b["l"]))
+                for b in bars
+            ]
+            canon = [(t, h, l) for t, h, l in canon if open_t <= t <= cutoff_t]
+            cls = _classify_canonical(canon, trigger, limit) if canon else "data_unavailable"
+        summary[cls] += 1
+
+        # Best-effort: the prior intraday label for this trade, so the corrected
+        # record names what it overrides (the AVAV-class flip).
+        prior = None
+        try:
+            async with pool.acquire() as conn:
+                prior = await conn.fetchval("""
+                    SELECT details::jsonb->>'classification' FROM mi_audit_log
+                    WHERE event_type = 'orb_cancellation_classification'
+                      AND details::jsonb->>'trade_id' = $1
+                    ORDER BY created_at DESC LIMIT 1
+                """, str(r["id"]))
+        except Exception:
+            prior = None
+        flipped = prior == "clean_miss" and cls in ("would_have_filled", "gap_through")
+        if flipped:
+            flips.append({"ticker": ticker, "trade_id": r["id"], "from": prior, "to": cls})
+
+        await log_audit_event(
+            "orb_cancellation_reclassified",
+            f"{ticker} {alert_date}: {cls}"
+            + (f" (was intraday {prior})" if prior and prior != cls else ""),
+            json.dumps({
+                "trade_id": r["id"], "ticker": ticker,
+                "alert_date": str(alert_date),
+                "classification": cls,
+                "prior_intraday": prior,
+                "flipped_from_clean_miss": flipped,
+                "trigger_price": trigger, "limit_price": limit,
+                "window": "canonical_0931_1000_complete_bars",
+            }),
+        )
+
+    logger.info(
+        f"reclassify_orb_cancellations_eod {alert_date}: "
+        f"{dict(summary)}; {len(flips)} flip(s) from clean_miss"
+    )
+    return {"date": str(alert_date), "summary": dict(summary), "flips": flips}

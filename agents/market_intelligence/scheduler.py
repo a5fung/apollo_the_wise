@@ -1500,6 +1500,21 @@ async def _eod_ep_recap_job():
         await notify_job_failure("eod_ep_recap", str(e))
 
 
+async def _orb_reclassify_eod_job():
+    """Run at 4:25 PM ET (#183). Re-classify today's cancelled ORB entries on
+    COMPLETE bars over the canonical 9:31–10:00 window, correcting the intraday
+    classifier's lag-corrupted `clean_miss` labels (AVAV-class). Audit-only —
+    writes `orb_cancellation_reclassified`; no trade-state mutation, no
+    retroactive Telegram (#123 discipline). Bars from the morning ORB window are
+    long settled by now."""
+    from agents.market_intelligence.broker.gap_through_telemetry import (
+        reclassify_orb_cancellations_eod,
+    )
+    from agents.market_intelligence.collector import et_today
+    res = await reclassify_orb_cancellations_eod(et_today())
+    logger.info(f"ORB reclassify EOD: {res['summary']}; {len(res['flips'])} flip(s)")
+
+
 async def _post_eod_audit_job():
     """Run at 4:15 PM ET. Trade-side invariants + metrics scan post-EOD cleanup.
 
@@ -3245,6 +3260,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_account_equity_snapshot_job, "account_equity_snapshot"),
         CronTrigger(hour=16, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
         id="account_equity_snapshot",
+        replace_existing=True,
+    )
+
+    # ORB cancellation EOD reclassify: 4:25 PM ET (#183) — corrects the intraday
+    # classifier's lag-corrupted clean_miss labels on complete bars. Audit-only.
+    _scheduler.add_job(
+        audit_wrap(_orb_reclassify_eod_job, "orb_reclassify_eod"),
+        CronTrigger(hour=16, minute=25, day_of_week="mon-fri", timezone="America/New_York"),
+        id="orb_reclassify_eod",
         replace_existing=True,
     )
 
