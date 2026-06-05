@@ -1996,44 +1996,34 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         )
 
 
-async def set_ep_alert_catalyst_type(
+async def update_ep_alert_advisory(
     ticker: str, alert_date: "date", catalyst_type: str | None,
     rationale: str | None = None,
     fire_status: str | None = None,
     fire_axes: "list[str] | None" = None,
 ) -> None:
-    """Advisory: write catalyst_type (Pradeep hierarchy) + refined fire panel
-    (#201) onto an EP alert row.
+    """Post-scan ADVISORY patch on an EP alert row: catalyst_type (#155, Pradeep
+    hierarchy) + the refined fire panel (#201).
 
     North Star C1 (2026-05-30) + fire panel (#201, 2026-06-05). ADVISORY only —
     never gates entries. Called post-scan (decoupled from the gating path).
-    catalyst_type is written only when non-NULL (classifier fail-open — never
-    overwrite a value with NULL). fire_status/fire_axes are the REFINED fire
-    panel (recomputed with the now-known catalyst_type); written whenever
-    fire_status is provided. Columns are guaranteed by insert_ep_alert (runs
-    earlier in the same scan) — no ADD COLUMN here.
+    COALESCE keeps the existing value when a field is NULL, so a None
+    catalyst_type (classifier fail-open) never clobbers a prior value and a
+    fire_status-only call leaves catalyst_type untouched. Columns are guaranteed
+    by insert_ep_alert (runs earlier in the same scan) — no ADD COLUMN here.
     """
     if not catalyst_type and not fire_status:
         return
-    sets = []
-    args: list = [ticker, alert_date]
-    if catalyst_type:
-        args.append(catalyst_type)
-        sets.append(f"catalyst_type = ${len(args)}")
-        args.append(rationale)
-        sets.append(f"catalyst_type_rationale = ${len(args)}")
-    if fire_status:
-        args.append(fire_status)
-        sets.append(f"fire_status = ${len(args)}")
-        args.append(fire_axes)
-        sets.append(f"fire_axes = ${len(args)}")
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute(
-            f"UPDATE mi_ep_alerts SET {', '.join(sets)} "
-            f"WHERE ticker = $1 AND alert_date = $2",
-            *args,
-        )
+        await conn.execute("""
+            UPDATE mi_ep_alerts SET
+                catalyst_type = COALESCE($3, catalyst_type),
+                catalyst_type_rationale = COALESCE($4, catalyst_type_rationale),
+                fire_status = COALESCE($5, fire_status),
+                fire_axes = COALESCE($6, fire_axes)
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date, catalyst_type, rationale, fire_status, fire_axes)
 
 
 async def delete_historical_alerts(from_date: date, to_date: date) -> int:

@@ -2177,7 +2177,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # FAIL-OPEN: any error leaves catalyst_type NULL; NEVER blocks/breaks alerts.
     try:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
-        from agents.market_intelligence.db import set_ep_alert_catalyst_type
+        from agents.market_intelligence.db import update_ep_alert_advisory
 
         async def _classify_type(r: dict) -> None:
             try:
@@ -2201,7 +2201,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 r["fire_status"] = _fs
                 r["fire_axes"] = _fa
-                await set_ep_alert_catalyst_type(
+                await update_ep_alert_advisory(
                     r["ticker"], r["alert_date"],
                     r.get("catalyst_type"), r.get("catalyst_type_rationale"),
                     fire_status=_fs, fire_axes=_fa,
