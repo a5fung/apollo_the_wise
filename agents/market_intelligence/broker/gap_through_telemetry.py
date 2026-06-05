@@ -188,11 +188,16 @@ def _classify_canonical(
       trigger hit, a later LOW <= limit -> would_have_filled
       trigger hit, price ran past limit (never returned) -> gap_through
     """
-    above = [(t, h, l) for t, h, l in bars_in_window if h >= trigger]
+    # Sort by time — "first trigger-hit" and "bars at/after it" are order-
+    # dependent, and get_minute_bars is not guaranteed chronological. Owning the
+    # sort here keeps every caller correct (AVAV 5/28 misclassified gap_through
+    # when the caller passed unsorted bars).
+    ordered = sorted(bars_in_window)
+    above = [(t, h, l) for t, h, l in ordered if h >= trigger]
     if not above:
         return "clean_miss"
     first_t = above[0][0]
-    after = [(t, h, l) for t, h, l in bars_in_window if t >= first_t]
+    after = [(t, h, l) for t, h, l in ordered if t >= first_t]
     return "would_have_filled" if min(l for _, _, l in after) <= limit else "gap_through"
 
 
@@ -244,6 +249,7 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
                 for b in bars
             ]
             canon = [(t, h, l) for t, h, l in canon if open_t <= t <= cutoff_t]
+            # _classify_canonical sorts internally — window filter is order-free.
             cls = _classify_canonical(canon, trigger, limit) if canon else "data_unavailable"
         summary[cls] += 1
 
