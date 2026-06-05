@@ -106,10 +106,13 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
       exit 3
     fi
   done
-  # Brief extra settle so the scheduler's first-tick work doesn't contend with
-  # G6's bootstrap+network on the small box.
-  sleep 3
-  echo "market-agent ready (${ELAPSED}s + 3s settle)"
+  # Extra settle: the dual-account Alpaca clients finish initializing AFTER the
+  # scheduler-started marker, and preflight (safeguard walk at [5/5], G6 at [5g])
+  # authenticates against them. Running preflight before Alpaca-ready is the
+  # 2026-06-05 false-red ("safeguards can't authenticate" / G6 zero-output).
+  # 12s comfortably clears Alpaca init on the small box (boot is ~7-10s total).
+  sleep 12
+  echo "market-agent ready (${ELAPSED}s + 12s settle)"
 else
   echo "=== [4/5] Skipped — market-agent not in this deploy scope ==="
 fi
