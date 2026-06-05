@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as _time, timedelta
 from typing import Optional
 
 from agents.market_intelligence.collector import get_minute_bars, _ET
@@ -27,11 +27,13 @@ from agents.market_intelligence.db import log_audit_event
 logger = logging.getLogger(__name__)
 
 # Canonical ORB entry window (matches scripts/replay_would_have_filled.py #180).
-# The intraday classifier keys off [proposed_at, cancelled_at]; the EOD
-# reclassify uses this fixed window so the label is the real fill window, not
-# whatever ad-hoc cancel time the order happened to carry.
-_CANON_OPEN_HHMM = (9, 31)
-_CANON_CUTOFF_HHMM = (10, 0)
+# Compared against each bar's ET wall-clock `.time()` — NOT a tz-aware datetime
+# bound. `datetime.combine(date, time.min, tzinfo=ZoneInfo("America/New_York"))`
+# attaches the LMT offset (-04:56), shifting a "9:31-10:00" bound to ~10:27-10:56
+# (the 2026-06-05 #183 root cause). A wall-clock `.time()` comparison sidesteps
+# the LMT trap entirely since the bar datetime is correctly in ET.
+_CANON_OPEN_T = _time(9, 31)
+_CANON_CUTOFF_T = _time(10, 0)
 
 
 async def classify_orb_cancellation(
@@ -241,14 +243,13 @@ async def reclassify_orb_cancellations_eod(alert_date: date) -> dict:
         if not bars:
             cls = "data_unavailable"
         else:
-            base = datetime.combine(alert_date, datetime.min.time(), tzinfo=_ET)
-            open_t = base.replace(hour=_CANON_OPEN_HHMM[0], minute=_CANON_OPEN_HHMM[1])
-            cutoff_t = base.replace(hour=_CANON_CUTOFF_HHMM[0], minute=_CANON_CUTOFF_HHMM[1])
+            # Filter by ET wall-clock time (LMT-safe — see _CANON_* note).
             canon = [
-                (datetime.fromtimestamp(b["t"] / 1000, tz=_ET), float(b["h"]), float(b["l"]))
+                (t, float(b["h"]), float(b["l"]))
                 for b in bars
+                for t in (datetime.fromtimestamp(b["t"] / 1000, tz=_ET),)
+                if _CANON_OPEN_T <= t.time() <= _CANON_CUTOFF_T
             ]
-            canon = [(t, h, l) for t, h, l in canon if open_t <= t <= cutoff_t]
             # _classify_canonical sorts internally — window filter is order-free.
             cls = _classify_canonical(canon, trigger, limit) if canon else "data_unavailable"
         summary[cls] += 1

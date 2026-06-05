@@ -44,7 +44,7 @@ import argparse
 import asyncio
 import sys
 from collections import Counter
-from datetime import datetime as _dt
+from datetime import datetime as _dt, time as _time
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -79,14 +79,15 @@ def _classify(bars_in_window, trigger, limit):
     return "gap_through", trigger_first_t, None
 
 
-def _sim_exit(parsed, fill_t, stop, eod_t):
-    """First bar after fill with low<=stop -> stop; else EOD close."""
+def _sim_exit(parsed, fill_t, stop, eod_time):
+    """First bar after fill with low<=stop -> stop; else EOD close. `eod_time` is
+    a datetime.time (ET wall clock) — LMT-safe, see the window note in replay_one."""
     for t, _o, _h, l, _c in parsed:
-        if t <= fill_t or t > eod_t:
+        if t <= fill_t or t.time() > eod_time:
             continue
         if l <= stop:
             return t, stop, "stop"
-    eod_bars = [b for b in parsed if b[0] <= eod_t]
+    eod_bars = [b for b in parsed if b[0].time() <= eod_time]
     if eod_bars:
         last = eod_bars[-1]
         return last[0], last[4], "eod"
@@ -118,13 +119,16 @@ async def replay_one(row: dict) -> dict:
          float(b["o"]), float(b["h"]), float(b["l"]), float(b["c"]))
         for b in bars
     )
-    base = _dt.combine(d, _dt.min.time(), tzinfo=_ET)
-    open_t = base.replace(hour=CANONICAL_OPEN_HHMM[0], minute=CANONICAL_OPEN_HHMM[1])
-    cutoff_t = base.replace(hour=CANONICAL_CUTOFF_HHMM[0], minute=CANONICAL_CUTOFF_HHMM[1])
-    eod_t = base.replace(hour=EOD_HHMM[0], minute=EOD_HHMM[1])
+    # Filter by ET wall-clock time, NOT tz-aware datetime bounds:
+    # _dt.combine(d, time.min, tzinfo=ZoneInfo("America/New_York")) attaches the
+    # LMT offset (-04:56), shifting "9:31-10:00" to ~10:27-10:56 (#183 root cause,
+    # 2026-06-05). The bar datetime is correctly in ET so .time() is right.
+    _open = _time(*CANONICAL_OPEN_HHMM)
+    _cutoff = _time(*CANONICAL_CUTOFF_HHMM)
+    _eod = _time(*EOD_HHMM)
 
-    canon = [(t, h, l) for t, _o, h, l, _c in parsed if open_t <= t <= cutoff_t]
-    ext = [(t, h, l) for t, _o, h, l, _c in parsed if cutoff_t < t <= eod_t]
+    canon = [(t, h, l) for t, _o, h, l, _c in parsed if _open <= t.time() <= _cutoff]
+    ext = [(t, h, l) for t, _o, h, l, _c in parsed if _cutoff < t.time() <= _eod]
 
     cls, fill_t, fill_px = _classify(canon, trigger, limit)
 
@@ -136,7 +140,7 @@ async def replay_one(row: dict) -> dict:
     }
 
     if cls == "would_have_filled" and fill_t is not None:
-        exit_t, exit_px, reason = _sim_exit(parsed, fill_t, stop, eod_t)
+        exit_t, exit_px, reason = _sim_exit(parsed, fill_t, stop, _eod)
         out["exit_reason"] = reason
         if exit_px is not None:
             out["pnl"] = (exit_px - fill_px) * shares
@@ -145,7 +149,7 @@ async def replay_one(row: dict) -> dict:
         ecls, efill_t, efill_px = _classify(ext, trigger, limit)
         if ecls == "would_have_filled" and efill_t is not None:
             out["extended_only_fill"] = True
-            exit_t, exit_px, reason = _sim_exit(parsed, efill_t, stop, eod_t)
+            exit_t, exit_px, reason = _sim_exit(parsed, efill_t, stop, _eod)
             if exit_px is not None:
                 out["ext_pnl"] = (exit_px - efill_px) * shares
                 out["ext_fill_t"] = efill_t.strftime("%H:%M")
