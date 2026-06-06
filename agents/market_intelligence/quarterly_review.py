@@ -93,6 +93,16 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Perplexity, Claude analysis). Loud-not-silent discipline.
     ("News source quality (90d)",
      "agents.market_intelligence.news_source_quality", ["quarterly"]),
+    # SIP-replay R cohort (#223, added 2026-06-06) — Gate-3 cutover
+    # evidence. Re-runs the same-exit cross-check (synth-FILLED vs
+    # synth-CANCELLED) so the IEX adverse-selection finding is re-measured
+    # as the cohort grows / regime shifts, NOT a one-time 6/6 snapshot.
+    # The TL;DR leads the stdout so the sweep summary carries the SELECTION
+    # delta. Per feedback_methodology_insights_need_periodic_revalidation
+    # (every methodology finding gets a script in this sweep or it goes stale).
+    # Finding doc: docs/analysis/sip_replay_gate3_2026-06-06.md.
+    ("SIP-replay R cohort / Gate-3 selection (#223)",
+     "scripts.sip_replay_r_cohort", []),
 ]
 
 

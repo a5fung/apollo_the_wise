@@ -1,7 +1,10 @@
 """Lever A — SIP-augmented R cohort for the Gate-3 live-cutover decision.
 
 READ-ONLY. No DB writes, no trade-state mutation. Safe to run via
-`docker exec apollo-market python scripts/_sip_replay_r_cohort.py [--days N]`.
+`docker exec apollo-market python scripts/sip_replay_r_cohort.py [--days N]`.
+Also auto-re-runs monthly via the backward-check sweep (quarterly_review.py;
+registered #223) so the IEX-selection finding is re-measured as the cohort
+grows — per feedback_methodology_insights_need_periodic_revalidation.
 
 WHY THIS EXISTS
 ---------------
@@ -186,19 +189,40 @@ async def main(days: int | None, signal_type: str):
         cancelled = await _cancelled_rows(conn, days, signal_type)
 
     win = f"last {days}d" if days else "all history"
-    print(f"\n{'='*72}")
-    print(f"Lever A — SIP-augmented R cohort   [{signal_type} · paper · {win}]")
-    print(f"{'='*72}")
 
-    # ── 1. COHORT SPLIT — the fail-fast headline ────────────────────────────
+    # ── COMPUTE everything up-front (one bar-fetch pass per cohort) so the
+    # TL;DR can lead — the monthly sweep summarises the first ~25 lines. ──────
     # SIP recovers ONLY would_have_filled; gap_through is unrecoverable.
     cls_counts, synth_r, synth_detail = await _synthetic_rs(cancelled)
     # SAME-EXIT cross-check: re-score the FILLED entries under the identical
     # floor proxy so filled-vs-cancelled compare on ONE exit basis.
     f_cls, filled_synth_r, _ = await _synthetic_rs(real)
-
+    real_st = _r_stats([d["r"] for d in real])           # real exits
+    aug_st = _r_stats([d["r"] for d in real] + synth_r)  # real + synth (confounded)
+    sf_st = _r_stats(filled_synth_r)                     # filled, synth exit
+    sc_st = _r_stats(synth_r)                            # cancelled, synth exit
     wf = cls_counts.get("would_have_filled", 0)
     gt = cls_counts.get("gap_through", 0)
+
+    print(f"\n{'='*72}")
+    print(f"Lever A — SIP-augmented R cohort   [{signal_type} · paper · {win}]")
+    print(f"{'='*72}")
+
+    # ── TL;DR (leads so the monthly-sweep summary captures the verdict) ──────
+    if sf_st.get("n") and sc_st.get("n"):
+        sel = sc_st["expectancy"] - sf_st["expectancy"]
+        verdict = ("GO-supportive (paper loss = IEX feed artifact)"
+                   if sel > 0.5 else
+                   "AMBIGUOUS — selection signal weak/absent, do NOT file +Gate-3")
+        print(f"\nTL;DR (Gate-3):  SELECTION delta = {sel:+.2f}R  "
+              f"[synth-CANCELLED {sc_st['expectancy']:+.2f} vs "
+              f"synth-FILLED {sf_st['expectancy']:+.2f}, same exit basis]")
+        print(f"   gap_through={gt} (IEX dropped REACHABLE winners) · "
+              f"real cohort {real_st.get('n',0)}@{real_st.get('expectancy',0):+.2f}R")
+        print(f"   VERDICT: {verdict}")
+        print(f"   Full reasoning + caveats: docs/analysis/sip_replay_gate3_2026-06-06.md")
+
+    # ── 1. COHORT SPLIT — the fail-fast headline ────────────────────────────
     recoverable = (wf / (wf + gt) * 100) if (wf + gt) else 0.0
     print(f"\nCANCELLED (IEX-dropped) cohort split — N={len(cancelled)}:")
     for c in ("would_have_filled", "gap_through", "clean_miss",
@@ -211,11 +235,7 @@ async def main(days: int | None, signal_type: str):
     print(f"     can't fill a price that blasted past and never returned.")
 
     # ── 2. THE THREE LINES ──────────────────────────────────────────────────
-    real_rs = [d["r"] for d in real]
-    real_st = _r_stats(real_rs)
-    aug_rs = real_rs + synth_r                    # chronological-ish; real first
-    aug_st = _r_stats(aug_rs)
-
+    # (real_st / aug_st computed up-top)
     print(f"\n{'-'*72}")
     print("R-MULTIPLE COHORT (R = pnl / risk_dollars):")
     print(f"{'-'*72}")
@@ -241,8 +261,7 @@ async def main(days: int | None, signal_type: str):
     # Both cohorts re-scored under the SAME replay_one floor proxy. If
     # synthetic-filled stays clearly negative while synthetic-cancelled is
     # positive -> the difference is SELECTION, not exit methodology.
-    sf_st = _r_stats(filled_synth_r)         # filled entries, synthetic exit
-    sc_st = _r_stats(synth_r)                # cancelled entries, synthetic exit
+    # (sf_st / sc_st computed up-top)
     print(f"\n{'-'*72}")
     print("SAME-EXIT CROSS-CHECK (both on floor-proxy exit — the clean selection test):")
     print(f"{'-'*72}")

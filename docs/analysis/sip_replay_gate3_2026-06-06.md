@@ -1,7 +1,23 @@
 # Gate-3 evidence — SIP-augmented R cohort (Lever A, 2026-06-06)
 
-**Script:** `scripts/_sip_replay_r_cohort.py` (read-only) · split from
+**Script:** `scripts/sip_replay_r_cohort.py` (read-only) · split from
 `scripts/replay_would_have_filled.py` (#180). Run on prod, all history, `magna53`, paper.
+
+## How to re-run (durable — for future evals & tuning)
+
+```bash
+# On-demand (read-only; SELECTs + Polygon bars; writes nothing):
+docker exec apollo-market python scripts/sip_replay_r_cohort.py            # magna53, all history
+docker exec apollo-market python scripts/sip_replay_r_cohort.py --days 90  # window
+docker exec apollo-market python scripts/sip_replay_r_cohort.py --signal-type 9m_day2
+```
+
+**Auto-re-runs monthly** via the backward-check sweep (`agents/market_intelligence/
+quarterly_review.py`, registered #223) — the stdout TL;DR leads with the SELECTION
+delta so the monthly Telegram digest tracks whether IEX adverse-selection persists /
+the edge holds as the cohort grows. Per `feedback_methodology_insights_need_periodic_
+revalidation` (a finding without a sweep script silently goes stale). Re-snapshot this
+doc when the verdict materially moves.
 
 ## Result
 
