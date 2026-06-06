@@ -154,7 +154,7 @@ the lever is a **slot policy**, not a quality filter. N=13/9 are at/below the N�
   source row rolls out of the 30d window). `scripts/shadow_cap_plus_one_197.py`
   (read-only; registered in the monthly backward-check sweep) reads the ledger and
   reports the policy-(a) cohort's forward outcome — a lossless record of bending the rule.
-  **Promotion to a LIVE cap+1 is GATED**: N≥30 admitted-cohort + operator sign-off + a
+  **Promotion to a LIVE cap+1 is GATED**: N≥10 admitted-cohort (game_changer is rare + high-prior; operator 2026-06-06) + operator sign-off + a
   CHANGE_PROCESS change-log entry here. Until then `max_concurrent_positions` is
   unchanged at 5. (game_changer is narrow → slow accrual, by design.)
 - **#198 — CLOSED as obsolete.** It proposed a conviction-override of the count-based
@@ -169,7 +169,7 @@ the lever is a **slot policy**, not a quality filter. N=13/9 are at/below the N�
 observe-only). #198 closure is a scope decision, not a safeguard change.
 
 **Status**: #197 shadow shipped 2026-06-06 (read-only, registered); promotion pending
-N≥30 + sign-off. #198 closed 2026-06-06.
+N≥10 + sign-off. #198 closed 2026-06-06.
 
 ---
 

@@ -41,7 +41,9 @@ from agents.market_intelligence.db import get_pool
 # tracked as a SENSITIVITY line for a possible future widen, not the policy.
 _ADMIT_QUALITY = ("game_changer",)
 _SENSITIVITY_QUALITY = ("game_changer", "strong")
-_PROMOTION_N = 30
+# Promotion gate N=10 (operator 2026-06-06): game_changer is rare + high-prior;
+# 10 settled is enough signal to make the cap+1 sign-off call (vs 30).
+_PROMOTION_N = 10
 
 
 def _stat_line(rows) -> str:

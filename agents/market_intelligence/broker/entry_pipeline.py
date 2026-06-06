@@ -23,6 +23,8 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_PAPER_STRATEGY_ON_LIVE,
     BLOCK_STRATEGY_DISABLED,
     BLOCK_STRATEGY_IN_SHADOW,
+    BLOCK_MAX_POSITIONS,
+    BLOCK_STRATEGY_POSITION_CAP,
     INFRA_NO_BAR,
     INFRA_ORDER_SUBMIT_FAILED,
     SETUP_FADED_FROM_ORB,
@@ -210,6 +212,26 @@ async def submit_trade_entry(
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
+        # #197: a game_changer blocked by a position cap is a CAP+1 CANDIDATE.
+        # Surface it IMMEDIATELY + actionably (independent of skip aggregation) so
+        # the operator can take it manually — the cap+1 rule is SHADOW-only, Apollo
+        # will NOT auto-enter it. Additive Telegram; no decision/trade-state change.
+        try:
+            _cq = (alert_context.get("catalyst_quality") or "")
+            _is_cap = isinstance(reason, str) and (
+                reason.startswith(BLOCK_MAX_POSITIONS)
+                or reason.startswith(BLOCK_STRATEGY_POSITION_CAP)
+            )
+            if _is_cap and _cq == "game_changer":
+                await send_telegram_message(
+                    f"{mode_prefix()}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
+                    f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
+                    f"blocked by full position cap.\n"
+                    f"_Would auto-enter under the cap+1 rule (SHADOW — not live). "
+                    f"Apollo will NOT take it; consider acting manually._"
+                )
+        except Exception as e:
+            logger.error(f"{strategy_label} {ticker}: cap+1 candidate alert failed — {e}")
         return {"ticker": ticker, "action": action, "reason": reason}
 
     # 1. Duplicate check — trade row already exists for this ticker+date.
