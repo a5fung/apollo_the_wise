@@ -34,11 +34,14 @@ def test_gaps_section_empty_returns_blank():
     assert format_gaps_section_for_weekly([]) == ""
 
 
-def test_excluded_categories_are_all_structural():
-    # The gaps query excludes _UNTRADEABLE_CATEGORIES; every one must be the
-    # 'structural' kind, else a real gap could be silently dropped.
-    for cat in _UNTRADEABLE_CATEGORIES:
-        assert _CATEGORY_KIND.get(cat) == "structural", cat
+def test_untradeable_equals_structural_kinds():
+    # Bidirectional: _UNTRADEABLE_CATEGORIES must be EXACTLY the 'structural'
+    # kinds in _CATEGORY_KIND. One-directional ("each untradeable is structural")
+    # misses the drift that bites — a NEW structural category added to the kind
+    # map but forgotten in _UNTRADEABLE would silently surface as a tradeable
+    # miss. Lock both directions. (Altitude /simplify finding 2026-06-06.)
+    structural = {c for c, k in _CATEGORY_KIND.items() if k == "structural"}
+    assert set(_UNTRADEABLE_CATEGORIES) == structural
 
 
 def test_safeguard_blocks_are_the_cohort():

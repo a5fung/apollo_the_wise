@@ -2178,6 +2178,9 @@ class MarketIntelligenceAgent(BaseAgent):
                                                       AND CURRENT_DATE - INTERVAL '1 day'
                                                       AND parent_invalidated_eod) AS inval7
                     FROM {table}
+                    -- Bound the scan to the rows any counter can use (date-indexed);
+                    -- the FILTERs above only ever touch the last 7 days.
+                    WHERE {col} >= CURRENT_DATE - INTERVAL '7 days'
                 """)
                 today = row["today"] or 0
                 last7 = row["last7"] or 0
