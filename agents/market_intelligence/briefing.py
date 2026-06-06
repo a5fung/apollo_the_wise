@@ -1928,8 +1928,16 @@ def _strip_markdown_markers(text: str) -> str:
     return text
 
 
-async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
-    """Send a message directly via Telegram Bot API. Splits if over 4000 chars."""
+async def send_telegram_message(
+    text: str, chat_id: int | None = None, parse_mode: str = "Markdown"
+) -> bool:
+    """Send a message directly via Telegram Bot API. Splits if over 4000 chars.
+
+    parse_mode defaults to legacy "Markdown" (every existing caller). Pass
+    parse_mode="HTML" for surfaces migrated to the shared HTML layer
+    (shared/telegram_format, #121) — HTML has a total escape so dynamic values
+    can't break the parse. On a 400 the message still lands as plain text (markup
+    stripped for the active mode)."""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not chat_id:
         allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
@@ -1959,22 +1967,25 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
         if remaining:
             chunks.append(remaining)
 
-    async def _post(client: httpx.AsyncClient, chunk: str, use_markdown: bool) -> httpx.Response:
-        # Plain-text fallback strips Markdown control chars so users don't
-        # see literal *Foo* and _bar_ all over the message. Keep code-block
-        # content (backticks span code spans the user expects to read as-is)
-        # by replacing only the markers themselves with nothing.
-        # Caught 2026-05-25: user reported "lots of * and _ everywhere" after
-        # Telegram returned 400 ("Can't find end of entity") and we fell
-        # back to plain text without stripping the markers.
-        text = chunk if use_markdown else _strip_markdown_markers(chunk)
+    def _to_plain(chunk: str) -> str:
+        # Plain-text fallback strips the active mode's markup so users don't see
+        # literal *Foo*/_bar_ (Markdown) or <b> tags (HTML) all over the message.
+        # Caught 2026-05-25: 400 ("Can't find end of entity") fell back to plain
+        # text without stripping the markers.
+        if parse_mode == "HTML":
+            import re as _re
+            return _re.sub(r"<[^>]+>", "", chunk).replace("&lt;", "<").replace(
+                "&gt;", ">").replace("&amp;", "&")
+        return _strip_markdown_markers(chunk)
+
+    async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool) -> httpx.Response:
         payload: dict[str, Any] = {
             "chat_id": chat_id,
-            "text": text,
+            "text": chunk if formatted else _to_plain(chunk),
             "disable_web_page_preview": True,
         }
-        if use_markdown:
-            payload["parse_mode"] = "Markdown"
+        if formatted:
+            payload["parse_mode"] = parse_mode
         return await client.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
         )
@@ -1982,15 +1993,15 @@ async def send_telegram_message(text: str, chat_id: int | None = None) -> bool:
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             for chunk in chunks:
-                r = await _post(client, chunk, use_markdown=True)
+                r = await _post(client, chunk, formatted=True)
                 if r.status_code == 400:
-                    # Likely malformed Markdown — retry as plain text so the alert
-                    # still lands. Markdown failures otherwise vanish silently.
+                    # Likely malformed markup — retry as plain text so the alert
+                    # still lands. Parse failures otherwise vanish silently.
                     body = r.text[:500]
                     logger.warning(
-                        f"Telegram 400 with Markdown — retrying plain text. body={body}"
+                        f"Telegram 400 with {parse_mode} — retrying plain text. body={body}"
                     )
-                    r2 = await _post(client, chunk, use_markdown=False)
+                    r2 = await _post(client, chunk, formatted=False)
                     if r2.status_code >= 400:
                         await log_audit_event(
                             "telegram_send_failed",
