@@ -1246,7 +1246,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 get_fmp_news(ticker),
                 get_fmp_analyst_ratings(ticker),
                 search_news_perplexity(f"What caused {ticker} stock to gap up? Latest catalyst and news.", recency="week"),
-                get_sec_recent_filings(ticker),
+                # 8-K (US) + 6-K (foreign issuers — SE/BABA earnings & deals, #208).
+                # 6-K text is pulled from the EX-99 exhibit, not the cover boilerplate.
+                get_sec_recent_filings(ticker, forms=("8-K", "6-K")),
             )
             await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
             upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
@@ -1262,12 +1264,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # the LLMs were blind to — e.g. RUM 6/4 $270M GPU-cloud deal) + the web synthesis,
             # UNTRUNCATED — the grade reasons on this, not raw 200-char headlines. SEC fetch is
             # error-wrapped (returns []), so it can never slow or break the scan.
-            sec_8k = next((f for f in sec_filings if f.get("text")), None)
+            sec_filing = next((f for f in sec_filings if f.get("text")), None)
             grounded_parts = []
-            if sec_8k:
+            if sec_filing:
                 grounded_parts.append(
-                    f"[SEC {sec_8k['form']} filed {sec_8k['filed']}, items {sec_8k['items']}] {sec_8k['text']}")
-                news_summary = (f"[SEC {sec_8k['form']} filed {sec_8k['filed']}, items {sec_8k['items']}] "
+                    f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] {sec_filing['text']}")
+                news_summary = (f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] "
                                 + news_summary)[:600]
             if perplexity_answer:
                 grounded_parts.append(f"[Web summary] {perplexity_answer}")

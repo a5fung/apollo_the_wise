@@ -548,6 +548,48 @@ async def _sec_cik_for(client: httpx.AsyncClient, ticker: str) -> Optional[str]:
     return _sec_cik_map.get(ticker.upper())
 
 
+# Forms whose PRIMARY document is only a cover wrapper — the substance is in an
+# EX-99 exhibit (#208). 6-K = foreign private issuer current report (SE/BABA
+# earnings, deals): the cover is ~1.5k chars of boilerplate, the press release is
+# a 200k+ char EX-99.1. 8-K is NOT here — its body is in the primary doc.
+_SEC_COVER_FORMS = ("6-K",)
+
+
+async def _sec_exhibit_url(
+    client: httpx.AsyncClient, cik: str, acc_no: str, primary: str
+) -> Optional[str]:
+    """For cover-style filings (6-K), find the EX-99 press-release exhibit URL via
+    the filing index.json. Prefers an ex99* document; falls back to the largest
+    non-primary .htm. Returns None on any failure (caller keeps the cover text)."""
+    try:
+        idx = (await client.get(
+            f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/index.json"
+        )).json()
+        cands: list[tuple] = []
+        for it in idx.get("directory", {}).get("item", []):
+            name = it.get("name") or ""
+            low = name.lower()
+            if not low.endswith((".htm", ".html")):
+                continue
+            # Skip the cover, the EDGAR index pages, and iXBRL R-render files.
+            if name == primary or "index" in low or re.match(r"r\d+\.htm", low):
+                continue
+            try:
+                size = int(it.get("size") or 0)
+            except (ValueError, TypeError):
+                size = 0
+            # EX-99 (press release) wins; otherwise rank by size (largest body).
+            is_ex99 = "ex99" in low or "ex-99" in low or "dex99" in low
+            cands.append(((0 if is_ex99 else 1, -size), name))
+        if not cands:
+            return None
+        cands.sort()
+        best = cands[0][1]
+        return f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/{best}"
+    except Exception:
+        return None
+
+
 async def get_sec_recent_filings(
     ticker: str,
     *,
@@ -560,7 +602,9 @@ async def get_sec_recent_filings(
     near-real-time submissions endpoint. Returns list of
     {form, filed, accepted, items, url, text}. Empty list on ANY failure — never
     raises, so it can't slow or break the EP scan (#187 catalyst sourcing).
-    The 8-K disclosure body is in the PRIMARY doc (after the iXBRL cover header)."""
+    The 8-K disclosure body is in the PRIMARY doc (after the iXBRL cover header).
+    For 6-K (foreign issuers, #208) the primary is only a cover — `text` is pulled
+    from the EX-99 exhibit and `url` points at it."""
     try:
         async with httpx.AsyncClient(timeout=10, headers=_SEC_UA, follow_redirects=True) as client:
             cik = await _sec_cik_for(client, ticker)
@@ -581,6 +625,12 @@ async def get_sec_recent_filings(
                 acc_no = recent["accessionNumber"][i].replace("-", "")
                 primary = recent["primaryDocument"][i]
                 url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/{primary}"
+                # 6-K substance lives in an EX-99 exhibit, not the cover (#208).
+                is_cover_form = any(form.startswith(f) for f in _SEC_COVER_FORMS)
+                if is_cover_form:
+                    ex_url = await _sec_exhibit_url(client, cik, acc_no, primary)
+                    if ex_url:
+                        url = ex_url  # point at the press release, not the cover
                 rec = {
                     "form": form,
                     "filed": recent["filingDate"][i],
