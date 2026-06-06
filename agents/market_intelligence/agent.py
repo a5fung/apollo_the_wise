@@ -122,15 +122,17 @@ class ScreenerRequest(BaseModel):
 def _normalize_slash_cmd(token: str) -> str:
     """Normalize a raw slash-command token to its canonical dispatch key.
 
-    Strips an @botname suffix and any non-[a-z0-9] chars (zero-width spaces,
-    paste artifacts), then re-prefixes "/". Every dispatch key is "/" +
-    lowercase-alnum, so this is a no-op for clean input and can never reject a
-    valid command. Fixes the 2026-06-04 "/syncnow -> Unknown command" while
-    /syncnow was in the Available list — an invisible char made the parsed cmd
-    != the dict key while displaying identically.
+    Strips an @botname suffix and any non-[a-z0-9_] chars (zero-width spaces,
+    paste artifacts), then re-prefixes "/". Dispatch keys are "/" +
+    lowercase-alnum, with a few legit `_detail` drill-down callbacks
+    (/eps_detail, /themes_detail, /trades_detail) — so the UNDERSCORE must be
+    kept. Fixes the 2026-06-04 "/syncnow -> Unknown command" (an invisible char
+    made the parsed cmd != the dict key) AND the 2026-06-06 "/eps_detail ->
+    Unknown command: /epsdetail" — the prior `[^a-z0-9]+` stripped the
+    underscore, making all three inline-keyboard detail buttons unreachable.
     """
     import re
-    return "/" + re.sub(r"[^a-z0-9]+", "", (token or "").split("@")[0].lower())
+    return "/" + re.sub(r"[^a-z0-9_]+", "", (token or "").split("@")[0].lower())
 
 
 class MarketIntelligenceAgent(BaseAgent):
