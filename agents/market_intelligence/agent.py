@@ -2633,25 +2633,22 @@ class MarketIntelligenceAgent(BaseAgent):
         m = _re.search(r'\b(\d{1,3})\b', request.task)
         days = max(1, min(int(m.group(1)), 365)) if m else 30
 
+        # Unknown-signal predicates composed once (each appears in 2-3 places below).
+        _NONFIRE = ("fire_status IN "
+                    "('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')")
+        _MISS = ("catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%' "
+                 "OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'")
+        _ANY_UNK = f"catalyst_type = 'unknown' OR {_NONFIRE} OR {_MISS}"
+
         pool = await get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(f"""
                 SELECT
                     COUNT(*) AS total,
                     COUNT(*) FILTER (WHERE catalyst_type = 'unknown') AS type_unknown,
-                    COUNT(*) FILTER (WHERE fire_status IN
-                        ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
-                    ) AS fire_nonfire,
-                    COUNT(*) FILTER (WHERE
-                        catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
-                        OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'
-                    ) AS sourcing_miss,
-                    COUNT(*) FILTER (WHERE
-                        catalyst_type = 'unknown'
-                        OR fire_status IN ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
-                        OR catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
-                        OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'
-                    ) AS any_unknown
+                    COUNT(*) FILTER (WHERE {_NONFIRE}) AS fire_nonfire,
+                    COUNT(*) FILTER (WHERE {_MISS}) AS sourcing_miss,
+                    COUNT(*) FILTER (WHERE {_ANY_UNK}) AS any_unknown
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
             """, days)
@@ -2659,10 +2656,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 SELECT ticker, alert_date, catalyst_quality, catalyst_type, fire_status
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
-                  AND (catalyst_type = 'unknown'
-                       OR fire_status IN ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
-                       OR catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
-                       OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%')
+                  AND ({_ANY_UNK})
                 ORDER BY alert_date DESC LIMIT 8
             """, days)
 

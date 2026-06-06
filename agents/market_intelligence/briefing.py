@@ -1974,8 +1974,10 @@ async def send_telegram_message(
         # text without stripping the markers.
         if parse_mode == "HTML":
             import re as _re
-            return _re.sub(r"<[^>]+>", "", chunk).replace("&lt;", "<").replace(
-                "&gt;", ">").replace("&amp;", "&")
+            import html as _html
+            # Strip tags, then unescape ALL entities (html.unescape covers &quot;,
+            # numeric refs, etc — the manual 3-entity replace missed those).
+            return _html.unescape(_re.sub(r"<[^>]+>", "", chunk))
         return _strip_markdown_markers(chunk)
 
     async def _post(client: httpx.AsyncClient, chunk: str, formatted: bool) -> httpx.Response:
