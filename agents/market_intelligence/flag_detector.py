@@ -2231,6 +2231,210 @@ async def run_intraday_ma_pullback_scan(scan_time):
     return len(new_pullbacks)
 
 
+# ── Low-volume rest (#97, tight-range entry-technique #4) ─────────────────────
+# A quiet, tight coil INSIDE the base on LIGHT volume — no test/bounce; the
+# defining feature is the calm (Qullamaggie/Morales "rest"). Distinct from the
+# support-test (tests base_low + bounces) and MA-pullback (tests an MA): here
+# price just sits still on dried-up volume, the classic pre-expansion pause.
+# memory/user_tight_range_entry_techniques.md. Telemetry-only shadow phase.
+_LOW_VOL_REST_VOL_CEIL_PCT   = 60.0  # projected full-day volume ≤ 60% ADV (dried-up = the signal)
+_LOW_VOL_REST_RANGE_CEIL_PCT = 3.0   # intraday (high-low)/prev_close ≤ 3% (tight/quiet)
+_LOW_VOL_REST_HOLD_FLOOR_PCT = 0.5   # current ≥ 0.5% above base_low (holding, not breaking down)
+_LOW_VOL_REST_MIN_MINUTES    = 60    # ≥60 min elapsed — a rest must establish over time
+
+
+def evaluate_low_vol_rest(
+    *, base_low: float, base_high: float, day_high: float, day_low: float,
+    current_price: float, prev_close: float, projected_full_day: int, adv_20: int,
+) -> dict | None:
+    """Pure decision for the low-volume-rest pattern. Returns metrics dict if the
+    ticker is RESTING (quiet+tight+light, holding inside the base), else None.
+
+    Gates: (1) light volume — projected_full_day ≤ ceil% ADV; (2) tight range —
+    intraday spread ≤ ceil% of prev_close; (3) holding inside the base, above
+    base_low with margin and not above base_high (a break-out is the flag-break
+    detector's job, not a rest)."""
+    if min(base_low, base_high, day_high, day_low, current_price, prev_close) <= 0:
+        return None
+    if adv_20 <= 0 or projected_full_day <= 0:
+        return None
+    # (1) light volume
+    vol_pct_of_adv = projected_full_day / adv_20 * 100.0
+    if vol_pct_of_adv > _LOW_VOL_REST_VOL_CEIL_PCT:
+        return None
+    # (2) tight intraday range
+    range_pct = (day_high - day_low) / prev_close * 100.0
+    if range_pct > _LOW_VOL_REST_RANGE_CEIL_PCT:
+        return None
+    # (3) holding INSIDE the base (resting, not broken out/down)
+    if current_price > base_high:
+        return None  # broken out — flag-break's job
+    if current_price < base_low * (1.0 + _LOW_VOL_REST_HOLD_FLOOR_PCT / 100.0):
+        return None  # below/at base_low — breaking down, not resting
+    pos_in_base = ((current_price - base_low) / (base_high - base_low) * 100.0
+                   if base_high > base_low else 0.0)
+    return {
+        "range_pct": range_pct,
+        "vol_pct_of_adv": vol_pct_of_adv,
+        "pos_in_base_pct": pos_in_base,
+    }
+
+
+async def run_intraday_low_vol_rest_scan(scan_time):
+    """Intraday low-volume-rest detection on TIGHTENING/COILED/TRIGGERED tickers.
+
+    Mirrors the support-test / MA-pullback shadow detectors (#95/#96): same flag
+    universe + ADV map + per-day idempotency, telemetry-only. The signal is the
+    calm — see evaluate_low_vol_rest. Returns count of new rests inserted.
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.collector import get_snapshot_all
+
+    if not (_dt_time(9, 35) <= scan_time.time() <= _dt_time(15, 55)):
+        return 0
+    minutes_since_open = (scan_time.hour - 9) * 60 + scan_time.minute - 30
+    if minutes_since_open < _LOW_VOL_REST_MIN_MINUTES:
+        return 0
+
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        candidates = await conn.fetch("""
+            WITH latest AS (
+                SELECT MAX(scan_date) AS d FROM mi_flag_candidates
+                WHERE scan_date < CURRENT_DATE
+            )
+            SELECT DISTINCT ON (c.ticker)
+                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age
+            FROM mi_flag_candidates c
+            WHERE c.scan_date = (SELECT d FROM latest)
+              AND c.stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
+              AND c.base_low IS NOT NULL AND c.base_low > 0
+              AND c.base_high IS NOT NULL AND c.base_high > 0
+            ORDER BY c.ticker, c.scan_date DESC
+        """)
+        if not candidates:
+            return 0
+        watchlist = {r["ticker"]: dict(r) for r in candidates}
+
+        cohort_rows = await conn.fetch("""
+            SELECT ticker, count_9m_alerts_180d FROM mi_sugar_babies_cohort
+            WHERE cohort_date = (SELECT MAX(cohort_date) FROM mi_sugar_babies_cohort)
+        """)
+        cohort_map = {r["ticker"]: r["count_9m_alerts_180d"] for r in cohort_rows}
+
+        adv_rows = await conn.fetch("""
+            SELECT ticker, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv_20
+            FROM (
+                SELECT ticker, volume,
+                       ROW_NUMBER() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes
+                WHERE ticker = ANY($1::text[])
+                  AND trade_date >= CURRENT_DATE - INTERVAL '40 days' AND volume > 0
+            ) sub WHERE rn <= 20 GROUP BY ticker
+        """, list(watchlist.keys()))
+        adv_map = {r["ticker"]: int(r["adv_20"] or 0) for r in adv_rows}
+
+        already = await conn.fetch(
+            "SELECT ticker FROM mi_flag_low_vol_rests WHERE rest_date = CURRENT_DATE")
+        already_set = {r["ticker"] for r in already}
+
+    snapshots = await get_snapshot_all()
+    if not snapshots:
+        logger.warning("intraday_low_vol_rest_scan: empty snapshot fetch; skipping")
+        return 0
+
+    new_rests: list[dict] = []
+    for ticker, cand in watchlist.items():
+        if ticker in already_set:
+            continue
+        snap = snapshots.get(ticker)
+        if not snap:
+            continue
+        day = snap.get("day") or {}
+        day_low, day_high = day.get("l"), day.get("h")
+        current_price = (day.get("c") or snap.get("min", {}).get("c")
+                         or snap.get("lastTrade", {}).get("p") or 0)
+        prev_close = (snap.get("prevDay") or {}).get("c")
+        adv_20 = adv_map.get(ticker, 0)
+        today_volume = int(day.get("v") or 0)
+        if not (day_low and day_high and prev_close) or today_volume <= 0 or adv_20 <= 0:
+            continue
+        projected_full_day = int(today_volume * (390.0 / minutes_since_open))
+        m = evaluate_low_vol_rest(
+            base_low=float(cand["base_low"]), base_high=float(cand["base_high"]),
+            day_high=float(day_high), day_low=float(day_low),
+            current_price=float(current_price), prev_close=float(prev_close),
+            projected_full_day=projected_full_day, adv_20=adv_20,
+        )
+        if m is None:
+            continue
+        new_rests.append({
+            "ticker": ticker, "minutes_since_open": minutes_since_open,
+            "parent_stage": cand["stage"], "parent_scan_date": cand["scan_date"],
+            "base_high": float(cand["base_high"]), "base_low": float(cand["base_low"]),
+            "base_age": cand["base_age"], "current_price": float(current_price),
+            "range_pct": m["range_pct"], "pos_in_base_pct": m["pos_in_base_pct"],
+            "today_volume": today_volume, "adv_20": adv_20,
+            "volume_pct_of_adv": m["vol_pct_of_adv"],
+            "projected_full_day_volume": projected_full_day,
+            "in_sugar_baby_cohort": ticker in cohort_map,
+            "cohort_count_180d": cohort_map.get(ticker),
+        })
+
+    if not new_rests:
+        return 0
+
+    async with pool.acquire() as conn:
+        for r in new_rests:
+            await conn.execute("""
+                INSERT INTO mi_flag_low_vol_rests (
+                    ticker, rest_date, rest_time, minutes_since_open,
+                    parent_stage, parent_scan_date, base_high, base_low, base_age,
+                    current_price, range_pct, pos_in_base_pct,
+                    today_volume, adv_20, volume_pct_of_adv, projected_full_day_volume,
+                    in_sugar_baby_cohort, cohort_count_180d
+                ) VALUES (
+                    $1, CURRENT_DATE, NOW(), $2, $3, $4, $5, $6, $7,
+                    $8, $9, $10, $11, $12, $13, $14, $15, $16
+                ) ON CONFLICT (ticker, rest_date) DO NOTHING
+            """,
+                r["ticker"], r["minutes_since_open"], r["parent_stage"],
+                r["parent_scan_date"], r["base_high"], r["base_low"], r["base_age"],
+                r["current_price"], r["range_pct"], r["pos_in_base_pct"],
+                r["today_volume"], r["adv_20"], r["volume_pct_of_adv"],
+                r["projected_full_day_volume"], r["in_sugar_baby_cohort"],
+                r["cohort_count_180d"],
+            )
+            try:
+                await db.log_audit_event(
+                    "intraday_low_vol_rest",
+                    f"{r['ticker']} stage={r['parent_stage']} "
+                    f"range={r['range_pct']:.2f}% vol_pct_adv={r['volume_pct_of_adv']:.0f}% "
+                    f"pos_in_base={r['pos_in_base_pct']:.0f}%")
+            except Exception as e:
+                logger.debug(f"intraday_low_vol_rest audit failed (non-critical): {e}")
+
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            clock = scan_time.strftime("%H:%M")
+            lines = [f"😴 *Intraday Low-Vol Rests ({len(new_rests)} new)*",
+                     f"_5-min scan at {clock} ET — telemetry only, no entries submitted._", ""]
+            for r in new_rests:
+                marker = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                lines.append(
+                    f"• {marker}`{r['ticker']}` — resting {r['pos_in_base_pct']:.0f}% up in base "
+                    f"(${r['current_price']:.2f}; range {r['range_pct']:.1f}%, "
+                    f"vol {r['volume_pct_of_adv']:.0f}% ADV)")
+            lines += ["", "_Drill-down: `/lowvolrests` for today's list + recent history_"]
+            await send_telegram_message("\n".join(lines))
+        except Exception as e:
+            logger.error(f"intraday_low_vol_rest Telegram failed (non-critical): {e}")
+
+    logger.info(f"intraday_low_vol_rest_scan: {len(new_rests)} new rests detected")
+    return len(new_rests)
+
+
 # ────────────────────────────────────────────────────────────────────────
 # Entry-technique annotation (#93, 2026-05-23 ship)
 # ────────────────────────────────────────────────────────────────────────
@@ -2510,10 +2714,32 @@ async def reconcile_flag_state_post_eod(scan_date):
                       AND stage = 'INVALIDATED'
                )
         """, scan_date)
+        rests_result = await conn.execute("""
+            UPDATE mi_flag_low_vol_rests
+               SET parent_invalidated_eod = TRUE,
+                   invalidated_at = NOW()
+             WHERE rest_date = $1
+               AND parent_invalidated_eod = FALSE
+               AND ticker IN (
+                   SELECT ticker FROM mi_flag_candidates
+                    WHERE scan_date = $1
+                      AND stage = 'INVALIDATED'
+               )
+        """, scan_date)
     breaks_count = int(breaks_result.split()[-1]) if breaks_result else 0
     tests_count = int(tests_result.split()[-1]) if tests_result else 0
     pullbacks_count = int(pullbacks_result.split()[-1]) if pullbacks_result else 0
     urs_count = int(urs_result.split()[-1]) if urs_result else 0
+    rests_count = int(rests_result.split()[-1]) if rests_result else 0
+    if rests_count:
+        logger.info(f"reconcile_flag_state_post_eod: invalidated {rests_count} low-vol-rest rows")
+        try:
+            await db.log_audit_event(
+                "flag_low_vol_rests_reconciled",
+                f"{rests_count} intraday low-vol-rests marked parent_invalidated_eod=TRUE for {scan_date}",
+            )
+        except Exception:
+            pass
     if breaks_count:
         logger.info(f"reconcile_flag_state_post_eod: invalidated {breaks_count} break rows")
         try:
@@ -2550,4 +2776,4 @@ async def reconcile_flag_state_post_eod(scan_date):
             )
         except Exception:
             pass
-    return (breaks_count, tests_count, pullbacks_count, urs_count)
+    return (breaks_count, tests_count, pullbacks_count, urs_count, rests_count)

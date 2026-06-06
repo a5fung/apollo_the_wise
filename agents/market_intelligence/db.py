@@ -1517,6 +1517,38 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_ma_pullbacks_ticker
                 ON mi_flag_ma_pullbacks(ticker, pullback_date DESC);
 
+            -- Low-volume rest (#97, entry-technique #4): a quiet tight coil INSIDE
+            -- the base on dried-up volume (no test/bounce — the calm IS the signal).
+            CREATE TABLE IF NOT EXISTS mi_flag_low_vol_rests (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                rest_date DATE NOT NULL,
+                rest_time TIMESTAMPTZ NOT NULL,
+                minutes_since_open INT NOT NULL,
+                parent_stage TEXT NOT NULL,
+                parent_scan_date DATE NOT NULL,
+                base_high FLOAT,
+                base_low FLOAT,
+                base_age INT,
+                current_price FLOAT NOT NULL,
+                range_pct FLOAT NOT NULL,             -- intraday (high-low)/prev_close; gate ≤ ceil
+                pos_in_base_pct FLOAT NOT NULL,        -- where price sits in the base, 0=low 100=high
+                today_volume BIGINT,
+                adv_20 BIGINT,
+                volume_pct_of_adv FLOAT,
+                projected_full_day_volume BIGINT,
+                in_sugar_baby_cohort BOOLEAN DEFAULT FALSE,
+                cohort_count_180d INT,
+                parent_invalidated_eod BOOLEAN DEFAULT FALSE,
+                invalidated_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, rest_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_low_vol_rests_date
+                ON mi_flag_low_vol_rests(rest_date DESC);
+            CREATE INDEX IF NOT EXISTS idx_low_vol_rests_ticker
+                ON mi_flag_low_vol_rests(ticker, rest_date DESC);
+
             -- Idempotent: add CHECK constraint on existing mi_flag_ma_pullbacks
             -- tables that pre-date the constraint (table was created
             -- 2026-05-24; constraint added same day post-/simplify review).

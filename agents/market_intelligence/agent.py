@@ -2528,6 +2528,95 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_low_vol_rests_query(self, request: AgentRequest) -> AgentResponse:
+        """`/lowvolrests` — intraday low-volume-rest detector surface (#97).
+
+        Modes:
+          /lowvolrests         — today's rests + last 7-day summary
+          /lowvolrests TICKER  — 30-day history for one ticker
+
+        A quiet tight coil inside the base on dried-up volume (entry-technique #4).
+        Shadow phase — telemetry only.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+        from agents.market_intelligence.collector import _ET
+
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"LOWVOLRESTS", "LOWVOLREST", "RESTS"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                rows = await conn.fetch("""
+                    SELECT rest_date, rest_time, parent_stage, current_price,
+                           range_pct, pos_in_base_pct, volume_pct_of_adv,
+                           in_sugar_baby_cohort, parent_invalidated_eod
+                    FROM mi_flag_low_vol_rests
+                    WHERE ticker = $1
+                      AND rest_date >= CURRENT_DATE - INTERVAL '30 days'
+                    ORDER BY rest_date DESC, rest_time DESC
+                """, ticker)
+                if not rows:
+                    return self._ok(request,
+                        result=f"_No intraday low-vol rests for `{ticker}` in last 30d._")
+                lines = [f"😴 *{ticker} — Intraday low-vol-rest history (30d)*", ""]
+                for r in rows:
+                    et_clock = r["rest_time"].astimezone(_ET).strftime("%H:%M")
+                    inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                    cohort = " 🍬" if r["in_sugar_baby_cohort"] else ""
+                    lines.append(
+                        f"  {r['rest_date']} {et_clock}{cohort} — {r['parent_stage']} "
+                        f"resting {r['pos_in_base_pct']:.0f}% up in base "
+                        f"(range {r['range_pct']:.1f}%, vol {r['volume_pct_of_adv']:.0f}% ADV){inval}")
+                return self._ok(request, result="\n".join(lines))
+
+            today_rows = await conn.fetch("""
+                SELECT ticker, rest_time, parent_stage, current_price,
+                       range_pct, pos_in_base_pct, volume_pct_of_adv,
+                       in_sugar_baby_cohort, parent_invalidated_eod
+                FROM mi_flag_low_vol_rests
+                WHERE rest_date = CURRENT_DATE
+                ORDER BY rest_time
+            """)
+            recent_summary = await conn.fetch("""
+                SELECT rest_date, COUNT(*) AS n_rests,
+                       COUNT(*) FILTER (WHERE in_sugar_baby_cohort) AS n_cohort,
+                       COUNT(*) FILTER (WHERE parent_invalidated_eod) AS n_invalidated
+                FROM mi_flag_low_vol_rests
+                WHERE rest_date BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                    AND CURRENT_DATE - INTERVAL '1 day'
+                GROUP BY rest_date ORDER BY rest_date DESC
+            """)
+
+        lines = ["😴 *Intraday Low-Vol Rests*", ""]
+        if today_rows:
+            lines.append(f"*Today ({len(today_rows)})*:")
+            for r in today_rows:
+                et_clock = r["rest_time"].astimezone(_ET).strftime("%H:%M")
+                cohort = "🍬 " if r["in_sugar_baby_cohort"] else ""
+                inval = " ⚠️ invalidated_eod" if r["parent_invalidated_eod"] else ""
+                lines.append(
+                    f"  {et_clock} {cohort}`{r['ticker']}` — {r['parent_stage']} "
+                    f"resting {r['pos_in_base_pct']:.0f}% up in base "
+                    f"(range {r['range_pct']:.1f}%, vol {r['volume_pct_of_adv']:.0f}% ADV){inval}")
+        else:
+            lines.append("_No low-vol rests today (yet)._")
+
+        if recent_summary:
+            lines.append("")
+            lines.append("*Last 7 days (excl. today):*")
+            for r in recent_summary:
+                inval_note = f" ({r['n_invalidated']} invalidated_eod)" if r["n_invalidated"] else ""
+                cohort_note = f" {r['n_cohort']} 🍬" if r["n_cohort"] else ""
+                lines.append(f"  {r['rest_date']}: {r['n_rests']} rests{cohort_note}{inval_note}")
+
+        lines.append("")
+        lines.append("_Drill-down: `/lowvolrests TICKER` for 30-day history per ticker_")
+        lines.append("_Shadow phase — telemetry only, no entries submitted_")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_breadth_query(self, request: AgentRequest) -> AgentResponse:
         """`/breadth` — Stockbee cluster-matrix breadth view.
 
@@ -5111,6 +5200,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/ur":             self._handle_undercut_rally_query,
             "/mapullbacks":    self._handle_ma_pullbacks_query,
             "/mapullback":     self._handle_ma_pullbacks_query,
+            "/lowvolrests":    self._handle_low_vol_rests_query,
+            "/lowvolrest":     self._handle_low_vol_rests_query,
             "/breadth":        self._handle_breadth_query,
             "/watch":          self._handle_watchlist_query,
             "/inplay":         self._handle_stocks_in_play_query,

@@ -68,6 +68,7 @@ JOB_TIME_STOP_SCAN = "time_stop_scan"
 JOB_FLAG_BREAK_SCAN = "flag_break_scan"
 JOB_SUPPORT_TEST_SCAN = "support_test_scan"
 JOB_MA_PULLBACK_SCAN = "ma_pullback_scan"
+JOB_LOW_VOL_REST_SCAN = "low_vol_rest_scan"
 JOB_UNDERCUT_RALLY_SCAN = "undercut_rally_scan"
 JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
@@ -1795,6 +1796,25 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _low_vol_rest_scan_job():
+    """Run every 5 min during market hours. Intraday low-volume-rest detector
+    (#97, entry-technique #4). A quiet tight coil INSIDE the base on dried-up
+    volume (no test/bounce — the calm is the signal). Telemetry-only shadow
+    phase; N>=10 settled before paper.
+    """
+    now_et = datetime.now(_ET)
+    if not (_dt_time(9, 35) <= now_et.time() <= _dt_time(15, 55)):
+        return 0
+    try:
+        from agents.market_intelligence.flag_detector import run_intraday_low_vol_rest_scan
+        n = await run_intraday_low_vol_rest_scan(now_et)
+        return int(n) if n is not None else 0
+    except Exception as e:
+        logger.error(f"intraday_low_vol_rest_scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_LOW_VOL_REST_SCAN, str(e))
+        return None
+
+
 async def _undercut_rally_scan_job():
     """Run every 5 min during market hours. Intraday U&R (Undercut & Rally)
     detector (#98, entry-technique #5, Morales/OWL, 2026-05-31 ship).
@@ -3417,6 +3437,21 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_MA_PULLBACK_SCAN,
+        replace_existing=True,
+        misfire_grace_time=120,
+    )
+
+    # Intraday low-volume-rest scan: every 5 min during market hours (gate
+    # internally 9:35-15:55 ET). Entry-technique #4 (#97) per
+    # memory/user_tight_range_entry_techniques.md. A quiet tight coil inside the
+    # base on dried-up volume. Telemetry-only shadow phase.
+    _scheduler.add_job(
+        audit_wrap(_low_vol_rest_scan_job, JOB_LOW_VOL_REST_SCAN),
+        CronTrigger(
+            hour="9-15", minute="*/5",
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_LOW_VOL_REST_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
     )
