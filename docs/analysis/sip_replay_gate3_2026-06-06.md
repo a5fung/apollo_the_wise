@@ -26,6 +26,10 @@ cohort is **+0.29 E[R]**. The −$9,475 paper-IEX figure is largely a **measurem
 artifact of IEX fill selection**, not a broken strategy. This is the strongest Gate-3
 signal to date and directly supports a reduced-size live start (live fills off SIP/NBBO).
 
+> ⚠️ The +0.29 SIP-augmented E[R] is **exit-model-confounded** — do not cite it as the
+> headline. The clean, load-bearing number is the SAME-EXIT cross-check below (+2.27R
+> selection delta). See "Gate-3 bearing — VERDICT".
+
 ## Honest caveats (do NOT overclaim)
 
 - **Line 2 is half simulation** (14 of 33 rows). It's a less-biased *estimate* for the
@@ -41,11 +45,48 @@ signal to date and directly supports a reduced-size live start (live fills off S
 - **N=33 is modest.** Decision-grade signal, not a closed verdict. Re-run as the cohort grows.
 - Minute-bar fill is a print, not a guaranteed marketable ask at limit (cohort proxy).
 
-## Gate-3 bearing
+## SAME-EXIT cross-check — the load-bearing number (advisor confound fix)
+
+The +0.29 SIP-augmented E[R] was confounded: real-cohort R uses live exits (partials/
+BE/trail, avgW +1.00R) vs synthetic R holds to EOD-day1 (avgW +2.97R). To isolate
+**pure IEX selection**, both cohorts were re-scored under the *identical* `replay_one`
+floor proxy (advisor 2026-06-06; `feedback_validate_metric_before_decision`):
+
+| Same exit basis | N | E[R] | win% | avgW | totR |
+|---|---|---|---|---|---|
+| **synth-FILLED** (IEX *did* fill) | 13 | **−1.00** | 0% | — | −13.0R |
+| **synth-CANCELLED** (IEX *dropped*) | 14 | **+1.27** | 43% | +4.29R | +17.8R |
+| **SELECTION delta** | — | **+2.27** | — | — | — |
+
+On one harsh exit basis: the names IEX filled **all** tag their stop (−1.00R, 0 winners);
+the names IEX dropped post **+1.27R / 43% win**. The flip is **selection, not exit model** —
+and the result is *stronger* than the confounded version. IEX was systematically filling
+the losers (weak breakouts that pull back to the limit then die) and dropping the winners
+(clean breakouts that run away from the limit). Live trading fills off SIP/NBBO and
+captures the dropped cohort. (Caveat: the −1.00 floor on synth-FILLED is partly the
+proxy's no-partial harshness; the robust, direction-certain fact is synth-CANCELLED
+clears **+1.27R under the same harsh proxy**, where the edge demonstrably lives.)
+
+## Gate-3 bearing — VERDICT
 
 Gate 3 (realized-R expectancy) was the single biggest cutover blocker, gated on slow
-winner-biased paper-IEX accrual. Lever A replaces that with a less-biased SIP estimate
-available NOW. **Reading: GO-supportive for a reduced-size (80/20) live start at 6/22**,
-conditioned on the execution-reliability gates (IBM trio N=7, #150, #142, #184) — which
-are independent and remain the hard path. Pending advisor pressure-test before it's filed
-as the formal Gate-3 verdict.
+winner-biased paper-IEX accrual. Lever A resolves the blocker qualitatively NOW:
+
+- **The realized paper loss (−$9,475 / −0.43 E[R]) is an IEX execution-feed artifact, not
+  a strategy-edge failure.** The tradeable cohort is materially positive once the feed's
+  adverse selection is removed (+2.27R same-basis selection delta; gap_through=0 so every
+  dropped winner was *reachable* at the limit).
+- **GO-supportive for a reduced-size (80/20) live start at 6/22.** Live fills off SIP/NBBO,
+  i.e. the feed that captures the dropped winners.
+
+**Not claimed:** a precise positive live E[R]. The proxy brackets it (harsh on losers via
+no-partials, generous on winners via no-cap/hold-to-EOD); the real number is what the
+reduced-size live cohort will measure. This is decision-grade *direction*, not a pinned point.
+
+**Independent hard path (unchanged):** the execution-reliability gates (IBM trio N=7, #150,
+#142, #184) still gate the flip regardless of this R evidence. Lever A clears the *edge*
+question; it does not clear the *reliability* question.
+
+_Advisor pressure-test applied (2026-06-06); the cross-check meets the advisor's
+pre-registered criterion (synth-FILLED strongly negative + synth-CANCELLED positive →
+selection holds, GO-supportive stands)._
