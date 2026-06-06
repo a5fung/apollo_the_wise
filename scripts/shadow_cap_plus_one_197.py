@@ -1,10 +1,13 @@
 """#197 SHADOW — quality-aware slot admission, policy (a): cap+1 for game_changer.
 
-Read-only. No writes, no entry-pipeline change, no trade-state risk. The
-cap_blocked categorisation in mi_ep_missed_outcomes (#199) already encodes
-"max_positions was at the cap when this setup's entry was attempted" — so
-reading those rows back is decision-time-faithful; a hot-path shadow hook would
-only add a cosmetic real-time audit emit. This tracker is the shadow.
+Read-only. No writes, no entry-pipeline change, no trade-state risk. Reads the
+DURABLE append-only ledger `mi_cap_plus_one_shadow` — every cap_blocked decision
+is persisted there permanently (by record_cap_plus_one_shadow at the daily 5pm
+refresh), so the "what would bending the max_positions rule have produced over
+time" record is LOSSLESS even as the source 30d missed-outcomes window rolls.
+The cap_blocked categorisation (#199) already encodes "max_positions was at the
+cap when this setup's entry was attempted" — decision-time-faithful; a hot-path
+shadow hook would only add a cosmetic real-time audit emit.
 
 Policy (a) (operator decision 2026-06-06): when a **game_changer** HIGH is
 blocked by the flat max_positions cap (5), a cap+1 rule WOULD admit it in a 6th
@@ -56,10 +59,11 @@ def _stat_line(rows) -> str:
 async def main():
     pool = await get_pool()
     async with pool.acquire() as conn:
+        # Durable append-only ledger (mi_cap_plus_one_shadow) — NOT the rolling
+        # missed-outcomes window, so old cap_blocked decisions are never lost.
         rows = await conn.fetch("""
             SELECT ticker, alert_date, ep_score, catalyst_quality, ret_5d, max_high_5d
-            FROM mi_ep_missed_outcomes
-            WHERE skip_category = 'cap_blocked'
+            FROM mi_cap_plus_one_shadow
             ORDER BY alert_date DESC
         """)
     admit = [r for r in rows if r["catalyst_quality"] in _ADMIT_QUALITY]

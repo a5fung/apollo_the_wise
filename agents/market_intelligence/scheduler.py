@@ -474,6 +474,15 @@ async def _nightly_data_pull():
         total = sum(v for k, v in missed_summary.items() if isinstance(v, int))
         if total:
             summary_parts.append(f"{total} missed-EP rows")
+        # #197 cap+1 shadow ledger — persist every cap_blocked decision durably
+        # (the missed-outcomes window rolls; the ledger must not). Telemetry-only.
+        from agents.market_intelligence.missed_outcomes import record_cap_plus_one_shadow
+        cap_led = await record_cap_plus_one_shadow()
+        await log_audit_event(
+            "cap_plus_one_shadow_recorded",
+            f"ledger: {cap_led['total_ledger']} total "
+            f"({cap_led['recent_window']} in 30d window)",
+        )
     except Exception as e:
         logger.error(f"Missed-outcomes refresh failed: {e}")
 

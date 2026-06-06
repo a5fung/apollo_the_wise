@@ -123,7 +123,71 @@ async def ensure_missed_outcomes_schema() -> None:
                 ON mi_ep_missed_outcomes(alert_date DESC);
             CREATE INDEX IF NOT EXISTS idx_missed_outcomes_category
                 ON mi_ep_missed_outcomes(skip_category, alert_date DESC);
+
+            -- #197 cap+1 slot-admission SHADOW ledger (durable, append-only).
+            -- mi_ep_missed_outcomes is a 30d ROLLING window that gets rebuilt,
+            -- so a cap_blocked decision would age out of it. This ledger
+            -- PERSISTS every cap_blocked decision permanently so the "what would
+            -- bending the max_positions rule have produced over time" record is
+            -- lossless. Captures ALL qualities (policy filter applied at read
+            -- time) so a future widen game_changer->strong keeps full history.
+            -- Outcomes backfilled while the source row is still in-window;
+            -- COALESCE preserves a settled value after roll-off.
+            CREATE TABLE IF NOT EXISTS mi_cap_plus_one_shadow (
+                ticker            TEXT NOT NULL,
+                alert_date        DATE NOT NULL,
+                ep_score          FLOAT,
+                catalyst_quality  TEXT,
+                ret_5d            FLOAT,
+                max_high_5d       FLOAT,
+                first_seen_at     TIMESTAMPTZ DEFAULT NOW(),
+                outcome_updated_at TIMESTAMPTZ,
+                PRIMARY KEY (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_cap_plus_one_shadow_date
+                ON mi_cap_plus_one_shadow(alert_date DESC);
         """)
+
+
+# ── #197 cap+1 shadow ledger recorder ────────────────────────────────────────
+
+async def record_cap_plus_one_shadow() -> dict:
+    """Persist every `cap_blocked` decision from the rolling missed-outcomes
+    window into the durable mi_cap_plus_one_shadow ledger (telemetry-only — no
+    trade-state). INSERTs new decisions; UPSERTs settled outcomes (COALESCE so a
+    settled ret_5d is never clobbered back to NULL after the source row rolls out
+    of the 30d window). Idempotent — safe to run daily. Call AFTER
+    refresh_missed_outcomes so outcomes are as fresh as possible.
+
+    Returns {'inserted_or_updated': N, 'total_ledger': M}.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_cap_plus_one_shadow
+                (ticker, alert_date, ep_score, catalyst_quality,
+                 ret_5d, max_high_5d, outcome_updated_at)
+            SELECT ticker, alert_date, ep_score, catalyst_quality,
+                   ret_5d, max_high_5d,
+                   CASE WHEN ret_5d IS NOT NULL OR max_high_5d IS NOT NULL
+                        THEN NOW() ELSE NULL END
+            FROM mi_ep_missed_outcomes
+            WHERE skip_category = 'cap_blocked'
+            ON CONFLICT (ticker, alert_date) DO UPDATE SET
+                ep_score          = COALESCE(EXCLUDED.ep_score, mi_cap_plus_one_shadow.ep_score),
+                catalyst_quality  = COALESCE(EXCLUDED.catalyst_quality, mi_cap_plus_one_shadow.catalyst_quality),
+                ret_5d            = COALESCE(EXCLUDED.ret_5d, mi_cap_plus_one_shadow.ret_5d),
+                max_high_5d       = COALESCE(EXCLUDED.max_high_5d, mi_cap_plus_one_shadow.max_high_5d),
+                outcome_updated_at = CASE
+                    WHEN EXCLUDED.ret_5d IS NOT NULL OR EXCLUDED.max_high_5d IS NOT NULL
+                    THEN NOW() ELSE mi_cap_plus_one_shadow.outcome_updated_at END
+        """)
+        n = await conn.fetchval("""
+            SELECT COUNT(*) FROM mi_cap_plus_one_shadow
+            WHERE alert_date >= CURRENT_DATE - INTERVAL '30 days'
+        """)
+        total = await conn.fetchval("SELECT COUNT(*) FROM mi_cap_plus_one_shadow")
+    return {"recent_window": int(n or 0), "total_ledger": int(total or 0)}
 
 
 # ── Refresh / backfill ───────────────────────────────────────────────────────

@@ -147,8 +147,13 @@ the lever is a **slot policy**, not a quality filter. N=13/9 are at/below the N�
 **Anticipated effect**:
 - **#197 — SHADOW only (no live behavior change).** Policy **(a): cap+1 for
   game_changer** — when a game_changer HIGH is `cap_blocked`, a cap+1 rule WOULD admit
-  it in a 6th slot. `scripts/shadow_cap_plus_one_197.py` (read-only; registered in the
-  monthly backward-check sweep) tracks the would-be-admitted cohort's forward outcome.
+  it in a 6th slot. Every `cap_blocked` decision is persisted permanently in the durable
+  append-only ledger `mi_cap_plus_one_shadow` (written by `record_cap_plus_one_shadow`
+  at the 5 PM refresh — telemetry-only, captures ALL qualities so a future
+  game_changer→strong widen keeps full history; outcomes COALESCE-preserved after the
+  source row rolls out of the 30d window). `scripts/shadow_cap_plus_one_197.py`
+  (read-only; registered in the monthly backward-check sweep) reads the ledger and
+  reports the policy-(a) cohort's forward outcome — a lossless record of bending the rule.
   **Promotion to a LIVE cap+1 is GATED**: N≥30 admitted-cohort + operator sign-off + a
   CHANGE_PROCESS change-log entry here. Until then `max_concurrent_positions` is
   unchanged at 5. (game_changer is narrow → slow accrual, by design.)
