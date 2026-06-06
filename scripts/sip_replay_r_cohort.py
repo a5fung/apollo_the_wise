@@ -203,14 +203,17 @@ async def main(days: int | None, signal_type: str):
     sc_st = _r_stats(synth_r)                            # cancelled, synth exit
     wf = cls_counts.get("would_have_filled", 0)
     gt = cls_counts.get("gap_through", 0)
+    # SELECTION delta (cancelled − filled, same exit basis) — the clean signal.
+    # Computed once; the TL;DR and the cross-check section both read it.
+    have_xcheck = bool(sf_st.get("n") and sc_st.get("n"))
+    sel = (sc_st["expectancy"] - sf_st["expectancy"]) if have_xcheck else None
 
     print(f"\n{'='*72}")
     print(f"Lever A — SIP-augmented R cohort   [{signal_type} · paper · {win}]")
     print(f"{'='*72}")
 
     # ── TL;DR (leads so the monthly-sweep summary captures the verdict) ──────
-    if sf_st.get("n") and sc_st.get("n"):
-        sel = sc_st["expectancy"] - sf_st["expectancy"]
+    if have_xcheck:
         verdict = ("GO-supportive (paper loss = IEX feed artifact)"
                    if sel > 0.5 else
                    "AMBIGUOUS — selection signal weak/absent, do NOT file +Gate-3")
@@ -271,8 +274,7 @@ async def main(days: int | None, signal_type: str):
           f"{sum(f_cls.values())}).")
     print(_fmt_stats("  synth-CANCELLED", sc_st))
     print("     ^ the entries IEX DROPPED, same synthetic basis.")
-    if sf_st.get("n") and sc_st.get("n"):
-        sel = sc_st["expectancy"] - sf_st["expectancy"]
+    if have_xcheck:
         print(f"  SELECTION delta E[R] = {sel:+.3f}  "
               f"(cancelled − filled, SAME exit basis)")
         print("     >> POSITIVE & large => IEX adverse-selection is REAL on an")
