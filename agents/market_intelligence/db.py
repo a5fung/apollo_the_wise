@@ -4283,16 +4283,27 @@ async def persist_theme_candidates_shadow(
         return n
 
 
-async def persist_narrative_theme_candidates(run_date: "str | date", themes: list[dict]) -> int:
-    """#167 narrative-cogap shadow lane. SOURCE-SCOPED — clears/writes only the
-    source='narrative_cogap' rows, so it does NOT clobber the correlation-shadow
-    ('shadow_v2') rows that persist_theme_candidates_shadow writes to the same
-    mi_theme_candidates_shadow table. Re-runnable. Returns rows written."""
+async def persist_narrative_theme_candidates(
+    run_date: "str | date", themes: list[dict], backfilled: bool = False,
+) -> int:
+    """#167 narrative-cogap shadow lane. SOURCE-SCOPED — clears/writes only its own
+    source rows, so it does NOT clobber the correlation-shadow ('shadow_v2') rows
+    that persist_theme_candidates_shadow writes to the same mi_theme_candidates_shadow
+    table. Re-runnable. Returns rows written.
+
+    #167 hindsight-segregation (2026-06-06): forward (scheduled, same-day) writes
+    source='narrative_cogap'; a hindsight BACKFILL writes source='narrative_cogap_backfill'.
+    The distinct source makes the forward-only precision read forward BY CONSTRUCTION
+    (no created_at arithmetic), while the promote-gate read can include both populations
+    SPLIT + LABELLED — recall (live_unified, scored vs TODAY's themes) is the
+    hindsight-exposed signal on backfill, so the operator applies the trust judgment
+    at the 6/23 gate; the harness surfaces both, nulls neither."""
+    src = "narrative_cogap_backfill" if backfilled else "narrative_cogap"
     pool = await get_pool()
     async with pool.acquire() as conn:
         rd = _to_date(run_date)
         await conn.execute(
-            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = 'narrative_cogap'", rd)
+            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = $2", rd, src)
         n = 0
         for t in (themes or []):
             name = t.get("name")
@@ -4302,24 +4313,34 @@ async def persist_narrative_theme_candidates(run_date: "str | date", themes: lis
             await conn.execute("""
                 INSERT INTO mi_theme_candidates_shadow
                     (run_date, name, thesis, tickers, source, would_revive)
-                VALUES ($1, $2, $3, $4, 'narrative_cogap', FALSE)
+                VALUES ($1, $2, $3, $4, $5, FALSE)
                 ON CONFLICT (run_date, name) DO UPDATE
-                  SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers, source = 'narrative_cogap'
-            """, rd, name, t.get("thesis"), list(tickers))
+                  SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers, source = EXCLUDED.source
+            """, rd, name, t.get("thesis"), list(tickers), src)
             n += 1
         return n
 
 
-async def get_narrative_theme_candidates(days: int = 5) -> list[dict]:
+async def get_narrative_theme_candidates(
+    days: int = 5, include_backfill: bool = False,
+) -> list[dict]:
     """#167 — recent narrative-cogap shadow theme proposals (advisory/shadow; NOT live).
     Surfaced (clearly labeled experimental) in /themes so the operator can evaluate
-    the accruing proposals toward a promote-gate."""
+    the accruing proposals toward a promote-gate.
+
+    Forward-only by default (source='narrative_cogap'). include_backfill=True also
+    returns the hindsight backfill population (source='narrative_cogap_backfill'),
+    each row tagged `backfilled` so the promote-gate read can split + label them
+    (#167 hindsight-segregation, 2026-06-06)."""
     pool = await get_pool()
+    src_clause = ("source IN ('narrative_cogap', 'narrative_cogap_backfill')"
+                 if include_backfill else "source = 'narrative_cogap'")
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT run_date, name, tickers, thesis
+        rows = await conn.fetch(f"""
+            SELECT run_date, name, tickers, thesis,
+                   (source = 'narrative_cogap_backfill') AS backfilled
             FROM mi_theme_candidates_shadow
-            WHERE source = 'narrative_cogap'
+            WHERE {src_clause}
               AND run_date >= (CURRENT_DATE - $1::int)
             ORDER BY run_date DESC, name
         """, days)

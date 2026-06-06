@@ -575,6 +575,15 @@ reviews:
       NB: load-bearing EP/TRADE impact is the SEPARATE North Star (~Q4; theme is
       decorative +10 today, conviction-floor-overridden) — this gate is only
       shadow->canonization (advisory), NOT trade-gating.
+      HINDSIGHT-SEGREGATION (2026-06-06): a persisting backfill front-loads the
+      inspection set as source='narrative_cogap_backfill' (run via
+      _backfill_narrative_discovery.py). These rows are SEPARATE-AND-LABELLED, NOT
+      mixed into the readiness trigger (predicate above counts forward
+      'narrative_cogap' only, so hindsight can't trip the gate). At review, read the
+      backfill cohort via evaluate_narrative_themes(include_backfill=True): trust its
+      COUNT/rate + run_date-anchored fwd returns; DISCOUNT its `live_unified` recall
+      (scored vs TODAY's themes = anachronistic on backfill). PRECISION/canonize
+      decision = forward population.
       Origin: 2026-06-02 #167 narrative-discovery ship.
     status: pending
     added_on: 2026-06-02

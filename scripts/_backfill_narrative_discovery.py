@@ -7,8 +7,10 @@ Writes narrative_cogap proposals to mi_theme_candidates_shadow (advisory shadow
 table — NOT mi_themes, NOT trade state). Idempotent-ish: discover_narrative_themes
 dedups per date. LOOKAHEAD CAVEAT: backfilled narrative labels carry present-day
 hindsight on "was this a hot theme" — so the precision read runs optimistic; the
-COUNT/rate (what we're after) + price-based actionability are robust. Backfilled
-rows are distinguishable from forward ones by created_at >> run_date.
+COUNT/rate (what we're after) + run_date-anchored forward returns are robust;
+the HINDSIGHT-exposed signal is `live_unified` (recall, scored vs TODAY's themes).
+Backfilled rows are SEGREGATED by source='narrative_cogap_backfill' (#167, 2026-06-06)
+so the promote-gate splits them from the forward population by construction.
 
 Run: docker exec apollo-market python scripts/_backfill_narrative_discovery.py
 """
@@ -41,7 +43,9 @@ async def main(persist: bool):
     total = 0
     days_with = 0
     for d in dates:
-        out = await discover_narrative_themes(d, persist=persist)
+        # backfilled=True → source='narrative_cogap_backfill' so these hindsight
+        # rows stay SEGREGATED from the forward population at the promote-gate (#167).
+        out = await discover_narrative_themes(d, persist=persist, backfilled=True)
         n = out.get("themes", 0) or 0
         total += n
         if n > 0:

@@ -313,7 +313,7 @@ def _should_revive_theme(
     return hot >= min_hot_members
 
 
-async def discover_narrative_themes(scan_date=None, persist: bool = True) -> dict:
+async def discover_narrative_themes(scan_date=None, persist: bool = True, backfilled: bool = False) -> dict:
     """C2/C3 rung-1 NARRATIVE-theme discovery (#167, shadow/advisory).
 
     Groups the day's EP alerts by SHARED CATALYST-NARRATIVE via one Sonnet call and
@@ -383,7 +383,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True) -> dic
                 clean.append({"name": str(t["name"])[:80], "tickers": tks,
                               "thesis": (t.get("thesis") or "")[:500],
                               "catalyst_type": t.get("catalyst_type")})
-        n = (await persist_narrative_theme_candidates(scan_date, clean)) if persist else len(clean)
+        n = (await persist_narrative_theme_candidates(scan_date, clean, backfilled=backfilled)) if persist else len(clean)
         out["themes"] = n
         out["names"] = [t["name"] for t in clean]
         await log_audit_event("narrative_theme_discovery_ran",
@@ -399,7 +399,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True) -> dic
         return out
 
 
-async def evaluate_narrative_themes(days: int = 30) -> list[dict]:
+async def evaluate_narrative_themes(days: int = 30, include_backfill: bool = False) -> list[dict]:
     """#167 eval-harness — score the accrued narrative_cogap proposals for the
     promote-gate (data_gated_reviews::narrative_theme_discovery_promote_gate).
     Read-only. Each proposal is enriched with:
@@ -407,16 +407,25 @@ async def evaluate_narrative_themes(days: int = 30) -> list[dict]:
                        members? False = live did NOT recognize the cohort (the
                        recall value: narrative-discovery unifies what the
                        RS+sector engine fragments — the drone class).
-      avg_return_pct — avg member return since proposed (mi_daily_closes); None
+      fwd_5d/10d_pct — fixed-horizon (run_date-anchored) avg member return; None
                        when the proposal is < ~1 trading week old (pending).
       pending        — True when too fresh for a forward read.
+      backfilled     — True for the hindsight backfill population (#167
+                       segregation). NOTE: on a backfilled row the run_date-anchored
+                       forward returns are honest price action, but `live_unified`
+                       (scored vs TODAY's themes) is ANACHRONISTIC — so the recall
+                       signal is the hindsight-exposed one. The harness SURFACES
+                       both nulls neither; the operator splits by `backfilled` at
+                       the 6/23 gate (surface-not-prescribe).
+    include_backfill=False (default) returns the forward population only, BY
+    CONSTRUCTION (source-scoped), so /themes stays hindsight-free.
     """
     from agents.market_intelligence.db import (
         get_pool, get_narrative_theme_candidates, get_active_themes,
     )
     from agents.market_intelligence.collector import et_today
 
-    proposals = await get_narrative_theme_candidates(days)
+    proposals = await get_narrative_theme_candidates(days, include_backfill=include_backfill)
     if not proposals:
         return []
     live = await get_active_themes()
@@ -475,6 +484,7 @@ async def evaluate_narrative_themes(days: int = 30) -> list[dict]:
             "fwd_10d_pct": fwd_10d,
             "avg_return_pct": fwd_5d,  # back-compat alias (now fixed-5d horizon)
             "pending": fwd_5d is None,
+            "backfilled": bool(p.get("backfilled")),
         })
     return out
 
