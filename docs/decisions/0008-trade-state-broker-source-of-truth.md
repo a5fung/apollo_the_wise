@@ -64,6 +64,28 @@ architectural rewrite (the recurring scope-creep trap). #151 fixes the partial-e
 `integration_test_partial_exit.py` (the harness must reproduce stuck-`pending_replace` +
 untracked-order + false-naked, or the bug isn't understood). Both are cutover prerequisites.
 
+## Build status
+
+- **Increment 1 — write-side regression FENCE: SHIPPED 2026-06-06.**
+  `scripts/audit_trade_state_demotions.py` (+ `tests/test_trade_state_demotions.py`,
+  5 green incl. the pre-/post-#151 incident fixtures). Static gate: flags any
+  trade-state demotion (`stop_order_id`→NULL / `status`→`'closed'`, via SQL SET or
+  `set_stop_order_id(None)`) lexically inside an `except` block that lacks a
+  `# broker-confirmed:` reviewed-escape tag. **Honest scope:** a regression fence +
+  residual surfacer, NOT the "kills the class at source" claim — "broker-confirmed"
+  is a control-flow property a comment can't verify (that's increment 3's runtime
+  chokepoint). Fences the 6/4 false-naked class; does NOT cover 5/27 mass-close
+  (runtime empty-read, #137-guarded).
+  - First run found **5 except-enclosed demotions**: `order_manager.py:1288`
+    (execute_partial_exit) is the #151 verify-stop-live fix → **broker-confirmed,
+    tagged** (the proof case). The other **3 (L584, L905, L1575) are genuine
+    residuals** of the banned pattern → **#225** (broker-read-before-demote, paper-
+    integration-gated; do NOT refactor live error paths offline).
+  - **Blocking deploy-wire deferred** until #225 clears the 3 residuals (wiring a
+    failing gate would block all deploys). Until then the gate runs informationally.
+- **Increment 2 (read-only coverage-drift detector)** and **Increment 3 (guarded
+  auto-correction + runtime demote-helper)** — not started; next-week / paper.
+
 ## Consequences
 
 - A false-naked becomes structurally impossible: broker says covered → DB says covered.

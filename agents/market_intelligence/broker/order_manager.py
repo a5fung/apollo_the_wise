@@ -1285,6 +1285,10 @@ async def execute_partial_exit(
                 )
                 return False
             # Old stop NOT confirmed live → genuine naked risk → remediate + alert.
+            # broker-confirmed: reached only after the alpaca.get_order(old_stop_id)
+            # read above (L1254-1258) set old_stop_live=False — i.e. the broker
+            # itself confirmed the old stop is not in a live status. This is the
+            # #151 verify-stop-live fix; the null is broker-evidenced, not inferred.
             await set_stop_order_id(
                 trade_id, None,
                 reason="partial_naked",
