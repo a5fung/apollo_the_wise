@@ -317,7 +317,9 @@ async def initialize_schema() -> None:
                 catalyst TEXT,
                 catalyst_quality TEXT,
                 claude_analysis TEXT,
-                gemini_validation TEXT,
+                gemini_validation TEXT,   -- MISNOMER (#186A): holds PERPLEXITY cross-validation
+                                          -- (pplx_quality), NOT Gemini. Name kept for back-compat
+                                          -- (live column with data); a rename is a deferred migration.
                 confidence_multiplier FLOAT DEFAULT 1.0,
                 vol_percentile FLOAT,
                 created_at TIMESTAMPTZ DEFAULT NOW()

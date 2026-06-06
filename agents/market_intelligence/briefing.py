@@ -359,7 +359,8 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     # the underscore so 'game_changer' can't break Markdown italics → 400 →
     # plaintext fallback (the parse-fragility class). cat_e keeps a quick visual.
     quality = (ep.get("catalyst_quality") or "?").replace("_", " ")
-    gem = " ✓verified" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
+    # gemini_validation is a MISNOMER — it holds the Perplexity cross-check (#186A).
+    gem = " ✓Pplx" if ep.get("gemini_validation") == ep.get("catalyst_quality") else ""
     conf = f" {ep['confidence_multiplier']:.1f}x" if ep.get("confidence_multiplier", 1.0) > 1.0 else ""
     # North Star C1: catalyst TYPE — the "fire" (Pradeep). ADVISORY, shown only
     # when classified. Marker via the shared _catalyst_type_mark helper.
