@@ -1623,7 +1623,7 @@ class TelegramChannel:
                      # 2026-05-22+ new commands — must be registered here AND have a
                      # BotCommand entry above. Missing this list = silent drop in Telegram
                      # (BotCommand only affects autocomplete; CommandHandler is the actual route).
-                     "sugarbabies", "sugarbaby", "timestop", "inplay",
+                     "sugarbabies", "sugarbaby", "timestop",
                      # 5 shadow entry-technique detectors consolidated into /detectors
                      # (#218, operator command review 2026-06-06).
                      "detectors", "unknownrate",
@@ -1671,8 +1671,7 @@ class TelegramChannel:
             BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),
-            BotCommand("inplay",       "Stocks in Play — unified methodology-wide watchlist (ADR 0004)"),
-            BotCommand("watch",        "TIGHTENING watchlist with entry-technique annotations (#93)"),
+            BotCommand("watch",        "Stocks to watch — /watch = actionable tight-range · /watch all = full universe"),
             BotCommand("timestop",     "/timestop TICKER — confirm time-stop exit of 9M Day 2 meanderer"),
             BotCommand("partialnow",   "/partialnow TICKER — operator-confirm immediate partial exit (1/3 sell)"),
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
