@@ -599,16 +599,69 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def top_shouldve_entered_gaps(
+    window_days: int = 30,
+    limit: int = 8,
+    min_peak: float = 0.05,
+) -> list[dict]:
+    """The 'should've-entered' cohort — actionable misses flat-ranked by PEAK
+    missed upside (max_high_5d). (#219, operator 2026-06-06: leverage /missed for
+    recurring gap analysis — why FTNT/INOD missed.)
+
+    Cohort = every NON-structural miss: a safeguard/timing block the system hit
+    after wanting in (#199 cap_blocked / breaker_blocked / window_missed /
+    stop_too_wide / faded_from_orb), a scored-but-not-entered tier
+    (high_unentered / moderate_tier), or a tunable filter that rejected a name
+    that then ran. Structural rejections (mcap / adv / atr / M&A / extension) are
+    EXCLUDED — they did their job, they are not gaps.
+
+    'Verified first' = each row carries its KIND (safeguard block vs weak signal
+    vs scored-not-entered) + the verified reason; the section SURFACES the cohort
+    and the evidence (peak %, reason), it does NOT prescribe a fix (the operator
+    verifies — see feedback_weekly_review_surface_not_prescribe). Ranked by
+    max_high_5d so a real, sized opportunity outranks a barely-green name;
+    min_peak drops trivially-small 'misses' (default >= 5% peak).
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT ticker, alert_date, source, skip_category, skip_reason,
+                   ep_score, catalyst_quality, open_d0, ret_5d, max_high_5d
+            FROM mi_ep_missed_outcomes m
+            WHERE m.alert_date >= CURRENT_DATE - $1::INT
+              AND m.skip_category NOT IN {_UNTRADEABLE_CATEGORIES}
+              AND COALESCE(m.open_d0, 0) >= {_DEFAULT_PRICE_FLOOR}
+              AND m.max_high_5d >= $2
+              -- Suppress redundant duplicate_scan sibling rows (see
+              -- top_missed_winners for the full rationale).
+              AND NOT (
+                  m.skip_category = 'duplicate_scan'
+                  AND EXISTS (
+                      SELECT 1 FROM mi_ep_missed_outcomes sib
+                      WHERE sib.ticker = m.ticker AND sib.alert_date = m.alert_date
+                        AND sib.skip_category <> 'duplicate_scan'
+                  )
+              )
+            ORDER BY m.max_high_5d DESC NULLS LAST
+            LIMIT $3
+        """, window_days, min_peak, limit)
+    return [dict(r) for r in rows]
+
+
 async def aggregate_missed_for_weekly(window_days: int = 7) -> dict:
-    """Weekly review input: top winners + per-category roll-up."""
+    """Weekly review input: should've-entered gaps + top winners + roll-up."""
     top = await top_missed_winners(
         window_days=window_days, horizon="5d", per_category=2,
     )
     cats = await missed_by_category(window_days=window_days)
+    # Gaps use a 30d window (the weekly 7d window is too thin a cohort for a
+    # ranked gap list); it's clearly labeled 30d in the section header.
+    gaps = await top_shouldve_entered_gaps(window_days=30, limit=8)
     return {
         "window_days": window_days,
         "top_winners": top,
         "by_category": cats,
+        "gaps": gaps,
     }
 
 
@@ -722,18 +775,49 @@ def format_missed_telegram(
     return "\n".join(parts)
 
 
+def format_gaps_section_for_weekly(gaps: list[dict]) -> str:
+    """Prominent '🚨 Should've-entered gaps' section (#219) — the actionable
+    missed cohort ranked by peak upside, each row with its verified reason.
+    Facts only, no prescription (feedback_weekly_review_surface_not_prescribe)."""
+    if not gaps:
+        return ""
+    parts = [
+        "🚨 *Should've-entered gaps (30d)* — ranked by peak missed upside",
+        "_Non-structural misses (safeguard/timing blocks · scored-not-entered ·_",
+        "_tunable filters). Structural rejections excluded. Verify before acting._",
+        "```",
+        "tckr  date   peak    5d   reason",
+    ]
+    for r in gaps:
+        tk = r["ticker"][:5].ljust(5)
+        d = r["alert_date"].strftime("%m/%d") if r.get("alert_date") else "  —  "
+        peak = _fmt_pct_fixed(r.get("max_high_5d"))
+        c5 = _fmt_pct_fixed(r.get("ret_5d"))
+        reason = _humanize_category(r.get("skip_category"))[:24]
+        parts.append(f"{tk} {d}  {peak}  {c5}  {reason}")
+    parts.append("```")
+    return "\n".join(parts)
+
+
 def format_missed_section_for_weekly(missed: dict) -> str:
-    """Weekly review appendix: top 5 winners + per-category roll-up.
+    """Weekly review: should've-entered gaps (prominent) + top winners + roll-up.
 
     Same grouping/monospace shape as `/missed` so the visual rhythm is
     consistent across the two surfaces (digest is just shorter).
     """
     top = missed.get("top_winners") or []
     cats = missed.get("by_category") or []
-    if not top and not cats:
+    gaps_section = format_gaps_section_for_weekly(missed.get("gaps") or [])
+    if not top and not cats and not gaps_section:
         return ""
     window_days = missed.get("window_days", 7)
-    parts = [f"🔍 *Missed Opportunities ({window_days}d):*"]
+    parts: list[str] = []
+    if gaps_section:
+        parts.append(gaps_section)
+        if top or cats:
+            parts.append("")  # spacer before the broader appendix
+    if top or cats:
+        parts.append(f"🔍 *Missed Opportunities ({window_days}d):*")
 
     if top:
         parts.append("")
