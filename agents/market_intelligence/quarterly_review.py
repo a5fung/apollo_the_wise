@@ -14,17 +14,14 @@ WR drift is the right "regime check" granularity.
 Module name retained as `quarterly_review` for caller-compat; the
 cadence moved monthly per the 2026-05-22 ship.
 
-Scripts run:
-  - _b50_revenue_stage_threshold_backward_check.py
-    (#50 — pre-revenue gate threshold; rolled back from $5M → $0.01)
-  - _b53_atr_normalized_gap_backward_check.py
-    (#53 — ATR-normalized gap scoring; verdict no-ship)
-  - _b54_9m_day2_stop_atr_distribution.py
-    (#54 — 9M Day 2 stop/ATR distribution; verdict no-ship at N<30)
+Scripts run: see `QUARTERLY_BACKWARD_CHECK_SCRIPTS` below — that list is
+the SSoT (don't maintain a duplicate roster in this docstring; it drifts).
 
-Add scripts here as new backward checks are shipped. Each script must
-be re-runnable with no required args, output to stdout, return clean
-exit code.
+Add scripts there as new backward checks / methodology findings ship —
+EVERY load-bearing finding gets an entry or it silently goes stale
+unmeasured (feedback_methodology_insights_need_periodic_revalidation).
+Each registered script MUST be re-runnable via `python -m <module>` with
+no required args, output to stdout, and return a clean exit code.
 """
 from __future__ import annotations
 
@@ -103,6 +100,14 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # Finding doc: docs/analysis/sip_replay_gate3_2026-06-06.md.
     ("SIP-replay R cohort / Gate-3 selection (#223)",
      "scripts.sip_replay_r_cohort", []),
+    # ORB bar-1 wick-outlier backward check (#122, registered 2026-06-06).
+    # Was orphaned — a load-bearing backward check that prints N + a
+    # ship/insufficient verdict, accruing toward the N>=10 ship gate
+    # (data-gated review orb_bar1_wick_outlier_persistence_filter, earliest
+    # 2026-08-15). Monthly re-run tracks the cohort toward that gate so the
+    # finding doesn't go stale unmeasured (same discipline as the rest).
+    ("ORB bar-1 wick-outlier (#122)",
+     "scripts.orb_wick_outlier_backwardcheck", []),
 ]
 
 
