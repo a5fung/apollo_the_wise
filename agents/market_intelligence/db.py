@@ -4299,6 +4299,15 @@ async def persist_narrative_theme_candidates(
     hindsight-exposed signal on backfill, so the operator applies the trust judgment
     at the 6/23 gate; the harness surfaces both, nulls neither."""
     src = "narrative_cogap_backfill" if backfilled else "narrative_cogap"
+    # FORWARD ALWAYS WINS (PK is (run_date, name); backfill window overlaps the
+    # forward era). Forward path: DO UPDATE → a real scheduled run flips a same-day
+    # backfill row to forward (correct). Backfill path: DO NOTHING → must NOT clobber
+    # a real forward row, else a backfill RE-RUN would relabel forward rows to backfill
+    # and silently UNDER-COUNT the forward-only promote-gate predicate. The source-
+    # scoped DELETE already cleared backfill's own rows for this run_date, so the only
+    # surviving conflict on the backfill path is a forward row we must keep.
+    conflict = ("DO UPDATE SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers, "
+                "source = EXCLUDED.source") if not backfilled else "DO NOTHING"
     pool = await get_pool()
     async with pool.acquire() as conn:
         rd = _to_date(run_date)
@@ -4310,14 +4319,17 @@ async def persist_narrative_theme_candidates(
             tickers = t.get("tickers") or []
             if not name or not tickers:
                 continue
-            await conn.execute("""
+            # RETURNING → n counts rows ACTUALLY written (DO NOTHING conflicts that
+            # protect a forward row return no row and are correctly not counted).
+            row = await conn.fetchrow(f"""
                 INSERT INTO mi_theme_candidates_shadow
                     (run_date, name, thesis, tickers, source, would_revive)
                 VALUES ($1, $2, $3, $4, $5, FALSE)
-                ON CONFLICT (run_date, name) DO UPDATE
-                  SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers, source = EXCLUDED.source
+                ON CONFLICT (run_date, name) {conflict}
+                RETURNING 1
             """, rd, name, t.get("thesis"), list(tickers), src)
-            n += 1
+            if row is not None:
+                n += 1
         return n
 
 
