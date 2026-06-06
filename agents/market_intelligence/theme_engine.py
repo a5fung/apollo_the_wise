@@ -52,7 +52,7 @@ from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
     add_validation_cooldown, get_cooldown_set, get_globally_banned_tickers,
-    get_ticker_breadth_above_sma20,
+    get_operator_protected_set, get_ticker_breadth_above_sma20,
 )
 
 # Global ticker ban — fires when a ticker has been validation-removed from
@@ -1358,6 +1358,32 @@ async def _validate_theme_membership(
         result = json.loads(raw)
         remove_val = result.get("remove") or []  # guard against "remove": null
         to_remove = {tk.upper() for tk in remove_val if isinstance(tk, str)}
+
+        # ── Operator-protection shield (#213) ───────────────────────────────
+        # If the operator explicitly bypassed a (ticker, theme) cooldown, they
+        # have ruled that this ticker BELONGS in this theme. The validator must
+        # never re-remove it — otherwise the next Mon/Wed/Fri run silently
+        # undoes the operator's correction (SNDK/SIMO re-stripped from
+        # "AI Memory & Storage" on the narrowing "AI" qualifier). The shield is
+        # additive + fails open: a DB error here leaves to_remove untouched.
+        if to_remove:
+            try:
+                protected = await get_operator_protected_set()
+                shielded = {tk for tk in to_remove if (tk, theme_name) in protected}
+                if shielded:
+                    to_remove -= shielded
+                    for tk in sorted(shielded):
+                        logger.info(
+                            f"Theme '{theme_name}': KEPT {tk} — operator-protected "
+                            f"(bypassed cooldown), validator removal vetoed"
+                        )
+                    await log_audit_event(
+                        "validation_removal_shielded",
+                        summary=f"{len(shielded)} operator-protected ticker(s) kept in '{theme_name}': {', '.join(sorted(shielded))}",
+                        detail="Bypassed cooldown = operator ruled membership; re-removal vetoed (#213)",
+                    )
+            except Exception as e:
+                logger.warning(f"Operator-protection shield lookup failed for '{theme_name}': {e}")
 
         # Never remove so many that the theme drops below minimum
         survivable = [t for t in tickers if t not in to_remove]

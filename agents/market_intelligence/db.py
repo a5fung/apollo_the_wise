@@ -6597,6 +6597,29 @@ async def get_cooldown_set() -> set[tuple[str, str]]:
     return {(r["ticker"], r["theme_name"]) for r in rows}
 
 
+async def get_operator_protected_set() -> set[tuple[str, str]]:
+    """Return {(ticker, theme_name)} for OPERATOR-BYPASSED cooldowns.
+
+    A bypassed cooldown means the operator explicitly said "this ticker belongs
+    in this theme" (via /bypass or a manual mi_themes re-add + bypass_cooldown).
+    That judgment is permanent: membership validation must NEVER re-remove a
+    protected pair. This is the shield that survives image rebuilds — the
+    decision lives in the DB row, not in process memory.
+
+    Distinct from get_cooldown_set (active, NON-bypassed cooldowns suppress
+    re-ASSIGNMENT); this set suppresses re-REMOVAL. No NOW() bound — the
+    operator's protection does not expire when the original 14d cooldown would.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ticker, theme_name
+            FROM mi_validation_cooldowns
+            WHERE bypassed
+        """)
+    return {(r["ticker"], r["theme_name"]) for r in rows}
+
+
 async def get_globally_banned_tickers(
     min_distinct_themes: int = 3, lookback_days: int = 30
 ) -> dict[str, list[str]]:
