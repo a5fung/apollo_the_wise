@@ -72,6 +72,21 @@ def _json_decoder(value):
     return json.loads(value)
 
 
+def _jsonb_param(value):
+    """Prepare a dict for a jsonb column written through the registered jsonb codec.
+
+    The codec's encoder (_json_encoder) is plain json.dumps and runs AUTOMATICALLY
+    on every jsonb param, so a caller must NOT pre-json.dumps() — that double-encodes
+    (the value lands as jsonb_typeof='string': "{\\"k\\":...}"). That was the
+    #177/#179 mi_orb_extension_shadow.state bug. Round-tripping through
+    json.dumps(default=str)+loads returns a plain, fully JSON-serializable dict
+    (datetimes→str, which the bare codec can't do) that the codec then encodes
+    EXACTLY ONCE. Use this for any jsonb dict that may contain dates.
+    """
+    import json
+    return json.loads(json.dumps(value or {}, default=str))
+
+
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
@@ -7135,7 +7150,7 @@ async def insert_orb_extension_shadow_row(row: dict) -> None:
             row.get("cancelled_at"),
             row.get("would_fill"), row.get("fill_at"), row.get("fill_price"),
             row.get("entry_attempts"),
-            json.dumps(row.get("state") or {}, default=str),
+            _jsonb_param(row.get("state")),  # #179: codec single-encodes; do NOT pre-dumps
             row.get("final_status"),
             _to_date(row["closed_at"]) if row.get("closed_at") else None,
             row.get("total_pnl"),
@@ -7204,7 +7219,7 @@ async def update_orb_extension_shadow_state(
              WHERE id = $1
         """,
             int(shadow_id),
-            json.dumps(state or {}, default=str),
+            _jsonb_param(state),  # #179: codec single-encodes; do NOT pre-dumps (was double-encoding)
             final_status,
             _to_date(closed_at) if closed_at else None,
             total_pnl,
