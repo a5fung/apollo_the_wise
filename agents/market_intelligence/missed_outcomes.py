@@ -414,6 +414,30 @@ _UNTRADEABLE_CATEGORIES = (
     "extension_gate",  # price already extended (parabolic-shape rejection)
 )
 
+# The 'should've-entered' cohort (#219): categories where the system SCORED the
+# name tradeable / WANTED in, but a safeguard, timing, setup-at-entry, cooldown,
+# or infra gate stopped it (or it scored but stayed below the entry bar, or
+# didn't fill). This is the FTNT(cap_blocked)/INOD(breaker_blocked) class — the
+# genuine gaps. Deliberately EXCLUDES universe/quality FILTER rejections
+# (pm_rvol_low / session_rvol_low / outside_top20 / score_below_50 /
+# catalyst_downgrade / duplicate_scan + the structural set): a filter passing on
+# a micro-cap that then mooned is a FILTER-CALIBRATION question (the by-category
+# roll-up already surfaces those) — flat-ranking the whole non-structural set by
+# peak just lets penny rockets bury the safeguard-blocked names we actually wanted.
+_SHOULDVE_ENTERED_CATEGORIES = (
+    "cap_blocked",      # #199 max-positions cap full (FTNT 5/07)
+    "breaker_blocked",  # #199 circuit-breaker cooldown (INOD 5/08)
+    "block_other",      # #199 other safeguard block
+    "window_missed",    # #199 missed ORB submission window
+    "stop_too_wide",    # #199 setup reject at entry (ATR stop too wide)
+    "faded_from_orb",   # #199 faded below ORB before fill
+    "setup_other",      # #199 other entry-setup reject
+    "infra_skip",       # infra / auth failure aborted an intended entry
+    "high_unentered",   # HIGH that never filled
+    "moderate_tier",    # scored MODERATE — below the entry bar, not entered
+    "cooldown",         # EP in cooldown (the #170 re-setup-admission class)
+)
+
 # Conceptual taxonomy of skip kinds — surfaced in /missed section headers so
 # the user can tell at a glance whether a bucket is a "genuine miss" vs a
 # "signal-weak skip" vs a "scored-but-not-entered" case. Structural kinds
@@ -629,7 +653,7 @@ async def top_shouldve_entered_gaps(
                    ep_score, catalyst_quality, open_d0, ret_5d, max_high_5d
             FROM mi_ep_missed_outcomes m
             WHERE m.alert_date >= CURRENT_DATE - $1::INT
-              AND m.skip_category NOT IN {_UNTRADEABLE_CATEGORIES}
+              AND m.skip_category IN {_SHOULDVE_ENTERED_CATEGORIES}
               AND COALESCE(m.open_d0, 0) >= {_DEFAULT_PRICE_FLOOR}
               AND m.max_high_5d >= $2
               -- Suppress redundant duplicate_scan sibling rows (see
@@ -783,8 +807,8 @@ def format_gaps_section_for_weekly(gaps: list[dict]) -> str:
         return ""
     parts = [
         "🚨 *Should've-entered gaps (30d)* — ranked by peak missed upside",
-        "_Non-structural misses (safeguard/timing blocks · scored-not-entered ·_",
-        "_tunable filters). Structural rejections excluded. Verify before acting._",
+        "_The system wanted in but a gate stopped it: safeguard/timing/setup_",
+        "_blocks · cooldown · scored-not-entered. Verify before acting._",
         "```",
         "tckr  date   peak    5d   reason",
     ]

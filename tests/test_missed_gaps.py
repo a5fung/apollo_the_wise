@@ -12,6 +12,7 @@ from agents.market_intelligence.missed_outcomes import (
     format_gaps_section_for_weekly,
     format_missed_section_for_weekly,
     _UNTRADEABLE_CATEGORIES,
+    _SHOULDVE_ENTERED_CATEGORIES,
     _CATEGORY_KIND,
 )
 
@@ -40,12 +41,22 @@ def test_excluded_categories_are_all_structural():
         assert _CATEGORY_KIND.get(cat) == "structural", cat
 
 
-def test_safeguard_blocks_are_not_excluded():
-    # The FTNT/INOD class (#199 entry-pipeline blocks) must NOT be in the
-    # structural exclusion — they are the headline gaps.
+def test_safeguard_blocks_are_the_cohort():
+    # The FTNT/INOD class (#199 entry-pipeline blocks) IS the should've-entered
+    # cohort (the query filters skip_category IN _SHOULDVE_ENTERED_CATEGORIES).
     for cat in ("cap_blocked", "breaker_blocked", "window_missed",
                 "stop_too_wide", "high_unentered"):
+        assert cat in _SHOULDVE_ENTERED_CATEGORIES
         assert cat not in _UNTRADEABLE_CATEGORIES
+
+
+def test_filter_rejections_excluded_from_cohort():
+    # The micro-cap-rocket noise (filter said no on a name we don't trade) must
+    # NOT be in the cohort — flat-ranking those by peak buried FTNT/INOD (the
+    # 6/6 probe caught this). They live in the by-category roll-up instead.
+    for cat in ("pm_rvol_low", "session_rvol_low", "outside_top20",
+                "score_below_50", "catalyst_downgrade", "mcap_low", "adv_low"):
+        assert cat not in _SHOULDVE_ENTERED_CATEGORIES
 
 
 def test_missed_section_prepends_gaps():
