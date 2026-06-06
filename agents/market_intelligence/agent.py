@@ -2617,6 +2617,76 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_unknown_rate_query(self, request: AgentRequest) -> AgentResponse:
+        """`/unknownrate` — source-coverage KPI (#211): of real EP movers, what
+        fraction could NOT have a catalyst confirmed from our direct feeds?
+
+        A persistent UNKNOWN on a real mover = a SOURCE we're missing (operator
+        direction 6/5: catalyst sourcing is a DATA problem — find where it was
+        reported, onboard that source). The richest signal (fire_status non-fire)
+        accrues from Monday 6/8's first scan; until then this reads catalyst_type
+        + sourcing-miss disclaimer text. Read-only telemetry.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        m = _re.search(r'\b(\d{1,3})\b', request.task)
+        days = max(1, min(int(m.group(1)), 365)) if m else 30
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(f"""
+                SELECT
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE catalyst_type = 'unknown') AS type_unknown,
+                    COUNT(*) FILTER (WHERE fire_status IN
+                        ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
+                    ) AS fire_nonfire,
+                    COUNT(*) FILTER (WHERE
+                        catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
+                        OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'
+                    ) AS sourcing_miss,
+                    COUNT(*) FILTER (WHERE
+                        catalyst_type = 'unknown'
+                        OR fire_status IN ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
+                        OR catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
+                        OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'
+                    ) AS any_unknown
+                FROM mi_ep_alerts
+                WHERE alert_date >= current_date - ($1)::int
+            """, days)
+            recent = await conn.fetch(f"""
+                SELECT ticker, alert_date, catalyst_quality, catalyst_type, fire_status
+                FROM mi_ep_alerts
+                WHERE alert_date >= current_date - ($1)::int
+                  AND (catalyst_type = 'unknown'
+                       OR fire_status IN ('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')
+                       OR catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
+                       OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%')
+                ORDER BY alert_date DESC LIMIT 8
+            """, days)
+
+        total = row["total"] or 0
+        any_unk = row["any_unknown"] or 0
+        rate = (any_unk / total * 100.0) if total else 0.0
+        lines = [
+            f"🕳 *Source-coverage KPI ({days}d)* — #211",
+            f"Unknown rate: *{rate:.1f}%* ({any_unk}/{total} EP movers)",
+            "",
+            "_A persistent unknown on a real mover = a direct source we're missing._",
+            f"  • catalyst_type=unknown: {row['type_unknown'] or 0}",
+            f"  • fire_status non-fire: {row['fire_nonfire'] or 0}  _(accrues from Mon 6/8 scan)_",
+            f"  • sourcing-miss disclaimer: {row['sourcing_miss'] or 0}",
+        ]
+        if recent:
+            lines += ["", "*Recent unknowns (adjudicate vs the filing — RUM lesson):*"]
+            for r in recent:
+                lines.append(
+                    f"  `{r['ticker']}` {r['alert_date']} — {r['catalyst_quality'] or '?'}"
+                    f" / type={r['catalyst_type'] or '—'} / fire={r['fire_status'] or '—'}")
+        lines += ["", "_Read-only telemetry (#211). LLM finds WHERE it was reported → onboard that direct source (#210)._"]
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_breadth_query(self, request: AgentRequest) -> AgentResponse:
         """`/breadth` — Stockbee cluster-matrix breadth view.
 
@@ -5202,6 +5272,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/mapullback":     self._handle_ma_pullbacks_query,
             "/lowvolrests":    self._handle_low_vol_rests_query,
             "/lowvolrest":     self._handle_low_vol_rests_query,
+            "/unknownrate":    self._handle_unknown_rate_query,
             "/breadth":        self._handle_breadth_query,
             "/watch":          self._handle_watchlist_query,
             "/inplay":         self._handle_stocks_in_play_query,

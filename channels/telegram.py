@@ -1626,7 +1626,7 @@ class TelegramChannel:
                      "sugarbabies", "sugarbaby", "timestop", "inplay",
                      "flagbreaks", "flagbreak", "supporttests", "supporttest",
                      "mapullbacks", "mapullback", "undercutrally", "ur",
-                     "lowvolrests", "lowvolrest",
+                     "lowvolrests", "lowvolrest", "unknownrate",
                      "breadth", "watch", "rubric",
                      # 2026-05-28 #138 operator-confirm commands
                      "partialnow", "syncnow"):
@@ -1671,6 +1671,7 @@ class TelegramChannel:
             BotCommand("mapullbacks", "📉 Intraday MA-pullbacks (#96 shadow) — today + 7d summary"),
             BotCommand("undercutrally", "🪤 Intraday U&R undercut-and-rally (#98 shadow) — today + 7d"),
             BotCommand("lowvolrests", "😴 Intraday low-vol rests (#97 shadow) — today + 7d summary"),
+            BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
             BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),
