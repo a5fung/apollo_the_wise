@@ -30,4 +30,18 @@ if git diff --cached --name-only | grep -qx 'data_gated_reviews.yaml'; then
     fi
 fi
 
+# ── Gate 2: task<->project filing (the "every #-task gets a project" rule) ──
+# Fires when BACKLOG.md or the open-task snapshot is staged. Catches the
+# 2026-06-06 class (open #-task in NO project bucket — operator had to catch it
+# by hand). Makes the filing rule MECHANICAL instead of prose-that-needs-memory.
+if git diff --cached --name-only | grep -qE '^(BACKLOG\.md|\.apollo_open_tasks\.json)$'; then
+    if ! python scripts/check_task_project_filing.py; then
+        echo "✘ pre-commit: an open #-task is not filed under a project in BACKLOG.md."
+        echo "  File it under 'Open tasks by project' (Miscellaneous if none fits),"
+        echo "  re-stage BACKLOG.md, re-commit."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    fi
+fi
+
 exit 0
