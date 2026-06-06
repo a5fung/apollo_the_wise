@@ -1624,9 +1624,9 @@ class TelegramChannel:
                      # BotCommand entry above. Missing this list = silent drop in Telegram
                      # (BotCommand only affects autocomplete; CommandHandler is the actual route).
                      "sugarbabies", "sugarbaby", "timestop", "inplay",
-                     "flagbreaks", "flagbreak", "supporttests", "supporttest",
-                     "mapullbacks", "mapullback", "undercutrally", "ur",
-                     "lowvolrests", "lowvolrest", "unknownrate",
+                     # 5 shadow entry-technique detectors consolidated into /detectors
+                     # (#218, operator command review 2026-06-06).
+                     "detectors", "unknownrate",
                      "breadth", "watch", "rubric",
                      # 2026-05-28 #138 operator-confirm commands
                      "partialnow", "syncnow"):
@@ -1666,11 +1666,7 @@ class TelegramChannel:
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("flags",        "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
-            BotCommand("flagbreaks",   "🎯 Intraday flag-breaks (#94 shadow) — today + 7d summary"),
-            BotCommand("supporttests", "🛡 Intraday support-tests (#95 shadow) — today + 7d summary"),
-            BotCommand("mapullbacks", "📉 Intraday MA-pullbacks (#96 shadow) — today + 7d summary"),
-            BotCommand("undercutrally", "🪤 Intraday U&R undercut-and-rally (#98 shadow) — today + 7d"),
-            BotCommand("lowvolrests", "😴 Intraday low-vol rests (#97 shadow) — today + 7d summary"),
+            BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
             BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
             BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),

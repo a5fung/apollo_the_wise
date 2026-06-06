@@ -62,13 +62,11 @@ HIDDEN_OK = {
     "watchlist",
     "fishhook",
     # Singular aliases paired with plural BotCommand
-    "flagbreak",
-    "supporttest",
-    "mapullback",
-    "lowvolrest",  # singular alias for /lowvolrests (#97 low-vol rest)
-    "ur",  # short alias for /undercutrally (#98 U&R); /undercutrally is the menu entry
     "sugarbaby",
     "flag",
+    # NOTE: flagbreak/supporttest/mapullback/lowvolrest/ur removed 2026-06-06 (#218)
+    # — the 5 shadow detectors were consolidated into /detectors; their individual
+    # commands + singular aliases no longer exist.
     "setup",
     "rubric",
     # Orchestrator built-ins (Telegram convention — these have menus elsewhere)

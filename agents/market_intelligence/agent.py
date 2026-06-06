@@ -2619,6 +2619,89 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append("_Shadow phase — telemetry only, no entries submitted_")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_detectors_query(self, request: AgentRequest) -> AgentResponse:
+        """`/detectors` — ONE roll-up for the 5 shadow entry-technique detectors
+        (#218; replaces per-detector /flagbreaks /supporttests /mapullbacks
+        /lowvolrests /undercutrally — operator command review 2026-06-06).
+
+        Modes:
+          /detectors         — today + 7d counts per detector, one screen
+          /detectors TICKER  — 30-day hits per detector for one ticker
+
+        Shadow phase — telemetry only, no entries submitted. Data COLLECTION is
+        unchanged (the scan jobs + DB writes are untouched); this is purely the
+        consolidated read surface that replaced 5 noisy commands.
+        """
+        import re as _re
+        from agents.market_intelligence.db import get_pool
+
+        # Each table carries its OWN date column (the scan jobs named them
+        # differently) — count per-table with the right column, never a
+        # same-name UNION. (table, date_col, label, task_tag)
+        detectors = [
+            ("mi_flag_breaks",         "break_date",    "🎯 Flag-breaks",   "#94"),
+            ("mi_flag_support_tests",  "test_date",     "🛡 Support-tests", "#95"),
+            ("mi_flag_ma_pullbacks",   "pullback_date", "📉 MA-pullbacks",  "#96"),
+            ("mi_flag_low_vol_rests",  "rest_date",     "😴 Low-vol rests", "#97"),
+            ("mi_flag_undercut_rally", "ur_date",       "🪤 U&R",           "#98"),
+        ]
+
+        cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
+        skip = _PREPOSITION_SKIP | {"DETECTORS", "DETECTOR"}
+        ticker = next((t for t in cands if t not in skip), None)
+
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            if ticker:
+                lines = [f"🔭 *Detectors — {ticker}* (30d, shadow)", ""]
+                any_hit = False
+                for table, col, label, tag in detectors:
+                    rows = await conn.fetch(f"""
+                        SELECT {col} AS d, parent_invalidated_eod AS inval
+                        FROM {table}
+                        WHERE ticker = $1 AND {col} >= CURRENT_DATE - INTERVAL '30 days'
+                        ORDER BY {col} DESC
+                    """, ticker)
+                    if rows:
+                        any_hit = True
+                        shown = ", ".join(
+                            f"{r['d']:%m-%d}{'⚠️' if r['inval'] else ''}" for r in rows[:6]
+                        )
+                        more = f" +{len(rows) - 6}" if len(rows) > 6 else ""
+                        lines.append(f"{label} {tag}: {len(rows)} — {shown}{more}")
+                if not any_hit:
+                    lines.append(f"No detector hits for {ticker} in the last 30 days.")
+                lines.append("")
+                lines.append("_⚠️ = parent invalidated EOD. Shadow phase — telemetry only._")
+                return self._ok(request, result="\n".join(lines))
+
+            # Default: today + 7d roll-up across all 5 detectors.
+            lines = ["🔭 *Intraday entry-technique detectors* (shadow roll-up)", ""]
+            total_today = 0
+            for table, col, label, tag in detectors:
+                row = await conn.fetchrow(f"""
+                    SELECT
+                      COUNT(*) FILTER (WHERE {col} = CURRENT_DATE) AS today,
+                      COUNT(*) FILTER (WHERE {col} BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                                      AND CURRENT_DATE - INTERVAL '1 day') AS last7,
+                      COUNT(*) FILTER (WHERE {col} BETWEEN CURRENT_DATE - INTERVAL '7 days'
+                                                      AND CURRENT_DATE - INTERVAL '1 day'
+                                                      AND parent_invalidated_eod) AS inval7
+                    FROM {table}
+                """)
+                today = row["today"] or 0
+                last7 = row["last7"] or 0
+                inval7 = row["inval7"] or 0
+                total_today += today
+                inval_note = f" ({inval7} inval)" if inval7 else ""
+                lines.append(f"{label} {tag}: *{today}* today | {last7} 7d{inval_note}")
+            lines.append("")
+            if total_today == 0:
+                lines.append("_No detector fires today yet._")
+            lines.append("_Drill-down: `/detectors TICKER` (30d per ticker)._")
+            lines.append("_Shadow phase — telemetry only, no entries (pre-graduation)._")
+            return self._ok(request, result="\n".join(lines))
+
     async def _handle_unknown_rate_query(self, request: AgentRequest) -> AgentResponse:
         """`/unknownrate` — source-coverage KPI (#211): of real EP movers, what
         fraction could NOT have a catalyst confirmed from our direct feeds?
@@ -5258,16 +5341,11 @@ class MarketIntelligenceAgent(BaseAgent):
             "/timestop":       self._handle_time_stop_command,
             "/partialnow":     self._handle_partial_now_command,
             "/syncnow":        self._handle_sync_now_command,
-            "/flagbreaks":     self._handle_flag_breaks_query,
-            "/flagbreak":      self._handle_flag_breaks_query,
-            "/supporttests":   self._handle_support_tests_query,
-            "/supporttest":    self._handle_support_tests_query,
-            "/undercutrally":  self._handle_undercut_rally_query,
-            "/ur":             self._handle_undercut_rally_query,
-            "/mapullbacks":    self._handle_ma_pullbacks_query,
-            "/mapullback":     self._handle_ma_pullbacks_query,
-            "/lowvolrests":    self._handle_low_vol_rests_query,
-            "/lowvolrest":     self._handle_low_vol_rests_query,
+            # 5 shadow entry-technique detectors consolidated into /detectors (#218,
+            # operator command review 2026-06-06). The per-detector _handle_*_query
+            # methods are retained for now (drill-down lives in /detectors TICKER);
+            # their individual commands + singular aliases were removed.
+            "/detectors":      self._handle_detectors_query,
             "/unknownrate":    self._handle_unknown_rate_query,
             "/breadth":        self._handle_breadth_query,
             "/watch":          self._handle_watchlist_query,
