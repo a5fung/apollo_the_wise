@@ -1272,8 +1272,18 @@ async def _validate_theme_membership(
     changelog: list[dict],
 ) -> list[str]:
     """
-    Ask Claude Haiku whether each stock's description is consistent with the theme.
-    Removes stocks that clearly don't belong. Runs on Mon/Wed/Fri during re-scoring.
+    Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
+    with the theme. Removes stocks that clearly don't belong. Runs Mon/Wed/Fri during
+    re-scoring.
+
+    Model = Sonnet, not Haiku (#213, 2026-06-06): Haiku misread narrowing
+    momentum/driver qualifiers in theme names (the "AI" in "AI Memory & Storage")
+    as membership filters and falsely evicted core sector members (SNDK/SIMO NAND
+    flash, AXTI optical). The isolating eval (scripts/eval_theme_validation_model.py)
+    showed Sonnet on the SAME prompt keeps those names while still removing genuine
+    mismatches (CAR wrong-industry; XOM/CVX integrated-majors from a pure-play frac
+    theme) — deterministic across 4 runs. Operator-protected (bypassed-cooldown)
+    pairs are additionally shielded from removal regardless of model.
 
     This catches stocks that were added before descriptions existed or were incorrectly
     clustered (e.g. AGRO ending up in an IP Licensing theme).
@@ -1284,7 +1294,7 @@ async def _validate_theme_membership(
         return tickers
 
     # Include ALL tickers — described ones get their description, undescribed ones
-    # are identified by ticker symbol alone (Haiku knows CAR=Avis, UBER=rideshare, etc.)
+    # are identified by ticker symbol alone (the model knows CAR=Avis, UBER=rideshare, etc.)
     # Previously, undescribed tickers were silently kept, making validation blind to them.
     stock_lines_parts = []
     for tk in tickers:
@@ -1321,7 +1331,7 @@ async def _validate_theme_membership(
             for attempt in range(3):
                 try:
                     resp = await client.messages.create(
-                        model="claude-haiku-4-5-20251001",
+                        model=THEME_MODEL,
                         max_tokens=400,
                         system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
                         messages=[{"role": "user", "content": prompt}],
@@ -1335,23 +1345,23 @@ async def _validate_theme_membership(
                     await log_audit_event(
                         "anthropic_rate_limited",
                         summary=f"Validation rate-limited for '{theme_name}' — retry {attempt+1}/{len(backoffs)} in {wait:.0f}s",
-                        detail="429 on claude-haiku-4-5",
+                        detail=f"429 on {THEME_MODEL}",
                     )
                     await asyncio.sleep(wait)
-        # Defensive extraction — Haiku occasionally returns non-text blocks
+        # Defensive extraction — the model occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
-            raise ValueError("empty Haiku response")
+            raise ValueError("empty validation response")
         raw_block = resp.content[0]
         raw = (getattr(raw_block, "text", "") or "").strip()
         if not raw:
-            raise ValueError(f"Haiku returned no text (stop_reason={resp.stop_reason})")
+            raise ValueError(f"validation returned no text (stop_reason={resp.stop_reason})")
         # Strip code fences if present
         if raw.startswith("```"):
             parts = raw.split("\n", 1)
             raw = parts[1].rstrip("` \n").strip() if len(parts) > 1 else raw.strip("` ")
         # Extract the outermost JSON object by tracking brace depth.
-        # The naive r'\{[^{}]*\}' regex fails when Haiku adds nested objects
+        # The naive r'\{[^{}]*\}' regex fails when the model adds nested objects
         # (e.g. {"remove": [], "notes": {"why": "..."}}) because [^{}] stops
         # at the inner brace. Brace-depth tracking handles arbitrary nesting.
         raw = _extract_json_object(raw)
@@ -1411,7 +1421,7 @@ async def _validate_theme_membership(
                     await log_audit_event(
                         "ticker_revalidated_out",
                         summary=f"{tk} removed from '{theme_name}' by validation",
-                        detail=f"Description: '{desc}' — Haiku flagged as not matching theme",
+                        detail=f"Description: '{desc}' — validation ({THEME_MODEL}) flagged as not matching theme",
                     )
                     # Write 14-day cooldown so the stock can't be re-assigned immediately
                     count = await add_validation_cooldown(
@@ -1476,7 +1486,7 @@ async def _validate_theme_membership(
         # Log the raw response so silent failures are diagnosable — this bug cost days of work
         logger.error(
             f"Theme '{theme_name}': re-validation FAILED ({type(e).__name__}: {e}) — "
-            f"keeping all tickers. Raw Haiku response: {raw_snippet!r}"
+            f"keeping all tickers. Raw validation response: {raw_snippet!r}"
         )
         await log_audit_event(
             "validation_error",
@@ -2235,7 +2245,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             newly_added = [tk for tk in (theme.get("tickers") or []) if tk in assigned_tickers]
             if not newly_added:
                 continue
-            # Run Haiku validation on just the new additions in context of this theme
+            # Run membership validation (THEME_MODEL) on just the new additions in context of this theme
             validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog)
             removed = set(theme.get("tickers") or []) - set(validated)
             if removed:
