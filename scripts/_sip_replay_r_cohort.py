@@ -109,12 +109,16 @@ def _fmt_stats(label: str, st: dict) -> str:
 
 
 async def _real_cohort(conn, days: int | None, signal_type: str) -> list[dict]:
-    """Actually-filled, closed trades. Real realized R = total_pnl / risk_dollars.
-    pnl_attribution IS NULL = methodology-evaluation filter (db.py: exclude
-    bug-distorted rows from Gate-3 R)."""
+    """Actually-filled, closed trades. Carries BOTH the real realized R
+    (total_pnl / risk_dollars — live exit logic: partials/breakeven/trailing)
+    AND the entry params, so the SAME-EXIT cross-check can re-score these
+    entries under the identical replay_one floor proxy used for the cancelled
+    cohort (isolates IEX selection from exit-model — advisor 2026-06-06).
+    pnl_attribution IS NULL = methodology-evaluation filter (db.py)."""
     where_days = f"AND alert_date >= CURRENT_DATE - INTERVAL '{int(days)} days'" if days else ""
     rows = await conn.fetch(f"""
-        SELECT ticker, alert_date, total_pnl, risk_dollars, hold_days
+        SELECT ticker, alert_date, total_pnl, risk_dollars, hold_days,
+               orb_high, orb_low, entry_price, stop_price, entry_shares
         FROM mi_live_trades
         WHERE status = 'closed'
           AND account_mode = 'paper'
@@ -126,10 +130,34 @@ async def _real_cohort(conn, days: int | None, signal_type: str) -> list[dict]:
     """, signal_type)
     out = []
     for r in rows:
-        out.append({"ticker": r["ticker"], "date": r["alert_date"],
-                    "r": float(r["total_pnl"] or 0) / float(r["risk_dollars"]),
-                    "hold_days": r["hold_days"]})
+        d = dict(r)
+        d["r"] = float(r["total_pnl"] or 0) / float(r["risk_dollars"])  # real R
+        d["date"] = r["alert_date"]
+        out.append(d)
     return out
+
+
+async def _synthetic_rs(rows: list[dict]) -> tuple[Counter, list[float], list[tuple]]:
+    """Run replay_one over a cohort's entries → (classification counts,
+    synthetic-R list for would_have_filled, detail tuples). SAME floor-proxy
+    exit basis for whatever cohort is passed — this is what makes filled vs
+    cancelled comparable."""
+    cls: Counter = Counter()
+    rs: list[float] = []
+    detail: list[tuple] = []
+    for row in rows:
+        out = await replay_one(row)
+        if "error" in out:
+            cls["error"] += 1
+            continue
+        cls[out["classification"]] += 1
+        if out["classification"] == "would_have_filled" and out.get("pnl") is not None:
+            risk = (out["limit"] - out["stop"]) * (out["shares"] or 0)
+            if risk > 0:
+                r = out["pnl"] / risk
+                rs.append(r)
+                detail.append((out["ticker"], out["date"], r, out["pnl"]))
+    return cls, rs, detail
 
 
 async def _cancelled_rows(conn, days: int | None, signal_type: str) -> list[dict]:
@@ -164,22 +192,10 @@ async def main(days: int | None, signal_type: str):
 
     # ── 1. COHORT SPLIT — the fail-fast headline ────────────────────────────
     # SIP recovers ONLY would_have_filled; gap_through is unrecoverable.
-    cls_counts: Counter = Counter()
-    synth_r: list[float] = []
-    synth_detail: list[tuple] = []
-    for row in cancelled:
-        out = await replay_one(row)
-        if "error" in out:
-            cls_counts["error"] += 1
-            continue
-        cls = out["classification"]
-        cls_counts[cls] += 1
-        if cls == "would_have_filled" and out.get("pnl") is not None:
-            risk = (out["limit"] - out["stop"]) * (out["shares"] or 0)
-            if risk > 0:
-                r = out["pnl"] / risk
-                synth_r.append(r)
-                synth_detail.append((out["ticker"], out["date"], r, out["pnl"]))
+    cls_counts, synth_r, synth_detail = await _synthetic_rs(cancelled)
+    # SAME-EXIT cross-check: re-score the FILLED entries under the identical
+    # floor proxy so filled-vs-cancelled compare on ONE exit basis.
+    f_cls, filled_synth_r, _ = await _synthetic_rs(real)
 
     wf = cls_counts.get("would_have_filled", 0)
     gt = cls_counts.get("gap_through", 0)
@@ -216,18 +232,46 @@ async def main(days: int | None, signal_type: str):
         print(f"  3. THE GAP           "
               f"dE[R]={d_exp:+.3f}  dTotR={d_tot:+.1f}R  "
               f"(+{len(synth_r)} recovered names)")
-        print("     ^ THE Lever-A number: the magnitude of the IEX winner-drop.")
+        print("     !! CONFOUNDED: this gap mixes IEX-selection with EXIT-MODEL.")
+        print("        Real R uses live exits (partials/BE/trail, caps wins ~+1R);")
+        print("        synthetic R holds to EOD-day1 (avgW ~+3R). Not pure selection.")
+        print("        -> See the SAME-EXIT cross-check below for the clean signal.")
 
-    # ── 3. INTERPRETATION GUARD (baked in so 6/22 reads it right) ───────────
+    # ── 3. SAME-EXIT CROSS-CHECK (isolates IEX selection from exit model) ────
+    # Both cohorts re-scored under the SAME replay_one floor proxy. If
+    # synthetic-filled stays clearly negative while synthetic-cancelled is
+    # positive -> the difference is SELECTION, not exit methodology.
+    sf_st = _r_stats(filled_synth_r)         # filled entries, synthetic exit
+    sc_st = _r_stats(synth_r)                # cancelled entries, synthetic exit
+    print(f"\n{'-'*72}")
+    print("SAME-EXIT CROSS-CHECK (both on floor-proxy exit — the clean selection test):")
+    print(f"{'-'*72}")
+    print(_fmt_stats("  synth-FILLED", sf_st))
+    print(f"     ^ the entries IEX DID fill, re-scored on the synthetic basis "
+          f"(wf={f_cls.get('would_have_filled',0)}/"
+          f"{sum(f_cls.values())}).")
+    print(_fmt_stats("  synth-CANCELLED", sc_st))
+    print("     ^ the entries IEX DROPPED, same synthetic basis.")
+    if sf_st.get("n") and sc_st.get("n"):
+        sel = sc_st["expectancy"] - sf_st["expectancy"]
+        print(f"  SELECTION delta E[R] = {sel:+.3f}  "
+              f"(cancelled − filled, SAME exit basis)")
+        print("     >> POSITIVE & large => IEX adverse-selection is REAL on an")
+        print("        apples-to-apples basis (the headline finding survives).")
+        print("     >> Near zero / negative => the +0.29 flip was EXIT-MODEL, not")
+        print("        selection — do NOT file a positive Gate-3 number.")
+
+    # ── 4. INTERPRETATION GUARD (baked in so 6/22 reads it right) ───────────
     print(f"\n{'-'*72}")
     print("READ THIS BEFORE USING AS GATE-3 EVIDENCE:")
-    print("  - SIP-augmented R is a conservative LOWER BOUND: the synthetic exit")
-    print("    is entry@limit -> stop-or-day1-EOD, no trailing/partials, so it")
-    print("    TRUNCATES multi-day winners. Clears the GO bar => strong. Fails")
-    print("    the bar => AMBIGUOUS, NOT a NO-GO.")
-    print("  - Line 2 is HALF SIMULATION. It is a less-biased ESTIMATE for the")
-    print("    cutover decision, NOT a realized track record. The realized")
-    print("    track record is Line 1 only.")
+    print("  - The SAME-EXIT cross-check (section 3) is the load-bearing number,")
+    print("    NOT the SIP-augmented +E[R] (section 2 is exit-model-confounded).")
+    print("  - Live trades exit on the REAL logic (caps wins ~+1R per the filled")
+    print("    cohort), NOT hold-to-EOD. So synthetic +avgW likely OVERSTATES live")
+    print("    R on recovered names — section 2 is an UPPER-ish bound, not a floor.")
+    print("  - What IS solid regardless: gap_through=0 => IEX dropped REACHABLE")
+    print("    winners; the filled cohort is adversely selected; the paper figure")
+    print("    is pessimistically biased. That qualitative finding stands.")
     print(f"  - Raw paper-IEX $ baseline for context: ${_PAPER_IEX_BASELINE_USD:+,.0f}.")
 
     if synth_detail:
