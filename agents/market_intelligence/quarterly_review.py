@@ -108,6 +108,12 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # finding doesn't go stale unmeasured (same discipline as the rest).
     ("ORB bar-1 wick-outlier (#122)",
      "scripts.orb_wick_outlier_backwardcheck", []),
+    # #197 cap+1 (game_changer) slot-admission SHADOW (registered 2026-06-06).
+    # Observe-only tracker of policy (a): would a cap+1 admission of a
+    # game_changer blocked by max_positions have paid? Accrues toward the N>=30
+    # promotion gate. Read-only; live cap+1 needs sign-off + CHANGE_PROCESS.
+    ("#197 cap+1 game_changer slot shadow",
+     "scripts.shadow_cap_plus_one_197", []),
 ]
 
 

@@ -130,6 +130,45 @@ ORDER BY s.snapshot_date DESC;
 
 ## Change log (newest first)
 
+### 2026-06-06 — #197 cap+1 game_changer slot SHADOW shipped; #198 closed obsolete
+
+**Trigger**: should've-entered review (#196/#219) — game_changer/HIGH setups blocked
+by the flat `max_concurrent_positions` cap (5) that went on to run (FTNT +16%, FLNC
++43% MFE, PCT +38%). Operator decision 2026-06-06 after reviewing the evidence cohort.
+
+**Evidence** (read-only `scripts/shadow_cap_plus_one_197.py` / `mi_ep_missed_outcomes`
+#199, all-history): the safeguard-blocked cohorts beat the broad HIGH cohort —
+`cap_blocked` N=13 (+3.3% avg 5d / 50% win / +13.5% MFE) and `breaker_blocked` N=9
+(+6.4% / 67% / +14.3%) vs `high_unentered` N=174 (−3.0% / 38%). The blocked cohort is
+ALREADY 100% top-tier (it cleared every quality gate to reach the entry pipeline), so
+the lever is a **slot policy**, not a quality filter. N=13/9 are at/below the N≥10 bar
+(directional); cohort still ~50% losers (JMIA −20%) → sizing matters; first-order only.
+
+**Anticipated effect**:
+- **#197 — SHADOW only (no live behavior change).** Policy **(a): cap+1 for
+  game_changer** — when a game_changer HIGH is `cap_blocked`, a cap+1 rule WOULD admit
+  it in a 6th slot. `scripts/shadow_cap_plus_one_197.py` (read-only; registered in the
+  monthly backward-check sweep) tracks the would-be-admitted cohort's forward outcome.
+  **Promotion to a LIVE cap+1 is GATED**: N≥30 admitted-cohort + operator sign-off + a
+  CHANGE_PROCESS change-log entry here. Until then `max_concurrent_positions` is
+  unchanged at 5. (game_changer is narrow → slow accrual, by design.)
+- **#198 — CLOSED as obsolete.** It proposed a conviction-override of the count-based
+  `circuit_breaker` (#5), which is **deprecated** (superseded by the tiered drawdown
+  breaker #6). The tiered breaker already solves #198's actual pain — it *sizes down*
+  (REDUCE 0.5×) through normal-variance loss streaks instead of hard-blocking, so a
+  great setup during a normal drawdown is admitted at reduced size, not killed. The
+  only residual "override" target would be the −12% BLOCK catastrophic floor, and
+  overriding *that* for one setup defeats the floor's purpose. No code change.
+
+**Reversion-flag**: NEW (#197 shadow telemetry — no detection/safeguard logic changed,
+observe-only). #198 closure is a scope decision, not a safeguard change.
+
+**Status**: #197 shadow shipped 2026-06-06 (read-only, registered); promotion pending
+N≥30 + sign-off. #198 closed 2026-06-06.
+
+---
+
+
 ### 2026-06-04 — PDT lockout guard RETIRED (FINRA Rule 4210 / Alpaca intraday-margin framework)
 
 **Trigger**: Alpaca operator email 2026-06-04 — "We have officially lifted the Pattern Day Trader rule and replaced it with the new intraday margin framework." FINRA retired the PDT rule; Alpaca confirmed the rollout on our account. This was exactly the gate recorded in memory `pdt_rule_4210_change_2026` ("confirm ALPACA's — not Fidelity's — rollout → relax `BLOCK_PDT_LOCKOUT_*` via CHANGE_PROCESS").
