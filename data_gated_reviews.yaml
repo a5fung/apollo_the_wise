@@ -563,7 +563,20 @@ reviews:
       WHERE source = 'narrative_cogap'
         AND run_date > (CURRENT_DATE - 30)
     threshold: 10
-    earliest_review_date: 2026-06-23
+    # REVIEW pulled forward 2026-06-23 -> 2026-06-09 (operator 2026-06-06) as a
+    # JUDGMENT review only. Evidence so far is precision-by-eye (drone / AI-semis /
+    # nuclear-AI look real) + a backfill actionability read (5d +4.1% mean / 69% win,
+    # N=13) that DOES NOT validate the lane: hindsight-SELECTED set, the 5d bump
+    # DECAYS to a coinflip by 10d, recall (13/14) is the least-trustworthy figure,
+    # and the clean FORWARD cohort is N=0. So this earlier date is for the operator to
+    # eyeball precision, NOT to declare net-positive.
+    # CANONIZATION MECHANISM IS UNBUILT: persisting a narrative theme into mi_themes is
+    # the deferred R3 merge (daily re-assertion + naming-drift dedup via
+    # theme_pass1_5_absorption + a fade lifecycle) — it collides with active theme bugs
+    # (#213/#214) and must NOT be rushed in. Until R3, promotion options are: hand-add
+    # an EPHEMERAL (~7d) mi_themes row, stated as such; or design R3 properly post-Monday.
+    # LOAD-BEARING EP/trade impact stays the SEPARATE ~Q4 North Star bar (#200/#201).
+    earliest_review_date: 2026-06-09
     action_when_ready: |
       Evaluate the accrued narrative_cogap proposals on precision/recall/
       actionability (via the eval-harness if built, else manual): precision =
