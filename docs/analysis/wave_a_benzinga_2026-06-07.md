@@ -1,8 +1,14 @@
 # #210 Wave A — Benzinga wire into the EP catalyst corpus: validation (2026-06-07)
 
-**Status: engineering validated + deployed (additive, error-wrapped, activates Mon 6/8
-scan). "Net-positive / graduate Wave A" is an operator judgment (hard-gate rule) —
-this doc reports evidence, not a verdict.**
+**Status: engineering validated + deployed (error-wrapped, activates Mon 6/8 scan).
+NOT telemetry-safe — Benzinga text enters `grounded_text` → `_classify_catalyst_claude`
+→ `catalyst_quality` → `ep_score` → `score_tier` → HIGH alerts → phase=paper magna53 ORB
+entries. A *found* catalyst can only push a grade UP, and press-wire text is promotional,
+so the structural risk is **systematic grade inflation concentrated on PR-having tickers**
+(not "wiring failed"). The Monday gate is therefore "grade distribution did not inflate"
+(`scripts/_wave_a_grade_inflation_check.py`), NOT "rows exist". "Net-positive / graduate
+Wave A" is an operator judgment (hard-gate rule) — this doc reports evidence, not a
+verdict.**
 
 ## What shipped (commit `cbb7619`, deployed both 6/7)
 - `collector.get_alpaca_news` now returns `symbols`; new `is_primary_subject_news()`
@@ -74,3 +80,22 @@ Backbone (#210) headline exemplar re-anchored on **RUM (#187, $270M deal both LL
 actually missed)**; GRRR is the attribution-correctness + 6-K-timing exemplar. Remaining:
 systematic correctness measurement on the forward cohort (#211/#202) + Mon 6/8 first-fire
 verify.
+
+## Monday 6/8 gate — load-bearing, NOT "rows exist"
+Wave A's text feeds the grade→score→paper-entry path, so the acceptance check is the
+grade DISTRIBUTION, not the presence of provenance rows:
+```
+docker exec apollo-market python scripts/_wave_a_grade_inflation_check.py 2026-06-08
+```
+It compares the target day's `game_changer` / `HIGH` counts to the trailing-9-day baseline
+and reports benzinga concentration (from Wave B's `ep_catalyst_provenance` audit rows). A
+count above the trailing max AND benzinga-skewed = POSSIBLE INFLATION → inspect whether the
+new game_changers' PRs are genuinely material or promotional wire text lifted them. Verdict
+is the operator's (hard gate; the script does not declare "safe").
+
+**Relevance-filter residual (file under #168 graduation):** `is_primary_subject_news()`
+keeps an item when the company's *lead title token* matches, after excluding a generic-word
+set (THE/INC/CORP/GROUP/HOLDINGS/…). A company whose real lead token is itself generic
+(rare) could let a roundup through; the filter errs toward precision-drop, so the failure
+mode is a *missed* primary item, not a false catalyst — acceptable for shadow, revisit at
+graduation.

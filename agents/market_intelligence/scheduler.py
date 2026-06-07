@@ -1994,8 +1994,13 @@ async def _9m_pace_digest_job():
     realtime). Ranked by projected volume, capped with overflow. Empty day →
     no Telegram.
     """
-    pool = await get_pool()
     now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        # Mirror the entry-technique digest sibling + #120 precedent: don't query
+        # or fire on weekday market holidays (mon-fri cron alone doesn't exclude them).
+        logger.info("9m pace digest: non-trading day — skip")
+        return 0
+    pool = await get_pool()
     window_start = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
     window_end = now_et
 
@@ -3600,7 +3605,9 @@ def start_scheduler() -> AsyncIOScheduler:
     _scheduler.add_job(
         audit_wrap(_9m_pace_digest_job, JOB_9M_PACE_DIGEST),
         CronTrigger(
-            hour=16, minute=0,
+            # 16:20 — staggered off the 16:00 entry-technique digest so the two
+            # EOD rollups don't land the same second (the 16:xx family is spaced).
+            hour=16, minute=20,
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_9M_PACE_DIGEST,

@@ -483,6 +483,15 @@ _ROUNDUP_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Generic/legal name tokens skipped when matching a company's lead token, so we
+# don't match on "Inc"/"Group"/"Holdings". Module-scope (mirrors _ROUNDUP_RE) —
+# is_primary_subject_news runs per-item per-ticker across the whole EP scan.
+_GENERIC_NAME_TOKENS = frozenset({
+    "THE", "INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
+    "GROUP", "HOLDINGS", "HOLDING", "LTD", "LIMITED", "PLC", "SA", "NV",
+    "AG", "TECHNOLOGIES", "TECHNOLOGY", "INTERNATIONAL", "SYSTEMS",
+})
+
 
 def is_primary_subject_news(item: dict, ticker: str, company_name: str = "") -> bool:
     """True if a news item is primarily ABOUT `ticker`, not a multi-tag bleed.
@@ -511,11 +520,8 @@ def is_primary_subject_news(item: dict, ticker: str, company_name: str = "") -> 
 
     # Company lead token (e.g. "Gorilla" from "Gorilla Technology Group, Inc.").
     # Skip generic/legal tokens so we don't match on "Inc"/"Group"/"Holdings".
-    _GENERIC = {"THE", "INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
-                "GROUP", "HOLDINGS", "HOLDING", "LTD", "LIMITED", "PLC", "SA", "NV",
-                "AG", "TECHNOLOGIES", "TECHNOLOGY", "INTERNATIONAL", "SYSTEMS"}
     for tok in re.split(r"[^A-Za-z]+", company_name or ""):
-        if len(tok) >= 4 and tok.upper() not in _GENERIC:
+        if len(tok) >= 4 and tok.upper() not in _GENERIC_NAME_TOKENS:
             if re.search(rf"\b{re.escape(tok)}\b", title, re.IGNORECASE):
                 return True
             break  # only test the lead token — avoids matching trailing generics
