@@ -30,6 +30,7 @@ believing any dossier's own verdict.
 Run (server, read-only):  docker exec apollo-market python scripts/proto_dialogic_dossier.py [N]
 """
 import asyncio
+import html
 import json
 import os
 import re
@@ -43,9 +44,18 @@ ADVISOR_MODEL = "claude-opus-4-8"
 
 NON_FIRE = ("unknown", "pre_catalyst_anticipation", "no_fire_confirmed", "real_unknown")
 
+# Fold typographic quotes/dashes to ASCII so a verbatim quote matches the source
+# regardless of entity (&#8220;) vs rendered (U+201C) vs ASCII form — the RUM bug
+# where a real $270M quote false-FAILED the grounding check on SEC HTML entities.
+_TYPO_FOLD = str.maketrans({
+    "‘": "'", "’": "'", "“": '"', "”": '"',
+    "–": "-", "—": "-", "−": "-", " ": " ",
+})
+
 
 def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "")).strip().lower()
+    s = html.unescape(s or "").translate(_TYPO_FOLD)
+    return re.sub(r"\s+", " ", s).strip().lower()
 
 
 def _quote_grounded(quote: str, sources: dict) -> str | None:
@@ -80,6 +90,25 @@ async def _llm(client, model, system, prompt, max_tokens=1800):
         messages=[{"role": "user", "content": prompt}],
     )
     return (getattr(resp.content[0], "text", "") or "").strip()
+
+
+async def _llm_json(client, model, system, prompt, max_tokens=1800) -> dict:
+    """LLM call + tolerant JSON parse with ONE reformat-retry. The revise step
+    occasionally emitted truncated/malformed JSON ('Unterminated string' /
+    'Expecting property name') and the loop silently fell back to v1 — which
+    DESTROYS the measured signal (did v2 honor the PM?). Instead, re-ask the
+    model once to re-emit valid JSON before giving up."""
+    raw = await _llm(client, model, system, prompt, max_tokens)
+    try:
+        return _extract_json(raw)
+    except Exception:
+        fixed = await _llm(
+            client, model,
+            "You repair malformed JSON. Output ONLY one valid JSON object, no prose, no code fence.",
+            f"Re-emit the following as a single valid JSON object only:\n\n{raw}",
+            max_tokens,
+        )
+        return _extract_json(fixed)
 
 
 async def _build_evidence(row) -> dict:
@@ -125,11 +154,16 @@ knowledge — if a fact is not in a source, you cannot claim it.
 
 Return JSON:
 {{"verdict": "catalyst_confirmed" | "unconfirmed" | "no_real_catalyst",
+  "direction": "bullish" | "bearish" | "neutral",
   "catalyst": "<one line: the specific catalyst, or 'none found'>",
   "claims": [{{"claim": "<a factual statement>", "source": "<SOURCE id>", "quote": "<VERBATIM span copied from that source that proves the claim>"}}]}}
 
 Rules: every claim MUST have a quote copied EXACTLY from the named source (we machine-check it).
-"no_real_catalyst" is a valid, valuable answer — a gap with only boilerplate/registration text is NOT a catalyst.
+PRESENCE IS NOT DIRECTION: `verdict` is whether a real catalyst exists; `direction` is its SIGN for
+the stock. A confirmed-but-BEARISH event (e.g. a Phase-3 readout that hit efficacy but disclosed a
+safety/malignancy signal and sold the stock off) is verdict=catalyst_confirmed + direction=bearish —
+NOT "no_real_catalyst" and NOT "unconfirmed". Weigh ALL sources, not only the favorable lines.
+"no_real_catalyst" is a valid answer ONLY for a gap with only boilerplate/registration text.
 Do not invent a counterparty, dollar figure, or deal that isn't quoted in a source."""
 
 _ADV_SYS = "You are a skeptical portfolio manager reviewing a junior analyst's catalyst dossier. Be rigorous about grounding. Respond with valid JSON only."
@@ -150,14 +184,20 @@ Critique as a skeptical PM. A quote that fails the mechanical check is a CONFABU
 invented it. A quote that passes but is MISREAD (says something the source doesn't) is also wrong.
 Decide the correct verdict. Remember: the safe, often-correct answer for this cohort is "no_real_catalyst".
 
+A confirmed-but-BEARISH catalyst (efficacy hit but a safety/malignancy signal that sold the stock off)
+is verdict_should_be=catalyst_confirmed + direction_should_be=bearish — do NOT collapse a directional
+miss into "unconfirmed"/"no_real_catalyst"; that conflates catalyst-PRESENCE with catalyst-SIGN.
+
 Return JSON:
 {{"confabulated_claims": ["<claim text that is ungrounded or misread>"],
   "verdict_should_be": "catalyst_confirmed" | "unconfirmed" | "no_real_catalyst",
+  "direction_should_be": "bullish" | "bearish" | "neutral",
   "guidance": "<2-3 sentences telling the analyst exactly what to fix>"}}"""
 
 _REV_PROMPT = """Revise your {ticker} dossier given the PM's critique. Same JSON schema as before
-(verdict, catalyst, claims with verbatim quotes). DROP any claim you cannot ground with an exact quote.
-Honor the PM's verdict unless a quoted source proves otherwise.
+(verdict, direction, catalyst, claims with verbatim quotes). DROP any claim you cannot ground with an
+exact quote. Honor the PM's verdict AND direction unless a quoted source proves otherwise. Remember:
+a confirmed-but-bearish event stays verdict=catalyst_confirmed with direction=bearish.
 
 PM CRITIQUE:
 {critique}
@@ -206,24 +246,24 @@ async def main():
 
         # v1 — investigator
         try:
-            v1 = _extract_json(await _llm(client, INVESTIGATOR_MODEL, _INV_SYS, _INV_PROMPT.format(**ctx)))
+            v1 = await _llm_json(client, INVESTIGATOR_MODEL, _INV_SYS, _INV_PROMPT.format(**ctx))
         except Exception as e:
             print(f"\n### {tk} {dt} — investigator v1 ERROR: {e}"); continue
         g1 = _check_grounding(v1, sources)
 
         # critique — advisor pass (Opus)
         try:
-            crit = _extract_json(await _llm(client, ADVISOR_MODEL, _ADV_SYS, _ADV_PROMPT.format(
+            crit = await _llm_json(client, ADVISOR_MODEL, _ADV_SYS, _ADV_PROMPT.format(
                 ticker=tk, date=dt, evidence=ev, dossier=json.dumps(v1, indent=2),
-                grounding=json.dumps(g1, indent=2))))
+                grounding=json.dumps(g1, indent=2)))
         except Exception as e:
             print(f"\n### {tk} {dt} — advisor ERROR: {e}"); crit = {}
 
         # v2 — investigator revises
         try:
-            v2 = _extract_json(await _llm(client, INVESTIGATOR_MODEL, _INV_SYS, _REV_PROMPT.format(
+            v2 = await _llm_json(client, INVESTIGATOR_MODEL, _INV_SYS, _REV_PROMPT.format(
                 ticker=tk, critique=json.dumps(crit, indent=2),
-                dossier=json.dumps(v1, indent=2), evidence=ev)))
+                dossier=json.dumps(v1, indent=2), evidence=ev))
         except Exception as e:
             print(f"\n### {tk} {dt} — revise ERROR: {e}"); v2 = v1
         g2 = _check_grounding(v2, sources)
@@ -232,11 +272,11 @@ async def main():
         ungrounded_v1 = sum(1 for g in g1 if not g["ok"])
         ungrounded_v2 = sum(1 for g in g2 if not g["ok"])
         print(f"\n### {tk} {dt}  gap={row['gap_pct']:+.1f}%  sources={list(sources)}")
-        print(f"  v1 verdict: {v1.get('verdict'):16s} catalyst: {v1.get('catalyst','')[:80]}")
+        print(f"  v1 verdict: {str(v1.get('verdict')):16s} dir={str(v1.get('direction','?')):8s} catalyst: {v1.get('catalyst','')[:70]}")
         print(f"     claims={len(v1.get('claims',[]))} ungrounded={ungrounded_v1}")
         print(f"  PM confab-flags: {crit.get('confabulated_claims', [])}")
-        print(f"     PM verdict: {crit.get('verdict_should_be')}")
-        print(f"  v2 verdict: {v2.get('verdict'):16s} catalyst: {v2.get('catalyst','')[:80]}")
+        print(f"     PM verdict: {crit.get('verdict_should_be')} dir={crit.get('direction_should_be','?')}")
+        print(f"  v2 verdict: {str(v2.get('verdict')):16s} dir={str(v2.get('direction','?')):8s} catalyst: {v2.get('catalyst','')[:70]}")
         print(f"     claims={len(v2.get('claims',[]))} ungrounded={ungrounded_v2}")
         print(f"  >>> DELTA: verdict_changed={verdict_changed}  "
               f"ungrounded {ungrounded_v1}->{ungrounded_v2}  confab_caught={len(crit.get('confabulated_claims',[]))}")

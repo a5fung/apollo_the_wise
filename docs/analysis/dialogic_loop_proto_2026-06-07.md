@@ -85,6 +85,28 @@ optimism..."). No false flip — the skeptical prior did not destroy a real cata
   enforcement + bounded asymmetric pass is what guards it, and that guard needs a real-N
   false-flip measurement before it carries weight.
 
+## Post-fix update (2026-06-07, same session) — 3 bugs fixed + the schema gap closed
+
+Applied + verified on prod (N=2 re-run):
+1. **HTML-entity/typography normalization** in the grounding check (`html.unescape` +
+   curly-quote/dash fold) → RUM's real $270M quote no longer false-fails; both names now
+   `ungrounded=0`.
+2. **Revise-JSON robustness** (`_llm_json` one-shot reformat-retry) → the silent
+   `Unterminated string` → v1-fallback is gone; v1→critique→v2 completes cleanly.
+3. **Direction/sign field** (`bullish | bearish | neutral`, separate from `verdict`) →
+   **closes the ABVX incoherence.** Post-fix, ABVX reads coherently: v1 `confirmed+bullish`
+   → PM `confirmed+**bearish**` (keeps the real catalyst, flips the SIGN on the malignancy/
+   gap-down) → v2 honors it. The PM's value now surfaces as a **stable, coherent direction
+   flip**, not the earlier thrash between `unconfirmed`/`no_real_catalyst`. RUM stays
+   `confirmed+bullish` (no over-skeptic).
+
+This is a sharper, more coherent picture than the pre-fix run — but it is **still one run,
+N=2.** Do NOT read "the direction flip is correct and stable" as established: the gated
+eval (verdict+direction **stability** across repeated identical runs, + **false-flip rate**
+vs eyeballed truth, on **N≥10–15**) is still the bar before promotion. What IS now true:
+the two mechanical bugs are closed and the schema can represent "confirmed-but-bearish,"
+so the widen-cohort eval can measure the right thing.
+
 ## Side finding (data quality)
 ABVX's `mi_ep_alerts.gap_pct` recorded **+15.1%**, but the catalyst reality was a ~44%
 gap-DOWN. Either the stored gap is a stale/early reading or the name reversed hard
