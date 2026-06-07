@@ -257,19 +257,28 @@ def _check_grounding(dossier: dict, sources: dict) -> list[dict]:
     return out
 
 
-async def main(limit: int, max_spend: float, repeats: int = 1):
+async def main(limit: int, max_spend: float, repeats: int = 1,
+               critic_model: str = ADVISOR_MODEL, cohort: str = "gap"):
     _spend["budget"] = max_spend
     from agents.market_intelligence.db import get_pool
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     pool = await get_pool()
     nf = ",".join(f"'{v}'" for v in NON_FIRE)
+    # cohort: gap = the unknown/coverage-gap set (POC); graded = graded strong/gc
+    # (tests false-flip — these mostly HAVE real catalysts); both = widened eval set.
+    gap_clause = (f"catalyst_type='unknown' OR fire_status IN ({nf}) "
+                  f"OR catalyst ILIKE '%no clear%catalyst%' "
+                  f"OR catalyst ILIKE '%not clearly identified%'")
+    graded_clause = "catalyst_quality IN ('strong','game_changer')"
+    where = {"gap": gap_clause, "graded": graded_clause,
+             "both": f"({gap_clause}) OR ({graded_clause})"}[cohort]
+    print(f"[critic={critic_model} cohort={cohort}]")
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""
             SELECT ticker, alert_date, gap_pct, catalyst_quality, catalyst_type,
                    fire_status, catalyst, claude_analysis
             FROM mi_ep_alerts
-            WHERE catalyst_type='unknown' OR fire_status IN ({nf})
-               OR catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%'
+            WHERE {where}
             ORDER BY alert_date DESC LIMIT {limit}
         """)
     rows = [dict(r) for r in rows]
@@ -302,9 +311,9 @@ async def main(limit: int, max_spend: float, repeats: int = 1):
             print(f"\n### {tk} {dt} — investigator v1 ERROR: {e}"); continue
         g1 = _check_grounding(v1, sources)
 
-        # critique — advisor pass (Opus)
+        # critique — advisor pass (model is the A/B arm: opus vs sonnet)
         try:
-            crit = await _llm_json(client, ADVISOR_MODEL, _ADV_SYS, _ADV_PROMPT.format(
+            crit = await _llm_json(client, critic_model, _ADV_SYS, _ADV_PROMPT.format(
                 ticker=tk, date=dt, evidence=ev, dossier=json.dumps(v1, indent=2),
                 grounding=json.dumps(g1, indent=2)))
         except Exception as e:
@@ -386,5 +395,10 @@ if __name__ == "__main__":
                     help="HARD spend cap in USD (default 2.00); aborts before exceeding")
     ap.add_argument("--repeats", type=int, default=1,
                     help="re-run each name k times to measure verdict stability")
+    ap.add_argument("--critic", choices=["opus", "sonnet"], default="opus",
+                    help="advisor/critic model arm (A/B): opus (default) or sonnet")
+    ap.add_argument("--cohort", choices=["gap", "graded", "both"], default="gap",
+                    help="gap=unknown set (POC), graded=strong/gc, both=widened eval")
     args = ap.parse_args()
-    asyncio.run(main(args.n, args.max_spend, args.repeats))
+    _critic = {"opus": ADVISOR_MODEL, "sonnet": INVESTIGATOR_MODEL}[args.critic]
+    asyncio.run(main(args.n, args.max_spend, args.repeats, _critic, args.cohort))

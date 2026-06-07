@@ -123,6 +123,57 @@ catches the same omissions (e.g. the ABVX cherry-pick), the loop graduates with 
 model in production**. Promoting #212 with an Opus critic = the first Opus in a prod path
 (a small new cost center, ~pennies/day) and is an explicit operator decision.
 
+## Widened-cohort eval (2026-06-07) — N=10 × k=3, Opus vs Sonnet critic
+
+Ran the gated eval (cohort=both: recent strong/gc + the unknown-gap names), 3 repeats per
+name, both critic arms, hard spend cap. **Headline: the loop is STABLE and catches genuine
+confabs — but its `no_real_catalyst` flips include real, sourcing-driven FALSE NEGATIVES,
+so it is NOT a grading gate; it is a sourcing-QA detector downstream of #210.**
+
+| | Opus critic | Sonnet critic |
+|---|---|---|
+| Stability (distinct v2 label across 3 repeats) | **10/10 stable** | 8/10 — PGY + LAC thrash (no_real ↔ unconfirmed) |
+| Confabs caught | 35 | 17 |
+| Verdict flips (→ skeptical) | PGY, NVTS, GRRR, LAC | PGY, NVTS, GRRR, LAC |
+| Spend (N=10×3) | $3.11 | $1.22 |
+
+### The load-bearing finding — GRRR: a sourcing-driven FALSE FLIP (operator catch)
+GRRR gapped **+17.6%** on 2026-06-02 on a real **$2B Supermicro India AI-infrastructure
+deal**. But the pipeline's stored catalyst captured only "AI/speculation... **rather than
+an acquisition or large contract**" (it *affirmatively ruled out* the $2B contract) + a
+net-loss Q1 — the deal was **never in the evidence pack** (sources = stored_catalyst +
+stored_analysis only; no SEC filing; the PR was not ingested). Given that incomplete pack,
+**both** the investigator AND **both** critic models reasoned correctly-on-evidence to a
+**confident `no_real_catalyst`** — a false negative on a real $2B-deal EP.
+
+⇒ **A grounded dialogic loop AMPLIFIES sourcing gaps into confident wrong "no catalyst"
+calls.** Garbage in → *confident* garbage out. The false-flip is **model-independent**
+(Opus and Sonnet both commit it), so it is a **sourcing** problem (#210), not a critic
+problem. The loop's skepticism is only correct when sourcing is complete.
+
+### Flip adjudication (eyeballed vs the stored catalyst)
+- **PGY** → `no_real_catalyst`: ✅ correct (pipeline itself says "short-squeeze, no
+  fundamental"; matches the known PGY fake-earnings confab, memory
+  `feedback_catalyst_sourcing_direct_over_llm`).
+- **GRRR** → `no_real_catalyst`: ❌ **false-flip** (real $2B deal missing from sources).
+- **NVTS / LAC** → skeptical: ⚠️ gray (pipeline itself hedged "rather than a single
+  headline"); Opus says `no_real_catalyst`, Sonnet the softer `unconfirmed`.
+
+False-flip rate ≥ 1/10, sourcing-origin — exactly the metric the eval existed to surface.
+
+### Verdict + the reframe (this is the useful outcome)
+- **NOT a grading/suppression gate** until #210 sourcing is solid — downstream of
+  incomplete sources, the loop is a winner-suppressor (it would have killed the GRRR EP).
+- **IS a sourcing-QA detector NOW:** "hard gap on volume + grounded loop finds no catalyst"
+  is a high-confidence **sourcing-gap flag** — the GRRR signature. That is precisely the
+  priority queue for **#211** (unknown-rate / source-coverage discovery). The loop's
+  false-negatives are a *feature* for #210/#211, not just a bug.
+- **A/B:** Opus is the better critic (stable on the ambiguous names where Sonnet thrashes;
+  2× confabs caught); cost gap is pennies/day in a nightly job. If #212 graduates *after*
+  #210, Opus-critic is justified (quality-over-cost) — but that is the first Opus in a prod
+  path and an explicit operator decision. Sonnet suffices for the cheaper sourcing-QA role.
+- Stability (10/10 Opus), the direction field, and the genuine-confab catches all hold.
+
 ## Side finding (data quality)
 ABVX's `mi_ep_alerts.gap_pct` recorded **+15.1%**, but the catalyst reality was a ~44%
 gap-DOWN. Either the stored gap is a stale/early reading or the name reversed hard
