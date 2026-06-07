@@ -42,6 +42,37 @@ import anthropic
 INVESTIGATOR_MODEL = "claude-sonnet-4-6"
 ADVISOR_MODEL = "claude-opus-4-8"
 
+# Standard published per-MTok rates ($ in, $ out). Approximate — used ONLY for the
+# hard spend cap below; if billing exactness matters, verify against the console.
+# Unknown models fall back to the Opus rate (conservative — over-estimates spend).
+_RATES = {
+    "claude-opus-4-8": (15.0, 75.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
+    "claude-haiku-4-5-20251001": (1.0, 5.0),
+}
+_DEFAULT_RATE = (15.0, 75.0)  # conservative fallback
+
+
+class BudgetExceeded(Exception):
+    """Raised when the cumulative measured spend would exceed --max-spend."""
+
+
+# Mutable spend tracker, updated from each response's ACTUAL token usage (not an
+# estimate). The cap is enforced BEFORE every call, so the worst-case overshoot is
+# bounded by a single in-flight call (~$0.10), never an unbounded run.
+_spend = {"usd": 0.0, "calls": 0, "in_tok": 0, "out_tok": 0, "budget": None}
+
+
+def _accrue(model: str, usage) -> None:
+    in_r, out_r = _RATES.get(model, _DEFAULT_RATE)
+    it = getattr(usage, "input_tokens", 0) or 0
+    ot = getattr(usage, "output_tokens", 0) or 0
+    _spend["in_tok"] += it
+    _spend["out_tok"] += ot
+    _spend["usd"] += it / 1e6 * in_r + ot / 1e6 * out_r
+    _spend["calls"] += 1
+
+
 NON_FIRE = ("unknown", "pre_catalyst_anticipation", "no_fire_confirmed", "real_unknown")
 
 # Fold typographic quotes/dashes to ASCII so a verbatim quote matches the source
@@ -85,10 +116,18 @@ def _extract_json(raw: str) -> dict:
 
 
 async def _llm(client, model, system, prompt, max_tokens=1800):
+    # Hard cap: refuse to START a call once measured spend has hit the budget.
+    # Overshoot is bounded by one in-flight call, never an unbounded run.
+    if _spend["budget"] is not None and _spend["usd"] >= _spend["budget"]:
+        raise BudgetExceeded(
+            f"spend ${_spend['usd']:.2f} >= budget ${_spend['budget']:.2f} "
+            f"after {_spend['calls']} calls"
+        )
     resp = await client.messages.create(
         model=model, max_tokens=max_tokens, system=system,
         messages=[{"role": "user", "content": prompt}],
     )
+    _accrue(model, getattr(resp, "usage", None) or object())
     return (getattr(resp.content[0], "text", "") or "").strip()
 
 
@@ -218,8 +257,8 @@ def _check_grounding(dossier: dict, sources: dict) -> list[dict]:
     return out
 
 
-async def main():
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else 6
+async def main(limit: int, max_spend: float, repeats: int = 1):
+    _spend["budget"] = max_spend
     from agents.market_intelligence.db import get_pool
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     pool = await get_pool()
@@ -234,10 +273,22 @@ async def main():
             ORDER BY alert_date DESC LIMIT {limit}
         """)
     rows = [dict(r) for r in rows]
-    print(f"#212 dialogic prototype — {len(rows)} unknown/coverage-gap names\n" + "=" * 78)
+    # repeats>1 = stability measurement: same input run k times (tagged _rep).
+    if repeats > 1:
+        rows = [dict(r, _rep=k) for k in range(repeats) for r in rows]
+    print(f"#212 dialogic prototype — {len(rows)} runs "
+          f"(repeats={repeats}) · budget ${max_spend:.2f}\n" + "=" * 78)
 
     summary = []
+    stopped = False
     for row in rows:
+        # Clean stop BEFORE starting a name once the budget is reached (the in-_llm
+        # raise is the hard backstop mid-name; this avoids a half-done name).
+        if _spend["budget"] is not None and _spend["usd"] >= _spend["budget"]:
+            stopped = True
+            print(f"\n>>> BUDGET REACHED (${_spend['usd']:.2f} / ${max_spend:.2f}) "
+                  f"after {len(summary)} runs — stopping cleanly.")
+            break
         tk, dt = row["ticker"], str(row["alert_date"])
         sources = await _build_evidence(row)
         ev = _evidence_block(sources)
@@ -291,8 +342,11 @@ async def main():
             print("  -- v2 claims --")
             for c, g in zip(v2.get("claims", []) or [], g2):
                 print(f"     [{'OK ' if g['ok'] else 'UNGROUNDED'}] {c.get('claim','')[:100]}")
-        summary.append(dict(ticker=tk, date=dt, v1=v1.get("verdict"), pm=crit.get("verdict_should_be"),
-                            v2=v2.get("verdict"), verdict_changed=verdict_changed,
+        summary.append(dict(ticker=tk, date=dt, rep=row.get("_rep", 0),
+                            v1=v1.get("verdict"), pm=crit.get("verdict_should_be"),
+                            v2=v2.get("verdict"), v1_dir=v1.get("direction"),
+                            pm_dir=crit.get("direction_should_be"), v2_dir=v2.get("direction"),
+                            verdict_changed=verdict_changed,
                             ungrounded_v1=ungrounded_v1, ungrounded_v2=ungrounded_v2,
                             confab_caught=len(crit.get("confabulated_claims", []))))
 
@@ -300,10 +354,24 @@ async def main():
     nchg = sum(1 for s in summary if s["verdict_changed"])
     ncab = sum(s["confab_caught"] for s in summary)
     ungr = sum(s["ungrounded_v1"] for s in summary)
-    print(f"  names={len(summary)}  verdicts_flipped_by_PM={nchg}  "
+    print(f"  runs={len(summary)}  verdicts_flipped_by_PM={nchg}  "
           f"confabulations_caught={ncab}  ungrounded_claims_v1={ungr}")
     print("  Advisor-pass EARNS its place IF it flipped verdicts or caught confabulations.")
-    print("  If 0/0, the investigator alone suffices on this cohort (Tier-0, drop the pass).")
+    # STABILITY (gated-eval metric): for each name, how many DISTINCT (v2 verdict,
+    # v2 dir) labels across its repeats? 1 = stable; >1 = run-unstable (the bar).
+    if any(s["rep"] for s in summary) or len({(s["ticker"], s["date"]) for s in summary}) < len(summary):
+        from collections import defaultdict
+        by = defaultdict(set)
+        for s in summary:
+            by[(s["ticker"], s["date"])].add((s["v2"], s["v2_dir"]))
+        unstable = {k: v for k, v in by.items() if len(v) > 1}
+        print(f"  STABILITY: {len(by)-len(unstable)}/{len(by)} names stable across repeats; "
+              f"{len(unstable)} unstable")
+        for (tkr, d), labels in unstable.items():
+            print(f"    UNSTABLE {tkr} {d}: {sorted(labels)}")
+    print(f"  SPEND: ${_spend['usd']:.3f} actual / ${_spend['budget']:.2f} budget  "
+          f"({_spend['calls']} calls, {_spend['in_tok']:,} in + {_spend['out_tok']:,} out tok)"
+          + ("  [STOPPED ON BUDGET]" if stopped else ""))
     out = "/tmp/dialogic_dossiers.json"
     with open(out, "w") as f:
         json.dump(summary, f, indent=2)
@@ -311,4 +379,12 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import argparse
+    ap = argparse.ArgumentParser(description="#212 dialogic-loop prototype (read-only)")
+    ap.add_argument("n", type=int, nargs="?", default=6, help="cohort size (LIMIT)")
+    ap.add_argument("--max-spend", type=float, default=2.0,
+                    help="HARD spend cap in USD (default 2.00); aborts before exceeding")
+    ap.add_argument("--repeats", type=int, default=1,
+                    help="re-run each name k times to measure verdict stability")
+    args = ap.parse_args()
+    asyncio.run(main(args.n, args.max_spend, args.repeats))

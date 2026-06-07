@@ -107,6 +107,22 @@ vs eyeballed truth, on **N≥10–15**) is still the bar before promotion. What 
 the two mechanical bugs are closed and the schema can represent "confirmed-but-bearish,"
 so the widen-cohort eval can measure the right thing.
 
+### Spend cap + measured cost (the eval is bounded)
+The harness now has a **hard, mechanical spend cap** (`--max-spend`, default $2): it tracks
+ACTUAL token usage from each API response and **refuses to start a call** once the budget
+is reached (proven: a $0.05 cap stopped after 1 name at $0.096, bounded overshoot ≈ one
+name's calls). `--repeats k` re-runs each name k× and the summary reports per-name verdict+
+direction **stability** (the gated metric). **Measured per-name cost = $0.096** (3 calls:
+Sonnet v1 + Opus critique + Sonnet v2). So the N≥10–15 × k=3 eval is ≈ $3.50, capped safe.
+
+### Model note — Opus is prototype-only
+Production Apollo uses **no Opus**; the critic role here runs on Opus (`ADVISOR_MODEL`),
+the investigator on Sonnet. ADR 0006 originally spec'd the advisor as *Sonnet* — so the
+widen-cohort eval should also test **Sonnet-as-critic vs Opus-as-critic**: if Sonnet
+catches the same omissions (e.g. the ABVX cherry-pick), the loop graduates with **no new
+model in production**. Promoting #212 with an Opus critic = the first Opus in a prod path
+(a small new cost center, ~pennies/day) and is an explicit operator decision.
+
 ## Side finding (data quality)
 ABVX's `mi_ep_alerts.gap_pct` recorded **+15.1%**, but the catalyst reality was a ~44%
 gap-DOWN. Either the stored gap is a stale/early reading or the name reversed hard
