@@ -305,7 +305,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 | 4:45 PM | Position update |
 | 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches moment TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
 | 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
-| 10:00 / 11:00 / 12:00 ET (mon-fri) | **9M EP Pace hourly digest** (rollup of pace/anticipation alerts from prior 60-min ET window — dedup vs actual-pinged same hour, cap 10; #133) |
+| 4:00 PM (mon-fri) | **9M EP Pace EOD digest** (whole-day rollup of pace/anticipation, dedup vs same-day actuals, cap 20; #133, hourly→EOD 2026-06-07. Actual 9M still rides the prompt per-5-min digest) + **Entry-technique EOD digest** (`run_intraday_signals_eod_digest` — one roll-up of the 5 intraday shadow detectors; #168, replaced ~23/day per-tick pings now default-off) |
 | 4:55 PM (mon-fri) | **Time-stop scan** (9M Day 2 meanderers ≥5 trading days + peak excursion <+3%; operator-confirm via `/timestop TICKER`, #91) |
 | 5:00 PM | Data pull — RS + regime + themes + missed-EP refresh + error check |
 | 5:22 PM (mon-fri) | **Sugar Babies cohort refresh** (Pradeep persistent watchlist — observational, `/sugarbabies`) |
