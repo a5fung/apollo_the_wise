@@ -48,12 +48,19 @@ import asyncio
 import statistics as _stats
 import sys
 from collections import Counter
+from datetime import datetime as _dt, time as _time
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agents.market_intelligence.collector import get_minute_bars
 from agents.market_intelligence.db import get_pool
 from scripts.replay_would_have_filled import replay_one  # #180 per-row SIP replay
+
+_ET = ZoneInfo("America/New_York")
+_ORB_OPEN = _time(9, 31)
+_ORB_CUTOFF = _time(10, 0)
 
 # Raw paper-IEX cohort baseline for context (memory: paper_iex_vs_live_sip_gate_adjustment).
 _PAPER_IEX_BASELINE_USD = -9475.0
@@ -163,6 +170,82 @@ async def _synthetic_rs(rows: list[dict]) -> tuple[Counter, list[float], list[tu
     return cls, rs, detail
 
 
+def _trim_cross_k(rs: list[float]) -> int | None:
+    """The smallest k such that dropping the top-k winners makes E[R] <= 0 —
+    a one-number concentration measure for the TL;DR (the monthly-sweep digest
+    only captures the first ~25 lines). High k = robust; low k = tail-carried."""
+    if not rs:
+        return None
+    s = sorted(rs, reverse=True)
+    for k in range(1, len(s)):
+        if sum(s[k:]) / len(s[k:]) <= 0:
+            return k
+    return None
+
+
+def _trim_curve(rs: list[float], k_max: int = 6) -> list[str]:
+    """STANDALONE >0-bar robustness (advisor #224, 2026-06-07): drop the top-k
+    winners from the synth-CANCELLED cohort and watch E[R] decay. The headline
+    is NOT the selection delta (inflated by the no-partial proxy's harshness on
+    synth-FILLED) — it is whether synth-CANCELLED clears 0 ON ITS OWN, and how
+    concentrated that edge is. A cohort that crosses 0 after dropping only ~3
+    names is 'real but concentrated' → supports START-SMALL, not full-size."""
+    if not rs:
+        return ["  (no would_have_filled rows to trim)"]
+    n = len(rs)
+    s = sorted(rs, reverse=True)
+    out = [f"  full: N={n}  E[R]={sum(rs)/n:+.3f}  totR={sum(rs):+.2f}  "
+           f"(win {sum(1 for r in rs if r > 0)}/{n})"]
+    crossed = False
+    for k in range(1, min(k_max, n - 1) + 1):
+        trimmed = s[k:]
+        er = sum(trimmed) / len(trimmed)
+        marker = ""
+        if er <= 0 and not crossed:
+            marker = "   <-- E[R] crosses 0 here"
+            crossed = True
+        out.append(f"  drop top {k}: N={len(trimmed):<3} E[R]={er:+.3f}  "
+                   f"totR={sum(trimmed):+.2f}{marker}")
+    return out
+
+
+async def _winner_realism(winner_rows: list[dict]) -> list[str]:
+    """FILL-REALISM robustness (advisor #224 #4, 2026-06-07): the synth-CANCELLED
+    edge rides on a handful of winners — interrogate whether each actually traded
+    CONVINCINGLY THROUGH the limit (multiple fillable bars OR real penetration
+    below limit) vs grazed it for a single print (a marginal fill the live SIP
+    book might miss). Re-fetches the winners' bars only (~handful of fetches)."""
+    out: list[str] = []
+    conv = 0
+    for row in winner_rows:
+        ticker, d = row["ticker"], row["alert_date"]
+        trigger = float(row["orb_high"] or row["entry_price"] or 0)
+        limit = float(row["entry_price"] or row["orb_high"] or 0)
+        bars = await get_minute_bars(ticker, d.isoformat(), d.isoformat())
+        if not bars:
+            out.append(f"    {ticker:<6} {d}  (no bars)")
+            continue
+        parsed = sorted((_dt.fromtimestamp(b["t"] / 1000, tz=_ET),
+                         float(b["h"]), float(b["l"])) for b in bars)
+        canon = [(t, h, l) for t, h, l in parsed if _ORB_OPEN <= t.time() <= _ORB_CUTOFF]
+        above = [(t, h, l) for t, h, l in canon if h >= trigger]
+        if not above:
+            continue
+        after = [(t, h, l) for t, h, l in canon if t >= above[0][0]]
+        fillable = [(t, h, l) for t, h, l in after if l <= limit]
+        if not fillable:
+            continue
+        pen_pct = (limit - min(l for _, _, l in fillable)) / limit * 100 if limit else 0.0
+        convincing = len(fillable) >= 2 or pen_pct >= 0.10
+        conv += int(convincing)
+        out.append(f"    {ticker:<6} {d}  fillbars={len(fillable)}  "
+                   f"pen={pen_pct:.2f}%  "
+                   f"{'convincing' if convincing else 'GRAZE (1 bar, shallow)'}")
+    out.insert(0, f"  {conv}/{len(winner_rows)} winners are convincing fills "
+                  f"(>=2 fillable bars OR >=0.10% penetration below limit):")
+    return out
+
+
 async def _cancelled_rows(conn, days: int | None, signal_type: str) -> list[dict]:
     """Cancelled ORB candidates = the IEX-dropped cohort (placed then cancelled
     unfilled). Same cohort definition as #180 replay_would_have_filled.main."""
@@ -207,6 +290,16 @@ async def main(days: int | None, signal_type: str):
     # Computed once; the TL;DR and the cross-check section both read it.
     have_xcheck = bool(sf_st.get("n") and sc_st.get("n"))
     sel = (sc_st["expectancy"] - sf_st["expectancy"]) if have_xcheck else None
+    # STANDALONE robustness (advisor #224) — computed up-front so the one-line
+    # summary lands in the TL;DR (the monthly-sweep digest only keeps the first
+    # ~25 lines; section 5 at the bottom would be dropped). Winner fill-realism
+    # is the only extra bar-fetch pass — winners only (a handful).
+    trim_cross = _trim_cross_k(synth_r)
+    winner_keys = {(tk, dt) for tk, dt, r, _ in synth_detail if r > 0}
+    winner_rows = [c for c in cancelled
+                   if (c["ticker"], c["alert_date"]) in winner_keys]
+    realism_lines = await _winner_realism(winner_rows) if winner_rows else []
+    realism_hdr = realism_lines[0].strip() if realism_lines else ""
 
     print(f"\n{'='*72}")
     print(f"Lever A — SIP-augmented R cohort   [{signal_type} · paper · {win}]")
@@ -222,6 +315,15 @@ async def main(days: int | None, signal_type: str):
               f"synth-FILLED {sf_st['expectancy']:+.2f}, same exit basis]")
         print(f"   gap_through={gt} (IEX dropped REACHABLE winners) · "
               f"real cohort {real_st.get('n',0)}@{real_st.get('expectancy',0):+.2f}R")
+        # Standalone >0-bar robustness (advisor #224) — the SIZING-relevant read.
+        if sc_st.get("n"):
+            cross_txt = (f"crosses 0 at drop-{trim_cross} of top winners"
+                         if trim_cross else "stays >0 through the trim")
+            print(f"   STANDALONE: synth-CANCELLED {sc_st['expectancy']:+.2f}R "
+                  f"(win {sc_st['win_rate']*100:.0f}%) {cross_txt}"
+                  + (f"; {realism_hdr.split(' (')[0]}" if realism_hdr else ""))
+            print(f"      => edge is real but CONCENTRATED -> START-SMALL, not full-size"
+                  f" (operator owns GO/size).")
         print(f"   VERDICT: {verdict}")
         print(f"   Full reasoning + caveats: docs/analysis/sip_replay_gate3_2026-06-06.md")
 
@@ -299,6 +401,28 @@ async def main(days: int | None, signal_type: str):
         print(f"\nRecovered (SIMULATED) names — top by R:")
         for tk, dt, r, pnl in sorted(synth_detail, key=lambda x: -x[2])[:10]:
             print(f"    {tk:<7}{str(dt):<12}{r:+.2f}R  (${pnl:+,.0f} synthetic)")
+
+    # ── 5. STANDALONE ROBUSTNESS (advisor #224, 2026-06-07) ─────────────────
+    # The selection delta (section 3) is the WEAKER 'selection exists' claim — it
+    # is inflated by the no-partial proxy's harshness on synth-FILLED (every
+    # non-winner lands at exactly -1.00R). The LOAD-BEARING question for sizing is
+    # whether synth-CANCELLED clears 0 ON ITS OWN, and how concentrated that is.
+    if synth_r:
+        print(f"\n{'-'*72}")
+        print("STANDALONE synth-CANCELLED robustness (the >0 bar — sizing-relevant):")
+        print(f"{'-'*72}")
+        print("  TRIM CURVE (drop the top-k winners; how concentrated is +E[R]?):")
+        for line in _trim_curve(synth_r):
+            print(line)
+        # Winner fill-realism (precomputed up-front for the TL;DR — reuse, no refetch).
+        if realism_lines:
+            print("\n  FILL REALISM (did the winners trade THROUGH the limit, not graze?):")
+            for line in realism_lines:
+                print(line)
+        print("\n  READ: 'selection exists' (section 3 delta) is robust; whether")
+        print("  synth-CANCELLED is positive STANDALONE is concentrated in the top")
+        print("  few names — supports START-SMALL sizing, not full-size. Operator")
+        print("  owns the GO/size call; this is evidence, not a verdict.")
     print()
 
 

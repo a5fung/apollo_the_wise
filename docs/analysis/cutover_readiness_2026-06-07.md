@@ -44,12 +44,27 @@ reduced size). See `docs/analysis/sip_replay_gate3_2026-06-06.md`.
 **Implication:** going live 6/22 means betting real money on a *reinterpretation* of
 negative paper results, not on positive paper results. That is defensible (the IEX
 mechanism is real and confirmed) but **thin** — it is the single highest-leverage
-thing to harden before the decision. → **#224 SIP-replay robustness checks** is the
+thing to harden before the decision. → **#224 SIP-replay robustness checks** was the
 top cutover-prep item.
+
+**#224 hardening done (2026-06-07)** — see `sip_replay_gate3_2026-06-06.md` §"#224
+robustness hardening". Two checks, folded into the durable script's default output (re-run
+monthly): (1) **trim curve** — standalone synth-CANCELLED +1.27R survives dropping the top
+3 names (+0.097R) and crosses 0 at the 4th → **real but concentrated**; (2) **winner fill-
+realism** — 6/6 edge-carrying names are convincing SIP fills (0.60–2.61% penetration through
+the limit), zero grazes. Net: the GO *direction* holds (selection is real, winners are
+genuine fills); the *sizing* read sharpens to **START-SMALL, not full-size** — the standalone
+edge leans on ~3–4 winners of 14. Operator owns the GO/size call. Bootstrap-CI demoted
+(false precision at N=14 bimodal); recent-window redundant (cohort already within 90d).
+**Scope: this hardening is `magna53`-only.** 9m_day2 is also Gate-3 RED (N=4, −0.33R) and is
+NOT covered by this SIP evidence — if 9m_day2 is in the 6/22 flip it needs its own cohort
+(too thin today). The magna53-only verdict must not be read as clearing both strategies.
 
 ## What to attack in the 15 days (priority order)
 
-1. **#224 — harden the Gate-3 SIP verdict** (the GO case's load-bearing evidence). Read-only; doable now.
+1. ~~**#224 — harden the Gate-3 SIP verdict**~~ ✅ **DONE 2026-06-07** (trim curve + winner
+   fill-realism; verdict sharpened to START-SMALL). Now the load-bearing item is closing the
+   *reliability* gates below — the *edge* question is as resolved as the proxy allows.
 2. **#151 — close the partial-exit P0** (hard blocker; 6/15 target). The FPS 6/04-6/05 fragility is live evidence it's not done.
 3. **#184/#225 — finish the trade-state mirror residuals** (3 demotion-fence residuals).
 4. **Gate 4 activation runbook** — the flip itself (ENABLE_LIVE_MODE + magna53→phase=live, reduced size). Infra is ready; needs the operator go-procedure written.
