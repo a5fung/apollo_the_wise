@@ -620,6 +620,14 @@ async def _sec_cik_for(client: httpx.AsyncClient, ticker: str) -> Optional[str]:
 # a 200k+ char EX-99.1. 8-K is NOT here — its body is in the primary doc.
 _SEC_COVER_FORMS = ("6-K",)
 
+# 8-K items whose disclosure substance is typically carried in an EX-99.1 press
+# release rather than the (often thin/pointer) primary doc (#210 Wave D): 2.02
+# results, 7.01 Reg-FD, 8.01 other events. Item 1.01 (material agreement, the RUM
+# GPU-deal class) keeps its terms in the PRIMARY body — so for 8-K we CONCATENATE
+# the exhibit, never replace (unlike the 6-K cover, which is pure boilerplate).
+_SEC_8K_EXHIBIT_ITEMS = ("2.02", "7.01", "8.01")
+_SEC_THIN_PRIMARY_CHARS = 600  # below this the primary is a pointer; pull EX-99 too
+
 
 async def _sec_exhibit_url(
     client: httpx.AsyncClient, cik: str, acc_no: str, primary: str
@@ -709,6 +717,25 @@ async def get_sec_recent_filings(
                         rec["text"] = _strip_html((await client.get(url)).text)[:4000]
                     except Exception:
                         rec["text"] = ""
+                    # 8-K (#210 Wave D): the primary doc is often a thin pointer; the
+                    # results/PR substance (item 2.02/7.01/8.01) lives in EX-99.1.
+                    # CONCATENATE it (item 1.01 deal terms stay in the primary, so we
+                    # never replace). Bounded: one extra exhibit GET, uncached path.
+                    if form.startswith("8-K") and not is_cover_form:
+                        item_str = items[i] or ""
+                        if (len(rec["text"].strip()) < _SEC_THIN_PRIMARY_CHARS
+                                or any(it in item_str for it in _SEC_8K_EXHIBIT_ITEMS)):
+                            try:
+                                ex_url = await _sec_exhibit_url(client, cik, acc_no, primary)
+                                if ex_url and ex_url != url:
+                                    ex_text = _strip_html((await client.get(ex_url)).text)
+                                    if ex_text.strip():
+                                        rec["text"] = (
+                                            (rec["text"] + "\n\n[EX-99] " + ex_text).strip()
+                                        )[:6000]
+                                        rec["exhibit_url"] = ex_url
+                            except Exception:
+                                pass
                 out.append(rec)
                 if len(out) >= max_filings:
                     break
