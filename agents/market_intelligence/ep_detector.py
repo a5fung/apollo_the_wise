@@ -1290,6 +1290,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _catalyst_cache.clear()
             _catalyst_cache_date = today
 
+        _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
         cached = _catalyst_cache.get(ticker)
         if cached:
             # 5-tuple as of 2026-05-26 hotfix: pplx_quality added because the
@@ -1361,6 +1362,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             try:
                 _prov = corpus_provenance(sec_filing, benzinga_items, perplexity_answer,
                                           grounded_text, fmp_news)
+                _has_direct_source = _prov.get("has_direct_source")  # Wave C shadow (#233)
                 await log_audit_event(
                     "ep_catalyst_provenance",
                     f"{ticker} {catalyst_quality} direct={_prov['has_direct_source']}",
@@ -2169,6 +2171,54 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     "catalyst_quality": catalyst_quality,
                 }),
             )
+
+        # Wave C shadow (#233) — does the Perplexity AGREEMENT BOOST manufacture
+        # HIGHs with no direct primary source? confidence_multiplier==1.2 means
+        # Claude+Perplexity agreed on strong/gc AND the answer did NOT self-hedge
+        # (the hedge path L1496-1529 already cancels the boost) — the confident-
+        # confabulation population. Record the boost-OFF score via the REAL scorer
+        # (single-source-of-truth) + whether the earnings override would rescue it;
+        # the offline analyzer decides "manufactured". Telemetry-only, one row per
+        # ticker/day on the uncached grade tick. Pairs with Wave-B
+        # ep_provenance_daily (the sole-source role). This is a LOWER BOUND on ONE
+        # mechanism — the base grade is itself lifted by Perplexity-in-corpus
+        # (unmeasured until the Part-2 corpus re-grade); do NOT read a small count
+        # as "Perplexity demotion is low-value".
+        if (
+            confidence_multiplier >= 1.2
+            and _has_direct_source is not None
+            and _audit_dedupe_check(ticker, today, "perplexity_boost_shadow")
+        ):
+            try:
+                _score_noboost, _ = _score_ep(
+                    gap_pct=c["gap_pct"],
+                    rel_volume=rel_volume,
+                    catalyst_quality=catalyst_quality,
+                    profile=profile,
+                    analyst_upgrades=upgrades_30d,
+                    regime_multiplier=regime_multiplier,  # boost OFF (×1.0)
+                    projected_vol_multiple=c.get("projected_vol_multiple"),
+                    vol_percentile=vol_pct,
+                    prior_3m_change=prior_3m_change,
+                    in_active_theme=(ticker in _in_active_theme_set),
+                )
+                await log_audit_event(
+                    "perplexity_boost_shadow",
+                    f"{ticker} {tier} boost={confidence_multiplier} direct={_has_direct_source}",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "catalyst_quality": catalyst_quality,
+                        "has_direct_source": _has_direct_source,
+                        "live_tier": tier,
+                        "live_score": round(ep_score, 1),
+                        "score_without_boost": round(_score_noboost, 1),
+                        "ep_threshold": ep_threshold,
+                        "earnings_override_fired": earnings_override_fired,
+                    }),
+                )
+            except Exception as _e:
+                logger.debug(f"{ticker}: perplexity_boost_shadow skipped — {_e}")
 
         result = {
             **c,
