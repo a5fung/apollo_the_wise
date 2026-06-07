@@ -64,7 +64,7 @@ Apollo runs semi-automated paper trading via Alpaca. Two independent systems sha
 | Auto-confirm | Paper mode bypasses Telegram confirmation — both systems execute automatically |
 | Day 2+ management | 4:45 PM — SMA 10/20 trailing stops, partial exits (1/3 on Day 3-5), breakeven activation |
 | Position tracking | `9m trades` / `trades` / `/setup TICKER` — log with P&L per trade, reverse-lookup detector chronology across 10 tables |
-| Safeguards (full list) | See **Safeguards** section below — kill switch, max 5 concurrent positions, PDT guards, 2% daily-loss limit, count-based circuit breaker (interim), drawdown breaker (shadow) |
+| Safeguards (full list) | See **Safeguards** section below — kill switch, max 5 concurrent positions, 2% daily-loss limit, **tiered drawdown breaker (ACTIVE 2026-06-03 — WATCH/REDUCE/BLOCK size-down)**. PDT guards RETIRED 6/4 (#181, FINRA Rule 4210); count-based circuit breaker DEPRECATED (superseded by the drawdown breaker) |
 | Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions; stale `stop_order_id` nulled on update failure for orphan reconciliation |
 | EOD cleanup | 4:05 PM — cancel unfilled entries (preserves prior fill history); 9:00 PM evening backstop catches late EXPIRED events |
 | Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS=5` in `constants.py` |
@@ -290,19 +290,27 @@ Friday 6:00 PM ET aggregator — combines best ideas from EP / 9M / themes / wic
 
 ---
 
-### Drawdown Circuit Breaker (#39, shadow phase)
+### Drawdown Breaker (#39/#174 — TIERED, ACTIVE 2026-06-03)
 
-Replaces the count-based 10-loss circuit breaker (which was self-perpetuating and methodology-blind for Pradeep/Qullamaggie hold-winners style). State-machine evaluated daily at 4:12 PM ET cron.
+Replaces the count-based 10-loss circuit breaker (self-perpetuating + methodology-blind for Pradeep/Qullamaggie hold-winners). State machine evaluated daily at 16:12 ET cron; `_check_safeguards` now **ENFORCES** it by sizing-down per tier (no longer shadow).
 
-**Mechanics:**
+**Tiered mechanics** (the binary -5% trip was retired 2026-05-18 — for a 20-30% win-rate strategy, P(7 consecutive losses) = 13.3%, so -7% drawdowns are NORMAL variance; hard-blocking them structurally breaks the methodology):
 - **Equity source**: Alpaca `account.equity` (includes unrealized — open winners lift equity)
-- **Peak window**: 30-day rolling max from `mi_account_equity_snapshots`
-- **Trip threshold**: drawdown ≤ -5% while state='OK' → TRIPPED
-- **Release threshold**: drawdown ≥ -2.5% while state='TRIPPED' → OK (asymmetric hysteresis prevents flap)
-- **Stale-data fail-open**: if most recent snapshot >48h old, breaker effectively disabled (silent cron-failure protection)
+- **Peak window**: 30-day rolling max from `mi_account_equity_snapshots`, scoped to account_mode
+- **Tiers** (trip jumps to the deepest applicable tier in one snapshot; release steps up ≤1 tier per eval with asymmetric hysteresis):
+
+  | state | enters at | size multiplier |
+  |---|---|---|
+  | OK | — | 1.0× |
+  | WATCH | drawdown ≤ -4% | 1.0× (informational) |
+  | REDUCE | drawdown ≤ -7% | 0.5× |
+  | BLOCK | drawdown ≤ -12% | 0.0× (catastrophic floor) |
+
+- **Sizing**: `final_shares = floor(shares × strategy.position_size_multiplier × tier_multiplier)` — per-strategy and tier multipliers compound (a 9M Day 2 trade in REDUCE = 0.5 × 0.5 = 0.25×)
+- **Min-history gate**: ≥7 snapshots (don't trip on sparse history); **stale-data fail-open** if the newest snapshot is >48h old (silent cron-failure protection)
 - **Account-mode scoping**: paper history doesn't carry to live; live cutover starts a fresh peak
 
-**Phase**: SHADOW — emits `drawdown_breaker_tripped` / `drawdown_breaker_released` audit events on transitions only; `_check_safeguards` does not block. Promotion to active gated on ≥14 days post-live-cutover telemetry (env var `DRAWDOWN_BREAKER_PHASE=active`).
+**Phase**: ACTIVE on paper since 2026-06-03 (#174 — operator decision: validate the full system with the breaker *armed* before real money; going live disarmed in the highest-risk window defeats its purpose). The 2% daily-loss limit remains the independent same-day blow-up guard.
 
 **SSoT:** `docs/setups/safeguards.md`.
 
@@ -341,24 +349,25 @@ A layered defense system for trade-state correctness, hardened across May 2026 i
 | Gate | What it catches | Implementation |
 |---|---|---|
 | **A — Naked-position remediation** | Entry-fill UPDATE raises exception → bracket child stop dies → position naked | `trade_stream._process_entry_fill` catches exception, immediately submits fallback stop-market at intended orb_low BEFORE any other action |
-| **B — Boot-time DB UPDATE prepare validation** | asyncpg type-mismatch (CRMD class: numeric vs double precision sharing param) | `scripts/preflight_db_updates.py` walks every parameterized UPDATE via `connection.prepare()`. Deploy step `[5b/5]` blocks on `AmbiguousParameterError` |
+| **B — Boot-time DB UPDATE prepare validation** | asyncpg type-mismatch (CRMD class: numeric vs double precision sharing param) | `scripts/preflight_db_updates.py` walks every parameterized UPDATE via `connection.prepare()`. Deploy step `[5b/7]` blocks on `AmbiguousParameterError` |
 | **C — Escalated naked-position alert** | partial_fill on entry leaves position un-stopped | Escalation to CRITICAL Telegram on naked detection |
 | **D — Stuck-fill watchdog** | Entry stays `status='filling'` past ACK window | Cron surfaces rows where `entry_order_id IS NOT NULL AND status='filling' AND filled_at IS NULL AND created_at < NOW() - INTERVAL '2 min'` |
 | **E — Schema regression pytest** | Column-type additions break hot-path UPDATEs | Test suite against mi_live_trades schema |
 | **F — Operator post-mortem sign-off** | Process discipline gate | Manual review |
-| **G — Column-write authority preflight** (2026-05-17) | Multi-writer column ownership violations (BW class) | `scripts/audit_column_writes.py check` + `ALLOWED_WRITERS` dict. Deploy step `[5c/5]` blocks on unauthorized (column, function) pair. See `docs/architecture/trade-state-ownership.md` |
+| **G — Column-write authority preflight** (2026-05-17) | Multi-writer column ownership violations (BW class) | `scripts/audit_column_writes.py check` + `ALLOWED_WRITERS` dict. Deploy step `[5c/7]` blocks on unauthorized (column, function) pair. See `docs/architecture/trade-state-ownership.md` |
 | **Stop-ACK timeout watchdog** (2026-05-17, sibling to Gate 5 A) | OTO bracket child stop-leg never ACKs from Alpaca (silent failure, MRAM class) | New scheduler job every 30s during market hours: `status='filled' AND filled_at NOT NULL AND stop_order_id IS NULL AND filled_at < NOW() - INTERVAL '30 seconds'` → submit fallback stop |
 
-**Deploy chain** (`scripts/deploy.sh`):
-1. git pull
-2. build images
-3. restart containers
-4. wait for boot
-5. `[5/5]` entry-pipeline safeguard walk (PASS = strategies can authenticate)
-6. `[5b/5]` DB UPDATE prepare validation
-7. `[5c/5]` column-write authority check
-
-Any preflight failure exits non-zero with a distinct code (4/5/6) — no green-deploy without all three gates passing.
+**Deploy chain** (`scripts/deploy.sh <scope>` — scope is REQUIRED, #154; the pull also runs a scope-drift guard that aborts if it touched files owned by a service outside the chosen scope):
+1. git pull → build images → restart containers → wait for boot
+2. Preflight gauntlet — **8 checks**, any failure exits non-zero (distinct code per mode), no green-deploy unless all pass:
+   - `[5/5]` entry-pipeline safeguard walk (strategies authenticate the real ORB-entry path)
+   - `[5b/7]` DB UPDATE prepare validation (AmbiguousParameter / type-mismatch, CRMD class)
+   - `[5c/7]` column-write authority (Gate 5 G — `ALLOWED_WRITERS`)
+   - `[5d/7]` import-shadowing AST check (UnboundLocalError class)
+   - `[5e/7]` YAML duplicate-key lint (`data_gated_reviews.yaml`, SNDK class)
+   - `[5f/7]` command-parity (BotCommand / CommandHandler / dispatch aligned)
+   - `[5g/7]` G6 paper-Alpaca `replace_order` integration smoke (partial-exit path; market-hours only)
+   - `[5h/7]` datetime-hygiene (bans `pytz`, naive `now()`/`astimezone()`, `utcnow()`, `date.today()`)
 
 ---
 
@@ -520,7 +529,8 @@ Show logs excluded → exclusion events
 | 4:00 PM | 1:00 PM | 9M EP intraday scan stops |
 | 4:05 PM | 1:05 PM | EOD cleanup — cancel unfilled orders, sync positions, audit-log unfilled cancellations |
 | 4:10 PM | 1:10 PM | EOD EP recap — HIGH outcomes + feed telemetry |
-| 4:12 PM | 1:12 PM | **Account equity snapshot** + drawdown breaker state recompute (drawdown_breaker, currently shadow phase) |
+| 9:35 AM–3:55 PM | 6:35 AM–12:55 PM | **Intraday entry-technique detectors** (every 5 min, shadow) — flag-break (#94), support-test (#95), MA-pullback (#96), low-vol-rest (#97), U&R undercut-and-rally (#98); roll-up via `/detectors` |
+| 4:12 PM | 1:12 PM | **Account equity snapshot** + drawdown breaker state recompute (drawdown_breaker — **ACTIVE/tiered since 2026-06-03**, enforces size-down) |
 | 4:15 PM | 1:15 PM | **Post-EOD audit** — L1 invariants + trade-side L2/L3 anomaly detection |
 | 4:45 PM | 1:45 PM | Live position update — SMA trail, partials, stop updates + daily summary |
 | 5:00 PM | 2:00 PM | Data pull — RS engine + regime + themes; 9M EOD sweep → sugar babies confirmed; splits ingest (Phase 0); error check |
@@ -704,7 +714,7 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 | Concern | Mitigation |
 |---|---|
 | Telegram access | Allowlist — only configured user IDs can interact |
-| Alpaca trading | Master kill switch (`LIVE_TRADING_ENABLED`), paper/live toggle (`ALPACA_PAPER`), confirmation timeout (5 min), atomic status transitions prevent duplicate orders |
+| Alpaca trading | Master kill switch (`LIVE_TRADING_ENABLED`), paper/live routing (`ENABLE_LIVE_MODE` + per-strategy `mi_strategies.phase`; dual-account #66), mode-bound `client_order_id`, confirmation timeout (5 min), atomic status transitions prevent duplicate orders |
 | Trade data integrity | DB DELETE triggers block accidental deletion on trade tables; startup row count logging detects data loss |
 | Account info | Account equity never shown in Telegram messages (% of account only) |
 | Irreversible actions | YES/NO confirmation gate before execution |
@@ -716,6 +726,20 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 ---
 
 ## Backlog / Upgrade Path
+
+### Recently completed (June 2026)
+- ✅ **Drawdown breaker → TIERED + ACTIVE (#174, 6/3)** — flipped shadow→enforced on paper; binary -5% trip replaced by WATCH/REDUCE/BLOCK size-down tiers (see Safeguards). Armed *before* live cutover by operator decision (validate the full system with the safeguard live)
+- ✅ **PDT-lockout safeguard RETIRED (#181, 6/4)** — FINRA Rule 4210 + Alpaca intraday-margin eliminated the PDT designation / $25K floor; `BLOCK_PDT_LOCKOUT_*` guards removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check
+- ✅ **Timezone PERMANENT FIX (#206, 6/5)** — root-caused the recurring wrong-wall-clock bug to **pytz** (applies LMT -04:56 via `tzinfo=`), NOT ZoneInfo as previously mislabeled; migrated `_ET` → `ZoneInfo` everywhere + deploy gate `preflight_datetime_hygiene.py` bans `pytz` / naive `now()` / `utcnow()` / `date.today()`
+- ✅ **Catalyst SOURCING — direct SEC/EDGAR (#187/#208)** — ingest 8-K + 6-K (foreign-issuer) primary filings for gappers; closes the RUM/SE class where LLM-discovery confabulated or missed the deal. Operator direction: direct primary sources > LLM-discovery (#210 backbone)
+- ✅ **5 intraday entry-technique detectors (#94–98, shadow)** — flag-break, support-test, MA-pullback, low-volume-rest, U&R undercut-and-rally; every 5 min during market hours; `/detectors` roll-up
+- ✅ **Narrative theme discovery (#167, shadow)** — Lane 2: groups same-day EP gappers by shared catalyst narrative (one Sonnet call), catching cross-sector themes the RS+correlation engine structurally misses (drone / nuclear-AI). Advisory; canonization promote-gate is a judgment review (6/09), persistence merge filed as #226
+- ✅ **EP theme-gated + fire-panel ADVISORY (#200/#201)** — multi-axis "did we SEE a fire?" advisory columns on EP alerts (theme / catalyst materiality / policy / shortage). Advisory only; load-bearing gating is the separate ~Q4 North Star
+- ✅ **Trade-state broker-source-of-truth (ADR 0008, #184)** — Alpaca = SoT, DB = read-through mirror; increment-1 write-side demotion fence (deploy gate) shipped, 3 residuals tracked (#225)
+- ✅ **SIP Gate-3 verdict (#223)** — SIP-replay R cohort proves the paper -$9,475/23% is an IEX adverse-selection artifact (+2.27R same-basis selection delta); GO-supportive for reduced-size 6/22 cutover
+- ✅ **DB↔Alpaca order-status reconcile (#123)** — periodic + post-boot poll of non-terminal orders vs broker truth; closes the silent-stop / stuck-`pending_new` drift class
+- ✅ **Disaster Recovery layer (#102–108)** — encrypted nightly secrets bundle + `infra/restore.sh` fresh-box driver (RTO ~95 min) + backup-health alert; tmpfs-staged plaintext
+- ✅ **Command surface consolidation (#218/#220)** — `/detectors` roll-up for the 5 shadow detectors; merged `/watch` + `/inplay` (default actionable)
 
 ### Recently completed (May 2026)
 - ✅ **Gate 5 G column-write authority preflight (5/17)** — static analysis at deploy time: `scripts/audit_column_writes.py check` walks every UPDATE/INSERT on `mi_live_trades`, fails the deploy on any `(column, function)` pair not in `ALLOWED_WRITERS`. Closes the BW-class bug surface (multi-writer column ownership). Last unshipped Gate 5 deliverable. Sibling refactors T1.1/T1.2/T1.4 same day cut `stop_price` writers 7 → 4
