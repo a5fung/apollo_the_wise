@@ -217,24 +217,19 @@ def _fallback_narrative(ctx: dict) -> str:
         f"• Partial: {trade.get('partial_taken')} · Breakeven: {trade.get('breakeven_active')} · "
         f"Held {_fmt(trade.get('hold_days'), 0)}d",
     ]
-    if trade.get("skip_reason"):
+    # #228: a CLOSED/FILLED trade's skip_reason is necessarily a LATER re-entry block
+    # (the trade entered AND exited), NOT the entry gate — and it's irrelevant to the
+    # trade's own outcome. Feeding it to the postmortem LLM made it invent a phantom
+    # "blocked yet filled anyway ~4 min later" enforcement gap (recurring false:
+    # RLAY/DY/DELL/RUM; verified false on RUM 6/4 — fill 9:44 PRECEDED the re-entry
+    # block 9:49). A relabel didn't stop the LLM (it re-inferred), so SUPPRESS the
+    # field entirely for entered trades; surface it only for a genuinely skipped
+    # (never-entered) signal, where it IS the entry gate.
+    _entered = (trade.get("status") in ("filled", "closed")
+                or trade.get("entry_price") is not None)
+    if trade.get("skip_reason") and not _entered:
         from agents.market_intelligence.broker.skip_reasons import humanize
-        # #228: a CLOSED/FILLED trade entered and exited — so a skip_reason on it is
-        # necessarily a LATER re-entry block (e.g. block:r3_reentry_disabled), NOT the
-        # entry gate. Labelling it bare "Skip reason: re-entry disabled" made the
-        # weekly-review narrator infer "blocked signal traded through" (a recurring
-        # false postmortem inference — RLAY/DY/DELL/RUM, verified false on RUM 6/4:
-        # original entry filled 9:44 → stopped out → re-entry correctly blocked 9:49).
-        # Relabel deterministically so the narrator can't make the causal error.
-        _entered = (trade.get("status") in ("filled", "closed")
-                    or trade.get("entry_price") is not None)
-        if _entered:
-            lines.append(
-                f"• Post-entry note: the original entry FILLED; a LATER re-entry was "
-                f"correctly blocked ({humanize(trade['skip_reason'])}). This is enforcement "
-                f"working as designed — NOT a blocked signal trading through.")
-        else:
-            lines.append(f"• Skip reason: {humanize(trade['skip_reason'])}")
+        lines.append(f"• Skip reason: {humanize(trade['skip_reason'])}")
 
     pnl = trade.get("total_pnl")
     pnl_str = f"${pnl:+,.2f}" if isinstance(pnl, (int, float)) else "n/a"
