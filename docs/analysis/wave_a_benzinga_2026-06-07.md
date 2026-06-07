@@ -49,20 +49,28 @@ is a LOWER BOUND** on Benzinga's same-day live value.
   was the *only* same-day primary source. This is the structural argument for the wire
   on foreign issuers, proven.
 
-## What is still UNPROVEN
-- **The winner-rescue thesis** (Benzinga rescues *suppressed* catalysts the grade
-  misses). GRRR can't prove it (not suppressed). Needs a **known-suppressed name or a
-  small cohort** — the right vehicle is the #211 unknown-rate-by-source-class KPI +
-  #202 attribution on the live forward cohort, not another GRRR run.
-- Caveat noted, not claimed: the WITHOUT-bz-now arm cited a "Yotta Data Services
-  contract" — possibly GRRR's *earlier* Yotta deal, not the 6/2 SMCI one. So we do NOT
-  claim the *now* arm confabulated; only the *stored 6/2* grade demonstrably did. The
-  tier-upgrade isolation holds regardless.
+## The objective is CORRECTNESS, not winner-rescue (operator, 2026-06-07)
+The goal of Wave A (and the #210 backbone / #189 / #201 / #190 / #212 stack) is
+**attribution correctness** — the grade reasons on the *true, correctly-sized* catalyst.
+Correctness and trade P&L are **separate, decoupled axes**: a catalyst can be sourced +
+graded perfectly and the trade still loses (GRRR — correct game_changer, still no fill +
+next-day debt drop). So the validation bar is correctness, met here. The "winner-rescue"
+thesis (Benzinga rescues a *suppressed* winner) is **supplementary corroborating
+evidence, NOT the gate** — desirable, but not what this work optimizes. (See memory
+`feedback-catalyst-correctness-is-the-goal`.) Systematic correctness is measured at scale
+via the #211 unknown-rate-by-source-class KPI + #202 attribution, not P&L.
+
+Caveat noted, not claimed: the WITHOUT-bz-now arm cited a "Yotta Data Services contract"
+— possibly GRRR's *earlier* Yotta deal, not the 6/2 SMCI one. So we do NOT claim the *now*
+arm confabulated; only the *stored 6/2* grade demonstrably did. The tier-upgrade isolation
+holds regardless.
 
 ## Honest close for #231
-Engineering validated · attribution-correctness demonstrated (isolated, lower-bound
-+1 tier) · press-wire-timeliness proven (6-K lags 3d) · **winner-rescue thesis pending
-a suppressed-case / cohort run**. Code stays deployed (additive, safe; Monday
-activation). Operator judges whether this clears Wave A. Backbone (#210) thesis should
-re-anchor its headline exemplar on **RUM (#187, $270M deal both LLMs actually missed)**;
-GRRR is the attribution-correctness + 6-K-timing exemplar.
+Engineering validated · attribution-correctness demonstrated on a real case (isolated,
+lower-bound +1 tier `strong→game_changer` with correct sizing) · press-wire-timeliness
+proven (6-K lags 3d). Correctness — the actual objective — is met; winner-rescue is
+supplementary and not gated on. Code stays deployed (additive, safe; Monday activation).
+Backbone (#210) headline exemplar re-anchored on **RUM (#187, $270M deal both LLMs
+actually missed)**; GRRR is the attribution-correctness + 6-K-timing exemplar. Remaining:
+systematic correctness measurement on the forward cohort (#211/#202) + Mon 6/8 first-fire
+verify.
