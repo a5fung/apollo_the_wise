@@ -39,39 +39,44 @@ class TestHandleThemeOnly:
             agent.agent_name = AgentName.MARKET_INTELLIGENCE
         return agent
 
-    @pytest.mark.skip(reason="#205 stale: _handle_theme_only now runs _compute_scored_themes which "
-                             "re-scores from per-ticker RS data — the fixture's empty-ticker themes "
-                             "score to 0 active; summary format also changed to 'THEME ENGINE — N "
-                             "active'. Needs fixture rework (real tickers + mocked RS scoring).")
+    def _themes_with_tickers(self, n_active=10, n_fading=2):
+        """#205: _handle_theme_only re-scores via _compute_scored_themes from
+        per-ticker RS data, so active themes need real tickers (empty-ticker themes
+        are skipped → 0 active). Pair with _mock_rs() patched into the handler."""
+        active = [{"name": f"Theme {i}", "stage": "Accelerating", "score": 80,
+                   "tickers": [f"T{i}A", f"T{i}B"]} for i in range(n_active)]
+        fading = [{"name": f"Fading {i}", "stage": "Fading", "score": 30,
+                   "tickers": [f"F{i}A", f"F{i}B"]} for i in range(n_fading)]
+        return active + fading
+
+    def _run_handler(self, agent, themes, changelog=None):
+        """Run _handle_theme_only with run_theme_engine + the RS getters mocked so
+        _compute_scored_themes keeps every active theme (rs_composite present)."""
+        rs = {tk: {"rs_composite": 80, "rs_1m": 80, "rs_3m": 80, "rs_6m": 80}
+              for t in themes for tk in t["tickers"]}
+
+        async def run():
+            with patch("agents.market_intelligence.agent.run_theme_engine", new=AsyncMock(return_value=(themes, changelog or []))), \
+                    patch("agents.market_intelligence.agent.get_rs_for_tickers", new=AsyncMock(return_value=rs)), \
+                    patch("agents.market_intelligence.agent.get_prior_theme_scores", new=AsyncMock(return_value={})):
+                return await agent._handle_theme_only(self._make_request())
+
+        return asyncio.run(run())
+
     def test_returns_summary_in_result_field(self):
         """Result must be in AgentResponse.result — orchestrator sends it to Telegram."""
-        themes = self._fake_themes(n_active=10, n_fading=2)
-        changelog = []
-        agent = self._make_agent()
-
-        async def run():
-            with patch("agents.market_intelligence.agent.run_theme_engine", new=AsyncMock(return_value=(themes, changelog))):
-                return await agent._handle_theme_only(self._make_request())
-
-        resp = asyncio.run(run())
+        themes = self._themes_with_tickers(n_active=10, n_fading=2)
+        resp = self._run_handler(self._make_agent(), themes)
         assert resp.success, f"Expected success=True, got error: {resp.error}"
         assert resp.result is not None
-        assert "10 active themes" in resp.result, f"Got: {resp.result}"
+        assert "THEME ENGINE — 10 active" in resp.result, f"Got: {resp.result}"
 
-    @pytest.mark.skip(reason="#205 stale: same as test_returns_summary — _compute_scored_themes "
-                             "re-scores from empty-ticker fixtures to 0 active. Needs fixture rework.")
     def test_fading_themes_excluded_from_count(self):
         """Fading themes must not count toward active total."""
-        themes = self._fake_themes(n_active=5, n_fading=3)
-        agent = self._make_agent()
-
-        async def run():
-            with patch("agents.market_intelligence.agent.run_theme_engine", new=AsyncMock(return_value=(themes, []))):
-                return await agent._handle_theme_only(self._make_request())
-
-        resp = asyncio.run(run())
+        themes = self._themes_with_tickers(n_active=5, n_fading=3)
+        resp = self._run_handler(self._make_agent(), themes)
         assert resp.success, f"Error: {resp.error}"
-        assert "5 active themes" in resp.result
+        assert "THEME ENGINE — 5 active" in resp.result
 
     def test_revalidated_tickers_appear_in_summary(self):
         """Removed mismatched tickers must show in result."""

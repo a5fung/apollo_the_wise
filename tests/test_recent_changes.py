@@ -516,11 +516,6 @@ class TestThemeDiscoveryStructuredOutput:
         assert calls[0].get("tool_choice") == {"type": "auto"}
         assert calls[0].get("tools")
 
-    @pytest.mark.skip(reason="#205: discovery grew a post-assignment _validate_theme_membership "
-                             "LLM call; a single mock client can't serve both the report_themes "
-                             "tool block AND the validator's {remove:[]} text block, so the theme "
-                             "is stripped → []. Needs a redesign that targets the extraction step "
-                             "in isolation rather than the full multi-LLM pipeline.")
     def test_returns_themes_list(self):
         from agents.market_intelligence import theme_engine
         expected = [{"name": "Edge AI", "thesis": "AI chips.", "tickers": ["A", "B"]}]
@@ -532,7 +527,11 @@ class TestThemeDiscoveryStructuredOutput:
         mock_client.messages.create = mock_create
 
         descs = {s["ticker"]: f"{s['ticker']} description" for s in self._STOCKS}
-        with patch("anthropic.AsyncAnthropic", return_value=mock_client), \
+        # Patch _get_anthropic_client (not anthropic.AsyncAnthropic): the client is
+        # cached in a module global (_anthropic_client), so a sibling discovery test
+        # that runs first pins its own mock and an AsyncAnthropic patch becomes a
+        # no-op — leaking an empty-themes client into this test (#205).
+        with patch("agents.market_intelligence.theme_engine._get_anthropic_client", return_value=mock_client), \
                 patch("agents.market_intelligence.universe.TICKER_DESC", descs):
             result = asyncio.run(theme_engine._discover_new_themes(
                 uncovered_stocks=self._STOCKS,
