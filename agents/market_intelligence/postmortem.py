@@ -118,10 +118,24 @@ async def build_postmortem_context(
             LIMIT 1
         """, ad)
 
+    trade_clean = _clean(trade)
+    # #228: a CLOSED/FILLED trade's skip_reason is a LATER re-entry block (the trade
+    # entered AND exited), NOT the entry gate — and irrelevant to its own outcome.
+    # Raw in the json.dumps(ctx) prompt (the live path) it made the postmortem LLM
+    # invent a phantom "blocked yet filled anyway ~4 min later" enforcement gap
+    # (recurring false RLAY/DY/DELL/RUM; verified false on RUM 6/4 — fill 9:44
+    # PRECEDED the re-entry block 9:49). Drop it for entered trades so the LLM can't
+    # misread it; a genuinely skipped (never-entered) signal keeps it (entry gate).
+    if trade_clean:
+        _entered = (trade_clean.get("status") in ("filled", "closed")
+                    or trade_clean.get("entry_price") is not None)
+        if _entered:
+            trade_clean.pop("skip_reason", None)
+
     return {
         "ticker": ticker,
         "alert_date": ad.isoformat() if hasattr(ad, "isoformat") else str(ad),
-        "trade": _clean(trade),
+        "trade": trade_clean,
         "alert": _clean(alert),
         "outcome": _clean(outcome),
         "themes": [_clean(t) for t in themes] if themes else [],
