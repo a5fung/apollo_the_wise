@@ -161,18 +161,31 @@ problem. The loop's skepticism is only correct when sourcing is complete.
 
 False-flip rate ≥ 1/10, sourcing-origin — exactly the metric the eval existed to surface.
 
-### Verdict + the reframe (this is the useful outcome)
+### Verdict + the reframe (stated at the precision the data supports)
+- **The clean, sourcing-INDEPENDENT value-add is ABVX** (not the flip count). Complete
+  evidence pack (6-K present), investigator cherry-picked the bullish efficacy lines, PM
+  correctly flipped *direction* to bearish on the malignancy/gap-down — value the mechanical
+  grounding check provably cannot give, with **no sourcing confound**. That is the strongest
+  evidence the advisor-pass earns its place. (The verdict-flip tally — 1 correct PGY / 1
+  false GRRR / 2 gray — does NOT by itself carry "adds value.")
 - **NOT a grading/suppression gate** until #210 sourcing is solid — downstream of
-  incomplete sources, the loop is a winner-suppressor (it would have killed the GRRR EP).
-- **IS a sourcing-QA detector NOW:** "hard gap on volume + grounded loop finds no catalyst"
-  is a high-confidence **sourcing-gap flag** — the GRRR signature. That is precisely the
-  priority queue for **#211** (unknown-rate / source-coverage discovery). The loop's
-  false-negatives are a *feature* for #210/#211, not just a bug.
-- **A/B:** Opus is the better critic (stable on the ambiguous names where Sonnet thrashes;
-  2× confabs caught); cost gap is pennies/day in a nightly job. If #212 graduates *after*
-  #210, Opus-critic is justified (quality-over-cost) — but that is the first Opus in a prod
-  path and an explicit operator decision. Sonnet suffices for the cheaper sourcing-QA role.
-- Stability (10/10 Opus), the direction field, and the genuine-confab catches all hold.
+  incomplete sources the loop is a winner-suppressor (it would have killed the GRRR EP).
+- **As a sourcing-QA feed it is LOW-PRECISION, not a high-confidence flag.** PGY and GRRR
+  produce **identical** loop output (`no_real_catalyst`), yet PGY is a *true* no-catalyst
+  (genuine squeeze) and GRRR is *false* (missed $2B deal). The loop **cannot distinguish
+  "no catalyst because there is none" from "no catalyst because we missed it"** — that is
+  the problem restated, not solved. So it is a **low-precision triage feed into #211**
+  (good recall — it caught the one real gap; poor precision — it also fires on real
+  squeezes), tolerable ONLY because #211's downstream re-source step is cheap (a false
+  positive costs one wasted re-source). Do NOT anchor #211 on it as a reliable flag.
+- **A/B:** Opus is **more stable** (10/10 vs Sonnet 8/10 — Sonnet thrashes on ambiguous
+  PGY/LAC). But Opus is also **more aggressive** (2× confab-flags, harder `no_real_catalyst`
+  calls), and on a substrate whose failure mode is *over-aggressive false-negatives* (GRRR)
+  that is double-edged — Sonnet's softer `unconfirmed` on NVTS is arguably the more honest
+  call. So: Opus wins on stability; Sonnet is less trigger-happy, which may matter more once
+  you've seen the GRRR false-flip. Cost gap is pennies/day in a nightly job. Critic choice
+  is a post-#210 decision; neither is promotable to a gate now.
+- Stability (10/10 Opus), the direction field, and the ABVX-class genuine catches all hold.
 
 ## Side finding (data quality)
 ABVX's `mi_ep_alerts.gap_pct` recorded **+15.1%**, but the catalyst reality was a ~44%
