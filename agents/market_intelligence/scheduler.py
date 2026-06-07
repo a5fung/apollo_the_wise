@@ -2550,6 +2550,55 @@ async def _ep_scan_watchdog():
                     now.date(),
                 )
                 logger.info(f"EP scan watchdog: {scan_count} scans ran, {alert_count} alerts — OK")
+
+                # #210 Wave A/B verify + #211 daily KPI seed: confirm the catalyst
+                # corpus path emitted source-provenance, and record the unknown-rate
+                # (graded strong/gc with NO direct source). Telegram ONLY on the
+                # broken case (alerts graded but zero provenance = path silently
+                # dead — the #173 silent-death class); the healthy summary is an
+                # audit row only (alert-vs-audit discipline). DB-sourced, no module
+                # state (feedback-scheduler-aggregators-db-sourced).
+                try:
+                    prov_rows = await conn.fetch(
+                        "SELECT detail FROM mi_audit_log "
+                        "WHERE event_type = 'ep_catalyst_provenance' AND created_at >= $1",
+                        now.replace(hour=0, minute=0, second=0, microsecond=0),
+                    )
+                    n_prov = len(prov_rows)
+                    n_direct = n_unknown = 0
+                    by_class: dict[str, int] = {}
+                    for r in prov_rows:
+                        try:
+                            d = json.loads(r["detail"] or "{}")
+                        except (ValueError, TypeError):
+                            continue
+                        if d.get("has_direct_source"):
+                            n_direct += 1
+                        elif d.get("catalyst_quality") in ("strong", "game_changer"):
+                            n_unknown += 1
+                        for cls in (d.get("sources") or {}):
+                            by_class[cls] = by_class.get(cls, 0) + 1
+                    if alert_count and n_prov == 0:
+                        await send_telegram_message(
+                            "🔴 *EP Catalyst Provenance*\n"
+                            f"{alert_count} EP alert(s) today but 0 provenance rows — the "
+                            "#210 Benzinga/grade-corpus path may not be firing. Check the "
+                            "`ep_catalyst_provenance` audit + EP scan logs."
+                        )
+                    else:
+                        await log_audit_event(
+                            "ep_provenance_daily",
+                            f"{n_prov} graded · {n_direct} direct · {n_unknown} unknown(strong/gc,no-direct)",
+                            json.dumps({
+                                "date": now.date().isoformat(),
+                                "graded": n_prov, "direct_sourced": n_direct,
+                                "unknown_cohort": n_unknown, "by_source_class": by_class,
+                            }),
+                        )
+                        logger.info(f"EP provenance: {n_prov} graded, {n_direct} direct, "
+                                    f"{n_unknown} unknown, classes={by_class}")
+                except Exception as _pe:
+                    logger.warning(f"EP provenance check skipped: {_pe}")
     except Exception as e:
         logger.error(f"EP scan watchdog failed: {e}")
 
