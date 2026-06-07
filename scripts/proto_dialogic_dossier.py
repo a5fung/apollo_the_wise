@@ -74,7 +74,7 @@ def _extract_json(raw: str) -> dict:
     return json.loads(raw[start:])
 
 
-async def _llm(client, model, system, prompt, max_tokens=900):
+async def _llm(client, model, system, prompt, max_tokens=1800):
     resp = await client.messages.create(
         model=model, max_tokens=max_tokens, system=system,
         messages=[{"role": "user", "content": prompt}],
@@ -240,6 +240,17 @@ async def main():
         print(f"     claims={len(v2.get('claims',[]))} ungrounded={ungrounded_v2}")
         print(f"  >>> DELTA: verdict_changed={verdict_changed}  "
               f"ungrounded {ungrounded_v1}->{ungrounded_v2}  confab_caught={len(crit.get('confabulated_claims',[]))}")
+        # ── ADJUDICATION DUMP (the RUM lesson — eyeball quotes vs source) ──────
+        print("  -- v1 claims (quote → grounded_in) --")
+        for c, g in zip(v1.get("claims", []) or [], g1):
+            print(f"     [{'OK ' if g['ok'] else 'UNGROUNDED'}] {c.get('claim','')[:100]}")
+            print(f"        quote: \"{(c.get('quote','') or '')[:160]}\"  (named={g['named']} grounded_in={g['grounded_in']})")
+        print(f"  -- PM critique --\n     confab: {crit.get('confabulated_claims', [])}")
+        print(f"     guidance: {(crit.get('guidance','') or '')[:300]}")
+        if v2 is not v1:
+            print("  -- v2 claims --")
+            for c, g in zip(v2.get("claims", []) or [], g2):
+                print(f"     [{'OK ' if g['ok'] else 'UNGROUNDED'}] {c.get('claim','')[:100]}")
         summary.append(dict(ticker=tk, date=dt, v1=v1.get("verdict"), pm=crit.get("verdict_should_be"),
                             v2=v2.get("verdict"), verdict_changed=verdict_changed,
                             ungrounded_v1=ungrounded_v1, ungrounded_v2=ungrounded_v2,
