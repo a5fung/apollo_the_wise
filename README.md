@@ -32,6 +32,7 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | Any stock/investment question | Apollo consults market agent before answering |
 | `/setup TICKER [days]` | Reverse-lookup detector chronology across 10 tables (EP, 9M, wick, parabolic, flag, themes, trades) with TradingView chart link |
 | `/flags` / `/flags TICKER` | Continuation flag detector (VCP / Qullamaggie tightening) — today's COILED + TRIGGERED, or 14d ticker history |
+| `/detectors` | Intraday entry-technique detector roll-up (#218) — flag-break / support-test / MA-pullback / low-vol-rest / U&R (all shadow) |
 | `/watchlist` | Friday curated watchlist (Friday 6 PM ET) — best ideas across all sources + TradingView import block |
 | `/wick` | Wick-fill candidates (telemetry) — today's candidates + 30d fill-rate footer |
 | `/why TICKER [date]` | EP lifecycle timeline — every gate hit/miss for one alert |
@@ -149,8 +150,8 @@ Bottom-up from price action (Marios Stamatoudis methodology). Themes emerge from
 - **Sub-theme parent relationship:** `parent_theme` column in `mi_themes` — sub-themes coexist with their parent instead of being merged back
 - **Commodity contradiction rules:** Stocks can't be in commodity-contradicting themes (e.g. gold miners can't be in uranium/nuclear themes) — stripped at enforcement layer
 - **Jaccard history fallback:** Stage/age history inherited from prior name via ticker-overlap matching — renamed themes don't reset to Nascent
-- **Description-based validation:** `_validate_theme_membership` runs Mon/Wed/Fri — asks Claude Haiku if each stock's description still matches the theme; removes mismatches
-- **Persistent exclusions:** `mi_theme_exclusions` table — once a ticker is removed from a theme (via validation or manual command), it's permanently banned from re-entering that theme. Enforcement at DB layer, before any scoring runs.
+- **Description-based validation:** `_validate_theme_membership` runs Mon/Wed/Fri — asks Claude **Sonnet** (swapped from Haiku 2026-06-06, #213, to stop core-member false-removals like SNDK/SIMO on a narrowing theme name) if each stock's description still matches the theme; removes mismatches. An **operator-protection shield** (#213) makes operator-bypassed (ticker, theme) pairs immune to re-removal
+- **Persistent exclusions:** `mi_theme_exclusions` table — **operator-directed permanent bans ONLY**. A ticker banned via operator command is permanently kept out of that theme (DB-layer enforcement, before any scoring). **Validation removals do NOT auto-populate this** — deliberately: bad descriptions once permanently banned TSEM from the semiconductor theme
 - **Advisor strategy:** Theme discovery and assignment use Claude Sonnet with an Opus advisor tool. Sonnet consults Opus on genuinely hard decisions (borderline clusters, ambiguous assignments) — all other calls go straight to output. Capped at 3 Opus calls per run.
 
 **Manage themes from Telegram:**
@@ -394,8 +395,9 @@ Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct a
 MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 
 - **Inputs:** Gap %, relative volume, catalyst quality (Claude), neglect factor, float, regime multiplier
-- **HIGH (≥85):** Immediate Telegram alert during pre-market scan
-- **MODERATE (≥65):** Shown in morning briefing
+- **HIGH (≥ `ep_threshold`, regime-dependent — typically ~65–75, see Market Regime table):** Immediate Telegram alert + ORB submission window during the pre-market scan
+- **MODERATE (`50 ≤ score < ep_threshold`):** Shown in morning briefing (an earnings-day gap ≥10% can promote MODERATE→HIGH; `< 50` skips)
+- **Catalyst sourcing + grading (June, evolving):** direct SEC **8-K + 6-K** ingestion (#187/#208, live) feeds the grade — closes the RUM/SE class where LLM-discovery confabulated or missed the filing; a grounded-summary **Sonnet** grade re-arch (#190) + a **materiality** gate (#189 — deal value must be significant vs market cap; "news existence ≠ EP-grade") are shadow→promote; a multi-axis **fire-panel advisory** (#200/#201) annotates whether a theme/policy/shortage "fire" was seen — advisory only, NOT yet load-bearing on the score
 - **Perplexity cross-validation:** When Claude + Perplexity agree on catalyst → 1.2x confidence multiplier
 - **Hedge-phrase downgrade** (Track B Layer 2): when `perplexity_answer` contains hedge phrases ("no specific information", "couldn't find", etc.), downgrade catalyst one notch and skip the agreement boost — defensive read against chained-LLM hollow-input grading
 - **M&A hard filter** (`ma_filter.py`, three layers): EP catalyst classifier → `_MNA_KEYWORDS` text scan over catalyst texts → Polygon news headline backstop. SSoT shared by EP and flag detectors so both setups close the same coverage gap
