@@ -62,6 +62,7 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
     case "$f" in
       channels/*|core/*|main.py)              NEED_ORCH=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
+      tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy
       *)                                      NEED_ORCH=1; NEED_MARKET=1 ;;  # shared/, docker/, requirements/, … → both
     esac
   done <<< "$CHANGED"

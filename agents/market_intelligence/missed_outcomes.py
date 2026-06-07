@@ -554,6 +554,23 @@ _KIND_LABELS: dict[str, str] = {
 # sub-$5 names; surfacing penny-stock rockets just creates noise.
 _DEFAULT_PRICE_FLOOR = 5.0
 
+# Shared predicate (#222): suppress a `duplicate_scan` row when a NON-duplicate
+# sibling exists for the same ticker+date — the dedup path records ep_score=NULL
+# by design, so surfacing it beside the real moderate/high row is redundant noise.
+# Stand-alone duplicate_scan rows (no sibling) still surface. DRY-extracted from
+# 3 identical inline copies; interpolated into each query's f-string. The main
+# table MUST be aliased `m` at every call site.
+_SUPPRESS_DUP_SIBLING_SQL = """
+                  AND NOT (
+                      m.skip_category = 'duplicate_scan'
+                      AND EXISTS (
+                          SELECT 1 FROM mi_ep_missed_outcomes sib
+                          WHERE sib.ticker = m.ticker
+                            AND sib.alert_date = m.alert_date
+                            AND sib.skip_category <> 'duplicate_scan'
+                      )
+                  )"""
+
 
 async def top_missed_winners(
     window_days: int = 30,
@@ -597,22 +614,8 @@ async def top_missed_winners(
                 FROM mi_ep_missed_outcomes m
                 WHERE m.alert_date >= CURRENT_DATE - $1::INT
                   AND ({col} IS NOT NULL OR {max_col} IS NOT NULL)
-                  -- Suppress duplicate_scan rows when a non-duplicate sibling
-                  -- exists for the same ticker+date — the dedup path records
-                  -- ep_score=NULL by design (the alert already scored on an
-                  -- earlier scan tick); surfacing it alongside the real
-                  -- moderate_alert / high_unentered row is redundant noise.
-                  -- Stand-alone duplicate_scan rows (no sibling) still surface
-                  -- so legitimately suppressed-only cases remain visible.
-                  AND NOT (
-                      m.skip_category = 'duplicate_scan'
-                      AND EXISTS (
-                          SELECT 1 FROM mi_ep_missed_outcomes sib
-                          WHERE sib.ticker = m.ticker
-                            AND sib.alert_date = m.alert_date
-                            AND sib.skip_category <> 'duplicate_scan'
-                      )
-                  )
+                  -- duplicate_scan sibling suppression (#222 shared predicate)
+                  {_SUPPRESS_DUP_SIBLING_SQL}
                   {untradeable_clause}
             )
             SELECT * FROM base
@@ -639,23 +642,14 @@ async def missed_by_category(window_days: int = 30) -> list[dict]:
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             WITH base AS (
                 SELECT skip_category, ticker, alert_date,
                        ret_5d, max_high_5d
                 FROM mi_ep_missed_outcomes m
                 WHERE alert_date >= CURRENT_DATE - $1::INT
-                  -- Suppress redundant duplicate_scan sibling rows; see
-                  -- top_missed_winners for full rationale.
-                  AND NOT (
-                      m.skip_category = 'duplicate_scan'
-                      AND EXISTS (
-                          SELECT 1 FROM mi_ep_missed_outcomes sib
-                          WHERE sib.ticker = m.ticker
-                            AND sib.alert_date = m.alert_date
-                            AND sib.skip_category <> 'duplicate_scan'
-                      )
-                  )
+                  -- duplicate_scan sibling suppression (#222 shared predicate)
+                  {_SUPPRESS_DUP_SIBLING_SQL}
             ),
             ranked AS (
                 SELECT skip_category, ticker, alert_date, ret_5d, max_high_5d,
@@ -720,16 +714,8 @@ async def top_shouldve_entered_gaps(
               AND m.skip_category IN {_SHOULDVE_ENTERED_CATEGORIES}
               AND COALESCE(m.open_d0, 0) >= {_DEFAULT_PRICE_FLOOR}
               AND m.max_high_5d >= $2
-              -- Suppress redundant duplicate_scan sibling rows (see
-              -- top_missed_winners for the full rationale).
-              AND NOT (
-                  m.skip_category = 'duplicate_scan'
-                  AND EXISTS (
-                      SELECT 1 FROM mi_ep_missed_outcomes sib
-                      WHERE sib.ticker = m.ticker AND sib.alert_date = m.alert_date
-                        AND sib.skip_category <> 'duplicate_scan'
-                  )
-              )
+              -- duplicate_scan sibling suppression (#222 shared predicate)
+              {_SUPPRESS_DUP_SIBLING_SQL}
             ORDER BY m.max_high_5d DESC NULLS LAST
             LIMIT $3
         """, window_days, min_peak, limit)
