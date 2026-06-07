@@ -219,7 +219,22 @@ def _fallback_narrative(ctx: dict) -> str:
     ]
     if trade.get("skip_reason"):
         from agents.market_intelligence.broker.skip_reasons import humanize
-        lines.append(f"• Skip reason: {humanize(trade['skip_reason'])}")
+        # #228: a CLOSED/FILLED trade entered and exited — so a skip_reason on it is
+        # necessarily a LATER re-entry block (e.g. block:r3_reentry_disabled), NOT the
+        # entry gate. Labelling it bare "Skip reason: re-entry disabled" made the
+        # weekly-review narrator infer "blocked signal traded through" (a recurring
+        # false postmortem inference — RLAY/DY/DELL/RUM, verified false on RUM 6/4:
+        # original entry filled 9:44 → stopped out → re-entry correctly blocked 9:49).
+        # Relabel deterministically so the narrator can't make the causal error.
+        _entered = (trade.get("status") in ("filled", "closed")
+                    or trade.get("entry_price") is not None)
+        if _entered:
+            lines.append(
+                f"• Post-entry note: the original entry FILLED; a LATER re-entry was "
+                f"correctly blocked ({humanize(trade['skip_reason'])}). This is enforcement "
+                f"working as designed — NOT a blocked signal trading through.")
+        else:
+            lines.append(f"• Skip reason: {humanize(trade['skip_reason'])}")
 
     pnl = trade.get("total_pnl")
     pnl_str = f"${pnl:+,.2f}" if isinstance(pnl, (int, float)) else "n/a"
