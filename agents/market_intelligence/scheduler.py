@@ -1981,24 +1981,23 @@ async def _catalyst_downgrade_digest_job():
 
 
 async def _9m_pace_digest_job():
-    """Hourly rollup of 9M EP pace (anticipation) alerts (#133, 2026-05-27).
+    """End-of-day rollup of 9M EP pace (anticipation) alerts (#133; EOD
+    consolidation 2026-06-07).
 
-    Pace alerts are projection-based — "this ticker is on track to hit 9M
-    by close" — not realtime-actionable. They were 89% of yesterday's
-    pinged 9M volume (16/18). Removed from the per-5-min digest in
-    ninem_detector; this job rolls them up at top of hour for 10/11/12
-    ET, querying mi_9m_ep_alerts for the prior 60-min ET window.
+    Pace alerts are projection-based — "on track to hit 9M by close" — not
+    realtime-actionable (they were ~89% of pinged 9M volume). Moved from 3×
+    hourly (10/11/12 ET) to ONE 16:00 ET roll-up of the whole trading day,
+    matching the entry-technique EOD digest (#168). Actual 9M crossings still
+    ride the prompt per-tick digest in ninem_detector.
 
-    Dedup: skip tickers that ALSO fired as actual in the same hour (they
-    already got a realtime ping). Cap at 10 lines (rare, but avoids
-    runaway digest).
-
-    Empty hour → no Telegram.
+    Dedup: skip tickers that ALSO fired as actual today (already pinged
+    realtime). Ranked by projected volume, capped with overflow. Empty day →
+    no Telegram.
     """
     pool = await get_pool()
     now_et = datetime.now(_ET)
-    window_end = now_et.replace(minute=0, second=0, microsecond=0)
-    window_start = window_end - timedelta(hours=1)
+    window_start = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
+    window_end = now_et
 
     # `created_at` is TIMESTAMPTZ — compare directly against tz-aware
     # datetime params. Original SQL applied `AT TIME ZONE 'America/New_York'`
@@ -2043,16 +2042,17 @@ async def _9m_pace_digest_job():
     if not seen:
         return 0
 
-    ranked = sorted(
+    ranked_all = sorted(
         seen.values(),
         key=lambda r: (r["projected_vol"] or 0),
         reverse=True,
-    )[:10]
+    )
+    ranked = ranked_all[:20]
 
-    clock_start = window_start.strftime("%H:%M")
-    clock_end = window_end.strftime("%H:%M")
+    date_str = now_et.strftime("%b %d")
     parts = [
-        f"🏦 *9M EP Pace — {clock_start}–{clock_end} ET ({len(ranked)})*",
+        f"🏦 *9M EP Pace — EOD {date_str} ({len(ranked_all)})*",
+        "_Projection-based anticipations · watchlist, not entries._",
     ]
     for r in ranked:
         proj_m = (r["projected_vol"] or 0) / 1_000_000
@@ -2060,6 +2060,8 @@ async def _9m_pace_digest_job():
             f"• `{r['ticker']}` ~{proj_m:.1f}M proj "
             f"${r['current_price']:.2f} +{(r['gap_pct'] or 0):.1f}%"
         )
+    if len(ranked_all) > 20:
+        parts.append(f"…+{len(ranked_all) - 20} more")
     try:
         await send_telegram_message("\n".join(parts))
     except Exception as e:
@@ -3591,13 +3593,14 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # 9M EP Pace digest: hourly rollup at 10/11/12 ET (#133, 2026-05-27).
     # Pace alerts (89% of pinged 9M volume on 2026-05-27) aren't realtime
-    # actionable — bundle them at top of hour. Actual 9M still rides the
-    # per-5-min digest in ninem_detector. Afternoon hours skipped: pace
-    # signal value drops after midday (no Day-2 setup window).
+    # actionable — roll them up ONCE at 16:00 ET (whole-day window), matching
+    # the entry-technique EOD digest (#168 noise fix, 2026-06-07). Was 3× hourly
+    # (10/11/12); operator: anticipation → 1/day EOD. Actual 9M still rides the
+    # prompt per-5-min digest in ninem_detector.
     _scheduler.add_job(
         audit_wrap(_9m_pace_digest_job, JOB_9M_PACE_DIGEST),
         CronTrigger(
-            hour="10-12", minute=0,
+            hour=16, minute=0,
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_9M_PACE_DIGEST,
