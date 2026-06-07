@@ -342,6 +342,41 @@ def build_grounded_text(
     return "\n\n".join(parts) or None
 
 
+def corpus_provenance(sec_filing: Optional[dict],
+                      benzinga_items: list[dict],
+                      perplexity_answer: Optional[str],
+                      grounded_text: Optional[str],
+                      fmp_news: list[dict]) -> dict:
+    """Source-class provenance of what the GRADE actually consumed (#210 Wave B).
+
+    Returns {"sources": {class: count}, "has_direct_source": bool}. Mirrors the
+    grader's INPUT BRANCH, not build_grounded_text — they diverge in the
+    fallback: `_classify_catalyst_claude` reasons on `grounded_text` (SEC +
+    Benzinga + web) when present, else falls back to `all_news` = fmp headlines.
+    So an fmp-only mover records `fmp_aggregator`, NOT `{}` — "aggregator-only"
+    and "total silence" are different sourcing gaps for #211.
+
+    `has_direct_source` is the load-bearing field: graded strong/game_changer
+    with it False = the sourcing-gap cohort the #211 KPI drives down. Derived
+    structurally (`sec_*` or `benzinga_pr`) so Wave D's `sec_425` counts direct
+    automatically. Deterministic, no I/O.
+    """
+    sources: dict[str, int] = {}
+    if grounded_text:
+        if sec_filing:
+            form = (sec_filing.get("form") or "").lower().replace("-", "")  # 8-K -> 8k
+            sources[f"sec_{form}" if form else "sec"] = 1
+        if benzinga_items:
+            sources["benzinga_pr"] = len(benzinga_items)
+        if perplexity_answer:
+            sources["web_perplexity"] = 1
+    elif fmp_news:
+        # Grade fell back to all_news (fmp headlines) — aggregator-only coverage.
+        sources["fmp_aggregator"] = len(fmp_news)
+    has_direct = any(k.startswith("sec_") or k == "benzinga_pr" for k in sources)
+    return {"sources": sources, "has_direct_source": has_direct}
+
+
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None) -> tuple[str, str]:
     """
     Use Claude to classify catalyst quality via structured tool use.
@@ -1317,6 +1352,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
             catalyst_quality, claude_analysis = await claude_task
+
+            # #210 Wave B — record source-class provenance of the grounded corpus that
+            # produced this grade (telemetry-only; once per ticker/day on the uncached
+            # path, matching the catalyst cache). Feeds the #211 unknown-rate-by-source
+            # KPI: graded strong/game_changer with has_direct_source=False = a sourcing
+            # gap. Error-wrapped — provenance logging can never break the scan.
+            try:
+                _prov = corpus_provenance(sec_filing, benzinga_items, perplexity_answer,
+                                          grounded_text, fmp_news)
+                await log_audit_event(
+                    "ep_catalyst_provenance",
+                    f"{ticker} {catalyst_quality} direct={_prov['has_direct_source']}",
+                    json.dumps({
+                        "ticker": ticker,
+                        "alert_date": today.isoformat(),
+                        "catalyst_quality": catalyst_quality,
+                        **_prov,
+                    }),
+                )
+            except Exception as _e:
+                logger.debug(f"{ticker}: provenance log skipped — {_e}")
 
             # Skip M&A / buyout — price capped at deal value, no momentum trade.
             # Single-source filter (ma_filter.is_likely_ma) — same logic used by
