@@ -6288,3 +6288,41 @@ reviews:
       live flip.
     status: pending
     added_on: 2026-05-27
+
+  - review_id: materiality_fire_status_activation
+    title: "#189 materiality → fire_status flip (catalyst axis) — evidence gate"
+    question: >
+      Should the #201 fire panel demote a graded-strong/game_changer EP to the
+      unknown buckets when its catalyst is CONFIRMED immaterial (minor/immaterial
+      tier) to the company? The signal is built (catalyst_materiality.py, ~23% of
+      all strong/gc reclassify), the flip diff is staged (ADR 0010), but it must
+      NOT ship until entry-aware R evidence supports it. The 6/6 eval proved the
+      fwd-from-gap-close metric is SATURATED (93-97% win both arms — drift, not
+      discrimination), so that metric is disqualified. The activation needs live
+      paper-R on the catalyst-ONLY-fire cohort (fire_axes==['catalyst']), which
+      only exists once #200/#201 first-fire (Mon 6/8) AND the paper-R cohort grows.
+    predicate_sql: null
+    threshold: 1
+    earliest_review_date: 2026-07-06
+    action_when_ready: |
+      Pre-req: #200/#201 fire_status baseline VERIFIED live (Mon 6/8 clean) +
+      the catalyst-only-fire cohort has enough closed paper-R rows.
+
+      1. Build the catalyst-only-fire cohort (mi_ep_alerts.fire_axes == {'catalyst'}
+         only, grade strong/gc) joined to closed paper-trade R (total_pnl/risk_dollars).
+      2. Split by materiality_tier (material/transformative vs minor/immaterial,
+         computed via catalyst_materiality.py rule-first + Sonnet for non-deal).
+      3. Compare R-expectancy / win / avg-R of the two arms. This is the metric the
+         eval LACKED (fwd-from-gap-close was saturated). Immaterial clearly worse on
+         R => evidence supports the demotion gate.
+      4. If supported: apply the staged flip diff in ADR 0010 to
+         _compute_fire_status (the fail-open materiality_tier kwarg), add a
+         CHANGE_PROCESS entry, update the fire-panel SSoT same commit.
+      5. **HARD GATE:** operator signs off on the EXACT demotion rule before the
+         flip. The agent must NOT classify the rule "correct" without operator
+         judgment. Advisory-only until then; catalyst_materiality.py stays
+         unimported by the live path.
+
+      Doc: docs/decisions/0010-materiality-fire-status-activation.md. Task #189.
+    status: pending
+    added_on: 2026-06-07
