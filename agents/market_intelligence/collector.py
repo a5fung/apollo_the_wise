@@ -459,12 +459,72 @@ async def get_alpaca_news(
                 "author": n.get("author", "") or "",
                 "source": n.get("source", "") or "",
                 "url": n.get("url", "") or "",
+                # symbols tagged on the item — used by is_primary_subject_news()
+                # to reject multi-tag bleed + roundups (#210 Wave A relevance filter)
+                # and by Wave B source-provenance.
+                "symbols": list(n.get("symbols", []) or []),
                 "created_at": n.get("created_at", "").isoformat() if hasattr(n.get("created_at", ""), "isoformat") else str(n.get("created_at", "")),
             })
         return out
     except Exception as e:
         logger.warning(f"Alpaca News failed for {ticker} ({start}..{end}): {e}")
         return []
+
+
+# Roundup / basket headlines that name many tickers and are never "about" one
+# stock — the #88/#90 multi-ticker contamination class (e.g. "12 IT Stocks
+# Moving", "Stocks To Watch", "Midday Movers"). Rejected before any item enters
+# the grounded catalyst corpus (#210 Wave A).
+_ROUNDUP_RE = re.compile(
+    r"\b\d+\s+[\w\s]{0,30}?\b(stocks|stories|movers|things|tickers|names|charts|trades|picks)\b"
+    r"|\bstocks?\s+(to\s+watch|to\s+buy|moving|on\s+the\s+move|in\s+focus|in\s+play)\b"
+    r"|\b(midday|premarket|pre-market|after-hours|market)\s+(movers|wrap|update|roundup|recap)\b"
+    r"|\bthings\s+to\s+know\b|\bwhat\s+to\s+watch\b|\bmovers\s+(&|and)\s+shakers\b",
+    re.IGNORECASE,
+)
+
+
+def is_primary_subject_news(item: dict, ticker: str, company_name: str = "") -> bool:
+    """True if a news item is primarily ABOUT `ticker`, not a multi-tag bleed.
+
+    Guards the grounded catalyst corpus (#210 Wave A) against the #88/#90
+    contamination class: Alpaca/Benzinga returns items co-tagged with the
+    query ticker even when the article's real subject is a sibling (e.g. an
+    SMCI "falling 11%" headline co-tagged GRRR) or a basket roundup ("12 IT
+    Stocks Moving"). Errs toward PRECISION — when in doubt, drop — because the
+    grade reasons on grounded_text and an off-subject headline confabulates it.
+
+    Keep when, AND the title is not a roundup:
+      - the ticker appears as a standalone token in the title, OR
+      - the company's lead name-token appears in the title, OR
+      - the item is single-symbol-tagged (a clean per-ticker PR).
+    """
+    title = (item.get("title") or "")
+    if not title:
+        return False
+    if _ROUNDUP_RE.search(title):
+        return False
+
+    tk = (ticker or "").strip().upper()
+    if tk and re.search(rf"\b{re.escape(tk)}\b", title.upper()):
+        return True
+
+    # Company lead token (e.g. "Gorilla" from "Gorilla Technology Group, Inc.").
+    # Skip generic/legal tokens so we don't match on "Inc"/"Group"/"Holdings".
+    _GENERIC = {"THE", "INC", "INCORPORATED", "CORP", "CORPORATION", "CO", "COMPANY",
+                "GROUP", "HOLDINGS", "HOLDING", "LTD", "LIMITED", "PLC", "SA", "NV",
+                "AG", "TECHNOLOGIES", "TECHNOLOGY", "INTERNATIONAL", "SYSTEMS"}
+    for tok in re.split(r"[^A-Za-z]+", company_name or ""):
+        if len(tok) >= 4 and tok.upper() not in _GENERIC:
+            if re.search(rf"\b{re.escape(tok)}\b", title, re.IGNORECASE):
+                return True
+            break  # only test the lead token — avoids matching trailing generics
+
+    syms = item.get("symbols") or []
+    if len(syms) == 1 and tk and str(syms[0]).upper() == tk:
+        return True
+
+    return False
 
 
 async def get_polygon_news(

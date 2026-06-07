@@ -48,6 +48,8 @@ from agents.market_intelligence.collector import (
     get_fmp_earnings,
     get_fmp_analyst_ratings,
     get_fmp_news,
+    get_alpaca_news,
+    is_primary_subject_news,
     search_news_perplexity,
     get_sec_recent_filings,
 )
@@ -313,6 +315,31 @@ _CATALYST_TOOL = {
         "required": ["quality", "analysis"],
     },
 }
+
+
+def build_grounded_text(
+    sec_filing: Optional[dict],
+    benzinga_items: list[dict],
+    perplexity_answer: Optional[str],
+) -> Optional[str]:
+    """Assemble the grounded catalyst corpus the grade reasons on.
+
+    Ordered primary-first: SEC filing body → Benzinga press wires (#210 Wave A)
+    → web synthesis. Shared by run_ep_scan and the offline re-grade validation
+    so both build the byte-identical string. Every input is already
+    error-wrapped at fetch (returns [] / None), so this never raises.
+    """
+    parts: list[str] = []
+    if sec_filing:
+        parts.append(
+            f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] {sec_filing['text']}")
+    for b in benzinga_items:
+        created = (b.get("created_at") or "")[:10]
+        body = (b.get("summary") or b.get("content") or "").strip()
+        parts.append(f"[Benzinga {created}] {(b.get('title') or '').strip()}. {body}".strip())
+    if perplexity_answer:
+        parts.append(f"[Web summary] {perplexity_answer}")
+    return "\n\n".join(parts) or None
 
 
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None) -> tuple[str, str]:
@@ -1241,7 +1268,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
         else:
             # Fetch all external data concurrently
-            profile, fmp_news, ratings, perplexity_answer, sec_filings = await asyncio.gather(
+            profile, fmp_news, ratings, perplexity_answer, sec_filings, alpaca_news = await asyncio.gather(
                 get_fmp_profile(ticker),
                 get_fmp_news(ticker),
                 get_fmp_analyst_ratings(ticker),
@@ -1249,6 +1276,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # 8-K (US) + 6-K (foreign issuers — SE/BABA earnings & deals, #208).
                 # 6-K text is pulled from the EX-99 exhibit, not the cover boilerplate.
                 get_sec_recent_filings(ticker, forms=("8-K", "6-K")),
+                # Benzinga press wires via Alpaca (#210 Wave A) — the press-release-only
+                # catalyst class (GRRR 6/2 $2B Supermicro deal) that both SEC (6-K lags
+                # the same-day PR for foreign issuers) and Perplexity (confabulated "no
+                # large contract") missed. Free, error-wrapped → [], never slows the scan.
+                get_alpaca_news(ticker),
             )
             await asyncio.sleep(0.5)  # Single FMP cooldown after concurrent burst
             upgrades_30d = sum(1 for r in ratings if r.get("analystRatingsStrongBuy", 0) > 0)
@@ -1260,20 +1292,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 [n.get("title", "") for n in fmp_news[:3]]
             )
 
-            # Grounded catalyst summary (#187/#190): authoritative SEC 8-K body (the catalyst
-            # the LLMs were blind to — e.g. RUM 6/4 $270M GPU-cloud deal) + the web synthesis,
-            # UNTRUNCATED — the grade reasons on this, not raw 200-char headlines. SEC fetch is
-            # error-wrapped (returns []), so it can never slow or break the scan.
+            # Grounded catalyst summary (#187/#190): authoritative SEC 8-K/6-K body (the catalyst
+            # the LLMs were blind to — e.g. RUM 6/4 $270M GPU-cloud deal) + Benzinga press wires
+            # (#210 Wave A — GRRR 6/2 class) + the web synthesis, UNTRUNCATED — the grade reasons
+            # on this, not raw 200-char headlines. Every fetch is error-wrapped, so this can never
+            # slow or break the scan.
             sec_filing = next((f for f in sec_filings if f.get("text")), None)
-            grounded_parts = []
+            # #210 Wave A: primary-subject-filtered Benzinga items (drops the #88/#90 multi-tag
+            # bleed + roundups), capped so they don't crowd the SEC body in the 6000-char grade
+            # window. Grounded-corpus only — deliberately NOT fed to the M&A keyword scan this
+            # wave (avoids regressing is_likely_ma); the grade's own mna verdict still sees it.
+            benzinga_items = [
+                n for n in (alpaca_news or [])
+                if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
+            ][:3]
             if sec_filing:
-                grounded_parts.append(
-                    f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] {sec_filing['text']}")
                 news_summary = (f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] "
                                 + news_summary)[:600]
-            if perplexity_answer:
-                grounded_parts.append(f"[Web summary] {perplexity_answer}")
-            grounded_text = "\n\n".join(grounded_parts) or None
+            grounded_text = build_grounded_text(sec_filing, benzinga_items, perplexity_answer)
 
             # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
             claude_task = asyncio.create_task(
