@@ -54,7 +54,7 @@ async def _stored_verdict(ticker: str, as_of: date):
         async with pool.acquire() as con:
             return await con.fetchrow(
                 """
-                SELECT ticker, alert_date, ep_score, signal_strength, catalyst_quality, catalyst
+                SELECT ticker, alert_date, ep_score, score_tier, catalyst_quality, catalyst
                 FROM mi_ep_alerts
                 WHERE ticker = $1 AND alert_date = $2
                 ORDER BY created_at DESC LIMIT 1
@@ -87,6 +87,15 @@ async def main():
     )
     company = profile.get("companyName", "") if profile else ""
     sec_filing = next((f for f in (sec_filings or []) if f.get("text")), None)
+
+    # AS-OF reconstruction: a filing dated AFTER as_of did not exist on the gap
+    # day — including it would let the control arm "cheat" with hindsight (the
+    # GRRR 6-K filed 6/5 vs the 6/2 gap). Drop it from BOTH arms so the only
+    # same-day primary source for the deal is the Benzinga wire.
+    if sec_filing and str(sec_filing.get("filed", "")) > as_of.isoformat():
+        print(f"-- AS-OF: dropping SEC {sec_filing['form']} filed {sec_filing['filed']} "
+              f"(post-dates {as_of}; did not exist on the gap day)\n")
+        sec_filing = None
 
     # 2. Primary-subject-filter the Benzinga items (the shipping filter).
     benzinga_items = [
@@ -129,18 +138,21 @@ async def main():
     print("=== RESULT ===")
     if stored:
         print(f"  stored 6/2 verdict : score={stored['ep_score']} "
-              f"strength={stored['signal_strength']} quality={stored['catalyst_quality']}")
-        print(f"  stored catalyst    : {(stored['catalyst'] or '')[:120]}")
+              f"tier={stored['score_tier']} quality={stored['catalyst_quality']}")
+        print(f"  stored catalyst    : {(stored['catalyst'] or '')[:300]}")
     print(f"  grade WITHOUT bz   : {q_without}")
     print(f"     -> {a_without[:200]}")
     print(f"  grade WITH bz      : {q_with}")
     print(f"     -> {a_with[:200]}")
     print()
 
-    win = q_with in ("strong", "game_changer") and q_without not in ("strong", "game_changer")
-    if win:
-        print(f"  ✅ PASS — Benzinga flips {ticker}: {q_without} -> {q_with} "
-              f"(isolated to the Benzinga block)")
+    _TIER = {"routine": 0, "mna": 0, "strong": 1, "game_changer": 2}
+    upgraded = _TIER.get(q_with, 0) > _TIER.get(q_without, 0)
+    if upgraded:
+        print(f"  ✅ ISOLATED UPGRADE — Benzinga lifts {ticker}: {q_without} -> {q_with} "
+              f"(only the Benzinga block differs between arms).")
+        print(f"     NOTE: the WITHOUT-bz arm is hindsight-contaminated (Perplexity-now has "
+              f"indexed the deal), so this is a LOWER BOUND on Benzinga's same-day live value.")
     elif q_with == "mna":
         print(f"  ❌ NOT A PASS — flips to 'mna' (suppressed). Grade rule-3 over-broad on "
               f"partnership/supply-deal language. Real finding — do not paper over.")
