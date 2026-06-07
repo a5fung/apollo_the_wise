@@ -1087,6 +1087,81 @@ async def send_flag_digest(
 
 
 # ────────────────────────────────────────────────────────────────────────
+# Consolidated EOD digest for the 5 intraday entry-technique shadow detectors
+# (#168 noise fix, 2026-06-07). Replaces ~23/day per-tick pings (now default-off)
+# with ONE 16:00 ET roll-up. Reads the persisted tables only — detection +
+# telemetry are unchanged; this is purely the surfacing layer.
+# ────────────────────────────────────────────────────────────────────────
+
+# (table, date_col, emoji, label) — every intraday entry-technique detector.
+_INTRADAY_SIGNAL_TABLES = [
+    ("mi_flag_breaks",         "break_date",    "🎯", "Flag-break"),
+    ("mi_flag_ma_pullbacks",   "pullback_date", "📉", "MA-pullback"),
+    ("mi_flag_support_tests",  "test_date",     "🛡", "Support-test"),
+    ("mi_flag_undercut_rally", "ur_date",       "↩️", "Undercut&Rally"),
+    ("mi_flag_low_vol_rests",  "rest_date",     "😴", "Low-vol-rest"),
+]
+
+
+def _build_intraday_signals_digest(scan_date, per_detector) -> Optional[str]:
+    """Pure formatter for the EOD entry-technique digest.
+
+    `per_detector`: list of (emoji, label, [(ticker, in_cohort_bool), ...]).
+    Returns the message, or None when EVERY detector is empty (suppress on
+    zero-fire days — no message at all).
+    """
+    sections, total = [], 0
+    for emoji, label, rows in per_detector:
+        if not rows:
+            continue
+        total += len(rows)
+        names = ", ".join(("🍬" if c else "") + t for t, c in rows[:15])
+        more = f" …+{len(rows) - 15}" if len(rows) > 15 else ""
+        sections.append(f"{emoji} *{label}* ({len(rows)}): {names}{more}")
+    if not sections:
+        return None
+    date_str = scan_date.strftime("%b %d") if hasattr(scan_date, "strftime") else str(scan_date)
+    return "\n".join([
+        f"📋 *Stocks-in-Play — entry-technique signals · {date_str}*",
+        f"_{total} shadow signals across {len(sections)} techniques · telemetry only, no entries._",
+        "",
+        *sections,
+        "",
+        "_Drill-down: `/detectors` · shadow eval pending N≥10._",
+    ])
+
+
+async def run_intraday_signals_eod_digest(scan_date) -> int:
+    """One consolidated EOD digest of the day's intraday entry-technique signals
+    (#168). Reads each detector's table for `scan_date`, sends ONE message, and
+    suppresses entirely on zero-fire days. Error-isolated per table — a missing
+    table (e.g. a detector not yet shipped) skips that section, never the digest.
+    """
+    from agents.market_intelligence import db
+    from agents.market_intelligence.briefing import send_telegram_message
+    pool = await db.get_pool()
+    per_detector = []
+    async with pool.acquire() as conn:
+        for table, dcol, emoji, label in _INTRADAY_SIGNAL_TABLES:
+            try:
+                rows = await conn.fetch(
+                    f"SELECT ticker, COALESCE(in_sugar_baby_cohort, false) AS coh "
+                    f"FROM {table} WHERE {dcol} = $1 ORDER BY ticker",
+                    scan_date,
+                )
+            except Exception as e:
+                logger.warning(f"intraday signals digest: {table} skipped — {e}")
+                rows = []
+            per_detector.append((emoji, label, [(r["ticker"], r["coh"]) for r in rows]))
+    msg = _build_intraday_signals_digest(scan_date, per_detector)
+    if msg is None:
+        logger.info("intraday signals EOD digest: zero fires — suppressed")
+        return 0
+    await send_telegram_message(msg)
+    return sum(len(rows) for _, _, rows in per_detector)
+
+
+# ────────────────────────────────────────────────────────────────────────
 # Intraday flag-break detector (#94, ADR 0005, 2026-05-23 ship Commit 1)
 # ────────────────────────────────────────────────────────────────────────
 #
@@ -1318,28 +1393,34 @@ async def run_intraday_flag_break_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_flag_break audit failed (non-critical): {e}")
 
-    # Telegram alert (consolidated)
-    try:
-        from agents.market_intelligence.briefing import send_telegram_message
-        clock = scan_time.strftime("%H:%M")
-        lines = [
-            f"🎯 *Intraday Flag-Breaks ({len(new_breaks)} new)*",
-            f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
-            "",
-        ]
-        for b in new_breaks:
-            cohort_marker = "🍬 " if b["in_sugar_baby_cohort"] else ""
-            lines.append(
-                f"• {cohort_marker}`{b['ticker']}` — broke ${b['base_high']:.2f} "
-                f"at {b['pct_above_base_high']:+.1f}% "
-                f"(base {b['base_age']}d {b['parent_stage']}, "
-                f"vol {b['volume_pct_of_adv']:.0f}% ADV)"
-            )
-        lines.append("")
-        lines.append("_Drill-down: `/flagbreaks` for today's full list + recent history_")
-        await send_telegram_message("\n".join(lines))
-    except Exception as e:
-        logger.error(f"intraday_flag_break Telegram failed (non-critical): {e}")
+    # Per-tick Telegram OFF by default for this shadow detector (#168 noise fix,
+    # 2026-06-07). DB writes + audit still fire; the day's breaks are surfaced in
+    # ONE 16:00 ET consolidated digest (run_intraday_signals_eod_digest) instead
+    # of ~7 per-tick pings. Toggle SHADOW_DETECTOR_TELEGRAM_ENABLED=true to
+    # re-enable per-tick (e.g. a #168 graduation experiment) — DEFAULT FALSE so a
+    # DR restore / fresh env can't silently bring the noise back (code is SoT).
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            clock = scan_time.strftime("%H:%M")
+            lines = [
+                f"🎯 *Intraday Flag-Breaks ({len(new_breaks)} new)*",
+                f"_5-min scan at {clock} ET — telemetry only, no entries submitted._",
+                "",
+            ]
+            for b in new_breaks:
+                cohort_marker = "🍬 " if b["in_sugar_baby_cohort"] else ""
+                lines.append(
+                    f"• {cohort_marker}`{b['ticker']}` — broke ${b['base_high']:.2f} "
+                    f"at {b['pct_above_base_high']:+.1f}% "
+                    f"(base {b['base_age']}d {b['parent_stage']}, "
+                    f"vol {b['volume_pct_of_adv']:.0f}% ADV)"
+                )
+            lines.append("")
+            lines.append("_Drill-down: `/detectors` for today's full list + recent history_")
+            await send_telegram_message("\n".join(lines))
+        except Exception as e:
+            logger.error(f"intraday_flag_break Telegram failed (non-critical): {e}")
 
     logger.info(f"intraday_flag_break_scan: {len(new_breaks)} new breaks detected")
     return len(new_breaks)
@@ -1630,12 +1711,12 @@ async def run_intraday_support_test_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_support_test audit failed (non-critical): {e}")
 
-    # Telegram digest gated by SHADOW_DETECTOR_TELEGRAM_ENABLED env (default
-    # True). DB writes + audit events still fire — only the Telegram surface
-    # is silenced. Flipped to False 2026-05-26 evening pending #124 rework
-    # (day_low cumulative-state firing stale "tested base_low" alerts hours
-    # after the actual test).
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+    # Per-tick Telegram OFF by default (#168 noise fix, 2026-06-07 — DEFAULT
+    # FALSE so a DR restore / fresh env can't bring the noise back; code is SoT).
+    # DB writes + audit still fire; the day's tests surface in the 16:00 ET
+    # consolidated digest (run_intraday_signals_eod_digest). Toggle
+    # SHADOW_DETECTOR_TELEGRAM_ENABLED=true to re-enable per-tick.
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -2195,9 +2276,9 @@ async def run_intraday_ma_pullback_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_ma_pullback audit failed (non-critical): {e}")
 
-    # Gated by SHADOW_DETECTOR_TELEGRAM_ENABLED env (see support_test
-    # equivalent above). Silenced 2026-05-26 pending #124 rework.
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+    # Per-tick Telegram OFF by default (#168, see support_test equivalent above).
+    # Day's pullbacks surface in the 16:00 ET consolidated digest.
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")
@@ -2414,7 +2495,8 @@ async def run_intraday_low_vol_rest_scan(scan_time):
             except Exception as e:
                 logger.debug(f"intraday_low_vol_rest audit failed (non-critical): {e}")
 
-    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "true").lower() == "true":
+    # Per-tick Telegram OFF by default (#168). Day's rests surface in the 16:00 ET digest.
+    if os.environ.get("SHADOW_DETECTOR_TELEGRAM_ENABLED", "false").lower() == "true":
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             clock = scan_time.strftime("%H:%M")

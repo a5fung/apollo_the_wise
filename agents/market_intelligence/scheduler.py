@@ -1805,6 +1805,21 @@ async def _ma_pullback_scan_job():
         return None
 
 
+async def _intraday_signals_eod_digest_job():
+    """16:00 ET — ONE consolidated digest of the day's 5 intraday entry-technique
+    shadow detectors (#168 noise fix, 2026-06-07). Replaces the ~23/day per-tick
+    pings (now default-off) with a single roll-up; reads the persisted tables, so
+    detection + telemetry are untouched. Suppressed entirely on zero-fire days."""
+    now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        logger.info("intraday signals digest: non-trading day — skip")
+        return 0
+    from agents.market_intelligence.flag_detector import run_intraday_signals_eod_digest
+    n = await run_intraday_signals_eod_digest(now_et.date())
+    logger.info(f"intraday signals EOD digest: {n} signals surfaced")
+    return int(n) if n is not None else 0
+
+
 async def _low_vol_rest_scan_job():
     """Run every 5 min during market hours. Intraday low-volume-rest detector
     (#97, entry-technique #4). A quiet tight coil INSIDE the base on dried-up
@@ -3512,6 +3527,16 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_LOW_VOL_REST_SCAN,
         replace_existing=True,
         misfire_grace_time=120,
+    )
+
+    # Intraday entry-technique EOD digest: 16:00 ET — ONE consolidated roll-up of
+    # the day's 5 shadow detectors (#168 noise fix; replaces ~23/day per-tick
+    # pings, now default-off). Runs after the 15:55 scan stop.
+    _scheduler.add_job(
+        audit_wrap(_intraday_signals_eod_digest_job, "intraday_signals_eod_digest"),
+        CronTrigger(hour=16, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
+        id="intraday_signals_eod_digest",
+        replace_existing=True,
     )
 
     # Intraday U&R (Undercut & Rally) scan: every 5 min during market hours
