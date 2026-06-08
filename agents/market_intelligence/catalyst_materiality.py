@@ -9,17 +9,23 @@ the catalyst axis on grade + named-type alone, which the design memory projects 
 ~95% fire_seen (too permissive). #189 makes materiality an EXPLICIT, separable signal.
 
 STATUS — SHADOW/EVAL ONLY. This module is intentionally NOT imported by run_ep_scan
-or _compute_fire_status. Wiring materiality into the fire panel is a POST-Monday
-CHANGE_PROCESS flip, made against the real fire_status baseline that first lands
-2026-06-08 (#200/#201 verify). Until then this backs the read-only eval
-(scripts/eval_catalyst_materiality.py) that measures whether low-materiality
-graded-strong alerts actually underperform — the evidence the activation needs.
+or _compute_fire_status (the live firing path). Wiring materiality into the fire
+panel is a POST-Monday CHANGE_PROCESS flip (ADR 0010), made against the real
+fire_status baseline that first lands 2026-06-08 (#200/#201 verify) + entry-aware R
+evidence. Until then this backs (a) the read-only eval
+(scripts/eval_catalyst_materiality.py) and (b) the OFFLINE shadow writer
+(materiality_shadow.py — a post-EOD job, never the hot path) that accrues
+materiality_tier + the would-be fire_status alongside the real one, so the R
+evidence the flip is gated on builds from day one with no backfill.
 
-The pure helpers here (deal-value parsing, ratio bucketing) are deterministic and
-unit-tested; the LLM judgment layer lives in the caller (eval now, wiring later).
+This module owns BOTH the pure helpers (deal-value parsing, ratio bucketing —
+deterministic + unit-tested) AND the one shared Sonnet judgment layer
+(judge_materiality_llm / assess_materiality), so the eval and the shadow writer
+never diverge on the prompt (feedback_single_source_of_truth).
 """
 from __future__ import annotations
 
+import json
 import re
 
 # Materiality tiers (ordinal). Higher = more material to the company.
@@ -98,3 +104,116 @@ def is_material(tier: str | None) -> bool:
     if tier is None:
         return True
     return _TIER_ORD.get(tier, 99) >= _TIER_ORD["material"]
+
+
+def format_market_cap(mc) -> str:
+    """Human market-cap string for the LLM prompt + display ('$2.5B' / '$480M' /
+    'unknown'). Tolerant of None / non-numeric."""
+    try:
+        mc = float(mc)
+    except (TypeError, ValueError):
+        return "unknown"
+    return f"${mc/1e9:.1f}B" if mc >= 1e9 else f"${mc/1e6:.0f}M"
+
+
+# ── LLM judgment layer (#189) — ONE copy, shared by the eval and the shadow ──
+# writer (feedback_single_source_of_truth: a second prompt is the two-impl
+# divergence trap). Judges materiality of the STORED grounded catalyst text
+# (point-in-time, no lookahead on the input). The LLM is a JUDGE on grounded
+# text here, not a discoverer (feedback_catalyst_sourcing_direct_over_llm).
+_MODEL = "claude-sonnet-4-6"
+
+_JUDGE_PROMPT = """You judge whether a stock's gap-up catalyst is MATERIAL relative to the company.
+Materiality = impact RELATIVE TO COMPANY SIZE, not absolute. A $50M deal is
+transformative for a $200M micro-cap and a rounding error for a $600B mega-cap.
+
+Company: {company} — {sector}
+Market cap: {mktcap}
+Catalyst (as captured at alert time):
+{catalyst}
+
+Analyst note:
+{analysis}
+
+Return ONLY JSON: {{"tier": one of ["immaterial","minor","material","transformative"], "rationale": "<one sentence>"}}.
+- transformative: bet-the-company scale (large fraction of cap/revenue; FDA approval for lead asset; etc.)
+- material: a meaningful, needle-moving event for this company's size.
+- minor: real but small relative to the company — unlikely to re-rate it.
+- immaterial: routine/boilerplate, broad sector drift, or no concrete company-specific event of size.
+Be skeptical: a positively-worded press release about a small deal is "minor" or "immaterial"."""
+
+
+def _extract_json_object(raw: str) -> str:
+    """Slice the first balanced {...} object out of an LLM response (handles a
+    fenced ```json block + trailing prose). Depth-aware."""
+    raw = (raw or "").strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rstrip("` \n")
+    start, depth = raw.find("{"), 0
+    if start < 0:
+        return raw
+    for i in range(start, len(raw)):
+        if raw[i] == "{":
+            depth += 1
+        elif raw[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return raw[start:i + 1]
+    return raw[start:]
+
+
+async def judge_materiality_llm(client, *, company, sector, market_cap,
+                                catalyst, analysis) -> str | None:
+    """Sonnet materiality tier for a (mostly non-deal) catalyst. Returns a tier in
+    MATERIALITY_TIERS, or None on any error/parse failure (caller fails OPEN — a
+    None tier is treated as material, never demotes). `market_cap` is a raw float
+    (or None); formatting happens here so callers pass one shape."""
+    prompt = _JUDGE_PROMPT.format(
+        company=company or "", sector=sector or "",
+        mktcap=format_market_cap(market_cap),
+        catalyst=(catalyst or "")[:1500], analysis=(analysis or "")[:1500],
+    )
+    resp = await client.messages.create(
+        model=_MODEL, max_tokens=200,
+        system="You are a JSON API. Respond with valid JSON only.",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = getattr(resp.content[0], "text", "") or ""
+    try:
+        tier = (json.loads(_extract_json_object(raw)).get("tier") or "").lower()
+    except (ValueError, AttributeError):
+        return None  # unparseable / non-JSON response — caller fails OPEN
+    return tier if tier in MATERIALITY_TIERS else None
+
+
+async def assess_materiality(client, *, company, sector, market_cap,
+                             catalyst, analysis) -> tuple[str | None, str]:
+    """Production materiality policy (#189), shared by the shadow writer and the
+    eventual #201 fire-panel flip: RULE-FIRST (deterministic deal/cap ratio — free),
+    Sonnet ONLY when the rules abstain (no parseable deal value or unknown cap, e.g.
+    earnings/sales catalysts). Returns (tier, source) with source ∈
+    {'rule','llm','abstain'}. Tier may be None (LLM error / no client) → the caller
+    fails OPEN via is_material(None)=True. Never raises."""
+    # Coerce market_cap once: FMP's `marketCap` can come back as a STRING, and
+    # rule_materiality does arithmetic on it (`<= 0`, division). Without this a
+    # deal-value catalyst would TypeError on the rule path (which is outside the
+    # try below) → the caller's per-row except would silently skip the write — the
+    # #173-class silent-0-rows bug. float-or-None mirrors the eval's coercion.
+    try:
+        market_cap = float(market_cap) if market_cap is not None else None
+    except (TypeError, ValueError):
+        market_cap = None
+    deal = extract_deal_value(f"{catalyst or ''} {analysis or ''}")
+    rt = rule_materiality(deal, market_cap)
+    if rt is not None:
+        return rt, "rule"
+    if client is None:
+        return None, "abstain"
+    try:
+        tier = await judge_materiality_llm(
+            client, company=company, sector=sector, market_cap=market_cap,
+            catalyst=catalyst, analysis=analysis,
+        )
+        return tier, ("llm" if tier is not None else "abstain")
+    except Exception:
+        return None, "abstain"

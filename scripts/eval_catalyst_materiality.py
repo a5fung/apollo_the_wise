@@ -21,7 +21,6 @@ Run (server, read-only):
   docker exec apollo-market python scripts/eval_catalyst_materiality.py [N]
 """
 import asyncio
-import json
 import os
 import statistics
 import sys
@@ -30,55 +29,22 @@ import anthropic
 
 from agents.market_intelligence.catalyst_materiality import (
     MATERIALITY_TIERS, extract_deal_value, rule_materiality, is_material,
+    judge_materiality_llm,
 )
 from agents.market_intelligence.collector import get_fmp_profile
 from agents.market_intelligence.db import get_pool
 
-MODEL = "claude-sonnet-4-6"
 
-_PROMPT = """You judge whether a stock's gap-up catalyst is MATERIAL relative to the company.
-Materiality = impact RELATIVE TO COMPANY SIZE, not absolute. A $50M deal is
-transformative for a $200M micro-cap and a rounding error for a $600B mega-cap.
-
-Company: {company} — {sector}
-Market cap: {mktcap}
-Catalyst (as captured at alert time):
-{catalyst}
-
-Analyst note:
-{analysis}
-
-Return ONLY JSON: {{"tier": one of ["immaterial","minor","material","transformative"], "rationale": "<one sentence>"}}.
-- transformative: bet-the-company scale (large fraction of cap/revenue; FDA approval for lead asset; etc.)
-- material: a meaningful, needle-moving event for this company's size.
-- minor: real but small relative to the company — unlikely to re-rate it.
-- immaterial: routine/boilerplate, broad sector drift, or no concrete company-specific event of size.
-Be skeptical: a positively-worded press release about a small deal is "minor" or "immaterial"."""
-
-
-async def _judge(client, row, mktcap_str):
-    prompt = _PROMPT.format(
-        company=row["company"] or row["ticker"], sector=row["sector"] or "",
-        mktcap=mktcap_str, catalyst=(row["catalyst"] or "")[:1500],
-        analysis=(row["analysis"] or "")[:1500],
+async def _judge(client, row, mc):
+    """Sonnet materiality tier via the ONE shared judgment layer
+    (catalyst_materiality.judge_materiality_llm) — the eval and the live shadow
+    writer must never diverge on the prompt. None (parse/error) → 'immaterial'
+    for the eval's tier tally (the live path fails OPEN instead)."""
+    tier = await judge_materiality_llm(
+        client, company=row["company"] or row["ticker"], sector=row["sector"],
+        market_cap=mc, catalyst=row["catalyst"], analysis=row["analysis"],
     )
-    resp = await client.messages.create(
-        model=MODEL, max_tokens=200,
-        system="You are a JSON API. Respond with valid JSON only.",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = (getattr(resp.content[0], "text", "") or "").strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1].rstrip("` \n")
-    start, depth = raw.find("{"), 0
-    for i in range(start, len(raw)):
-        if raw[i] == "{": depth += 1
-        elif raw[i] == "}":
-            depth -= 1
-            if depth == 0:
-                raw = raw[start:i+1]; break
-    tier = json.loads(raw).get("tier", "").lower()
-    return tier if tier in MATERIALITY_TIERS else "immaterial"
+    return tier or "immaterial"
 
 
 def _stats(vals):
@@ -131,7 +97,7 @@ async def main():
             mc, mktcap_str = None, "unknown"
 
         try:
-            tier = await _judge(client, r, mktcap_str)
+            tier = await _judge(client, r, mc)
         except Exception as e:
             print(f"  {tk} {r['alert_date']} JUDGE ERROR: {e}")
             continue

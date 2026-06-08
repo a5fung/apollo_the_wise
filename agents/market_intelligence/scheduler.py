@@ -1820,6 +1820,26 @@ async def _intraday_signals_eod_digest_job():
     return int(n) if n is not None else 0
 
 
+async def _materiality_shadow_job():
+    """16:25 ET — OFFLINE materiality SHADOW writer (#189 / ADR 0010). Reads the
+    day's catalyst-ONLY fires, computes the #189 materiality tier + the fire_status
+    the activated rule WOULD produce, and writes the three shadow columns. Pure
+    evidence-accrual — never touches the live fire_status or any trade state; the
+    flip stays CHANGE_PROCESS-gated. Runs after the 16:15 post-EOD audit. No
+    Telegram (the weekly review surfaces the trend via summarize_materiality_shadow)."""
+    now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        logger.info("materiality shadow: non-trading day — skip")
+        return 0
+    from agents.market_intelligence.materiality_shadow import run_materiality_shadow
+    res = await run_materiality_shadow(now_et.date())
+    logger.info(
+        f"materiality shadow: {res['n_catalyst_only']} catalyst-only fires, "
+        f"{res['n_demoted']} would-demote"
+    )
+    return res["n_catalyst_only"]
+
+
 async def _low_vol_rest_scan_job():
     """Run every 5 min during market hours. Intraday low-volume-rest detector
     (#97, entry-technique #4). A quiet tight coil INSIDE the base on dried-up
@@ -3544,6 +3564,19 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="intraday_signals_eod_digest",
         replace_existing=True,
+    )
+
+    # Materiality SHADOW writer: 16:25 ET — OFFLINE evidence-accrual (#189 / ADR
+    # 0010). After the 16:15 post-EOD audit (alerts + fire_status long settled).
+    # Writes materiality_tier / materiality_source / fire_status_mat_shadow on the
+    # day's catalyst-only fires. Never touches live fire_status or trade state; the
+    # flip stays CHANGE_PROCESS-gated. No Telegram (weekly review surfaces trend).
+    _scheduler.add_job(
+        audit_wrap(_materiality_shadow_job, "materiality_shadow"),
+        CronTrigger(hour=16, minute=25, day_of_week="mon-fri", timezone="America/New_York"),
+        id="materiality_shadow",
+        replace_existing=True,
+        misfire_grace_time=600,
     )
 
     # Intraday U&R (Undercut & Rally) scan: every 5 min during market hours

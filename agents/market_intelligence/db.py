@@ -2011,6 +2011,22 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]"
         )
+        # Materiality SHADOW (#189 / ADR 0010, 2026-06-07): written by the OFFLINE
+        # post-EOD job (materiality_shadow.py), NOT run_ep_scan. materiality_tier =
+        # the #189 tier of a catalyst-only fire; materiality_source ∈ rule/llm/
+        # abstain; fire_status_mat_shadow = the fire_status the activated rule WOULD
+        # produce (immaterial catalyst-only fire demotes to no_fire_confirmed/
+        # real_unknown). Advisory evidence-accrual only; the live fire_status is
+        # never touched until the CHANGE_PROCESS flip. Idempotent, nullable.
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_tier TEXT"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_source TEXT"
+        )
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status_mat_shadow TEXT"
+        )
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
@@ -2073,6 +2089,28 @@ async def update_ep_alert_advisory(
                 fire_axes = COALESCE($6, fire_axes)
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date, catalyst_type, rationale, fire_status, fire_axes)
+
+
+async def update_ep_alert_materiality_shadow(
+    ticker: str, alert_date: "date", materiality_tier: str | None,
+    materiality_source: str | None, fire_status_mat_shadow: str | None,
+) -> None:
+    """Materiality SHADOW patch (#189 / ADR 0010), written by the OFFLINE
+    materiality_shadow.py job — NOT run_ep_scan. Records the #189 tier + its
+    source (rule/llm/abstain) + the fire_status the activated rule WOULD produce.
+    ADVISORY evidence-accrual only; never touches the live fire_status. Unlike
+    the advisory patch's COALESCE, these are SET unconditionally — a re-run for the
+    same alert_date overwrites (idempotent), so re-running the day's job is safe."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_ep_alerts SET
+                materiality_tier = $3,
+                materiality_source = $4,
+                fire_status_mat_shadow = $5
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date, materiality_tier, materiality_source,
+            fire_status_mat_shadow)
 
 
 async def delete_historical_alerts(from_date: date, to_date: date) -> int:

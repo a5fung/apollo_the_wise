@@ -93,22 +93,36 @@ from the eval for non-deal catalysts), pass it into the refine call.
 an absent one — so a sourcing/judgment gap can never silently kill a real EP (the RUM
 $270M-deal class stays `fire_seen`).
 
-## Optional intermediate: shadow-measure phase (post-6/8, pre-flip)
+## Shadow-measure phase — BUILT 2026-06-08 (staged for post-EOD deploy)
 
-If we want real-data evidence on the catalyst-only denominator before the flip (rather
-than flipping straight off the eval's historical 23%):
+Built because the R-join IS the deciding evidence (the metric the eval lacked), and
+because accruing `materiality_tier` from day one means no backfill when the R cohort
+matures. Pure evidence-accrual — never the flip, never the hot path.
 
-1. DDL (idempotent, in `db.py` ensure block): `ALTER TABLE mi_ep_alerts ADD COLUMN IF
-   NOT EXISTS materiality_tier TEXT`, `... fire_status_mat_shadow TEXT`.
-2. A **separate post-scan offline job** (never `run_ep_scan`, never `_compute_fire_status`)
-   that reads the day's `fire_axes == ['catalyst']` strong/gc alerts, computes
-   materiality, and writes the two shadow cols + the `fire_status` it WOULD produce.
-3. Weekly digest line: catalyst-only-fire count, how many materiality would demote, and
-   (once paper-R matures) the R of demoted-vs-kept. **That R is the activation evidence.**
+1. **DDL** (idempotent, `db.py` ensure block): `materiality_tier`,
+   `materiality_source`, `fire_status_mat_shadow` on `mi_ep_alerts`. Writer helper
+   `update_ep_alert_materiality_shadow`.
+2. **Offline job** `agents/market_intelligence/materiality_shadow.py`
+   (`run_materiality_shadow`) — wired at **16:25 ET** (`_materiality_shadow_job`,
+   after the 16:15 post-EOD audit). Never `run_ep_scan`, never `_compute_fire_status`
+   as a writer. Reads the day's `fire_axes == ['catalyst']` strong/gc alerts, computes
+   the materiality tier, writes the three shadow cols + the would-be fire_status.
+3. **Would-be fire_status WITHOUT editing the frozen hot path:** the writer calls the
+   UNCHANGED `_compute_fire_status` with `catalyst_type` forced to a NON_FIRE value
+   when the catalyst is CONFIRMED immaterial — reproducing the staged flip diff's
+   demotion through the same had-inputs tail, no duplication, no edit to ep_detector.py
+   on its first-verify day (#115). FAIL-OPEN preserved (is_material(None)=True).
+4. **One shared judgment layer:** `catalyst_materiality.assess_materiality`
+   (rule-first → Sonnet on abstain) + `judge_materiality_llm` — the eval
+   (`eval_catalyst_materiality.py`) now calls the same copy (no prompt divergence,
+   feedback_single_source_of_truth). 11 unit tests (`tests/test_materiality_shadow.py`).
+5. **Weekly digest:** `summarize_materiality_shadow(days)` — catalyst-only count +
+   how-many-would-demote + tier breakdown, with an explicit "counts only — entry-aware
+   R pending, NOT a verdict" banner (mirrors `fire_status_r_cohort.py` posture; avoids
+   the #46 zero-heavy conclusion trap). Wiring into the Sunday review is a fast-follow.
 
-This phase is itself optional — the eval already gives the reclassification rate; its
-only added value is real-data confirmation + the R join. Build it only if the R-join is
-the deciding evidence (likely yes, since R is exactly the metric the eval lacked).
+**DONE-criterion (not a verdict):** the job correctly populates the three cols on real
+rows + the digest degrades gracefully on the thin cohort. The flip stays gated below.
 
 ## Activation gate (the flip is operator-owned)
 
