@@ -1450,11 +1450,12 @@ def _format_overnight_section(
         # Negative lookbehind avoids splitting after common abbreviations
         # (U.S., a.m., p.m., e.g., i.e., vs., etc., Dr., Mr., Mrs., St., Corp., Inc.)
         # and after single uppercase letters (initials like "J. Powell").
-        sentences = _SENTENCE_SPLIT_RE.split(news)
-        for s in sentences:
-            s = s.strip()
-            if s:
-                lines.append(f"  • _{s}_")
+        # Cap at 2 bullets — the prompt asks for ≤2 sentences; this is the safety net
+        # that stops a non-compliant Perplexity essay from becoming a wall of text
+        # (2026-06-08: "no catalyst" days produced 6 bullets enumerating non-events).
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(news) if s.strip()]
+        for s in sentences[:2]:
+            lines.append(f"  • _{s}_")
     else:
         # Check if any index moved significantly
         index_moves = [i for i in snapshot if i["category"] == "index" and i["triggered"]]
@@ -1523,8 +1524,11 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
             movers.append(f"{item['name']} {sign} {abs(item['pct_change']):.1f}%")
         movers_str = ", ".join(movers)
         query = (
-            f"Why are {movers_str} today? "
-            f"What specific event or announcement caused this move?"
+            f"In one or two sentences, what is the most likely driver of today's move "
+            f"({movers_str})? If there is no single fresh news catalyst, say so plainly and "
+            f"state whether it looks like a technical bounce / reversion from the prior "
+            f"session, plus the single most relevant macro or geopolitical headline if one "
+            f"exists. Be concise — do not list everything that did not happen."
         )
     else:
         today = _et_today()
@@ -1536,15 +1540,21 @@ async def _get_overnight_news(snapshot: list[dict] | None = None) -> str | None:
         )
 
     _OVERNIGHT_SYSTEM = (
-        "You are a financial market analyst. Identify the SPECIFIC catalyst — "
-        "name the person, policy, deal, or event. Mention social media posts, "
-        "presidential statements, or diplomatic developments by name if relevant. "
-        "Be direct and specific. No citation numbers. "
-        "Do NOT restate index prices or percentage moves — the reader already sees those. "
-        "Focus only on the WHY: what news, event, or development drove the move. "
-        "ONLY cite news from the last 24 hours (since yesterday's US market close). "
-        "Do NOT cite earnings reports, deals, or events from prior days — if no fresh "
-        "overnight catalyst exists, say so explicitly rather than reaching for stale news."
+        "You are a terse market-desk analyst writing ONE line for a trader's morning brief. "
+        "Answer in AT MOST 2 short sentences (≤40 words total). State the single most likely "
+        "driver of the move. "
+        "A technical bounce or mean-reversion after the prior session's move IS a complete, "
+        "valid answer — say it plainly (e.g. 'Bounce after Friday's selloff; no fresh catalyst'). "
+        "If a real macro/geopolitical headline is relevant, name it in a few words (the person, "
+        "policy, or event). "
+        "HARD RULES — do NOT break these: "
+        "Do NOT enumerate what did NOT happen (no lists of absent Fed/CPI/data/ceasefire items). "
+        "Do NOT speculate about dealer flows, options positioning, or generic 'ongoing AI/tech "
+        "optimism' unless that is the specific, sourced reason. "
+        "Do NOT give advice on communicating to clients. "
+        "No citation numbers. Do NOT restate index prices or percentages — the reader sees those. "
+        "Only use news from the last 24 hours; if there is none, the one-line technical read is "
+        "the correct and complete answer — do not pad it."
     )
 
     from agents.market_intelligence.theme_engine import _is_garbage
@@ -1857,11 +1867,12 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     elif news:
         # No watchlist/snapshot, but we have news — show it standalone
         lines = ["*OVERNIGHT*"]
-        sentences = _SENTENCE_SPLIT_RE.split(news)
-        for s in sentences:
-            s = s.strip()
-            if s:
-                lines.append(f"  • _{s}_")
+        # Cap at 2 bullets — the prompt asks for ≤2 sentences; this is the safety net
+        # that stops a non-compliant Perplexity essay from becoming a wall of text
+        # (2026-06-08: "no catalyst" days produced 6 bullets enumerating non-events).
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(news) if s.strip()]
+        for s in sentences[:2]:
+            lines.append(f"  • _{s}_")
         overnight_section = "\n".join(lines)
 
     # Store cache for this day
