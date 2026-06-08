@@ -2134,6 +2134,23 @@ async def set_holistic_judge_enabled(enabled: bool) -> None:
         """, *_JUDGE_TOGGLE, "on" if enabled else "off")
 
 
+async def update_ep_alert_grade_override(
+    ticker: str, alert_date: "date", *, score_tier: str, grade_engine_authority: str,
+) -> None:
+    """W2c (#243 / ADR 0011): the LOAD-BEARING grade override. When the holistic_judge_enabled
+    toggle is ON, the post-scan judge overwrites the row's authoritative `score_tier` (the
+    field every consumer reads — alert/entry/briefing/missed-outcomes) with the judge's tier,
+    and stamps `grade_engine_authority` (judge | fallback). `baseline_floor_tier` is left
+    untouched as the floor counterfactual. Only called when the toggle is ON; OFF = floor
+    keeps authority and this never runs (byte-identical to shadow)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_ep_alerts SET score_tier = $3, grade_engine_authority = $4
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date, score_tier, grade_engine_authority)
+
+
 async def update_ep_alert_advisory(
     ticker: str, alert_date: "date", catalyst_type: str | None,
     rationale: str | None = None,

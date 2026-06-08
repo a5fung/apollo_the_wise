@@ -82,6 +82,22 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-06-08 — Holistic Grade Judge supersedes the conviction floor (W2c, ADR 0011) — toggle-gated, SHIPPED DORMANT
+
+**Trigger**: Operator directive (2026-06-08, memory `feedback_build_toward_vision_not_piecemeal` + signed ADR 0011): the conviction floor promotes to HIGH on **gap % + a catalyst enum alone** — materiality, theme, narrative, and structure are decorative. By the operator's framing the materiality-less grade is "definitionally incomplete" for the EP method. The North Star is ONE holistic LLM judge over the full rubric that moves the grade **bidirectionally** (promote an under-rated material-small-cap outlier / demote an immaterial big gap) and becomes the live **paper** grade.
+
+**Evidence**: This is a **methodology-completeness** change, not a threshold tune, so it is NOT gated on backtested R-superiority (forward-from-gap is the saturated metric that killed the #189 materiality R-gate, ADR 0010). The operator SIGNED the 5-point rubric (ADR 0011 §Rubric). Field validation = the W1 shadow cohort (judge_tier vs floor delta) + operator review of the promotion/demotion delta lists + the **Unjustified Demotion Sweep** (`scripts/unjustified_demotion_sweep.py` — every judge `demote` whose ticker then ran ≥+18% MFE/5d) BEFORE the toggle is flipped ON. The agent never self-certifies the demotion list (HARD gate).
+
+**Architecture**: the judge runs in the existing **post-loop** concurrent gather (own `_JUDGE_SEMAPHORE`, 15s `wait_for`). When `holistic_judge_enabled` is ON it OVERWRITES the authoritative `score_tier` (the single field the caller reads for alert+entry, and the downstream ORB job reads from the row) and stamps `grade_engine_authority ∈ {judge,fallback}`; `baseline_floor_tier` is preserved as the counterfactual. Judge `none` → suppression (no alert/entry); judge promote MODERATE→HIGH → flows into the ORB path as a floor-HIGH would. **FAIL-OPEN**: judge error/timeout → floor tier kept, authority `fallback` (counted). **FAIL-CLOSED toggle**: any toggle-read error → floor.
+
+**Anticipated effect**: with the toggle OFF (current, SHIPPED DORMANT) — **zero behavior change**, byte-identical to W1 shadow; the judge writes only advisory columns + `ep_grade_decision` audit traces. With the toggle ON (operator-gated, paper-only) — the paper HIGH set is re-graded: gap-only HIGHs with no material catalyst demote out of entry; material-relative-to-size MODERATEs promote into entry. Net HIGH count change unknown until the live cohort accrues (first judge fire 2026-06-09).
+
+**Known limitation**: the judge scope is the **score≥50 cohort** (MODERATE+HIGH results) — it can demote HIGHs and promote MODERATE→HIGH, but cannot rescue a name the floor scored <50 (those never reach the result dict). Sub-50 small-cap rescue is a future widening (cost/scope tradeoff). The cross-strategy allocator shadow-enqueue + scan_log record the floor tier (in-loop, pre-override) — acceptable (allocator is shadow-only #31).
+
+**Reversion-flag**: NEW. Reversion = `docker exec apollo-market python scripts/set_holistic_judge.py off` (instant, no redeploy — the toggle is the kill switch). Hard reversion = drop the `_judge_authority` override block in `run_ep_scan`.
+
+**Status**: SHIPPED DORMANT 2026-06-08 (toggle OFF, byte-identical). The flip to ON is operator-gated on the delta-list + Unjustified-Demotion-Sweep review (ADR 0011 go-live gate); PAPER-only; 6/22 real-money decision stays decoupled.
+
 ### 2026-05-27 — M&A filter Part B: sister-ticker possessive proximity check (#119)
 
 **Trigger**: RGTI 2026-05-11 EP alert path still saw Polygon news-tagged M&A interpretation after Part A (#88) shipped. Part A required ticker in `insights` array AND M&A keyword in `sentiment_reasoning`. But the article's `reasoning` for RGTI was "Stock gained 8.29%...following IonQ's merger approval" — keyword present, but the deal belonged to IonQ (a sister-tagged ticker), not RGTI.

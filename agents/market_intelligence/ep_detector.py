@@ -275,6 +275,20 @@ def _get_claude():
     return _claude
 
 
+def _resolve_grade_authority(judge_authority: bool, verdict: "dict | None", floor_tier):
+    """Pure W2c (#243 / ADR 0011) grade-authority decision — returns
+    (score_tier, grade_engine_authority, db_override). Toggle OFF → floor keeps authority,
+    NO override (byte-identical to shadow). ON + verdict → the judge tier drives the grade
+    (promote/hold/demote, incl. 'none' → suppression downstream). ON + None → FAIL-OPEN to
+    the floor tier, authority 'fallback' (counted). Extracted pure so the load-bearing
+    branch logic is unit-tested independent of the scan loop."""
+    if not judge_authority:
+        return floor_tier, "floor", False
+    if verdict is not None:
+        return verdict["tier"], "judge", True
+    return floor_tier, "fallback", True
+
+
 async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> None:
     """Comprehensive per-candidate grade decision trace (W2a #243 / ADR 0011 logging
     requirement — OPERATOR-signed). ONE `ep_grade_decision` audit row per graded candidate
@@ -2411,10 +2425,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
         from agents.market_intelligence.db import (
             update_ep_alert_advisory, update_ep_alert_judge_shadow,
+            update_ep_alert_grade_override, get_holistic_judge_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
             assemble_judge_inputs, grade_holistic,
         )
+
+        # W2c (#243 / ADR 0011): read the authority toggle ONCE per scan (not per
+        # candidate). OFF → judge stays pure shadow (byte-identical to W1). ON → the judge
+        # tier OVERWRITES the authoritative score_tier (drives alert/entry); the floor tier
+        # is preserved as baseline_floor_tier. FAIL-CLOSED inside the helper (error → floor).
+        _judge_authority = await get_holistic_judge_enabled()
 
         async def _judge_shadow(r: dict) -> None:
             # Holistic Grade Judge (#240 / ADR 0011) — Wave 1 SHADOW: records the
@@ -2444,6 +2465,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         judge_rationale=verdict["rationale"],
                         judge_materiality_tier=verdict.get("materiality_tier"),
                     )
+                # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
+                # tier overwrites the authoritative score_tier (the field the caller reads for
+                # alert+entry, and downstream reads from the DB row). 'none' → suppression
+                # (score_tier != HIGH → no alert, no ORB entry); promote MODERATE→HIGH → flows
+                # into the ORB path exactly as a floor-HIGH. baseline_floor_tier is preserved
+                # as the counterfactual. A None verdict FAILS OPEN to the floor (authority
+                # 'fallback', floor tier kept). Toggle OFF → none of this runs (byte-identical).
+                new_tier, authority, do_override = _resolve_grade_authority(
+                    _judge_authority, verdict, floor_tier)
+                if do_override:
+                    # DB FIRST, then mutate the in-memory result — so a failed DB write
+                    # leaves BOTH on the floor tier (no in-memory/DB divergence; the caller
+                    # reads r, the downstream entry job reads the row — they must agree).
+                    await update_ep_alert_grade_override(
+                        r["ticker"], r["alert_date"],
+                        score_tier=new_tier, grade_engine_authority=authority)
+                    r["score_tier"] = new_tier
+                    r["grade_engine_authority"] = authority
                 # Comprehensive decision trace (W2a #243, OPERATOR REQUIREMENT). ONE
                 # ep_grade_decision per graded candidate — verdict, hold, OR null — so a
                 # grade is never a black box: review/debug/tune read this. judge_outcome
