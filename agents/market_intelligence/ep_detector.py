@@ -2533,12 +2533,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # HIGH alert (9:45 ORB cutoff). wait_for cancels stragglers on timeout;
             # classifications that already completed keep their values (fail-open
             # on latency, not just on exception). Outer except handles TimeoutError.
+            # W2c (#243): when the judge is LOAD-BEARING (toggle ON) its grade override +
+            # ep_grade_decision log are correctness-critical — a straggler cancelled at the
+            # 25s shadow ceiling would silently drop the override (keeps floor) AND its
+            # decision row (logging hole on heavy mornings). So give the gather room
+            # (≈4 _JUDGE_SEMAPHORE(3) waves × 15s) when ON; keep the tight latency guard for
+            # the advisory-only catalyst_type/fire when OFF. Still well inside the ORB cadence.
+            _post_loop_timeout = 60 if _judge_authority else 25
             await asyncio.wait_for(
                 asyncio.gather(
                     *[_classify_type(r) for r in _alerted],
-                    *[_judge_shadow(r) for r in _alerted],  # #240 shadow — concurrent
+                    *[_judge_shadow(r) for r in _alerted],  # #240 — concurrent
                 ),
-                timeout=25,
+                timeout=_post_loop_timeout,
             )
     except Exception as _e:
         logger.warning(f"catalyst_type post-scan block failed (non-critical): {_e}")
