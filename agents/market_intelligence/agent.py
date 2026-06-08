@@ -2866,6 +2866,28 @@ class MarketIntelligenceAgent(BaseAgent):
                 else:
                     lines.append(f"  {sds} · evaluated")
 
+        # Holistic Grade Judge trace (#243 / ADR 0011 logging clause) — the bidirectional
+        # verdict (floor → judge tier) + which engine drove the grade + the load-bearing
+        # rationale. Fail-open: a fetch error never breaks /setup.
+        try:
+            from agents.market_intelligence.db import get_latest_ep_alert_judge
+            jr = await get_latest_ep_alert_judge(ticker)
+            if jr:
+                arrow = {"promote": "▲", "demote": "▼", "hold": "="}.get(
+                    jr.get("judge_direction"), "·")
+                auth = jr.get("grade_engine_authority") or "floor"
+                lines.append("")
+                lines.append(f"🧠 Grade judge ({jr['alert_date']}):")
+                lines.append(
+                    f"  {arrow} floor {jr.get('baseline_floor_tier')} → "
+                    f"judge {jr.get('judge_tier')}  [{auth}]")
+                if jr.get("judge_materiality_tier"):
+                    lines.append(f"  materiality: {jr['judge_materiality_tier']}")
+                if jr.get("judge_rationale"):
+                    lines.append(f"  {jr['judge_rationale'][:300]}")
+        except Exception as _je:
+            logger.warning(f"/setup judge-trace fetch failed for {ticker}: {_je}")
+
         body_text = "\n".join(lines)
 
         # TradingView chart button — single button since digest is ticker-scoped.
