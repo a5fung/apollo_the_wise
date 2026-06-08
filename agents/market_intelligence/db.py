@@ -2011,6 +2011,24 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]"
         )
+        # Holistic Grade Judge (#240 / ADR 0011). `grounded_text` persists the corpus
+        # the judge reasoned over (so future backfills are a column-read, not a
+        # point-in-time reconstruction — the #190 lesson). `baseline_floor_tier` is the
+        # conviction-floor tier (= live score_tier in the shadow wave) kept as the
+        # counterfactual. judge_* are written by the post-scan shadow writer
+        # (update_ep_alert_judge_shadow) — advisory in Wave 1, load-bearing at Wave 2.
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grounded_text TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS baseline_floor_tier TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_tier TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_direction TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_rationale TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_materiality_tier TEXT")
         # Materiality SHADOW columns (#189 / ADR 0010) are ensured by their SOLE
         # writer (ensure_materiality_shadow_columns, called from the offline 16:25
         # job) — NOT here. They're never written on the insert path, so piggybacking
@@ -2023,10 +2041,11 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                  pm_rvol, pm_rvol_baseline_n, detected_at,
                  catalyst_type, catalyst_type_rationale,
                  theme_gated_tier, theme_gated_score, in_active_theme,
-                 in_narrative_cohort, fire_status, fire_axes)
+                 in_narrative_cohort, fire_status, fire_axes,
+                 grounded_text, baseline_floor_tier)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
                     COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21,
-                    $22, $23, $24)
+                    $22, $23, $24, $25, $26)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -2046,7 +2065,32 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("in_narrative_cohort"),
             record.get("fire_status"),
             record.get("fire_axes"),
+            record.get("grounded_text"),
+            record.get("baseline_floor_tier"),
         )
+
+
+async def update_ep_alert_judge_shadow(
+    ticker: str, alert_date: "date", *, judge_tier: str | None,
+    judge_direction: str | None, judge_rationale: str | None,
+    judge_materiality_tier: str | None,
+) -> None:
+    """Post-scan ADVISORY patch with the Holistic Grade Judge verdict (#240 / ADR 0011).
+    Wave 1: shadow-only — written alongside the catalyst_type/fire_status advisory block,
+    drives nothing (the live grade stays the conviction floor). Wave 2 makes the judge
+    load-bearing. SET unconditionally (the post-scan judge call is the sole writer of
+    these columns for a given alert)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_ep_alerts SET
+                judge_tier = $3,
+                judge_direction = $4,
+                judge_rationale = $5,
+                judge_materiality_tier = $6
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date, judge_tier, judge_direction, judge_rationale,
+            judge_materiality_tier)
 
 
 async def update_ep_alert_advisory(

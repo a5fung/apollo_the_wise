@@ -262,6 +262,10 @@ _claude = None
 # Cap concurrent Anthropic calls — earnings days can gap 30+ stocks simultaneously,
 # and unbounded parallel requests → 429s → degraded catalyst classification.
 _ANTHROPIC_SEMAPHORE = asyncio.Semaphore(5)
+# #240 judge runs in the SAME post-loop gather as catalyst_type/fire (the live #201
+# advisory). A separate semaphore keeps the larger 6000-char judge call concurrent with —
+# not starving — the catalyst grader under the 9:45 ORB cutoff.
+_JUDGE_SEMAPHORE = asyncio.Semaphore(3)
 
 
 def _get_claude():
@@ -1291,6 +1295,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _catalyst_cache_date = today
 
         _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
+        grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
         cached = _catalyst_cache.get(ticker)
         if cached:
             # 5-tuple as of 2026-05-26 hotfix: pplx_quality added because the
@@ -2238,6 +2243,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "fire_status": fire_status,
             "fire_axes": fire_axes,
             "alert_date": today,
+            # Holistic Grade Judge (#240) inputs threaded for the post-loop shadow call.
+            "grounded_text": grounded_text,
+            "market_cap": profile.get("marketCap"),
+            "sector": profile.get("sector"),
+            "baseline_floor_tier": tier,
         }
         results.append(result)
 
@@ -2270,6 +2280,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "in_narrative_cohort": in_narrative,
             "fire_status": fire_status,
             "fire_axes": fire_axes,
+            "grounded_text": grounded_text,
+            "baseline_floor_tier": tier,
         })
 
         # Cross-strategy allocator (#31) Phase 1A — shadow enqueue. HIGH and
@@ -2355,7 +2367,46 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # FAIL-OPEN: any error leaves catalyst_type NULL; NEVER blocks/breaks alerts.
     try:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
-        from agents.market_intelligence.db import update_ep_alert_advisory
+        from agents.market_intelligence.db import (
+            update_ep_alert_advisory, update_ep_alert_judge_shadow,
+        )
+        from agents.market_intelligence.ep_grade_judge import (
+            assemble_judge_inputs, grade_holistic,
+        )
+
+        async def _judge_shadow(r: dict) -> None:
+            # Holistic Grade Judge (#240 / ADR 0011) — Wave 1 SHADOW: records the
+            # judge's bidirectional verdict (judge_tier/direction/rationale) alongside
+            # the floor's baseline_floor_tier; drives NOTHING. FAIL-OPEN: a None verdict
+            # leaves the columns NULL + emits judge_shadow_null (counted) — never breaks
+            # the scan. Runs in the same bounded gather as catalyst_type but on its OWN
+            # _JUDGE_SEMAPHORE — the larger 6000-char judge call stays concurrent with,
+            # rather than starving, the catalyst grader/fire panel under the 9:45 cutoff.
+            try:
+                payload = assemble_judge_inputs(
+                    r, grounded_text=r.get("grounded_text"),
+                    market_cap=r.get("market_cap"), sector=r.get("sector"),
+                )
+                verdict = await grade_holistic(
+                    _get_claude(), payload,
+                    semaphore=_JUDGE_SEMAPHORE, timeout=15,
+                )
+                if verdict is None:
+                    await log_audit_event(
+                        "judge_shadow_null", r.get("ticker"),
+                        "holistic judge returned no verdict (fail-open)")
+                    return
+                r["judge_tier"] = verdict["tier"]
+                r["judge_direction"] = verdict["direction_vs_floor"]
+                await update_ep_alert_judge_shadow(
+                    r["ticker"], r["alert_date"],
+                    judge_tier=verdict["tier"],
+                    judge_direction=verdict["direction_vs_floor"],
+                    judge_rationale=verdict["rationale"],
+                    judge_materiality_tier=verdict.get("materiality_tier"),
+                )
+            except Exception as _je:
+                logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
         async def _classify_type(r: dict) -> None:
             try:
@@ -2394,7 +2445,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # classifications that already completed keep their values (fail-open
             # on latency, not just on exception). Outer except handles TimeoutError.
             await asyncio.wait_for(
-                asyncio.gather(*[_classify_type(r) for r in _alerted]),
+                asyncio.gather(
+                    *[_classify_type(r) for r in _alerted],
+                    *[_judge_shadow(r) for r in _alerted],  # #240 shadow — concurrent
+                ),
                 timeout=25,
             )
     except Exception as _e:
