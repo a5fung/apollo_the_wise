@@ -15,12 +15,14 @@ Empty until the judge shadow columns accrue (first real fire 2026-06-09). Build-
 """
 import argparse
 import asyncio
+from datetime import timedelta
 
 from agents.market_intelligence import db
 from agents.market_intelligence.collector import et_today
+from scripts._judge_review_sql import _MFE_EXPR, _MFE_JOINS
 
-# MFE from prices (regime-independent) — same LATERAL as missed_outcomes.py:341 / the sweep.
-_DELTA_SQL = """
+# MFE from prices (regime-independent) — shared LATERAL with the sweep (_judge_review_sql).
+_DELTA_SQL = f"""
 WITH deltas AS (
     SELECT ticker, alert_date, baseline_floor_tier, judge_tier, judge_direction,
            judge_materiality_tier, judge_rationale, gap_pct, ep_score, catalyst_quality
@@ -28,21 +30,9 @@ WITH deltas AS (
     WHERE judge_direction = $2 AND alert_date >= $1 AND judge_tier IS NOT NULL
 ),
 with_mfe AS (
-    SELECT d.*,
-           CASE WHEN d0.open_price > 0 AND h5.h IS NOT NULL
-                THEN (h5.h - d0.open_price) / d0.open_price END AS mfe_5d
+    SELECT d.*, {_MFE_EXPR}
     FROM deltas d
-    LEFT JOIN LATERAL (
-        SELECT open_price FROM mi_daily_closes
-        WHERE ticker = d.ticker AND trade_date = d.alert_date
-    ) d0 ON TRUE
-    LEFT JOIN LATERAL (
-        SELECT MAX(high_price) AS h FROM (
-            SELECT high_price FROM mi_daily_closes
-            WHERE ticker = d.ticker AND trade_date >= d.alert_date
-            ORDER BY trade_date ASC LIMIT 6
-        ) x
-    ) h5 ON TRUE
+    {_MFE_JOINS}
 )
 SELECT * FROM with_mfe ORDER BY mfe_5d DESC NULLS LAST
 """
@@ -62,7 +52,7 @@ def _fmt(rows, kind: str) -> None:
 
 
 async def main(window_days: int) -> None:
-    cutoff = et_today() - __import__("datetime").timedelta(days=window_days)
+    cutoff = et_today() - timedelta(days=window_days)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         promotions = await conn.fetch(_DELTA_SQL, cutoff, "promote")

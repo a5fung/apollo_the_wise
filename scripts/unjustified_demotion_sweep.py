@@ -26,17 +26,20 @@ Empty until the judge shadow columns accrue (first real fire 2026-06-09). Build-
 """
 import argparse
 import asyncio
+from datetime import timedelta
 
 from agents.market_intelligence import db
 from agents.market_intelligence.collector import et_today
+from scripts._judge_review_sql import _MFE_EXPR, _MFE_JOINS
 
 # +18% MFE ≈ +3R at a ~6% ORB-low stop. Tunable; documented as a proxy, not true R.
 DEFAULT_MFE_THRESHOLD = 0.18
 DEFAULT_WINDOW_DAYS = 30
 
-# Demote cohort × MFE-from-prices (regime-independent). open_d0 = alert-day open; high_5d =
-# MAX(high_price) over the 6 bars from alert_date inclusive — the missed_outcomes.py LATERAL.
-_SWEEP_SQL = """
+# Demote cohort × MFE-from-prices (regime-independent) — shared LATERAL with the delta
+# review (_judge_review_sql): open_d0 = alert-day open; high_5d over the 6 bars from
+# alert_date inclusive.
+_SWEEP_SQL = f"""
 WITH demotes AS (
     SELECT ticker, alert_date, baseline_floor_tier, judge_tier, judge_direction,
            judge_materiality_tier, judge_rationale, gap_pct, ep_score, catalyst_quality
@@ -44,23 +47,9 @@ WITH demotes AS (
     WHERE judge_direction = 'demote' AND alert_date >= $1
 ),
 with_mfe AS (
-    SELECT d.*,
-           d0.open_price AS open_d0,
-           h5.h AS high_5d,
-           CASE WHEN d0.open_price > 0 AND h5.h IS NOT NULL
-                THEN (h5.h - d0.open_price) / d0.open_price END AS mfe_5d
+    SELECT d.*, d0.open_price AS open_d0, h5.h AS high_5d, {_MFE_EXPR}
     FROM demotes d
-    LEFT JOIN LATERAL (
-        SELECT open_price FROM mi_daily_closes
-        WHERE ticker = d.ticker AND trade_date = d.alert_date
-    ) d0 ON TRUE
-    LEFT JOIN LATERAL (
-        SELECT MAX(high_price) AS h FROM (
-            SELECT high_price FROM mi_daily_closes
-            WHERE ticker = d.ticker AND trade_date >= d.alert_date
-            ORDER BY trade_date ASC LIMIT 6
-        ) x
-    ) h5 ON TRUE
+    {_MFE_JOINS}
 )
 SELECT ticker, alert_date, baseline_floor_tier, judge_tier, judge_materiality_tier,
        mfe_5d, gap_pct, ep_score, catalyst_quality, judge_rationale
@@ -84,7 +73,7 @@ ORDER BY 1, 2, 3
 
 
 async def main(window_days: int, mfe_threshold: float) -> None:
-    cutoff = et_today() - __import__("datetime").timedelta(days=window_days)
+    cutoff = et_today() - timedelta(days=window_days)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         flagged = await conn.fetch(_SWEEP_SQL, cutoff, mfe_threshold)

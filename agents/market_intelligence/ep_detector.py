@@ -2441,8 +2441,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # Holistic Grade Judge (#240 / ADR 0011) — Wave 1 SHADOW: records the
             # judge's bidirectional verdict (judge_tier/direction/rationale) alongside
             # the floor's baseline_floor_tier; drives NOTHING. FAIL-OPEN: a None verdict
-            # leaves the columns NULL + emits judge_shadow_null (counted) — never breaks
-            # the scan. Runs in the same bounded gather as catalyst_type but on its OWN
+            # leaves the columns NULL + emits ep_grade_decision with judge_outcome='null'
+            # (counted, via _emit_grade_decision) — never breaks the scan. Runs in the same
+            # bounded gather as catalyst_type but on its OWN
             # _JUDGE_SEMAPHORE — the larger 6000-char judge call stays concurrent with,
             # rather than starving, the catalyst grader/fire panel under the 9:45 cutoff.
             floor_tier = r.get("baseline_floor_tier")
@@ -2456,8 +2457,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     semaphore=_JUDGE_SEMAPHORE, timeout=15,
                 )
                 if verdict is not None:
-                    r["judge_tier"] = verdict["tier"]
-                    r["judge_direction"] = verdict["direction_vs_floor"]
                     await update_ep_alert_judge_shadow(
                         r["ticker"], r["alert_date"],
                         judge_tier=verdict["tier"],
@@ -2489,11 +2488,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # makes the silent-degradation case ('null': timeout/malformed → fail-open
                 # to floor) explicit + COUNTED. authority='floor' while the toggle is OFF.
                 await _emit_grade_decision(r, floor_tier, verdict)
-                if verdict is None:
-                    # Kept alongside the decision event for the null-density watch.
-                    await log_audit_event(
-                        "judge_shadow_null", r.get("ticker"),
-                        "holistic judge returned no verdict (fail-open)")
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
