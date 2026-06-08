@@ -275,6 +275,44 @@ def _get_claude():
     return _claude
 
 
+async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> None:
+    """Comprehensive per-candidate grade decision trace (W2a #243 / ADR 0011 logging
+    requirement — OPERATOR-signed). ONE `ep_grade_decision` audit row per graded candidate
+    (verdict, hold, OR null) so any grade is fully reconstructable for review/debug/tune:
+    floor vs judge tier, the engine that drove it (`authority`), the judge's load-bearing
+    rationale, and the inputs. `judge_outcome` makes the fail-open ('null') case explicit +
+    COUNTED (the silent-degradation guard). Error-wrapped — logging never breaks the scan."""
+    try:
+        v = verdict or {}
+        outcome = "verdict" if verdict is not None else "null"
+        direction = v.get("direction_vs_floor") or "none"
+        payload = {
+            "authority": r.get("grade_engine_authority", "floor"),
+            "judge_outcome": outcome,
+            "floor_tier": floor_tier,
+            "floor_catalyst_quality": r.get("catalyst_quality"),
+            "judge_grade": v.get("grade"),
+            "judge_tier": v.get("tier"),
+            "judge_direction": v.get("direction_vs_floor"),
+            "judge_materiality_tier": v.get("materiality_tier"),
+            "fire_axes": v.get("fire_axes"),
+            "confidence": v.get("confidence"),
+            "rationale": v.get("rationale"),
+            "gap_pct": r.get("gap_pct"),
+            "ep_score": r.get("ep_score"),
+            "in_active_theme": bool(r.get("in_active_theme")),
+            "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
+            "materiality_tier": r.get("materiality_tier"),
+            "market_cap": r.get("market_cap"),
+            "sector": r.get("sector"),
+        }
+        detail = (f"{r.get('ticker')} floor={floor_tier} judge={v.get('tier')} "
+                  f"dir={direction} outcome={outcome}")
+        await log_audit_event("ep_grade_decision", detail, json.dumps(payload, default=str))
+    except Exception as _e:  # noqa: BLE001 — observability must never break the scan
+        logger.debug(f"ep_grade_decision emit skipped for {r.get('ticker')}: {_e}")
+
+
 async def _compute_adv_from_polygon(ticker: str, trade_date: date, days: int = 20) -> Optional[float]:
     """Fetch recent daily bars from Polygon and compute 20-day median daily volume.
     Used for EP candidates not in the RS universe.
@@ -2248,6 +2286,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "market_cap": profile.get("marketCap"),
             "sector": profile.get("sector"),
             "baseline_floor_tier": tier,
+            # W2a (#243): floor drove this alert's tier (holistic_judge_enabled OFF —
+            # W1/W2-dormant). The W2 flip overwrites this with 'judge'/'fallback'.
+            "grade_engine_authority": "floor",
         }
         results.append(result)
 
@@ -2282,6 +2323,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "fire_axes": fire_axes,
             "grounded_text": grounded_text,
             "baseline_floor_tier": tier,
+            "grade_engine_authority": "floor",  # W2a: floor authority while toggle OFF
         })
 
         # Cross-strategy allocator (#31) Phase 1A — shadow enqueue. HIGH and
@@ -2382,6 +2424,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # the scan. Runs in the same bounded gather as catalyst_type but on its OWN
             # _JUDGE_SEMAPHORE — the larger 6000-char judge call stays concurrent with,
             # rather than starving, the catalyst grader/fire panel under the 9:45 cutoff.
+            floor_tier = r.get("baseline_floor_tier")
             try:
                 payload = assemble_judge_inputs(
                     r, grounded_text=r.get("grounded_text"),
@@ -2391,20 +2434,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _get_claude(), payload,
                     semaphore=_JUDGE_SEMAPHORE, timeout=15,
                 )
+                if verdict is not None:
+                    r["judge_tier"] = verdict["tier"]
+                    r["judge_direction"] = verdict["direction_vs_floor"]
+                    await update_ep_alert_judge_shadow(
+                        r["ticker"], r["alert_date"],
+                        judge_tier=verdict["tier"],
+                        judge_direction=verdict["direction_vs_floor"],
+                        judge_rationale=verdict["rationale"],
+                        judge_materiality_tier=verdict.get("materiality_tier"),
+                    )
+                # Comprehensive decision trace (W2a #243, OPERATOR REQUIREMENT). ONE
+                # ep_grade_decision per graded candidate — verdict, hold, OR null — so a
+                # grade is never a black box: review/debug/tune read this. judge_outcome
+                # makes the silent-degradation case ('null': timeout/malformed → fail-open
+                # to floor) explicit + COUNTED. authority='floor' while the toggle is OFF.
+                await _emit_grade_decision(r, floor_tier, verdict)
                 if verdict is None:
+                    # Kept alongside the decision event for the null-density watch.
                     await log_audit_event(
                         "judge_shadow_null", r.get("ticker"),
                         "holistic judge returned no verdict (fail-open)")
-                    return
-                r["judge_tier"] = verdict["tier"]
-                r["judge_direction"] = verdict["direction_vs_floor"]
-                await update_ep_alert_judge_shadow(
-                    r["ticker"], r["alert_date"],
-                    judge_tier=verdict["tier"],
-                    judge_direction=verdict["direction_vs_floor"],
-                    judge_rationale=verdict["rationale"],
-                    judge_materiality_tier=verdict.get("materiality_tier"),
-                )
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 

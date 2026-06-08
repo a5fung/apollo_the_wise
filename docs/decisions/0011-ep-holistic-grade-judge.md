@@ -1,6 +1,7 @@
 # ADR 0011 — EP Holistic Grade Judge (the North Star grade decision)
 
-**Status:** PROPOSED — Wave 0 contract, awaiting operator sign-off on the rubric.
+**Status:** ACCEPTED — rubric SIGNED OFF by operator 2026-06-08 (§Rubric below is the
+operative weighting). Build proceeds; the W2 live-paper flip ships per the go-live gate.
 **Date:** 2026-06-08. **Supersedes the conviction-floor grade authority** for the EP
 (MAGNA53) paper path; collapses the advisory stack (#189/#190/#200/#201/#203) into one judge.
 **Program:** task #240; plan `~/.claude/plans/optimized-tinkering-harp.md`.
@@ -78,6 +79,25 @@ real/material catalyst becomes **load-bearing**, not decorative.
   failed judge call can't provide → **`_classify_catalyst_claude` is RETAINED as the fallback
   grader.** The judge supersedes the floor's grade *authority*, it does not delete the
   sub-grader. Always-concurrent vs lazy-on-timeout is a Wave-2 latency-eval decision.
+
+### Comprehensive decision logging (OPERATOR REQUIREMENT, signed 2026-06-08)
+
+Every grade decision must be **fully reconstructable after the fact** — so we can review,
+debug, and tune exactly how a grade was arrived at. For each candidate that reaches grading,
+persist the complete decision trace:
+- **Inputs:** `grounded_text` (already persisted W1), `gap_pct`, `ep_score`, floor tier
+  (`baseline_floor_tier`), floor `catalyst_quality`, `materiality_tier`, `has_direct_source`,
+  `in_active_theme`, `in_narrative_cohort`, `market_cap`, `sector`, `revenue_stage`.
+- **Judge verdict:** `judge_tier`, `judge_direction`, `judge_materiality_tier`, `fire_axes`,
+  `judge_rationale` (the load-bearing reason, ≤3 sentences), `confidence` (W1 columns).
+- **Decision:** `grade_engine_authority ∈ {floor, judge, fallback}` — which path drove the
+  grade — plus the final tier used, and (when `fallback`) the explicit reason (timeout / null
+  verdict / toggle-off). Emitted as a structured `ep_grade_decision` audit event (queryable)
+  AND surfaced per-ticker via `/setup` and `/why`.
+
+The rationale is REQUIRED (the schema enforces it) precisely so no demotion/promotion is ever
+a black box. This is the substrate the W3 review (delta lists + Unjustified Demotion Sweep)
+and the model-eval read from.
 
 ## The four fixed boundaries
 

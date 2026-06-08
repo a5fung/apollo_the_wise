@@ -2029,6 +2029,12 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_rationale TEXT")
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_materiality_tier TEXT")
+        # W2a (#243): which engine drove THIS alert's tier — floor | judge | fallback.
+        # 'floor' while the holistic_judge_enabled toggle is OFF (W1/W2-dormant); becomes
+        # 'judge'/'fallback' once the W2 flip is authorized. The single column that segments
+        # the 6/22 cohort by grade engine + the substrate for the ep_grade_decision audit.
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grade_engine_authority TEXT")
         # Materiality SHADOW columns (#189 / ADR 0010) are ensured by their SOLE
         # writer (ensure_materiality_shadow_columns, called from the offline 16:25
         # job) — NOT here. They're never written on the insert path, so piggybacking
@@ -2042,10 +2048,10 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                  catalyst_type, catalyst_type_rationale,
                  theme_gated_tier, theme_gated_score, in_active_theme,
                  in_narrative_cohort, fire_status, fire_axes,
-                 grounded_text, baseline_floor_tier)
+                 grounded_text, baseline_floor_tier, grade_engine_authority)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
                     COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21,
-                    $22, $23, $24, $25, $26)
+                    $22, $23, $24, $25, $26, $27)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -2067,6 +2073,7 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("fire_axes"),
             record.get("grounded_text"),
             record.get("baseline_floor_tier"),
+            record.get("grade_engine_authority", "floor"),
         )
 
 
