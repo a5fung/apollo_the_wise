@@ -2100,6 +2100,40 @@ async def update_ep_alert_judge_shadow(
             judge_materiality_tier)
 
 
+_JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK
+
+
+async def get_holistic_judge_enabled() -> bool:
+    """W2b (#243 / ADR 0011): DB-backed kill switch for the Holistic Grade Judge's grade
+    AUTHORITY. Durable across restarts (mi_safeguard_state), instant revert with NO redeploy.
+    FAIL-CLOSED: any error or missing row → False (the conviction floor drives the grade). A
+    toggle-read exception must NEVER default to judge — that is the load-bearing safety."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_JUDGE_TOGGLE)
+        return bool(row) and row["state"] == "on"
+    except Exception as e:  # noqa: BLE001 — fail-closed to floor is the contract
+        logger.warning(f"holistic_judge_enabled read failed → floor (fail-closed): {e}")
+        return False
+
+
+async def set_holistic_judge_enabled(enabled: bool) -> None:
+    """Flip the Holistic Grade Judge authority toggle (OPERATOR-gated — the W2 go-live gate).
+    Upserts the mi_safeguard_state row. Paper-only (the judge never touches real money)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_JUDGE_TOGGLE, "on" if enabled else "off")
+
+
 async def update_ep_alert_advisory(
     ticker: str, alert_date: "date", catalyst_type: str | None,
     rationale: str | None = None,
