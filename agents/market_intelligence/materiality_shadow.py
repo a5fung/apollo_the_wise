@@ -37,7 +37,8 @@ from agents.market_intelligence.catalyst_materiality import (
 )
 from agents.market_intelligence.collector import et_today, get_fmp_profile
 from agents.market_intelligence.db import (
-    get_pool, update_ep_alert_materiality_shadow,
+    ensure_materiality_shadow_columns, get_pool,
+    update_ep_alert_materiality_shadow,
 )
 from agents.market_intelligence.ep_detector import _compute_fire_status
 
@@ -89,6 +90,7 @@ async def run_materiality_shadow(target_date=None) -> dict:
     """Accrue materiality shadow columns for the day's catalyst-ONLY fires.
     Returns {date, n_catalyst_only, n_demoted, results}. Never raises."""
     day = target_date or et_today()
+    await ensure_materiality_shadow_columns()  # turnkey first-fire (own the schema)
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -142,6 +144,7 @@ async def summarize_materiality_shadow(days: int = 7) -> str:
     does NOT produce a demotion verdict (the deciding output — entry-aware R of
     demoted-vs-kept — needs the paper-R cohort to mature, weeks out). Mirrors
     fire_status_r_cohort.py's not-a-verdict posture."""
+    await ensure_materiality_shadow_columns()  # safe if digest runs before first writer
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""

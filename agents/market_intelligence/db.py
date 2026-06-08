@@ -2011,22 +2011,10 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]"
         )
-        # Materiality SHADOW (#189 / ADR 0010, 2026-06-07): written by the OFFLINE
-        # post-EOD job (materiality_shadow.py), NOT run_ep_scan. materiality_tier =
-        # the #189 tier of a catalyst-only fire; materiality_source ∈ rule/llm/
-        # abstain; fire_status_mat_shadow = the fire_status the activated rule WOULD
-        # produce (immaterial catalyst-only fire demotes to no_fire_confirmed/
-        # real_unknown). Advisory evidence-accrual only; the live fire_status is
-        # never touched until the CHANGE_PROCESS flip. Idempotent, nullable.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_tier TEXT"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_source TEXT"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status_mat_shadow TEXT"
-        )
+        # Materiality SHADOW columns (#189 / ADR 0010) are ensured by their SOLE
+        # writer (ensure_materiality_shadow_columns, called from the offline 16:25
+        # job) — NOT here. They're never written on the insert path, so piggybacking
+        # the ALTERs on each insert would only delay first-fire to the next scan.
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
@@ -2089,6 +2077,21 @@ async def update_ep_alert_advisory(
                 fire_axes = COALESCE($6, fire_axes)
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date, catalyst_type, rationale, fire_status, fire_axes)
+
+
+async def ensure_materiality_shadow_columns() -> None:
+    """Idempotently create the #189 / ADR 0010 shadow columns. Owned by the offline
+    materiality_shadow job (its SOLE writer) and called at the top of each run, so
+    the columns exist on first fire regardless of whether an EP alert has inserted
+    since deploy — turnkey first-run, no dependency on scan ordering. Nullable adds."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_tier TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_source TEXT")
+        await conn.execute(
+            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status_mat_shadow TEXT")
 
 
 async def update_ep_alert_materiality_shadow(
