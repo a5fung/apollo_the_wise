@@ -33,7 +33,7 @@ quality on disagreements is the decision lever.
 | 1 | QFIN | 05-27 | HIGH | MODERATE/demote (material) | none/demote (minor) | Both demote an earnings beat; Opus harder, citing contracting loan volume −26.8% YoY | |
 | 2 | AVAV | 05-28 | HIGH | MODERATE/demote (immaterial) | none/demote (immaterial) | Agree $63M vs $8.9B cap is immaterial; severity differs | |
 | 3 | PHR | 05-28 | MODERATE | MODERATE/promote (material) | HIGH/promote (material) | First-time net income + 13% rev growth; tier differs | |
-| 4 | RCAT | 05-28 | HIGH | none/demote (immaterial) | HIGH/hold (material) | **The #253 case.** Sonnet sees only the analyst initiation; Opus extracts Japan-MoD + Quaze from the note text and holds | |
+| 4 | RCAT | 05-28 | HIGH | none/demote (immaterial) | HIGH/hold (material) | **The #253 case — CONFOUNDED (operator context 6/9).** RCAT moved with the govt-funding drone cohort (ONDS/KTOS/AVAV/UMAC), but the THEME was missing: Lane 1 had clustered the cohort as {KYTX,SWMR} and retired it on RCAT's alert date, so `in_active_theme` was dark for BOTH models. Opus compensated via note-text mining. This row measures input-gap compensation, not judge quality — the structural fix is Lane-2 on the theme axis (#200/#226), not model choice | |
 | 5 | ASAN | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | Beat above guidance high end + StackAI acq; tier differs | |
 | 6 | BHVN | 05-29 | MODERATE | MODERATE/hold | HIGH/promote | 8-K R&D Day clinical data (opakalim); Opus treats as load-bearing | |
 | 7 | CHA | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | Clean ~65% EPS beat on the wire; tier differs | |
@@ -54,3 +54,9 @@ quality on disagreements is the decision lever.
   update + its own registry commit (per `shared/llm_models.py` rule). Until then: Sonnet.
 - Cross-check the RCAT/SKM class against #253's Lane-2 theme-axis work — if Opus's wins
   are mostly "read the analyst note harder," #210 sourcing may close the gap model-free.
+- **Operator context (6/9): RCAT confirms the input-gap framing.** The drone cohort moved
+  together on govt-funding news; the judge's theme axis was dark only because Lane 1's
+  clustering missed/retired the real cohort. Weight such rows toward "fix the INPUT
+  (Lane-2 narrative themes → judge theme axis), then re-eval models on closed-gap input"
+  rather than crediting the model that papered over the gap. Same logic as
+  feedback_catalyst_sourcing_direct_over_llm: data problem first, model choice second.
