@@ -33,11 +33,12 @@ from agents.market_intelligence.catalyst_materiality import extract_deal_value, 
 from agents.market_intelligence.collector import get_fmp_profile
 from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import assemble_judge_inputs, grade_holistic
+from scripts._grounded_reconstruct import reconstruct_grounded_text
 
 # Floor = COALESCE(baseline_floor_tier, score_tier): baseline_floor_tier is NULL on pre-W2
 # rows (added ~2026-06-08 15:10 ET); score_tier is the floor verdict that actually drove them.
 _SQL = """
-SELECT ticker, alert_date,
+SELECT ticker, alert_date, detected_at,
        COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
        score_tier, catalyst_quality, catalyst, claude_analysis,
        in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
@@ -49,13 +50,15 @@ ORDER BY alert_date, ticker
 """
 
 
-async def _replay_one(client, sem, row) -> dict:
-    """Fetch cap, compute the W4 deterministic materiality, run the judge. Read-only."""
+async def _replay_one(client, sem, row, grounded: bool) -> dict:
+    """Fetch cap, compute the W4 deterministic materiality, run the judge. Read-only.
+    grounded=True reconstructs the point-in-time corpus (SEC+wires ≤ detected_at, no web)
+    instead of using the thin stored catalyst — closes #252's thin-input caveat."""
     ticker = row["ticker"]
-    market_cap = sector = None
+    market_cap = sector = company = None
     try:
         prof = await get_fmp_profile(ticker) or {}
-        market_cap, sector = prof.get("marketCap"), prof.get("sector")
+        market_cap, sector, company = prof.get("marketCap"), prof.get("sector"), prof.get("companyName")
     except Exception:
         pass
     try:
@@ -65,7 +68,15 @@ async def _replay_one(client, sem, row) -> dict:
     rule_mat = rule_materiality(
         extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"), _mc)
 
-    # Mirror run_ep_scan._judge_shadow: real grounded_text when persisted, else stored catalyst.
+    # grounded=True → reconstruct point-in-time corpus; else use stored grounded_text
+    # (real on post-W1 rows, else assemble falls back to the thin stored catalyst).
+    ginfo = None
+    if grounded:
+        grounded_text, ginfo = await reconstruct_grounded_text(
+            ticker, row["alert_date"], row["detected_at"], company_name=company or "")
+    else:
+        grounded_text = row["grounded_text"]
+
     r = {
         "ticker": ticker, "score_tier": row["score_tier"], "catalyst_quality": row["catalyst_quality"],
         "catalyst": row["catalyst"], "claude_analysis": row["claude_analysis"],
@@ -74,33 +85,39 @@ async def _replay_one(client, sem, row) -> dict:
         "ep_score": row["ep_score"],
     }
     payload = assemble_judge_inputs(
-        r, grounded_text=row["grounded_text"], market_cap=_mc, sector=sector,
+        r, grounded_text=grounded_text, market_cap=_mc, sector=sector,
         materiality_tier=rule_mat)
     async with sem:
         verdict = await grade_holistic(client, payload, timeout=30)
 
-    has_grounded = bool(row["grounded_text"])
+    has_grounded = bool(grounded_text)
     # Flip-authorizing iff the verdict rests on faithful inputs (deterministic anchor or
-    # real grounded corpus); otherwise it leans on the thin catalyst summary.
+    # a real/reconstructed grounded corpus); otherwise it leans on the thin catalyst summary.
     faithful = (rule_mat is not None) or has_grounded
     return {
         "ticker": ticker, "alert_date": row["alert_date"], "floor": row["floor_tier"],
         "rule_mat": rule_mat, "has_grounded": has_grounded, "faithful": faithful,
-        "verdict": verdict,
+        "ginfo": ginfo, "verdict": verdict,
     }
 
 
-async def main(days: int) -> None:
+async def main(days: int, grounded: bool) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_SQL, days)
 
     print("=" * 78)
-    print(f"JUDGE BACKFILL REPLAY — last {days}d, {len(rows)} stored alert(s) re-graded")
-    print("READ-ONLY · NO DB WRITES · proxy: stored catalyst (no SEC body) unless grounded_text present")
-    print("[STRUCT] = faithful inputs (deal/cap anchor OR real grounded_text) → flip-authorizing")
-    print("[GROUND?] = leans on thin catalyst summary → indicative only, confirm vs a live alert")
-    print("Validates: integration + materiality/gap/theme.  Does NOT validate grounded-catalyst reality.")
+    mode = "GROUNDED (point-in-time SEC+wires ≤ detected_at, no web)" if grounded \
+        else "THIN (stored catalyst proxy unless grounded_text persisted)"
+    print(f"JUDGE BACKFILL REPLAY [{mode}] — last {days}d, {len(rows)} alert(s) re-graded")
+    print("READ-ONLY · NO DB WRITES (reconstruction is in-memory, never persisted)")
+    if grounded:
+        print("Grounded mode CLOSES the thin-input caveat → deltas are grade-FAITHFUL for review.")
+        print("Still validates GRADE faithfulness ONLY — NOT the live run_ep_scan write path")
+        print("(needs ≥1 real live alert). [STRUCT]=reconstructed corpus or deal/cap anchor present.")
+    else:
+        print("[STRUCT] = faithful inputs (deal/cap anchor OR real grounded_text) → flip-authorizing")
+        print("[GROUND?] = leans on thin catalyst summary → indicative only (re-run --grounded).")
     print("=" * 78)
     if not rows:
         print("  No HIGH/MODERATE alerts in window — nothing to replay.")
@@ -115,7 +132,7 @@ async def main(days: int) -> None:
 
     results = []
     try:
-        results = await asyncio.gather(*[_replay_one(client, sem, r) for r in rows])
+        results = await asyncio.gather(*[_replay_one(client, sem, r, grounded) for r in rows])
     finally:
         if client is not None:
             try:
@@ -148,9 +165,13 @@ async def main(days: int) -> None:
         for r, v in deltas:
             tag = "[STRUCT]" if r["faithful"] else "[GROUND?]"
             arrow = "▲" if v["direction_vs_floor"] == "promote" else "▼"
+            src = ""
+            if r.get("ginfo"):
+                g = r["ginfo"]
+                src = f", corpus[sec={'Y' if g['has_sec'] else 'N'} wires={g['n_benzinga']}]"
             print(f"\n  {arrow} {tag} {r['ticker']:6} {r['alert_date']}  "
                   f"{r['floor']}→{v['tier']}  mat={v.get('materiality_tier')} "
-                  f"(rule={r['rule_mat']}, grounded={'Y' if r['has_grounded'] else 'N'})")
+                  f"(rule={r['rule_mat']}, grounded={'Y' if r['has_grounded'] else 'N'}{src})")
             print(f"        {(v.get('rationale') or '')[:240]}")
 
     n_struct = sum(1 for r, _ in deltas if r["faithful"])
@@ -163,5 +184,8 @@ async def main(days: int) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
+    ap.add_argument("--grounded", action="store_true",
+                    help="reconstruct point-in-time SEC+wires corpus (≤ detected_at, no web) "
+                         "instead of the thin stored catalyst — grade-faithful review cohort")
     args = ap.parse_args()
-    asyncio.run(main(args.days))
+    asyncio.run(main(args.days, args.grounded))
