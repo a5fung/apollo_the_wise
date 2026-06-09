@@ -670,6 +670,10 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         "- AGRO: Agricultural farming, sugar, ethanol production\n"
         "- CAR: Car & truck rental (Avis, Budget brands)\n"
         "- UBER: Rideshare & food delivery marketplace\n\n"
+        "For funds/ETFs/closed-end vehicles, describe the underlying EXPOSURE (what it "
+        "invests in), not the fund mechanics — e.g. a fund buying robotics companies is "
+        "'Robotics & embodied-AI exposure fund', NOT 'investment management'. The exposure "
+        "is what moves the price and what themes group on (BOT 2026-06-09 class).\n\n"
         "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
         "Stocks:\n"
     )

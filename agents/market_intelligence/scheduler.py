@@ -288,6 +288,9 @@ async def _nightly_data_pull():
                     "- LLY: Pharma, GLP-1 obesity/diabetes drugs\n"
                     "- FCX: Copper & gold mining\n"
                     "- VST: Power generation, nuclear fleet\n\n"
+                    "For funds/ETFs/closed-end vehicles, describe the underlying EXPOSURE (what it "
+                    "invests in), not the fund mechanics — e.g. a fund buying robotics companies is "
+                    "'Robotics & embodied-AI exposure fund', NOT 'investment management'.\n\n"
                     "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n"
                     "Example: {\"ACME\": \"Industrial automation, robotics\"}\n\n"
                     "Stocks:\n" + "\n".join(stock_lines)
