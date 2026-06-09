@@ -9,6 +9,7 @@ from typing import Any
 
 import anthropic
 
+from shared.llm_models import COMPRESSION_MODEL
 from shared.models import ConversationMessage, MessageRole
 from shared.secrets import get_secrets
 
@@ -86,7 +87,7 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
     )
 
     response = await client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=COMPRESSION_MODEL,
         max_tokens=1024,
         messages=[
             {
@@ -115,7 +116,7 @@ async def _summarize_messages(messages: list[ConversationMessage]) -> str:
         from core.spend import log_api_usage
         usage = response.usage
         await log_api_usage(
-            model="claude-haiku-4-5-20251001",
+            model=COMPRESSION_MODEL,
             caller="context_compression",
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,

@@ -45,7 +45,7 @@ MAX_TOOL_ITERATIONS = 20
 RISKY_REGIMES = {"Choppy", "Correcting", "Crisis"}
 
 # Which model to use for the main orchestrator
-ORCHESTRATOR_MODEL = "claude-sonnet-4-6"
+from shared.llm_models import ORCHESTRATOR_MODEL
 
 
 class Apollo:

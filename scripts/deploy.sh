@@ -233,4 +233,17 @@ if ! python3 scripts/preflight_datetime_hygiene.py; then
 fi
 
 echo ""
+echo "=== [5i/7] Preflight model-registry check (scattered model-id drift class) ==="
+# Run on host (stdlib ast, no container). Bans string-literal Claude model ids
+# outside shared/llm_models.py — scattered ids DRIFT (2026-06-09: theme advisor
+# still on opus-4-6 while the judge eval compared opus-4-8; stale pricing rows).
+# Escape: '# model-ok: <reason>' on the line.
+if ! python3 scripts/preflight_model_registry.py; then
+  echo ""
+  echo "DEPLOY FAILED — a string-literal model id was introduced outside the registry."
+  echo "Import a ROLE constant from shared/llm_models.py instead."
+  exit 13
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="

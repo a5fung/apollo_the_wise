@@ -22,6 +22,7 @@ from telegram.ext import (
 )
 
 from core.confirmations import parse_confirmation_reply, resolve_confirmation
+from shared.llm_models import HEALTHCHECK_MODEL
 from shared.models import MemoryEntry
 from shared.secrets import get_secrets
 
@@ -1187,7 +1188,7 @@ class TelegramChannel:
             from shared.secrets import get_secrets
             client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=HEALTHCHECK_MODEL,
                 max_tokens=5,
                 messages=[{"role": "user", "content": "ping"}],
             )

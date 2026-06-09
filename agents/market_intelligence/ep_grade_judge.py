@@ -23,7 +23,7 @@ from agents.market_intelligence.catalyst_materiality import format_market_cap
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-6"  # Wave-1 default; the live model is chosen by the W1 eval.
+from shared.llm_models import JUDGE_MODEL as MODEL  # Wave-1 default; the live model is chosen by the W1 eval.
 
 GRADES = ("game_changer", "strong", "routine", "mna")
 TIERS = ("HIGH", "MODERATE", "none")

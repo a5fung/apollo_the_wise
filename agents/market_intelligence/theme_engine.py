@@ -68,7 +68,9 @@ _BREADTH_DECAY_THRESHOLD = 0.40
 
 logger = logging.getLogger(__name__)
 
-THEME_MODEL = "claude-sonnet-4-6"
+from shared.llm_models import (
+    DESCRIPTION_MODEL, THEME_ADVISOR_MODEL, THEME_MODEL,
+)
 
 # Stop-words to ignore when comparing theme names for fuzzy exclusion matching
 _THEME_NAME_STOP = {"and", "the", "of", "in", "for", "a", "an", "with", "by", "at", "&", "-"}
@@ -682,7 +684,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         chunk_tickers = to_describe[chunk_start:chunk_start + CHUNK_SIZE]
         try:
             resp = await client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model=DESCRIPTION_MODEL,
                 max_tokens=500,
                 messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
             )
@@ -2375,7 +2377,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
     client = _get_anthropic_client()
     try:
         resp = await client.messages.create(
-            model="claude-opus-4-6",
+            model=THEME_ADVISOR_MODEL,
             max_tokens=600,
             system=(
                 "You are a senior market intelligence analyst (Qullamaggie/O'Neil methodology). "
@@ -2392,7 +2394,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
         try:
             from agents.market_intelligence.spend_tracker import log_anthropic_call
             await log_anthropic_call(
-                model="claude-opus-4-6",
+                model=THEME_ADVISOR_MODEL,
                 caller=f"theme_advisor_{caller}",
                 usage=resp.usage,
             )

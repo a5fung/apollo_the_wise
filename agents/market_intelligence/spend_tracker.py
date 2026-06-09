@@ -26,15 +26,19 @@ import logging
 from typing import Any
 
 from agents.market_intelligence.db import get_pool
+from shared.llm_models import HAIKU, OPUS, OPUS_4_6, OPUS_4_7, SONNET, SONNET_4_5
 
 logger = logging.getLogger(__name__)
 
+# Rates verified against the live model catalog 2026-06-09 (the prior table had
+# stale Haiku 0.80/4.00 and Opus 15/75 rows — Opus-tier is $5/$25 since 4.6+).
 _PRICING: dict[str, dict[str, float]] = {
-    "claude-sonnet-4-6":           {"input": 3.00, "output": 15.00},
-    "claude-sonnet-4-5":           {"input": 3.00, "output": 15.00},
-    "claude-haiku-4-5-20251001":   {"input": 0.80, "output": 4.00},
-    "claude-opus-4-7":             {"input": 15.00, "output": 75.00},
-    "claude-opus-4-6":             {"input": 15.00, "output": 75.00},
+    SONNET:     {"input": 3.00, "output": 15.00},
+    SONNET_4_5: {"input": 3.00, "output": 15.00},
+    HAIKU:      {"input": 1.00, "output": 5.00},
+    OPUS:       {"input": 5.00, "output": 25.00},
+    OPUS_4_7:   {"input": 5.00, "output": 25.00},
+    OPUS_4_6:   {"input": 5.00, "output": 25.00},
 }
 _DEFAULT_PRICING = {"input": 3.00, "output": 15.00}
 

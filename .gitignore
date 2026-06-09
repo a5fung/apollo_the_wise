@@ -24,6 +24,15 @@ build/
 logs/*.log
 audit.log
 
+# Session scratch — one-off analysis artifacts that don't belong in history.
+# Durable analysis goes to docs/analysis/; durable tooling to scripts/.
+scratch/
+repomix-output.xml
+/backtest_results.csv
+/fishhook_explorer.csv
+/theme_rs_test*.png
+/deep-research-report.md
+
 # Docker
 *.tar
 

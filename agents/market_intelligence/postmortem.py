@@ -23,7 +23,7 @@ from agents.market_intelligence.db import get_pool
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-6"
+from shared.llm_models import POSTMORTEM_MODEL as _MODEL
 _MAX_TOKENS = 800
 
 _SYSTEM_PROMPT = """You review a single closed momentum/EP trade for Apollo the Wise, a trader who follows Qullamaggie/Pradeep Bonde methodology.

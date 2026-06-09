@@ -35,7 +35,7 @@ from agents.market_intelligence.db import (
 logger = logging.getLogger(__name__)
 
 _WINDOW_DAYS = 7
-_MODEL = "claude-sonnet-4-6"
+from shared.llm_models import SYSTEM_REVIEW_MODEL as _MODEL
 _MAX_TOKENS = 1200
 
 _SYSTEM_PROMPT = """You are Apollo's weekly self-auditor. You review metrics from \

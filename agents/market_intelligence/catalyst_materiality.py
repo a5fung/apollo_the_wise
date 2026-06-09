@@ -169,7 +169,7 @@ def format_market_cap(mc) -> str:
 # divergence trap). Judges materiality of the STORED grounded catalyst text
 # (point-in-time, no lookahead on the input). The LLM is a JUDGE on grounded
 # text here, not a discoverer (feedback_catalyst_sourcing_direct_over_llm).
-_MODEL = "claude-sonnet-4-6"
+from shared.llm_models import MATERIALITY_MODEL as _MODEL
 
 _JUDGE_PROMPT = """You judge whether a stock's gap-up catalyst is MATERIAL relative to the company.
 Materiality = impact RELATIVE TO COMPANY SIZE, not absolute. A $50M deal is

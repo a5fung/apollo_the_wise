@@ -150,7 +150,7 @@ async def main(days: int, grounded: bool) -> None:
                     continue
                 print(f"    {n:7}: {v.get('tier')}/{v.get('direction_vs_floor')} "
                       f"mat={v.get('materiality_tier')} — {(v.get('rationale') or '')[:170]}")
-    print("\nCost note: per-grade cost ≈ each model's token rate (sonnet $3/$15, opus $15/$75 "
+    print("\nCost note: per-grade cost ≈ each model's token rate (sonnet $3/$15, opus 4.8 $5/$25 "
           "per 1M in/out); the decision lever is QUALITY on disagreements, cost = tiebreaker "
           "(feedback_model_selection_quality_over_cost). Default stays Sonnet until evidence flips it.")
 

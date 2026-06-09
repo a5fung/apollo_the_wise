@@ -68,6 +68,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
+from shared.llm_models import GROUNDED_GRADE_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -502,7 +503,7 @@ catalyst, say so explicitly."""
             for attempt in range(2):
                 try:
                     response = await _get_claude().messages.create(
-                        model="claude-sonnet-4-6",  # #190: grade the grounded summary on Sonnet (Haiku confabulated on raw headlines)
+                        model=GROUNDED_GRADE_MODEL,  # #190: grade the grounded summary on Sonnet (Haiku confabulated on raw headlines)
                         max_tokens=300,
                         tools=[_CATALYST_TOOL],
                         tool_choice={"type": "tool", "name": "classify_catalyst"},

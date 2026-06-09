@@ -77,7 +77,7 @@ from shared.models import AgentName, AgentRequest, AgentResponse
 
 logger = logging.getLogger(__name__)
 
-MARKET_AGENT_MODEL = "claude-haiku-4-5-20251001"
+from shared.llm_models import MARKET_AGENT_MODEL
 
 # Common short words that match the ticker regex but are never tickers.
 # Shared across all three ticker-extraction call sites in execute_task.

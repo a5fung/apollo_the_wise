@@ -38,7 +38,7 @@ from agents.market_intelligence.db import get_pool, log_audit_event
 
 logger = logging.getLogger(__name__)
 
-_EXTRACTION_MODEL = "claude-sonnet-4-5"
+from shared.llm_models import METRICS_EXTRACTION_MODEL as _EXTRACTION_MODEL
 
 _EXTRACTION_PROMPT = """You will extract structured earnings metrics from news articles about {ticker}.
 

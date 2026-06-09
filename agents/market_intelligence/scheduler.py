@@ -52,6 +52,7 @@ from agents.market_intelligence.backtester.tracker import (
 )
 from core.notifications import notify_job_failure, notify_job_success
 from core.job_audit import audit_wrap
+from shared.llm_models import DESCRIPTION_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,7 @@ async def _nightly_data_pull():
                 )
 
                 resp = await client.messages.create(
-                    model="claude-haiku-4-5-20251001",
+                    model=DESCRIPTION_MODEL,
                     max_tokens=2000,
                     messages=[{"role": "user", "content": prompt}],
                 )

@@ -1,0 +1,28 @@
+# CI: full unit suite + the two host-side AST preflight gates on every push/PR.
+# This is the automation backstop for the local discipline — the suite is pure-unit
+# (~12s; broker/DB/LLM all stubbed via tests/conftest.py), so a red run means a real
+# regression, not a flaky integration. Deploy-time integration checks (paper-broker
+# smoke, safeguard walk) stay in scripts/deploy.sh — they need prod credentials and
+# deliberately do NOT run here.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements/base.txt
+      - run: pip install -r requirements/base.txt
+      - run: python scripts/preflight_datetime_hygiene.py
+      - run: python scripts/preflight_model_registry.py
+      - run: python -m pytest tests/ -q

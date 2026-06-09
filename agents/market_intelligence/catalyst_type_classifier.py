@@ -38,6 +38,8 @@ import logging
 import os
 from typing import Optional
 
+from shared.llm_models import CATALYST_TYPE_MODEL
+
 logger = logging.getLogger(__name__)
 
 # Pradeep Bonde catalyst hierarchy (most → least powerful), verbatim 2026-05-17:
@@ -179,7 +181,7 @@ async def classify_catalyst_type(
             for attempt in range(2):
                 try:
                     resp = await _get_client().messages.create(
-                        model="claude-haiku-4-5-20251001",
+                        model=CATALYST_TYPE_MODEL,
                         max_tokens=220,
                         system=_SYSTEM,
                         tools=[_CATALYST_TYPE_TOOL],
