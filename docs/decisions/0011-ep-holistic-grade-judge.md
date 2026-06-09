@@ -38,8 +38,20 @@ real/material catalyst becomes **load-bearing**, not decorative.
 ### Inputs (all already computed per-candidate; the judge assembles, builds nothing upstream)
 - **Grounded catalyst:** `grounded_text` (SEC 8-K/6-K body + Benzinga wires + web synthesis,
   `build_grounded_text`) + `catalyst` + `claude_analysis` + `corpus_provenance.has_direct_source`.
-- **Materiality:** `assess_materiality` (rule-first deal/cap → Sonnet on abstain) → tier +
-  size context.
+- **Materiality:** the **deterministic** `rule_materiality` (deal-value ÷ market-cap ratio)
+  tier ONLY — the exact ratio an LLM can't compute reliably. **W4 design decision (2026-06-09,
+  advisor-endorsed):** the judge is NOT fed `assess_materiality`'s Sonnet abstain-leg as a
+  pre-pass input. The judge's OWN call already outputs `materiality_tier` over the same
+  grounded_text + market_cap, so a second hot-path Sonnet materiality call would be redundant
+  inference the judge anchors on (cost + a new fail-open surface + against "ONE judge owns it").
+  The judge IS the Sonnet that handles the abstain cases. None ratio (no parseable deal value)
+  is passed as "judge materiality yourself." This satisfies #245's "rule-first→Sonnet" intent
+  through a cleaner architecture — the deterministic rule is the shared single-source function;
+  only the LLM leg is subsumed into the judge by design. Shadow-only, within the signed rubric
+  → no re-sign-off. (Wired in `_judge_shadow` 2026-06-09; advisory-stack retirement —
+  materiality_shadow / fire-panel compute / theme_gated_* — is DEFERRED to a post-flip task,
+  since those writers still feed the live #200/#201 fire_status baseline until the judge is
+  authoritative.)
 - **Theme/narrative axes:** `in_active_theme` (Lane 1), `in_narrative_cohort` (Lane 2 / #167).
 - **Technical structure:** `gap_pct`, `pm_rvol`, extension (MIN close 5d), `vol_percentile`,
   `score_breakdown`.

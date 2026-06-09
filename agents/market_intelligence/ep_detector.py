@@ -2430,6 +2430,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         from agents.market_intelligence.ep_grade_judge import (
             assemble_judge_inputs, grade_holistic,
         )
+        from agents.market_intelligence.catalyst_materiality import (
+            extract_deal_value, rule_materiality,
+        )
 
         # W2c (#243 / ADR 0011): read the authority toggle ONCE per scan (not per
         # candidate). OFF → judge stays pure shadow (byte-identical to W1). ON → the judge
@@ -2448,9 +2451,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # rather than starving, the catalyst grader/fire panel under the 9:45 cutoff.
             floor_tier = r.get("baseline_floor_tier")
             try:
+                # W4 (#245): feed the judge the DETERMINISTIC deal-size÷market-cap
+                # materiality tier — the exact ratio an LLM can't compute reliably
+                # (RUM $270M @ $2.5B = material). rule_materiality ONLY: the judge's own
+                # call owns the soft/abstain materiality (it outputs materiality_tier over
+                # the same grounded_text+cap), so we deliberately do NOT invoke
+                # assess_materiality's Sonnet leg here — that'd be a redundant 2nd hot-path
+                # LLM call the judge would just reproduce. Not a single-source violation:
+                # the deterministic rule is the shared function; the LLM leg is subsumed
+                # into the one judge by design. None ratio → judge decides materiality.
+                try:
+                    _mc = float(r.get("market_cap")) if r.get("market_cap") is not None else None
+                except (TypeError, ValueError):
+                    _mc = None
+                _rule_mat = rule_materiality(
+                    extract_deal_value(f"{r.get('catalyst') or ''} {r.get('claude_analysis') or ''}"),
+                    _mc,
+                )
                 payload = assemble_judge_inputs(
                     r, grounded_text=r.get("grounded_text"),
-                    market_cap=r.get("market_cap"), sector=r.get("sector"),
+                    market_cap=_mc, sector=r.get("sector"),
+                    materiality_tier=_rule_mat,
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,

@@ -150,3 +150,18 @@ def test_prompt_includes_floor_and_corpus():
     prompt = _build_judge_prompt(p)
     assert "NRIX" in prompt and "Floor grade" in prompt and "SEC body text" in prompt
     assert "$100M" in prompt  # market cap formatted into the materiality context
+
+
+def test_prompt_frames_materiality_as_deterministic_ratio():
+    # W4 (#245): when a deterministic deal/cap tier is fed, the prompt presents it as an
+    # EXACT computation (so the judge weights it), not a soft pre-pass opinion.
+    p = assemble_judge_inputs({"ticker": "RUM"}, materiality_tier="material", market_cap=2.5e9)
+    prompt = _build_judge_prompt(p)
+    assert "deterministic ratio" in prompt and "material" in prompt
+
+
+def test_prompt_invites_judge_to_decide_materiality_when_no_ratio():
+    # None ratio (no parseable deal value) → the judge owns the materiality call.
+    p = assemble_judge_inputs({"ticker": "X"}, materiality_tier=None)
+    prompt = _build_judge_prompt(p)
+    assert "judge materiality yourself" in prompt

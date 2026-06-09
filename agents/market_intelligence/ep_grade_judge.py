@@ -89,7 +89,12 @@ def assemble_judge_inputs(
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
-    scan has in scope (grounded_text, materiality, profile)."""
+    scan has in scope (grounded_text, materiality, profile).
+
+    `materiality_tier` (W4 #245) is the DETERMINISTIC deal-size÷market-cap rule tier ONLY
+    (catalyst_materiality.rule_materiality) — the exact ratio the LLM can't compute. The
+    judge's own call owns the soft/abstain materiality (it outputs materiality_tier over the
+    same grounded_text+cap); None here means "no parseable deal value — judge it yourself"."""
     return {
         "ticker": r.get("ticker"),
         "grounded_text": (grounded_text or r.get("catalyst") or "")[:6000],
@@ -122,7 +127,7 @@ Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b(p.ge
 Gap: {p.get('gap_pct')}%  |  Pre-mkt RVOL: {p.get('pm_rvol')}  |  Vol %ile: {p.get('vol_percentile')}
 Floor grade (the system's current gap+enum verdict): tier={p.get('floor_tier')} catalyst={p.get('floor_catalyst_quality')}
 In active theme (Lane 1): {_b(p.get('in_active_theme'))}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
-Materiality (rule/LLM pre-pass): {p.get('materiality_tier') or 'unknown'}  |  Direct source present: {_b(p.get('has_direct_source'))}
+Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {p.get('materiality_tier') or 'n/a — judge materiality yourself'}  |  Direct source present: {_b(p.get('has_direct_source'))}
 
 --- GROUNDED CATALYST CORPUS (SEC + wires + web) ---
 {p.get('grounded_text') or 'No grounded corpus.'}
