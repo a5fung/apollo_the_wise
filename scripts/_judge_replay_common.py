@@ -47,9 +47,11 @@ async def fetch_profile(ticker):
     return market_cap, sector, company
 
 
-def build_judge_payload(row, grounded_text, market_cap, sector):
+def build_judge_payload(row, grounded_text, market_cap, sector, active_narratives=None):
     """(payload, rule_mat) — mirrors run_ep_scan._judge_shadow's assembly exactly:
-    W4 deterministic deal/cap rule tier + assemble_judge_inputs over the row."""
+    W4 deterministic deal/cap rule tier + assemble_judge_inputs over the row.
+    `active_narratives` (lane2-judge-theme-axis): point-in-time PRIOR-day Lane-2
+    cohorts for this row's alert_date — None keeps the payload pre-change-identical."""
     rule_mat = rule_materiality(
         extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"),
         market_cap)
@@ -62,5 +64,29 @@ def build_judge_payload(row, grounded_text, market_cap, sector):
         "ep_score": row["ep_score"],
     }
     payload = assemble_judge_inputs(r, grounded_text=grounded_text, market_cap=market_cap,
-                                    sector=sector, materiality_tier=rule_mat)
+                                    sector=sector, materiality_tier=rule_mat,
+                                    active_narratives=active_narratives)
     return payload, rule_mat
+
+
+# Point-in-time Lane-2 narrative cohorts for replay (lane2-judge-theme-axis).
+# PRIOR days only (the lane is EOD, alerts are premarket — same-day rows would be
+# lookahead). Backfill-source rows ARE included, tagged: admissible for REPLAY
+# evaluation only (live reads forward-only by construction; the operator weighs
+# the hindsight caveat when reviewing flipped verdicts).
+NARRATIVES_SQL = """
+SELECT run_date, name, tickers, thesis,
+       (source = 'narrative_cogap_backfill') AS backfilled
+FROM mi_theme_candidates_shadow
+WHERE source LIKE 'narrative_cogap%'
+  AND run_date >= ($1::date - 7)
+  AND run_date < $1::date
+ORDER BY run_date DESC
+LIMIT 5
+"""
+
+
+async def fetch_narratives_for(conn, alert_date):
+    """Prior-7d Lane-2 cohorts as list[dict] for one alert_date (replay-only helper)."""
+    rows = await conn.fetch(NARRATIVES_SQL, alert_date)
+    return [dict(r) for r in rows]

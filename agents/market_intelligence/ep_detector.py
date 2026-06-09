@@ -909,14 +909,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # today (lane accrual is slow); the plumbing is forward-ready for the 6/23
     # narrative promote-gate.
     _in_narrative_cohort_set: set[str] = set()
+    # Lane-2 cohorts kept WHOLE for the judge (plan lane2-judge-theme-axis): the judge
+    # matches the catalyst against narrative {name, thesis, tickers} semantically, so a
+    # NEW JOINER of a spreading story lights the axis even when set-membership is false
+    # (RCAT 5/28 class). Same single fetch feeds both surfaces.
+    _narrative_cohorts: list[dict] = []
     try:
         from agents.market_intelligence.db import get_narrative_theme_candidates
         for _cand in await get_narrative_theme_candidates(days=5):
+            _narrative_cohorts.append(_cand)
             for _t in (_cand.get("tickers") or []):
                 _in_narrative_cohort_set.add(_t)
         logger.info(
             f"EP scan: {len(_in_narrative_cohort_set)} tickers in prior-5d "
-            f"narrative cohorts (fire panel narrative axis)"
+            f"narrative cohorts (fire panel narrative axis; {len(_narrative_cohorts)} "
+            f"cohort(s) fed to the judge theme axis)"
         )
     except Exception as e:
         logger.warning(f"EP scan: narrative set load failed ({e}) — narrative axis off this tick")
@@ -2473,6 +2480,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     r, grounded_text=r.get("grounded_text"),
                     market_cap=_mc, sector=r.get("sector"),
                     materiality_tier=_rule_mat,
+                    active_narratives=_narrative_cohorts,
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,

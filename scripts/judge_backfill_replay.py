@@ -41,13 +41,16 @@ from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import grade_holistic
 from scripts._grounded_reconstruct import reconstruct_grounded_text
 from scripts._judge_replay_common import REPLAY_SQL as _SQL
-from scripts._judge_replay_common import build_judge_payload, fetch_profile
+from scripts._judge_replay_common import (
+    build_judge_payload, fetch_narratives_for, fetch_profile,
+)
 
 
-async def _replay_one(client, sem, row, grounded: bool) -> dict:
+async def _replay_one(client, sem, row, grounded: bool, narratives=None) -> dict:
     """Fetch cap, compute the W4 deterministic materiality, run the judge. Read-only.
     grounded=True reconstructs the point-in-time corpus (SEC+wires ≤ detected_at, no web)
-    instead of using the thin stored catalyst — closes #252's thin-input caveat."""
+    instead of using the thin stored catalyst — closes #252's thin-input caveat.
+    `narratives` = point-in-time PRIOR-day Lane-2 cohorts (lane2-judge-theme-axis)."""
     ticker = row["ticker"]
     _mc, sector, company = await fetch_profile(ticker)
 
@@ -60,7 +63,8 @@ async def _replay_one(client, sem, row, grounded: bool) -> dict:
     else:
         grounded_text = row["grounded_text"]
 
-    payload, rule_mat = build_judge_payload(row, grounded_text, _mc, sector)
+    payload, rule_mat = build_judge_payload(row, grounded_text, _mc, sector,
+                                            active_narratives=narratives)
     async with sem:
         verdict = await grade_holistic(client, payload, timeout=30)
 
@@ -72,13 +76,24 @@ async def _replay_one(client, sem, row, grounded: bool) -> dict:
         "ticker": ticker, "alert_date": row["alert_date"], "floor": row["floor_tier"],
         "rule_mat": rule_mat, "has_grounded": has_grounded, "faithful": faithful,
         "ginfo": ginfo, "verdict": verdict,
+        "n_narr": len(narratives or []),
+        "narr_backfilled": any(n.get("backfilled") for n in (narratives or [])),
     }
 
 
-async def main(days: int, grounded: bool) -> None:
+async def main(days: int, grounded: bool, ticker: str | None = None,
+               narratives: bool = False) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_SQL, days)
+        if ticker:
+            rows = [r for r in rows if r["ticker"] == ticker.upper()]
+        # Point-in-time PRIOR-day Lane-2 cohorts per alert_date (one query per distinct
+        # date; replay-only — includes tagged backfill rows, see _judge_replay_common).
+        narr_by_date: dict = {}
+        if narratives:
+            for d in {r["alert_date"] for r in rows}:
+                narr_by_date[d] = await fetch_narratives_for(conn, d)
 
     print("=" * 78)
     mode = "GROUNDED (point-in-time SEC+wires ≤ detected_at, no web)" if grounded \
@@ -109,7 +124,10 @@ async def main(days: int, grounded: bool) -> None:
 
     results = []
     try:
-        results = await asyncio.gather(*[_replay_one(client, sem, r, grounded) for r in rows])
+        results = await asyncio.gather(*[
+            _replay_one(client, sem, r, grounded, narratives=narr_by_date.get(r["alert_date"]))
+            for r in rows
+        ])
     finally:
         if client is not None:
             try:
@@ -152,9 +170,12 @@ async def main(days: int, grounded: bool) -> None:
                 src = f", corpus[sec={'Y' if g['has_sec'] else 'N'} wires={g['n_benzinga']}]"
             tier_part = (f"TIER {r['floor']}→{v['tier']}" if v["tier"] != r["floor"]
                          else f"tier unchanged ({r['floor']}; {v['direction_vs_floor']} = quality read only)")
+            narr_part = ""
+            if r.get("n_narr"):
+                narr_part = f", narr={r['n_narr']}{'(incl. backfill)' if r.get('narr_backfilled') else ''}"
             print(f"\n  {arrow} {tag} {r['ticker']:6} {r['alert_date']}  "
                   f"{tier_part}  mat={v.get('materiality_tier')} "
-                  f"(rule={r['rule_mat']}, grounded={'Y' if r['has_grounded'] else 'N'}{src})")
+                  f"(rule={r['rule_mat']}, grounded={'Y' if r['has_grounded'] else 'N'}{src}{narr_part})")
             print(f"        {(v.get('rationale') or '')[:240]}")
 
     n_struct = sum(1 for r, _ in deltas if r["faithful"])
@@ -170,5 +191,11 @@ if __name__ == "__main__":
     ap.add_argument("--grounded", action="store_true",
                     help="reconstruct point-in-time SEC+wires corpus (≤ detected_at, no web) "
                          "instead of the thin stored catalyst — grade-faithful review cohort")
+    ap.add_argument("--ticker", type=str, default=None,
+                    help="replay a single ticker only (cheap acceptance runs)")
+    ap.add_argument("--narratives", action="store_true",
+                    help="feed point-in-time PRIOR-day Lane-2 narrative cohorts into the "
+                         "judge theme axis (lane2-judge-theme-axis; backfill rows tagged, "
+                         "replay-only admissibility)")
     args = ap.parse_args()
-    asyncio.run(main(args.days, args.grounded))
+    asyncio.run(main(args.days, args.grounded, ticker=args.ticker, narratives=args.narratives))

@@ -165,3 +165,50 @@ def test_prompt_invites_judge_to_decide_materiality_when_no_ratio():
     p = assemble_judge_inputs({"ticker": "X"}, materiality_tier=None)
     prompt = _build_judge_prompt(p)
     assert "judge materiality yourself" in prompt
+
+
+# ── Lane-2 active narratives → theme axis (plan lane2-judge-theme-axis) ──────
+_R_BASE = {"ticker": "RCAT", "score_tier": "HIGH", "catalyst_quality": "strong",
+           "catalyst": "Japan MoD drone contract", "claude_analysis": "note",
+           "in_active_theme": False, "in_narrative_cohort": False,
+           "gap_pct": 18.0, "pm_rvol": 6.0, "vol_percentile": 99, "ep_score": 80}
+
+_DRONE_COHORT = {"run_date": "2026-05-26", "name": "Defense drone and UAS expansion",
+                 "tickers": ["RDW", "ASPI"], "thesis": "Gov't drone funding wave"}
+
+
+def test_payload_carries_trimmed_narratives():
+    p = assemble_judge_inputs(dict(_R_BASE), active_narratives=[_DRONE_COHORT] * 9)
+    assert len(p["active_narratives"]) == 5  # capped
+    c = p["active_narratives"][0]
+    assert c["name"] == "Defense drone and UAS expansion"
+    assert c["tickers"] == ["RDW", "ASPI"]
+
+
+def test_prompt_byte_identical_when_no_narratives():
+    # Shipping this change is behavior-neutral until cohorts are passed in.
+    p_none = assemble_judge_inputs(dict(_R_BASE))
+    p_empty = assemble_judge_inputs(dict(_R_BASE), active_narratives=[])
+    assert _build_judge_prompt(p_none) == _build_judge_prompt(p_empty)
+    legacy = dict(p_none)
+    legacy.pop("active_narratives")
+    assert _build_judge_prompt(legacy) == _build_judge_prompt(p_none)
+
+
+def test_prompt_renders_narratives_and_join_instruction():
+    p = assemble_judge_inputs(dict(_R_BASE), active_narratives=[_DRONE_COHORT])
+    prompt = _build_judge_prompt(p)
+    assert "ACTIVE NARRATIVE COHORTS" in prompt
+    assert '"Defense drone and UAS expansion" (RDW, ASPI)' in prompt
+    # The Gap-B instruction: new joiners light the axis without set membership.
+    assert "EVEN IF this ticker is not listed as a cohort member" in prompt
+    # Boolean stays for telemetry continuity and still renders.
+    assert "In narrative cohort (Lane 2): no" in prompt
+
+
+def test_narrative_fields_truncated():
+    fat = {"run_date": "2026-06-01", "name": "N" * 200, "tickers": [f"T{i}" for i in range(30)],
+           "thesis": "x" * 999}
+    p = assemble_judge_inputs(dict(_R_BASE), active_narratives=[fat])
+    c = p["active_narratives"][0]
+    assert len(c["name"]) == 80 and len(c["tickers"]) == 12 and len(c["thesis"]) == 200

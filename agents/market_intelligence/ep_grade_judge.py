@@ -86,6 +86,7 @@ def assemble_judge_inputs(
     sector: str | None = None,
     revenue_stage: bool | None = None,
     has_direct_source: bool | None = None,
+    active_narratives: list[dict] | None = None,
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
@@ -95,7 +96,13 @@ def assemble_judge_inputs(
     (catalyst_materiality.rule_materiality) — the exact ratio the LLM can't compute. The
     judge's own call owns the soft/abstain materiality (it outputs materiality_tier over the
     same grounded_text+cap); None here means "no deal-context dollar value — judge it
-    yourself" (earnings revenue/guidance figures deliberately don't count, #251)."""
+    yourself" (earnings revenue/guidance figures deliberately don't count, #251).
+
+    `active_narratives` (Lane-2 → theme axis, plan lane2-judge-theme-axis): recent
+    narrative cohorts as [{run_date, name, tickers, thesis}], NOT a boolean — the judge
+    semantically matches the catalyst against active narratives, so a NEW JOINER of a
+    spreading story lights the axis even when ticker-set membership (in_narrative_cohort)
+    is false (the RCAT 5/28 class). None/empty → prompt byte-identical to pre-change."""
     return {
         "ticker": r.get("ticker"),
         "grounded_text": (grounded_text or r.get("catalyst") or "")[:6000],
@@ -105,6 +112,15 @@ def assemble_judge_inputs(
         "materiality_tier": materiality_tier,
         "in_active_theme": bool(r.get("in_active_theme")),
         "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
+        "active_narratives": [
+            {
+                "run_date": str(c.get("run_date") or ""),
+                "name": (c.get("name") or "")[:80],
+                "tickers": list(c.get("tickers") or [])[:12],
+                "thesis": (c.get("thesis") or "")[:200],
+            }
+            for c in (active_narratives or [])[:5]
+        ],
         "gap_pct": r.get("gap_pct"),
         "pm_rvol": r.get("pm_rvol"),
         "vol_percentile": r.get("vol_percentile"),
@@ -120,6 +136,20 @@ def assemble_judge_inputs(
 def _build_judge_prompt(p: dict) -> str:
     def _b(v):
         return "yes" if v else "no"
+    # Lane-2 narratives block (plan lane2-judge-theme-axis). Rendered ONLY when cohorts
+    # exist — empty/missing list keeps the prompt byte-identical to the pre-change form,
+    # so shipping this is behavior-neutral until the scan passes cohorts in.
+    narr_block = ""
+    if p.get("active_narratives"):
+        lines = "\n".join(
+            f"- {c.get('run_date')} \"{c.get('name')}\" ({', '.join(c.get('tickers') or [])}): {c.get('thesis')}"
+            for c in p["active_narratives"]
+        )
+        narr_block = f"""
+
+--- ACTIVE NARRATIVE COHORTS (Lane 2 — groups that recently gapped together on a SHARED story; discovered EOD on prior days) ---
+{lines}
+Match the CATALYST against these narratives: a catalyst that JOINS an active narrative (same story, new name — e.g. a drone-defense contract while a drone-defense cohort is active) lights the theme/narrative axis EVEN IF this ticker is not listed as a cohort member. A name merely sharing a sector with a cohort, without the story, does not."""
     return f"""{_RUBRIC}
 
 --- SETUP ---
@@ -128,7 +158,7 @@ Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b(p.ge
 Gap: {p.get('gap_pct')}%  |  Pre-mkt RVOL: {p.get('pm_rvol')}  |  Vol %ile: {p.get('vol_percentile')}
 Floor grade (the system's current gap+enum verdict): tier={p.get('floor_tier')} catalyst={p.get('floor_catalyst_quality')}
 In active theme (Lane 1): {_b(p.get('in_active_theme'))}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
-Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {p.get('materiality_tier') or 'n/a — judge materiality yourself'}  |  Direct source present: {_b(p.get('has_direct_source'))}
+Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {p.get('materiality_tier') or 'n/a — judge materiality yourself'}  |  Direct source present: {_b(p.get('has_direct_source'))}{narr_block}
 
 --- GROUNDED CATALYST CORPUS (SEC + wires + web) ---
 {p.get('grounded_text') or 'No grounded corpus.'}
