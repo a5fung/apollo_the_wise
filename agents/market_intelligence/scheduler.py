@@ -74,6 +74,7 @@ JOB_BACKUP_HEALTH_CHECK = "backup_health_check"
 JOB_ORDER_STATUS_RECONCILE = "order_status_reconcile"
 JOB_9M_PACE_DIGEST = "9m_pace_digest"
 JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
+JOB_JUDGE_DELTA_DIGEST = "judge_delta_digest"
 
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
@@ -2094,6 +2095,83 @@ async def _9m_pace_digest_job():
     return len(ranked)
 
 
+async def _judge_delta_digest_job():
+    """EOD push of the EP Holistic Grade Judge's bidirectional deltas (#240 / W3,
+    2026-06-09). The judge_delta_review.py / unjustified_demotion_sweep.py surfaces
+    are PULL (operator runs them); this is the PUSH complement — once a day, the names
+    the judge moved UP or DOWN vs the conviction floor land in Telegram so the
+    judgment-correctness review doesn't depend on remembering to run a script.
+
+    DB-sourced (feedback_scheduler_aggregators_db_sourced): reads today's judged rows
+    straight from mi_ep_alerts — never module state. Empty day → no Telegram (the judge
+    is shadow until the W2 flip + most days have 0 deltas; build-ahead-of-data). The
+    subtitle reflects the LIVE authority toggle so the operator always knows whether the
+    deltas DROVE entries (toggle ON) or are advisory (OFF)."""
+    now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        logger.info("judge delta digest: non-trading day — skip")
+        return 0
+    from agents.market_intelligence.db import get_holistic_judge_enabled
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT ticker, baseline_floor_tier, judge_tier, judge_direction,
+                   judge_materiality_tier, gap_pct, judge_rationale
+            FROM mi_ep_alerts
+            WHERE alert_date = $1
+              AND judge_tier IS NOT NULL
+              AND judge_direction IN ('promote', 'demote')
+            ORDER BY CASE judge_direction WHEN 'promote' THEN 0 ELSE 1 END,
+                     gap_pct DESC NULLS LAST
+            """,
+            now_et.date(),
+        )
+    if not rows:
+        return 0
+
+    authority_on = False
+    try:
+        authority_on = await get_holistic_judge_enabled()
+    except Exception:
+        pass  # display-only; default to the safe "advisory" framing
+
+    msg = _build_judge_delta_message(rows, authority_on, now_et.strftime("%b %d"))
+    try:
+        await send_telegram_message(msg)
+    except Exception as e:
+        logger.error(f"judge_delta_digest Telegram failed: {e}")
+    return len(rows)
+
+
+def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
+    """Pure formatter for the judge-delta digest (testable without a DB). `rows`
+    are mi_ep_alerts rows (promote/demote, judge_tier non-null) already ordered
+    promotes-first. The subtitle reflects whether the deltas were load-bearing."""
+    n_promote = sum(1 for r in rows if r["judge_direction"] == "promote")
+    n_demote = len(rows) - n_promote
+    subtitle = ("_Load-bearing: these DROVE the paper grade/entry._" if authority_on
+                else "_Shadow: judge vs floor grade · drives nothing while toggle OFF._")
+    parts = [
+        f"🧑‍⚖️ *EP Judge deltas — EOD {date_str} (▲{n_promote} ▼{n_demote})*",
+        subtitle,
+    ]
+    for r in rows[:15]:
+        arrow = "▲" if r["judge_direction"] == "promote" else "▼"
+        mat = r["judge_materiality_tier"] or "n/a"
+        parts.append(
+            f"{arrow} `{r['ticker']}` {r['baseline_floor_tier']}→{r['judge_tier']}  "
+            f"mat={mat}  +{(r['gap_pct'] or 0):.1f}%"
+        )
+        if r["judge_rationale"]:
+            # Free-text judge rationale → escape Markdown actives (#148 class) so a
+            # stray _/* in the prose doesn't break the legacy-Markdown parse.
+            parts.append(f"   _{_md_escape(r['judge_rationale'][:140])}_")
+    if len(rows) > 15:
+        parts.append(f"…+{len(rows) - 15} more")
+    return "\n".join(parts)
+
+
 async def _order_status_reconcile_job(lookback_days: int = 90):
     """Periodic DB↔Alpaca order-status reconciliation (#123, 2026-05-26).
 
@@ -3644,6 +3722,22 @@ def start_scheduler() -> AsyncIOScheduler:
             day_of_week="mon-fri", timezone="America/New_York",
         ),
         id=JOB_9M_PACE_DIGEST,
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
+    # EP Judge delta digest: 16:25 ET (#240 / W3, 2026-06-09). PUSH complement to the
+    # pull-only judge_delta_review.py / unjustified_demotion_sweep.py — once a day, the
+    # names the holistic judge moved UP or DOWN vs the floor land in Telegram for the
+    # judgment-correctness review. Staggered after the 16:20 9m_pace digest (the 16:xx
+    # family is spaced). Empty day → no Telegram (shadow until the W2 flip).
+    _scheduler.add_job(
+        audit_wrap(_judge_delta_digest_job, JOB_JUDGE_DELTA_DIGEST),
+        CronTrigger(
+            hour=16, minute=25,
+            day_of_week="mon-fri", timezone="America/New_York",
+        ),
+        id=JOB_JUDGE_DELTA_DIGEST,
         replace_existing=True,
         misfire_grace_time=300,
     )
