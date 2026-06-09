@@ -1675,6 +1675,8 @@ class TelegramChannel:
             BotCommand("timestop",     "/timestop TICKER — confirm time-stop exit of 9M Day 2 meanderer"),
             BotCommand("partialnow",   "/partialnow TICKER — operator-confirm immediate partial exit (1/3 sell)"),
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
+            BotCommand("review",       "/review TICKER <agree|toohigh|toolow|notep> — label a grade (bare /review lists corpus)"),
+            BotCommand("spotted",      "/spotted TICKER <grade> <narrative> — inject a real EP you spotted (e.g. a tweet)"),
             BotCommand("missed",       "Missed EPs — top winners we didn't enter (opportunity cost)"),
             BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("status",       "System health + API spend"),

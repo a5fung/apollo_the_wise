@@ -135,6 +135,81 @@ def _normalize_slash_cmd(token: str) -> str:
     return "/" + re.sub(r"[^a-z0-9_]+", "", (token or "").split("@")[0].lower())
 
 
+# ── Operator ground-truth command parsing (#254) ────────────────────────────────
+# Pure, DB-free parsers so the arg-handling is unit-testable in isolation. Both share
+# the leading "TICKER [YYYY-MM-DD]" shape; positional after that.
+_GT_VERDICTS = frozenset({"agree", "toohigh", "toolow", "notep"})
+_GT_GRADES = frozenset({"game_changer", "strong", "routine", "mna", "none", "not_ep"})
+# A review verdict implies a root-cause ONLY when unambiguous; over/under-grade causes
+# are genuinely multi-valued (don't fabricate a specific tag — leave NULL for a later
+# refine pass / Phase-2 nudge). The literal verdict column carries the directional signal.
+_GT_VERDICT_ROOT_CAUSE = {"agree": "judge_correct"}
+
+
+def _gt_strip_cmd_tokens(text: str) -> list[str]:
+    """Drop a leading slash-command token; return the remaining whitespace tokens."""
+    toks = (text or "").strip().split()
+    if toks and toks[0].startswith("/"):
+        toks = toks[1:]
+    return toks
+
+
+def _gt_take_ticker_date(toks: list[str]) -> "tuple[str, str | None, list[str]] | None":
+    """Consume TICKER [YYYY-MM-DD] off the front. Returns (ticker, date_str|None, rest)
+    or None if no valid ticker leads."""
+    import re
+    if not toks:
+        return None
+    ticker = toks[0].upper()
+    if not re.match(r"^[A-Z]{1,5}$", ticker):
+        return None
+    rest = toks[1:]
+    event_date = None
+    if rest and re.match(r"^\d{4}-\d{2}-\d{2}$", rest[0]):
+        event_date = rest[0]
+        rest = rest[1:]
+    return ticker, event_date, rest
+
+
+def _parse_review_args(text: str) -> "dict | None":
+    """`/review TICKER [YYYY-MM-DD] <agree|toohigh|toolow|notep> [note...]`
+    → {ticker, event_date, verdict, note} or None if unparseable."""
+    head = _gt_take_ticker_date(_gt_strip_cmd_tokens(text))
+    if head is None:
+        return None
+    ticker, event_date, rest = head
+    if not rest:
+        return None
+    verdict = rest[0].lower()
+    if verdict not in _GT_VERDICTS:
+        return None
+    note = " ".join(rest[1:]).strip() or None
+    return {"ticker": ticker, "event_date": event_date, "verdict": verdict, "note": note}
+
+
+def _parse_spotted_args(text: str) -> "dict | None":
+    """`/spotted TICKER [YYYY-MM-DD] <grade> <narrative...>` (the FSLR-injection path)
+    → {ticker, event_date, grade, narrative, source} or None if unparseable.
+    source = 'tweet:@handle' if the narrative names an @handle, else 'operator'."""
+    head = _gt_take_ticker_date(_gt_strip_cmd_tokens(text))
+    if head is None:
+        return None
+    ticker, event_date, rest = head
+    if not rest:
+        return None
+    grade = rest[0].lower()
+    if grade not in _GT_GRADES:
+        return None
+    narrative = " ".join(rest[1:]).strip() or None
+    source = "operator"
+    if narrative:
+        handle = next((w for w in narrative.split() if w.startswith("@") and len(w) > 1), None)
+        if handle:
+            source = f"tweet:{handle}"
+    return {"ticker": ticker, "event_date": event_date, "grade": grade,
+            "narrative": narrative, "source": source}
+
+
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(AgentName.MARKET_INTELLIGENCE)
@@ -2488,6 +2563,168 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"_Fills at next regular-session open. Slot freed once filled._"
             ),
         )
+
+    async def _handle_review_command(self, request: AgentRequest) -> AgentResponse:
+        """`/review TICKER [YYYY-MM-DD] <agree|toohigh|toolow|notep> [note...]`
+
+        Operator review-label on a system grade → mi_ep_ground_truth (kind='review',
+        point-in-time-clean). Snapshots what the system graded that day, stores the
+        operator's verdict + optional note. READ-ONLY re trade state — pure annotation
+        feeding the judge debug/tuning/persona corpus (#254). UPSERT (re-review updates
+        in place). Default date = ticker's most recent alert, else today.
+
+        Bare `/review` (or `/review list [N]`, `/review <N>`) reads the recent corpus —
+        merged so there's no confusable singular/plural `/review` vs `/reviews` split.
+        """
+        from datetime import date as _date
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import (
+            get_pool, snapshot_system_tier, upsert_ep_ground_truth,
+        )
+
+        # Read path: no args, or an explicit list/recent/count token → show the corpus.
+        toks = _gt_strip_cmd_tokens(request.task)
+        if not toks or toks[0].lower() in {"list", "recent", "ls"} or toks[0].isdigit():
+            return await self._handle_reviews_query(request)
+
+        parsed = _parse_review_args(request.task)
+        if parsed is None:
+            return self._ok(request, result=(
+                "Usage: `/review TICKER [YYYY-MM-DD] <agree|toohigh|toolow|notep> [note]`\n\n"
+                "Label a system EP grade as ground truth. Verdicts:\n"
+                "  • `agree` — system tier was right\n"
+                "  • `toohigh` — over-graded (should be lower)\n"
+                "  • `toolow` — under-graded (missed a real EP's strength)\n"
+                "  • `notep` — shouldn't have been an EP at all\n\n"
+                "Optional date defaults to the ticker's most recent alert. "
+                "Anything after the verdict is stored as the note.\n"
+                "Bare `/review` (or `/review N`) lists the recent corpus."
+            ))
+
+        ticker = parsed["ticker"]
+        verdict = parsed["verdict"]
+        note = parsed["note"]
+
+        # Resolve event_date: explicit arg → most-recent alert → today.
+        event_date = None
+        if parsed["event_date"]:
+            try:
+                event_date = _date.fromisoformat(parsed["event_date"])
+            except ValueError:
+                return self._ok(request, result=f"_Invalid date `{parsed['event_date']}` — use YYYY-MM-DD._")
+        if event_date is None:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                r = await conn.fetchrow(
+                    "SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1", ticker)
+            event_date = (r and r["d"]) or et_today()
+
+        system_tier = await snapshot_system_tier(ticker, event_date)
+        root_cause = _GT_VERDICT_ROOT_CAUSE.get(verdict)  # only 'agree'→judge_correct; else None
+        row = await upsert_ep_ground_truth(
+            ticker=ticker, event_date=event_date, kind="review",
+            verdict=verdict, system_tier=system_tier, root_cause=root_cause,
+            narrative=note, source="review", reviewed_by="operator",
+        )
+
+        sys_str = system_tier or "—(uncaught)"
+        cause_str = f" · root_cause={row['root_cause']}" if row.get("root_cause") else ""
+        note_str = f"\n  • Note: {note}" if note else ""
+        return self._ok(request, result=(
+            f"✅ *Review logged: `{ticker}` {event_date}*\n\n"
+            f"  • Verdict: `{verdict}` (system graded `{sys_str}`){cause_str}{note_str}\n\n"
+            f"_Stored in the ground-truth corpus (review). `/reviews` to see recent._"
+        ))
+
+    async def _handle_spotted_command(self, request: AgentRequest) -> AgentResponse:
+        """`/spotted TICKER [YYYY-MM-DD] <grade> <narrative...>` — inject an externally-
+        spotted real EP (e.g. a tweet from a good trader — the FSLR case) as ground truth.
+
+        kind='injected' → a RECALL / coverage-gap + persona signal, NOT a grade-calibration
+        exemplar (injected names are outcome-selected — hindsight; see #167 segregation).
+        Snapshots whether the system caught it (system_tier) so a NULL = a coverage miss.
+        READ-ONLY re trade state; labeled data, never a trade trigger (#254).
+        """
+        from datetime import date as _date
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import snapshot_system_tier, upsert_ep_ground_truth
+
+        parsed = _parse_spotted_args(request.task)
+        if parsed is None:
+            return self._ok(request, result=(
+                "Usage: `/spotted TICKER [YYYY-MM-DD] <grade> <narrative...>`\n\n"
+                "Inject a real EP you spotted externally (e.g. a trader's tweet) as a\n"
+                "ground-truth datapoint — even if the system already caught it.\n"
+                f"Grades: {', '.join(sorted(_GT_GRADES))}\n\n"
+                "Example: `/spotted FSLR 2026-04-15 game_changer solar policy tailwind, "
+                "huge backlog beat — flagged by @trader`\n"
+                "Date defaults to today; an @handle in the narrative tags the source."
+            ))
+
+        ticker = parsed["ticker"]
+        grade = parsed["grade"]
+        narrative = parsed["narrative"]
+        source = parsed["source"]
+
+        event_date = et_today()
+        if parsed["event_date"]:
+            try:
+                event_date = _date.fromisoformat(parsed["event_date"])
+            except ValueError:
+                return self._ok(request, result=f"_Invalid date `{parsed['event_date']}` — use YYYY-MM-DD._")
+
+        system_tier = await snapshot_system_tier(ticker, event_date)
+        await upsert_ep_ground_truth(
+            ticker=ticker, event_date=event_date, kind="injected",
+            operator_grade=grade, system_tier=system_tier, narrative=narrative,
+            source=source, reviewed_by="operator",
+        )
+
+        if system_tier:
+            caught = f"system caught it (`{system_tier}`) — adds to the narrative corpus"
+        else:
+            caught = "⚠️ system did NOT alert that day — a *coverage gap* (recall signal)"
+        nar_str = f"\n  • Narrative: {narrative}" if narrative else ""
+        return self._ok(request, result=(
+            f"✅ *EP injected: `{ticker}` {event_date}*\n\n"
+            f"  • Operator grade: `{grade}` · source: `{source}`\n"
+            f"  • {caught}{nar_str}\n\n"
+            f"_Stored as injected ground truth (recall/persona corpus — not a grade exemplar)._"
+        ))
+
+    async def _handle_reviews_query(self, request: AgentRequest) -> AgentResponse:
+        """`/reviews [N]` — recent operator ground-truth rows (reviews + injected EPs)."""
+        import re as _re
+        from agents.market_intelligence.db import get_recent_ground_truth
+
+        m = _re.search(r"\b(\d{1,3})\b", request.task)
+        n = max(1, min(int(m.group(1)), 50)) if m else 15
+        rows = await get_recent_ground_truth(n)
+        if not rows:
+            return self._ok(request, result=(
+                "_No ground-truth rows yet._\n\n"
+                "`/review TICKER <verdict>` to label a system grade · "
+                "`/spotted TICKER <grade> <narrative>` to inject a real EP you spotted."
+            ))
+
+        lines = ["📒 *Operator ground-truth corpus* (recent)", ""]
+        for r in rows:
+            tag = "🔎" if r["kind"] == "review" else "📥"
+            sys_str = r["system_tier"] or "—"
+            if r["kind"] == "review":
+                detail = f"{r['verdict'] or '?'} vs sys={sys_str}"
+                if r["root_cause"]:
+                    detail += f" · {r['root_cause']}"
+            else:
+                detail = f"grade={r['operator_grade'] or '?'} sys={sys_str} ({r['source'] or 'operator'})"
+            line = f"{tag} `{r['ticker']:<5}` {r['event_date']} — {detail}"
+            if r["narrative"]:
+                nar = r["narrative"][:90]
+                line += f"\n      _{nar}_"
+            lines.append(line)
+        lines.append("")
+        lines.append(f"_{len(rows)} row(s). Capture-only corpus (#254) — no judge effect yet._")
+        return self._ok(request, result="\n".join(lines))
 
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
         """`/partialnow TICKER [CONFIRM]` — operator-confirm immediate partial exit.
@@ -4875,6 +5112,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "/themes_detail":  self._handle_themes_detail,
             "/trades_detail":  self._handle_trades_detail,
             "/rubric":         self._handle_rubric_query,
+            "/review":         self._handle_review_command,
+            "/spotted":        self._handle_spotted_command,
+            "/reviews":        self._handle_reviews_query,
         }
         handler = dispatch.get(cmd)
         if handler:

@@ -2234,6 +2234,120 @@ async def update_ep_alert_materiality_shadow(
             fire_status_mat_shadow)
 
 
+# ── Operator ground-truth corpus (#254) ─────────────────────────────────────────
+# Unified telemetry table: operator review-labels (kind='review') + externally-spotted
+# EP injections (kind='injected', e.g. an FSLR tweet). READ-ONLY re trade state — pure
+# annotation, never a trade trigger. kind IS in the unique key so hindsight-selected
+# injected rows stay PHYSICALLY SEPARATE from point-in-time-clean review rows (#167);
+# Phase-2 grade-precedent retrieval must filter kind='review' only.
+GROUND_TRUTH_GRADES = frozenset(
+    {"game_changer", "strong", "routine", "mna", "none", "not_ep"})
+GROUND_TRUTH_VERDICTS = frozenset({"agree", "toohigh", "toolow", "notep"})
+GROUND_TRUTH_ROOT_CAUSES = frozenset({
+    "judge_correct", "sourcing_gap", "theme_axis_blank", "detection_bug",
+    "materiality_noise", "model_divergence", "gap_data_error", "other",
+})
+
+
+async def ensure_ep_ground_truth_table() -> None:
+    """Idempotently create mi_ep_ground_truth (turnkey first-use, no migration step).
+    Called at the top of every writer/reader so the table exists on first command."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_ep_ground_truth (
+                id             SERIAL PRIMARY KEY,
+                ticker         TEXT NOT NULL,
+                event_date     DATE NOT NULL,
+                kind           TEXT NOT NULL,        -- 'review' | 'injected'
+                verdict        TEXT,                 -- review rows: agree|toohigh|toolow|notep
+                operator_grade TEXT,                 -- game_changer|strong|routine|mna|none|not_ep
+                system_tier    TEXT,                 -- what the system graded (NULL = uncaught/pre-judge)
+                root_cause     TEXT,                 -- judge_correct|sourcing_gap|... (review rows)
+                narrative      TEXT,                 -- catalyst story (load-bearing for injected)
+                source         TEXT,                 -- 'review'|'tweet:@handle'|'operator'|'system'
+                reviewed_by    TEXT,
+                created_at     TIMESTAMPTZ DEFAULT now(),
+                updated_at     TIMESTAMPTZ DEFAULT now(),
+                UNIQUE (ticker, event_date, kind)
+            )
+        """)
+
+
+async def snapshot_system_tier(ticker: str, event_date: "date") -> str | None:
+    """What tier did the system grade this ticker on this date? Prefers the holistic
+    judge tier, falls back to the floor/score tier. NULL if no alert that day (uncaught
+    — the recall-gap signal that makes an injected EP a coverage miss)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # judge_tier is post-W1; COALESCE tolerates its absence on old rows.
+        row = await conn.fetchrow("""
+            SELECT COALESCE(judge_tier, score_tier) AS tier
+            FROM mi_ep_alerts
+            WHERE ticker = $1 AND alert_date = $2
+            ORDER BY detected_at DESC NULLS LAST
+            LIMIT 1
+        """, ticker, event_date)
+    return row["tier"] if row else None
+
+
+async def upsert_ep_ground_truth(
+    *, ticker: str, event_date: "date", kind: str,
+    verdict: str | None = None, operator_grade: str | None = None,
+    system_tier: str | None = None, root_cause: str | None = None,
+    narrative: str | None = None, source: str | None = None,
+    reviewed_by: str | None = None,
+) -> dict:
+    """UPSERT one operator judgment on (ticker, event_date, kind). Re-review / re-inject
+    updates in place (operator ask #1 'correct poor decisions'). Returns the stored row.
+    READ-ONLY re trade state (annotation table, no trade effect).
+
+    Two update disciplines, deliberately split:
+    - verdict + root_cause are a COUPLED 'current statement', recomputed on EVERY review
+      (verdict is always supplied) → plain SET. COALESCE here would strand a contradictory
+      row: an agree→judge_correct row re-reviewed as toohigh (root_cause=None) would KEEP
+      judge_correct forever, since no later non-agree verdict ever supplies a cause.
+    - operator_grade / system_tier / narrative / source / reviewed_by CAN be legitimately
+      omitted on a re-review → COALESCE keeps the prior value."""
+    await ensure_ep_ground_truth_table()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO mi_ep_ground_truth
+                (ticker, event_date, kind, verdict, operator_grade, system_tier,
+                 root_cause, narrative, source, reviewed_by, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now())
+            ON CONFLICT (ticker, event_date, kind) DO UPDATE SET
+                verdict        = EXCLUDED.verdict,
+                root_cause     = EXCLUDED.root_cause,
+                operator_grade = COALESCE(EXCLUDED.operator_grade, mi_ep_ground_truth.operator_grade),
+                system_tier    = COALESCE(EXCLUDED.system_tier, mi_ep_ground_truth.system_tier),
+                narrative      = COALESCE(EXCLUDED.narrative, mi_ep_ground_truth.narrative),
+                source         = COALESCE(EXCLUDED.source, mi_ep_ground_truth.source),
+                reviewed_by    = COALESCE(EXCLUDED.reviewed_by, mi_ep_ground_truth.reviewed_by),
+                updated_at     = now()
+            RETURNING ticker, event_date, kind, verdict, operator_grade, system_tier,
+                      root_cause, narrative, source, reviewed_by, created_at, updated_at
+        """, ticker, event_date, kind, verdict, operator_grade, system_tier,
+            root_cause, narrative, source, reviewed_by)
+    return dict(row)
+
+
+async def get_recent_ground_truth(limit: int = 15) -> list[dict]:
+    """Recent ground-truth rows, newest-updated first (read surface for /reviews)."""
+    await ensure_ep_ground_truth_table()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, event_date, kind, verdict, operator_grade, system_tier,
+                   root_cause, narrative, source, reviewed_by, updated_at
+            FROM mi_ep_ground_truth
+            ORDER BY updated_at DESC
+            LIMIT $1
+        """, limit)
+    return [dict(r) for r in rows]
+
+
 async def delete_historical_alerts(from_date: date, to_date: date) -> int:
     """Delete historical_scan alerts in date range (for idempotent re-runs)."""
     pool = await get_pool()
