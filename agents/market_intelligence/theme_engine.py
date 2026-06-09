@@ -365,7 +365,8 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             "Stocks:\n" + "\n".join(lines) + "\n\n"
             'Return ONLY JSON: {"themes":[{"name":"<=6 words","catalyst_type":"theme|govt_policy|shortage|'
             'sales_acceleration|new_product|management_change|other","tickers":["TICK","TICK"],"thesis":"one sentence"}]}. '
-            "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]."
+            "Include a theme ONLY if 2+ of the listed tickers truly share it; otherwise themes=[]. "
+            "The name's breadth must match the group: every grouped ticker must individually fit the name."
         )
         client = _get_anthropic_client()
         msg = await client.messages.create(
@@ -1379,6 +1380,23 @@ async def _validate_theme_membership(
         remove_val = result.get("remove") or []  # guard against "remove": null
         to_remove = {tk.upper() for tk in remove_val if isinstance(tk, str)}
 
+        # ── Mass-removal tripwire (#214) — AUDIT-ONLY, no behavior change ───
+        # When validation flags >=50% of a theme's members (and >=3 names), the
+        # historical cause is the theme NAME being narrower than the cluster it
+        # labels (e.g. 12 integrated majors evicted from "Pure-Play Hydraulic
+        # Fracturing" 2026-06-08 — the removals were CORRECT given the name; the
+        # NAME was the defect). Surface that signature for the operator instead
+        # of letting it masquerade as a generic cooldowns_per_day L2 anomaly.
+        # Removals still proceed unchanged — validation-prompt behavior changes
+        # are #215's gated lane.
+        if len(to_remove) >= max(3, len(tickers) // 2):
+            await log_audit_event(
+                "validation_mass_removal_name_suspect",
+                summary=(f"'{theme_name}': validation flagged {len(to_remove)}/{len(tickers)} "
+                         f"members — name likely narrower than the cluster (#214)"),
+                detail=f"Flagged: {', '.join(sorted(to_remove))}",
+            )
+
         # ── Operator-protection shield (#213) ───────────────────────────────
         # If the operator explicitly bypassed a (ticker, theme) cooldown, they
         # have ruled that this ticker BELONGS in this theme. The validator must
@@ -2290,7 +2308,12 @@ _THEME_DISCOVERY_TOOL = {
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Specific theme name e.g. 'Edge AI Inference', not 'Technology'",
+                            "description": (
+                                "Specific theme name e.g. 'Edge AI Inference', not 'Technology'. "
+                                "Breadth must MATCH the members: every listed ticker must "
+                                "individually fit this name — if a specific label excludes some "
+                                "members, broaden the name or drop those members (#214)."
+                            ),
                         },
                         "thesis": {
                             "type": "string",
@@ -2397,7 +2420,7 @@ _SPLIT_TOOL = {
                     {
                         "type": "object",
                         "properties": {
-                            "name": {"type": "string", "description": "Sub-theme name"},
+                            "name": {"type": "string", "description": "Sub-theme name — must individually fit every ticker in the sub-group; never narrower than the members (#214)"},
                             "tickers": {"type": "array", "items": {"type": "string"}},
                             "thesis": {"type": "string", "description": "1-2 sentence thesis"},
                         },
@@ -2454,6 +2477,7 @@ SPLIT RULES:
 - Propose at most ONE split
 - Sub-group must have {_SPLIT_MIN_STOCKS}–{_SPLIT_MAX_STOCKS} stocks, all ideally RS >= 70
 - Must represent a TIGHTER sub-industry (e.g. "compound semi wafer fabs" within a broad photonic semi theme)
+- The sub-theme NAME must fit EVERY stock in the sub-group — never a label narrower than its members (#214)
 - Must NOT split by market cap, geography, or vague similarity
 - Parent theme must remain coherent after the split (at least 5 stocks remaining)
 - If the theme is already tight/coherent → propose split=null
@@ -2883,6 +2907,7 @@ Rules:
   - BAD: mixing a REIT with a commodity stock, adding a consumer name to an industrial theme
   - BAD: grouping by vague similarity ("they're both tech", "both benefit from AI")
 - Name themes specifically ("AI Memory & HBM" not "Technology" or "Semiconductors")
+- NAME-BREADTH RULE: the name must be exactly as broad as the members — EVERY ticker you list must individually fit the name. If your best specific label excludes some members (e.g. "Pure-Play Hydraulic Fracturing" while the list holds XOM/CVX integrated majors), either broaden the name to what the members actually share ("Oil & Gas E&P") or drop/split the non-fitting members. Membership validation later treats the NAME as ground truth and evicts every member that doesn't match it — a name narrower than its members guarantees the cluster gets shredded.
 - A stock CAN move from an existing theme to a new sub-theme if the sub-theme is more specific
 - A stock should appear in at most 2 themes. Do NOT include a stock in a new theme if it already appears in 2+ existing themes (check the list above)
 {recall_disposition}
