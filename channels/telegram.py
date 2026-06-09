@@ -1629,7 +1629,9 @@ class TelegramChannel:
                      "detectors", "unknownrate",
                      "breadth", "watch", "rubric",
                      # 2026-05-28 #138 operator-confirm commands
-                     "partialnow", "syncnow"):
+                     "partialnow", "syncnow",
+                     # 2026-06-09 #254 operator ground-truth corpus
+                     "review", "reviews", "spotted"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
