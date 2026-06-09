@@ -49,6 +49,16 @@ def test_demote_uses_down_arrow():
     assert "▼ `BIGCO` HIGH→none" in msg
 
 
+def test_promote_with_tier_held_renders_quality_read():
+    # #253: judge_direction can disagree with the tier outcome (ASAN/SAIC/PHR class —
+    # direction=promote but tier stayed MODERATE). Must NOT render as a tier upgrade.
+    msg = _build_judge_delta_message([_row("ASAN", "promote", floor="MODERATE",
+                                           judge="MODERATE")],
+                                     authority_on=False, date_str="Jun 09")
+    assert "▲ `ASAN` MODERATE (tier held — quality read)" in msg
+    assert "MODERATE→MODERATE" not in msg
+
+
 def test_null_materiality_and_gap_are_safe():
     msg = _build_judge_delta_message([_row("X", "promote", mat=None, gap=None)],
                                      authority_on=False, date_str="Jun 09")

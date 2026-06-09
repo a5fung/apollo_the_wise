@@ -2159,8 +2159,15 @@ def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
     for r in rows[:15]:
         arrow = "▲" if r["judge_direction"] == "promote" else "▼"
         mat = r["judge_materiality_tier"] or "n/a"
+        # judge_direction is the judge's qualitative call and can disagree with the
+        # tier outcome (#253: direction=promote with tier held = a quality read, not
+        # a tier upgrade) — render the no-tier-change case explicitly.
+        if r["judge_tier"] != r["baseline_floor_tier"]:
+            tier_part = f"{r['baseline_floor_tier']}→{r['judge_tier']}"
+        else:
+            tier_part = f"{r['baseline_floor_tier']} (tier held — quality read)"
         parts.append(
-            f"{arrow} `{r['ticker']}` {r['baseline_floor_tier']}→{r['judge_tier']}  "
+            f"{arrow} `{r['ticker']}` {tier_part}  "
             f"mat={mat}  +{(r['gap_pct'] or 0):.1f}%"
         )
         if r["judge_rationale"]:

@@ -17,6 +17,14 @@ WHAT IT DOES NOT (advisor 2026-06-09) — NOT flip-authorizing:
     live path was built to avoid. So the grounded-judgment dimension of the flip gate STILL
     needs >=1 real LIVE judged alert (or a faithfully reconstructed corpus).
 
+--grounded CAVEAT (#253, RCAT 2026-05-28): the reconstructed corpus is SEC+wires ONLY —
+Perplexity/web is omitted because it can't be fetched point-in-time (lookahead). Web-sourced
+catalysts (RCAT's Japan drone contract + Quaze acquisition lived only in Perplexity/web) are
+therefore INVISIBLE in grounded replay, so --grounded is a CONSERVATIVE LOWER BOUND that can
+over-demote web-sourced/theme-driven names. The LIVE judge is NOT blind there: it gets the
+point-in-time Perplexity text inside grounded_text at alert time. Treat grounded demotes on
+web-catalyst names as replay artifacts until cross-checked against the stored live grade.
+
 Per-row tag operationalizes the discriminating check:
   [STRUCT]  deterministic materiality anchor present (deal/cap computed) OR real grounded_text
             present → the verdict rests on faithful inputs → flip-authorizing.
@@ -81,6 +89,9 @@ async def main(days: int, grounded: bool) -> None:
         print("Grounded mode CLOSES the thin-input caveat → deltas are grade-FAITHFUL for review.")
         print("Still validates GRADE faithfulness ONLY — NOT the live run_ep_scan write path")
         print("(needs ≥1 real live alert). [STRUCT]=reconstructed corpus or deal/cap anchor present.")
+        print("⚠ LOWER BOUND (#253): corpus omits Perplexity/web (lookahead-unsafe) — web-sourced")
+        print("  catalysts are invisible here and can be over-demoted (RCAT 5/28 class). The LIVE")
+        print("  judge gets point-in-time Perplexity in grounded_text and is NOT blind to them.")
     else:
         print("[STRUCT] = faithful inputs (deal/cap anchor OR real grounded_text) → flip-authorizing")
         print("[GROUND?] = leans on thin catalyst summary → indicative only (re-run --grounded).")
@@ -120,8 +131,12 @@ async def main(days: int, grounded: bool) -> None:
         if d in ("promote", "demote"):
             deltas.append((r, v))
 
+    # direction_vs_floor is the judge's own qualitative call and can disagree with the
+    # tier outcome (#253: ASAN/SAIC/PHR direction=promote, tier stayed MODERATE — a
+    # quality read, NOT a tier upgrade). Count + display tier changes explicitly.
+    tier_changes = sum(1 for r, v in deltas if v["tier"] != r["floor"])
     print(f"\nSummary: ▲{promotes} promote · ▼{demotes} demote · ={holds} hold · "
-          f"{nulls} judge-null (fail-open to floor)\n")
+          f"{nulls} judge-null (fail-open to floor) · {tier_changes} TIER change(s)\n")
 
     if not deltas:
         print("  No promote/demote deltas — judge held the floor on every name "
@@ -135,8 +150,10 @@ async def main(days: int, grounded: bool) -> None:
             if r.get("ginfo"):
                 g = r["ginfo"]
                 src = f", corpus[sec={'Y' if g['has_sec'] else 'N'} wires={g['n_benzinga']}]"
+            tier_part = (f"TIER {r['floor']}→{v['tier']}" if v["tier"] != r["floor"]
+                         else f"tier unchanged ({r['floor']}; {v['direction_vs_floor']} = quality read only)")
             print(f"\n  {arrow} {tag} {r['ticker']:6} {r['alert_date']}  "
-                  f"{r['floor']}→{v['tier']}  mat={v.get('materiality_tier')} "
+                  f"{tier_part}  mat={v.get('materiality_tier')} "
                   f"(rule={r['rule_mat']}, grounded={'Y' if r['has_grounded'] else 'N'}{src})")
             print(f"        {(v.get('rationale') or '')[:240]}")
 
