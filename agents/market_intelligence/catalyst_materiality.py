@@ -56,12 +56,41 @@ _DEAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# #251 context gates: a $ figure only counts as a DEAL value when deal-ish language
+# sits nearby AND no financial-metric label claims it first. On an earnings release
+# the largest $ figure is usually REVENUE or guidance — which fed the judge a false
+# 'transformative' deal÷cap anchor (KSS/PGY, judge_backfill_replay 2026-06-09).
+_DEAL_CONTEXT_RE = re.compile(
+    r"\b(deal|contract|agreement|acquisition|acquir\w*|merger|buyout|takeover|"
+    r"award\w*|orders?|purchase|buyback|repurchase|tender|invest\w*|financing|"
+    r"funding|grants?|settlement|divest\w*|stake|offering|valued at|worth|"
+    r"licens\w*|collaboration|partnership|milestones?|rais(?:e|es|ed))\b",
+    re.IGNORECASE,
+)
+_METRIC_CONTEXT_RE = re.compile(
+    r"\b(revenues?|sales|eps|earnings|guidance|ebitda|income|profits?|loss(?:es)?|"
+    r"market\s+cap(?:italization)?|backlog|arr)\b",
+    re.IGNORECASE,
+)
+# Clause boundary for the metric veto — keeps "revenue of $500M, a $2.1B order"
+# from letting the first clause's "revenue" veto the second clause's real deal.
+_CLAUSE_SPLIT_RE = re.compile(r"[,;:.()\n]")
+
 
 def extract_deal_value(text: str | None) -> float | None:
-    """Largest dollar amount mentioned in `text`, in absolute dollars, or None.
+    """Largest DEAL-CONTEXT dollar amount in `text`, in absolute dollars, or None.
 
-    Returns the MAX match — a press release often cites several figures (revenue,
-    deal size, buyback); the largest is the best proxy for the headline magnitude.
+    #251: returning the bare MAX figure made earnings revenue look like a deal —
+    a false 'transformative' anchor on the judge's materiality axis. Two
+    deterministic gates per match now:
+      1. metric VETO — a financial-metric label (revenue/EPS/guidance/...) in the
+         same clause just before or right after the amount → reported figure, skip.
+      2. deal-context REQUIRE — a deal/contract/financing keyword within ±60 chars
+         → otherwise skip.
+    No qualifying figure → None → rule_materiality ABSTAINS and the judge owns
+    materiality (fail-open downstream: is_material(None) is True). Precision over
+    recall by design: a missed real deal degrades to "judge decides", never to a
+    wrong deterministic anchor.
     Pure + deterministic. Does NOT decide materiality — that needs market cap.
     """
     if not text:
@@ -79,6 +108,16 @@ def extract_deal_value(text: str | None) -> float | None:
         # Drop only unit-less sub-$1000 figures ("$45.20/share", "$5") as price
         # noise; keep comma-grouped amounts like "$500,000".
         if not unit and val < 1000:
+            continue
+        # Gate 1 (metric veto) — clause-bounded so a neighbouring clause's
+        # "revenue of $X," can't veto a real deal figure after the comma.
+        pre = _CLAUSE_SPLIT_RE.split(text[max(0, m.start() - 40):m.start()])[-1]
+        post = _CLAUSE_SPLIT_RE.split(text[m.end():m.end() + 20])[0]
+        if _METRIC_CONTEXT_RE.search(pre) or _METRIC_CONTEXT_RE.search(post):
+            continue
+        # Gate 2 (deal-context require)
+        window = text[max(0, m.start() - 60):m.end() + 60]
+        if not _DEAL_CONTEXT_RE.search(window):
             continue
         if best is None or val > best:
             best = val

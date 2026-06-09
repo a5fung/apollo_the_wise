@@ -15,12 +15,27 @@ from agents.market_intelligence.catalyst_materiality import (
     ("$1.2B buyback authorized", 1.2e9),
     ("entered into a $270M deal", 270e6),
     ("USD 1.5 billion contract", 1.5e9),
-    ("revenue of $500 million, a $2.1 billion order", 2.1e9),  # MAX of several
+    ("revenue of $500 million, a $2.1 billion order", 2.1e9),  # metric vetoed, deal kept
     ("$500,000 grant", 500_000.0),
     ("no dollar figure here", None),
     ("founded in 2019, 250 employees", None),  # bare numbers, no unit -> ignored
     ("", None),
     (None, None),
+    # #251 — earnings/metric figures are NOT deal values; rule must abstain (None)
+    ("Q1 revenue of $500 million, up 42% year-over-year", None),
+    ("reported record quarterly sales of $890 million", None),
+    ("raised full-year guidance to $2.1 billion", None),       # 'raised' near, but guidance vetoes
+    ("EPS of $1.25 on net income of $45 million", None),
+    ("market capitalization of $2.5 billion", None),
+    ("reported $500 million in revenue", None),
+    ("adjusted EBITDA of $120M beat estimates", None),
+    # #251 — deal figures still extracted, incl. mixed deal+metric text
+    ("acquires Foo for $450 million; Foo had revenue of $120 million", 450e6),
+    ("deal valued at $2.1 billion in cash and stock", 2.1e9),
+    ("a $50 million milestone payment from its partner", 50e6),
+    ("company announced a $30M contract", 30e6),               # W1 integration fixture shape
+    # #251 — a plain large figure with NO deal context abstains (judge decides)
+    ("shares surged after the $3 billion announcement", None),
 ])
 def test_extract_deal_value(text, expected):
     assert extract_deal_value(text) == expected

@@ -94,7 +94,8 @@ def assemble_judge_inputs(
     `materiality_tier` (W4 #245) is the DETERMINISTIC deal-size÷market-cap rule tier ONLY
     (catalyst_materiality.rule_materiality) — the exact ratio the LLM can't compute. The
     judge's own call owns the soft/abstain materiality (it outputs materiality_tier over the
-    same grounded_text+cap); None here means "no parseable deal value — judge it yourself"."""
+    same grounded_text+cap); None here means "no deal-context dollar value — judge it
+    yourself" (earnings revenue/guidance figures deliberately don't count, #251)."""
     return {
         "ticker": r.get("ticker"),
         "grounded_text": (grounded_text or r.get("catalyst") or "")[:6000],
