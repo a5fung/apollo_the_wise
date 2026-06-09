@@ -64,6 +64,10 @@ HIDDEN_OK = {
     # Singular aliases paired with plural BotCommand
     "sugarbaby",
     "flag",
+    # /reviews — hidden read alias of /review (bare /review reads the corpus);
+    # kept callable for muscle memory but off the menu to avoid the confusable
+    # /review (write) vs /reviews (read) split (#254, operator-flagged 2026-06-09).
+    "reviews",
     # NOTE: flagbreak/supporttest/mapullback/lowvolrest/ur removed 2026-06-06 (#218)
     # — the 5 shadow detectors were consolidated into /detectors; their individual
     # commands + singular aliases no longer exist.
