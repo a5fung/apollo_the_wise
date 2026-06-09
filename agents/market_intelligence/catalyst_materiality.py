@@ -61,12 +61,15 @@ _DEAL_RE = re.compile(
 # the largest $ figure is usually REVENUE or guidance — which fed the judge a false
 # 'transformative' deal÷cap anchor (KSS/PGY, judge_backfill_replay 2026-06-09).
 _DEAL_CONTEXT_RE = re.compile(
-    r"\b(deal|contract|agreement|acquisition|acquir\w*|merger|buyout|takeover|"
-    r"award\w*|orders?|purchase|buyback|repurchase|tender|invest\w*|financing|"
-    r"funding|grants?|settlement|divest\w*|stake|offering|valued at|worth|"
-    r"licens\w*|collaboration|partnership|milestones?|rais(?:e|es|ed))\b",
+    r"\b(deal|contract|agreement|acquisitions?|acquir\w*|mergers?|buyout|takeover|"
+    r"award\w*|orders?|purchase|sale|buyback|repurchase|tender|invest\w*|"
+    r"(?:re)?financing|funding|grants?|settlement|divest\w*|stake|offering|"
+    r"valued at|worth|licens\w*|collaboration|partnership|milestones?|"
+    r"rais(?:e[sd]?|ing))\b",
     re.IGNORECASE,
 )
+# NB: deal keyword is singular "sale" (asset sale) — the metric veto owns plural
+# "sales" (revenue); \b keeps them disjoint, so number alone disambiguates.
 _METRIC_CONTEXT_RE = re.compile(
     r"\b(revenues?|sales|eps|earnings|guidance|ebitda|income|profits?|loss(?:es)?|"
     r"market\s+cap(?:italization)?|backlog|arr)\b",
@@ -75,6 +78,20 @@ _METRIC_CONTEXT_RE = re.compile(
 # Clause boundary for the metric veto — keeps "revenue of $500M, a $2.1B order"
 # from letting the first clause's "revenue" veto the second clause's real deal.
 _CLAUSE_SPLIT_RE = re.compile(r"[,;:.()\n]")
+
+
+def _is_deal_context(text: str, start: int, end: int) -> bool:
+    """Both #251 gates for the $ amount at text[start:end]: metric VETO (a
+    financial-metric label in the same clause just before or right after the
+    amount → reported figure), then deal-keyword REQUIRE within ±60 chars.
+    A clause longer than the 40-char look-back can hide its metric label, but
+    such figures still need a deal keyword nearby to pass — the gates are
+    redundant in the failure direction (abstain)."""
+    pre = _CLAUSE_SPLIT_RE.split(text[max(0, start - 40):start])[-1]
+    post = _CLAUSE_SPLIT_RE.split(text[end:end + 20])[0]
+    if _METRIC_CONTEXT_RE.search(pre) or _METRIC_CONTEXT_RE.search(post):
+        return False
+    return bool(_DEAL_CONTEXT_RE.search(text[max(0, start - 60):end + 60]))
 
 
 def extract_deal_value(text: str | None) -> float | None:
@@ -109,15 +126,7 @@ def extract_deal_value(text: str | None) -> float | None:
         # noise; keep comma-grouped amounts like "$500,000".
         if not unit and val < 1000:
             continue
-        # Gate 1 (metric veto) — clause-bounded so a neighbouring clause's
-        # "revenue of $X," can't veto a real deal figure after the comma.
-        pre = _CLAUSE_SPLIT_RE.split(text[max(0, m.start() - 40):m.start()])[-1]
-        post = _CLAUSE_SPLIT_RE.split(text[m.end():m.end() + 20])[0]
-        if _METRIC_CONTEXT_RE.search(pre) or _METRIC_CONTEXT_RE.search(post):
-            continue
-        # Gate 2 (deal-context require)
-        window = text[max(0, m.start() - 60):m.end() + 60]
-        if not _DEAL_CONTEXT_RE.search(window):
+        if not _is_deal_context(text, m.start(), m.end()):
             continue
         if best is None or val > best:
             best = val

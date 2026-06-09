@@ -19,10 +19,10 @@ import argparse
 import asyncio
 import os
 
-from agents.market_intelligence.catalyst_materiality import extract_deal_value, rule_materiality
-from agents.market_intelligence.collector import get_fmp_profile
 from agents.market_intelligence.db import get_pool
-from agents.market_intelligence.ep_grade_judge import assemble_judge_inputs, grade_holistic
+from agents.market_intelligence.ep_grade_judge import grade_holistic
+from scripts._judge_replay_common import REPLAY_SQL as _SQL
+from scripts._judge_replay_common import build_judge_payload, fetch_profile
 
 # (label, model_id). Extend with haiku if a cheap-tier check is wanted; sonnet=live default.
 MODELS = [
@@ -30,44 +30,13 @@ MODELS = [
     ("opus", "claude-opus-4-8"),
 ]
 
-_SQL = """
-SELECT ticker, alert_date,
-       COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
-       score_tier, catalyst_quality, catalyst, claude_analysis,
-       in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
-       ep_score, grounded_text
-FROM mi_ep_alerts
-WHERE alert_date >= (CURRENT_DATE - ($1::int))
-  AND score_tier IN ('HIGH', 'MODERATE')
-ORDER BY alert_date, ticker
-"""
-
 
 async def _payload_for(row) -> dict:
     """Build the judge payload once (shared across models) — same assembly as
-    run_ep_scan._judge_shadow + judge_backfill_replay."""
-    market_cap = sector = None
-    try:
-        prof = await get_fmp_profile(row["ticker"]) or {}
-        market_cap, sector = prof.get("marketCap"), prof.get("sector")
-    except Exception:
-        pass
-    try:
-        _mc = float(market_cap) if market_cap is not None else None
-    except (TypeError, ValueError):
-        _mc = None
-    rule_mat = rule_materiality(
-        extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"), _mc)
-    r = {
-        "ticker": row["ticker"], "score_tier": row["score_tier"],
-        "catalyst_quality": row["catalyst_quality"], "catalyst": row["catalyst"],
-        "claude_analysis": row["claude_analysis"], "in_active_theme": row["in_active_theme"],
-        "in_narrative_cohort": row["in_narrative_cohort"], "gap_pct": row["gap_pct"],
-        "pm_rvol": row["pm_rvol"], "vol_percentile": row["vol_percentile"],
-        "ep_score": row["ep_score"],
-    }
-    return assemble_judge_inputs(r, grounded_text=row["grounded_text"], market_cap=_mc,
-                                sector=sector, materiality_tier=rule_mat)
+    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common)."""
+    _mc, sector, _company = await fetch_profile(row["ticker"])
+    payload, _rule_mat = build_judge_payload(row, row["grounded_text"], _mc, sector)
+    return payload
 
 
 async def _grade_all_models(client, sem, row) -> dict:

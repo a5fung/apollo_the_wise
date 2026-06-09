@@ -157,7 +157,7 @@ def _gt_strip_cmd_tokens(text: str) -> list[str]:
 def _gt_take_ticker_date(toks: list[str]) -> "tuple[str, str | None, list[str]] | None":
     """Consume TICKER [YYYY-MM-DD] off the front. Returns (ticker, date_str|None, rest)
     or None if no valid ticker leads."""
-    import re
+    import re  # agent.py convention: function-local imports (no module-level `re`)
     if not toks:
         return None
     ticker = toks[0].upper()
@@ -203,7 +203,8 @@ def _parse_spotted_args(text: str) -> "dict | None":
     narrative = " ".join(rest[1:]).strip() or None
     source = "operator"
     if narrative:
-        handle = next((w for w in narrative.split() if w.startswith("@") and len(w) > 1), None)
+        handle = next((w.rstrip(".,;:!?)") for w in narrative.split()
+                       if w.startswith("@") and len(w.rstrip(".,;:!?)")) > 1), None)
         if handle:
             source = f"tweet:{handle}"
     return {"ticker": ticker, "event_date": event_date, "grade": grade,

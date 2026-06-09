@@ -36,6 +36,13 @@ from agents.market_intelligence.catalyst_materiality import (
     ("company announced a $30M contract", 30e6),               # W1 integration fixture shape
     # #251 — a plain large figure with NO deal context abstains (judge decides)
     ("shares surged after the $3 billion announcement", None),
+    # #251 review follow-up — keyword word-form gaps closed
+    ("completed the sale of its consumer unit for $400 million", 400e6),
+    ("secured a $200 million refinancing of its credit line", 200e6),  # HUT class
+    ("raising $150 million in new capital", 150e6),
+    ("closed two acquisitions totaling $750 million", 750e6),
+    # singular 'sale' nearby can't rescue a figure labelled by the 'sales' metric
+    ("after the asset sale closed, reported sales of $890 million", None),
 ])
 def test_extract_deal_value(text, expected):
     assert extract_deal_value(text) == expected
