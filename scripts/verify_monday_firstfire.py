@@ -231,6 +231,63 @@ async def check_firestatus(conn, target):
     print("      directive targets — advisory only today; flip is HARD-gated.)")
 
 
+async def check_judge(conn, target):
+    _hdr("7. HOLISTIC JUDGE (#240/#242) — first REAL judged alert + decision-log density")
+    # The #242 turnkey verify: on the first real judged alert this confirms the live
+    # run_ep_scan→_judge_shadow integration FIRED (judge_tier written) — the gate the
+    # synthetic ZZTEST probe could not close (2026-06-09 finding: integration never
+    # observed on a real alert). READ-ONLY.
+    cov = await conn.fetchrow(
+        """
+        SELECT COUNT(*) total,
+               COUNT(judge_tier) judged,
+               COUNT(*) FILTER (WHERE judge_direction = 'promote') promotes,
+               COUNT(*) FILTER (WHERE judge_direction = 'demote')  demotes,
+               COUNT(*) FILTER (WHERE judge_direction = 'hold')    holds
+        FROM mi_ep_alerts WHERE alert_date = $1
+        """,
+        target,
+    )
+    if cov["total"] == 0:
+        print("   ℹ️  no alerts today — judge had nothing to grade (dry tape). The scan-trigger")
+        print("       integration verify needs a real alert-bearing day. (Grade path itself is")
+        print("       exercisable now via scripts/judge_backfill_replay.py on stored alerts.)")
+        return
+    if cov["judged"] == 0:
+        print(f"   ⚠️  {cov['total']} alert(s) today but judge_tier is NULL on ALL — the live")
+        print("       _judge_shadow integration did NOT fire. Check mi_audit_log for judge errors")
+        print("       + that the post-scan block ran (this is the #242 silent-failure guard).")
+    else:
+        print(f"   ✅ judge fired on {cov['judged']}/{cov['total']} alert(s): "
+              f"▲{cov['promotes']} promote · ▼{cov['demotes']} demote · ={cov['holds']} hold")
+        print("       (▲▼ deltas → review via judge_delta_review.py + the 16:25 digest.)")
+    # Decision-log + fail-open density (advisor Fix-C watch: 429 spikes on heavy mornings).
+    ev = await conn.fetch(
+        """
+        SELECT event_type, COUNT(*) n FROM mi_audit_log
+        WHERE created_at AT TIME ZONE 'America/New_York' >= $1::date
+          AND created_at AT TIME ZONE 'America/New_York' <  $1::date + 1
+          AND event_type IN ('ep_grade_decision', 'judge_timeout_fallback',
+                             'anthropic_rate_limited')
+        GROUP BY event_type ORDER BY event_type
+        """,
+        target,
+    )
+    counts = {r["event_type"]: r["n"] for r in ev}
+    print(f"   decision log: ep_grade_decision={counts.get('ep_grade_decision', 0)} · "
+          f"timeout_fallback={counts.get('judge_timeout_fallback', 0)} · "
+          f"anthropic_rate_limited={counts.get('anthropic_rate_limited', 0)}")
+    if counts.get("anthropic_rate_limited", 0) > 0:
+        print("   ⚠️  429s today — if these cluster on the judge, consider _JUDGE_SEMAPHORE 3→2.")
+    try:
+        from agents.market_intelligence.db import get_holistic_judge_enabled
+        on = await get_holistic_judge_enabled()
+        print(f"   authority toggle: holistic_judge_enabled = {on}  "
+              f"({'LOAD-BEARING — judge drives paper grade/entry' if on else 'shadow — drives nothing'})")
+    except Exception as e:
+        print(f"   authority toggle: check errored ({e})")
+
+
 async def main():
     target = (
         date(*(int(x) for x in sys.argv[1].split("-"))) if len(sys.argv) > 1 else None
@@ -245,7 +302,7 @@ async def main():
     pool = await get_pool()
     async with pool.acquire() as conn:
         for check in (check_jobs, check_wave_a, check_wave_b,
-                      check_168, check_97, check_firestatus):
+                      check_168, check_97, check_firestatus, check_judge):
             try:
                 await check(conn, target)
             except Exception as e:
