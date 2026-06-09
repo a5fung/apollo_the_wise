@@ -1054,6 +1054,58 @@ async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
         )
 
 
+def _mass_evicted_patterns(theme_name: str) -> tuple[str, str]:
+    """LIKE patterns matching this exact theme's audit rows (#214 guard). Quoted/anchored
+    forms so 'Hydraulic Fracturing…' does not substring-match 'Pure-Play Hydraulic
+    Fracturing…'. Pure function — pattern shape is regression-tested."""
+    # tripwire summary: "'<name>': validation flagged N/M members — …"
+    tripwire = f"'{theme_name}': validation flagged %"
+    # removal summary: "<TK> removed from '<name>' by validation"
+    removal = f"% removed from '{theme_name}' by validation"
+    return tripwire, removal
+
+
+async def _name_recently_mass_evicted(theme_name: str, days: int = 30) -> bool:
+    """#214 inheritance guard: True when this theme name carries a recent mass-eviction
+    signature — either the validation_mass_removal_name_suspect tripwire (forward, shipped
+    2026-06-09) or >=3 ticker_revalidated_out rows on a single day (pre-tripwire history,
+    e.g. the 12-major Pure-Play eviction 2026-06-08). Fail-open: errors return False so a
+    DB hiccup never blocks inheritance."""
+    tripwire_pat, removal_pat = _mass_evicted_patterns(theme_name)
+    try:
+        from agents.market_intelligence.db import get_pool
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'validation_mass_removal_name_suspect'
+                  AND summary LIKE $1
+                  AND created_at > NOW() - ($2 || ' days')::interval
+                LIMIT 1
+                """,
+                tripwire_pat, str(days),
+            )
+            if row:
+                return True
+            row = await conn.fetchrow(
+                """
+                SELECT 1 FROM mi_audit_log
+                WHERE event_type = 'ticker_revalidated_out'
+                  AND summary LIKE $1
+                  AND created_at > NOW() - ($2 || ' days')::interval
+                GROUP BY (created_at AT TIME ZONE 'America/New_York')::date
+                HAVING count(*) >= 3
+                LIMIT 1
+                """,
+                removal_pat, str(days),
+            )
+            return row is not None
+    except Exception as e:
+        logger.warning(f"#214 inheritance guard lookup failed for '{theme_name}' — failing open: {e}")
+        return False
+
+
 async def _canonicalize_theme_names(
     conn, themes: list[dict], today
 ) -> int:
@@ -3824,11 +3876,32 @@ async def run_theme_engine(
     # Phase 1: Name inheritance — if a newly discovered theme's tickers closely match a
     # recently retired theme (Jaccard >= 0.4), inherit the old name so themes don't drift
     # after a brief retirement. _get_theme_history already implements the Jaccard fallback.
+    #
+    # #214 GUARD (2026-06-09, residual fired night one): do NOT inherit a name that was
+    # recently MASS-EVICTED by validation — that signature means the NAME was narrower
+    # than the cluster it labeled (validation correctly stripped members the name
+    # excluded). Inheriting it resurrects the defect: on 6/9 the first run on the
+    # breadth-rule prompt discovered 'U.S. Shale & Onshore E&P' (correct), but Jaccard
+    # inheritance renamed the cohort back to 'Pure-Play Hydraulic Fracturing &
+    # Completion Services' (12 majors evicted 6/8), restarting the eviction churn.
+    # Fail-open: a guard error never blocks inheritance.
     for nt in new_themes:
         history = await _get_theme_history(nt["name"], days=30, tickers=list(nt.get("tickers") or []))
         if history:
             old_name = history[0]["name"]
             if old_name != nt["name"]:
+                if await _name_recently_mass_evicted(old_name):
+                    logger.info(
+                        f"[name inheritance] BLOCKED '{nt['name']}' ← '{old_name}': "
+                        f"donor name was recently mass-evicted (#214) — keeping the new name"
+                    )
+                    await log_audit_event(
+                        "name_inheritance_blocked",
+                        summary=(f"Kept '{nt['name']}' — inheritance from mass-evicted "
+                                 f"'{old_name}' blocked (#214 name-narrower-than-cluster)"),
+                        detail=f"Tickers: {', '.join(nt.get('tickers') or [])}",
+                    )
+                    continue
                 logger.info(f"[name inheritance] '{nt['name']}' → '{old_name}' (Jaccard match with retired theme)")
                 nt["name"] = old_name
 
