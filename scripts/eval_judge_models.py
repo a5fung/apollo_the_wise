@@ -13,7 +13,16 @@ ahead of data so it's turnkey when a real judged cohort accrues. Running it now 
 thin stored-catalyst cohort is low-info (same thin-input caveat as judge_backfill_replay);
 treat a "they agree" result this week as NOT a recorded verdict.
 
-Run: docker exec apollo-market python /app/scripts/eval_judge_models.py [--days N]
+--grounded (#252): reconstructs the point-in-time corpus (SEC+wires ≤ detected_at, no
+web — same helper as judge_backfill_replay.py) so the Sonnet-vs-Opus comparison runs on
+the GROUNDED input the live judge actually sees. The 6/9 thin-cohort divergence is
+artifact-suspect (strong models diverge most on thin input); only grounded
+disagreements, operator-labeled, may update docs/model_selection_baseline.md.
+#253 caveat applies: the reconstruction omits Perplexity/web (lookahead-unsafe), so
+web-sourced catalysts are invisible to BOTH models — a fair pairwise comparison, but
+not a statement about absolute grade quality on those names.
+
+Run: docker exec apollo-market python /app/scripts/eval_judge_models.py [--days N] [--grounded]
 """
 import argparse
 import asyncio
@@ -21,6 +30,7 @@ import os
 
 from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import grade_holistic
+from scripts._grounded_reconstruct import reconstruct_grounded_text
 from scripts._judge_replay_common import REPLAY_SQL as _SQL
 from scripts._judge_replay_common import build_judge_payload, fetch_profile
 
@@ -31,16 +41,24 @@ MODELS = [
 ]
 
 
-async def _payload_for(row) -> dict:
+async def _payload_for(row, grounded: bool) -> dict:
     """Build the judge payload once (shared across models) — same assembly as
-    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common)."""
-    _mc, sector, _company = await fetch_profile(row["ticker"])
-    payload, _rule_mat = build_judge_payload(row, row["grounded_text"], _mc, sector)
+    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common).
+    grounded=True reconstructs the point-in-time corpus instead of using the
+    stored grounded_text (thin stored catalyst on pre-W1 rows)."""
+    _mc, sector, company = await fetch_profile(row["ticker"])
+    if grounded:
+        grounded_text, _ginfo = await reconstruct_grounded_text(
+            row["ticker"], row["alert_date"], row["detected_at"],
+            company_name=company or "")
+    else:
+        grounded_text = row["grounded_text"]
+    payload, _rule_mat = build_judge_payload(row, grounded_text, _mc, sector)
     return payload
 
 
-async def _grade_all_models(client, sem, row) -> dict:
-    payload = await _payload_for(row)
+async def _grade_all_models(client, sem, row, grounded: bool) -> dict:
+    payload = await _payload_for(row, grounded)
     out = {}
     for name, model in MODELS:
         async with sem:
@@ -59,17 +77,24 @@ def _tier_dir(v) -> tuple:
     return (v.get("tier"), v.get("direction_vs_floor"))
 
 
-async def main(days: int) -> None:
+async def main(days: int, grounded: bool) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_SQL, days)
 
     print("=" * 78)
-    print(f"JUDGE MODEL EVAL — last {days}d, {len(rows)} alert(s), models: "
+    mode = "GROUNDED (reconstructed point-in-time SEC+wires corpus)" if grounded \
+        else "THIN (stored catalyst proxy unless grounded_text persisted)"
+    print(f"JUDGE MODEL EVAL [{mode}] — last {days}d, {len(rows)} alert(s), models: "
           f"{', '.join(n for n, _ in MODELS)}")
     print("READ-ONLY. Label = operator eyeball on DISAGREEMENTS (NOT forward returns).")
-    print("Thin-input caveat applies (stored catalyst, no SEC body) — low-info until a")
-    print("grounded judged cohort accrues; do NOT record a verdict from a now-run.")
+    if grounded:
+        print("Grounded disagreements ARE verdict-eligible (operator labels → update")
+        print("docs/model_selection_baseline.md). Corpus omits Perplexity/web (#253):")
+        print("fair pairwise comparison; web-catalyst names are blind for BOTH models.")
+    else:
+        print("Thin-input caveat applies (stored catalyst, no SEC body) — low-info until a")
+        print("grounded judged cohort accrues; do NOT record a verdict from a now-run.")
     print("=" * 78)
     if not rows:
         print("  No HIGH/MODERATE alerts in window — nothing to eval.")
@@ -84,7 +109,7 @@ async def main(days: int) -> None:
 
     results = []
     try:
-        results = await asyncio.gather(*[_grade_all_models(client, sem, r) for r in rows])
+        results = await asyncio.gather(*[_grade_all_models(client, sem, r, grounded) for r in rows])
     finally:
         if client is not None:
             try:
@@ -133,5 +158,8 @@ async def main(days: int) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=14)
+    ap.add_argument("--grounded", action="store_true",
+                    help="reconstruct the point-in-time SEC+wires corpus (≤ detected_at, "
+                         "no web) instead of the thin stored catalyst (#252)")
     args = ap.parse_args()
-    asyncio.run(main(args.days))
+    asyncio.run(main(args.days, args.grounded))
