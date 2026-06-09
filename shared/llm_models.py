@@ -42,8 +42,11 @@ MARKET_AGENT_MODEL = HAIKU
 # Theme engine: discovery/assignment/validation (Sonnet since #213 — Haiku
 # misread narrowing name qualifiers as membership filters)
 THEME_MODEL = SONNET
-# Theme engine's senior-advisor escalation (capped 3 calls/run)
-THEME_ADVISOR_MODEL = OPUS_4_6  # behavior-preserving migration 2026-06-09; flip to OPUS pending its own reviewed commit
+# Theme engine's senior-advisor escalation (capped 3 calls/run).
+# 2026-06-09: opus-4-6 → opus-4-8. Same price tier ($5/$25), strictly more
+# capable, and aligns the advisor with the model the judge eval compares
+# against (the drift that motivated this registry).
+THEME_ADVISOR_MODEL = OPUS
 # Ticker-description generation (theme engine chunked + nightly backfill)
 DESCRIPTION_MODEL = HAIKU
 
