@@ -1281,6 +1281,7 @@ async def _validate_theme_membership(
     theme_name: str,
     tickers: list[str],
     changelog: list[dict],
+    protected: set[tuple[str, str]] | None = None,
 ) -> list[str]:
     """
     Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
@@ -1406,7 +1407,10 @@ async def _validate_theme_membership(
         # additive + fails open: a DB error here leaves to_remove untouched.
         if to_remove:
             try:
-                protected = await get_operator_protected_set()
+                # #217: run-level callers pass the protected set (fetched once per
+                # run); the fallback fetch keeps direct calls + tests working.
+                if protected is None:
+                    protected = await get_operator_protected_set()
                 shielded = {tk for tk in to_remove if (tk, theme_name) in protected}
                 if shielded:
                     to_remove -= shielded
@@ -1587,6 +1591,7 @@ async def _rescore_existing_theme(
     stocks_by_ticker: dict[str, dict],
     today: date,
     theme_exclusions: dict[str, set[str]] | None = None,
+    protected: set[tuple[str, str]] | None = None,
 ) -> tuple[dict | None, list[dict]]:
     """
     Re-score an existing theme using today's RS data.
@@ -1678,7 +1683,7 @@ async def _rescore_existing_theme(
     # (get_ticker_overrides now filters NULL rows), Haiku works from accurate data.
     today_weekday_val = today.weekday()  # 0=Mon, 2=Wed, 4=Fri
     if len(tickers) >= 2 and today_weekday_val in (0, 2, 4):
-        tickers = await _validate_theme_membership(name, tickers, changelog)
+        tickers = await _validate_theme_membership(name, tickers, changelog, protected=protected)
 
     # Check how many constituent stocks still show strong RS today
     strong_stocks = [t for t in tickers if t in stocks_by_ticker
@@ -1903,6 +1908,8 @@ async def _assign_uncovered_to_themes(
     stocks_by_ticker: dict[str, dict],
     theme_exclusions: dict[str, set[str]] | None = None,
     globally_banned: set[str] | None = None,
+    cooldown_set: set[tuple[str, str]] | None = None,
+    protected: set[tuple[str, str]] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """
     Ask Claude to assign uncovered stocks to existing themes where they clearly fit.
@@ -1957,8 +1964,10 @@ async def _assign_uncovered_to_themes(
             f"- {t['name']}{stage_note}: {', '.join(t.get('tickers') or [])} — {t.get('description', '')[:120]}"
         )
 
-    # Load active cooldowns and inject as a hard constraint in the prompt
-    cooldown_set = await get_cooldown_set()
+    # Load active cooldowns and inject as a hard constraint in the prompt.
+    # #217: run_theme_engine passes its post-rescore fetch; fallback for direct calls.
+    if cooldown_set is None:
+        cooldown_set = await get_cooldown_set()
     cooldown_note = ""
     if cooldown_set:
         pairs = [f"{tk} from '{th}'" for tk, th in sorted(cooldown_set)]
@@ -2274,7 +2283,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
             if not newly_added:
                 continue
             # Run membership validation (THEME_MODEL) on just the new additions in context of this theme
-            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog)
+            validated = await _validate_theme_membership(theme["name"], theme.get("tickers") or [], changelog, protected=protected)
             removed = set(theme.get("tickers") or []) - set(validated)
             if removed:
                 logger.info(f"Post-assignment validation removed {removed} from '{theme['name']}'")
@@ -3636,8 +3645,20 @@ async def run_theme_engine(
         total_excl = sum(len(v) for v in theme_exclusions.values())
         logger.info(f"Theme engine: loaded {total_excl} persistent ticker exclusions across {len(theme_exclusions)} themes")
 
+    # #217: fetch the operator-protected set ONCE per run (was one DB query per
+    # theme inside validation's shield). Safe to fetch early — protection never
+    # expires and nothing in this run adds protected pairs (only the operator's
+    # /bypass does). Fail-open: on error pass None so the per-theme fallback
+    # (and its own fail-open) behaves exactly as before.
+    try:
+        protected_set: set[tuple[str, str]] | None = await get_operator_protected_set()
+    except Exception as e:
+        logger.warning(f"Theme engine: operator-protected set prefetch failed — per-theme fallback will retry: {e}")
+        protected_set = None
+
     rescore_results = await asyncio.gather(*[
-        _rescore_existing_theme(theme, stocks_by_ticker, today, theme_exclusions=theme_exclusions)
+        _rescore_existing_theme(theme, stocks_by_ticker, today, theme_exclusions=theme_exclusions,
+                                protected=protected_set)
         for theme in existing
     ])
 
@@ -3755,6 +3776,11 @@ async def run_theme_engine(
     #
     # STRIP-ONLY: retirement deferred to existing post-assignment logic so
     # a theme can be refilled by the LLM in this same run.
+    #
+    # #217 note: this fetch is deliberately NOT hoisted next to the
+    # protected-set prefetch — it must run AFTER the rescore pass, whose
+    # Mon/Wed/Fri validation ADDS cooldowns that this filter and the
+    # assignment prompt below must see (same-run re-assignment guard).
     cooldown_set = await get_cooldown_set()
     await _apply_carryforward_deterministic_filter(
         updated_themes, globally_banned, cooldown_set, stocks_by_ticker,
@@ -3766,6 +3792,8 @@ async def run_theme_engine(
             uncovered, updated_themes, stocks_by_ticker,
             theme_exclusions=theme_exclusions,
             globally_banned=globally_banned,
+            cooldown_set=cooldown_set,
+            protected=protected_set,
         )
         changelog.extend(assign_log)
         logger.info(f"Theme engine: {len(assign_log)} stocks assigned to existing themes, {len(uncovered)} remaining uncovered")

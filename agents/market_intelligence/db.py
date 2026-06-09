@@ -6946,10 +6946,25 @@ async def get_active_cooldowns() -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-async def get_cooldown_set() -> set[tuple[str, str]]:
-    """Return {(ticker, theme_name)} for active cooldowns — O(1) lookup."""
-    rows = await get_active_cooldowns()
+async def _get_validation_pair_set(bypassed: bool) -> set[tuple[str, str]]:
+    """Shared fetch for the two (ticker, theme_name) pair sets kept in
+    mi_validation_cooldowns (#217 — the two public wrappers differed only in
+    the WHERE clause). bypassed=False → active NON-bypassed cooldowns, which
+    expire with cooldown_until. bypassed=True → operator-protected pairs, no
+    time bound — the operator's protection outlives the original 14d window."""
+    where = "bypassed" if bypassed else "NOT bypassed AND cooldown_until > NOW()"
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"SELECT DISTINCT ticker, theme_name FROM mi_validation_cooldowns WHERE {where}"
+        )
     return {(r["ticker"], r["theme_name"]) for r in rows}
+
+
+async def get_cooldown_set() -> set[tuple[str, str]]:
+    """Return {(ticker, theme_name)} for active cooldowns — O(1) lookup.
+    Suppresses re-ASSIGNMENT of recently validation-removed pairs."""
+    return await _get_validation_pair_set(bypassed=False)
 
 
 async def get_operator_protected_set() -> set[tuple[str, str]]:
@@ -6965,14 +6980,7 @@ async def get_operator_protected_set() -> set[tuple[str, str]]:
     re-ASSIGNMENT); this set suppresses re-REMOVAL. No NOW() bound — the
     operator's protection does not expire when the original 14d cooldown would.
     """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT DISTINCT ticker, theme_name
-            FROM mi_validation_cooldowns
-            WHERE bypassed
-        """)
-    return {(r["ticker"], r["theme_name"]) for r in rows}
+    return await _get_validation_pair_set(bypassed=True)
 
 
 async def get_globally_banned_tickers(
