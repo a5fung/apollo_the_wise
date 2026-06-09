@@ -70,3 +70,18 @@ SYSTEM_REVIEW_MODEL = SONNET
 COMPRESSION_MODEL = HAIKU
 # /agents health-check ping (channels/telegram.py — 5 tokens)
 HEALTHCHECK_MODEL = HAIKU
+
+# ── Pricing ($ per 1M tokens) — ONE copy ─────────────────────────────────────
+# Both spend tables (core/spend.py orchestrator-side, agents/.../spend_tracker.py
+# market-agent-side) import this. The 2026-06-09 stale-rate bug (Haiku 0.80/4.00,
+# Opus 15/75) existed precisely because the rates lived in two hand-typed copies.
+# Verified against the live model catalog 2026-06-09.
+PRICING_PER_MTOK: dict[str, dict[str, float]] = {
+    SONNET:     {"input": 3.00, "output": 15.00},
+    SONNET_4_5: {"input": 3.00, "output": 15.00},
+    HAIKU:      {"input": 1.00, "output": 5.00},
+    OPUS:       {"input": 5.00, "output": 25.00},
+    OPUS_4_7:   {"input": 5.00, "output": 25.00},
+    OPUS_4_6:   {"input": 5.00, "output": 25.00},
+}
+DEFAULT_PRICING_PER_MTOK: dict[str, float] = {"input": 3.00, "output": 15.00}

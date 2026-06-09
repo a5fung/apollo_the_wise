@@ -26,21 +26,12 @@ import logging
 from typing import Any
 
 from agents.market_intelligence.db import get_pool
-from shared.llm_models import HAIKU, OPUS, OPUS_4_6, OPUS_4_7, SONNET, SONNET_4_5
+from shared.llm_models import (
+    DEFAULT_PRICING_PER_MTOK as _DEFAULT_PRICING,
+    PRICING_PER_MTOK as _PRICING,
+)
 
 logger = logging.getLogger(__name__)
-
-# Rates verified against the live model catalog 2026-06-09 (the prior table had
-# stale Haiku 0.80/4.00 and Opus 15/75 rows — Opus-tier is $5/$25 since 4.6+).
-_PRICING: dict[str, dict[str, float]] = {
-    SONNET:     {"input": 3.00, "output": 15.00},
-    SONNET_4_5: {"input": 3.00, "output": 15.00},
-    HAIKU:      {"input": 1.00, "output": 5.00},
-    OPUS:       {"input": 5.00, "output": 25.00},
-    OPUS_4_7:   {"input": 5.00, "output": 25.00},
-    OPUS_4_6:   {"input": 5.00, "output": 25.00},
-}
-_DEFAULT_PRICING = {"input": 3.00, "output": 15.00}
 
 
 def _cost_for_call(

@@ -30,29 +30,26 @@ import os
 
 from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import grade_holistic
-from scripts._grounded_reconstruct import reconstruct_grounded_text
 from scripts._judge_replay_common import REPLAY_SQL as _SQL
-from scripts._judge_replay_common import build_judge_payload, fetch_profile
+from scripts._judge_replay_common import (
+    build_judge_payload, fetch_profile, resolve_grounded_text,
+)
+from shared.llm_models import OPUS, SONNET
 
-# (label, model_id). Extend with haiku if a cheap-tier check is wanted; sonnet=live default.
+# (label, model_id). Registry constants so the model-selection eval can't itself be a
+# drifted call site (the advisor-on-4-6-vs-eval-on-4-8 class). Extend with HAIKU if a
+# cheap-tier check is wanted; sonnet = live default.
 MODELS = [
-    ("sonnet", "claude-sonnet-4-6"),
-    ("opus", "claude-opus-4-8"),
+    ("sonnet", SONNET),
+    ("opus", OPUS),
 ]
 
 
 async def _payload_for(row, grounded: bool) -> dict:
     """Build the judge payload once (shared across models) — same assembly as
-    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common).
-    grounded=True reconstructs the point-in-time corpus instead of using the
-    stored grounded_text (thin stored catalyst on pre-W1 rows)."""
+    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common)."""
     _mc, sector, company = await fetch_profile(row["ticker"])
-    if grounded:
-        grounded_text, _ginfo = await reconstruct_grounded_text(
-            row["ticker"], row["alert_date"], row["detected_at"],
-            company_name=company or "")
-    else:
-        grounded_text = row["grounded_text"]
+    grounded_text, _ginfo = await resolve_grounded_text(row, company, grounded)
     payload, _rule_mat = build_judge_payload(row, grounded_text, _mc, sector)
     return payload
 
@@ -150,8 +147,11 @@ async def main(days: int, grounded: bool) -> None:
                     continue
                 print(f"    {n:7}: {v.get('tier')}/{v.get('direction_vs_floor')} "
                       f"mat={v.get('materiality_tier')} — {(v.get('rationale') or '')[:170]}")
-    print("\nCost note: per-grade cost ≈ each model's token rate (sonnet $3/$15, opus 4.8 $5/$25 "
-          "per 1M in/out); the decision lever is QUALITY on disagreements, cost = tiebreaker "
+    from shared.llm_models import PRICING_PER_MTOK as _PR
+    rates = " · ".join(
+        f"{n} ${_PR[m]['input']:g}/${_PR[m]['output']:g}" for n, m in MODELS if m in _PR)
+    print(f"\nCost note: per-grade cost ≈ each model's token rate ({rates} per 1M in/out); "
+          "the decision lever is QUALITY on disagreements, cost = tiebreaker "
           "(feedback_model_selection_quality_over_cost). Default stays Sonnet until evidence flips it.")
 
 

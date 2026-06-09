@@ -276,6 +276,7 @@ async def _nightly_data_pull():
             if stock_lines:
                 import os
                 import anthropic
+                from agents.market_intelligence.theme_engine import FUND_EXPOSURE_PROMPT_RULE
                 client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
                 prompt = (
@@ -288,9 +289,7 @@ async def _nightly_data_pull():
                     "- LLY: Pharma, GLP-1 obesity/diabetes drugs\n"
                     "- FCX: Copper & gold mining\n"
                     "- VST: Power generation, nuclear fleet\n\n"
-                    "For funds/ETFs/closed-end vehicles, describe the underlying EXPOSURE (what it "
-                    "invests in), not the fund mechanics — e.g. a fund buying robotics companies is "
-                    "'Robotics & embodied-AI exposure fund', NOT 'investment management'.\n\n"
+                    + FUND_EXPOSURE_PROMPT_RULE + "\n\n"
                     "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n"
                     "Example: {\"ACME\": \"Industrial automation, robotics\"}\n\n"
                     "Stocks:\n" + "\n".join(stock_lines)
@@ -2160,16 +2159,11 @@ def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
         f"🧑‍⚖️ *EP Judge deltas — EOD {date_str} (▲{n_promote} ▼{n_demote})*",
         subtitle,
     ]
+    from agents.market_intelligence.ep_grade_judge import format_tier_transition
     for r in rows[:15]:
         arrow = "▲" if r["judge_direction"] == "promote" else "▼"
         mat = r["judge_materiality_tier"] or "n/a"
-        # judge_direction is the judge's qualitative call and can disagree with the
-        # tier outcome (#253: direction=promote with tier held = a quality read, not
-        # a tier upgrade) — render the no-tier-change case explicitly.
-        if r["judge_tier"] != r["baseline_floor_tier"]:
-            tier_part = f"{r['baseline_floor_tier']}→{r['judge_tier']}"
-        else:
-            tier_part = f"{r['baseline_floor_tier']} (tier held — quality read)"
+        tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
         parts.append(
             f"{arrow} `{r['ticker']}` {tier_part}  "
             f"mat={mat}  +{(r['gap_pct'] or 0):.1f}%"

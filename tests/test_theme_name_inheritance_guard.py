@@ -8,8 +8,8 @@ Completion Services' over the correctly-named 'U.S. Shale & Onshore E&P'.
 import asyncio
 import re
 
-from agents.market_intelligence import theme_engine
 from agents.market_intelligence.theme_engine import (
+    _MASS_REMOVAL_SUMMARY_FMT, _REMOVAL_SUMMARY_FMT,
     _mass_evicted_patterns, _name_recently_mass_evicted,
 )
 
@@ -23,14 +23,17 @@ def _like(pattern: str, s: str) -> bool:
     return re.match(rx, s) is not None
 
 
-def test_removal_pattern_matches_real_summary_shape():
+def test_removal_pattern_matches_what_the_emit_site_writes():
+    # Producer↔matcher binding: the expected summary is built from the SAME format
+    # constant the emit site uses, so a rewording can't silently kill the guard.
     _, removal = _mass_evicted_patterns(_PUREPLAY)
-    assert _like(removal, f"XOM removed from '{_PUREPLAY}' by validation")
+    assert _like(removal, _REMOVAL_SUMMARY_FMT.format(tk="XOM", theme=_PUREPLAY))
 
 
-def test_tripwire_pattern_matches_real_summary_shape():
+def test_tripwire_pattern_matches_what_the_emit_site_writes():
     tripwire, _ = _mass_evicted_patterns(_PUREPLAY)
-    assert _like(tripwire, f"'{_PUREPLAY}': validation flagged 12/15 members — name likely narrower than the cluster (#214)")
+    assert _like(tripwire, _MASS_REMOVAL_SUMMARY_FMT.format(
+        theme=_PUREPLAY, n_flagged=12, n_members=15))
 
 
 def test_fragment_name_does_not_substring_match_pureplay_rows():

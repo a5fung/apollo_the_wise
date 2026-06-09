@@ -4607,7 +4607,7 @@ async def persist_narrative_theme_candidates(
 
 
 async def get_narrative_theme_candidates(
-    days: int = 5, include_backfill: bool = False,
+    days: int = 5, include_backfill: bool = False, as_of: "date | None" = None,
 ) -> list[dict]:
     """#167 — recent narrative-cogap shadow theme proposals (advisory/shadow; NOT live).
     Surfaced (clearly labeled experimental) in /themes so the operator can evaluate
@@ -4616,19 +4616,36 @@ async def get_narrative_theme_candidates(
     Forward-only by default (source='narrative_cogap'). include_backfill=True also
     returns the hindsight backfill population (source='narrative_cogap_backfill'),
     each row tagged `backfilled` so the promote-gate read can split + label them
-    (#167 hindsight-segregation, 2026-06-06)."""
+    (#167 hindsight-segregation, 2026-06-06).
+
+    `as_of` (lane2-judge-theme-axis replay): point-in-time view for date D — PRIOR
+    days only (`D - days <= run_date < D`; same-day rows are lookahead, the lane is
+    EOD while alerts are premarket). None = the live view (window anchored on
+    CURRENT_DATE, inclusive of today). One helper for both so live and replay can
+    never select cohorts differently."""
     pool = await get_pool()
     src_clause = ("source IN ('narrative_cogap', 'narrative_cogap_backfill')"
                  if include_backfill else "source = 'narrative_cogap'")
     async with pool.acquire() as conn:
-        rows = await conn.fetch(f"""
-            SELECT run_date, name, tickers, thesis,
-                   (source = 'narrative_cogap_backfill') AS backfilled
-            FROM mi_theme_candidates_shadow
-            WHERE {src_clause}
-              AND run_date >= (CURRENT_DATE - $1::int)
-            ORDER BY run_date DESC, name
-        """, days)
+        if as_of is None:
+            rows = await conn.fetch(f"""
+                SELECT run_date, name, tickers, thesis,
+                       (source = 'narrative_cogap_backfill') AS backfilled
+                FROM mi_theme_candidates_shadow
+                WHERE {src_clause}
+                  AND run_date >= (CURRENT_DATE - $1::int)
+                ORDER BY run_date DESC, name
+            """, days)
+        else:
+            rows = await conn.fetch(f"""
+                SELECT run_date, name, tickers, thesis,
+                       (source = 'narrative_cogap_backfill') AS backfilled
+                FROM mi_theme_candidates_shadow
+                WHERE {src_clause}
+                  AND run_date >= ($2::date - $1::int)
+                  AND run_date < $2::date
+                ORDER BY run_date DESC, name
+            """, days, as_of)
         return [dict(r) for r in rows]
 
 

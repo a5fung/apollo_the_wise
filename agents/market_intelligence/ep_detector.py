@@ -908,18 +908,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # available signal). ADVISORY only — one of several fire axes. Nearly empty
     # today (lane accrual is slow); the plumbing is forward-ready for the 6/23
     # narrative promote-gate.
-    _in_narrative_cohort_set: set[str] = set()
     # Lane-2 cohorts kept WHOLE for the judge (plan lane2-judge-theme-axis): the judge
     # matches the catalyst against narrative {name, thesis, tickers} semantically, so a
     # NEW JOINER of a spreading story lights the axis even when set-membership is false
-    # (RCAT 5/28 class). Same single fetch feeds both surfaces.
+    # (RCAT 5/28 class). One fetch; the membership set is derived from it.
     _narrative_cohorts: list[dict] = []
+    _in_narrative_cohort_set: set[str] = set()
     try:
         from agents.market_intelligence.db import get_narrative_theme_candidates
-        for _cand in await get_narrative_theme_candidates(days=5):
-            _narrative_cohorts.append(_cand)
-            for _t in (_cand.get("tickers") or []):
-                _in_narrative_cohort_set.add(_t)
+        _narrative_cohorts = await get_narrative_theme_candidates(days=5)
+        _in_narrative_cohort_set = {
+            _t for _c in _narrative_cohorts for _t in (_c.get("tickers") or [])
+        }
         logger.info(
             f"EP scan: {len(_in_narrative_cohort_set)} tickers in prior-5d "
             f"narrative cohorts (fire panel narrative axis; {len(_narrative_cohorts)} "

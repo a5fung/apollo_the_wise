@@ -6,10 +6,9 @@ Two halves (mirrors tests/test_timezone_hygiene.py):
   2. The deploy gate (preflight_model_registry) actually CATCHES a stray
      literal and honors the `# model-ok` escape — a green gate means clean.
 """
-import ast
 from pathlib import Path
 
-from scripts.preflight_model_registry import check_file, main as gate_main
+from scripts.preflight_model_registry import check_file
 from shared import llm_models
 
 
@@ -29,12 +28,20 @@ def test_role_constants_exist():
         assert hasattr(llm_models, role), f"registry missing role constant {role}"
 
 
-def test_spend_tracker_prices_every_role_binding():
-    from agents.market_intelligence.spend_tracker import _PRICING
+def test_registry_prices_every_role_binding():
+    # One pricing table in the registry; both spend consumers import it, so this
+    # single assertion covers core/spend.py AND spend_tracker.py.
     roles = {v for k, v in vars(llm_models).items()
              if k.endswith("_MODEL") and isinstance(v, str)}
-    unpriced = roles - set(_PRICING)
-    assert not unpriced, f"role-bound models missing from spend_tracker pricing: {unpriced}"
+    unpriced = roles - set(llm_models.PRICING_PER_MTOK)
+    assert not unpriced, f"role-bound models missing from PRICING_PER_MTOK: {unpriced}"
+
+
+def test_spend_consumers_share_the_registry_table():
+    from agents.market_intelligence import spend_tracker
+    from core import spend
+    assert spend_tracker._PRICING is llm_models.PRICING_PER_MTOK
+    assert spend._PRICING is llm_models.PRICING_PER_MTOK
 
 
 def test_gate_catches_stray_literal(tmp_path: Path):
@@ -63,6 +70,6 @@ def test_gate_ignores_non_model_strings(tmp_path: Path):
     assert check_file(f) == []
 
 
-def test_live_tree_is_clean():
-    # The actual enforcement: agents/ core/ channels/ shared/ carry no stray ids.
-    assert gate_main() == 0
+# NOTE: no full-tree scan test here — tree enforcement runs in deploy.sh [5i/7] and
+# as an explicit CI workflow step (same split as test_timezone_hygiene vs its gate);
+# duplicating the ~100-file AST walk inside pytest doubled CI work for no new signal.

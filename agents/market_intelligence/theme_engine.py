@@ -72,6 +72,26 @@ from shared.llm_models import (
     DESCRIPTION_MODEL, THEME_ADVISOR_MODEL, THEME_MODEL,
 )
 
+# ── Shared prompt/audit string contracts ─────────────────────────────────────
+# Fund/ETF description rule (BOT 2026-06-09 class) — ONE copy, interpolated into BOTH
+# description-generation prompts (here + scheduler's nightly pull); both feed
+# mi_ticker_overrides, so the rule must not drift between them.
+FUND_EXPOSURE_PROMPT_RULE = (
+    "For funds/ETFs/closed-end vehicles, describe the underlying EXPOSURE (what it "
+    "invests in), not the fund mechanics — e.g. a fund buying robotics companies is "
+    "'Robotics & embodied-AI exposure fund', NOT 'investment management'. The exposure "
+    "is what moves the price and what themes group on."
+)
+
+# Validation audit-summary formats — shared by the EMIT sites and the #214
+# inheritance-guard MATCHER (_mass_evicted_patterns). One string each, so a summary
+# rewording can never silently kill the fail-open guard.
+_REMOVAL_SUMMARY_FMT = "{tk} removed from '{theme}' by validation"
+_MASS_REMOVAL_SUMMARY_FMT = (
+    "'{theme}': validation flagged {n_flagged}/{n_members} members "
+    "— name likely narrower than the cluster (#214)"
+)
+
 # Stop-words to ignore when comparing theme names for fuzzy exclusion matching
 _THEME_NAME_STOP = {"and", "the", "of", "in", "for", "a", "an", "with", "by", "at", "&", "-"}
 
@@ -670,10 +690,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
         "- AGRO: Agricultural farming, sugar, ethanol production\n"
         "- CAR: Car & truck rental (Avis, Budget brands)\n"
         "- UBER: Rideshare & food delivery marketplace\n\n"
-        "For funds/ETFs/closed-end vehicles, describe the underlying EXPOSURE (what it "
-        "invests in), not the fund mechanics — e.g. a fund buying robotics companies is "
-        "'Robotics & embodied-AI exposure fund', NOT 'investment management'. The exposure "
-        "is what moves the price and what themes group on (BOT 2026-06-09 class).\n\n"
+        + FUND_EXPOSURE_PROMPT_RULE + "\n\n"
         "Return ONLY a JSON object mapping ticker to description. No markdown, no explanation.\n\n"
         "Stocks:\n"
     )
@@ -1059,13 +1076,13 @@ async def _emit_cross_run_dup_probe(conn, themes: list[dict], today) -> None:
 
 
 def _mass_evicted_patterns(theme_name: str) -> tuple[str, str]:
-    """LIKE patterns matching this exact theme's audit rows (#214 guard). Quoted/anchored
+    """LIKE patterns matching this exact theme's audit rows (#214 guard). Built FROM the
+    shared summary-format constants the emit sites use, so producer and matcher cannot
+    drift (a rewording would change both or break the binding test). Quoted/anchored
     forms so 'Hydraulic Fracturing…' does not substring-match 'Pure-Play Hydraulic
-    Fracturing…'. Pure function — pattern shape is regression-tested."""
-    # tripwire summary: "'<name>': validation flagged N/M members — …"
-    tripwire = f"'{theme_name}': validation flagged %"
-    # removal summary: "<TK> removed from '<name>' by validation"
-    removal = f"% removed from '{theme_name}' by validation"
+    Fracturing…'."""
+    tripwire = _MASS_REMOVAL_SUMMARY_FMT.format(theme=theme_name, n_flagged="%", n_members="%")
+    removal = _REMOVAL_SUMMARY_FMT.format(tk="%", theme=theme_name)
     return tripwire, removal
 
 
@@ -1082,27 +1099,21 @@ async def _name_recently_mass_evicted(theme_name: str, days: int = 30) -> bool:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT 1 FROM mi_audit_log
-                WHERE event_type = 'validation_mass_removal_name_suspect'
-                  AND summary LIKE $1
-                  AND created_at > NOW() - ($2 || ' days')::interval
-                LIMIT 1
+                SELECT 1 WHERE EXISTS (
+                    SELECT 1 FROM mi_audit_log
+                    WHERE event_type = 'validation_mass_removal_name_suspect'
+                      AND summary LIKE $1
+                      AND created_at > NOW() - ($3 || ' days')::interval
+                ) OR EXISTS (
+                    SELECT 1 FROM mi_audit_log
+                    WHERE event_type = 'ticker_revalidated_out'
+                      AND summary LIKE $2
+                      AND created_at > NOW() - ($3 || ' days')::interval
+                    GROUP BY (created_at AT TIME ZONE 'America/New_York')::date
+                    HAVING count(*) >= 3
+                )
                 """,
-                tripwire_pat, str(days),
-            )
-            if row:
-                return True
-            row = await conn.fetchrow(
-                """
-                SELECT 1 FROM mi_audit_log
-                WHERE event_type = 'ticker_revalidated_out'
-                  AND summary LIKE $1
-                  AND created_at > NOW() - ($2 || ' days')::interval
-                GROUP BY (created_at AT TIME ZONE 'America/New_York')::date
-                HAVING count(*) >= 3
-                LIMIT 1
-                """,
-                removal_pat, str(days),
+                tripwire_pat, removal_pat, str(days),
             )
             return row is not None
     except Exception as e:
@@ -1451,8 +1462,8 @@ async def _validate_theme_membership(
         if len(to_remove) >= max(3, len(tickers) // 2):
             await log_audit_event(
                 "validation_mass_removal_name_suspect",
-                summary=(f"'{theme_name}': validation flagged {len(to_remove)}/{len(tickers)} "
-                         f"members — name likely narrower than the cluster (#214)"),
+                summary=_MASS_REMOVAL_SUMMARY_FMT.format(
+                    theme=theme_name, n_flagged=len(to_remove), n_members=len(tickers)),
                 detail=f"Flagged: {', '.join(sorted(to_remove))}",
             )
 
@@ -1510,7 +1521,7 @@ async def _validate_theme_membership(
                     # Persistent audit record — survives image rebuilds, queryable from Telegram
                     await log_audit_event(
                         "ticker_revalidated_out",
-                        summary=f"{tk} removed from '{theme_name}' by validation",
+                        summary=_REMOVAL_SUMMARY_FMT.format(tk=tk, theme=theme_name),
                         detail=f"Description: '{desc}' — validation ({THEME_MODEL}) flagged as not matching theme",
                     )
                     # Write 14-day cooldown so the stock can't be re-assigned immediately

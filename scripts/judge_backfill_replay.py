@@ -38,11 +38,10 @@ import asyncio
 import os
 
 from agents.market_intelligence.db import get_pool
-from agents.market_intelligence.ep_grade_judge import grade_holistic
-from scripts._grounded_reconstruct import reconstruct_grounded_text
+from agents.market_intelligence.ep_grade_judge import format_tier_transition, grade_holistic
 from scripts._judge_replay_common import REPLAY_SQL as _SQL
 from scripts._judge_replay_common import (
-    build_judge_payload, fetch_narratives_for, fetch_profile,
+    build_judge_payload, fetch_narratives_for, fetch_profile, resolve_grounded_text,
 )
 
 
@@ -53,16 +52,7 @@ async def _replay_one(client, sem, row, grounded: bool, narratives=None) -> dict
     `narratives` = point-in-time PRIOR-day Lane-2 cohorts (lane2-judge-theme-axis)."""
     ticker = row["ticker"]
     _mc, sector, company = await fetch_profile(ticker)
-
-    # grounded=True → reconstruct point-in-time corpus; else use stored grounded_text
-    # (real on post-W1 rows, else assemble falls back to the thin stored catalyst).
-    ginfo = None
-    if grounded:
-        grounded_text, ginfo = await reconstruct_grounded_text(
-            ticker, row["alert_date"], row["detected_at"], company_name=company or "")
-    else:
-        grounded_text = row["grounded_text"]
-
+    grounded_text, ginfo = await resolve_grounded_text(row, company, grounded)
     payload, rule_mat = build_judge_payload(row, grounded_text, _mc, sector,
                                             active_narratives=narratives)
     async with sem:
@@ -88,12 +78,12 @@ async def main(days: int, grounded: bool, ticker: str | None = None,
         rows = await conn.fetch(_SQL, days)
         if ticker:
             rows = [r for r in rows if r["ticker"] == ticker.upper()]
-        # Point-in-time PRIOR-day Lane-2 cohorts per alert_date (one query per distinct
-        # date; replay-only — includes tagged backfill rows, see _judge_replay_common).
-        narr_by_date: dict = {}
-        if narratives:
-            for d in {r["alert_date"] for r in rows}:
-                narr_by_date[d] = await fetch_narratives_for(conn, d)
+    # Point-in-time PRIOR-day Lane-2 cohorts per alert_date (one query per distinct
+    # date; replay-only — includes tagged backfill rows, see _judge_replay_common).
+    narr_by_date: dict = {}
+    if narratives:
+        for d in {r["alert_date"] for r in rows}:
+            narr_by_date[d] = await fetch_narratives_for(d)
 
     print("=" * 78)
     mode = "GROUNDED (point-in-time SEC+wires ≤ detected_at, no web)" if grounded \
@@ -168,8 +158,7 @@ async def main(days: int, grounded: bool, ticker: str | None = None,
             if r.get("ginfo"):
                 g = r["ginfo"]
                 src = f", corpus[sec={'Y' if g['has_sec'] else 'N'} wires={g['n_benzinga']}]"
-            tier_part = (f"TIER {r['floor']}→{v['tier']}" if v["tier"] != r["floor"]
-                         else f"tier unchanged ({r['floor']}; {v['direction_vs_floor']} = quality read only)")
+            tier_part = format_tier_transition(r["floor"], v["tier"])
             narr_part = ""
             if r.get("n_narr"):
                 narr_part = f", narr={r['n_narr']}{'(incl. backfill)' if r.get('narr_backfilled') else ''}"

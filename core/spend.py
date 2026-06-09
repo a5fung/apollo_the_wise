@@ -15,21 +15,12 @@ import os
 from datetime import date, datetime
 from typing import Any, Optional
 
-from shared.llm_models import HAIKU, SONNET
+from shared.llm_models import (
+    DEFAULT_PRICING_PER_MTOK as _DEFAULT_PRICING,
+    PRICING_PER_MTOK as _PRICING,
+)
 
 logger = logging.getLogger(__name__)
-
-# ── Pricing per million tokens ────────────────────────────────────────────────
-
-# Rates verified against the live model catalog 2026-06-09 (Haiku 4.5 is $1/$5,
-# not the stale 0.80/4.00).
-_PRICING: dict[str, dict[str, float]] = {
-    SONNET: {"input": 3.00, "output": 15.00},
-    HAIKU: {"input": 1.00, "output": 5.00},
-}
-
-# Fallback for unknown models
-_DEFAULT_PRICING = {"input": 3.00, "output": 15.00}
 
 
 def _cost_for_call(

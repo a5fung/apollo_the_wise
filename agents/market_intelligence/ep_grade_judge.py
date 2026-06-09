@@ -167,6 +167,16 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 {p.get('analysis') or '(none)'}"""
 
 
+def format_tier_transition(floor_tier, judge_tier) -> str:
+    """#253 presentation contract, ONE copy (digest + replay + delta review all use it):
+    direction_vs_floor is the judge's qualitative call and can disagree with the tier
+    outcome — a `promote` with the tier held is a quality read, NOT a tier upgrade, and
+    must never render as one."""
+    if judge_tier != floor_tier:
+        return f"{floor_tier}→{judge_tier}"
+    return f"{floor_tier} (tier held — quality read)"
+
+
 def _normalize_verdict(raw: dict) -> dict | None:
     """Validate the tool output against the schema; return a clean dict or None if the
     required enums are malformed (caller fails open)."""

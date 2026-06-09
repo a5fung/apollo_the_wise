@@ -42,13 +42,10 @@ def _fmt(rows, kind: str) -> None:
     if not rows:
         print(f"  (no {kind}s in window)")
         return
+    from agents.market_intelligence.ep_grade_judge import format_tier_transition
     for r in rows:
         mfe = f"+{r['mfe_5d']:.0%}" if r["mfe_5d"] is not None else "n/a"
-        # judge_direction can disagree with the tier outcome (#253) — a promote with
-        # the tier held is a quality read, not a tier upgrade; render it explicitly.
-        tier_part = (f"{r['baseline_floor_tier']}→{r['judge_tier']}"
-                     if r["judge_tier"] != r["baseline_floor_tier"]
-                     else f"{r['baseline_floor_tier']} (tier held)")
+        tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
         print(f"  {r['ticker']:<6} {r['alert_date']}  {tier_part:<22} "
               f"MFE {mfe:<6} mat={r['judge_materiality_tier']} gap={r['gap_pct']}% "
               f"floor_cat={r['catalyst_quality']}")

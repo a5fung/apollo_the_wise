@@ -69,24 +69,27 @@ def build_judge_payload(row, grounded_text, market_cap, sector, active_narrative
     return payload, rule_mat
 
 
-# Point-in-time Lane-2 narrative cohorts for replay (lane2-judge-theme-axis).
-# PRIOR days only (the lane is EOD, alerts are premarket — same-day rows would be
-# lookahead). Backfill-source rows ARE included, tagged: admissible for REPLAY
-# evaluation only (live reads forward-only by construction; the operator weighs
-# the hindsight caveat when reviewing flipped verdicts).
-NARRATIVES_SQL = """
-SELECT run_date, name, tickers, thesis,
-       (source = 'narrative_cogap_backfill') AS backfilled
-FROM mi_theme_candidates_shadow
-WHERE source LIKE 'narrative_cogap%'
-  AND run_date >= ($1::date - 7)
-  AND run_date < $1::date
-ORDER BY run_date DESC
-LIMIT 5
-"""
+async def fetch_narratives_for(alert_date):
+    """Point-in-time Lane-2 cohorts for one alert_date (lane2-judge-theme-axis replay).
+
+    Same db helper + same `days=5` window as run_ep_scan's live fetch — replay and
+    live can never select cohorts differently (the as_of branch enforces PRIOR days
+    only; same-day rows are lookahead). Backfill rows ARE included, tagged:
+    admissible for REPLAY evaluation only (live reads forward-only by construction;
+    the operator weighs the hindsight caveat when reviewing flipped verdicts)."""
+    from agents.market_intelligence.db import get_narrative_theme_candidates
+    return await get_narrative_theme_candidates(
+        days=5, include_backfill=True, as_of=alert_date)
 
 
-async def fetch_narratives_for(conn, alert_date):
-    """Prior-7d Lane-2 cohorts as list[dict] for one alert_date (replay-only helper)."""
-    rows = await conn.fetch(NARRATIVES_SQL, alert_date)
-    return [dict(r) for r in rows]
+async def resolve_grounded_text(row, company, grounded: bool):
+    """(grounded_text, ginfo|None) — the one grounded-vs-stored branch shared by
+    judge_backfill_replay and eval_judge_models (#252). grounded=True reconstructs
+    the point-in-time corpus (SEC+wires <= detected_at, no web); else the stored
+    grounded_text (real on post-W1 rows, thin stored catalyst otherwise)."""
+    from scripts._grounded_reconstruct import reconstruct_grounded_text
+    if grounded:
+        return await reconstruct_grounded_text(
+            row["ticker"], row["alert_date"], row["detected_at"],
+            company_name=company or "")
+    return row["grounded_text"], None
