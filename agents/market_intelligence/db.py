@@ -5327,15 +5327,29 @@ async def get_active_themes(stale_after_days: int = 7) -> list[dict]:
     Mon/Wed/Fri against stale ticker lists and generate spurious cooldowns
     (135 cooldowns on 2026-04-24 traced to ~60 zombies last seen 2-4 weeks
     prior). 7 days covers normal weekend/holiday gaps with margin.
+
+    RETIRED-GAP FIX (2026-06-09, #214 night-one root cause): the stage filter
+    must apply to each name's LATEST row, not pre-filter the scan. The old
+    shape (`WHERE stage != 'Retired'` inside the DISTINCT ON) skipped Retired
+    rows and picked an OLDER non-Retired snapshot still inside the window —
+    resurrecting freshly-retired themes with stale memberships ('Pure-Play
+    Hydraulic Fracturing' came back 6/9 from its 6/3 row after validation
+    emptied it 6/8; 'U.S. Shale & Onshore E&P' would have resurrected 6/10
+    from its 6/8 row). It also silently defeated the synthetic-Retired-row
+    mechanism (theme_auto_retired). Now: latest row per name first, THEN drop
+    names whose latest row is Retired. restore_recently_retired_themes stays
+    compatible — it DELETES bad rows, so the prior snapshot becomes latest.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT DISTINCT ON (name) *
-            FROM mi_themes
+            SELECT * FROM (
+                SELECT DISTINCT ON (name) *
+                FROM mi_themes
+                WHERE theme_date >= CURRENT_DATE - ($1 || ' days')::INTERVAL
+                ORDER BY name, theme_date DESC
+            ) latest
             WHERE stage != 'Retired'
-              AND theme_date >= CURRENT_DATE - ($1 || ' days')::INTERVAL
-            ORDER BY name, theme_date DESC
         """, str(stale_after_days))
         return [dict(r) for r in rows]
 
