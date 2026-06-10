@@ -702,11 +702,15 @@ class MarketIntelligenceAgent(BaseAgent):
                                     "filtered trades", "skipped trades", "all trades", "ep trades"]):
             return await self._handle_trades_query(request)
 
-        # Single-ticker trade lookup — "entry/exit for TVTX", "TVTX trade", "what happened with TVTX trade"
+        # Single-ticker trade lookup — "entry/exit for TVTX", "TVTX trade".
+        # (NOT "what happened with X trade" — "what happened" is caught by the
+        # audit-log rule above; pinned in test_execute_task_routing.)
+        # SHOW added to the skip 2026-06-10 (#260): "show 9m trades" was
+        # extracting SHOW as the ticker here and never reaching the 9M rule.
         if any(k in task for k in ["entry", "exit", "trade"]):
             import re as _re
             _cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-            _skip = _PREPOSITION_SKIP | {"ENTRY", "EXIT", "TRADE", "THE", "FOR", "AND", "WHAT", "WITH"}
+            _skip = _PREPOSITION_SKIP | {"ENTRY", "EXIT", "TRADE", "THE", "FOR", "AND", "WHAT", "WITH", "SHOW"}
             _trade_ticker = next((t for t in _cands if t not in _skip), None)
             if _trade_ticker:
                 return await self._handle_trades_query(request, ticker=_trade_ticker)
@@ -715,7 +719,11 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
             return await self._handle_history_query(request)
 
-        # EP history — must come before general EP route
+        # EP history — must come before general EP route. NOTE (#260): the
+        # "ep history" keyword itself is DEAD — the history rule above catches
+        # any phrase containing "history" first; this rule fires only on the
+        # eps-without-"history" phrasings ("recent eps", "ep log", ...).
+        # Pinned in test_execute_task_routing; reorder = conscious change there.
         if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
 
