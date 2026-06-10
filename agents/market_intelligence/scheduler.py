@@ -2289,6 +2289,26 @@ async def _flag_scan_job():
         return None
 
 
+async def _theme_synthesis_job():
+    """6:05 PM ET — cross-ticker emerging-theme synthesis (#240 advisory feed).
+    Top-down LLM pass over the coordinated-RS-slope candidates (velocity +
+    turners): propose 0-3 emerging cross-sector narrative cohorts, mechanically
+    validated, written to mi_theme_candidates_shadow (source='rs_slope_synthesis')
+    where the operator reviews them and the judge's narrative axis reads them.
+    Augment-not-automate: never writes live mi_themes."""
+    now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        logger.info("theme synthesis: non-trading day — skip")
+        return 0
+    from agents.market_intelligence.theme_synthesis import run_theme_synthesis
+    res = await run_theme_synthesis(now_et.date())
+    logger.info(
+        f"theme synthesis: {res['n_candidates']} candidates → "
+        f"{res['n_proposed']} proposed → {res['n_kept']} kept"
+    )
+    return res["n_kept"]
+
+
 async def _wick_forward_returns_job():
     """Run at 5:45 PM ET. Walk unsettled wick rows whose 10-trading-session
     horizon has elapsed and write filled_wick + fwd_Nd_from_{high,close}.
@@ -3555,6 +3575,20 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_flag_scan_job, JOB_FLAG_SCAN),
         CronTrigger(hour=17, minute=25, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_FLAG_SCAN,
+        replace_existing=True,
+        misfire_grace_time=900,
+    )
+
+    # Cross-ticker emerging-theme synthesis: 6:05 PM ET — after the 5:00 nightly
+    # pull has refreshed RS + themes (parabolic at 5:15 already relies on that),
+    # before the 8:00 evening briefing. ADVISORY (#240): proposals go to
+    # mi_theme_candidates_shadow (source='rs_slope_synthesis') for operator
+    # review + the judge's narrative axis; never live mi_themes. Telegram only
+    # on non-empty proposals; silent runs are audit-only.
+    _scheduler.add_job(
+        audit_wrap(_theme_synthesis_job, "theme_synthesis"),
+        CronTrigger(hour=18, minute=5, day_of_week="mon-fri", timezone="America/New_York"),
+        id="theme_synthesis",
         replace_existing=True,
         misfire_grace_time=900,
     )

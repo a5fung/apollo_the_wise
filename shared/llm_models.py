@@ -49,6 +49,9 @@ THEME_MODEL = SONNET
 THEME_ADVISOR_MODEL = OPUS
 # Ticker-description generation (theme engine chunked + nightly backfill)
 DESCRIPTION_MODEL = HAIKU
+# Cross-ticker emerging-theme synthesis (theme_synthesis.py — #240 advisory
+# feed; Sonnet: the same cross-sector narrative reasoning tier as THEME_MODEL)
+SYNTHESIS_MODEL = SONNET
 
 # EP holistic grade judge (ADR 0011; W1 eval owns this choice)
 JUDGE_MODEL = SONNET

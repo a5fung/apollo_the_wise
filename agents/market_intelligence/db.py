@@ -4553,6 +4553,39 @@ async def persist_narrative_theme_candidates(
         return n
 
 
+async def persist_synthesis_theme_candidates(
+    run_date: "str | date", cohorts: list[dict],
+) -> int:
+    """#240 cross-ticker synthesis lane — write emerging-cohort proposals to
+    mi_theme_candidates_shadow under source='rs_slope_synthesis'. SOURCE-SCOPED
+    (same discipline as the other two writers sharing this table): clears/writes
+    only its own source rows. Forward-only by construction — the pass runs
+    nightly over current RS snapshots; there is no backfill variant. Returns
+    rows written."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rd = _to_date(run_date)
+        await conn.execute(
+            "DELETE FROM mi_theme_candidates_shadow WHERE run_date = $1 AND source = 'rs_slope_synthesis'",
+            rd)
+        n = 0
+        for c in (cohorts or []):
+            name = c.get("name")
+            tickers = c.get("tickers") or []
+            if not name or not tickers:
+                continue
+            await conn.execute("""
+                INSERT INTO mi_theme_candidates_shadow
+                    (run_date, name, thesis, tickers, source, would_revive)
+                VALUES ($1, $2, $3, $4, 'rs_slope_synthesis', FALSE)
+                ON CONFLICT (run_date, name) DO UPDATE
+                    SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers,
+                        source = EXCLUDED.source
+            """, rd, name, c.get("thesis"), tickers)
+            n += 1
+        return n
+
+
 async def get_narrative_theme_candidates(
     days: int = 5, include_backfill: bool = False, as_of: "date | None" = None,
 ) -> list[dict]:
@@ -4560,10 +4593,12 @@ async def get_narrative_theme_candidates(
     Surfaced (clearly labeled experimental) in /themes so the operator can evaluate
     the accruing proposals toward a promote-gate.
 
-    Forward-only by default (source='narrative_cogap'). include_backfill=True also
-    returns the hindsight backfill population (source='narrative_cogap_backfill'),
-    each row tagged `backfilled` so the promote-gate read can split + label them
-    (#167 hindsight-segregation, 2026-06-06).
+    Forward-only by default: source='narrative_cogap' (#167 co-gap lane) +
+    source='rs_slope_synthesis' (#240 cross-ticker synthesis lane — both are
+    forward-written nightly, so both are judge-feedable). include_backfill=True
+    also returns the hindsight backfill population (source=
+    'narrative_cogap_backfill'), each row tagged `backfilled` so the
+    promote-gate read can split + label them (#167 hindsight-segregation).
 
     `as_of` (lane2-judge-theme-axis replay): point-in-time view for date D — PRIOR
     days only (`D - days <= run_date < D`; same-day rows are lookahead, the lane is
@@ -4571,8 +4606,10 @@ async def get_narrative_theme_candidates(
     CURRENT_DATE, inclusive of today). One helper for both so live and replay can
     never select cohorts differently."""
     pool = await get_pool()
-    src_clause = ("source IN ('narrative_cogap', 'narrative_cogap_backfill')"
-                 if include_backfill else "source = 'narrative_cogap'")
+    src_clause = (
+        "source IN ('narrative_cogap', 'rs_slope_synthesis', 'narrative_cogap_backfill')"
+        if include_backfill
+        else "source IN ('narrative_cogap', 'rs_slope_synthesis')")
     async with pool.acquire() as conn:
         if as_of is None:
             rows = await conn.fetch(f"""
