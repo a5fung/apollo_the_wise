@@ -92,10 +92,13 @@ async def _check_rs_deterioration(today: date) -> list[dict]:
     alerts = []
 
     async with pool.acquire() as conn:
+        # $1::date casts are LOAD-BEARING: bare `$1 - INTERVAL` lets Postgres
+        # type-infer $1 as interval → `date <= interval` prepare error
+        # (caught 2026-06-10: RS-deterioration check silently dead).
         prior_date_row = await conn.fetchrow("""
             SELECT DISTINCT score_date FROM mi_stock_scores
-            WHERE score_date <= $1 - INTERVAL '12 days'
-              AND score_date >= $1 - INTERVAL '18 days'
+            WHERE score_date <= $1::date - INTERVAL '12 days'
+              AND score_date >= $1::date - INTERVAL '18 days'
             ORDER BY score_date DESC LIMIT 1
         """, today)
         if not prior_date_row:
