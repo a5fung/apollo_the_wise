@@ -1472,13 +1472,33 @@ async def _eod_ep_recap_job():
             or (feed == "sip" and feed_tel["zero_range"] > 0 and feed_tel["bars_fetched"] > 0)
         )
 
+        # Judge demotes (operator request 2026-06-10, judge load-bearing same
+        # day): "No HIGH EPs" is ambiguous — none detected, or floor-HIGHs
+        # demoted away? Count floor-HIGH demotes explicitly (always shown, so
+        # 0 is an answer, not silence). Per-delta detail stays in the 16:25
+        # judge digest; this is the headline count.
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            _demoted = await conn.fetch("""
+                SELECT ticker, score_tier FROM mi_ep_alerts
+                WHERE alert_date = $1 AND judge_direction = 'demote'
+                  AND baseline_floor_tier = 'HIGH'
+                  AND COALESCE(source, 'live') = 'live'
+            """, today)
+        if _demoted:
+            _dt = ", ".join(
+                f"`{r['ticker']}`→{r['score_tier'] or '?'}" for r in _demoted[:6])
+            judge_line = f"⚖️ Judge demoted {len(_demoted)} floor-HIGH: {_dt}"
+        else:
+            judge_line = "⚖️ Judge demoted 0 floor-HIGHs"
+
         if not today_outcomes:
             # Still report feed health — the silent-feed case is exactly why this exists.
-            if feed_alert or feed_tel["bars_fetched"] > 0:
+            if feed_alert or feed_tel["bars_fetched"] > 0 or _demoted:
                 prefix = "⚠️ " if feed_alert else ""
                 await send_telegram_message(
                     f"{prefix}*EP EOD Recap — {today_str}*\n"
-                    f"No HIGH EPs today.\n{feed_line}"
+                    f"No HIGH EPs today.\n{judge_line}\n{feed_line}"
                 )
             logger.info("EOD EP recap: no HIGH EPs today")
             return
@@ -1490,6 +1510,7 @@ async def _eod_ep_recap_job():
         lines = [
             f"📊 *EP EOD Recap — {today_str}*",
             f"HIGH: {len(today_outcomes)} detected → {len(entered)} entered · {len(missed)} missed",
+            judge_line,
         ]
         for o in entered[:5]:
             pnl = o.get("total_pnl")
