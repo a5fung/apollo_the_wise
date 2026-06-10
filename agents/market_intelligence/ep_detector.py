@@ -2153,36 +2153,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         }),
                     )
 
-        # ── Theme-gated ADVISORY grade (North Star Tier 1, 2026-06-05; #200) ──
-        # Shadow/advisory ONLY — does NOT change `tier`, suppresses nothing.
-        # Computes the grade this alert WOULD get if the conviction floor did
-        # not promote names that are NOT in a live mi_theme. The conviction
-        # floor scores HIGH off gap+catalyst alone (theme is a decorative +10);
-        # this exposes how many HIGHs are floor-driven & themeless so we can
-        # decide — on forward-return evidence (weekly review) — whether to make
-        # theme/narrative load-bearing in the live grade. The earnings-day
-        # override is theme-independent (a real earnings gap is a qualified EP
-        # regardless of theme), so it carries through to the gated grade too.
-        # NOTE: themeless here means "not in a live correlation-engine theme" —
-        # the #167 narrative lane may still cover it; themeless ≠ no-thesis.
-        try:
-            effective_mult = regime_multiplier * confidence_multiplier
-            in_theme = ticker in _in_active_theme_set
-            # `.get` is mandatory — conviction_floor key only exists when a
-            # floor fired (see _score_ep); KeyError otherwise.
-            structure_raw = sum(breakdown.values()) - breakdown.get("conviction_floor", 0)
-            theme_gated_raw = sum(breakdown.values()) if in_theme else structure_raw
-            theme_gated_score = round(theme_gated_raw * effective_mult, 1)
-            theme_gated_tier = (
-                "HIGH"
-                if (theme_gated_score >= ep_threshold or earnings_override_fired)
-                else "MODERATE"
-            )
-        except Exception as e:
-            logger.warning(f"theme-gated advisory compute failed for {ticker}: {e}")
-            theme_gated_score = None
-            theme_gated_tier = None
-            in_theme = ticker in _in_active_theme_set
+        # Theme-gated ADVISORY grade (#200) RETIRED 2026-06-10 (#249): its
+        # question — should theme gate the floor? — was answered by the judge
+        # going load-bearing (ADR 0011); the judge weighs the theme/narrative
+        # axes on every grade. in_theme stays — it feeds the judge payload.
+        in_theme = ticker in _in_active_theme_set
 
         # ── Fire panel (#201, 2026-06-05) — multi-axis "did we SEE a fire?" ──
         # ADVISORY only. The EP tenet (Pradeep): a real EP needs a FIRE — theme
@@ -2296,8 +2271,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,
             "score_breakdown": breakdown,
-            "theme_gated_tier": theme_gated_tier,
-            "theme_gated_score": theme_gated_score,
             "in_active_theme": in_theme,
             "in_narrative_cohort": in_narrative,
             "fire_status": fire_status,
@@ -2337,8 +2310,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "pm_rvol": c.get("pm_rvol"),
             "pm_rvol_baseline_n": c.get("pm_rvol_baseline_n"),
             "detected_at": now_et,
-            "theme_gated_tier": theme_gated_tier,
-            "theme_gated_score": theme_gated_score,
             "in_active_theme": in_theme,
             "in_narrative_cohort": in_narrative,
             "fire_status": fire_status,

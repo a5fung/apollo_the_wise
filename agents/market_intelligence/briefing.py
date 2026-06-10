@@ -2153,29 +2153,9 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     _ct = ep.get("catalyst_type")
     ct_line = f"{_catalyst_type_mark(_ct)} Type: *{_ct.replace('_', ' ').title()}*\n" if _ct else ""
 
-    # North Star Tier 1 (2026-06-05; #200): theme-gated ADVISORY grade — the
-    # tier this alert WOULD get if the conviction floor did not promote names
-    # outside a live mi_theme. ADVISORY, suppresses nothing. Surface always so
-    # the operator can review the shadow signal live. Divergence (live HIGH /
-    # gated MODERATE) = a floor-driven, themeless HIGH — the cohort we're
-    # measuring forward-returns on before deciding to make theme load-bearing.
-    # NOTE: themeless = "not in a live correlation-engine theme"; the #167
-    # narrative lane may still cover it (themeless ≠ no-thesis).
+    # Theme-gated advisory line (#200) RETIRED 2026-06-10 (#249): the judge
+    # (ADR 0011, load-bearing) weighs the theme axis in the grade itself.
     tg_line = ""
-    _tg_tier = ep.get("theme_gated_tier")
-    if _tg_tier:
-        _live_tier = ep.get("score_tier", "")
-        _tg_score = ep.get("theme_gated_score")
-        _in_theme = ep.get("in_active_theme")
-        _score_str = f" ({_tg_score:.0f})" if isinstance(_tg_score, (int, float)) else ""
-        if _live_tier == "HIGH" and _tg_tier == "MODERATE":
-            tg_line = (
-                f"🧪 Theme-gated: *{_tg_tier}*{_score_str} — "
-                f"⚠️ floor-driven HIGH, not in a live theme\n"
-            )
-        else:
-            _ctx = "in live theme" if _in_theme else "structure holds"
-            tg_line = f"🧪 Theme-gated: *{_tg_tier}*{_score_str} — {_ctx}\n"
 
     # Fire panel (#201) — "did we SEE a fire?" across axes (theme/narrative/
     # catalyst). ADVISORY. The unknown split (discovery-gap vs gap-only) is the

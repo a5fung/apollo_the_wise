@@ -148,15 +148,9 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     if loser_section:
         message = f"{message}\n\n{loser_section}"
 
-    # Theme-gated advisory cohort (#200, North Star Tier 1) — deterministic.
-    # Surfaces the floor-driven-themeless HIGH cohort + forward-R so the
-    # operator can watch the evidence that gates making theme load-bearing.
-    try:
-        theme_gated_section = _format_theme_gated_section(metrics.get("theme_gated") or {})
-        if theme_gated_section:
-            message = f"{message}\n\n{theme_gated_section}"
-    except Exception:
-        logger.exception("theme_gated section render failed")
+    # Theme-gated advisory section (#200) RETIRED 2026-06-10 (#249): the judge
+    # (ADR 0011, load-bearing) owns the theme axis; deltas surface in the 16:25
+    # judge delta digest + the judge section below.
 
     # Fire panel (#201) — "did we see a fire?" distribution + discovery guardrail.
     try:
@@ -218,7 +212,6 @@ async def _gather_and_aggregate(
     pending_reviews = await _aggregate_pending_reviews(today)
     missed_opps = await _aggregate_missed_opportunities(window_days)
     news_quality = await _aggregate_news_source_quality(window_days)
-    theme_gated = await _aggregate_theme_gated_divergence(window_days)
     fire_panel = await _aggregate_fire_panel(window_days)
 
     return {
@@ -243,7 +236,6 @@ async def _gather_and_aggregate(
         "pending_reviews": pending_reviews,
         "missed_opportunities": missed_opps,
         "news_source_quality": news_quality,
-        "theme_gated": theme_gated,
         "fire_panel": fire_panel,
     }
 
@@ -284,82 +276,8 @@ async def _aggregate_missed_opportunities(window_days: int) -> dict:
         return {"window_days": window_days, "top_winners": [], "by_category": []}
 
 
-async def _aggregate_theme_gated_divergence(window_days: int) -> dict:
-    """North Star Tier 1 (#200, 2026-06-05): theme-gated ADVISORY grade cohort.
-
-    The MAGNA53 conviction floor promotes names to HIGH off gap+catalyst alone,
-    even when the ticker is NOT in a live mi_theme (theme is a decorative +10).
-    mi_ep_alerts.theme_gated_tier records what the grade WOULD be if the floor
-    did not promote themeless names. This compares two cohorts of live HIGHs:
-      - DEMOTED  = live HIGH but theme_gated MODERATE (floor-driven, themeless)
-      - RETAINED = live HIGH and theme_gated still HIGH (in a theme / structure)
-    keyed to forward 5d peak excursion (mi_daily_closes, same pattern as #199).
-
-    The decision to make theme/narrative LOAD-BEARING in the live grade flips on
-    THIS evidence — if the demoted cohort systematically lags the retained one
-    over a sufficient cohort, theme earns its gate. Advisory/shadow until then.
-
-    NOTE: themeless = "not in a live correlation-engine theme"; the #167
-    narrative lane may still cover it (themeless != no-thesis). Carry that
-    caveat so we don't suppress a real nascent-cohort name on this signal alone.
-    """
-    from agents.market_intelligence.db import get_pool
-    from agents.market_intelligence.collector import et_today
-    today_d = et_today()
-    window_start = today_d - timedelta(days=window_days)
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch("""
-                WITH base AS (
-                    SELECT ticker, alert_date, theme_gated_tier
-                    FROM mi_ep_alerts
-                    WHERE alert_date >= $1
-                      AND score_tier = 'HIGH'
-                      AND theme_gated_tier IS NOT NULL
-                      AND COALESCE(source, 'live') = 'live'
-                ),
-                fwd AS (
-                    SELECT b.*, d0.open_price AS open_d0, h5.h AS max_high_5d
-                    FROM base b
-                    LEFT JOIN LATERAL (
-                        SELECT open_price FROM mi_daily_closes
-                        WHERE ticker = b.ticker AND trade_date = b.alert_date
-                    ) d0 ON TRUE
-                    LEFT JOIN LATERAL (
-                        SELECT MAX(high_price) AS h FROM (
-                            SELECT high_price FROM mi_daily_closes
-                            WHERE ticker = b.ticker AND trade_date >= b.alert_date
-                            ORDER BY trade_date ASC LIMIT 6
-                        ) x
-                    ) h5 ON TRUE
-                )
-                SELECT
-                    CASE WHEN theme_gated_tier = 'MODERATE'
-                         THEN 'demoted' ELSE 'retained' END AS cohort,
-                    COUNT(*)::INT AS n,
-                    COUNT(*) FILTER (
-                        WHERE open_d0 > 0 AND max_high_5d IS NOT NULL
-                          AND (max_high_5d - open_d0) / open_d0 > 0.10
-                    )::INT AS n_peak_10pct,
-                    AVG(CASE WHEN open_d0 > 0 AND max_high_5d IS NOT NULL
-                             THEN (max_high_5d - open_d0) / open_d0 END) AS avg_peak_5d
-                FROM fwd
-                GROUP BY 1
-            """, window_start)
-        out: dict = {"demoted": None, "retained": None, "window_days": window_days}
-        for r in rows:
-            out[r["cohort"]] = {
-                "n": r["n"],
-                "n_peak_10pct": r["n_peak_10pct"],
-                "avg_peak_5d": (
-                    float(r["avg_peak_5d"]) if r["avg_peak_5d"] is not None else None
-                ),
-            }
-        return out
-    except Exception:
-        logger.exception("theme_gated_divergence aggregator failed")
-        return {"demoted": None, "retained": None, "window_days": window_days}
+# _aggregate_theme_gated_divergence (#200) removed 2026-06-10 (#249) — the judge
+# (ADR 0011) owns the theme axis; theme_gated_* columns are frozen historical.
 
 
 async def _aggregate_fire_panel(window_days: int) -> dict:
@@ -1480,50 +1398,6 @@ async def _aggregate_fishhook_outcomes(window_days: int) -> dict:
         "deep_median_r": round(float(row["deep_median_r"]), 2) if row["deep_median_r"] is not None else None,
         "n_deep": int(row["n_deep"] or 0),
     }
-
-
-def _format_theme_gated_section(data: dict) -> str:
-    """North Star Tier 1 (#200): theme-gated advisory divergence + forward-R.
-
-    Deterministic (not LLM-narrated) — surfaces the floor-driven-themeless HIGH
-    cohort and its forward 5d peak vs the retained (gated-still-HIGH) cohort, so
-    the operator can watch the evidence accrue toward making theme load-bearing.
-    Empty string when there are no graded HIGHs in the window yet.
-    """
-    if not data:
-        return ""
-    demoted = data.get("demoted")
-    retained = data.get("retained")
-    if not demoted and not retained:
-        # N=0 heartbeat (#173 insurance): a silently-dead pipeline writing 0
-        # graded rows looks identical to a healthy one with no qualifying
-        # alerts. Emit a one-liner so "alive but nothing qualified" is
-        # distinguishable from "stopped writing theme_gated_tier".
-        return "🧪 *Theme-gated advisory (shadow — #200):* 0 graded HIGHs in window"
-
-    def _row(label: str, c: dict | None) -> str:
-        if not c or not c.get("n"):
-            return f"{label:<34} n=0"
-        avg = c.get("avg_peak_5d")
-        avg_s = f"{avg * 100:+5.1f}%" if avg is not None else "  n/a"
-        return (
-            f"{label:<34} n={c['n']:<3} ≥10%:{c['n_peak_10pct']:<3} "
-            f"5d-peak {avg_s}"
-        )
-
-    lines = [
-        "🧪 *Theme-gated advisory (shadow — #200)*",
-        "_Live HIGHs the conviction floor promoted; gated grade asks: "
-        "still HIGH if a live theme were required?_",
-        "```",
-        _row("Demoted (themeless, floor-driven)", demoted),
-        _row("Retained (gated still HIGH)", retained),
-        "```",
-        "_Flip theme→load-bearing when the demoted cohort systematically lags "
-        "retained (need N). themeless ≠ no-thesis — the #167 narrative lane may "
-        "cover it._",
-    ]
-    return "\n".join(lines)
 
 
 def _format_fire_panel_section(data: dict) -> str:

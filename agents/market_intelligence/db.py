@@ -1984,16 +1984,8 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT"
         )
-        # North Star Tier 1 (2026-06-05; #200): theme-gated ADVISORY grade —
-        # the tier/score this alert WOULD get if the conviction floor did not
-        # promote names outside a live mi_theme. ADVISORY only, never gates.
-        # NULL when the advisory compute failed (fail-open). Idempotent add.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS theme_gated_tier TEXT"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS theme_gated_score DOUBLE PRECISION"
-        )
+        # theme_gated_tier / theme_gated_score (#200) RETIRED 2026-06-10 (#249):
+        # the judge (ADR 0011) owns the theme axis. Historical columns frozen.
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN"
         )
@@ -2046,12 +2038,12 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                  confidence_multiplier, vol_percentile, source,
                  pm_rvol, pm_rvol_baseline_n, detected_at,
                  catalyst_type, catalyst_type_rationale,
-                 theme_gated_tier, theme_gated_score, in_active_theme,
+                 in_active_theme,
                  in_narrative_cohort, fire_status, fire_axes,
                  grounded_text, baseline_floor_tier, grade_engine_authority)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
-                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19, $20, $21,
-                    $22, $23, $24, $25, $26, $27)
+                    COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19,
+                    $20, $21, $22, $23, $24, $25)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -2065,8 +2057,6 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("detected_at"),
             record.get("catalyst_type"),
             record.get("catalyst_type_rationale"),
-            record.get("theme_gated_tier"),
-            record.get("theme_gated_score"),
             record.get("in_active_theme"),
             record.get("in_narrative_cohort"),
             record.get("fire_status"),
