@@ -155,19 +155,33 @@ async def test_sugar_baby_roundtrip(conn) -> bool:
     return True
 
 
+async def _seed_history(conn, ticker: str) -> None:
+    """#227: the EOD filter gained history-dependent gates after this harness
+    was written — >=10 prior sessions (Day-1 IPO reject, NHP 2026-04-22),
+    volume >= 3x ADV (median of prior 30d), prev_close <= 1.20x SMA-10. Seed
+    12 flat sessions (close 45, vol 2M -> ADV 2M, SMA-10 45) inside the CTE's
+    30d window so the test-day row is judged on the TEST-DAY criteria."""
+    from datetime import timedelta
+    await conn.execute("DELETE FROM mi_daily_closes WHERE ticker = $1", ticker)
+    for i in range(1, 13):
+        await conn.execute("""
+            INSERT INTO mi_daily_closes (trade_date, ticker, close, volume,
+                                         open_price, high_price, low_price)
+            VALUES ($1, $2, 45.0, 2000000, 45.0, 45.5, 44.5)
+        """, _TEST_DATE - timedelta(days=i), ticker)
+
+
 async def test_eod_filter_logic(conn) -> bool:
     """
-    Insert a synthetic mi_daily_closes row for the test ticker on test date,
-    then verify get_eod_9m_sugar_babies picks it up (or not) based on filter logic.
+    Seed synthetic history + a test-date mi_daily_closes row, then verify
+    get_eod_9m_sugar_babies picks it up (or not) based on the filter logic.
     """
     from agents.market_intelligence.db import get_eod_9m_sugar_babies
 
-    # First ensure the row doesn't already exist
-    await conn.execute("""
-        DELETE FROM mi_daily_closes WHERE ticker = $1 AND trade_date = $2
-    """, _TEST_TICKER, _TEST_DATE)
-
-    # Insert qualifying row: vol >= 9M, close >= 3, green, close in top 25%
+    # Qualifying row: vol 10M >= 9M and >= 3x ADV(2M), close $50 >= $5,
+    # $500M turnover, green (50 > 45), close in top 25% of range, range 16%,
+    # prev_close 45 <= 1.20x SMA-10 (45), 12 prior sessions.
+    await _seed_history(conn, _TEST_TICKER)
     await conn.execute("""
         INSERT INTO mi_daily_closes (trade_date, ticker, close, volume, open_price, high_price, low_price)
         VALUES ($1, $2, 50.0, 10000000, 45.0, 52.0, 44.0)
@@ -181,11 +195,10 @@ async def test_eod_filter_logic(conn) -> bool:
     # close_in_range = (50 - 44) / (52 - 44) = 6/8 = 0.75 — exactly at boundary
     print(f"  {PASS} get_eod_9m_sugar_babies: qualifying row returned (close_in_range=0.75)")
 
-    # Insert a non-qualifying row (not green: close < open)
+    # Non-qualifying sibling (not green: close < open) with the SAME history,
+    # so exclusion is attributable to the green gate, not the history gates.
     non_green_ticker = _TEST_TICKER + "X"
-    await conn.execute("""
-        DELETE FROM mi_daily_closes WHERE ticker = $1 AND trade_date = $2
-    """, non_green_ticker, _TEST_DATE)
+    await _seed_history(conn, non_green_ticker)
     await conn.execute("""
         INSERT INTO mi_daily_closes (trade_date, ticker, close, volume, open_price, high_price, low_price)
         VALUES ($1, $2, 40.0, 10000000, 45.0, 52.0, 38.0)
@@ -198,11 +211,9 @@ async def test_eod_filter_logic(conn) -> bool:
         return False
     print(f"  {PASS} get_eod_9m_sugar_babies: non-green row correctly excluded")
 
-    # Cleanup
-    await conn.execute("DELETE FROM mi_daily_closes WHERE ticker = $1 AND trade_date = $2",
-                       _TEST_TICKER, _TEST_DATE)
-    await conn.execute("DELETE FROM mi_daily_closes WHERE ticker = $1 AND trade_date = $2",
-                       non_green_ticker, _TEST_DATE)
+    # Cleanup — ticker-wide (removes the seeded history rows too, #227)
+    await conn.execute("DELETE FROM mi_daily_closes WHERE ticker = $1", _TEST_TICKER)
+    await conn.execute("DELETE FROM mi_daily_closes WHERE ticker = $1", non_green_ticker)
     return True
 
 
