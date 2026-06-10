@@ -8,20 +8,17 @@ the grade enum and can't be read separately; the fire panel (#201) currently lig
 the catalyst axis on grade + named-type alone, which the design memory projects runs
 ~95% fire_seen (too permissive). #189 makes materiality an EXPLICIT, separable signal.
 
-STATUS — SHADOW/EVAL ONLY. This module is intentionally NOT imported by run_ep_scan
-or _compute_fire_status (the live firing path). Wiring materiality into the fire
-panel is a POST-Monday CHANGE_PROCESS flip (ADR 0010), made against the real
-fire_status baseline that first lands 2026-06-08 (#200/#201 verify) + entry-aware R
-evidence. Until then this backs (a) the read-only eval
-(scripts/eval_catalyst_materiality.py) and (b) the OFFLINE shadow writer
-(materiality_shadow.py — a post-EOD job, never the hot path) that accrues
-materiality_tier + the would-be fire_status alongside the real one, so the R
-evidence the flip is gated on builds from day one with no backfill.
+STATUS — JUDGE INPUT (since #245/#249). The deterministic helpers
+(extract_deal_value + rule_materiality) feed the holistic grade judge's payload on
+the live scan path (ep_detector._judge_shadow); the judge's own Sonnet call owns the
+soft/abstain materiality tier, so judge_materiality_llm / assess_materiality back
+the read-only eval (scripts/eval_catalyst_materiality.py) only. The earlier ADR 0010
+staged flip + OFFLINE shadow writer (materiality_shadow.py, 16:25 job) were retired
+2026-06-10 (#249) — superseded by the judge going load-bearing (ADR 0011).
 
-This module owns BOTH the pure helpers (deal-value parsing, ratio bucketing —
-deterministic + unit-tested) AND the one shared Sonnet judgment layer
-(judge_materiality_llm / assess_materiality), so the eval and the shadow writer
-never diverge on the prompt (feedback_single_source_of_truth).
+This module still owns BOTH the pure helpers (deal-value parsing, ratio bucketing —
+deterministic + unit-tested) AND the one shared Sonnet judgment layer, so the eval
+and any future consumer never diverge on the prompt (feedback_single_source_of_truth).
 """
 from __future__ import annotations
 

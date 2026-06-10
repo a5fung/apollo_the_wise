@@ -1,6 +1,11 @@
 # ADR 0010 — Materiality (#189) activation of the fire panel (#201) catalyst axis
 
-**Status:** STAGED (not flipped). Wave 4 of the North Star weekend spine.
+**Status:** SUPERSEDED by ADR 0011 (#249, 2026-06-10). The staged flip never shipped
+and never will: the holistic grade judge went LOAD-BEARING 2026-06-10 (operator-signed)
+and owns materiality on every graded alert — its first live call (CBRL, MODERATE→none
+on a one-time litigation settlement) is exactly the demotion this ADR staged.
+`materiality_shadow.py` + its 16:25 job + `_compute_fire_status` are retired; the
+judge's verdict `fire_axes` is the fire signal now. Historical shadow columns frozen.
 **Date:** 2026-06-07. **Owner decision (the flip):** operator, post-6/8 + R-evidence.
 **Supersedes nothing; activates the guardrail designed in** `ep_fire_panel_load_bearing_design` (memory).
 

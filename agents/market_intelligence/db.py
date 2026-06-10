@@ -2035,10 +2035,10 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         # the 6/22 cohort by grade engine + the substrate for the ep_grade_decision audit.
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grade_engine_authority TEXT")
-        # Materiality SHADOW columns (#189 / ADR 0010) are ensured by their SOLE
-        # writer (ensure_materiality_shadow_columns, called from the offline 16:25
-        # job) — NOT here. They're never written on the insert path, so piggybacking
-        # the ALTERs on each insert would only delay first-fire to the next scan.
+        # Materiality SHADOW columns (#189 / ADR 0010: materiality_tier,
+        # materiality_source, fire_status_mat_shadow) are RETIRED (#249,
+        # 2026-06-10) — the 16:25 job + its writers are gone; the judge owns
+        # materiality. Historical rows keep the columns, frozen.
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
@@ -2195,43 +2195,6 @@ async def update_ep_alert_advisory(
                 fire_axes = COALESCE($6, fire_axes)
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date, catalyst_type, rationale, fire_status, fire_axes)
-
-
-async def ensure_materiality_shadow_columns() -> None:
-    """Idempotently create the #189 / ADR 0010 shadow columns. Owned by the offline
-    materiality_shadow job (its SOLE writer) and called at the top of each run, so
-    the columns exist on first fire regardless of whether an EP alert has inserted
-    since deploy — turnkey first-run, no dependency on scan ordering. Nullable adds."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_tier TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS materiality_source TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status_mat_shadow TEXT")
-
-
-async def update_ep_alert_materiality_shadow(
-    ticker: str, alert_date: "date", materiality_tier: str | None,
-    materiality_source: str | None, fire_status_mat_shadow: str | None,
-) -> None:
-    """Materiality SHADOW patch (#189 / ADR 0010), written by the OFFLINE
-    materiality_shadow.py job — NOT run_ep_scan. Records the #189 tier + its
-    source (rule/llm/abstain) + the fire_status the activated rule WOULD produce.
-    ADVISORY evidence-accrual only; never touches the live fire_status. Unlike
-    the advisory patch's COALESCE, these are SET unconditionally — a re-run for the
-    same alert_date overwrites (idempotent), so re-running the day's job is safe."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_ep_alerts SET
-                materiality_tier = $3,
-                materiality_source = $4,
-                fire_status_mat_shadow = $5
-            WHERE ticker = $1 AND alert_date = $2
-        """, ticker, alert_date, materiality_tier, materiality_source,
-            fire_status_mat_shadow)
 
 
 # ── Operator ground-truth corpus (#254) ─────────────────────────────────────────

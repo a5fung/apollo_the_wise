@@ -6324,5 +6324,15 @@ reviews:
          unimported by the live path.
 
       Doc: docs/decisions/0010-materiality-fire-status-activation.md. Task #189.
-    status: pending
+    status: closed
     added_on: 2026-06-07
+    closed_on: 2026-06-10
+    outcome: >
+      SUBSUMED by the holistic grade judge (ADR 0011), flipped LOAD-BEARING
+      2026-06-10 with operator sign-off. The judge grades materiality on every
+      alert (deterministic rule_materiality input + its own Sonnet soft-tier)
+      and demotes immaterial catalysts bidirectionally — its first live call
+      (CBRL 2026-06-10, MODERATE→none on a one-time litigation settlement
+      misread as an EPS beat, operator-reviewed correct) IS this review's
+      staged demotion rule, live. The separate _compute_fire_status flip path
+      + materiality_shadow accrual were retired in #249; ADR 0010 superseded.
