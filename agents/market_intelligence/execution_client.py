@@ -29,6 +29,30 @@ async def get_account(*args, **kwargs):
     return await alpaca_client.get_account(*args, **kwargs)
 
 
+async def get_position(*args, **kwargs):
+    """Single open broker position for a ticker (None when flat)."""
+    from agents.market_intelligence.broker import alpaca_client
+    return await alpaca_client.get_position(*args, **kwargs)
+
+
+async def get_all_positions(*args, **kwargs):
+    """All open broker positions (optionally per account_mode)."""
+    from agents.market_intelligence.broker import alpaca_client
+    return await alpaca_client.get_all_positions(*args, **kwargs)
+
+
+async def get_open_orders(*args, **kwargs):
+    """Open broker orders (optionally per account_mode)."""
+    from agents.market_intelligence.broker import alpaca_client
+    return await alpaca_client.get_open_orders(*args, **kwargs)
+
+
+async def get_first_bar(*args, **kwargs):
+    """First minute bar for a ticker/date (ORB basis; health checks)."""
+    from agents.market_intelligence.broker import alpaca_client
+    return await alpaca_client.get_first_bar(*args, **kwargs)
+
+
 async def get_stream_status(*args, **kwargs):
     """Trade-stream health (per-mode connection state)."""
     from agents.market_intelligence.broker.trade_stream import get_stream_status as _f

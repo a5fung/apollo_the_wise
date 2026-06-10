@@ -255,7 +255,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 ENABLE_LIVE_MODE, resolve_account_mode_for_strategy,
             )
             from agents.market_intelligence.strategies.registry import load_strategies
-            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+            from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
 
             live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
             if not live_enabled:
@@ -494,7 +494,7 @@ class MarketIntelligenceAgent(BaseAgent):
         async def trades_summary(_: str = Depends(verify_internal_secret)):
             """Return combined trade summary: live (Alpaca) + paper trades."""
             from agents.market_intelligence.db import get_pool
-            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+            from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
 
             pool = await get_pool()
             result = {"live": None, "paper": None}
@@ -584,7 +584,7 @@ class MarketIntelligenceAgent(BaseAgent):
             """Sanity test: verify Alpaca connectivity, account info, and order placement."""
             results = {}
             try:
-                from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+                from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
                 # 1. Account info
                 account = await alpaca.get_account()
                 from agents.market_intelligence.constants import current_account_mode
@@ -902,7 +902,7 @@ class MarketIntelligenceAgent(BaseAgent):
             CIRCUIT_BREAKER_CONSEC_LOSSES, CONFIRMATION_TIMEOUT_SEC,
             LIVE_TRADING_ENABLED, current_account_mode,
         )
-        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+        from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
         from agents.market_intelligence.db import get_latest_regime
 
         regime = await get_latest_regime()
@@ -1036,7 +1036,7 @@ class MarketIntelligenceAgent(BaseAgent):
         import math
         from datetime import date as _date
 
-        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+        from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
         from agents.market_intelligence.constants import (
             current_account_mode, mode_prefix,
         )
@@ -6180,7 +6180,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         async def _build_summary() -> str:
             """Open positions (with live Alpaca prices) + last 5 closed + totals."""
-            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
+            from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
 
             async with pool.acquire() as conn:
                 open_rows = await conn.fetch("""
