@@ -131,6 +131,12 @@ async def collect_source_stats(
     return out
 
 
+# #264: current-window extraction floor for a Telegram-worthy drift event.
+# Below this, per-source percentages swing wildly with cohort composition
+# (earnings-season PRs vs thin-tape missed-EP names) — audit-only.
+_MIN_CURRENT_N = 15
+
+
 async def detect_drift() -> dict[str, Any]:
     """Compare current 7d vs trailing 30d baseline (excluding current 7d).
 
@@ -138,7 +144,10 @@ async def detect_drift() -> dict[str, Any]:
       {source, metric, current_pct, baseline_pct, delta_pp}
     where delta_pp is current - baseline in percentage points.
 
-    Threshold: drift_event when |delta_pp| >= 40 AND baseline had ≥10 extractions.
+    Threshold: drift_event when |delta_pp| >= 40 AND baseline had ≥10 extractions
+    AND the current window has ≥ _MIN_CURRENT_N extractions (#264 — below the
+    floor the event lands in `low_n_events`: audit-only, no Telegram, because a
+    thin week's cohort composition masquerades as source degradation).
     """
     from agents.market_intelligence.collector import et_today
     today_d = et_today()
@@ -160,6 +169,7 @@ async def detect_drift() -> dict[str, Any]:
             "baseline_n": (baseline.get(next(iter(baseline), ""), {}).get("n_extractions", 0) if baseline else 0),
         }
 
+    low_n_events = []
     for source in current:
         cur = current[source]
         base = baseline.get(source, {})
@@ -172,7 +182,7 @@ async def detect_drift() -> dict[str, Any]:
             base_v = base.get(metric, 0)
             delta = cur_v - base_v
             if abs(delta) >= 40:
-                drift_events.append({
+                event = {
                     "source": source,
                     "metric": metric,
                     "current_pct": cur_v,
@@ -180,9 +190,18 @@ async def detect_drift() -> dict[str, Any]:
                     "delta_pp": round(delta, 1),
                     "current_n": cur["n_extractions"],
                     "baseline_n": base_n,
-                })
+                }
+                # #264 min-N floor: a thin current window (n=10 vs a 50-row
+                # earnings-season baseline) reads COMPOSITION shifts as source
+                # degradation — the 6/9 'Benzinga 68%→20%' false alarm. Below
+                # the floor the event is audit-only (low_n_events), no Telegram.
+                if cur["n_extractions"] < _MIN_CURRENT_N:
+                    low_n_events.append(event)
+                else:
+                    drift_events.append(event)
     return {
         "drift_events": drift_events,
+        "low_n_events": low_n_events,
         "current_window": f"{current_start}..{current_end}",
         "baseline_window": f"{baseline_start}..{baseline_end}",
         "current_stats": current,
@@ -226,10 +245,14 @@ def format_drift_alert(drift_report: dict) -> str | None:
         lines.append(
             f"{arrow} *{e['source']}* {e['metric']}: "
             f"{e['baseline_pct']:.0f}% → {e['current_pct']:.0f}% "
-            f"({e['delta_pp']:+.0f}pp)"
+            f"({e['delta_pp']:+.0f}pp, n={e['current_n']} vs baseline n={e['baseline_n']})"
         )
     lines.append("")
-    lines.append("_Investigate: source API outage? rate-limiting? content scraping degraded?_")
+    lines.append(
+        "_Investigate: source API outage? rate-limiting? content degraded? "
+        "Check cohort composition first — an earnings-light week shifts "
+        "attribution without any source being broken (6/9 false-alarm class)._"
+    )
     return "\n".join(lines)
 
 
@@ -262,6 +285,7 @@ async def run_quality_check() -> dict:
     """
     drift_report = await detect_drift()
     drift_alert = format_drift_alert(drift_report)
+    low_n = drift_report.get("low_n_events") or []
     if drift_alert:
         try:
             from agents.market_intelligence.db import log_audit_event
@@ -276,6 +300,20 @@ async def run_quality_check() -> dict:
                 await send_telegram_message(drift_alert)
         except Exception as e:
             logger.warning(f"drift alert handling failed: {e}")
+    elif low_n:
+        # #264: drift shape present but the current window is too thin to
+        # distinguish source degradation from cohort composition — durable
+        # audit row only, NO Telegram (the 6/9 false-alarm class).
+        try:
+            import json as _json
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "news_source_quality_drift_low_n",
+                f"{len(low_n)} drift-shaped event(s) below n={_MIN_CURRENT_N} floor — audit-only",
+                _json.dumps(low_n),
+            )
+        except Exception as e:
+            logger.warning(f"low-n drift audit failed: {e}")
     return drift_report
 
 
