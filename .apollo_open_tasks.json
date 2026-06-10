@@ -168,10 +168,6 @@
         "status":  "pending"
     },
     {
-        "id":  227,
-        "status":  "pending"
-    },
-    {
         "id":  229,
         "status":  "in_progress"
     },
@@ -269,19 +265,15 @@
     },
     {
         "id":  260,
-        "status":  "pending"
+        "status":  "in_progress"
     },
     {
         "id":  261,
         "status":  "pending"
     },
     {
-        "id":  262,
-        "status":  "pending"
-    },
-    {
         "id":  263,
-        "status":  "pending"
+        "status":  "in_progress"
     },
     {
         "id":  264,
