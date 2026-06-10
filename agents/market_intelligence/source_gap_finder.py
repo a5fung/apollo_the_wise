@@ -110,6 +110,9 @@ async def run_source_gap_finder(days: int = 7) -> dict:
             "ticker": r["ticker"], "alert_date": str(r["alert_date"]),
             "gap_pct": float(r["gap_pct"] or 0),
             "finding": parsed,  # None = adjudicated, nothing found
+            # feedback_silent_failures: keep the raw head so a persistent
+            # parse failure (vs a real none_found) is diagnosable from audit.
+            "raw_head": (answer or "")[:300],
         }
         await log_audit_event(
             "source_gap_candidate",
