@@ -2316,8 +2316,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     try:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
         from agents.market_intelligence.db import (
-            update_ep_alert_advisory, update_ep_alert_judge_shadow,
-            update_ep_alert_grade_override, get_holistic_judge_enabled,
+            update_ep_alert_advisory, update_ep_alert_judge_result,
+            get_holistic_judge_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
             assemble_judge_inputs, grade_holistic,
@@ -2370,19 +2370,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _get_claude(), payload,
                     semaphore=_JUDGE_SEMAPHORE, timeout=15,
                 )
-                if verdict is not None:
-                    # #249: the judge's fire_axes IS the fire signal now (the
-                    # heuristic _compute_fire_status is retired) — persist it on
-                    # the alert row + mutate r so the Telegram alert renders it.
-                    r["fire_axes"] = verdict.get("fire_axes")
-                    await update_ep_alert_judge_shadow(
-                        r["ticker"], r["alert_date"],
-                        judge_tier=verdict["tier"],
-                        judge_direction=verdict["direction_vs_floor"],
-                        judge_rationale=verdict["rationale"],
-                        judge_materiality_tier=verdict.get("materiality_tier"),
-                        fire_axes=verdict.get("fire_axes"),
-                    )
                 # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
                 # tier overwrites the authoritative score_tier (the field the caller reads for
                 # alert+entry, and downstream reads from the DB row). 'none' → suppression
@@ -2392,13 +2379,29 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # 'fallback', floor tier kept). Toggle OFF → none of this runs (byte-identical).
                 new_tier, authority, do_override = _resolve_grade_authority(
                     _judge_authority, verdict, floor_tier)
-                if do_override:
-                    # DB FIRST, then mutate the in-memory result — so a failed DB write
-                    # leaves BOTH on the floor tier (no in-memory/DB divergence; the caller
-                    # reads r, the downstream entry job reads the row — they must agree).
-                    await update_ep_alert_grade_override(
+                if verdict is not None or do_override:
+                    v = verdict or {}
+                    if verdict is not None:
+                        # #249: the judge's fire_axes IS the fire signal now —
+                        # mutate r so the Telegram alert renders it.
+                        r["fire_axes"] = v.get("fire_axes")
+                    # ONE atomic UPDATE (#247): judge_* columns + the conditional
+                    # score_tier/authority override land in the same statement —
+                    # no partial-write window. DB FIRST, then mutate the
+                    # in-memory result — a failed write leaves BOTH on the floor
+                    # tier (the caller reads r, the entry job reads the row —
+                    # they must agree).
+                    await update_ep_alert_judge_result(
                         r["ticker"], r["alert_date"],
-                        score_tier=new_tier, grade_engine_authority=authority)
+                        judge_tier=v.get("tier"),
+                        judge_direction=v.get("direction_vs_floor"),
+                        judge_rationale=v.get("rationale"),
+                        judge_materiality_tier=v.get("materiality_tier"),
+                        fire_axes=v.get("fire_axes"),
+                        score_tier=new_tier if do_override else None,
+                        grade_engine_authority=authority if do_override else None,
+                    )
+                if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority
                 # Comprehensive decision trace (W2a #243, OPERATOR REQUIREMENT). ONE

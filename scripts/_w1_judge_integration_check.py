@@ -53,12 +53,12 @@ async def main():
     verdict = await grade_holistic(_get_claude(), payload, timeout=20)
     print(f"[2] grade_holistic → {verdict}")
     if verdict is not None:
-        await db.update_ep_alert_judge_shadow(
+        await db.update_ep_alert_judge_result(
             TICKER, d, judge_tier=verdict["tier"],
             judge_direction=verdict["direction_vs_floor"],
             judge_rationale=verdict["rationale"],
             judge_materiality_tier=verdict.get("materiality_tier"))
-        print("[2b] update_ep_alert_judge_shadow OK")
+        print("[2b] update_ep_alert_judge_result OK")
 
     # 3) READ BACK — the real pass criterion
     pool = await db.get_pool()

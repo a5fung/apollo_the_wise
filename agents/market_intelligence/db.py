@@ -1967,70 +1967,51 @@ async def get_tracked_tickers_missing_quote_type(limit: int = 100) -> list[str]:
         return [r["ticker"] for r in rows]
 
 
+_EP_ALERT_COLUMNS_ENSURED = False
+
+
+async def _ensure_ep_alert_columns(conn) -> None:
+    """Idempotent mi_ep_alerts column adds, ONCE per process (#247 — these ran
+    on EVERY insert_ep_alert call: ~14 DDL round-trips per alerted candidate per
+    5-min scan tick, all no-ops after the first). First insert after a deploy
+    still creates new columns turnkey (no boot-order dependency); the module
+    flag skips the DDL afterward. Restart-safe — the flag resets with the
+    process and the ALTERs are IF NOT EXISTS.
+
+    Column provenance: `source`/catalyst_type (#155/C1 advisory) ·
+    in_active_theme/in_narrative_cohort (judge theme/narrative inputs) ·
+    fire_status FROZEN historical + fire_axes judge-written (#249) ·
+    grounded_text/baseline_floor_tier/judge_*/grade_engine_authority
+    (#240/#243 holistic judge: corpus, floor counterfactual, verdict columns,
+    and which engine drove the tier). Materiality shadow columns (#189/ADR
+    0010) retired #249 — historical rows keep them, frozen."""
+    global _EP_ALERT_COLUMNS_ENSURED
+    if _EP_ALERT_COLUMNS_ENSURED:
+        return
+    for ddl in (
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_narrative_cohort BOOLEAN",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grounded_text TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS baseline_floor_tier TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_tier TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_direction TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_rationale TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_materiality_tier TEXT",
+        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grade_engine_authority TEXT",
+    ):
+        await conn.execute(ddl)
+    _EP_ALERT_COLUMNS_ENSURED = True
+
+
 async def insert_ep_alert(record: dict[str, Any]) -> None:
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Ensure source column exists (idempotent)
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'"
-        )
-        # North Star C1 (2026-05-30): catalyst TYPE (Pradeep hierarchy) — ADVISORY,
-        # never gates entries. Idempotent add (matches the `source` pattern); the
-        # column auto-creates on the first insert after deploy. catalyst_type is
-        # NULL when the isolated classifier failed/unavailable (fail-open).
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT"
-        )
-        # theme_gated_tier / theme_gated_score (#200) RETIRED 2026-06-10 (#249):
-        # the judge (ADR 0011) owns the theme axis. Historical columns frozen.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN"
-        )
-        # in_narrative_cohort = the #167 narrative axis (own column — do NOT
-        # overload in_active_theme). fire_axes (text[]) = which axes lit; since
-        # #249 (2026-06-10) it is JUDGE-written (update_ep_alert_judge_shadow),
-        # not inserted here. fire_status is frozen historical (heuristic
-        # _compute_fire_status retired) — column kept for old-row readers.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_narrative_cohort BOOLEAN"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status TEXT"
-        )
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]"
-        )
-        # Holistic Grade Judge (#240 / ADR 0011). `grounded_text` persists the corpus
-        # the judge reasoned over (so future backfills are a column-read, not a
-        # point-in-time reconstruction — the #190 lesson). `baseline_floor_tier` is the
-        # conviction-floor tier (= live score_tier in the shadow wave) kept as the
-        # counterfactual. judge_* are written by the post-scan shadow writer
-        # (update_ep_alert_judge_shadow) — advisory in Wave 1, load-bearing at Wave 2.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grounded_text TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS baseline_floor_tier TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_tier TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_direction TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_rationale TEXT")
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_materiality_tier TEXT")
-        # W2a (#243): which engine drove THIS alert's tier — floor | judge | fallback.
-        # 'floor' while the holistic_judge_enabled toggle is OFF (W1/W2-dormant); becomes
-        # 'judge'/'fallback' once the W2 flip is authorized. The single column that segments
-        # the 6/22 cohort by grade engine + the substrate for the ep_grade_decision audit.
-        await conn.execute(
-            "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grade_engine_authority TEXT")
-        # Materiality SHADOW columns (#189 / ADR 0010: materiality_tier,
-        # materiality_source, fire_status_mat_shadow) are RETIRED (#249,
-        # 2026-06-10) — the 16:25 job + its writers are gone; the judge owns
-        # materiality. Historical rows keep the columns, frozen.
+        await _ensure_ep_alert_columns(conn)
         await conn.execute("""
             INSERT INTO mi_ep_alerts
                 (ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier,
@@ -2064,30 +2045,40 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         )
 
 
-async def update_ep_alert_judge_shadow(
+async def update_ep_alert_judge_result(
     ticker: str, alert_date: "date", *, judge_tier: str | None,
     judge_direction: str | None, judge_rationale: str | None,
     judge_materiality_tier: str | None,
     fire_axes: "list[str] | None" = None,
+    score_tier: str | None = None,
+    grade_engine_authority: str | None = None,
 ) -> None:
-    """Post-scan patch with the Holistic Grade Judge verdict (#240 / ADR 0011).
-    SET unconditionally (the post-scan judge call is the sole writer of these
-    columns for a given alert). Since #249 (2026-06-10) the judge's verdict
-    fire_axes also lands here — it replaced the retired _compute_fire_status
-    heuristic as the one fire signal (fire_status column is frozen historical).
-    fire_axes uses COALESCE so a verdict without axes never clears a prior write."""
+    """ONE atomic post-scan patch with the Holistic Grade Judge result (#240 /
+    ADR 0011; merged from update_ep_alert_judge_shadow + the separate
+    update_ep_alert_grade_override in #247, 2026-06-10 — two non-atomic UPDATEs
+    to the same row left a partial-write window once the judge went
+    load-bearing). Every column uses COALESCE: None = leave untouched, so the
+    shadow case (verdict, no override), the override case (verdict +
+    score_tier/authority), and the fail-open case (no verdict,
+    authority='fallback' only) are all the same single statement. The judge
+    call is the sole writer of the judge_* columns for a given alert, so
+    COALESCE == SET in practice; fire_axes is judge-owned since #249.
+    score_tier here is the LOAD-BEARING override (the field alert/entry/
+    briefing read) — pass it ONLY from _resolve_grade_authority."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             UPDATE mi_ep_alerts SET
-                judge_tier = $3,
-                judge_direction = $4,
-                judge_rationale = $5,
-                judge_materiality_tier = $6,
-                fire_axes = COALESCE($7, fire_axes)
+                judge_tier = COALESCE($3, judge_tier),
+                judge_direction = COALESCE($4, judge_direction),
+                judge_rationale = COALESCE($5, judge_rationale),
+                judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+                fire_axes = COALESCE($7, fire_axes),
+                score_tier = COALESCE($8, score_tier),
+                grade_engine_authority = COALESCE($9, grade_engine_authority)
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date, judge_tier, judge_direction, judge_rationale,
-            judge_materiality_tier, fire_axes)
+            judge_materiality_tier, fire_axes, score_tier, grade_engine_authority)
 
 
 _JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK
@@ -2124,21 +2115,9 @@ async def set_holistic_judge_enabled(enabled: bool) -> None:
         """, *_JUDGE_TOGGLE, "on" if enabled else "off")
 
 
-async def update_ep_alert_grade_override(
-    ticker: str, alert_date: "date", *, score_tier: str, grade_engine_authority: str,
-) -> None:
-    """W2c (#243 / ADR 0011): the LOAD-BEARING grade override. When the holistic_judge_enabled
-    toggle is ON, the post-scan judge overwrites the row's authoritative `score_tier` (the
-    field every consumer reads — alert/entry/briefing/missed-outcomes) with the judge's tier,
-    and stamps `grade_engine_authority` (judge | fallback). `baseline_floor_tier` is left
-    untouched as the floor counterfactual. Only called when the toggle is ON; OFF = floor
-    keeps authority and this never runs (byte-identical to shadow)."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_ep_alerts SET score_tier = $3, grade_engine_authority = $4
-            WHERE ticker = $1 AND alert_date = $2
-        """, ticker, alert_date, score_tier, grade_engine_authority)
+# update_ep_alert_grade_override merged into update_ep_alert_judge_result
+# (#247, 2026-06-10) — the judge_*-write + score_tier override are one atomic
+# UPDATE now; the two-statement window is gone.
 
 
 async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
