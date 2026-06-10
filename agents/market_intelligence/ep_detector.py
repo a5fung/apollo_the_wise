@@ -2368,7 +2368,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 verdict = await grade_holistic(
                     _get_claude(), payload,
-                    semaphore=_JUDGE_SEMAPHORE, timeout=15,
+                    # 15→25s with the 2026-06-10 JUDGE_MODEL=OPUS flip — Opus
+                    # is slower; the eval's only ERR row was an Opus timeout.
+                    # A tight ceiling converts model quality into fail-open.
+                    semaphore=_JUDGE_SEMAPHORE, timeout=25,
                 )
                 # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
                 # tier overwrites the authoritative score_tier (the field the caller reads for
@@ -2458,9 +2461,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # ep_grade_decision log are correctness-critical — a straggler cancelled at the
             # 25s shadow ceiling would silently drop the override (keeps floor) AND its
             # decision row (logging hole on heavy mornings). So give the gather room
-            # (≈4 _JUDGE_SEMAPHORE(3) waves × 15s) when ON; keep the tight latency guard for
-            # the advisory-only catalyst_type/fire when OFF. Still well inside the ORB cadence.
-            _post_loop_timeout = 60 if _judge_authority else 25
+            # (≈4 _JUDGE_SEMAPHORE(3) waves × the 25s judge timeout, 2026-06-10
+            # Opus flip) when ON; keep the tight latency guard for the
+            # advisory-only catalyst_type when OFF. Still well inside the
+            # 5-min ORB scan cadence.
+            _post_loop_timeout = 110 if _judge_authority else 25
             await asyncio.wait_for(
                 asyncio.gather(
                     *[_classify_type(r) for r in _alerted],

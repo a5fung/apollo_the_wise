@@ -45,26 +45,36 @@ DEFINITION_OF_DONE clause ("model-checked") for the Fri 6/12 North Star date.
 
 | # | Ticker | Date | Floor | Sonnet | Opus | Gist | LABEL |
 |---|---|---|---|---|---|---|---|
-| 1 | ANF | 05-27 | HIGH | MODERATE/demote (minor) | HIGH/hold (material) | ~16% EPS beat, record sales; Sonnet docks the rev miss + held guidance, Opus credits the beat | |
-| 2 | BBWI | 05-27 | HIGH | MODERATE/demote (material) | none/demote (minor) | Both demote; Sonnet sees a beat-and-hold, Opus sees −3% sales + CFO exit | |
-| 3 | AVAV | 05-28 | HIGH | HIGH/hold (material) | MODERATE/demote (immaterial) | **Flipped vs 6/9** (both demoted then): Sonnet now credits the $20M facility + $43M DoD contract as govt-backed; Opus calls it a rounding error on $8.8B cap | |
-| 4 | KSS | 05-28 | MODERATE | none/demote (minor) | MODERATE/hold (immaterial) | In-line print, −1.7% sales, GAAP loss; severity differs | |
-| 5 | KTOS | 05-28 | MODERATE | none/demote (immaterial) | MODERATE/hold (minor) | Corpus has only a puff piece; both see no catalyst, severity differs | |
-| 6 | PHR | 05-28 | MODERATE | MODERATE/promote (material) | HIGH/promote (material) | First-ever net income + 13% growth; tier differs (same as 6/9) | |
-| 7 | ASAN | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | Beat above guidance high end, record margins; tier differs (same as 6/9) | |
-| 8 | CHA | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | 65% EPS beat on the wire; tier differs (same as 6/9) | |
-| 9 | DELL | 05-29 | HIGH | MODERATE/demote (minor) | HIGH/hold (material) | Blowout print (+88% rev, $24.4B AI orders, guide raise); Sonnet discounts mega-cap, Opus judges the event | |
-| 10 | NOW | 06-01 | MODERATE | MODERATE/hold (minor) | none/demote (immaterial) | Only hard events: CMO exit + BofA note; Opus cuts a $109B cap to none (same as 6/9) | |
-| 11 | SAIC | 06-01 | MODERATE | MODERATE/hold (material) | HIGH/promote (material) | Beat + explicit EBITDA/EPS guide RAISE; Opus now promotes (6/9 it held) | |
-| 12 | SKM | 06-01 | MODERATE | MODERATE/hold (material) | HIGH/promote (material) | Sonnet: 6-K share-exchange housekeeping; Opus: Arm/Rebellions AI-inference collab is the catalyst (same split as 6/9) | |
-| 13 | TNDM | 06-01 | MODERATE | MODERATE/hold (material) | none/demote (immaterial) | **The 6/9 Sonnet-favorable case, persists**: Opus anchors on the Citi PT-cut; Sonnet weighs beat + reaffirmed guidance | |
+| 1 | ANF | 05-27 | HIGH | MODERATE/demote (minor) | HIGH/hold (material) | ~16% EPS beat, record sales; Sonnet docks the rev miss + held guidance, Opus credits the beat | Sonnet |
+| 2 | BBWI | 05-27 | HIGH | MODERATE/demote (material) | none/demote (minor) | Both demote; Sonnet sees a beat-and-hold, Opus sees −3% sales + CFO exit | Both - same end result |
+| 3 | AVAV | 05-28 | HIGH | HIGH/hold (material) | MODERATE/demote (immaterial) | **Flipped vs 6/9** (both demoted then): Sonnet now credits the $20M facility + $43M DoD contract as govt-backed; Opus calls it a rounding error on $8.8B cap | Opus |
+| 4 | KSS | 05-28 | MODERATE | none/demote (minor) | MODERATE/hold (immaterial) | In-line print, −1.7% sales, GAAP loss; severity differs | Opus |
+| 5 | KTOS | 05-28 | MODERATE | none/demote (immaterial) | MODERATE/hold (minor) | Corpus has only a puff piece; both see no catalyst, severity differs | Opus |
+| 6 | PHR | 05-28 | MODERATE | MODERATE/promote (material) | HIGH/promote (material) | First-ever net income + 13% growth; tier differs (same as 6/9) | Neither |
+| 7 | ASAN | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | Beat above guidance high end, record margins; tier differs (same as 6/9) | Neither |
+| 8 | CHA | 05-29 | MODERATE | MODERATE/promote | HIGH/promote | 65% EPS beat on the wire; tier differs (same as 6/9) | Neither |
+| 9 | DELL | 05-29 | HIGH | MODERATE/demote (minor) | HIGH/hold (material) | Blowout print (+88% rev, $24.4B AI orders, guide raise); Sonnet discounts mega-cap, Opus judges the event | Opus |
+| 10 | NOW | 06-01 | MODERATE | MODERATE/hold (minor) | none/demote (immaterial) | Only hard events: CMO exit + BofA note; Opus cuts a $109B cap to none (same as 6/9) | Opus |
+| 11 | SAIC | 06-01 | MODERATE | MODERATE/hold (material) | HIGH/promote (material) | Beat + explicit EBITDA/EPS guide RAISE; Opus now promotes (6/9 it held) | Sonnet |
+| 12 | SKM | 06-01 | MODERATE | MODERATE/hold (material) | HIGH/promote (material) | Sonnet: 6-K share-exchange housekeeping; Opus: Arm/Rebellions AI-inference collab is the catalyst (same split as 6/9) | Opus |
+| 13 | TNDM | 06-01 | MODERATE | MODERATE/hold (material) | none/demote (immaterial) | **The 6/9 Sonnet-favorable case, persists**: Opus anchors on the Citi PT-cut; Sonnet weighs beat + reaffirmed guidance | Opus |
 | 14 | ABVX | 06-03 | MODERATE | none/demote | HIGH/promote (transformative) | **EXCLUDE — #229 contamination** | n/a |
-| 15 | PGY | 06-04 | HIGH | MODERATE/demote (minor) | none/demote (immaterial) | Corpus explicit: short-squeeze, no fresh event; severity differs (same as 6/9) | |
-| 16 | AGX | 06-05 | HIGH | HIGH/demote (material) | HIGH/hold (material) | Both keep HIGH on the record beat; Sonnet's demote-with-HIGH = contract oddity (same as 6/9) | |
-| 17 | TTAN | 06-05 | HIGH | MODERATE/demote (material) | HIGH/hold (material) | +25% rev, margin doubling, guide raise; Sonnet demotes anyway — labels the "Sonnet parks at MODERATE" disposition directly | |
+| 15 | PGY | 06-04 | HIGH | MODERATE/demote (minor) | none/demote (immaterial) | Corpus explicit: short-squeeze, no fresh event; severity differs (same as 6/9) | Opus |
+| 16 | AGX | 06-05 | HIGH | HIGH/demote (material) | HIGH/hold (material) | Both keep HIGH on the record beat; Sonnet's demote-with-HIGH = contract oddity (same as 6/9) | Neither |
+| 17 | TTAN | 06-05 | HIGH | MODERATE/demote (material) | HIGH/hold (material) | +25% rev, margin doubling, guide raise; Sonnet demotes anyway — labels the "Sonnet parks at MODERATE" disposition directly | Opus |
 
 (RCAT 05-28 omitted from the labelable set: Opus timeout — Sonnet-only
 MODERATE/demote, the axis-lit softening noted above.)
+
+## VERDICT (operator-labeled 2026-06-10 evening)
+
+**Opus 9 · Sonnet 2 · Neither 4 · tie 1 (BBWI "both — same end result") · excluded 1 (ABVX).**
+`JUDGE_MODEL` → `claude-opus-4-8` (registry commit same night; live latency
+budgets raised 15→25s / 60→110s with it). Baseline row added to
+`docs/model_selection_baseline.md`. The 4 Neither labels are all tier-only
+promote splits (PHR/ASAN/CHA) + the AGX direction-vs-tier oddity — no model
+preference signal. Operator pattern in the Opus labels: decisive in both
+directions beats park-at-MODERATE.
 
 ## After labeling
 

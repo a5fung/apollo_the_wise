@@ -53,8 +53,16 @@ DESCRIPTION_MODEL = HAIKU
 # feed; Sonnet: the same cross-sector narrative reasoning tier as THEME_MODEL)
 SYNTHESIS_MODEL = SONNET
 
-# EP holistic grade judge (ADR 0011; W1 eval owns this choice)
-JUDGE_MODEL = SONNET
+# EP holistic grade judge (ADR 0011; W1 eval owns this choice).
+# OPUS since 2026-06-10: operator-labeled closed-gap eval (lit Lane-2 theme
+# axis, grounded corpus, 36 alerts / 17 disagreements) scored Opus 9 - Sonnet
+# 2 - Neither 4 - tie 1. Decision doc:
+# docs/analysis/judge_model_eval_closed_gap_2026-06-10.md; baseline:
+# docs/model_selection_baseline.md. Cost gap small ($5/$25 vs $3/$15);
+# quality-over-cost on the load-bearing path. Live latency budgets raised
+# with the flip (judge timeout 15->25s; ep_detector post-loop 60->110s) —
+# Opus is slower and a tight timeout converts quality into fail-open noise.
+JUDGE_MODEL = OPUS
 # Grounded-summary catalyst grade (#190 — Haiku confabulated on raw headlines)
 GROUNDED_GRADE_MODEL = SONNET
 # Deterministic-adjacent materiality assessment (catalyst_materiality.py)
