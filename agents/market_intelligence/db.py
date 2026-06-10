@@ -2046,6 +2046,23 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         )
 
 
+# SSoT for the judge-result statement (#265): executed by
+# update_ep_alert_judge_result below AND prepared verbatim by the [5b/7]
+# deploy gate (scripts/preflight_db_updates.py imports THIS constant), so the
+# gate provably validates the SQL production runs — a copy can't go stale.
+EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
+    UPDATE mi_ep_alerts SET
+        judge_tier = COALESCE($3, judge_tier),
+        judge_direction = COALESCE($4, judge_direction),
+        judge_rationale = COALESCE($5, judge_rationale),
+        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+        fire_axes = COALESCE($7, fire_axes),
+        score_tier = COALESCE($8, score_tier),
+        grade_engine_authority = COALESCE($9, grade_engine_authority)
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
 async def update_ep_alert_judge_result(
     ticker: str, alert_date: "date", *, judge_tier: str | None,
     judge_direction: str | None, judge_rationale: str | None,
@@ -2068,17 +2085,9 @@ async def update_ep_alert_judge_result(
     briefing read) — pass it ONLY from _resolve_grade_authority."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_ep_alerts SET
-                judge_tier = COALESCE($3, judge_tier),
-                judge_direction = COALESCE($4, judge_direction),
-                judge_rationale = COALESCE($5, judge_rationale),
-                judge_materiality_tier = COALESCE($6, judge_materiality_tier),
-                fire_axes = COALESCE($7, fire_axes),
-                score_tier = COALESCE($8, score_tier),
-                grade_engine_authority = COALESCE($9, grade_engine_authority)
-            WHERE ticker = $1 AND alert_date = $2
-        """, ticker, alert_date, judge_tier, judge_direction, judge_rationale,
+        await conn.execute(
+            EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
+            ticker, alert_date, judge_tier, judge_direction, judge_rationale,
             judge_materiality_tier, fire_axes, score_tier, grade_engine_authority)
 
 

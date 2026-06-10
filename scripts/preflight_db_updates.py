@@ -20,7 +20,8 @@ import asyncio
 import logging
 import sys
 
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import (
+    EP_ALERT_JUDGE_RESULT_UPDATE_SQL, get_pool)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,15 @@ logger = logging.getLogger(__name__)
 # Each entry is (label, sql) where sql is the EXACT parameterized SQL we
 # execute in production code. Update this list when adding new UPDATEs to
 # trade-lifecycle tables. The deploy fails if any prepare raises.
+#
+# The mi_live_trades statements below are DELIBERATE COPIES of the source
+# (#265 reviewed 2026-06-10): hoisting them to module constants would break
+# Gate 5 G ([5c/7] audit_column_writes.py), which attributes each inline
+# `UPDATE mi_live_trades SET ...` block to its ENCLOSING FUNCTION to enforce
+# the per-column writer allow-list. Keep each copy in sync with its source —
+# the label names the exact module.function to diff against. Statements on
+# OTHER tables (e.g. the judge result) are imported from their owner module
+# instead, so those can't go stale.
 TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
     (
         "trade_stream._process_entry_fill: entry-fill UPDATE (post-T1.1 5-param)",
@@ -119,18 +129,9 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         # Not mi_live_trades, but LOAD-BEARING since the 2026-06-10 judge flip:
         # this one statement writes the judge columns AND the authoritative
         # score_tier that alert/entry read. A prepare failure here = every
-        # judged alert silently falls back to the floor tier.
-        """
-        UPDATE mi_ep_alerts SET
-            judge_tier = COALESCE($3, judge_tier),
-            judge_direction = COALESCE($4, judge_direction),
-            judge_rationale = COALESCE($5, judge_rationale),
-            judge_materiality_tier = COALESCE($6, judge_materiality_tier),
-            fire_axes = COALESCE($7, fire_axes),
-            score_tier = COALESCE($8, score_tier),
-            grade_engine_authority = COALESCE($9, grade_engine_authority)
-        WHERE ticker = $1 AND alert_date = $2
-        """,
+        # judged alert silently falls back to the floor tier. Imported from
+        # db.py (the executing module) — the gate prepares the REAL SQL (#265).
+        EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     ),
 ]
 
