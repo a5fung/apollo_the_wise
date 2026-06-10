@@ -75,7 +75,7 @@ Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qu
 ## ⏰ Time Handling — ALWAYS ET
 **Rule:** every datetime/time comparison in this codebase is in America/New_York (ET). The container runs UTC; **naive `datetime.now()` returns UTC clock values with no tzinfo and silently breaks every ET-keyed comparison.** This bug class has recurred many times.
 
-**PERMANENT FIX (2026-06-05) — root cause pinned + gated.** The recurring "wrong wall-clock time" bug was NOT a `ZoneInfo` problem (the earlier label, incl. commit `8de7849`, was wrong). It was **pytz**: `_ET` was `pytz.timezone(...)`, and a pytz zone attached via `tzinfo=` (the `datetime` constructor, `datetime.combine(..., tzinfo=_ET)`, or `.replace(tzinfo=_ET)`) silently applies the historical **LMT** offset (`-04:56` for NY) instead of EDT/EST — shifting the ORB window +56 min (#180/#183). Fixes: (1) `_ET` (`shared/dates.py`) is now `ZoneInfo("America/New_York")`, which computes the correct offset in EVERY construction path, so `tzinfo=_ET` is always safe; all module-local pytz zones migrated. (2) **Deploy gate** `scripts/preflight_datetime_hygiene.py` (`deploy.sh [5h/7]`) BANS `import pytz`, naive `datetime.now()`, and bare `.astimezone()` in `agents/ core/ channels/ shared/` — non-bypassable except a reviewed `# tz-ok: <reason>` line comment; regression-locked by `tests/test_timezone_hygiene.py` (DST-boundary asserts). **pytz is BANNED — never reintroduce it.** The gate ALSO bans `datetime.utcnow()` (→ `datetime.now(timezone.utc)`) and `date.today()` (→ `et_today()`) — all live sites migrated 2026-06-05. Offline `backtester/` is the one excluded subtree (its DB inserts are naive-UTC against `timestamp` columns). Use `# tz-ok: <reason>` only for deliberate server-paired cases (e.g. a label matching SQL `CURRENT_DATE`).
+**PERMANENT FIX (2026-06-05), mechanically enforced.** Root cause was **pytz** (NOT ZoneInfo — commit `8de7849`'s label was wrong): a pytz zone attached via `tzinfo=` silently applies the LMT `-04:56` offset (shifted the ORB window +56 min, #180/#183). `_ET` is now `ZoneInfo("America/New_York")` everywhere, and deploy gate `[5h/7]` (`preflight_datetime_hygiene.py`) BANS `import pytz`, naive `datetime.now()`, bare `.astimezone()`, `datetime.utcnow()`, and `date.today()` in `agents/ core/ channels/ shared/` (escape: reviewed `# tz-ok: <reason>`; offline `backtester/` excluded). **pytz is BANNED — never reintroduce it.** Full story: memory `timezone_lmt_pytz_permanent_fix` + CHANGELOG.
 
 **Do:**
 - `from zoneinfo import ZoneInfo; _ET = ZoneInfo("America/New_York")` — already imported at the top of `system_audit.py`, `audit_invariants.py`, `scheduler.py`, `crypto/ingest.py`, etc.
@@ -92,7 +92,7 @@ Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qu
 - ❌ Mixing tz-aware and tz-naive datetimes in the same comparison — Python raises, but only at runtime.
 - ❌ Hardcoding UTC offsets — DST breaks them twice a year.
 
-**Cautionary tale:** 2026-04-29 false L1 alert. `system_audit.py` passed naive `datetime.now()` (= UTC clock 20:15) to `check_job_no_show`, which compared `now_et.time() == 20:15 >= 18:30` and false-flagged `nightly_data_pull` as missing **2 hours before its actual ET deadline**. Fix was a one-line change to `datetime.now(_ET)`. Cost: one Telegram alert, ten minutes of triage. The defensive `or datetime.now(_ET)` default in the invariant didn't fire — naive dt is not None.
+**Cautionary tale (compressed):** 2026-04-29 — naive `datetime.now()` in `system_audit.py` false-flagged `nightly_data_pull` 2h before its real ET deadline; the defensive `or datetime.now(_ET)` didn't fire because a naive dt is not None.
 
 ## Running Locally
 ```bash
@@ -177,7 +177,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 ### Theme Engine
 - Bottom-up from price action — themes emerge from RS, not hypotheses
 - Lifecycle: Nascent → Accelerating → Mainstream → Fading → Retired (5 fading days)
-- **Engine-drop themes skip Fading**: when a theme is removed during Pass1 cap_drop (size→0 after protect_strip) or Pass1.5 absorption, `run_theme_engine` writes a synthetic Retired row directly (with `parent_theme=successor` recovered from `theme_pass1_5_absorption` / `theme_pass1_protect_strip` audit events). The normal Fading→Retired 5-day transition can't complete here — the 7d recency cap in `get_active_themes` ages the theme out of `existing` before day 5. Stub until canonicalization (R3) ships. Audit event: `theme_auto_retired`.
+- **Engine-drop themes skip Fading**: Pass1 cap_drop / Pass1.5 absorption removals get a synthetic Retired row (`theme_auto_retired` audit; `parent_theme=successor` recovered from the pass audit events) — the 5-day Fading→Retired path can't complete under the 7d recency cap. Stub until canonicalization (R3).
 - **Validation**: `_validate_theme_membership()` runs Mon/Wed/Fri. `_extract_json_object()` is depth-aware (handles nested JSON Haiku appends). Concurrency capped via `_VALIDATION_SEMAPHORE(2)` + retry-once on 429.
 - **`mi_theme_exclusions`**: user-directed permanent bans ONLY. NOT auto-populated from validation removals (deliberately — bad descriptions caused TSEM to be permanently banned from semiconductor theme).
 - **Fading themes**: tickers from Fading themes ARE in `covered_tickers` — prevents validation-removed stocks appearing as uncovered in the same run.
@@ -239,18 +239,12 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 **Boot bootstrap** (`agent.py::_bootstrap_alpaca_credentials`):
 - `ENABLE_LIVE_MODE=true` (default): hard-requires `ALPACA_PAPER_API_KEY/SECRET` AND `ALPACA_LIVE_API_KEY/SECRET`. Boot-blocks if either pair missing.
 - `ENABLE_LIVE_MODE=false`: only `ALPACA_PAPER_*` required. Strategies at `phase='live'` blocked. Dev / single-account opt-out.
-- **Legacy fallback** (one deploy cycle only): if `ALPACA_PAPER_API_KEY` missing AND old `ALPACA_API_KEY` present, remap at boot. Emits `legacy_alpaca_creds_fallback` audit + WARNING log. Remove after dual-mode is verified stable for ≥7 days.
+- Legacy `ALPACA_API_KEY`→paper remap still in code (`legacy_alpaca_creds_fallback` audit; was "one cycle only" from 5/10 — removable).
 - Post-init `verify_dual_account_clients()` smoke-tests both accounts, emits `dual_account_boot_verified` (success) or `dual_account_boot_failed` (per-mode error detail).
 
 **Per-strategy sizing/cap** (#65, two new mi_strategies columns):
 - `position_size_multiplier NUMERIC DEFAULT 1.0` — applied in entry_pipeline AFTER spec_builder so it covers both `prepare_orb_order` AND `prepare_9m_day2_orb_order` uniformly. Multiplies shares; recomputes position_size + risk_dollars.
 - `max_concurrent_positions INT NULL` — per-strategy slot cap. NULL = share global `MAX_CONCURRENT_LIVE_POSITIONS`. Use case: 9M Day 2 starts at multiplier=0.5 + cap=2 when promoting to live.
-
-**Migration deploy steps:**
-1. Set new env vars on Hetzner: `ALPACA_PAPER_API_KEY`, `ALPACA_PAPER_SECRET_KEY`, `ALPACA_LIVE_API_KEY`, `ALPACA_LIVE_SECRET_KEY` (if `ENABLE_LIVE_MODE=true`) OR set `ENABLE_LIVE_MODE=false` for paper-only.
-2. Restart container. Boot will fail-fast if env vars missing.
-3. Watch boot logs for `dual_account_boot_verified` audit event with both equities.
-4. All strategies stay at `phase='paper'` initially. Verify ≥48h regression-free paper trading before flipping any strategy to `phase='live'`.
 
 **Critical correctness invariants:**
 - Mode-bound `client_order_id`: every submit uses `make_client_order_id()`. Prevents cross-account COID collisions on concurrent same-setup submits.
