@@ -2210,10 +2210,27 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
         theme_name = a.get("theme", "")
         rationale = a.get("rationale", "")
 
-        # Validate theme exists
+        # Validate theme exists. The prompt says "use the EXACT theme name from
+        # the list above" — and that list renders Fading themes as
+        # "Name [Fading]" (stage_note), so Sonnet faithfully echoes the suffix
+        # (2026-06-10: BOT + OUST → 'Physical AI & Robotics [Fading]' both
+        # silently dropped here). Strip a trailing bracketed stage label and
+        # retry before giving up.
         theme = theme_by_name.get(theme_name)
         if not theme:
+            stripped_name = _strip_stage_label(theme_name)
+            theme = theme_by_name.get(stripped_name)
+            if theme:
+                theme_name = stripped_name
+        if not theme:
+            # AUDIT, not just a rotating log line — a dropped proposal is a
+            # silent assignment failure (feedback_no_silent_failures class).
             logger.warning(f"Assignment skipped: theme '{theme_name}' not found")
+            await log_audit_event(
+                "assignment_theme_not_found",
+                f"{ticker} → '{theme_name}' dropped: no live theme by that name",
+                json.dumps({"ticker": ticker, "proposed_theme": theme_name}),
+            )
             continue
 
         # Validate ticker is in uncovered pool
@@ -2758,6 +2775,15 @@ async def _apply_carryforward_deterministic_filter(
             f"ticker(s) across themes (banned + cooldown + sector outliers)"
         )
     return stripped_total
+
+
+def _strip_stage_label(name: str) -> str:
+    """'Name [Fading]' → 'Name'. The assignment prompt renders Fading themes
+    with a trailing stage label AND tells Sonnet to copy the EXACT name from
+    that list — so the echo is the model following instructions, and the
+    lookup must tolerate it (2026-06-10 BOT/OUST silent-drop class). Trailing
+    alphabetic bracket groups only; bracketed years/figures mid-name survive."""
+    return re.sub(r"\s*\[[A-Za-z]+\]\s*$", "", name or "")
 
 
 def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict]) -> dict:

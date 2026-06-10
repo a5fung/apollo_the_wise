@@ -94,3 +94,15 @@ async def test_both_protected_equal_size_deterministic(monkeypatch):
     # Update this assertion when refactoring.
     assert by_name["Z Theme First In List"] == {"A", "B", "C", "D", "E"}, \
         "Current behavior: iteration-order i wins at equal size."
+
+
+# ── assignment stage-label echo (2026-06-10 BOT/OUST silent-drop class) ──────
+def test_strip_stage_label_resolves_fading_echo():
+    from agents.market_intelligence.theme_engine import _strip_stage_label
+    # Sonnet copies the EXACT prompt line, which renders Fading themes with a
+    # trailing stage label - the lookup must tolerate the echo.
+    assert _strip_stage_label("Physical AI & Robotics [Fading]") == "Physical AI & Robotics"
+    assert _strip_stage_label("Network Security & Zero-Trust Edge") == "Network Security & Zero-Trust Edge"
+    # Trailing alphabetic groups only - bracketed figures mid-name survive.
+    assert _strip_stage_label("Top [2024] Picks") == "Top [2024] Picks"
+    assert _strip_stage_label("") == ""
