@@ -44,4 +44,22 @@ if git diff --cached --name-only | grep -qE '^(BACKLOG\.md|\.apollo_open_tasks\.
     fi
 fi
 
+# ── Gate 3: CLAUDE.md size ceiling (#262, 2026-06-10) ─────────────────
+# Fires when CLAUDE.md is staged. The file sat over its 40k hard ceiling
+# from 2026-05-29 to 2026-06-10 because nothing checked it. FAIL >40k;
+# warn >36k (graduate Recent entries to CHANGELOG.md before it's urgent).
+if git diff --cached --name-only | grep -qx 'CLAUDE.md'; then
+    size=$(git cat-file -s "$(git rev-parse :CLAUDE.md)")
+    if [ "$size" -gt 40000 ]; then
+        echo "✘ pre-commit: CLAUDE.md is ${size} chars (hard ceiling 40,000)."
+        echo "  Graduate the oldest 'Changes Made — Recent' entries to CHANGELOG.md"
+        echo "  (see 'Adding a Changes Made entry'), re-stage, re-commit."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    elif [ "$size" -gt 36000 ]; then
+        echo "⚠ pre-commit: CLAUDE.md is ${size} chars (warn >36k, hard ceiling 40k)."
+        echo "  Consider graduating old Recent entries to CHANGELOG.md soon."
+    fi
+fi
+
 exit 0
