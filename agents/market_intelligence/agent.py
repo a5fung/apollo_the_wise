@@ -2277,9 +2277,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         A persistent UNKNOWN on a real mover = a SOURCE we're missing (operator
         direction 6/5: catalyst sourcing is a DATA problem — find where it was
-        reported, onboard that source). The richest signal (fire_status non-fire)
-        accrues from Monday 6/8's first scan; until then this reads catalyst_type
-        + sourcing-miss disclaimer text. Read-only telemetry.
+        reported, onboard that source). The richest signal is "no fire seen":
+        heuristic fire_status rows 6/8–6/10, judge fire_axes = '{}' after #249
+        (2026-06-10). Read-only telemetry.
         """
         import re as _re
         from agents.market_intelligence.db import get_pool
@@ -2288,8 +2288,12 @@ class MarketIntelligenceAgent(BaseAgent):
         days = max(1, min(int(m.group(1)), 365)) if m else 30
 
         # Unknown-signal predicates composed once (each appears in 2-3 places below).
-        _NONFIRE = ("fire_status IN "
-                    "('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')")
+        # Two eras (#249, 2026-06-10): fire_status = retired heuristic (frozen
+        # historical rows); fire_axes = '{}' = the judge saw NO fire on any axis
+        # (judge-written; NULL = judge fail-open, not counted).
+        _NONFIRE = ("(fire_status IN "
+                    "('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')"
+                    " OR fire_axes = '{}')")
         _MISS = ("catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%' "
                  "OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'")
         _ANY_UNK = f"catalyst_type = 'unknown' OR {_NONFIRE} OR {_MISS}"
@@ -2307,7 +2311,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 WHERE alert_date >= current_date - ($1)::int
             """, days)
             recent = await conn.fetch(f"""
-                SELECT ticker, alert_date, catalyst_quality, catalyst_type, fire_status
+                SELECT ticker, alert_date, catalyst_quality, catalyst_type,
+                       COALESCE(fire_status, array_to_string(fire_axes, '+')) AS fire_sig
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
                   AND ({_ANY_UNK})
@@ -2323,7 +2328,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "",
             "_A persistent unknown on a real mover = a direct source we're missing._",
             f"  • catalyst_type=unknown: {row['type_unknown'] or 0}",
-            f"  • fire_status non-fire: {row['fire_nonfire'] or 0}  _(accrues from Mon 6/8 scan)_",
+            f"  • no fire seen: {row['fire_nonfire'] or 0}  _(judge fire_axes since 6/10; heuristic before)_",
             f"  • sourcing-miss disclaimer: {row['sourcing_miss'] or 0}",
         ]
         if recent:
@@ -2331,7 +2336,7 @@ class MarketIntelligenceAgent(BaseAgent):
             for r in recent:
                 lines.append(
                     f"  `{r['ticker']}` {r['alert_date']} — {r['catalyst_quality'] or '?'}"
-                    f" / type={r['catalyst_type'] or '—'} / fire={r['fire_status'] or '—'}")
+                    f" / type={r['catalyst_type'] or '—'} / fire={r['fire_sig'] or '—'}")
         lines += ["", "_Read-only telemetry (#211). LLM finds WHERE it was reported → onboard that direct source (#210)._"]
         return self._ok(request, result="\n".join(lines))
 

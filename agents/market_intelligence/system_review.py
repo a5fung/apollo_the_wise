@@ -148,17 +148,14 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     if loser_section:
         message = f"{message}\n\n{loser_section}"
 
-    # Theme-gated advisory section (#200) RETIRED 2026-06-10 (#249): the judge
-    # (ADR 0011, load-bearing) owns the theme axis; deltas surface in the 16:25
-    # judge delta digest + the judge section below.
-
-    # Fire panel (#201) — "did we see a fire?" distribution + discovery guardrail.
+    # Holistic judge weekly roll-up (#240/#249) — replaced the retired #200
+    # theme-gated + #201 fire-panel advisory sections (judge load-bearing 6/10).
     try:
-        fire_panel_section = _format_fire_panel_section(metrics.get("fire_panel") or {})
-        if fire_panel_section:
-            message = f"{message}\n\n{fire_panel_section}"
+        judge_section = _format_judge_section(metrics.get("judge_weekly") or {})
+        if judge_section:
+            message = f"{message}\n\n{judge_section}"
     except Exception:
-        logger.exception("fire_panel section render failed")
+        logger.exception("judge section render failed")
 
     # Missed-opportunity appendix (Step 3 of #missed-EP-tracking, 2026-05-11).
     # Top winners we didn't enter + per-skip-reason roll-up. Tells the
@@ -212,7 +209,7 @@ async def _gather_and_aggregate(
     pending_reviews = await _aggregate_pending_reviews(today)
     missed_opps = await _aggregate_missed_opportunities(window_days)
     news_quality = await _aggregate_news_source_quality(window_days)
-    fire_panel = await _aggregate_fire_panel(window_days)
+    judge_weekly = await _aggregate_judge_decisions(window_days)
 
     return {
         "window": {"start": window_start.isoformat(), "end": today.isoformat(), "days": window_days},
@@ -236,7 +233,7 @@ async def _gather_and_aggregate(
         "pending_reviews": pending_reviews,
         "missed_opportunities": missed_opps,
         "news_source_quality": news_quality,
-        "fire_panel": fire_panel,
+        "judge_weekly": judge_weekly,
     }
 
 
@@ -280,15 +277,13 @@ async def _aggregate_missed_opportunities(window_days: int) -> dict:
 # (ADR 0011) owns the theme axis; theme_gated_* columns are frozen historical.
 
 
-async def _aggregate_fire_panel(window_days: int) -> dict:
-    """Fire panel (#201): per-EP-alert "did we SEE a fire?" cohort + forward-R.
-
-    Groups live HIGHs by fire_status (fire_seen / real_unknown / no_fire_confirmed)
-    and joins forward 5d peak (mi_daily_closes, #199 pattern). Two operator
-    signals: (1) does fire_seen actually predict (load-bearing readiness); (2) the
-    unknown-RATE = a counter-metric on our fire-DISCOVERY ability, and the
-    real_unknown cohort's forward perf tells us whether we're MISSING fires
-    (it runs -> discovery gap, fix sources/#187) vs genuinely gap-only.
+async def _aggregate_judge_decisions(window_days: int) -> dict:
+    """Holistic judge weekly roll-up (#240/#249) — replaced the retired #200/#201
+    advisory sections (theme-gated divergence + fire panel) when the judge went
+    load-bearing 2026-06-10. DB ground truth from mi_ep_alerts judge columns
+    (never in-process state): how many alerts the judge graded, the ▲/▼ split,
+    fail-open count (judge_tier NULL = fell back to floor), and the judge's
+    fire-axes distribution (empty axes = judge saw no fire on any axis).
     """
     from agents.market_intelligence.db import get_pool
     from agents.market_intelligence.collector import et_today
@@ -297,59 +292,31 @@ async def _aggregate_fire_panel(window_days: int) -> dict:
     try:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch("""
-                WITH base AS (
-                    SELECT ticker, alert_date, fire_status
-                    FROM mi_ep_alerts
-                    WHERE alert_date >= $1
-                      AND score_tier = 'HIGH'
-                      AND fire_status IS NOT NULL
-                      AND COALESCE(source, 'live') = 'live'
-                ),
-                fwd AS (
-                    SELECT b.*, d0.open_price AS open_d0, h5.h AS max_high_5d
-                    FROM base b
-                    LEFT JOIN LATERAL (
-                        SELECT open_price FROM mi_daily_closes
-                        WHERE ticker = b.ticker AND trade_date = b.alert_date
-                    ) d0 ON TRUE
-                    LEFT JOIN LATERAL (
-                        SELECT MAX(high_price) AS h FROM (
-                            SELECT high_price FROM mi_daily_closes
-                            WHERE ticker = b.ticker AND trade_date >= b.alert_date
-                            ORDER BY trade_date ASC LIMIT 6
-                        ) x
-                    ) h5 ON TRUE
-                )
-                SELECT fire_status,
-                    COUNT(*)::INT AS n,
-                    COUNT(*) FILTER (
-                        WHERE open_d0 > 0 AND max_high_5d IS NOT NULL
-                          AND (max_high_5d - open_d0) / open_d0 > 0.10
-                    )::INT AS n_peak_10pct,
-                    AVG(CASE WHEN open_d0 > 0 AND max_high_5d IS NOT NULL
-                             THEN (max_high_5d - open_d0) / open_d0 END) AS avg_peak_5d
-                FROM fwd GROUP BY fire_status
+            row = await conn.fetchrow("""
+                SELECT
+                    COUNT(*)::INT AS total,
+                    COUNT(*) FILTER (WHERE judge_tier IS NOT NULL)::INT AS judged,
+                    COUNT(*) FILTER (WHERE judge_direction = 'promote')::INT AS promotes,
+                    COUNT(*) FILTER (WHERE judge_direction = 'demote')::INT AS demotes,
+                    COUNT(*) FILTER (WHERE grade_engine_authority = 'judge')::INT AS judge_driven,
+                    COUNT(*) FILTER (WHERE grade_engine_authority = 'fallback')::INT AS fallbacks,
+                    COUNT(*) FILTER (WHERE fire_axes IS NOT NULL
+                                       AND fire_axes <> '{}')::INT AS fire_seen,
+                    COUNT(*) FILTER (WHERE fire_axes = '{}')::INT AS no_fire
+                FROM mi_ep_alerts
+                WHERE alert_date >= $1
+                  AND COALESCE(source, 'live') = 'live'
             """, window_start)
-        out: dict = {"by_status": {}, "total": 0, "unknown_rate": None,
-                     "window_days": window_days}
-        total = 0
-        for r in rows:
-            out["by_status"][r["fire_status"]] = {
-                "n": r["n"], "n_peak_10pct": r["n_peak_10pct"],
-                "avg_peak_5d": (float(r["avg_peak_5d"])
-                                if r["avg_peak_5d"] is not None else None),
-            }
-            total += r["n"]
-        out["total"] = total
-        if total:
-            ru = out["by_status"].get("real_unknown", {}).get("n", 0)
-            out["unknown_rate"] = round(ru / total * 100, 1)
-        return out
+        return {
+            "total": row["total"], "judged": row["judged"],
+            "promotes": row["promotes"], "demotes": row["demotes"],
+            "judge_driven": row["judge_driven"], "fallbacks": row["fallbacks"],
+            "fire_seen": row["fire_seen"], "no_fire": row["no_fire"],
+            "window_days": window_days,
+        }
     except Exception:
-        logger.exception("fire_panel aggregator failed")
-        return {"by_status": {}, "total": 0, "unknown_rate": None,
-                "window_days": window_days}
+        logger.exception("judge_decisions aggregator failed")
+        return {"total": 0, "judged": 0, "window_days": window_days}
 
 
 async def _aggregate_pending_reviews(today: date) -> dict:
@@ -1400,43 +1367,30 @@ async def _aggregate_fishhook_outcomes(window_days: int) -> dict:
     }
 
 
-def _format_fire_panel_section(data: dict) -> str:
-    """Fire panel (#201): fire_status distribution + forward-R + unknown guardrail.
-
-    Deterministic. fire_seen vs real_unknown vs no_fire_confirmed, each with
-    forward 5d peak — so the operator can watch (a) whether fire_seen predicts
-    (load-bearing readiness) and (b) the unknown-rate counter-metric + whether
-    real_unknown names run (= we're missing fires -> fix discovery).
-    """
-    if not data or not data.get("total"):
-        return "🔥 *Fire panel (shadow — #201):* 0 graded HIGHs in window"
-    bs = data.get("by_status") or {}
-    order = ["fire_seen", "real_unknown", "no_fire_confirmed"]
-    label = {
-        "fire_seen": "Fire seen",
-        "real_unknown": "Unknown (discovery gap)",
-        "no_fire_confirmed": "No fire (gap-only)",
-    }
-
-    def _row(k: str) -> str:
-        c = bs.get(k)
-        if not c or not c.get("n"):
-            return f"{label[k]:<26} n=0"
-        avg = c.get("avg_peak_5d")
-        avg_s = f"{avg * 100:+5.1f}%" if avg is not None else "  n/a"
-        return (f"{label[k]:<26} n={c['n']:<3} ≥10%:{c['n_peak_10pct']:<3} "
-                f"5d-peak {avg_s}")
-
+def _format_judge_section(data: dict) -> str:
+    """Holistic judge weekly roll-up (#240/#249). Deterministic — SURFACES the
+    judge's week (graded count, ▲/▼ split, fail-open rate, fire-axes spread);
+    never prescribes. N=0 heartbeat keeps a dead writer distinguishable from a
+    quiet week (#173 insurance). Per-delta detail lives in the 16:25 digest +
+    judge_delta_review.py."""
+    if not data:
+        return ""
+    total = data.get("total") or 0
+    if not total:
+        return "⚖️ *Holistic judge (#240):* 0 live alerts in window"
+    judged = data.get("judged") or 0
+    holds = max(judged - (data.get("promotes") or 0) - (data.get("demotes") or 0), 0)
     lines = [
-        "🔥 *Fire panel (shadow — #201)*",
-        "_Did we SEE a fire on any axis (theme/narrative/catalyst)? "
-        "Unknown-rate = our fire-discovery blind spot._",
+        "⚖️ *Holistic judge (#240 — load-bearing since 6/10)*",
         "```",
-        *[_row(k) for k in order],
+        f"Graded {judged}/{total} alerts   "
+        f"▲{data.get('promotes', 0)} ▼{data.get('demotes', 0)} ={holds}",
+        f"Fail-open to floor: {total - judged}   "
+        f"(authority judge:{data.get('judge_driven', 0)} "
+        f"fallback:{data.get('fallbacks', 0)})",
+        f"Fire axes: seen {data.get('fire_seen', 0)} · none {data.get('no_fire', 0)}",
         "```",
-        f"_Unknown rate: {data.get('unknown_rate')}% of HIGHs — counter-metric on "
-        "discovery; if Unknown names RUN we're missing fires (fix sources/#187), "
-        "not gap-only. Load-bearing flip waits on trustworthy catalyst grade._",
+        "_Per-delta review: `judge_delta_review.py` + the 16:25 digest._",
     ]
     return "\n".join(lines)
 

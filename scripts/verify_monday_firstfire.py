@@ -14,9 +14,8 @@ the Monday 7-10am verify cluster is turnkey instead of ad-hoc SQL:
      the consolidated EOD digest job ran. Per-tick SILENCE is observational
      (operator confirms the ~23/day pings are gone).
   5. #97 low-vol-rest — first real fire of the 5th entry-technique detector.
-  6. fire_status (#201/#189) — today's mi_ep_alerts fire_status baseline. This is
-     the cohort the gap-alone-must-not-=-HIGH sign-off is gated on (do NOT flip
-     the floor without it + CHANGE_PROCESS + operator sign-off).
+  6. fire axes (judge-owned since #249, 2026-06-10) — today's mi_ep_alerts
+     fire_axes spread (judge verdict; the #201 heuristic fire_status is retired).
 
 This is READ-ONLY (SELECT only — no trade state). Safe via docker exec. It DEFERS
 every verdict to the operator (hard-gate rule: no auto-"green").
@@ -196,39 +195,43 @@ async def check_97(conn, target):
 
 
 async def check_firestatus(conn, target):
-    _hdr("6. fire_status (#201/#189) BASELINE — the gap-alone-≠-HIGH sign-off cohort")
+    _hdr("6. FIRE AXES (judge-owned since #249, 2026-06-10)")
+    # The #201 heuristic fire_status is RETIRED — the judge's verdict fire_axes
+    # is the fire signal (catalyst/theme/narrative; empty = no fire seen;
+    # NULL = judge fail-open). Same sign-off cohort, judge-sourced.
     rows = await conn.fetch(
         """
-        SELECT COALESCE(fire_status, 'NULL') fs, score_tier,
-               COUNT(*) n
+        SELECT COALESCE(NULLIF(array_to_string(fire_axes, '+'), ''),
+                        CASE WHEN fire_axes IS NULL THEN 'NULL(fail-open)'
+                             ELSE 'none-seen' END) fs,
+               score_tier, COUNT(*) n
         FROM mi_ep_alerts WHERE alert_date = $1
-        GROUP BY fire_status, score_tier ORDER BY fire_status, score_tier
+        GROUP BY 1, score_tier ORDER BY 1, score_tier
         """,
         target,
     )
     if not rows:
-        print("   ℹ️  no alerts yet — re-run after the EP scan; this is the #189/#201 baseline.")
+        print("   ℹ️  no alerts yet — re-run after the EP scan (judge fire_axes cohort).")
         return
     by_fs: dict = {}
     for r in rows:
         by_fs.setdefault(r["fs"], {})[r["score_tier"] or "—"] = r["n"]
-    print("   fire_status × score_tier (today):")
+    print("   judge fire_axes × score_tier (today):")
     for fs, tiers in by_fs.items():
         tier_str = ", ".join(f"{t}:{c}" for t, c in tiers.items())
         print(f"      {fs:18} {tier_str}")
-    # The load-bearing signal: HIGH alerts whose fire was NOT seen = gap floated
-    # them up without a named fire (exactly the cohort the directive targets).
+    # The load-bearing signal: HIGH alerts where the judge saw NO fire on any axis.
     high_nonfire = await conn.fetchval(
         """
         SELECT COUNT(*) FROM mi_ep_alerts
         WHERE alert_date = $1 AND score_tier = 'HIGH'
-          AND (fire_status IS NULL OR fire_status IN ('real_unknown', 'no_fire_confirmed'))
+          AND fire_axes = '{}'
         """,
         target,
     )
-    print(f"\n   ► HIGH alerts WITHOUT a seen fire today: {high_nonfire}")
-    print("     (these are the gap-floated-HIGH-without-named-fire cohort the North Star")
-    print("      directive targets — advisory only today; flip is HARD-gated.)")
+    print(f"\n   ► HIGH alerts where the judge saw NO fire today: {high_nonfire}")
+    print("     (judge is load-bearing since 6/10 — a HIGH with empty fire_axes means")
+    print("      the judge graded it up on other axes; review via judge_delta_review.py.)")
 
 
 async def check_judge(conn, target):

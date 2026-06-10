@@ -1989,11 +1989,11 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN"
         )
-        # Fire panel (#201, 2026-06-05): multi-axis "did we SEE a fire?" advisory.
         # in_narrative_cohort = the #167 narrative axis (own column — do NOT
-        # overload in_active_theme). fire_status = fire_seen/real_unknown/
-        # no_fire_confirmed (the unknown split is the fire-discovery guardrail).
-        # fire_axes = which axes lit (text[]). Idempotent adds, nullable.
+        # overload in_active_theme). fire_axes (text[]) = which axes lit; since
+        # #249 (2026-06-10) it is JUDGE-written (update_ep_alert_judge_shadow),
+        # not inserted here. fire_status is frozen historical (heuristic
+        # _compute_fire_status retired) — column kept for old-row readers.
         await conn.execute(
             "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_narrative_cohort BOOLEAN"
         )
@@ -2038,12 +2038,11 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
                  confidence_multiplier, vol_percentile, source,
                  pm_rvol, pm_rvol_baseline_n, detected_at,
                  catalyst_type, catalyst_type_rationale,
-                 in_active_theme,
-                 in_narrative_cohort, fire_status, fire_axes,
+                 in_active_theme, in_narrative_cohort,
                  grounded_text, baseline_floor_tier, grade_engine_authority)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
                     COALESCE($16::TIMESTAMPTZ, NOW()), $17, $18, $19,
-                    $20, $21, $22, $23, $24, $25)
+                    $20, $21, $22, $23)
         """,
             record["ticker"], record["alert_date"], record["gap_pct"],
             record.get("rel_volume"), record["ep_score"], record["score_tier"],
@@ -2059,8 +2058,6 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
             record.get("catalyst_type_rationale"),
             record.get("in_active_theme"),
             record.get("in_narrative_cohort"),
-            record.get("fire_status"),
-            record.get("fire_axes"),
             record.get("grounded_text"),
             record.get("baseline_floor_tier"),
             record.get("grade_engine_authority", "floor"),
@@ -2071,12 +2068,14 @@ async def update_ep_alert_judge_shadow(
     ticker: str, alert_date: "date", *, judge_tier: str | None,
     judge_direction: str | None, judge_rationale: str | None,
     judge_materiality_tier: str | None,
+    fire_axes: "list[str] | None" = None,
 ) -> None:
-    """Post-scan ADVISORY patch with the Holistic Grade Judge verdict (#240 / ADR 0011).
-    Wave 1: shadow-only — written alongside the catalyst_type/fire_status advisory block,
-    drives nothing (the live grade stays the conviction floor). Wave 2 makes the judge
-    load-bearing. SET unconditionally (the post-scan judge call is the sole writer of
-    these columns for a given alert)."""
+    """Post-scan patch with the Holistic Grade Judge verdict (#240 / ADR 0011).
+    SET unconditionally (the post-scan judge call is the sole writer of these
+    columns for a given alert). Since #249 (2026-06-10) the judge's verdict
+    fire_axes also lands here — it replaced the retired _compute_fire_status
+    heuristic as the one fire signal (fire_status column is frozen historical).
+    fire_axes uses COALESCE so a verdict without axes never clears a prior write."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -2084,10 +2083,11 @@ async def update_ep_alert_judge_shadow(
                 judge_tier = $3,
                 judge_direction = $4,
                 judge_rationale = $5,
-                judge_materiality_tier = $6
+                judge_materiality_tier = $6,
+                fire_axes = COALESCE($7, fire_axes)
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date, judge_tier, judge_direction, judge_rationale,
-            judge_materiality_tier)
+            judge_materiality_tier, fire_axes)
 
 
 _JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK
@@ -2160,31 +2160,25 @@ async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
 async def update_ep_alert_advisory(
     ticker: str, alert_date: "date", catalyst_type: str | None,
     rationale: str | None = None,
-    fire_status: str | None = None,
-    fire_axes: "list[str] | None" = None,
 ) -> None:
     """Post-scan ADVISORY patch on an EP alert row: catalyst_type (#155, Pradeep
-    hierarchy) + the refined fire panel (#201).
-
-    North Star C1 (2026-05-30) + fire panel (#201, 2026-06-05). ADVISORY only —
-    never gates entries. Called post-scan (decoupled from the gating path).
-    COALESCE keeps the existing value when a field is NULL, so a None
-    catalyst_type (classifier fail-open) never clobbers a prior value and a
-    fire_status-only call leaves catalyst_type untouched. Columns are guaranteed
-    by insert_ep_alert (runs earlier in the same scan) — no ADD COLUMN here.
+    hierarchy). ADVISORY only — never gates entries. Called post-scan (decoupled
+    from the gating path). COALESCE keeps the existing value when a field is
+    NULL, so a None catalyst_type (classifier fail-open) never clobbers a prior
+    value. Columns are guaranteed by insert_ep_alert (runs earlier in the same
+    scan) — no ADD COLUMN here. The fire-panel params (#201) were retired
+    2026-06-10 (#249): fire_axes is judge-written (update_ep_alert_judge_shadow).
     """
-    if not catalyst_type and not fire_status:
+    if not catalyst_type:
         return
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
             UPDATE mi_ep_alerts SET
                 catalyst_type = COALESCE($3, catalyst_type),
-                catalyst_type_rationale = COALESCE($4, catalyst_type_rationale),
-                fire_status = COALESCE($5, fire_status),
-                fire_axes = COALESCE($6, fire_axes)
+                catalyst_type_rationale = COALESCE($4, catalyst_type_rationale)
             WHERE ticker = $1 AND alert_date = $2
-        """, ticker, alert_date, catalyst_type, rationale, fire_status, fire_axes)
+        """, ticker, alert_date, catalyst_type, rationale)
 
 
 # ── Operator ground-truth corpus (#254) ─────────────────────────────────────────

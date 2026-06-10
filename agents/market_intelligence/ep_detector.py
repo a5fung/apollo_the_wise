@@ -744,9 +744,6 @@ def _score_ep(
     return round(final_score, 1), breakdown
 
 
-_FIRE_UNSET = object()
-
-
 def _yoy_shadow_decision(yoy_pct, gate_min_yoy) -> tuple[bool, str]:
     """#149 SHADOW: would an earnings name downgraded for a MISSING prior-year
     YoY be KEPT if the deterministic yfinance YoY were used instead?
@@ -764,65 +761,10 @@ def _yoy_shadow_decision(yoy_pct, gate_min_yoy) -> tuple[bool, str]:
     return recovered, "stay_down"
 
 
-def _compute_fire_status(
-    *,
-    in_theme: bool,
-    in_narrative: bool,
-    catalyst_quality: str | None,
-    catalyst_text: str | None,
-    catalyst_type=_FIRE_UNSET,
-) -> tuple[str, list[str]]:
-    """Fire panel (#201) — "did we SEE a fire?" across axes (theme/narrative/
-    catalyst). Pure + testable. Two-pass by design:
-
-    - FIRST PASS (in-loop, catalyst_type not yet classified): omit catalyst_type;
-      the catalyst axis lights on magnitude alone (strong/game_changer). This is
-      the fail-open fallback if the post-loop classify times out.
-    - REFINE (post-loop, catalyst_type known — #201 activation): a name graded
-      strong/game_changer but whose fire TYPE is `unknown`/None is NOT a seen
-      fire — we graded it big but cannot NAME the fire — so it drops to the
-      unknown buckets. That is what gives the fire-discovery guardrail signal.
-
-    Returns (fire_status, fire_axes). fire_status ∈ {fire_seen, real_unknown,
-    no_fire_confirmed}; the unknown split (had-inputs vs not) is the guardrail.
-    """
-    axes: list[str] = []
-    _material = catalyst_quality in ("strong", "game_changer")
-    if catalyst_type is _FIRE_UNSET:
-        catalyst_fire = _material  # first pass — magnitude only
-    else:
-        # refine: material AND a CONFIRMED specific fire type. The classifier
-        # always names something (it never returns 'unknown' for strong/gc in
-        # practice — 0/9 in the 30d classifier cohort), so "not unknown" was
-        # inert; gate on the NON_FIRE_TYPES set (unknown / anticipation / NULL)
-        # instead. Real fires (Pradeep #1–4 + the 'other' catch-all) stay fires
-        # so we never demote a real earnings/deal EP (TTAN/AGX = sales_accel).
-        from agents.market_intelligence.catalyst_type_classifier import NON_FIRE_TYPES
-        catalyst_fire = (
-            _material
-            and catalyst_type is not None
-            and catalyst_type not in NON_FIRE_TYPES
-        )
-    if catalyst_fire:
-        axes.append("catalyst")
-    if in_theme:
-        axes.append("theme")
-    if in_narrative:
-        axes.append("narrative")
-    if axes:
-        return "fire_seen", axes
-    # No fire on any axis — did we have inputs to judge (discovery gap vs
-    # true negative)? Recompute the disclaimer check from the catalyst text.
-    summary = (catalyst_text or "").strip()
-    try:
-        from agents.market_intelligence.collector import (
-            strip_perplexity_disclaimer as _spd,
-        )
-        _, _disc = _spd(catalyst_text or "")
-    except Exception:
-        _disc = False
-    had_inputs = len(summary) >= 40 and not _disc
-    return ("no_fire_confirmed" if had_inputs else "real_unknown"), axes
+# _compute_fire_status (#201) removed 2026-06-10 (#249): the holistic judge's
+# verdict carries fire_axes (catalyst/theme/narrative) on every graded alert —
+# the heuristic two-pass compute is subsumed. mi_ep_alerts.fire_status is frozen
+# historical (last heuristic row 2026-06-10); fire_axes is judge-written now.
 
 
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
@@ -2159,35 +2101,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # axes on every grade. in_theme stays — it feeds the judge payload.
         in_theme = ticker in _in_active_theme_set
 
-        # ── Fire panel (#201, 2026-06-05) — multi-axis "did we SEE a fire?" ──
-        # ADVISORY only. The EP tenet (Pradeep): a real EP needs a FIRE — theme
-        # (#1) OR govt policy OR supply/shortage OR sales-surprise OR product OR
-        # mgmt change OR M&A/deal. Theme/narrative are TWO axes; the catalyst
-        # grade carries the rest. Backtest 6/5: themeless HIGHs are profitable
-        # (they have NON-theme fires), so we measure fire-PRESENCE, not theme.
-        # 3-state, and the unknown SPLIT is the guardrail on fire-DISCOVERY:
-        #   fire_seen          = a fire is lit on some axis (theme/narrative/catalyst)
-        #   real_unknown       = no axis AND no inputs to judge -> DISCOVERY GAP
-        #   no_fire_confirmed  = had inputs, nothing material -> true negative
-        # Only news_summary + catalyst_quality + in_theme are guaranteed in scope
-        # at this point (catalyst_type is set post-scan; sec/extraction signals
-        # exist only on the uncached branch), so the "had inputs" proxy is
-        # recomputed from news_summary (always present). Refine in #202.
+        # Fire panel heuristic (#201) RETIRED 2026-06-10 (#249): the judge's
+        # verdict fire_axes (catalyst/theme/narrative) is the fire signal,
+        # written post-scan by _judge_shadow. in_narrative stays — judge input.
         in_narrative = ticker in _in_narrative_cohort_set
-        try:
-            # First pass — catalyst_type not classified until post-loop; the
-            # refine in the catalyst-type block upgrades this with the fire
-            # identity (#201 activation). This is the fail-open fallback.
-            fire_status, fire_axes = _compute_fire_status(
-                in_theme=in_theme,
-                in_narrative=in_narrative,
-                catalyst_quality=catalyst_quality,
-                catalyst_text=news_summary,
-            )
-        except Exception as e:
-            logger.warning(f"fire panel compute failed for {ticker}: {e}")
-            fire_status = None
-            fire_axes = []
 
         # Tape-conviction shadow — forward-only baseline for a future tape-only
         # override; one row per ticker per scan_date (deduped across cron ticks).
@@ -2273,8 +2190,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "score_breakdown": breakdown,
             "in_active_theme": in_theme,
             "in_narrative_cohort": in_narrative,
-            "fire_status": fire_status,
-            "fire_axes": fire_axes,
             "alert_date": today,
             # Holistic Grade Judge (#240) inputs threaded for the post-loop shadow call.
             "grounded_text": grounded_text,
@@ -2312,8 +2227,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "detected_at": now_et,
             "in_active_theme": in_theme,
             "in_narrative_cohort": in_narrative,
-            "fire_status": fire_status,
-            "fire_axes": fire_axes,
             "grounded_text": grounded_text,
             "baseline_floor_tier": tier,
             "grade_engine_authority": "floor",  # W2a: floor authority while toggle OFF
@@ -2458,12 +2371,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     semaphore=_JUDGE_SEMAPHORE, timeout=15,
                 )
                 if verdict is not None:
+                    # #249: the judge's fire_axes IS the fire signal now (the
+                    # heuristic _compute_fire_status is retired) — persist it on
+                    # the alert row + mutate r so the Telegram alert renders it.
+                    r["fire_axes"] = verdict.get("fire_axes")
                     await update_ep_alert_judge_shadow(
                         r["ticker"], r["alert_date"],
                         judge_tier=verdict["tier"],
                         judge_direction=verdict["direction_vs_floor"],
                         judge_rationale=verdict["rationale"],
                         judge_materiality_tier=verdict.get("materiality_tier"),
+                        fire_axes=verdict.get("fire_axes"),
                     )
                 # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
                 # tier overwrites the authoritative score_tier (the field the caller reads for
@@ -2500,24 +2418,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 r["catalyst_type"] = res.get("catalyst_type")
                 r["catalyst_type_rationale"] = res.get("rationale")
-                # Fire panel REFINE (#201 activation): now that the fire identity
-                # (catalyst_type) is known, recompute fire_status — a name graded
-                # strong/game_changer but with an `unknown` fire type is no longer
-                # counted as a seen fire (populates the discovery guardrail).
-                # Mutate the result dict (surfaces on the alert) + the DB row.
-                _fs, _fa = _compute_fire_status(
-                    in_theme=bool(r.get("in_active_theme")),
-                    in_narrative=bool(r.get("in_narrative_cohort")),
-                    catalyst_quality=r.get("catalyst_quality"),
-                    catalyst_text=r.get("catalyst"),
-                    catalyst_type=r.get("catalyst_type"),
-                )
-                r["fire_status"] = _fs
-                r["fire_axes"] = _fa
+                # Fire-panel refine RETIRED 2026-06-10 (#249) — the judge's
+                # verdict fire_axes (persisted in _judge_shadow) is the fire
+                # signal; catalyst_type stays a pure advisory label here.
                 await update_ep_alert_advisory(
                     r["ticker"], r["alert_date"],
                     r.get("catalyst_type"), r.get("catalyst_type_rationale"),
-                    fire_status=_fs, fire_axes=_fa,
                 )
             except Exception as _te:
                 logger.warning(f"catalyst_type classify failed for {r.get('ticker')}: {_te}")

@@ -2157,22 +2157,15 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # (ADR 0011, load-bearing) weighs the theme axis in the grade itself.
     tg_line = ""
 
-    # Fire panel (#201) — "did we SEE a fire?" across axes (theme/narrative/
-    # catalyst). ADVISORY. The unknown split (discovery-gap vs gap-only) is the
-    # guardrail surfaced honestly so the operator can see blind spots per-alert.
+    # Fire axes — JUDGE-owned since #249 (2026-06-10): the holistic judge's
+    # verdict names which axes lit (catalyst/theme/narrative). Absent key =
+    # judge fail-open (no verdict) → no line; empty list = judge saw no fire.
     fire_line = ""
-    _fire = ep.get("fire_status")
-    if _fire:
-        _axes = ep.get("fire_axes") or []
-        if _fire == "fire_seen":
-            # "graded" not "confirmed" — today this mostly = catalyst graded
-            # strong/game_changer (the grade we don't yet fully trust until
-            # materiality #189 feeds it); theme/narrative are the firmer axes.
-            fire_line = f"🔥 Fire: *graded ✓* — {', '.join(_axes) if _axes else 'catalyst'}\n"
-        elif _fire == "real_unknown":
-            fire_line = "🔥 Fire: *❓ UNKNOWN* — no catalyst visible (discovery gap)\n"
-        elif _fire == "no_fire_confirmed":
-            fire_line = "🔥 Fire: *⚠️ none confirmed* — gap-only, no material catalyst\n"
+    _axes = ep.get("fire_axes")
+    if _axes:
+        fire_line = f"🔥 Fire (judge): {', '.join(_axes)}\n"
+    elif _axes is not None:
+        fire_line = "🔥 Fire (judge): *⚠️ none seen* — no axis lit\n"
 
     text = (
         conv_tag +
