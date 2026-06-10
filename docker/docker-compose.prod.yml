@@ -20,7 +20,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # NOT exposed externally — only accessible within Docker network
+    ports:
+      - "127.0.0.1:5432:5432"  # loopback only — for SSH-tunneled rs-theme-dash
+        # (adopted from a prod-local hotfix 2026-06-10; was blocking deploys as
+        # an uncommitted server-side diff. NOT exposed externally.)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apollo}"]
       interval: 10s
