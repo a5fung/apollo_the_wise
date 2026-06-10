@@ -20,6 +20,7 @@ from datetime import date, timedelta
 import anthropic
 
 from agents.market_intelligence.briefing import send_telegram_message
+from agents.market_intelligence.failure_policy import advisory_fail_open
 from agents.market_intelligence.db import (
     get_active_cooldowns,
     get_audit_log,
@@ -319,15 +320,15 @@ async def _aggregate_judge_decisions(window_days: int) -> dict:
         return {"total": 0, "judged": 0, "window_days": window_days}
 
 
+@advisory_fail_open(
+    default=lambda: {"ready": [], "pending_count": 0, "pending_summary": []},
+    label="pending_reviews aggregator")
 async def _aggregate_pending_reviews(today: date) -> dict:
     """Walk data_gated_reviews.yaml; surface entries whose data threshold
-    has flipped to ready. Surfaces in the Sunday digest as a 📅 line."""
-    try:
-        from agents.market_intelligence.data_gated_reviews import check_pending_reviews
-        return await check_pending_reviews(today)
-    except Exception:
-        logger.exception("pending_reviews aggregator failed")
-        return {"ready": [], "pending_count": 0, "pending_summary": []}
+    has flipped to ready. Surfaces in the Sunday digest as a 📅 line.
+    (#259 exemplar: policy-only except block → declared via decorator.)"""
+    from agents.market_intelligence.data_gated_reviews import check_pending_reviews
+    return await check_pending_reviews(today)
 
 
 async def _aggregate_promotion_checks() -> dict:
