@@ -2289,6 +2289,20 @@ async def _flag_scan_job():
         return None
 
 
+async def _source_gap_finder_job():
+    """Sun 08:45 ET — weekly gap-discovery pass (#235 Wave E / #211). Asks
+    where the week's unsourced real movers WERE reported; surfaces a
+    source-onboarding queue to the operator. Bounded ≤8 Perplexity calls,
+    audit-deduped per (ticker, alert_date). Telemetry only."""
+    from agents.market_intelligence.source_gap_finder import run_source_gap_finder
+    res = await run_source_gap_finder(days=7)
+    logger.info(
+        f"source gap finder: {res['n_cohort']} unknowns → "
+        f"{res['n_found']} findings"
+    )
+    return res["n_found"]
+
+
 async def _theme_synthesis_job():
     """6:05 PM ET — cross-ticker emerging-theme synthesis (#240 advisory feed).
     Top-down LLM pass over the coordinated-RS-slope candidates (velocity +
@@ -3332,6 +3346,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_weekly_system_review_job, "weekly_system_review"),
         CronTrigger(day_of_week="sun", hour=8, minute=0, timezone="America/New_York"),
         id="weekly_system_review",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    # Source-gap finder: Sunday 8:45 AM ET (#235 Wave E — after the weekly
+    # review so its digest lands in the same operator reading window). Bounded
+    # ≤8 Perplexity calls over the week's unknown cohort; output = operator
+    # source-onboarding queue (source_gap_candidate audit rows + Telegram only
+    # when an actionable non-covered finding exists). Telemetry — never grades.
+    _scheduler.add_job(
+        audit_wrap(_source_gap_finder_job, "source_gap_finder"),
+        CronTrigger(day_of_week="sun", hour=8, minute=45, timezone="America/New_York"),
+        id="source_gap_finder",
         replace_existing=True,
         misfire_grace_time=3600,
     )
