@@ -3203,9 +3203,16 @@ def start_scheduler() -> AsyncIOScheduler:
     # Boot marker: forensic anchor for paper/live $ mode at process start.
     asyncio.create_task(_emit_boot_audit_marker())
 
-    # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri
+    # Data pull: 5:00 PM ET (30 min after tape settles), Mon-Fri.
+    # expected_min_rows recalibrated 5000→3500 (#263, 2026-06-10): rows_written
+    # = RS stocks SCORED (the job returns `scored`), and every completed run
+    # over the prior 35d sat in a tight 3,888–4,008 band — the 5000 floor
+    # predated the liquidity-filtered universe and had the job tripping
+    # empty_result + a nightly false-alarm Telegram since at least 5/8.
+    # 3500 ≈ 10% below the observed band floor: still catches a genuine
+    # universe/writer drop without alarming on the steady state.
     _scheduler.add_job(
-        audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=5000),
+        audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=3500),
         CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
         replace_existing=True,
