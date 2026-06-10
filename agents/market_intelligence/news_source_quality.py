@@ -131,9 +131,14 @@ async def collect_source_stats(
     return out
 
 
-# #264: current-window extraction floor for a Telegram-worthy drift event.
-# Below this, per-source percentages swing wildly with cohort composition
-# (earnings-season PRs vs thin-tape missed-EP names) — audit-only.
+# Drift-event policy thresholds — ONE policy, named together (recalibrate as a set):
+# minimum |delta| in percentage points to count as drift at all; minimum baseline
+# extractions for the comparison to mean anything; and (#264) the current-window
+# extraction floor for a TELEGRAM-worthy event — below it, per-source percentages
+# swing wildly with cohort composition (earnings-season PRs vs thin-tape
+# missed-EP names), so the event is audit-only.
+_DRIFT_DELTA_PP = 40
+_MIN_BASELINE_N = 10
 _MIN_CURRENT_N = 15
 
 
@@ -144,10 +149,11 @@ async def detect_drift() -> dict[str, Any]:
       {source, metric, current_pct, baseline_pct, delta_pp}
     where delta_pp is current - baseline in percentage points.
 
-    Threshold: drift_event when |delta_pp| >= 40 AND baseline had ≥10 extractions
-    AND the current window has ≥ _MIN_CURRENT_N extractions (#264 — below the
-    floor the event lands in `low_n_events`: audit-only, no Telegram, because a
-    thin week's cohort composition masquerades as source degradation).
+    Threshold: drift_event when |delta_pp| >= _DRIFT_DELTA_PP AND baseline had
+    >= _MIN_BASELINE_N extractions AND the current window has >= _MIN_CURRENT_N
+    extractions (#264 — below the floor the event lands in `low_n_events`:
+    audit-only, no Telegram, because a thin week's cohort composition
+    masquerades as source degradation).
     """
     from agents.market_intelligence.collector import et_today
     today_d = et_today()
@@ -174,14 +180,14 @@ async def detect_drift() -> dict[str, Any]:
         cur = current[source]
         base = baseline.get(source, {})
         base_n = base.get("n_extractions", 0)
-        if base_n < 10:
+        if base_n < _MIN_BASELINE_N:
             # Not enough baseline to compare
             continue
         for metric in ("coverage_pct", "attribution_pct"):
             cur_v = cur.get(metric, 0)
             base_v = base.get(metric, 0)
             delta = cur_v - base_v
-            if abs(delta) >= 40:
+            if abs(delta) >= _DRIFT_DELTA_PP:
                 event = {
                     "source": source,
                     "metric": metric,

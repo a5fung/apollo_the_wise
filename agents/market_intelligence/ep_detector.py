@@ -2381,26 +2381,43 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _judge_authority, verdict, floor_tier)
                 if verdict is not None or do_override:
                     v = verdict or {}
-                    if verdict is not None:
-                        # #249: the judge's fire_axes IS the fire signal now —
-                        # mutate r so the Telegram alert renders it.
-                        r["fire_axes"] = v.get("fire_axes")
                     # ONE atomic UPDATE (#247): judge_* columns + the conditional
                     # score_tier/authority override land in the same statement —
                     # no partial-write window. DB FIRST, then mutate the
                     # in-memory result — a failed write leaves BOTH on the floor
                     # tier (the caller reads r, the entry job reads the row —
                     # they must agree).
-                    await update_ep_alert_judge_result(
-                        r["ticker"], r["alert_date"],
-                        judge_tier=v.get("tier"),
-                        judge_direction=v.get("direction_vs_floor"),
-                        judge_rationale=v.get("rationale"),
-                        judge_materiality_tier=v.get("materiality_tier"),
-                        fire_axes=v.get("fire_axes"),
-                        score_tier=new_tier if do_override else None,
-                        grade_engine_authority=authority if do_override else None,
-                    )
+                    try:
+                        await update_ep_alert_judge_result(
+                            r["ticker"], r["alert_date"],
+                            judge_tier=v.get("tier"),
+                            judge_direction=v.get("direction_vs_floor"),
+                            judge_rationale=v.get("rationale"),
+                            judge_materiality_tier=v.get("materiality_tier"),
+                            fire_axes=v.get("fire_axes"),
+                            score_tier=new_tier if do_override else None,
+                            grade_engine_authority=authority if do_override else None,
+                        )
+                    except Exception as _we:
+                        # A failed judge write is the one fail-open path the DB
+                        # decision trace can't show — make it COUNTED (#173
+                        # silent-failure class): audit row (log_audit_event never
+                        # raises) + revert to the floor in memory so r and the
+                        # row agree (both floor). The delta digest stays empty,
+                        # but /audit + weekly review see judge_write_failed.
+                        logger.error(
+                            f"judge result write failed for {r.get('ticker')}: {_we}")
+                        do_override = False
+                        await log_audit_event(
+                            "judge_write_failed",
+                            f"{r['ticker']} {r['alert_date']}: {type(_we).__name__}: {_we}",
+                        )
+                    else:
+                        if verdict is not None:
+                            # #249: the judge's fire_axes IS the fire signal —
+                            # mutate r AFTER the write succeeds (DB-first), so
+                            # the Telegram alert never renders axes the row lacks.
+                            r["fire_axes"] = v.get("fire_axes")
                 if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority

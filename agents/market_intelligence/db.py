@@ -1988,23 +1988,24 @@ async def _ensure_ep_alert_columns(conn) -> None:
     global _EP_ALERT_COLUMNS_ENSURED
     if _EP_ALERT_COLUMNS_ENSURED:
         return
-    for ddl in (
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'live'",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS catalyst_type_rationale TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_active_theme BOOLEAN",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS in_narrative_cohort BOOLEAN",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_status TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS fire_axes TEXT[]",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grounded_text TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS baseline_floor_tier TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_tier TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_direction TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_rationale TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS judge_materiality_tier TEXT",
-        "ALTER TABLE mi_ep_alerts ADD COLUMN IF NOT EXISTS grade_engine_authority TEXT",
-    ):
-        await conn.execute(ddl)
+    # One ALTER, many ADD COLUMN clauses — a single round-trip instead of 14.
+    await conn.execute("ALTER TABLE mi_ep_alerts " + ", ".join(
+        f"ADD COLUMN IF NOT EXISTS {col}" for col in (
+            "source TEXT DEFAULT 'live'",
+            "catalyst_type TEXT",
+            "catalyst_type_rationale TEXT",
+            "in_active_theme BOOLEAN",
+            "in_narrative_cohort BOOLEAN",
+            "fire_status TEXT",
+            "fire_axes TEXT[]",
+            "grounded_text TEXT",
+            "baseline_floor_tier TEXT",
+            "judge_tier TEXT",
+            "judge_direction TEXT",
+            "judge_rationale TEXT",
+            "judge_materiality_tier TEXT",
+            "grade_engine_authority TEXT",
+        )))
     _EP_ALERT_COLUMNS_ENSURED = True
 
 
@@ -2136,6 +2137,25 @@ async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
         """, ticker)
 
 
+# Two-era "unknown catalyst" predicates over mi_ep_alerts (#211/#249) — the
+# SINGLE composition consumed by /unknownrate (agent.py) and the weekly
+# source-gap finder (source_gap_finder.py); edit HERE, never inline a copy.
+# Era 1: fire_status = the retired heuristic's frozen historical rows
+# (2026-06-08..10). Era 2: fire_axes = '{}' means the judge SAW NO fire on any
+# axis (judge-written; NULL = judge fail-open / not adjudicated — deliberately
+# excluded). Column names are unqualified — usable only where mi_ep_alerts
+# columns resolve unambiguously.
+EP_UNKNOWN_NONFIRE_SQL = (
+    "(fire_status IN "
+    "('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')"
+    " OR fire_axes = '{}')")
+EP_UNKNOWN_MISS_SQL = (
+    "(catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%' "
+    "OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%')")
+EP_UNKNOWN_ANY_SQL = (
+    f"(catalyst_type = 'unknown' OR {EP_UNKNOWN_NONFIRE_SQL} OR {EP_UNKNOWN_MISS_SQL})")
+
+
 async def update_ep_alert_advisory(
     ticker: str, alert_date: "date", catalyst_type: str | None,
     rationale: str | None = None,
@@ -2146,7 +2166,7 @@ async def update_ep_alert_advisory(
     NULL, so a None catalyst_type (classifier fail-open) never clobbers a prior
     value. Columns are guaranteed by insert_ep_alert (runs earlier in the same
     scan) — no ADD COLUMN here. The fire-panel params (#201) were retired
-    2026-06-10 (#249): fire_axes is judge-written (update_ep_alert_judge_shadow).
+    2026-06-10 (#249): fire_axes is judge-written (update_ep_alert_judge_result).
     """
     if not catalyst_type:
         return
@@ -4553,13 +4573,17 @@ async def persist_synthesis_theme_candidates(
             tickers = c.get("tickers") or []
             if not name or not tickers:
                 continue
+            # ON CONFLICT guard: the table's unique key is (run_date, name)
+            # ACROSS sources — without the WHERE, a same-named cohort from
+            # another lane (narrative_cogap) would be silently hijacked into
+            # this lane. Cross-lane collision → leave the other lane's row.
             await conn.execute("""
                 INSERT INTO mi_theme_candidates_shadow
                     (run_date, name, thesis, tickers, source, would_revive)
                 VALUES ($1, $2, $3, $4, 'rs_slope_synthesis', FALSE)
                 ON CONFLICT (run_date, name) DO UPDATE
-                    SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers,
-                        source = EXCLUDED.source
+                    SET thesis = EXCLUDED.thesis, tickers = EXCLUDED.tickers
+                    WHERE mi_theme_candidates_shadow.source = 'rs_slope_synthesis'
             """, rd, name, c.get("thesis"), tickers)
             n += 1
         return n
@@ -6147,6 +6171,22 @@ async def get_ticker_overrides() -> dict[str, str]:
             "WHERE description IS NOT NULL AND description != ''"
         )
         return {r["ticker"]: r["description"] for r in rows}
+
+
+async def get_descriptions_batch(tickers: "list[str]") -> dict[str, str]:
+    """Cached company descriptions (mi_ticker_overrides) for a ticker set —
+    the ANY-scoped sibling of get_ticker_overrides (read-only; no Haiku
+    backfill; empty/NULL descriptions are simply absent)."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, description FROM mi_ticker_overrides "
+            "WHERE ticker = ANY($1) AND description IS NOT NULL AND description != ''",
+            tickers,
+        )
+    return {r["ticker"]: r["description"] for r in rows}
 
 
 async def upsert_ticker_sectors_batch(sectors: dict[str, dict]) -> int:

@@ -165,8 +165,8 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
     set is a normal, audit-only outcome."""
     from agents.market_intelligence.collector import et_today, last_trading_day
     from agents.market_intelligence.db import (
-        get_active_themes, get_pool, get_rs_turners, get_rs_velocity,
-        log_audit_event, persist_synthesis_theme_candidates,
+        get_active_themes, get_descriptions_batch, get_rs_turners,
+        get_rs_velocity, log_audit_event, persist_synthesis_theme_candidates,
     )
     from agents.market_intelligence.theme_engine import _get_anthropic_client
     from shared.llm_models import SYNTHESIS_MODEL
@@ -192,13 +192,7 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
 
     # Cached descriptions only (mi_ticker_overrides) — no new Haiku calls on
     # this path; missing descriptions just give the LLM less context.
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT ticker, description FROM mi_ticker_overrides WHERE ticker = ANY($1)",
-            list(by_ticker),
-        )
-    descs = {r["ticker"]: r["description"] for r in rows}
+    descs = await get_descriptions_batch(list(by_ticker))
 
     live = await get_active_themes()
     live_theme_members = {

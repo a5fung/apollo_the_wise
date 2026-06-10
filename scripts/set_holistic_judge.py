@@ -8,6 +8,17 @@ drive the paper grade; OFF reverts to the conviction floor.
   docker exec apollo-market python scripts/set_holistic_judge.py status
   docker exec apollo-market python scripts/set_holistic_judge.py on
   docker exec apollo-market python scripts/set_holistic_judge.py off
+
+REVERT CAVEAT (advisor review 2026-06-10): flipping OFF stops NEW overrides
+instantly but does NOT revert rows the judge already overrode that day —
+e.g. a demote-to-'none' stays suppressed. The floor counterfactual is
+preserved in baseline_floor_tier; to restore today's overridden rows:
+
+  UPDATE mi_ep_alerts
+  SET score_tier = baseline_floor_tier, grade_engine_authority = 'floor'
+  WHERE alert_date = current_date AND grade_engine_authority = 'judge';
+
+(Read-only check first: SELECT ticker, score_tier, baseline_floor_tier ...)
 """
 import asyncio
 import sys

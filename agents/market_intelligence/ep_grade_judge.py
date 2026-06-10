@@ -49,7 +49,10 @@ _JUDGE_TOOL = {
             "rationale": {"type": "string"},
             "confidence": {"type": "number"},
         },
-        "required": ["grade", "tier", "direction_vs_floor", "rationale"],
+        # fire_axes REQUIRED (#249): it is THE fire signal — a model omission
+        # must not masquerade as "judge saw no fire" (empty list). Omission →
+        # None in _normalize_verdict → fire_axes column stays NULL (not adjudicated).
+        "required": ["grade", "tier", "direction_vs_floor", "fire_axes", "rationale"],
     },
 }
 
@@ -187,7 +190,11 @@ def _normalize_verdict(raw: dict) -> dict | None:
         if grade not in GRADES or tier not in TIERS or direction not in DIRECTIONS:
             return None
         mt = (raw.get("materiality_tier") or "").lower()
-        axes = [a for a in (raw.get("fire_axes") or []) if a in ("catalyst", "theme", "narrative")]
+        # Distinguish OMITTED (None → fire_axes column stays NULL = not
+        # adjudicated) from explicit [] (= judge saw no fire on any axis).
+        _axes_raw = raw.get("fire_axes")
+        axes = (None if _axes_raw is None
+                else [a for a in _axes_raw if a in ("catalyst", "theme", "narrative")])
         return {
             "grade": grade,
             "tier": tier,

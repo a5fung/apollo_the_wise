@@ -180,7 +180,7 @@ _GARBAGE_SIGNALS = [
 
 
 def _extract_json_object(text: str) -> str:
-    """
+    r"""
     Extract the first well-formed JSON object from text by tracking brace depth.
 
     The naive r'\{[^{}]*\}' regex breaks when Haiku adds nested objects such as

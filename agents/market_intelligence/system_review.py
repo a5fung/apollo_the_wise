@@ -1373,8 +1373,6 @@ def _format_judge_section(data: dict) -> str:
     never prescribes. N=0 heartbeat keeps a dead writer distinguishable from a
     quiet week (#173 insurance). Per-delta detail lives in the 16:25 digest +
     judge_delta_review.py."""
-    if not data:
-        return ""
     total = data.get("total") or 0
     if not total:
         return "⚖️ *Holistic judge (#240):* 0 live alerts in window"

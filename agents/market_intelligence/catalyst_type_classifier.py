@@ -65,16 +65,10 @@ CATALYST_TYPE_RANK: dict[str, int] = {t: i for i, t in enumerate(CATALYST_TYPES)
 # displayed 🎯 set and the analyzed set can't drift (re-tiered here once).
 HIGH_CONVICTION_TYPES: frozenset[str] = frozenset({"theme", "policy", "shortage"})
 
-# Types that are NOT a confirmed, specific fire — SSoT for the fire panel (#201).
-# `unknown` = couldn't identify (coverage gap); `pre_catalyst_anticipation` =
-# gap AHEAD of an unannounced catalyst (anticipated, not realized). A
-# strong/game_changer name whose type is one of these (or NULL) is "graded big
-# but we cannot point to a realized fire" → it falls to the fire-discovery
-# guardrail rather than counting as fire_seen. The Pradeep #1–4 confirmed
-# catalysts (theme/policy/shortage/sales_acceleration/new_product/
-# management_change) and the catch-all `other` (a catalyst exists, just
-# uncategorized) all REMAIN fires — we must never demote a real earnings/deal EP.
-NON_FIRE_TYPES: frozenset[str] = frozenset({"unknown", "pre_catalyst_anticipation"})
+# NON_FIRE_TYPES (#201 fire panel) RETIRED 2026-06-10 (#249) — the judge's
+# verdict fire_axes is the fire signal now (ADR 0010 superseded). The
+# 'unknown'/'pre_catalyst_anticipation' values live on only in the frozen
+# historical fire_status rows (see db.EP_UNKNOWN_NONFIRE_SQL).
 
 _CATALYST_TYPE_TOOL = {
     "name": "classify_catalyst_type",

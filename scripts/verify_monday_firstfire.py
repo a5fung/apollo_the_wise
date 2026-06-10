@@ -201,9 +201,9 @@ async def check_firestatus(conn, target):
     # NULL = judge fail-open). Same sign-off cohort, judge-sourced.
     rows = await conn.fetch(
         """
-        SELECT COALESCE(NULLIF(array_to_string(fire_axes, '+'), ''),
-                        CASE WHEN fire_axes IS NULL THEN 'NULL(fail-open)'
-                             ELSE 'none-seen' END) fs,
+        SELECT CASE WHEN fire_axes IS NULL THEN 'NULL(fail-open)'
+                    WHEN fire_axes = '{}' THEN 'none-seen'
+                    ELSE array_to_string(fire_axes, '+') END fs,
                score_tier, COUNT(*) n
         FROM mi_ep_alerts WHERE alert_date = $1
         GROUP BY 1, score_tier ORDER BY 1, score_tier

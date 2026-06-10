@@ -81,6 +81,16 @@ def test_normalize_handles_non_dict():
     assert _normalize_verdict("not a dict") is None
 
 
+def test_normalize_omitted_axes_stay_none_not_empty():
+    # OMITTED fire_axes (despite the schema's required) must NOT become [] —
+    # [] persists as '{}' = "judge saw no fire", a different claim entirely.
+    omitted = {k: v for k, v in _VALID.items() if k != "fire_axes"}
+    v = _normalize_verdict(omitted)
+    assert v is not None and v["fire_axes"] is None
+    # Explicit empty list stays an explicit no-fire verdict.
+    assert _normalize_verdict(dict(_VALID, fire_axes=[]))["fire_axes"] == []
+
+
 # ── grade_holistic: happy path + FAIL-OPEN ───────────────────────────────────
 def test_grade_happy_path():
     client = _Client(inp=dict(_VALID))

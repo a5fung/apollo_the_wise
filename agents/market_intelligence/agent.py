@@ -719,12 +719,10 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(k in task for k in ["history", "historical", "when did", "when was", "over time", "timeline", "peak", "peaked", "faded", "fade"]):
             return await self._handle_history_query(request)
 
-        # EP history — must come before general EP route. NOTE (#260): the
-        # "ep history" keyword itself is DEAD — the history rule above catches
-        # any phrase containing "history" first; this rule fires only on the
-        # eps-without-"history" phrasings ("recent eps", "ep log", ...).
-        # Pinned in test_execute_task_routing; reorder = conscious change there.
-        if any(k in task for k in ["ep history", "recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
+        # EP history — must come before general EP route. "ep history" itself
+        # routes to the history rule above (#260, pinned in test_execute_task_routing);
+        # these are the eps-without-"history" phrasings.
+        if any(k in task for k in ["recent eps", "past eps", "eps last", "ep last", "ep log", "previous eps", "eps this week", "eps today and"]):
             return await self._handle_ep_history(request)
 
         # Correlation clusters
@@ -2290,21 +2288,17 @@ class MarketIntelligenceAgent(BaseAgent):
         (2026-06-10). Read-only telemetry.
         """
         import re as _re
-        from agents.market_intelligence.db import get_pool
+        # Unknown-signal predicates: SHARED composition (db.EP_UNKNOWN_* — also
+        # consumed by the weekly source-gap finder #235). Edit in db.py, not inline.
+        from agents.market_intelligence.db import (
+            EP_UNKNOWN_ANY_SQL as _ANY_UNK,
+            EP_UNKNOWN_MISS_SQL as _MISS,
+            EP_UNKNOWN_NONFIRE_SQL as _NONFIRE,
+            get_pool,
+        )
 
         m = _re.search(r'\b(\d{1,3})\b', request.task)
         days = max(1, min(int(m.group(1)), 365)) if m else 30
-
-        # Unknown-signal predicates composed once (each appears in 2-3 places below).
-        # Two eras (#249, 2026-06-10): fire_status = retired heuristic (frozen
-        # historical rows); fire_axes = '{}' = the judge saw NO fire on any axis
-        # (judge-written; NULL = judge fail-open, not counted).
-        _NONFIRE = ("(fire_status IN "
-                    "('unknown','pre_catalyst_anticipation','no_fire_confirmed','real_unknown')"
-                    " OR fire_axes = '{}')")
-        _MISS = ("catalyst ILIKE '%no clear%catalyst%' OR catalyst ILIKE '%not clearly identified%' "
-                 "OR catalyst ILIKE '%no specific news%' OR catalyst ILIKE '%no fresh%catalyst%'")
-        _ANY_UNK = f"catalyst_type = 'unknown' OR {_NONFIRE} OR {_MISS}"
 
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -2320,7 +2314,10 @@ class MarketIntelligenceAgent(BaseAgent):
             """, days)
             recent = await conn.fetch(f"""
                 SELECT ticker, alert_date, catalyst_quality, catalyst_type,
-                       COALESCE(fire_status, array_to_string(fire_axes, '+')) AS fire_sig
+                       CASE WHEN fire_axes = '{{}}' THEN 'none'
+                            ELSE COALESCE(fire_status,
+                                          NULLIF(array_to_string(fire_axes, '+'), ''))
+                       END AS fire_sig
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
                   AND ({_ANY_UNK})
@@ -5231,7 +5228,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 FROM mi_live_trades
                 WHERE ticker = $1 AND alert_date = $2
             """, ticker, target_date)
-            events = await conn.fetch("""
+            events = await conn.fetch(r"""
                 SELECT created_at, event_type, summary, detail
                 FROM mi_audit_log
                 WHERE created_at >= ($1::date AT TIME ZONE 'America/New_York')

@@ -2153,13 +2153,11 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     _ct = ep.get("catalyst_type")
     ct_line = f"{_catalyst_type_mark(_ct)} Type: *{_ct.replace('_', ' ').title()}*\n" if _ct else ""
 
-    # Theme-gated advisory line (#200) RETIRED 2026-06-10 (#249): the judge
-    # (ADR 0011, load-bearing) weighs the theme axis in the grade itself.
-    tg_line = ""
-
-    # Fire axes — JUDGE-owned since #249 (2026-06-10): the holistic judge's
-    # verdict names which axes lit (catalyst/theme/narrative). Absent key =
-    # judge fail-open (no verdict) → no line; empty list = judge saw no fire.
+    # Fire axes — JUDGE-owned since #249 (2026-06-10; the #200 theme-gated
+    # advisory line retired with it — the judge weighs the theme axis in the
+    # grade itself): the holistic judge's verdict names which axes lit
+    # (catalyst/theme/narrative). Absent key = judge fail-open (no verdict) →
+    # no line; empty list = judge saw no fire.
     fire_line = ""
     _axes = ep.get("fire_axes")
     if _axes:
@@ -2175,7 +2173,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n"
-        + fire_line + tg_line + "\n"
+        + fire_line + "\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
         f"Catalyst: {catalyst_text}"
     )

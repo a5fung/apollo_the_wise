@@ -64,23 +64,29 @@ async def main(days: int = 90) -> None:
             )
             parsed.append(d)
 
-        # Forward 5d peak per ticker/date (directional context only).
+        # Forward 5d peak per ticker/date (directional context only). Cached
+        # per (ticker, alert_date) — boost rows are per grade TICK, so the same
+        # alert recurs many times over a 90d window; one lookup each, not N.
+        fwd_cache: dict[tuple, object] = {}
         for d in parsed:
-            try:
-                fwd = await conn.fetchrow("""
-                    SELECT d0.open_price AS open_d0, h5.h AS max_high_5d
-                    FROM (SELECT open_price FROM mi_daily_closes
-                          WHERE ticker = $1 AND trade_date = $2::date) d0,
-                         (SELECT MAX(high_price) AS h FROM (
-                              SELECT high_price FROM mi_daily_closes
-                              WHERE ticker = $1 AND trade_date >= $2::date
-                              ORDER BY trade_date ASC LIMIT 6) x) h5
-                """, d.get("ticker"), d.get("alert_date"))
-                if fwd and fwd["open_d0"] and fwd["max_high_5d"]:
-                    d["fwd_5d_peak_pct"] = round(
-                        (fwd["max_high_5d"] - fwd["open_d0"]) / fwd["open_d0"] * 100, 1)
-            except Exception:
-                pass
+            key = (d.get("ticker"), d.get("alert_date"))
+            if key not in fwd_cache:
+                try:
+                    fwd_cache[key] = await conn.fetchrow("""
+                        SELECT d0.open_price AS open_d0, h5.h AS max_high_5d
+                        FROM (SELECT open_price FROM mi_daily_closes
+                              WHERE ticker = $1 AND trade_date = $2::date) d0,
+                             (SELECT MAX(high_price) AS h FROM (
+                                  SELECT high_price FROM mi_daily_closes
+                                  WHERE ticker = $1 AND trade_date >= $2::date
+                                  ORDER BY trade_date ASC LIMIT 6) x) h5
+                    """, key[0], key[1])
+                except Exception:
+                    fwd_cache[key] = None
+            fwd = fwd_cache[key]
+            if fwd and fwd["open_d0"] and fwd["max_high_5d"]:
+                d["fwd_5d_peak_pct"] = round(
+                    (fwd["max_high_5d"] - fwd["open_d0"]) / fwd["open_d0"] * 100, 1)
 
     n = len(parsed)
     man = [d for d in parsed if d["manufactured_high"]]

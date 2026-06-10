@@ -27,7 +27,11 @@ _CAP = 8
 
 # Feeds we already ingest — a gap-finder answer naming these is an
 # extraction/timing gap (interesting, different fix), not a missing source.
-_COVERED_FEEDS = ("benzinga", "sec ", "sec.gov", "edgar", "8-k", "6-k", "alpaca")
+# Mirrors the ingested-source set news_source_quality.py SOURCES tracks
+# (polygon/alpaca-benzinga + the SEC form-type aliases this module adds);
+# when the operator onboards a recommended source, add its aliases HERE or
+# the finder keeps re-recommending it weekly.
+_COVERED_FEEDS = ("benzinga", "polygon", "sec ", "sec.gov", "edgar", "8-k", "6-k", "alpaca")
 
 _GAP_PROMPT = (
     "On {date}, the stock {ticker} gapped {gap:+.1f}% on heavy volume. "
@@ -67,39 +71,43 @@ def parse_gap_answer(text: str) -> dict | None:
 
 
 async def run_source_gap_finder(days: int = 7) -> dict:
-    """Weekly pass over the window's unknown cohort (the /unknownrate
-    predicates). Returns {n_cohort, n_asked, n_found, findings}."""
+    """Weekly pass over the window's unknown cohort (the SHARED /unknownrate
+    predicate — db.EP_UNKNOWN_ANY_SQL, so the KPI and this loop can never count
+    different cohorts). Returns {n_cohort, n_found, findings}."""
     from agents.market_intelligence.collector import search_news_perplexity
-    from agents.market_intelligence.db import get_pool, log_audit_event
+    from agents.market_intelligence.db import (
+        EP_UNKNOWN_ANY_SQL, get_pool, log_audit_event)
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        # Same two-era unknown predicates as /unknownrate (#211/#249), minus
-        # rows a prior run already adjudicated (dedup via audit detail JSON).
-        rows = await conn.fetch("""
-            SELECT a.ticker, a.alert_date, a.gap_pct
-            FROM mi_ep_alerts a
-            WHERE a.alert_date >= current_date - ($1)::int
-              AND (a.catalyst_type = 'unknown'
-                   OR a.fire_status IN ('unknown','pre_catalyst_anticipation',
-                                        'no_fire_confirmed','real_unknown')
-                   OR a.fire_axes = '{}'
-                   OR a.catalyst ILIKE '%no clear%catalyst%'
-                   OR a.catalyst ILIKE '%no specific news%')
-              AND NOT EXISTS (
-                  SELECT 1 FROM mi_audit_log g
-                  WHERE g.event_type = 'source_gap_candidate'
-                    AND g.detail LIKE '%"' || a.ticker || '"%'
-                    AND g.detail LIKE '%"' || a.alert_date::text || '"%'
-              )
-            ORDER BY a.alert_date DESC
-            LIMIT $2
-        """, days, _CAP)
+        # Dedup vs prior runs: parse the (ticker, alert_date) keys back out of
+        # our own audit payloads — structured, unlike a substring-LIKE on the
+        # JSON text, which silently breaks on any payload reshape. created_at
+        # bound: rows older than the cohort window + slack can't collide.
+        prior = await conn.fetch("""
+            SELECT detail FROM mi_audit_log
+            WHERE event_type = 'source_gap_candidate'
+              AND created_at > NOW() - ((($1)::int + 7) || ' days')::interval
+        """, days)
+        adjudicated: set[tuple[str, str]] = set()
+        for p in prior:
+            try:
+                d = json.loads(p["detail"] or "")
+                adjudicated.add((d["ticker"], d["alert_date"]))
+            except (TypeError, ValueError, KeyError):
+                continue
+        cohort = await conn.fetch(f"""
+            SELECT ticker, alert_date, gap_pct
+            FROM mi_ep_alerts
+            WHERE alert_date >= current_date - ($1)::int
+              AND {EP_UNKNOWN_ANY_SQL}
+            ORDER BY alert_date DESC
+        """, days)
+    rows = [r for r in cohort
+            if (r["ticker"], str(r["alert_date"])) not in adjudicated][:_CAP]
 
     findings = []
-    n_asked = 0
     for r in rows:
-        n_asked += 1
         answer = await search_news_perplexity(
             _GAP_PROMPT.format(date=r["alert_date"], ticker=r["ticker"],
                                gap=float(r["gap_pct"] or 0)),
@@ -141,5 +149,4 @@ async def run_source_gap_finder(days: int = 7) -> dict:
         lines.append("\n_Onboard-or-skip is your call (#210: direct sources > LLM discovery). Telemetry only — grades untouched._")
         await send_telegram_message("\n".join(lines))
 
-    return {"n_cohort": len(rows), "n_asked": n_asked,
-            "n_found": len(findings), "findings": findings}
+    return {"n_cohort": len(rows), "n_found": len(findings), "findings": findings}
