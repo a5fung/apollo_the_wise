@@ -6336,3 +6336,31 @@ reviews:
       misread as an EPS beat, operator-reviewed correct) IS this review's
       staged demotion rule, live. The separate _compute_fire_status flip path
       + materiality_shadow accrual were retired in #249; ADR 0010 superseded.
+
+  - review_id: wave_c_part2_boost_demotion
+    title: "#233 Wave C Part 2 — Perplexity boost demotion (bounded re-grade) evidence gate"
+    question: >
+      Has the perplexity_boost_shadow telemetry (accruing since 2026-06-08)
+      shown the magnitude that justifies Part 2 — the bounded corpus-demotion
+      re-grade (2nd Sonnet call on the SEC/Benzinga-AND-Perplexity subset) and,
+      downstream, the live boost-demotion flip? The flip target is HIGHs
+      MANUFACTURED by the 1.2x agreement boost WITHOUT a direct source (the
+      confident-confabulation population). As of 2026-06-10: N=0 in that slice
+      (1 boost tick total, NRIX, direct-source-corroborated).
+    predicate_sql: null
+    threshold: 5
+    earliest_review_date: 2026-07-01
+    action_when_ready: |
+      1. Run scripts/analyze_perplexity_boost_shadow.py (read-only; prints the
+         manufactured-no-direct N + the Part-2 trigger verdict; LOWER BOUND —
+         multiplier mechanism only).
+      2. If N >= 5: build the Part-2 bounded re-grade (offline, labeled), then
+         present the cohort to the operator.
+      3. **HARD GATE:** the live demotion flip (strip/condition the boost when
+         has_direct_source=False) = CHANGE_PROCESS + operator sign-off on the
+         exact rule. NOTE: the judge (load-bearing since 6/10) now owns the
+         final tier, so the boost's blast radius is the floor/fallback path +
+         judge-input bias — re-scope Part 2 against that reality before building.
+      Task #233 holds the full context.
+    status: pending
+    added_on: 2026-06-10
