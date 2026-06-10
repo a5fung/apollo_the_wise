@@ -64,31 +64,35 @@ reviews:
       Has any new model (Claude release, Perplexity tier, price change) appeared
       since the baseline's `Last reviewed`, and does it beat the recorded incumbent
       on the probe library? Roles: catalyst grade + materiality (Sonnet), sourcing
-      (sonar-pro), cross-validation (base sonar). NO swaps as of 2026-06-05 (#188).
+      (sonar-pro), cross-validation (base sonar), HOLISTIC JUDGE (Opus 4.8 since
+      6/10 — the load-bearing row; eval_judge_models.py --grounded). Last swaps:
+      judge Sonnet→Opus 2026-06-10 (#252), theme validation Haiku→Sonnet 6/06 (#213).
     predicate_sql: null
     threshold: 0
     earliest_review_date: 2026-08-01
     status: pending
     action_when_ready: |
-      INCREMENTAL review — diff new candidates vs the baseline, do NOT re-eval all
-      models from scratch. SSoT: docs/model_selection_baseline.md (per-role table +
-      flip-triggers + probe library + cost ref). Steps:
+      FOLLOW THE PLAYBOOK: docs/model_selection_baseline.md → "PLAYBOOK —
+      evaluating a new model and executing a flip" (codified 2026-06-10 from the
+      judge Sonnet→Opus flip; operator-requested so decisions are SYSTEMATIC).
+      Steps 0–6 there are the procedure: candidate intake as versioned registry
+      constants → eval on GROUNDED, input-gap-CLOSED probes (fix the input before
+      comparing models) → OPERATOR labels the disagreement table (agent never
+      self-certifies) → majority-label winner via its own registry commit (per-role
+      versioned pin if the family constant shouldn't flip everywhere) → move
+      timeouts/budgets WITH the model → baseline row + eval doc + change log +
+      first-production-call verify + recorded flip-back condition.
+      Quarterly-specific preface:
         1. docker exec apollo-market python scripts/dump_unknown_cohort.py --days 120
            --json /tmp/unknown_cohort.json  → adjudicate NEW unknown cases vs the
-           actual filing (collector.get_sec_recent_filings); promote clear ones into
-           the baseline Probe Library (true-unknown control vs missed-catalyst probe).
-        2. List models released since baseline `Last reviewed`. Those are the only
-           candidates — incumbents already won.
-        3. Re-run the 3 eval scripts on the probe library + new candidates ONLY:
-           scripts/eval_catalyst_models.py, eval_materiality_models.py,
-           eval_sourcing_perplexity.py. ALWAYS adjudicate any "FOUND" vs the filing
-           (the RUM keyword-trap — keyword match != a find).
-        4. Diff vs the baseline decision table; a row needs a decision only if a new
-           candidate beats the incumbent on a probe. Update the baseline change log.
-        5. A model swap on any scoring/sourcing path = CHANGE_PROCESS + sign-off.
-      Tracked by #207 (institutionalize into the #62 quarterly sweep + build clean
-      no-catalyst confab-rate controls). Re-bump earliest_review_date +1 quarter each
-      time this runs (recurring cadence, not one-shot).
+           actual filing; promote clear ones into the baseline Probe Library.
+        2. Only models released since baseline `Last reviewed` are candidates.
+        3. Eval scripts per role are in the baseline decision table (now incl.
+           eval_judge_models.py --grounded for the judge). ALWAYS adjudicate any
+           "FOUND" vs the filing (the RUM keyword-trap).
+      Mid-quarter MAJOR release on a load-bearing role → pull this forward ad-hoc;
+      the playbook applies identically. Tracked by #207. Re-bump
+      earliest_review_date +1 quarter each time this runs (recurring, not one-shot).
 
   - review_id: conviction_floor_extension
     title: "Conviction floor extension to gap[10,15)+strong band"

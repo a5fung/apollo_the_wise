@@ -24,6 +24,57 @@ don't re-evaluate every model from scratch.
 > Test the strongest candidate head-to-head; never skip it for cost. The cost lever is a
 > tighter universe pre-filter (#191), not a weaker model.
 
+## PLAYBOOK — evaluating a new model and executing a flip (end-to-end)
+
+Codified 2026-06-10 from the JUDGE_MODEL Sonnet→Opus flip (the worked example —
+eval → labels → registry → deploy → verify, one evening). Every step is
+mandatory on a load-bearing scoring path; advisory paths may compress 5–6.
+
+**0. Trigger.** Either (a) the quarterly review fires
+(`data_gated_reviews::model_selection_quarterly_review`), or (b) a major model
+release lands mid-quarter → pull the review forward AD-HOC for the roles where
+quality is load-bearing (don't wait; also don't flip without the steps below).
+A new release is a CANDIDATE, never an auto-adoption — pinned registry ids
+exist precisely so a vendor release day cannot silently change live grades.
+
+**1. Candidate intake.** New model ids go into `shared/llm_models.py` as
+constants FIRST (versioned, e.g. `OPUS_4_9 = "claude-opus-4-9"`); pricing row
+added to the Cost reference below. No role flips yet.
+
+**2. Eval on discriminating input.** Run the role's eval script (per-role
+table above) over the Probe Library + the current production disagreement
+window, candidate vs incumbent. Two hard input rules learned 6/9→6/10:
+(a) GROUNDED input only — thin-input divergence is an artifact; (b) input
+gaps must be CLOSED first (the dark theme axis made RCAT measure
+input-compensation, not model quality — 5 of 17 "disagreements" dissolved
+when the input was fixed). If an eval shows models diverging, first ask
+whether the INPUT is broken; fix that, re-run, then compare models.
+
+**3. Operator labels.** The agent formats the disagreement table with a LABEL
+column (SONNET/OPUS/NEITHER per row + exclusions for contaminated rows) and a
+"patterns" read for convenience — **the agent never self-certifies** (HARD-gate
+rule). Decision rule: majority of labeled rows wins; Neither/tie rows carry no
+signal; an excluded row needs a recorded reason (e.g. #229 contamination).
+
+**4. Decision + registry commit.** Winner → the role constant in
+`shared/llm_models.py`, in its OWN commit citing the eval doc. Pin rule: if
+the winning version should NOT flip every role sharing the family constant,
+use a versioned pin for this role (`SONNET_4_5` precedent) — per-role
+independence is the point of role constants. The `[5i/7]` deploy gate keeps
+ids registry-only.
+
+**5. Operational budgets move WITH the model.** A slower model behind an
+unchanged timeout converts the quality win into fail-open noise — check and
+raise the role's call timeout / gather budgets in the same commit (judge flip:
+15→25s call, 60→110s post-loop; the eval's only ERR row was an Opus timeout).
+
+**6. Record + verify-live + flip-back.** Same evening: baseline row updated
+here (with the "what would FLIP it" condition), verdict appended to the eval
+doc in `docs/analysis/`, change-log entry below. After deploy: verify the
+first real production call on the new model (latency + fallback/error rate in
+the role's decision/audit rows). The flip-back is always one registry commit —
+record the condition that would trigger it, then watch it for a week.
+
 ## Decisions (per role)
 
 | Role | Current model | Candidates tested (last review) | Verdict / evidence | What would FLIP it | Eval script |
@@ -78,13 +129,22 @@ actually separate models:
 |---|---|---|---|
 | claude-haiku-4-5 | 0.80 | 4.00 | |
 | claude-sonnet-4-6 | 3.00 | 15.00 | **grading + materiality incumbent** |
-| claude-opus-4-8 | 15.00 | 75.00 | 5× sonnet; tested, no edge on these tasks |
+| claude-opus-4-8 | 5.00 | 25.00 | **judge incumbent since 6/10** (was listed $15/$75 — 3× stale, corrected with #257); no edge on grading/materiality (those converge on input), decisive edge on the holistic judge per operator labels |
 | perplexity sonar | ~1 | ~1 | cross-validation incumbent; fast (2–3s) |
 | perplexity sonar-pro | ~3 | ~15 | **sourcing incumbent**; conservative (safer) |
 | perplexity sonar-reasoning-pro | ~2 | ~8 | confabulated RUM; not adopted |
 | perplexity sonar-deep-research | ~2/~8 + search/reason fees | | 120s + 10k-tok essays — not hot-path |
 
 ## Change log
+
+- **2026-06-10 (EP holistic judge swap, #252):** Sonnet→Opus 4.8 for `JUDGE_MODEL` — the
+  load-bearing paper grade authority (flipped load-bearing the same day). Operator-labeled
+  closed-gap eval (grounded + lit Lane-2 theme axis, 36 alerts → 17 disagreements):
+  **Opus 9 / Sonnet 2 / Neither 4 / tie 1** (`docs/analysis/judge_model_eval_closed_gap_2026-06-10.md`).
+  Two durable lessons promoted into the Playbook above: (1) close INPUT gaps before comparing
+  models — 5 of the 6/9 dark-axis disagreements dissolved from input alone (the #210 lever);
+  (2) move operational budgets with the model — judge timeout 15→25s, post-loop 60→110s,
+  because the eval's only ERR was an Opus timeout. Registry commit `6b53709`.
 
 - **2026-06-06 (theme membership validation swap, #213):** Haiku→Sonnet for `_validate_theme_membership`. Root: Haiku read the narrowing "AI" qualifier in "AI Memory & Storage" as a membership filter and evicted SNDK/SIMO (NAND flash) — recurring, operator-noticed. Isolating eval `eval_theme_validation_model.py` ran BOTH models on the UNCHANGED prompt over a two-sided cohort (false-removal side: storage names keep; genuine-removal side: CAR wrong-industry + XOM/CVX integrated-majors-fail-pure-play remove). Sonnet 3/4 / Haiku 2/4, **stable across 4 runs**; Sonnet fixes the bug AND preserves both genuine removes. The prompt de-bias was the advisor-flagged high-risk half (reintroduces oil&gas mis-clustering, no clean cohort right now) → DEFERRED; model swap alone is the fix. `THEME_MODEL` already defined, now used. Shipped with the #213 operator-protection shield (bypassed-cooldown pairs never re-removed). Theme-NAMING defect (names narrower than the RS cluster — the oil&gas root) filed separately.
 - **2026-06-05 (Gemini sourcing eval, #186):** evaluated Gemini grounded Google-Search as an INDEPENDENT sourcing channel (reframed from "3rd grade-validator" — graders converge on grounded input). `eval_sourcing_gemini.py` @0742c36. On the unknown/coverage-gap cohort, gemini-2.5-flash found real catalysts 4/4 (BHVN/SE/BZH/LIVN) incl. **SE — a foreign 6-K filer EDGAR's 8-K-only fetch is structurally blind to** (→ #208). Confabulates on catalyst-less controls (PGY) → ADDITIVE-only, never authoritative. gemini-2.5-pro UNTESTED (free tier 429-throttles even flash; pro needs a paid tier — but confab is a precision not horsepower issue, so pro is a footnote). Verdict: CANDIDATE for async shadow grounding, gated on a clean confab-rate run (#207) + paid tier, via CHANGE_PROCESS. Side-finds: SE→#208 (EDGAR 6-K gap); SMU/SMCZ leveraged/inverse ETFs mis-graded→#209 (universe hygiene).
