@@ -22,6 +22,13 @@ ALLOWED to import agents.market_intelligence.broker.*:
   - skip_reasons EXEMPTION: `broker.skip_reasons` is pure vocabulary
     (constants + humanize, no broker I/O) — importable from anywhere until it
     graduates to shared/.
+
+INLINE ESCAPE (the `# tz-ok:` pattern): an import line ending in
+`# exec-boundary-ok: <reason>` is exempt. Sanctioned reason today:
+`moves-with-job (W2)` — the import lives inside a scheduler job / boot block
+that transfers WHOLESALE into the execution service at W2, where a direct
+broker import is correct; facading it now would be throwaway. W2's job
+partition deletes these lines from intelligence entirely.
 """
 from __future__ import annotations
 
@@ -32,9 +39,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCOPE = ROOT / "agents"
 
+# [ \t]* not \s* — \s matches newlines, which would anchor the match on a
+# preceding BLANK line: wrong line number reported AND the inline
+# `# exec-boundary-ok` marker checked on the wrong line.
 _IMPORT_RE = re.compile(
-    r"^\s*(?:from|import)\s+agents\.market_intelligence\.broker(?P<sub>\.[\w.]+)?"
-    r"(?:\s+import\s+(?P<names>[\w, ()*]+))?",
+    r"^[ \t]*(?:from|import)\s+agents\.market_intelligence\.broker(?P<sub>\.[\w.]+)?"
+    r"(?:[ \t]+import[ \t]+(?P<names>[\w, ()*]+))?",
     re.M,
 )
 
@@ -53,10 +63,14 @@ def find_violations() -> list[tuple[str, int, str]]:
         if rel.name in _ALLOWED_FILES:
             continue
         text = py.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
         for m in _IMPORT_RE.finditer(text):
             sub = m.group("sub") or ""
             names = (m.group("names") or "").strip()
             if sub == _VOCab_EXEMPT:
+                continue
+            line_idx = text.count("\n", 0, m.start())
+            if "# exec-boundary-ok:" in lines[line_idx]:
                 continue
             # `from agents.market_intelligence.broker import skip_reasons`-form
             if not sub and names and all(

@@ -246,4 +246,17 @@ if ! python3 scripts/preflight_model_registry.py; then
 fi
 
 echo ""
+echo "=== [5j/7] Execution-boundary check (#256 W1 — intelligence/execution seam) ==="
+# Run on host (stdlib, no container). Intelligence-side code reaches broker/*
+# ONLY through execution_client.py (the facade W2 swaps for HTTP). Tagged
+# exceptions: '# exec-boundary-ok: <reason>' (moves-with-job (W2) etc.).
+if ! python3 scripts/check_execution_boundary.py check; then
+  echo ""
+  echo "DEPLOY FAILED — a direct broker import crossed the execution boundary."
+  echo "Route it through agents/market_intelligence/execution_client.py, or tag"
+  echo "a sanctioned exception with '# exec-boundary-ok: <reason>'."
+  exit 14
+fi
+
+echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="

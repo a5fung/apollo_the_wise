@@ -95,7 +95,7 @@ async def classify_naked_positions(body: dict) -> dict:
     🚨 even when broker had stops. Operator-visible severity was
     indistinguishable from a genuine naked position.
     """
-    from agents.market_intelligence.broker import alpaca_client
+    from agents.market_intelligence.broker import alpaca_client  # exec-boundary-ok: W2-decides (read-facade or runs-in-execution)
 
     rows = body.get("offending_rows") or []
     real_naked: list[dict] = []

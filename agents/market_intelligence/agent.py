@@ -255,7 +255,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 ENABLE_LIVE_MODE, resolve_account_mode_for_strategy,
             )
             from agents.market_intelligence.strategies.registry import load_strategies
-            from agents.market_intelligence.broker import alpaca_client as alpaca
+            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
 
             live_enabled = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() == "true"
             if not live_enabled:
@@ -494,7 +494,7 @@ class MarketIntelligenceAgent(BaseAgent):
         async def trades_summary(_: str = Depends(verify_internal_secret)):
             """Return combined trade summary: live (Alpaca) + paper trades."""
             from agents.market_intelligence.db import get_pool
-            from agents.market_intelligence.broker import alpaca_client as alpaca
+            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
 
             pool = await get_pool()
             result = {"live": None, "paper": None}
@@ -584,7 +584,7 @@ class MarketIntelligenceAgent(BaseAgent):
             """Sanity test: verify Alpaca connectivity, account info, and order placement."""
             results = {}
             try:
-                from agents.market_intelligence.broker import alpaca_client as alpaca
+                from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
                 # 1. Account info
                 account = await alpaca.get_account()
                 from agents.market_intelligence.constants import current_account_mode
@@ -619,9 +619,9 @@ class MarketIntelligenceAgent(BaseAgent):
             _: str = Depends(verify_internal_secret),
         ):
             """Handle forwarded trade callback from Telegram inline buttons."""
-            from agents.market_intelligence.broker.telegram_confirm import handle_callback
+            from agents.market_intelligence.execution_client import handle_confirm_callback
             callback_data = body.get("callback_data", "")
-            result = await handle_callback(callback_data)
+            result = await handle_confirm_callback(callback_data)
             return result
 
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
@@ -902,7 +902,7 @@ class MarketIntelligenceAgent(BaseAgent):
             CIRCUIT_BREAKER_CONSEC_LOSSES, CONFIRMATION_TIMEOUT_SEC,
             LIVE_TRADING_ENABLED, current_account_mode,
         )
-        from agents.market_intelligence.broker import alpaca_client as alpaca
+        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
         from agents.market_intelligence.db import get_latest_regime
 
         regime = await get_latest_regime()
@@ -1036,7 +1036,7 @@ class MarketIntelligenceAgent(BaseAgent):
         import math
         from datetime import date as _date
 
-        from agents.market_intelligence.broker import alpaca_client as alpaca
+        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
         from agents.market_intelligence.constants import (
             current_account_mode, mode_prefix,
         )
@@ -2529,14 +2529,10 @@ class MarketIntelligenceAgent(BaseAgent):
             )
 
         try:
-            from agents.market_intelligence.broker.alpaca_client import (
-                place_market_on_open_sell, make_client_order_id,
-            )
+            from agents.market_intelligence.execution_client import place_timestop_sell
             account_mode = row["account_mode"] or "paper"
-            coid = make_client_order_id(account_mode, "9m_day2_timestop", ticker)
-            order = await place_market_on_open_sell(
+            order = await place_timestop_sell(
                 ticker, qty=shares, account_mode=account_mode,
-                client_order_id=coid,
             )
         except Exception as e:
             return self._ok(
@@ -2754,7 +2750,7 @@ class MarketIntelligenceAgent(BaseAgent):
         """
         import re as _re
         from agents.market_intelligence.db import get_pool, log_audit_event
-        from agents.market_intelligence.broker.order_manager import execute_partial_exit
+        from agents.market_intelligence.execution_client import execute_partial_exit
         from agents.market_intelligence.trading_calendar import is_market_hours_now_et
 
         task_text = request.task.strip()
@@ -2886,8 +2882,8 @@ class MarketIntelligenceAgent(BaseAgent):
         to paper or live; default = both.
         """
         import re as _re
-        from agents.market_intelligence.broker.order_manager import (
-            sync_positions, _sync_positions_for_mode,
+        from agents.market_intelligence.execution_client import (
+            sync_positions, sync_positions_for_mode as _sync_positions_for_mode,
         )
         from agents.market_intelligence.db import log_audit_event
 
@@ -3234,7 +3230,7 @@ class MarketIntelligenceAgent(BaseAgent):
             ticker = manual_match.group(1)
             from agents.market_intelligence.db import get_pending_9m_sugar_babies
             from agents.market_intelligence.collector import et_today, prev_trading_days
-            from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
+            from agents.market_intelligence.execution_client import submit_9m_day2_trade
 
             today = et_today()
             yesterday = prev_trading_days(1, from_date=today)[0]
@@ -6184,7 +6180,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         async def _build_summary() -> str:
             """Open positions (with live Alpaca prices) + last 5 closed + totals."""
-            from agents.market_intelligence.broker import alpaca_client as alpaca
+            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: pending-read-facade (W1-s2)
 
             async with pool.acquire() as conn:
                 open_rows = await conn.fetch("""
@@ -6728,9 +6724,9 @@ async def startup():
     # talk to its Alpaca account. Surfaces credential rot or live-account
     # not-yet-funded scenarios at boot, not on first trade.
     try:
-        from agents.market_intelligence.broker.alpaca_client import verify_dual_account_clients
+        from agents.market_intelligence.execution_client import verify_accounts
         from agents.market_intelligence.db import log_audit_event
-        verify_result = await verify_dual_account_clients()
+        verify_result = await verify_accounts()
         ok_modes = [m for m, r in verify_result.items() if r.get("ok")]
         bad_modes = [m for m, r in verify_result.items() if not r.get("ok")]
         if bad_modes:
@@ -6802,8 +6798,8 @@ async def startup():
     start_scheduler()
     asyncio.create_task(check_missed_jobs())  # Run in background — data pull can take 30+ min
     # Start WebSocket streams
-    from agents.market_intelligence.broker.trade_stream import start_trade_stream
-    from agents.market_intelligence.broker.bar_stream import start_bar_stream
+    from agents.market_intelligence.broker.trade_stream import start_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+    from agents.market_intelligence.broker.bar_stream import start_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
     asyncio.create_task(start_trade_stream())   # fill/stop detection
     asyncio.create_task(start_bar_stream())     # real-time first-bar ORB entry
     logger.info("Market Intelligence Agent ready on port 8006")
@@ -6812,8 +6808,8 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    from agents.market_intelligence.broker.trade_stream import stop_trade_stream
-    from agents.market_intelligence.broker.bar_stream import stop_bar_stream
+    from agents.market_intelligence.broker.trade_stream import stop_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+    from agents.market_intelligence.broker.bar_stream import stop_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
     await stop_trade_stream()
     await stop_bar_stream()
     stop_scheduler()

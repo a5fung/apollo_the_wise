@@ -506,7 +506,7 @@ async def _nightly_data_pull():
     # mi_daily_closes is refreshed (ingest_daily completed earlier above).
     # Failure non-fatal: rows stay open, settle next night.
     try:
-        from agents.market_intelligence.broker.orb_extension_shadow import (
+        from agents.market_intelligence.broker.orb_extension_shadow import (  # exec-boundary-ok: moves-with-job (W2)
             settle_open_shadows,
         )
         shadow_summary = await settle_open_shadows(_today)
@@ -618,7 +618,7 @@ async def _ep_scan_job():
     logger.info("EP scan starting...")
     try:
         from agents.market_intelligence.collector import et_today, _ET
-        from agents.market_intelligence.broker import bar_stream
+        from agents.market_intelligence.execution_client import subscribe_orb_candidate
         today = et_today()
         # get_pool already imported at module level (line 24); local import
         # here would shadow + cause UnboundLocalError in later refs (e.g.
@@ -668,17 +668,17 @@ async def _ep_scan_job():
                     new_highs_post_open.append(ep["ticker"])
                 elif not market_open:
                     # Pre-market — subscribe to bar stream; ORB fires when first bar closes
-                    await bar_stream.subscribe_ep_candidate(ep["ticker"])
+                    await subscribe_orb_candidate(ep["ticker"])
                 else:
                     # HIGH arrived after ORB window closed — no order possible. Persist a
                     # skipped-trade row + audit event + Telegram so every HIGH alert has a
                     # durable terminal state for evening brief / `/why`.
-                    from agents.market_intelligence.broker.live_tracker import _insert_skipped_trade
+                    from agents.market_intelligence.execution_client import record_skipped_trade
                     from agents.market_intelligence.broker.skip_reasons import WINDOW_OUT_OF_ORB
                     from agents.market_intelligence.collector import et_today
                     skip_msg = f"{WINDOW_OUT_OF_ORB}: detected {now_et.strftime('%H:%M')} ET"
                     try:
-                        await _insert_skipped_trade(
+                        await record_skipped_trade(
                             ep["ticker"], et_today(), ep, None, skip_msg,
                             signal_type="magna53",
                         )
@@ -802,7 +802,7 @@ async def _orb_monitor_job(trigger: str = "cron"):
         return
     logger.info(f"ORB monitor starting [{trigger}]...")
     try:
-        from agents.market_intelligence.broker.live_tracker import process_new_alerts_live
+        from agents.market_intelligence.broker.live_tracker import process_new_alerts_live  # exec-boundary-ok: moves-with-job (W2)
         results = await process_new_alerts_live(trigger=trigger)
         entered = sum(1 for r in results if r.get("action") in ("auto_entered", "proposed"))
         skipped = sum(1 for r in results if r.get("action") in ("filtered", "skipped", "blocked"))
@@ -821,7 +821,7 @@ async def _check_fills_job():
 
     # Skip if WebSocket stream is handling fills
     try:
-        from agents.market_intelligence.broker.trade_stream import get_stream_status
+        from agents.market_intelligence.broker.trade_stream import get_stream_status  # exec-boundary-ok: moves-with-job (W2)
         status = get_stream_status()
         if status["healthy"] and status["task_alive"]:
             logger.debug("Stream healthy, skipping polling fill check")
@@ -831,7 +831,7 @@ async def _check_fills_job():
 
     logger.warning("Stream unhealthy, running fallback fill check")
     try:
-        from agents.market_intelligence.broker.order_manager import check_fills
+        from agents.market_intelligence.broker.order_manager import check_fills  # exec-boundary-ok: moves-with-job (W2)
         results = await check_fills()
         if results:
             logger.info(f"Fallback fill check: {len(results)} updates")
@@ -846,7 +846,7 @@ async def _stream_health_watchdog():
     if not LIVE_TRADING_ENABLED:
         return
     try:
-        from agents.market_intelligence.broker.trade_stream import get_stream_status, start_trade_stream
+        from agents.market_intelligence.broker.trade_stream import get_stream_status, start_trade_stream  # exec-boundary-ok: moves-with-job (W2)
         status = get_stream_status()
         if not status["task_alive"]:
             logger.warning("Stream watchdog: task not alive, restarting")
@@ -862,7 +862,7 @@ async def _morning_stop_refresh_job():
     if not LIVE_TRADING_ENABLED:
         return
     try:
-        from agents.market_intelligence.broker.live_tracker import morning_stop_refresh
+        from agents.market_intelligence.broker.live_tracker import morning_stop_refresh  # exec-boundary-ok: moves-with-job (W2)
         count = await morning_stop_refresh()
         logger.info(f"Morning stop refresh: {count} stops refreshed")
     except Exception as e:
@@ -1010,7 +1010,7 @@ async def _live_position_update_job():
         return
     logger.info("Live position update starting...")
     try:
-        from agents.market_intelligence.broker.live_tracker import (
+        from agents.market_intelligence.broker.live_tracker import (  # exec-boundary-ok: moves-with-job (W2)
             update_open_positions_live,
             send_live_trade_summary,
         )
@@ -1030,7 +1030,7 @@ async def _eod_cleanup_job():
         return
     logger.info("EOD cleanup starting...")
     try:
-        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, sync_positions
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries, sync_positions  # exec-boundary-ok: moves-with-job (W2)
         cancelled = await cancel_unfilled_entries()
         discrepancies = await sync_positions()
         logger.info(f"EOD cleanup: {cancelled} cancelled, {len(discrepancies)} discrepancies")
@@ -1057,7 +1057,7 @@ async def _account_equity_snapshot_job():
     if not LIVE_TRADING_ENABLED:
         return
     try:
-        from agents.market_intelligence.broker.drawdown_breaker import (
+        from agents.market_intelligence.broker.drawdown_breaker import (  # exec-boundary-ok: moves-with-job (W2)
             snapshot_account_equity, recompute_drawdown_state,
         )
         from agents.market_intelligence.constants import ENABLE_LIVE_MODE
@@ -1162,7 +1162,7 @@ async def _stop_ack_timeout_watchdog_job():
     from agents.market_intelligence.db import get_pool, log_audit_event
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.constants import mode_prefix
-    from agents.market_intelligence.broker import alpaca_client as alpaca
+    from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
     pool = await get_pool()
     async with pool.acquire() as conn:
         stuck = await conn.fetch(
@@ -1239,7 +1239,7 @@ async def _stop_ack_timeout_watchdog_job():
                     None,
                 )
                 if stop_o:
-                    from agents.market_intelligence.broker.order_manager import (
+                    from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
                         set_stop_order_id,
                     )
                     await set_stop_order_id(
@@ -1293,7 +1293,7 @@ async def _stop_ack_timeout_watchdog_job():
                     ticker, qty, stop_target, account_mode=account_mode,
                 )
                 # Update the row so subsequent watchdog runs don't re-fire
-                from agents.market_intelligence.broker.order_manager import set_stop_order_id
+                from agents.market_intelligence.broker.order_manager import set_stop_order_id  # exec-boundary-ok: moves-with-job (W2)
                 await set_stop_order_id(
                     trade_id, fallback["id"],
                     reason="stop_ack_timeout",
@@ -1354,7 +1354,7 @@ async def _track_open_position_extremes_job():
     if not LIVE_TRADING_ENABLED:
         return
     try:
-        from agents.market_intelligence.broker.order_manager import (
+        from agents.market_intelligence.broker.order_manager import (  # exec-boundary-ok: moves-with-job (W2)
             track_open_position_extremes,
         )
         n = await track_open_position_extremes()
@@ -1373,7 +1373,7 @@ async def _evening_position_backstop_job():
         return
     logger.info("Evening position backstop starting...")
     try:
-        from agents.market_intelligence.broker.order_manager import sync_positions
+        from agents.market_intelligence.broker.order_manager import sync_positions  # exec-boundary-ok: moves-with-job (W2)
         discrepancies = await sync_positions()
         logger.info(f"Evening backstop: {len(discrepancies)} discrepancies")
     except Exception as e:
@@ -1389,7 +1389,7 @@ async def _shadow_orb_entry_job():
     Alpaca submits, no new alerts.
     """
     from agents.market_intelligence.collector import et_today
-    from agents.market_intelligence.broker.shadow_orb_tracker import run_shadow_pass
+    from agents.market_intelligence.broker.shadow_orb_tracker import run_shadow_pass  # exec-boundary-ok: moves-with-job (W2)
     today = et_today()
     if not get_market_status(today).is_trading_day:
         return None
@@ -1407,7 +1407,7 @@ async def _shadow_orb_entry_job():
 async def _shadow_orb_exit_job():
     """Run at 4:30 PM ET. Apply daily exit step to every open shadow row."""
     from agents.market_intelligence.collector import et_today
-    from agents.market_intelligence.broker.shadow_orb_tracker import update_shadow_positions
+    from agents.market_intelligence.broker.shadow_orb_tracker import update_shadow_positions  # exec-boundary-ok: moves-with-job (W2)
     today = et_today()
     if not get_market_status(today).is_trading_day:
         return None
@@ -1432,7 +1432,7 @@ async def _orb_window_cleanup_job():
         return
     logger.info("ORB window cleanup starting (10:00 AM cancel)...")
     try:
-        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries
+        from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries  # exec-boundary-ok: moves-with-job (W2)
         cancelled = await cancel_unfilled_entries(reason="ORB window unfilled")
         logger.info(f"ORB window cleanup: {cancelled} cancelled")
     except Exception as e:
@@ -1453,14 +1453,14 @@ async def _eod_ep_recap_job():
     try:
         from agents.market_intelligence.db import get_ep_outcomes, get_sip_feed_telemetry
         from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.broker.alpaca_client import get_data_feed
+        from agents.market_intelligence.execution_client import get_data_feed_name
         today = et_today()
         today_str = str(today)
         outcomes = await get_ep_outcomes(days_back=1, tier="HIGH")
         today_outcomes = [o for o in outcomes if str(o.get("alert_date")) == today_str]
 
         feed_tel = await get_sip_feed_telemetry(today)
-        feed = get_data_feed().value.lower()
+        feed = get_data_feed_name()
         feed_line = (
             f"📡 Feed ({feed}): {feed_tel['bars_fetched']} bars · "
             f"{feed_tel['zero_range']} zero-range · "
@@ -1520,7 +1520,7 @@ async def _orb_reclassify_eod_job():
     writes `orb_cancellation_reclassified`; no trade-state mutation, no
     retroactive Telegram (#123 discipline). Bars from the morning ORB window are
     long settled by now."""
-    from agents.market_intelligence.broker.gap_through_telemetry import (
+    from agents.market_intelligence.broker.gap_through_telemetry import (  # exec-boundary-ok: moves-with-job (W2)
         reclassify_orb_cancellations_eod,
     )
     from agents.market_intelligence.collector import et_today
@@ -2170,7 +2170,7 @@ async def _order_status_reconcile_job(lookback_days: int = 90):
     `/audit order_status_reconciled`).
     """
     try:
-        from agents.market_intelligence.broker.order_manager import reconcile_all_modes
+        from agents.market_intelligence.broker.order_manager import reconcile_all_modes  # exec-boundary-ok: moves-with-job (W2)
         result = await reconcile_all_modes(lookback_days=lookback_days)
         if result.get("updated", 0) > 0 or result.get("errors", 0) > 0:
             logger.info(
@@ -2778,7 +2778,7 @@ async def _9m_day2_orb_job() -> None:
     if not get_market_status(today).is_trading_day:
         return
     try:
-        from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade
+        from agents.market_intelligence.broker.live_tracker import submit_9m_day2_trade  # exec-boundary-ok: moves-with-job (W2)
         from agents.market_intelligence.db import get_pending_9m_sugar_babies
         from agents.market_intelligence.collector import prev_trading_days
         from agents.market_intelligence.constants import MAX_CONCURRENT_LIVE_POSITIONS
@@ -2956,7 +2956,7 @@ async def _9m_day2_orb_job() -> None:
 
         # Grouped skip digest — one Telegram for the whole cron-run instead
         # of per-ticker. Mirrors the MAGNA53 ORB monitor digest.
-        from agents.market_intelligence.broker.entry_pipeline import (
+        from agents.market_intelligence.broker.entry_pipeline import (  # exec-boundary-ok: moves-with-job (W2)
             ACTION_SKIPPED, ACTION_BLOCKED,
         )
         from agents.market_intelligence.broker.skip_reasons import humanize
@@ -3104,7 +3104,7 @@ async def _emit_boot_audit_marker() -> None:
 
     equity_str = "unknown"
     try:
-        from agents.market_intelligence.broker import alpaca_client as alpaca
+        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
         account = await alpaca.get_account()
         equity_str = f"${float(account.get('equity', 0)):,.2f}"
     except Exception as e:
@@ -3252,7 +3252,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Reset bar stream daily state + start EP scanning at 7:00 AM ET
     async def _ep_scan_start_job():
-        from agents.market_intelligence.broker import bar_stream
+        from agents.market_intelligence.broker import bar_stream  # exec-boundary-ok: moves-with-job (W2)
         bar_stream.reset_daily_state()
         await _start_ep_scanning()
 
@@ -3290,7 +3290,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # Unsubscribe bar stream at 9:35 AM — ORB window closed
     async def _bar_stream_cleanup():
-        from agents.market_intelligence.broker import bar_stream
+        from agents.market_intelligence.broker import bar_stream  # exec-boundary-ok: moves-with-job (W2)
         await bar_stream.unsubscribe_all()
 
     _scheduler.add_job(
