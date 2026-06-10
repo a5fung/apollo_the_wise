@@ -114,6 +114,24 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         WHERE id = $1
         """,
     ),
+    (
+        "db.update_ep_alert_judge_result: atomic judge verdict + grade override (#247)",
+        # Not mi_live_trades, but LOAD-BEARING since the 2026-06-10 judge flip:
+        # this one statement writes the judge columns AND the authoritative
+        # score_tier that alert/entry read. A prepare failure here = every
+        # judged alert silently falls back to the floor tier.
+        """
+        UPDATE mi_ep_alerts SET
+            judge_tier = COALESCE($3, judge_tier),
+            judge_direction = COALESCE($4, judge_direction),
+            judge_rationale = COALESCE($5, judge_rationale),
+            judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+            fire_axes = COALESCE($7, fire_axes),
+            score_tier = COALESCE($8, score_tier),
+            grade_engine_authority = COALESCE($9, grade_engine_authority)
+        WHERE ticker = $1 AND alert_date = $2
+        """,
+    ),
 ]
 
 
