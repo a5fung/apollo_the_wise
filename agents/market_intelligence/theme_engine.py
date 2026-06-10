@@ -1094,7 +1094,6 @@ async def _name_recently_mass_evicted(theme_name: str, days: int = 30) -> bool:
     DB hiccup never blocks inheritance."""
     tripwire_pat, removal_pat = _mass_evicted_patterns(theme_name)
     try:
-        from agents.market_intelligence.db import get_pool
         pool = await get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(

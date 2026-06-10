@@ -47,6 +47,6 @@ def test_fragment_name_does_not_substring_match_pureplay_rows():
 def test_guard_fails_open_on_db_error(monkeypatch):
     def _boom():
         raise RuntimeError("no pool in tests")
-    import agents.market_intelligence.db as db
-    monkeypatch.setattr(db, "get_pool", _boom)
+    import agents.market_intelligence.theme_engine as theme_engine
+    monkeypatch.setattr(theme_engine, "get_pool", _boom)
     assert asyncio.run(_name_recently_mass_evicted(_PUREPLAY)) is False
