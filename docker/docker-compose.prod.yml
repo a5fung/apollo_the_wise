@@ -113,7 +113,13 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          # 512M → 1536M (2026-06-10): the 17:00 nightly RS burst (~9,700
+          # stocks) OOM-killed uvicorn at a ~510MB peak (kernel memcg kill,
+          # 21:00:07 UTC) — root cause of the 6/01–6/05 'aborted' nightly rows
+          # AND today's orphan 'running' row (the #263 false-alarm class was
+          # partly THIS, not deploy interruptions). Resting RSS ~330MB leaves
+          # no burst headroom at 512M; host has ~2.2G available.
+          memory: 1536M
 
   uptime-kuma:
     image: louislam/uptime-kuma:1
