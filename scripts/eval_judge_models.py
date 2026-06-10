@@ -32,7 +32,8 @@ from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import grade_holistic
 from scripts._judge_replay_common import REPLAY_SQL as _SQL
 from scripts._judge_replay_common import (
-    build_judge_payload, fetch_profile, resolve_grounded_text,
+    build_judge_payload, fetch_narratives_for, fetch_profile,
+    resolve_grounded_text,
 )
 from shared.llm_models import OPUS, SONNET
 
@@ -47,10 +48,18 @@ MODELS = [
 
 async def _payload_for(row, grounded: bool) -> dict:
     """Build the judge payload once (shared across models) — same assembly as
-    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common)."""
+    run_ep_scan._judge_shadow + judge_backfill_replay (via _judge_replay_common).
+
+    CLOSED-GAP input (#252/#253, 2026-06-10): point-in-time Lane-2 narrative
+    cohorts now feed the theme axis, exactly as the live judge reads them since
+    the lane2-judge-theme-axis deploy — the 6/9 eval's RCAT-class rows measured
+    input-gap compensation, not model quality. The recorded decision path is
+    're-eval models on closed-gap input'; this IS that input."""
     _mc, sector, company = await fetch_profile(row["ticker"])
     grounded_text, _ginfo = await resolve_grounded_text(row, company, grounded)
-    payload, _rule_mat = build_judge_payload(row, grounded_text, _mc, sector)
+    narratives = await fetch_narratives_for(row["alert_date"])
+    payload, _rule_mat = build_judge_payload(row, grounded_text, _mc, sector,
+                                             active_narratives=narratives)
     return payload
 
 
