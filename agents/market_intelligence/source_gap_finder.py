@@ -70,6 +70,27 @@ def parse_gap_answer(text: str) -> dict | None:
     }
 
 
+def format_gap_digest(actionable: list[dict], covered_n: int = 0) -> str:
+    """Operator Telegram digest for actionable findings. #121 HTML surface:
+    event/first_reported are Perplexity prose — esc()'d via the helpers so
+    free text can never 400 the digest."""
+    from shared.telegram_format import b, code, esc, i
+
+    lines = ["🧭 <b>Source-gap finder</b> (weekly — #235/#211)",
+             "<i>Real movers we couldn't source from direct feeds; where they WERE reported:</i>"]
+    for f in actionable:
+        lines.append(
+            f"\n{code(f['ticker'])} {esc(f['alert_date'])} ({f['gap_pct']:+.1f}%)\n"
+            f"  {esc(f['source_class'])}: {b(f['first_reported'])}\n"
+            f"  {i(f['event'])}"
+        )
+    if covered_n:
+        lines.append(f"\n<i>+{covered_n} covered-feed finding(s) (extraction/timing gap) — audit only.</i>")
+    lines.append("\n<i>Onboard-or-skip is your call (#210: direct sources &gt; LLM discovery). "
+                 "Telemetry only — grades untouched.</i>")
+    return "\n".join(lines)
+
+
 async def run_source_gap_finder(days: int = 7) -> dict:
     """Weekly pass over the window's unknown cohort (the SHARED /unknownrate
     predicate — db.EP_UNKNOWN_ANY_SQL, so the KPI and this loop can never count
@@ -135,18 +156,8 @@ async def run_source_gap_finder(days: int = 7) -> dict:
     actionable = [f for f in findings if not f["covered"]]
     if actionable:
         from agents.market_intelligence.briefing import send_telegram_message
-        lines = ["🧭 *Source-gap finder* (weekly — #235/#211)",
-                 "_Real movers we couldn't source from direct feeds; where they WERE reported:_"]
-        for f in actionable:
-            lines.append(
-                f"\n`{f['ticker']}` {f['alert_date']} ({f['gap_pct']:+.1f}%)\n"
-                f"  {f['source_class']}: *{f['first_reported']}*\n"
-                f"  _{f['event']}_"
-            )
-        covered_n = len(findings) - len(actionable)
-        if covered_n:
-            lines.append(f"\n_+{covered_n} covered-feed finding(s) (extraction/timing gap) — audit only._")
-        lines.append("\n_Onboard-or-skip is your call (#210: direct sources > LLM discovery). Telemetry only — grades untouched._")
-        await send_telegram_message("\n".join(lines))
+        await send_telegram_message(
+            format_gap_digest(actionable, covered_n=len(findings) - len(actionable)),
+            parse_mode="HTML")
 
     return {"n_cohort": len(rows), "n_found": len(findings), "findings": findings}

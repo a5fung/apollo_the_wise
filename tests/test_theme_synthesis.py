@@ -55,3 +55,15 @@ def test_caps_at_three_cohorts_and_dedupes_members():
     kept, _ = validate_cohorts(cohorts, _CANDS, {})
     assert len(kept) == 3
     assert kept[0]["tickers"] == ["OKTA", "CRWD", "DDOG"]  # deduped, order kept
+
+
+# ── #121 HTML digest surface ─────────────────────────────────────────────────
+def test_digest_escapes_llm_prose():
+    from agents.market_intelligence.theme_synthesis import format_synthesis_digest
+    hostile = _cohort(name="AI & Robotics <Phase 2>",
+                      thesis="M&A wave; <50ms latency *matters*")
+    msg = format_synthesis_digest([hostile])
+    assert "<b>AI &amp; Robotics &lt;Phase 2&gt;</b>" in msg
+    assert "M&amp;A wave; &lt;50ms latency *matters*" in msg
+    # No raw unescaped dynamic angle bracket survives outside known tags.
+    assert "<Phase" not in msg and "<50ms" not in msg

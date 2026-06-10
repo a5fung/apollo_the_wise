@@ -159,6 +159,25 @@ def _candidate_line(signal: str, r: dict, desc: str | None) -> str:
     )
 
 
+def format_synthesis_digest(kept: list[dict]) -> str:
+    """Operator Telegram digest for the kept cohorts. #121 HTML surface:
+    name/thesis are LLM-generated prose — esc()'d via the helpers so a stray
+    & or < can never 400 the digest."""
+    from shared.telegram_format import b, code, esc, i
+
+    lines = ["🔭 <b>Emerging-theme synthesis</b> (advisory — operator read required)"]
+    for c in kept:
+        lines.append(
+            f"\n{b(c['name'])} ({esc(c['confidence'])})\n"
+            f"{code(' '.join(c['tickers']))}\n{i(c['thesis'])}"
+        )
+    lines.append(
+        "\n<i>RS-slope cohorts, cross-sector. Feeds the judge's narrative axis; "
+        "promotes to a live theme only via your judgment.</i>"
+    )
+    return "\n".join(lines)
+
+
 async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
     """Nightly synthesis pass. Returns a summary dict (n_candidates, n_proposed,
     n_kept, dropped). Errors audit as theme_synthesis_error; an empty proposal
@@ -246,17 +265,7 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
 
     if kept:
         from agents.market_intelligence.briefing import send_telegram_message
-        lines = ["🔭 *Emerging-theme synthesis* (advisory — operator read required)"]
-        for c in kept:
-            lines.append(
-                f"\n*{c['name']}* ({c['confidence']})\n"
-                f"`{' '.join(c['tickers'])}`\n_{c['thesis']}_"
-            )
-        lines.append(
-            "\n_RS-slope cohorts, cross-sector. Feeds the judge's narrative axis; "
-            "promotes to a live theme only via your judgment._"
-        )
-        await send_telegram_message("\n".join(lines))
+        await send_telegram_message(format_synthesis_digest(kept), parse_mode="HTML")
 
     return {"n_candidates": len(by_ticker), "n_proposed": len(proposed),
             "n_kept": len(kept), "dropped": dropped, "written": n_written}

@@ -28,3 +28,16 @@ def test_unparseable_returns_none():
     assert parse_gap_answer("I could not determine the cause of the move.") is None
     assert parse_gap_answer("") is None
     assert parse_gap_answer(None) is None
+
+
+# ── #121 HTML digest surface ─────────────────────────────────────────────────
+def test_digest_escapes_perplexity_prose():
+    from agents.market_intelligence.source_gap_finder import format_gap_digest
+    finding = {"ticker": "RCAT", "alert_date": "2026-06-08", "gap_pct": 12.3,
+               "source_class": "press_wire",
+               "first_reported": "GlobeNewswire <flash> & co",
+               "event": "Won a $40M contract; terms <undisclosed>"}
+    msg = format_gap_digest([finding], covered_n=2)
+    assert "<b>GlobeNewswire &lt;flash&gt; &amp; co</b>" in msg
+    assert "terms &lt;undisclosed&gt;" in msg
+    assert "+2 covered-feed finding(s)" in msg
