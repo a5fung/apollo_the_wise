@@ -45,6 +45,17 @@ SOURCES = [
 ]
 
 
+# Canonical INGESTED-FEED aliases (#265) — substrings that identify a feed we
+# already ingest when it appears in FREE TEXT (e.g. a Perplexity answer naming
+# where a story was first published). This module owns "what do we ingest";
+# the source-gap finder imports this and adds its SEC form-type aliases.
+# WHEN THE OPERATOR ONBOARDS A NEW FEED: add its aliases here (one place) or
+# the gap finder keeps re-recommending the now-covered source weekly.
+# (Perplexity/Claude deliberately absent — they're discovery layers, not
+# direct feeds; a gap-finder answer naming them is not "already covered".)
+INGESTED_FEED_ALIASES = ("benzinga", "polygon", "alpaca")
+
+
 # Source name as it appears in extraction's q_revenue_usd.sources field.
 # Maps display name → list of strings the extraction might use.
 ATTRIBUTION_KEYS = {

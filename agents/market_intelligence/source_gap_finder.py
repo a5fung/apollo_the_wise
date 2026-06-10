@@ -27,11 +27,12 @@ _CAP = 8
 
 # Feeds we already ingest — a gap-finder answer naming these is an
 # extraction/timing gap (interesting, different fix), not a missing source.
-# Mirrors the ingested-source set news_source_quality.py SOURCES tracks
-# (polygon/alpaca-benzinga + the SEC form-type aliases this module adds);
-# when the operator onboards a recommended source, add its aliases HERE or
-# the finder keeps re-recommending it weekly.
-_COVERED_FEEDS = ("benzinga", "polygon", "sec ", "sec.gov", "edgar", "8-k", "6-k", "alpaca")
+# The feed aliases come from news_source_quality (the module that owns "what
+# do we ingest"; onboarded feeds get added THERE); this module adds only the
+# SEC form-type spellings, since EDGAR coverage is its own dimension here.
+from agents.market_intelligence.news_source_quality import INGESTED_FEED_ALIASES
+
+_COVERED_FEEDS = INGESTED_FEED_ALIASES + ("sec ", "sec.gov", "edgar", "8-k", "6-k")
 
 _GAP_PROMPT = (
     "On {date}, the stock {ticker} gapped {gap:+.1f}% on heavy volume. "
