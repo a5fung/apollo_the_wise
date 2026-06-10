@@ -26,6 +26,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# #227: Windows consoles default to cp1252, which can't encode the ✅/❌
+# markers (UnicodeEncodeError mid-run, masking the actual test results).
+# Force UTF-8 with replacement so the harness output never dies on emoji.
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 PASS = "✅"
 FAIL = "❌"
 SKIP = "⏭️"
@@ -233,7 +239,8 @@ def test_order_spec_logic() -> bool:
 def test_agent_routing_coverage() -> bool:
     """Verify all routing keywords are present in agent.py."""
     agent_path = Path(__file__).parent.parent / "agents/market_intelligence/agent.py"
-    content = agent_path.read_text()
+    # #227: explicit encoding — Windows' cp1252 default dies on agent.py's UTF-8.
+    content = agent_path.read_text(encoding="utf-8")
 
     required = [
         "9m outcome",
@@ -284,6 +291,14 @@ def test_imports() -> bool:
             else:
                 print(f"  {FAIL} {mod_name} missing attribute '{attr}'")
                 ok = False
+        except ModuleNotFoundError as e:
+            # #227: prod-only third-party deps (alpaca-py) absent locally are
+            # env noise, not harness failures — SKIP; prod run covers them.
+            if e.name and not e.name.startswith("agents"):
+                print(f"  {SKIP} import {mod_name}: third-party '{e.name}' not installed locally")
+            else:
+                print(f"  {FAIL} import {mod_name}: {e}")
+                ok = False
         except Exception as e:
             print(f"  {FAIL} import {mod_name}: {e}")
             ok = False
@@ -314,18 +329,29 @@ async def main() -> None:
     spec_ok = test_order_spec_logic()
 
     print("\n--- DB Round-trip Tests ---")
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        tables_ok = await test_tables(conn)
-        if not tables_ok:
-            print(f"\n{FAIL} Tables missing — run initialize_db() first. Skipping DB tests.")
-        else:
-            alert_ok = await test_ep_alert_roundtrip(conn)
-            baby_ok = await test_sugar_baby_roundtrip(conn)
-            filter_ok = await test_eod_filter_logic(conn)
-            await teardown(conn)
+    # #227: no-DB environments (local laptop) get a clear SKIP instead of a
+    # raw ConnectionRefusedError traceback. DB phases need prod:
+    #   docker exec apollo-market python scripts/test_9m_ep_e2e.py
+    try:
+        pool = await get_pool()
+    except OSError as e:
+        print(f"{SKIP} DB unreachable ({type(e).__name__}) — local no-DB env.")
+        print("    Run on prod for the DB phases: "
+              "docker exec apollo-market python scripts/test_9m_ep_e2e.py")
+        pool = None
+        tables_ok = None
+    if pool is not None:
+        async with pool.acquire() as conn:
+            tables_ok = await test_tables(conn)
+            if not tables_ok:
+                print(f"\n{FAIL} Tables missing — run initialize_db() first. Skipping DB tests.")
+            else:
+                alert_ok = await test_ep_alert_roundtrip(conn)
+                baby_ok = await test_sugar_baby_roundtrip(conn)
+                filter_ok = await test_eod_filter_logic(conn)
+                await teardown(conn)
 
-    all_ok = imports_ok and routing_ok and spec_ok and tables_ok
+    all_ok = imports_ok and routing_ok and spec_ok and (tables_ok is not False)
     if tables_ok:
         all_ok = all_ok and alert_ok and baby_ok and filter_ok
 
