@@ -379,13 +379,16 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-10 (Wed) — JUDGE LOAD-BEARING day: flip → retire → Opus → v1.1/v2.0 program
+### 2026-06-10 (Wed) — JUDGE LOAD-BEARING day (details graduated to CHANGELOG)
 
-North Star milestone day; **#240 CLOSED 6/11** — both verifies green (3 Opus alerts, exact reconcile, 0 fail-opens).
-- **Judge FLIPPED load-bearing** (~10:45 ET, operator-signed; first real call CBRL MODERATE→none — one-time $47.4M litigation settlement misread as EPS beat). **#249 advisory stack retired**: judge `fire_axes` = the one fire signal (fire_status frozen; ADR 0010 superseded; #189/#200–#203 subsumed; waves #242–#245 closed-verified evening). **Synthesis feed** live (18:05 nightly, `theme_synthesis.py` → `rs_slope_synthesis` shadow rows + judge narrative axis; first-fire: honest empty). #247 atomic judge write + [5b/7] statement; #263 floor 3500; #264 min-N floor.
-- **JUDGE_MODEL → OPUS 4.8** (evening): closed-gap re-eval (Lane-2 axis lit; 36 alerts/17 disagreements) operator-labeled **Opus 9–Sonnet 2**; registry `6b53709`, timeouts 25s/110s. 5 of the 6/9 disagreements dissolved from input alone (input>model, #210). **Model-eval PLAYBOOK codified** (`model_selection_baseline.md` §PLAYBOOK + quarterly YAML).
-- **#256 W1 SHIPPED+DEPLOYED**: `execution_client.py` facade (16 sites migrated, 28 `exec-boundary-ok` W2 tags), boundary deploy gate **[5j/7]**; W2 partition table drafted. **3 prod bugs found via evening sweep**: theme-assignment `[Fading]`-echo silent drop (month-old, 15/27 runs affected — BOT/OUST class), **17:00 nightly OOM kill** (512M cap → 1536M; rewrites the #263 "aborted" story), state_alerts RS-deterioration dead since 3/20 (asyncpg `$1 - INTERVAL` inference). Review pass applied 4 judge-path fixes; EOD recap gained the judge-demote count; stale trades-dashboard snapshot → export SQL saved (#194 widened).
-- **Successor program drafted**: `docs/roadmap/apollo-v1.1-v2.0.md` — v1.1 (selection replay #268, entry-mechanics, exits, chart-vision #267, experience seed) + v2.0 pillars. North Star stays closed — this is its container.
+Judge flipped load-bearing (CBRL first call) · #249 advisory stack retired (`fire_axes` = the one fire signal) · synthesis feed live · JUDGE_MODEL→OPUS 4.8 on operator labels (9–2; model-eval PLAYBOOK codified in `model_selection_baseline.md`) · #256 W1 facade + [5j/7] gate · 3 prod bugs found+fixed ([Fading]-echo drop, nightly OOM 512M→1536M, state_alerts dead since 3/20) · v1.1/v2.0 roadmap drafted. Full record: CHANGELOG 2026-06-10.
+
+### 2026-06-11 (Thu) — 🏁 NORTH STAR CLOSED (a day early) · revenue-over-EPS rubric v2 · selection replay live
+
+- **#240 CLOSED** on morning verifies (3 Opus alerts, exact alert↔decision↔authority reconcile, 0 fail-opens) → #247/#252/#263 completed; ADR 0011 IMPLEMENTED-LIVE; roster row = the v1.1 program; CHANGELOG 6/11 has the record; never reopened.
+- **#269 rubric v2** (operator-signed, Pradeep): growth names = REVENUE growth is the signal, EPS-beat-with-revenue-miss ≠ HIGH; EPS only in SUSTAINABLE turnarounds (CBRL = the one-time-anomaly trap, in the rubric). Shipped to judge rubric + fallback grader same commit. **Prompt-era VERSIONING**: `RUBRIC_VERSION`+hash on every decision row + `rubric_version` column (v1=6/08, v2=6/11).
+- **#268 selection replay**: Phase A (215 candidates) — judge demotes avoided −0.79R/trade, promotes weak (watch live), BOTH systems ≈0R on current entry geometry = the W2 thesis in data. Phase B (12mo) overnight, v2-stamped. **Pre-close review caught a BLOCKER**: replay rows in 13 unfiltered mi_ep_alerts readers incl. the LIVE EP cooldown → `db.LIVE_SOURCE_SQL` sweep (`27e3ca5`), **deploy before Fri 7:00 ET** + mi_signal_outcomes purge owed (#268).
+- **MNTS case study** (operator chart walkthrough) → #270 composed delayed-EP detector (flag-INVALIDATION-on-undercut irony), #271 Pradeep 20%-in-5d breadth extremes, pivots+stock-character SSoT (`docs/methodology/`), /spotted MNTS injected (snapshot source-filter bug fixed). Fragmentation→composition = the SiP thesis on record.
 
 ### Older entries graduated to CHANGELOG.md
 
