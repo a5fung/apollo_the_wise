@@ -69,6 +69,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
 from shared.llm_models import GROUNDED_GRADE_MODEL, JUDGE_MODEL
+from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -307,7 +308,6 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
         v = verdict or {}
         outcome = "verdict" if verdict is not None else "null"
         direction = v.get("direction_vs_floor") or "none"
-        from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
         payload = {
             "authority": r.get("grade_engine_authority", "floor"),
             "judge_outcome": outcome,
@@ -2345,7 +2345,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             get_holistic_judge_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
-            RUBRIC_VERSION, assemble_judge_inputs, grade_holistic,
+            assemble_judge_inputs, grade_holistic,
         )
         from agents.market_intelligence.catalyst_materiality import (
             extract_deal_value, rule_materiality,

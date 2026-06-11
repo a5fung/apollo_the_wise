@@ -195,7 +195,7 @@ async def stage_judge(args) -> None:
     import anthropic
     import os
     from agents.market_intelligence.db import get_pool
-    from agents.market_intelligence.ep_grade_judge import grade_holistic
+    from agents.market_intelligence.ep_grade_judge import RUBRIC_VERSION, grade_holistic
     from scripts._judge_replay_common import (
         build_judge_payload, fetch_narratives_for, fetch_profile)
 
@@ -212,35 +212,44 @@ async def stage_judge(args) -> None:
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     sem = asyncio.Semaphore(3)
     done = 0
+    # Run-scoped memos: tickers repeat across a 12-month window and narratives
+    # are keyed by date only — without these, gather() stampedes yfinance/DB
+    # with ~90% duplicate fetches at start-of-run (429 risk degrades profiles).
+    _profile_memo: dict = {}
+    _narrative_memo: dict = {}
 
     async def _one(r) -> None:
         nonlocal done
         try:
-            mc, sector, _company = await fetch_profile(r["ticker"])
-            narratives = await fetch_narratives_for(r["alert_date"])
-            pit_row = dict(r)
-            pit_row["score_tier"] = r["baseline_floor_tier"]  # floor drives payload tier
-            payload, _rm = build_judge_payload(
-                pit_row, r["grounded_text"], mc, sector, active_narratives=narratives)
+            # Whole body inside the semaphore (same pattern as stage_grade):
+            # the prefetches must not fan out unbounded across all N rows.
             async with sem:
+                if r["ticker"] not in _profile_memo:
+                    _profile_memo[r["ticker"]] = await fetch_profile(r["ticker"])
+                mc, sector, _company = _profile_memo[r["ticker"]]
+                if r["alert_date"] not in _narrative_memo:
+                    _narrative_memo[r["alert_date"]] = await fetch_narratives_for(r["alert_date"])
+                narratives = _narrative_memo[r["alert_date"]]
+                pit_row = dict(r)
+                pit_row["score_tier"] = r["baseline_floor_tier"]  # floor drives payload tier
+                payload, _rm = build_judge_payload(
+                    pit_row, r["grounded_text"], mc, sector, active_narratives=narratives)
                 v = await grade_holistic(client, payload, timeout=30)
             if v is None:
                 print(f"  JUDGE NULL {r['ticker']} {r['alert_date']} (fail-open)")
                 return
             # Persist verdict columns ONLY — never score_tier/authority (the
-            # floor must stay readable beside the verdict). UPDATE BY ID, not
-            # ticker+date: on calibration windows that overlap live history,
-            # the live writer's (ticker, alert_date) key would clobber the
-            # judge columns on the REAL row's twin.
-            from agents.market_intelligence.ep_grade_judge import RUBRIC_VERSION
+            # floor must stay readable beside the verdict). UPDATE BY ID
+            # (PK — cannot resolve to a live twin, unlike the live writer's
+            # ticker+date key).
             async with pool.acquire() as conn:
-                await conn.execute("""
+                await conn.execute(f"""
                     UPDATE mi_ep_alerts SET
                         judge_tier = $2, judge_direction = $3,
                         judge_rationale = $4, judge_materiality_tier = $5,
                         fire_axes = $6, rubric_version = $7
-                    WHERE id = $1 AND source = '%s'
-                """ % _SOURCE, r["id"], v.get("tier"), v.get("direction_vs_floor"),
+                    WHERE id = $1 AND source = '{_SOURCE}'
+                """, r["id"], v.get("tier"), v.get("direction_vs_floor"),
                     (v.get("rationale") or "")[:1000], v.get("materiality_tier"),
                     v.get("fire_axes"), RUBRIC_VERSION)
             done += 1
@@ -267,7 +276,7 @@ async def stage_simulate(args) -> None:
     # Custom per-trade CSV with computed R: risk basis = Σ shares×(entry−stop)
     # over actual entries (re-entries included). Consistent across cohorts —
     # the comparison is cohort-vs-cohort, not absolute-R-precise.
-    out = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}.csv"
+    out = args.csv
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["ticker", "alert_date", "skipped", "skip_reason",
@@ -287,7 +296,7 @@ async def stage_simulate(args) -> None:
 async def stage_report(args) -> None:
     """Join verdicts × simulated outcomes (CSV from --simulate) → cohort table."""
     from agents.market_intelligence.db import get_pool
-    src = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}.csv"
+    src = args.csv
     trades: dict[tuple, dict] = {}
     with io.open(src, encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -342,6 +351,8 @@ def main() -> None:
     ap.add_argument("--csv", default=None)
     ap.add_argument("--yes", action="store_true")
     args = ap.parse_args()
+    # Resolve the CSV path ONCE — simulate writes it, report reads it.
+    args.csv = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}.csv"
 
     stages = [(args.scan, stage_scan), (args.grade, stage_grade),
               (args.judge, stage_judge), (args.simulate, stage_simulate),
