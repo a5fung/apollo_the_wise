@@ -219,7 +219,22 @@ async def _backfill_regimes(from_date: date, to_date: date) -> int:
     trading_dates = _get_trading_dates(from_date, to_date)
     regimes_upserted = 0
 
+    # NEVER overwrite an existing (live) regime row (#268, 2026-06-11): the
+    # backfill has no breadth data and a coarser regime read — running the
+    # scan over a window that overlaps live history would clobber the real
+    # rows that briefings//status/L2 baselines read. Backfill MISSING dates only.
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        _existing = await conn.fetch(
+            "SELECT regime_date FROM mi_market_regime "
+            "WHERE regime_date BETWEEN $1 AND $2", from_date, to_date)
+    existing_dates = {r["regime_date"] for r in _existing}
+    if existing_dates:
+        logger.info(f"Regime backfill: skipping {len(existing_dates)} dates with live rows")
+
     for td in trading_dates:
+        if td in existing_dates:
+            continue
         # Get SPY closes up to this date for MA calculations
         spy_closes_to_date = [spy_closes[d] for d in all_spy_dates if d <= td]
         qqq_closes_to_date = [qqq_closes[d] for d in sorted(qqq_closes.keys()) if d <= td]
