@@ -1,10 +1,18 @@
 # ADR 0011 — EP Holistic Grade Judge (the North Star grade decision)
 
-**Status:** ACCEPTED — rubric SIGNED OFF by operator 2026-06-08 (§Rubric below is the
-operative weighting). Build proceeds; the W2 live-paper flip ships per the go-live gate.
-**Date:** 2026-06-08. **Supersedes the conviction-floor grade authority** for the EP
-(MAGNA53) paper path; collapses the advisory stack (#189/#190/#200/#201/#203) into one judge.
-**Program:** task #240; plan `~/.claude/plans/optimized-tinkering-harp.md`.
+**Status:** IMPLEMENTED-LIVE — program CLOSED 2026-06-11, one day ahead of the locked
+Fri 6/12 date. Flipped load-bearing 2026-06-10 (operator-signed, first call CBRL
+MODERATE→none); advisory stack retired same day (#249 — judge `fire_axes` is the one fire
+signal; ADR 0010 superseded); model-checked via operator-labeled closed-gap eval →
+`JUDGE_MODEL = OPUS 4.8` (Opus 9–Sonnet 2; `docs/analysis/judge_model_eval_closed_gap_2026-06-10.md`);
+verified-live 2026-06-11 (3 Opus-judged alerts, exact alert↔decision↔authority reconcile,
+0 fail-opens). Every DEFINITION_OF_DONE clause met. **North Star is closed and is not
+reopened** — successor program: `docs/roadmap/apollo-v1.1-v2.0.md`.
+**Original acceptance:** rubric SIGNED OFF by operator 2026-06-08 (§Rubric below is the
+operative weighting). **Date:** 2026-06-08. **Supersedes the conviction-floor grade
+authority** for the EP (MAGNA53) paper path; collapses the advisory stack
+(#189/#190/#200/#201/#203) into one judge.
+**Program:** task #240 (closed); plan `~/.claude/plans/optimized-tinkering-harp.md`.
 **Driver memory:** `feedback_build_toward_vision_not_piecemeal`.
 
 ---
