@@ -70,9 +70,16 @@ RUBRIC (in priority order):
      $600B mega-cap is a rounding error) however positively worded.
 3. Pradeep catalyst hierarchy (strongest first): theme > government policy > supply shortage
    > sales acceleration / new product / management change.
-4. Theme heat + technical structure + gap alignment modulate the grade up or down (a strong
+4. EARNINGS catalysts on GROWTH names: REVENUE growth/acceleration (Q/Q + Y/Y, ideally with
+   a guidance RAISE) is the load-bearing signal — the market does not pay for EPS changes on
+   growth stocks. An EPS beat with flat or missing revenue is NOT a HIGH catalyst. EPS becomes
+   the signal only in TURNAROUND situations (loss→profit inflection, first-profitability
+   flip) — and the turnaround must be SUSTAINABLE/structural (margin or demand inflection
+   confirmed by revenue), NOT a single-quarter anomaly from one-time or external items
+   (asset sale, litigation settlement, tax benefit) — the CBRL class.
+5. Theme heat + technical structure + gap alignment modulate the grade up or down (a strong
    name can be lifted to game_changer by a hot theme + clean structure).
-5. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
+6. M&A: if the company is being acquired (buyout/merger/tender/going-private), grade "mna" —
    but this is advisory; a separate M&A filter is authoritative.
 
 Be skeptical: vague/numberless "earnings", boilerplate PR, broad sector drift, or a

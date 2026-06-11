@@ -87,6 +87,14 @@ real/material catalyst becomes **load-bearing**, not decorative.
    **DEMOTES** a strong/game_changer (the big gap on a rounding-error catalyst).
 3. **Pradeep catalyst hierarchy** weights the catalyst axis: theme #1 > govt policy #2 >
    shortage #3 > sales-accel / new product / management #4 (`user_pradeep_catalyst_hierarchy`).
+3b. **Revenue over EPS on growth names** (AMENDMENT, operator-signed 2026-06-11 — Pradeep
+   source statement + the operator's own ANF eval label): revenue growth/acceleration
+   (Q/Q + Y/Y, guidance raise) is the load-bearing earnings signal; an EPS beat with flat or
+   missing revenue is NOT a HIGH catalyst. EPS matters only in TURNAROUNDS (loss→profit
+   inflection) and the turnaround must be SUSTAINABLE/structural — never a single-quarter
+   anomaly from one-time/external items (the CBRL litigation-settlement class, the judge's
+   first live demote). Memory: `user_pradeep_revenue_over_eps`; task #269; shipped to both
+   the judge rubric AND the fallback grader prompt in the same commit.
 4. **Theme heat + technical structure + gap alignment modulate up or down** (meta-rubric:
    a strong-on-fundamentals name can be boosted to game_changer by theme+technical context).
 5. **mna:** advisory only — the **M&A filter stays the authoritative M&A gate**; the judge's

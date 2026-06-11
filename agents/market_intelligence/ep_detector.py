@@ -471,7 +471,11 @@ Recent news (may include earnings announcements, guidance, contracts, upgrades):
 
 IMPORTANT RULES:
 1. Look for: earnings releases, guidance raises, FDA decisions, major contracts, analyst upgrades.
-2. An earnings beat with guidance raise on a neglected stock = game_changer or strong.
+2. On GROWTH names, REVENUE growth/acceleration with a guidance raise = game_changer or strong.
+   The market does not pay for EPS changes on growth stocks — an EPS beat with flat or missing
+   REVENUE is "routine". EPS matters only in TURNAROUNDS (loss→profit inflection), and the
+   turnaround must be SUSTAINABLE/structural — a single-quarter EPS anomaly from one-time items
+   (asset sale, litigation settlement, tax benefit) is "routine".
 3. If the catalyst is a MERGER, ACQUISITION, BUYOUT, TAKEOVER, TENDER OFFER, GOING-PRIVATE, or any
    deal where the company is being acquired — classify as "mna". This is a hard skip: price is capped
    at deal value, there is no momentum trade. Keywords: "definitive agreement", "to be acquired",
