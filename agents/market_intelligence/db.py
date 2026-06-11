@@ -2240,10 +2240,16 @@ async def snapshot_system_tier(ticker: str, event_date: "date") -> str | None:
     pool = await get_pool()
     async with pool.acquire() as conn:
         # judge_tier is post-W1; COALESCE tolerates its absence on old rows.
+        # LIVE rows only (2026-06-11): replay/backtest rows (source=
+        # 'historical_scan', #268) carry synthetic tiers — without this filter
+        # an injected ground-truth case would snapshot the REPLAY verdict and
+        # mask a real live coverage miss (found on MNTS 5/26: live filtered it,
+        # replay row said judge=none — the snapshot must say NULL/uncaught).
         row = await conn.fetchrow("""
             SELECT COALESCE(judge_tier, score_tier) AS tier
             FROM mi_ep_alerts
             WHERE ticker = $1 AND alert_date = $2
+              AND COALESCE(source, 'live') = 'live'
             ORDER BY detected_at DESC NULLS LAST
             LIMIT 1
         """, ticker, event_date)
