@@ -54,7 +54,7 @@ from agents.market_intelligence.collector import (
     get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, LIVE_SOURCE_SQL
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -1083,14 +1083,20 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     already_today: set[str] = set()
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch("""
+            # LIVE rows only (#268 review, 2026-06-11): replay batches insert
+            # source='historical_scan' rows across the cooldown window —
+            # unfiltered, they SUPPRESS real EP alerts (the one trade-path
+            # contamination the replay could cause).
+            rows = await conn.fetch(f"""
                 SELECT DISTINCT ticker FROM mi_ep_alerts
                 WHERE ticker = ANY($1) AND alert_date >= $2 AND alert_date < $3
+                  AND {LIVE_SOURCE_SQL}
             """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
             cooldown_tickers = {r["ticker"] for r in rows}
-            rows_today = await conn.fetch("""
+            rows_today = await conn.fetch(f"""
                 SELECT DISTINCT ticker FROM mi_ep_alerts
                 WHERE ticker = ANY($1) AND alert_date = $2
+                  AND {LIVE_SOURCE_SQL}
             """, candidate_tickers, today)
             already_today = {r["ticker"] for r in rows_today}
     except Exception as e:
@@ -1101,9 +1107,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # above (on any failure the dict stays empty -> the shadow simply no-ops).
     try:
         async with pool.acquire() as conn:
-            _date_rows = await conn.fetch("""
+            _date_rows = await conn.fetch(f"""
                 SELECT ticker, MAX(alert_date) AS last_alert FROM mi_ep_alerts
                 WHERE ticker = ANY($1) AND alert_date >= $2 AND alert_date < $3
+                  AND {LIVE_SOURCE_SQL}
                 GROUP BY ticker
             """, candidate_tickers, today - timedelta(days=EP_COOLDOWN_DAYS), today)
             cooldown_last_alert = {r["ticker"]: r["last_alert"] for r in _date_rows}

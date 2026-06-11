@@ -2146,9 +2146,17 @@ async def get_latest_ep_alert_judge(ticker: str) -> "dict | None":
                    judge_tier, judge_direction, judge_materiality_tier, judge_rationale
             FROM mi_ep_alerts
             WHERE ticker = $1 AND judge_tier IS NOT NULL
+              AND COALESCE(source, 'live') = 'live'  -- #268: never present a replay verdict as the judge's last word
             ORDER BY alert_date DESC LIMIT 1
         """, ticker)
 
+
+# LIVE-rows-only predicate for mi_ep_alerts (#268, 2026-06-11). Replay/backtest
+# rows (source='historical_scan') share the table across a 12-month span with
+# synthetic HIGH tiers — EVERY live read (cooldowns, KPIs, outcomes, history)
+# must carry this filter or replay batches contaminate it. The 6/11 review
+# found the live EP cooldown reading replay rows = real alerts suppressed.
+LIVE_SOURCE_SQL = "COALESCE(source, 'live') = 'live'"
 
 # Two-era "unknown catalyst" predicates over mi_ep_alerts (#211/#249) — the
 # SINGLE composition consumed by /unknownrate (agent.py) and the weekly
@@ -3831,6 +3839,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
                    catalyst_quality, catalyst
             FROM mi_ep_alerts
             WHERE ticker = $1
+              AND COALESCE(source, 'live') = 'live'
               AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
             ORDER BY alert_date DESC LIMIT 50
         """, t, days),
@@ -5027,6 +5036,7 @@ async def get_ep_history(days: int = 14) -> list[dict[str, Any]]:
                 ORDER BY score_date DESC LIMIT 1
             ) s ON TRUE
             WHERE a.alert_date >= CURRENT_DATE - $1::int
+              AND COALESCE(a.source, 'live') = 'live'
             ORDER BY a.alert_date DESC, a.ep_score DESC
             """,
             days,
@@ -5264,6 +5274,7 @@ async def latest_market_data_date(as_of: date) -> date | None:
             SELECT MAX(d) AS d FROM (
                 SELECT MAX(alert_date) AS d FROM mi_ep_alerts
                   WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '14 days'
+                    AND COALESCE(source, 'live') = 'live'
                 UNION ALL
                 SELECT MAX(alert_date) FROM mi_9m_ep_alerts
                   WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '14 days'
@@ -5291,6 +5302,7 @@ async def get_today_ep_alerts(d: "str | date") -> list[dict[str, Any]]:
                 LIMIT 1
             ) s ON TRUE
             WHERE a.alert_date = $1
+              AND COALESCE(a.source, 'live') = 'live'
             ORDER BY a.ticker, a.ep_score DESC
             """,
             _to_date(d),
@@ -7287,7 +7299,8 @@ async def get_ep_outcomes(
     pool = await get_pool()
     async with pool.acquire() as conn:
         params: list[Any] = [days_back]
-        filters = ["a.alert_date >= CURRENT_DATE - $1::int"]
+        filters = ["a.alert_date >= CURRENT_DATE - $1::int",
+                   "COALESCE(a.source, 'live') = 'live'"]  # #268: replay rows out of outcome stats
         if not include_unknown:
             filters.append("a.catalyst_quality != 'unknown'")
         if tier:

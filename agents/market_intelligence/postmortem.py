@@ -91,6 +91,7 @@ async def build_postmortem_context(
                    vol_percentile
             FROM mi_ep_alerts
             WHERE ticker = $1 AND alert_date = $2
+              AND COALESCE(source, 'live') = 'live'  -- #268: a replay twin (fixed ep_score=80) must not shadow the live alert
             ORDER BY ep_score DESC
             LIMIT 1
         """, ticker, ad)

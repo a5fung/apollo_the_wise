@@ -208,11 +208,15 @@ async def _compute_ep_outcomes(today: date) -> int:
         ]:
             alert_date_approx = today - timedelta(days=offset_days)
 
-            # Find EP alerts around that date
-            alerts = await conn.fetch("""
+            # Find EP alerts around that date — LIVE rows only (#268: replay
+            # rows would get outcomes UPSERTED into mi_signal_outcomes, which
+            # has no source column → permanent contamination).
+            from agents.market_intelligence.db import LIVE_SOURCE_SQL
+            alerts = await conn.fetch(f"""
                 SELECT ticker, alert_date, ep_score, catalyst_quality
                 FROM mi_ep_alerts
                 WHERE alert_date <= $1 AND alert_date >= $1 - INTERVAL '3 days'
+                  AND {LIVE_SOURCE_SQL}
             """, alert_date_approx)
             if not alerts:
                 continue

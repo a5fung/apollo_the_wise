@@ -269,6 +269,7 @@ async def refresh_missed_outcomes(
             FROM mi_ep_alerts a
             WHERE a.alert_date >= $1 AND a.alert_date <= $2
               AND a.score_tier = 'MODERATE'
+              AND COALESCE(a.source, 'live') = 'live'  -- #268: replay rows are not missed opportunities
               AND NOT EXISTS (
                   SELECT 1 FROM traded t
                   WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date
@@ -297,6 +298,7 @@ async def refresh_missed_outcomes(
             ) sk ON TRUE
             WHERE a.alert_date >= $1 AND a.alert_date <= $2
               AND a.score_tier = 'HIGH'
+              AND COALESCE(a.source, 'live') = 'live'  -- #268: replay rows are not missed opportunities
               AND NOT EXISTS (
                   SELECT 1 FROM traded t
                   WHERE t.ticker = a.ticker AND t.alert_date = a.alert_date

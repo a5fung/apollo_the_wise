@@ -98,7 +98,7 @@ async def run_source_gap_finder(days: int = 7) -> dict:
     different cohorts). Returns {n_cohort, n_found, findings}."""
     from agents.market_intelligence.collector import search_news_perplexity
     from agents.market_intelligence.db import (
-        EP_UNKNOWN_ANY_SQL, get_pool, log_audit_event)
+        EP_UNKNOWN_ANY_SQL, LIVE_SOURCE_SQL, get_pool, log_audit_event)
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -122,6 +122,7 @@ async def run_source_gap_finder(days: int = 7) -> dict:
             SELECT ticker, alert_date, gap_pct
             FROM mi_ep_alerts
             WHERE alert_date >= current_date - ($1)::int
+              AND {LIVE_SOURCE_SQL}
               AND {EP_UNKNOWN_ANY_SQL}
             ORDER BY alert_date DESC
         """, days)

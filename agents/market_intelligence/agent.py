@@ -2294,6 +2294,7 @@ class MarketIntelligenceAgent(BaseAgent):
             EP_UNKNOWN_ANY_SQL as _ANY_UNK,
             EP_UNKNOWN_MISS_SQL as _MISS,
             EP_UNKNOWN_NONFIRE_SQL as _NONFIRE,
+            LIVE_SOURCE_SQL,
             get_pool,
         )
 
@@ -2311,6 +2312,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     COUNT(*) FILTER (WHERE {_ANY_UNK}) AS any_unknown
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
+                  AND {LIVE_SOURCE_SQL}
             """, days)
             recent = await conn.fetch(f"""
                 SELECT ticker, alert_date, catalyst_quality, catalyst_type,
@@ -2320,6 +2322,7 @@ class MarketIntelligenceAgent(BaseAgent):
                        END AS fire_sig
                 FROM mi_ep_alerts
                 WHERE alert_date >= current_date - ($1)::int
+                  AND {LIVE_SOURCE_SQL}
                   AND ({_ANY_UNK})
                 ORDER BY alert_date DESC LIMIT 8
             """, days)
@@ -2623,7 +2626,8 @@ class MarketIntelligenceAgent(BaseAgent):
             pool = await get_pool()
             async with pool.acquire() as conn:
                 r = await conn.fetchrow(
-                    "SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1", ticker)
+                    "SELECT MAX(alert_date) AS d FROM mi_ep_alerts WHERE ticker = $1 "
+                    "AND COALESCE(source, 'live') = 'live'", ticker)
             event_date = (r and r["d"]) or et_today()
 
         system_tier = await snapshot_system_tier(ticker, event_date)
