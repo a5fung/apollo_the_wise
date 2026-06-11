@@ -308,7 +308,13 @@ class TestPurgeOldData:
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
-        today = date.today()
+        # MUST be the ET date, matching purge_old_data's clock — date.today()
+        # here is the runner's UTC date, which is TOMORROW between 8pm and
+        # midnight ET: the CI flake that emailed the operator every evening
+        # push (failed 00:00–04:00 UTC, healed after). tz-ok rationale: tests/
+        # are outside the [5h/7] scope, but the same naive-date bug class applies.
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
         with patch.object(db_module, "get_pool", AsyncMock(return_value=mock_pool)):
             asyncio.run(db_module.purge_old_data())
 

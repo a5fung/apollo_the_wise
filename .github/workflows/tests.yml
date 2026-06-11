@@ -16,8 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # v5/v6 = the Node 24 builds (GitHub deprecates Node 20 runners
+      # 2026-06-16; v4/v5 emitted a deprecation warning on every run).
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
           cache: pip
