@@ -123,8 +123,13 @@ async def stage_grade(args) -> None:
         return
     print(f"grading {len(rows)} candidates …")
 
+    # Concurrency 3 (Phase A ran sequential at ~21s/row → 12h projected for the
+    # 12-month window; sem-3 ≈ 4h). SEC fair-use comfortably holds at 3.
+    sem = asyncio.Semaphore(3)
     done = 0
-    for r in rows:
+
+    async def _grade_one(r) -> None:
+        nonlocal done
         try:
             profile = await get_fmp_profile(r["ticker"]) or {}
             company = profile.get("companyName") or r["ticker"]
@@ -177,6 +182,12 @@ async def stage_grade(args) -> None:
                 print(f"  graded {done}/{len(rows)}")
         except Exception as e:
             print(f"  GRADE FAIL {r['ticker']} {r['alert_date']}: {type(e).__name__}: {e}")
+
+    async def _bounded(r) -> None:
+        async with sem:
+            await _grade_one(r)
+
+    await asyncio.gather(*[_bounded(r) for r in rows])
     print(f"grade stage: {done}/{len(rows)} done")
 
 
