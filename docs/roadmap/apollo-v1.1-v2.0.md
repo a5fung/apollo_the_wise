@@ -180,9 +180,14 @@ exit / add-not-allowed). Same architecture as the grade judge: fail-open to the
 mechanical rules, decision trace, operator-visible rationale, shadow→load-bearing
 promotion gates.
 
-- **Structure-based stops**: stops derived from the chart (base low, MA, ATR
-  regime) rather than fixed entry-time geometry; the management judge proposes,
-  mechanics execute.
+- **Structure-based stops via PIVOT identification** (operator principle,
+  2026-06-11): a pivot is ANY reasonable risk-reference point — MAs and lows
+  are just the computable-tier easy cases; congestion/volume-shelf areas and
+  resistance zones are the structural tier (derivable from price-level
+  clustering, and exactly what chart-vision sees). Pivots serve BOTH sides:
+  they locate entries (#270-class reclaims) and they ARE the stops. The
+  management judge proposes against pivots; mechanics execute.
+  Memory: `user_pivot_generalization`.
 - **Conviction sizing matured**: judge-tier sizing (v1.1 shadow) → portfolio-aware
   scaling (drawdown-adaptive risk curve; the dual-account + per-strategy
   multiplier plumbing already exists).
