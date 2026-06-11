@@ -142,6 +142,13 @@ async def main() -> None:
     pool = await get_pool()
     failures: list[tuple[str, str]] = []
     async with pool.acquire() as conn:
+        # Ensure lazily-created columns exist BEFORE preparing statements that
+        # reference them (2026-06-11: rubric_version is added by
+        # _ensure_ep_alert_columns on the first insert after boot, but this
+        # gate runs at deploy time, before any insert — the prepare failed on
+        # a column the code itself creates moments later. Idempotent.)
+        from agents.market_intelligence.db import _ensure_ep_alert_columns
+        await _ensure_ep_alert_columns(conn)
         for label, sql in TRADE_LIFECYCLE_UPDATES:
             try:
                 stmt = await conn.prepare(sql)
