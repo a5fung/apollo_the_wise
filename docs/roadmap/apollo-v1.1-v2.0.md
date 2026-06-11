@@ -1,10 +1,11 @@
 # Apollo Next Phase — v1.1 (fast-follow) & v2.0 (tier-one trader)
 
-**Status: PROPOSAL — operator review.** Drafted 2026-06-10 (the judge-flip day), from
-the operator-requested critique of Apollo as an automated EP system + the founding
-thesis (LLMs replicating the human discretionary factor, riding the capability curve).
-This document is the successor program to North Star: the locked DEFINITION_OF_DONE
-says North Star closes Fri 6/12 and is never reopened — everything after lives HERE.
+**Status: APPROVED — operator aligned 2026-06-11** (amended same day with the adopted
+points from an external Gemini review — see §Amendments). Drafted 2026-06-10 (the
+judge-flip day), from the operator-requested critique of Apollo as an automated EP
+system + the founding thesis (LLMs replicating the human discretionary factor, riding
+the capability curve). This is the successor program to North Star (CLOSED 2026-06-11,
+never reopened — everything after lives HERE). #268 (W1) is unblocked.
 
 How to use this doc: it is the durable map, not the task tracker. Items promote into
 #-tasks when execution starts (filing rule unchanged); this doc gets a monthly review
@@ -235,6 +236,40 @@ regime's book.
   "tighter universe," never "weaker model."
 
 ---
+
+## Amendments from external review (Gemini, adopted 2026-06-11)
+
+1. **W2 skip-wide-open: ATR-relative threshold as the starting hypothesis.** Evaluate
+   the opening candle's range against trailing ATR20; first 1m/5m candle spanning more
+   than ~**0.25–0.30 × ATR20** ⇒ the bracket geometry is mathematically broken (stop
+   distance caps R-multiples at normal sizing) → route to a first-pullback entry
+   matrix instead of skipping outright. The exact threshold is REPLAY-DECIDED, not
+   adopted on authority — but it's the right *shape* (relative to the name's own
+   volatility, not absolute %). Note: the minute data to test this ALREADY EXISTS
+   (`mi_intraday_bars`, 120-day retention — the KLAR/DELL/NVTS shakeout cohort is
+   in there); W2 needs analysis scripts, not new tracking structures.
+2. **W4 chart-vision payload discipline.** Text payload stays the PRIMARY engine;
+   the image is strictly a structural filter (overhead resistance, parabolic
+   extension). Render simple (price + volume + the 3 MAs, small canvas, no
+   decorative indicators) to keep image tokens ~1k. Persist the chart-axis read as
+   its own column (`structural_chart_verdict`) so the with-vs-without eval and
+   post-6/22 segmentation have clean provenance. Latency note: the hazard is real
+   but bounded — the judge already runs post-alert in a budgeted concurrent gather
+   (25s/110s), so vision rides the same rails; measure judge latency in
+   `ep_grade_decision` after the flip, same as the Opus rollout.
+3. **W5 precedent retrieval: temporal-distribution constraint.** K retrieved
+   precedents must span distinct multi-week periods — naive attribute matching
+   (catalyst-type+sector+gap) would retrieve 3 cases from one hot sector-week and
+   inject recency/regime bias, the opposite of "experience." Enforce in the
+   retrieval query from v1, not as a later fix.
+4. **P3 management judge: bounded-enum contract REAFFIRMED** (independent
+   convergence with the original design): the LLM outputs a strict enum
+   (HOLD / PARTIAL_TAKE / TRAIL_TIGHTEN / FORCE_EXIT), mechanical layer maps enum →
+   deterministic execution. Never free-form order generation; the seconds-scale
+   boundary stays un-crept.
+5. *Not adopted / already done:* the proposed mi_ep_alerts schema additions already
+   exist (shipped via `_ensure_ep_alert_columns`, #247) except
+   `structural_chart_verdict`, which lands with #267 (point 2).
 
 ## What is explicitly NOT in this program
 
