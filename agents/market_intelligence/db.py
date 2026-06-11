@@ -2005,6 +2005,7 @@ async def _ensure_ep_alert_columns(conn) -> None:
             "judge_rationale TEXT",
             "judge_materiality_tier TEXT",
             "grade_engine_authority TEXT",
+            "rubric_version TEXT",
         )))
     _EP_ALERT_COLUMNS_ENSURED = True
 
@@ -2058,7 +2059,8 @@ EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
         judge_materiality_tier = COALESCE($6, judge_materiality_tier),
         fire_axes = COALESCE($7, fire_axes),
         score_tier = COALESCE($8, score_tier),
-        grade_engine_authority = COALESCE($9, grade_engine_authority)
+        grade_engine_authority = COALESCE($9, grade_engine_authority),
+        rubric_version = COALESCE($10, rubric_version)
     WHERE ticker = $1 AND alert_date = $2
 """
 
@@ -2070,6 +2072,7 @@ async def update_ep_alert_judge_result(
     fire_axes: "list[str] | None" = None,
     score_tier: str | None = None,
     grade_engine_authority: str | None = None,
+    rubric_version: str | None = None,
 ) -> None:
     """ONE atomic post-scan patch with the Holistic Grade Judge result (#240 /
     ADR 0011; merged from update_ep_alert_judge_shadow + the separate
@@ -2088,7 +2091,8 @@ async def update_ep_alert_judge_result(
         await conn.execute(
             EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
             ticker, alert_date, judge_tier, judge_direction, judge_rationale,
-            judge_materiality_tier, fire_axes, score_tier, grade_engine_authority)
+            judge_materiality_tier, fire_axes, score_tier, grade_engine_authority,
+            rubric_version)
 
 
 _JUDGE_TOGGLE = ("holistic_judge_enabled", "paper")  # (safeguard, account_mode) PK

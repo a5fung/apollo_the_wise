@@ -232,16 +232,17 @@ async def stage_judge(args) -> None:
             # ticker+date: on calibration windows that overlap live history,
             # the live writer's (ticker, alert_date) key would clobber the
             # judge columns on the REAL row's twin.
+            from agents.market_intelligence.ep_grade_judge import RUBRIC_VERSION
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_ep_alerts SET
                         judge_tier = $2, judge_direction = $3,
                         judge_rationale = $4, judge_materiality_tier = $5,
-                        fire_axes = $6
+                        fire_axes = $6, rubric_version = $7
                     WHERE id = $1 AND source = '%s'
                 """ % _SOURCE, r["id"], v.get("tier"), v.get("direction_vs_floor"),
                     (v.get("rationale") or "")[:1000], v.get("materiality_tier"),
-                    v.get("fire_axes"))
+                    v.get("fire_axes"), RUBRIC_VERSION)
             done += 1
             if done % 25 == 0:
                 print(f"  judged {done}")

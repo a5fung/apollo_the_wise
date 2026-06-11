@@ -17,6 +17,7 @@ the floor and a real EP is never killed by a judge hiccup.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 
 from agents.market_intelligence.catalyst_materiality import format_market_cap
@@ -56,6 +57,15 @@ _JUDGE_TOOL = {
     },
 }
 
+# Rubric VERSIONING (operator directive 2026-06-11): every signed rubric change
+# bumps the human label; the hash is computed FROM the text so any edit — signed
+# or accidental — changes the recorded version. Both are stamped on every
+# ep_grade_decision payload + the alert row, so evals/replays can segment by
+# prompt era instead of silently mixing them (Phase A of #268 ran v1; Phase B
+# runs v2 — distinguishable forever).
+# v1 = ADR 0011 as signed 2026-06-08. v2 = #269 revenue-over-EPS amendment.
+RUBRIC_VERSION = "v2-2026-06-11-revenue-over-eps"
+
 _RUBRIC = """You are the EP (Episodic Pivot) grade judge for a momentum trading system
 (Qullamaggie / Pradeep Bonde methodology). You decide the grade HOLISTICALLY — you may move
 it UP or DOWN versus the raw gap magnitude on any axis. Output via the grade_ep tool.
@@ -85,6 +95,9 @@ RUBRIC (in priority order):
 Be skeptical: vague/numberless "earnings", boilerplate PR, broad sector drift, or a
 short-squeeze with no concrete company event = routine. State the load-bearing reason in the
 rationale (<= 3 sentences). direction_vs_floor compares your tier to the floor tier given."""
+
+# Auto-derived from the text — changes whenever ANY character of the rubric does.
+RUBRIC_HASH = hashlib.sha1(_RUBRIC.encode("utf-8")).hexdigest()[:8]
 
 
 def assemble_judge_inputs(

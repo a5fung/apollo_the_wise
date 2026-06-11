@@ -68,9 +68,15 @@ from agents.market_intelligence.broker.skip_reasons import (
 )
 from agents.market_intelligence.ma_filter import is_likely_ma
 from agents.market_intelligence.earnings_calendar import is_earnings_day, is_revenue_stage
-from shared.llm_models import GROUNDED_GRADE_MODEL
+from shared.llm_models import GROUNDED_GRADE_MODEL, JUDGE_MODEL
 
 logger = logging.getLogger(__name__)
+
+# Catalyst-grade prompt era (operator directive 2026-06-11 — see
+# ep_grade_judge.RUBRIC_VERSION for the scheme). Bump on every signed change
+# to the _classify_catalyst_claude prompt; stamped on ep_grade_decision rows.
+# v1 = pre-#269. v2 = #269 revenue-over-EPS + sustainable-turnaround.
+CATALYST_GRADE_PROMPT_VERSION = "v2-2026-06-11-revenue-over-eps"
 
 # Hard filters
 # MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0. The 8-10% gap
@@ -301,9 +307,17 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
         v = verdict or {}
         outcome = "verdict" if verdict is not None else "null"
         direction = v.get("direction_vs_floor") or "none"
+        from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
         payload = {
             "authority": r.get("grade_engine_authority", "floor"),
             "judge_outcome": outcome,
+            # Prompt-era versioning (operator directive 2026-06-11): every
+            # decision row records WHICH rubric/grader text produced it, so
+            # evals/replays segment by era instead of silently mixing.
+            "rubric_version": RUBRIC_VERSION,
+            "rubric_hash": RUBRIC_HASH,
+            "grade_prompt_version": CATALYST_GRADE_PROMPT_VERSION,
+            "judge_model": JUDGE_MODEL,
             "floor_tier": floor_tier,
             "floor_catalyst_quality": r.get("catalyst_quality"),
             "judge_grade": v.get("grade"),
@@ -2324,7 +2338,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             get_holistic_judge_enabled,
         )
         from agents.market_intelligence.ep_grade_judge import (
-            assemble_judge_inputs, grade_holistic,
+            RUBRIC_VERSION, assemble_judge_inputs, grade_holistic,
         )
         from agents.market_intelligence.catalyst_materiality import (
             extract_deal_value, rule_materiality,
@@ -2404,6 +2418,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             fire_axes=v.get("fire_axes"),
                             score_tier=new_tier if do_override else None,
                             grade_engine_authority=authority if do_override else None,
+                            rubric_version=RUBRIC_VERSION if verdict is not None else None,
                         )
                     except Exception as _we:
                         # A failed judge write is the one fail-open path the DB
