@@ -38,7 +38,7 @@ def test_row_shows_arrow_tiers_and_materiality():
                                            judge="HIGH", mat="transformative", gap=18.5)],
                                      authority_on=False, date_str="Jun 09")
     assert "▲ `NRIX` MODERATE→HIGH" in msg
-    assert "mat=transformative" in msg
+    assert "materiality=transformative" in msg
     assert "+18.5%" in msg
 
 
@@ -62,20 +62,33 @@ def test_promote_with_tier_held_renders_quality_read():
 def test_null_materiality_and_gap_are_safe():
     msg = _build_judge_delta_message([_row("X", "promote", mat=None, gap=None)],
                                      authority_on=False, date_str="Jun 09")
-    assert "mat=n/a" in msg and "+0.0%" in msg
+    assert "materiality=n/a" in msg and "+0.0%" in msg
 
 
-def test_caps_at_15_with_overflow_note():
+def test_caps_at_12_with_overflow_note():
+    # Cap dropped 15→12 on 2026-06-12 (longer rationales × 12 rows stays under
+    # Telegram's 4096-char message limit on a heavy day).
     rows = [_row(f"T{i:02d}", "promote") for i in range(20)]
     msg = _build_judge_delta_message(rows, authority_on=False, date_str="Jun 09")
-    # 15 rendered ticker lines + overflow note
-    assert "…+5 more" in msg
-    assert sum(1 for ln in msg.splitlines() if ln.startswith("▲ `T")) == 15
+    assert "…+8 more" in msg and "/audit judge" in msg
+    assert sum(1 for ln in msg.splitlines() if ln.startswith("▲ `T")) == 12
 
 
-def test_rationale_truncated_to_140():
-    long = "z" * 300
+def test_rationale_truncates_at_word_boundary_with_ellipsis():
+    # Operator 2026-06-12: the AKTS rationale was hard-sliced mid-word with no
+    # signal it was cut. Now: ≤280 chars, word-boundary cut, explicit ellipsis.
+    long = ("big pharma validation " * 20).strip()  # ~440 chars, has spaces
     msg = _build_judge_delta_message([_row("X", "promote", rationale=long)],
                                      authority_on=False, date_str="Jun 09")
-    rline = [ln for ln in msg.splitlines() if ln.strip().startswith("_z")][0]
-    assert len(rline.strip().strip("_")) == 140
+    rline = [ln for ln in msg.splitlines() if ln.strip().startswith("_big")][0]
+    body = rline.strip().strip("_")
+    assert body.endswith(" …")
+    assert len(body) <= 283
+    # cut lands between words, not inside one
+    assert not body.removesuffix(" …").endswith("validatio")
+
+
+def test_short_rationale_untouched():
+    msg = _build_judge_delta_message([_row("X", "promote", rationale="clean read")],
+                                     authority_on=False, date_str="Jun 09")
+    assert "_clean read_" in msg

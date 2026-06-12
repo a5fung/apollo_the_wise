@@ -2161,20 +2161,26 @@ def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
         subtitle,
     ]
     from agents.market_intelligence.ep_grade_judge import format_tier_transition
-    for r in rows[:15]:
+    # Row cap 12 × ~330 chars stays under Telegram's 4096 even on a heavy day.
+    for r in rows[:12]:
         arrow = "▲" if r["judge_direction"] == "promote" else "▼"
         mat = r["judge_materiality_tier"] or "n/a"
         tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
         parts.append(
             f"{arrow} `{r['ticker']}` {tier_part}  "
-            f"mat={mat}  +{(r['gap_pct'] or 0):.1f}%"
+            f"materiality={mat}  +{(r['gap_pct'] or 0):.1f}%"
         )
         if r["judge_rationale"]:
             # Free-text judge rationale → escape Markdown actives (#148 class) so a
             # stray _/* in the prose doesn't break the legacy-Markdown parse.
-            parts.append(f"   _{_md_escape(r['judge_rationale'][:140])}_")
-    if len(rows) > 15:
-        parts.append(f"…+{len(rows) - 15} more")
+            # Truncate at a WORD boundary with an ellipsis (operator 6/12: a hard
+            # slice cut the AKTS rationale mid-word with no signal it was cut).
+            rationale = r["judge_rationale"]
+            if len(rationale) > 280:
+                rationale = rationale[:280].rsplit(" ", 1)[0] + " …"
+            parts.append(f"   _{_md_escape(rationale)}_")
+    if len(rows) > 12:
+        parts.append(f"…+{len(rows) - 12} more — full list: /audit judge")
     return "\n".join(parts)
 
 
