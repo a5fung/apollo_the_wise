@@ -128,7 +128,7 @@ ORDER BY s.snapshot_date DESC;
 3. Remove the count-based block from `_check_safeguards` (lines 184-210) after 30 days of clean drawdown-active operation. Keep constants in place during the deprecation window for easier rollback.
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
-## Kill / scale criteria — live-money evaluation bands (🟡 DRAFT 2026-06-12, pending operator sign-off — #268b)
+## Kill / scale criteria — live-money evaluation bands (✅ SIGNED by operator 2026-06-12 — #268b)
 
 **Purpose**: pre-committed, evidence-derived bands that decide when live trading is
 killed, reduced, or scaled — agreed BEFORE real money, so a drawdown never sets
@@ -175,9 +175,25 @@ geometry, Lane-2 narratives dark before 2026-06). These bands are an initial
 calibration — re-derived quarterly via the P6 replay-regression job as live
 data accrues, through this change process.
 
+**Standing review (operator condition #1 at sign-off)**: these bands are
+reviewed at every **quarterly rule review** (the operator's standing
+anti-overfit cadence) AND re-derived whenever the P6 replay-regression report
+shows the live distribution diverging from the calibration envelope. A band
+change between reviews requires its own change-log entry here; the bands are
+never silently re-tuned.
+
+**Operator override (operator condition #2 at sign-off)**: the operator retains
+explicit authority to override any band outcome in either direction — trade
+through a REDUCE/KILL trigger, or kill/de-size before a trigger fires. The
+bands bind the SYSTEM's default recommendation and the Sunday-digest
+evaluation, not the operator. Every override is logged (change-log entry here
+with rationale + an `mi_audit_log` row) so the override history is reviewable
+at the quarterly review — the point of pre-commitment is preserved by making
+overrides visible, not impossible.
+
 ## Change log (newest first)
 
-### 2026-06-12 — Kill/scale criteria bands DRAFTED (#268b) — awaiting operator sign-off
+### 2026-06-12 — Kill/scale criteria bands SIGNED (#268b)
 
 **Trigger**: launch runway DoD-1 (`docs/roadmap/launch-2026-06-22.md`) requires
 kill/scale criteria SIGNED into this file before the 6/22 GO/NO-GO. Operator
@@ -195,8 +211,12 @@ SIGNED and the bands become citable for the 6/22 GO/NO-GO evidence pack.
 
 **Reversion-flag**: NEW (first kill/scale policy; no prior decision reversed).
 
-**Status**: DRAFT, awaiting operator sign-off (~15 min review). Not enforced
-anywhere until signed.
+**Status**: **SIGNED by operator 2026-06-12** (morning review, in-IDE read)
+with two conditions, both incorporated into the section above: (1) standing
+review — bands evaluated at every quarterly rule review + re-derived on P6
+replay-regression divergence, never silently re-tuned; (2) explicit operator
+override authority in either direction, always logged (change-log + audit row).
+The bands are now citable for the 6/22 GO/NO-GO evidence pack. Closes #268.
 
 ---
 
