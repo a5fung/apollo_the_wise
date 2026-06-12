@@ -260,5 +260,14 @@ async def grade_holistic(
         tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
         return _normalize_verdict(tool_block.input)
     except Exception as e:  # noqa: BLE001 — fail-open is the contract
+        # #273: credit exhaustion must ALERT (terminal + actionable), never
+        # vanish into the fail-open — 6/11 produced 2,122 silent judge nulls.
+        try:
+            from agents.market_intelligence.llm_health import (
+                alert_credit_exhausted, is_credit_error)
+            if is_credit_error(e):
+                await alert_credit_exhausted("holistic judge", e)
+        except Exception:
+            pass
         logger.warning(f"holistic judge failed/timeout for {payload.get('ticker')}: {e}")
         return None

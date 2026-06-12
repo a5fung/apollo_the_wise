@@ -542,6 +542,15 @@ catalyst, say so explicitly."""
         result = tool_block.input
         return result["quality"], result["analysis"]
     except Exception as e:
+        # #273: a credit-exhaustion failure here silently turns every catalyst
+        # into "routine" — alert it (terminal + actionable) before failing open.
+        try:
+            from agents.market_intelligence.llm_health import (
+                alert_credit_exhausted, is_credit_error)
+            if is_credit_error(e):
+                await alert_credit_exhausted("catalyst grader", e)
+        except Exception:
+            pass
         logger.error(f"Claude catalyst classification failed for {ticker}: {e}")
         return "routine", "Classification failed — treating as routine."
 
