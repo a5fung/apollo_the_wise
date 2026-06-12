@@ -54,11 +54,39 @@ only 3 had OR range ≤ 0.30×ATR — at K=0.30 the filter is effectively a
 "don't trade at all in chop" switch, which the Oct+ numbers say is not
 edge-positive at the trade level.
 
-**What remains open (not refuted, untested):** the hypothesis on the FULL
-year. The strong-month cohort was never tested against the filter. Path to a
-real answer: backfill `mi_daily_closes` OHLC to 2025-05, rerun the sweep —
-then both regimes are covered. Until then: NO change, and the Gemini
-amendment's 0.25–0.30×ATR prior stands unvalidated either way.
+**Full-year honest test (run same evening — operator-approved OHLC backfill
+to 2025-05, 1.24M rows / 111 dates, then full rerun):**
+
+| Cohort (judge-HIGH arm, full ATR coverage) | n | exp/trade | $/trade | total $ |
+|---|---|---|---|---|
+| Baseline (re-run post-backfill) | 386 | +1.00R | +$324 | +$125,194 |
+| K=0.30 kept | 73 | +3.63R | +$1,036 | +$75,614 |
+
+The headline lift LOOKS spectacular but decomposes badly:
+
+- **Median kept trade = −1.00R** (most are full stops); win rate 29%.
+- **Top-5 trades carry 91% of the R** (+241.9R of +265.0R: ZEPP +128.5R,
+  BE +43.1R, PRG +26.7R, MATV +24.4R, METC +19.2R) and **85% of the dollars**.
+  Excluding them: +0.34R/trade — below baseline.
+- Total P&L is 40% LOWER (slot capacity isn't the binding constraint at this
+  trade frequency — 73 trades/yr ≈ 1.4/week never saturates the 5-slot cap,
+  so per-trade concentration buys nothing structurally).
+- The mechanism cuts both ways: ultra-tight ORBs produce monster R-multiples
+  in sim, but live they are the LYG one-cent-ORB class — paper-trigger
+  failures, tick-noise stop-outs the 1-min-bar sim cannot see, and notional
+  caps that shrink dollars-per-R. The sim is most flattering exactly where
+  the filter concentrates.
+- The strategy's character transforms: ~7% of trades carry the year. The
+  signed kill/scale bands (calibrated on the baseline profile: 15-loss
+  streaks, trailing-20 p5 −0.63R) would mis-fire constantly on a
+  median−1R/monster-tail profile.
+
+**FINAL VERDICT: NOT SHIPPABLE.** n=5 outliers over 12 months is undecidable
+evidence for a change of this magnitude. Parked — revisit only inside a
+broader entry-technique redesign (e.g. as a sizing/conviction INPUT rather
+than a hard skip), or with materially more data. The Gemini 0.25–0.30×ATR
+prior is neither confirmed nor refuted; it selects a real structural class
+whose payoff is too tail-concentrated to gate on.
 
 ## Finding 3 — methodology lessons (the real yield of the day)
 
@@ -82,9 +110,13 @@ single pass). Directionally strong (n=300 vs 399, −0.80R/trade delta).
 
 ## Follow-ups
 
-- **OHLC backfill to 2025-05 + sweep rerun** — the full-year test of
-  skip-wide-open (also fixes ATR coverage for any future entry study and
-  makes `validate_orb_entry` honest in replay). Filed under W2.
+- ~~OHLC backfill to 2025-05 + sweep rerun~~ — **DONE same evening**
+  (operator-approved; 1.24M rows / 111 dates). ATR coverage is now full-year
+  — `validate_orb_entry` is honest in replay and Monday's stop study is
+  unblocked.
 - Monday (per runway): stop-geometry study (ORB-low vs ATR-floor vs day-low
-  by gap bucket) — uses the same harness; ATR coverage caveat applies there
-  too → do the backfill FIRST.
+  by gap bucket) — same harness, coverage now clean. Carry the lesson:
+  decompose any winner-cohort for outlier concentration BEFORE proposing.
+- Possible future shape for the wide-open signal: a CONTEXT INPUT (sizing /
+  judge payload / briefing tag), never a hard skip — the class is real, the
+  gate is wrong.
