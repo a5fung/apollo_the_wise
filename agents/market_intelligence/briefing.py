@@ -1665,6 +1665,7 @@ def _format_morning_briefing(
     ep_scan_log: list[dict] | None = None,
     overnight_errors: list[dict] | None = None,
     wick_pending: list[dict] | None = None,
+    tinycap_observed: list[dict] | None = None,
 ) -> str:
     label = regime.get("regime", "Unknown")
     emoji = REGIME_EMOJI.get(label, "⚫")
@@ -1775,6 +1776,20 @@ def _format_morning_briefing(
         if len(wick_pending) > 5:
             wp_lines.append(f"  …{len(wick_pending) - 5} more")
         sections += ["", "\n".join(wp_lines)]
+
+    # Tiny-cap observe lane (operator-approved 2026-06-11, the MNTS $74M case):
+    # movers that passed every gap/RVOL gate but sit under the $500M auto-trade
+    # floor. Eyes-only — the fast-runner class where one pays for ten losers.
+    if tinycap_observed:
+        tc_lines = [f"🔬 *Tiny-cap movers* ({len(tinycap_observed)}) — observe-only, auto-trade excluded"]
+        for t in sorted(tinycap_observed, key=lambda x: -(x.get("gap_pct") or 0))[:6]:
+            gap = float(t.get("gap_pct") or 0)
+            # skip_reason tail carries the cap: "filter:mcap_too_small: $74M < $500M"
+            cap = (t.get("skip_reason") or "").rsplit(":", 1)[-1].strip()
+            tc_lines.append(f"  • *{t.get('ticker')}* +{gap:.0f}%  ({cap})")
+        if len(tinycap_observed) > 6:
+            tc_lines.append(f"  …{len(tinycap_observed) - 6} more")
+        sections += ["", "\n".join(tc_lines)]
 
     sections += [
         "",
@@ -1890,6 +1905,24 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     except Exception as e:
         logger.warning(f"Wick pending fetch failed: {e}")
 
+    # Tiny-cap observe lane (operator-approved 2026-06-11, MNTS case): movers
+    # the $500M floor excluded from auto-trading, surfaced for eyes-only.
+    tinycap_observed: list[dict] = []
+    try:
+        import json as _json
+        from agents.market_intelligence.db import get_pool as _gp
+        _pool = await _gp()
+        async with _pool.acquire() as conn:
+            _tc = await conn.fetch("""
+                SELECT DISTINCT ON ((detail::jsonb)->>'ticker') detail
+                FROM mi_audit_log
+                WHERE event_type = 'ep_tinycap_observed' AND created_at > current_date
+                ORDER BY (detail::jsonb)->>'ticker', created_at DESC
+            """)
+        tinycap_observed = [_json.loads(r["detail"]) for r in _tc]
+    except Exception as e:
+        logger.warning(f"tinycap observe fetch failed: {e}")
+
     text = _format_morning_briefing(
         regime=regime,
         ep_alerts=ep_alerts,
@@ -1903,6 +1936,7 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         ep_scan_log=ep_scan_log,
         overnight_errors=overnight_errors,
         wick_pending=wick_pending,
+        tinycap_observed=tinycap_observed,
     )
 
     success = await send_telegram_message(text, chat_id)

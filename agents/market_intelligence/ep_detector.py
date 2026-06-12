@@ -63,6 +63,7 @@ from agents.market_intelligence.minute_volume import (
     MIN_BASELINE_N_FOR_GATE,
 )
 from agents.market_intelligence.broker.skip_reasons import (
+    FILTER_MCAP_TOO_SMALL,
     FILTER_PM_RVOL_TOO_LOW,
     FILTER_SESSION_RVOL_TOO_LOW,
 )
@@ -72,6 +73,10 @@ from shared.llm_models import GROUNDED_GRADE_MODEL, JUDGE_MODEL
 from agents.market_intelligence.ep_grade_judge import RUBRIC_HASH, RUBRIC_VERSION
 
 logger = logging.getLogger(__name__)
+
+# Observe-lane per-day dedup (tiny-cap movers: one audit row per ticker/day).
+_tinycap_seen_date = None
+_tinycap_seen: set = set()
 
 # Catalyst-grade prompt era (operator directive 2026-06-11 — see
 # ep_grade_judge.RUBRIC_VERSION for the scheme). Bump on every signed change
@@ -1302,6 +1307,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             reason = f"quality filter: {skip_reason}"
             logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
             _log_filtered(c, reason)
+            # OBSERVE LANE (operator-approved 2026-06-11, the MNTS case): a
+            # sub-$500M mover that passed every gap/RVOL gate is the tiny-cap
+            # fast-runner class — auto-trade stays EXCLUDED (this skip stands),
+            # but it becomes VISIBLE: one audit row per ticker per day, read by
+            # the morning briefing. Themes/9M/flag lanes already see these.
+            if skip_reason and skip_reason.startswith(FILTER_MCAP_TOO_SMALL):
+                global _tinycap_seen_date, _tinycap_seen
+                if _tinycap_seen_date != today:
+                    _tinycap_seen = set()
+                    _tinycap_seen_date = today
+                if ticker not in _tinycap_seen:
+                    _tinycap_seen.add(ticker)
+                    await log_audit_event(
+                        "ep_tinycap_observed",
+                        f"{ticker} gap={c.get('gap_pct') or 0:.1f}% — {skip_reason} (observe-only)",
+                        json.dumps({"ticker": ticker, "gap_pct": c.get("gap_pct"),
+                                    "rel_volume": c.get("rel_volume"),
+                                    "price": c.get("price"),
+                                    "skip_reason": skip_reason}, default=str),
+                    )
             continue
 
         # Volume conviction percentile — only valid pre-open (compares cumulative
