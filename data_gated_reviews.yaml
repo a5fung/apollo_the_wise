@@ -6007,6 +6007,25 @@ reviews:
       fills on real $; #182 (paper under-fills vs live) is CONFIRMED; #183 = the
       clean_miss classifier reads IEX/wrong-window (logged max_h=203 vs SIP 207.20).
       #150 downgrade conclusion (no position opened, entry-side) is unchanged.
+    evidence_2026_06_12_lyg: |
+      LYG (9M Day 2, trade #214) — CLEANEST CONFIRMATION YET of the paper-IEX
+      trigger mechanism, investigated same-morning off the auto-alert:
+        - 09:31:12 ET stop-limit buy submitted (stop 5.46 / limit 5.49);
+          order CONFIRMED LIVE (pending_new -> new reconciled 09:32:00) —
+          NOT the RDW stuck-pending_new class.
+        - SIP 09:32 bar H=5.46: the consolidated tape printed EXACTLY the
+          trigger in-window (then never above; faded to 5.42).
+        - IEX in 09:31-10:00: max 5.455 (and NO 09:32 bar at all — zero IEX
+          trades that minute). The trigger price never printed on IEX.
+        - Order sat `new` untouched for 28 min -> 10:00 cleanup cancelled.
+      => Paper engine demonstrably triggers off IEX last-trades, not the
+      consolidated tape. On LIVE this triggers at 09:32 (and fills ~5.46,
+      limit 5.49 reachable). Class/conclusion UNCHANGED (entry-side,
+      paper-only differential, #182-confirmed; live unaffected).
+      Side observation (methodology, NOT this gate): the ORB bar was a
+      ONE-CENT range (O=H=5.46 L=5.45, 0.18%) — trigger == open == high,
+      a degenerate-range Day 2 entry. If a min-ORB-range floor is ever
+      proposed it goes through CHANGE_PROCESS with N>=10, separately.
     escalation_note_2026_05_28: |
       Initially filed with threshold=3 per default N=1 protocol. Operator
       pushed back same session: the failure chain (detect → alert → submit
