@@ -82,6 +82,40 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-06-12 — Rubric v3: catalyst FRESHNESS clause (judge + fallback grader)
+
+**Trigger**: AKTS 2026-06-12 — the judge's first WRONG live load-bearing promote
+(MODERATE→HIGH, `materiality=transformative`), caught same-day by the OPERATOR:
+the "$1.1B Lilly partnership" was announced **2024-05-21** (two years pre-gap;
+$60M upfront, $1.1B = milestones). The corpus was web-only
+(`sources: {web_perplexity: 1}, has_direct_source: false` — no 8-K/wire existed
+that day, which was itself the signal); Perplexity surfaced the old deal undated
+as "the clearest catalyst"; the judge flagged the verifiability concerns in its
+own rationale and promoted anyway. Neither rubric layer required the catalyst to
+be NEW.
+
+**Evidence**: single operator-labeled live case (flagged single-case-tune per
+CHANGE_PROCESS rule 2) — but the change is a CORRECTNESS rule (freshness is
+definitionally part of "a real catalyst" for an *episodic pivot*), not a
+threshold tune; same class as the 2026-05-20 gate-inversion precedent. Catalyst
+attribution correctness is the stated goal of the program
+(`feedback_catalyst_correctness_is_the_goal`).
+
+**Anticipated effect**: undated/stale catalysts can no longer justify HIGH from
+either layer; web-only-sourced materiality promotions get explicit skepticism
+(prefer floor tier). Expected effect size: rare (first occurrence in 3 days of
+load-bearing operation) — but it is exactly the fail-open-to-floor direction:
+worst case is a missed alert, never a bad entry.
+
+**Reversion-flag**: REFINEMENT of the judge rubric (v2→v3) + grade prompt.
+Prompt-era versioned: `RUBRIC_VERSION/RUBRIC_HASH` + `CATALYST_GRADE_PROMPT_VERSION`
+both bumped to `v3-2026-06-12-catalyst-freshness` — every decision row stamps its
+era; instant revert = restore the v2 text (hash flips back).
+
+**Status**: shipped 2026-06-12 (operator-signed in-session). Field validation:
+AKTS = named regression probe in the eval probe library; watch the next
+`has_direct_source=false` promote candidate's `ep_grade_decision`.
+
 ### 2026-06-08 — Holistic Grade Judge supersedes the conviction floor (W2c, ADR 0011) — toggle-gated, SHIPPED DORMANT
 
 **Trigger**: Operator directive (2026-06-08, memory `feedback_build_toward_vision_not_piecemeal` + signed ADR 0011): the conviction floor promotes to HIGH on **gap % + a catalyst enum alone** — materiality, theme, narrative, and structure are decorative. By the operator's framing the materiality-less grade is "definitionally incomplete" for the EP method. The North Star is ONE holistic LLM judge over the full rubric that moves the grade **bidirectionally** (promote an under-rated material-small-cap outlier / demote an immaterial big gap) and becomes the live **paper** grade.

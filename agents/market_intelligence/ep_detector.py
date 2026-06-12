@@ -82,7 +82,7 @@ _tinycap_seen: set = set()
 # ep_grade_judge.RUBRIC_VERSION for the scheme). Bump on every signed change
 # to the _classify_catalyst_claude prompt; stamped on ep_grade_decision rows.
 # v1 = pre-#269. v2 = #269 revenue-over-EPS + sustainable-turnaround.
-CATALYST_GRADE_PROMPT_VERSION = "v2-2026-06-11-revenue-over-eps"
+CATALYST_GRADE_PROMPT_VERSION = "v3-2026-06-12-catalyst-freshness"
 
 # Hard filters
 # MIN_GAP_PCT: 2026-05-17 R2 ship — lifted 8.0 → 10.0. The 8-10% gap
@@ -507,6 +507,10 @@ IMPORTANT RULES:
    is "routine" however positively worded.
 
 CRITICAL — VERIFY THE CATALYST IS REAL:
+- FRESHNESS: the catalyst must be NEW (dated today/overnight, or freshly disclosed in a filing/
+  press wire). An UNDATED event, or one that predates today's gap (an old partnership/contract
+  resurfacing in a web summary), is NOT today's catalyst no matter how large — classify what is
+  actually fresh, or "routine" with the driver marked unidentified.
 - If the news text mentions "earnings" or "quarterly results" but does NOT include specific numbers
   (revenue, EPS, guidance figures), the catalyst is likely FABRICATED. Classify as "routine".
 - If the news is vague, generic, or reads like a summary with no specific details (no dates, no

@@ -95,6 +95,16 @@ real/material catalyst becomes **load-bearing**, not decorative.
    anomaly from one-time/external items (the CBRL litigation-settlement class, the judge's
    first live demote). Memory: `user_pradeep_revenue_over_eps`; task #269; shipped to both
    the judge rubric AND the fallback grader prompt in the same commit.
+3c. **Catalyst FRESHNESS is part of "real"** (AMENDMENT, operator-signed 2026-06-12 — the
+   AKTS case): the catalyst must be NEW (dated today/overnight, or freshly disclosed per a
+   direct primary source). An undated catalyst, or one the evidence shows predates the gap,
+   cannot be the attributed driver regardless of materiality — AKTS 6/12 was judge-promoted
+   MODERATE→HIGH on a May-2024 Lilly partnership resurfaced undated by a web-only corpus
+   (`has_direct_source=false`); the operator caught it same-day (first operator label on a
+   live load-bearing decision). No fresh verifiable driver → driver UNIDENTIFIED, MODERATE at
+   best. `has_direct_source=false` + materiality-driven promotion = highest-risk pattern,
+   prefer the floor tier. Rubric `v3-2026-06-12-catalyst-freshness`; shipped to judge rubric
+   AND fallback grader same commit; AKTS = the named regression probe.
 4. **Theme heat + technical structure + gap alignment modulate up or down** (meta-rubric:
    a strong-on-fundamentals name can be boosted to game_changer by theme+technical context).
 5. **mna:** advisory only — the **M&A filter stays the authoritative M&A gate**; the judge's

@@ -122,6 +122,16 @@ actually separate models:
 - **PGY 2026-06-04 — imperfect control** (a real $600M securitization existed → muddy). #207
   must build CLEAN no-catalyst controls (pure technical/short-squeeze, no 8-K, no earnings)
   to measure confabulation RATE — the cost the "winner" tiers hide.
+- **AKTS 2026-06-12 — STALE-CATALYST freshness probe (operator-labeled, judge's first wrong
+  live promote).** +11.9% gap, corpus = web-only Perplexity (`has_direct_source=false`, no
+  8-K/wire that day); the synthesis surfaced the **May-2024** Lilly partnership ($60M upfront,
+  $1.1B = milestones) UNDATED as "the clearest catalyst" + ticker confusion vs delisted
+  Akoustis. Judge promoted MODERATE→HIGH `materiality=transformative` while itself noting
+  verifiability concerns. Correct verdict: driver UNIDENTIFIED → MODERATE at best. Probes:
+  (a) does the model demand a DATE before attributing a driver; (b) does
+  `has_direct_source=false` + big-materiality trigger skepticism or promotion. Rubric/grade
+  prompt v3 (`v3-2026-06-12-catalyst-freshness`) encodes the rule — this probe is its
+  regression test.
 
 ## Cost reference (as of 2026-06-05, $/1M tokens in/out)
 

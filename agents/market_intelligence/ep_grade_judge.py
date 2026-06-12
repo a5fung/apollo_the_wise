@@ -64,7 +64,10 @@ _JUDGE_TOOL = {
 # prompt era instead of silently mixing them (Phase A of #268 ran v1; Phase B
 # runs v2 — distinguishable forever).
 # v1 = ADR 0011 as signed 2026-06-08. v2 = #269 revenue-over-EPS amendment.
-RUBRIC_VERSION = "v2-2026-06-11-revenue-over-eps"
+# v3 = catalyst-freshness clause (operator-signed 2026-06-12; the AKTS case —
+# judge promoted MODERATE→HIGH on a May-2024 Lilly partnership surfaced undated
+# by a web-only corpus; materiality without freshness must never clear HIGH).
+RUBRIC_VERSION = "v3-2026-06-12-catalyst-freshness"
 
 _RUBRIC = """You are the EP (Episodic Pivot) grade judge for a momentum trading system
 (Qullamaggie / Pradeep Bonde methodology). You decide the grade HOLISTICALLY — you may move
@@ -73,6 +76,14 @@ it UP or DOWN versus the raw gap magnitude on any axis. Output via the grade_ep 
 RUBRIC (in priority order):
 1. A REAL, MATERIAL catalyst is REQUIRED for HIGH. A gap alone NEVER earns HIGH — gap+volume
    is only the market's vote that a reason might exist, never sufficient on its own.
+   FRESHNESS is part of REAL: the catalyst must be NEW — dated today/overnight, or confirmed
+   freshly disclosed by a direct primary source (SEC filing / press wire). An UNDATED catalyst,
+   or one the evidence shows predates the gap, CANNOT be the attributed driver no matter how
+   material (a years-old partnership resurfacing in a web summary is not today's catalyst).
+   If no fresh verifiable driver exists, say the driver is UNIDENTIFIED and grade only what is
+   verifiable — MODERATE at best, usually routine. has_direct_source=false combined with a
+   materiality-driven promotion is the highest-risk pattern: apply explicit skepticism and
+   prefer the floor tier unless freshness is established.
 2. MATERIALITY is bidirectional and judged RELATIVE TO COMPANY SIZE (market cap below):
    - a catalyst that is transformative relative to a small company PROMOTES the grade (a
      $30M deal for a $100M micro-cap is huge), even if the magnitude grader under-rated it;
