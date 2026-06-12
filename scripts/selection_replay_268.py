@@ -234,9 +234,19 @@ async def stage_judge(args) -> None:
                 pit_row["score_tier"] = r["baseline_floor_tier"]  # floor drives payload tier
                 payload, _rm = build_judge_payload(
                     pit_row, r["grounded_text"], mc, sector, active_narratives=narratives)
-                v = await grade_holistic(client, payload, timeout=30)
+                # Retry-with-backoff (Phase B postmortem 6/11: 1307 grades then
+                # 1307 Opus judges back-to-back tripped org rate limits —
+                # grade_holistic swallows 429s into None, so 2,122 silent
+                # fail-opens. None → wait and retry; the stage stays idempotent
+                # for anything that still fails.)
+                v = None
+                for attempt in range(4):
+                    v = await grade_holistic(client, payload, timeout=30)
+                    if v is not None:
+                        break
+                    await asyncio.sleep(20 * (attempt + 1))
             if v is None:
-                print(f"  JUDGE NULL {r['ticker']} {r['alert_date']} (fail-open)")
+                print(f"  JUDGE NULL {r['ticker']} {r['alert_date']} (fail-open after retries)")
                 return
             # Persist verdict columns ONLY — never score_tier/authority (the
             # floor must stay readable beside the verdict). UPDATE BY ID
