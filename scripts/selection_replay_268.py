@@ -282,6 +282,8 @@ async def stage_simulate(args) -> None:
         from_date=args.date_from, to_date=args.date_to,
         position_size=10_000, min_score=0, initial_capital=1_000_000,
         source_filter=_SOURCE,
+        or_window_bars=args.or_window,
+        wide_open_atr_mult=args.wide_open_atr,
     )
     # Custom per-trade CSV with computed R: risk basis = Σ shares×(entry−stop)
     # over actual entries (re-entries included). Consistent across cohorts —
@@ -360,9 +362,20 @@ def main() -> None:
     ap.add_argument("--max-calls", dest="max_calls", type=int, default=400)
     ap.add_argument("--csv", default=None)
     ap.add_argument("--yes", action="store_true")
+    # W2 entry-geometry variants (defaults = live behavior; study #1 2026-06-12)
+    ap.add_argument("--or-window", dest="or_window", type=int, default=1,
+                    help="opening-range window in 1-min bars (1 = live)")
+    ap.add_argument("--wide-open-atr", dest="wide_open_atr", type=float, default=None,
+                    help="skip when OR range > this multiple of ATR14 (e.g. 0.275)")
     args = ap.parse_args()
     # Resolve the CSV path ONCE — simulate writes it, report reads it.
-    args.csv = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}.csv"
+    # Geometry variants get their own CSV so the baseline is never clobbered.
+    variant = ""
+    if args.or_window != 1:
+        variant += f"_orw{args.or_window}"
+    if args.wide_open_atr is not None:
+        variant += f"_woatr{args.wide_open_atr}"
+    args.csv = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}{variant}.csv"
 
     stages = [(args.scan, stage_scan), (args.grade, stage_grade),
               (args.judge, stage_judge), (args.simulate, stage_simulate),

@@ -22,19 +22,31 @@ logger = logging.getLogger(__name__)
 MAX_ENTRY_ATTEMPTS = 2
 
 
+def _or_window_range(bars: list[dict], or_window_bars: int) -> tuple[float, float]:
+    """Opening-range high/low over the first N 1-min bars (N=1 = live behavior)."""
+    window = bars[:max(1, or_window_bars)]
+    return (max(b["high"] for b in window), min(b["low"] for b in window))
+
+
 def _simulate_day1(
     ticker: str,
     bars: list[dict],
     position_size: float,
     atr_14: float | None = None,
+    or_window_bars: int = 1,
+    wide_open_atr_mult: float | None = None,
 ) -> BacktestTrade | None:
     """
     Simulate Day 1 intraday trading on 1-min bars (ORB entry).
 
     Rules:
-    - Opening Range = first 1-min bar's high/low
+    - Opening Range = first `or_window_bars` 1-min bars' high/low (default 1
+      = current live behavior; W2 entry study varies this)
+    - `wide_open_atr_mult`: if set, skip when OR range > mult × ATR14 — the
+      W2 "skip-wide-open" hypothesis (bracket geometry broken when the
+      opening candle already spans a large fraction of daily volatility)
     - ATR stop width check: via validate_orb_entry (shared with live path)
-    - Entry when price breaks above ORB high (bars[1:])
+    - Entry when price breaks above ORB high (bars after the OR window)
     - Stop = ORB low (hard stop: bar low <= stop)
     - Re-entry when bar closes above ORB high, max 2 attempts
     - EOD: hold full position (no partial sell)
@@ -43,11 +55,21 @@ def _simulate_day1(
         return None
 
     first_bar = bars[0]
-    orb_high = first_bar["high"]
-    orb_low = first_bar["low"]
+    orb_high, orb_low = _or_window_range(bars, or_window_bars)
 
     if orb_high <= 0 or orb_low <= 0:
         return None
+
+    if (wide_open_atr_mult and atr_14
+            and (orb_high - orb_low) > wide_open_atr_mult * atr_14):
+        alert_date = first_bar["bar_time"].date() if hasattr(first_bar["bar_time"], "date") else date.today()
+        return BacktestTrade(
+            ticker=ticker, alert_date=alert_date,
+            ep_score=0, catalyst_quality="", gap_pct=0, regime=None,
+            skipped=True,
+            skip_reason=f"wide_open_skip ({(orb_high - orb_low) / atr_14:.2f}x ATR14)",
+            orb_high=orb_high, orb_low=orb_low, atr_14=atr_14,
+        )
 
     # ATR stop width validation — single shared rule with live path
     valid, skip_reason = validate_orb_entry(orb_high, orb_low, atr_14)
@@ -67,8 +89,8 @@ def _simulate_day1(
     current_stop = 0.0
     current_shares = 0.0
 
-    # Walk bars[1:] looking for ORB high breakout
-    for bar in bars[1:]:
+    # Walk post-OR-window bars looking for ORB high breakout
+    for bar in bars[max(1, or_window_bars):]:
         if in_position:
             # Hard stop: bar low breaches stop
             if bar["low"] <= current_stop:
@@ -335,6 +357,8 @@ async def simulate_trade(
     ep_alert: dict,
     position_size: float,
     regime_record: dict | None = None,
+    or_window_bars: int = 1,
+    wide_open_atr_mult: float | None = None,
 ) -> BacktestTrade:
     """
     Full trade simulation: Day 1 ORB intraday + Day 2+ SMA trailing stop.
@@ -357,15 +381,16 @@ async def simulate_trade(
         )
         return trade
 
-    # Risk-based position sizing: use ORB high/low from first bar
+    # Risk-based position sizing: use the OR-window high/low (window=1 = first bar)
     if bars and regime_record:
-        orb_high = bars[0].get("high", 0)
-        orb_low = bars[0].get("low", 0)
+        orb_high, orb_low = _or_window_range(bars, or_window_bars)
         if orb_high > 0 and orb_low > 0:
             position_size = _position_size(orb_high, orb_low, regime_record)
 
     # Day 1 simulation (ORB entry with ATR validation)
-    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14)
+    trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14,
+                           or_window_bars=or_window_bars,
+                           wide_open_atr_mult=wide_open_atr_mult)
     if trade is None:
         return BacktestTrade(
             ticker=ticker, alert_date=alert_date,
@@ -419,6 +444,8 @@ async def run_backtest(
     min_score: float = 70,
     initial_capital: float = 100_000,
     source_filter: str | None = None,
+    or_window_bars: int = 1,
+    wide_open_atr_mult: float | None = None,
 ) -> BacktestResult:
     """
     Run full EP gap trading backtest over a date range.
@@ -493,7 +520,9 @@ async def run_backtest(
 
         # Simulate trade
         logger.info(f"Simulating {ticker} on {alert_date} (score={alert.get('ep_score', 0):.0f})")
-        trade = await simulate_trade(ticker, alert_date, alert, position_size, regime_record=regime_record)
+        trade = await simulate_trade(ticker, alert_date, alert, position_size, regime_record=regime_record,
+                                     or_window_bars=or_window_bars,
+                                     wide_open_atr_mult=wide_open_atr_mult)
 
         if trade.skipped:
             skipped.append(trade)
