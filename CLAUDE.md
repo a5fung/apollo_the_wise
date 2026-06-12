@@ -379,23 +379,24 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-10 (Wed) — JUDGE LOAD-BEARING day (details graduated to CHANGELOG)
+### 2026-06-11 (Thu) — 🏁 NORTH STAR CLOSED (a day early; details in CHANGELOG 6/11)
 
-Judge flipped load-bearing (CBRL first call) · #249 advisory stack retired (`fire_axes` = the one fire signal) · synthesis feed live · JUDGE_MODEL→OPUS 4.8 on operator labels (9–2; model-eval PLAYBOOK codified in `model_selection_baseline.md`) · #256 W1 facade + [5j/7] gate · 3 prod bugs found+fixed ([Fading]-echo drop, nightly OOM 512M→1536M, state_alerts dead since 3/20) · v1.1/v2.0 roadmap drafted. Full record: CHANGELOG 2026-06-10.
+#240 closed on morning verifies (never reopened; ADR 0011 IMPLEMENTED-LIVE; successor = v1.1 program) · #269 rubric v2 = revenue-over-EPS (operator-signed; `RUBRIC_VERSION`+hash versioning on every decision row) · #268 replay Phase A (both systems ≈0R on current entry geometry = the W2 thesis) + Phase B launched + the replay-contamination BLOCKER caught pre-close (`LIVE_SOURCE_SQL` sweep `27e3ca5`) · MNTS case study → #270/#271 + pivots+stock-character SSoT.
 
-### 2026-06-11 (Thu) — 🏁 NORTH STAR CLOSED (a day early) · revenue-over-EPS rubric v2 · selection replay live
+### 2026-06-12 (Fri) — #268 CLOSED: 12-month replay + kill/scale bands SIGNED · launch runway day 1
 
-- **#240 CLOSED** on morning verifies (3 Opus alerts, exact alert↔decision↔authority reconcile, 0 fail-opens) → #247/#252/#263 completed; ADR 0011 IMPLEMENTED-LIVE; roster row = the v1.1 program; CHANGELOG 6/11 has the record; never reopened.
-- **#269 rubric v2** (operator-signed, Pradeep): growth names = REVENUE growth is the signal, EPS-beat-with-revenue-miss ≠ HIGH; EPS only in SUSTAINABLE turnarounds (CBRL = the one-time-anomaly trap, in the rubric). Shipped to judge rubric + fallback grader same commit. **Prompt-era VERSIONING**: `RUBRIC_VERSION`+hash on every decision row + `rubric_version` column (v1=6/08, v2=6/11).
-- **#268 selection replay**: Phase A (215 candidates) — judge demotes avoided −0.79R/trade, promotes weak (watch live), BOTH systems ≈0R on current entry geometry = the W2 thesis in data. Phase B (12mo) overnight, v2-stamped. **Pre-close review caught a BLOCKER**: replay rows in 13 unfiltered mi_ep_alerts readers incl. the LIVE EP cooldown → `db.LIVE_SOURCE_SQL` sweep (`27e3ca5`), **deploy before Fri 7:00 ET** + mi_signal_outcomes purge owed (#268).
-- **MNTS case study** (operator chart walkthrough) → #270 composed delayed-EP detector (flag-INVALIDATION-on-undercut irony), #271 Pradeep 20%-in-5d breadth extremes, pivots+stock-character SSoT (`docs/methodology/`), /spotted MNTS injected (snapshot source-filter bug fixed). Fragmentation→composition = the SiP thesis on record.
+- **Phase B**: 1307/1307 judged (rubric v2 uniform; post-credit-refill retry). Floor +0.90R/28% (n=410) vs judge +0.95R/30% (n=399); **promote cohort +1.26R/33% = the consistent edge both phases**; demote side flips sign vs Phase A → standing watch-metric, not an assumed save. Doc `docs/analysis/selection_replay_268_phaseB.md`. Contamination fix VERIFIED live (SHAZ/AKTS alerts fired with 1,522 replay rows in-table).
+- **Kill/scale bands SIGNED** (safeguards.md, launch DoD-1 evidence half): REDUCE t20 ≤ −0.70R / streak ≥ 16; KILL t20 ≤ −1.05R / cum −30R / BLOCK tier; SCALE 40 trades ≥ +0.5R; 20-trade floor — every threshold outside the healthy-year envelope (a +0.95R year contains −24R DD + 15-loss streak). Operator conditions codified: quarterly review (registry `kill_scale_bands_quarterly_review`, first 8/1) + logged override authority (bands only, never the mechanical guards). **#275** = digest band evaluation + immediate band-transition alerts + override awareness (Fri 6/19).
+- **Alert-layer gaps fixed off an operator question**: `regime_transition` had readers but NO writer → now emitted + Telegram on flips; drawdown tier changes were audit-only (the 6/05 REDUCE entry was silent) → now Telegram with sizing effect. Deployed (both scopes).
+- **LYG silent-trigger**: cleanest paper-IEX-trigger proof yet (SIP printed the 5.46 trigger; IEX never did; order confirmed live) — class unchanged, P2, live unaffected; registry evidence row. ECOR banned from its theme (operator-directed; #274 = the 2-member-immortality structural fix). W2 entry-study knobs shipped (`--or-window` / `--wide-open-atr`, defaults = live behavior); variant runs on the Phase B cohort.
 
 ### Older entries graduated to CHANGELOG.md
 
-- Compressed 2026-05-17: 2026-04-30 through 2026-05-08.
-- Compressed 2026-05-24: 2026-05-10 (#66 dual-account), 2026-05-11 (missed-EP telemetry), 2026-05-13 (`ALPACA_LIVE_API_KEY` outage + M&A direction-blind + 9M sugar-baby M&A coverage + theme assignment silent_stop + theme cross_run_dup rename + preflight smoke test #84), 2026-05-14 (CRMD naked-position incident + Gate 5 + EP selectivity deep-dive + 3-parallel-bugs), 2026-05-17 (Track 1 trade-state ownership refactor + Gate 5 G column-write authority preflight), 2026-05-20 (UnboundLocalError outage + preflight `[5d/5]` import-shadowing + 4 backward-checks said don't ship), 2026-05-21 (backward-check hygiene exposed polluted-cohort verdict + 4-checks-don't-ship discipline win).
-- Compressed 2026-06-07: 2026-05-22 (#109/#110 weekly-review surfacing + #92 flag-graduation NO-GO), 2026-05-23 (DR layer + #94 flag-break + #99 Stocks-in-Play Phase 1 + Polygon structural-floor), 2026-05-24 (9-commit: weekly-review + #95/#96 detectors + DR-tmpfs + #112 L3-drift + YAML-dupe gate), 2026-05-26 (#123 order-status reconcile + #122/#127/#120), 2026-05-27 (IBM partial-exit/DB mass-close incident + #142 RDW pending_new).
-- Compressed 2026-06-10 (#262): 2026-05-29 (#151 partial-exit safety trio + #150 confirmed + #153 bot watchdog + #154 deploy scope guard), 2026-06-01 (partial-exit sub-penny/false-naked/#150 sell-retry + 16:45 cron re-enabled).
+- Compressed 2026-05-17: 2026-04-30 → 2026-05-08.
+- Compressed 2026-05-24: 2026-05-10 → 2026-05-21 (dual-account · ALPACA_LIVE outage · CRMD/Gate 5 · Track 1 ownership + Gate 5 G · import-shadowing · backward-check hygiene).
+- Compressed 2026-06-07: 2026-05-22 → 2026-05-27 (weekly-review fixes · DR layer · SiP Phase 1 · detectors #94–#96 · #123 reconcile · IBM mass-close incident + #142).
+- Compressed 2026-06-10 (#262): 2026-05-29 + 2026-06-01 (partial-exit hardening arc).
+- Compressed 2026-06-12 (#262): 2026-06-10 (judge load-bearing day) + 2026-06-11 detail bullets (rubric v2 · replay Phase A/blocker · MNTS cluster).
 
 Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filter", "CRMD", "dual-account", "Gate 5", "purpose-tagged stop", "drawdown breaker", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
 
