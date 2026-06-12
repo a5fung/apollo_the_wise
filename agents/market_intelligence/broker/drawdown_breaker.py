@@ -433,6 +433,32 @@ async def recompute_drawdown_state(mode: str) -> tuple[str, str, dict]:
             f"Drawdown breaker transition {mode}: {prev_state} → {new_state} "
             f"(dd={state_obj.drawdown_pct*100:.2f}%, event={event_name})"
         )
+        # Operator alert (2026-06-12): tier transitions change SIZING
+        # (REDUCE 0.5x / BLOCK 0x) — terminal/actionable class per the
+        # alerting rules, so they Telegram. Transition-only (daily cron,
+        # state machine) — no flap/spam risk. Was audit-only before: the
+        # 6/05 REDUCE entry was never surfaced to the operator.
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import b, esc
+            tier_icons = {"WATCH": "🟡", "REDUCE": "🟠", "BLOCK": "🛑", "OK": "✅"}
+            tier_effect = {
+                "WATCH": "full size, monitoring",
+                "REDUCE": "sizing HALVED (0.5x) on new entries",
+                "BLOCK": "new entries BLOCKED (0x)",
+                "OK": "full size restored",
+            }
+            head = "DRAWDOWN TIER" if direction_is_deeper else "DRAWDOWN RECOVERY"
+            await send_telegram_message(
+                f"{tier_icons.get(new_state, 'ℹ️')} {b(head)} ({esc(mode)}): "
+                f"{esc(prev_state)} → {esc(new_state)}\n"
+                f"Drawdown {state_obj.drawdown_pct*100:.2f}% "
+                f"(peak ${state_obj.peak:,.2f} → ${state_obj.current:,.2f})\n"
+                f"Effect: {esc(tier_effect.get(new_state, new_state))}",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.exception("drawdown tier transition telegram failed")
 
     return prev_state, new_state, details
 

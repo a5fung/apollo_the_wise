@@ -180,9 +180,13 @@ data accrues, through this change process.
 1. **Weekly EVALUATION (mechanical)**: the Sunday weekly digest computes the
    live cohort's trailing-20/-40 expectancy, current losing streak, and
    cumulative R, compares them against the band thresholds, and prints the
-   verdict line (SCALE/HOLD/REDUCE/KILL + the numbers). Implementation = **#275**
-   (runway slot Fri 6/19; meaningful once live trades exist post-6/22). Until
-   #275 ships, the evaluation runs manually on request ("evaluate the bands").
+   verdict line (SCALE/HOLD/REDUCE/KILL + the numbers). **Band TRANSITIONS
+   additionally Telegram immediately** at trade-close evaluation (operator
+   requirement 2026-06-12: every band hit surfaces as an alert, not just in
+   the Sunday summary; transition-only, deduped — same pattern as the
+   drawdown-tier alerts). Implementation = **#275** (runway slot Fri 6/19;
+   meaningful once live trades exist post-6/22). Until #275 ships, the
+   evaluation runs manually on request ("evaluate the bands").
 2. **Quarterly REVIEW of the bands themselves**: registered as
    `data_gated_reviews.yaml::kill_scale_bands_quarterly_review` — auto-surfaces
    in the Sunday review when due, **first due 2026-08-01**, recurring quarterly

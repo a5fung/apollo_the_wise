@@ -508,8 +508,37 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
         "qqq_ema_bullish": qqq_ema_bullish,
     }
 
+    # Transition surfacing (2026-06-12): `regime_transition` had readers
+    # (weekly review) but no writer, and a flip moves ep_threshold —
+    # operator-actionable, so it alerts rather than waiting for a briefing.
+    prev_row = await _get_latest_regime()
+    prev_regime = (prev_row or {}).get("regime")
+    prev_threshold = (prev_row or {}).get("ep_threshold")
+
     await upsert_regime(record)
     logger.info(f"Regime: {regime} (EP threshold: {ep_threshold})")
+
+    if prev_regime and regime != prev_regime:
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                "regime_transition",
+                f"{prev_regime} -> {regime} (EP threshold {prev_threshold} -> {ep_threshold})",
+                description,
+            )
+        except Exception:
+            logger.exception("regime_transition audit emit failed")
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import b, esc
+            await send_telegram_message(
+                f"🧭 {b('REGIME CHANGE')}: {esc(str(prev_regime))} → {esc(regime)}\n"
+                f"EP threshold {prev_threshold} → {ep_threshold}\n"
+                f"{esc(description)}",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.exception("regime_transition telegram failed")
     return record
 
 
