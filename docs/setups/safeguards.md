@@ -175,21 +175,54 @@ geometry, Lane-2 narratives dark before 2026-06). These bands are an initial
 calibration — re-derived quarterly via the P6 replay-regression job as live
 data accrues, through this change process.
 
-**Standing review (operator condition #1 at sign-off)**: these bands are
-reviewed at every **quarterly rule review** (the operator's standing
-anti-overfit cadence) AND re-derived whenever the P6 replay-regression report
-shows the live distribution diverging from the calibration envelope. A band
-change between reviews requires its own change-log entry here; the bands are
-never silently re-tuned.
+**Standing review (operator condition #1 at sign-off)** — three explicit layers:
+
+1. **Weekly EVALUATION (mechanical)**: the Sunday weekly digest computes the
+   live cohort's trailing-20/-40 expectancy, current losing streak, and
+   cumulative R, compares them against the band thresholds, and prints the
+   verdict line (SCALE/HOLD/REDUCE/KILL + the numbers). Implementation = **#275**
+   (runway slot Fri 6/19; meaningful once live trades exist post-6/22). Until
+   #275 ships, the evaluation runs manually on request ("evaluate the bands").
+2. **Quarterly REVIEW of the bands themselves**: registered as
+   `data_gated_reviews.yaml::kill_scale_bands_quarterly_review` — auto-surfaces
+   in the Sunday review when due, **first due 2026-08-01**, recurring quarterly
+   (rides the same session as the model-selection quarterly review; sweep
+   cadence Feb/May/Aug/Nov 1). Inputs: live R-distribution vs the calibration
+   envelope, P6 divergence, the override log, the demote-side watch-metric.
+3. **Event-driven**: a P6 replay-regression report showing the accruing
+   distribution diverging from the calibration envelope pulls the review
+   forward — don't wait for the quarter boundary.
+
+A band change from any layer requires its own change-log entry here; the bands
+are never silently re-tuned.
 
 **Operator override (operator condition #2 at sign-off)**: the operator retains
 explicit authority to override any band outcome in either direction — trade
-through a REDUCE/KILL trigger, or kill/de-size before a trigger fires. The
-bands bind the SYSTEM's default recommendation and the Sunday-digest
-evaluation, not the operator. Every override is logged (change-log entry here
-with rationale + an `mi_audit_log` row) so the override history is reviewable
-at the quarterly review — the point of pre-commitment is preserved by making
-overrides visible, not impossible.
+through a REDUCE/KILL trigger, or kill/de-size before a trigger fires.
+
+*Mechanism (today, procedural)*: the operator states the override in any
+operator channel (Telegram to Apollo, or a dev session) — e.g. "override
+kill/scale: continue at full size, reason: ...". Apollo then (a) writes a
+`kill_scale_override` row to `mi_audit_log` with direction + rationale, and
+(b) adds a change-log entry here. Nothing mechanical needs bypassing — the
+bands are decision triggers, not code blocks.
+
+*Mechanism (once #275 ships)*: the Sunday digest's band evaluation reads
+active `kill_scale_override` rows and annotates its verdict line ("REDUCE
+triggered — operator override ACTIVE since <date>: <reason>") instead of
+re-prompting every week. #275 includes this override-awareness.
+
+*Scope limit*: this override covers the BANDS only. The mechanical guards —
+2% daily-loss limit and the tiered drawdown breaker (including its −12% BLOCK
+tier) — are NOT overridable through this clause; changing those is its own
+CHANGE_PROCESS with its own evidence bar. (If a KILL is triggered solely by
+the BLOCK tier, the breaker still blocks entries mechanically regardless of a
+band override.)
+
+Every override is reviewable at the quarterly review — repeated overrides in
+one direction mean the bands are mis-set and should be recalibrated, not
+overridden again. Pre-commitment is preserved by making overrides visible,
+not impossible.
 
 ## Change log (newest first)
 

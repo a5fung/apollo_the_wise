@@ -94,6 +94,32 @@ reviews:
       the playbook applies identically. Tracked by #207. Re-bump
       earliest_review_date +1 quarter each time this runs (recurring, not one-shot).
 
+  - review_id: kill_scale_bands_quarterly_review
+    title: "Quarterly kill/scale band review (operator sign-off condition #1, 2026-06-12)"
+    question: |
+      Are the SIGNED live-money kill/scale bands (safeguards.md, #268b) still
+      correctly calibrated? Inputs: (a) live closed-trade R-distribution since
+      cutover vs the Phase B calibration envelope (exp +0.95R, maxDD -24R,
+      worst streak 15, trailing-20 p5 -0.63R); (b) the P6 replay-regression
+      weekly reports (divergence between accruing replay and the calibration);
+      (c) the override log (kill_scale_override audit rows + safeguards.md
+      change-log entries) - repeated overrides in one direction = the bands
+      are mis-set, recalibrate rather than keep overriding; (d) the standing
+      demote-side watch-metric (judge-demoted cohort forward R - Phase B showed
+      demotes averaging +1.01R, i.e. NOT reliably saves).
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-08-01
+    status: pending
+    action_when_ready: |
+      Part of the operator's QUARTERLY RULE REVIEW (rides the same 8/1 session
+      as model_selection_quarterly_review; quarterly sweep cadence Feb/May/Aug/
+      Nov 1). Re-derive the band statistics from live trades + latest replay
+      (scripts/_killscale_bands_268.py pattern over the live cohort), present
+      keep/retune to the operator, log the outcome as a safeguards.md
+      change-log entry (bands are never silently re-tuned). Re-bump
+      earliest_review_date +1 quarter each run (recurring, not one-shot).
+
   - review_id: conviction_floor_extension
     title: "Conviction floor extension to gap[10,15)+strong band"
     question: |
