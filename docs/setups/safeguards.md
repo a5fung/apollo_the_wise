@@ -128,7 +128,77 @@ ORDER BY s.snapshot_date DESC;
 3. Remove the count-based block from `_check_safeguards` (lines 184-210) after 30 days of clean drawdown-active operation. Keep constants in place during the deprecation window for easier rollback.
 4. Update this file's change log: shadow → active, evidence link to validation queries.
 
+## Kill / scale criteria — live-money evaluation bands (🟡 DRAFT 2026-06-12, pending operator sign-off — #268b)
+
+**Purpose**: pre-committed, evidence-derived bands that decide when live trading is
+killed, reduced, or scaled — agreed BEFORE real money, so a drawdown never sets
+policy emotionally. These are **operator decision triggers** (evaluated in the
+Sunday weekly digest + on demand), NOT new mechanical blocks — the mechanical
+guards remain the daily-loss limit (2%) and the tiered drawdown breaker.
+
+**Calibration source**: #268 Phase B 12-month selection replay, judge-HIGH cohort
+(n=399 simulated trades, 2025-06-09→2026-05-04; `docs/analysis/selection_replay_268_phaseB.md`).
+The healthy-year fingerprint these bands are set OUTSIDE of:
+
+- expectancy **+0.95R/trade**, win rate 30%
+- max R-drawdown **−24.1R**, worst losing streak **15**
+- trailing-20-trade expectancy: p5 = **−0.63R**, minimum = **−1.03R**,
+  **25% of all trailing-20 windows negative**
+- monthly expectancy range −0.64R to +2.71R (4 of 12 months negative)
+- R distribution: 62% full −1R stops; the edge lives in the 13% of trades ≥ +3R
+
+**Design principle**: a kill rule must not fire on the normal variance of a
+healthy year. A profitable year of this strategy CONTAINS a 15-loss streak, a
+−24R drawdown, and whole quarters of negative trailing-20 windows. Each
+threshold below sits beyond the worst value the +0.95R year produced.
+
+| Band | Trigger (live closed trades) | Pre-committed action |
+|---|---|---|
+| **SCALE UP** | ≥ 40 live trades AND trailing-40 expectancy ≥ +0.5R AND equity above starting equity | Raise risk/trade one notch (0.25% → 0.5% → 0.75%), operator confirm at each notch |
+| **HOLD** | anything between the bands | No change |
+| **REDUCE** | trailing-20 expectancy ≤ −0.70R (below healthy p5 −0.63) OR losing streak ≥ 16 (exceeds worst observed 15) | Halve risk/trade until trailing-20 expectancy ≥ 0 |
+| **KILL → paper** | trailing-20 expectancy ≤ −1.05R (worse than the worst healthy window −1.03) OR cumulative live R ≤ −30R (beyond the −24R healthy maxDD) OR drawdown breaker BLOCK tier (−12% equity) | Stop live entries; revert to paper; full postmortem + operator re-arm decision required |
+
+**Floors**: no expectancy-based REDUCE/KILL before **20 live closed trades**
+(sample-size floor) — until then only the equity-based guards (daily-loss,
+drawdown breaker) bind, and they bind from day 1.
+
+**Coherence note**: at 0.5% risk/trade, the healthy-year −24R maxDD ≈ −12%
+equity — the R-based kill band and the existing BLOCK tier converge at that
+risk level. At the likely 0.25% cutover sizing, the R-bands bind first: R-bands
+measure **strategy health**, equity bands measure **account health**. Both on
+purpose.
+
+**Caveats carried from the calibration**: the replay cohort is the historical
+scan's view of the year (~47% recall of live alerts, IEX 1-min-ORB entry
+geometry, Lane-2 narratives dark before 2026-06). These bands are an initial
+calibration — re-derived quarterly via the P6 replay-regression job as live
+data accrues, through this change process.
+
 ## Change log (newest first)
+
+### 2026-06-12 — Kill/scale criteria bands DRAFTED (#268b) — awaiting operator sign-off
+
+**Trigger**: launch runway DoD-1 (`docs/roadmap/launch-2026-06-22.md`) requires
+kill/scale criteria SIGNED into this file before the 6/22 GO/NO-GO. Operator
+standing decision 2026-06-11 ("#1 we wait — kill/scale until Phase B data");
+Phase B completed 2026-06-12 05:43 UTC — the data arrived.
+
+**Evidence**: #268 Phase B replay — 1,307 candidates graded+judged, 953
+simulated, 12-month window. Healthy-year envelope quantified above (the bands
+are set strictly outside it). Single 12-month pass, no error bars; recall and
+geometry caveats documented in the section + analysis doc.
+
+**Anticipated effect**: NONE in code — doc-only decision rules. Weekly
+evaluation surface = Sunday digest. On sign-off, the heading flips DRAFT →
+SIGNED and the bands become citable for the 6/22 GO/NO-GO evidence pack.
+
+**Reversion-flag**: NEW (first kill/scale policy; no prior decision reversed).
+
+**Status**: DRAFT, awaiting operator sign-off (~15 min review). Not enforced
+anywhere until signed.
+
+---
 
 ### 2026-06-06 — #197 cap+1 game_changer slot SHADOW shipped; #198 closed obsolete
 
