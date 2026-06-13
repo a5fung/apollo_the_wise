@@ -1,0 +1,119 @@
+# Monday 2026-06-15 — execution/intelligence split go-live playbook
+
+**Why this exists:** the #256 W2 split was cut over 2026-06-13 (markets closed) and
+is live on paper as two services. Everything a closed market can validate is green
+(boot, reads, reconcile, streams, orchestrator `/task`). The ONE untested path is
+the live ORB handoff during market hours:
+
+```
+ep_scan (intelligence)  →  trigger_orb_entry  →  HTTP /exec/trigger_orb_entry
+                                                  →  execution._orb_monitor_job  →  bracket order
+```
+
+Monday's 9:31 ET ORB window is the first time that fires for real. This playbook is
+the pre-open check, what to watch, and the rollback.
+
+**Times (operator is PDT; tape is ET):** ORB window **9:31 ET = 6:31 PDT**. Pre-open
+check fires ~**5:57 PDT (8:57 ET)** via the scheduled wake-up.
+
+**Current live topology:** `apollo-market` = intelligence (SERVICE_ROLE=intelligence,
+EXECUTION_MODE=http, no creds, 42 jobs) · `apollo-execution` = execution
+(SERVICE_ROLE=execution, creds + streams, 27 jobs, profile:split).
+
+---
+
+## A. Pre-open check (~5:57 PDT / 8:57 ET) — runs automatically, ~30 min of buffer
+
+Run these against the prod box (`ssh apollo@87.99.134.162`,
+`/home/apollo/apollo_the_wise`). PASS = all green; any red → go to §C (rollback)
+with time to spare before 6:31 PDT.
+
+1. **Both services healthy:**
+   ```bash
+   docker ps --format '{{.Names}} | {{.Status}}' | grep -E 'apollo-market|apollo-execution'
+   ```
+   PASS: both `Up ... (healthy)`.
+
+2. **HTTP transport live (read-only — no mutation):**
+   ```bash
+   ssh ... apollo@... 'docker exec -i apollo-market python -' <<'PYEOF'
+   import asyncio
+   from agents.market_intelligence import execution_client as ec
+   r = asyncio.run(ec.get_all_positions())
+   print("HTTP get_all_positions ->", type(r).__name__, "len=", len(r))
+   s = asyncio.run(ec.get_stream_status())
+   print("STREAM healthy=", s.get("healthy"), "modes=", s.get("modes"))
+   PYEOF
+   ```
+   PASS: `get_all_positions` returns a **list** (NOT `ExecutionUnreachable`);
+   `STREAM healthy= True`.
+
+3. **Execution role + streams in logs (overnight drift check):**
+   ```bash
+   docker logs --since 12h apollo-execution 2>&1 | grep -icE 'ExecutionUnreachable|Traceback|CRITICAL|stream.*disconnect'
+   docker logs --since 12h apollo-market 2>&1 | grep -icE 'ExecutionUnreachable|Traceback|CRITICAL'
+   ```
+   PASS: both `0` (or only benign reconnects on execution).
+
+**If all PASS:** report green to the operator and stand by for §B.
+**If any RED:** report immediately + recommend §C rollback (≈2 min, well before 6:31 PDT).
+
+---
+
+## B. The 9:31 ET (6:31 PDT) ORB window — watch the handoff
+
+The handoff only fires if an EP HIGH lands in the ORB window. Watch BOTH services:
+
+- **Intelligence side** (`apollo-market`) — the trigger is sent:
+  ```bash
+  docker logs --since 10m apollo-market 2>&1 | grep -iE 'triggering ORB entry via execution facade|trigger_orb_entry|ExecutionUnreachable'
+  ```
+  Expect (when a HIGH fires): `Post-open new HIGHs ... — triggering ORB entry via execution facade`.
+  RED FLAG: `ExecutionUnreachable` here = the trigger didn't reach execution → ORB
+  would silently NOT fire → §C rollback immediately.
+
+- **Execution side** (`apollo-execution`) — the order is placed:
+  ```bash
+  docker logs --since 10m apollo-execution 2>&1 | grep -iE 'orb_monitor|ORB|bracket|submit|ACTION_AUTO_ENTERED|order placed'
+  ```
+  Expect: the orb monitor runs + (if a candidate passes) a bracket order is submitted
+  on the paper account.
+
+**Success criterion:** an EP HIGH in the window produces the intelligence trigger
+log AND the execution-side orb_monitor/order log, with NO `ExecutionUnreachable`. A
+**quiet** window (no HIGH) is not a failure — it just doesn't exercise the path;
+re-check the next session.
+
+**Cross-check (after the window):** the trade lands in `mi_live_trades` exactly once
+(not zero, not double — the double-processing guard). The order-status reconcile
+(execution, every 15 min) and the EOD recap will surface it.
+
+---
+
+## C. Rollback — collapse to combined (instant, byte-identical)
+
+Run if any pre-open check reds, or the 9:31 handoff misfires. Markets-open rollback
+is safe (it returns to the proven single process; do it between ORB attempts if mid-session):
+
+```bash
+cd /home/apollo/apollo_the_wise
+# 1. Remove the intelligence env block from market-agent in
+#    docker/docker-compose.prod.yml (the SERVICE_ROLE/EXECUTION_MODE/
+#    EXECUTION_SERVICE_URL/ALPACA_* lines) — or `git revert fb40e38` and pull.
+# 2. Stop the execution service:
+docker compose -f docker/docker-compose.prod.yml stop apollo-execution
+# 3. Rebuild market-agent as combined (owns everything again, byte-identical):
+bash scripts/deploy.sh market-agent
+```
+
+Verify: `apollo-market` boots `SERVICE_ROLE=combined`, "all 69 jobs kept", paper
+equity prints, healthy. Combined = the exact pre-cutover behavior.
+
+---
+
+## D. After a clean session
+
+- Confirm the ORB trade (if any) reconciled once in `mi_live_trades`.
+- Update `docs/ops/execution_split_cutover.md` status → "live-ORB http flip VERIFIED".
+- The split's remaining follow-ons (plan): W3 staging, W4 hardening (DR runbook for
+  two services, per-service uptime checks, #258 db.py split).
