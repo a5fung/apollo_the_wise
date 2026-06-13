@@ -52,6 +52,67 @@ LIVE_TRADING_ENABLED = os.environ.get("LIVE_TRADING_ENABLED", "false").lower() =
 # set — keeps git-revert rollback clean for ONE deploy cycle.
 ENABLE_LIVE_MODE = os.environ.get("ENABLE_LIVE_MODE", "true").lower() == "true"
 
+# ── Service-split roles (#256 W2, 2026-06-13) ────────────────────────────────
+# Apollo is splitting into apollo-execution (broker / streams / safeguards /
+# Alpaca creds) and apollo-intelligence (detection / themes / judge / briefings)
+# so an intelligence deploy can never restart trade execution. Until the cutover,
+# the single process runs SERVICE_ROLE="combined" — both job sets + both stream
+# consumers — BYTE-IDENTICAL to pre-split behavior.
+#   combined     — one process owns everything (DEFAULT; pre-split behavior)
+#   execution    — broker, streams, safeguards, execution scheduler jobs only
+#   intelligence — detection / themes / judge / briefings; NO streams, NO broker
+#                  jobs; reaches execution via the execution_client HTTP transport
+SERVICE_ROLE = os.environ.get("SERVICE_ROLE", "combined").lower()
+_VALID_SERVICE_ROLES = {"combined", "execution", "intelligence"}
+
+# EXECUTION_MODE selects how execution_client reaches the broker:
+#   inprocess — direct in-process broker calls (DEFAULT; pre-split behavior)
+#   http      — POST to the apollo-execution service (X-Apollo-Secret), the
+#               same auth pattern as orchestrator→market
+EXECUTION_MODE = os.environ.get("EXECUTION_MODE", "inprocess").lower()
+_VALID_EXECUTION_MODES = {"inprocess", "http"}
+
+
+def runs_execution_jobs() -> bool:
+    """True when THIS process owns broker / streams / execution scheduler jobs."""
+    return SERVICE_ROLE in ("combined", "execution")
+
+
+def runs_intelligence_jobs() -> bool:
+    """True when THIS process owns detection / theme / judge / briefing jobs."""
+    return SERVICE_ROLE in ("combined", "intelligence")
+
+
+def assert_service_role_coherent() -> None:
+    """Fail LOUD at boot on an incoherent role/mode combo (#256 W2, advisor 6/13).
+
+    A container that misreads SERVICE_ROLE must NEVER silently fall back to
+    'combined' — that would run BOTH job sets AND both trade-stream consumers =
+    double order execution / double fill processing (the #1 cutover hazard).
+    Invalid values, and the http-without-split combo, raise RuntimeError and
+    block the container start (surfaces in docker logs immediately).
+    """
+    if SERVICE_ROLE not in _VALID_SERVICE_ROLES:
+        raise RuntimeError(
+            f"SERVICE_ROLE={SERVICE_ROLE!r} invalid — must be one of "
+            f"{sorted(_VALID_SERVICE_ROLES)}. Refusing to boot (a misread role "
+            f"must never default to 'combined' = double execution)."
+        )
+    if EXECUTION_MODE not in _VALID_EXECUTION_MODES:
+        raise RuntimeError(
+            f"EXECUTION_MODE={EXECUTION_MODE!r} invalid — must be one of "
+            f"{sorted(_VALID_EXECUTION_MODES)}. Refusing to boot."
+        )
+    # http transport only makes sense once the process is SPLIT: the
+    # intelligence side speaks http to a SEPARATE execution service. A
+    # 'combined' process with EXECUTION_MODE=http would HTTP-call itself.
+    if EXECUTION_MODE == "http" and SERVICE_ROLE == "combined":
+        raise RuntimeError(
+            "EXECUTION_MODE=http requires SERVICE_ROLE in {execution, "
+            "intelligence} (the split topology); got SERVICE_ROLE='combined' "
+            "(a single process would HTTP-call itself). Refusing to boot."
+        )
+
 
 def resolve_account_mode_for_strategy(strategy) -> str:
     """Resolve the Alpaca account mode for a given strategy row.

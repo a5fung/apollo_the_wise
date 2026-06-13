@@ -6663,6 +6663,19 @@ async def startup():
     import os
     from logging.handlers import RotatingFileHandler
 
+    # Fail LOUD on an incoherent service-role/execution-mode combo BEFORE any
+    # other boot work (#256 W2). A misread SERVICE_ROLE must never fall back to
+    # 'combined' (= double execution). Default combined/inprocess always passes.
+    from agents.market_intelligence.constants import (
+        SERVICE_ROLE as _SVC_ROLE, EXECUTION_MODE as _EXEC_MODE,
+        assert_service_role_coherent, runs_execution_jobs,
+    )
+    assert_service_role_coherent()
+    logging.getLogger(__name__).info(
+        f"Service role: SERVICE_ROLE={_SVC_ROLE} EXECUTION_MODE={_EXEC_MODE} "
+        f"(execution_jobs={runs_execution_jobs()})"
+    )
+
     # Resolve Alpaca credentials BEFORE any alpaca_client import.
     # Raises RuntimeError on missing/misconfigured env vars (boot-blocks the
     # container start, surfaces in docker logs immediately).
@@ -6801,19 +6814,27 @@ async def startup():
         logger.warning(f"Failed to load ticker overrides: {e}")
     start_scheduler()
     asyncio.create_task(check_missed_jobs())  # Run in background — data pull can take 30+ min
-    # Start WebSocket streams
-    from agents.market_intelligence.broker.trade_stream import start_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
-    from agents.market_intelligence.broker.bar_stream import start_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
-    asyncio.create_task(start_trade_stream())   # fill/stop detection
-    asyncio.create_task(start_bar_stream())     # real-time first-bar ORB entry
+    # Start WebSocket streams — EXECUTION-OWNED (#256 W2). Trade/bar streams run
+    # in EXACTLY ONE service; two consumers = duplicate fill mutations (cutover
+    # risk #1). combined/execution start them; intelligence skips them entirely.
+    if runs_execution_jobs():
+        from agents.market_intelligence.broker.trade_stream import start_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+        from agents.market_intelligence.broker.bar_stream import start_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+        asyncio.create_task(start_trade_stream())   # fill/stop detection
+        asyncio.create_task(start_bar_stream())     # real-time first-bar ORB entry
+    else:
+        logger.info("SERVICE_ROLE=intelligence — trade/bar streams NOT started "
+                    "(execution service owns them)")
     logger.info("Market Intelligence Agent ready on port 8006")
     asyncio.create_task(send_telegram_message("🔄 Market agent online"))
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    from agents.market_intelligence.broker.trade_stream import stop_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
-    from agents.market_intelligence.broker.bar_stream import stop_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
-    await stop_trade_stream()
-    await stop_bar_stream()
+    from agents.market_intelligence.constants import runs_execution_jobs
+    if runs_execution_jobs():
+        from agents.market_intelligence.broker.trade_stream import stop_trade_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+        from agents.market_intelligence.broker.bar_stream import stop_bar_stream  # exec-boundary-ok: moves-with-job (W2 boot wiring)
+        await stop_trade_stream()
+        await stop_bar_stream()
     stop_scheduler()
