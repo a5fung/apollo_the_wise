@@ -69,20 +69,30 @@ The handoff only fires if an EP HIGH lands in the ORB window. Watch BOTH service
   docker logs --since 10m apollo-market 2>&1 | grep -iE 'triggering ORB entry via execution facade|trigger_orb_entry|ExecutionUnreachable'
   ```
   Expect (when a HIGH fires): `Post-open new HIGHs ... — triggering ORB entry via execution facade`.
-  RED FLAG: `ExecutionUnreachable` here = the trigger didn't reach execution → ORB
-  would silently NOT fire → §C rollback immediately.
+  If `ExecutionUnreachable` appears here: it means the HTTP call to execution did
+  not return cleanly — it does **NOT** by itself mean the order didn't fire.
+  `trigger_orb_entry` runs the full `_orb_monitor_job` ON execution (which can place
+  the bracket) before responding; the order path has a generous 180s read timeout
+  (vs 15s for reads) specifically so a slow-but-successful submit doesn't false-raise.
+  So on `ExecutionUnreachable`, **execution's own logs are the authority** — go read
+  them (next bullet) before deciding. Connect-refused (execution down) is the only
+  variant that is unambiguously "didn't fire" → §C.
 
-- **Execution side** (`apollo-execution`) — the order is placed:
+- **Execution side** (`apollo-execution`) — THE authority on what actually happened:
   ```bash
   docker logs --since 10m apollo-execution 2>&1 | grep -iE 'orb_monitor|ORB|bracket|submit|ACTION_AUTO_ENTERED|order placed'
   ```
   Expect: the orb monitor runs + (if a candidate passes) a bracket order is submitted
-  on the paper account.
+  on the paper account. If a bracket WAS placed here, the trade is live regardless of
+  what the intelligence side logged — confirm it landed once in `mi_live_trades`
+  (below) and do NOT roll back on the intelligence-side `ExecutionUnreachable` alone.
 
-**Success criterion:** an EP HIGH in the window produces the intelligence trigger
-log AND the execution-side orb_monitor/order log, with NO `ExecutionUnreachable`. A
-**quiet** window (no HIGH) is not a failure — it just doesn't exercise the path;
-re-check the next session.
+**Success criterion:** an EP HIGH in the window produces a bracket submit on the
+**execution** side (the order-of-record), reconciled exactly once in `mi_live_trades`.
+The intelligence trigger log should accompany it with NO `ExecutionUnreachable`; if
+that warning does appear, reconcile against the execution log + `mi_live_trades`
+(fired-but-slow vs genuinely-unreachable) before acting. A **quiet** window (no HIGH)
+is not a failure — it just doesn't exercise the path; re-check the next session.
 
 **Cross-check (after the window):** the trade lands in `mi_live_trades` exactly once
 (not zero, not double — the double-processing guard). The order-status reconcile

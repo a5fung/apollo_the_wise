@@ -57,7 +57,28 @@ _CROSS_FNS = frozenset({
     "sync_positions_for_mode", "place_timestop_sell",
 })
 
-_HTTP_TIMEOUT_SECONDS = 15.0
+# HTTP timeout is split by what the call DOES on the execution side, not one flat
+# value (advisor 6/13). The trade-critical handoffs run heavy SYNCHRONOUS work in
+# the execution route before responding: `trigger_orb_entry` runs the entire
+# `_orb_monitor_job` (bar fetch + fade guard + Alpaca bracket submit + DB + Telegram,
+# PER pending HIGH); the others do real broker round-trips / multi-mode loops. Prod
+# `mi_job_runs` shows ep_scan (which wraps the orb monitor) at p95 64s / max 151s —
+# a flat 15s would raise ExecutionUnreachable on intelligence WHILE execution may have
+# already placed the bracket. That false-unreachable on the order path is exactly the
+# silent-double/no-fire class the split must not introduce, so the command path gets
+# generous headroom; only the fast reads keep the tight bound.
+# CONNECT is always short: "execution is down" must fail fast (pre-open check, idle
+# reads) rather than hang for the full command budget.
+_HTTP_CONNECT_TIMEOUT_SECONDS = 5.0
+_HTTP_READ_TIMEOUT_SECONDS = 15.0
+_HTTP_COMMAND_TIMEOUT_SECONDS = 180.0
+
+# Cross-fns that run heavy synchronous execution-side work → command (long) read
+# budget. Everything else in _CROSS_FNS is a fast read/registration → read budget.
+_SLOW_COMMAND_FNS = frozenset({
+    "trigger_orb_entry", "submit_9m_day2_trade", "execute_partial_exit",
+    "sync_positions", "sync_positions_for_mode", "place_timestop_sell",
+})
 
 
 def _wire_default(o):
@@ -79,8 +100,13 @@ async def _http_call(name: str, args, kwargs):
 
     url = f"{EXECUTION_SERVICE_URL}/exec/{name}"
     body = json.dumps({"args": list(args), "kwargs": kwargs}, default=_wire_default)
+    read_timeout = (_HTTP_COMMAND_TIMEOUT_SECONDS if name in _SLOW_COMMAND_FNS
+                    else _HTTP_READ_TIMEOUT_SECONDS)
+    timeout = httpx.Timeout(
+        connect=_HTTP_CONNECT_TIMEOUT_SECONDS, read=read_timeout,
+        write=_HTTP_CONNECT_TIMEOUT_SECONDS, pool=_HTTP_CONNECT_TIMEOUT_SECONDS)
     try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT_SECONDS) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 url,
                 content=body,

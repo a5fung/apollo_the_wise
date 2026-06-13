@@ -79,6 +79,60 @@ async def test_wire_failure_raises_not_empty(monkeypatch):
         await ec.get_all_positions(account_mode="paper")
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,expect_read", [
+    ("trigger_orb_entry", ec._HTTP_COMMAND_TIMEOUT_SECONDS),   # heavy: runs orb monitor
+    ("execute_partial_exit", ec._HTTP_COMMAND_TIMEOUT_SECONDS),  # heavy: broker mutation
+    ("get_all_positions", ec._HTTP_READ_TIMEOUT_SECONDS),       # fast read
+    ("get_account", ec._HTTP_READ_TIMEOUT_SECONDS),            # fast read
+])
+async def test_http_timeout_is_split_by_call_weight(monkeypatch, name, expect_read):
+    # The trade-critical handoffs (trigger_orb_entry et al.) run heavy synchronous
+    # work on execution; a flat 15s read would false-raise ExecutionUnreachable on the
+    # order path. They get the long read budget; fast reads keep the tight one. Connect
+    # stays short either way so "execution down" fails fast.
+    import httpx
+
+    import shared.secrets as secrets
+
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
+    monkeypatch.setattr(
+        secrets, "get_secrets",
+        lambda: type("S", (), {"internal_api_secret": "x"})())
+
+    captured = {}
+
+    class _Client:
+        def __init__(self, *a, timeout=None, **k):
+            captured["timeout"] = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **k):
+            class _R:
+                def raise_for_status(self_):
+                    pass
+
+                def json(self_):
+                    return {"result": None}
+            return _R()
+
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    await ec._http_call(name, (), {})
+
+    t = captured["timeout"]
+    assert t.read == expect_read
+    assert t.connect == ec._HTTP_CONNECT_TIMEOUT_SECONDS
+    # the slow set never silently grows past the trade-state mutators
+    assert ec._SLOW_COMMAND_FNS <= ec._CROSS_FNS
+
+
 def test_get_data_feed_name_is_pure_config_local(monkeypatch):
     monkeypatch.setenv("ALPACA_DATA_FEED", "sip")
     assert ec.get_data_feed_name() == "sip"
