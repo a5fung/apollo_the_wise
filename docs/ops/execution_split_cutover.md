@@ -1,10 +1,16 @@
 # Execution / Intelligence split — cutover runbook (#256 W2)
 
-**Status:** the split is BUILT and dormant. Prod runs the single combined
-`market-agent` (SERVICE_ROLE unset = `combined`, EXECUTION_MODE=`inprocess`).
-This runbook performs the actual cutover to two services. It is **operator-gated**
-and must run with **markets CLOSED** (no fills fire off-hours → the #1 risk,
-stream double-processing, can't bite during the window).
+**Status:** ✅ CUTOVER PERFORMED 2026-06-13 ~18:28 UTC (operator-authorized,
+markets closed). Prod now runs TWO services: `apollo-market`
+(SERVICE_ROLE=intelligence, EXECUTION_MODE=http, no creds) + `apollo-execution`
+(SERVICE_ROLE=execution, sole creds + streams, profile:split). Validated: execution
+27 jobs + streams healthy + full trade preflight passed; intelligence 42 jobs,
+creds-free boot, HTTP read round-trip returned real position data; 0 errors.
+**REMAINING GATE: the Monday live-ORB session through `EXECUTION_MODE=http`** (the
+handoff path the markets-closed soak can't exercise) — keep-http vs collapse-to-
+combined before the open is the operator's call. Rollback below is instant.
+
+This runbook (below) is the procedure that WAS run; keep it for re-runs + rollback.
 
 ## What's already in place (no cutover needed)
 
