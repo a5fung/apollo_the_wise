@@ -6,9 +6,11 @@
 # can't accidentally skip preflight after a build/restart.
 #
 # Usage (from /home/apollo/apollo_the_wise on the prod box):
-#   bash scripts/deploy.sh                 # market-agent only (default)
+#   bash scripts/deploy.sh market-agent    # market-agent only
 #   bash scripts/deploy.sh both            # market-agent + orchestrator
 #   bash scripts/deploy.sh orchestrator    # orchestrator only
+#   bash scripts/deploy.sh execution       # apollo-execution (#256 W2 cutover —
+#                                          # gated; see docs/ops/execution_split_cutover.md)
 #
 # The 2026-05-13 outage happened because deploy verification was a separate
 # documented step that the operator skipped. Wrapping the full sequence in
@@ -21,12 +23,17 @@ set -euo pipefail
 # the deploy — the 2026-05-28 /partialnow "nothing happens" gap. Force a
 # conscious scope choice.
 if [ $# -eq 0 ]; then
-  echo "Usage: bash scripts/deploy.sh <market-agent|orchestrator|both>"
+  echo "Usage: bash scripts/deploy.sh <market-agent|orchestrator|both|execution>"
   echo "No default scope — choose explicitly to avoid leaving a service stale (#154)."
   exit 2
 fi
 SCOPE="$1"
 COMPOSE_FILE="docker/docker-compose.prod.yml"
+# Which container the boot-wait + trade preflights exec against, and any extra
+# compose `--profile` args (#256 W2). Default = apollo-market so every existing
+# scope is byte-identical; only the `execution` scope changes them.
+PREFLIGHT_CONTAINER="apollo-market"
+COMPOSE_PROFILE_ARGS=""
 
 case "$SCOPE" in
   market-agent)
@@ -38,8 +45,18 @@ case "$SCOPE" in
   both)
     SERVICES="market-agent orchestrator"
     ;;
+  execution)
+    # #256 W2 cutover: the apollo-execution service (compose profile: split).
+    # ONLY safe AFTER market-agent has been flipped to intelligence — starting it
+    # while market-agent still runs combined = double execution. Run the trade
+    # preflights against apollo-execution (the container that holds the creds +
+    # entry pipeline). See docs/ops/execution_split_cutover.md.
+    SERVICES="apollo-execution"
+    PREFLIGHT_CONTAINER="apollo-execution"
+    COMPOSE_PROFILE_ARGS="--profile split"
+    ;;
   *)
-    echo "Unknown scope: $SCOPE (expected market-agent | orchestrator | both)"
+    echo "Unknown scope: $SCOPE (expected market-agent | orchestrator | both | execution)"
     exit 2
     ;;
 esac
@@ -68,7 +85,9 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
   done <<< "$CHANGED"
   MISSING=""
   if [ "$NEED_ORCH" = 1 ] && [[ "$SERVICES" != *orchestrator* ]]; then MISSING="orchestrator"; fi
-  if [ "$NEED_MARKET" = 1 ] && [[ "$SERVICES" != *market-agent* ]]; then MISSING="${MISSING:+$MISSING }market-agent"; fi
+  # apollo-execution runs the SAME image as market-agent, so it covers
+  # agents/market_intelligence/ changes too (#256 W2).
+  if [ "$NEED_MARKET" = 1 ] && [[ "$SERVICES" != *market-agent* && "$SERVICES" != *apollo-execution* ]]; then MISSING="${MISSING:+$MISSING }market-agent"; fi
   if [ -n "$MISSING" ]; then
     echo ""
     echo "DEPLOY ABORTED — this pull changed files owned by: $MISSING"
@@ -81,16 +100,16 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
 fi
 
 echo "=== [2/5] Building images: $SERVICES ==="
-docker compose --env-file .env -f "$COMPOSE_FILE" build --no-cache $SERVICES
+docker compose --env-file .env -f "$COMPOSE_FILE" $COMPOSE_PROFILE_ARGS build --no-cache $SERVICES
 
 echo "=== [3/5] Restarting containers: $SERVICES ==="
-docker compose --env-file .env -f "$COMPOSE_FILE" up -d $SERVICES
+docker compose --env-file .env -f "$COMPOSE_FILE" $COMPOSE_PROFILE_ARGS up -d $SERVICES
 
 # Only wait for market-agent boot if it was actually restarted in step 3.
 # Orchestrator-only deploys don't touch market-agent — the boot marker
 # from its existing run is older than 90s and we'd time out for no reason.
-if [[ "$SERVICES" == *"market-agent"* ]]; then
-  echo "=== [4/5] Waiting for market-agent boot to complete ==="
+if [[ "$SERVICES" == *"market-agent"* || "$SERVICES" == *"apollo-execution"* ]]; then
+  echo "=== [4/5] Waiting for $PREFLIGHT_CONTAINER boot to complete ==="
   TIMEOUT=120
   ELAPSED=0
   # Wait for the LATE boot marker (scheduler started = app fully booted), NOT
@@ -99,11 +118,12 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
   # G6 does a full second import of the agent stack + Alpaca bootstrap; running
   # it mid-boot on the small box races/OOM-kills the exec (zero output, false
   # red — 2026-06-05). Gating on true boot-complete makes preflight reliable.
-  while ! docker logs --since 90s apollo-market 2>&1 | grep -q 'Market Intelligence scheduler started'; do
+  # (The scheduler-started marker logs in every SERVICE_ROLE.)
+  while ! docker logs --since 90s "$PREFLIGHT_CONTAINER" 2>&1 | grep -q 'Market Intelligence scheduler started'; do
     sleep 2
     ELAPSED=$((ELAPSED + 2))
     if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
-      echo "TIMEOUT after ${TIMEOUT}s waiting for market-agent boot. Check 'docker logs apollo-market'."
+      echo "TIMEOUT after ${TIMEOUT}s waiting for $PREFLIGHT_CONTAINER boot. Check 'docker logs $PREFLIGHT_CONTAINER'."
       exit 3
     fi
   done
@@ -113,13 +133,13 @@ if [[ "$SERVICES" == *"market-agent"* ]]; then
   # 2026-06-05 false-red ("safeguards can't authenticate" / G6 zero-output).
   # 12s comfortably clears Alpaca init on the small box (boot is ~7-10s total).
   sleep 12
-  echo "market-agent ready (${ELAPSED}s + 12s settle)"
+  echo "$PREFLIGHT_CONTAINER ready (${ELAPSED}s + 12s settle)"
 else
-  echo "=== [4/5] Skipped — market-agent not in this deploy scope ==="
+  echo "=== [4/5] Skipped — no market-image container in this deploy scope ==="
 fi
 
 echo "=== [5/5] Preflight smoke test ==="
-if ! docker exec apollo-market python -m scripts.preflight_check; then
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_check; then
   echo ""
   echo "DEPLOY FAILED — preflight (safeguards) reported infra failure(s)."
   echo "The container is running but entry-pipeline safeguards can't authenticate."
@@ -129,7 +149,7 @@ fi
 
 echo ""
 echo "=== [5b/7] Preflight DB UPDATE prepare validation ==="
-if ! docker exec apollo-market python -m scripts.preflight_db_updates; then
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_db_updates; then
   echo ""
   echo "DEPLOY FAILED — DB UPDATE prepare validation reported type/schema error(s)."
   echo "asyncpg can't prepare one or more trade-lifecycle UPDATEs against the"
@@ -140,7 +160,7 @@ fi
 
 echo ""
 echo "=== [5c/7] Preflight column-write authority check (Gate 5 G) ==="
-if ! docker exec apollo-market python -m scripts.audit_column_writes check; then
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.audit_column_writes check; then
   echo ""
   echo "DEPLOY FAILED — unauthorized writer to mi_live_trades column(s)."
   echo "Some function writes a column it's not in ALLOWED_WRITERS for. This"
@@ -152,7 +172,7 @@ fi
 
 echo ""
 echo "=== [5d/7] Preflight import-shadowing check (2026-05-20 outage class) ==="
-if ! docker exec apollo-market python -m scripts.preflight_import_shadowing; then
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_import_shadowing; then
   echo ""
   echo "DEPLOY FAILED — function-local 'from X import Y' shadows module-level import."
   echo "This is the 2026-05-20 UnboundLocalError outage class. Python makes the name"
@@ -164,7 +184,7 @@ fi
 
 echo ""
 echo "=== [5e/7] Preflight YAML duplicate-key check (2026-05-24 SNDK class) ==="
-if ! docker exec apollo-market python -m scripts.preflight_yaml_dupe_keys; then
+if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_yaml_dupe_keys; then
   echo ""
   echo "DEPLOY FAILED — data_gated_reviews.yaml has entries with duplicate top-level"
   echo "keys. YAML last-wins silently overwrites earlier values, causing reviews to"
@@ -202,8 +222,8 @@ echo "=== [5g/7] Preflight G6 — paper-Alpaca replace_order integration smoke =
 # Only runs when SCOPE includes market-agent (the container that holds the
 # alpaca-py request constructors + paper credentials). Orchestrator-only
 # deploys skip — no relevant code surface changed.
-if [[ "$SERVICES" == *"market-agent"* ]]; then
-  if ! docker exec apollo-market python -m scripts.preflight_replace_order_smoke; then
+if [[ "$SERVICES" == *"market-agent"* || "$SERVICES" == *"apollo-execution"* ]]; then
+  if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_replace_order_smoke; then
     echo ""
     echo "DEPLOY FAILED — paper-Alpaca replace_order integration smoke failed."
     echo "This is the IBM 2026-05-27 / 2026-05-28 bug class — replace_order"
