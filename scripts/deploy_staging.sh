@@ -104,9 +104,15 @@ echo "  intelligence errors=$me  execution errors=$ee"
 cat <<EOF
 
 === STAGING UP — deploy mechanics verified ===
-Operator smoke (against the STAGING bot, not prod Apollo):
+Operator smoke (against the STAGING bot, not prod Apollo) — READ-ONLY commands only:
   • /status     — staging bot replies; equity reads via http transport
   • /trades     — positions + P&L return (or 'couldn't reach execution' = the fail-loud path, never a silent flat)
+
+⚠ SHARED PAPER ACCOUNT (until #280): .env.staging copies prod's PAPER Alpaca creds, so
+  staging-execution reads/acts on the SAME paper account as prod. Scheduled mutations are
+  gated (LIVE_TRADING_ENABLED=false + streams off), BUT operator MUTATING commands bypass
+  that gate — do NOT send /syncnow · /partialnow · /timestop to the staging bot, and prefer
+  OFF-HOURS runs, until staging gets its own paper account.
 
 ⚠ TEAR DOWN WHEN DONE — do NOT leave staging running over Monday's live-ORB gate:
     docker compose --env-file $ENV_FILE -f $COMPOSE_FILE -p $PROJECT down
