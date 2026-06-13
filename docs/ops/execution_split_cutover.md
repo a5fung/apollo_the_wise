@@ -143,6 +143,37 @@ set changes before cutover. (Residual the dry-boot can't cover, left for step 2b
 under markets-closed + rollback: real streams starting, the creds bootstrap with
 live keys, and intelligence tolerating blanked `ALPACA_*=""`.)
 
+## Post-cutover deploy ergonomics — `deploy.sh market-agent` preflight FALSE-FAILS (known, #278)
+
+After the cutover, `apollo-market` is the **intelligence** role with NO Alpaca
+creds (`ALPACA_*: ""`). But `deploy.sh market-agent` runs the entry-pipeline
+safeguard preflight (`[5/7]`) against `PREFLIGHT_CONTAINER=apollo-market` — that
+path calls `get_account()`, which on a creds-less intelligence container fails
+`setup:account_fetch_failed`. So the deploy prints **"PREFLIGHT FAILED … DO NOT
+declare this deploy green"** even when the rebuild is perfect. This is a
+FALSE-NEGATIVE of creds isolation, not a real failure: the safeguards genuinely
+run on `apollo-execution` now, and the intelligence container reaches them over
+HTTP. Verified once (2026-06-13, the timeout-split deploy 3cb4b9c): container
+rebuilt + booted `intelligence_no_creds`, 42 jobs, HTTP read round-trip returned a
+real position, 0 errors — green despite the preflight line.
+
+**Green criterion for an intelligence-role redeploy** (until the preflight is made
+role-aware — #278): ignore the safeguard-preflight line; instead confirm manually —
+(a) `SERVICE_ROLE=intelligence EXECUTION_MODE=http` in boot logs, (b) `kept 42,
+removed 27`, (c) `ec.get_all_positions()` over HTTP returns a list (not
+`ExecutionUnreachable`), (d) 0 `ExecutionUnreachable|Traceback|CRITICAL` in the
+fresh boot. The cutover itself sidestepped this by recreating market-agent with raw
+`docker compose up -d market-agent` (no preflight); a rebuild needs `deploy.sh`.
+
+**Monday rollback is UNAFFECTED:** §C collapse-to-combined runs `deploy.sh
+market-agent` AFTER the intelligence env is removed → market-agent boots `combined`
+WITH creds → the preflight authenticates and passes normally. The false-fail only
+occurs while the container is in the creds-less intelligence role.
+
+#278 fixes this: make the safeguard preflight role-aware (target `apollo-execution`,
+or skip with a clear "intelligence role — safeguards run on apollo-execution" message
+when the scoped container resolves to intelligence/no-creds).
+
 ## Open cutover-time items (not yet done)
 
 - Orchestrator `/task` URL: stays `http://market-agent:8006` (service keeps its

@@ -117,7 +117,11 @@ bash scripts/deploy.sh market-agent
 ```
 
 Verify: `apollo-market` boots `SERVICE_ROLE=combined`, "all 69 jobs kept", paper
-equity prints, healthy. Combined = the exact pre-cutover behavior.
+equity prints, healthy. Combined = the exact pre-cutover behavior. The safeguard
+preflight PASSES here (combined has creds) — unlike an intelligence-role redeploy,
+which false-fails the preflight (creds-less by design; see
+`execution_split_cutover.md` "deploy ergonomics" / #278). So a clean preflight on
+rollback is the normal, expected signal that combined is back.
 
 ---
 
