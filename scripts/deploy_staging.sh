@@ -6,7 +6,7 @@
 # LIVE_TRADING_ENABLED=false, so the trading preflights don't apply). Instead it
 # validates what staging EXISTS to validate: build · boot · role partition · the
 # HTTP execution transport · a prod-restored DB. The operator runs the Telegram
-# smoke (/status, /positions against the staging bot) afterward.
+# smoke (/status, /trades against the staging bot) afterward.
 #
 # HARD RULE (advisor 2026-06-13): ON-DEMAND. Bring up → verify → smoke → DOWN.
 # Never leave staging running across Monday's live-ORB gate — a 24/7 second stack
@@ -106,7 +106,7 @@ cat <<EOF
 === STAGING UP — deploy mechanics verified ===
 Operator smoke (against the STAGING bot, not prod Apollo):
   • /status     — staging bot replies; equity reads via http transport
-  • /positions  — list returns (or 'couldn't reach execution' = the fail-loud path, never a silent flat)
+  • /trades     — positions + P&L return (or 'couldn't reach execution' = the fail-loud path, never a silent flat)
 
 ⚠ TEAR DOWN WHEN DONE — do NOT leave staging running over Monday's live-ORB gate:
     docker compose --env-file $ENV_FILE -f $COMPOSE_FILE -p $PROJECT down

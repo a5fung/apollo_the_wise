@@ -93,7 +93,7 @@ docker compose -f docker/docker-compose.prod.yml logs market-agent     --since 3
 Expect: apollo-execution → `SERVICE_ROLE=execution` + `Execution routes registered: 14`;
 market-agent → `SERVICE_ROLE=intelligence EXECUTION_MODE=http`.
 
-- intelligence read crossing HTTP: `/positions` or `/status` via Telegram (proxies
+- intelligence read crossing HTTP: `/trades` or `/status` via Telegram (proxies
   intelligence → execution `/exec/get_all_positions`). A wrong answer that says
   "couldn't reach execution" (ExecutionUnreachable) is the FAIL-LOUD path — never
   a silent flat.
