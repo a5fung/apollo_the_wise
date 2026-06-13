@@ -57,10 +57,47 @@ def test_intelligence_drops_all_execution_jobs():
 
 def test_partition_is_a_clean_disjoint_cover():
     # exec ∪ intel == all, exec ∩ intel == ∅ over the realistic set
-    se = _FakeScheduler(_ALL); sched._apply_role_partition(se, "execution")
-    si = _FakeScheduler(_ALL); sched._apply_role_partition(si, "intelligence")
+    se = _FakeScheduler(_ALL)
+    sched._apply_role_partition(se, "execution")
+    si = _FakeScheduler(_ALL)
+    sched._apply_role_partition(si, "intelligence")
     assert se.ids() | si.ids() == _ALL
     assert se.ids() & si.ids() == set()
+
+
+def test_fallback_fill_checkers_are_execution_owned():
+    # Regression for the 2026-06-13 W2 audit catch: the check_fills_* fallback
+    # fill-pollers call broker.order_manager.check_fills (Alpaca). They MUST be
+    # execution-owned, or the split drops the broker fallback from execution AND
+    # hands it to the credential-less intelligence service. They derive from the
+    # _FILL_CHECK_TIMES SSoT shared with registration, so a new fire time can't
+    # register without joining the execution set.
+    assert sched._CHECK_FILLS_JOB_IDS, "fallback fill-check ids must be non-empty"
+    assert sched._CHECK_FILLS_JOB_IDS <= sched.EXECUTION_OWNED_JOB_IDS
+    for jid in sched._CHECK_FILLS_JOB_IDS:
+        assert sched._job_belongs_to_role(jid, "execution")
+        assert not sched._job_belongs_to_role(jid, "intelligence")
+
+
+def test_unclassified_job_fails_loud_in_split_roles():
+    # The omission class the 6/13 audit caught: a NEW execution job registered
+    # but added to NEITHER manifest would silently route to intelligence. The
+    # omission guard must refuse boot in BOTH split roles (but NOT combined,
+    # which can never break production).
+    rogue = _ALL | {"brand_new_unclassified_job"}
+    for role in ("execution", "intelligence"):
+        s = _FakeScheduler(rogue)
+        with pytest.raises(RuntimeError, match="unclassified registered jobs"):
+            sched._apply_role_partition(s, role)
+    # combined never fails on an unclassified id (no new prod failure mode).
+    s = _FakeScheduler(rogue)
+    out = sched._apply_role_partition(s, "combined")
+    assert out["removed"] == []
+    assert s.ids() == rogue
+
+
+def test_manifests_are_disjoint():
+    assert sched.EXECUTION_OWNED_JOB_IDS.isdisjoint(sched.INTELLIGENCE_OWNED_JOB_IDS)
 
 
 def test_execution_missing_expected_job_fails_loud():

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def main() -> int:
     from agents.market_intelligence.scheduler import (
-        EXECUTION_OWNED_JOB_IDS, _job_belongs_to_role,
+        EXECUTION_OWNED_JOB_IDS, INTELLIGENCE_OWNED_JOB_IDS, _job_belongs_to_role,
     )
     errors: list[str] = []
 
@@ -27,6 +27,12 @@ def main() -> int:
     for jid in EXECUTION_OWNED_JOB_IDS:
         if not isinstance(jid, str) or not jid.strip():
             errors.append(f"execution-owned id is not a non-empty string: {jid!r}")
+
+    # 1b. The two manifests must be DISJOINT — a shared id is ambiguous and would
+    #     defeat the omission guard (it could be "classified" yet wrong-routed).
+    overlap = EXECUTION_OWNED_JOB_IDS & INTELLIGENCE_OWNED_JOB_IDS
+    if overlap:
+        errors.append(f"execution/intelligence manifests overlap: {sorted(overlap)}")
 
     # 2. Disjoint cover: for any id, exactly one of {execution, intelligence}
     #    owns it, and combined owns everything.
@@ -44,12 +50,14 @@ def main() -> int:
             errors.append(f"id {jid!r} not owned by combined role")
 
     if errors:
-        print("✘ Job partition verify FAILED:")
+        print("Job partition verify FAILED:")
         for e in errors:
             print(f"  - {e}")
         return 1
     print(f"Job partition verify — OK "
-          f"({len(EXECUTION_OWNED_JOB_IDS)} execution-owned ids, clean disjoint cover).")
+          f"({len(EXECUTION_OWNED_JOB_IDS)} execution-owned + "
+          f"{len(INTELLIGENCE_OWNED_JOB_IDS)} intelligence-owned ids, "
+          f"disjoint, clean cover).")
     return 0
 
 

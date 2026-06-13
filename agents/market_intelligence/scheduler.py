@@ -86,6 +86,19 @@ JOB_JUDGE_DELTA_DIGEST = "judge_delta_digest"
 # NB: the post-start conditional `order_status_reconcile_boot` job is gated on
 # runs_execution_jobs() at its own registration site (it is added AFTER the
 # partition pass), so it is intentionally NOT in this main-body set.
+#
+# Fallback fill-checker fires (HH, MM ET): the WebSocket trade-stream is primary,
+# these poll Alpaca for fills only when it goes unhealthy. SSoT for BOTH the
+# scheduler registration AND the execution partition so a new fire time can't
+# register without auto-joining the execution set (the omission the W2 audit
+# caught 2026-06-13: the 7 ids were registered but absent here, so the split
+# would have dropped the broker fallback from execution AND handed it to the
+# credential-less intelligence service).
+_FILL_CHECK_TIMES = [(10, 0), (10, 30), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0)]
+_CHECK_FILLS_JOB_IDS = frozenset(
+    f"check_fills_{h:02d}{m:02d}" for h, m in _FILL_CHECK_TIMES
+)
+
 EXECUTION_OWNED_JOB_IDS = frozenset({
     # ORB / entry
     "9m_day2_orb", "orb_window_cleanup", "shadow_orb_entry", "shadow_orb_exit",
@@ -97,6 +110,41 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
     "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
     "unified_allocator_shadow",
+}) | _CHECK_FILLS_JOB_IDS
+
+# Declared INTELLIGENCE jobs — detection / themes / judge / briefings / audits /
+# data. Routing still treats intelligence as "everything not execution-owned"
+# (byte-identical), so this manifest is NOT a routing input; it is the
+# COMPLETENESS ORACLE for the omission guard in `_apply_role_partition`. Without
+# it, the existing fail-loud guards only catch a de-registered or leaked
+# execution id — NOT a NEW execution job simply never added to
+# EXECUTION_OWNED_JOB_IDS, which would silently route to intelligence (exactly
+# the check_fills class the 6/13 audit caught). A registered job in NEITHER set
+# fails the split-role boot loudly. Keep disjoint from EXECUTION_OWNED (the
+# verify script + a test assert this). Conditionally-registered jobs (e.g.
+# crypto) belong here too — the guard is one-directional (registered ⊆ classified),
+# so a classified-but-unregistered id is harmless.
+INTELLIGENCE_OWNED_JOB_IDS = frozenset({
+    # detection scans
+    "ep_scan", "ep_scan_open", "ep_scan_start", "ep_scan_stop",
+    "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
+    "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
+    "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
+    # themes / validation
+    "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
+    # judge / digests / briefings
+    "judge_delta_digest", "catalyst_downgrade_digest", "9m_pace_digest",
+    "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
+    "evening_briefing", "friday_watchlist", "hud_refresh",
+    "sugar_babies_cohort_refresh",
+    # data / RS / regime / crypto
+    "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
+    "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
+    # audits / health / methodology
+    "post_eod_audit", "post_nightly_audit", "weekly_system_review",
+    "monthly_backward_check_sweep", "news_quality_drift_check",
+    "source_gap_finder", "backup_health_check", "telegram_poll_watchdog",
+    "weekly_cleanup",
 })
 
 
@@ -115,8 +163,12 @@ def _apply_role_partition(scheduler, role: str) -> dict:
     """Remove jobs this service role does NOT own, fail LOUD on a partition
     mistake (#256 W2). combined = no-op (byte-identical to pre-split).
 
-    Two fail-loud guards (a partition bug must never silently drop a safety
+    Three fail-loud guards (a partition bug must never silently drop a safety
     job or run a broker job in the wrong service):
+      - omission (both split roles): every REGISTERED job must be classified in
+        EXECUTION_OWNED_JOB_IDS or INTELLIGENCE_OWNED_JOB_IDS. An unclassified
+        job would silently route to intelligence (the check_fills class) — this
+        guard turns that into a loud boot failure at the cutover where it bites.
       - execution: every id in EXECUTION_OWNED_JOB_IDS must be REGISTERED
         (a missing one = a typo/rename that would silently drop a trade job).
       - intelligence: NO execution-owned id may survive the removal.
@@ -124,7 +176,19 @@ def _apply_role_partition(scheduler, role: str) -> dict:
     registered = {j.id for j in scheduler.get_jobs()}
     if role == "combined":
         logger.info(f"Job partition: role=combined — all {len(registered)} jobs kept")
-        return {"role": role, "kept": sorted(registered), "removed": []}
+        return {"role": role, "kept": list(registered), "removed": []}
+
+    # Omission guard (one-directional: registered ⊆ classified). Runs only in
+    # split roles, so it can never break combined-mode production boot.
+    unclassified = registered - EXECUTION_OWNED_JOB_IDS - INTELLIGENCE_OWNED_JOB_IDS
+    if unclassified:
+        raise RuntimeError(
+            f"Job partition FAILED (role={role}): unclassified registered jobs: "
+            f"{sorted(unclassified)} — classify each in EXECUTION_OWNED_JOB_IDS or "
+            f"INTELLIGENCE_OWNED_JOB_IDS before boot. An unclassified job would "
+            f"silently route to intelligence (the check_fills omission class). "
+            f"Refusing to boot."
+        )
 
     if role == "execution":
         missing = EXECUTION_OWNED_JOB_IDS - registered
@@ -3496,9 +3560,9 @@ def start_scheduler() -> AsyncIOScheduler:
     # ── Live trading jobs (only fire if LIVE_TRADING_ENABLED) ──────────────
 
     # Fill checker — fallback polling (WebSocket is primary, this is safety net)
-    # Runs every 30 min; skips if WebSocket stream is healthy
-    fill_check_times = [(10, 0), (10, 30), (11, 0), (12, 0), (13, 0), (14, 0), (15, 0)]
-    for hour, minute in fill_check_times:
+    # Runs every 30 min; skips if WebSocket stream is healthy. Times come from
+    # the module-level _FILL_CHECK_TIMES SSoT (shared with EXECUTION_OWNED_JOB_IDS).
+    for hour, minute in _FILL_CHECK_TIMES:
         check_id = f"check_fills_{hour:02d}{minute:02d}"
         _scheduler.add_job(
             # Single audit job_id "check_fills" (not per-time) so all 7 fires/day
