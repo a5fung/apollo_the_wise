@@ -2,9 +2,12 @@ name: apollo-staging
 
 # Apollo Assistant — STAGING (#256 W3) — a pre-prod mirror on the SAME box as prod.
 #
-# PURPOSE: validate a deploy end-to-end (boot · role partition · HTTP transport ·
-# preflight · operator /status·/positions smoke) on a prod-restored DB BEFORE the
-# change reaches the live paper cohort that feeds the 6/22 GO decision.
+# PURPOSE: validate a deploy's MECHANICS (build · boot · role partition · HTTP
+# transport · operator /status·/trades smoke) on a prod-restored DB BEFORE the change
+# reaches the live paper cohort that feeds the 6/22 GO decision. NOTE: staging does
+# NOT run prod's 10-gate TRADING preflight chain (it runs LIVE_TRADING_ENABLED=false),
+# so a green staging run is NOT proof the prod deploy gates will pass — it proves the
+# app boots + the split transport works on real data.
 #
 # ── HARD RULES (advisor 2026-06-13) ─────────────────────────────────────────
 # 1. ON-DEMAND ONLY. `restart: "no"` everywhere — NOTHING auto-resurrects. The
@@ -12,7 +15,10 @@ name: apollo-staging
 #    17:00 RS pull (~9,700 stocks) that OOM-killed uvicorn at 512M. A 24/7 second
 #    stack risks the HOST OOM killer evicting a PROD container. Bring it up for a
 #    test cycle (deploy.sh staging) and `docker compose -p apollo-staging ... down`
-#    after. MEASURE `free -m` before any `up`.
+#    after. MEASURE `free -m` before any `up`. The memory limits below are DELIBERATELY
+#    LOWER than prod's (market 1024M vs prod 1536M, postgres 1G vs 2G, …) — capping
+#    staging low BOUNDS its footprint so it can't OOM-evict prod. Intentional, NOT
+#    config drift: do not "sync" them up to prod. (#281 tracks compose copy-vs-derive.)
 # 2. NO LIVE TRADING. ENABLE_LIVE_MODE / LIVE_TRADING_ENABLED hard-pinned false
 #    below → no trade streams, no order submits. Staging reads prod's SHARED paper
 #    Alpaca account (creds copied into .env.staging) for preflight get_account /
@@ -109,6 +115,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.market
+    # Tagged so apollo-execution (same Dockerfile.market, role chosen by env) reuses
+    # THIS image instead of compiling a second byte-identical one — staging builds it
+    # ONCE. Mirrors prod, where no single deploy scope builds both market + execution.
+    image: apollo-staging-market:latest
     container_name: apollo-staging-market
     env_file: ../.env.staging
     environment:
@@ -150,9 +160,10 @@ services:
   # Alpaca creds (paper, read-only here since LIVE_TRADING_ENABLED=false). Service
   # KEY `apollo-execution` so the intelligence EXECUTION_SERVICE_URL resolves here.
   apollo-execution:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.market
+    # Reuses market-agent's image (built above) — same Dockerfile.market, role chosen
+    # by SERVICE_ROLE env. No `build:` here, so the staging cycle compiles one image,
+    # not two identical ones. (deploy_staging.sh builds market-agent before this ups.)
+    image: apollo-staging-market:latest
     container_name: apollo-staging-execution
     env_file: ../.env.staging        # Alpaca paper creds live here (read-only use)
     environment:

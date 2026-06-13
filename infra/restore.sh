@@ -324,6 +324,8 @@ phase_db_up() {
 # 2026-05-25 DR drill (role "dashboard_ro" does not exist on fresh DB).
 # Long-term: backup.sh could bundle `pg_dumpall --roles-only` so this list
 # stays in sync automatically; for now we maintain it explicitly.
+# NOTE: scripts/staging_seed.sh FORKS this restore recipe — keep its EXPECTED_ROLES
+# in sync until #281 extracts a shared restore_db() both call.
 EXPECTED_ROLES=(dashboard_ro)
 
 phase_restore_sql() {

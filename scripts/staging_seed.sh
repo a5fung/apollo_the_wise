@@ -16,7 +16,11 @@ set -o pipefail
 STAGING_PG="apollo-staging-postgres"
 EXPECTED_PROJECT="apollo-staging"
 BACKUP_GLOB="/home/apollo/backups/apollo-*.sql.gz"
-EXPECTED_ROLES=(dashboard_ro)   # referenced by GRANT/OWNER in the dump; pre-create
+# referenced by GRANT/OWNER in the dump; pre-create so ON_ERROR_STOP doesn't halt.
+# ⚠ This restore recipe (roles + DROP/CREATE + gunzip|psql + sanity counts) is a FORK
+# of infra/restore.sh::phase_restore_sql — KEEP EXPECTED_ROLES IN SYNC with it until
+# #281 extracts a shared restore_db() both call (the DR-script sourcing needs care).
+EXPECTED_ROLES=(dashboard_ro)
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 ok()   { echo -e "${GREEN}✔${NC} $*"; }

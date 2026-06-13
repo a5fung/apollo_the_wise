@@ -21,6 +21,9 @@ ENV_FILE=".env.staging"
 PROJECT="apollo-staging"
 DC=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -p "$PROJECT")
 APP_SERVICES=(orchestrator market-agent apollo-execution)
+# apollo-execution reuses market-agent's image (compose `image:` share), so we BUILD
+# only the two distinct images — building all three would compile Dockerfile.market twice.
+BUILD_SERVICES=(orchestrator market-agent)
 PREFLIGHT_CONTAINER="apollo-staging-execution"
 INTEL_CONTAINER="apollo-staging-market"
 MIN_FREE_MB="${STAGING_MIN_FREE_MB:-1800}"   # ~1.4G actual stack + headroom
@@ -30,9 +33,8 @@ echo "=== Apollo STAGING deploy (project: $PROJECT) ==="
 
 # ── Preconditions ─────────────────────────────────────────────────────────────
 [ -r "$ENV_FILE" ] || { echo "FATAL: $ENV_FILE missing. Create it (cp .env .env.staging + swap TELEGRAM_BOT_TOKEN)."; exit 2; }
-if [ "$(grep -c '^TELEGRAM_BOT_TOKEN=.\+' "$ENV_FILE" 2>/dev/null || echo 0)" -eq 0 ]; then
-  echo "FATAL: $ENV_FILE has no TELEGRAM_BOT_TOKEN — staging bot smoke can't run."; exit 2
-fi
+grep -q '^TELEGRAM_BOT_TOKEN=.\+' "$ENV_FILE" \
+  || { echo "FATAL: $ENV_FILE has no TELEGRAM_BOT_TOKEN — staging bot smoke can't run."; exit 2; }
 
 # ── Free-memory gate (advisor: prod must never be OOM-evicted by staging) ──────
 AVAIL_MB=$(free -m 2>/dev/null | awk '/^Mem:/{print $7}')
@@ -50,8 +52,8 @@ elif [ "$AVAIL_MB" -lt "$MIN_FREE_MB" ]; then
 fi
 
 # ── Build images (staging project) ────────────────────────────────────────────
-echo "=== [1/5] Building staging images: ${APP_SERVICES[*]} ==="
-"${DC[@]}" build --no-cache "${APP_SERVICES[@]}"
+echo "=== [1/5] Building staging images: ${BUILD_SERVICES[*]} (apollo-execution reuses market-agent's) ==="
+"${DC[@]}" build --no-cache "${BUILD_SERVICES[@]}"
 
 # ── Infra up first, then SEED, then app (seed needs postgres, app needs data) ──
 echo "=== [2/5] Up staging postgres + redis ==="
