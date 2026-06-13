@@ -6675,7 +6675,14 @@ async def startup():
     # Resolve Alpaca credentials BEFORE any alpaca_client import.
     # Raises RuntimeError on missing/misconfigured env vars (boot-blocks the
     # container start, surfaces in docker logs immediately).
-    _alpaca_creds_status, _alpaca_creds_fallback = _bootstrap_alpaca_credentials()
+    # Alpaca credentials are EXECUTION-owned (#256 W2): only a process that runs
+    # broker jobs needs them. An intelligence-role container boots WITHOUT Alpaca
+    # creds (the "creds live only in apollo-execution" security property) — its
+    # broker calls route over HTTP to the execution service.
+    if runs_execution_jobs():
+        _alpaca_creds_status, _alpaca_creds_fallback = _bootstrap_alpaca_credentials()
+    else:
+        _alpaca_creds_status, _alpaca_creds_fallback = "intelligence_no_creds", False
 
     _fmt = logging.Formatter(
         "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -6741,30 +6748,32 @@ async def startup():
         logger.warning(f"Failed to audit-log alpaca creds status: {e}")
     # Boot smoke test: instantiate per-mode TradingClients, verify each can
     # talk to its Alpaca account. Surfaces credential rot or live-account
-    # not-yet-funded scenarios at boot, not on first trade.
-    try:
-        from agents.market_intelligence.execution_client import verify_accounts
-        from agents.market_intelligence.db import log_audit_event
-        verify_result = await verify_accounts()
-        ok_modes = [m for m, r in verify_result.items() if r.get("ok")]
-        bad_modes = [m for m, r in verify_result.items() if not r.get("ok")]
-        if bad_modes:
-            await log_audit_event(
-                event_type="dual_account_boot_failed",
-                summary=f"Alpaca client init failed for modes: {bad_modes}",
-                detail=str(verify_result),
-            )
-            logger.error(f"DUAL_ACCOUNT_BOOT_FAILED: {verify_result}")
-        else:
-            equities = {m: r.get("equity") for m, r in verify_result.items()}
-            await log_audit_event(
-                event_type="dual_account_boot_verified",
-                summary=f"Alpaca clients verified for modes={ok_modes}",
-                detail=f"Equities by mode: {equities}",
-            )
-            logger.info(f"Dual-account boot verified: {equities}")
-    except Exception as e:
-        logger.warning(f"Failed to verify dual-account clients at boot: {e}")
+    # not-yet-funded scenarios at boot, not on first trade. EXECUTION-only
+    # (#256 W2): an intelligence container has no creds/clients to verify.
+    if runs_execution_jobs():
+        try:
+            from agents.market_intelligence.execution_client import verify_accounts
+            from agents.market_intelligence.db import log_audit_event
+            verify_result = await verify_accounts()
+            ok_modes = [m for m, r in verify_result.items() if r.get("ok")]
+            bad_modes = [m for m, r in verify_result.items() if not r.get("ok")]
+            if bad_modes:
+                await log_audit_event(
+                    event_type="dual_account_boot_failed",
+                    summary=f"Alpaca client init failed for modes: {bad_modes}",
+                    detail=str(verify_result),
+                )
+                logger.error(f"DUAL_ACCOUNT_BOOT_FAILED: {verify_result}")
+            else:
+                equities = {m: r.get("equity") for m, r in verify_result.items()}
+                await log_audit_event(
+                    event_type="dual_account_boot_verified",
+                    summary=f"Alpaca clients verified for modes={ok_modes}",
+                    detail=f"Equities by mode: {equities}",
+                )
+                logger.info(f"Dual-account boot verified: {equities}")
+        except Exception as e:
+            logger.warning(f"Failed to verify dual-account clients at boot: {e}")
 
     # Strategy / mode consistency check — prevents the 2026-05-13 incident
     # where magna53 + 9m_day2 seeded as phase='live' (legacy default) but
@@ -6782,7 +6791,10 @@ async def startup():
                 FROM mi_strategies
                 WHERE enabled = TRUE AND phase = 'live'
             """)
-        if mismatched and not _ENABLE_LIVE:
+        # EXECUTION-concern (#256 W2): the missing-live-creds risk applies only
+        # to a process that actually places orders. An intelligence container
+        # has no Alpaca creds by design and must not boot-block on this.
+        if mismatched and not _ENABLE_LIVE and runs_execution_jobs():
             ids = ", ".join(r["strategy_id"] for r in mismatched)
             msg = (
                 f"BOOT BLOCKED: strategies at phase='live' with ENABLE_LIVE_MODE=false: "
