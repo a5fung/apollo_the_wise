@@ -6671,10 +6671,6 @@ async def startup():
         assert_service_role_coherent, runs_execution_jobs,
     )
     assert_service_role_coherent()
-    logging.getLogger(__name__).info(
-        f"Service role: SERVICE_ROLE={_SVC_ROLE} EXECUTION_MODE={_EXEC_MODE} "
-        f"(execution_jobs={runs_execution_jobs()})"
-    )
 
     # Resolve Alpaca credentials BEFORE any alpaca_client import.
     # Raises RuntimeError on missing/misconfigured env vars (boot-blocks the
@@ -6689,6 +6685,12 @@ async def startup():
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
         datefmt="%H:%M:%S",
+    )
+    # Log the booted role AFTER basicConfig so it lands in the configured
+    # handler (the assertion above already ran fail-loud, pre-logging).
+    logging.getLogger(__name__).info(
+        f"Service role: SERVICE_ROLE={_SVC_ROLE} EXECUTION_MODE={_EXEC_MODE} "
+        f"(execution_jobs={runs_execution_jobs()})"
     )
     if _alpaca_creds_fallback:
         logging.getLogger(__name__).warning(
