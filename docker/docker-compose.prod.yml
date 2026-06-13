@@ -84,18 +84,12 @@ services:
           memory: 1G
 
   market-agent:
-    # #256 W2 CUTOVER (gated — docs/ops/execution_split_cutover.md): to split,
-    # this service BECOMES intelligence by adding to `environment:` below (it
-    # keeps its name, so the orchestrator /task URL http://market-agent:8006
-    # stays valid) and apollo-execution is started with `--profile split`:
-    #     SERVICE_ROLE: intelligence
-    #     EXECUTION_MODE: http
-    #     EXECUTION_SERVICE_URL: http://apollo-execution:8006
-    #     ALPACA_PAPER_API_KEY: ""   # creds isolation: blank out (overrides .env)
-    #     ALPACA_PAPER_SECRET_KEY: ""
-    #     ALPACA_LIVE_API_KEY: ""
-    #     ALPACA_LIVE_SECRET_KEY: ""
-    # Until cutover this stays SERVICE_ROLE=combined (env unset = combined default).
+    # #256 W2 CUTOVER PERFORMED 2026-06-13 (operator-authorized, markets closed).
+    # This service is now the INTELLIGENCE half: no creds, reaches apollo-execution
+    # over HTTP. It keeps its name so the orchestrator /task URL stays valid.
+    # ROLLBACK to combined: delete the SERVICE_ROLE/EXECUTION_MODE/EXECUTION_SERVICE_URL/
+    # ALPACA_* lines below + `docker compose stop apollo-execution` +
+    # `deploy.sh market-agent`. See docs/ops/execution_split_cutover.md.
     build:
       context: ..
       dockerfile: docker/Dockerfile.market
@@ -105,6 +99,13 @@ services:
       POSTGRES_HOST: postgres
       REDIS_HOST: redis
       ENVIRONMENT: production
+      SERVICE_ROLE: intelligence
+      EXECUTION_MODE: http
+      EXECUTION_SERVICE_URL: http://apollo-execution:8006
+      ALPACA_PAPER_API_KEY: ""      # creds isolation — overrides .env to blank
+      ALPACA_PAPER_SECRET_KEY: ""
+      ALPACA_LIVE_API_KEY: ""
+      ALPACA_LIVE_SECRET_KEY: ""
     depends_on:
       postgres:
         condition: service_healthy
