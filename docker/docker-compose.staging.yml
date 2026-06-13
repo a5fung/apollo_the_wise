@@ -1,0 +1,195 @@
+name: apollo-staging
+
+# Apollo Assistant — STAGING (#256 W3) — a pre-prod mirror on the SAME box as prod.
+#
+# PURPOSE: validate a deploy end-to-end (boot · role partition · HTTP transport ·
+# preflight · operator /status·/positions smoke) on a prod-restored DB BEFORE the
+# change reaches the live paper cohort that feeds the 6/22 GO decision.
+#
+# ── HARD RULES (advisor 2026-06-13) ─────────────────────────────────────────
+# 1. ON-DEMAND ONLY. `restart: "no"` everywhere — NOTHING auto-resurrects. The
+#    staging intelligence container runs the same 42 jobs as prod, INCLUDING the
+#    17:00 RS pull (~9,700 stocks) that OOM-killed uvicorn at 512M. A 24/7 second
+#    stack risks the HOST OOM killer evicting a PROD container. Bring it up for a
+#    test cycle (deploy.sh staging) and `docker compose -p apollo-staging ... down`
+#    after. MEASURE `free -m` before any `up`.
+# 2. NO LIVE TRADING. ENABLE_LIVE_MODE / LIVE_TRADING_ENABLED hard-pinned false
+#    below → no trade streams, no order submits. Staging reads prod's SHARED paper
+#    Alpaca account (creds copied into .env.staging) for preflight get_account /
+#    reconcile reads ONLY; every write goes to staging's OWN postgres. Harmless.
+# 3. ISOLATION. Own project name (apollo-staging), own network, own volumes, own
+#    container names (apollo-staging-*), loopback ports OFFSET from prod (5433 /
+#    8001). Service KEYS match prod (postgres / redis / market-agent /
+#    apollo-execution) so the internal DNS URLs prod uses resolve unchanged WITHIN
+#    this network — no integrations.yaml override needed.
+#
+# Bring up:  bash scripts/deploy.sh staging
+# Tear down: docker compose -p apollo-staging -f docker/docker-compose.staging.yml down
+# Seed:      handled as a step inside deploy.sh staging (scripts/staging_seed.sh)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: apollo-staging-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-apollo}
+      POSTGRES_USER: ${POSTGRES_USER:-apollo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"   # OFFSET from prod's 5432 (loopback only)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-apollo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: "no"
+    networks:
+      - apollo-staging-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: apollo-staging-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - staging_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: "no"
+    networks:
+      - apollo-staging-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.orchestrator
+    container_name: apollo-staging-orchestrator
+    env_file: ../.env.staging        # staging Telegram bot token lives here
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+    ports:
+      - "127.0.0.1:8001:8000"        # OFFSET from prod's 8000 (loopback only)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /etc/ssl/certs:/etc/ssl/certs:ro
+    restart: "no"
+    networks:
+      - apollo-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  # Intelligence half (mirrors prod's post-cutover market-agent). Service KEY stays
+  # `market-agent` so the orchestrator's http://market-agent:8006 resolves here.
+  market-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.market
+    container_name: apollo-staging-market
+    env_file: ../.env.staging
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+      SERVICE_ROLE: intelligence
+      EXECUTION_MODE: http
+      EXECUTION_SERVICE_URL: http://apollo-execution:8006
+      ENABLE_LIVE_MODE: "false"      # staging never enables live mode
+      LIVE_TRADING_ENABLED: "false"  # no submits anywhere in staging
+      ALPACA_PAPER_API_KEY: ""       # creds isolation — intelligence holds none
+      ALPACA_PAPER_SECRET_KEY: ""
+      ALPACA_LIVE_API_KEY: ""
+      ALPACA_LIVE_SECRET_KEY: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8006/live', timeout=5).status == 200 else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: "no"
+    networks:
+      - apollo-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+
+  # Execution half (mirrors prod's apollo-execution). The ONLY staging service with
+  # Alpaca creds (paper, read-only here since LIVE_TRADING_ENABLED=false). Service
+  # KEY `apollo-execution` so the intelligence EXECUTION_SERVICE_URL resolves here.
+  apollo-execution:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.market
+    container_name: apollo-staging-execution
+    env_file: ../.env.staging        # Alpaca paper creds live here (read-only use)
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      ENVIRONMENT: production
+      SERVICE_ROLE: execution
+      ENABLE_LIVE_MODE: "false"
+      LIVE_TRADING_ENABLED: "false"  # no order submits; streams won't start
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8006/live', timeout=5).status == 200 else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: "no"
+    networks:
+      - apollo-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+volumes:
+  staging_postgres_data:
+    name: apollo_staging_postgres_data
+  staging_redis_data:
+    name: apollo_staging_redis_data
+
+networks:
+  apollo-staging-network:
+    name: apollo-staging-network

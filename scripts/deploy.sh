@@ -11,6 +11,9 @@
 #   bash scripts/deploy.sh orchestrator    # orchestrator only
 #   bash scripts/deploy.sh execution       # apollo-execution (#256 W2 cutover —
 #                                          # gated; see docs/ops/execution_split_cutover.md)
+#   bash scripts/deploy.sh staging         # on-demand pre-prod mirror (#256 W3 —
+#                                          # dispatches to scripts/deploy_staging.sh;
+#                                          # its own compose project + flow)
 #
 # The 2026-05-13 outage happened because deploy verification was a separate
 # documented step that the operator skipped. Wrapping the full sequence in
@@ -23,11 +26,18 @@ set -euo pipefail
 # the deploy — the 2026-05-28 /partialnow "nothing happens" gap. Force a
 # conscious scope choice.
 if [ $# -eq 0 ]; then
-  echo "Usage: bash scripts/deploy.sh <market-agent|orchestrator|both|execution>"
+  echo "Usage: bash scripts/deploy.sh <market-agent|orchestrator|both|execution|staging>"
   echo "No default scope — choose explicitly to avoid leaving a service stale (#154)."
   exit 2
 fi
 SCOPE="$1"
+
+# #256 W3: staging is a wholly separate compose project + flow (its own DB seed,
+# no scope-drift guard, no trading preflight chain — it runs LIVE_TRADING_ENABLED=
+# false). Dispatch BEFORE any prod logic so the prod path below stays byte-identical.
+if [ "$SCOPE" = "staging" ]; then
+  exec bash scripts/deploy_staging.sh "${@:2}"
+fi
 COMPOSE_FILE="docker/docker-compose.prod.yml"
 # Which container the boot-wait + trade preflights exec against, and any extra
 # compose `--profile` args (#256 W2). Default = apollo-market so every existing
