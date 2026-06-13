@@ -77,6 +77,87 @@ JOB_9M_PACE_DIGEST = "9m_pace_digest"
 JOB_CATALYST_DOWNGRADE_DIGEST = "catalyst_downgrade_digest"
 JOB_JUDGE_DELTA_DIGEST = "judge_delta_digest"
 
+# ── Service-split job partition (#256 W2, 2026-06-13) ────────────────────────
+# The EXECUTION service owns broker / streams / safeguards / trade-state jobs;
+# the INTELLIGENCE service owns detection / themes / judge / briefings. Until
+# cutover the single process runs SERVICE_ROLE=combined = BOTH sets (this set is
+# inert at combined default). Source of truth = the W2 partition table in
+# ~/.claude/plans/execution-intelligence-split-256.md (operator-approved).
+# NB: the post-start conditional `order_status_reconcile_boot` job is gated on
+# runs_execution_jobs() at its own registration site (it is added AFTER the
+# partition pass), so it is intentionally NOT in this main-body set.
+EXECUTION_OWNED_JOB_IDS = frozenset({
+    # ORB / entry
+    "9m_day2_orb", "orb_window_cleanup", "shadow_orb_entry", "shadow_orb_exit",
+    "orb_reclassify_eod", "bar_stream_cleanup",
+    # lifecycle / reconcile / safeguards
+    "paper_trade_tracker", "morning_stop_refresh", "live_position_update",
+    "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
+    JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
+    "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
+    "eod_cleanup", JOB_TIME_STOP_SCAN, "account_equity_snapshot",
+    "unified_allocator_shadow",
+})
+
+
+def _job_belongs_to_role(job_id: str, role: str) -> bool:
+    """Does a job with `job_id` run under `role`? combined runs everything;
+    execution runs only the execution-owned set; intelligence runs the rest."""
+    if role == "combined":
+        return True
+    if role == "execution":
+        return job_id in EXECUTION_OWNED_JOB_IDS
+    # intelligence
+    return job_id not in EXECUTION_OWNED_JOB_IDS
+
+
+def _apply_role_partition(scheduler, role: str) -> dict:
+    """Remove jobs this service role does NOT own, fail LOUD on a partition
+    mistake (#256 W2). combined = no-op (byte-identical to pre-split).
+
+    Two fail-loud guards (a partition bug must never silently drop a safety
+    job or run a broker job in the wrong service):
+      - execution: every id in EXECUTION_OWNED_JOB_IDS must be REGISTERED
+        (a missing one = a typo/rename that would silently drop a trade job).
+      - intelligence: NO execution-owned id may survive the removal.
+    """
+    registered = {j.id for j in scheduler.get_jobs()}
+    if role == "combined":
+        logger.info(f"Job partition: role=combined — all {len(registered)} jobs kept")
+        return {"role": role, "kept": sorted(registered), "removed": []}
+
+    if role == "execution":
+        missing = EXECUTION_OWNED_JOB_IDS - registered
+        if missing:
+            raise RuntimeError(
+                f"Job partition FAILED (role=execution): expected execution jobs "
+                f"not registered: {sorted(missing)} — a missing id would silently "
+                f"DROP a trade/safeguard job. Refusing to boot."
+            )
+
+    removed = []
+    for jid in registered:
+        if not _job_belongs_to_role(jid, role):
+            scheduler.remove_job(jid)
+            removed.append(jid)
+    kept = sorted(registered - set(removed))
+
+    if role == "intelligence":
+        leaked = set(kept) & EXECUTION_OWNED_JOB_IDS
+        if leaked:
+            raise RuntimeError(
+                f"Job partition FAILED (role=intelligence): execution-owned jobs "
+                f"survived: {sorted(leaked)} — a broker job must NOT run in "
+                f"intelligence. Refusing to boot."
+            )
+
+    logger.info(
+        f"Job partition: role={role} — kept {len(kept)}, removed {len(removed)}. "
+        f"removed={sorted(removed)}"
+    )
+    return {"role": role, "kept": kept, "removed": sorted(removed)}
+
+
 _scheduler: AsyncIOScheduler | None = None
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
 
@@ -4026,6 +4107,13 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
+    # Apply the service-role job partition BEFORE the scheduler runs (#256 W2).
+    # combined (default) = no-op; execution/intelligence drop the jobs they don't
+    # own, fail-loud on a partition mistake. Read role here (not at import) so
+    # tests can exercise both sides.
+    from agents.market_intelligence.constants import SERVICE_ROLE as _ROLE
+    _apply_role_partition(_scheduler, _ROLE)
+
     _scheduler.start()
     logger.info("Market Intelligence scheduler started (ET timezone)")
 
@@ -4033,8 +4121,13 @@ def start_scheduler() -> AsyncIOScheduler:
     # deploy-during-market-hours gap where a container restart loses live
     # WebSocket trade_update events. Runs 60 seconds after boot to let
     # Alpaca clients finish their dual-account verification first.
+    # Boot reconcile is EXECUTION-owned (#256 W2) and registered AFTER the
+    # partition pass + .start(), so gate it on role directly here rather than
+    # relying on removal. combined/execution add it; intelligence skips it.
+    from agents.market_intelligence.constants import runs_execution_jobs as _runs_exec
     now_et_for_boot = datetime.now(_ET)
-    if now_et_for_boot.weekday() < 5 and _dt_time(9, 30) <= now_et_for_boot.time() <= _dt_time(16, 5):
+    if (_runs_exec() and now_et_for_boot.weekday() < 5
+            and _dt_time(9, 30) <= now_et_for_boot.time() <= _dt_time(16, 5)):
         _scheduler.add_job(
             audit_wrap(_order_status_reconcile_job, JOB_ORDER_STATUS_RECONCILE + "_boot"),
             "date",
