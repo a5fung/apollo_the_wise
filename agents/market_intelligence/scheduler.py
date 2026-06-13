@@ -3278,14 +3278,21 @@ async def _emit_boot_audit_marker() -> None:
     live_env = os.environ.get("LIVE_TRADING_ENABLED", "false")
     mode = current_account_mode()
 
+    # Equity comes from the broker (creds live in the execution role). Skip the
+    # call entirely in the intelligence role — no creds, and the boot marker is
+    # forensic-only (#256 W2 seam item 2: was a non-fatal fetch_failed degrade).
+    from agents.market_intelligence.constants import runs_execution_jobs
     equity_str = "unknown"
-    try:
-        from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
-        account = await alpaca.get_account()
-        equity_str = f"${float(account.get('equity', 0)):,.2f}"
-    except Exception as e:
-        logger.warning(f"Boot marker: equity fetch failed (non-fatal): {e}")
-        equity_str = f"fetch_failed: {str(e)[:80]}"
+    if not runs_execution_jobs():
+        equity_str = "n/a (intelligence role — no broker creds)"
+    else:
+        try:
+            from agents.market_intelligence.broker import alpaca_client as alpaca  # exec-boundary-ok: moves-with-job (W2)
+            account = await alpaca.get_account()
+            equity_str = f"${float(account.get('equity', 0)):,.2f}"
+        except Exception as e:
+            logger.warning(f"Boot marker: equity fetch failed (non-fatal): {e}")
+            equity_str = f"fetch_failed: {str(e)[:80]}"
 
     summary = f"mode={mode} equity={equity_str}"
     detail = (
@@ -3426,10 +3433,13 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Reset bar stream daily state + start EP scanning at 7:00 AM ET
+    # Reset bar stream daily state + start EP scanning at 7:00 AM ET. The bar
+    # stream lives in the EXECUTION service, so the reset routes through the
+    # facade (inprocess = byte-identical; http = reaches execution's live stream).
+    # _start_ep_scanning is intelligence-local (#256 W2 seam item 1).
     async def _ep_scan_start_job():
-        from agents.market_intelligence.broker import bar_stream  # exec-boundary-ok: moves-with-job (W2)
-        bar_stream.reset_daily_state()
+        from agents.market_intelligence.execution_client import reset_bar_stream_daily_state
+        await reset_bar_stream_daily_state()
         await _start_ep_scanning()
 
     _scheduler.add_job(

@@ -32,6 +32,7 @@ _EXEC_HANDLERS = {
     "get_stream_status": _ec._get_stream_status_inprocess,
     "trigger_orb_entry": _ec._trigger_orb_entry_inprocess,
     "subscribe_orb_candidate": _ec._subscribe_orb_candidate_inprocess,
+    "reset_bar_stream_daily_state": _ec._reset_bar_stream_daily_state_inprocess,
     "record_skipped_trade": _ec._record_skipped_trade_inprocess,
     "submit_9m_day2_trade": _ec._submit_9m_day2_trade_inprocess,
     "execute_partial_exit": _ec._execute_partial_exit_inprocess,

@@ -51,7 +51,8 @@ class ExecutionUnreachable(RuntimeError):
 _CROSS_FNS = frozenset({
     "get_account", "get_position", "get_all_positions", "get_open_orders",
     "get_stream_status", "get_first_bar",
-    "subscribe_orb_candidate", "record_skipped_trade", "trigger_orb_entry",
+    "subscribe_orb_candidate", "reset_bar_stream_daily_state",
+    "record_skipped_trade", "trigger_orb_entry",
     "submit_9m_day2_trade", "execute_partial_exit", "sync_positions",
     "sync_positions_for_mode", "place_timestop_sell",
 })
@@ -216,6 +217,21 @@ async def _subscribe_orb_candidate_inprocess(*args, **kwargs):
 async def subscribe_orb_candidate(*args, **kwargs):
     """Register a pre-market HIGH with the bar stream for first-bar ORB entry."""
     return await _dispatch("subscribe_orb_candidate", _subscribe_orb_candidate_inprocess, args, kwargs)
+
+
+async def _reset_bar_stream_daily_state_inprocess(*args, **kwargs):
+    from agents.market_intelligence.broker import bar_stream
+    return bar_stream.reset_daily_state(*args, **kwargs)  # sync
+
+
+async def reset_bar_stream_daily_state(*args, **kwargs):
+    """Clear the bar stream's per-day subscription/processed state (7 AM prep).
+    The bar stream runs in the EXECUTION service, so this MUST reach execution —
+    pre-split it ran inline in the intelligence ep_scan_start job against the
+    intelligence process's own (post-split, inert) copy, never the live stream
+    (#256 W2 seam item 1)."""
+    return await _dispatch("reset_bar_stream_daily_state",
+                           _reset_bar_stream_daily_state_inprocess, args, kwargs)
 
 
 async def _record_skipped_trade_inprocess(*args, **kwargs):

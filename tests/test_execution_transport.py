@@ -113,6 +113,22 @@ def test_http_intelligence_with_url_is_coherent(monkeypatch):
     constants.assert_service_role_coherent()  # must not raise
 
 
+@pytest.mark.asyncio
+async def test_reset_bar_stream_routes_to_execution_inprocess(monkeypatch):
+    # Seam item 1: the 7 AM bar-stream daily reset must reach the execution
+    # bar stream. inprocess routes byte-identically to bar_stream.reset_daily_state.
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "inprocess")
+    import agents.market_intelligence.broker.bar_stream as bar_stream
+    from unittest.mock import MagicMock
+    fake = MagicMock(return_value=None)
+    monkeypatch.setattr(bar_stream, "reset_daily_state", fake)
+
+    await ec.reset_bar_stream_daily_state()
+
+    fake.assert_called_once_with()
+    assert "reset_bar_stream_daily_state" in ec._CROSS_FNS
+
+
 def test_routes_cover_cross_fns_exactly():
     from agents.market_intelligence import execution_routes as er
     assert set(er._EXEC_HANDLERS) == set(ec._CROSS_FNS)
