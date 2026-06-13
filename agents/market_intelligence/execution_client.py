@@ -73,6 +73,23 @@ async def verify_accounts(*args, **kwargs):
 
 # ── Detection → entry handoffs ───────────────────────────────────────────────
 
+async def trigger_orb_entry(trigger: str = "cron"):
+    """Fire the ORB entry monitor (process pending HIGH alerts → place ORB
+    bracket orders) — the ONE trade-critical action that, pre-split, ran INLINE
+    inside the intelligence-side ep_scan job (scheduler.py:701-709). Routing it
+    through the facade is what lets the split hand it to the execution service
+    without touching the call site again (#256 W2 — the silent-no-fire seam).
+
+    W2-interim: inprocess lazily calls the scheduler's `_orb_monitor_job`,
+    byte-identical to the prior inline call. `_orb_monitor_job` relocates into
+    the execution service in a later W2 commit; the http transport (commit 5)
+    POSTs here instead. Until then this is an inprocess passthrough like every
+    other facade function.
+    """
+    from agents.market_intelligence.scheduler import _orb_monitor_job
+    return await _orb_monitor_job(trigger=trigger)
+
+
 async def subscribe_orb_candidate(*args, **kwargs):
     """Register a pre-market HIGH with the bar stream for first-bar ORB entry."""
     from agents.market_intelligence.broker import bar_stream

@@ -698,15 +698,19 @@ async def _ep_scan_job():
                     )
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")
 
+        # ORB entry is EXECUTION-owned (#256 W2): route through the facade so
+        # the split hands it to the execution service without changing this site
+        # again. inprocess = byte-identical direct call to _orb_monitor_job.
+        from agents.market_intelligence.execution_client import trigger_orb_entry
         if new_highs_post_open:
-            logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry inline")
-            await _orb_monitor_job(trigger="post_open_new_high")
+            logger.info(f"Post-open new HIGHs {new_highs_post_open} — triggering ORB entry via execution facade")
+            await trigger_orb_entry(trigger="post_open_new_high")
         elif within_orb_window and now_et.minute == 31:
             # 9:31 open scan: always run ORB as fallback for pre-market HIGHs
             # bar_stream handles them in real-time, but if stream was unhealthy or missed
             # a subscription, process_new_alerts_live skips already-processed tickers safely.
             logger.info("9:31 ORB fallback: checking for unprocessed pre-market HIGHs")
-            await _orb_monitor_job(trigger="cron_9_31")
+            await trigger_orb_entry(trigger="cron_9_31")
 
     except Exception as e:
         import traceback
