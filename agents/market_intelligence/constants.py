@@ -72,6 +72,12 @@ _VALID_SERVICE_ROLES = {"combined", "execution", "intelligence"}
 EXECUTION_MODE = os.environ.get("EXECUTION_MODE", "inprocess").lower()
 _VALID_EXECUTION_MODES = {"inprocess", "http"}
 
+# Base URL of the apollo-execution service, used by execution_client's HTTP
+# transport when EXECUTION_MODE=http (e.g. "http://apollo-execution:8007").
+# Empty in combined/inprocess (the transport is never taken). Required at boot
+# when EXECUTION_MODE=http — see assert_service_role_coherent().
+EXECUTION_SERVICE_URL = os.environ.get("EXECUTION_SERVICE_URL", "").rstrip("/")
+
 
 def runs_execution_jobs() -> bool:
     """True when THIS process owns broker / streams / execution scheduler jobs."""
@@ -111,6 +117,17 @@ def assert_service_role_coherent() -> None:
             "EXECUTION_MODE=http requires SERVICE_ROLE in {execution, "
             "intelligence} (the split topology); got SERVICE_ROLE='combined' "
             "(a single process would HTTP-call itself). Refusing to boot."
+        )
+    # http transport with no target URL = every cross-boundary call fails at
+    # first use (mid-trading), not at boot. Catch it at boot instead (advisor
+    # 6/13, #256 commit 5a). The execution role serves routes locally and never
+    # dials out, so the URL is only required for the intelligence client.
+    if (EXECUTION_MODE == "http" and SERVICE_ROLE == "intelligence"
+            and not EXECUTION_SERVICE_URL):
+        raise RuntimeError(
+            "EXECUTION_MODE=http + SERVICE_ROLE=intelligence requires "
+            "EXECUTION_SERVICE_URL (the apollo-execution base URL). It is unset "
+            "— every cross-boundary call would fail at first use. Refusing to boot."
         )
 
 

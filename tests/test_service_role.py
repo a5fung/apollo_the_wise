@@ -12,10 +12,15 @@ from agents.market_intelligence import constants
 
 @pytest.fixture
 def role(monkeypatch):
-    """Set SERVICE_ROLE / EXECUTION_MODE on the module, return the assert fn."""
-    def _set(service_role, execution_mode):
+    """Set SERVICE_ROLE / EXECUTION_MODE on the module, return the assert fn.
+
+    Defaults EXECUTION_SERVICE_URL to a non-empty value so http+intelligence is
+    coherent by default (the unset-URL failure is pinned in
+    test_execution_transport.py)."""
+    def _set(service_role, execution_mode, execution_service_url="http://exec:8007"):
         monkeypatch.setattr(constants, "SERVICE_ROLE", service_role)
         monkeypatch.setattr(constants, "EXECUTION_MODE", execution_mode)
+        monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", execution_service_url)
         return constants
     return _set
 

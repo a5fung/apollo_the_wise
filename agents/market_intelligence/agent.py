@@ -221,6 +221,16 @@ class MarketIntelligenceAgent(BaseAgent):
     def _register_extra_routes(self) -> None:
         """Register additional endpoints beyond the base /task and /health."""
 
+        # apollo-execution HTTP routes (#256 W2 5a) — served only when this
+        # process owns execution (combined/execution role). The intelligence
+        # service is the CLIENT and never registers these.
+        from agents.market_intelligence.constants import runs_execution_jobs
+        if runs_execution_jobs():
+            from agents.market_intelligence.execution_routes import (
+                register_execution_routes,
+            )
+            register_execution_routes(self.app)
+
         @self.app.get("/account/status")
         async def account_status(
             _: str = Depends(verify_internal_secret),
