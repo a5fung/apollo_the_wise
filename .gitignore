@@ -1,6 +1,8 @@
 # Secrets — NEVER commit these
 .env
 *.env
+# .env.staging, .env.production, … (`*.env` does NOT match a trailing .staging suffix):
+.env.*
 secrets/
 credentials.json
 token.json
