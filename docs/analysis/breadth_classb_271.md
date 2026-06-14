@@ -108,8 +108,19 @@ the briefs", plural). Current breadth surfaces (CLASS B is in NONE):
    COMPACT one-line CLASS B cell (the exhaustion/washout read is genuinely pre-open-useful, and
    the operator wants it in BOTH briefs). Surface only when amber/green (suppress neutral) to keep
    the morning brief tight: e.g. `🟠 Breadth: 5d up-thrust extreme (4.3%) — exhaustion watch`.
- - **`/breadth`** command — add the CLASS B row to the full matrix.
- All four render through the one `class_b_color()`; the `_pct` inputs come from the feed (step 2).
+ - **`/breadth` → MERGE INTO `/regime`** (operator 6/14: "breadth and regime should be combined,
+   keep it simple"). `/regime` already renders the breadth summary; `/breadth` (`_handle_breadth_query`,
+   the Stockbee 10-day cluster matrix) is the fuller view of the same data. Fold the matrix into
+   `_handle_regime_query` (append after `_format_regime_section`) and **DROP the `/breadth`
+   command** — remove its `BotCommand` + dispatch entry + the command-list entry (3-place change;
+   `telegram.py` is orchestrator-owned → deploy scope `orchestrator`/`both`). CLASS B then appears
+   ONCE in the unified `/regime` (+ the briefs), not in two places. Telegram length: the regime
+   block + 10-row matrix fits one monospace message; if tight, gate the matrix behind a verbose
+   flag. (Keep `/breadth` as a silent alias→`/regime` only if muscle-memory matters; operator said
+   keep it simple → drop.)
+ All render through the one `class_b_color()`; the `_pct` inputs come from the feed (step 2). The
+ `/breadth`→`/regime` merge is a separate simplification but ships in THIS gated drop (same
+ surfaces, same `combined` gate) — do them together.
 
 **Acceptance:** the nightly regime job writes `up_20_5d`/`down_20_5d`(`_pct`) to `breadth_monitor`;
 the CLASS B cell shows in the **evening brief, morning brief (when extreme), `/regime`, and
