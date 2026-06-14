@@ -179,6 +179,25 @@ def mfe_R(bars, entry_idx, entry, stop, end_idx):
     return {"risk": risk, "R_mfe": (run_high / entry - 1) / risk}
 
 
+def parity_threeway(names, bars_by, rth):
+    """Parity-clean anticipation-vs-FIRST5 (endpoint-symmetric MFE) over the won names that have
+    minute bars. Recompute at EACH maturity setting — the won-name set + the winning anticipation
+    entry both change with min_base, so a parity number computed at min_base=1 does NOT describe a
+    min_base=3 cohort (the basis-mismatch class). Returns the per-name pairs."""
+    tw = []
+    for x in [n for n in names if n["triggered"] and n["win"]]:
+        t = x["t"]
+        tdate = bars_by[t][x["ctx"]["trig_idx"]]["date"]
+        f5 = entry_mod.entry_first5(rth.get((t, tdate), []), x["ctx"]["gap_day_low"]) if (t, tdate) in rth else None
+        if not f5:
+            continue
+        f5w = mfe_R(bars_by[t], x["ctx"]["trig_idx"], f5[0], f5[1], x["end_idx"])
+        if f5w:
+            tw.append({"a_R": x["win"]["R"], "a_risk": x["win"]["risk"],
+                       "f5_R": f5w["R_mfe"], "f5_risk": f5w["risk"]})
+    return tw
+
+
 def build_names(bars_by, min_base=1):
     """Run the lifecycle + coiled-day finder + stop-and-reenter sim per ticker for a given
     maturity gate. Returns (armed_count, [per-name dicts]). armed_count is min_base-independent."""
@@ -282,17 +301,7 @@ def main():
           f"{mean([len(x['attempts']) for x in trig_fired]):.1f} attempts/name.)\n")
 
     # ── 3b. PARITY three-way vs FIRST5 (same daily endpoint, single entry each) ──
-    tw = []
-    for x in trig_fired:
-        if not x["win"]:
-            continue
-        tdate = bars_by[x["t"]][x["ctx"]["trig_idx"]]["date"]
-        f5 = entry_mod.entry_first5(rth.get((x["t"], tdate), []), x["ctx"]["gap_day_low"]) if (x["t"], tdate) in rth else None
-        if not f5:
-            continue
-        f5w = mfe_R(bars_by[x["t"]], x["ctx"]["trig_idx"], f5[0], f5[1], x["end_idx"])
-        if f5w:
-            tw.append({"a_R": x["win"]["R"], "a_risk": x["win"]["risk"], "f5_R": f5w["R_mfe"], "f5_risk": f5w["risk"]})
+    tw = parity_threeway(names, bars_by, rth)
     if tw:
         print(f"3b. PARITY three-way, common daily endpoint + endpoint-symmetric MFE (won names, N={len(tw)}):")
         print(f"    {'entry':<16}{'med risk':<10}{'med R(MFE)'}")
@@ -331,8 +340,22 @@ def main():
         s = summarize(build_names(bars_by, mb)[1])
         print(f"  {mb:<9}{s['fired']:<7}{s['catch']:<8}{s['db']:<15.0f}{s['attempts']:<13.1f}"
               f"{s['trig_mean']:<+12.1f}{s['full_mean']:<+12.1f}{s['top_share']:<6.0f}{s['ex_mean']:+.1f}")
-    print("  (maturity SHOULD land entries CLOSER to the breakout (lower d-before) with FEWER attempts;\n"
-          "   watch ex-top meanR - if it RISES, maturity reduces the single-name outlier reliance.)")
+    print("  REAL SIGNAL = winner-retention asymmetry, NOT the mean-R magnitudes (those rise partly")
+    print("  MECHANICALLY: a higher min_base just shrinks to a subset + drops losers first). 'caught'")
+    print("  holds while 'fired' falls = winners survive the gate longer than losers; the clip point")
+    print("  (where caught finally drops) marks the edge. The +R magnitudes are in-sample/leveraged.\n")
+
+    # parity-clean anticipation-vs-FIRST5 RE-BASED at the maturity setting (advisor: the 3b above
+    # is min_base=1; do NOT set the maturity net-R beside a FIRST5 number computed at min_base=1).
+    for mb in (1, 3):
+        tw_mb = parity_threeway(build_names(bars_by, mb)[1], bars_by, rth)
+        if tw_mb:
+            print(f"  PARITY @min_base={mb} (won names w/ minute bars, N={len(tw_mb)}): "
+                  f"ANTICIPATION median {median([x['a_R'] for x in tw_mb]):.1f}R "
+                  f"(risk {median([x['a_risk'] for x in tw_mb])*100:.0f}%)  vs  "
+                  f"FIRST5 median {median([x['f5_R'] for x in tw_mb]):.1f}R "
+                  f"(risk {median([x['f5_risk'] for x in tw_mb])*100:.0f}%)")
+    print("  (this is the ONLY apples-to-apples anticipation-vs-confirmation read; net stop-and-reenter R is NOT.)")
 
 
 if __name__ == "__main__":

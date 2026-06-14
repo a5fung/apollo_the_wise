@@ -44,12 +44,15 @@ runners (MNTS-style undercut→trigger) never coil and take a confirmation entry
   Entry = coiled close; **stop = coiled low**; **RE-ENTER at the next mature coil if shaken**
   (re-entry discipline is LOAD-BEARING — one-shot is −1R, the strawman). Captures ~25% of the run
   earlier (≈6% below the FIRST5 price) + fails small/fast (~2% stops). Maturity gate (vs the loose
-  first-coiled entry): keeps all winners, lands entries closer to the breakout, **+2.9R → +7.0R
-  full-cohort mean**, and **cuts outlier reliance** (top name 73%→40%). NOT an R-win vs
-  confirmation — FIRST5's tighter 2% stop edges parity-clean R (7.6R vs 6.5R); anticipation's edge
-  is the **earlier/lower entry** (below the gap, not chasing). ILLUSTRATIVE — N=8, the maturity
-  threshold (≈3) is in-sample, MFE ceilings; the DIRECTION (require maturity) is robust (monotonic
-  1→3), the magnitude needs multi-window re-validation (operator decision; data-blocked today).
+  first-coiled entry): **keeps all 5 winners while dropping losers** — the real signal is this
+  winner-retention (`caught` holds as `fired` falls 11→8), NOT the +R rise (which is partly
+  mechanical: a higher gate just shrinks the set + excludes losers). Also lands entries closer to
+  the breakout + **cuts outlier reliance** (top name 73%→40%). R vs confirmation is
+  **maturity-dependent**: loose, FIRST5's tighter stop edges it (7.6 vs 6.5R); mature, the tight
+  coil matches FIRST5's 2% stop while keeping the lower entry → anticipation leads (15.0 vs 7.6R,
+  N=4 illustrative). Horizon-free edge = the **earlier/lower entry**. ILLUSTRATIVE — N=8, threshold
+  ≈3 in-sample, MFE ceilings; the DIRECTION (require maturity) is robust (winner-retention), the
+  magnitude needs multi-window re-validation (operator decision; data-blocked today).
 - **CONFIRMATION PRIMARY — FIRST5-BREAK** (trigger day): break above the first-5-min high;
   **stop = first-5-min low**. Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS
   "first-minute high/low HELD".
@@ -113,14 +116,17 @@ data + the exit layer (the #168 actionability gate).
   Deployable wiring sequenced post-#277. Operator decisions (above) pending before wiring.
 - **2026-06-14 (later)** — **ANTICIPATION entry added as Layer-2 third mode** (`_270_anticipation_replay.py`,
   step 2c). Pradeep's EOD coiled-day entry: +2.9R mean/name stop-and-reenter, validates both his
-  claims. Does NOT beat confirmation on parity-clean R (FIRST5's tighter stop edges it 7.6R vs
-  6.5R after the advisor-caught MFE-parity fix — the first cut wrongly denied FIRST5 the
-  breakout-day high); anticipation's edge is the earlier/lower entry. ILLUSTRATIVE (N=8,
-  outlier-leveraged, re-entry load-bearing). Decision #4 added. Gate-free analysis.
+  claims. Parity vs confirmation was computed at min_base=1 (loose): FIRST5's tighter stop edges it
+  7.6R vs 6.5R (after the advisor-caught MFE-parity fix — the first cut wrongly denied FIRST5 the
+  breakout-day high). Anticipation's edge = the earlier/lower entry. ILLUSTRATIVE (N=8,
+  outlier-leveraged, re-entry load-bearing). Decision #4 added. Gate-free.
 - **2026-06-14 (later still)** — **MATURITY gate** (operator: "wait for the coil to mature — this
   is where chart-reading helps"). Anticipate on a ≥3-day developed base, NOT the first quiet day.
-  Sweep: keeps all 5 winners, entry closer to breakout (7→5d), fewer attempts (1.7→1.2), full-mean
-  +1.7→+7.0R, **outlier reliance 73%→40% / ex-top +0.5→+4.8R** — de-risks the outlier WITHOUT a
-  second window (which is data-blocked: `mi_daily_closes` starts 2025-05-12, SMA200 lookback eats
-  the gap). DIRECTION robust (monotonic 1→3); threshold in-sample. Surfacing adds coil-maturity
-  (day-N of base) for the chart-read. Gate-free.
+  REAL evidence = **winner-retention** (advisor): `caught` holds at 5 while `fired` falls 11→8
+  across min_base 1→3, clip at 4 → ≈3 = edge/ceiling; the +R-magnitude rise is partly mechanical
+  selection (in-sample). Also: entry closer to breakout (7→5d), fewer attempts, **outlier reliance
+  73%→40%**. **Parity RE-BASED at the maturity setting** (advisor — the min_base=1 number doesn't
+  describe a min_base=3 cohort): @3 the tight mature coil matches FIRST5's 2% stop while keeping the
+  lower entry → anticipation 15.0R vs 7.6R (N=4, illustrative; flips the loose result). Second
+  window data-blocked (`mi_daily_closes` from 2025-05-12, SMA200 eats the lookback). Surfacing adds
+  coil-maturity (day-N of base) for the chart-read. Gate-free.

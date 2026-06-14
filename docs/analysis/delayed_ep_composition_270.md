@@ -153,13 +153,16 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
   stop), small and fast by design.
 - **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name,
   **62% eventually caught** the breakout (avg 1.9 attempts/name). vs one-shot −1.0R.
-- **Parity three-way (won names, common daily endpoint, endpoint-symmetric MFE):** ANTICIPATION
-  **6.5R** vs FIRST5 **7.6R**. On a parity-clean basis (both MFE credit their OWN entry-day high —
-  the first cut wrongly denied FIRST5 the breakout-day high it exists to capture, advisor 6/14),
-  **FIRST5's much tighter 2% stop EDGES anticipation on R** despite anticipation's far-lower entry
-  + wider 5% coiled stop. **Anticipation does NOT win on R** — its edge is the lower entry
-  PRICE / earlier positioning (the price-capture below), not R expectancy. (N=4, conditioned on
-  anticipation having won; NOT comparable to the intraday 3.5R — re-based horizon.)
+- **Parity vs FIRST5 (won names, endpoint-symmetric MFE) is MATURITY-DEPENDENT — re-based at each
+  setting (advisor 6/14: do NOT compare a maturity number to a min_base=1 FIRST5).** At the LOOSE
+  setting (min_base=1, this section) FIRST5 **7.6R** edges anticipation **6.5R** — anticipation's
+  loose-coil stop is wider (5% vs 2%). **At the MATURE setting it flips** (see maturity section): a
+  tight mature coil drops anticipation's stop to 2% (= FIRST5) while keeping the lower/earlier entry
+  → anticipation **15.0R** vs FIRST5 7.6R. So whether anticipation wins on R **depends on coil
+  maturity** (it needs the tight mature coil to match confirmation's stop). N=4, in-sample,
+  outlier-influenced → illustrative DIRECTION (maturity tightens the stop → lifts anticipation's R),
+  NOT a clean beats/loses verdict. Its horizon-free edge stays the lower entry PRICE (price-capture
+  above). (NOT comparable to the intraday 3.5R — re-based horizon.)
 - **Full cohort (all 11, incl. the false set):** mean **+1.7R**/name, total +19R, caught 45%.
 
 **MATURITY GATE (operator 6/14: "wait for the coil to mature — this is where chart-reading helps").**
@@ -175,14 +178,19 @@ WHEN to anticipate, the operator's exact question):
 | **3 (mature)** | **8** | **5** | **5** | **1.2** | **+9.6** | **+7.0** | **40%** | **+4.8** |
 | 4 (over-tight) | 8 | 4 | 2 | 1.4 | +5.9 | +4.2 | 69% | +1.5 |
 
-**A 3-day base keeps ALL 5 winners** while dropping 3 immature/false entries, lands the entry
-**closer to the breakout** (7→5d), needs **fewer attempts** (1.7→1.2), and **collapses the
-outlier reliance** (top name 73%→40%, ex-top mean **+0.5→+4.8R**). The improvement is *monotonic
-1→2→3 across multiple independent metrics* (the signature of a real effect, not a fit); min_base=4
-over-tightens (loses a winner, concentration rebounds → too close to confirmation). **The maturity
-gate de-risks the outlier problem WITHOUT a second time window** — which matters because the data
-can't supply one (see below). DISCIPLINE: min_base=3 is selected on N=8 (in-sample) → the
-DIRECTION (require maturity) is the robust finding; the exact threshold is illustrative, re-validate.
+**The REAL evidence is WINNER-RETENTION, not the mean-R magnitudes** (advisor 6/14). Raising
+min_base shrinks the qualifying set to a subset and drops losers first, so mean-R rises **partly
+MECHANICALLY** (smaller denominator + losers excluded) — the +1.7→+7.0R full-mean is in-sample and
+leveraged (the top name's own R ~doubled 13.9→~22R purely from the tighter mature stop). The
+genuine signal is the **ASYMMETRY: `caught` holds at 5 while `fired` falls 11→8 across min_base
+1→3** (winners survive the gate, losers are dropped), and only at min_base=4 does a winner clip. A
+purely mechanical filter would drop winners proportionally; this gate **keeps every winner through
+~3** — that asymmetry, with the clip at 4, is what marks ≈3 as the edge/ceiling (NOT the monotonic
+mean-R, which is mostly selection arithmetic). Maturity also lands entries closer to the breakout
+(7→5d), needs fewer attempts (1.7→1.2), and cuts outlier reliance (top 73%→40%). **It de-risks the
+outlier problem WITHOUT a second time window** — which matters because the data can't supply one
+(see below). DISCIPLINE: ≈3 is selected in-sample on N=8 → the DIRECTION (require maturity) is the
+robust finding; the threshold + the R magnitudes are illustrative, re-validate on fresh data.
 
 **CHART-VISION integration (#267, operator 6/14: "we have an item to implement chart-reading, it
 should integrate with this").** Coil maturity is fundamentally a VISUAL judgment ("developed / at
@@ -212,11 +220,12 @@ replay). #270 anticipation should be wired in #267's scope (Wed 6/17 build) as t
    holds; the absolute R's are optimistic — the W3 exit layer sets realized harvest).
 
 **Verdict:** anticipation is a real, positive-expectancy THIRD entry mode (+2.9R/name stop-and-
-reenter) that validates both of Pradeep's claims — **conditional on re-entry discipline**. It does
-NOT beat confirmation on parity-clean R (FIRST5's tighter 2% stop edges it, 7.6R vs 6.5R); its
-distinct value is the **lower / earlier entry** — you're positioned BELOW the gap instead of
-chasing the first-5 high, which is exactly Pradeep's "capture the bulk on a gap up". And it does
-NOT replace confirmation (fast runners don't coil). So the entry layer is **complementary**:
+reenter) that validates both of Pradeep's claims — **conditional on re-entry discipline**. Its
+R vs confirmation is **maturity-dependent** (loose: FIRST5 edges 7.6 vs 6.5; mature: anticipation
+15.0 vs 7.6 as the tight coil matches FIRST5's stop — N=4, illustrative, do not over-read); its
+horizon-free edge is the **lower / earlier entry** — positioned BELOW the gap instead of chasing
+the first-5 high, exactly Pradeep's "capture the bulk on a gap up". And it does NOT replace
+confirmation (fast runners don't coil). So the entry layer is **complementary**:
 anticipation-on-a-MATURE-coil (≥3-day base, re-enter on a shake) + FIRST5-BREAK confirmation (fast
 runners) + GDL-RECLAIM fallback. **WHEN to anticipate = on a mature coil, not the first quiet day**
 — the maturity gate is the quantitative proxy for the chart-read the operator described; the
