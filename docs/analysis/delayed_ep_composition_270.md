@@ -93,18 +93,51 @@ the reclaim run," not "what you'd have made."
 Reproduce: the two seed queries are in `_270_cohort_*.tsv` headers / this doc; then
 `python scripts/_270_cohort_run.py`.
 
-## Sequencing
+## REFRAME (operator 2026-06-14): this is ONE e2e trade tactic, not a detector
 
-- ✅ Step 1 — composition replay, validated vs MNTS. Gate-free.
-- ✅ Step 2 — cohort calibration (above): selective funnel + fat-MFE-tail confirmed,
-  calibration knobs surfaced. Gate-free.
-- ⏸ Step 3 — the deployable SHADOW detector (lifecycle state table + scheduler job +
-  `/`-surface). GATED post-#277: a new scheduler job + CREATE TABLE run in COMBINED =
-  Monday's §C rollback target, so it must not enter main's rollback path until the
-  gate closes. Build on a branch + staging-validate, merge post-gate.
+`memory:user-sip-setup-is-one-e2e-tactic`. "READY/TRIGGERED" from the daily state
+machine means the name is SET UP — it is **NOT the entry**. The full tactic = three
+layers, scoped + built as ONE unit (not fragments):
+
+1. **Readiness** (daily) — WATCHED → ARMED → READY. = #270 steps 1-2 (DONE). The daily
+   reclaim is the *confirmation* of readiness, known at EOD.
+2. **ENTRY** (intraday, TO TUNE) — once a name is ARMED/READY it goes on an intraday
+   entry-watch; the actual fill comes from a **tuned intraday entry tactic** (first-
+   minute high/low HELD — the MNTS confirmation — / ORB above the reclaimed gap-day-low
+   / volume-confirmed U&R, from `memory:user-tight-range-entry-techniques`). Entry is
+   **as important as the exit** and is the layer that actually gets you in — the daily
+   state does not. NEEDS CALIBRATION against the cohort (which intraday trigger, what
+   first-N-minute hold, volume confirm).
+3. **EXIT / harvest** (= W3 exits / P3 management-judge) — derisk FASTER. The cohort
+   proved why: fat MFE (best +137%) but weak close-returns → the edge is only realized
+   with early partials. **Paired with #270 as one workstream, not separate.**
+
+### Surfacing (operator question 6/14: "will I be alerted for ready stocks?")
+
+YES, and deliberately — a READY/ARMED transition is RARE (~16 in 3.5 months ≈ 1/week
+in the cohort) and actionable, so it is NOT the #168 per-tick-noise class
+(`memory:feedback_alert_vs_audit` — Telegram = terminal/actionable events). Design:
+- **ARMED (EOD)** → name joins the intraday entry-watch; surfaced in a `/`-board
+  (current watched/armed/ready) + the EOD digest.
+- **ENTRY (intraday)** → the tuned entry tactic fires live → a real-time alert with the
+  structural stop (the reclaimed gap-day-low) + the harvest-fast note.
+- Shadow = informational (operator acts); graduates to an actionable/auto candidate only
+  after forward-outcome data + the exit layer exist (the #168 actionability gate).
+
+## Sequencing (the e2e tactic)
+
+- ✅ Step 1 — readiness composition, validated vs MNTS. Gate-free.
+- ✅ Step 2 — cohort calibration: selective funnel + fat-MFE tail + knobs. Gate-free.
+- ⏸ Step 2b — **intraday ENTRY tactic tuning** (gate-free analysis): for the cohort's
+  ARMED/READY names, replay candidate intraday entries (first-min hold / ORB-of-reclaim
+  / U&R) on intraday bars → which entry tactic best captures the MFE with the tightest
+  stop. (Needs intraday bars — `mi_intraday_bars` / a Polygon pull.)
+- ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +
+  intraday entry-watch + `/`-board + alerts. GATED post-#277 (new job + CREATE TABLE run
+  in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
+- ⏸ Paired — W3 EXIT/harvest layer (derisk-fast) — built WITH step 3, same tactic.
 
 ## Gate
 
-The replay (read-only script + this doc) is gate-safe — it touches nothing executable
-in any role. The deployable detector (Step 3) is sequenced post-#277, same discipline
-as #258 step 2.
+The replay + calibration (read-only scripts + this doc) are gate-safe. The deployable
+tactic (Step 3) is sequenced post-#277, same discipline as #258 step 2.
