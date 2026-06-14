@@ -86,7 +86,7 @@ for r in rows:
 print("\n--- #1 EXPANSION FLOOR (the ratio's denominator `base`) ---")
 arts = [r for r in rows if r["ratio"] >= 10]
 print(f"artifacts (ratio >= 10x, tiny-denominator): "
-      f"{', '.join(f'{r[chr(116)]} {r['ratio']:.0f}x@base/ADV={r['base_adv']:.2f}' for r in arts) or 'none'}")
+      f"{', '.join(f'{r['t']} {r['ratio']:.0f}x@base/ADV={r['base_adv']:.2f}' for r in arts) or 'none'}")
 for frac in (0.25, 0.5):
     capped = []
     for r in rows:

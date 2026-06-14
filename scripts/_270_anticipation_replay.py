@@ -46,6 +46,7 @@ def _load(name):
 
 r270 = _load("_270_delayed_ep_replay.py")        # replay() — the validated lifecycle
 entry_mod = _load("_270_entry_replay.py")          # load_rth(), entry_first5() — FIRST5 price
+harvest = _load("_270_harvest.py")                 # shared RULES + simulate (also in exit_replay)
 replay = r270.replay
 
 # ── anticipation-day criterion (tunable; OPERATOR to calibrate, not self-certified) ──
@@ -179,64 +180,27 @@ def mfe_R(bars, entry_idx, entry, stop, end_idx):
     return {"risk": risk, "R_mfe": (run_high / entry - 1) / risk}
 
 
-# Harvest rules MIRRORING _270_exit_replay.py — so anticipation's WIN leg is scored on a
-# REALIZED exit (banked at a target / trailed / closed out), NOT the perfect-foresight MFE
-# ceiling mfe_R returns. Advisor 6/14: the entry-mode R ranking (anticipation 15R vs FIRST5
-# 7.6R) was MFE-vs-MFE; until both run through the SAME harvest, no realized preference holds.
-_HARVEST = {
-    "all_out_+1R":   dict(partials=[(1.0, 1.0)]),
-    "half_1R_trail": dict(partials=[(1.0, 0.5)], breakeven_after_first=True, trail_prior_low=True),
-    "bank_1R_3R":    dict(partials=[(1.0, 0.5), (3.0, 0.5)]),
-}
-
-
-def harvest_realized(bars, entry_idx, entry, stop, end_idx, rule):
-    """REALIZED R harvesting the anticipation entry on DAILY bars (entry = coiled close,
-    forward = daily; no trigger-day minute resolution — anticipation enters at a close).
-    Pessimistic intrabar (stop-first) + gap-through fill at min(stop, bar_open), matching
-    _270_exit_replay's honesty conventions. Returns realized R or None."""
-    risk = entry - stop
-    if risk <= 0:
-        return None
-    partials = list(rule.get("partials", []))
-    pos, realized, cur_stop = 1.0, 0.0, stop
-    prior_low = bars[entry_idx]["l"]
-    for i in range(entry_idx + 1, end_idx + 1):
-        b = bars[i]
-        if rule.get("trail_prior_low"):
-            cur_stop = max(cur_stop, prior_low)
-        tgt = entry + partials[0][0] * risk if partials else None
-        if b["l"] <= cur_stop:                              # pessimistic: stop first
-            realized += pos * (min(cur_stop, b["o"]) - entry) / risk
-            pos = 0.0
-            break
-        if tgt is not None and b["h"] >= tgt:
-            r_mult, frac = partials.pop(0)
-            f = min(frac, pos)
-            realized += f * r_mult
-            pos -= f
-            if rule.get("breakeven_after_first"):
-                cur_stop = max(cur_stop, entry)
-        prior_low = b["l"]
-        if pos <= 0:
-            break
-    if pos > 0:                                             # survived: exit at endpoint close
-        realized += pos * (bars[end_idx]["c"] - entry) / risk
-    return realized
+# Anticipation harvests its WIN leg through the SHARED evaluator (_270_harvest.simulate, same
+# impl + RULES as the exit replay) on a DAILY-only path — so the realized number is directly
+# comparable to FIRST5's, NOT a parallel copy that can drift. Advisor 6/14: the entry-mode R
+# ranking was MFE-vs-MFE; both now run the SAME harvest. The 3 rules anticipation reports (a
+# subset of the full speed spectrum in _270_harvest.RULES):
+_HARVEST_RULES = ["all_out_+1R", "half_1R_trail", "bank_1R_3R"]
 
 
 def realized_net(x, bars, rule):
     """Anticipation net REALIZED R for one name: the -1R shake costs (unchanged — a stopped
     shake is -1R under any harvest rule) PLUS the TERMINAL non-stop leg (win OR open-drift)
-    harvested through `rule` instead of credited full MFE. A name that ONLY took shakes (no
-    terminal leg) realizes exactly those shake losses — it must NOT be dropped (advisor 6/14:
-    dropping them mismatched the realized N=5-won against the MFE_ceiling N=8-triggered)."""
+    harvested on a DAILY-only path through the shared `simulate` instead of credited full MFE.
+    A name that ONLY took shakes (no terminal leg) realizes exactly those shake losses — it must
+    NOT be dropped (advisor 6/14: dropping them mismatched realized N=5-won vs MFE N=8-triggered)."""
     shakes = sum(a["R"] for a in x["attempts"] if a["outcome"] == "stop")   # each -1R, real
     term = next((a for a in x["attempts"] if a["outcome"] != "stop"), None)  # win or open
     if term is None:
         return shakes                                  # all-shake name: the realized loss taken
-    h = harvest_realized(bars, term["ai"], term["entry"], term["stop"], x["end_idx"], rule)
-    return None if h is None else shakes + h
+    path = harvest.daily_path(bars, term["ai"], x["end_idx"])
+    out = harvest.simulate(term["entry"], term["stop"], path, rule, "pess")   # pess = honest tail
+    return None if out is None else shakes + out[0]
 
 
 def parity_threeway(names, bars_by, rth):
@@ -374,7 +338,8 @@ def main():
     #        _270_exit_replay, NOT credited full MFE. THIS is the realized anticipation R. ──
     print("3c. REALIZED HARVEST (anticipation win leg harvested, NOT MFE; triggered names):")
     print(f"    {'rule':<16}{'med net R':<12}{'mean net R':<12}{'win%':<7}(vs MFE net below)")
-    for rname, rule in _HARVEST.items():
+    for rname in _HARVEST_RULES:
+        rule = harvest.RULES[rname]
         rz = [realized_net(x, bars_by[x["t"]], rule) for x in trig_fired]
         rz = [r for r in rz if r is not None]
         wr = sum(1 for r in rz if r > 0) / len(rz) if rz else float("nan")

@@ -31,6 +31,11 @@ _spec = importlib.util.spec_from_file_location("e270", HERE / "_270_entry_replay
 _e270 = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_e270)
 GDL, load_rth, RTH_OPEN = _e270.GDL, _e270.load_rth, _e270.RTH_OPEN
+# Shared harvest evaluator (RULES + simulate) — single impl, also used by the anticipation replay.
+_hspec = importlib.util.spec_from_file_location("h270", HERE / "_270_harvest.py")
+_h270 = importlib.util.module_from_spec(_hspec)
+_hspec.loader.exec_module(_h270)
+RULES, simulate = _h270.RULES, _h270.simulate
 FWD_DAYS = 10
 
 # ---- daily bars (day 1+) -------------------------------------------------------
@@ -83,105 +88,11 @@ def build_path(tk, trig_date, post_min_bars):
     return path, mfe
 
 
-# ---- harvest rules (the speed spectrum) ----------------------------------------
-# Each rule: partials [(R_multiple, fraction)], breakeven_after_first, trail_prior_low,
-# time_stop_days (force-exit remaining at that daily bar's close), hold (exit at end),
-# perfect_mfe (ceiling anchor).
-RULES = {
-    "MFE_ceiling":   dict(perfect_mfe=True),
-    "all_out_+1R":   dict(partials=[(1.0, 1.0)]),
-    "time_stop_2d":  dict(time_stop_days=2),
-    "half_1R_trail": dict(partials=[(1.0, 0.5)], breakeven_after_first=True,
-                          trail_prior_low=True),
-    # tail-capture variants — bank the bulk fast (protect the median) but keep a
-    # runner tranche for the fat tail (the setup's reason-for-being).
-    "bank_1R_3R":    dict(partials=[(1.0, 0.5), (3.0, 0.5)]),                 # 1/2@+1R, 1/2@+3R
-    "bank2_1R_run":  dict(partials=[(1.0, 0.667)], breakeven_after_first=True,
-                          trail_prior_low=True),                              # 2/3@+1R, 1/3 trail
-    "hold_10d":      dict(hold=True),
-}
+# RULES (the harvest speed spectrum) + simulate() live in _270_harvest.py — the SINGLE
+# evaluator shared with the anticipation replay (extracted 2026-06-14 to kill the hand-synced
+# copy). SPEED_ORDER is just this script's display ordering of those rules.
 SPEED_ORDER = ["all_out_+1R", "time_stop_2d", "half_1R_trail", "bank_1R_3R",
                "bank2_1R_run", "hold_10d", "MFE_ceiling"]
-
-
-def simulate(entry, init_stop, path, rule, bound):
-    """Realized R under one intrabar `bound` ('opt' target-first / 'pess' stop-first).
-    risk = entry - init_stop. Returns (realized_R, captured_pct_of_mfe, fills) where
-    `fills` is a list of (day_idx, fraction) for every exit slice — the raw material
-    for the fill-day distribution that VALIDATES (vs assumes) the 'same-day harvest'
-    claim (day_idx 0 == trigger day)."""
-    risk = entry - init_stop
-    if risk <= 0:
-        return None
-    if rule.get("perfect_mfe"):
-        mfe_px = max(b["h"] for b in path)
-        return (mfe_px - entry) / risk, 1.0, []          # ceiling anchor: no real fills
-
-    partials = list(rule.get("partials", []))           # (R_mult, frac) queue
-    stop = init_stop
-    pos = 1.0
-    realized = 0.0                                       # in R units
-    day_count = 0
-    mfe_px = entry
-    fills = []                                           # (day_idx, fraction) per slice
-
-    for b in path:
-        mfe_px = max(mfe_px, b["h"])
-        if b["kind"] == "day":
-            day_count += 1
-            if rule.get("trail_prior_low") and b["prior_low"] is not None:
-                stop = max(stop, b["prior_low"])
-        # next partial target price (if any)
-        tgt_px = entry + partials[0][0] * risk if partials else None
-        hit_tgt = tgt_px is not None and b["h"] >= tgt_px
-        hit_stop = b["l"] <= stop
-
-        def take_partial():
-            nonlocal pos, realized, partials
-            r_mult, frac = partials.pop(0)
-            f = min(frac, pos)
-            realized += f * r_mult                       # target fills AT target price
-            pos -= f
-            fills.append((b["day_idx"], f))
-            if rule.get("breakeven_after_first"):
-                nonlocal_stop_breakeven()
-
-        def nonlocal_stop_breakeven():
-            nonlocal stop
-            stop = max(stop, entry)
-
-        def take_stop():
-            nonlocal pos, realized
-            fill = min(stop, b["o"])                     # gap-through honesty
-            realized += pos * (fill - entry) / risk
-            fills.append((b["day_idx"], pos))
-            pos = 0.0
-
-        if hit_tgt and hit_stop:
-            if bound == "opt":
-                take_partial()
-                if pos > 0 and b["l"] <= stop:           # stop may still hit after
-                    take_stop()
-            else:                                        # pessimistic: stop first
-                take_stop()
-        elif hit_tgt:
-            take_partial()
-        elif hit_stop:
-            take_stop()
-
-        if pos <= 0:
-            break
-        if rule.get("time_stop_days") and b["kind"] == "day" and day_count >= rule["time_stop_days"]:
-            realized += pos * (b["c"] - entry) / risk    # force-exit at close
-            fills.append((b["day_idx"], pos))
-            pos = 0.0
-            break
-
-    if pos > 0:                                          # survived: exit at last close
-        realized += pos * (path[-1]["c"] - entry) / risk
-        fills.append((path[-1]["day_idx"], pos))
-    captured = realized / ((mfe_px - entry) / risk) if mfe_px > entry else float("nan")
-    return realized, captured, fills
 
 
 def agg(xs):
