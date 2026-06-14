@@ -108,16 +108,22 @@ the briefs", plural). Current breadth surfaces (CLASS B is in NONE):
    COMPACT one-line CLASS B cell (the exhaustion/washout read is genuinely pre-open-useful, and
    the operator wants it in BOTH briefs). Surface only when amber/green (suppress neutral) to keep
    the morning brief tight: e.g. `🟠 Breadth: 5d up-thrust extreme (4.3%) — exhaustion watch`.
- - **`/breadth` → MERGE INTO `/regime`** (operator 6/14: "breadth and regime should be combined,
-   keep it simple"). `/regime` already renders the breadth summary; `/breadth` (`_handle_breadth_query`,
-   the Stockbee 10-day cluster matrix) is the fuller view of the same data. Fold the matrix into
-   `_handle_regime_query` (append after `_format_regime_section`) and **DROP the `/breadth`
-   command** — remove its `BotCommand` + dispatch entry + the command-list entry (3-place change;
-   `telegram.py` is orchestrator-owned → deploy scope `orchestrator`/`both`). CLASS B then appears
-   ONCE in the unified `/regime` (+ the briefs), not in two places. Telegram length: the regime
-   block + 10-row matrix fits one monospace message; if tight, gate the matrix behind a verbose
-   flag. (Keep `/breadth` as a silent alias→`/regime` only if muscle-memory matters; operator said
-   keep it simple → drop.)
+ - **`/breadth` → MERGE INTO `/regime`, and MAKE `/regime` VISIBLE** (operator 6/14: "breadth and
+   regime should be combined, keep it simple" + "regime is also not in the command list, needs to
+   be added"). `/regime` already renders the breadth summary; `/breadth` (`_handle_breadth_query`,
+   the Stockbee 10-day cluster matrix) is the fuller view of the same data. The coupled change:
+     1. Fold the matrix into `_handle_regime_query` (append after `_format_regime_section`).
+     2. **ADD `BotCommand("regime", …)` to the visible menu** — `/regime` is currently a
+        DELIBERATELY-hidden back-compat command (`telegram.py:1660` "lean 7-command menu");
+        dropping `/breadth` makes `/regime` the ONLY breadth+regime command, so it MUST be
+        discoverable. Also drop `/regime` from the off-menu help text (`telegram.py:1655`). Desc
+        e.g. `Market condition + Stockbee breadth (MAs · VIX · T2108 · 5d thrust · cluster matrix)`.
+     3. **DROP `/breadth`** — remove its `BotCommand` + the handler-registration entry
+        (`telegram.py:1631`) + any command-list refs.
+   `telegram.py` is orchestrator-owned → deploy scope `orchestrator`/`both`; the command-parity
+   gate keeps the menus honest. CLASS B then appears ONCE in the unified `/regime` (+ the briefs).
+   Telegram length: regime block + 10-row matrix fits one monospace message; if tight, gate the
+   matrix behind a verbose flag.
  All render through the one `class_b_color()`; the `_pct` inputs come from the feed (step 2). The
  `/breadth`→`/regime` merge is a separate simplification but ships in THIS gated drop (same
  surfaces, same `combined` gate) — do them together.
