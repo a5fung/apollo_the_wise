@@ -472,6 +472,48 @@ reviews:
     status: pending
     added_on: 2026-05-25
 
+  - review_id: mna_filter_accuracy_review
+    title: "M&A filter accuracy review — recurring FP/missed-mover surfacer (operator-judgment)"
+    status_note: |
+      RECURRING accuracy audit of the M&A pin filter, both error directions.
+      Created 2026-06-14 at operator request ("make sure we have process to
+      review this regular for accuracy") alongside #284. The filter drops
+      candidates with NO fallback, so both directions cost us:
+        - over-fire  -> a real mover suppressed (SUNE +216%, ONDS +24% = the
+          6/14 dig that prompted #284)
+        - under-fire -> a genuine target let through as "acquirer-side" by the
+          #284 title-direction change (mna_acquirer_title_skipped).
+      Cadence: MONTHLY during the #284 validation window, relax to QUARTERLY
+      once stable (aligns with the operator's quarterly-rule-review preference).
+      Should graduate into the monthly backward-check sweep (auto-run + Telegram)
+      per `feedback_methodology_insights_need_periodic_revalidation` — filed as a
+      gated follow-on (touches scheduler/combined).
+    question: |
+      Run `scripts/mna_filter_accuracy_review.py` (read-only) on the box:
+        docker exec apollo-market python -m scripts.mna_filter_accuracy_review 35
+      It SURFACES (does NOT classify — HARD-gate rules #3/#4) two ranked lists
+      with forward returns:
+        1. SUPPRESSED names that then ran >= +20% post-fire -> verify each was a
+           genuine M&A target, not a missed mover (the ONDS/SUNE class).
+        2. PASSED-as-acquirer names (#284) -> verify each was genuinely the
+           BUYER, not a target that slipped through.
+      Operator makes the FP/TP call; any confirmed FP routes to a CHANGE_PROCESS
+      fix on ma_filter.py (+ a named regression case in the #284 backtest).
+    predicate_sql: |
+      -- Calendar floor for a recurring read-only review, not data accrual.
+      SELECT 1;
+    threshold: 1
+    earliest_review_date: 2026-07-15
+    action_when_ready: |
+      1. Run the script (above); review the two surfaced lists.
+      2. For each flagged item, make the FP/TP call (operator). Confirmed FPs ->
+         CHANGE_PROCESS fix + regression case added to _284_mna_acquirer_backtest.py.
+      3. BUMP earliest_review_date forward: +1 month while #284 is validating,
+         then +3 months (quarterly) once two clean monthly reviews pass.
+      SSoT: docs/setups/magna53_ep.md (M&A filter change log).
+    status: pending
+    added_on: 2026-06-14
+
   - review_id: gap_atr_3_5x_band_negative_ev
     title: "gap/ATR 3-5x band — negative avg 5d return despite normal WR"
     question: |
