@@ -226,13 +226,16 @@ def harvest_realized(bars, entry_idx, entry, stop, end_idx, rule):
 
 
 def realized_net(x, bars, rule):
-    """Anticipation net REALIZED R for one name: the -1R shake costs (unchanged) PLUS the
-    win leg harvested through `rule` instead of credited full MFE. None if no win leg."""
-    if not x["win"]:
-        return None
+    """Anticipation net REALIZED R for one name: the -1R shake costs (unchanged — a stopped
+    shake is -1R under any harvest rule) PLUS the TERMINAL non-stop leg (win OR open-drift)
+    harvested through `rule` instead of credited full MFE. A name that ONLY took shakes (no
+    terminal leg) realizes exactly those shake losses — it must NOT be dropped (advisor 6/14:
+    dropping them mismatched the realized N=5-won against the MFE_ceiling N=8-triggered)."""
     shakes = sum(a["R"] for a in x["attempts"] if a["outcome"] == "stop")   # each -1R, real
-    w = x["win"]
-    h = harvest_realized(bars, w["ai"], w["entry"], w["stop"], x["end_idx"], rule)
+    term = next((a for a in x["attempts"] if a["outcome"] != "stop"), None)  # win or open
+    if term is None:
+        return shakes                                  # all-shake name: the realized loss taken
+    h = harvest_realized(bars, term["ai"], term["entry"], term["stop"], x["end_idx"], rule)
     return None if h is None else shakes + h
 
 

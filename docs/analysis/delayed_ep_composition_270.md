@@ -153,10 +153,11 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
   stop), small and fast by design.
 - **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name
   **(MFE ceiling — win leg credited full favorable excursion)**, **62% eventually caught** the
-  breakout (avg 1.9 attempts/name). vs one-shot −1.0R. **REALIZED (Layer-3 harvest, advisor 6/14):
-  the win leg run through the same exit rules nets median ≈ 0R (all-out +1R) / −1R (½-trail) /
-  +1R (scale +1R/+3R)** — the shake costs eat the all-out bank, and only a tail-capture ladder
-  recovers ~+1R. So the +3.3R is a perfect-foresight upper bound, ~3× the harvested expectancy.
+  breakout (avg 1.9 attempts/name). vs one-shot −1.0R. **REALIZED (Layer-3 harvest, advisor 6/14,
+  full N=8 triggered cohort): the win leg run through the same exit rules nets median ≈ 0R
+  (all-out +1R AND scale +1R/+3R; −1R on ½-trail), mean negative** — the −1R shake costs eat every
+  harvest rule. So the +3.3R is a perfect-foresight upper bound (~3× the harvested expectancy), and
+  realized this is **below FIRST5's matched-rule realized (+1R all-out, +2R scale).**
 - **Parity vs FIRST5 (won names, endpoint-symmetric MFE) is MATURITY-DEPENDENT — re-based at each
   setting (advisor 6/14: do NOT compare a maturity number to a min_base=1 FIRST5).** At the LOOSE
   setting (min_base=1, this section) FIRST5 **7.6R** edges anticipation **6.5R** — anticipation's
@@ -222,18 +223,23 @@ replay). #270 anticipation should be wired in #267's scope (Wed 6/17 build) as t
    not independent confirmation; a multi-window cohort is still owed before trusting the magnitude.
 3. **MFE ceilings, not harvested R — and the symmetry does NOT survive harvest (advisor 6/14,
    MEASURED).** The first cut argued the MFE comparison "holds because it's symmetric across all
-   three entries." Running anticipation's win leg through the actual Layer-3 exit harness disproves
-   that: anticipation's +3.3R MFE collapses to **≈ 0R all-out / +1R tail-capture** (the −1R shake
-   costs are realized but the win leg no longer gets full MFE), landing it **comparable to FIRST5's
-   realized +1R, not 2× ahead.** The MFE numbers (6.5/7.6/15.0R) rank entry timing/price ONLY;
-   the realized harness is the load-bearing comparison and it shows **no realized-R edge** for
-   anticipation — its case is price-capture + complementarity.
+   three entries." Running anticipation's win leg through the actual Layer-3 exit harness (full N=8
+   triggered cohort) disproves that: anticipation's +3.3R MFE collapses to **realized median ≈ 0R
+   (all-out and scale; −1R ½-trail), mean negative** (the −1R shake costs are realized but the win
+   leg no longer gets full MFE), landing it **below FIRST5's matched-rule realized (+1R all-out,
+   +2R scale) — harvested, FIRST5 edges it on every rule.** The MFE numbers (6.5/7.6/15.0R) rank
+   entry timing/price ONLY; the realized harness is the load-bearing comparison and it shows **no
+   realized-R edge** for anticipation — its case is price-capture + complementarity. (Cohort caveat:
+   FIRST5 N=15 day-0-minute single-entry no-shakes vs anticipation N=8 daily with re-entry shakes →
+   directional, not strictly head-to-head; a same-N/same-resolution parity harvest is the
+   truly-clean version, deferred as disproportionate for a gate-free/shadow-first read.)
 
 **Verdict:** anticipation is a real, positive-expectancy THIRD entry mode that validates both of
-Pradeep's claims — **conditional on re-entry discipline**. **Realized (harvested) it nets ≈ 0R
-all-out / +1R tail-capture per triggered name — comparable to FIRST5's realized +1R, NOT the
-+2.9–15R the MFE ceilings implied** (those rank entry timing/price only). So there is **no
-realized-R basis to prefer anticipation over confirmation**; the maturity-dependent MFE flip
+Pradeep's claims — **conditional on re-entry discipline**. **Realized (harvested, full N=8
+triggered cohort) it nets median ≈ 0R (all-out and scale +1R/+3R; −1R on ½-trail), mean negative —
+below FIRST5's matched-rule realized (+1R all-out, +2R scale), NOT the +2.9–15R the MFE ceilings
+implied** (those rank entry timing/price only). So there is **no realized-R basis to prefer
+anticipation over confirmation — harvested, FIRST5 edges it**; the maturity-dependent MFE flip
 (loose FIRST5 7.6 vs 6.5; mature anticipation 15.0 vs 7.6 — N=4, MFE, do not over-read) is an
 entry-price/stop-tightness story, not a harvested-edge story. Anticipation's real, defensible
 edge is the **lower / earlier entry** — positioned BELOW the gap instead of chasing
@@ -268,10 +274,11 @@ threshold (≈3, illustrative); and how many windows to re-validate the magnitud
 - ✅ Step 2c — **ANTICIPATION entry (third mode) evaluated** (2026-06-14, gate-free,
   `scripts/_270_anticipation_replay.py`). Pradeep's EOD entry on a COILED day (pre-breakout).
   Stop-and-reenter (the faithful model — one-shot is a strawman) = **+2.9R mean/name MFE on
-  triggered, 62% caught**; **REALIZED through the Layer-3 harness = ≈ 0R all-out / +1R
-  tail-capture — comparable to FIRST5's realized +1R, no realized-R edge** (advisor 6/14; the
-  +2.9–15R figures are MFE ceilings, anticipation's edge is the lower/earlier entry PRICE +
-  complementarity). Validates both his claims (25% earlier capture, 2% fast-fail). ILLUSTRATIVE
+  triggered, 62% caught**; **REALIZED through the Layer-3 harness (full N=8) = median ≈ 0R
+  (all-out and scale; −1R ½-trail), mean negative — below FIRST5's matched-rule realized (+1R/+2R):
+  no realized-R edge, FIRST5 edges it** (advisor 6/14; the +2.9–15R figures are MFE ceilings,
+  anticipation's edge is the lower/earlier entry PRICE + complementarity). Validates both his
+  claims (25% earlier capture, 2% fast-fail). ILLUSTRATIVE
   not ship: N=8, outlier-leveraged (RLMD = 73% of total, survives ex-top at +0.5R/name). Re-entry
   discipline LOAD-BEARING. Complementary (only ~37% of armed names coil). Full writeup ↑ "Step 2c".
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +

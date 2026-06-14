@@ -51,14 +51,16 @@ runners (MNTS-style undercut→trigger) never coil and take a confirmation entry
   **⚠ R vs confirmation — MFE-vs-MFE, NOT a realized edge (advisor 6/14):** the parity numbers
   (anticipation 6.5R loose / 15.0R mature vs FIRST5 7.6R, N=4) are **perfect-foresight MFE
   ceilings on BOTH sides** — they rank entry *timing/price*, not harvested P&L. Run the
-  anticipation win leg through the **same realized-exit rules** as Layer 3 and the +3.3R MFE net
-  **collapses to realized ≈ 0R (all-out +1R) / −1R (½-trail) / +1R (scale +1R/+3R)** — i.e. the
-  shake costs eat the all-out bank, and only a **tail-capture ladder** nets ~+1R, *comparable to
-  FIRST5's realized +1R, not 2× better.* So anticipation's ONLY defensible edge is the
-  **earlier/lower entry** (price capture: ~25% of the run, ~6% below FIRST5) — there is **no
-  realized-R basis to prefer it over FIRST5.** ILLUSTRATIVE — N=8, threshold ≈3 in-sample;
-  the DIRECTION (require maturity; tail-capture harvest) is robust (winner-retention), the
-  magnitude needs multi-window re-validation (operator decision; data-blocked today).
+  anticipation win leg through the **same realized-exit rules** as Layer 3 (over the full N=8
+  triggered cohort) and the +3.3R MFE net **collapses to realized median ≈ 0R (all-out +1R AND
+  scale +1R/+3R; −1R on ½-trail), mean negative** — the −1R shake costs eat every harvest rule.
+  That is **below FIRST5's matched-rule realized (+1R all-out, +2R scale): harvested, FIRST5
+  edges anticipation on every rule — there is NO realized-R advantage for anticipation** (cohort
+  caveat: FIRST5 N=15 day-0-minute single-entry no-shakes vs anticipation N=8 daily with re-entry
+  shake costs → directional, not head-to-head). So anticipation's ONLY defensible edge is the
+  **earlier/lower entry** (price capture: ~25% of the run, ~6% below FIRST5) + complementarity.
+  ILLUSTRATIVE — N=8, threshold ≈3 in-sample; the DIRECTION (require maturity) is robust
+  (winner-retention), the magnitude needs multi-window re-validation (data-blocked today).
 - **CONFIRMATION PRIMARY — FIRST5-BREAK** (trigger day): break above the first-5-min high;
   **stop = first-5-min low**. Median stop **3%**, median **3.5R (intraday MFE/risk, NOT
   realized)**, fills 15/18. = the MNTS "first-minute high/low HELD". *Realized* under Layer 3
@@ -118,11 +120,12 @@ data + the exit layer (the #168 actionability gate).
    trigger bar.
 3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
 4. **ANTICIPATION inclusion + maturity threshold + re-validation** — include the anticipation EOD
-   entry path in the step-3 deployable? **Realized** (Layer-3 harvest, advisor 6/14) it nets
-   **≈ 0R all-out / +1R tail-capture** per triggered name — *comparable to FIRST5's realized +1R,
-   NOT the +2.9–15R the MFE ceilings implied.* So the honest case for inclusion is **price capture
-   + complementarity** (it fires on the ~37% coil set the confirmation entry catches late), NOT a
-   higher realized R. The **maturity gate (≥3-day base)** is the key knob — keeps all winners while
+   entry path in the step-3 deployable? **Realized** (Layer-3 harvest, advisor 6/14, full N=8
+   triggered cohort) it nets **median ≈ 0R (all-out AND scale +1R/+3R; −1R on ½-trail), mean
+   negative** — *below FIRST5's matched-rule realized (+1R all-out, +2R scale), NOT the +2.9–15R
+   the MFE ceilings implied.* So the honest case for inclusion is **price capture + complementarity**
+   (it fires on the ~37% coil set the confirmation entry catches late), NOT a higher realized R —
+   harvested, FIRST5 edges it. The **maturity gate (≥3-day base)** is the key knob — keeps all winners while
    cutting outlier reliance (top 73%→40%); confirm the threshold (≈3, in-sample). Decide over how
    many windows to re-validate before SIZING (the signal can ship shadow regardless; sizing is the
    gated decision). Re-entry discipline + the maturity chart-read surfacing must be supported.
@@ -139,8 +142,9 @@ data + the exit layer (the #168 actionability gate).
 - Anticipation expectancy is N=8, **outlier-leveraged** (one name = 73% of total R; survives
   ex-top at +0.5R/name but the magnitude needs multi-window re-validation), and **conditional on
   re-entry discipline** (one-shot is −1R). The headline +2.9–15R figures are **MFE ceilings**;
-  **realized (Layer-3 harvest) ≈ 0R all-out / +1R tail-capture** — anticipation's edge is the
-  earlier/lower ENTRY PRICE, not a higher realized R than FIRST5 (advisor 6/14).
+  **realized (Layer-3 harvest, full N=8) median ≈ 0R (all-out and scale; −1R ½-trail), mean
+  negative — below FIRST5's matched-rule realized (+1R/+2R)** — anticipation's edge is the
+  earlier/lower ENTRY PRICE + complementarity, not a higher realized R than FIRST5 (advisor 6/14).
 - Readiness is EOD (daily); the intraday confirmation entry-watch needs the live bar stream
   (execution-side). The anticipation signal is EOD-computable (no intraday stream needed).
 - **Chart-vision maturity (#267 integration, operator 6/14):** the `base_run` gate is a cheap
@@ -175,9 +179,10 @@ data + the exit layer (the #168 actionability gate).
 - **2026-06-14 (e2e honesty pass — advisor holistic review)** — the advisor's whole-tactic review
   caught that the **entry-mode R ranking was MFE-vs-MFE**, not realized. Three fixes: **(a)** ran
   the ANTICIPATION win leg through the **same Layer-3 realized-exit harness** (`harvest_realized`
-  in `_270_anticipation_replay.py`) — the +3.3R MFE net **collapses to ≈ 0R all-out / +1R
-  tail-capture**, comparable to FIRST5's realized +1R, so **no realized-R basis to prefer
-  anticipation** (its edge is the earlier/lower entry PRICE only); **(b)** **measured** the
+  in `_270_anticipation_replay.py`, full N=8 triggered cohort) — the +3.3R MFE net **collapses to
+  realized median ≈ 0R (all-out and scale; −1R ½-trail), mean negative — below FIRST5's matched-rule
+  realized (+1R/+2R)**, so **harvested FIRST5 edges it; no realized-R basis to prefer anticipation**
+  (its edge is the earlier/lower entry PRICE + complementarity only); **(b)** **measured** the
   fill-day distribution in `_270_exit_replay.py` (was inferred from opt==pess) — confirms
   **same-day harvest: all-out banks 93% on the trigger day, scale +1R/+3R 87%**; **(c)** relabeled
   every Layer-2 entry R as an **MFE/risk ceiling** with the realized number adjacent. Verdict
