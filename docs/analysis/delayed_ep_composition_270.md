@@ -153,10 +153,13 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
   stop), small and fast by design.
 - **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name,
   **62% eventually caught** the breakout (avg 1.9 attempts/name). vs one-shot −1.0R.
-- **Parity three-way (won names, common daily endpoint):** ANTICIPATION **6.5R** vs FIRST5
-  **4.9R** — anticipation's far-lower entry (≈6% below FIRST5) more than offsets its slightly
-  wider coiled stop (5% vs 2%) → more R on the same run. (NOT comparable to the intraday 3.5R —
-  re-based horizon.)
+- **Parity three-way (won names, common daily endpoint, endpoint-symmetric MFE):** ANTICIPATION
+  **6.5R** vs FIRST5 **7.6R**. On a parity-clean basis (both MFE credit their OWN entry-day high —
+  the first cut wrongly denied FIRST5 the breakout-day high it exists to capture, advisor 6/14),
+  **FIRST5's much tighter 2% stop EDGES anticipation on R** despite anticipation's far-lower entry
+  + wider 5% coiled stop. **Anticipation does NOT win on R** — its edge is the lower entry
+  PRICE / earlier positioning (the price-capture below), not R expectancy. (N=4, conditioned on
+  anticipation having won; NOT comparable to the intraday 3.5R — re-based horizon.)
 - **Full cohort (all 11, incl. the false set):** mean **+1.7R**/name, total +19R, caught 45%.
 
 **CAVEATS (this is ILLUSTRATIVE, not a ship verdict):**
@@ -168,12 +171,15 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
 3. **MFE ceilings, not harvested R** (symmetric across all three entries, so the comparison
    holds; the absolute R's are optimistic — the W3 exit layer sets realized harvest).
 
-**Verdict:** anticipation is a real, positive-expectancy THIRD entry mode that validates both of
-Pradeep's claims and beats confirmation on the names that coil — **conditional on re-entry
-discipline**. It does NOT replace confirmation (fast runners don't coil). The entry layer becomes
-**anticipation-when-coiled (early, tight stop, re-enter) + FIRST5-BREAK confirmation (fast
-runners) + GDL-RECLAIM fallback**. OPERATOR decision: include anticipation as an entry path in
-the step-3 deployable, and over how many windows to re-validate the magnitude before sizing it.
+**Verdict:** anticipation is a real, positive-expectancy THIRD entry mode (+2.9R/name stop-and-
+reenter) that validates both of Pradeep's claims — **conditional on re-entry discipline**. It does
+NOT beat confirmation on parity-clean R (FIRST5's tighter 2% stop edges it, 7.6R vs 6.5R); its
+distinct value is the **lower / earlier entry** — you're positioned BELOW the gap instead of
+chasing the first-5 high, which is exactly Pradeep's "capture the bulk on a gap up". And it does
+NOT replace confirmation (fast runners don't coil). So the entry layer is **complementary**:
+anticipation-when-coiled (early, re-enter on a shake) + FIRST5-BREAK confirmation (fast runners) +
+GDL-RECLAIM fallback. OPERATOR decision: include anticipation as an entry path in the step-3
+deployable, and over how many windows to re-validate the magnitude before sizing it.
 
 ## Sequencing (the e2e tactic)
 
@@ -196,8 +202,9 @@ the step-3 deployable, and over how many windows to re-validate the magnitude be
 - ✅ Step 2c — **ANTICIPATION entry (third mode) evaluated** (2026-06-14, gate-free,
   `scripts/_270_anticipation_replay.py`). Pradeep's EOD entry on a COILED day (pre-breakout).
   Stop-and-reenter (the faithful model — one-shot is a strawman) = **+2.9R mean/name on
-  triggered, 62% caught**, beats FIRST5 on the names that coil; validates both his claims
-  (25% earlier capture, 2% fast-fail). ILLUSTRATIVE not ship: N=8, outlier-leveraged (RLMD =
+  triggered, 62% caught**; comparable to FIRST5 (does NOT beat it on parity-clean R — FIRST5's
+  tighter stop edges 7.6R vs 6.5R; anticipation's edge is the lower/earlier entry). Validates
+  both his claims (25% earlier capture, 2% fast-fail). ILLUSTRATIVE not ship: N=8, outlier-leveraged (RLMD =
   73% of total, survives ex-top at +0.5R/name), MFE ceilings. Re-entry discipline LOAD-BEARING.
   Complementary to confirmation (only ~37% of armed names coil). Full writeup ↑ "Step 2c".
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +

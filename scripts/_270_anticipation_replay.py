@@ -145,19 +145,17 @@ def simulate_reenter(bars, coiled, trig_idx, end_idx):
     return attempts
 
 
-def fwd_walk(bars, entry_idx, entry, stop, end_idx):
-    """FIRST5 parity walk: stop-respecting daily, entry_idx+1..end_idx. R(MFE) optimistic."""
+def mfe_R(bars, entry_idx, entry, stop, end_idx):
+    """Parity MFE ceiling: max favorable high over [entry_idx .. end_idx] INCLUDING the entry
+    day's own post-entry high, no stop truncation (symmetric with the anticipation 'win' MFE,
+    which also runs to end_idx un-truncated). FIRST5 enters intraday on its entry day, so that
+    day's high is post-entry and is exactly the breakout it exists to capture — it MUST be
+    included, else FIRST5 is denied the move anticipation is credited with (advisor 6/14)."""
     risk = (entry - stop) / entry if entry > stop else None
     if not risk or risk <= 0:
         return None
-    run_high, stopped = entry, False
-    for i in range(entry_idx + 1, end_idx + 1):
-        if bars[i]["l"] <= stop:
-            stopped = True
-            break
-        run_high = max(run_high, bars[i]["h"])
-    mfe = run_high / entry - 1
-    return {"risk": risk, "R_mfe": mfe / risk, "stopped": stopped}
+    run_high = max(b["h"] for b in bars[entry_idx: end_idx + 1])
+    return {"risk": risk, "R_mfe": (run_high / entry - 1) / risk}
 
 
 def main():
@@ -250,15 +248,16 @@ def main():
         f5 = entry_mod.entry_first5(rth.get((x["t"], tdate), []), x["ctx"]["gap_day_low"]) if (x["t"], tdate) in rth else None
         if not f5:
             continue
-        f5w = fwd_walk(bars_by[x["t"]], x["ctx"]["trig_idx"], f5[0], f5[1], x["end_idx"])
+        f5w = mfe_R(bars_by[x["t"]], x["ctx"]["trig_idx"], f5[0], f5[1], x["end_idx"])
         if f5w:
             tw.append({"a_R": x["win"]["R"], "a_risk": x["win"]["risk"], "f5_R": f5w["R_mfe"], "f5_risk": f5w["risk"]})
     if tw:
-        print(f"3b. PARITY three-way, common daily endpoint, single entry each (won names, N={len(tw)}):")
+        print(f"3b. PARITY three-way, common daily endpoint + endpoint-symmetric MFE (won names, N={len(tw)}):")
         print(f"    {'entry':<16}{'med risk':<10}{'med R(MFE)'}")
         print(f"    {'ANTICIPATION':<16}{median([x['a_risk'] for x in tw])*100:>6.0f}%   {median([x['a_R'] for x in tw]):>6.1f}R")
         print(f"    {'FIRST5-BREAK':<16}{median([x['f5_risk'] for x in tw])*100:>6.0f}%   {median([x['f5_R'] for x in tw]):>6.1f}R")
-        print("    (anticipation's tighter coiled stop -> more R on the same run; NOT comparable to the intraday 3.5R.)\n")
+        print("    (both MFE incl. their own entry-day high, un-truncated; the only diff = entry TIMING/price.\n"
+              "     NOT comparable to the intraday 3.5R - re-based horizon. N=4, conditioned on anticipation having won.)\n")
 
     # ── 4. FULL-COHORT cost side (all fired, incl. false anticipations) ──
     allnet = [sum(a["R"] for a in x["attempts"]) for x in names]

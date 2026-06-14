@@ -42,8 +42,10 @@ runners (MNTS-style undercut→trigger) never coil and take a confirmation entry
   **RE-ENTER at the next coiled day if shaken** (re-entry discipline is LOAD-BEARING — one-shot
   is −1R, the strawman). Captures ~25% of the run earlier (≈6% below the FIRST5 price) + fails
   small/fast (~2% stops). Stop-and-reenter expectancy **+2.9R mean/name, 62% caught** (triggered
-  cohort). ILLUSTRATIVE only — N=8, outlier-leveraged (survives ex-top at +0.5R/name), MFE
-  ceilings; re-validate the magnitude over more windows before sizing (operator decision).
+  cohort). NOT an R-win vs confirmation — on parity-clean R, FIRST5's tighter 2% stop edges it
+  (7.6R vs 6.5R); the edge is the **earlier/lower entry** (positioned below the gap, not chasing).
+  ILLUSTRATIVE only — N=8, outlier-leveraged (survives ex-top at +0.5R/name), MFE ceilings;
+  re-validate the magnitude over more windows before sizing (operator decision).
 - **CONFIRMATION PRIMARY — FIRST5-BREAK** (trigger day): break above the first-5-min high;
   **stop = first-5-min low**. Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS
   "first-minute high/low HELD".
@@ -99,5 +101,7 @@ data + the exit layer (the #168 actionability gate).
   Deployable wiring sequenced post-#277. Operator decisions (above) pending before wiring.
 - **2026-06-14 (later)** — **ANTICIPATION entry added as Layer-2 third mode** (`_270_anticipation_replay.py`,
   step 2c). Pradeep's EOD coiled-day entry: +2.9R mean/name stop-and-reenter, validates both his
-  claims, beats confirmation on coiling names — ILLUSTRATIVE (N=8, outlier-leveraged, re-entry
-  load-bearing). Decision #4 added. Gate-free analysis.
+  claims. Does NOT beat confirmation on parity-clean R (FIRST5's tighter stop edges it 7.6R vs
+  6.5R after the advisor-caught MFE-parity fix — the first cut wrongly denied FIRST5 the
+  breakout-day high); anticipation's edge is the earlier/lower entry. ILLUSTRATIVE (N=8,
+  outlier-leveraged, re-entry load-bearing). Decision #4 added. Gate-free analysis.
