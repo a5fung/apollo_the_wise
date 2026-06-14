@@ -246,7 +246,7 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     # Color rules in `breadth_color_rules.py` (SSoT shared with /regime +
     # cluster audit detector).
     from agents.market_intelligence.breadth_color_rules import (
-        paired_color, t2108_color, cluster_fires,
+        paired_color, t2108_color, class_b_color, cluster_fires,
         red_count_in_window, CLUSTER_WINDOW, CLUSTER_RED_THRESHOLD,
     )
 
@@ -308,6 +308,17 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
         quarter_bits.append(f"T2108 {t_prefix}{t2108:.0f}%")
     if quarter_bits:
         lines.append("  *3M*  " + "   ".join(quarter_bits))
+
+    # Class B (#271): ±20%/5d thrust — amber=exhaustion, green=washout (oversold setup).
+    up5p = bm.get("up_20_5d_pct")
+    dn5p = bm.get("down_20_5d_pct")
+    if up5p is not None or dn5p is not None:
+        b_emoji = class_b_color(up5p, dn5p)
+        b_prefix = f"{b_emoji} " if b_emoji else ""
+        up_n, dn_n = bm.get("up_20_5d"), bm.get("down_20_5d")
+        lines.append(
+            f"  *5d ±20%*  {b_prefix}up {up5p or 0:.1f}% ({up_n}) · down {dn5p or 0:.1f}% ({dn_n})"
+        )
 
     if consec_bd > 0:
         lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")
@@ -1679,6 +1690,18 @@ def _format_morning_briefing(
     regime_line += f"  |  EP filter {_ep_threshold_context(ep_thresh)}"
 
     sections = [f"*Apollo Morning Briefing — {briefing_date}*"]
+
+    # Class B (#271): pre-open breadth-extreme flag — only when amber/green (suppress neutral
+    # so the morning brief stays tight). The exhaustion/washout read is pre-open-useful.
+    from agents.market_intelligence.breadth_color_rules import (
+        coerce_breadth_monitor, class_b_color, CAUTION, BULL,
+    )
+    _bm = coerce_breadth_monitor(regime.get("breadth_monitor"))
+    _b = class_b_color(_bm.get("up_20_5d_pct"), _bm.get("down_20_5d_pct"))
+    if _b == CAUTION:
+        sections.append(f"{CAUTION} *Breadth*: 5d up-thrust extreme ({_bm.get('up_20_5d_pct')}%) — exhaustion watch")
+    elif _b == BULL:
+        sections.append(f"{BULL} *Breadth*: 5d washout extreme ({_bm.get('down_20_5d_pct')}%) — oversold / rally-watch")
 
     # Engine errors from overnight run — shown prominently so nothing is missed
     if overnight_errors:

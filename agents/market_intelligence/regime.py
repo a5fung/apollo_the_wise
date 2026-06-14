@@ -272,6 +272,11 @@ async def calculate_breadth_full(today: date) -> dict:
         today_up4 = 0
         today_down4 = 0
         daily_down4_counts: dict[date, int] = {}
+        # CLASS B (#271): 5-trading-day ±20% thrust counts ($5-floor numerator) + the
+        # common-with-5d denominator. Populated below; default 0 so a thin-data day no-ops.
+        up_20_5d = 0
+        down_20_5d = 0
+        thrust_universe_5d = 0
 
         if len(trade_dates) >= 2:
             # Get closes for common stocks only (exclude ETFs, warrants, SPACs, OTC, sub-$1)
@@ -292,6 +297,30 @@ async def calculate_breadth_full(today: date) -> dict:
                 if tk not in closes_by_ticker:
                     closes_by_ticker[tk] = {}
                 closes_by_ticker[tk][r["trade_date"]] = r["close"]
+
+            # CLASS B (#271): ±20% over 5 trading days, piggybacking closes_by_ticker (no extra
+            # query — the 5d window is a subset of the 11 dates already fetched). $5-floor
+            # numerator (real-names thrust), split-guarded. Wrapped: a failure must not break
+            # the rest of breadth (regime label / EP threshold are computed independently).
+            try:
+                if len(trade_dates) >= 6:
+                    d_now, d_5ago = trade_dates[-1], trade_dates[-6]
+                    for _dates in closes_by_ticker.values():
+                        c_now = _dates.get(d_now)
+                        c_5 = _dates.get(d_5ago)
+                        if c_now is None or c_5 is None or c_5 <= 0:
+                            continue
+                        thrust_universe_5d += 1
+                        if c_now < 5:
+                            continue
+                        chg5 = c_now / c_5 - 1
+                        if 0.20 <= chg5 <= 2.0:
+                            up_20_5d += 1
+                        elif -0.9 <= chg5 <= -0.20:
+                            down_20_5d += 1
+            except Exception as e:
+                logger.warning(f"CLASS B (±20%/5d) thrust computation failed (non-fatal): {e}")
+                up_20_5d = down_20_5d = thrust_universe_5d = 0
 
             # Compute daily changes for consecutive date pairs
             daily_up4: list[int] = []
@@ -406,6 +435,11 @@ async def calculate_breadth_full(today: date) -> dict:
         "up_50_1m": up_50_1m,
         "down_50_1m": down_50_1m,
         "secondary_signal": secondary_signal,
+        # Class B (#271): ±20%/5d thrust — counts + % of the common-with-5d universe.
+        "up_20_5d": up_20_5d,
+        "down_20_5d": down_20_5d,
+        "up_20_5d_pct": round(up_20_5d / thrust_universe_5d * 100, 2) if thrust_universe_5d else None,
+        "down_20_5d_pct": round(down_20_5d / thrust_universe_5d * 100, 2) if thrust_universe_5d else None,
         # Meta
         "universe_size": universe_size,
         "consec_breakdown_days": consec_breakdown_days,

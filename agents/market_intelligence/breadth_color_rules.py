@@ -23,6 +23,12 @@ from typing import Any, Optional
 T2108_OVERSOLD = 20.0   # Class C: below → green setup signal
 T2108_OVERBOUGHT = 85.0  # Class C: above → amber caution signal
 
+# Class B (#271): unpaired ±20%/5d thrust as % of universe ($5-floor numerator).
+# p90 convention thresholds from the 269-day calibration (docs/analysis/breadth_classb_271.md;
+# tunable like T2108's 20/85, NOT a backtested trade gate). Validated on Pradeep's 5/24 anchor.
+CLASS_B_UP_EXHAUSTION = 2.7   # up≥20%/5d ≥ 2.7% of universe → amber (exhaustion)
+CLASS_B_DOWN_WASHOUT = 1.8    # down≥20%/5d ≥ 1.8% of universe → green (washout = oversold setup)
+
 CLUSTER_WINDOW = 5            # rolling window in trading days
 CLUSTER_RED_THRESHOLD = 3     # ≥N red days in window to fire
 CLUSTER_RECENCY_DAYS = 2      # at least one red must be in last N days
@@ -83,6 +89,20 @@ def t2108_color(value: Optional[float]) -> str:
         return BULL
     if value > T2108_OVERBOUGHT:
         return CAUTION
+    return NEUTRAL
+
+
+# --- Class B: unpaired ±20%/5d thrust (#271) ------------------------------
+
+def class_b_color(up_20_5d_pct: Optional[float], down_20_5d_pct: Optional[float]) -> str:
+    """CLASS B unpaired-thrust color (clone of t2108_color — pure, stateless, convention
+    thresholds). Up-thrust extreme → amber (Pradeep exhaustion); down-thrust extreme (washout)
+    → green (oversold setup = the 'post-washout rally-watch', the reading itself, no transition
+    state). Two-directional by construction; the up side wins if both somehow extreme."""
+    if up_20_5d_pct is not None and up_20_5d_pct >= CLASS_B_UP_EXHAUSTION:
+        return CAUTION
+    if down_20_5d_pct is not None and down_20_5d_pct >= CLASS_B_DOWN_WASHOUT:
+        return BULL
     return NEUTRAL
 
 
