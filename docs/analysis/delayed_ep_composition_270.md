@@ -58,12 +58,46 @@ Reclaim requires close > BOTH gap_day_low AND SMA20 (the two-fold U&R); EMA21 is
 reported as confirmation. Universe deliberately INCLUDES sub-$500M (the live scanner's
 `mcap_too_small` floor is kept for auto-trading, dropped for this watch/observe lane).
 
+## Step 2 — cohort calibration (2026-06-14, gate-free)
+
+Cohort SEEDED FROM PRICE ACTION (not the live scanner — that's the point; its
+`mcap_too_small` floor excluded MNTS): huge-gap fast-runner days, 2026-03-01..05-15
+(window leaves room for the lifecycle to complete by mid-June). Seed SQL =
+`mi_daily_closes` where close ≥ 1.4·prev_close AND vol ≥ 3·ADV20 AND close ≥ $5 AND
+prev_close ≥ $2 AND vol·close ≥ $20M → 134 distinct tickers. Replay run per ticker:
+`scripts/_270_cohort_run.py` (imports the validated `replay()`).
+
+**Funnel:** WATCHED 62 → ARMED 30 (48% of watched) → TRIGGERED 16 (26% of watched,
+17 events). 72 of 134 seed names failed WATCHED (gapped below their 200d MA — correctly
+filtered). **The lifecycle completes on only 26% of huge-gap names = SELECTIVE**, the
+right shape for a rare setup (not noisy).
+
+**Forward outcome (MFE over next 10 trading days, N=17 trigger events):** median
+**+8%**, **≥+20% MFE on 5/17 (29%)**, best **+137%** (HCAI), then ASTI +83%, MXL +54%,
+TRT +52%. The fat right tail the template is about IS present. BUT the 10-day *close*
+returns are weak/negative (HCAI +137% MFE → −41% close; SILO +37% → −13%) →
+**empirically confirms the template's "tiny-cap fast runners must DERISK FASTER"
+nuance**: the edge is in the excursion, harvested with early partials, NOT buy-and-hold.
+That is a management/exit finding (W3 exits / P3 management-judge), not a detector flaw.
+MFE is favorable-excursion, NOT realized P&L (no exit rule applied) — read it as "did
+the reclaim run," not "what you'd have made."
+
+**Calibration knobs surfaced (for OPERATOR — not self-applied):**
+1. EXPANSION ratio is UNSTABLE on near-zero pullback baselines (HCAI 86×, RLYB 104×
+   are artifacts of a tiny denominator) → floor the pullback-avg volume or cap the ratio.
+2. Thin TRIGGER days slip through despite the $20M gap-day liquidity (SILO/KFRC/CAMP
+   < 0.5M shares) → add a min absolute volume / dollar-volume floor on the trigger bar.
+3. GAP +40% / VOLX 3× / ARM 15d are reasonable starting points (the funnel is
+   selective); the operator decides whether to tighten for fewer/higher-quality flags.
+
+Reproduce: the two seed queries are in `_270_cohort_*.tsv` headers / this doc; then
+`python scripts/_270_cohort_run.py`.
+
 ## Sequencing
 
-- ✅ Step 1 — composition replay, validated vs MNTS (this doc). Gate-free.
-- ⏸ Step 2 — COHORT calibration: run the replay over recent sub-$500M huge-gap names
-  (seed from mi_ep_alerts / mi_9m_* ), measure fire-rate + threshold sensitivity →
-  operator calibrates GAP/VOLX/ARM_WINDOW/EXPANSION before anything ships. Gate-free.
+- ✅ Step 1 — composition replay, validated vs MNTS. Gate-free.
+- ✅ Step 2 — cohort calibration (above): selective funnel + fat-MFE-tail confirmed,
+  calibration knobs surfaced. Gate-free.
 - ⏸ Step 3 — the deployable SHADOW detector (lifecycle state table + scheduler job +
   `/`-surface). GATED post-#277: a new scheduler job + CREATE TABLE run in COMBINED =
   Monday's §C rollback target, so it must not enter main's rollback path until the
