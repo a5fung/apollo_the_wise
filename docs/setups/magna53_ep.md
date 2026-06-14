@@ -82,6 +82,54 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-06-14 — M&A filter: acquirer-direction on the TITLE path (#284) — AWAITING SIGN-OFF
+
+**Trigger**: 6/14 materiality dig (advisor-prompted, off the Sunday weekly review)
+found the M&A pin filter suppresses **acquirer-side** names via TITLE match (Path A).
+`_ticker_is_acquirer` only inspects per-ticker REASONING, so when reasoning is
+absent/ambiguous an acquirer-side title leaks through. Material case: **ONDS 2026-05-28**
+graded `strong` on a real Q1 earnings blowout ($50.1M rev), suppressed by the stale
+(5/18) title *"Ondas Bets Big On AI Battlefield Software With Omnisys Buyout"* (Ondas is
+the BUYER), then ran **+24%** (open-based, 5 sessions). Also **MYRG** (*"MYR Group …to
+Acquire Valley Electric"*, +6.5%) and **CECO** (acquirer of THR — but CECO is a
+multi-ticker title *bleed*, out of scope here → Path B). This is the residual the
+2026-05-13 fix left: that fix only removed bare `"acquire"/"acquisition"` keywords;
+`buyout`/`merger`/`definitive agreement`/`takeover` stayed **direction-blind on titles**.
+
+**Fix**: `title_implies_acquirer(title, filing_company_name)` — anchored on the filing
+company's POSITION in the headline (a title is not per-ticker, so "BigCo to Acquire
+Acme" filed under target Acme must NOT read as acquirer). **Asymmetric-safe, target-guard
+FIRST**: any target-side phrase → returns False (keep firing), so it can only ADD
+acquirer-passes where the filing co is unambiguously the buyer — never converts a target
+into a pass; worst case = status-quo. Two acquirer signals, both requiring the filing co
+to appear BEFORE them: (1) verb form (acquirer verb after the co — MYRG); (2) object form
+(acquirer-noun preceded by a capitalized non-filing entity, after the co — ONDS "Omnisys
+Buyout"). Wired into Path A after `_ticker_is_acquirer`; company name fetched lazily
+(only on a title-keyword hit, verb-form checked first to skip the fetch). Emits
+`mna_acquirer_title_skipped` audit telemetry on every activation (shadow-measurable).
+
+**Evidence**: real title-fires are **N=3 in 120d** (KALV/MYRG/ONDS) — BELOW the N≥10 ship
+bar, so flagged augmented-with-synthetic + shadow-validate (per sample-size discipline).
+Labeled backtest **N=14 (6 acquirer / 8 target)** incl. the positional trap and CECO
+out-of-scope: **14/14** (`scripts/_284_mna_acquirer_backtest.py`). **16/16** unit tests
+(`tests/test_ma_filter_direction.py`, incl. updated `test_title_acquirer_*` reflecting the
+new behavior + ONDS/MYRG pass + Acme-target still fires + conservative-without-name).
+
+**Anticipated effect**: acquirer-side title-match fires drop (ONDS/MYRG-class pass to
+alert/entry); CECO-class title bleed UNCHANGED (still fires — needs Path B subject-relevance,
+deferred under `mna_filter_direction_blindness_path_a`). Net ~1–2 fewer acquirer
+suppressions/month (rare). Fail-direction is benign: a mis-passed target is price-capped
+(small/quick loss, paper-only pre-6/22), vs the +24% winner the leak was costing.
+
+**Reversion-flag**: REFINEMENT of the 2026-05-13 direction fix (adds title-direction
+handling for the keywords that fix left direction-blind). Hard revert = drop the
+`title_implies_acquirer` block in `polygon_news_has_mna_headline` Path A.
+
+**Status**: built + backtested (14/14) + 16 unit tests, **AWAITING OPERATOR SIGN-OFF on the
+filter list (HARD-gate rule #3 — agent does NOT self-certify)** + shadow-validation of the
+live wiring. NOT yet committed/deployed. Recommended deploy AFTER the Monday split go-live
+(intelligence-side detection; no reason to add a variable to the 6/15 ORB-via-http window).
+
 ### 2026-06-12 — Rubric v3: catalyst FRESHNESS clause (judge + fallback grader)
 
 **Trigger**: AKTS 2026-06-12 — the judge's first WRONG live load-bearing promote

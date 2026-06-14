@@ -169,6 +169,108 @@ def _ticker_is_acquirer(item: dict, ticker: str, reasoning: Optional[str] = None
     return classify_direction(reasoning) == "acquirer"
 
 
+# Acquirer-direction on the TITLE (Path A) — #284, 2026-06-14.
+# The 2026-05-13 fix removed bare "acquire"/"acquisition" keywords but left
+# buyout/merger/definitive-agreement direction-blind on TITLES, and
+# `_ticker_is_acquirer` only inspects per-ticker REASONING. So acquirer-side
+# title matches with absent/ambiguous reasoning leak through (ONDS 5/28
+# "...With Omnisys Buyout" = Ondas is the BUYER, graded strong on a real
+# earnings gap, suppressed; MYRG "...to Acquire Valley Electric").
+_ACQUIRER_OBJECT_NOUNS: tuple[str, ...] = ("buyout", "acquisition", "takeover")
+# Tokens that can immediately precede an acquirer-noun but are NOT a company
+# entity, so "<word> Buyout" must NOT be read as "<entity> Buyout" (acquirer
+# object form). Two kinds: deal adjectives ("Cash/Management Buyout") and
+# Title-Case headline verbs/preps ("Acme Receives Buyout Offer" — 'Receives'
+# is capitalized in Title Case but is a verb, not the bought entity).
+_GENERIC_ACQ_PRECEDERS: frozenset[str] = frozenset({
+    # deal adjectives / generic nouns
+    "cash", "stock", "management", "leveraged", "pending", "proposed",
+    "potential", "all", "the", "a", "an", "its", "their", "company",
+    "majority", "minority", "strategic", "private", "secondary", "partial",
+    # Title-Case headline verbs / prepositions that precede the noun
+    "receives", "received", "announces", "announced", "completes", "completed",
+    "enters", "entered", "agrees", "agreed", "rejects", "rejected", "accepts",
+    "accepted", "confirms", "confirmed", "explores", "explored", "considers",
+    "considered", "eyes", "weighs", "plans", "planned", "approves", "approved",
+    "finalizes", "finalized", "seeks", "secures", "secured", "launches",
+    "launched", "nears", "faces", "after", "amid", "following", "in", "for",
+    "of", "on", "via", "through", "with", "and", "to", "from",
+})
+
+
+# Corporate suffixes stripped from the filing company name before anchoring, so
+# "MYR Group Inc." anchors on "myr" not the generic "group/inc".
+_CORP_SUFFIXES: frozenset[str] = frozenset({
+    "group", "inc", "incorporated", "corp", "corporation", "co", "company",
+    "holdings", "holding", "ltd", "limited", "plc", "llc", "lp", "sa", "nv",
+    "ag", "se", "the", "and", "of",
+})
+
+
+def title_implies_acquirer(
+    title: Optional[str],
+    filing_company_name: Optional[str] = None,
+) -> bool:
+    """True when the article TITLE indicates the FILING ticker is the deal
+    ACQUIRER (buyer), not the target — so the M&A pin filter should NOT fire
+    (an acquirer's momentum is not price-capped). #284.
+
+    A headline is NOT per-ticker, so direction must be anchored on the filing
+    company's POSITION relative to the deal verb/noun — otherwise 'BigCo to
+    Acquire Acme' (filed under target Acme) would read as acquirer. Without the
+    company name we cannot anchor, so we return False (conservative — fire).
+
+    Asymmetric-safe (target-guard FIRST): any target-side language returns
+    False (keep firing), so the function can only ever ADD acquirer-passes on
+    titles where the filing co is unambiguously the buyer — it never converts a
+    target into a pass. Worst case = stays conservative (status quo).
+
+    Acquirer signals, both requiring the filing co to appear BEFORE the signal:
+      1. Verb form — an acquirer verb ('to acquire', 'acquires', 'buys', ...)
+         appears AFTER the filing company ('MYR Group ... to Acquire Valley').
+      2. Object form — an acquirer-noun ('buyout'/'acquisition'/'takeover')
+         preceded by a Capitalized entity that is NOT the filing co, appearing
+         after the filing co ('Ondas ... Omnisys Buyout' -> buys Omnisys).
+    """
+    if not title or not filing_company_name:
+        return False
+    filing_tokens = {
+        t.lower() for t in re.split(r"[^A-Za-z]+", filing_company_name)
+        if len(t) > 1 and t.lower() not in _CORP_SUFFIXES
+    }
+    if not filing_tokens:
+        return False
+    low = title.lower()
+    positions = [low.find(t) for t in filing_tokens if low.find(t) >= 0]
+    if not positions:
+        return False  # filing company not named in the title -> can't anchor
+    co_pos = min(positions)
+
+    # TARGET guard FIRST — any target-side phrase means the filing side is (or
+    # may be) the one being acquired; stay conservative and let it fire.
+    for tp in _TARGET_DIRECTION_PATTERNS:
+        if tp in low:
+            return False
+
+    # 1. Acquirer VERB after the filing company (filing co is the subject).
+    for ap in _ACQUIRER_DIRECTION_PATTERNS:
+        idx = low.find(ap)
+        if idx > co_pos:
+            return True
+
+    # 2. Acquirer OBJECT form: "<OtherEntity> <noun>" after the filing company.
+    for noun in _ACQUIRER_OBJECT_NOUNS:
+        for m in re.finditer(rf"\b([A-Z][A-Za-z][A-Za-z.&-]*)\s+{noun}\b", title, re.IGNORECASE):
+            if m.start() <= co_pos:
+                continue  # entity-noun must follow the filing company
+            entity_low = m.group(1).lower()
+            if (entity_low in filing_tokens or entity_low in _GENERIC_ACQ_PRECEDERS
+                    or not m.group(1)[:1].isupper()):
+                continue
+            return True
+    return False
+
+
 def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, int]]:
     """Scan multiple text blobs; return (keyword, index_of_first_hit) or None.
 
@@ -332,11 +434,23 @@ async def polygon_news_has_mna_headline(
     historical cases (2 TP + 7 FP from 90d audit) behave as expected
     under this logic. Replay script: scripts/_replay_88_mna_filter_fix.py
     """
-    from agents.market_intelligence.collector import get_polygon_news
+    from agents.market_intelligence.collector import get_polygon_news, get_ticker_details
 
     items = await get_polygon_news(
         ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20
     )
+
+    # #284: lazily resolve the filing ticker's company name — only fetched when
+    # a TITLE M&A keyword hits AND the cheap verb-form check misses, so we don't
+    # add a Polygon call to every is_likely_ma check. Cached per call.
+    _co_name: list = []  # one-slot lazy cache (empty = not yet fetched)
+
+    async def _filing_company_name() -> Optional[str]:
+        if not _co_name:
+            details = await get_ticker_details(ticker)
+            _co_name.append((details or {}).get("name") or None)
+        return _co_name[0]
+
     for item in items:
         title = item.get("title", "")
         description = item.get("description", "")
@@ -349,6 +463,26 @@ async def polygon_news_has_mna_headline(
         title_kw = matches_mna_keywords(title)
         if title_kw:
             if _ticker_is_acquirer(item, ticker):
+                continue
+            # #284: acquirer-direction on the TITLE itself. `_ticker_is_acquirer`
+            # only inspects per-ticker REASONING, so acquirer-side titles with
+            # absent/ambiguous reasoning leaked (ONDS "...Omnisys Buyout",
+            # MYRG "...to Acquire Valley"). Cheap verb-form first; only fetch the
+            # company name if that misses (object-form needs it).
+            _is_acq = title_implies_acquirer(title)
+            if not _is_acq:
+                _cn = await _filing_company_name()
+                _is_acq = bool(_cn) and title_implies_acquirer(title, _cn)
+            if _is_acq:
+                try:
+                    from agents.market_intelligence.db import log_audit_event
+                    await log_audit_event(
+                        "mna_acquirer_title_skipped",
+                        f"{ticker} title '{title_kw}' read ACQUIRER-side, not fired: "
+                        f"'{title[:120]}'",
+                    )
+                except Exception:
+                    pass
                 continue
             return {
                 "ticker": ticker,
