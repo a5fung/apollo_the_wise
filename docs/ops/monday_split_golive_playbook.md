@@ -100,28 +100,41 @@ is not a failure — it just doesn't exercise the path; re-check the next sessio
 
 ---
 
-## C. Rollback — collapse to combined (instant, byte-identical)
+## C. Rollback — collapse to combined (PINNED to the validated SHA)
 
 Run if any pre-open check reds, or the 9:31 handoff misfires. Markets-open rollback
-is safe (it returns to the proven single process; do it between ORB attempts if mid-session):
+is safe (it returns to the proven single process; do it between ORB attempts if mid-session).
+
+**Why pinned, not `git pull origin main`** (advisor 2026-06-14): `deploy.sh` always
+`git pull origin main` ([1/5]), so it would rebuild combined from whatever HEAD is at
+rollback time — including any same-day work that was verified in the SPLIT but **never
+booted in combined**. The rollback target must be a commit *validated combined-safe*, so we
+pin a SHA instead. main can then advance freely without endangering the fallback.
 
 ```bash
 cd /home/apollo/apollo_the_wise
-# 1. Remove the intelligence env block from market-agent in
-#    docker/docker-compose.prod.yml (the SERVICE_ROLE/EXECUTION_MODE/
-#    EXECUTION_SERVICE_URL/ALPACA_* lines) — or `git revert fb40e38` and pull.
-# 2. Stop the execution service:
+# 1. PIN to the validated combined-safe commit — do NOT `git pull origin main`.
+git fetch origin
+git stash    # only if the working tree is dirty
+git checkout f116fae    # ⟵ PINNED SHA — 2026-06-14 EOD (command-merge + CLASS B, all
+                        #    deployed + verified in the split, combined-safe, boot-path-clean).
+                        #    UPDATE this SHA if more combined-safe work ships+verifies before Monday.
+# 2. Flip market-agent to combined: remove the intelligence env block
+#    (SERVICE_ROLE/EXECUTION_MODE/EXECUTION_SERVICE_URL/ALPACA_* "") from the
+#    market-agent service in docker/docker-compose.prod.yml, then stop execution:
 docker compose -f docker/docker-compose.prod.yml stop apollo-execution
-# 3. Rebuild market-agent as combined (owns everything again, byte-identical):
-bash scripts/deploy.sh market-agent
+# 3. Rebuild market-agent as combined (owns everything again) — build the PINNED code,
+#    NOT a fresh pull:
+docker compose -f docker/docker-compose.prod.yml up -d --build market-agent
+# 4. Confirm healthy — the safeguard preflight PASSES on combined (has creds):
+docker exec apollo-market python -m scripts.preflight_check
 ```
 
-Verify: `apollo-market` boots `SERVICE_ROLE=combined`, "all 69 jobs kept", paper
-equity prints, healthy. Combined = the exact pre-cutover behavior. The safeguard
-preflight PASSES here (combined has creds) — unlike an intelligence-role redeploy,
-which false-fails the preflight (creds-less by design; see
-`execution_split_cutover.md` "deploy ergonomics" / #278). So a clean preflight on
-rollback is the normal, expected signal that combined is back.
+Verify: `apollo-market` boots `SERVICE_ROLE=combined`, "all 69 jobs kept", paper equity
+prints, healthy, and step 4's preflight PASSES (combined has creds — unlike the creds-less
+intelligence role, which false-fails it; `execution_split_cutover.md` "deploy ergonomics" /
+#278). Combined-from-the-pinned-SHA = the validated fallback. A clean preflight is the
+normal, expected signal that combined is back.
 
 ---
 
