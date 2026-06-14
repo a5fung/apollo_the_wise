@@ -128,10 +128,20 @@ in the cohort) and actionable, so it is NOT the #168 per-tick-noise class
 
 - ✅ Step 1 — readiness composition, validated vs MNTS. Gate-free.
 - ✅ Step 2 — cohort calibration: selective funnel + fat-MFE tail + knobs. Gate-free.
-- ⏸ Step 2b — **intraday ENTRY tactic tuning** (gate-free analysis): for the cohort's
-  ARMED/READY names, replay candidate intraday entries (first-min hold / ORB-of-reclaim
-  / U&R) on intraday bars → which entry tactic best captures the MFE with the tightest
-  stop. (Needs intraday bars — `mi_intraday_bars` / a Polygon pull.)
+- ✅ Step 2b — **intraday ENTRY tuning DONE** (2026-06-14, gate-free, `scripts/_270_entry_replay.py`
+  on Polygon minute bars for the 17 triggers + MNTS). Two template-aligned entries replayed
+  per trigger day:
+  - **FIRST5-BREAK** (break above the first-5-min high; stop = first-5-min low): fills
+    15/18, **median stop 3%**, median MFE +12%, **median 3.5R**. = the MNTS "first-minute
+    high/low HELD" entry (MNTS 9.6R).
+  - **GDL-RECLAIM** (reclaim the gap-day-low; stop = gap-day-low): fills 18/18, median stop
+    10%, median MFE +12%, median 1.4R.
+  - **VERDICT:** same MFE, but FIRST5-BREAK delivers **2.5× the R** purely on the tighter
+    stop (3% vs 10%) — the U&R-paradox "tightest stop + biggest cushion" confirmed
+    empirically. **Tuned entry = FIRST5-BREAK primary + GDL-RECLAIM fallback** (the 3 names
+    where the 5-min break never cleared the gap-day-low) → tight stops with full coverage.
+  - `mi_intraday_bars` was too sparse (scattered single days, 8/16 names absent) → pulled
+    from Polygon (the existing provider); the deployable tactic uses the live bar stream.
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +
   intraday entry-watch + `/`-board + alerts. GATED post-#277 (new job + CREATE TABLE run
   in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
