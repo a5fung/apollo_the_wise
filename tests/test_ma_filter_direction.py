@@ -91,6 +91,10 @@ def _run_polygon_check(items, ticker, company_name=None):
     `company_name` mocks get_ticker_details (#284 title-direction lookup); None
     => unresolvable name => the title-direction check stays conservative."""
     details = {"name": company_name} if company_name else {}
+    # #284: clear the cross-call company-name memo so tests don't contaminate
+    # each other via a cached name for a reused ticker.
+    from agents.market_intelligence import ma_filter as _mf
+    _mf._COMPANY_NAME_MEMO.clear()
     with patch("agents.market_intelligence.collector.get_polygon_news",
                new=AsyncMock(return_value=items)), \
          patch("agents.market_intelligence.collector.get_ticker_details",

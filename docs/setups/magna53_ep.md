@@ -98,15 +98,23 @@ multi-ticker title *bleed*, out of scope here → Path B). This is the residual 
 
 **Fix**: `title_implies_acquirer(title, filing_company_name)` — anchored on the filing
 company's POSITION in the headline (a title is not per-ticker, so "BigCo to Acquire
-Acme" filed under target Acme must NOT read as acquirer). **Asymmetric-safe, target-guard
-FIRST**: any target-side phrase → returns False (keep firing), so it can only ADD
-acquirer-passes where the filing co is unambiguously the buyer — never converts a target
-into a pass; worst case = status-quo. Two acquirer signals, both requiring the filing co
-to appear BEFORE them: (1) verb form (acquirer verb after the co — MYRG); (2) object form
-(acquirer-noun preceded by a capitalized non-filing entity, after the co — ONDS "Omnisys
-Buyout"). Wired into Path A after `_ticker_is_acquirer`; company name fetched lazily
-(only on a title-keyword hit, verb-form checked first to skip the fetch). Emits
-`mna_acquirer_title_skipped` audit telemetry on every activation (shadow-measurable).
+Acme" filed under target Acme must NOT read as acquirer). Target-guard FIRST. Two acquirer
+signals, both requiring the filing co to appear BEFORE them: (1) verb form (acquirer verb
+after the co — MYRG); (2) object form (acquirer-noun preceded by a capitalized non-filing
+entity, after the co — ONDS "Omnisys Buyout"). Wired into Path A after `_ticker_is_acquirer`;
+company name fetched lazily + memoized cross-call; emits `mna_acquirer_title_skipped`
+(trading-day-deduped) on activation.
+
+**Safety is NOT uniform (corrected 6/14 after /simplify — the original "never converts a
+target" claim was WRONG):** the VERB form IS asymmetric-safe (target-guard first +
+verb-must-follow-co). The OBJECT form is a BENIGN-FAILURE heuristic, NOT bulletproof — a
+Title-Case headline verb/adjective before the noun ("Acme Mulls Buyout", "Acme Spurns
+Sweetened Buyout") can be misread as a bought entity and mis-pass a noun-form target (the
+`_GENERIC_ACQ_PRECEDERS` stoplist narrows but cannot close this — no NER/name-map).
+Operator-signed KEEP 6/14: the failure is benign (a mis-passed target is price-capped ->
+small/quick loss, paper-only) and every pass is surfaced for FP review by the recurring
+`mna_filter_accuracy_review` (the monitored backstop). Verb-form-alone would be bulletproof
+but would re-defer the material ONDS case.
 
 **Evidence**: real title-fires are **N=3 in 120d** (KALV/MYRG/ONDS) — BELOW the N≥10 ship
 bar, so flagged augmented-with-synthetic + shadow-validate (per sample-size discipline).
@@ -125,10 +133,12 @@ suppressions/month (rare). Fail-direction is benign: a mis-passed target is pric
 handling for the keywords that fix left direction-blind). Hard revert = drop the
 `title_implies_acquirer` block in `polygon_news_has_mna_headline` Path A.
 
-**Status**: built + backtested (14/14) + 16 unit tests, **AWAITING OPERATOR SIGN-OFF on the
-filter list (HARD-gate rule #3 — agent does NOT self-certify)** + shadow-validation of the
-live wiring. NOT yet committed/deployed. Recommended deploy AFTER the Monday split go-live
-(intelligence-side detection; no reason to add a variable to the 6/15 ORB-via-http window).
+**Status**: OPERATOR-SIGNED 2026-06-14 (filter list reviewed; object-form KEEP after the
+safety correction above). Committed `28c4e59` + `/simplify` cleanup (cross-call name memo,
+trading-day audit dedup, precompiled object-form regex, honest docstring). Backtest 14/14,
+16 unit tests. NOT yet deployed — deploy AFTER the Monday split go-live (intelligence-side
+detection; no reason to add a variable to the 6/15 ORB-via-http window), then field-validate
+the live wiring (first `mna_acquirer_title_skipped` rows) + the monthly accuracy review.
 
 ### 2026-06-12 — Rubric v3: catalyst FRESHNESS clause (judge + fallback grader)
 

@@ -40,6 +40,7 @@ VALIDATION_RATE_LIMITED = "validation_rate_limited"
 
 # ── M&A filter ──────────────────────────────────────────────────────────────
 MNA_FILTER_FIRED = "mna_filter_fired"
+MNA_ACQUIRER_TITLE_SKIPPED = "mna_acquirer_title_skipped"  # #284 acquirer-side title not fired
 
 # ── Sugar Baby / convergence ────────────────────────────────────────────────
 SUGAR_BABY_CONVERGENCE_ALERT = "sugar_baby_convergence_alert"

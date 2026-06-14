@@ -76,12 +76,15 @@ def _print_section(title: str, rows, flag_material: bool):
 
 async def main(lookback_days: int) -> int:
     from agents.market_intelligence.db import get_pool
+    from agents.market_intelligence.audit_events import (
+        MNA_FILTER_FIRED, MNA_ACQUIRER_TITLE_SKIPPED,
+    )
     pool = await get_pool()
     async with pool.acquire() as conn:
         suppressed = await _fwd_rows(
-            conn, "mna_filter_fired", "split_part(summary,' via',1)", lookback_days)
+            conn, MNA_FILTER_FIRED, "split_part(summary,' via',1)", lookback_days)
         passed = await _fwd_rows(
-            conn, "mna_acquirer_title_skipped", "split_part(summary,' ',1)", lookback_days)
+            conn, MNA_ACQUIRER_TITLE_SKIPPED, "split_part(summary,' ',1)", lookback_days)
 
     print(f"M&A FILTER ACCURACY REVIEW  (lookback {lookback_days}d)")
     print("Surfaces filter decisions + forward returns for OPERATOR judgment.")
