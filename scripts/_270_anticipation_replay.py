@@ -179,6 +179,63 @@ def mfe_R(bars, entry_idx, entry, stop, end_idx):
     return {"risk": risk, "R_mfe": (run_high / entry - 1) / risk}
 
 
+# Harvest rules MIRRORING _270_exit_replay.py — so anticipation's WIN leg is scored on a
+# REALIZED exit (banked at a target / trailed / closed out), NOT the perfect-foresight MFE
+# ceiling mfe_R returns. Advisor 6/14: the entry-mode R ranking (anticipation 15R vs FIRST5
+# 7.6R) was MFE-vs-MFE; until both run through the SAME harvest, no realized preference holds.
+_HARVEST = {
+    "all_out_+1R":   dict(partials=[(1.0, 1.0)]),
+    "half_1R_trail": dict(partials=[(1.0, 0.5)], breakeven_after_first=True, trail_prior_low=True),
+    "bank_1R_3R":    dict(partials=[(1.0, 0.5), (3.0, 0.5)]),
+}
+
+
+def harvest_realized(bars, entry_idx, entry, stop, end_idx, rule):
+    """REALIZED R harvesting the anticipation entry on DAILY bars (entry = coiled close,
+    forward = daily; no trigger-day minute resolution — anticipation enters at a close).
+    Pessimistic intrabar (stop-first) + gap-through fill at min(stop, bar_open), matching
+    _270_exit_replay's honesty conventions. Returns realized R or None."""
+    risk = entry - stop
+    if risk <= 0:
+        return None
+    partials = list(rule.get("partials", []))
+    pos, realized, cur_stop = 1.0, 0.0, stop
+    prior_low = bars[entry_idx]["l"]
+    for i in range(entry_idx + 1, end_idx + 1):
+        b = bars[i]
+        if rule.get("trail_prior_low"):
+            cur_stop = max(cur_stop, prior_low)
+        tgt = entry + partials[0][0] * risk if partials else None
+        if b["l"] <= cur_stop:                              # pessimistic: stop first
+            realized += pos * (min(cur_stop, b["o"]) - entry) / risk
+            pos = 0.0
+            break
+        if tgt is not None and b["h"] >= tgt:
+            r_mult, frac = partials.pop(0)
+            f = min(frac, pos)
+            realized += f * r_mult
+            pos -= f
+            if rule.get("breakeven_after_first"):
+                cur_stop = max(cur_stop, entry)
+        prior_low = b["l"]
+        if pos <= 0:
+            break
+    if pos > 0:                                             # survived: exit at endpoint close
+        realized += pos * (bars[end_idx]["c"] - entry) / risk
+    return realized
+
+
+def realized_net(x, bars, rule):
+    """Anticipation net REALIZED R for one name: the -1R shake costs (unchanged) PLUS the
+    win leg harvested through `rule` instead of credited full MFE. None if no win leg."""
+    if not x["win"]:
+        return None
+    shakes = sum(a["R"] for a in x["attempts"] if a["outcome"] == "stop")   # each -1R, real
+    w = x["win"]
+    h = harvest_realized(bars, w["ai"], w["entry"], w["stop"], x["end_idx"], rule)
+    return None if h is None else shakes + h
+
+
 def parity_threeway(names, bars_by, rth):
     """Parity-clean anticipation-vs-FIRST5 (endpoint-symmetric MFE) over the won names that have
     minute bars. Recompute at EACH maturity setting — the won-name set + the winning anticipation
@@ -309,6 +366,22 @@ def main():
         print(f"    {'FIRST5-BREAK':<16}{median([x['f5_risk'] for x in tw])*100:>6.0f}%   {median([x['f5_R'] for x in tw]):>6.1f}R")
         print("    (both MFE incl. their own entry-day high, un-truncated; the only diff = entry TIMING/price.\n"
               "     NOT comparable to the intraday 3.5R - re-based horizon. N=4, conditioned on anticipation having won.)\n")
+
+    # ── 3c. REALIZED harvest (advisor 6/14) — the win leg run through the SAME exit rules as
+    #        _270_exit_replay, NOT credited full MFE. THIS is the realized anticipation R. ──
+    print("3c. REALIZED HARVEST (anticipation win leg harvested, NOT MFE; triggered names):")
+    print(f"    {'rule':<16}{'med net R':<12}{'mean net R':<12}{'win%':<7}(vs MFE net below)")
+    for rname, rule in _HARVEST.items():
+        rz = [realized_net(x, bars_by[x["t"]], rule) for x in trig_fired]
+        rz = [r for r in rz if r is not None]
+        wr = sum(1 for r in rz if r > 0) / len(rz) if rz else float("nan")
+        print(f"    {rname:<16}{median(rz):<+12.1f}{mean(rz):<+12.1f}{wr*100:<7.0f}")
+    mfe_net = [sum(a["R"] for a in x["attempts"]) for x in trig_fired]   # MFE win leg (section 3/4)
+    print(f"    {'MFE_ceiling':<16}{median(mfe_net):<+12.1f}{mean(mfe_net):<+12.1f}"
+          f"{sum(1 for r in mfe_net if r>0)/len(mfe_net)*100:<7.0f}(<- the perfect-foresight "
+          "upper bound; the realized rows are the honest expectancy)")
+    print("    => realized anticipation R is the all_out_+1R/half_trail rows, NOT the MFE ceiling;\n"
+          "       any anticipation-vs-FIRST5 preference must compare realized-to-realized.\n")
 
     # ── 4. FULL-COHORT cost side (all fired, incl. false anticipations) ──
     allnet = [sum(a["R"] for a in x["attempts"]) for x in names]

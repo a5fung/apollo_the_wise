@@ -151,8 +151,12 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
   FIRST5 price = 25% of the whole run to the window high captured earlier** (N=4 w/ minute bars).
 - **Claim #2 (fail fast/small) — CONFIRMED:** shaken attempts lose a median **2%** (the coiled
   stop), small and fast by design.
-- **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name,
-  **62% eventually caught** the breakout (avg 1.9 attempts/name). vs one-shot −1.0R.
+- **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name
+  **(MFE ceiling — win leg credited full favorable excursion)**, **62% eventually caught** the
+  breakout (avg 1.9 attempts/name). vs one-shot −1.0R. **REALIZED (Layer-3 harvest, advisor 6/14):
+  the win leg run through the same exit rules nets median ≈ 0R (all-out +1R) / −1R (½-trail) /
+  +1R (scale +1R/+3R)** — the shake costs eat the all-out bank, and only a tail-capture ladder
+  recovers ~+1R. So the +3.3R is a perfect-foresight upper bound, ~3× the harvested expectancy.
 - **Parity vs FIRST5 (won names, endpoint-symmetric MFE) is MATURITY-DEPENDENT — re-based at each
   setting (advisor 6/14: do NOT compare a maturity number to a min_base=1 FIRST5).** At the LOOSE
   setting (min_base=1, this section) FIRST5 **7.6R** edges anticipation **6.5R** — anticipation's
@@ -216,14 +220,23 @@ replay). #270 anticipation should be wired in #267's scope (Wed 6/17 build) as t
    removal, unlike the W2 study that went median −1R). **The maturity gate above materially
    mitigates this** (top share 40%, ex-top +4.8R at min_base=3) — but on the same N=8, so it is
    not independent confirmation; a multi-window cohort is still owed before trusting the magnitude.
-3. **MFE ceilings, not harvested R** (symmetric across all three entries, so the comparison
-   holds; the absolute R's are optimistic — the W3 exit layer sets realized harvest).
+3. **MFE ceilings, not harvested R — and the symmetry does NOT survive harvest (advisor 6/14,
+   MEASURED).** The first cut argued the MFE comparison "holds because it's symmetric across all
+   three entries." Running anticipation's win leg through the actual Layer-3 exit harness disproves
+   that: anticipation's +3.3R MFE collapses to **≈ 0R all-out / +1R tail-capture** (the −1R shake
+   costs are realized but the win leg no longer gets full MFE), landing it **comparable to FIRST5's
+   realized +1R, not 2× ahead.** The MFE numbers (6.5/7.6/15.0R) rank entry timing/price ONLY;
+   the realized harness is the load-bearing comparison and it shows **no realized-R edge** for
+   anticipation — its case is price-capture + complementarity.
 
-**Verdict:** anticipation is a real, positive-expectancy THIRD entry mode (+2.9R/name stop-and-
-reenter) that validates both of Pradeep's claims — **conditional on re-entry discipline**. Its
-R vs confirmation is **maturity-dependent** (loose: FIRST5 edges 7.6 vs 6.5; mature: anticipation
-15.0 vs 7.6 as the tight coil matches FIRST5's stop — N=4, illustrative, do not over-read); its
-horizon-free edge is the **lower / earlier entry** — positioned BELOW the gap instead of chasing
+**Verdict:** anticipation is a real, positive-expectancy THIRD entry mode that validates both of
+Pradeep's claims — **conditional on re-entry discipline**. **Realized (harvested) it nets ≈ 0R
+all-out / +1R tail-capture per triggered name — comparable to FIRST5's realized +1R, NOT the
++2.9–15R the MFE ceilings implied** (those rank entry timing/price only). So there is **no
+realized-R basis to prefer anticipation over confirmation**; the maturity-dependent MFE flip
+(loose FIRST5 7.6 vs 6.5; mature anticipation 15.0 vs 7.6 — N=4, MFE, do not over-read) is an
+entry-price/stop-tightness story, not a harvested-edge story. Anticipation's real, defensible
+edge is the **lower / earlier entry** — positioned BELOW the gap instead of chasing
 the first-5 high, exactly Pradeep's "capture the bulk on a gap up". And it does NOT replace
 confirmation (fast runners don't coil). So the entry layer is **complementary**:
 anticipation-on-a-MATURE-coil (≥3-day base, re-enter on a shake) + FIRST5-BREAK confirmation (fast
@@ -254,12 +267,13 @@ threshold (≈3, illustrative); and how many windows to re-validate the magnitud
     from Polygon (the existing provider); the deployable tactic uses the live bar stream.
 - ✅ Step 2c — **ANTICIPATION entry (third mode) evaluated** (2026-06-14, gate-free,
   `scripts/_270_anticipation_replay.py`). Pradeep's EOD entry on a COILED day (pre-breakout).
-  Stop-and-reenter (the faithful model — one-shot is a strawman) = **+2.9R mean/name on
-  triggered, 62% caught**; comparable to FIRST5 (does NOT beat it on parity-clean R — FIRST5's
-  tighter stop edges 7.6R vs 6.5R; anticipation's edge is the lower/earlier entry). Validates
-  both his claims (25% earlier capture, 2% fast-fail). ILLUSTRATIVE not ship: N=8, outlier-leveraged (RLMD =
-  73% of total, survives ex-top at +0.5R/name), MFE ceilings. Re-entry discipline LOAD-BEARING.
-  Complementary to confirmation (only ~37% of armed names coil). Full writeup ↑ "Step 2c".
+  Stop-and-reenter (the faithful model — one-shot is a strawman) = **+2.9R mean/name MFE on
+  triggered, 62% caught**; **REALIZED through the Layer-3 harness = ≈ 0R all-out / +1R
+  tail-capture — comparable to FIRST5's realized +1R, no realized-R edge** (advisor 6/14; the
+  +2.9–15R figures are MFE ceilings, anticipation's edge is the lower/earlier entry PRICE +
+  complementarity). Validates both his claims (25% earlier capture, 2% fast-fail). ILLUSTRATIVE
+  not ship: N=8, outlier-leveraged (RLMD = 73% of total, survives ex-top at +0.5R/name). Re-entry
+  discipline LOAD-BEARING. Complementary (only ~37% of armed names coil). Full writeup ↑ "Step 2c".
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +
   intraday entry-watch + `/`-board + alerts. GATED post-#277 (new job + CREATE TABLE run
   in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
@@ -267,8 +281,10 @@ threshold (≈3, illustrative); and how many windows to re-validate the magnitud
   FIRST5 entry held constant, realized R under a speed spectrum (advisor methodology:
   median+ex-top2, intrabar opt/pess bracket, day-0 minute / day-1+ daily, gap-through stops),
   N=15. **Buy-and-hold loses the median name (−1R/27% win — its +1.6R mean is the HCAI/ASTI
-  outlier artifact) → derisk-fast is EMPIRICALLY NECESSARY.** Harvest is a SAME-DAY event
-  (opt==pess everywhere). Scale-out +1R/+3R beats single-target in-sample (median +2R vs +1R).
+  outlier artifact) → derisk-fast is EMPIRICALLY NECESSARY.** Harvest is a SAME-DAY event —
+  now **MEASURED** (advisor 6/14, not just inferred from opt==pess): the fill-day distribution
+  shows **all-out banks 93% of position on the trigger day (day0), scale +1R/+3R banks 87%**.
+  Scale-out +1R/+3R beats single-target in-sample (median +2R vs +1R).
   +137% tail is NOT systematically harvestable (any held runner bleeds the median). Rule =
   scale out fast into the trigger-day spike; magnitudes illustrative (N=15, one window) →
   operator decision #5, shadow-first. Full evidence: SSoT `delayed_ep_reentry.md` Layer 3.
