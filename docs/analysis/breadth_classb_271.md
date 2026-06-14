@@ -1,10 +1,14 @@
 # #271 — CLASS B breadth (Pradeep 20%-in-5d thrust): metric computed + calibrated (gate-free)
 
-**Status: ANALYSIS DONE 2026-06-14 (gate-free). The missing CLASS B metric feed is computed,
-calibrated, and validated against Pradeep's 5/24 anchor. The deployable wiring (feed in
-`regime.py::calculate_breadth_full` + `class_b_color()` in `breadth_color_rules.py` + the
-`/breadth`/briefing cell) touches `combined`-deployed code → GATED post-#277, same discipline as
-#270 step 3 / #258 step 2.** Read-only analysis: `scripts/_271_breadth_classb.sql` + `_271_analyze.py`.
+**Status: ANALYSIS + WIRING DEPLOYED 2026-06-14.** The CLASS B metric is computed, calibrated,
+anchor-validated (below), AND wired live: `class_b_color()` (breadth_color_rules.py), the feed in
+`regime.py::calculate_breadth_full`, and the cell in `/regime` + both briefs. The operator relaxed
+the pre-Monday freeze for this market-independent change (orchestrator + intelligence-side only;
+no trade/boot-path impact) and pinned the §C Monday rollback to a validated SHA (`f116fae`) so main
+can advance freely. Commits `80156d3` (/breadth→/regime merge) + `f116fae` (CLASS B). Deploys GREEN
+by the #278 manual criteria. **VERIFY-LIVE PENDING:** cells render once `breadth_monitor` carries
+`up_20_5d` (next `calculate_breadth_full` run) — confirm `/regime` shows the 5d±20% cell. Read-only
+analysis: `scripts/_271_breadth_classb.sql` + `_271_analyze.py`.
 
 ## The gap
 
