@@ -1,0 +1,79 @@
+# Setup SSoT — Delayed-EP Re-entry (tiny-cap fast-runner) · #270
+
+**Status: PRE-DEPLOY SPEC (shadow-first). Analysis + tuning COMPLETE 2026-06-14 (gate-free);
+deployable wiring is the first post-#277-gate build. This file is the canonical definition
+the deployment references — read it + `docs/setups/CHANGE_PROCESS.md` before any change.**
+
+One **end-to-end trade tactic**, three layers, built as one unit (memory
+`user-sip-setup-is-one-e2e-tactic`). NOT five fragments. Blueprint: the MNTS case
+(`docs/analysis/mnts_delayed_ep_case_study_2026-06-11.md`); evidence + replay:
+`docs/analysis/delayed_ep_composition_270.md` + `scripts/_270_*` (replay / cohort / entry).
+
+## What it catches
+
+The tiny-cap fast-runner "one-pays-for-ten-losers" tail the live auto-scanner FILTERS OUT
+(`mcap_too_small < $500M`): a huge EP gap, a low-volume pullback that UNDERCUTS the gap-day
+low, then an explosive volume-confirmed RECLAIM. Universe deliberately INCLUDES sub-$500M
+for this WATCH/observe lane (the mcap floor stays only on the auto-trade lane).
+
+## Layer 1 — READINESS (daily state machine)
+
+From daily OHLCV (validated reproducing MNTS: WATCHED 5/26 → ARMED 6/08 → TRIGGERED 6/11):
+
+| State | Criterion (defaults — see DECIDE) |
+|---|---|
+| WATCHED | gap day: close ≥ (1+GAP)·prev_close, close > SMA200, vol ≥ VOLX·ADV20. Record gap_day_low. |
+| ARMED | within ARM_WINDOW days: low < gap_day_low (UNDERCUT — the arming event, NOT invalidation), vol < burst. |
+| READY | close > gap_day_low AND close > SMA20 (two-fold U&R) AND vol > EXPANSION·avg(pullback vol). |
+
+Defaults GAP +40% / VOLX 3× / ARM_WINDOW 15d / EXPANSION 1.5×. Cohort (134 huge-gap names,
+2026-03..05): funnel WATCHED 62 → ARMED 30 (48%) → READY 16 (26% of watched) = SELECTIVE.
+
+## Layer 2 — ENTRY (intraday tactic — the layer that gets you in; READY ≠ entry)
+
+Tuned on Polygon minute bars over 17 triggers + MNTS (`_270_entry_replay.py`):
+- **PRIMARY — FIRST5-BREAK**: break above the first-5-min high; **stop = first-5-min low**.
+  Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS "first-minute high/low HELD".
+- **FALLBACK — GDL-RECLAIM**: reclaim the gap-day-low; stop = gap-day-low. Median 10% stop,
+  1.4R, fills 18/18 — covers the ~3 names where the 5-min break never clears the gap-day-low.
+- Net: FIRST5-BREAK primary + GDL-RECLAIM fallback → tight stops with full coverage. The
+  tighter stop (3% vs 10%) is 2.5× the R on the same move — the U&R-paradox edge.
+
+## Layer 3 — EXIT / harvest (derisk FASTER)
+
+Tiny-cap fast runners: partials EARLIER + more often than the standard ladder. PROVEN
+necessary by the cohort: fat MFE tail (median +8% / best +137% over 10d) but WEAK close-
+returns → the edge is the excursion, only realized by early harvest, not buy-and-hold.
+(W3 exits / P3 management-judge — built WITH this tactic, not separately.)
+
+## Surfacing
+
+A READY/ARMED transition is RARE (~1/week in the cohort) + actionable → operator ALERT
+(NOT the #168 per-tick-noise class; `memory:feedback_alert_vs_audit`). ARMED → name joins
+the intraday entry-watch + a `/`-board (watched/armed/ready) + EOD digest; ENTRY (intraday
+tactic fires) → real-time alert with the structural stop (the reclaimed gap-day-low) + the
+harvest-fast note. Shadow = informational; graduates to actionable only with forward-outcome
+data + the exit layer (the #168 actionability gate).
+
+## ⚠ OPERATOR DECISIONS — set BEFORE the deployable wiring (step 3)
+
+1. **EXPANSION floor** — the ratio is unstable on near-zero pullback baselines (HCAI 86×,
+   RLYB 104× are tiny-denominator artifacts) → floor the pullback-avg volume or cap the ratio.
+2. **Trigger-volume floor** — thin trigger days slip through despite the $20M gap-day
+   liquidity (SILO/KFRC/CAMP < 0.5M shares) → add a min absolute / dollar-volume floor on the
+   trigger bar.
+3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
+
+## Known limitations / caveats
+
+- Cohort calibration is N=16 triggers over one ~3.5-month window — observational, not a
+  multi-regime backtest. MFE is favorable-excursion, NOT realized P&L (no exit applied).
+- Readiness is EOD (daily); the intraday entry-watch needs the live bar stream (execution-side).
+- Deployable wiring (scheduler job + lifecycle state table + intraday entry-watch + alerts)
+  is GATED post-#277 (it runs in `combined` = the §C rollback target).
+
+## Change log
+
+- **2026-06-14** — Setup SPEC created. Readiness validated vs MNTS + cohort-calibrated;
+  entry tuned (FIRST5-BREAK 3.5R); exit characterized (derisk-fast). All gate-free analysis.
+  Deployable wiring sequenced post-#277. Operator decisions (above) pending before wiring.

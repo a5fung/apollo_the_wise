@@ -147,6 +147,48 @@ in the cohort) and actionable, so it is NOT the #168 per-tick-noise class
   in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
 - ⏸ Paired — W3 EXIT/harvest layer (derisk-fast) — built WITH step 3, same tactic.
 
+## Step 3 build spec (TURNKEY — execute post-#277-gate, mechanical not design)
+
+Everything below is decided; the post-gate build is wiring, not design. All of it runs in
+`combined` (new job + CREATE TABLE) → GATED. Build on a branch, staging-validate, merge after
+the Monday gate closes.
+
+**1. State table** `mi_delayed_ep_lifecycle` (add to `db.py::initialize_schema()`):
+`ticker TEXT, gap_day DATE, gap_day_low NUMERIC, gap_day_vol BIGINT, sma200_at_gap NUMERIC,`
+`state TEXT (watched|armed|ready|triggered|expired), armed_date DATE, ready_date DATE,`
+`triggered_date DATE, entry_tactic TEXT (first5_break|gdl_reclaim), entry_price NUMERIC,`
+`stop_price NUMERIC, fwd_mfe_pct NUMERIC, last_eval DATE, created_at/updated_at TIMESTAMPTZ.`
+PK `(ticker, gap_day)`. Mirrors the replay() event fields 1:1 — no new logic.
+
+**2. Daily readiness job** `_delayed_ep_readiness_job` (APScheduler, ~17:35 ET, mon-fri — AFTER
+the 17:00 data pull lands `mi_daily_closes`). Lift the validated `replay()` from
+`scripts/_270_delayed_ep_replay.py` into a real module (`agents/market_intelligence/
+delayed_ep.py`). Per run: (a) seed new WATCHED from today's daily closes using the cohort seed
+predicate (close ≥ 1.4·prev_close ∧ vol ≥ 3·ADV20 ∧ close ≥ $5 ∧ vol·close ≥ $20M); (b)
+re-eval every open (non-expired) lifecycle row for ARMED/READY/EXPIRED transitions; (c) UPSERT.
+On a NEW ARMED → Telegram (rare, ~1/wk) + add to the intraday watch set. Apply the two operator
+decisions from the SSoT (EXPANSION pullback-vol floor; trigger-bar dollar-vol floor) HERE.
+
+**3. Intraday entry-watch** — reuse the existing intraday flag-break scan harness pattern
+(9:35–15:55 ET every 5 min, mon-fri). For each ARMED/READY name, apply **FIRST5-BREAK primary**
+(break above first-5-min high, stop = first-5-min low) then **GDL-RECLAIM fallback** on live
+bars. On fire → set `triggered` + entry/stop, emit the entry alert. **This is execution-adjacent
+— it reads the live bar stream and proposes an entry; in the split it lives on the EXECUTION
+side or calls back via the facade. Wire as SHADOW first (alert only, no submit).**
+
+**4. Alerts** (`feedback_alert_vs_audit` — terminal/actionable only): ARMED (EOD) → board +
+EOD digest; ENTRY (intraday) → real-time Telegram with the structural stop + the harvest-fast
+note. No per-tick pings (the #168 noise class).
+
+**5. Board command** `/sip` (watched/armed/ready) — 3-place slash-command update (handler in
+`agent.py` + dispatch dict + `BotCommand` in `telegram.py`, same commit, per CLAUDE.md).
+
+**6. Paired W3 exit/harvest** — derisk-fast partial ladder (earlier/more partials than the
+standard EP ladder; the cohort's fat-MFE / weak-close gap is the evidence). Built WITH step 3.
+
+**Acceptance:** shadow run writes lifecycle rows; an ARMED transition fires exactly one Telegram;
+the intraday watch proposes entries with the FIRST5 stop; staging-validated before merge.
+
 ## Gate
 
 The replay + calibration (read-only scripts + this doc) are gate-safe. The deployable
