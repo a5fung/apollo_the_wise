@@ -106,7 +106,7 @@ reviews:
     predicate_sql: |
       SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
       WHERE state = 'triggered' AND fwd_mfe_pct IS NOT NULL
-    threshold: 10
+    threshold: 5
     earliest_review_date: 2026-07-15
     status: pending
     added_on: 2026-06-14
@@ -114,12 +114,17 @@ reviews:
       Compare the live shadow cohort's realized R (recorded vs the forward path) to the
       backtest: (1) is the median positive and is derisk-fast confirmed (same-day
       spike-and-give-back)? (2) does the FIRST5 entry fill-rate + stop geometry hold
-      out-of-sample? If YES on this N≥10 LOOK (a look, NOT a ship) → graduate
-      shadow→actionable alerts; then re-bump threshold to N≥30 + open a SIZING review for
-      real money (still gated on multi-window re-validation, data-blocked today). If NO →
-      diagnose the divergence (IEX-vs-SIP fill bias, cohort drift) before graduating.
-      ⚠ THRESHOLD (10) + earliest date (7/15) are PROVISIONAL operator knobs — triggers
-      are RARE (~1/week), so N=10 may take ~10 weeks; raise/lower per appetite.
+      out-of-sample? This first surfacing at N≥5 is an EARLY DIRECTIONAL PEEK, NOT a ship
+      (operator 6/14). Three valid outcomes: (a) if it's clearly tracking → graduate
+      shadow→actionable alerts, re-bump threshold to N≥30 + open a SIZING review for real
+      money (still gated on multi-window re-validation, data-blocked today); (b) DEFAULT —
+      HOLD FOR MORE DATA: set status=deferred + deferred_until a later date and bump
+      earliest_review_date, so it re-surfaces with a bigger cohort (this is the designed
+      "wait" path, expected at N=5); (c) if the read is NEGATIVE → diagnose the divergence
+      (IEX-vs-SIP fill bias, cohort drift) before graduating.
+      ⚠ THRESHOLD (5) + earliest date (7/15) are PROVISIONAL operator knobs — triggers are
+      RARE (~1/week), so even N=5 may take ~5 weeks; the deferred-status loop is how you
+      wait for more without the review going silent.
       ⚠ PREREQ: #270 step-3 shadow wiring shipped (post-#277) AND this predicate verified
       against the shipped `mi_delayed_ep_lifecycle` columns — the table is PLANNED, not yet
       built, so until then the predicate errors silently = treated not-ready (correct/safe).
