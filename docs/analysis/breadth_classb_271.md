@@ -96,11 +96,24 @@ a subset — NO second query). Compute per common stock with `close >= 5`: `r5 =
 `r5 <= -0.20` (down); store `up_20_5d`, `down_20_5d`, and the `_pct` (÷ universe ×100) in the
 `breadth_monitor` dict.
 
-**3. The cell** — render the CLASS B cell (amber/green/neutral via `class_b_color(up_pct, down_pct)`)
-in the evening briefing breadth block + the `/breadth` command, alongside A/C/D.
+**3. Surface the cell — in the BRIEFS, not just `/breadth`** (operator 6/14: "this should be in
+the briefs", plural). Current breadth surfaces (CLASS B is in NONE):
+ - `_format_regime_section` (briefing.py — the "1. MARKET CONDITION" block) renders A/C/D and
+   feeds BOTH the **Evening Briefing** (§1) AND the **`/regime`** command (`agent.py::_handle_regime_query`
+   uses "the same rich formatter as the evening brief"). → **Add the CLASS B cell here** and it
+   lands in the evening brief + `/regime` automatically. Placement: a 5d-thrust line after the
+   3M/T2108 line, e.g. `*5d ±20%*  🟠 thrust  up 4.3% (222) · down 0.3% (17)` via
+   `class_b_color(up_pct, down_pct)`.
+ - **Morning Briefing** (`_format_morning_briefing`) renders **NO breadth block today** → add a
+   COMPACT one-line CLASS B cell (the exhaustion/washout read is genuinely pre-open-useful, and
+   the operator wants it in BOTH briefs). Surface only when amber/green (suppress neutral) to keep
+   the morning brief tight: e.g. `🟠 Breadth: 5d up-thrust extreme (4.3%) — exhaustion watch`.
+ - **`/breadth`** command — add the CLASS B row to the full matrix.
+ All four render through the one `class_b_color()`; the `_pct` inputs come from the feed (step 2).
 
-**Acceptance:** the nightly regime job writes `up_20_5d`/`down_20_5d` to `breadth_monitor`;
-`/breadth` shows the CLASS B cell; a backfill spot-check reproduces AMBER on 2026-05-27.
+**Acceptance:** the nightly regime job writes `up_20_5d`/`down_20_5d`(`_pct`) to `breadth_monitor`;
+the CLASS B cell shows in the **evening brief, morning brief (when extreme), `/regime`, and
+`/breadth`**; a backfill spot-check reproduces AMBER on 2026-05-27.
 
 ## Gate
 
