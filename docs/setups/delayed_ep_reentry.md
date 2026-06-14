@@ -36,16 +36,19 @@ Two are CONFIRMATION (fire on the trigger day, tuned on minute bars over 17 trig
 They are COMPLEMENTARY — anticipation fires only on the ~37% of armed names that coil; the fast
 runners (MNTS-style undercut→trigger) never coil and take a confirmation entry.
 
-- **ANTICIPATION (EOD, when a COILED day forms)** — Pradeep's "enter the day before, anticipating
-  the breakout". COILED = reclaimed gap_day_low & SMA20 + tight range + quiet volume, no
-  expansion (= the trigger minus the volume burst). Entry = coiled close; **stop = coiled low**;
-  **RE-ENTER at the next coiled day if shaken** (re-entry discipline is LOAD-BEARING — one-shot
-  is −1R, the strawman). Captures ~25% of the run earlier (≈6% below the FIRST5 price) + fails
-  small/fast (~2% stops). Stop-and-reenter expectancy **+2.9R mean/name, 62% caught** (triggered
-  cohort). NOT an R-win vs confirmation — on parity-clean R, FIRST5's tighter 2% stop edges it
-  (7.6R vs 6.5R); the edge is the **earlier/lower entry** (positioned below the gap, not chasing).
-  ILLUSTRATIVE only — N=8, outlier-leveraged (survives ex-top at +0.5R/name), MFE ceilings;
-  re-validate the magnitude over more windows before sizing (operator decision).
+- **ANTICIPATION (EOD, on a MATURE COILED day)** — Pradeep's "enter the day before, anticipating
+  the breakout". COILED = reclaimed gap_day_low & SMA20 + tight range + quiet volume, no expansion
+  (= the trigger minus the volume burst). **WHEN: not the first quiet day — wait for the coil to
+  MATURE** (a ≥3-day developed base; this is the quantitative proxy for the operator's chart-read).
+  Entry = coiled close; **stop = coiled low**; **RE-ENTER at the next mature coil if shaken**
+  (re-entry discipline is LOAD-BEARING — one-shot is −1R, the strawman). Captures ~25% of the run
+  earlier (≈6% below the FIRST5 price) + fails small/fast (~2% stops). Maturity gate (vs the loose
+  first-coiled entry): keeps all winners, lands entries closer to the breakout, **+2.9R → +7.0R
+  full-cohort mean**, and **cuts outlier reliance** (top name 73%→40%). NOT an R-win vs
+  confirmation — FIRST5's tighter 2% stop edges parity-clean R (7.6R vs 6.5R); anticipation's edge
+  is the **earlier/lower entry** (below the gap, not chasing). ILLUSTRATIVE — N=8, the maturity
+  threshold (≈3) is in-sample, MFE ceilings; the DIRECTION (require maturity) is robust (monotonic
+  1→3), the magnitude needs multi-window re-validation (operator decision; data-blocked today).
 - **CONFIRMATION PRIMARY — FIRST5-BREAK** (trigger day): break above the first-5-min high;
   **stop = first-5-min low**. Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS
   "first-minute high/low HELD".
@@ -77,10 +80,12 @@ data + the exit layer (the #168 actionability gate).
    liquidity (SILO/KFRC/CAMP < 0.5M shares) → add a min absolute / dollar-volume floor on the
    trigger bar.
 3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
-4. **ANTICIPATION inclusion + re-validation** — include the anticipation EOD entry path in the
-   step-3 deployable? It's +EV in this cohort but ILLUSTRATIVE (N=8, outlier-leveraged). Decide
-   over how many windows to re-validate the magnitude before SIZING it (the entry signal can ship
-   shadow regardless; sizing is the gated decision). Re-entry discipline must be supported.
+4. **ANTICIPATION inclusion + maturity threshold + re-validation** — include the anticipation EOD
+   entry path in the step-3 deployable? It's +EV in this cohort but ILLUSTRATIVE (N=8). The
+   **maturity gate (≥3-day base)** is the key knob — it keeps all winners while cutting the outlier
+   reliance (top 73%→40%); confirm the threshold (≈3, in-sample). Decide over how many windows to
+   re-validate the magnitude before SIZING it (the signal can ship shadow regardless; sizing is the
+   gated decision). Re-entry discipline + the maturity chart-read surfacing must be supported.
 
 ## Known limitations / caveats
 
@@ -105,3 +110,10 @@ data + the exit layer (the #168 actionability gate).
   6.5R after the advisor-caught MFE-parity fix — the first cut wrongly denied FIRST5 the
   breakout-day high); anticipation's edge is the earlier/lower entry. ILLUSTRATIVE (N=8,
   outlier-leveraged, re-entry load-bearing). Decision #4 added. Gate-free analysis.
+- **2026-06-14 (later still)** — **MATURITY gate** (operator: "wait for the coil to mature — this
+  is where chart-reading helps"). Anticipate on a ≥3-day developed base, NOT the first quiet day.
+  Sweep: keeps all 5 winners, entry closer to breakout (7→5d), fewer attempts (1.7→1.2), full-mean
+  +1.7→+7.0R, **outlier reliance 73%→40% / ex-top +0.5→+4.8R** — de-risks the outlier WITHOUT a
+  second window (which is data-blocked: `mi_daily_closes` starts 2025-05-12, SMA200 lookback eats
+  the gap). DIRECTION robust (monotonic 1→3); threshold in-sample. Surfacing adds coil-maturity
+  (day-N of base) for the chart-read. Gate-free.

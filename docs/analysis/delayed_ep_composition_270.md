@@ -162,12 +162,39 @@ shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-st
   anticipation having won; NOT comparable to the intraday 3.5R — re-based horizon.)
 - **Full cohort (all 11, incl. the false set):** mean **+1.7R**/name, total +19R, caught 45%.
 
+**MATURITY GATE (operator 6/14: "wait for the coil to mature — this is where chart-reading helps").**
+The loose model entered the FIRST coiled day — immature; the *winning* entry was a median 7d
+later. Added a maturity gate: require a **≥N-day developed base** (held above the pivot in a
+contained range) before the coiled entry qualifies. Sweep (the daily timing, an EOD signal —
+WHEN to anticipate, the operator's exact question):
+
+| min_base | fired | caught | entry d-before | attempts/nm | trig meanR | full meanR | top% | ex-top meanR |
+|---|---|---|---|---|---|---|---|---|
+| 1 (loose, first coiled) | 11 | 5 | 7 | 1.7 | +2.9 | +1.7 | 73% | +0.5 |
+| 2 | 9 | 5 | 7 | 1.7 | +4.3 | +3.0 | 52% | +1.6 |
+| **3 (mature)** | **8** | **5** | **5** | **1.2** | **+9.6** | **+7.0** | **40%** | **+4.8** |
+| 4 (over-tight) | 8 | 4 | 2 | 1.4 | +5.9 | +4.2 | 69% | +1.5 |
+
+**A 3-day base keeps ALL 5 winners** while dropping 3 immature/false entries, lands the entry
+**closer to the breakout** (7→5d), needs **fewer attempts** (1.7→1.2), and **collapses the
+outlier reliance** (top name 73%→40%, ex-top mean **+0.5→+4.8R**). The improvement is *monotonic
+1→2→3 across multiple independent metrics* (the signature of a real effect, not a fit); min_base=4
+over-tightens (loses a winner, concentration rebounds → too close to confirmation). **The maturity
+gate de-risks the outlier problem WITHOUT a second time window** — which matters because the data
+can't supply one (see below). DISCIPLINE: min_base=3 is selected on N=8 (in-sample) → the
+DIRECTION (require maturity) is the robust finding; the exact threshold is illustrative, re-validate.
+
 **CAVEATS (this is ILLUSTRATIVE, not a ship verdict):**
+0. **Second time-window is DATA-BLOCKED** — `mi_daily_closes` starts 2025-05-12; the SMA200 gate
+   needs ~200 trading days of lookback, so the earliest valid gap window (~late-Feb 2026) overlaps
+   the first. A true multi-window re-validation needs more history backfilled (gated follow-up).
+   The maturity sweep is the in-window robustness substitute.
 1. **N is small** — 8 triggered, 4 with minute bars for price-capture, one ~3.5-month window.
-2. **Outlier-leveraged** (the W2 skip-wide-open lesson, applied): the single best name (RLMD
-   +13.9R) = **73% of the total**. Ex-top: mean +0.5R/name — **still positive, so it SURVIVES
-   outlier removal** (unlike the W2 study that went median −1R), but the headline mean is carried
-   by one name. Need a multi-window cohort before trusting the magnitude.
+2. **Outlier-leveraged at the loose setting** (the W2 skip-wide-open lesson, applied): the single
+   best name (RLMD +13.9R) = **73% of the total** at min_base=1. Ex-top still +0.5R/name (survives
+   removal, unlike the W2 study that went median −1R). **The maturity gate above materially
+   mitigates this** (top share 40%, ex-top +4.8R at min_base=3) — but on the same N=8, so it is
+   not independent confirmation; a multi-window cohort is still owed before trusting the magnitude.
 3. **MFE ceilings, not harvested R** (symmetric across all three entries, so the comparison
    holds; the absolute R's are optimistic — the W3 exit layer sets realized harvest).
 
@@ -177,9 +204,13 @@ NOT beat confirmation on parity-clean R (FIRST5's tighter 2% stop edges it, 7.6R
 distinct value is the **lower / earlier entry** — you're positioned BELOW the gap instead of
 chasing the first-5 high, which is exactly Pradeep's "capture the bulk on a gap up". And it does
 NOT replace confirmation (fast runners don't coil). So the entry layer is **complementary**:
-anticipation-when-coiled (early, re-enter on a shake) + FIRST5-BREAK confirmation (fast runners) +
-GDL-RECLAIM fallback. OPERATOR decision: include anticipation as an entry path in the step-3
-deployable, and over how many windows to re-validate the magnitude before sizing it.
+anticipation-on-a-MATURE-coil (≥3-day base, re-enter on a shake) + FIRST5-BREAK confirmation (fast
+runners) + GDL-RECLAIM fallback. **WHEN to anticipate = on a mature coil, not the first quiet day**
+— the maturity gate is the quantitative proxy for the chart-read the operator described; the
+deployable surfaces ARMED names + their coil maturity (day-N of base) and the operator does the
+final chart-read (Pradeep uses discretion too — the gate narrows the candidates, the human
+confirms). OPERATOR decisions: include anticipation in the step-3 deployable; the maturity
+threshold (≈3, illustrative); and how many windows to re-validate the magnitude before sizing.
 
 ## Sequencing (the e2e tactic)
 
@@ -234,14 +265,16 @@ predicate (close ≥ 1.4·prev_close ∧ vol ≥ 3·ADV20 ∧ close ≥ $5 ∧ v
 re-eval every open (non-expired) lifecycle row for ARMED/READY/EXPIRED transitions; (c) UPSERT.
 On a NEW ARMED → Telegram (rare, ~1/wk) + add to the intraday watch set. Apply the two operator
 decisions from the SSoT (EXPANSION pullback-vol floor; trigger-bar dollar-vol floor) HERE. Also
-(d) flag a **COILED** day (reclaimed gap_day_low & SMA20 + tight + quiet, no expansion) → the
-EOD **anticipation** entry candidate (step 2c); emit the anticipation alert with stop = coiled
-low + the re-enter-on-shake note (re-entry discipline is load-bearing — see 2c).
+(d) flag a **MATURE COILED** day (reclaimed gap_day_low & SMA20 + tight + quiet, no expansion,
+AND a ≥3-day developed base — `base_run`) → the EOD **anticipation** entry candidate (step 2c);
+emit the anticipation alert with stop = coiled low + the coil-maturity (day-N of base) for the
+operator's chart-read + the re-enter-on-shake note (re-entry discipline is load-bearing — see 2c).
 
 **3. Entry-watch — TWO paths (anticipation is complementary, not a replacement):**
- - **ANTICIPATION (EOD, when a COILED day forms ~37% of armed names):** entry = coiled close,
-   stop = coiled low; re-enter at the next coiled day if shaken (track `reenter_count`). Surfaced
-   by the daily job (no intraday stream needed for the signal itself).
+ - **ANTICIPATION (EOD, on a MATURE coil — ≥3-day base):** entry = coiled close, stop = coiled
+   low; re-enter at the next mature coil if shaken (track `reenter_count`). Surface the coil
+   maturity (day-N of base) for the operator's chart-read. Surfaced by the daily job (no intraday
+   stream needed for the signal itself).
  - **CONFIRMATION (intraday, the fast runners that never coil):** reuse the existing flag-break
    scan harness (9:35–15:55 ET / 5 min, mon-fri) — **FIRST5-BREAK primary** (break above
    first-5-min high, stop = first-5-min low) then **GDL-RECLAIM fallback** on live bars.

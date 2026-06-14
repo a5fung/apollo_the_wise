@@ -52,6 +52,11 @@ replay = r270.replay
 TIGHT_RANGE = 0.07     # daily (high-low)/close <= 7% = a contraction bar
 VOL_CONTRACT = 1.0     # vol <= 1.0x ADV20 = the quiet "rest" before expansion
 FWD_N = 10             # common forward endpoint = trigger day + 10 trading days
+# MATURITY gate (operator 6/14): a coil develops over several days; entering the FIRST quiet
+# day is immature. A "base day" = holds above the pivot in a contained range; a MATURE coil
+# requires >= MATURE_DAYS such days have formed (the contraction is developed, nearer the apex).
+BASE_RANGE = 0.12      # contained day = (high-low)/close <= 12% AND close > gap_day_low
+MATURE_DAYS = 3        # require a >=3-day base before the coiled-day entry qualifies as mature
 
 
 def adv(vols, i, n=20):
@@ -90,10 +95,25 @@ def lifecycle(bars):
             "trig_idx": idx_of[trig] if trig else None}
 
 
-def find_coiled_days(bars, ctx):
+def base_run(bars, ctx, i):
+    """Consecutive 'base days' ending at i: close > gap_day_low AND range <= BASE_RANGE.
+    Measures how DEVELOPED the contraction is (the maturity proxy for chart-reading)."""
+    n, j = 0, i
+    while j > ctx["armed_idx"]:
+        b = bars[j]
+        rng = (b["h"] - b["l"]) / b["c"] if b["c"] else 1
+        if b["c"] > ctx["gap_day_low"] and rng <= BASE_RANGE:
+            n, j = n + 1, j - 1
+        else:
+            break
+    return n
+
+
+def find_coiled_days(bars, ctx, min_base=1):
     """Forward-computable COILED days in the armed window: reclaimed pivot (close > gap_day_low
-    AND > SMA20) + tight range + quiet volume, no expansion yet. [] if a fast undercut->trigger
-    left no distinct coiled day."""
+    AND > SMA20) + tight range + quiet volume, no expansion yet. min_base>1 adds the MATURITY
+    gate (require a >= min_base-day developed base — don't enter the first immature quiet day).
+    [] if a fast undercut->trigger left no qualifying coiled day."""
     a0 = ctx["armed_idx"] + 1
     a1 = ctx["trig_idx"] if ctx["trig_idx"] is not None else min(ctx["armed_idx"] + r270.ARM_WINDOW, len(bars))
     vols = [b["v"] for b in bars]
@@ -105,7 +125,8 @@ def find_coiled_days(bars, ctx):
         rng = (b["h"] - b["l"]) / b["c"] if b["c"] else 1
         reclaimed = b["c"] > ctx["gap_day_low"] and (s20 is None or b["c"] > s20)
         if reclaimed and rng <= TIGHT_RANGE and b["v"] <= VOL_CONTRACT * adv(vols, i):
-            out.append(i)
+            if base_run(bars, ctx, i) >= min_base:
+                out.append(i)
     return out
 
 
@@ -158,6 +179,44 @@ def mfe_R(bars, entry_idx, entry, stop, end_idx):
     return {"risk": risk, "R_mfe": (run_high / entry - 1) / risk}
 
 
+def build_names(bars_by, min_base=1):
+    """Run the lifecycle + coiled-day finder + stop-and-reenter sim per ticker for a given
+    maturity gate. Returns (armed_count, [per-name dicts]). armed_count is min_base-independent."""
+    armed, names = 0, []
+    for t, bars in bars_by.items():
+        ctx = lifecycle(bars)
+        if ctx is None:
+            continue
+        armed += 1
+        coiled = find_coiled_days(bars, ctx, min_base)
+        if not coiled:
+            continue
+        triggered = ctx["trig_idx"] is not None
+        end_idx = (ctx["trig_idx"] + FWD_N) if triggered else min(coiled[-1] + 10, len(bars) - 1)
+        end_idx = min(end_idx, len(bars) - 1)
+        attempts = simulate_reenter(bars, coiled, ctx["trig_idx"], end_idx)
+        win = next((a for a in attempts if a["outcome"] == "win"), None)
+        names.append({"t": t, "triggered": triggered, "attempts": attempts, "win": win,
+                      "end_idx": end_idx, "ctx": ctx, "n_coiled": len(coiled)})
+    return armed, names
+
+
+def summarize(names):
+    """Compact aggregates for the maturity sweep."""
+    trig = [x for x in names if x["triggered"]]
+    allnet = [sum(a["R"] for a in x["attempts"]) for x in names]
+    trignet = [sum(a["R"] for a in x["attempts"]) for x in trig]
+    db = [x["ctx"]["trig_idx"] - x["win"]["ai"] for x in trig if x["win"]]
+    top = max(allnet) if allnet else 0.0
+    ex = [r for r in allnet if r != top]
+    return {"fired": len(names), "catch": sum(1 for x in names if x["win"]),
+            "db": median(db) if db else float("nan"),
+            "attempts": mean([len(x["attempts"]) for x in names]) if names else float("nan"),
+            "trig_mean": mean(trignet), "full_mean": mean(allnet),
+            "top_share": (top / sum(allnet) * 100 if sum(allnet) else 0.0),
+            "ex_mean": mean(ex) if ex else float("nan")}
+
+
 def main():
     bars_by = defaultdict(list)
     for line in (HERE / "_270_cohort_bars.tsv").read_text(encoding="utf-8").splitlines():
@@ -171,24 +230,7 @@ def main():
         bars_by[t].sort(key=lambda b: b["date"])
     rth = entry_mod.load_rth()
 
-    armed = 0
-    names = []            # per name: dict(t, triggered, attempts, win_attempt, end_idx, ctx)
-    for t, bars in bars_by.items():
-        ctx = lifecycle(bars)
-        if ctx is None:
-            continue
-        armed += 1
-        coiled = find_coiled_days(bars, ctx)
-        if not coiled:
-            continue
-        triggered = ctx["trig_idx"] is not None
-        end_idx = (ctx["trig_idx"] + FWD_N) if triggered else min(coiled[-1] + 10, len(bars) - 1)
-        end_idx = min(end_idx, len(bars) - 1)
-        attempts = simulate_reenter(bars, coiled, ctx["trig_idx"], end_idx)
-        win = next((a for a in attempts if a["outcome"] == "win"), None)
-        names.append({"t": t, "triggered": triggered, "attempts": attempts, "win": win,
-                      "end_idx": end_idx, "ctx": ctx, "n_coiled": len(coiled)})
-
+    armed, names = build_names(bars_by, min_base=1)   # detailed report = loose baseline
     n_fired = len(names)
     trig_fired = [x for x in names if x["triggered"]]
     print("#270 step 2c - ANTICIPATION entry replay  (cohort, daily bars; gate-free)")
@@ -279,6 +321,18 @@ def main():
         seq = " ".join(f"{a['outcome'][0]}:{a['R']:+.1f}" for a in x["attempts"])
         net = sum(a["R"] for a in x["attempts"])
         print(f"   {x['t']:<6} {'TRIG' if x['triggered'] else 'none':<5} [{seq}]  net {net:+.1f}R")
+
+    # ── MATURITY SWEEP (operator 6/14: wait for the coil to develop before entering) ──
+    print("\nMATURITY SWEEP - require a >= min_base-day developed base before the coiled entry "
+          f"(BASE_RANGE<={BASE_RANGE:.0%}, MATURE default {MATURE_DAYS}d):")
+    print(f"  {'min_base':<9}{'fired':<7}{'caught':<8}{'entry d-before':<15}{'attempts/nm':<13}"
+          f"{'trig meanR':<12}{'full meanR':<12}{'top%':<6}{'ex-top meanR'}")
+    for mb in (1, 2, 3, 4):
+        s = summarize(build_names(bars_by, mb)[1])
+        print(f"  {mb:<9}{s['fired']:<7}{s['catch']:<8}{s['db']:<15.0f}{s['attempts']:<13.1f}"
+              f"{s['trig_mean']:<+12.1f}{s['full_mean']:<+12.1f}{s['top_share']:<6.0f}{s['ex_mean']:+.1f}")
+    print("  (maturity SHOULD land entries CLOSER to the breakout (lower d-before) with FEWER attempts;\n"
+          "   watch ex-top meanR - if it RISES, maturity reduces the single-name outlier reliance.)")
 
 
 if __name__ == "__main__":
