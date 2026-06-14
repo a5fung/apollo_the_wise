@@ -552,7 +552,7 @@ class TelegramChannel:
             "• Safeguards: max 4 open · 2% daily loss · 5-loss circuit breaker\n"
             "_Full doc: EP_TRADING_RULES.md_\n"
             "\n"
-            "_Still-working but off-menu: /9m /themes /clusters /regime /spend /rules /eps_"
+            "_Still-working but off-menu: /9m /themes /clusters /spend /rules /eps_"
         )
         await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 
@@ -1628,7 +1628,8 @@ class TelegramChannel:
                      # 5 shadow entry-technique detectors consolidated into /detectors
                      # (#218, operator command review 2026-06-06).
                      "detectors", "unknownrate",
-                     "breadth", "watch", "rubric",
+                     # /breadth retired 2026-06-14 → merged into /regime (operator).
+                     "watch", "rubric",
                      # 2026-05-28 #138 operator-confirm commands
                      "partialnow", "syncnow",
                      # 2026-06-09 #254 operator ground-truth corpus
@@ -1656,9 +1657,10 @@ class TelegramChannel:
     async def _register_commands(self) -> None:
         """Register bot commands with BotFather so they appear in the / menu."""
         from telegram import BotCommand
-        # Lean 7-command menu. Hidden but still-working commands (kept as handlers
-        # for back-compat / muscle memory): /eps, /9m, /themes, /clusters, /regime,
-        # /pregame, /spend, /rules, /setup, /agents.
+        # Lean menu. Hidden but still-working commands (kept as handlers
+        # for back-compat / muscle memory): /eps, /9m, /themes, /clusters,
+        # /spend, /rules, /setup, /agents. (/regime promoted to the menu 2026-06-14;
+        # /breadth retired → merged into /regime.)
         commands = [
             BotCommand("hud",          "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
             BotCommand("pregame",      "Daily trade shortlist"),
@@ -1671,7 +1673,7 @@ class TelegramChannel:
             BotCommand("flags",        "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
             BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
             BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
-            BotCommand("breadth",      "📊 Stockbee breadth cluster matrix — 10-day history"),
+            BotCommand("regime",       "📊 Market condition + Stockbee breadth matrix (MAs · VIX · T2108 · cluster)"),
             BotCommand("fishhook",     "Fishhook anchors — armed/triggered breakout candidates"),
             BotCommand("sugarbabies",  "🍬 Persistent Sugar Baby cohort (Pradeep watchlist)"),
             BotCommand("watch",        "Stocks to watch — /watch = actionable tight-range · /watch all = full universe"),

@@ -243,7 +243,7 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     bm = coerce_breadth_monitor(regime.get("breadth_monitor"))
 
     # Breadth — paired up/down counts grouped by time horizon.
-    # Color rules in `breadth_color_rules.py` (SSoT shared with /breadth +
+    # Color rules in `breadth_color_rules.py` (SSoT shared with /regime +
     # cluster audit detector).
     from agents.market_intelligence.breadth_color_rules import (
         paired_color, t2108_color, cluster_fires,
@@ -312,19 +312,19 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     if consec_bd > 0:
         lines.append(f"  ⚠️ {consec_bd} consecutive breakdown days (700+ stocks down 4%+)")
 
-    # Cluster status — 1-line summary; /breadth shows full 10-row matrix
+    # Cluster status — 1-line summary; /regime shows full 10-row matrix (merged from /breadth)
     history = regime.get("breadth_history_5d") or []
     if len(history) >= CLUSTER_WINDOW:
         red_n = red_count_in_window(history)
         if cluster_fires(history):
             lines.append(
                 f"  ⚠️ Cluster: {red_n}/{CLUSTER_WINDOW} red — deterioration "
-                f"(≥{CLUSTER_RED_THRESHOLD}, recent). `/breadth` for matrix"
+                f"(≥{CLUSTER_RED_THRESHOLD}, recent). `/regime` for matrix"
             )
         else:
             lines.append(
                 f"  Cluster: {red_n}/{CLUSTER_WINDOW} red days "
-                f"(no fire) — `/breadth` for matrix"
+                f"(no fire) — `/regime` for matrix"
             )
 
     lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")

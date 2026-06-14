@@ -4282,7 +4282,7 @@ async def _fetch_breadth_history(conn: Any, limit: Optional[int] = None) -> list
 
 
 async def get_breadth_history(limit: int) -> list[dict]:
-    """Public history fetcher for /breadth command + other consumers."""
+    """Public history fetcher for the /regime breadth matrix + other consumers."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         return await _fetch_breadth_history(conn, limit=limit)

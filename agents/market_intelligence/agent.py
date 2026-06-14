@@ -2358,8 +2358,10 @@ class MarketIntelligenceAgent(BaseAgent):
         lines += ["", "_Read-only telemetry (#211). LLM finds WHERE it was reported → onboard that direct source (#210)._"]
         return self._ok(request, result="\n".join(lines))
 
-    async def _handle_breadth_query(self, request: AgentRequest) -> AgentResponse:
-        """`/breadth` — Stockbee cluster-matrix breadth view.
+    async def _render_breadth_matrix(self) -> str | None:
+        """Stockbee cluster-matrix breadth view — folded into `/regime` (operator 6/14:
+        "merge /breadth into /regime"). Returns the monospace block string, or None if no
+        breadth history yet.
 
         Renders last 10 trading days × 6 column matrix in Telegram
         monospace, colored per breadth_color_rules.py SSoT:
@@ -2384,10 +2386,7 @@ class MarketIntelligenceAgent(BaseAgent):
 
         monitors = await get_breadth_history(limit=10)
         if not monitors:
-            return self._ok(
-                request,
-                result="_No breadth history available — nightly job may not have run yet._"
-            )
+            return None
 
         # Header — Telegram monospace block with fixed-width columns.
         # Paired counts allotted 4 digits each side (handles spikes like
@@ -2440,7 +2439,7 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append(f"_Cluster status: {red_count}/{CLUSTER_WINDOW} red days (no fire)_")
 
-        return self._ok(request, result="\n".join(lines))
+        return "\n".join(lines)
 
     async def _handle_time_stop_command(self, request: AgentRequest) -> AgentResponse:
         """`/timestop TICKER` — operator-confirm exit of a 9M Day 2 meanderer.
@@ -4483,6 +4482,11 @@ class MarketIntelligenceAgent(BaseAgent):
         body = _format_regime_section(regime, section_num=1)
         desc = (regime.get("description") or "").strip()
         result = body + (f"\n\n_{desc}_" if desc else "")
+        # /breadth merged into /regime (operator 6/14: "keep it simple") — append the
+        # full Stockbee 10-day cluster matrix after the regime summary.
+        matrix = await self._render_breadth_matrix()
+        if matrix:
+            result += "\n\n" + matrix
         return self._ok(request, result=result, data=regime)
 
     async def _handle_rs_query(self, request: AgentRequest) -> AgentResponse:
@@ -5120,7 +5124,8 @@ class MarketIntelligenceAgent(BaseAgent):
             # their individual commands + singular aliases were removed.
             "/detectors":      self._handle_detectors_query,
             "/unknownrate":    self._handle_unknown_rate_query,
-            "/breadth":        self._handle_breadth_query,
+            # /breadth merged into /regime (operator 6/14) — matrix now appended to /regime
+            # via _render_breadth_matrix(); the standalone command is retired.
             "/watch":          self._handle_watchlist_query,
             # /inplay retired 2026-06-06 (#220) — merged into "/watch all".
             # _handle_stocks_in_play_query retained (the "all" view delegates to it).

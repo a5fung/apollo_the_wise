@@ -1,5 +1,6 @@
-"""Breadth color rule SSoT — shared by evening briefing, /breadth Telegram
-command, and L2 cluster-deterioration audit detector.
+"""Breadth color rule SSoT — shared by evening briefing, the /regime Telegram
+command (the breadth matrix merged into /regime 2026-06-14), and the L2
+cluster-deterioration audit detector.
 
 Four metric classes per `data_gated_reviews.yaml::breadth_cluster_view_ideation`:
 
