@@ -39,7 +39,8 @@ runners (MNTS-style undercut→trigger) never coil and take a confirmation entry
 - **ANTICIPATION (EOD, on a MATURE COILED day)** — Pradeep's "enter the day before, anticipating
   the breakout". COILED = reclaimed gap_day_low & SMA20 + tight range + quiet volume, no expansion
   (= the trigger minus the volume burst). **WHEN: not the first quiet day — wait for the coil to
-  MATURE** (a ≥3-day developed base; this is the quantitative proxy for the operator's chart-read).
+  MATURE** (a ≥3-day developed base = the cheap EOD proxy for the operator's chart-read; the richer
+  visual maturity read integrates with **#267 chart-vision** — see Known limitations).
   Entry = coiled close; **stop = coiled low**; **RE-ENTER at the next mature coil if shaken**
   (re-entry discipline is LOAD-BEARING — one-shot is −1R, the strawman). Captures ~25% of the run
   earlier (≈6% below the FIRST5 price) + fails small/fast (~2% stops). Maturity gate (vs the loose
@@ -96,6 +97,12 @@ data + the exit layer (the #168 actionability gate).
   **conditional on re-entry discipline** (one-shot is −1R).
 - Readiness is EOD (daily); the intraday confirmation entry-watch needs the live bar stream
   (execution-side). The anticipation signal is EOD-computable (no intraday stream needed).
+- **Chart-vision maturity (#267 integration, operator 6/14):** the `base_run` gate is a cheap
+  numeric proxy; the real maturity judgment is visual. **#267** builds a point-in-time
+  `mi_daily_closes` renderer (no-lookahead) + a VLM chart-structure axis for the EP grade judge —
+  it should be built as SHARED infra so the #270 anticipation maturity read is a 2nd consumer
+  (`base_run` = pre-filter; chart-vision = the richer read, advisory→scored). Today's `charts.py`
+  (Finviz live mosaic) is lookahead-unsafe and NOT usable for this. Wire #270 into #267's scope.
 - Deployable wiring (scheduler job + lifecycle state table + entry-watch + alerts) is GATED
   post-#277 (it runs in `combined` = the §C rollback target).
 

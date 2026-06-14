@@ -184,6 +184,19 @@ gate de-risks the outlier problem WITHOUT a second time window** — which matte
 can't supply one (see below). DISCIPLINE: min_base=3 is selected on N=8 (in-sample) → the
 DIRECTION (require maturity) is the robust finding; the exact threshold is illustrative, re-validate.
 
+**CHART-VISION integration (#267, operator 6/14: "we have an item to implement chart-reading, it
+should integrate with this").** Coil maturity is fundamentally a VISUAL judgment ("developed / at
+the apex / ready" vs "still loose") — exactly what **#267** builds: a **point-in-time matplotlib
+renderer from `mi_daily_closes`** (no lookahead — bars only up to the decision day) + a VLM
+**chart-structure axis** in `grade_holistic`. The integration: **build #267's renderer as SHARED
+infra with TWO consumers** (the EP grade judge AND this anticipation maturity read), not judge-only.
+Then `base_run ≥ N` is the cheap EOD **pre-filter** (narrow ARMED names to mature-ish coils) and
+#267's chart-vision is the **richer read** on each surfaced candidate (the codification of the
+operator's chart-read; advisory first → can graduate to a maturity score). NOTE: today's
+`charts.py` is a Finviz *live-mosaic* fetcher = lookahead-unsafe → unusable for point-in-time
+maturity; #267's `mi_daily_closes` renderer is the right tool (same no-lookahead discipline as this
+replay). #270 anticipation should be wired in #267's scope (Wed 6/17 build) as the 2nd consumer.
+
 **CAVEATS (this is ILLUSTRATIVE, not a ship verdict):**
 0. **Second time-window is DATA-BLOCKED** — `mi_daily_closes` starts 2025-05-12; the SMA200 gate
    needs ~200 trading days of lookback, so the earliest valid gap window (~late-Feb 2026) overlaps
