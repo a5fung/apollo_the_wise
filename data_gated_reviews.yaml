@@ -94,6 +94,36 @@ reviews:
       the playbook applies identically. Tracked by #207. Re-bump
       earliest_review_date +1 quarter each time this runs (recurring, not one-shot).
 
+  - review_id: delayed_ep_270_shadow_graduation
+    title: "#270 delayed-EP shadow → actionable graduation (forward-data gate)"
+    question: |
+      Does the LIVE #270 shadow tactic's forward-outcome data match the gate-free
+      backtest (FIRST5-BREAK entry + derisk-fast harvest = realized median +1-2R;
+      buy-and-hold loses the median)? If live shadow tracks the backtest, graduate the
+      surfacing informational → actionable (real-time entry alerts). The ANTICIPATION
+      entry mode stays OBSERVATIONAL regardless — no realized-R edge (advisor 6/14:
+      price-capture + complementarity only; the +2.9–15R were MFE ceilings, realized ≈0R).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
+      WHERE state = 'triggered' AND fwd_mfe_pct IS NOT NULL
+    threshold: 10
+    earliest_review_date: 2026-07-15
+    status: pending
+    added_on: 2026-06-14
+    action_when_ready: |
+      Compare the live shadow cohort's realized R (recorded vs the forward path) to the
+      backtest: (1) is the median positive and is derisk-fast confirmed (same-day
+      spike-and-give-back)? (2) does the FIRST5 entry fill-rate + stop geometry hold
+      out-of-sample? If YES on this N≥10 LOOK (a look, NOT a ship) → graduate
+      shadow→actionable alerts; then re-bump threshold to N≥30 + open a SIZING review for
+      real money (still gated on multi-window re-validation, data-blocked today). If NO →
+      diagnose the divergence (IEX-vs-SIP fill bias, cohort drift) before graduating.
+      ⚠ THRESHOLD (10) + earliest date (7/15) are PROVISIONAL operator knobs — triggers
+      are RARE (~1/week), so N=10 may take ~10 weeks; raise/lower per appetite.
+      ⚠ PREREQ: #270 step-3 shadow wiring shipped (post-#277) AND this predicate verified
+      against the shipped `mi_delayed_ep_lifecycle` columns — the table is PLANNED, not yet
+      built, so until then the predicate errors silently = treated not-ready (correct/safe).
+
   - review_id: kill_scale_bands_quarterly_review
     title: "Quarterly kill/scale band review (operator sign-off condition #1, 2026-06-12)"
     question: |

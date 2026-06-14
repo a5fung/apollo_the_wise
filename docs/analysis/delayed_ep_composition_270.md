@@ -310,6 +310,13 @@ the Monday gate closes.
 `entry_price NUMERIC, stop_price NUMERIC, reenter_count INT, fwd_mfe_pct NUMERIC, last_eval DATE,`
 `created_at/updated_at TIMESTAMPTZ.` PK `(ticker, gap_day)`. Mirrors the replay() event fields
 1:1 — no new logic. `coiled`/`reenter_count` carry the anticipation path (step 2c).
+**↳ GRADUATION TRIGGER (do at table-ship, not later):** the `delayed_ep_270_shadow_graduation`
+entry in `data_gated_reviews.yaml` already counts settled shadow triggers
+(`state='triggered' AND fwd_mfe_pct IS NOT NULL`) and auto-surfaces the shadow→actionable review
+in the Sunday digest at N≥10. When this table ships, **VERIFY that predicate matches the actual
+columns** (rename if `fwd_mfe_pct`/`state` differ) — until verified it errors silently = not-ready,
+so a column mismatch would mean the trigger never fires. This is the data-accumulation trigger the
+operator asked for (6/14); it's the reason the table carries `fwd_mfe_pct`.
 
 **2. Daily readiness job** `_delayed_ep_readiness_job` (APScheduler, ~17:35 ET, mon-fri — AFTER
 the 17:00 data pull lands `mi_daily_closes`). Lift the validated `replay()` from
