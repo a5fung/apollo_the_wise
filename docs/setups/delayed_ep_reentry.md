@@ -60,12 +60,37 @@ runners (MNTS-style undercut→trigger) never coil and take a confirmation entry
   10% stop, 1.4R, fills 18/18 — covers the ~3 names where the 5-min break never clears the
   gap-day-low. The tighter FIRST5 stop (3% vs 10%) is 2.5× the R on the same move (U&R paradox).
 
-## Layer 3 — EXIT / harvest (derisk FASTER)
+## Layer 3 — EXIT / harvest (derisk FASTER — BACKTESTED 2026-06-14)
 
-Tiny-cap fast runners: partials EARLIER + more often than the standard ladder. PROVEN
-necessary by the cohort: fat MFE tail (median +8% / best +137% over 10d) but WEAK close-
-returns → the edge is the excursion, only realized by early harvest, not buy-and-hold.
-(W3 exits / P3 management-judge — built WITH this tactic, not separately.)
+Now backtested (`scripts/_270_exit_replay.py`, gate-free): FIRST5 entry held CONSTANT to
+isolate the exit; **realized R** (not MFE) under a speed spectrum; advisor methodology —
+median + ex-top-2 (mean is outlier-dominated), intrabar opt/pess bracket, day-0 MINUTE +
+day-1+ daily resolution, gap-through stop-fills `min(stop, bar_open)`. N=15 filled triggers.
+
+| harvest rule | med R | ex-top2 R | win% |
+|---|---|---|---|
+| **hold to 10d close** | **−1.00** | −0.19 | 27% |
+| all-out at +1R | +1.00 | +0.36 | 73% |
+| scale +1R / +3R (½/½) | **+2.00** | +0.59 | 53% |
+| (perfect-foresight MFE ceiling) | +7.62 | +6.66 | 100% |
+
+**Findings (robust DIRECTION — not the magnitudes, which are in-sample):**
+- **Buy-and-hold LOSES the median name** (−1R, 27% win). Its +1.6R *mean* is purely the
+  HCAI/ASTI outliers — exactly the artifact the median exposes (W2 skip-wide-open lesson).
+  **Derisk-fast is empirically necessary**, not a preference.
+- **The harvest is a SAME-DAY (trigger-day) event**: opt==pess for every rule → the
+  spike-and-give-back happens at minute resolution on the trigger day, so the daily
+  intrabar ambiguity never bites. "Derisk fast" literally = **scale out into the
+  trigger-day spike.**
+- **The +137% fat tail is NOT systematically harvestable** by a stop rule — any held
+  runner bleeds the median in this same-day-give-back cohort. It's a rare bonus, not a
+  harvest target; a scale-out ladder caps it (e.g. at +3R) and that's the right trade.
+
+**RULE (illustrative direction; deploy in SHADOW, size only after multi-window re-validation
++ the live forward data):** scale out FAST into the trigger-day spike — bank a floor tranche
+at ~+1R + a spike tranche at ~+3R; do NOT buy-and-hold. The exact targets/fractions
+(+1R/+3R, ½/½) are tuned on N=15 one window → an OPERATOR DECISION (see below), shadow first.
+(W3 exits / P3 management-judge — this is that layer, built WITH the tactic.)
 
 ## Surfacing
 
@@ -90,6 +115,11 @@ data + the exit layer (the #168 actionability gate).
    reliance (top 73%→40%); confirm the threshold (≈3, in-sample). Decide over how many windows to
    re-validate the magnitude before SIZING it (the signal can ship shadow regardless; sizing is the
    gated decision). Re-entry discipline + the maturity chart-read surfacing must be supported.
+5. **EXIT ladder targets/fractions** — the backtest (Layer 3) confirms derisk-FAST (don't hold)
+   and that a scale-out ladder beats a single target in-sample (+1R/+3R ½/½ → median +2R). The
+   exact targets/fractions are tuned on N=15 one window. Decide the shipped SHADOW ladder (default
+   +1R/+3R ½/½) and how many windows to re-validate before SIZING; the rule ships shadow now
+   (records realized R against the live forward path), sizing is the gated decision.
 
 ## Known limitations / caveats
 
@@ -120,6 +150,15 @@ data + the exit layer (the #168 actionability gate).
   7.6R vs 6.5R (after the advisor-caught MFE-parity fix — the first cut wrongly denied FIRST5 the
   breakout-day high). Anticipation's edge = the earlier/lower entry. ILLUSTRATIVE (N=8,
   outlier-leveraged, re-entry load-bearing). Decision #4 added. Gate-free.
+- **2026-06-14 (later still — Layer 3)** — **EXIT/harvest BACKTESTED** (`_270_exit_replay.py`,
+  operator: "go with 270"). FIRST5 entry held constant, realized R, advisor methodology
+  (median+ex-top2, intrabar opt/pess bracket, day-0 minute / day-1+ daily, gap-through stops).
+  N=15. RESULT: buy-and-hold loses the median name (−1R/27% win; its +1.6R mean is the
+  HCAI/ASTI outlier artifact) → derisk-fast is EMPIRICALLY NECESSARY. Harvest is a same-day
+  event (opt==pess everywhere). Scale-out +1R/+3R beats single-target in-sample (median +2R).
+  +137% tail is NOT systematically harvestable (held runners bleed the median). Rule = scale
+  out fast into the trigger-day spike; magnitudes illustrative (N=15) → operator decision #5,
+  shadow-first. Gate-free.
 - **2026-06-14 (later still)** — **MATURITY gate** (operator: "wait for the coil to mature — this
   is where chart-reading helps"). Anticipate on a ≥3-day developed base, NOT the first quiet day.
   REAL evidence = **winner-retention** (advisor): `caught` holds at 5 while `fired` falls 11→8

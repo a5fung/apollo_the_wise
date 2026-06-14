@@ -263,7 +263,16 @@ threshold (≈3, illustrative); and how many windows to re-validate the magnitud
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +
   intraday entry-watch + `/`-board + alerts. GATED post-#277 (new job + CREATE TABLE run
   in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
-- ⏸ Paired — W3 EXIT/harvest layer (derisk-fast) — built WITH step 3, same tactic.
+- ✅ Step 2d — **EXIT/harvest BACKTESTED** (2026-06-14, gate-free, `scripts/_270_exit_replay.py`).
+  FIRST5 entry held constant, realized R under a speed spectrum (advisor methodology:
+  median+ex-top2, intrabar opt/pess bracket, day-0 minute / day-1+ daily, gap-through stops),
+  N=15. **Buy-and-hold loses the median name (−1R/27% win — its +1.6R mean is the HCAI/ASTI
+  outlier artifact) → derisk-fast is EMPIRICALLY NECESSARY.** Harvest is a SAME-DAY event
+  (opt==pess everywhere). Scale-out +1R/+3R beats single-target in-sample (median +2R vs +1R).
+  +137% tail is NOT systematically harvestable (any held runner bleeds the median). Rule =
+  scale out fast into the trigger-day spike; magnitudes illustrative (N=15, one window) →
+  operator decision #5, shadow-first. Full evidence: SSoT `delayed_ep_reentry.md` Layer 3.
+- ⏸ Paired — W3 EXIT/harvest DEPLOYABLE (the backtested ladder, shadow-first) — built WITH step 3.
 
 ## Step 3 build spec (TURNKEY — execute post-#277-gate, mechanical not design)
 
@@ -311,8 +320,11 @@ note. No per-tick pings (the #168 noise class).
 **5. Board command** `/sip` (watched/armed/ready) — 3-place slash-command update (handler in
 `agent.py` + dispatch dict + `BotCommand` in `telegram.py`, same commit, per CLAUDE.md).
 
-**6. Paired W3 exit/harvest** — derisk-fast partial ladder (earlier/more partials than the
-standard EP ladder; the cohort's fat-MFE / weak-close gap is the evidence). Built WITH step 3.
+**6. Paired W3 exit/harvest** — the BACKTESTED derisk-fast scale-out ladder (Step 2d /
+`_270_exit_replay.py`): bank a +1R floor + a +3R spike tranche into the TRIGGER-DAY spike
+(the harvest is a same-day event), NOT buy-and-hold (which loses the median name). Ship the
+ladder in SHADOW recording realized R; the targets/fractions are operator decision #5 (N=15
+in-sample), sized only after multi-window re-validation. Built WITH step 3.
 
 **Acceptance:** shadow run writes lifecycle rows; an ARMED transition fires exactly one Telegram;
 the intraday watch proposes entries with the FIRST5 stop; staging-validated before merge.
