@@ -788,7 +788,7 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 - ✅ **`/trades` richer summary** — open positions with entry→current→stop, last 5 closed inline, totals row; UTC/ET boundary fix for `closed_at`
 - ✅ **P9 — Trade postmortem** `postmortem TICKER [YYYY-MM-DD]`; Sonnet 4-section recap (Setup/Execution/Outcome/Lesson); weekly review auto-narrates best+worst
 - ✅ **P7 — `/pregame`** compact trade shortlist (Accelerating themes, HIGH EPs, watchlist MAs, 9M sugar babies); no LLM
-- ✅ **Slash commands + pinned HUD** — `/hud`, `/eps`, `/9m`, `/themes`, `/clusters`, `/regime`, `/positions`, `/trades`; hourly auto-refresh of pinned HUD during market hours; inline-keyboard drill-downs
+- ✅ **Slash commands + pinned HUD** — Telegram `/` menu (current examples: `/hud`, `/ep`, `/trades`, `/regime`); hourly auto-refresh of pinned HUD during market hours; inline-keyboard drill-downs. *(The command set has evolved since this April entry — `/eps`·`/9m`·`/themes`·`/clusters`·`/positions` were folded into `/hud` drill-downs / renamed. **Live list = `/help` in Telegram, SoT = `channels/telegram.py::_register_commands`** — don't re-hardcode a frozen list here.)*
 - ✅ **P2 — MODERATE EP recap** in morning briefing (rel_volume + claude_analysis)
 - ✅ **P3 — Paper trade validation report** scaffold (`validation report` / `paper performance`); upgrades to full report at 10+ closed trades
 - ✅ **9M EP system** — parallel LLM-free EP track (Pradeep Bonde "9M" tactic); intraday scan, sugar baby EOD sweep, Day 2 ORB auto-entry, outcome tracking, backtest script

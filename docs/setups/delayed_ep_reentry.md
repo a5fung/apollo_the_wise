@@ -115,9 +115,22 @@ data + the exit layer (the #168 actionability gate).
 
 1. **EXPANSION floor** — the ratio is unstable on near-zero pullback baselines (HCAI 86×,
    RLYB 104× are tiny-denominator artifacts) → floor the pullback-avg volume or cap the ratio.
+   **▶ DATA PROBE (2026-06-14, `scripts/_270_calibration_probe.py`, N=17, ILLUSTRATIVE —
+   PENDING OPERATOR SIGN-OFF, not self-certified):** the **1.5× gate is NOT the problem** —
+   every real trigger passes it on the true base, and the ratio magnitude does **not** predict
+   outcome (HCAI 4/30 86× → +137% WINNER, but RLYB 104× → +8% dud). Tiny-denominator inflation
+   only corrupts the ratio as a DISPLAY/ranking number. **RECOMMEND: floor `base` at 0.5×ADV20**
+   (caps the displayed ratio at ~36×, drops zero triggers) + **keep the gate at 1.5×**. Cosmetic
+   stability, no selectivity change — the knob is low-stakes.
 2. **Trigger-volume floor** — thin trigger days slip through despite the $20M gap-day
    liquidity (SILO/KFRC/CAMP < 0.5M shares) → add a min absolute / dollar-volume floor on the
-   trigger bar.
+   trigger bar. **▶ DATA PROBE (2026-06-14, N=17, ILLUSTRATIVE — PENDING SIGN-OFF): the cohort
+   REFUTES a trigger-bar floor.** The two thinnest $-vol names TIE at $2M with OPPOSITE outcomes
+   — CAMP +6% (dud) vs **SILO +37% (WINNER)** — so no $-floor separates them; the gentlest
+   meaningful floor ($5M) sacrifices SILO, and $20M also drops ASTI (+83%). Same by shares (SILO
+   0.27M/+37%). The **$20M gap-day liquidity SEED (the WATCHED gate) already ensures the NAME is
+   liquid**; a thin trigger BAR does not predict failure here. **RECOMMEND: NO trigger-bar floor**
+   — the seed suffices; revisit only if a larger cohort shows thin-trigger failures.
 3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
 4. **ANTICIPATION inclusion + maturity threshold + re-validation** — include the anticipation EOD
    entry path in the step-3 deployable? **Realized** (Layer-3 harvest, advisor 6/14, full N=8
