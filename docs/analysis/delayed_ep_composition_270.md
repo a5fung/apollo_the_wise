@@ -124,6 +124,57 @@ in the cohort) and actionable, so it is NOT the #168 per-tick-noise class
 - Shadow = informational (operator acts); graduates to an actionable/auto candidate only
   after forward-outcome data + the exit layer exist (the #168 actionability gate).
 
+## Step 2c — ANTICIPATION entry (Pradeep's third entry mode, 2026-06-14, gate-free)
+
+Operator (6/14, reading Pradeep): a third entry — **anticipation**. Enter at the **CLOSE of a
+quiet, tight, low-volume day when the name has reclaimed the pivot and is COILED** ("set up /
+nearing ready, tightening"), betting the breakout comes next day. Two payoffs: (1) you're in
+BELOW any gap-up = capture the bulk; (2) the coiled-day low is the stop = you know fast if it
+failed. `scripts/_270_anticipation_replay.py` (daily-bar replay + the pulled minute bars).
+
+**COILED day (forward-computable, no lookahead)** = the trigger conditions MINUS the volume
+burst: close > gap_day_low AND > SMA20 (reclaimed both refs) + tight range (≤7%) + quiet vol
+(≤1× ADV20). By construction it lands pre-breakout, never "the day before the known trigger".
+
+**The model is STOP-AND-REENTER, not one-shot** (advisor-flagged strawman): a tight coiled-low
+stop entered before the breakout gets shaken in a still-consolidating name almost every time —
+**one-shot = −1.0R median (it always fails)**. Pradeep RE-ENTERS while the setup is intact: each
+shake is a small ~2% (−1R) loss, the eventual hold-into-breakout is a tight-stop = big-R capture.
+**Re-entry discipline is LOAD-BEARING** — without it anticipation is negative.
+
+**Findings (cohort, daily bars):**
+- **FIRE:** 11 of 30 ARMED names presented a distinct coiled day (37%); 8 later triggered, 3
+  never did (the false set). The WINNING coiled entry lands a median **7d before the breakout**.
+  The other ~63% (incl. fast MNTS-style undercut→trigger runs) have NO coiled day → anticipation
+  is **complementary**: anticipate when a coiled day forms, else use confirmation (FIRST5).
+- **Claim #1 (capture the gap) — CONFIRMED:** anticipation enters a median **6% below the
+  FIRST5 price = 25% of the whole run to the window high captured earlier** (N=4 w/ minute bars).
+- **Claim #2 (fail fast/small) — CONFIRMED:** shaken attempts lose a median **2%** (the coiled
+  stop), small and fast by design.
+- **Expectancy (triggered, N=8), stop-and-reenter:** median **+3.3R**, mean **+2.9R**/name,
+  **62% eventually caught** the breakout (avg 1.9 attempts/name). vs one-shot −1.0R.
+- **Parity three-way (won names, common daily endpoint):** ANTICIPATION **6.5R** vs FIRST5
+  **4.9R** — anticipation's far-lower entry (≈6% below FIRST5) more than offsets its slightly
+  wider coiled stop (5% vs 2%) → more R on the same run. (NOT comparable to the intraday 3.5R —
+  re-based horizon.)
+- **Full cohort (all 11, incl. the false set):** mean **+1.7R**/name, total +19R, caught 45%.
+
+**CAVEATS (this is ILLUSTRATIVE, not a ship verdict):**
+1. **N is small** — 8 triggered, 4 with minute bars for price-capture, one ~3.5-month window.
+2. **Outlier-leveraged** (the W2 skip-wide-open lesson, applied): the single best name (RLMD
+   +13.9R) = **73% of the total**. Ex-top: mean +0.5R/name — **still positive, so it SURVIVES
+   outlier removal** (unlike the W2 study that went median −1R), but the headline mean is carried
+   by one name. Need a multi-window cohort before trusting the magnitude.
+3. **MFE ceilings, not harvested R** (symmetric across all three entries, so the comparison
+   holds; the absolute R's are optimistic — the W3 exit layer sets realized harvest).
+
+**Verdict:** anticipation is a real, positive-expectancy THIRD entry mode that validates both of
+Pradeep's claims and beats confirmation on the names that coil — **conditional on re-entry
+discipline**. It does NOT replace confirmation (fast runners don't coil). The entry layer becomes
+**anticipation-when-coiled (early, tight stop, re-enter) + FIRST5-BREAK confirmation (fast
+runners) + GDL-RECLAIM fallback**. OPERATOR decision: include anticipation as an entry path in
+the step-3 deployable, and over how many windows to re-validate the magnitude before sizing it.
+
 ## Sequencing (the e2e tactic)
 
 - ✅ Step 1 — readiness composition, validated vs MNTS. Gate-free.
@@ -142,6 +193,13 @@ in the cohort) and actionable, so it is NOT the #168 per-tick-noise class
     where the 5-min break never cleared the gap-day-low) → tight stops with full coverage.
   - `mi_intraday_bars` was too sparse (scattered single days, 8/16 names absent) → pulled
     from Polygon (the existing provider); the deployable tactic uses the live bar stream.
+- ✅ Step 2c — **ANTICIPATION entry (third mode) evaluated** (2026-06-14, gate-free,
+  `scripts/_270_anticipation_replay.py`). Pradeep's EOD entry on a COILED day (pre-breakout).
+  Stop-and-reenter (the faithful model — one-shot is a strawman) = **+2.9R mean/name on
+  triggered, 62% caught**, beats FIRST5 on the names that coil; validates both his claims
+  (25% earlier capture, 2% fast-fail). ILLUSTRATIVE not ship: N=8, outlier-leveraged (RLMD =
+  73% of total, survives ex-top at +0.5R/name), MFE ceilings. Re-entry discipline LOAD-BEARING.
+  Complementary to confirmation (only ~37% of armed names coil). Full writeup ↑ "Step 2c".
 - ⏸ Step 3 — deployable SHADOW tactic = readiness state table + scheduler job +
   intraday entry-watch + `/`-board + alerts. GATED post-#277 (new job + CREATE TABLE run
   in COMBINED = §C rollback target). Branch + staging-validate, merge post-gate.
@@ -155,10 +213,11 @@ the Monday gate closes.
 
 **1. State table** `mi_delayed_ep_lifecycle` (add to `db.py::initialize_schema()`):
 `ticker TEXT, gap_day DATE, gap_day_low NUMERIC, gap_day_vol BIGINT, sma200_at_gap NUMERIC,`
-`state TEXT (watched|armed|ready|triggered|expired), armed_date DATE, ready_date DATE,`
-`triggered_date DATE, entry_tactic TEXT (first5_break|gdl_reclaim), entry_price NUMERIC,`
-`stop_price NUMERIC, fwd_mfe_pct NUMERIC, last_eval DATE, created_at/updated_at TIMESTAMPTZ.`
-PK `(ticker, gap_day)`. Mirrors the replay() event fields 1:1 — no new logic.
+`state TEXT (watched|armed|coiled|ready|triggered|expired), armed_date DATE, coiled_date DATE,`
+`ready_date DATE, triggered_date DATE, entry_tactic TEXT (anticipation|first5_break|gdl_reclaim),`
+`entry_price NUMERIC, stop_price NUMERIC, reenter_count INT, fwd_mfe_pct NUMERIC, last_eval DATE,`
+`created_at/updated_at TIMESTAMPTZ.` PK `(ticker, gap_day)`. Mirrors the replay() event fields
+1:1 — no new logic. `coiled`/`reenter_count` carry the anticipation path (step 2c).
 
 **2. Daily readiness job** `_delayed_ep_readiness_job` (APScheduler, ~17:35 ET, mon-fri — AFTER
 the 17:00 data pull lands `mi_daily_closes`). Lift the validated `replay()` from
@@ -167,14 +226,21 @@ delayed_ep.py`). Per run: (a) seed new WATCHED from today's daily closes using t
 predicate (close ≥ 1.4·prev_close ∧ vol ≥ 3·ADV20 ∧ close ≥ $5 ∧ vol·close ≥ $20M); (b)
 re-eval every open (non-expired) lifecycle row for ARMED/READY/EXPIRED transitions; (c) UPSERT.
 On a NEW ARMED → Telegram (rare, ~1/wk) + add to the intraday watch set. Apply the two operator
-decisions from the SSoT (EXPANSION pullback-vol floor; trigger-bar dollar-vol floor) HERE.
+decisions from the SSoT (EXPANSION pullback-vol floor; trigger-bar dollar-vol floor) HERE. Also
+(d) flag a **COILED** day (reclaimed gap_day_low & SMA20 + tight + quiet, no expansion) → the
+EOD **anticipation** entry candidate (step 2c); emit the anticipation alert with stop = coiled
+low + the re-enter-on-shake note (re-entry discipline is load-bearing — see 2c).
 
-**3. Intraday entry-watch** — reuse the existing intraday flag-break scan harness pattern
-(9:35–15:55 ET every 5 min, mon-fri). For each ARMED/READY name, apply **FIRST5-BREAK primary**
-(break above first-5-min high, stop = first-5-min low) then **GDL-RECLAIM fallback** on live
-bars. On fire → set `triggered` + entry/stop, emit the entry alert. **This is execution-adjacent
-— it reads the live bar stream and proposes an entry; in the split it lives on the EXECUTION
-side or calls back via the facade. Wire as SHADOW first (alert only, no submit).**
+**3. Entry-watch — TWO paths (anticipation is complementary, not a replacement):**
+ - **ANTICIPATION (EOD, when a COILED day forms ~37% of armed names):** entry = coiled close,
+   stop = coiled low; re-enter at the next coiled day if shaken (track `reenter_count`). Surfaced
+   by the daily job (no intraday stream needed for the signal itself).
+ - **CONFIRMATION (intraday, the fast runners that never coil):** reuse the existing flag-break
+   scan harness (9:35–15:55 ET / 5 min, mon-fri) — **FIRST5-BREAK primary** (break above
+   first-5-min high, stop = first-5-min low) then **GDL-RECLAIM fallback** on live bars.
+ - On fire → set `triggered` + entry_tactic/entry/stop, emit the entry alert. **The intraday path
+   is execution-adjacent (reads the live bar stream); in the split it lives on EXECUTION or calls
+   back via the facade. Wire BOTH as SHADOW first (alert only, no submit).**
 
 **4. Alerts** (`feedback_alert_vs_audit` — terminal/actionable only): ARMED (EOD) → board +
 EOD digest; ENTRY (intraday) → real-time Telegram with the structural stop + the harvest-fast

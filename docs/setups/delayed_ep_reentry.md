@@ -29,15 +29,27 @@ From daily OHLCV (validated reproducing MNTS: WATCHED 5/26 → ARMED 6/08 → TR
 Defaults GAP +40% / VOLX 3× / ARM_WINDOW 15d / EXPANSION 1.5×. Cohort (134 huge-gap names,
 2026-03..05): funnel WATCHED 62 → ARMED 30 (48%) → READY 16 (26% of watched) = SELECTIVE.
 
-## Layer 2 — ENTRY (intraday tactic — the layer that gets you in; READY ≠ entry)
+## Layer 2 — ENTRY (the layer that gets you in; READY ≠ entry). THREE modes.
 
-Tuned on Polygon minute bars over 17 triggers + MNTS (`_270_entry_replay.py`):
-- **PRIMARY — FIRST5-BREAK**: break above the first-5-min high; **stop = first-5-min low**.
-  Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS "first-minute high/low HELD".
-- **FALLBACK — GDL-RECLAIM**: reclaim the gap-day-low; stop = gap-day-low. Median 10% stop,
-  1.4R, fills 18/18 — covers the ~3 names where the 5-min break never clears the gap-day-low.
-- Net: FIRST5-BREAK primary + GDL-RECLAIM fallback → tight stops with full coverage. The
-  tighter stop (3% vs 10%) is 2.5× the R on the same move — the U&R-paradox edge.
+Two are CONFIRMATION (fire on the trigger day, tuned on minute bars over 17 triggers + MNTS,
+`_270_entry_replay.py`); one is ANTICIPATION (EOD, the day before, `_270_anticipation_replay.py`).
+They are COMPLEMENTARY — anticipation fires only on the ~37% of armed names that coil; the fast
+runners (MNTS-style undercut→trigger) never coil and take a confirmation entry.
+
+- **ANTICIPATION (EOD, when a COILED day forms)** — Pradeep's "enter the day before, anticipating
+  the breakout". COILED = reclaimed gap_day_low & SMA20 + tight range + quiet volume, no
+  expansion (= the trigger minus the volume burst). Entry = coiled close; **stop = coiled low**;
+  **RE-ENTER at the next coiled day if shaken** (re-entry discipline is LOAD-BEARING — one-shot
+  is −1R, the strawman). Captures ~25% of the run earlier (≈6% below the FIRST5 price) + fails
+  small/fast (~2% stops). Stop-and-reenter expectancy **+2.9R mean/name, 62% caught** (triggered
+  cohort). ILLUSTRATIVE only — N=8, outlier-leveraged (survives ex-top at +0.5R/name), MFE
+  ceilings; re-validate the magnitude over more windows before sizing (operator decision).
+- **CONFIRMATION PRIMARY — FIRST5-BREAK** (trigger day): break above the first-5-min high;
+  **stop = first-5-min low**. Median stop **3%**, median **3.5R**, fills 15/18. = the MNTS
+  "first-minute high/low HELD".
+- **CONFIRMATION FALLBACK — GDL-RECLAIM**: reclaim the gap-day-low; stop = gap-day-low. Median
+  10% stop, 1.4R, fills 18/18 — covers the ~3 names where the 5-min break never clears the
+  gap-day-low. The tighter FIRST5 stop (3% vs 10%) is 2.5× the R on the same move (U&R paradox).
 
 ## Layer 3 — EXIT / harvest (derisk FASTER)
 
@@ -63,17 +75,29 @@ data + the exit layer (the #168 actionability gate).
    liquidity (SILO/KFRC/CAMP < 0.5M shares) → add a min absolute / dollar-volume floor on the
    trigger bar.
 3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
+4. **ANTICIPATION inclusion + re-validation** — include the anticipation EOD entry path in the
+   step-3 deployable? It's +EV in this cohort but ILLUSTRATIVE (N=8, outlier-leveraged). Decide
+   over how many windows to re-validate the magnitude before SIZING it (the entry signal can ship
+   shadow regardless; sizing is the gated decision). Re-entry discipline must be supported.
 
 ## Known limitations / caveats
 
 - Cohort calibration is N=16 triggers over one ~3.5-month window — observational, not a
   multi-regime backtest. MFE is favorable-excursion, NOT realized P&L (no exit applied).
-- Readiness is EOD (daily); the intraday entry-watch needs the live bar stream (execution-side).
-- Deployable wiring (scheduler job + lifecycle state table + intraday entry-watch + alerts)
-  is GATED post-#277 (it runs in `combined` = the §C rollback target).
+- Anticipation expectancy is N=8, **outlier-leveraged** (one name = 73% of total R; survives
+  ex-top at +0.5R/name but the magnitude needs multi-window re-validation), MFE-ceiling, and
+  **conditional on re-entry discipline** (one-shot is −1R).
+- Readiness is EOD (daily); the intraday confirmation entry-watch needs the live bar stream
+  (execution-side). The anticipation signal is EOD-computable (no intraday stream needed).
+- Deployable wiring (scheduler job + lifecycle state table + entry-watch + alerts) is GATED
+  post-#277 (it runs in `combined` = the §C rollback target).
 
 ## Change log
 
 - **2026-06-14** — Setup SPEC created. Readiness validated vs MNTS + cohort-calibrated;
   entry tuned (FIRST5-BREAK 3.5R); exit characterized (derisk-fast). All gate-free analysis.
   Deployable wiring sequenced post-#277. Operator decisions (above) pending before wiring.
+- **2026-06-14 (later)** — **ANTICIPATION entry added as Layer-2 third mode** (`_270_anticipation_replay.py`,
+  step 2c). Pradeep's EOD coiled-day entry: +2.9R mean/name stop-and-reenter, validates both his
+  claims, beats confirmation on coiling names — ILLUSTRATIVE (N=8, outlier-leveraged, re-entry
+  load-bearing). Decision #4 added. Gate-free analysis.
