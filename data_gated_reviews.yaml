@@ -336,7 +336,35 @@ reviews:
 
   - review_id: mna_filter_direction_blindness_path_a
     title: "M&A filter — Part B proximity check (Path B multi-ticker bleed residual)"
-    status_note: "Parts A + C SHIPPED 2026-05-25. Part B (proximity check) is what this review now tracks."
+    status_note: |
+      Parts A + C SHIPPED 2026-05-25. POSTPONED behind #270 per operator 6/14
+      AFTER a materiality qualification (read-only prod dig 6/14). Review floor
+      pushed 6/08 -> 6/23 to surface AFTER #270.
+
+      MATERIALITY FINDING (6/14):
+        - #119 (5/27 sister-possessive fix) ALREADY KILLED the QBTS/RGTI/INFQ
+          quantum-roundup bleed — they stopped firing after 5/22. The ~18-event
+          "sub-bug 3" this review was built around is fixed.
+        - Heaviest current firer KALV (7 days) = CORRECT deal-pin TP
+          (deal_pin_signature, 0.15% daily range / 10 days = dead pinned stock),
+          NOT an FP.
+        - Post-#119 residual = a THIN TRICKLE of +15-24% suppressed moves
+          (MMED, PD, CECO, CBRL — ~3-4 over 2.5wk). NO fat-tail winner suppressed
+          (nothing >~+24% even buy-low/sell-peak). The strategy's real material
+          misses (DLLL +179%, RGTX +102%) are IEX no-fills, a DIFFERENT problem.
+        - Verdict: LOW-materiality residual -> postpone (operator-confirmed 6/14).
+          The MMED/PD/CECO FP-vs-TP judgment is reserved for operator sign-off
+          (CHANGE_PROCESS rule #4) — NOT self-certified here.
+
+      SCOPE CORRECTION (supersedes the "Polygon sentence-proximity" framing
+      below): the post-#119 residual fires via the Claude `catalyst_quality=='mna'`
+      classifier (source 1) and keyword-in-text (source 2) — NOT the Polygon
+      Path A/B at all. So the STEP 0 corpus-refetch + sentence-proximity rule
+      described below would NOT touch the current residual. The REAL fix, if
+      ever picked up: extend the shareholder-litigation + acquirer-direction
+      guards (today only in polygon_news_has_mna_headline) to the text paths,
+      and tighten keyword-in-text for routine-graded names (CECO acquirer-side
+      = the still-leaking sub-bug 1).
     question: |
       2026-05-25 90d audit of `mna_filter_fired` events (25 fires)
       surfaced three distinct FP sub-classes the #88 multi-ticker
@@ -384,7 +412,7 @@ reviews:
       -- focused implementation session, not data-accrual.
       SELECT 1;
     threshold: 1
-    earliest_review_date: 2026-06-08
+    earliest_review_date: 2026-06-23
     action_when_ready: |
       PART B (still pending) — Tighter Path B sentiment_reasoning
       proximity check (~18 FP avoided per quarter). Polygon's AI
