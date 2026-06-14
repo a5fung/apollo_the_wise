@@ -307,16 +307,22 @@ the Monday gate closes.
 `ticker TEXT, gap_day DATE, gap_day_low NUMERIC, gap_day_vol BIGINT, sma200_at_gap NUMERIC,`
 `state TEXT (watched|armed|coiled|ready|triggered|expired), armed_date DATE, coiled_date DATE,`
 `ready_date DATE, triggered_date DATE, entry_tactic TEXT (anticipation|first5_break|gdl_reclaim),`
-`entry_price NUMERIC, stop_price NUMERIC, reenter_count INT, fwd_mfe_pct NUMERIC, last_eval DATE,`
-`created_at/updated_at TIMESTAMPTZ.` PK `(ticker, gap_day)`. Mirrors the replay() event fields
-1:1 — no new logic. `coiled`/`reenter_count` carry the anticipation path (step 2c).
-**↳ GRADUATION TRIGGER (do at table-ship, not later):** the `delayed_ep_270_shadow_graduation`
-entry in `data_gated_reviews.yaml` already counts settled shadow triggers
-(`state='triggered' AND fwd_mfe_pct IS NOT NULL`) and auto-surfaces the shadow→actionable review
-in the Sunday digest at N≥10. When this table ships, **VERIFY that predicate matches the actual
-columns** (rename if `fwd_mfe_pct`/`state` differ) — until verified it errors silently = not-ready,
-so a column mismatch would mean the trigger never fires. This is the data-accumulation trigger the
-operator asked for (6/14); it's the reason the table carries `fwd_mfe_pct`.
+`entry_price NUMERIC, stop_price NUMERIC, reenter_count INT, fwd_mfe_pct NUMERIC,`
+`realized_r NUMERIC, last_eval DATE, created_at/updated_at TIMESTAMPTZ.` PK `(ticker, gap_day)`.
+Mirrors the replay() event fields 1:1 — no new logic. `coiled`/`reenter_count` carry the
+anticipation path (step 2c). **`realized_r` = the HARVESTED R (Layer-3 rules: derisk-fast
++1R/+3R ladder, stop-fills), NOT MFE** — `fwd_mfe_pct` is the upper bound only. If a single
+column can't capture it, store the exit-fill/forward-bar data needed to DERIVE realized R offline.
+**↳ GRADUATION/CALIBRATION TRIGGER — REALIZED R, not MFE (do at table-ship, advisor 6/14):** the
+`delayed_ep_270_shadow_graduation` + `delayed_ep_270_calibration_revalidation` entries auto-surface
+in the Sunday digest. ⚠ **Their actions compare REALIZED R** (this whole tactic's lesson is
+MFE ≠ realized R) — but the seed predicates count `fwd_mfe_pct IS NOT NULL` (MFE-settled) because
+the table is unbuilt. **At table-ship: (1) ensure `realized_r` is captured or derivable, NOT just
+`fwd_mfe_pct`; (2) REPOINT the predicates to `realized_r IS NOT NULL`** so the trigger fires only
+when the number the review actually needs exists. Verify column names match too — until verified
+the predicate errors silently = not-ready, so a mismatch means the trigger never fires. (Leaving
+the predicate on `fwd_mfe_pct` would recreate, inside the deployable, the exact MFE-vs-realized
+gap this session closed.)
 **↳ CALIBRATION RE-VALIDATION (operator 6/14 — "include these findings in the regular reviews"):**
 the two calibration knobs (EXPANSION floor + trigger-volume floor) were set on N=17 illustrative.
 Two recurring-review hooks are registered: (1) `data_gated_reviews.yaml::delayed_ep_270_calibration_revalidation`

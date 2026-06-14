@@ -105,7 +105,7 @@ reviews:
       price-capture + complementarity only; the +2.9–15R were MFE ceilings, realized ≈0R).
     predicate_sql: |
       SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
-      WHERE state = 'triggered' AND fwd_mfe_pct IS NOT NULL
+      WHERE state = 'triggered' AND realized_r IS NOT NULL
     threshold: 5
     earliest_review_date: 2026-07-15
     status: pending
@@ -132,6 +132,10 @@ reviews:
       ⚠ PREREQ: #270 step-3 shadow wiring shipped (post-#277) AND this predicate verified
       against the shipped `mi_delayed_ep_lifecycle` columns — the table is PLANNED, not yet
       built, so until then the predicate errors silently = treated not-ready (correct/safe).
+      The predicate gates on `realized_r` (the HARVESTED Layer-3 R, NOT `fwd_mfe_pct`/MFE) so it
+      fires only when the number the action compares actually exists — advisor 6/14: gating on MFE
+      would recreate the MFE-vs-realized gap this tactic's analysis closed. Ensure Step 3 captures
+      `realized_r` (or the exit-fill data to derive it); repoint here if the column name differs.
 
   - review_id: delayed_ep_270_calibration_revalidation
     title: "#270 calibration re-validation — EXPANSION floor + trigger-volume floor (tune/confirm)"
@@ -146,7 +150,7 @@ reviews:
       — a "proven" finding silently going stale is the exact failure mode).
     predicate_sql: |
       SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
-      WHERE state = 'triggered' AND fwd_mfe_pct IS NOT NULL
+      WHERE state = 'triggered' AND realized_r IS NOT NULL
     threshold: 30
     earliest_review_date: 2026-09-15
     status: pending
@@ -164,7 +168,9 @@ reviews:
       detection-criterion change → N≥30 backtest + operator sign-off (CHANGE_PROCESS), never
       self-certified.
       ⚠ PREREQ: same as the graduation review — needs the live `mi_delayed_ep_lifecycle` cohort;
-      also wire the probe into the Monthly backward-check sweep when live data flows (build-spec
+      predicate gates on `realized_r` (harvested R, NOT MFE — winner/loser separation is a realized
+      question, advisor 6/14). Ensure Step 3 captures it; repoint if the column name differs. Also
+      wire the probe into the Monthly backward-check sweep when live data flows (build-spec
       checkpoint) so the conclusion is re-confirmed even between data-gated surfacings.
 
   - review_id: kill_scale_bands_quarterly_review
