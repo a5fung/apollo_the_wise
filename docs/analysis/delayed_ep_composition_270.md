@@ -317,6 +317,30 @@ standard EP ladder; the cohort's fat-MFE / weak-close gap is the evidence). Buil
 **Acceptance:** shadow run writes lifecycle rows; an ARMED transition fires exactly one Telegram;
 the intraday watch proposes entries with the FIRST5 stop; staging-validated before merge.
 
+## Ship timeline (discipline — SHADOW ETA tied to the 6/22 launch DoD; LIVE is evidence-gated)
+
+**Anchor:** "#270 delayed-EP composed [in shadow]" is **launch DoD #4** (`docs/roadmap/launch-2026-06-22.md`)
+— the ETA ties to that existing commitment, not a fresh date. **START is gated to AFTER the Mon
+6/15 #277 live-ORB gate closes clean** (step 3 runs in `combined` = the §C rollback target).
+
+- **3a — minimal shadow (EOD-only, no live stream): readiness state table + daily job +
+  ANTICIPATION EOD path + maturity gate + `/sip` board + ARMED alert.** Branch → staging-validate
+  (pipeline exists) → merge post-gate. **ETA Tue–Wed 6/16–6/17** (first build slot after the gate
+  lifts). This is the bulk of the DoD — all EOD-computable, lowest risk.
+- **3b — intraday CONFIRMATION entry-watch** (FIRST5/GDL on the live bar stream; execution-adjacent,
+  shadow/alert-only). **ETA ~6/17–6/18**, rides the bar-stream wiring.
+- **3c — chart-vision maturity read** = 2nd consumer of **#267** (renderer build Wed 6/17, eval
+  Thu 6/18) → layered **~6/18+**; `base_run` ships in 3a without it (enhancement, not a blocker).
+- **Paired W3 exit/harvest** rides the roadmap W3 exits workstream (~6/17–6/19).
+- **VERIFIED-LIVE composed-in-shadow by the 6/22 launch DoD** (Acceptance above met in prod).
+
+**LIVE / SIZED (real money on this setup): NO committed date — evidence-gated.** Gated on (1)
+forward-outcome data the shadow must first collect (the #168 actionability gate), (2) multi-window
+magnitude re-validation (DATA-BLOCKED today — needs `mi_daily_closes` history backfilled), (3) the
+W3 exit layer realized, (4) operator decision #4 (include + maturity threshold + sizing) + the
+HARD-gate sign-off. Weeks out, post-launch — do NOT attach a date; ship the SHADOW now, gate live
+on the evidence (the bias-to-action "ship the safe subset" rule).
+
 ## Gate
 
 The replay + calibration (read-only scripts + this doc) are gate-safe. The deployable
