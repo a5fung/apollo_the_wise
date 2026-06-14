@@ -4483,10 +4483,15 @@ class MarketIntelligenceAgent(BaseAgent):
         desc = (regime.get("description") or "").strip()
         result = body + (f"\n\n_{desc}_" if desc else "")
         # /breadth merged into /regime (operator 6/14: "keep it simple") — append the
-        # full Stockbee 10-day cluster matrix after the regime summary.
-        matrix = await self._render_breadth_matrix()
-        if matrix:
-            result += "\n\n" + matrix
+        # full Stockbee 10-day cluster matrix after the regime summary. Degrade gracefully:
+        # a matrix-render failure must not error the whole /regime (the regime section is
+        # the load-bearing answer; the matrix is the appended detail).
+        try:
+            matrix = await self._render_breadth_matrix()
+            if matrix:
+                result += "\n\n" + matrix
+        except Exception as e:
+            logger.warning(f"/regime breadth matrix render failed (regime section unaffected): {e}")
         return self._ok(request, result=result, data=regime)
 
     async def _handle_rs_query(self, request: AgentRequest) -> AgentResponse:
