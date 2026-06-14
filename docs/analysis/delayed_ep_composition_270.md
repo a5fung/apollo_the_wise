@@ -317,6 +317,14 @@ in the Sunday digest at N≥10. When this table ships, **VERIFY that predicate m
 columns** (rename if `fwd_mfe_pct`/`state` differ) — until verified it errors silently = not-ready,
 so a column mismatch would mean the trigger never fires. This is the data-accumulation trigger the
 operator asked for (6/14); it's the reason the table carries `fwd_mfe_pct`.
+**↳ CALIBRATION RE-VALIDATION (operator 6/14 — "include these findings in the regular reviews"):**
+the two calibration knobs (EXPANSION floor + trigger-volume floor) were set on N=17 illustrative.
+Two recurring-review hooks are registered: (1) `data_gated_reviews.yaml::delayed_ep_270_calibration_revalidation`
+(N≥30, deep tune/confirm — does the SILO-class thin WINNER hold, or do thin triggers now fail?) +
+a cross-ref in the N≥5 graduation peek; (2) **at table-ship, ALSO wire `_270_calibration_probe.py`
+(adapted to live data) into the Monthly backward-check sweep** (the `#50/#53/#54/#77` family, ~Monthly
+1st 8 AM ET) so the conclusion is re-confirmed between data-gated surfacings — the methodology-
+revalidation discipline (memory `feedback_methodology_insights_need_periodic_revalidation`).
 
 **2. Daily readiness job** `_delayed_ep_readiness_job` (APScheduler, ~17:35 ET, mon-fri — AFTER
 the 17:00 data pull lands `mi_daily_closes`). Lift the validated `replay()` from

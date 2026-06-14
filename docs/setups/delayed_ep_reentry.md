@@ -131,6 +131,13 @@ data + the exit layer (the #168 actionability gate).
    0.27M/+37%). The **$20M gap-day liquidity SEED (the WATCHED gate) already ensures the NAME is
    liquid**; a thin trigger BAR does not predict failure here. **RECOMMEND: NO trigger-bar floor**
    — the seed suffices; revisit only if a larger cohort shows thin-trigger failures.
+
+   **♻ RE-VALIDATION REGISTERED (operator 6/14 — don't let an N=17 finding silently go stale):**
+   both knob conclusions are wired into the recurring reviews — `data_gated_reviews.yaml::delayed_ep_270_calibration_revalidation`
+   (N≥30 deep tune/confirm; THE re-test = does the SILO-class thin WINNER hold or do thin triggers
+   now fail?) + a cross-ref eyeball in the N≥5 graduation peek, and `_270_calibration_probe.py`
+   joins the Monthly backward-check sweep when live data flows. Tuning a threshold = CHANGE_PROCESS
+   + N≥30 + sign-off; the review re-bumps each cycle (recurring, not one-shot).
 3. (Optional) tighten GAP/VOLX/ARM for fewer/higher-quality flags — the funnel is already selective.
 4. **ANTICIPATION inclusion + maturity threshold + re-validation** — include the anticipation EOD
    entry path in the step-3 deployable? **Realized** (Layer-3 harvest, advisor 6/14, full N=8

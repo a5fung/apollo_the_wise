@@ -122,12 +122,50 @@ reviews:
       earliest_review_date, so it re-surfaces with a bigger cohort (this is the designed
       "wait" path, expected at N=5); (c) if the read is NEGATIVE → diagnose the divergence
       (IEX-vs-SIP fill bias, cohort drift) before graduating.
+      ALSO at this peek: re-run `scripts/_270_calibration_probe.py` against the live cohort and
+      eyeball the two calibration conclusions (knob #1 EXPANSION-floor cosmetic; knob #2 NO
+      trigger-volume floor — the SILO-class thin WINNER). Flag early if live thin triggers now
+      FAIL (would reopen knob #2); the deep tune is the separate N≥30 review below.
       ⚠ THRESHOLD (5) + earliest date (7/15) are PROVISIONAL operator knobs — triggers are
       RARE (~1/week), so even N=5 may take ~5 weeks; the deferred-status loop is how you
       wait for more without the review going silent.
       ⚠ PREREQ: #270 step-3 shadow wiring shipped (post-#277) AND this predicate verified
       against the shipped `mi_delayed_ep_lifecycle` columns — the table is PLANNED, not yet
       built, so until then the predicate errors silently = treated not-ready (correct/safe).
+
+  - review_id: delayed_ep_270_calibration_revalidation
+    title: "#270 calibration re-validation — EXPANSION floor + trigger-volume floor (tune/confirm)"
+    question: |
+      The two #270 calibration knobs were set on N=17 ILLUSTRATIVE (gate-free historical cohort,
+      `scripts/_270_calibration_probe.py`, 2026-06-14): knob #1 = floor EXPANSION base at 0.5×ADV20
+      (cosmetic; the 1.5× gate is fine, ratio magnitude doesn't predict outcome); knob #2 = NO
+      trigger-volume floor (the cohort REFUTED it — SILO +37% was a thin winner tied at $2M with the
+      CAMP +6% dud; the $20M gap-day liquidity seed already gates name liquidity). On a larger LIVE
+      cohort, do BOTH conclusions still hold, or does the data now support tuning? This is the
+      methodology-revalidation guard (memory feedback_methodology_insights_need_periodic_revalidation
+      — a "proven" finding silently going stale is the exact failure mode).
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
+      WHERE state = 'triggered' AND fwd_mfe_pct IS NOT NULL
+    threshold: 30
+    earliest_review_date: 2026-09-15
+    status: pending
+    added_on: 2026-06-14
+    action_when_ready: |
+      Re-run `scripts/_270_calibration_probe.py` adapted to the LIVE cohort (the table now has the
+      per-trigger volume metrics). Re-test specifically: (#1) does flooring base at 0.5×ADV20 still
+      change nothing material, and does the ratio still fail to predict outcome? Adjust the floor
+      only if the larger cohort shows it matters. (#2) THE KEY ONE — do thin trigger bars now
+      separate winners from losers (i.e. is the SILO thin-WINNER an artifact of the small N, or
+      real)? If thin triggers systematically fail at N≥30, knob #2 REOPENS → propose a $-vol floor
+      via CHANGE_PROCESS + sign-off; if SILO-class thin winners persist, the NO-floor decision is
+      CONFIRMED. Either way: update SSoT decisions #1/#2 in docs/setups/delayed_ep_reentry.md with
+      the N≥30 verdict, and re-bump this review (recurring, not one-shot). Tuning thresholds = a
+      detection-criterion change → N≥30 backtest + operator sign-off (CHANGE_PROCESS), never
+      self-certified.
+      ⚠ PREREQ: same as the graduation review — needs the live `mi_delayed_ep_lifecycle` cohort;
+      also wire the probe into the Monthly backward-check sweep when live data flows (build-spec
+      checkpoint) so the conclusion is re-confirmed even between data-gated surfacings.
 
   - review_id: kill_scale_bands_quarterly_review
     title: "Quarterly kill/scale band review (operator sign-off condition #1, 2026-06-12)"
