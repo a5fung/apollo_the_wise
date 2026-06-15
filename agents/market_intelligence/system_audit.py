@@ -98,6 +98,15 @@ _REGIME_CONDITIONAL_METRICS = {"HIGH_ep_entry_rate", "9m_alerts_per_day"}
 _MAD_FALLBACK_THRESHOLD = 1.0  # below → 5×median rule only
 _Z_THRESHOLD = 3.0
 _MULTIPLIER_THRESHOLD = 5.0
+# Drift-vs-spike guard (2026-06-15): a STABLE metric (MAD tiny vs its median) drifting
+# slowly past its 30d median produces a large z on a TINY day-to-day step — that is DRIFT
+# (L3, weekly digest), not a sudden anomaly (L2 Telegram). So an L2-via-z (NOT via the 5×
+# ratio rule) on such a metric also requires a minimum MATERIALITY; else it downgrades to L3.
+# Calibrated on theme_count_active: MAD 1 on median 44 (2.3%) = a slow 55→38 decline,
+# max daily step 5, that was firing daily L2 on z=−6. The 5× ratio rule + cold-start ceiling
+# still catch genuine collapses, so this never hides a real drop.
+_TIGHT_MAD_FRAC = 0.05         # MAD < 5% of median ⇒ a "stable" metric (z on a tiny step = drift)
+_MIN_L2_MATERIALITY = 0.20     # …so its L2-via-z also needs ≥20% deviation from median
 
 _AUDIT_EVENT = "anomaly_detected"
 
@@ -1054,6 +1063,21 @@ def _band_for(z: float, ratio: float) -> int:
     return 0
 
 
+def _is_slow_drift(band: int, ratio: float, mad: float, p50: float, current: float) -> bool:
+    """True when a band-3 (L2) fire is actually slow DRIFT on a STABLE metric, not a spike:
+    the MAD is tiny vs the median (so a large z rides a tiny day-to-day step) AND the move
+    is immaterial in % terms AND it did NOT fire via the 5× ratio rule. Such a fire belongs
+    in L3 (drift, weekly digest), not L2 (Telegram). Pure → unit-tested. (2026-06-15:
+    theme_count_active, MAD 1 on median 44, a 55→38 slow decline mis-firing daily L2.)"""
+    return (
+        band == 3
+        and ratio < _MULTIPLIER_THRESHOLD                   # not a 5× collapse/spike
+        and p50 > 0 and mad > 0
+        and (mad / p50) < _TIGHT_MAD_FRAC                    # stable metric
+        and (abs(current - p50) / p50) < _MIN_L2_MATERIALITY  # immaterial % move
+    )
+
+
 def _directional_ratio(current: float, p50: float, direction: str) -> float:
     """Direction-aware ratio for the multiplier rule.
 
@@ -1177,6 +1201,9 @@ async def _compute_anomaly(
     z = ((current - p50) / mad) if use_z else 0.0
     ratio = _directional_ratio(current, p50, direction)
     band = _band_for(z, ratio)
+    # Drift-vs-spike guard: a slow drift on a stable metric routes to L3, not L2 (see helper).
+    if _is_slow_drift(band, ratio, mad, p50, current):
+        band = 2  # route to the L3 drift path (audit-only, transition-deduped)
 
     if band == 3 and not warming:
         return Anomaly(2, metric.name, {
