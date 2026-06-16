@@ -15,7 +15,7 @@ _TODAY = date(2026, 6, 16)
 
 
 def _render(**kw):
-    base = dict(today=_TODAY, sip_rows=None, magna53=None, ninem_intraday=None,
+    base = dict(today=_TODAY, sip_rows=None, magna53=None,
                 ninem_day2=None, flags=None, fishhook=None)
     base.update(kw)
     return render_ideas_summary(**base)
@@ -31,16 +31,16 @@ def test_empty_renders_zero_actionable():
 
 def test_consolidates_dedups_and_ranks_best_first():
     magna53 = [{"ticker": "RXT", "score_tier": "HIGH", "ep_score": 70}]
-    ninem = [{"ticker": "RXT"}, {"ticker": "CRVO"}]      # RXT is ALSO a 9M
+    ninem_day2 = [{"ticker": "RXT"}, {"ticker": "NTLA"}]   # RXT is ALSO a 9M Day-2
     flags = [{"ticker": "WSC", "stage": "COILED"}]
     fishhook = [{"ticker": "AUGO", "state": "promoted"}]
-    out = _render(magna53=magna53, ninem_intraday=ninem, flags=flags, fishhook=fishhook)
+    out = _render(magna53=magna53, ninem_day2=ninem_day2, flags=flags, fishhook=fishhook)
     assert "🎯 *Stocks in Play* — best actionable now (4)" in out   # RXT deduped
     rxt_line = next(l for l in out.splitlines() if "`RXT`" in l)
-    assert "MAGNA53 HIGH" in rxt_line and "9M" in rxt_line          # combined tags, one row
+    assert "MAGNA53 HIGH" in rxt_line and "9M Day2" in rxt_line     # combined tags, one row
     assert out.count("`RXT`") == 1
-    # tier ranking: RXT(0 HIGH) < CRVO(1 9M) < WSC(2 coiled) < AUGO(3 fishhook)
-    assert out.index("`RXT`") < out.index("`CRVO`") < out.index("`WSC`") < out.index("`AUGO`")
+    # tier ranking: RXT(0 HIGH) < NTLA(1 9M Day2) < WSC(2 coiled) < AUGO(3 fishhook)
+    assert out.index("`RXT`") < out.index("`NTLA`") < out.index("`WSC`") < out.index("`AUGO`")
 
 
 def test_flag_tightening_is_not_actionable():
