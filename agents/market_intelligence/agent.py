@@ -2765,12 +2765,9 @@ class MarketIntelligenceAgent(BaseAgent):
             return (today - d).days if d else None
 
         # Legacy-Markdown-safe: review_ids + blocked_by are underscore-heavy, which desyncs
-        # Telegram's parser (italic on '_') — backslash-escape the specials in dynamic strings
-        # and avoid inline backtick/italic entirely. Static *bold* headers are safe.
-        import re as _re
-
-        def _esc(s):
-            return _re.sub(r"[_*\[\]`]", lambda m: "\\" + m.group(0), str(s if s is not None else ""))
+        # Telegram's parser (italic on '_') — escape the free-text fields via the canonical
+        # _md_escape (#148) and avoid inline backtick/italic. Shared with the post-nightly escalation.
+        from agents.market_intelligence.scheduler import _md_escape as _esc
 
         lines = [f"📅 *Data-gated reviews — {today.isoformat()}*", ""]
         ready, errored = res.get("ready", []), res.get("errored", [])

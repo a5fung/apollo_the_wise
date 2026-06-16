@@ -2568,19 +2568,22 @@ async def _post_nightly_audit_job():
         if escalations:
             from agents.market_intelligence.briefing import send_telegram_message
             from agents.market_intelligence.db import log_audit_event
+            # Legacy-Markdown-safe: review_ids / blocked_by / titles are underscore-heavy and
+            # desync Telegram's parser — escape the free-text fields via the canonical _md_escape
+            # (#148, this module) and drop inline backticks. Ints (age/count/threshold) need no escape.
             lines = ["⏰ *Overdue data-gated reviews* (ready/erroring past grace — run it or update the entry):"]
             for esc in escalations:
                 if esc["kind"] == "ready":
                     lines.append(
-                        f"  • `{esc['review_id']}` READY {esc['age_days']}d "
-                        f"(count {esc.get('current_count')}≥{esc.get('threshold')}) — {esc.get('title')}"
+                        f"  • {_md_escape(esc['review_id'])} READY {esc['age_days']}d "
+                        f"(count {esc.get('current_count')}≥{esc.get('threshold')}) — {_md_escape(esc.get('title'))}"
                     )
                 else:
                     lines.append(
-                        f"  • `{esc['review_id']}` predicate ERRORING {esc['age_days']}d "
-                        f"(likely broken: {esc.get('blocked_by')}) — {esc.get('title')}"
+                        f"  • {_md_escape(esc['review_id'])} predicate ERRORING {esc['age_days']}d "
+                        f"(likely broken: {_md_escape(esc.get('blocked_by'))}) — {_md_escape(esc.get('title'))}"
                     )
-            lines.append("`/datareviews` for the full board.")
+            lines.append("/datareviews for the full board.")
             await send_telegram_message("\n".join(lines))
             for esc in escalations:
                 await log_audit_event(
