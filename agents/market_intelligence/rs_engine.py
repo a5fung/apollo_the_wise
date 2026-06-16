@@ -51,6 +51,12 @@ RS_WEAK_THRESHOLD = 40.0
 RS_LEADER_CUTOFF = 50
 # Minimum price to score — filters penny stocks
 MIN_PRICE = 5.0
+# Minimum median daily DOLLAR volume to score — filters illiquid micro-cap pumps that
+# saturated the RS leaderboard via extreme 1M-return percentiles (operator-signed 2026-06-15,
+# #286; N=12 backtest showed ~40–55% of the top-20 RS was sub-$10M/day junk — the
+# ASTC/ELOX/STI/LESL class). Uses adv_20 (median → spike-robust). Unknown-ADV passes (rare
+# new listings; matches the 9M "unknown ADV passes" convention so we don't drop fresh names).
+MIN_DOLLAR_VOL = 10_000_000.0
 # Maximum ticker length — filters warrants/units
 MAX_TICKER_LEN = 5
 # Observability thresholds — extreme returns no longer block scoring (the
@@ -281,6 +287,12 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
     logger.info(f"RS Engine: loaded {len(all_closes)} tickers from DB")
 
+    # ADV map (median 20d volume) computed UP-FRONT — used both for the liquidity floor in
+    # the loop below and the stored adv_20 field. (Was computed after ranking; moved up so the
+    # floor can exclude illiquid names from the universe before they distort the percentiles.)
+    from agents.market_intelligence.db import get_adv_from_daily_closes
+    adv_map = await get_adv_from_daily_closes(today)
+
     # Compute RS for each ticker
     stock_data: list[dict] = []
     extreme_tickers: list[dict] = []
@@ -297,6 +309,12 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
 
         current = _closest_close(closes, today_str)
         if not current or current < MIN_PRICE:
+            continue
+        # Liquidity floor (#286, operator-signed): exclude KNOWN-illiquid names from the
+        # universe so micro-cap pumps don't saturate the leaderboard via extreme return
+        # percentiles. Unknown ADV passes (new listings). adv_20 is median → spike-robust.
+        _adv = adv_map.get(ticker)
+        if _adv is not None and current * _adv < MIN_DOLLAR_VOL:
             continue
 
         sorted_dates = sorted(closes.keys(), reverse=True)
@@ -405,9 +423,7 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
     if vol_crush_count:
         logger.info(f"RS Engine: {vol_crush_count} stocks zeroed for volatility crush (likely M&A)")
 
-    # Compute ADV-20 from daily closes for each stock
-    from agents.market_intelligence.db import get_adv_from_daily_closes
-    adv_map = await get_adv_from_daily_closes(today)
+    # adv_map computed up-front (used by the liquidity floor above + the stored adv_20 field).
 
     # Batch upsert all scores
     db_records = [
