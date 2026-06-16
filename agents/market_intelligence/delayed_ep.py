@@ -395,3 +395,101 @@ def settle_row(*, entry_tactic, entry_price, stop_price, bars, entry_idx,
     realized_r, _captured, _fills = out
     mfe = (max(b["h"] for b in bars[entry_idx + 1:end + 1]) - entry_price) / risk
     return {"realized_r": realized_r, "fwd_mfe_pct": mfe, "settled": True, "degraded": degraded}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Lifecycle-from-bars evaluation (Phase 4a) — derive the CURRENT lifecycle row for one
+# (ticker, gap_day) from its daily bars. PURE: the readiness job (scheduler) supplies the
+# ticker + bars and owns persistence. The replay-label → lifecycle-state mapping is applied
+# HERE (the JOB layer), never inside replay() — so the golden test still pins the funnel.
+# ─────────────────────────────────────────────────────────────────────────────
+def cycle_for_gap(bars, gap_day):
+    """The lifecycle cycle SEEDED at `gap_day` (a date str). Parses replay()'s event stream
+    for the WATCHED at gap_day and this cycle's events up to the next WATCHED. Returns the
+    cycle's dates/indices, or None if gap_day isn't a WATCHED seed in these bars."""
+    idx_of = {b["date"]: i for i, b in enumerate(bars)}
+    if gap_day not in idx_of:
+        return None
+    events = replay(bars)
+    seq = next((k for k, (d, s, _) in enumerate(events) if s == "WATCHED" and d == gap_day), None)
+    if seq is None:
+        return None
+    armed_date = ready_date = None
+    expired = False
+    for d, s, _ in events[seq + 1:]:
+        if s == "WATCHED":
+            break                               # next cycle started
+        if s == "ARMED" and armed_date is None:
+            armed_date = d
+        elif s == "TRIGGERED" and ready_date is None:
+            ready_date = d                       # replay TRIGGERED = the daily RECLAIM = 'ready'
+            break
+        elif s == "EXPIRED":
+            expired = True
+            break
+    gi = idx_of[gap_day]
+    return {"gap_day": gap_day, "gap_idx": gi,
+            "gap_day_low": bars[gi]["l"], "gap_day_vol": bars[gi]["v"],
+            "armed_date": armed_date, "armed_idx": idx_of.get(armed_date) if armed_date else None,
+            "ready_date": ready_date, "ready_idx": idx_of.get(ready_date) if ready_date else None,
+            "expired": expired}
+
+
+def evaluate_candidate(bars, gap_day, min_base=MATURE_DAYS):
+    """Derive the current lifecycle row dict for (gap_day) from its daily bars, or None if
+    gap_day isn't a valid WATCHED seed. State precedence (the JOB-layer label→state mapping):
+      triggered  a MATURE coil fired the (shadow) anticipation entry — the only state here
+                 carrying entry_price/stop_price (+ `_entry_idx` for settlement)
+      ready      the daily RECLAIM happened (replay TRIGGERED) — a SET-UP awaiting the 3b
+                 confirmation entry (first5/gdl, Phase 6); NOT itself an entry
+      coiled     reclaimed pivot + tight + quiet (immature coil — no mature base yet)
+      armed      undercut of gap_day_low, no qualifying coil yet
+      watched    gap seeded, no undercut yet
+      expired    no undercut within the arm window
+    rmv_5d/15d + tight_close_pct are recorded TELEMETRY (not gates)."""
+    cyc = cycle_for_gap(bars, gap_day)
+    if cyc is None:
+        return None
+    last_idx = len(bars) - 1
+    last = bars[last_idx]
+    prev = bars[last_idx - 1] if last_idx > 0 else None
+    row = {
+        "gap_day": gap_day, "gap_day_low": cyc["gap_day_low"], "gap_day_vol": cyc["gap_day_vol"],
+        "sma200_at_gap": _sma([b["c"] for b in bars], cyc["gap_idx"], 200),
+        "armed_date": cyc["armed_date"], "ready_date": cyc["ready_date"],
+        "coiled_date": None, "triggered_date": None, "entry_tactic": None,
+        "entry_price": None, "stop_price": None, "base_run": None, "reenter_count": 0,
+        "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
+        "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
+        "tight_close_pct": (abs(last["c"] / prev["c"] - 1) if prev and prev["c"] else None),
+        "_entry_idx": None,
+    }
+
+    if cyc["armed_idx"] is None:
+        row["state"] = "expired" if (cyc["expired"] or last_idx - cyc["gap_idx"] > ARM_WINDOW) else "watched"
+        return row
+
+    ctx = {"gap_day_low": cyc["gap_day_low"], "armed_idx": cyc["armed_idx"],
+           "trig_idx": cyc["ready_idx"]}
+    coiled = find_coiled_days(bars, ctx, min_base=1)
+    mature = [i for i in coiled if base_run(bars, ctx, i) >= min_base]
+
+    if mature:                                   # mature coil → (shadow) anticipation entry
+        ci = mature[0]
+        row.update(state="triggered", entry_tactic="anticipation",
+                   coiled_date=bars[ci]["date"], triggered_date=bars[ci]["date"],
+                   entry_price=bars[ci]["c"], stop_price=bars[ci]["l"],
+                   base_run=base_run(bars, ctx, ci), _entry_idx=ci)
+        return row
+
+    if coiled:
+        row["coiled_date"] = bars[coiled[0]]["date"]
+        row["base_run"] = base_run(bars, ctx, coiled[-1])
+
+    if cyc["ready_idx"] is not None:
+        row["state"] = "ready"                   # reclaim set-up, awaiting the 3b entry
+    elif coiled:
+        row["state"] = "coiled"
+    else:
+        row["state"] = "armed"
+    return row
