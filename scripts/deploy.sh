@@ -71,6 +71,25 @@ case "$SCOPE" in
     ;;
 esac
 
+# ── [0/5] Disk hygiene (2026-06-16 incident) ────────────────────────────────────
+# A 46GB build cache on an 84%-full disk corrupted a --no-cache pip layer: tzlocal's
+# .dist-info was written but the module dir was NOT, so `pip list` showed it installed
+# yet `import tzlocal` failed → apollo-market crash-looped. Builds here are --no-cache,
+# so the build cache is NEVER reused — prune it every deploy to keep it bounded, then
+# HARD-GUARD against building on a near-full disk (the corruption trigger).
+echo "=== [0/5] Disk hygiene: prune unused build cache + free-space guard ==="
+docker builder prune -f >/dev/null 2>&1 || true
+AVAIL_GB=$(df -BG / | awk 'NR==2 {gsub(/[A-Za-z]/,"",$4); print int($4)}')
+echo "Root disk free after prune: ${AVAIL_GB:-?}G"
+if [ "${AVAIL_GB:-0}" -lt 8 ]; then
+  echo ""
+  echo "DEPLOY ABORTED — only ${AVAIL_GB}G free after pruning the build cache. A --no-cache"
+  echo "build on a near-full disk writes CORRUPTED layers (metadata lands but module files"
+  echo "don't — the 2026-06-16 tzlocal crash). Free disk first (e.g. 'docker image prune -af',"
+  echo "rotate logs), then re-deploy."
+  exit 20
+fi
+
 echo "=== [1/5] git pull origin main ==="
 BEFORE_PULL=$(git rev-parse HEAD)
 git pull origin main
