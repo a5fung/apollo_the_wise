@@ -23,8 +23,8 @@ def _render(**kw):
 def test_empty_renders_placeholders_not_crash():
     out = _render()
     assert "Apollo Ideas" in out
-    assert "Stocks in Play" in out
-    assert "none active" in out                      # empty substrate
+    assert "🎯 *Stocks in Play* — 0 actionable" in out
+    assert "substrate empty" in out                  # empty substrate placeholder
     assert "MAGNA53: _none today_" in out
     assert "Fishhook: _none active_" in out
 
@@ -54,7 +54,7 @@ def test_flags_stage_priority_order():
     assert line.index("`TRG`") < line.index("`COI`") < line.index("`TGT`")
 
 
-def test_stocks_in_play_groups_by_class_and_dedups_multidetector():
+def test_stocks_in_play_actionable_first_watchlist_collapsed_dedup():
     rows = [
         {"ticker": "AAA", "automation_class": "apollo_eligible", "source_detector": "magna53_ep_high"},
         {"ticker": "BBB", "automation_class": "operator_only",   "source_detector": "flag_coiled"},
@@ -62,10 +62,27 @@ def test_stocks_in_play_groups_by_class_and_dedups_multidetector():
         {"ticker": "CCC", "automation_class": "informational",   "source_detector": "sugar_baby_cohort"},
     ]
     out = _render(sip_rows=rows)
-    assert "🎯 *Stocks in Play* — 3 (substrate)" in out   # 3 unique tickers
-    # BBB appears once (multi-detector deduped to one chip in its class)
+    # 2 actionable (AAA apollo + BBB operator, deduped) · 1 watchlist (CCC informational)
+    assert "🎯 *Stocks in Play* — 2 actionable · 1 watchlist" in out
     sip_block = out.split("Top ideas per strategy")[0]
-    assert sip_block.count("`BBB`") == 1
+    assert sip_block.count("`BBB`") == 1                  # multi-detector deduped
+    assert "🚨 `AAA`" in out                              # apollo_eligible leads
+    assert "ℹ️ watchlist:" in out and "`CCC`" in out      # informational collapsed to watchlist
+
+
+def test_stocks_in_play_shows_stage_from_reason_head():
+    # the operator's ask: tell the STAGE at a glance. The reason head is the stage;
+    # the informational sugar-baby row is collapsed to watchlist, not mixed in.
+    rows = [
+        {"ticker": "RDY", "automation_class": "operator_only",
+         "source_detector": "delayed_ep_reentry", "reason": "delayed-EP reclaim ready — awaiting 3b entry"},
+        {"ticker": "SBC", "automation_class": "informational",
+         "source_detector": "sugar_baby_cohort", "reason": "Pradeep persistent cohort — 5× 9M+ prints"},
+    ]
+    out = _render(sip_rows=rows)
+    assert "👤 `RDY` delayed-EP reclaim ready" in out     # stage shown, em-dash tail dropped
+    assert "ℹ️ watchlist: `SBC`" in out                   # cohort collapsed, not an actionable row
+    assert "awaiting 3b entry" not in out                 # reason tail trimmed for the summary
 
 
 def test_source_detector_with_underscores_never_leaks():
@@ -84,7 +101,7 @@ def test_ideas_strategies_is_single_source_for_keyboard_and_taskmap():
     from channels.telegram import TelegramChannel
     strategies = TelegramChannel._IDEAS_STRATEGIES
     keys = [k for k, _l, _t in strategies]
-    assert keys == ["magna53", "9m", "flags", "fishhook", "sip", "watch"]
+    assert keys == ["magna53", "9m", "flags", "fishhook", "sip"]
     assert len(set(keys)) == len(keys)                       # unique callback keys
     for _k, label, task in strategies:
         assert task.startswith("/")                          # routes to an existing board

@@ -815,15 +815,16 @@ class TelegramChannel:
     # /ideas front door (ADR 0004): per-strategy buttons, each drilling into the
     # strategy's existing board as an edit-in-place deep-dive. SINGLE source for the
     # keyboard AND the callback task-map so they can never drift (key, label, task).
-    # #270's /sip (delayed-EP lifecycle) is in. As ADR-0004 Phase 2-5 migrate the other
-    # detectors into mi_stocks_in_play, each line should read from the substrate instead.
+    # #270's /sip (delayed-EP lifecycle) is in. No "Stocks in Play" button — the summary's
+    # Stocks-in-Play SECTION already shows the substrate (the button just re-showed it); the
+    # full board stays reachable via the standalone /watch command. As ADR-0004 Phase 2-5
+    # migrate the other detectors into mi_stocks_in_play, each line reads from the substrate.
     _IDEAS_STRATEGIES = [
-        ("magna53",  "🎯 MAGNA53",        "/eps"),
-        ("9m",       "🏦 9M",             "/9m"),
-        ("flags",    "🚩 Flags",          "/flags"),
-        ("fishhook", "🪝 Fishhook",       "/fishhook"),
-        ("sip",      "⏱️ Delayed-EP",     "/sip"),
-        ("watch",    "📋 Stocks in Play", "/watch all"),
+        ("magna53",  "🎯 MAGNA53",   "/eps"),
+        ("9m",       "🏦 9M",        "/9m"),
+        ("flags",    "🚩 Flags",     "/flags"),
+        ("fishhook", "🪝 Fishhook",  "/fishhook"),
+        ("sip",      "⏱️ Delayed-EP", "/sip"),
     ]
 
     async def _dispatch_market_slash(

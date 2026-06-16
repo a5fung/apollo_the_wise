@@ -24,8 +24,6 @@ from __future__ import annotations
 _SEP = "━━━━━━━━━━━━━━━━━━━━━"
 _FLAG_STAGE_EMOJI = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
 _FLAG_STAGE_RANK = {"TRIGGERED": 0, "COILED": 1, "TIGHTENING": 2}
-_SIP_CLASS_META = [("apollo_eligible", "🚨"), ("operator_only", "👤"),
-                   ("informational", "ℹ️")]
 
 
 def render_ideas_summary(*, today, sip_rows, magna53, ninem_intraday,
@@ -33,23 +31,43 @@ def render_ideas_summary(*, today, sip_rows, magna53, ninem_intraday,
     """Pure /ideas summary. All list args may be None (failed/again getter)."""
     lines = [f"💡 *Apollo Ideas* — {today.strftime('%a %b %d')}", _SEP]
 
-    # ── Stocks in Play (SUBSTRATE ONLY) ──
+    # ── Stocks in Play (SUBSTRATE ONLY) — lead with ACTIONABLE, collapse watchlist ──
+    # The substrate mixes actionability tiers; an operator scanning "what do I trade now"
+    # wants the operator_only/apollo_eligible rows (WITH their stage) up top and the
+    # informational watchlist (e.g. the sugar-baby cohort — context, not a fire signal)
+    # collapsed to a count + pointer. The stage comes from each row's reason head.
     sip_rows = sip_rows or []
-    n_unique = len({r["ticker"] for r in sip_rows})
-    lines.append(f"🎯 *Stocks in Play* — {n_unique} (substrate)")
-    any_sip = False
-    for cls, emoji in _SIP_CLASS_META:
-        # dedup a multi-detector ticker to one chip per class, preserve order
-        tickers = list(dict.fromkeys(
-            r["ticker"] for r in sip_rows if r.get("automation_class") == cls))
-        if not tickers:
+    _cls_rank = {"apollo_eligible": 0, "operator_only": 1, "informational": 2}
+    actionable, info_tickers, seen = [], [], set()
+    for r in sorted(sip_rows, key=lambda r: _cls_rank.get(r.get("automation_class"), 3)):
+        t = r["ticker"]
+        if t in seen:                       # dedup multi-detector → most-actionable class wins
             continue
-        any_sip = True
-        shown = ", ".join(f"`{t}`" for t in tickers[:8])
-        more = f" …+{len(tickers) - 8}" if len(tickers) > 8 else ""
-        lines.append(f"  {emoji} {shown}{more}")
-    if not any_sip:
-        lines.append("  _none active — detectors quiet_")
+        seen.add(t)
+        cls = r.get("automation_class")
+        if cls in ("apollo_eligible", "operator_only"):
+            # reason head carries the stage ("delayed-EP reclaim ready" …); underscores
+            # stripped so the (non-caps-safe) reason can't desync Telegram Markdown
+            stage = (r.get("reason") or "").split("—")[0].strip().replace("_", " ")
+            actionable.append(("🚨" if cls == "apollo_eligible" else "👤", t, stage))
+        else:
+            info_tickers.append(t)
+    n_act, n_info = len(actionable), len(info_tickers)
+    lines.append(f"🎯 *Stocks in Play* — {n_act} actionable"
+                 + (f" · {n_info} watchlist" if n_info else ""))
+    if actionable:
+        for emoji, t, stage in actionable[:10]:
+            lines.append(f"  {emoji} `{t}` {stage}".rstrip())
+        if n_act > 10:
+            lines.append(f"  …+{n_act - 10} more")
+    elif n_info == 0:
+        lines.append("  _substrate empty — detectors quiet_")
+    if info_tickers:
+        chips = " ".join(f"`{t}`" for t in info_tickers[:12])
+        more = f" …+{n_info - 12}" if n_info > 12 else ""
+        lines.append(f"  ℹ️ watchlist: {chips}{more}  → /sugarbabies")
+    if actionable or info_tickers:
+        lines.append("_🚨 auto-eligible · 👤 your call · ℹ️ watchlist context_")
     lines.append(_SEP)
 
     # ── Top NAMED ideas per strategy (scaffolding; ADR-0004 unifies into substrate) ──
