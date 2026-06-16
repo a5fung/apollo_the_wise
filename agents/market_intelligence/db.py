@@ -1403,6 +1403,65 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_flag_breaks_ticker
                 ON mi_flag_breaks(ticker, break_date DESC);
 
+            -- #270 delayed-EP re-entry lifecycle (Step 3 SHADOW, 2026-06-16). Composes the
+            -- already-firing fragments (EP gap → gap-low undercut → reclaim → coil → entry →
+            -- harvest) into ONE observed-but-not-traded lifecycle (MNTS template). One row per
+            -- (ticker, gap_day). SHADOW = no submit; alert-only.
+            --
+            -- STATE (the replay-label → lifecycle-state mapping lives in the JOB layer, never
+            -- inside the ported replay() — see delayed_ep.py):
+            --   watched   gap day seeded (close>=1.4*prev_close, vol>=3*ADV20, close>SMA200, $>=5)
+            --   armed     undercut of gap_day_low in the arm window (the U&R the flag detector
+            --             wrongly INVALIDATES on — the bug this setup turns into the signal)
+            --   coiled    reclaimed pivot + tight range + quiet volume (the anticipation coil)
+            --   ready     the replay's terminal RECLAIM (daily volume-expansion reclaim) = a
+            --             SET-UP, NOT an entry; carries NO entry/stop price
+            --   triggered an ENTRY actually fired (anticipation coil-close OR 3b first5/gdl) —
+            --             the ONLY state with entry_price/stop_price + the ONLY one realized_r
+            --             settles against. Writing the reclaim as 'triggered' would count set-ups
+            --             as entries (the MFE-vs-realized conflation this whole arc closed).
+            --   expired   no undercut within the arm window
+            --
+            -- realized_r = HARVESTED R (Layer-3 ladder + stop-fills, via _270_harvest), NOT MFE.
+            -- fwd_mfe_pct = the perfect-foresight ceiling only. The graduation predicate
+            -- (data_gated_reviews delayed_ep_270_shadow_graduation) gates on realized_r IS NOT NULL.
+            -- rmv_5d/rmv_15d/tight_close_pct are recorded TELEMETRY (NOT gates — #54 verdict +
+            -- STEP 0: RMV inverts under a too-tight stop; the COILED gate stays range+base_run).
+            CREATE TABLE IF NOT EXISTS mi_delayed_ep_lifecycle (
+                ticker          TEXT NOT NULL,
+                gap_day         DATE NOT NULL,           -- the EP/9M gap day = the cohort seed
+                state           TEXT NOT NULL,
+                gap_day_low     FLOAT,                   -- the U&R reference
+                gap_day_vol     FLOAT,
+                sma200_at_gap   FLOAT,
+                armed_date      DATE,
+                coiled_date     DATE,
+                ready_date      DATE,                    -- replay TRIGGERED (reclaim) lands here
+                triggered_date  DATE,                    -- entry-fired only
+                entry_tactic    TEXT,                    -- anticipation | first5_break | gdl_reclaim
+                entry_price     FLOAT,
+                stop_price      FLOAT,
+                reenter_count   INT DEFAULT 0,           -- Pradeep stop-and-reenter attempts
+                base_run        INT,                     -- developed-base maturity proxy at coil
+                rmv_5d          FLOAT,                   -- telemetry (see header)
+                rmv_15d         FLOAT,
+                tight_close_pct FLOAT,                   -- Pradeep |close %change| secondary cross-check
+                fwd_mfe_pct     FLOAT,                   -- MFE ceiling (upper bound only)
+                realized_r      FLOAT,                   -- HARVESTED R; the graduation gate column
+                settled         BOOLEAN NOT NULL DEFAULT FALSE,
+                last_eval       DATE,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, gap_day),
+                CHECK (state IN ('watched','armed','coiled','ready','triggered','expired'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_delayed_ep_state
+                ON mi_delayed_ep_lifecycle(state, gap_day DESC);
+            -- the settlement re-eval set: entries awaiting their forward window
+            CREATE INDEX IF NOT EXISTS idx_delayed_ep_unsettled
+                ON mi_delayed_ep_lifecycle(triggered_date)
+                WHERE state = 'triggered' AND settled = FALSE;
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
