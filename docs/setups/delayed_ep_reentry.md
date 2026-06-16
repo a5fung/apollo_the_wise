@@ -109,20 +109,23 @@ day-1+ daily resolution, gap-through stop-fills `min(stop, bar_open)`. N=15 fill
   **No free lunch: chasing the tail (two-phase) costs the reliable middle; the scale's guaranteed
   +2R median is robust.** N=15 in-sample; two-phase params (giveback 0.5/0.33, +1R activation, d5
   cap) tunable. (`_270_exit_replay.py` rules `twophase_g50`/`g33`.)
-- **Catalyst-conditional leash — TESTED + REFUTED for #270 (2026-06-15).** Pradeep's "*unless* it
-  has a catalyst with long-term potential → hold past day-5" does NOT operationalize here: pulled
-  the real EP catalyst grades for the cohort — **catalyst strength does not separate the runners.**
-  MXL ran **+5.8R on a "routine" catalyst** (ep_score 48) while TRT **LOST (−1R) on a
-  "game_changer"** (84); STRL (game_changer) ran +2.8 but CNTA (mna) lost. AND **9/17 cohort names
-  carry no EP grade at all.** A strong-catalyst leash would hold TRT (loser) and MISS MXL (biggest
-  winner). **Mechanism**: the #270 runners are **TECHNICAL breakouts, not catalyst-driven** (the
-  hardest-running name had the weakest catalyst) — i.e. for the delayed-EP/flag-break class **the
-  breakout IS the catalyst** (memory `user_flagbreak_universe_and_judging`), so the news-catalyst
-  grade is the wrong exit axis. **CONCLUSION: no clean conditional exit exists for this cohort** —
-  the scale-out (+1R/+3R, median +2R) is the robust default; the multi-day tail (MXL/STRL/ASTI) is
-  a rare, non-pre-classifiable bonus. Ship scale-out PRIMARY + two-phase as a SECONDARY shadow
-  (highest win-rate 73%, captures clean runners — may suit a trendier regime); do NOT wire
-  catalyst into #270 exits.
+- **Catalyst-conditional leash — TESTED, but INCONCLUSIVE (confounded by UNSOURCED catalysts;
+  operator caught it 2026-06-15).** First read said "refuted" (MXL ran +5.8 on a "routine"
+  catalyst, TRT lost on "game_changer") — but checking the catalyst SOURCE invalidates that: the
+  cohort's grades are mostly **historical-backfill PLACEHOLDERS** — MXL's "routine" catalyst text
+  is literally `"Historical scan: 57.7% gap, 26.0x rvol"` (no catalyst sourced; `catalyst_type` /
+  `fire_status` = None), ditto CNTA/TRT/ASTI; and 9/17 names carry no EP row at all. A 57.7% gap
+  on 26× vol HAD a real catalyst — **we never found it** (an *unknown* catalyst, not a weak one).
+  The ONE properly-sourced name — **STRL = "blowout Q1 earnings" (strong) → ran +2.8R** — is
+  CONSISTENT with the leash. **So the leash is NOT refuted; it is UNTESTABLE on this cohort** until
+  the catalysts are properly sourced. This gates it on the **#210/#211 catalyst-sourcing backbone**
+  (direct primary sources, unknown-rate KPI) — and flags a DATA-QUALITY caveat on ALL
+  catalyst-conditioned #270 analysis: the backfill cohort's grades are not real reads. The
+  technical-breakout reading ("the breakout IS the catalyst", `user_flagbreak_universe_and_judging`)
+  remains a plausible explanation but **can't be confirmed against unknown catalysts.**
+  **EXIT CONCLUSION (sourcing-independent):** scale-out (+1R/+3R, median +2R) = robust PRIMARY
+  shadow; two-phase = SECONDARY shadow (73% win, captures clean runners). The catalyst-leash =
+  REOPEN + re-test once #210/#211 source the cohort properly (filed follow-up).
 
 **RULE (illustrative direction; deploy in SHADOW, size only after multi-window re-validation
 + the live forward data):** scale out FAST into the trigger-day spike — bank a floor tranche
