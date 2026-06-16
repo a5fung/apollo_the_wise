@@ -77,12 +77,13 @@ isolate the exit; **realized R** (not MFE) under a speed spectrum; advisor metho
 median + ex-top-2 (mean is outlier-dominated), intrabar opt/pess bracket, day-0 MINUTE +
 day-1+ daily resolution, gap-through stop-fills `min(stop, bar_open)`. N=15 filled triggers.
 
-| harvest rule | med R | ex-top2 R | win% |
-|---|---|---|---|
-| **hold to 10d close** | **−1.00** | −0.19 | 27% |
-| all-out at +1R | +1.00 | +0.36 | 73% |
-| scale +1R / +3R (½/½) | **+2.00** | +0.59 | 53% |
-| (perfect-foresight MFE ceiling) | +7.62 | +6.66 | 100% |
+| harvest rule | med R | mean R | ex-top2 R | win% |
+|---|---|---|---|---|
+| **hold to 10d close** | **−1.00** | +1.64 | −0.19 | 27% |
+| all-out at +1R | +1.00 | +0.45 | +0.36 | 73% |
+| scale +1R / +3R (½/½) | **+2.00** | +0.78 | +0.59 | 53% |
+| Pradeep two-phase (day-0 trail → hold survivors to d5) | +0.52 | +0.71 | +0.16 | **73%** |
+| (perfect-foresight MFE ceiling) | +7.62 | +8.99 | +6.66 | 100% |
 
 **Findings (robust DIRECTION — not the magnitudes, which are in-sample):**
 - **Buy-and-hold LOSES the median name** (−1R, 27% win). Its +1.6R *mean* is purely the
@@ -95,6 +96,22 @@ day-1+ daily resolution, gap-through stop-fills `min(stop, bar_open)`. N=15 fill
 - **The +137% fat tail is NOT systematically harvestable** by a stop rule — any held
   runner bleeds the median in this same-day-give-back cohort. It's a rare bonus, not a
   harvest target; a scale-out ladder caps it (e.g. at +3R) and that's the right trade.
+- **Pradeep TWO-PHASE exit tested (operator 2026-06-15, from his anticipation tweets):**
+  day-0 aggressive intraday giveback-trail that activates ONLY once up ≥+1R ("protect profit
+  if it gaps/breaks out fast") → hold the survivors to a day-5 time stop ("genuine breakouts
+  don't fade"). Result: **median +0.52R, mean +0.71R, 73% win** — a high-win-rate, derisk-fast
+  rule, but **NOT superior to the +1R/+3R scale here** (scale median +2.0 / mean +0.78). The
+  per-name detail confirms the operator's hypothesis PARTIALLY: it **DOES capture tail the +3R
+  cap throws away** — MXL **+5.8R** (vs scale +2.0), STRL **+2.8R** — the genuine multi-day
+  runners it held. But the day-0 trail is double-edged: it **stops out dip-then-rip names early**
+  (ASTI +0.4R despite a +35R MFE — trailed out on a day-0 dip, missed the run). Net = it trades
+  the reliable +2R names for the occasional held runner → mean ≈ scale, median lower, win higher.
+  **No free lunch: chasing the tail (two-phase) costs the reliable middle; the scale's guaranteed
+  +2R median is robust.** The more promising untested lever is Pradeep's **catalyst-conditional
+  leash** ("*unless* it has a catalyst with long-term potential" → hold past day-5) — that would
+  let the MXL/STRL-class runners run without sacrificing the rest, and wires the JUDGE's catalyst
+  grade into the exit. N=15 in-sample; two-phase params (giveback 0.5/0.33, +1R activation, d5
+  cap) tunable. (`_270_exit_replay.py` rules `twophase_g50`/`g33`.)
 
 **RULE (illustrative direction; deploy in SHADOW, size only after multi-window re-validation
 + the live forward data):** scale out FAST into the trigger-day spike — bank a floor tranche

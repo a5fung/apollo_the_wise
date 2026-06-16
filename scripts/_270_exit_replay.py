@@ -92,7 +92,7 @@ def build_path(tk, trig_date, post_min_bars):
 # evaluator shared with the anticipation replay (extracted 2026-06-14 to kill the hand-synced
 # copy). SPEED_ORDER is just this script's display ordering of those rules.
 SPEED_ORDER = ["all_out_+1R", "time_stop_2d", "half_1R_trail", "bank_1R_3R",
-               "bank2_1R_run", "hold_10d", "MFE_ceiling"]
+               "bank2_1R_run", "twophase_g50", "twophase_g33", "hold_10d", "MFE_ceiling"]
 
 
 def agg(xs):
@@ -195,6 +195,20 @@ def main():
           f"hold_10d {hold[2]:+.2f}")
     print("  -> if fast/hybrid > hold on BOTH median and ex-top2 (and the ranking holds "
           "under the opt bound), the derisk-fast thesis is confirmed for the median name.")
+
+    # PRADEEP TWO-PHASE test: does CONDITIONAL hold (day-0 aggressive trail → hold survivors)
+    # protect the median AND capture the tail the fixed-target scale CAPS at +3R?
+    print("\nPRADEEP TWO-PHASE (day-0 giveback trail -> survivors held to day-5; [pess]):")
+    scale = results[("bank_1R_3R", "pess")]
+    tp50, tp33 = results[("twophase_g50", "pess")], results[("twophase_g33", "pess")]
+    print(f"  {'rule':<14}{'medR':>7}{'meanR':>8}{'exTop2R':>9}{'win%':>6}")
+    for nm, r in (("bank_1R_3R", scale), ("twophase_g50", tp50), ("twophase_g33", tp33),
+                  ("hold_10d", hold)):
+        print(f"  {nm:<14}{r[0]:>+7.2f}{r[1]:>+8.2f}{r[2]:>+9.2f}{r[3]*100:>5.0f}%")
+    print("  -> two-phase WINS if it holds the median ~level with the fast rules (>=0) AND lifts "
+          "the MEAN\n     above the +3R-capped scale (= it kept a runner the cap threw away). If "
+          "the mean doesn't\n     beat scale, the day-0 trail is stopping out the would-be runners "
+          "too -- tune day0_giveback / the day-5 cap.")
 
 
 if __name__ == "__main__":

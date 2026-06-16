@@ -25,6 +25,15 @@ RULES = {
     "bank2_1R_run":  dict(partials=[(1.0, 0.667)], breakeven_after_first=True,
                           trail_prior_low=True),                              # 2/3@+1R, 1/3 trail
     "hold_10d":      dict(hold=True),
+    # Pradeep TWO-PHASE / character-based exit (operator 2026-06-15, from his anticipation
+    # tweets): day-0 AGGRESSIVE intraday giveback trail ("move stops aggressively if it
+    # gaps/breaks out fast — it fades you out WITH profit") → survivors held on the prior-low
+    # trail to a day-5 time stop ("genuine breakouts don't fade — hold 3-5 days"). Tests
+    # CONDITIONAL hold (hold only what survives day-0) — the path fixed targets CAP and
+    # unconditional hold_10d LOSES. day0_giveback = max fraction of the gain-from-running-high
+    # surrendered on day-0 before the trail fires (0.50 = give back half; 0.33 = tighter).
+    "twophase_g50":  dict(day0_giveback=0.50, trail_prior_low=True, time_stop_days=5),
+    "twophase_g33":  dict(day0_giveback=0.33, trail_prior_low=True, time_stop_days=5),
 }
 
 
@@ -51,6 +60,16 @@ def simulate(entry, init_stop, path, rule, bound):
 
     for b in path:
         mfe_px = max(mfe_px, b["h"])
+        # Phase 1 — day-0 aggressive intraday GIVEBACK trail (Pradeep): it only activates
+        # ONCE THERE IS PROFIT TO PROTECT (gain >= day0_activate_r * risk — "protect profit if
+        # it gaps/breaks out fast"); before that the structural stop holds, so intraday noise
+        # near entry can't stop you. After activation, never surrender more than `day0_giveback`
+        # of the gain from the running intraday high → a fast spike-and-fade exits WITH profit;
+        # a steady grinder never trips it (survives to phase 2). Only raises the stop.
+        gb = rule.get("day0_giveback")
+        if (gb is not None and b["kind"] == "min"
+                and (mfe_px - entry) >= rule.get("day0_activate_r", 1.0) * risk):
+            stop = max(stop, mfe_px - gb * (mfe_px - entry))
         if b["kind"] == "day":
             day_count += 1
             if rule.get("trail_prior_low") and b["prior_low"] is not None:
