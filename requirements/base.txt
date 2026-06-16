@@ -31,6 +31,7 @@ icalendar>=6.1.0
 Pillow>=10.0.0
 tweepy>=4.14.0
 apscheduler>=3.10.0
+tzlocal>=5.0  # hard dep of apscheduler 3.x; pinned explicitly — a transitive-only resolution flaked it out of the market image (2026-06-16 apollo-market boot crash)
 pytz>=2024.1
 google-genai>=1.0.0
 yfinance>=0.2.0
