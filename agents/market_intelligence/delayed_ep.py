@@ -586,3 +586,40 @@ def simulate_first5(entry, stop, minute_bars, break_idx, daily_forward, rule=Non
     mfe = (max(b["h"] for b in path) - entry) / risk
     return {"realized_r": realized_r, "fwd_mfe_pct": mfe,
             "fills": [{"day_idx": d, "fraction": f} for d, f in fills]}
+
+
+# ── ADR 0004 Stocks-in-Play feed (pure payload builder) ───────────────────
+# A delayed-EP row that reaches ready/triggered ALSO surfaces in the unified
+# /watch board (one row per detector, ADR 0004) — /sip stays the drill-down.
+# This builds the (reason, readiness_signal) pair; the async DB write + TTL
+# live in scheduler._feed_delayed_ep_sip. Kept pure so the JSON-safety of the
+# readiness_signal (no raw dates/Decimals — the jsonb codec is plain json.dumps)
+# is unit-testable without a DB.
+_SIP_TACTIC_SHORT = {"anticipation": "anticip", "first5_break": "first5",
+                     "gdl_reclaim": "gdl"}
+
+
+def sip_payload(*, state, gap_day_iso, entry_tactic=None, entry_price=None,
+                stop_price=None, base_run=None, rmv_5d=None):
+    """Return (reason, readiness_signal) for a delayed-EP mi_stocks_in_play row.
+
+    Every value in readiness_signal is JSON-native (Decimals → float, dates
+    pre-stringified by the caller) so the plain-json.dumps jsonb codec can't
+    choke (the date/Decimal hazard the sugar-baby site dodges by str()-ing)."""
+    tac = _SIP_TACTIC_SHORT.get(entry_tactic, entry_tactic or "")
+    if state == "ready":
+        reason = "delayed-EP reclaim ready — awaiting 3b entry"
+    elif entry_price is not None:
+        reason = f"delayed-EP {tac} entry @ {float(entry_price):.2f}"
+    else:
+        reason = f"delayed-EP {tac or 'entry'} triggered"
+    signal = {
+        "state": state,
+        "gap_day": gap_day_iso,
+        "entry_tactic": entry_tactic,
+        "base_run": int(base_run) if base_run is not None else None,
+        "rmv_5d": float(rmv_5d) if rmv_5d is not None else None,
+        "entry_price": float(entry_price) if entry_price is not None else None,
+        "stop_price": float(stop_price) if stop_price is not None else None,
+    }
+    return reason, signal

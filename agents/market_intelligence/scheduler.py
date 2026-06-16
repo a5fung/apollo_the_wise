@@ -2596,6 +2596,36 @@ async def _post_nightly_audit_job():
         logger.error(f"Review escalation failed: {e}", exc_info=True)
 
 
+async def _feed_delayed_ep_sip(*, ticker, gap_day, state, entry_tactic=None,
+                               entry_price=None, stop_price=None,
+                               base_run=None, rmv_5d=None) -> None:
+    """Fail-open: mirror a delayed-EP ready/triggered row into mi_stocks_in_play so
+    /watch surfaces it alongside every other detector (ADR 0004; /sip stays the
+    drill-down). SHADOW → operator_only — never apollo_eligible (only that class
+    auto-routes, and nothing reads this table for routing anyway: it is display-only).
+    A failed write NEVER breaks the lifecycle jobs (ADR 0004 §11 fail-open-everywhere)."""
+    try:
+        from agents.market_intelligence import delayed_ep as de
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.db import upsert_stocks_in_play
+        from agents.market_intelligence.stocks_in_play_sources import (
+            SOURCE_DELAYED_EP_REENTRY, CLASS_OPERATOR_ONLY,
+        )
+        reason, signal = de.sip_payload(
+            state=state, gap_day_iso=gap_day.isoformat(), entry_tactic=entry_tactic,
+            entry_price=entry_price, stop_price=stop_price,
+            base_run=base_run, rmv_5d=rmv_5d)
+        # ~5 trading sessions ≈ 7 calendar days (ADR 0004 §3 flag-stage TTL).
+        expires_at = datetime.combine(et_today() + timedelta(days=7),
+                                      _dt_time(23, 59), tzinfo=_ET)
+        await upsert_stocks_in_play(
+            ticker=ticker, source_detector=SOURCE_DELAYED_EP_REENTRY,
+            automation_class=CLASS_OPERATOR_ONLY, reason=reason,
+            readiness_signal=signal, source_phase="shadow", expires_at=expires_at)
+    except Exception as e:
+        logger.error(f"delayed_ep SiP feed {ticker}/{gap_day}: {e}", exc_info=True)
+
+
 async def _delayed_ep_readiness_job():
     """#270 Step 3 SHADOW — derive the delayed-EP re-entry lifecycle nightly + alert ARMED
     transitions. 17:35 ET, after the 17:00 nightly_data_pull refreshes mi_daily_closes.
@@ -2656,6 +2686,12 @@ async def _delayed_ep_readiness_job():
                     tight_close_pct=row["tight_close_pct"], fwd_mfe_pct=fwd_mfe,
                     realized_r=realized_r, settled=settled, last_eval=today)
                 written += 1
+                if row["state"] in ("ready", "triggered"):
+                    await _feed_delayed_ep_sip(
+                        ticker=ticker, gap_day=gap_day, state=row["state"],
+                        entry_tactic=row["entry_tactic"], entry_price=row["entry_price"],
+                        stop_price=row["stop_price"], base_run=row["base_run"],
+                        rmv_5d=row["rmv_5d"])
                 prior_state = prior["state"] if prior else None
                 if (prior_state in (None, "watched")
                         and row["state"] in ("armed", "coiled", "ready", "triggered")):
@@ -2721,6 +2757,9 @@ async def _delayed_ep_3b_job():
                         w["ticker"], w["gap_day"], entry_tactic=tactic,
                         entry_price=entry, stop_price=stop, triggered_date=today):
                     fired.append((w["ticker"], w["gap_day"], tactic, entry, stop))
+                    await _feed_delayed_ep_sip(
+                        ticker=w["ticker"], gap_day=w["gap_day"], state="triggered",
+                        entry_tactic=tactic, entry_price=entry, stop_price=stop)
             except Exception as e:
                 logger.error(f"delayed_ep 3b detect {w['ticker']}: {e}", exc_info=True)
 
