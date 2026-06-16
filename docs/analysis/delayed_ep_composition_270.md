@@ -397,6 +397,46 @@ W3 exit layer realized, (4) operator decision #4 (include + maturity threshold +
 HARD-gate sign-off. Weeks out, post-launch — do NOT attach a date; ship the SHADOW now, gate live
 on the evidence (the bias-to-action "ship the safe subset" rule).
 
+## ANTICIPATION UNIVERSE — Pradeep shortlist diagnosis (operator 2026-06-16)
+
+Operator shared Pradeep's 6/15 anticipation shortlist ($COO $HYLN $ALHC $APPS $NTAP — "multiple
+tight days") and asked: does our system pick these up? Checked vs the LIVE continuation-flag
+detector (`flag_detector.py`; the right correspondent — these are post-runup tight bases, NOT
+post-+40%-gap tiny-caps, so #270's gap-seed wouldn't catch any). Result: **1 of 5 caught (NTAP
+TIGHTENING), 1 partial (HYLN WATCH; RMV saw it tight, rmv_5d=0 on 6/10–12 = the #54 divergence
+live), 3 missed (COO/ALHC/APPS).** All five DO have prior runups (COO +15%, ALHC +52%, NTAP +71%,
+APPS +259%, HYLN +352%) — operator corrected an earlier wrong framing: Pradeep REQUIRES the runup,
+he is not screening random tight stocks.
+
+**Why we miss them — the exact gate per name (current thresholds):**
+- `_RUNUP_MIN_RATIO = 1.50` (runup ≥50%): **COO fails** (+15–23%). To catch it we'd drop the floor
+  to ~15% → admits THOUSANDS of names up 15%/60d. COO isn't special at +15%; **Pradeep picked it by
+  DISCRETION** (tight base + catalyst + Twitter-buzz read) **on a LOOSE universe**. The runup number
+  is not his edge — his SELECTION is. A threshold drop adds noise, not his shortlist.
+- `_BASE_AGE_MIN_WATCH = 3`: **ALHC fails** (base_age 2 — a fresh +25% thrust 6/09 then 2–3 tight
+  days). Our maturity floor is stricter than his "enters on multiple (2–3) tight days." Measured:
+  base_age 3→2 adds ~30–90 raw fresh-base names/day (real WATCH addition is the subset clearing
+  runup+tightness) — modest, NOT a flood, but base_age=2 is the freshest base → forward-evidence
+  before a live flip (shadow-variant candidate).
+- APPS: +259% runup but recent days 7–12% wide → not actually tight → reject defensible.
+
+**THE INSIGHT (reshapes the #270 anticipation detector):** Pradeep = **LOOSE universe (any
+post-runup tight base, incl. modest +15% on quality names) + DISCRETIONARY QUALITY SELECTION**
+(multiple tight days + catalyst + buzz). Our flag detector = **TIGHT universe (≥50% runup) surfaced
+wholesale**. Reproducing "COO makes the shortlist, the other 2000 up-15% names don't" is a
+**SELECTION/RANKING problem, not a threshold drop**: run a loose post-runup universe → RANK by
+tight-base quality (RMV + base maturity + catalyst materiality) → surface the top-N. That ranking
+layer is exactly the #270 anticipation + RMV-telemetry direction.
+
+**DESIGN DIRECTION for #270 Step 3 (anticipation detector):** seed a LOOSE post-runup universe and
+add a RANKING pass (RMV + base_age maturity + catalyst), surfacing top-N — record in shadow, watch
+whether its top-ranked names match Pradeep's shortlists over ~2 weeks before any live promotion.
+**OPEN (operator/advisor decision before building the readiness job):** universe breadth — keep the
++40%-gap tiny-cap seed for the delayed-EP SUBSET (the MNTS template) AND add a separate
+loose-universe general-anticipation ranker? Or unify? Don't lock the readiness-job seed until decided.
+NO live threshold change on COO/ALHC alone (N=2, one tweet — the parabolic ship→revert→restore +
+the operator's N≥30 anti-overfit rule). Telemetry-first, gate the live flip on the evidence.
+
 ## Gate
 
 The replay + calibration (read-only scripts + this doc) are gate-safe. The deployable
