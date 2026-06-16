@@ -5249,6 +5249,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
             "/sip":            self._handle_sip_query,
+            "/ideas":          self._handle_ideas_query,
         }
         handler = dispatch.get(cmd)
         if handler:
@@ -5982,6 +5983,15 @@ class MarketIntelligenceAgent(BaseAgent):
     async def _handle_hud(self, request: AgentRequest) -> AgentResponse:
         msg = await _build_hud_text()
         return self._ok(request, result=msg)
+
+    async def _handle_ideas_query(self, request: AgentRequest) -> AgentResponse:
+        """`/ideas` — unified trade-ideas front door: substrate-backed Stocks in Play
+        + top NAMED ideas per strategy (ADR 0004 consolidation). The per-strategy
+        drill-down buttons + edit-in-place ← back nav live in channels/telegram.py
+        (orchestrator), mirroring /hud; this returns the summary TEXT only. SHADOW-safe
+        — read-only aggregation, no trades."""
+        from agents.market_intelligence.ideas_board import build_ideas_text
+        return self._ok(request, result=await build_ideas_text())
 
     async def _handle_friday_watchlist(self, request: AgentRequest) -> AgentResponse:
         """Curated weekly watchlist — sends Telegram digest, returns ack."""
