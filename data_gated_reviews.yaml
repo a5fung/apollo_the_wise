@@ -1256,6 +1256,28 @@ reviews:
       sma_20`) — when the review fires, BB should appear in
       `rmv_catches_apollo_misses` with a measurable forward edge
       if RMV is the right additional axis.
+
+      **RESULT — RAN 2026-06-16 (overdue; the RMV-miss session).**
+      Two findings: (1) the LOCKED SQL above was BUGGY — it gates on
+      `breakout_close`, which flag_detector sets ONLY on TRIGGERED rows
+      (flag_detector.py:637), while filtering for WATCH/TIGHTENING →
+      the catch set is structurally ALWAYS empty (the 5/24 "530" was
+      never reproducible via this SQL). FIX = use the candidate's
+      current close at scan_date (mi_daily_closes) for MA-alignment;
+      corrected query = `scripts/_rmv_phase2_eval_54_fixed.sql`. A locked
+      review query that was never run-and-verified hid a latent bug —
+      exactly the idle-review class this session set out to mitigate.
+      (2) VERDICT (fixed query, 35d window): rmv_low_n=811,
+      rmv_catches_apollo_misses=728; forward fwd_5d_max_high median
+      baseline 5.69% vs RMV-low-catch 5.86% = **+0.17pp lift << the 5pp
+      bar** → per the locked decision rule, **RMV-low is REDUNDANT with
+      `_compute_fresh_tightening` for forward edge → CLOSE OUT, keep
+      rmv_5d/rmv_15d as DIAGNOSTIC telemetry (do not drop, do not
+      promote to a COILED qualifier).** Converges with #270 STEP 0
+      (`docs/analysis/delayed_ep_rmv_step0_270.md`): RMV-low is not a
+      load-bearing entry edge. Caveat: fwd_5d_max_high is favorable-
+      excursion, not realized P&L; one 35d window. Operator to RATIFY
+      the close.
     predicate_sql: |
       SELECT COUNT(*) FROM mi_flag_candidates
       WHERE rmv_5d IS NOT NULL
