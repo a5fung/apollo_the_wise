@@ -6,7 +6,7 @@ plus synthetic watched/armed/expired off a flat-then-gap series.
 """
 from pathlib import Path
 
-import agents.market_intelligence.delayed_ep as de
+import agents.market_intelligence.anticipation as de
 
 MNTS = Path(__file__).resolve().parent.parent / "scripts" / "_270_bars_mnts.tsv"
 

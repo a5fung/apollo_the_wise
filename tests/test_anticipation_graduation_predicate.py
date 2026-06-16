@@ -17,20 +17,20 @@ def _predicate(rid):
 
 
 def test_graduation_predicate_gates_on_realized_r_and_first5_only():
-    sql = _predicate("delayed_ep_270_shadow_graduation")
+    sql = _predicate("anticipation_270_shadow_graduation")
     assert "realized_r IS NOT NULL" in sql
     assert "fwd_mfe_pct" not in sql                       # must NOT gate on the MFE ceiling
     assert "state = 'triggered'" in sql
     assert "entry_tactic IN" in sql
     assert "first5_break" in sql and "gdl_reclaim" in sql
-    assert "anticipation" not in sql                      # anticipation stays observational
+    assert "'anticipation'" not in sql                    # the anticipation (coil-close) TACTIC stays observational — not in entry_tactic IN (...)
 
 
 def test_graduation_predicate_columns_exist_on_table():
-    # the predicate's columns must match the shipped mi_delayed_ep_lifecycle CREATE.
-    sql = _predicate("delayed_ep_270_shadow_graduation")
+    # the predicate's columns must match the shipped mi_anticipation_lifecycle CREATE.
+    sql = _predicate("anticipation_270_shadow_graduation")
     ddl = (Path(__file__).resolve().parent.parent
            / "agents/market_intelligence/db.py").read_text(encoding="utf-8")
-    assert "mi_delayed_ep_lifecycle" in ddl
+    assert "mi_anticipation_lifecycle" in ddl
     for col in ("state", "realized_r", "entry_tactic"):
         assert col in sql and col in ddl

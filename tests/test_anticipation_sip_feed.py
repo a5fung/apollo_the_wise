@@ -1,6 +1,6 @@
-"""#270 Step 3 — delayed-EP → mi_stocks_in_play feed (ADR 0004 consolidation).
+"""#270 Step 3 — anticipation → mi_stocks_in_play feed (ADR 0004 consolidation).
 
-A delayed-EP row that reaches ready/triggered ALSO surfaces in the unified /watch
+A anticipation row that reaches ready/triggered ALSO surfaces in the unified /watch
 board (one row per detector); /sip stays the drill-down. These pin the two things a
 future edit could silently break: (1) the new source_detector is registered in
 VALID_SOURCES (ADR 0004 friction-by-design — unregistered sources raise at insert),
@@ -11,16 +11,16 @@ site dodges by str()-ing its dates.
 import json
 from decimal import Decimal
 
-import agents.market_intelligence.delayed_ep as de
+import agents.market_intelligence.anticipation as de
 from agents.market_intelligence.stocks_in_play_sources import (
-    SOURCE_DELAYED_EP_REENTRY, CLASS_OPERATOR_ONLY, VALID_SOURCES,
+    SOURCE_ANTICIPATION_REENTRY, CLASS_OPERATOR_ONLY, VALID_SOURCES,
     validate_source, validate_class,
 )
 
 
 def test_source_registered():
-    assert SOURCE_DELAYED_EP_REENTRY in VALID_SOURCES
-    assert validate_source(SOURCE_DELAYED_EP_REENTRY) == SOURCE_DELAYED_EP_REENTRY
+    assert SOURCE_ANTICIPATION_REENTRY in VALID_SOURCES
+    assert validate_source(SOURCE_ANTICIPATION_REENTRY) == SOURCE_ANTICIPATION_REENTRY
     # the feed writes operator_only (never apollo_eligible while shadow)
     assert validate_class(CLASS_OPERATOR_ONLY) == CLASS_OPERATOR_ONLY
 

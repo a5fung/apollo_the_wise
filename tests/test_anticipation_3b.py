@@ -6,7 +6,7 @@ the Polygon→RTH-minute adapter, and that realized_r harvests over a REAL minut
 """
 from datetime import datetime, timezone
 
-import agents.market_intelligence.delayed_ep as de
+import agents.market_intelligence.anticipation as de
 
 
 def _utc_ms(h, mi):

@@ -1,10 +1,10 @@
-"""#270 delayed-EP re-entry — SHADOW lifecycle composition (Step 3).
+"""#270 anticipation re-entry — SHADOW lifecycle composition (Step 3).
 
 Ports the gate-free replay/coil logic (validated in `scripts/_270_*.py`) into the
-production package so the readiness job (`scheduler._delayed_ep_readiness_job`) and
+production package so the readiness job (`scheduler._anticipation_readiness_job`) and
 the `/sip` board can compose the lifecycle — EP gap → gap-low UNDERCUT → RECLAIM →
 COIL → entry → harvest — from daily bars (the MNTS template). The offline scripts
-stay the frozen analysis artifacts; `tests/test_delayed_ep_golden.py` pins this port
+stay the frozen analysis artifacts; `tests/test_anticipation_golden.py` pins this port
 byte-identical to their funnel (cohort 62→30→16 + MNTS dates) so the two can't
 silently diverge — the same golden-test discipline as the `_270_harvest` extraction.
 
@@ -40,7 +40,7 @@ FWD_N = 10            # forward endpoint = trigger day + 10 trading days
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Ported lifecycle (byte-identical to scripts/_270_delayed_ep_replay.py::replay —
+# Ported lifecycle (byte-identical to scripts/_270_anticipation_replay.py::replay —
 # the golden test pins this). Bars are ascending dicts {date,o,h,l,c,v}.
 # ─────────────────────────────────────────────────────────────────────────────
 def _sma(vals, i, n):
@@ -195,7 +195,7 @@ def find_coiled_days(bars, ctx, min_base=1):
 # ─────────────────────────────────────────────────────────────────────────────
 # Key-adapters — kept SEPARATE and explicit. RMV is non-gating telemetry, so a
 # mis-mapped key (high/low swap, wrong close) yields garbage RMV with NO error and
-# silently corrupts the calibration dataset. `tests/test_delayed_ep_golden.py`
+# silently corrupts the calibration dataset. `tests/test_anticipation_golden.py`
 # asserts `compute_rmv` == flag_detector._compute_rmv on the same series (the
 # uncovered silent-corruption surface the golden funnel test does NOT cover).
 # ─────────────────────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ def compute_rmv(bars: list[dict], today_idx: int,
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Harvest evaluator (ported from scripts/_270_harvest.py — the realized-exit simulator
-# behind realized_r). tests/test_delayed_ep_settlement.py pins this port equal to the
+# behind realized_r). tests/test_anticipation_settlement.py pins this port equal to the
 # script on a known path, same anti-drift discipline as the funnel golden test.
 # A `path` bar = {o,h,l,c, kind:'min'|'day', prior_low, day_idx}; caller owns construction.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -589,10 +589,10 @@ def simulate_first5(entry, stop, minute_bars, break_idx, daily_forward, rule=Non
 
 
 # ── ADR 0004 Stocks-in-Play feed (pure payload builder) ───────────────────
-# A delayed-EP row that reaches ready/triggered ALSO surfaces in the unified
+# A anticipation row that reaches ready/triggered ALSO surfaces in the unified
 # /watch board (one row per detector, ADR 0004) — /sip stays the drill-down.
 # This builds the (reason, readiness_signal) pair; the async DB write + TTL
-# live in scheduler._feed_delayed_ep_sip. Kept pure so the JSON-safety of the
+# live in scheduler._feed_anticipation_sip. Kept pure so the JSON-safety of the
 # readiness_signal (no raw dates/Decimals — the jsonb codec is plain json.dumps)
 # is unit-testable without a DB.
 _SIP_TACTIC_SHORT = {"anticipation": "anticip", "first5_break": "first5",
@@ -601,7 +601,7 @@ _SIP_TACTIC_SHORT = {"anticipation": "anticip", "first5_break": "first5",
 
 def sip_payload(*, state, gap_day_iso, entry_tactic=None, entry_price=None,
                 stop_price=None, base_run=None, rmv_5d=None):
-    """Return (reason, readiness_signal) for a delayed-EP mi_stocks_in_play row.
+    """Return (reason, readiness_signal) for a anticipation mi_stocks_in_play row.
 
     Every value in readiness_signal is JSON-native (Decimals → float, dates
     pre-stringified by the caller) so the plain-json.dumps jsonb codec can't

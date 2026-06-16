@@ -1,6 +1,6 @@
 """#270 Step 3 Phase 2 — the two BLOCKING golden tests (advisor 6/16).
 
-1. FUNNEL: delayed_ep.replay() reproduces the gate-free cohort funnel byte-identical
+1. FUNNEL: anticipation.replay() reproduces the gate-free cohort funnel byte-identical
    (WATCHED 62 → ARMED 30 → TRIGGERED 16 unique tickers) + the MNTS lifecycle dates.
    Guards porting fidelity — the whole Step-3 detector inherits replay()'s behavior, so a
    silent drift here corrupts everything downstream.
@@ -14,7 +14,7 @@ fixture makes a "blocking" gate silently no-op in CI / a fresh clone).
 from collections import defaultdict
 from pathlib import Path
 
-import agents.market_intelligence.delayed_ep as de
+import agents.market_intelligence.anticipation as de
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 

@@ -1403,13 +1403,13 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_flag_breaks_ticker
                 ON mi_flag_breaks(ticker, break_date DESC);
 
-            -- #270 delayed-EP re-entry lifecycle (Step 3 SHADOW, 2026-06-16). Composes the
+            -- #270 anticipation re-entry lifecycle (Step 3 SHADOW, 2026-06-16). Composes the
             -- already-firing fragments (EP gap → gap-low undercut → reclaim → coil → entry →
             -- harvest) into ONE observed-but-not-traded lifecycle (MNTS template). One row per
             -- (ticker, gap_day). SHADOW = no submit; alert-only.
             --
             -- STATE (the replay-label → lifecycle-state mapping lives in the JOB layer, never
-            -- inside the ported replay() — see delayed_ep.py):
+            -- inside the ported replay() — see anticipation.py):
             --   watched   gap day seeded (close>=1.4*prev_close, vol>=3*ADV20, close>SMA200, $>=5)
             --   armed     undercut of gap_day_low in the arm window (the U&R the flag detector
             --             wrongly INVALIDATES on — the bug this setup turns into the signal)
@@ -1424,10 +1424,19 @@ async def initialize_schema() -> None:
             --
             -- realized_r = HARVESTED R (Layer-3 ladder + stop-fills, via _270_harvest), NOT MFE.
             -- fwd_mfe_pct = the perfect-foresight ceiling only. The graduation predicate
-            -- (data_gated_reviews delayed_ep_270_shadow_graduation) gates on realized_r IS NOT NULL.
+            -- (data_gated_reviews anticipation_270_shadow_graduation) gates on realized_r IS NOT NULL.
             -- rmv_5d/rmv_15d/tight_close_pct are recorded TELEMETRY (NOT gates — #54 verdict +
             -- STEP 0: RMV inverts under a too-tight stop; the COILED gate stays range+base_run).
-            CREATE TABLE IF NOT EXISTS mi_delayed_ep_lifecycle (
+            -- #296 rename migration: move the shadow table off the old "delayed_ep" name.
+            -- Idempotent — only fires when the old table exists and the new one doesn't, so it
+            -- preserves the shadow rows on prod and is a no-op on fresh DBs + reruns.
+            DO $$ BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'mi_delayed_ep_lifecycle')
+                   AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'mi_anticipation_lifecycle') THEN
+                    ALTER TABLE mi_delayed_ep_lifecycle RENAME TO mi_anticipation_lifecycle;
+                END IF;
+            END $$;
+            CREATE TABLE IF NOT EXISTS mi_anticipation_lifecycle (
                 ticker          TEXT NOT NULL,
                 gap_day         DATE NOT NULL,           -- the EP/9M gap day = the cohort seed
                 state           TEXT NOT NULL,
@@ -1459,11 +1468,11 @@ async def initialize_schema() -> None:
                 PRIMARY KEY (ticker, gap_day),
                 CHECK (state IN ('watched','armed','coiled','ready','triggered','expired'))
             );
-            CREATE INDEX IF NOT EXISTS idx_delayed_ep_state
-                ON mi_delayed_ep_lifecycle(state, gap_day DESC);
+            CREATE INDEX IF NOT EXISTS idx_anticipation_state
+                ON mi_anticipation_lifecycle(state, gap_day DESC);
             -- the settlement re-eval set: entries awaiting their forward window
-            CREATE INDEX IF NOT EXISTS idx_delayed_ep_unsettled
-                ON mi_delayed_ep_lifecycle(triggered_date)
+            CREATE INDEX IF NOT EXISTS idx_anticipation_unsettled
+                ON mi_anticipation_lifecycle(triggered_date)
                 WHERE state = 'triggered' AND settled = FALSE;
 
             -- Intraday support-test detections (#95, entry-technique #2 from
@@ -3408,7 +3417,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
       (c) **MAGNA53 carryforward** (P7.2 2026-05-17) — R3-stopped MAGNA53
           names in last 7d. Stopped-out names that recently had a +25%
           intraday move get fed into the flag detector's tightness state
-          machine to catch the eventual delayed-EP breakout. Tag:
+          machine to catch the eventual anticipation breakout. Tag:
           `magna53_failed_r3`. Env flag `MAGNA53_FLAG_CARRYFORWARD_ENABLED`.
       (d) **9M universe-watch** (P7.3b 2026-05-17, Pradeep methodology) —
           ALL 9M EPs (sugar baby + failed-Day-2 + intraday-only) in last
@@ -6185,10 +6194,10 @@ async def get_adv_from_daily_closes(trade_date: date, days: int = 20) -> dict[st
     return {r["ticker"]: float(r["adv"]) for r in rows}
 
 
-# ── #270 delayed-EP re-entry lifecycle (Step 3 SHADOW) ────────────────────────
+# ── #270 anticipation re-entry lifecycle (Step 3 SHADOW) ────────────────────────
 
 
-async def get_delayed_ep_gap_seeds(scan_date: date, seed_window_days: int = 25) -> list[dict]:
+async def get_anticipation_gap_seeds(scan_date: date, seed_window_days: int = 25) -> list[dict]:
     """Coarse (ticker, gap_day) seeds in the recent window meeting the cohort predicate
     (close ≥ 1.4·prev_close AND vol ≥ 3·ADV20 AND close ≥ $5 AND vol·close ≥ $20M). The
     readiness job CONFIRMS each via replay() over full bars — this is just the cheap proposer
@@ -6222,7 +6231,7 @@ async def get_delayed_ep_gap_seeds(scan_date: date, seed_window_days: int = 25) 
     return [dict(r) for r in rows]
 
 
-async def get_delayed_ep_ohlcv(ticker: str, to_date: date, lookback_days: int = 340) -> list[dict]:
+async def get_anticipation_ohlcv(ticker: str, to_date: date, lookback_days: int = 340) -> list[dict]:
     """Ascending OHLCV bars for one ticker over [to_date − lookback_days, to_date] — enough
     history for the SMA200 gate before a recent gap + the forward settlement window."""
     pool = await get_pool()
@@ -6237,19 +6246,19 @@ async def get_delayed_ep_ohlcv(ticker: str, to_date: date, lookback_days: int = 
     return [dict(r) for r in rows]
 
 
-async def get_delayed_ep_state_map() -> dict[tuple, dict]:
+async def get_anticipation_state_map() -> dict[tuple, dict]:
     """{(ticker, gap_day): {state, entry_tactic, settled}} for every lifecycle row — the job's
     prior-state lookup for transition-dedup + minute-tactic-entry preservation. One query."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker, gap_day, state, entry_tactic, settled FROM mi_delayed_ep_lifecycle"
+            "SELECT ticker, gap_day, state, entry_tactic, settled FROM mi_anticipation_lifecycle"
         )
     return {(r["ticker"], r["gap_day"]): {"state": r["state"],
             "entry_tactic": r["entry_tactic"], "settled": r["settled"]} for r in rows}
 
 
-async def upsert_delayed_ep_lifecycle(ticker: str, gap_day: date, *, state, gap_day_low,
+async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, gap_day_low,
         gap_day_vol, sma200_at_gap, armed_date, coiled_date, ready_date, triggered_date,
         entry_tactic, entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
         tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval) -> None:
@@ -6260,7 +6269,7 @@ async def upsert_delayed_ep_lifecycle(ticker: str, gap_day: date, *, state, gap_
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
-            INSERT INTO mi_delayed_ep_lifecycle
+            INSERT INTO mi_anticipation_lifecycle
                 (ticker, gap_day, state, gap_day_low, gap_day_vol, sma200_at_gap,
                  armed_date, coiled_date, ready_date, triggered_date, entry_tactic,
                  entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
@@ -6283,7 +6292,7 @@ async def upsert_delayed_ep_lifecycle(ticker: str, gap_day: date, *, state, gap_
              tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval)
 
 
-async def get_delayed_ep_lifecycle_board(limit: int = 40) -> list[dict]:
+async def get_anticipation_lifecycle_board(limit: int = 40) -> list[dict]:
     """Lifecycle board for /sip — open rows first (recency), then recently settled."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -6291,14 +6300,14 @@ async def get_delayed_ep_lifecycle_board(limit: int = 40) -> list[dict]:
             SELECT ticker, gap_day, state, entry_tactic, base_run, rmv_5d,
                    armed_date, coiled_date, ready_date, triggered_date,
                    realized_r, fwd_mfe_pct, settled, updated_at
-            FROM mi_delayed_ep_lifecycle
+            FROM mi_anticipation_lifecycle
             ORDER BY (state <> 'expired') DESC, updated_at DESC
             LIMIT $1
         """, limit)
     return [dict(r) for r in rows]
 
 
-async def get_delayed_ep_watch_set() -> list[dict]:
+async def get_anticipation_watch_set() -> list[dict]:
     """The 3b watch set: armed/ready/coiled rows + the gap_day_low reference (the GDL/reclaim
     level for intraday FIRST5/gdl break detection). Anticipation-entered rows are already
     state='triggered' (excluded), so 3b only sees not-yet-entered set-ups. Read-only."""
@@ -6306,13 +6315,13 @@ async def get_delayed_ep_watch_set() -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker, gap_day, gap_day_low, state
-            FROM mi_delayed_ep_lifecycle
+            FROM mi_anticipation_lifecycle
             WHERE state IN ('armed', 'ready', 'coiled') AND settled = FALSE
         """)
     return [dict(r) for r in rows]
 
 
-async def record_delayed_ep_3b_entry(ticker: str, gap_day: date, *, entry_tactic,
+async def record_anticipation_3b_entry(ticker: str, gap_day: date, *, entry_tactic,
         entry_price, stop_price, triggered_date) -> bool:
     """Record a 3b FIRST5/gdl intraday entry: flip the row to state='triggered' with the entry,
     ONLY if it has not already entered (entry_tactic IS NULL — dedupe per name/day). Returns
@@ -6320,7 +6329,7 @@ async def record_delayed_ep_3b_entry(ticker: str, gap_day: date, *, entry_tactic
     pool = await get_pool()
     async with pool.acquire() as conn:
         res = await conn.execute("""
-            UPDATE mi_delayed_ep_lifecycle
+            UPDATE mi_anticipation_lifecycle
             SET state='triggered', entry_tactic=$3, entry_price=$4, stop_price=$5,
                 triggered_date=$6, updated_at=NOW()
             WHERE ticker=$1 AND gap_day=$2 AND entry_tactic IS NULL
@@ -6328,21 +6337,21 @@ async def record_delayed_ep_3b_entry(ticker: str, gap_day: date, *, entry_tactic
     return res.endswith(" 1")
 
 
-async def get_delayed_ep_3b_unsettled() -> list[dict]:
+async def get_anticipation_3b_unsettled() -> list[dict]:
     """first5/gdl entries awaiting fill-sim settlement (triggered, not settled) + the inputs to
     re-locate the break + harvest (gap_day_low, entry_tactic, entry/stop, triggered_date)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT ticker, gap_day, gap_day_low, entry_tactic, entry_price, stop_price, triggered_date
-            FROM mi_delayed_ep_lifecycle
+            FROM mi_anticipation_lifecycle
             WHERE state='triggered' AND settled=FALSE
               AND entry_tactic IN ('first5_break', 'gdl_reclaim')
         """)
     return [dict(r) for r in rows]
 
 
-async def settle_delayed_ep_3b(ticker: str, gap_day: date, *, realized_r, fwd_mfe_pct,
+async def settle_anticipation_3b(ticker: str, gap_day: date, *, realized_r, fwd_mfe_pct,
                                day0_fills) -> None:
     """Persist the fill-sim result for a first5/gdl entry: realized_r + fwd_mfe + the day-0
     scale-out fill record (JSONB), settled=TRUE."""
@@ -6350,7 +6359,7 @@ async def settle_delayed_ep_3b(ticker: str, gap_day: date, *, realized_r, fwd_mf
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
-            UPDATE mi_delayed_ep_lifecycle
+            UPDATE mi_anticipation_lifecycle
             SET realized_r=$3, fwd_mfe_pct=$4, day0_fills=$5::jsonb, settled=TRUE, updated_at=NOW()
             WHERE ticker=$1 AND gap_day=$2
         """, ticker, gap_day, realized_r, fwd_mfe_pct, json.dumps(day0_fills))

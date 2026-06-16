@@ -9,7 +9,7 @@ pinning the ported simulate to scripts/_270_harvest.py.
 import importlib.util
 from pathlib import Path
 
-import agents.market_intelligence.delayed_ep as de
+import agents.market_intelligence.anticipation as de
 
 _HARVEST = Path(__file__).resolve().parent.parent / "scripts" / "_270_harvest.py"
 _spec = importlib.util.spec_from_file_location("_270_harvest", _HARVEST)

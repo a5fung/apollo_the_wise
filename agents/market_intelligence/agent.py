@@ -2806,9 +2806,9 @@ class MarketIntelligenceAgent(BaseAgent):
         armed (prior-low undercut) → coiled/ready (reclaim set-up) → triggered (entry fired) →
         settled realized_r. The U&R undercut-reclaim is the trigger; no EP/catalyst required.
         Observational — no trades. Companion to the 17:35 ET readiness job. Monospace."""
-        from agents.market_intelligence.db import get_delayed_ep_lifecycle_board
+        from agents.market_intelligence.db import get_anticipation_lifecycle_board
 
-        rows = await get_delayed_ep_lifecycle_board()
+        rows = await get_anticipation_lifecycle_board()
         if not rows:
             return self._ok(request, result=(
                 "⏱️ *Anticipation lifecycle* — no rows yet "

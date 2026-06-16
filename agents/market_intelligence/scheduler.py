@@ -130,7 +130,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
-    "delayed_ep_readiness", "delayed_ep_3b",
+    "anticipation_readiness", "anticipation_3b",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -2596,20 +2596,20 @@ async def _post_nightly_audit_job():
         logger.error(f"Review escalation failed: {e}", exc_info=True)
 
 
-async def _feed_delayed_ep_sip(*, ticker, gap_day, state, entry_tactic=None,
+async def _feed_anticipation_sip(*, ticker, gap_day, state, entry_tactic=None,
                                entry_price=None, stop_price=None,
                                base_run=None, rmv_5d=None) -> None:
-    """Fail-open: mirror a delayed-EP ready/triggered row into mi_stocks_in_play so
+    """Fail-open: mirror a anticipation ready/triggered row into mi_stocks_in_play so
     /watch surfaces it alongside every other detector (ADR 0004; /sip stays the
     drill-down). SHADOW → operator_only — never apollo_eligible (only that class
     auto-routes, and nothing reads this table for routing anyway: it is display-only).
     A failed write NEVER breaks the lifecycle jobs (ADR 0004 §11 fail-open-everywhere)."""
     try:
-        from agents.market_intelligence import delayed_ep as de
+        from agents.market_intelligence import anticipation as de
         from agents.market_intelligence.collector import et_today
         from agents.market_intelligence.db import upsert_stocks_in_play
         from agents.market_intelligence.stocks_in_play_sources import (
-            SOURCE_DELAYED_EP_REENTRY, CLASS_OPERATOR_ONLY,
+            SOURCE_ANTICIPATION_REENTRY, CLASS_OPERATOR_ONLY,
         )
         reason, signal = de.sip_payload(
             state=state, gap_day_iso=gap_day.isoformat(), entry_tactic=entry_tactic,
@@ -2619,36 +2619,36 @@ async def _feed_delayed_ep_sip(*, ticker, gap_day, state, entry_tactic=None,
         expires_at = datetime.combine(et_today() + timedelta(days=7),
                                       _dt_time(23, 59), tzinfo=_ET)
         await upsert_stocks_in_play(
-            ticker=ticker, source_detector=SOURCE_DELAYED_EP_REENTRY,
+            ticker=ticker, source_detector=SOURCE_ANTICIPATION_REENTRY,
             automation_class=CLASS_OPERATOR_ONLY, reason=reason,
             readiness_signal=signal, source_phase="shadow", expires_at=expires_at)
     except Exception as e:
-        logger.error(f"delayed_ep SiP feed {ticker}/{gap_day}: {e}", exc_info=True)
+        logger.error(f"anticipation SiP feed {ticker}/{gap_day}: {e}", exc_info=True)
 
 
-async def _delayed_ep_readiness_job():
-    """#270 Step 3 SHADOW — derive the delayed-EP re-entry lifecycle nightly + alert ARMED
+async def _anticipation_readiness_job():
+    """#270 Step 3 SHADOW — derive the anticipation re-entry lifecycle nightly + alert ARMED
     transitions. 17:35 ET, after the 17:00 nightly_data_pull refreshes mi_daily_closes.
 
     DB-sourced ground truth only (no module state — containers restart): seed gap candidates
-    from mi_daily_closes, CONFIRM + derive each via the pure delayed_ep.evaluate_candidate over
+    from mi_daily_closes, CONFIRM + derive each via the pure anticipation.evaluate_candidate over
     full bars, settle a triggered anticipation entry once its forward window completes, UPSERT,
     and Telegram the watched→armed TRANSITIONS (deduped via the prior-state map — only rows that
     crossed into armed+ this run). SHADOW: observes + alerts, never submits.
     """
     from datetime import date as _date
-    from agents.market_intelligence import delayed_ep as de
+    from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.db import (
-        get_delayed_ep_gap_seeds, get_delayed_ep_ohlcv, get_delayed_ep_state_map,
-        upsert_delayed_ep_lifecycle,
+        get_anticipation_gap_seeds, get_anticipation_ohlcv, get_anticipation_state_map,
+        upsert_anticipation_lifecycle,
     )
     _MINUTE_TACTICS = ("first5_break", "gdl_reclaim")
     try:
         today = et_today()
-        seeds = await get_delayed_ep_gap_seeds(today)
-        state_map = await get_delayed_ep_state_map()
+        seeds = await get_anticipation_gap_seeds(today)
+        state_map = await get_anticipation_state_map()
         keys = {(s["ticker"], s["gap_day"]) for s in seeds}
         keys |= {k for k, v in state_map.items()
                  if v["state"] != "expired" and not v["settled"]}
@@ -2659,7 +2659,7 @@ async def _delayed_ep_readiness_job():
             if prior and prior.get("entry_tactic") in _MINUTE_TACTICS:
                 continue  # 3b/execution owns a minute-tactic entry — never clobber it
             try:
-                bars = de.db_rows_to_bars(await get_delayed_ep_ohlcv(ticker, today))
+                bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
                 if len(bars) < 30:
                     continue
                 row = de.evaluate_candidate(bars, gap_day.isoformat())
@@ -2675,7 +2675,7 @@ async def _delayed_ep_readiness_job():
                         entry_idx=row["_entry_idx"], days_since_trigger=days_since)
                     if st:
                         realized_r, fwd_mfe, settled = st["realized_r"], st["fwd_mfe_pct"], st["settled"]
-                await upsert_delayed_ep_lifecycle(
+                await upsert_anticipation_lifecycle(
                     ticker, gap_day, state=row["state"], gap_day_low=row["gap_day_low"],
                     gap_day_vol=row["gap_day_vol"], sma200_at_gap=row["sma200_at_gap"],
                     armed_date=row["armed_date"], coiled_date=row["coiled_date"],
@@ -2687,7 +2687,7 @@ async def _delayed_ep_readiness_job():
                     realized_r=realized_r, settled=settled, last_eval=today)
                 written += 1
                 if row["state"] in ("ready", "triggered"):
-                    await _feed_delayed_ep_sip(
+                    await _feed_anticipation_sip(
                         ticker=ticker, gap_day=gap_day, state=row["state"],
                         entry_tactic=row["entry_tactic"], entry_price=row["entry_price"],
                         stop_price=row["stop_price"], base_run=row["base_run"],
@@ -2697,9 +2697,9 @@ async def _delayed_ep_readiness_job():
                         and row["state"] in ("armed", "coiled", "ready", "triggered")):
                     transitions.append((ticker, gap_day, row["state"]))
             except Exception as e:
-                logger.error(f"delayed_ep readiness {ticker}/{gap_day}: {e}", exc_info=True)
+                logger.error(f"anticipation readiness {ticker}/{gap_day}: {e}", exc_info=True)
 
-        logger.info(f"delayed_ep readiness: {written} rows, {len(transitions)} armed transitions")
+        logger.info(f"anticipation readiness: {written} rows, {len(transitions)} armed transitions")
         if transitions:
             lines = ["⏱️ *Anticipation (SHADOW) — newly ARMED* "
                      "(gap-low undercut → watch for the reclaim):"]
@@ -2708,29 +2708,29 @@ async def _delayed_ep_readiness_job():
             lines.append("/anticipation for the full lifecycle board.")
             await send_telegram_message("\n".join(lines))
     except Exception as e:
-        logger.error(f"delayed_ep readiness job failed: {e}", exc_info=True)
+        logger.error(f"anticipation readiness job failed: {e}", exc_info=True)
 
 
-async def _delayed_ep_3b_job():
+async def _anticipation_3b_job():
     """#270 Step 3 SHADOW — 3b FIRST5/gdl intraday-confirmation watch + fill-sim. 16:20 ET.
 
     INTELLIGENCE-role (a considered deviation from the plan's 'execution'): a SHADOW EOD pass
     needs only Polygon REST minute bars via collector.get_minute_bars, NOT execution's live
     stream — so it runs creds-LESS, which makes structural-shadow STRUCTURAL BY SERVICE (no
     submit path exists in intelligence at all), strictly safer than an import guard inside the
-    creds-bearing service. Imports only db + collector(data) + briefing + the pure delayed_ep.
+    creds-bearing service. Imports only db + collector(data) + briefing + the pure anticipation.
 
     (A) DETECT: for each watch-set name (armed/ready/coiled), fetch today's RTH minute bars and
         run FIRST5-break (primary) / GDL-reclaim (fallback); record a 'triggered' first5/gdl
         entry + alert. (B) FILL-SIM: for first5/gdl entries whose forward window has completed,
         harvest realized_r over the FAITHFUL day-0-minute + daily path and settle. No submit.
     """
-    from agents.market_intelligence import delayed_ep as de
+    from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today, get_minute_bars
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.db import (
-        get_delayed_ep_watch_set, record_delayed_ep_3b_entry,
-        get_delayed_ep_3b_unsettled, settle_delayed_ep_3b, get_delayed_ep_ohlcv,
+        get_anticipation_watch_set, record_anticipation_3b_entry,
+        get_anticipation_3b_unsettled, settle_anticipation_3b, get_anticipation_ohlcv,
     )
     try:
         today = et_today()
@@ -2738,7 +2738,7 @@ async def _delayed_ep_3b_job():
 
         # (A) DETECT today's intraday FIRST5/gdl breaks among the watch set
         fired = []
-        for w in await get_delayed_ep_watch_set():
+        for w in await get_anticipation_watch_set():
             try:
                 gdl = w.get("gap_day_low")
                 if gdl is None:
@@ -2753,24 +2753,24 @@ async def _delayed_ep_3b_job():
                 if det is None:
                     continue
                 entry, stop, _idx = det
-                if await record_delayed_ep_3b_entry(
+                if await record_anticipation_3b_entry(
                         w["ticker"], w["gap_day"], entry_tactic=tactic,
                         entry_price=entry, stop_price=stop, triggered_date=today):
                     fired.append((w["ticker"], w["gap_day"], tactic, entry, stop))
-                    await _feed_delayed_ep_sip(
+                    await _feed_anticipation_sip(
                         ticker=w["ticker"], gap_day=w["gap_day"], state="triggered",
                         entry_tactic=tactic, entry_price=entry, stop_price=stop)
             except Exception as e:
-                logger.error(f"delayed_ep 3b detect {w['ticker']}: {e}", exc_info=True)
+                logger.error(f"anticipation 3b detect {w['ticker']}: {e}", exc_info=True)
 
         # (B) FILL-SIM: settle first5/gdl entries whose forward window has completed
         settled_n = 0
-        for r in await get_delayed_ep_3b_unsettled():
+        for r in await get_anticipation_3b_unsettled():
             try:
                 tdate = r["triggered_date"]
                 if tdate is None or r.get("gap_day_low") is None:
                     continue
-                daily = de.db_rows_to_bars(await get_delayed_ep_ohlcv(r["ticker"], today))
+                daily = de.db_rows_to_bars(await get_anticipation_ohlcv(r["ticker"], today))
                 fwd = [b for b in daily if b["date"] > tdate.isoformat()]
                 if len(fwd) < de.SETTLE_FORWARD_BARS:
                     continue   # forward window not complete → re-eval a later run
@@ -2786,14 +2786,14 @@ async def _delayed_ep_3b_job():
                 sim = de.simulate_first5(entry, stop, mb, bidx, fwd[:de.SETTLE_FORWARD_BARS])
                 if sim is None:
                     continue
-                await settle_delayed_ep_3b(
+                await settle_anticipation_3b(
                     r["ticker"], r["gap_day"], realized_r=sim["realized_r"],
                     fwd_mfe_pct=sim["fwd_mfe_pct"], day0_fills=sim["fills"])
                 settled_n += 1
             except Exception as e:
-                logger.error(f"delayed_ep 3b fillsim {r['ticker']}: {e}", exc_info=True)
+                logger.error(f"anticipation 3b fillsim {r['ticker']}: {e}", exc_info=True)
 
-        logger.info(f"delayed_ep 3b: {len(fired)} new entries, {settled_n} settled")
+        logger.info(f"anticipation 3b: {len(fired)} new entries, {settled_n} settled")
         if fired:
             lines = ["🎯 *Anticipation (SHADOW) — 3b intraday entry fired* (FIRST5/gdl break, derisk fast):"]
             for tk, gd, tac, e, s in fired[:12]:
@@ -2803,7 +2803,7 @@ async def _delayed_ep_3b_job():
             lines.append("/anticipation for the board.")
             await send_telegram_message("\n".join(lines))
     except Exception as e:
-        logger.error(f"delayed_ep 3b job failed: {e}", exc_info=True)
+        logger.error(f"anticipation 3b job failed: {e}", exc_info=True)
 
 
 async def _theme_round_trip_validator_job():
@@ -3662,23 +3662,23 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # #270 Step 3 delayed-EP readiness (SHADOW): 5:35 PM ET, after nightly_data_pull
+    # #270 Step 3 anticipation readiness (SHADOW): 5:35 PM ET, after nightly_data_pull
     # refreshes mi_daily_closes. Intelligence-role; observes + alerts, never submits.
     _scheduler.add_job(
-        audit_wrap(_delayed_ep_readiness_job, "delayed_ep_readiness"),
+        audit_wrap(_anticipation_readiness_job, "anticipation_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
-        id="delayed_ep_readiness",
+        id="anticipation_readiness",
         replace_existing=True,
     )
 
-    # #270 Step 3 delayed-EP 3b FIRST5/gdl watch + fill-sim (SHADOW): 4:20 PM ET, after the
+    # #270 Step 3 anticipation 3b FIRST5/gdl watch + fill-sim (SHADOW): 4:20 PM ET, after the
     # close (full day-0 minute bars available via Polygon REST). Intelligence-role (creds-less
     # → structural-shadow by service). Runs before the 5:35 readiness job, which preserves the
     # minute-tactic entries this job records.
     _scheduler.add_job(
-        audit_wrap(_delayed_ep_3b_job, "delayed_ep_3b"),
+        audit_wrap(_anticipation_3b_job, "anticipation_3b"),
         CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
-        id="delayed_ep_3b",
+        id="anticipation_3b",
         replace_existing=True,
     )
 

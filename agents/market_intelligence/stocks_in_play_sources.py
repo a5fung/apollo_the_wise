@@ -35,7 +35,7 @@ SOURCE_FLAG_SUPPORT_TEST        = "flag_support_test"          # Future #95 — 
 SOURCE_FLAG_MA_PULLBACK         = "flag_ma_pullback"           # Future #96 — Entry #3
 SOURCE_FLAG_LOWVOL_REST         = "flag_lowvol_rest"           # Future #97 — Entry #4
 SOURCE_FLAG_UNDERCUT_RALLY      = "flag_undercut_rally"        # Future #98 — Stamatoudis U&R
-SOURCE_DELAYED_EP_REENTRY       = "delayed_ep_reentry"        # #270 delayed-EP re-entry lifecycle: ready/triggered → /watch (drill-down stays /sip)
+SOURCE_ANTICIPATION_REENTRY       = "anticipation_reentry"        # #270 anticipation re-entry lifecycle: ready/triggered → /watch (drill-down stays /sip)
 SOURCE_MAGNA53_EP_HIGH          = "magna53_ep_high"
 SOURCE_NINEM_EP_HIGH            = "ninem_ep_high"
 
@@ -49,7 +49,7 @@ VALID_SOURCES = frozenset({
     SOURCE_FLAG_BREAK_INTRADAY, SOURCE_FLAG_TRIGGERED,
     SOURCE_FLAG_SUPPORT_TEST, SOURCE_FLAG_MA_PULLBACK,
     SOURCE_FLAG_LOWVOL_REST, SOURCE_FLAG_UNDERCUT_RALLY,
-    SOURCE_DELAYED_EP_REENTRY,
+    SOURCE_ANTICIPATION_REENTRY,
     SOURCE_MAGNA53_EP_HIGH, SOURCE_NINEM_EP_HIGH,
 })
 
