@@ -2764,6 +2764,14 @@ class MarketIntelligenceAgent(BaseAgent):
             d = (state.get(rid) or {}).get(key)
             return (today - d).days if d else None
 
+        # Legacy-Markdown-safe: review_ids + blocked_by are underscore-heavy, which desyncs
+        # Telegram's parser (italic on '_') — backslash-escape the specials in dynamic strings
+        # and avoid inline backtick/italic entirely. Static *bold* headers are safe.
+        import re as _re
+
+        def _esc(s):
+            return _re.sub(r"[_*\[\]`]", lambda m: "\\" + m.group(0), str(s if s is not None else ""))
+
         lines = [f"📅 *Data-gated reviews — {today.isoformat()}*", ""]
         ready, errored = res.get("ready", []), res.get("errored", [])
         if ready:
@@ -2771,22 +2779,28 @@ class MarketIntelligenceAgent(BaseAgent):
             for r in ready:
                 age = _age(r["review_id"], "first_ready_date")
                 aged = f" · ready {age}d" if age else ""
-                lines.append(
-                    f"  • `{r['review_id']}` (count {r.get('current_count')}≥{r.get('threshold')}{aged})\n"
-                    f"      _{(r.get('title') or '')[:80]}_"
-                )
+                cnt = r.get("current_count")
+                meta = (f"date-gated{aged}" if cnt is None
+                        else f"count {cnt}≥{r.get('threshold')}{aged}")
+                lines.append(f"  • {_esc(r['review_id'])} ({meta})")
+                title = (r.get("title") or "")[:80]
+                if title:
+                    lines.append(f"      {_esc(title)}")
         if errored:
             lines.append("")
-            lines.append(f"🛑 *PREDICATE ERRORING ({len(errored)})* — likely a broken locked query (#54 class):")
+            lines.append(f"🛑 *PREDICATE ERRORING ({len(errored)})* — broken locked query (#54 class):")
             for r in errored:
                 age = _age(r["review_id"], "first_error_date")
                 aged = f" · {age}d" if age else ""
-                lines.append(f"  • `{r['review_id']}` ({r.get('blocked_by')}{aged}) — _{(r.get('title') or '')[:60]}_")
+                lines.append(f"  • {_esc(r['review_id'])} ({_esc(r.get('blocked_by'))}{aged})")
+                title = (r.get("title") or "")[:60]
+                if title:
+                    lines.append(f"      {_esc(title)}")
         pend = res.get("pending_count", 0) - len(errored)
         lines.append("")
         lines.append(f"⏳ {max(pend, 0)} still accumulating / date-gated.")
         if not ready and not errored:
-            lines.append("_Nothing ready or broken right now._")
+            lines.append("Nothing ready or broken right now.")
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
