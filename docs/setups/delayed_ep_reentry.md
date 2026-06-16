@@ -107,11 +107,22 @@ day-1+ daily resolution, gap-through stop-fills `min(stop, bar_open)`. N=15 fill
   (ASTI +0.4R despite a +35R MFE — trailed out on a day-0 dip, missed the run). Net = it trades
   the reliable +2R names for the occasional held runner → mean ≈ scale, median lower, win higher.
   **No free lunch: chasing the tail (two-phase) costs the reliable middle; the scale's guaranteed
-  +2R median is robust.** The more promising untested lever is Pradeep's **catalyst-conditional
-  leash** ("*unless* it has a catalyst with long-term potential" → hold past day-5) — that would
-  let the MXL/STRL-class runners run without sacrificing the rest, and wires the JUDGE's catalyst
-  grade into the exit. N=15 in-sample; two-phase params (giveback 0.5/0.33, +1R activation, d5
+  +2R median is robust.** N=15 in-sample; two-phase params (giveback 0.5/0.33, +1R activation, d5
   cap) tunable. (`_270_exit_replay.py` rules `twophase_g50`/`g33`.)
+- **Catalyst-conditional leash — TESTED + REFUTED for #270 (2026-06-15).** Pradeep's "*unless* it
+  has a catalyst with long-term potential → hold past day-5" does NOT operationalize here: pulled
+  the real EP catalyst grades for the cohort — **catalyst strength does not separate the runners.**
+  MXL ran **+5.8R on a "routine" catalyst** (ep_score 48) while TRT **LOST (−1R) on a
+  "game_changer"** (84); STRL (game_changer) ran +2.8 but CNTA (mna) lost. AND **9/17 cohort names
+  carry no EP grade at all.** A strong-catalyst leash would hold TRT (loser) and MISS MXL (biggest
+  winner). **Mechanism**: the #270 runners are **TECHNICAL breakouts, not catalyst-driven** (the
+  hardest-running name had the weakest catalyst) — i.e. for the delayed-EP/flag-break class **the
+  breakout IS the catalyst** (memory `user_flagbreak_universe_and_judging`), so the news-catalyst
+  grade is the wrong exit axis. **CONCLUSION: no clean conditional exit exists for this cohort** —
+  the scale-out (+1R/+3R, median +2R) is the robust default; the multi-day tail (MXL/STRL/ASTI) is
+  a rare, non-pre-classifiable bonus. Ship scale-out PRIMARY + two-phase as a SECONDARY shadow
+  (highest win-rate 73%, captures clean runners — may suit a trendier regime); do NOT wire
+  catalyst into #270 exits.
 
 **RULE (illustrative direction; deploy in SHADOW, size only after multi-window re-validation
 + the live forward data):** scale out FAST into the trigger-day spike — bank a floor tranche
