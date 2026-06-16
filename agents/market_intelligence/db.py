@@ -6298,6 +6298,64 @@ async def get_delayed_ep_lifecycle_board(limit: int = 40) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_delayed_ep_watch_set() -> list[dict]:
+    """The 3b watch set: armed/ready/coiled rows + the gap_day_low reference (the GDL/reclaim
+    level for intraday FIRST5/gdl break detection). Anticipation-entered rows are already
+    state='triggered' (excluded), so 3b only sees not-yet-entered set-ups. Read-only."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, gap_day, gap_day_low, state
+            FROM mi_delayed_ep_lifecycle
+            WHERE state IN ('armed', 'ready', 'coiled') AND settled = FALSE
+        """)
+    return [dict(r) for r in rows]
+
+
+async def record_delayed_ep_3b_entry(ticker: str, gap_day: date, *, entry_tactic,
+        entry_price, stop_price, triggered_date) -> bool:
+    """Record a 3b FIRST5/gdl intraday entry: flip the row to state='triggered' with the entry,
+    ONLY if it has not already entered (entry_tactic IS NULL — dedupe per name/day). Returns
+    True iff a NEW entry was written."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_delayed_ep_lifecycle
+            SET state='triggered', entry_tactic=$3, entry_price=$4, stop_price=$5,
+                triggered_date=$6, updated_at=NOW()
+            WHERE ticker=$1 AND gap_day=$2 AND entry_tactic IS NULL
+        """, ticker, gap_day, entry_tactic, entry_price, stop_price, triggered_date)
+    return res.endswith(" 1")
+
+
+async def get_delayed_ep_3b_unsettled() -> list[dict]:
+    """first5/gdl entries awaiting fill-sim settlement (triggered, not settled) + the inputs to
+    re-locate the break + harvest (gap_day_low, entry_tactic, entry/stop, triggered_date)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, gap_day, gap_day_low, entry_tactic, entry_price, stop_price, triggered_date
+            FROM mi_delayed_ep_lifecycle
+            WHERE state='triggered' AND settled=FALSE
+              AND entry_tactic IN ('first5_break', 'gdl_reclaim')
+        """)
+    return [dict(r) for r in rows]
+
+
+async def settle_delayed_ep_3b(ticker: str, gap_day: date, *, realized_r, fwd_mfe_pct,
+                               day0_fills) -> None:
+    """Persist the fill-sim result for a first5/gdl entry: realized_r + fwd_mfe + the day-0
+    scale-out fill record (JSONB), settled=TRUE."""
+    import json
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_delayed_ep_lifecycle
+            SET realized_r=$3, fwd_mfe_pct=$4, day0_fills=$5::jsonb, settled=TRUE, updated_at=NOW()
+            WHERE ticker=$1 AND gap_day=$2
+        """, ticker, gap_day, realized_r, fwd_mfe_pct, json.dumps(day0_fills))
+
+
 # ── Data-gated-review escalation state (#54 Prong B) ──────────────────────────
 
 

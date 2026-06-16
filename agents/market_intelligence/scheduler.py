@@ -130,7 +130,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
-    "delayed_ep_readiness",
+    "delayed_ep_readiness", "delayed_ep_3b",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -2675,6 +2675,98 @@ async def _delayed_ep_readiness_job():
         logger.error(f"delayed_ep readiness job failed: {e}", exc_info=True)
 
 
+async def _delayed_ep_3b_job():
+    """#270 Step 3 SHADOW — 3b FIRST5/gdl intraday-confirmation watch + fill-sim. 16:20 ET.
+
+    INTELLIGENCE-role (a considered deviation from the plan's 'execution'): a SHADOW EOD pass
+    needs only Polygon REST minute bars via collector.get_minute_bars, NOT execution's live
+    stream — so it runs creds-LESS, which makes structural-shadow STRUCTURAL BY SERVICE (no
+    submit path exists in intelligence at all), strictly safer than an import guard inside the
+    creds-bearing service. Imports only db + collector(data) + briefing + the pure delayed_ep.
+
+    (A) DETECT: for each watch-set name (armed/ready/coiled), fetch today's RTH minute bars and
+        run FIRST5-break (primary) / GDL-reclaim (fallback); record a 'triggered' first5/gdl
+        entry + alert. (B) FILL-SIM: for first5/gdl entries whose forward window has completed,
+        harvest realized_r over the FAITHFUL day-0-minute + daily path and settle. No submit.
+    """
+    from agents.market_intelligence import delayed_ep as de
+    from agents.market_intelligence.collector import et_today, get_minute_bars
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.db import (
+        get_delayed_ep_watch_set, record_delayed_ep_3b_entry,
+        get_delayed_ep_3b_unsettled, settle_delayed_ep_3b, get_delayed_ep_ohlcv,
+    )
+    try:
+        today = et_today()
+        today_iso = today.isoformat()
+
+        # (A) DETECT today's intraday FIRST5/gdl breaks among the watch set
+        fired = []
+        for w in await get_delayed_ep_watch_set():
+            try:
+                gdl = w.get("gap_day_low")
+                if gdl is None:
+                    continue
+                mb = de.polygon_to_rth_minutes(
+                    await get_minute_bars(w["ticker"], today_iso, today_iso), today_iso)
+                if len(mb) < 6:
+                    continue
+                det, tactic = de.detect_first5_break(mb, float(gdl)), "first5_break"
+                if det is None:
+                    det, tactic = de.detect_gdl_reclaim(mb, float(gdl)), "gdl_reclaim"
+                if det is None:
+                    continue
+                entry, stop, _idx = det
+                if await record_delayed_ep_3b_entry(
+                        w["ticker"], w["gap_day"], entry_tactic=tactic,
+                        entry_price=entry, stop_price=stop, triggered_date=today):
+                    fired.append((w["ticker"], w["gap_day"], tactic, entry, stop))
+            except Exception as e:
+                logger.error(f"delayed_ep 3b detect {w['ticker']}: {e}", exc_info=True)
+
+        # (B) FILL-SIM: settle first5/gdl entries whose forward window has completed
+        settled_n = 0
+        for r in await get_delayed_ep_3b_unsettled():
+            try:
+                tdate = r["triggered_date"]
+                if tdate is None or r.get("gap_day_low") is None:
+                    continue
+                daily = de.db_rows_to_bars(await get_delayed_ep_ohlcv(r["ticker"], today))
+                fwd = [b for b in daily if b["date"] > tdate.isoformat()]
+                if len(fwd) < de.SETTLE_FORWARD_BARS:
+                    continue   # forward window not complete → re-eval a later run
+                mb = de.polygon_to_rth_minutes(
+                    await get_minute_bars(r["ticker"], tdate.isoformat(), tdate.isoformat()),
+                    tdate.isoformat())
+                det = (de.detect_first5_break(mb, float(r["gap_day_low"]))
+                       if r["entry_tactic"] == "first5_break"
+                       else de.detect_gdl_reclaim(mb, float(r["gap_day_low"])))
+                if det is None:
+                    continue
+                entry, stop, bidx = det
+                sim = de.simulate_first5(entry, stop, mb, bidx, fwd[:de.SETTLE_FORWARD_BARS])
+                if sim is None:
+                    continue
+                await settle_delayed_ep_3b(
+                    r["ticker"], r["gap_day"], realized_r=sim["realized_r"],
+                    fwd_mfe_pct=sim["fwd_mfe_pct"], day0_fills=sim["fills"])
+                settled_n += 1
+            except Exception as e:
+                logger.error(f"delayed_ep 3b fillsim {r['ticker']}: {e}", exc_info=True)
+
+        logger.info(f"delayed_ep 3b: {len(fired)} new entries, {settled_n} settled")
+        if fired:
+            lines = ["🎯 *Delayed-EP (SHADOW) — 3b intraday entry fired* (FIRST5/gdl break, derisk fast):"]
+            for tk, gd, tac, e, s in fired[:12]:
+                lines.append(f"  • {tk} gap {gd.isoformat()} "
+                             f"{'first5' if tac == 'first5_break' else 'gdl'} "
+                             f"entry {e:.2f} stop {s:.2f}")
+            lines.append("/sip for the board.")
+            await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"delayed_ep 3b job failed: {e}", exc_info=True)
+
+
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
 
@@ -3537,6 +3629,17 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_delayed_ep_readiness_job, "delayed_ep_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="delayed_ep_readiness",
+        replace_existing=True,
+    )
+
+    # #270 Step 3 delayed-EP 3b FIRST5/gdl watch + fill-sim (SHADOW): 4:20 PM ET, after the
+    # close (full day-0 minute bars available via Polygon REST). Intelligence-role (creds-less
+    # → structural-shadow by service). Runs before the 5:35 readiness job, which preserves the
+    # minute-tactic entries this job records.
+    _scheduler.add_job(
+        audit_wrap(_delayed_ep_3b_job, "delayed_ep_3b"),
+        CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
+        id="delayed_ep_3b",
         replace_existing=True,
     )
 
