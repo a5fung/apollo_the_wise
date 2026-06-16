@@ -18,6 +18,7 @@ PURE + import-safe: no I/O, no submit, no module-level side effects. RMV is REUS
 from `flag_detector._compute_rmv` (telemetry only — #54 verdict + STEP 0: NOT a gate;
 the COILED gate stays range + base_run). Reuse, not a 4th copy (search-before-build).
 """
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from agents.market_intelligence.flag_detector import _compute_rmv
@@ -493,3 +494,95 @@ def evaluate_candidate(bars, gap_day, min_base=MATURE_DAYS):
     else:
         row["state"] = "armed"
     return row
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3b intraday FIRST5 / GDL confirmation entry (Phase 6, ported from
+# scripts/_270_entry_replay.py). PURE: the EXECUTION-role EOD job supplies minute bars +
+# persists. Detection is lookahead-SAFE (entry = the fixed first-5-min-OR high, known by
+# 9:35; the forward MFE/harvest legitimately uses later bars). realized_r harvests over a
+# FAITHFUL mixed minute+daily path — NEVER a daily approximation of the day-0 scale-out
+# (the error this whole arc closed; the advisor's 6/16 settlement guard).
+# ─────────────────────────────────────────────────────────────────────────────
+_RTH_OPEN, _RTH_CLOSE = 9 * 60 + 30, 16 * 60     # ET minutes
+
+
+def polygon_to_rth_minutes(raw: list[dict], et_date_iso: str) -> list[dict]:
+    """Polygon 1-min aggs ({t:epoch_ms, o,h,l,c,v}) → ascending RTH bars {m,o,h,l,c} for the
+    ET date. t is UTC ms; ET = UTC−4 (EDT) — matches the analysis script's convention."""
+    out = []
+    for b in raw:
+        et = datetime.fromtimestamp(int(b["t"]) / 1000, timezone.utc) - timedelta(hours=4)
+        if et.date().isoformat() != et_date_iso:
+            continue
+        m = et.hour * 60 + et.minute
+        if not (_RTH_OPEN <= m < _RTH_CLOSE):
+            continue
+        out.append({"m": m, "o": float(b["o"]), "h": float(b["h"]),
+                    "l": float(b["l"]), "c": float(b["c"])})
+    out.sort(key=lambda x: x["m"])
+    return out
+
+
+def detect_first5_break(minute_bars: list[dict], gdl: float):
+    """Break above the first-5-min-OR high; stop = first-5-min-OR low. Returns
+    (entry, stop, break_idx) or None. Ported from _270_entry_replay.entry_first5."""
+    or5 = [b for b in minute_bars if _RTH_OPEN <= b["m"] < _RTH_OPEN + 5]
+    if not or5:
+        return None
+    hi, lo = max(b["h"] for b in or5), min(b["l"] for b in or5)
+    for i, b in enumerate(minute_bars):
+        if b["m"] < _RTH_OPEN + 5:
+            continue
+        if b["h"] > hi:                          # the break
+            if hi <= lo or hi <= gdl * 0.98:     # must be a real reclaim
+                return None
+            return hi, lo, i
+    return None
+
+
+def detect_gdl_reclaim(minute_bars: list[dict], gdl: float):
+    """First intraday reclaim of the gap-day-low; stop = gap-day-low. Returns
+    (entry, stop, break_idx) or None. Ported from _270_entry_replay.entry_gdl."""
+    for i, b in enumerate(minute_bars):
+        if b["c"] > gdl:
+            if b["c"] <= gdl:
+                return None
+            return b["c"], gdl, i
+    return None
+
+
+def build_mixed_path(minute_bars: list[dict], break_idx: int, daily_forward: list[dict]) -> list[dict]:
+    """Day-0 MINUTE bars after the break (kind='min', day_idx=0) + the subsequent DAILY bars
+    day1..N (kind='day', day_idx≥1, prior_low trailing). The faithful FIRST5 harvest geometry:
+    the day-0 minute scale-out banks the bulk, the runner rides the daily trail to the day-5
+    time stop. daily_forward = ascending {o,h,l,c} AFTER the trigger day."""
+    path = [{"o": b["o"], "h": b["h"], "l": b["l"], "c": b["c"],
+             "kind": "min", "prior_low": None, "day_idx": 0}
+            for b in minute_bars[break_idx + 1:]]
+    prior_low = min((b["l"] for b in minute_bars), default=None)   # day-0 low seeds the trail
+    for di, b in enumerate(daily_forward, start=1):
+        path.append({"o": b["o"], "h": b["h"], "l": b["l"], "c": b["c"],
+                     "kind": "day", "prior_low": prior_low, "day_idx": di})
+        prior_low = b["l"]
+    return path
+
+
+def simulate_first5(entry, stop, minute_bars, break_idx, daily_forward, rule=None) -> Optional[dict]:
+    """Realized R + the scale-out fill record for a FIRST5/gdl entry, harvested over the
+    FAITHFUL mixed minute+daily path. Returns {realized_r, fwd_mfe_pct, fills} or None. `fills`
+    = [{day_idx, fraction}] (persisted as day0_fills for audit); realized_r is the simulate
+    output over the real geometry — execution owns this because intelligence has daily bars only."""
+    risk = entry - stop
+    if risk <= 0:
+        return None
+    path = build_mixed_path(minute_bars, break_idx, daily_forward)
+    if not path:
+        return None
+    out = simulate(entry, stop, path, rule or SETTLE_RULE, "pess")
+    if out is None:
+        return None
+    realized_r, _captured, fills = out
+    mfe = (max(b["h"] for b in path) - entry) / risk
+    return {"realized_r": realized_r, "fwd_mfe_pct": mfe,
+            "fills": [{"day_idx": d, "fraction": f} for d, f in fills]}
