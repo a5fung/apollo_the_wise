@@ -106,6 +106,7 @@ reviews:
     predicate_sql: |
       SELECT COUNT(*) FROM mi_delayed_ep_lifecycle
       WHERE state = 'triggered' AND realized_r IS NOT NULL
+        AND entry_tactic IN ('first5_break', 'gdl_reclaim')
     threshold: 5
     earliest_review_date: 2026-07-15
     status: pending
@@ -129,9 +130,14 @@ reviews:
       ⚠ THRESHOLD (5) + earliest date (7/15) are PROVISIONAL operator knobs — triggers are
       RARE (~1/week), so even N=5 may take ~5 weeks; the deferred-status loop is how you
       wait for more without the review going silent.
-      ⚠ PREREQ: #270 step-3 shadow wiring shipped (post-#277) AND this predicate verified
-      against the shipped `mi_delayed_ep_lifecycle` columns — the table is PLANNED, not yet
-      built, so until then the predicate errors silently = treated not-ready (correct/safe).
+      ✅ PREREQ MET (2026-06-16, #270 Step 3 Phases 1–5): table `mi_delayed_ep_lifecycle` BUILT;
+      predicate verified against the shipped columns (`state`, `realized_r`). The `entry_tactic IN
+      ('first5_break','gdl_reclaim')` guard was ADDED so the verdict can't ripen on an anticipation-only
+      cohort (anticipation settles realized_r too but stays observational — no realized edge). TIMING
+      (advisor 6/16): 3a (anticipation + readiness) shipped before 3b (the FIRST5/gdl execution watch,
+      Phase 6); until 3b is live AND ~5 FIRST5 entries have forward-settled, this stays at COUNT 0 and
+      the 7/15 date passes with the review still empty — that is CORRECT, not a miss (Prong-B escalation
+      only fires once a review is genuinely ready).
       The predicate gates on `realized_r` (the HARVESTED Layer-3 R, NOT `fwd_mfe_pct`/MFE) so it
       fires only when the number the action compares actually exists — advisor 6/14: gating on MFE
       would recreate the MFE-vs-realized gap this tactic's analysis closed. Ensure Step 3 captures
