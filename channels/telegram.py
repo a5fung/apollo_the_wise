@@ -812,6 +812,18 @@ class TelegramChannel:
         "/hud", "/ep", "/eps", "/9m", "/themes", "/clusters", "/regime",
     }
 
+    # /ideas front door (ADR 0004): per-strategy buttons, each drilling into the
+    # strategy's existing board as an edit-in-place deep-dive. SINGLE source for the
+    # keyboard AND the callback task-map so they can never drift (key, label, task).
+    # /sip (delayed-EP, #270) joins once that branch merges.
+    _IDEAS_STRATEGIES = [
+        ("magna53",  "🎯 MAGNA53",        "/eps"),
+        ("9m",       "🏦 9M",             "/9m"),
+        ("flags",    "🚩 Flags",          "/flags"),
+        ("fishhook", "🪝 Fishhook",       "/fishhook"),
+        ("watch",    "📋 Stocks in Play", "/watch all"),
+    ]
+
     async def _dispatch_market_slash(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -1076,6 +1088,60 @@ class TelegramChannel:
                 )
         except Exception as e:
             logger.warning(f"/hud/pin store failed (non-fatal): {e}")
+
+    def _ideas_keyboard(self) -> InlineKeyboardMarkup:
+        """Per-strategy drill-down grid for /ideas, built from _IDEAS_STRATEGIES so it
+        can't drift from the callback task-map. Each taps to an edit-in-place deep-dive
+        (callback ideas:<key>). Mirrors the /hud keyboard pattern."""
+        btns = [InlineKeyboardButton(label, callback_data=f"ideas:{key}")
+                for key, label, _task in self._IDEAS_STRATEGIES]
+        # 3 per row
+        rows = [btns[i:i + 3] for i in range(0, len(btns), 3)]
+        return InlineKeyboardMarkup(rows)
+
+    async def _handle_ideas_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """/ideas — unified trade-ideas front door (substrate Stocks-in-Play + top NAMED
+        ideas per strategy) with per-strategy drill-down buttons. On-demand (no pin)."""
+        if not update.effective_user or not self._is_allowed(update.effective_user.id):
+            return
+
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await update.message.reply_text("Market agent not available.")
+            return
+
+        req = AgentRequest(
+            task="/ideas",
+            user_id=update.effective_user.id,
+            conversation_id=str(update.effective_user.id),
+        )
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json().get("result") or "No response."
+        except Exception as e:
+            logger.error(f"/ideas failed: {e}")
+            await update.message.reply_text(f"Error: {e}")
+            return
+
+        try:
+            await update.message.reply_text(
+                result, parse_mode=ParseMode.MARKDOWN, reply_markup=self._ideas_keyboard()
+            )
+        except Exception as e:
+            logger.warning(f"/ideas markdown send failed, retrying plain: {e}")
+            await update.message.reply_text(result, reply_markup=self._ideas_keyboard())
 
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1344,6 +1410,9 @@ class TelegramChannel:
         elif callback_data.startswith("hud:"):
             await self._handle_hud_drill_down(query, callback_data)
 
+        elif callback_data.startswith("ideas:"):
+            await self._handle_ideas_drill_down(query, callback_data)
+
         else:
             pass  # query already answered above
 
@@ -1470,6 +1539,58 @@ class TelegramChannel:
         except Exception as markdown_err:
             logger.warning(f"HUD drill-down markdown send failed, retrying plain: {markdown_err}")
             await query.message.reply_text(result)
+
+    async def _handle_ideas_drill_down(self, query, callback_data: str) -> None:
+        """ideas: drill-down — edit the SAME message in place into a strategy's board
+        with a ← Ideas back button; ideas:summary re-renders the front door + restores
+        the strategy keyboard. Mirrors _handle_drill_down_callback (edit + back), so the
+        operator stays on one message instead of a growing stack."""
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            await query.edit_message_text("Market agent not available.")
+            return
+
+        key = callback_data.split(":", 1)[1]
+        task_map = {key: task for key, _label, task in self._IDEAS_STRATEGIES}
+        task_map["summary"] = "/ideas"
+        task = task_map.get(key)
+        if not task:
+            return
+
+        user_id = query.from_user.id if query.from_user else 0
+        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{url}/task",
+                    json=req.model_dump(),
+                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                )
+                resp.raise_for_status()
+                result = resp.json().get("result") or "No data."
+        except Exception as e:
+            logger.error(f"ideas drill-down ({key}) failed: {e}")
+            result = f"Error: {e}"
+
+        # summary restores the full strategy grid; a deep-dive carries ← Ideas back.
+        if key == "summary":
+            markup = self._ideas_keyboard()
+        else:
+            markup = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("← Ideas", callback_data="ideas:summary")]]
+            )
+        try:
+            await query.edit_message_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+        except Exception as e:
+            logger.warning(f"ideas edit_message_text failed, sending new: {e}")
+            try:
+                await query.message.reply_text(result, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+            except Exception:
+                await query.message.reply_text(result, reply_markup=markup)
 
     # ── Confirmation resolution ────────────────────────────────────────────────
 
@@ -1611,6 +1732,8 @@ class TelegramChannel:
         app.add_handler(CommandHandler("trades", self._handle_trades_command))
         # /hud gets a specialized handler — it pins the message and stores the ID
         app.add_handler(CommandHandler("hud", self._handle_hud_command))
+        # /ideas — unified trade-ideas front door (summary + per-strategy drill-down buttons)
+        app.add_handler(CommandHandler("ideas", self._handle_ideas_command))
         # /ep (primary) + /eps (silent alias for back-compat) and /themes send summary + drill-down
         app.add_handler(CommandHandler("ep", self._handle_ep_command))
         app.add_handler(CommandHandler("eps", self._handle_ep_command))
@@ -1665,6 +1788,7 @@ class TelegramChannel:
         # /breadth retired → merged into /regime.)
         commands = [
             BotCommand("hud",          "Snapshot: regime, EPs, 9M, themes, clusters — drill-down buttons"),
+            BotCommand("ideas",        "💡 Trade-ideas front door — stocks-in-play + top ideas/strategy + drill-down"),
             BotCommand("pregame",      "Daily trade shortlist"),
             BotCommand("ep",           "EP alerts (MAGNA53 + 9M) — tap to drill down"),
             BotCommand("trades",       "Positions + P&L — tap to drill down"),
