@@ -2567,9 +2567,9 @@ async def _post_nightly_audit_job():
         from agents.market_intelligence.data_gated_reviews import escalate_overdue_reviews
         escalations = await escalate_overdue_reviews()
         if escalations:
-            from agents.market_intelligence.briefing import send_telegram_message
-            from agents.market_intelligence.db import log_audit_event
-            # Legacy-Markdown-safe: review_ids / blocked_by / titles are underscore-heavy and
+            # send_telegram_message (module line 46) + log_audit_event (line 27) are module-level;
+            # a function-local re-import here shadows them (the gate-5d / 2026-05-20 UnboundLocalError
+            # anti-pattern, #295). Legacy-Markdown-safe: review_ids / blocked_by / titles are underscore-heavy and
             # desync Telegram's parser — escape the free-text fields via the canonical _md_escape
             # (#148, this module) and drop inline backticks. Ints (age/count/threshold) need no escape.
             lines = ["⏰ *Overdue data-gated reviews* (ready/erroring past grace — run it or update the entry):"]

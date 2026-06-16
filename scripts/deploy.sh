@@ -148,8 +148,22 @@ else
   echo "=== [4/5] Skipped — no market-image container in this deploy scope ==="
 fi
 
+# #278: route the creds-requiring preflights (gate 5 safeguard walk + gate 5g G6) to
+# the container that actually holds Alpaca creds + the entry pipeline. Post-#256 split,
+# apollo-market boots creds-LESS (intelligence role), so the safeguard walk false-fails
+# there ('ALPACA_PAPER_API_KEY not set') AND dies before gates 5b-5j run (it masked the
+# #295 import-shadowing finding on 2026-06-16). apollo-execution holds the creds — detect
+# it; fall back to PREFLIGHT_CONTAINER in combined (non-split) mode where creds co-locate.
+# Caveat: `both` does NOT restart apollo-execution, so gate 5 validates the code execution
+# is CURRENTLY running — redeploy execution-relevant broker code via `deploy.sh execution`.
+CREDS_CONTAINER="$PREFLIGHT_CONTAINER"
+if docker ps --format '{{.Names}}' | grep -qx 'apollo-execution'; then
+  CREDS_CONTAINER="apollo-execution"
+fi
+echo "Preflight routing: code/schema gates → $PREFLIGHT_CONTAINER; creds gates (5, 5g) → $CREDS_CONTAINER"
+
 echo "=== [5/5] Preflight smoke test ==="
-if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_check; then
+if ! docker exec "$CREDS_CONTAINER" python -m scripts.preflight_check; then
   echo ""
   echo "DEPLOY FAILED — preflight (safeguards) reported infra failure(s)."
   echo "The container is running but entry-pipeline safeguards can't authenticate."
@@ -233,7 +247,7 @@ echo "=== [5g/7] Preflight G6 — paper-Alpaca replace_order integration smoke =
 # alpaca-py request constructors + paper credentials). Orchestrator-only
 # deploys skip — no relevant code surface changed.
 if [[ "$SERVICES" == *"market-agent"* || "$SERVICES" == *"apollo-execution"* ]]; then
-  if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.preflight_replace_order_smoke; then
+  if ! docker exec "$CREDS_CONTAINER" python -m scripts.preflight_replace_order_smoke; then
     echo ""
     echo "DEPLOY FAILED — paper-Alpaca replace_order integration smoke failed."
     echo "This is the IBM 2026-05-27 / 2026-05-28 bug class — replace_order"
