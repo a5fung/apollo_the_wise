@@ -2690,7 +2690,8 @@ async def _anticipation_readiness_job():
                     armed_shape=row.get("armed_shape"),
                     fresh_tightening=row.get("fresh_tightening"),
                     fresh_2bar_tr_pct=row.get("fresh_2bar_tr_pct"),
-                    atr14_pct=row.get("atr14_pct"))
+                    atr14_pct=row.get("atr14_pct"),
+                    tight_close_streak=row.get("tight_close_streak"))
                 written += 1
                 if row["state"] in ("ready", "triggered"):
                     await _feed_anticipation_sip(

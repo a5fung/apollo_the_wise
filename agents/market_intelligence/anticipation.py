@@ -48,6 +48,11 @@ FWD_N = 10            # forward endpoint = trigger day + 10 trading days
 #    snapshot/flag-candidate-bound, so this is the daily-bar EOD analog), NOT new gates. ──
 _MA_NEAR_PCT = 2.0            # close within 2% of a moving average = "pulled into the MA" (flag_detector._MA_PULLBACK_NEAR_PCT)
 _FRESH_TIGHT_BASE_AGE_MIN = 4  # _compute_fresh_tightening's own floor (mirror; <4 returns no-fire)
+# Pradeep's qualifying tightness (tweet 2026-06-15, docs/methodology/operator_shared_notes.md):
+# "price percent change today between -.4 and .4" = |close % change| ≤ 0.4%, then "a series of
+# tight days in the previous two bars". TIGHT_CLOSE_PCT is the per-bar gate; the STREAK is the
+# series. 0.4% is Pradeep-canonical; tiny-caps calibrate ~1.4% (#270 STEP 0) — telemetry, recal-able.
+TIGHT_CLOSE_PCT = 0.004
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -271,6 +276,21 @@ def detect_pullback_shape(bars: list[dict], gap_idx: int, i: int):
     return primary, shapes
 
 
+def tight_close_streak(bars: list[dict], i: int, thresh: float = TIGHT_CLOSE_PCT) -> int:
+    """Consecutive bars ending at `i` with |close % change| ≤ thresh — Pradeep's "a series of tight
+    days" (tweet 6/15, docs/methodology/operator_shared_notes.md). The per-bar gate is his
+    "price percent change today between -.4 and .4" (= 0.4% close-to-close, NOT the intrabar range —
+    the reply clarified this). Recorded telemetry, not a gate."""
+    n, j = 0, i
+    while j > 0:
+        prev = bars[j - 1]["c"]
+        if prev and abs(bars[j]["c"] / prev - 1) <= thresh:
+            n, j = n + 1, j - 1
+        else:
+            break
+    return n
+
+
 def tightening_telemetry(bars: list[dict], i: int, gap_idx: int, armed_idx: Optional[int] = None):
     """The generalized tightening RECORD at bar `i` (recorded broadly, gates nothing yet).
     base_age = bars since the pullback began (armed bar if armed, else the gap) so the
@@ -289,6 +309,7 @@ def tightening_telemetry(bars: list[dict], i: int, gap_idx: int, armed_idx: Opti
         "fresh_tightening": bool(fires),
         "fresh_2bar_tr_pct": round(fresh_tr_pct, 3) if fresh_tr_pct is not None else None,
         "atr14_pct": round(atr14_pct, 3) if atr14_pct is not None else None,
+        "tight_close_streak": tight_close_streak(bars, i),   # Pradeep's "series of tight days"
     }
 
 

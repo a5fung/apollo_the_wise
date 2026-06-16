@@ -82,11 +82,22 @@ def test_shape_ma_pullback_and_low_vol_rest_without_undercut():
 def test_tightening_telemetry_native_types():
     tel = de.tightening_telemetry(_series(25), 24, gap_idx=20, armed_idx=22)
     assert set(tel) == {"pullback_shape", "pullback_shapes", "fresh_tightening",
-                        "fresh_2bar_tr_pct", "atr14_pct"}
+                        "fresh_2bar_tr_pct", "atr14_pct", "tight_close_streak"}
     assert isinstance(tel["fresh_tightening"], bool)
+    assert isinstance(tel["tight_close_streak"], int)
     for k in ("fresh_2bar_tr_pct", "atr14_pct"):
         assert tel[k] is None or isinstance(tel[k], float)
     assert tel["pullback_shape"] is None or isinstance(tel["pullback_shape"], str)
+
+
+def test_tight_close_streak_counts_pradeep_series():
+    # Pradeep "series of tight days": consecutive bars with |close %change| ≤ 0.4%.
+    # 3 dead-flat closes ending at i, preceded by a +5% jump → streak of exactly 3.
+    bars = [{"date": f"d{i}", "o": 10, "h": 10, "l": 10, "c": 10.0, "v": 1e6} for i in range(5)]
+    bars.append({"date": "d5", "o": 10.5, "h": 10.5, "l": 10.5, "c": 10.5, "v": 1e6})  # +5% break
+    bars += [{"date": f"d{6+i}", "o": 10.5, "h": 10.5, "l": 10.5, "c": 10.5, "v": 1e6} for i in range(3)]
+    assert de.tight_close_streak(bars, len(bars) - 1) == 3
+    assert de.tight_close_streak(bars, 5) == 0          # the +5% bar itself breaks the streak
 
 
 def test_evaluate_candidate_carries_recorder_and_mnts_arms_on_undercut():

@@ -1461,6 +1461,7 @@ async def initialize_schema() -> None:
                 fresh_tightening   BOOLEAN,              -- _compute_fresh_tightening fired (reused primitive)
                 fresh_2bar_tr_pct  FLOAT,                -- 2-bar TR% (bar-range tightness measure)
                 atr14_pct       FLOAT,                   -- ATR-14% tightness reference
+                tight_close_streak INT,                  -- Pradeep "series of tight days" (≤0.4% close %chg run)
                 fwd_mfe_pct     FLOAT,                   -- MFE ceiling (upper bound only)
                 realized_r      FLOAT,                   -- HARVESTED R; the graduation gate column
                 day0_fills      JSONB,                   -- 3b/execution-persisted day-0 minute fills
@@ -1490,6 +1491,7 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS fresh_tightening  BOOLEAN;
             ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS fresh_2bar_tr_pct FLOAT;
             ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS atr14_pct         FLOAT;
+            ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS tight_close_streak INT;
 
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
@@ -6279,7 +6281,8 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
         entry_tactic, entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
         tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval,
         pullback_shape=None, pullback_shapes=None, armed_shape=None,
-        fresh_tightening=None, fresh_2bar_tr_pct=None, atr14_pct=None) -> None:
+        fresh_tightening=None, fresh_2bar_tr_pct=None, atr14_pct=None,
+        tight_close_streak=None) -> None:
     """UPSERT a derived lifecycle row. day0_fills is intentionally OMITTED — the 3b/execution
     watch owns it, and leaving it out of the SET clause preserves it on update. The tightening-
     recorder columns (pullback_shape/armed_shape/fresh_*) are broad telemetry (operator 6/16)."""
@@ -6294,9 +6297,9 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
                  entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
                  tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval,
                  pullback_shape, pullback_shapes, armed_shape, fresh_tightening,
-                 fresh_2bar_tr_pct, atr14_pct, updated_at)
+                 fresh_2bar_tr_pct, atr14_pct, tight_close_streak, updated_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
-                    $23,$24,$25,$26,$27,$28,NOW())
+                    $23,$24,$25,$26,$27,$28,$29,NOW())
             ON CONFLICT (ticker, gap_day) DO UPDATE SET
                 state=EXCLUDED.state, gap_day_low=EXCLUDED.gap_day_low,
                 gap_day_vol=EXCLUDED.gap_day_vol, sma200_at_gap=EXCLUDED.sma200_at_gap,
@@ -6311,13 +6314,14 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
                 pullback_shape=EXCLUDED.pullback_shape, pullback_shapes=EXCLUDED.pullback_shapes,
                 armed_shape=EXCLUDED.armed_shape, fresh_tightening=EXCLUDED.fresh_tightening,
                 fresh_2bar_tr_pct=EXCLUDED.fresh_2bar_tr_pct, atr14_pct=EXCLUDED.atr14_pct,
+                tight_close_streak=EXCLUDED.tight_close_streak,
                 updated_at=NOW()
         """, ticker, gap_day, state, gap_day_low, gap_day_vol, sma200_at_gap,
              _dd(armed_date), _dd(coiled_date), _dd(ready_date), _dd(triggered_date), entry_tactic,
              entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
              tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval,
              pullback_shape, pullback_shapes, armed_shape, fresh_tightening,
-             fresh_2bar_tr_pct, atr14_pct)
+             fresh_2bar_tr_pct, atr14_pct, tight_close_streak)
 
 
 async def get_anticipation_lifecycle_board(limit: int = 40) -> list[dict]:
@@ -6328,7 +6332,7 @@ async def get_anticipation_lifecycle_board(limit: int = 40) -> list[dict]:
             SELECT ticker, gap_day, state, entry_tactic, base_run, rmv_5d,
                    armed_date, coiled_date, ready_date, triggered_date,
                    realized_r, fwd_mfe_pct, settled, updated_at,
-                   pullback_shape, armed_shape, fresh_tightening, atr14_pct
+                   pullback_shape, armed_shape, fresh_tightening, atr14_pct, tight_close_streak
             FROM mi_anticipation_lifecycle
             ORDER BY (state <> 'expired') DESC, updated_at DESC
             LIMIT $1
