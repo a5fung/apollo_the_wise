@@ -28,7 +28,7 @@ def _load(name):
 
 
 anti = _load("_270_anticipation_replay.py")        # lifecycle, find_coiled_days, build_names, median
-from agents.market_intelligence.flag_detector import _compute_rmv   # the SAME impl prod persists
+from agents.market_intelligence.flag_detector import _compute_rmv, _atr_14   # the SAME impl prod persists
 
 median, mean = anti.median, anti.mean
 
@@ -51,6 +51,25 @@ def pct_change(bars, i):
 
 def rng_pct(bars, i):
     return (bars[i]["h"] - bars[i]["l"]) / bars[i]["c"] if bars[i]["c"] else None
+
+
+def outcome_under_stop(bars, ai, trig_idx, end_idx, stop):
+    """Single-shot (no re-enter) outcome of an anticipation entry at coiled day `ai` under a
+    GIVEN stop. Isolates the STOP-placement effect (operator 6/16: is RMV-low 'bad' really just
+    a too-tight coiled-low stop on a deeply-contracted day?). Returns (outcome, R) where R is the
+    MFE-to-window-high / risk ceiling (win/open) or -1.0 (stop). MFE-ceiling, not harvested."""
+    entry = bars[ai]["c"]
+    if stop is None or stop >= entry:
+        return None
+    risk = (entry - stop) / entry
+    for i in range(ai + 1, end_idx + 1):
+        if trig_idx is not None and i >= trig_idx:           # reached the breakout, never stopped
+            run_high = max(b["h"] for b in bars[ai + 1: end_idx + 1])
+            return "win", (run_high / entry - 1) / risk
+        if bars[i]["l"] <= stop:                              # shaken first
+            return "stop", -1.0
+    run_high = max((b["h"] for b in bars[ai + 1: end_idx + 1]), default=entry)
+    return "open", (run_high / entry - 1) / risk
 
 
 def load_cohort():
@@ -153,9 +172,66 @@ def main():
     print("   -> if winners concentrate at low rmv even WITHIN the range gate, RMV is an additive "
           "coil-quality axis (the #54 'RMV catches what range misses' result, re-tested on #270).\n")
 
-    print("VERDICT (direction only, N small): see whether row 1 shows win-rmv < stop-rmv and row 2 "
-          "shows win% falling as rmv rises.\n   If yes -> RMV is the right coil metric to RECORD now + "
-          "graduate to load-bearing at N>=10 + sign-off. If flat -> keep it as telemetry, range-gate stays primary.")
+    # ── 5. STOP SENSITIVITY (operator 6/16: is RMV-low 'ineffective' really a too-tight STOP?) ──
+    # For EVERY coiled day, single-shot outcome under 4 stops tight->wide, split by rmv_5d bucket.
+    # If low-RMV win% RISES sharply as the stop widens, the shake was a STOP artifact, not setup
+    # quality -> the stop is the lever to tune, and RMV-low setups may be fine with a wider stop.
+    STOPS = ["coiled_low", "coiled_low-0.5ATR", "gap_day_low", "fixed_-8%"]
+    cd_rows = []   # {rmv5, stop_name -> (outcome,R)}
+    for x in names:
+        bars = bars_by[x["t"]]
+        rrows = to_rmv_rows(bars)
+        ctx = x["ctx"]
+        for i in anti.find_coiled_days(bars, ctx, min_base=1):
+            atr = _atr_14(rrows, i)
+            entry = bars[i]["c"]
+            stopvals = {
+                "coiled_low": bars[i]["l"],
+                "coiled_low-0.5ATR": (bars[i]["l"] - 0.5 * atr) if atr else None,
+                "gap_day_low": ctx["gap_day_low"],
+                "fixed_-8%": entry * 0.92,
+            }
+            rec = {"rmv5": rmv_at(rrows, i, 5)}
+            for sn in STOPS:
+                rec[sn] = outcome_under_stop(bars, i, ctx["trig_idx"], x["end_idx"], stopvals[sn])
+            cd_rows.append(rec)
+
+    print("5. STOP SENSITIVITY - single-shot win% (+ med R, MFE-ceiling) by stop x rmv_5d bucket "
+          f"(all coiled days, N={len(cd_rows)}):")
+    print(f"   {'stop':<20}{'med risk%':>10}   " + "".join(f"{b[0]:>14}" for b in buckets) + f"{'ALL':>14}")
+    for sn in STOPS:
+        # median risk% for this stop across coiled days
+        risks = []
+        for x in names:
+            bars, rrows, ctx = bars_by[x["t"]], None, x["ctx"]
+            for i in anti.find_coiled_days(bars, ctx, min_base=1):
+                e = bars[i]["c"]
+                sv = {"coiled_low": bars[i]["l"], "gap_day_low": ctx["gap_day_low"],
+                      "fixed_-8%": e * 0.92}.get(sn)
+                if sn == "coiled_low-0.5ATR":
+                    a = _atr_14(to_rmv_rows(bars), i)
+                    sv = (bars[i]["l"] - 0.5 * a) if a else None
+                if sv is not None and sv < e:
+                    risks.append((e - sv) / e)
+        cells = []
+        for label, pred in buckets + [("ALL", lambda v: True)]:
+            sub = [r[sn] for r in cd_rows if pred(r["rmv5"]) and r[sn] is not None]
+            if not sub:
+                cells.append(f"{'-':>14}")
+                continue
+            w = sum(1 for o, _ in sub if o == "win")
+            medr = median([R for _, R in sub])
+            cells.append(f"{w}/{len(sub)} {medr:+.1f}R".rjust(14))
+        print(f"   {sn:<20}{median(risks)*100:>9.0f}%   " + "".join(cells))
+    print("   -> if low-rmv (<=10) win% climbs sharply from coiled_low -> wider stops, the RMV-low")
+    print("      shakes were a STOP artifact (tiny coiled range = stop right under entry), NOT setup")
+    print("      quality. Then the STOP is the lever (operator 6/16); RMV-low setups may be viable")
+    print("      with a structural (gap_day_low) or ATR-buffered stop. R is MFE-ceiling -> direction only.\n")
+
+    print("VERDICT (DIRECTION ONLY, N small - nothing 100% yet, all params up for scrutiny): sections 1-4 "
+          "show RMV-low does NOT improve the coiled-low-stop entry (it inverts). Section 5 tests whether "
+          "that is a STOP artifact. RMV is RECORDED telemetry either way; the coil gate + the STOP are both "
+          "tuning candidates at N>=10 + sign-off (CHANGE_PROCESS). Durable writeup: docs/analysis/delayed_ep_rmv_step0_270.md")
 
 
 if __name__ == "__main__":
