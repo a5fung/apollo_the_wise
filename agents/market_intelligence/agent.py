@@ -2822,7 +2822,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "watched": "👁 WATCHED (gap)", "expired": "💤 EXPIRED",
         }
         # underscore-free tactic labels (raw 'first5_break'/'gdl_reclaim' would desync Markdown)
-        tac = {"anticipation": "anticip", "first5_break": "first5", "gdl_reclaim": "gdl"}
+        # — single-sourced from the sip_payload() short map so the two never drift.
+        from agents.market_intelligence.anticipation import _SIP_TACTIC_SHORT as tac
         by_state: dict[str, list] = {}
         for r in rows:
             by_state.setdefault(r["state"], []).append(r)

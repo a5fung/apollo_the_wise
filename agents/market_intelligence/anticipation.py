@@ -138,26 +138,6 @@ def _sma20(closes, i):
     return sum(closes[i - 19:i + 1]) / 20 if i >= 19 else None
 
 
-def lifecycle(bars):
-    """First cycle that reaches ARMED → structured context (gap_day_low + indices).
-    None if the name never undercut. Reuses replay() so the funnel stays single-sourced."""
-    idx_of = {b["date"]: i for i, b in enumerate(bars)}
-    watched = armed = trig = None
-    for date, state, _ in replay(bars):
-        if state == "WATCHED" and armed is None:
-            watched = date
-        elif state == "ARMED" and armed is None and watched is not None:
-            armed = date
-        elif state == "TRIGGERED" and armed is not None and trig is None:
-            trig = date
-            break
-    if armed is None or watched is None:
-        return None
-    return {"gap_day": watched, "gap_day_low": bars[idx_of[watched]]["l"],
-            "armed_idx": idx_of[armed], "armed_date": armed,
-            "trig_idx": idx_of[trig] if trig else None, "trig_date": trig}
-
-
 def base_run(bars, ctx, i):
     """Consecutive 'base days' ending at i: close > gap_day_low AND range ≤ BASE_RANGE.
     The developed-contraction maturity proxy (the cheap pre-filter for the chart-read)."""
