@@ -21,7 +21,7 @@ the COILED gate stays range + base_run). Reuse, not a 4th copy (search-before-bu
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from agents.market_intelligence.flag_detector import _compute_rmv
+from agents.market_intelligence.flag_detector import _compute_rmv, _compute_fresh_tightening
 
 # ── lifecycle thresholds — template-grounded (NOT self-certified). Calibration knobs
 #    #1 (EXPANSION floor) / #2 (trigger-volume floor) are probed (N=17 illustrative) and
@@ -37,6 +37,17 @@ VOL_CONTRACT = 1.0    # vol ≤ 1.0× ADV20 = the quiet "rest" before expansion
 BASE_RANGE = 0.12     # contained base day = range ≤ 12% AND close > gap_day_low
 MATURE_DAYS = 3       # require a ≥3-day developed base before a coiled entry qualifies
 FWD_N = 10            # forward endpoint = trigger day + 10 trading days
+
+# ── Generalized TIGHTENING recorder (operator 2026-06-16): the core signal is a
+#    constructive tightening PULLBACK, of which the gap-low undercut is ONE shape, not a
+#    requirement. We RECORD the tightening telemetry + the pullback SHAPE broadly (every
+#    post-thrust name in the arm window) — that recorded set is the calibration dataset; the
+#    ARMED *alert* stays narrow (gap-low undercut) until evidence + sign-off broaden the gate
+#    (advisor 6/16: don't swap one un-calibrated hard gate for another). Thresholds below
+#    mirror flag_detector's shape constants (search-before-build — its annotator is
+#    snapshot/flag-candidate-bound, so this is the daily-bar EOD analog), NOT new gates. ──
+_MA_NEAR_PCT = 2.0            # close within 2% of a moving average = "pulled into the MA" (flag_detector._MA_PULLBACK_NEAR_PCT)
+_FRESH_TIGHT_BASE_AGE_MIN = 4  # _compute_fresh_tightening's own floor (mirror; <4 returns no-fire)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,6 +218,78 @@ def compute_rmv(bars: list[dict], today_idx: int,
     flag_detector._compute_rmv — recorded telemetry on the lifecycle row, NOT a gate."""
     return _compute_rmv(bars_to_rmv_rows(bars), today_idx,
                         lookback=lookback, current_window=current_window)
+
+
+def bars_to_ft_rows(bars: list[dict]) -> list[dict]:
+    """Replay bars → the rows `_compute_fresh_tightening` reads — a SUPERSET of bars_to_rmv_rows
+    (adds `volume`). The ONLY mapping point for the tightening primitive; equality-tested against
+    flag_detector in tests/test_anticipation_tightening.py (same silent-corruption guard as RMV)."""
+    return [{"high_price": b["h"], "low_price": b["l"], "close": b["c"], "volume": b["v"]}
+            for b in bars]
+
+
+def compute_fresh_tightening(bars: list[dict], idx: int, base_age: int,
+                             recent_avg_vol: Optional[float] = None):
+    """(fires, fresh_2bar_tr_pct, atr14_pct) at `idx` via the canonical
+    flag_detector._compute_fresh_tightening — the 2-bar range/vol contraction primitive (reused,
+    not reinvented). RECORDED telemetry on the lifecycle row, NOT a gate (advisor 6/16)."""
+    return _compute_fresh_tightening(bars_to_ft_rows(bars), idx, base_age,
+                                     recent_avg_vol=recent_avg_vol)
+
+
+# Pullback SHAPE priority — gap-low undercut is ONE shape, not THE requirement (operator 6/16).
+# More-specific structural pivots first; low_vol_rest (no pivot, pure contraction) last.
+_SHAPE_PRIORITY = ("gap_low_undercut", "ma10_pullback", "ma20_pullback", "low_vol_rest")
+
+
+def detect_pullback_shape(bars: list[dict], gap_idx: int, i: int):
+    """Which constructive-tightening SHAPE bar `i` exhibits — the pivot price has pulled into.
+    Daily-bar EOD analog of flag_detector.compute_entry_technique_annotations (that one is
+    snapshot + flag-candidate bound, so NOT reusable here — verified 6/16). Returns
+    (primary_shape | None, [all_shapes]). Recorded telemetry: the broad set is the calibration
+    dataset for a future generalized ARMED gate; today only gap_low_undercut arms (the alert).
+    Thresholds reuse the coil/flag constants — no new gate numbers invented."""
+    b = bars[i]
+    closes = [x["c"] for x in bars]
+    vols = [x["v"] for x in bars]
+    shapes = []
+
+    if b["l"] < bars[gap_idx]["l"]:                       # 1. gap-low undercut (U&R / MNTS shape)
+        shapes.append("gap_low_undercut")
+
+    for lbl, n in (("ma10", 10), ("ma20", 20)):           # 2. MA pullback (close pulled into an MA)
+        ma = _sma(closes, i, n)
+        if ma and abs(b["c"] - ma) / b["c"] * 100.0 <= _MA_NEAR_PCT:
+            shapes.append(f"{lbl}_pullback")
+
+    rng = (b["h"] - b["l"]) / b["c"] if b["c"] else 1.0   # 3. low-vol rest (tight + quiet, no pivot)
+    adv = _adv(vols, i)
+    if rng <= TIGHT_RANGE and adv and b["v"] <= VOL_CONTRACT * adv:
+        shapes.append("low_vol_rest")
+
+    primary = next((s for s in _SHAPE_PRIORITY if s in shapes), None)
+    return primary, shapes
+
+
+def tightening_telemetry(bars: list[dict], i: int, gap_idx: int, armed_idx: Optional[int] = None):
+    """The generalized tightening RECORD at bar `i` (recorded broadly, gates nothing yet).
+    base_age = bars since the pullback began (armed bar if armed, else the gap) so the
+    fresh-tightening primitive has a base to measure against. Returns a flat dict of telemetry
+    columns. ALL values JSON/SQL-native (float/bool/str/None)."""
+    base_anchor = armed_idx if armed_idx is not None else gap_idx
+    base_age = max(i - base_anchor, 0)
+    recent = [b["v"] for b in bars[max(base_anchor, i - 5):i]] if i > base_anchor else []
+    recent_avg_vol = (sum(recent) / len(recent)) if recent else None
+    fires, fresh_tr_pct, atr14_pct = compute_fresh_tightening(
+        bars, i, base_age, recent_avg_vol=recent_avg_vol)
+    primary, shapes = detect_pullback_shape(bars, gap_idx, i)
+    return {
+        "pullback_shape": primary,
+        "pullback_shapes": ",".join(shapes) if shapes else None,
+        "fresh_tightening": bool(fires),
+        "fresh_2bar_tr_pct": round(fresh_tr_pct, 3) if fresh_tr_pct is not None else None,
+        "atr14_pct": round(atr14_pct, 3) if atr14_pct is not None else None,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -443,12 +526,22 @@ def evaluate_candidate(bars, gap_day, min_base=MATURE_DAYS):
         "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
         "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
         "tight_close_pct": (abs(last["c"] / prev["c"] - 1) if prev and prev["c"] else None),
+        # generalized tightening RECORD at the current bar — broad telemetry (operator 6/16):
+        # captures tightening-into-a-pivot on every name (incl. pre-arm watched names that pull
+        # into an MA/rest WITHOUT undercutting the gap-low) → the calibration set for a future
+        # generalized ARMED gate. Gates nothing today.
+        **tightening_telemetry(bars, last_idx, cyc["gap_idx"], armed_idx=cyc["armed_idx"]),
+        "armed_shape": None,
         "_entry_idx": None,
     }
 
     if cyc["armed_idx"] is None:
         row["state"] = "expired" if (cyc["expired"] or last_idx - cyc["gap_idx"] > ARM_WINDOW) else "watched"
         return row
+
+    # the pullback shape that armed it (today always includes gap_low_undercut — the narrow gate;
+    # co-present MA/low-vol shapes recorded too, so the broadening evidence accrues per-row)
+    row["armed_shape"] = detect_pullback_shape(bars, cyc["gap_idx"], cyc["armed_idx"])[0]
 
     ctx = {"gap_day_low": cyc["gap_day_low"], "armed_idx": cyc["armed_idx"],
            "trig_idx": cyc["ready_idx"]}

@@ -29,6 +29,21 @@ From daily OHLCV (validated reproducing MNTS: WATCHED 5/26 → ARMED 6/08 → TR
 Defaults GAP +40% / VOLX 3× / ARM_WINDOW 15d / EXPANSION 1.5×. Cohort (134 huge-gap names,
 2026-03..05): funnel WATCHED 62 → ARMED 30 (48%) → READY 16 (26% of watched) = SELECTIVE.
 
+> **⚠ GENERALIZATION IN PROGRESS (operator 2026-06-16) — the undercut is ONE shape, NOT the
+> requirement.** The core signal is a *constructive tightening pullback*; the gap-low UNDERCUT is
+> one way it tightens, alongside MA-pullback, range-low test, and low-volume rest (the 5
+> entry-techniques, `user_tight_range_entry_techniques`). **Stage A (shipped 6/16, shadow):** a
+> broad RECORDER persists the tightening telemetry + `pullback_shape`/`armed_shape`
+> (`fresh_tightening`/`fresh_2bar_tr_pct`/`atr14_pct`, reusing `flag_detector._compute_fresh_tightening`
+> + RMV) on EVERY post-thrust name — incl. watched names that tighten into an MA/rest WITHOUT
+> undercutting the gap-low. The ARMED state/alert is UNCHANGED (still the narrow gap-low undercut)
+> so the table above still holds. **Stage B (gated):** flip ARMED to fire on the generalized
+> tightening gate — a DETECTION-CRITERION change, gated on the Stage-A recorded-cohort evidence
+> (does broadening capture continuations the undercut-only gate misses, without flooding?) +
+> operator sign-off on the criteria (HARD-gate rule) + CHANGE_PROCESS. #15 ("general-anticipation
+> sister") folds into this generalized lane. (advisor 6/16: don't swap one un-calibrated hard gate
+> for another — record broad, gate/alert narrow, certify nothing until the cohort gives the numbers.)
+
 ## Layer 2 — ENTRY (the layer that gets you in; READY ≠ entry). THREE modes.
 
 Two are CONFIRMATION (fire on the trigger day, tuned on minute bars over 17 triggers + MNTS,
@@ -249,3 +264,16 @@ data + the exit layer (the #168 actionability gate).
   lower entry → anticipation 15.0R vs 7.6R (N=4, illustrative; flips the loose result). Second
   window data-blocked (`mi_daily_closes` from 2025-05-12, SMA200 eats the lookback). Surfacing adds
   coil-maturity (day-N of base) for the chart-read. Gate-free.
+- **2026-06-16 — GENERALIZATION Stage A (tightening recorder), operator: "undercut is one shape
+  not necessary".** The lifecycle was U&R-overfit (ARMED hard-gated on the gap-low undercut, so
+  coil→breakout / MA-pullback / low-vol-rest could never arm). Stage A ships a BROAD shadow
+  RECORDER: `anticipation.tightening_telemetry` (+ `detect_pullback_shape`, the daily-bar EOD
+  analog of `flag_detector.compute_entry_technique_annotations` which is snapshot-bound) persists
+  `pullback_shape`/`pullback_shapes`/`armed_shape`/`fresh_tightening`/`fresh_2bar_tr_pct`/`atr14_pct`
+  on every post-thrust row — reusing `_compute_fresh_tightening` + RMV (search-before-build;
+  volume-extended adapter `bars_to_ft_rows`, equality-pinned in `test_anticipation_tightening.py`).
+  The ARMED state machine + alert are UNCHANGED (narrow gap-low undercut) — the recorder gates
+  NOTHING; its cohort is the calibration set for the gated Stage B (generalize the ARMED gate;
+  CHANGE_PROCESS + sign-off). `replay()` stays frozen (golden test intact). Shadow; gate-free.
+  TODO: slot the operator's exact "bar % range" formula (from the 6/15 tweet) into the recorder
+  alongside `atr14_pct`/`fresh_2bar_tr_pct` (pluggable placeholder until confirmed).

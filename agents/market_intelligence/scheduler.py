@@ -2684,7 +2684,13 @@ async def _anticipation_readiness_job():
                     stop_price=row["stop_price"], reenter_count=row["reenter_count"],
                     base_run=row["base_run"], rmv_5d=row["rmv_5d"], rmv_15d=row["rmv_15d"],
                     tight_close_pct=row["tight_close_pct"], fwd_mfe_pct=fwd_mfe,
-                    realized_r=realized_r, settled=settled, last_eval=today)
+                    realized_r=realized_r, settled=settled, last_eval=today,
+                    pullback_shape=row.get("pullback_shape"),
+                    pullback_shapes=row.get("pullback_shapes"),
+                    armed_shape=row.get("armed_shape"),
+                    fresh_tightening=row.get("fresh_tightening"),
+                    fresh_2bar_tr_pct=row.get("fresh_2bar_tr_pct"),
+                    atr14_pct=row.get("atr14_pct"))
                 written += 1
                 if row["state"] in ("ready", "triggered"):
                     await _feed_anticipation_sip(

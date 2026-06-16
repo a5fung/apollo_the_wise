@@ -18,11 +18,12 @@ gates real decisions · `evaluated` = a data-gated review is open on it (`data_g
 | Primitive | What it measures | Where | Persisted | Status |
 |---|---|---|---|---|
 | **RMV** (Relative Measured Volatility) | DeepVue/TraderLion 0–100 contraction index (smoothed ATR-range min-max); ~0 tight coil, ~100 expansion | `flag_detector.py:179 _compute_rmv` | `rmv_5d`,`rmv_15d` on `mi_flag_candidates` (+ `mi_delayed_ep_lifecycle` telemetry) | telemetry · **evaluated #54** `rmv_phase2_evaluation`; #270 STEP 0 (`docs/analysis/delayed_ep_rmv_step0_270.md`) |
-| **fresh_tightening** | 2-bar range/vol contraction vs the early base (the COILED-stage gate) | `flag_detector.py:238 _compute_fresh_tightening` | `range_contraction_ratio`,`vol_contraction_ratio`,`fresh_2bar_tr_pct` on `mi_flag_candidates` | load-bearing (flag COILED/TIGHTENING stages) |
+| **fresh_tightening** | 2-bar range/vol contraction vs the early base (the COILED-stage gate) | `flag_detector.py:238 _compute_fresh_tightening` | `range_contraction_ratio`,`vol_contraction_ratio`,`fresh_2bar_tr_pct` on `mi_flag_candidates`; `fresh_tightening`/`fresh_2bar_tr_pct`/`atr14_pct` on `mi_anticipation_lifecycle` (#270 recorder, reused 6/16 via `anticipation.compute_fresh_tightening`) | load-bearing (flag) · telemetry (#270) |
 | **ATR-14 %** | mean true range over 14d, the tightness reference point | `flag_detector.py:166 _atr_14` (+ `_wilder_tr:149`) | `atr14_pct` on `mi_flag_candidates` | load-bearing |
-| **base_run** | consecutive contained "base days" (maturity proxy for a developed coil) | `_270_anticipation_replay.py:99 base_run` → `delayed_ep.py` (porting) | `base_run` on `mi_delayed_ep_lifecycle` | telemetry (#270) |
+| **base_run** | consecutive contained "base days" (maturity proxy for a developed coil) | `anticipation.py base_run` (ported from `_270_anticipation_replay.py:99`) | `base_run` on `mi_anticipation_lifecycle` | telemetry (#270) |
+| **pullback_shape** | which pivot a tightening pullback pulled into (gap-low / MA / low-vol-rest); daily-bar EOD analog of the entry-technique annotator | `anticipation.py detect_pullback_shape` (#270, 6/16) | `pullback_shape`/`pullback_shapes`/`armed_shape` on `mi_anticipation_lifecycle` | telemetry (the Stage-B generalized-gate calibration set) |
 | **tight cluster** | residual-correlation clustering of co-moving tight names (Lane-1 theme) | `correlation_engine.py:169 _compute_tight_clusters_sync`, `:31 _compute_residual_correlations` | `mi_correlation_clusters`/`mi_themes` | load-bearing |
-| **entry-technique annotations** | flags which of the 5 tight-range entry mechanics are valid (breakout/support/MA-pullback/low-vol/U&R) | `flag_detector.py:2546 compute_entry_technique_annotations` | on flag candidate | telemetry |
+| **entry-technique annotations** | flags which of the 5 tight-range entry mechanics are valid (breakout/support/MA-pullback/low-vol/U&R) | `flag_detector.py:2546 compute_entry_technique_annotations` (snapshot + flag-candidate bound — daily-bar analog = `anticipation.detect_pullback_shape`) | on flag candidate | telemetry |
 
 > Pradeep `|close %change| ≤ 0.4%` tight-close is a methodology *input* (operator 6/16), recorded as
 > `tight_close_pct` (#270); calibrated ~1.4% for tiny-caps, not 0.4% (see #270 STEP 0 doc).
@@ -52,7 +53,7 @@ gates real decisions · `evaluated` = a data-gated review is open on it (`data_g
 | **Fishhook** | reclaim-after-undercut fill mechanic | `fishhook_detector.py` | built (shadow) |
 | **Wick-fill** | gap-wick fill tracker | `wick_tracker.py` | shadow · **#283** promotion eval |
 | **U&R (undercut & rally)** | undercut prior low → reclaim (Morales/OWL) | future detector **#98** (greenlit, may be unbuilt — verify before citing) | planned |
-| **#270 delayed-EP** | gap → undercut(arm) → reclaim(ready) → coil/entry → harvest | `delayed_ep.py` (Step 3, porting `_270_*`) | shadow (building) |
+| **#270 anticipation** | gap → tightening pullback (arm; undercut = 1 shape) → reclaim(ready) → coil/entry → harvest | `anticipation.py` (Step 3; generalized recorder 6/16) | shadow |
 
 ## Catalyst / grading
 | Primitive | What it measures | Where | Status |
