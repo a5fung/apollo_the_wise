@@ -2800,18 +2800,18 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("Nothing ready or broken right now.")
         return self._ok(request, result="\n".join(lines))
 
-    async def _handle_sip_query(self, request: AgentRequest) -> AgentResponse:
-        """`/sip` — the #270 delayed-EP re-entry lifecycle board (SHADOW). Stocks that already
-        had their EP/9M thrust and are working the re-entry sequence: watched (gap) → armed
-        (gap-low undercut) → coiled/ready (reclaim set-up) → triggered (entry fired) → settled
-        realized_r. Observational — no trades. Companion to the 17:35 ET readiness job's
-        ARMED-transition push. Monospace (Telegram can't render pipe tables)."""
+    async def _handle_anticipation_query(self, request: AgentRequest) -> AgentResponse:
+        """`/anticipation` — the Pradeep anticipation-play lifecycle board (SHADOW, #270). A
+        post-thrust name tightens and you ANTICIPATE the continuation: watched (thrust/gap) →
+        armed (prior-low undercut) → coiled/ready (reclaim set-up) → triggered (entry fired) →
+        settled realized_r. The U&R undercut-reclaim is the trigger; no EP/catalyst required.
+        Observational — no trades. Companion to the 17:35 ET readiness job. Monospace."""
         from agents.market_intelligence.db import get_delayed_ep_lifecycle_board
 
         rows = await get_delayed_ep_lifecycle_board()
         if not rows:
             return self._ok(request, result=(
-                "⏱️ *Delayed-EP lifecycle* — no rows yet "
+                "⏱️ *Anticipation lifecycle* — no rows yet "
                 "(the 17:35 ET shadow run seeds it)."))
 
         order = {"triggered": 0, "ready": 1, "coiled": 2, "armed": 3, "watched": 4, "expired": 5}
@@ -2827,7 +2827,7 @@ class MarketIntelligenceAgent(BaseAgent):
         for r in rows:
             by_state.setdefault(r["state"], []).append(r)
 
-        out = ["⏱️ *Delayed-EP re-entry lifecycle* (SHADOW — observe, no trades)", ""]
+        out = ["⏱️ *Anticipation lifecycle* (SHADOW — observe, no trades)", ""]
         for st in sorted(by_state, key=lambda s: order.get(s, 9)):
             grp = by_state[st]
             out.append(f"*{labels.get(st, st)}* ({len(grp)})")
@@ -5248,7 +5248,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/spotted":        self._handle_spotted_command,
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
-            "/sip":            self._handle_sip_query,
+            "/anticipation":   self._handle_anticipation_query,
             "/ideas":          self._handle_ideas_query,
         }
         handler = dispatch.get(cmd)

@@ -608,11 +608,11 @@ def sip_payload(*, state, gap_day_iso, entry_tactic=None, entry_price=None,
     choke (the date/Decimal hazard the sugar-baby site dodges by str()-ing)."""
     tac = _SIP_TACTIC_SHORT.get(entry_tactic, entry_tactic or "")
     if state == "ready":
-        reason = "delayed-EP reclaim ready — awaiting 3b entry"
+        reason = "anticipation reclaim ready — awaiting entry"
     elif entry_price is not None:
-        reason = f"delayed-EP {tac} entry @ {float(entry_price):.2f}"
+        reason = f"anticipation {tac} entry @ {float(entry_price):.2f}"
     else:
-        reason = f"delayed-EP {tac or 'entry'} triggered"
+        reason = f"anticipation {tac or 'entry'} triggered"
     signal = {
         "state": state,
         "gap_day": gap_day_iso,

@@ -2701,11 +2701,11 @@ async def _delayed_ep_readiness_job():
 
         logger.info(f"delayed_ep readiness: {written} rows, {len(transitions)} armed transitions")
         if transitions:
-            lines = ["⏱️ *Delayed-EP (SHADOW) — newly ARMED* "
+            lines = ["⏱️ *Anticipation (SHADOW) — newly ARMED* "
                      "(gap-low undercut → watch for the reclaim):"]
             for ticker, gap_day, st in transitions[:12]:
                 lines.append(f"  • {ticker} gap {gap_day.isoformat()} → {st}")
-            lines.append("/sip for the full lifecycle board.")
+            lines.append("/anticipation for the full lifecycle board.")
             await send_telegram_message("\n".join(lines))
     except Exception as e:
         logger.error(f"delayed_ep readiness job failed: {e}", exc_info=True)
@@ -2795,12 +2795,12 @@ async def _delayed_ep_3b_job():
 
         logger.info(f"delayed_ep 3b: {len(fired)} new entries, {settled_n} settled")
         if fired:
-            lines = ["🎯 *Delayed-EP (SHADOW) — 3b intraday entry fired* (FIRST5/gdl break, derisk fast):"]
+            lines = ["🎯 *Anticipation (SHADOW) — 3b intraday entry fired* (FIRST5/gdl break, derisk fast):"]
             for tk, gd, tac, e, s in fired[:12]:
                 lines.append(f"  • {tk} gap {gd.isoformat()} "
                              f"{'first5' if tac == 'first5_break' else 'gdl'} "
                              f"entry {e:.2f} stop {s:.2f}")
-            lines.append("/sip for the board.")
+            lines.append("/anticipation for the board.")
             await send_telegram_message("\n".join(lines))
     except Exception as e:
         logger.error(f"delayed_ep 3b job failed: {e}", exc_info=True)

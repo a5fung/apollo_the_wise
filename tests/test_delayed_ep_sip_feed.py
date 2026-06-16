@@ -42,7 +42,7 @@ def test_triggered_first5_payload_is_json_safe_with_decimals():
         state="triggered", gap_day_iso="2026-05-26", entry_tactic="first5_break",
         entry_price=Decimal("12.40"), stop_price=Decimal("11.90"),
         base_run=5, rmv_5d=Decimal("6.1"))
-    assert reason == "delayed-EP first5 entry @ 12.40"
+    assert reason == "anticipation first5 entry @ 12.40"
     assert signal["entry_tactic"] == "first5_break"
     assert isinstance(signal["entry_price"], float)
     assert isinstance(signal["rmv_5d"], float)
@@ -53,8 +53,8 @@ def test_anticipation_and_gdl_tactic_labels():
     r_anti, _ = de.sip_payload(
         state="triggered", gap_day_iso="2026-06-01", entry_tactic="anticipation",
         entry_price=9.5)
-    assert r_anti == "delayed-EP anticip entry @ 9.50"
+    assert r_anti == "anticipation anticip entry @ 9.50"
     r_gdl, _ = de.sip_payload(
         state="triggered", gap_day_iso="2026-06-01", entry_tactic="gdl_reclaim",
         entry_price=9.5)
-    assert r_gdl == "delayed-EP gdl entry @ 9.50"
+    assert r_gdl == "anticipation gdl entry @ 9.50"

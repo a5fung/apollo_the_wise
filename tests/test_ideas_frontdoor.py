@@ -75,14 +75,14 @@ def test_stocks_in_play_shows_stage_from_reason_head():
     # the informational sugar-baby row is collapsed to watchlist, not mixed in.
     rows = [
         {"ticker": "RDY", "automation_class": "operator_only",
-         "source_detector": "delayed_ep_reentry", "reason": "delayed-EP reclaim ready — awaiting 3b entry"},
+         "source_detector": "delayed_ep_reentry", "reason": "anticipation reclaim ready — awaiting entry"},
         {"ticker": "SBC", "automation_class": "informational",
          "source_detector": "sugar_baby_cohort", "reason": "Pradeep persistent cohort — 5× 9M+ prints"},
     ]
     out = _render(sip_rows=rows)
-    assert "👤 `RDY` delayed-EP reclaim ready" in out     # stage shown, em-dash tail dropped
+    assert "👤 `RDY` anticipation reclaim ready" in out    # stage shown, em-dash tail dropped
     assert "ℹ️ watchlist: `SBC`" in out                   # cohort collapsed, not an actionable row
-    assert "awaiting 3b entry" not in out                 # reason tail trimmed for the summary
+    assert "awaiting entry" not in out                    # reason tail trimmed for the summary
 
 
 def test_source_detector_with_underscores_never_leaks():
@@ -101,7 +101,7 @@ def test_ideas_strategies_is_single_source_for_keyboard_and_taskmap():
     from channels.telegram import TelegramChannel
     strategies = TelegramChannel._IDEAS_STRATEGIES
     keys = [k for k, _l, _t in strategies]
-    assert keys == ["magna53", "9m", "flags", "fishhook", "sip"]
+    assert keys == ["magna53", "9m", "flags", "fishhook", "anticipation"]
     assert len(set(keys)) == len(keys)                       # unique callback keys
     for _k, label, task in strategies:
         assert task.startswith("/")                          # routes to an existing board

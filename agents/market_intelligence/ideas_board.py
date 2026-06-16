@@ -46,7 +46,7 @@ def render_ideas_summary(*, today, sip_rows, magna53, ninem_intraday,
         seen.add(t)
         cls = r.get("automation_class")
         if cls in ("apollo_eligible", "operator_only"):
-            # reason head carries the stage ("delayed-EP reclaim ready" …); underscores
+            # reason head carries the stage ("anticipation reclaim ready" …); underscores
             # stripped so the (non-caps-safe) reason can't desync Telegram Markdown
             stage = (r.get("reason") or "").split("—")[0].strip().replace("_", " ")
             actionable.append(("🚨" if cls == "apollo_eligible" else "👤", t, stage))

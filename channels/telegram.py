@@ -815,7 +815,7 @@ class TelegramChannel:
     # /ideas front door (ADR 0004): per-strategy buttons, each drilling into the
     # strategy's existing board as an edit-in-place deep-dive. SINGLE source for the
     # keyboard AND the callback task-map so they can never drift (key, label, task).
-    # #270's /sip (delayed-EP lifecycle) is in. No "Stocks in Play" button — the summary's
+    # #270's /anticipation (Pradeep anticipation play) is in. No "Stocks in Play" button — the summary's
     # Stocks-in-Play SECTION already shows the substrate (the button just re-showed it); the
     # full board stays reachable via the standalone /watch command. As ADR-0004 Phase 2-5
     # migrate the other detectors into mi_stocks_in_play, each line reads from the substrate.
@@ -824,7 +824,7 @@ class TelegramChannel:
         ("9m",       "🏦 9M",        "/9m"),
         ("flags",    "🚩 Flags",     "/flags"),
         ("fishhook", "🪝 Fishhook",  "/fishhook"),
-        ("sip",      "⏱️ Delayed-EP", "/sip"),
+        ("anticipation", "⏱️ Anticipation", "/anticipation"),
     ]
 
     async def _dispatch_market_slash(
@@ -1762,8 +1762,8 @@ class TelegramChannel:
                      "review", "reviews", "spotted",
                      # 2026-06-16 #54 Prong B data-gated-review board
                      "datareviews",
-                     # 2026-06-16 #270 Step 3 delayed-EP lifecycle board (SHADOW)
-                     "sip"):
+                     # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
+                     "anticipation"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1802,7 +1802,7 @@ class TelegramChannel:
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("flags",        "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
-            BotCommand("sip",          "⏱️ Delayed-EP lifecycle (SHADOW) — watched/armed/coiled/ready/triggered"),
+            BotCommand("anticipation", "⏱️ Anticipation play (SHADOW, Pradeep) — watched/armed/coiled/ready/triggered"),
             BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
             BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
             BotCommand("regime",       "📊 Market condition + Stockbee breadth matrix (MAs · VIX · T2108 · cluster)"),
