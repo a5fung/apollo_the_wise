@@ -58,6 +58,7 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
 
     ready: list[dict] = []
     pending: list[dict] = []
+    errored: list[dict] = []   # predicate raised — the #54 silently-broken-query class
 
     for e in entries:
         # Process pending AND deferred entries (deferred = previously surfaced,
@@ -85,11 +86,13 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
                 count = await _evaluate_predicate(predicate_sql)
             except Exception as exc:
                 logger.warning(f"predicate failed for {review_id}: {exc}")
-                pending.append({
+                err = {
                     "review_id": review_id,
                     "title": e.get("title"),
                     "blocked_by": f"predicate_error: {type(exc).__name__}",
-                })
+                }
+                errored.append(err)        # surfaced for escalation (don't let a broken query rot)
+                pending.append(err)         # kept in pending too for digest back-compat
                 continue
 
         is_ready = (predicate_sql is None) or (count is not None and count >= threshold)
@@ -108,6 +111,63 @@ async def check_pending_reviews(today: date | None = None) -> dict[str, Any]:
 
     return {
         "ready": ready,
+        "errored": errored,
         "pending_count": len(pending),
         "pending_summary": pending[:5],
     }
+
+
+async def escalate_overdue_reviews(
+    today: date | None = None, grace_days: int = 7, reescalate_days: int = 7
+) -> list[dict[str, Any]]:
+    """Deterministic, stateful escalation (Prong B, #54). A review that has been READY — or whose
+    predicate has been ERRORING (the #54 silently-broken-query class) — for >= grace_days gets
+    surfaced via its own deduped record (re-fires every reescalate_days). The stateless
+    `check_pending_reviews` can't do grace/dedup, so first-seen + last-escalated dates live in
+    `mi_review_escalation_state`. Returns the escalation records (caller Telegrams + audit-logs);
+    rows for resolved reviews are cleared. No LLM, DB-sourced — survives container restarts."""
+    if today is None:
+        from agents.market_intelligence.collector import et_today
+        today = et_today()
+    from agents.market_intelligence.db import (
+        get_review_escalation_state, upsert_review_escalation_state,
+        clear_review_escalation_state,
+    )
+
+    res = await check_pending_reviews(today)
+    ready = {r["review_id"]: r for r in res["ready"]}
+    errored = {r["review_id"]: r for r in res.get("errored", [])}
+    state = await get_review_escalation_state()
+    active = set(ready) | set(errored)
+
+    escalations: list[dict[str, Any]] = []
+    for rid in sorted(active):
+        st = state.get(rid, {})
+        last_esc = st.get("last_escalated_date")
+        if rid in ready:                       # ready takes precedence over a stale error flag
+            kind, ref = "ready", ready[rid]
+            first_ready = st.get("first_ready_date") or today
+            first_error = None
+            anchor = first_ready
+        else:
+            kind, ref = "error", errored[rid]
+            first_error = st.get("first_error_date") or today
+            first_ready = None
+            anchor = first_error
+        age = (today - anchor).days
+        due = age >= grace_days and (
+            last_esc is None or (today - last_esc).days >= reescalate_days
+        )
+        if due:
+            last_esc = today
+            escalations.append({
+                "review_id": rid, "kind": kind, "age_days": age,
+                "title": ref.get("title"),
+                "current_count": ref.get("current_count"), "threshold": ref.get("threshold"),
+                "blocked_by": ref.get("blocked_by"),
+            })
+        await upsert_review_escalation_state(rid, first_ready, first_error, last_esc)
+
+    # Reviews that resolved (no longer ready/erroring) — drop their state.
+    await clear_review_escalation_state([rid for rid in state if rid not in active])
+    return escalations

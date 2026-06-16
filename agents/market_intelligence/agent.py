@@ -2746,6 +2746,49 @@ class MarketIntelligenceAgent(BaseAgent):
         lines.append(f"_{len(rows)} row(s). Capture-only corpus (#254) — no judge effect yet._")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_data_reviews_query(self, request: AgentRequest) -> AgentResponse:
+        """`/datareviews` — the DATA-GATED review board (data_gated_reviews.yaml): which evidence-
+        gated reviews are READY (date + threshold met), ERRORING (predicate broken — the #54 class),
+        or still PENDING, with how long each has been ready. On-demand companion to the deterministic
+        post-nightly escalation, so surfacing never depends on the LLM Sunday digest firing (Prong B,
+        #54). Distinct from `/reviews` (operator ground-truth corpus)."""
+        from agents.market_intelligence.data_gated_reviews import check_pending_reviews
+        from agents.market_intelligence.db import get_review_escalation_state
+        from agents.market_intelligence.collector import et_today
+
+        today = et_today()
+        res = await check_pending_reviews(today)
+        state = await get_review_escalation_state()
+
+        def _age(rid, key):
+            d = (state.get(rid) or {}).get(key)
+            return (today - d).days if d else None
+
+        lines = [f"📅 *Data-gated reviews — {today.isoformat()}*", ""]
+        ready, errored = res.get("ready", []), res.get("errored", [])
+        if ready:
+            lines.append(f"✅ *READY ({len(ready)})* — run it or update the entry:")
+            for r in ready:
+                age = _age(r["review_id"], "first_ready_date")
+                aged = f" · ready {age}d" if age else ""
+                lines.append(
+                    f"  • `{r['review_id']}` (count {r.get('current_count')}≥{r.get('threshold')}{aged})\n"
+                    f"      _{(r.get('title') or '')[:80]}_"
+                )
+        if errored:
+            lines.append("")
+            lines.append(f"🛑 *PREDICATE ERRORING ({len(errored)})* — likely a broken locked query (#54 class):")
+            for r in errored:
+                age = _age(r["review_id"], "first_error_date")
+                aged = f" · {age}d" if age else ""
+                lines.append(f"  • `{r['review_id']}` ({r.get('blocked_by')}{aged}) — _{(r.get('title') or '')[:60]}_")
+        pend = res.get("pending_count", 0) - len(errored)
+        lines.append("")
+        lines.append(f"⏳ {max(pend, 0)} still accumulating / date-gated.")
+        if not ready and not errored:
+            lines.append("_Nothing ready or broken right now._")
+        return self._ok(request, result="\n".join(lines))
+
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
         """`/partialnow TICKER [CONFIRM]` — operator-confirm immediate partial exit.
 
@@ -5146,6 +5189,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/review":         self._handle_review_command,
             "/spotted":        self._handle_spotted_command,
             "/reviews":        self._handle_reviews_query,
+            "/datareviews":    self._handle_data_reviews_query,
         }
         handler = dispatch.get(cmd)
         if handler:

@@ -2558,6 +2558,39 @@ async def _post_nightly_audit_job():
         logger.error(f"Post-nightly audit failed: {e}", exc_info=True)
         await notify_job_failure("post_nightly_audit", str(e))
 
+    # Data-gated-review escalation (#54 RMV-miss mitigation, Prong B). A review that's been
+    # READY — or whose predicate has been ERRORING (a silently-broken locked query, the exact
+    # #54 class) — beyond the grace window gets its OWN deterministic Telegram instead of rotting
+    # in the LLM-narrated Sunday digest. DB-sourced + deduped via mi_review_escalation_state.
+    try:
+        from agents.market_intelligence.data_gated_reviews import escalate_overdue_reviews
+        escalations = await escalate_overdue_reviews()
+        if escalations:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from agents.market_intelligence.db import log_audit_event
+            lines = ["⏰ *Overdue data-gated reviews* (ready/erroring past grace — run it or update the entry):"]
+            for esc in escalations:
+                if esc["kind"] == "ready":
+                    lines.append(
+                        f"  • `{esc['review_id']}` READY {esc['age_days']}d "
+                        f"(count {esc.get('current_count')}≥{esc.get('threshold')}) — {esc.get('title')}"
+                    )
+                else:
+                    lines.append(
+                        f"  • `{esc['review_id']}` predicate ERRORING {esc['age_days']}d "
+                        f"(likely broken: {esc.get('blocked_by')}) — {esc.get('title')}"
+                    )
+            lines.append("`/datareviews` for the full board.")
+            await send_telegram_message("\n".join(lines))
+            for esc in escalations:
+                await log_audit_event(
+                    "review_escalation",
+                    f"{esc['review_id']} {esc['kind']} {esc['age_days']}d",
+                    detail=esc.get("title") or "",
+                )
+    except Exception as e:
+        logger.error(f"Review escalation failed: {e}", exc_info=True)
+
 
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).

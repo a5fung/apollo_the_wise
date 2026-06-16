@@ -791,6 +791,20 @@ async def initialize_schema() -> None:
                 PRIMARY KEY (safeguard, account_mode)
             );
 
+            -- Data-gated-review escalation state (#54 RMV-miss mitigation, Prong B).
+            -- A review that's been READY (or whose predicate has been ERRORING) beyond a
+            -- grace window gets its own deterministic Telegram instead of rotting in the
+            -- LLM-narrated Sunday digest. This carries the per-review first-seen dates +
+            -- last-escalated date so escalation has grace + dedup (check_pending_reviews
+            -- is stateless). Rows are deleted once a review resolves (no longer ready/erroring).
+            CREATE TABLE IF NOT EXISTS mi_review_escalation_state (
+                review_id           TEXT PRIMARY KEY,
+                first_ready_date    DATE,
+                first_error_date    DATE,
+                last_escalated_date DATE,
+                updated_at          TIMESTAMPTZ DEFAULT NOW()
+            );
+
             -- Cross-strategy allocator (#31) candidate queue. Strategies
             -- enqueue RankableCandidate rows during their normal scan; the
             -- 9:28 AM allocator job drains, scores, and selects top-N.
@@ -6106,6 +6120,54 @@ async def get_adv_from_daily_closes(trade_date: date, days: int = 20) -> dict[st
             HAVING COUNT(*) >= 10
         """, trade_date, days)
     return {r["ticker"]: float(r["adv"]) for r in rows}
+
+
+# ── Data-gated-review escalation state (#54 Prong B) ──────────────────────────
+
+
+async def get_review_escalation_state() -> dict[str, dict[str, Any]]:
+    """All escalation-state rows keyed by review_id (first_ready_date / first_error_date /
+    last_escalated_date). Stateless check_pending_reviews + this = grace + dedup."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT review_id, first_ready_date, first_error_date, last_escalated_date "
+            "FROM mi_review_escalation_state"
+        )
+    return {r["review_id"]: dict(r) for r in rows}
+
+
+async def upsert_review_escalation_state(
+    review_id: str, first_ready_date, first_error_date, last_escalated_date
+) -> None:
+    """Write the FULL desired state for one review (direct SET, not COALESCE — the caller
+    computes the complete row so a field can be cleared, e.g. ready→error transitions)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO mi_review_escalation_state
+                (review_id, first_ready_date, first_error_date, last_escalated_date, updated_at)
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (review_id) DO UPDATE SET
+                first_ready_date    = EXCLUDED.first_ready_date,
+                first_error_date    = EXCLUDED.first_error_date,
+                last_escalated_date = EXCLUDED.last_escalated_date,
+                updated_at          = NOW()
+            """,
+            review_id, first_ready_date, first_error_date, last_escalated_date,
+        )
+
+
+async def clear_review_escalation_state(review_ids: list[str]) -> None:
+    """Drop state for reviews that have resolved (no longer ready/erroring)."""
+    if not review_ids:
+        return
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "DELETE FROM mi_review_escalation_state WHERE review_id = ANY($1)", review_ids
+        )
 
 
 # ── Fundamental flags ─────────────────────────────────────────────────────────

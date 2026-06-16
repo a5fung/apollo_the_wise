@@ -1682,6 +1682,7 @@ class TelegramChannel:
             BotCommand("syncnow",      "/syncnow [paper|live] — operator-confirm DB↔broker sync_positions"),
             BotCommand("review",       "/review TICKER <agree|toohigh|toolow|notep> — label a grade (bare /review lists corpus)"),
             BotCommand("spotted",      "/spotted TICKER <grade> <narrative> — inject a real EP you spotted (e.g. a tweet)"),
+            BotCommand("datareviews",  "📅 Data-gated reviews — ready / overdue / broken-query"),
             BotCommand("missed",       "Missed EPs — top winners we didn't enter (opportunity cost)"),
             BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
             BotCommand("status",       "System health + API spend"),
