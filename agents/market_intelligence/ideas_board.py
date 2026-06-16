@@ -1,131 +1,100 @@
-"""`/ideas` — the unified trade-ideas front door (ADR 0004 consolidation).
+"""`/ideas` — the unified trade-ideas front door.
 
-ONE entry surface: a substrate-backed "Stocks in Play" block + the top NAMED ideas
-per strategy. The per-strategy drill-down buttons + the edit-in-place ← back nav live
-in channels/telegram.py (orchestrator), mirroring /hud; this module owns only the
-summary TEXT.
+"Stocks in Play" = ONE curated list of the **best actionable ideas right now**: the
+matured/tradeable names across every detector, consolidated, deduped per ticker (combined
+setup tags), and priority-ranked. The per-strategy drill-down buttons + the edit-in-place
+← back nav live in channels/telegram.py (orchestrator); this module owns only the TEXT.
 
-Two deliberate boundaries (advisor 2026-06-16):
-  • The "Stocks in Play" block reads the mi_stocks_in_play SUBSTRATE ONLY — never
-    re-derived from per-detector getters, or /ideas just becomes the 8th aggregator
-    of the fragmentation this whole thread consolidates.
-  • The per-strategy "top ideas" lines DO pull individual detector getters today —
-    legitimate scaffolding, because MAGNA53/9M/flags/fishhook aren't migrated into
-    the substrate until ADR-0004 Phase 2-5. As each detector migrates, its line
-    should read from the substrate and the getter call drops out.
+What "Stocks in Play" is NOT (operator 2026-06-16): the raw universe/watchlist. The
+sugar-baby cohort is the Pradeep 9M *universe to watch* ("9M = universe, not entry"), so it
+is NOT "in play" — it drops to a one-line `/sugarbabies` pointer, never the actionable list.
 
-Kept light (no heavy imports at module top) so render_ideas_summary is unit-testable
-without standing up the agent / a DB. The pure renderer takes already-fetched lists
-(or None on a failed getter) and only ever emits CAPS-safe tickers — never the
-source_detector/reason strings, which carry underscores that desync Telegram Markdown.
+TRANSITIONAL: the actionable ideas are read-time-consolidated from the per-detector getters
+here, until ADR-0004 #292 migrates each detector into mi_stocks_in_play with an
+actionability class — then "Stocks in Play" ranks the substrate rows directly and the getter
+calls drop out. Ranking is sort-by-tier only (no numeric score — sample-size discipline).
+
+Kept light (no heavy imports at module top) so render_ideas_summary is unit-testable without
+a DB. Only CAPS-safe tickers + fixed setup tags are emitted — never a raw source_detector
+(underscores desync Telegram Markdown); reason-derived tags are underscore-stripped.
 """
 from __future__ import annotations
 
 _SEP = "━━━━━━━━━━━━━━━━━━━━━"
-_FLAG_STAGE_EMOJI = {"TRIGGERED": "🎯", "COILED": "🌀", "TIGHTENING": "🔧"}
-_FLAG_STAGE_RANK = {"TRIGGERED": 0, "COILED": 1, "TIGHTENING": 2}
 
 
 def render_ideas_summary(*, today, sip_rows, magna53, ninem_intraday,
                          ninem_day2, flags, fishhook) -> str:
-    """Pure /ideas summary. All list args may be None (failed/again getter)."""
+    """Pure /ideas summary. All list args may be None (a failed/again getter)."""
     lines = [f"💡 *Apollo Ideas* — {today.strftime('%a %b %d')}", _SEP]
 
-    # ── Stocks in Play (SUBSTRATE ONLY) — lead with ACTIONABLE, collapse watchlist ──
-    # The substrate mixes actionability tiers; an operator scanning "what do I trade now"
-    # wants the operator_only/apollo_eligible rows (WITH their stage) up top and the
-    # informational watchlist (e.g. the sugar-baby cohort — context, not a fire signal)
-    # collapsed to a count + pointer. The stage comes from each row's reason head.
-    sip_rows = sip_rows or []
-    _cls_rank = {"apollo_eligible": 0, "operator_only": 1, "informational": 2}
-    actionable, info_tickers, seen = [], [], set()
-    for r in sorted(sip_rows, key=lambda r: _cls_rank.get(r.get("automation_class"), 3)):
-        t = r["ticker"]
-        if t in seen:                       # dedup multi-detector → most-actionable class wins
-            continue
-        seen.add(t)
+    # ── consolidate the best ACTIONABLE ideas: ticker → [best_tier, [tags]] ──
+    # tier 0 strongest. Dedup combines setup tags + keeps the strongest tier (a name that's
+    # both a MAGNA53 HIGH and a 9M shows once, ranked by the HIGH).
+    ideas: dict[str, list] = {}
+
+    def _add(ticker, tier, tag):
+        if not ticker:
+            return
+        cur = ideas.get(ticker)
+        if cur is None:
+            ideas[ticker] = [tier, [tag]]
+        else:
+            cur[0] = min(cur[0], tier)
+            if tag not in cur[1]:
+                cur[1].append(tag)
+
+    # EP catalyst (MAGNA53) — HIGH is the strongest actionable signal
+    for a in (magna53 or []):
+        if a.get("score_tier") == "HIGH":
+            _add(a.get("ticker"), 0, "MAGNA53 HIGH")
+        elif a.get("score_tier") == "MODERATE":
+            _add(a.get("ticker"), 4, "MAGNA53 mod")
+    # 9M EP anomaly
+    for a in (ninem_intraday or []):
+        _add(a.get("ticker"), 1, "9M")
+    for a in (ninem_day2 or []):
+        _add(a.get("ticker"), 4, "9M day2")
+    # Continuation flags — TRIGGERED/COILED are actionable; TIGHTENING/WATCH still forming
+    for r in (flags or []):
+        if r.get("stage") == "TRIGGERED":
+            _add(r.get("ticker"), 1, "flag triggered")
+        elif r.get("stage") == "COILED":
+            _add(r.get("ticker"), 2, "flag coiled")
+    # Fishhook — active open anchors
+    for r in (fishhook or []):
+        if r.get("state") in ("pending", "promoted", "reclaimed"):
+            _add(r.get("ticker"), 3, "fishhook")
+    # Substrate rows (anticipation etc.): actionable tiers only; informational = universe
+    universe = set()
+    for r in (sip_rows or []):
         cls = r.get("automation_class")
         if cls in ("apollo_eligible", "operator_only"):
-            # reason head carries the stage ("anticipation reclaim ready" …); underscores
-            # stripped so the (non-caps-safe) reason can't desync Telegram Markdown
-            stage = (r.get("reason") or "").split("—")[0].strip().replace("_", " ")
-            actionable.append(("🚨" if cls == "apollo_eligible" else "👤", t, stage))
-        else:
-            info_tickers.append(t)
-    n_act, n_info = len(actionable), len(info_tickers)
-    lines.append(f"🎯 *Stocks in Play* — {n_act} actionable"
-                 + (f" · {n_info} watchlist" if n_info else ""))
-    if actionable:
-        for emoji, t, stage in actionable[:10]:
-            lines.append(f"  {emoji} `{t}` {stage}".rstrip())
-        if n_act > 10:
-            lines.append(f"  …+{n_act - 10} more")
-    elif n_info == 0:
-        lines.append("  _substrate empty — detectors quiet_")
-    if info_tickers:
-        chips = " ".join(f"`{t}`" for t in info_tickers[:12])
-        more = f" …+{n_info - 12}" if n_info > 12 else ""
-        lines.append(f"  ℹ️ watchlist: {chips}{more}  → /sugarbabies")
-    if actionable or info_tickers:
-        lines.append("_🚨 auto-eligible · 👤 your call · ℹ️ watchlist context_")
+            tag = (r.get("reason") or "setup").split("—")[0].strip().replace("_", " ")
+            _add(r.get("ticker"), 0 if cls == "apollo_eligible" else 2, tag)
+        elif r.get("ticker"):
+            universe.add(r["ticker"])
+
+    ranked = sorted(ideas.items(), key=lambda kv: (kv[1][0], kv[0]))
+    lines.append(f"🎯 *Stocks in Play* — best actionable now ({len(ranked)})")
+    if ranked:
+        for ticker, (_tier, tags) in ranked[:12]:
+            lines.append(f"  `{ticker}` {' · '.join(tags)}")
+        if len(ranked) > 12:
+            lines.append(f"  _…+{len(ranked) - 12} more_")
+    else:
+        lines.append("  _nothing actionable right now — check back as setups mature_")
+    if universe:
+        lines.append(f"  _universe: {len(universe)} on the watchlist → /sugarbabies_")
     lines.append(_SEP)
-
-    # ── Top NAMED ideas per strategy (scaffolding; ADR-0004 unifies into substrate) ──
-    lines.append("*Top ideas per strategy*")
-
-    # MAGNA53: HIGH tier first, then by ep_score desc; top 3 named.
-    m = magna53 or []
-    m_sorted = sorted(
-        m, key=lambda a: (0 if a.get("score_tier") == "HIGH" else 1,
-                          -(a.get("ep_score") or 0)))
-    if m_sorted:
-        picks = " · ".join(
-            f"`{a['ticker']}`{'(H)' if a.get('score_tier') == 'HIGH' else '(M)'}"
-            for a in m_sorted[:3])
-        lines.append(f"🎯 MAGNA53: {picks}")
-    else:
-        lines.append("🎯 MAGNA53: _none today_")
-
-    # 9M EP: top intraday (already volume-ranked) + Day-2 pending names.
-    ni = [a for a in (ninem_intraday or []) if a.get("ticker")]
-    nd = [a for a in (ninem_day2 or []) if a.get("ticker")]
-    if ni or nd:
-        intra = " · ".join(f"`{a['ticker']}`" for a in ni[:3]) if ni else "—"
-        day2 = (" · Day2: " + ", ".join(f"`{a['ticker']}`" for a in nd[:3])) if nd else ""
-        lines.append(f"🏦 9M EP: {intra}{day2}")
-    else:
-        lines.append("🏦 9M EP: _none today_")
-
-    # Flags: TRIGGERED > COILED > TIGHTENING, then by base_age desc; top 3 named.
-    fl = sorted(
-        flags or [],
-        key=lambda r: (_FLAG_STAGE_RANK.get(r.get("stage"), 9),
-                       -(r.get("base_age") or 0)))
-    if fl:
-        picks = " · ".join(
-            f"`{r['ticker']}`{_FLAG_STAGE_EMOJI.get(r.get('stage'), '')}"
-            for r in fl[:3])
-        lines.append(f"🚩 Flags: {picks}")
-    else:
-        lines.append("🚩 Flags: _none today_")
-
-    # Fishhook: active open anchors only; top 3 named.
-    fh = [r for r in (fishhook or [])
-          if r.get("state") in ("pending", "promoted", "reclaimed") and r.get("ticker")]
-    if fh:
-        picks = " · ".join(f"`{r['ticker']}`" for r in fh[:3])
-        lines.append(f"🪝 Fishhook: {picks}")
-    else:
-        lines.append("🪝 Fishhook: _none active_")
-
-    lines.append(_SEP)
-    lines.append("_Tap a strategy to drill in · SHADOW where noted · /watch for the full board_")
+    lines.append("_Tap a strategy below for its full board · SHADOW where noted_")
     return "\n".join(lines)
 
 
 async def build_ideas_text() -> str:
-    """Fetch each surface fail-open (a single bad getter never blanks the board) and
-    render. Stocks-in-Play = substrate; per-strategy = detector getters (scaffolding)."""
+    """Fetch each surface fail-open (a single bad getter never blanks the board) and render
+    the consolidated actionable list. Detector getters are read-time-consolidated until
+    ADR-0004 #292 migrates them into the substrate."""
     import asyncio as _aio
     from agents.market_intelligence.collector import (
         et_today, prev_trading_days, last_trading_day,
