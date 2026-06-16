@@ -1635,7 +1635,9 @@ class TelegramChannel:
                      # 2026-06-09 #254 operator ground-truth corpus
                      "review", "reviews", "spotted",
                      # 2026-06-16 #54 Prong B data-gated-review board
-                     "datareviews"):
+                     "datareviews",
+                     # 2026-06-16 #270 Step 3 delayed-EP lifecycle board (SHADOW)
+                     "sip"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
@@ -1673,6 +1675,7 @@ class TelegramChannel:
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("flags",        "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
+            BotCommand("sip",          "⏱️ Delayed-EP lifecycle (SHADOW) — watched/armed/coiled/ready/triggered"),
             BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
             BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
             BotCommand("regime",       "📊 Market condition + Stockbee breadth matrix (MAs · VIX · T2108 · cluster)"),

@@ -2800,6 +2800,53 @@ class MarketIntelligenceAgent(BaseAgent):
             lines.append("Nothing ready or broken right now.")
         return self._ok(request, result="\n".join(lines))
 
+    async def _handle_sip_query(self, request: AgentRequest) -> AgentResponse:
+        """`/sip` — the #270 delayed-EP re-entry lifecycle board (SHADOW). Stocks that already
+        had their EP/9M thrust and are working the re-entry sequence: watched (gap) → armed
+        (gap-low undercut) → coiled/ready (reclaim set-up) → triggered (entry fired) → settled
+        realized_r. Observational — no trades. Companion to the 17:35 ET readiness job's
+        ARMED-transition push. Monospace (Telegram can't render pipe tables)."""
+        from agents.market_intelligence.db import get_delayed_ep_lifecycle_board
+
+        rows = await get_delayed_ep_lifecycle_board()
+        if not rows:
+            return self._ok(request, result=(
+                "⏱️ *Delayed-EP lifecycle* — no rows yet "
+                "(the 17:35 ET shadow run seeds it)."))
+
+        order = {"triggered": 0, "ready": 1, "coiled": 2, "armed": 3, "watched": 4, "expired": 5}
+        labels = {
+            "triggered": "🎯 TRIGGERED (entry fired)",
+            "ready": "✅ READY (reclaim — awaiting 3b entry)",
+            "coiled": "🌀 COILED", "armed": "🔫 ARMED (gap-low undercut)",
+            "watched": "👁 WATCHED (gap)", "expired": "💤 EXPIRED",
+        }
+        # underscore-free tactic labels (raw 'first5_break'/'gdl_reclaim' would desync Markdown)
+        tac = {"anticipation": "anticip", "first5_break": "first5", "gdl_reclaim": "gdl"}
+        by_state: dict[str, list] = {}
+        for r in rows:
+            by_state.setdefault(r["state"], []).append(r)
+
+        out = ["⏱️ *Delayed-EP re-entry lifecycle* (SHADOW — observe, no trades)", ""]
+        for st in sorted(by_state, key=lambda s: order.get(s, 9)):
+            grp = by_state[st]
+            out.append(f"*{labels.get(st, st)}* ({len(grp)})")
+            for r in grp[:10]:
+                gd = r["gap_day"].isoformat() if r.get("gap_day") else "?"
+                extra = []
+                if r.get("base_run"):
+                    extra.append(f"base{r['base_run']}")
+                if r.get("rmv_5d") is not None:
+                    extra.append(f"rmv{r['rmv_5d']:.0f}")
+                if r.get("entry_tactic"):
+                    extra.append(tac.get(r["entry_tactic"], r["entry_tactic"]))
+                if r.get("settled") and r.get("realized_r") is not None:
+                    extra.append(f"R={r['realized_r']:+.1f}")
+                tail = ("  " + " ".join(extra)) if extra else ""
+                out.append(f"  `{r['ticker']:<5}` gap {gd}{tail}")
+            out.append("")
+        return self._ok(request, result="\n".join(out).strip())
+
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
         """`/partialnow TICKER [CONFIRM]` — operator-confirm immediate partial exit.
 
@@ -5201,6 +5248,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/spotted":        self._handle_spotted_command,
             "/reviews":        self._handle_reviews_query,
             "/datareviews":    self._handle_data_reviews_query,
+            "/sip":            self._handle_sip_query,
         }
         handler = dispatch.get(cmd)
         if handler:
