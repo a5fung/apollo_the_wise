@@ -130,6 +130,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
+    "delayed_ep_readiness",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -2595,6 +2596,85 @@ async def _post_nightly_audit_job():
         logger.error(f"Review escalation failed: {e}", exc_info=True)
 
 
+async def _delayed_ep_readiness_job():
+    """#270 Step 3 SHADOW — derive the delayed-EP re-entry lifecycle nightly + alert ARMED
+    transitions. 17:35 ET, after the 17:00 nightly_data_pull refreshes mi_daily_closes.
+
+    DB-sourced ground truth only (no module state — containers restart): seed gap candidates
+    from mi_daily_closes, CONFIRM + derive each via the pure delayed_ep.evaluate_candidate over
+    full bars, settle a triggered anticipation entry once its forward window completes, UPSERT,
+    and Telegram the watched→armed TRANSITIONS (deduped via the prior-state map — only rows that
+    crossed into armed+ this run). SHADOW: observes + alerts, never submits.
+    """
+    from datetime import date as _date
+    from agents.market_intelligence import delayed_ep as de
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.db import (
+        get_delayed_ep_gap_seeds, get_delayed_ep_ohlcv, get_delayed_ep_state_map,
+        upsert_delayed_ep_lifecycle,
+    )
+    _MINUTE_TACTICS = ("first5_break", "gdl_reclaim")
+    try:
+        today = et_today()
+        seeds = await get_delayed_ep_gap_seeds(today)
+        state_map = await get_delayed_ep_state_map()
+        keys = {(s["ticker"], s["gap_day"]) for s in seeds}
+        keys |= {k for k, v in state_map.items()
+                 if v["state"] != "expired" and not v["settled"]}
+
+        written, transitions = 0, []
+        for ticker, gap_day in sorted(keys):
+            prior = state_map.get((ticker, gap_day))
+            if prior and prior.get("entry_tactic") in _MINUTE_TACTICS:
+                continue  # 3b/execution owns a minute-tactic entry — never clobber it
+            try:
+                bars = de.db_rows_to_bars(await get_delayed_ep_ohlcv(ticker, today))
+                if len(bars) < 30:
+                    continue
+                row = de.evaluate_candidate(bars, gap_day.isoformat())
+                if row is None:
+                    continue  # replay didn't confirm the coarse seed as a WATCHED gap
+                realized_r = fwd_mfe = None
+                settled = False
+                if row["state"] == "triggered" and row.get("_entry_idx") is not None:
+                    days_since = (today - _date.fromisoformat(row["triggered_date"])).days
+                    st = de.settle_row(
+                        entry_tactic="anticipation", entry_price=row["entry_price"],
+                        stop_price=row["stop_price"], bars=bars,
+                        entry_idx=row["_entry_idx"], days_since_trigger=days_since)
+                    if st:
+                        realized_r, fwd_mfe, settled = st["realized_r"], st["fwd_mfe_pct"], st["settled"]
+                await upsert_delayed_ep_lifecycle(
+                    ticker, gap_day, state=row["state"], gap_day_low=row["gap_day_low"],
+                    gap_day_vol=row["gap_day_vol"], sma200_at_gap=row["sma200_at_gap"],
+                    armed_date=row["armed_date"], coiled_date=row["coiled_date"],
+                    ready_date=row["ready_date"], triggered_date=row["triggered_date"],
+                    entry_tactic=row["entry_tactic"], entry_price=row["entry_price"],
+                    stop_price=row["stop_price"], reenter_count=row["reenter_count"],
+                    base_run=row["base_run"], rmv_5d=row["rmv_5d"], rmv_15d=row["rmv_15d"],
+                    tight_close_pct=row["tight_close_pct"], fwd_mfe_pct=fwd_mfe,
+                    realized_r=realized_r, settled=settled, last_eval=today)
+                written += 1
+                prior_state = prior["state"] if prior else None
+                if (prior_state in (None, "watched")
+                        and row["state"] in ("armed", "coiled", "ready", "triggered")):
+                    transitions.append((ticker, gap_day, row["state"]))
+            except Exception as e:
+                logger.error(f"delayed_ep readiness {ticker}/{gap_day}: {e}", exc_info=True)
+
+        logger.info(f"delayed_ep readiness: {written} rows, {len(transitions)} armed transitions")
+        if transitions:
+            lines = ["⏱️ *Delayed-EP (SHADOW) — newly ARMED* "
+                     "(gap-low undercut → watch for the reclaim):"]
+            for ticker, gap_day, st in transitions[:12]:
+                lines.append(f"  • {ticker} gap {gap_day.isoformat()} → {st}")
+            lines.append("/sip for the full lifecycle board.")
+            await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"delayed_ep readiness job failed: {e}", exc_info=True)
+
+
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
 
@@ -3448,6 +3528,15 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_nightly_data_pull, JOB_NIGHTLY_DATA_PULL, expected_min_rows=3500),
         CronTrigger(hour=17, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_NIGHTLY_DATA_PULL,
+        replace_existing=True,
+    )
+
+    # #270 Step 3 delayed-EP readiness (SHADOW): 5:35 PM ET, after nightly_data_pull
+    # refreshes mi_daily_closes. Intelligence-role; observes + alerts, never submits.
+    _scheduler.add_job(
+        audit_wrap(_delayed_ep_readiness_job, "delayed_ep_readiness"),
+        CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="delayed_ep_readiness",
         replace_existing=True,
     )
 

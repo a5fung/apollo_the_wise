@@ -6185,6 +6185,119 @@ async def get_adv_from_daily_closes(trade_date: date, days: int = 20) -> dict[st
     return {r["ticker"]: float(r["adv"]) for r in rows}
 
 
+# ── #270 delayed-EP re-entry lifecycle (Step 3 SHADOW) ────────────────────────
+
+
+async def get_delayed_ep_gap_seeds(scan_date: date, seed_window_days: int = 25) -> list[dict]:
+    """Coarse (ticker, gap_day) seeds in the recent window meeting the cohort predicate
+    (close ≥ 1.4·prev_close AND vol ≥ 3·ADV20 AND close ≥ $5 AND vol·close ≥ $20M). The
+    readiness job CONFIRMS each via replay() over full bars — this is just the cheap proposer
+    (ADV is a window-median approximation; replay re-validates with its own ADV20)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH adv AS (
+                SELECT ticker, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY volume) AS adv20
+                FROM mi_daily_closes
+                WHERE trade_date <= $1 AND trade_date >= $1 - INTERVAL '45 days' AND volume > 0
+                GROUP BY ticker HAVING COUNT(*) >= 10
+            ),
+            seq AS (
+                SELECT ticker, trade_date, low_price, volume, close,
+                       LAG(close) OVER (PARTITION BY ticker ORDER BY trade_date) AS prev_close
+                FROM mi_daily_closes
+                WHERE trade_date <= $1 AND trade_date >= $1 - INTERVAL '45 days'
+            )
+            SELECT s.ticker, s.trade_date AS gap_day, s.low_price AS gap_day_low,
+                   s.volume AS gap_day_vol
+            FROM seq s JOIN adv a USING (ticker)
+            WHERE s.prev_close IS NOT NULL
+              AND s.close >= 1.40 * s.prev_close
+              AND s.volume >= 3.0 * a.adv20
+              AND s.close >= 5.0
+              AND s.volume * s.close >= 20000000
+              AND s.trade_date >= $1 - ($2::int * INTERVAL '1 day')
+            ORDER BY s.ticker, s.trade_date
+        """, scan_date, seed_window_days)
+    return [dict(r) for r in rows]
+
+
+async def get_delayed_ep_ohlcv(ticker: str, to_date: date, lookback_days: int = 340) -> list[dict]:
+    """Ascending OHLCV bars for one ticker over [to_date − lookback_days, to_date] — enough
+    history for the SMA200 gate before a recent gap + the forward settlement window."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT trade_date, open_price, high_price, low_price, close, volume
+            FROM mi_daily_closes
+            WHERE ticker = $1 AND trade_date <= $2
+              AND trade_date >= $2 - ($3::int * INTERVAL '1 day')
+            ORDER BY trade_date
+        """, ticker, to_date, lookback_days)
+    return [dict(r) for r in rows]
+
+
+async def get_delayed_ep_state_map() -> dict[tuple, dict]:
+    """{(ticker, gap_day): {state, entry_tactic, settled}} for every lifecycle row — the job's
+    prior-state lookup for transition-dedup + minute-tactic-entry preservation. One query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, gap_day, state, entry_tactic, settled FROM mi_delayed_ep_lifecycle"
+        )
+    return {(r["ticker"], r["gap_day"]): {"state": r["state"],
+            "entry_tactic": r["entry_tactic"], "settled": r["settled"]} for r in rows}
+
+
+async def upsert_delayed_ep_lifecycle(ticker: str, gap_day: date, *, state, gap_day_low,
+        gap_day_vol, sma200_at_gap, armed_date, coiled_date, ready_date, triggered_date,
+        entry_tactic, entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
+        tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval) -> None:
+    """UPSERT a derived lifecycle row. day0_fills is intentionally OMITTED — the 3b/execution
+    watch owns it, and leaving it out of the SET clause preserves it on update."""
+    def _dd(v):
+        return date.fromisoformat(v) if isinstance(v, str) else v
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_delayed_ep_lifecycle
+                (ticker, gap_day, state, gap_day_low, gap_day_vol, sma200_at_gap,
+                 armed_date, coiled_date, ready_date, triggered_date, entry_tactic,
+                 entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
+                 tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,NOW())
+            ON CONFLICT (ticker, gap_day) DO UPDATE SET
+                state=EXCLUDED.state, gap_day_low=EXCLUDED.gap_day_low,
+                gap_day_vol=EXCLUDED.gap_day_vol, sma200_at_gap=EXCLUDED.sma200_at_gap,
+                armed_date=EXCLUDED.armed_date, coiled_date=EXCLUDED.coiled_date,
+                ready_date=EXCLUDED.ready_date, triggered_date=EXCLUDED.triggered_date,
+                entry_tactic=EXCLUDED.entry_tactic, entry_price=EXCLUDED.entry_price,
+                stop_price=EXCLUDED.stop_price, reenter_count=EXCLUDED.reenter_count,
+                base_run=EXCLUDED.base_run, rmv_5d=EXCLUDED.rmv_5d, rmv_15d=EXCLUDED.rmv_15d,
+                tight_close_pct=EXCLUDED.tight_close_pct, fwd_mfe_pct=EXCLUDED.fwd_mfe_pct,
+                realized_r=EXCLUDED.realized_r, settled=EXCLUDED.settled,
+                last_eval=EXCLUDED.last_eval, updated_at=NOW()
+        """, ticker, gap_day, state, gap_day_low, gap_day_vol, sma200_at_gap,
+             _dd(armed_date), _dd(coiled_date), _dd(ready_date), _dd(triggered_date), entry_tactic,
+             entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
+             tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval)
+
+
+async def get_delayed_ep_lifecycle_board(limit: int = 40) -> list[dict]:
+    """Lifecycle board for /sip — open rows first (recency), then recently settled."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, gap_day, state, entry_tactic, base_run, rmv_5d,
+                   armed_date, coiled_date, ready_date, triggered_date,
+                   realized_r, fwd_mfe_pct, settled, updated_at
+            FROM mi_delayed_ep_lifecycle
+            ORDER BY (state <> 'expired') DESC, updated_at DESC
+            LIMIT $1
+        """, limit)
+    return [dict(r) for r in rows]
+
+
 # ── Data-gated-review escalation state (#54 Prong B) ──────────────────────────
 
 
