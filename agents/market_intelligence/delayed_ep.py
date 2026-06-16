@@ -226,3 +226,172 @@ def compute_rmv(bars: list[dict], today_idx: int,
     flag_detector._compute_rmv — recorded telemetry on the lifecycle row, NOT a gate."""
     return _compute_rmv(bars_to_rmv_rows(bars), today_idx,
                         lookback=lookback, current_window=current_window)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Harvest evaluator (ported from scripts/_270_harvest.py — the realized-exit simulator
+# behind realized_r). tests/test_delayed_ep_settlement.py pins this port equal to the
+# script on a known path, same anti-drift discipline as the funnel golden test.
+# A `path` bar = {o,h,l,c, kind:'min'|'day', prior_low, day_idx}; caller owns construction.
+# ─────────────────────────────────────────────────────────────────────────────
+def simulate(entry, init_stop, path, rule, bound):
+    """Realized R under one intrabar `bound` ('opt' target-first / 'pess' stop-first).
+    Returns (realized_R, captured_pct_of_mfe, fills) or None if risk <= 0."""
+    risk = entry - init_stop
+    if risk <= 0:
+        return None
+    if rule.get("perfect_mfe"):
+        mfe_px = max(b["h"] for b in path)
+        return (mfe_px - entry) / risk, 1.0, []
+
+    partials = list(rule.get("partials", []))
+    stop = init_stop
+    pos = 1.0
+    realized = 0.0
+    day_count = 0
+    mfe_px = entry
+    fills = []
+
+    for b in path:
+        mfe_px = max(mfe_px, b["h"])
+        gb = rule.get("day0_giveback")
+        if (gb is not None and b["kind"] == "min" and b["day_idx"] == 0
+                and (mfe_px - entry) >= risk):
+            stop = max(stop, mfe_px - gb * (mfe_px - entry))
+        if b["kind"] == "day":
+            day_count += 1
+            if rule.get("trail_prior_low") and b["prior_low"] is not None:
+                stop = max(stop, b["prior_low"])
+        tgt_px = entry + partials[0][0] * risk if partials else None
+        hit_tgt = tgt_px is not None and b["h"] >= tgt_px
+        hit_stop = b["l"] <= stop
+
+        def take_partial():
+            nonlocal pos, realized, partials, stop
+            r_mult, frac = partials.pop(0)
+            f = min(frac, pos)
+            realized += f * r_mult
+            pos -= f
+            fills.append((b["day_idx"], f))
+            if rule.get("breakeven_after_first"):
+                stop = max(stop, entry)
+
+        def take_stop():
+            nonlocal pos, realized
+            fill = min(stop, b["o"])
+            realized += pos * (fill - entry) / risk
+            fills.append((b["day_idx"], pos))
+            pos = 0.0
+
+        if hit_tgt and hit_stop:
+            if bound == "opt":
+                take_partial()
+                if pos > 0 and b["l"] <= stop:
+                    take_stop()
+            else:
+                take_stop()
+        elif hit_tgt:
+            take_partial()
+        elif hit_stop:
+            take_stop()
+
+        if pos <= 0:
+            break
+        if rule.get("time_stop_days") and b["kind"] == "day" and day_count >= rule["time_stop_days"]:
+            realized += pos * (b["c"] - entry) / risk
+            fills.append((b["day_idx"], pos))
+            pos = 0.0
+            break
+
+    if pos > 0:
+        realized += pos * (path[-1]["c"] - entry) / risk
+        fills.append((path[-1]["day_idx"], pos))
+    captured = realized / ((mfe_px - entry) / risk) if mfe_px > entry else float("nan")
+    return realized, captured, fills
+
+
+def daily_path(bars, entry_idx, end_idx):
+    """Daily-only `path` over (entry_idx, end_idx] for a close-entry harvest. `prior_low`
+    seeds from the entry day's low and trails the previous completed daily bar; day_idx ≥ 1."""
+    path, prior_low = [], bars[entry_idx]["l"]
+    for di, b in enumerate(bars[entry_idx + 1: end_idx + 1], start=1):
+        path.append({"o": b["o"], "h": b["h"], "l": b["l"], "c": b["c"],
+                     "kind": "day", "prior_low": prior_low, "day_idx": di})
+        prior_low = b["l"]
+    return path
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Settlement (Phase 3) — realized_r for a 'triggered' lifecycle row, or ABSTAIN.
+#
+# triggered is NOT terminal: the readiness job keeps triggered+settled=FALSE rows in the
+# re-eval set until their forward window completes (count TRADING bars, not calendar days),
+# then settles realized_r + fwd_mfe_pct and flips settled=TRUE. realized_r is TAGGED by
+# entry_tactic upstream (the row's column) so the N≥5 graduation peek never blends
+# anticipation (≈0R realized) with FIRST5 (+1–2R).
+# ─────────────────────────────────────────────────────────────────────────────
+# W3 PRIMARY shadow exit: +1R/+3R ½/½ scale-out with a day-5 time-stop on the unbanked
+# remainder (Phase 7 records the full ladder spectrum for comparison).
+SETTLE_RULE = dict(partials=[(1.0, 0.5), (3.0, 0.5)], time_stop_days=5)
+SETTLE_FORWARD_BARS = 5      # forward TRADING bars needed before an anticipation row settles
+SETTLE_DEGRADE_DAYS = 21     # calendar days w/o enough bars (halt/delist) → settle DEGRADED on what's there
+
+
+def realized_r_from_fills(entry, stop, fills) -> Optional[float]:
+    """FIRST5/gdl realized R from the execution-persisted day-0 MINUTE fills. Each fill =
+    {'price','fraction',...}; fractions sum to ~1.0 (whole position exits). This is the ONLY
+    faithful FIRST5 realized_r — the day-0 minute scale-out (banks ~93% on day 0) cannot be
+    reconstructed from daily bars, so we NEVER approximate it from them (advisor 6/16)."""
+    risk = entry - stop
+    if not fills or risk <= 0:
+        return None
+    return sum(f["fraction"] * (f["price"] - entry) / risk for f in fills)
+
+
+def settle_row(*, entry_tactic, entry_price, stop_price, bars, entry_idx,
+               day0_fills=None, rule=None, min_forward_bars=SETTLE_FORWARD_BARS,
+               days_since_trigger=None) -> Optional[dict]:
+    """Settle one 'triggered' row, or return None to ABSTAIN (leave it for a later run).
+
+    `bars` = the ascending daily series; `entry_idx` = the index of the ENTRY day in it
+    (the coiled day for anticipation; the reclaim/3b day for first5/gdl). Returns
+    {realized_r, fwd_mfe_pct, settled, degraded} on settlement.
+
+    STRUCTURAL ABSTAIN (advisor 6/16): a minute-scale tactic (first5_break / gdl_reclaim)
+    with NO persisted day-0 fills ABSTAINS — it never falls back to a daily-bar approximation
+    (that fallback is exactly what would re-inject the MFE-shaped error into the deployable
+    for the +1–2R tactic the edge lives in). Anticipation settles on the daily path faithfully
+    (it's a close entry — no day-0 minute geometry to miss)."""
+    risk = (entry_price - stop_price) if (entry_price and stop_price) else None
+    if not risk or risk <= 0:
+        return None
+
+    n_forward = len(bars) - 1 - entry_idx
+    if entry_tactic in ("first5_break", "gdl_reclaim"):
+        if not day0_fills:
+            return None  # ── STRUCTURAL ABSTAIN — wait for execution to persist the fills ──
+        rr = realized_r_from_fills(entry_price, stop_price, day0_fills)
+        end = min(entry_idx + min_forward_bars, len(bars) - 1)
+        mfe = ((max(b["h"] for b in bars[entry_idx + 1:end + 1]) - entry_price) / risk
+               if end > entry_idx else 0.0)
+        return {"realized_r": rr, "fwd_mfe_pct": mfe, "settled": rr is not None, "degraded": False}
+
+    if entry_tactic != "anticipation":
+        return None  # unknown tactic → abstain rather than guess
+
+    degraded = False
+    if n_forward < min_forward_bars:
+        # terminal fallback: a tiny-cap that stops printing (halt/delist) would leave realized_r
+        # NULL forever → after a bounded window settle DEGRADED on the bars we have; else abstain.
+        if days_since_trigger is not None and days_since_trigger >= SETTLE_DEGRADE_DAYS and n_forward >= 1:
+            degraded = True
+        else:
+            return None
+    end = min(entry_idx + min_forward_bars, len(bars) - 1)
+    out = simulate(entry_price, stop_price, daily_path(bars, entry_idx, end),
+                   rule or SETTLE_RULE, "pess")
+    if out is None:
+        return None
+    realized_r, _captured, _fills = out
+    mfe = (max(b["h"] for b in bars[entry_idx + 1:end + 1]) - entry_price) / risk
+    return {"realized_r": realized_r, "fwd_mfe_pct": mfe, "settled": True, "degraded": degraded}

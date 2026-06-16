@@ -1448,6 +1448,10 @@ async def initialize_schema() -> None:
                 tight_close_pct FLOAT,                   -- Pradeep |close %change| secondary cross-check
                 fwd_mfe_pct     FLOAT,                   -- MFE ceiling (upper bound only)
                 realized_r      FLOAT,                   -- HARVESTED R; the graduation gate column
+                day0_fills      JSONB,                   -- 3b/execution-persisted day-0 minute fills
+                                                         -- [{price,fraction,day_idx}]; first5/gdl realized_r
+                                                         -- derives from THESE. Absent → settlement ABSTAINS
+                                                         -- (never a daily-bar fallback for a minute tactic).
                 settled         BOOLEAN NOT NULL DEFAULT FALSE,
                 last_eval       DATE,
                 created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
