@@ -61,14 +61,14 @@ def simulate(entry, init_stop, path, rule, bound):
     for b in path:
         mfe_px = max(mfe_px, b["h"])
         # Phase 1 — day-0 aggressive intraday GIVEBACK trail (Pradeep): it only activates
-        # ONCE THERE IS PROFIT TO PROTECT (gain >= day0_activate_r * risk — "protect profit if
-        # it gaps/breaks out fast"); before that the structural stop holds, so intraday noise
+        # ONCE THERE IS PROFIT TO PROTECT (gain >= +1R — "protect profit if it gaps/breaks
+        # out fast"); before that the structural stop holds, so intraday noise
         # near entry can't stop you. After activation, never surrender more than `day0_giveback`
         # of the gain from the running intraday high → a fast spike-and-fade exits WITH profit;
         # a steady grinder never trips it (survives to phase 2). Only raises the stop.
         gb = rule.get("day0_giveback")
-        if (gb is not None and b["kind"] == "min"
-                and (mfe_px - entry) >= rule.get("day0_activate_r", 1.0) * risk):
+        if (gb is not None and b["kind"] == "min" and b["day_idx"] == 0
+                and (mfe_px - entry) >= risk):                  # activate only once up >= +1R
             stop = max(stop, mfe_px - gb * (mfe_px - entry))
         if b["kind"] == "day":
             day_count += 1

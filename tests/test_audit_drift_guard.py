@@ -14,18 +14,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.market_intelligence.system_audit import _band_for, _is_slow_drift
+from agents.market_intelligence.system_audit import _classify_band, _is_slow_drift
 
 
 def _classify(current, p50, mad, direction="low"):
-    """Mirror _compute_anomaly's band path (z + ratio + the drift guard) — returns band."""
-    use_z = mad >= 1.0
-    z = ((current - p50) / mad) if use_z else 0.0
-    ratio = (p50 / max(current, 1e-9)) if direction == "low" else (current / max(p50, 1e-9))
-    band = _band_for(z, ratio)
-    if _is_slow_drift(band, ratio, mad, p50, current):
-        band = 2
-    return band
+    """Pin the REAL routing: delegate to production's _classify_band (not a hand-synced
+    replica that can silently drift from _compute_anomaly). Returns the band only."""
+    return _classify_band(current, p50, mad, direction)[0]
 
 
 def test_benign_slow_drift_downgraded_to_L3():

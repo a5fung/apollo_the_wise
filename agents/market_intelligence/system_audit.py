@@ -1090,6 +1090,27 @@ def _directional_ratio(current: float, p50: float, direction: str) -> float:
     return (current / p50) if p50 > 0 else 0.0
 
 
+# Band value the slow-drift downgrade routes to: must be >0 (so it reaches the L3
+# threshold-crossing record) and != 3 (so it skips the L2 emit). Names the bare `2`.
+_BAND_L3_DRIFT = 2
+
+
+def _classify_band(
+    current: float, p50: float, mad: float, direction: str
+) -> tuple[int, float, float]:
+    """The complete band-routing path used by `_compute_anomaly`: MAD<1 z-fallback ->
+    directional ratio -> `_band_for` -> slow-drift L2->L3 downgrade. Returns (band, z, ratio).
+    SINGLE source of the routing so the drift-guard test pins the REAL path, not a hand-synced
+    replica (extracted 2026-06-15 /simplify — the test previously re-implemented this loop)."""
+    use_z = mad >= _MAD_FALLBACK_THRESHOLD
+    z = ((current - p50) / mad) if use_z else 0.0
+    ratio = _directional_ratio(current, p50, direction)
+    band = _band_for(z, ratio)
+    if _is_slow_drift(band, ratio, mad, p50, current):
+        band = _BAND_L3_DRIFT  # slow drift on a stable metric -> L3 drift path, not L2
+    return band, z, ratio
+
+
 def _direction_for(metric_name: str) -> str:
     spec = _COLD_START_CEILINGS.get(metric_name)
     if spec is None:
@@ -1195,15 +1216,9 @@ async def _compute_anomaly(
     # Warming tier: compute but only emit L3 (silent).
     warming = sample_n < _MIN_FULL_SAMPLE
 
-    # MAD<1 fallback — z-score is meaningless on near-zero variance, so use
-    # the multiplier rule alone.
-    use_z = mad >= _MAD_FALLBACK_THRESHOLD
-    z = ((current - p50) / mad) if use_z else 0.0
-    ratio = _directional_ratio(current, p50, direction)
-    band = _band_for(z, ratio)
-    # Drift-vs-spike guard: a slow drift on a stable metric routes to L3, not L2 (see helper).
-    if _is_slow_drift(band, ratio, mad, p50, current):
-        band = 2  # route to the L3 drift path (audit-only, transition-deduped)
+    # Band routing — MAD<1 z-fallback, directional ratio, _band_for, and the slow-drift
+    # L2->L3 downgrade — all live in _classify_band (the SINGLE source the drift-guard test pins).
+    band, z, ratio = _classify_band(current, p50, mad, direction)
 
     if band == 3 and not warming:
         return Anomaly(2, metric.name, {
