@@ -1633,7 +1633,9 @@ class TelegramChannel:
                      # 2026-05-28 #138 operator-confirm commands
                      "partialnow", "syncnow",
                      # 2026-06-09 #254 operator ground-truth corpus
-                     "review", "reviews", "spotted"):
+                     "review", "reviews", "spotted",
+                     # 2026-06-16 #54 Prong B data-gated-review board
+                     "datareviews"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
