@@ -1,11 +1,10 @@
 """/ideas unified trade-ideas front door.
 
-Pins the renderer contract: "Stocks in Play" is ONE curated list of the BEST ACTIONABLE
-ideas — consolidated across detectors, deduped per ticker (combined tags), priority-ranked.
-The sugar-baby cohort is the UNIVERSE (operator 2026-06-16: "9M = universe, not entry"), so
-it's a /sugarbabies pointer, NEVER the actionable list. Only caps-safe tickers + fixed tags
-are emitted (no raw source_detector underscores). The interactive button→edit→back nav is a
-live-smoke, not unit-testable.
+Pins the renderer contract: "Stocks in Play" = GRADUATED entries ONLY (≥paper) — today just
+MAGNA53 EP HIGH (+ any apollo_eligible substrate row). Shadow/in-development entries (coil/
+flag, fishhook, anticipation) and the 9M universe are NOT in play — they're observed via the
+drill-down buttons / /9m / /sugarbabies. The board is small / sometimes empty by design.
+The interactive button→edit→back nav is a live-smoke, not unit-testable.
 """
 from datetime import date
 
@@ -15,59 +14,48 @@ _TODAY = date(2026, 6, 16)
 
 
 def _render(**kw):
-    base = dict(today=_TODAY, sip_rows=None, magna53=None,
-                ninem_day2=None, flags=None, fishhook=None)
+    base = dict(today=_TODAY, magna53=None, sip_rows=None)
     base.update(kw)
     return render_ideas_summary(**base)
 
 
-def test_empty_renders_zero_actionable():
+def test_empty_renders_zero_and_in_development():
     out = _render()
-    assert "Apollo Ideas" in out
-    assert "🎯 *Stocks in Play* — best actionable now (0)" in out
-    assert "nothing actionable right now" in out
-    assert "/sugarbabies" not in out          # no universe line when substrate empty
+    assert "🎯 *Stocks in Play* — graduated · tradeable now (0)" in out
+    assert "no graduated entry firing right now" in out
+    assert "In development" in out and "anticipation" in out   # shadow entries surfaced here
 
 
-def test_consolidates_dedups_and_ranks_best_first():
-    magna53 = [{"ticker": "RXT", "score_tier": "HIGH", "ep_score": 70}]
-    ninem_day2 = [{"ticker": "RXT"}, {"ticker": "NTLA"}]   # RXT is ALSO a 9M Day-2
-    flags = [{"ticker": "WSC", "stage": "COILED"}]
-    fishhook = [{"ticker": "AUGO", "state": "promoted"}]
-    out = _render(magna53=magna53, ninem_day2=ninem_day2, flags=flags, fishhook=fishhook)
-    assert "🎯 *Stocks in Play* — best actionable now (4)" in out   # RXT deduped
-    rxt_line = next(l for l in out.splitlines() if "`RXT`" in l)
-    assert "MAGNA53 HIGH" in rxt_line and "9M Day2" in rxt_line     # combined tags, one row
-    assert out.count("`RXT`") == 1
-    # tier ranking: RXT(0 HIGH) < NTLA(1 9M Day2) < WSC(2 coiled) < AUGO(3 fishhook)
-    assert out.index("`RXT`") < out.index("`NTLA`") < out.index("`WSC`") < out.index("`AUGO`")
+def test_magna53_high_is_the_graduated_entry():
+    out = _render(magna53=[{"ticker": "RXT", "score_tier": "HIGH", "ep_score": 70}])
+    assert "🎯 *Stocks in Play* — graduated · tradeable now (1)" in out
+    assert "🚨 `RXT` MAGNA53 EP HIGH" in out
 
 
-def test_flag_tightening_is_not_actionable():
-    flags = [{"ticker": "TGT", "stage": "TIGHTENING"}, {"ticker": "COI", "stage": "COILED"}]
-    out = _render(flags=flags)
-    assert "`COI`" in out                      # coiled = actionable
-    assert "`TGT`" not in out                   # tightening = still forming, excluded
-    assert "best actionable now (1)" in out
+def test_magna53_moderate_is_not_in_play():
+    out = _render(magna53=[{"ticker": "MOD", "score_tier": "MODERATE", "ep_score": 55}])
+    assert "`MOD`" not in out                                  # only HIGH is the graduated entry
+    assert "graduated · tradeable now (0)" in out
 
 
-def test_sugar_baby_cohort_is_universe_not_in_play():
-    sip = [{"ticker": "SBA", "automation_class": "informational", "source_detector": "sugar_baby_cohort"},
-           {"ticker": "SBB", "automation_class": "informational", "source_detector": "sugar_baby_cohort"}]
+def test_apollo_eligible_substrate_row_is_in_play_but_not_shadow_tiers():
+    sip = [
+        {"ticker": "AUTO", "automation_class": "apollo_eligible", "reason": "9M Day-2 ORB"},
+        {"ticker": "ANTIC", "automation_class": "operator_only", "reason": "anticipation reclaim ready — x"},
+        {"ticker": "SBC", "automation_class": "informational", "source_detector": "sugar_baby_cohort"},
+    ]
     out = _render(sip_rows=sip)
-    assert "best actionable now (0)" in out      # informational is NOT actionable
-    assert "universe: 2 on the watchlist → /sugarbabies" in out
-    assert "`SBA`" not in out                    # universe names are not listed as in-play
+    assert "🚨 `AUTO` 9M Day-2 ORB" in out                     # graduated apollo_eligible → in play
+    assert "`ANTIC`" not in out                                # operator_only (shadow) NOT in play
+    assert "`SBC`" not in out                                  # informational (universe) NOT in play
+    assert "graduated · tradeable now (1)" in out
 
 
-def test_substrate_actionable_tag_shown_without_source_leak():
-    sip = [{"ticker": "RDY", "automation_class": "operator_only",
-            "source_detector": "delayed_ep_reentry",
-            "reason": "anticipation reclaim ready — awaiting entry"}]
-    out = _render(sip_rows=sip)
-    assert "`RDY` anticipation reclaim ready" in out   # reason-head tag, em-dash tail dropped
-    assert "delayed_ep_reentry" not in out             # raw source_detector never leaks
-    assert "awaiting entry" not in out                 # tail trimmed
+def test_in_development_section_lists_the_shadow_entries():
+    out = _render()
+    dev = out.split("In development")[1]
+    assert "anticipation" in dev and "flag" in dev and "fishhook" in dev
+    assert "9M = stock filter" in out                          # 9M framed as filter, not a play
 
 
 def test_ideas_strategies_is_single_source_for_keyboard_and_taskmap():
