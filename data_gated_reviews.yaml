@@ -6600,33 +6600,33 @@ reviews:
       "9M EP = universe, NOT an entry trigger; the entry comes from
       tightness→expansion")? Decide on the head-to-head: for the SAME 9M day-2
       names, does the consolidation entry match-or-beat the Day-2 ORB on realized R?
-    predicate_sql: null   # gated on prerequisites that don't exist yet (Family A entry layer); date-only surface
+    predicate_sql: null   # decided on a directional shadow read, not a rigid cohort count — date-surfaced
     threshold: 0
-    earliest_review_date: 2026-09-15
+    earliest_review_date: 2026-07-07
     status: pending
     added_on: 2026-06-17
     action_when_ready: |
-      CUT-OVER DECISION (operator sign-off + CHANGE_PROCESS — this RETIRES a live
-      setup, so it is hard-gated, NOT agent-self-certified).
+      CUT-OVER DECISION — MOVE FAST (operator 2026-06-17: "weeks not months; done >
+      perfect; the ONLY valid delay is real-$ risk"). This is all SHADOW/PAPER, so
+      there is NO real $ at risk in the entry-swap — ship it, run both in parallel,
+      decide on the FIRST clear read. Do NOT wait for a big "prove-it" cohort.
 
-      PREREQUISITES (all must hold before the decision is meaningful):
-        1. Family-A consolidation ENTRY layer is BUILT (ADR 0013 Phase 3 entry
-           modes — anticipate/confirm/U&R), not just the Phase-1 shadow recorder.
-        2. The 9M universe is WIRED INTO it (#311 "9M→flag pipeline"): every
-           confirmed 9M sugar baby is also evaluated as a consolidation-entry
-           candidate, shadow-tracking realized R.
-        3. N>=15 settled HEAD-TO-HEAD pairs: for the same 9M day-2 names, the
-           Day-2 ORB realized R vs the consolidation-entry realized R.
+      THE ONLY REAL BLOCKER (integration, NOT a from-scratch build — weeks, shadow):
+        wire confirmed 9M sugar babies INTO the Family-A consolidation universe +
+        record a shadow consolidation-entry per 9M name + settle realized R, so the
+        Day-2 ORB and the consolidation entry run IN PARALLEL on the same names.
+        Reuse what exists: #270 consolidation recorder (LIVE), #94 intraday
+        flag-break watcher (LIVE), #270 harvest/settle mechanics (BUILT). Plumbing,
+        not invention.
 
-      DECISION: if the consolidation entry MATCHES-OR-BEATS the Day-2 ORB on
-      realized R (and the operator agrees on the methodology) → RETIRE 9M Day-2
-      ORB (flip the 9m_day2 strategy to shadow/retired in mi_strategies), 9M
-      becomes a universe feeder only. If the prerequisites aren't met or the
-      read is inconclusive → status=deferred + bump earliest_review_date (the
-      expected path if Family-A build slips).
+      DECIDE (target ~2026-07-07 — PULL EARLIER on a clear read): once the parallel
+      shadow shows the consolidation entry working on 9M names (DIRECTIONAL — operator
+      judgment on the first clear signal, NOT a rigid N>=X), RETIRE the 9m_day2 ORB
+      entry to shadow + demote 9M to a universe feeder. Hard-gate that STAYS:
+      operator sign-off + CHANGE_PROCESS note (no agent self-certify). Only the
+      ultra-conservative "prove-it-first over months" cohort is dropped.
 
-      COUPLING (risk-management): the 9M Day-2 ORB -> LIVE-MONEY promotion (Q3 per
-      launch plan) is BLOCKED until this decision — do NOT take the Day-2 ORB to
-      real money while its entry mechanism is a retirement candidate. This review
-      supersedes / fronts the 9M-live-promotion decision. Tracked: PLAN #326;
-      Family-B rework #297; P4 9M->flag pipeline #311.
+      REAL-$ COUPLING (the ONE legitimate caution): the 9M Day-2 -> LIVE-MONEY
+      promotion (Q3) stays BLOCKED until this decision — never promote-then-retire.
+      Acceleration applies to the SHADOW/PAPER flip ONLY; real money keeps full gates.
+      Tracked: PLAN #326; critical path = #270 Step 3 (the shadow wiring) / #297 / #311.
