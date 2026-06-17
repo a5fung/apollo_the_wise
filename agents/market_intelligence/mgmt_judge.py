@@ -13,12 +13,10 @@ R-math note (ADR 0014 / advisor 2026-06-17): the R denominator is the ORIGINAL e
 a negative denominator → garbage R that won't throw). R is None when orb_low is absent or >= entry.
 """
 import asyncio
-import logging
 from typing import Optional
 
+from agents.market_intelligence.judge_transport import invoke_forced_tool
 from shared.llm_models import JUDGE_MODEL as MODEL
-
-logger = logging.getLogger(__name__)
 
 # The bounded management-verdict vocabulary (ADR 0014). An out-of-enum answer → fail-open (None).
 VERDICTS = ("HOLD", "PARTIAL_TAKE", "TRAIL_TIGHTEN", "FORCE_EXIT")
@@ -149,33 +147,12 @@ async def manage_holistic(
     model: str = MODEL,
 ) -> Optional[dict]:
     """One management-judge call. Returns the bounded verdict dict, or None on any error/timeout
-    (FAIL-OPEN — the caller writes nothing / audit-only, never executes)."""
-    if client is None:
-        return None
-    prompt = _build_mgmt_prompt(payload)
-
-    async def _call():
-        kwargs = dict(
-            model=model, max_tokens=500, tools=[_MGMT_TOOL],
-            tool_choice={"type": "tool", "name": "manage_position"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        if semaphore is not None:
-            async with semaphore:
-                return await client.messages.create(**kwargs)
-        return await client.messages.create(**kwargs)
-
-    try:
-        resp = await asyncio.wait_for(_call(), timeout=timeout)
-        tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
-        return _normalize_mgmt_verdict(tool_block.input)
-    except Exception as e:  # noqa: BLE001 — fail-open is the contract
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted("management judge", e)
-        except Exception:
-            pass
-        logger.warning(f"management judge failed/timeout for {payload.get('ticker')}: {e}")
-        return None
+    (FAIL-OPEN — the caller writes nothing / audit-only, never executes). Transport (semaphore,
+    timeout, tool_use extraction, credit-exhaustion alert + fail-open) is the shared
+    judge_transport.invoke_forced_tool; only the prompt/tool/normalizer are management-specific."""
+    return await invoke_forced_tool(
+        client, _build_mgmt_prompt(payload),
+        tool=_MGMT_TOOL, tool_name="manage_position",
+        normalize=_normalize_mgmt_verdict, label="management judge",
+        subject=payload.get("ticker") or "",
+        semaphore=semaphore, timeout=timeout, model=model)

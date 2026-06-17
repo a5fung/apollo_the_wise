@@ -6513,7 +6513,12 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
 
 
 async def get_anticipation_lifecycle_board(limit: int = 40) -> list[dict]:
-    """Lifecycle board for /sip — open rows first (recency), then recently settled."""
+    """Lifecycle board for the OLD Family-B mi_anticipation_lifecycle table.
+
+    PARKED for #297 (2026-06-17): its last live reader (`/anticipation`) was repointed to the
+    Family-A `get_consolidation_board` (mi_anticipation_consolidation), and this table's writer jobs
+    (`_anticipation_readiness_job` / `_anticipation_3b_job`) are deliberately unregistered for #297
+    to reclaim. Kept (not deleted) so #297 can inherit the gap-anchored replay; currently 0 callers."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""

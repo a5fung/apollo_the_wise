@@ -24,6 +24,7 @@ from agents.market_intelligence.catalyst_materiality import format_market_cap
 
 logger = logging.getLogger(__name__)
 
+from agents.market_intelligence.judge_transport import invoke_forced_tool
 from shared.llm_models import JUDGE_MODEL as MODEL  # Wave-1 default; the live model is chosen by the W1 eval.
 
 GRADES = ("game_changer", "strong", "routine", "mna")
@@ -272,34 +273,9 @@ async def grade_holistic(
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
     `semaphore` (shared with the catalyst grader in prod) bounds total Anthropic
     concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff."""
-    if client is None:
-        return None
-    prompt = _build_judge_prompt(payload)
-
-    async def _call():
-        kwargs = dict(
-            model=model, max_tokens=500, tools=[_JUDGE_TOOL],
-            tool_choice={"type": "tool", "name": "grade_ep"},
-            messages=[{"role": "user", "content": prompt}],
-        )
-        if semaphore is not None:
-            async with semaphore:
-                return await client.messages.create(**kwargs)
-        return await client.messages.create(**kwargs)
-
-    try:
-        resp = await asyncio.wait_for(_call(), timeout=timeout)
-        tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
-        return _normalize_verdict(tool_block.input)
-    except Exception as e:  # noqa: BLE001 — fail-open is the contract
-        # #273: credit exhaustion must ALERT (terminal + actionable), never
-        # vanish into the fail-open — 6/11 produced 2,122 silent judge nulls.
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted("holistic judge", e)
-        except Exception:
-            pass
-        logger.warning(f"holistic judge failed/timeout for {payload.get('ticker')}: {e}")
-        return None
+    return await invoke_forced_tool(
+        client, _build_judge_prompt(payload),
+        tool=_JUDGE_TOOL, tool_name="grade_ep",
+        normalize=_normalize_verdict, label="holistic judge",
+        subject=payload.get("ticker") or "",
+        semaphore=semaphore, timeout=timeout, model=model)

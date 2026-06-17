@@ -1,9 +1,17 @@
 """P3 Management Judge (ADR 0014) — unit tests for the pure pieces: the R-math (the advisor's
 trailed-stop trap), the bounded-enum fail-open, and the payload assembly. The LLM call itself is
 fail-open and mirrors the grade-judge; the value here is pinning the correctness traps."""
+import asyncio
+
 from agents.market_intelligence.mgmt_judge import (
     VERDICTS, _normalize_mgmt_verdict, assemble_mgmt_inputs, compute_position_metrics,
+    manage_holistic,
 )
+
+
+def test_manage_holistic_none_client_fails_open():
+    # delegates to the shared judge_transport; None client → None (no crash, no execution)
+    assert asyncio.run(manage_holistic(None, {"ticker": "X"})) is None
 
 
 # ── R-math: the trailed-stop trap (advisor A, 2026-06-17) ──
