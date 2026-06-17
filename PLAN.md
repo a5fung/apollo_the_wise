@@ -46,6 +46,7 @@ _Last CLOSE: 2026-06-16._
 - #184 | 2026-06-20 | in_progress | broker-authoritative trade-state mirror (ADR 0008) increments 2/3
 - #225 | 2026-06-20 | pending | resolve 3 demotion residuals (order_manager L584/905/1575) + blocking deploy gate
 - #275 | 2026-06-19 | pending | kill/scale band digest evaluation + band-transition alerts + override awareness
+- #316 | 2026-06-22 | pending | PDT / SEC-FINRA Rule 4210 — confirm ALPACA's rollout (not Fidelity's) + relax BLOCK_PDT_LOCKOUT via CHANGE_PROCESS (memory pdt_rule_4210_change_2026; revisit at cutover)
 
 ## Family A — consolidation plays post a runup (ADR 0013 · reset of #270)
 
@@ -132,6 +133,29 @@ _Last CLOSE: 2026-06-16._
 ## Apollo Themes (portfolio-app2)
 
 - #193 | 2026-06-19 | in_progress | RS theme rank-evolution tab (snapshot freshness rides #194)
+- #315 | 2026-07-15 | pending | RS-theme dashboard R-items (memory rs-theme-dash-backlog): R1 mobile/public-URL (Tailscale) · R2 bump chart · R3 canonicalization · R4 forward returns
+
+## Apollo v1.1 — fast-follow program (spec: docs/roadmap/apollo-v1.1-v2.0.md PART I)
+
+_W1 selection-replay + kill/scale = #268 (done) + #275; W2 entry-mechanics = #276; W4 chart-vision = #267 (Launch project). Below = the waves not yet broken into tasks._
+- #306 | 2026-07-01 | pending | v1.1-W3 exit & management: winner-harvest tune (partial size · trail-by-character · capture_pct KPI) + #91 time-stop refinement — trade-state, #151 harness discipline
+- #307 | 2026-07-08 | pending | v1.1-W5 experience-seed ritual: weekly operator-labeling cadence + precedent-retrieval shadow (with #219, #254, #255)
+- #219 | 2026-07-08 | pending | weekly verified-miss review → RITUAL (systematic missed-winner labels feed W5)
+- #254 | 2026-07-08 | pending | ground-truth label corpus (the axis-3 "accumulated experience" substrate)
+
+## Apollo v2.0 — tier-one trader (horizons H1 Q3'26 · H2 Q4'26 · H3 2027 · spec: apollo-v1.1-v2.0.md PART II)
+
+- #308 | 2026-08-01 | pending | P1 Experienced Judge (H1→H2): precedent corpus at scale + self-review→rubric-distillation loop + ensemble/uncertainty (#301 seed) + auto-growing probe library
+- #309 | 2026-08-01 | pending | P2 Full Sight (H1→H2): multimodal (#267 daily→intraday→peer/SPY) + intraday narrative radar + tape features (#299) + negative-catalyst (#238)
+- #310 | 2026-10-01 | pending | P3 The Manager (H2): management judge mature (#300 shadow→load-bearing) + structure-stops via PIVOTS (docs/methodology/pivots-and-stock-character.md) + conviction sizing
+- #311 | 2026-08-01 | pending | P4 Multi-Setup Book (H1→H2): per-setup judges + tightness→expansion graduation + 9M→flag pipeline + parabolic-short counter-regime book + regime-adaptive selection
+- #312 | 2026-10-01 | pending | P5 Capital & Autonomy Ladder (H2→H3): unified_allocator live + formal shadow→paper→live ladder w/ auto-DEMOTION on breach + scaling/slippage telemetry
+- #313 | 2026-08-01 | pending | P6 Institution-grade ops (H1→H2): #256 split (done) + replay-everything CI (#302) + cost governance (per-role LLM spend vs P&L)
+- #314 | 2026-07-15 | pending | Trading-ideas detector book (P4 detail): TI1 parabolic-short · TI2 wick-fill (#283) · TI3 fishhook U&R · TI4 base+catalyst convergence · TI5 post-EP shape classifier · TI6 RMV (#54) — graduation gates in data_gated_reviews.yaml; detail in trading-ideas-backlog memory
+
+## Spec / detail docs (PLAN.md is the INDEX — every program above; detail + evidence live here, referenced)
+
+_Launch DoD: docs/roadmap/launch-2026-06-22.md · v1.1/v2.0 map: docs/roadmap/apollo-v1.1-v2.0.md · ADRs: docs/decisions/*.md · evidence-gated reviews (weekly auto-surface): data_gated_reviews.yaml · setup SSoTs: docs/setups/*.md · methodology: docs/methodology/*.md · idea detail: trading-ideas-backlog memory. If a program isn't a task line above, it isn't planned — add it._
 
 ## Miscellaneous (no home project)
 
