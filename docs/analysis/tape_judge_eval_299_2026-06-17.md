@@ -85,6 +85,16 @@ docker exec apollo-market python /app/scripts/eval_tape_judge.py \
     --days 95 --limit 0 --high-only --replicates 3
 ```
 
+**Cost / wall-time of that command** (~570 HIGH rows × 2 arms × 3 repl = ~3,420 Opus judge calls):
+- **$ ≈ ~$170 (range ~$130–280)** — per call ≈ 2.5k input tok ($5/1M) + ~1.5k output incl. adaptive
+  thinking ($25/1M) ≈ $0.05; output/thinking-dominated; could be lower with prompt caching on the
+  shared 738-tok rubric. Polygon minute-bar fetches (~570) are within plan quota — negligible $.
+- **Wall-time: several hours at the current sem=3, sequential-rows loop** (~30–50s/row). For a first
+  pass, prefer a **cheaper directional run** — `--days 30 --high-only` (~180 rows, ~$50–90, ~1–2h)
+  or `--replicates 2` — to see whether tape produces credible deltas at all before paying for the
+  full cohort. (If a faster full run is wanted, add a row-level concurrency knob — small change,
+  needs a per-row pool connection so concurrent rows don't share one asyncpg conn.)
+
 Then the operator labels each tape-delta right/wrong; ≥ a clear majority-correct on a non-trivial
 delta count + a CHANGE_PROCESS entry + sign-off = wire the tape into the live judge (`ep_detector`
 `_judge_shadow` passes the computed tape into `assemble_judge_inputs`). Re-run after shipping and
