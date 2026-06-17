@@ -75,6 +75,13 @@ convenience flag stays a transparent `verdict == 'HOLD'`, named for what it is �
 - **Part 1 (this build):** the judge module (`assemble_mgmt_inputs` + `manage_holistic`, pure-ish +
   unit-tested), the `mi_position_mgmt_decisions` schema + writer, and a **read-only smoke** over the
   2 current open positions (FPS 15d/stop-above-entry, QURE day-0) — no scheduler wiring yet.
+  **Smoke result (2026-06-17): machinery PASS** — FPS R=+4.96 computed correctly off `orb_low`
+  (the trailed stop 59.03 > entry would've given a negative), verdict HOLD with a sound rationale;
+  bounded verdicts + fail-open exercised. **It also empirically confirmed caveat C:** the smoke read
+  `mi_daily_closes` (latest QURE row = 6/16 @ 26.99), but QURE gapped to ~44 on today's 8-K (hence
+  the 44.69 entry / 42.5 ORB-low) — today's close not yet pulled → the judge saw a STALE pre-gap
+  price → a false −8R / FORCE_EXIT. The position is fine; the verdict was a price-source artifact.
+  **→ Part 2 MUST source the current price from a live snapshot, never `mi_daily_closes`.**
 - **Part 2 (Thu):** wire the 16:00 ET scheduler job + the EOD digest line + verify-live (rows written
   on the first real pass). Operator labeling of the agree/disagree rows begins accruing.
 
