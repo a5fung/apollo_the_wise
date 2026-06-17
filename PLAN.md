@@ -114,6 +114,7 @@ _Last CLOSE: 2026-06-16._
 ## Operational safety / hardening
 
 - #323 | 2026-06-19 | in_progress | L1 high_ep_no_terminal_state (LZB) — DEPLOYED LIVE 6/17 (bfa4b50+64a0c12; coercion of date-over-wire at _insert_skipped_trade + de-silenced skip-write except → skip_row_write_error audit+Telegram). All 3 containers recreated. Verify-live = next out-of-ORB HIGH writes its skip row (event-driven, now self-announcing)
+- #325 | 2026-06-20 | pending | theme_count_active decline (true 42→15 active in 16d; L2 fired 6/12/15/16/17, each dismissed "benign") — engine RUNS but ZERO births in 16d (synthesis "32-38 cand→0 kept" nightly) + intended #213/#214 retirements. CONFIRM regime vs birth-gate regression (don't dismiss 4th time) + FIX lagging _today_active_themes metric (counts 30 via pre-#214 shape vs true 15; baseline-discontinuity-aware). Probe: scripts/_theme_count_anomaly_probe.py
 - #324 | 2026-06-23 | pending | deploy.sh `both` excludes apollo-execution — make complete or add a drift guard (execution-side broker code needs a 2nd deploy.sh execution; caught on the LZB fix; memory feedback_deploy_both_excludes_execution; relates #279/#256)
 - #288 | 2026-06-19 | in_progress | Prong B idle-review escalation — REDEPLOY DONE 6/17 (both-deploy; a6c45a0 ⊆ deployed HEAD, boot applied new schema, container healthy). Remaining verify-live: clean /reviews + escalation render on next idle-review fire
 - #290 | 2026-06-18 | pending | fix dead_zone_reevaluation broken predicate (column dc_fwd.high does not exist)
