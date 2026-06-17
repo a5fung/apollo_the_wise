@@ -829,7 +829,25 @@ async def _ep_scan_job():
                             signal_type="magna53",
                         )
                     except Exception as ins_e:
+                        # NON-NEGOTIABLE (feedback_no_silent_trading_failures): a
+                        # logger.error-only swallow here is EXACTLY what hid the
+                        # LZB gap for ~4 days — the daily invariant caught it, we
+                        # didn't. Make the write-failure LOUD: audit row (error
+                        # check + weekly review surface it) + Telegram.
                         logger.error(f"Could not insert out-of-ORB skip for {ep['ticker']}: {ins_e}")
+                        try:
+                            await log_audit_event(
+                                "skip_row_write_failed",
+                                f"{ep['ticker']} out-of-ORB skip row NOT persisted — "
+                                f"{type(ins_e).__name__}: {ins_e}",
+                            )
+                        except Exception:
+                            pass
+                        await send_telegram_message(
+                            f"{mode_prefix()}🚨 *{ep['ticker']}* skip-row write FAILED "
+                            f"({type(ins_e).__name__}) — HIGH alert has no terminal "
+                            f"state; check execution service"
+                        )
                     try:
                         # NOTE: do NOT `from ... import log_audit_event` here —
                         # it's imported at module level + referenced earlier in

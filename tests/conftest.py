@@ -57,7 +57,7 @@ _filters_stub = sys.modules.get(
     "agents.market_intelligence.backtester.filters",
     types.ModuleType("agents.market_intelligence.backtester.filters"),
 )
-for _attr in ("validate_orb_entry", "check_filters"):
+for _attr in ("validate_orb_entry", "check_filters", "compute_atr_14"):
     if not hasattr(_filters_stub, _attr):
         setattr(_filters_stub, _attr, MagicMock(name=_attr))
 sys.modules["agents.market_intelligence.backtester.filters"] = _filters_stub

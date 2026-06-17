@@ -802,6 +802,13 @@ async def _insert_skipped_trade(
     score/catalyst/gap/regime can be LEFT-JOINed from mi_ep_alerts by /why.
     """
     pool = await get_pool()
+    # `today` (the alert_date) arrives as an ISO STRING when this is dispatched
+    # over the intelligence→execution HTTP wire (_wire_default serializes dates);
+    # coerce back so asyncpg's date_encode doesn't raise. This is the DB-write
+    # boundary — the same _dd idiom every other dated write here uses (LZB
+    # 2026-06-13: this one missed it → a HIGH alert sat with no terminal row).
+    if isinstance(today, str):
+        today = date.fromisoformat(today)
     ep_score = alert.get("ep_score") if alert else None
     catalyst_quality = alert.get("catalyst_quality") if alert else None
     gap_pct = alert.get("gap_pct") if alert else None

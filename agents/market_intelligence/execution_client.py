@@ -82,8 +82,11 @@ _SLOW_COMMAND_FNS = frozenset({
 
 
 def _wire_default(o):
-    """JSON encoder hook — date/datetime args cross as ISO strings
-    (get_first_bar's trade_date is the only non-primitive arg today)."""
+    """JSON encoder hook — date/datetime args cross as ISO strings. This fires
+    for dates ANYWHERE in the payload, including nested inside dict args (e.g.
+    sugar_baby['alert_date']), so the RECEIVING `_*_inprocess` handler (or the
+    DB-write it calls) MUST coerce str→date back. Do not assume a single dated
+    arg — record_skipped_trade's `today` missed that and 500'd (LZB 2026-06-13)."""
     if isinstance(o, (date, datetime)):
         return o.isoformat()
     raise TypeError(
