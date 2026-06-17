@@ -268,14 +268,20 @@ async def grade_holistic(
     semaphore: asyncio.Semaphore | None = None,
     timeout: float = 15.0,
     model: str = MODEL,
+    image_png: bytes | None = None,
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
     `semaphore` (shared with the catalyst grader in prod) bounds total Anthropic
-    concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff."""
+    concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff.
+
+    `image_png` (#267 chart-vision, W4) optionally attaches a point-in-time daily chart so
+    the judge can read the price/MA/volume structure. None = byte-identical text-only call
+    (the live grade path passes None until the rubric axis is sign-off-gated live; only the
+    eval harness passes a chart today)."""
     return await invoke_forced_tool(
         client, _build_judge_prompt(payload),
         tool=_JUDGE_TOOL, tool_name="grade_ep",
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",
-        semaphore=semaphore, timeout=timeout, model=model)
+        semaphore=semaphore, timeout=timeout, model=model, image_png=image_png)

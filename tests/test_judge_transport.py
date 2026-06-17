@@ -2,8 +2,9 @@
 the grade judge (load-bearing) and the management judge (shadow) now share. Pins the FAIL-OPEN
 contract directly on the shared code (previously only covered transitively via grade_holistic)."""
 import asyncio
+import base64
 
-from agents.market_intelligence.judge_transport import invoke_forced_tool
+from agents.market_intelligence.judge_transport import _user_content, invoke_forced_tool
 
 _TOOL = {"name": "t", "input_schema": {"type": "object", "properties": {}}}
 
@@ -80,3 +81,25 @@ def test_semaphore_is_respected():
     sem = asyncio.Semaphore(1)
     assert _run(invoke_forced_tool(_client("ok"), "p", **_kw(semaphore=sem))) == {"verdict": "HOLD"}
     assert sem._value == 1  # released
+
+
+# ── multimodal content shaping (#267 chart-vision) ──
+
+def test_user_content_text_only_is_plain_string():
+    # No image → byte-identical to the pre-vision path (the load-bearing grade
+    # judge must be unchanged when it sends no chart).
+    assert _user_content("hello", None) == "hello"
+    assert _user_content("hello", b"") == "hello"  # empty bytes also = text-only
+
+
+def test_user_content_with_image_is_multimodal_block():
+    png = b"\x89PNG\r\n\x1a\nFAKE"
+    content = _user_content("grade this", png)
+    assert isinstance(content, list) and len(content) == 2
+    assert content[0] == {"type": "text", "text": "grade this"}
+    img = content[1]
+    assert img["type"] == "image"
+    assert img["source"]["type"] == "base64"
+    assert img["source"]["media_type"] == "image/png"
+    # round-trips back to the original PNG bytes
+    assert base64.standard_b64decode(img["source"]["data"]) == png

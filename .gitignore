@@ -49,3 +49,7 @@ Thumbs.db
 
 # Claude Code local settings
 .claude/
+
+# #267 chart-vision eval — emitted chart PNGs (runtime output, not source)
+_chart_eval/
+clean_breakout_cohort.csv

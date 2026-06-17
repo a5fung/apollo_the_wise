@@ -29,6 +29,11 @@ icalendar>=6.1.0
 
 # Market Intelligence Agent
 Pillow>=10.0.0
+# Chart-vision renderer (#267, W4) — daily candle+MA+volume PNG for the judge's vision axis.
+# matplotlib pinned explicitly (not transitive-only): the line-34 tzlocal lesson — a transitive
+# resolution can flake a needed lib out of the market image.
+mplfinance>=0.12.10b0
+matplotlib>=3.8.0
 tweepy>=4.14.0
 apscheduler>=3.10.0
 tzlocal>=5.0  # hard dep of apscheduler 3.x; pinned explicitly — a transitive-only resolution flaked it out of the market image (2026-06-16 apollo-market boot crash)
