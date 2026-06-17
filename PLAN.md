@@ -22,11 +22,11 @@ _Last CLOSE: 2026-06-16._
 
 ## Launch — 6/22 GO/NO-GO (the long-horizon plan, as dated tasks · SSoT-spec: docs/roadmap/launch-2026-06-22.md)
 
-- #298 | 2026-06-17 | in_progress | DoD-7 all-projects triage sweep = THIS file's ETA pass (every task dated/projected)
-- #261 | 2026-06-17 | pending | scripts/ namespace reorg (ops/evals/probes split + path sweep)
-- #226 | 2026-06-17 | pending | R3 Lane-2 narrative→mi_themes canonization (advisory)
-- #266 | 2026-06-18 | pending | theme membership validation at BIRTH + identity-change (evidence run)
-- #299 | 2026-06-17 | pending | P2 tape-features in judge payload (OR character + premkt vol-curve)
+- #298 | 2026-06-16 | in_progress | DoD-7 all-projects triage sweep — CORE DONE (PLAN.md, all 106 tasks dated/projected); residual = operator tunes the placeholder 6/23 ETAs
+- #261 | 2026-06-16 | pending | scripts/ namespace reorg (ops/evals/probes split + path sweep)
+- #226 | 2026-06-16 | pending | R3 Lane-2 narrative→mi_themes canonization (advisory; blocked_by #214 naming stability)
+- #266 | 2026-06-16 | pending | theme membership validation at BIRTH + identity-change (evidence run; CHANGE_PROCESS)
+- #299 | 2026-06-16 | pending | P2 tape-features in judge payload (OR character + premkt vol-curve; shadow, additive)
 - #267 | 2026-06-18 | pending | judge chart-vision: renderer + payload + rubric axis + with/without eval (operator labels ~6/18)
 - #300 | 2026-06-18 | pending | P3 management-judge SHADOW (HOLD/PARTIAL/TRAIL/EXIT telemetry, zero authority)
 - #255 | 2026-06-18 | pending | judge precedent-retrieval v1 (kind=review) + periodic-review nudge
