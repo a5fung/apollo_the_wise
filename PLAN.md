@@ -87,7 +87,7 @@ _Last CLOSE: 2026-06-16._
 - #211 | 2026-06-23 | in_progress | news-gap discovery loop (unknown-rate KPI) — needs new scheduler job
 - #212 | 2026-06-23 | in_progress | questioner/investigator dialogic loop — productionize at larger cohort
 - #230 | 2026-06-23 | pending | #212-as-sourcing-QA detector → feed #211 (low-precision triage)
-- #233 | 2026-06-23 | in_progress | demote Perplexity/Tavily to labeled candidate (Wave C)
+- #233 | 2026-06-23 | in_progress | Perplexity repositioning — KEEP + integrate (operator-adopted 6/17, NOT cut): (a) feed its independent GRADE into the JUDGE as a LABELED second-opinion/disagreement signal — judge currently reads its [Web summary] text but not the Claude-vs-Perplexity grade disagreement (grade-path INPUT change → CHANGE_PROCESS + shadow eval, judge is load-bearing); (b) reposition Perplexity as a labeled RECENCY source only (its live-web edge), judge-adjudicated vs primary (#210), and RETIRE the mechanical floor confidence_multiplier boost (with #320). Was "demote Perplexity/Tavily to labeled candidate (Wave C)"
 - #235 | 2026-06-23 | pending | gap-discovery loop #211 integration (Wave E)
 - #236 | 2026-06-23 | pending | corpus_provenance as byproduct of build_grounded_text (DRY refactor)
 - #214 | 2026-06-19 | in_progress | theme auto-naming breadth rule — verify (cooldowns back to ~3/day)
