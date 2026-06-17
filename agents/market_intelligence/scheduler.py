@@ -2122,6 +2122,15 @@ async def _catalyst_downgrade_digest_job():
             now_et.date(),
             CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
         )
+        # Defer to the load-bearing judge (#249): a catalyst the FLOOR downgraded but the JUDGE
+        # promoted to an authoritative HIGH should not read as a bare downgrade contradicting the
+        # HIGH alert 20 min earlier (LZB 6/17). Annotate those lines so the digest is coherent
+        # with the alert rather than fighting it.
+        judge_rows = await conn.fetch(
+            "SELECT ticker, score_tier, grade_engine_authority FROM mi_ep_alerts WHERE alert_date = $1",
+            now_et.date(),
+        )
+    judge_map = {jr["ticker"]: jr for jr in judge_rows}
 
     if not rows:
         return 0
@@ -2138,14 +2147,21 @@ async def _catalyst_downgrade_digest_job():
         # `game_changer`) and the humanized reason can both contain `_`
         # which Markdown V1 parses as italic delimiters (#148).
         summary = r["summary"] or ""
+        ticker = summary.split(":", 1)[0].strip()
+        jr = judge_map.get(ticker)
+        judge_promoted = bool(jr and jr["grade_engine_authority"] == "judge"
+                              and jr["score_tier"] == "HIGH")
         inner = summary.split("(earnings catalyst, ", 1)
         if len(inner) == 2:
             head = inner[0].rstrip(" (")
             reason_raw = inner[1].rstrip(")")
             reason_human = _humanize_downgrade_reason(reason_raw)
-            lines.append(f"• {_md_escape(head)} — {_md_escape(reason_human)}")
+            line = f"• {_md_escape(head)} — {_md_escape(reason_human)}"
         else:
-            lines.append(f"• {_md_escape(summary)}")
+            line = f"• {_md_escape(summary)}"
+        if judge_promoted:
+            line += "  _(↑ judge promoted to HIGH — authoritative)_"
+        lines.append(line)
     lines.append("")
     lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
     try:

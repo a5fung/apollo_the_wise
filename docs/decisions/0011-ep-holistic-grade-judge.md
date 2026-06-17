@@ -167,3 +167,61 @@ go-live gate** — forward-from-gap is the saturated metric that killed the mate
 `#189` materiality (shipped shadow), `#190` grounded-summary grade (= `_classify_catalyst_claude`),
 `#200` theme-gated advisory, `#201` fire panel, `#203` consolidation — all fold into this one
 judge at Wave 4. Until then they remain as-is (advisory), unchanged.
+
+---
+
+## Addendum 2026-06-17 — the full grade pipeline + where Perplexity fits (operator: "all this must be clear")
+
+A 6/17 operator triage of three alerts (QURE/JBL/LZB) surfaced that the alert *display* still
+led with the floor grade while the judge is load-bearing — five symptoms of ONE coherence gap.
+The authoritative pipeline, end to end:
+
+1. **Claude** (`_classify_catalyst_claude`) grades the catalyst magnitude over the grounded SEC+
+   news text → `catalyst_quality` (game_changer/strong/routine/weak) + the analysis. This is the
+   **floor** catalyst grade.
+2. **Perplexity** runs in parallel as an INDEPENDENT second opinion → `pplx_quality` (stored in the
+   `gemini_validation` column — legacy name). It feeds the **floor only**, two ways: (a) **agreement**
+   `pplx==catalyst_quality` → `confidence_multiplier=1.2`, which scales `ep_score`; (b) **hedge
+   downgrade** — if Perplexity self-acknowledges null search results, Claude's grade is knocked one
+   notch. **Perplexity is a cross-check on Claude's floor grade; it is NOT an input to the judge.**
+3. Deterministic floor downgrades (revenue-weak missing-YoY, prose-mismatch) can lower
+   `catalyst_quality`. `ep_score` + `catalyst_quality` → **floor_tier** (`baseline_floor_tier`).
+4. **The Judge** (Opus, `grade_holistic`) independently re-grades the same grounded text + the
+   deterministic deal÷cap materiality + active narratives → `tier` / `direction_vs_floor` /
+   `fire_axes`. It does **not** see Perplexity or the floor multiplier.
+5. **Authority** (`_resolve_grade_authority`): judge load-bearing → `score_tier = judge_tier` drives
+   the alert + ORB entry; `baseline_floor_tier` is kept as the counterfactual.
+
+**So the judge is the final word on tier; Perplexity only shaped the floor.**
+
+### Coherence fix shipped 2026-06-17 (display-only — no grade-math, no schema)
+The alert now **resolves to the judge** and shows the provenance:
+- **Headline** leads with the judge verdict when `grade_engine_authority='judge'`
+  (`resolve_headline_grade`) — a judge-promoted HIGH no longer headlines the contradicted floor
+  grade (LZB floor `routine` under a judge HIGH).
+- **Grade-provenance line** (`format_grade_provenance`): `Floor: <Claude> · Perplexity: <pplx>
+  (agree/differs) · Judge: <tier> <direction> ← authoritative`. Replaces the old
+  `confidence_multiplier > 1.0` "Claude + Perplexity agree" line, which went STALE when a catalyst
+  was downgraded AFTER the agreement boost (LZB 6/17 printed "agree" on routine-vs-strong).
+- **Theme line**: when `fire_axes` lit theme/narrative but the ticker is in no tracked cluster
+  (JBL judge-inferred AI-infra), shows "judge-inferred (not a tracked cohort)" not a bare "—".
+- **Rubric line**: when metrics extracted but the rubric can't score (no prior-year revenue
+  comparable), shows "not scored (no prior-year comparable)" instead of silently dropping.
+- **10:10 catalyst-downgrade digest** annotates names the judge promoted ("↑ judge promoted to
+  HIGH — authoritative") so it no longer contradicts the HIGH alert 20 min earlier.
+
+### Deferred (grade-AFFECTING → CHANGE_PROCESS + backtest, NOT shipped 6/17)
+- **Stale `confidence_multiplier` after a floor downgrade** (`ep_detector.py` revenue-weak path
+  keeps the 1.2 the hedge path resets). Resetting it lowers `ep_score` → can flip `floor_tier` AND
+  the `score<50` pre-judge skip → it changes *what reaches the judge*. Backtest the pre-judge
+  gating effect first.
+- **Missing prior-year YoY is the single upstream root** of BOTH the rubric=None AND LZB's
+  spurious strong→routine downgrade. yfinance already shadow-recovered LZB's +3.8% YoY; wiring it
+  into the rubric input would have prevented the downgrade entirely. Grade-affecting → the #149
+  shadow→promote decision (backtest-gated). Name it there, not "cosmetic rubric display."
+- **Open governance question:** under a load-bearing judge that does not consume Perplexity, is
+  Perplexity's mechanical `ep_score` boost still wanted, or should it become display-only
+  provenance? Decide before promoting the multiplier-reset.
+- **Theme-detection gap** (`theme_detection_two_lane_architecture`): the judge inferred a theme
+  (JBL AI-infra) that neither Lane-1 clustering nor Lane-2 narrative tracks — a real detection gap,
+  not just a label.

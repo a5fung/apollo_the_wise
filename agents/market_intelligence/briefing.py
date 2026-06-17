@@ -2132,6 +2132,51 @@ async def edit_telegram_message(
         return False
 
 
+_TIER_RANK = {"none": 0, "MODERATE": 1, "HIGH": 2}
+
+
+def _judge_direction(score_tier, floor_tier) -> "str | None":
+    """promote / hold / demote of the judge's authoritative tier vs the floor tier (None if
+    either is unknown). The judge is load-bearing (#249), so this reconstructs the direction the
+    delta-digest persists, but from the in-memory alert dict (judge_direction isn't on it)."""
+    a, b = _TIER_RANK.get(score_tier), _TIER_RANK.get(floor_tier)
+    if a is None or b is None:
+        return None
+    return "promote" if a > b else ("demote" if a < b else "hold")
+
+
+def resolve_headline_grade(ep: dict) -> tuple:
+    """(emoji, label) for the alert's ticker line. RESOLVES TO THE JUDGE when the judge is
+    load-bearing (grade_engine_authority='judge') — so a judge-promoted HIGH never headlines the
+    contradicted floor grade (LZB: floor 'routine' under a judge HIGH). Floor/fallback authority →
+    the Claude catalyst grade, as before."""
+    if ep.get("grade_engine_authority") == "judge":
+        d = _judge_direction(ep.get("score_tier"), ep.get("baseline_floor_tier"))
+        dtxt = f" ({d})" if d else ""
+        return TIER_EMOJI.get(ep.get("score_tier", ""), ""), f"Judge: {ep.get('score_tier')}{dtxt}"
+    cq = (ep.get("catalyst_quality") or "").replace("_", " ").title()
+    return CATALYST_EMOJI.get(ep.get("catalyst_quality", ""), ""), cq
+
+
+def format_grade_provenance(ep: dict) -> str:
+    """ONE coherent line showing HOW the grade was reached — the operator-requested clarity on
+    where Perplexity comes in. Floor catalyst grade (Claude) · Perplexity's independent
+    second-opinion grade (agree/differs — a cross-check on the floor, NOT a judge input) · the
+    judge's authoritative tier verdict when load-bearing. Replaces the old confidence-multiplier
+    'Claude + Perplexity agree' line, which went STALE when a catalyst was downgraded AFTER the
+    agreement boost was set (LZB 6/17: printed 'agree' on routine-vs-strong)."""
+    cq = (ep.get("catalyst_quality") or "").replace("_", " ")
+    parts = [f"Floor: {cq or 'n/a'} (Claude)"]
+    pplx = (ep.get("gemini_validation") or "").replace("_", " ")
+    if pplx:
+        agree = "✓agree" if ep.get("gemini_validation") == ep.get("catalyst_quality") else "✗differs"
+        parts.append(f"Perplexity: {pplx} ({agree})")
+    if ep.get("grade_engine_authority") == "judge":
+        d = _judge_direction(ep.get("score_tier"), ep.get("baseline_floor_tier"))
+        parts.append(f"*Judge: {ep.get('score_tier')}{f' {d}' if d else ''}* ← authoritative")
+    return "🔎 " + " · ".join(parts)
+
+
 async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     """Send an immediate EP alert to Telegram."""
     tier_e = TIER_EMOJI.get(ep.get("score_tier", ""), "")
@@ -2223,20 +2268,22 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     elif _axes is not None:
         fire_line = "🔥 Fire (judge): *⚠️ none seen* — no axis lit\n"
 
+    head_e, head_label = resolve_headline_grade(ep)
     text = (
         conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
-        f"*{ep['ticker']}* {cat_e} {ep.get('catalyst_quality', '').replace('_', ' ').title()}\n"
+        f"*{ep['ticker']}* {head_e} {head_label}\n"
         f"{ct_line}"
         f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n"
         + fire_line + "\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
-        f"Catalyst: {catalyst_text}"
+        f"Catalyst: {catalyst_text}\n\n"
+        # Grade provenance — floor (Claude) · Perplexity cross-check · judge verdict. Always
+        # shown so the operator sees how the final tier was reached + where Perplexity fits.
+        + format_grade_provenance(ep)
     )
-    if ep.get("confidence_multiplier", 1.0) > 1.0:
-        text += f"\n\n_Claude + Perplexity agree — {ep['confidence_multiplier']:.1f}x confidence_"
 
     # Rubric snapshot (2026-05-19 Phase 5): if we have a structured-metrics
     # extraction + rubric score, append a readable summary so the operator
@@ -2260,10 +2307,22 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
             _rubric_text = format_rubric_for_telegram(ep["ticker"], _extracted, _today)
             if _rubric_text:
                 text += "\n\n" + _rubric_text
+            else:
+                # Metrics WERE extracted but the rubric couldn't score: its anchor revenue axis
+                # needs a prior-year comparable, and the LLM got the quarter but not the YoY
+                # (JBL/LZB 6/17 — q_revenue_usd.yoy_pct is None). Surface WHY rather than silently
+                # dropping the block. (The deterministic-yfinance-YoY fix is grade-affecting → #149.)
+                text += "\n\n🧪 Rubric: not scored (no prior-year revenue comparable extracted)"
         # Theme membership — surface for EVERY EP alert (independent of rubric)
         try:
             _theme = await get_theme_membership(ep["ticker"])
-            text += "\n" + format_theme_for_telegram(_theme)
+            if not _theme and _axes and any(a in ("theme", "narrative") for a in _axes):
+                # The judge lit the theme/narrative axis but the ticker is in NO tracked cluster
+                # (JBL 6/17: judge-inferred AI-infra theme, in_active_theme=False). Show the
+                # judge's basis instead of a bare "Theme: —" that contradicts the 🔥 fire line.
+                text += "\nTheme: 🔥 judge-inferred (not in a tracked cohort — see analysis)"
+            else:
+                text += "\n" + format_theme_for_telegram(_theme)
         except Exception as _te:
             logger.debug(f"Theme membership lookup failed (non-critical): {_te}")
     except Exception as _e:

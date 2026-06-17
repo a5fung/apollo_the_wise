@@ -1,0 +1,76 @@
+"""EP alert grade-coherence (6/17 operator triage). Since the judge is load-bearing (#249), the
+alert must resolve to the JUDGE verdict and show HOW the grade was reached (where Perplexity fits)
+— not headline the contradicted floor grade (LZB: floor 'routine' under a judge-promoted HIGH) nor
+print a stale 'Claude + Perplexity agree' line after a post-agreement downgrade.
+
+Pins the pure formatters: _judge_direction, resolve_headline_grade, format_grade_provenance.
+"""
+from agents.market_intelligence.briefing import (
+    _judge_direction, resolve_headline_grade, format_grade_provenance,
+)
+
+# The three real 6/17 alerts (in-memory dict shape send_ep_alert receives).
+QURE = {"ticker": "QURE", "catalyst_quality": "game_changer", "gemini_validation": "routine",
+        "score_tier": "HIGH", "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
+JBL = {"ticker": "JBL", "catalyst_quality": "game_changer", "gemini_validation": "strong",
+       "score_tier": "HIGH", "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
+LZB = {"ticker": "LZB", "catalyst_quality": "routine", "gemini_validation": "strong",
+       "score_tier": "HIGH", "baseline_floor_tier": "MODERATE", "grade_engine_authority": "judge"}
+
+
+# ── _judge_direction ─────────────────────────────────────────────────────────
+def test_direction_promote_hold_demote():
+    assert _judge_direction("HIGH", "MODERATE") == "promote"
+    assert _judge_direction("HIGH", "HIGH") == "hold"
+    assert _judge_direction("MODERATE", "HIGH") == "demote"
+    assert _judge_direction("none", "MODERATE") == "demote"
+
+
+def test_direction_none_on_unknown_tier():
+    assert _judge_direction("HIGH", None) is None
+    assert _judge_direction("WAT", "HIGH") is None
+
+
+# ── resolve_headline_grade — resolves to the judge when load-bearing ──────────
+def test_headline_leads_with_judge_when_load_bearing():
+    # LZB: floor 'routine' but judge promoted to HIGH → headline must be the judge verdict,
+    # NEVER 'Routine' (the contradiction the operator flagged).
+    _, label = resolve_headline_grade(LZB)
+    assert label == "Judge: HIGH (promote)"
+    assert "routine" not in label.lower() and "Routine" not in label
+
+
+def test_headline_hold_when_judge_agrees_floor():
+    assert resolve_headline_grade(QURE)[1] == "Judge: HIGH (hold)"
+    assert resolve_headline_grade(JBL)[1] == "Judge: HIGH (hold)"
+
+
+def test_headline_falls_back_to_floor_grade_when_not_judge():
+    floor = {"catalyst_quality": "strong", "grade_engine_authority": "floor"}
+    assert resolve_headline_grade(floor)[1] == "Strong"
+
+
+# ── format_grade_provenance — Claude · Perplexity · judge, no stale 'agree' ───
+def test_provenance_shows_all_three_legs():
+    p = format_grade_provenance(LZB)
+    assert "Floor: routine (Claude)" in p
+    assert "Perplexity: strong (✗differs)" in p          # routine != strong → differs, NOT agree
+    assert "Judge: HIGH promote" in p and "authoritative" in p
+
+
+def test_provenance_no_false_agree_on_lzb_stale_case():
+    # The exact bug: LZB printed 'Claude + Perplexity agree' after strong→routine downgrade left
+    # the multiplier stale. The provenance line compares FINAL grades → must say differs.
+    assert "agree" not in format_grade_provenance(LZB)
+
+
+def test_provenance_marks_real_agreement():
+    agree = {"catalyst_quality": "strong", "gemini_validation": "strong",
+             "score_tier": "HIGH", "baseline_floor_tier": "HIGH", "grade_engine_authority": "judge"}
+    assert "Perplexity: strong (✓agree)" in format_grade_provenance(agree)
+
+
+def test_provenance_omits_perplexity_when_absent_and_judge_when_floor():
+    p = format_grade_provenance({"catalyst_quality": "routine", "grade_engine_authority": "floor"})
+    assert "Floor: routine (Claude)" in p
+    assert "Perplexity" not in p and "Judge" not in p
