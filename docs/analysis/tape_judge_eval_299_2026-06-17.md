@@ -29,6 +29,15 @@ synchronously (`ep_detector` ~L2489: the judge verdict mutates `score_tier` — 
 reads for alert+ORB entry — *before* the entry fires), so a tape that shifts the judge verdict
 shifts **tradeable** selection. → the expensive replay is warranted; build it (incl. OR÷ATR).
 
+Two premises hardened (advisor 2026-06-17):
+- `detected_at` is NOT mutated post-grade — `update_ep_alert_judge_result` writes only
+  `score_tier`/`judge_*`/`grade_engine_authority`/`fire_axes`, so it IS the grade moment (the 79%
+  thesis rests on this).
+- The judge toggle `get_holistic_judge_enabled()` read **True** in prod 2026-06-17 — the judge is
+  load-bearing on entry RIGHT NOW, so "tape shifts tradeable selection" is a live statement, not a
+  conditional one. (Re-confirm the toggle if shipping later — a flip to shadow would make tape a
+  display-only grade input.)
+
 ## The rig — `scripts/eval_tape_judge.py` (committed, READ-ONLY)
 
 Re-grades each `mi_ep_alerts` row through `grade_holistic` twice: `tape=None` (today's behavior)
@@ -40,9 +49,12 @@ Disciplines (advisor 2026-06-17), all in code:
   / liquidity-so-far. OR÷ATR is None pre-9:35 *by construction* (= the tradeability segmentation).
 - **tz** — bar `t` is epoch-ms UTC; `detected_at` and the 9:30/9:35 cuts go through `ZoneInfo(ET)`.
   Covered by `tests/test_tape_eval.py` (8 pure tz / lookahead-cut tests).
-- **Judge noise floor** — `--replicates` runs the no-tape judge K× (adaptive thinking, no
-  temperature → non-deterministic). A delta is only credible where the no-tape verdict was STABLE
-  across K; rows whose no-tape verdict itself flips are reported separately as noise-dominated.
+- **Judge noise floor — BOTH arms** — `--replicates` runs the judge K× on *each* arm (no-tape AND
+  with-tape; adaptive thinking, no temperature → non-deterministic on both). A delta counts ONLY
+  when each arm's modal is stable across K AND the two modals differ. (Replicating only the no-tape
+  arm — the original cut — would surface with-tape *sampling noise* as a "tape effect": no-tape
+  stable HIGH ×K, with-tape rolls MODERATE once it'd be HIGH 2/3. advisor 2026-06-17.) Rows
+  unstable on ≥1 arm are reported separately as noise-dominated, never counted.
 - **Smoke ≠ efficacy** — small `--limit` validates machinery + presence rates only. The operator
   labels the full-run deltas; the agent never self-scores (ADR 0011).
 
@@ -60,13 +72,25 @@ are reconstructed strictly point-in-time.
 - **Tape deltas: 0** on these 5 — expected for a tiny smoke of solid HIGHs; says nothing about
   efficacy (that's the full run).
 
-## Next — operator-triggered full run (cost: ~(K+1) Opus judge calls per row)
+## Next — operator-triggered full run
+
+Scoped so the trigger isn't an unscoped bill (advisor 2026-06-17): `REPLAY_SQL` is HIGH+MODERATE,
+so an unfiltered 95-day run is a few **thousand** rows. The tradeable cohort is HIGH, so run
+**HIGH-only**. Cost = rows × 2 arms × K replicates Opus judge calls + 1 Polygon `get_minute_bars`
+per row (rate-limited, sequential). HIGH-only over ~95 days ≈ ~570 rows → at K=3 ≈ **~3,400 Opus
+calls** + ~570 Polygon fetches. The script prints the exact scope/estimate before it runs.
 
 ```
-docker exec apollo-market python /app/scripts/eval_tape_judge.py --days 95 --limit 0 --replicates 3
+docker exec apollo-market python /app/scripts/eval_tape_judge.py \
+    --days 95 --limit 0 --high-only --replicates 3
 ```
-(`--limit 0` = no cap; `--replicates 3` for a firmer noise floor than the smoke's 2.) Then the
-operator labels each tape-delta right/wrong; ≥ a clear majority-correct on a non-trivial delta
-count + a CHANGE_PROCESS entry + sign-off = wire the tape into the live judge (`ep_detector`
+
+Then the operator labels each tape-delta right/wrong; ≥ a clear majority-correct on a non-trivial
+delta count + a CHANGE_PROCESS entry + sign-off = wire the tape into the live judge (`ep_detector`
 `_judge_shadow` passes the computed tape into `assemble_judge_inputs`). Re-run after shipping and
 add to the monthly backward-check sweep.
+
+**Pre-full-run hardening landed 2026-06-17** (advisor B/C): both arms now replicated (delta
+integrity); the delta-render path is extracted + unit-tested (`tests/test_tape_eval.py`) so the
+expensive run can't KeyError after the spend on its first real delta; `--high-only` + the cost
+print added. 11 tape-eval unit tests green.

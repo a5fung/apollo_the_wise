@@ -180,9 +180,18 @@ async def _grade(client, sem, payload):
         return await grade_holistic(client, payload, timeout=30)
 
 
+def _modal_stable(verdicts: list):
+    """(modal_tier|None, stable_bool, tiers_list) for a set of judge verdicts — stable iff every
+    replicate returned the same non-None tier."""
+    tiers = [v["tier"] if v else None for v in verdicts]
+    stable = len(set(tiers)) == 1 and tiers[0] is not None
+    c = Counter(t for t in tiers if t).most_common(1)
+    return (c[0][0] if c else None), stable, tiers
+
+
 async def eval_one(client, sem, conn, row, replicates: int):
-    """Re-grade one row no-tape (×K replicates for the noise floor) vs with-tape (×1). Read-only.
-    Returns the per-row record the delta surface + presence summary are built from."""
+    """Re-grade one row no-tape ×K vs with-tape ×K (BOTH arms replicated). Read-only. Returns the
+    per-row record the delta surface + presence summary are built from."""
     ticker = row["ticker"]
     _mc, sector, company = await fetch_profile(ticker)
     grounded_text, _ = await resolve_grounded_text(row, company, grounded=False)
@@ -192,42 +201,65 @@ async def eval_one(client, sem, conn, row, replicates: int):
     base_payload, _ = build_judge_payload(row, grounded_text, _mc, sector, tape=None)
     tape_payload, _ = build_judge_payload(row, grounded_text, _mc, sector, tape=tape)
 
-    # No-tape replicates (noise floor) + one with-tape, all concurrent under the shared sem.
+    # BOTH arms are non-deterministic (adaptive thinking, no temperature) — replicate BOTH
+    # (advisor 2026-06-17). A delta counts ONLY when each arm's modal is STABLE across K AND the
+    # two modals DIFFER; replicating only no-tape would surface with-tape SAMPLING NOISE as a
+    # "tape effect" (no-tape stable HIGH ×K, with-tape rolls MODERATE once it'd be HIGH 2/3).
     no_tape = await asyncio.gather(*[_grade(client, sem, base_payload) for _ in range(replicates)])
-    with_tape = await _grade(client, sem, tape_payload)
+    with_tape = await asyncio.gather(*[_grade(client, sem, tape_payload) for _ in range(replicates)])
+    nt_modal, nt_stable, nt_tiers = _modal_stable(no_tape)
+    wt_modal, wt_stable, wt_tiers = _modal_stable(with_tape)
+    wt_verdict = next((v for v in with_tape if v), None)  # representative verdict for rationale
 
-    def _tier(v):
-        return v["tier"] if v else None
-    nt_tiers = [_tier(v) for v in no_tape]
-    nt_stable = len(set(nt_tiers)) == 1 and nt_tiers[0] is not None
-    nt_modal = Counter(t for t in nt_tiers if t).most_common(1)
-    nt_modal = nt_modal[0][0] if nt_modal else None
-    wt_tier = _tier(with_tape)
-
+    both_stable = nt_stable and wt_stable
     return {
         "ticker": ticker, "alert_date": row["alert_date"], "floor": row["floor_tier"],
         "bucket": bucket, "presence": presence, "tape": tape,
         "nt_tiers": nt_tiers, "nt_stable": nt_stable, "nt_modal": nt_modal,
-        "wt_tier": wt_tier, "wt_verdict": with_tape,
-        "tape_changed": (nt_modal is not None and wt_tier is not None and wt_tier != nt_modal),
+        "wt_tiers": wt_tiers, "wt_stable": wt_stable, "wt_modal": wt_modal,
+        "wt_verdict": wt_verdict, "both_stable": both_stable,
+        "tape_changed": (both_stable and nt_modal != wt_modal),
     }
 
 
-async def main(days: int, limit: int | None, replicates: int, ticker: str | None):
+def _format_delta(r) -> list:
+    """Render one tape-delta record into operator-review lines. EXTRACTED + unit-tested (advisor
+    C): the smoke produces 0 deltas, so this block never runs until the full (expensive) run — a
+    KeyError here would crash it AFTER the Opus spend. Keep it pure so a fixture can exercise it."""
+    present = ",".join(k for k, v in r["presence"].items() if v) or "none"
+    v = r.get("wt_verdict") or {}
+    lines = [
+        f"\n  {r['ticker']:6} {r['alert_date']}  [{r['bucket']}]  features:{present}",
+        f"     no-tape={r['nt_modal']}  →  with-tape="
+        f"{format_tier_transition(r['nt_modal'], r['wt_modal'])}",
+    ]
+    if r.get("tape"):
+        lines.append(f"     tape: OR÷ATR={r['tape'].get('opening_range_atr')} "
+                     f"pmvol={r['tape'].get('pm_vol_curve')} liq={r['tape'].get('liquidity')}")
+    lines.append(f"     judge: {(v.get('rationale') or '')[:240]}")
+    return lines
+
+
+async def main(days: int, limit: int | None, replicates: int, ticker: str | None,
+               high_only: bool):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_SQL, days)
         rows = [r for r in rows if (not ticker or r["ticker"] == ticker.upper())]
+        if high_only:  # the tradeable cohort is HIGH; REPLAY_SQL is HIGH+MODERATE
+            rows = [r for r in rows if r["score_tier"] == "HIGH"]
         if limit:
             rows = rows[:limit]
 
         print("=" * 80)
-        print(f"#299 TAPE JUDGE EVAL — last {days}d, {len(rows)} row(s), "
-              f"{replicates}× no-tape replicates (noise floor) + 1× with-tape")
+        print(f"#299 TAPE JUDGE EVAL — last {days}d{' · HIGH-only' if high_only else ''}, "
+              f"{len(rows)} row(s), {replicates}× per arm (no-tape AND with-tape)")
+        print(f"  scope: {len(rows)} rows × 2 arms × {replicates} repl = "
+              f"~{len(rows) * 2 * replicates} Opus judge calls + {len(rows)} Polygon fetches (sequential)")
         print("READ-ONLY · operator labels the deltas · SMOKE = machinery+presence, NOT efficacy")
         print("=" * 80)
         if not rows:
-            print("  No HIGH/MODERATE alerts in window — nothing to eval.")
+            print("  No alerts in window — nothing to eval.")
             return
 
         client = None
@@ -258,28 +290,23 @@ async def main(days: int, limit: int | None, replicates: int, ticker: str | None
     for b, c in sorted(Counter(r["bucket"] for r in results).items()):
         print(f"    {b:32} {c}")
 
-    # ── judge noise floor ──
-    unstable = [r for r in results if not r["nt_stable"]]
-    print(f"\nJUDGE NOISE FLOOR ({replicates}× no-tape): "
-          f"{n - len(unstable)}/{n} rows STABLE, {len(unstable)} flipped across replicates.")
+    # ── judge noise floor (BOTH arms) ──
+    unstable = [r for r in results if not r["both_stable"]]
+    print(f"\nJUDGE NOISE FLOOR ({replicates}× per arm): "
+          f"{n - len(unstable)}/{n} rows STABLE on both arms, {len(unstable)} unstable on ≥1 arm.")
     for r in unstable:
-        print(f"    ~ {r['ticker']:6} {r['alert_date']}  no-tape tiers={r['nt_tiers']} "
-              f"(noise-dominated — exclude from tape-delta read)")
+        print(f"    ~ {r['ticker']:6} {r['alert_date']}  no-tape={r['nt_tiers']} "
+              f"with-tape={r['wt_tiers']} (noise-dominated — excluded from tape-delta read)")
 
-    # ── tape deltas (operator-labeling surface) — only credible where no-tape was stable ──
-    deltas = [r for r in results if r["tape_changed"] and r["nt_stable"]]
-    noisy_deltas = [r for r in results if r["tape_changed"] and not r["nt_stable"]]
-    print(f"\nTAPE DELTAS (no-tape STABLE, with-tape differs): {len(deltas)}  "
-          f"[+{len(noisy_deltas)} more but noise-dominated — not credible]")
+    # ── tape deltas (operator-labeling surface) — credible ONLY when BOTH arms were stable ──
+    deltas = [r for r in results if r["tape_changed"]]  # tape_changed already requires both_stable
+    noisy = [r for r in results if (not r["both_stable"])
+             and r["nt_modal"] is not None and r["wt_modal"] is not None
+             and r["nt_modal"] != r["wt_modal"]]
+    print(f"\nTAPE DELTAS (both arms STABLE, modals differ): {len(deltas)}  "
+          f"[+{len(noisy)} modal-disagreement but an arm was unstable — NOT credible]")
     for r in deltas:
-        present = ",".join(k for k, v in r["presence"].items() if v) or "none"
-        v = r["wt_verdict"] or {}
-        print(f"\n  {r['ticker']:6} {r['alert_date']}  [{r['bucket']}]  features:{present}")
-        print(f"     no-tape={r['nt_modal']}  →  with-tape={format_tier_transition(r['nt_modal'], r['wt_tier'])}")
-        if r["tape"]:
-            print(f"     tape: OR÷ATR={r['tape'].get('opening_range_atr')} "
-                  f"pmvol={r['tape'].get('pm_vol_curve')} liq={r['tape'].get('liquidity')}")
-        print(f"     judge: {(v.get('rationale') or '')[:240]}")
+        print("\n".join(_format_delta(r)))
 
     print("\n" + "-" * 80)
     print("HARD gate (ADR 0011): the OPERATOR labels these deltas right/wrong — the agent does "
@@ -293,7 +320,10 @@ if __name__ == "__main__":
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--limit", type=int, default=8, help="cap rows (0 = no cap / full run)")
     ap.add_argument("--replicates", type=int, default=3,
-                    help="no-tape judge runs for the noise floor (>=2 to measure flip rate)")
+                    help="judge runs PER ARM for the noise floor (>=2; both arms replicated)")
     ap.add_argument("--ticker", type=str, default=None)
+    ap.add_argument("--high-only", action="store_true",
+                    help="restrict to score_tier=HIGH (the ORB-tradeable cohort) — recommended "
+                         "for the full run; REPLAY_SQL is HIGH+MODERATE")
     args = ap.parse_args()
-    asyncio.run(main(args.days, args.limit or None, args.replicates, args.ticker))
+    asyncio.run(main(args.days, args.limit or None, args.replicates, args.ticker, args.high_only))

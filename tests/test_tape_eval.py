@@ -7,7 +7,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from scripts.eval_tape_judge import (
-    OR_END_MIN, _bar_et_minute, cum_volumes, opening_range, slice_pit, tradeability_bucket,
+    OR_END_MIN, _bar_et_minute, _format_delta, _modal_stable, cum_volumes, opening_range,
+    slice_pit, tradeability_bucket,
 )
 
 _ET = ZoneInfo("America/New_York")
@@ -91,3 +92,39 @@ def test_tradeability_buckets():
     assert "ORB-tradeable" in tradeability_bucket(9 * 60 + 40)
     assert "out-of-ORB" in tradeability_bucket(9 * 60 + 50)
     assert "post-ORB" in tradeability_bucket(10 * 60 + 5)
+
+
+def test_modal_stable_detects_stability_and_flip():
+    # both-arms noise floor (advisor B): stable iff every replicate is the same non-None tier.
+    modal, stable, tiers = _modal_stable([{"tier": "HIGH"}, {"tier": "HIGH"}, {"tier": "HIGH"}])
+    assert modal == "HIGH" and stable is True and tiers == ["HIGH", "HIGH", "HIGH"]
+    modal, stable, _ = _modal_stable([{"tier": "HIGH"}, {"tier": "MODERATE"}, {"tier": "HIGH"}])
+    assert modal == "HIGH" and stable is False           # flipped → noise-dominated
+    modal, stable, _ = _modal_stable([None, None])
+    assert modal is None and stable is False              # all fail-open → not a stable verdict
+
+
+def test_format_delta_renders_without_keyerror():
+    # advisor C: the full run's least-exercised path (smoke produced 0 deltas) must not KeyError
+    # after the spend. Exercise it on a synthetic delta record carrying every key it reads.
+    rec = {
+        "ticker": "TEST", "alert_date": "2026-06-15",
+        "bucket": "OR+ORB-tradeable(9:35-9:44)",
+        "presence": {"or_atr": True, "pm_vol_curve": False, "liquidity": True},
+        "nt_modal": "HIGH", "wt_modal": "MODERATE",
+        "tape": {"opening_range_atr": 0.41, "pm_vol_curve": None, "liquidity": "$120M traded"},
+        "wt_verdict": {"tier": "MODERATE", "rationale": "violent open — bracket geometry poor"},
+    }
+    out = "\n".join(_format_delta(rec))
+    assert "TEST" in out and "0.41" in out and "violent open" in out
+    assert "or_atr" in out and "liquidity" in out        # present-features list rendered
+
+
+def test_format_delta_tolerates_missing_tape_and_verdict():
+    rec = {
+        "ticker": "AAA", "alert_date": "2026-06-15", "bucket": "premarket(<9:30) OR=None",
+        "presence": {"or_atr": False, "pm_vol_curve": True, "liquidity": False},
+        "nt_modal": "MODERATE", "wt_modal": "HIGH", "tape": None, "wt_verdict": None,
+    }
+    out = "\n".join(_format_delta(rec))   # must not raise on tape=None / wt_verdict=None
+    assert "AAA" in out and "pm_vol_curve" in out
