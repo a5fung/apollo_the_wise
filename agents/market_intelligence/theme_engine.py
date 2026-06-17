@@ -3986,6 +3986,34 @@ async def run_theme_engine(
     # #213-tuned validator the Mon/Wed/Fri pass uses — changes WHEN it runs, not WHAT it checks.
     await _validate_new_themes_at_birth(new_themes, changelog, protected_set)
 
+    # --- Birth-FUNNEL telemetry (#325, 2026-06-17) ---
+    # The stage-by-stage discovery funnel was only ever in the container logs, which die on
+    # every container recreate — so a 16-day birth drought (active themes 42→15) was dismissed
+    # "benign retirement drift" across FOUR L2 fires because nobody could see WHERE births
+    # collapsed. The only durable signal was `theme_discovered` (survivors only = 0). Emit the
+    # whole funnel to mi_audit_log so the failing stage is pinnable from durable state. PURE
+    # observability — no behaviour change. (Diagnosis: 28/40 top RS-100 leaders uncovered, all
+    # with descriptions, NOT cooled down → not regime/desc/cooldown; the collapse is in
+    # discovery-LLM → score → birth-validate, which this now makes visible.)
+    try:
+        _retired_n = sum(1 for e in changelog if e.get("type") == "theme_retired")
+        await log_audit_event(
+            "theme_engine_funnel",
+            summary=(f"births: uncovered={len(uncovered)} v/t/e="
+                     f"{len(velocity_leaders)}/{len(turners)}/{len(elite_covered)} "
+                     f"discovery={'ON' if has_enough else 'OFF'} → LLM={len(new_raw)} "
+                     f"→ survived={len(new_themes)} | retired={_retired_n}"),
+            detail=json.dumps({
+                "uncovered": len(uncovered), "velocity": len(velocity_leaders),
+                "turners": len(turners), "elite_covered": len(elite_covered),
+                "discovery_called": bool(has_enough), "new_raw_llm": len(new_raw),
+                "new_themes_survived": len(new_themes), "retired": _retired_n,
+                "survived_names": [nt.get("name") for nt in new_themes],
+            }),
+        )
+    except Exception:
+        pass  # telemetry must never break the run
+
     # Log new themes + write to audit log
     for nt in new_themes:
         tickers = list(nt.get("tickers") or [])

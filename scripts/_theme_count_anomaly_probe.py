@@ -1,57 +1,53 @@
-"""Throwaway read-only probe v2 for the theme_count_active decline (42->15 over 10d).
-Decisive question: are NEW themes still being born, or has discovery stopped saving?"""
+"""Read-only diagnostic for the theme_count_active decline (#325, 2026-06-17).
+
+Findings it produced: active themes 42(6/8)→15(6/17) monotonic; NOT regime (28/40 top RS-100
+leaders uncovered, ALL with descriptions once DB overrides are merged), NOT the description-filter,
+NOT cooldown-flood (only ~24 cooled tickers). The collapse is in discovery-LLM → score →
+birth-validate, which `theme_engine.theme_engine_funnel` (#325 telemetry) now makes visible per run.
+Run: ssh ... "docker exec -i apollo-market python -" < scripts/_theme_count_anomaly_probe.py
+"""
 import asyncio
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import (
+    get_active_themes, get_cooldown_set, get_pool, get_ticker_overrides)
+from agents.market_intelligence import universe
 
 
 async def main():
+    universe.apply_overrides(await get_ticker_overrides())  # replicate agent startup desc-merge
+    TD = universe.TICKER_DESC
+    themes = await get_active_themes()
+    covered = {tk.upper() for t in themes for tk in (t.get("tickers") or [])}
+    cd_tickers = {t for t, _ in await get_cooldown_set()}
+    print(f"active themes={len(themes)}  covered tickers={len(covered)}  active cooldowns={len(cd_tickers)}")
+
     pool = await get_pool()
     async with pool.acquire() as c:
-        print("=== NEW theme births per day (first-ever appearance of a name) last 16d ===")
-        rows = await c.fetch("""
+        d = await c.fetchval("SELECT MAX(score_date) FROM mi_stock_scores")
+        leaders = await c.fetch("""
+            SELECT ticker, rs_composite, rs_rank, sector FROM mi_stock_scores
+            WHERE score_date = $1 ORDER BY rs_composite DESC NULLS LAST LIMIT 40
+        """, d)
+        births = await c.fetch("""
             SELECT first_seen, COUNT(*) n FROM (
                 SELECT name, MIN(theme_date) first_seen FROM mi_themes GROUP BY name
             ) f WHERE first_seen >= CURRENT_DATE - INTERVAL '16 days'
             GROUP BY first_seen ORDER BY first_seen DESC
         """)
-        if not rows:
-            print("  *** ZERO new theme names born in the last 16 days ***")
-        for r in rows:
-            print(f"  {r['first_seen']}  new_names={r['n']}")
+    print(f"\nNEW theme births last 16d: {'NONE' if not births else ''}")
+    for r in births:
+        print(f"  {r['first_seen']}  {r['n']}")
 
-        print("\n=== the 15 currently-active themes (latest row per name, non-Retired, <=7d) ===")
-        rows = await c.fetch("""
-            SELECT name, stage, theme_date FROM (
-                SELECT DISTINCT ON (name) name, stage, theme_date
-                FROM mi_themes WHERE theme_date >= CURRENT_DATE - INTERVAL '7 days'
-                ORDER BY name, theme_date DESC
-            ) l WHERE stage != 'Retired' ORDER BY theme_date DESC, name
-        """)
-        for r in rows:
-            print(f"  {r['theme_date']}  {r['stage']:13} {r['name'][:52]}")
-
-        print("\n=== last 3 nights: theme discovery/synthesis audit SUMMARIES ===")
-        rows = await c.fetch("""
-            SELECT created_at, event_type, LEFT(COALESCE(summary, detail, ''), 160) txt
-            FROM mi_audit_log
-            WHERE created_at > NOW() - INTERVAL '76 hours'
-              AND event_type IN ('theme_discovery_shadow_ran','narrative_theme_discovery_ran',
-                                 'theme_synthesis_run','theme_birth_validated','theme_load_state',
-                                 'discovery_error','theme_discovered','themes_saved')
-            ORDER BY created_at DESC LIMIT 20
-        """)
-        for r in rows:
-            print(f"  {str(r['created_at'])[:19]} {r['event_type']:30} {r['txt']}")
-
-        print("\n=== was a nightly theme run logged the last 3 nights? (mi_job_runs) ===")
-        rows = await c.fetch("""
-            SELECT job_id, MAX(run_at) last, COUNT(*) n FROM mi_job_runs
-            WHERE run_at > NOW() - INTERVAL '76 hours'
-              AND (job_id ILIKE '%theme%' OR job_id ILIKE '%nightly%' OR job_id ILIKE '%data_pull%')
-            GROUP BY job_id ORDER BY last DESC
-        """)
-        for r in rows:
-            print(f"  {r['job_id']:34} last={str(r['last'])[:19]} runs={r['n']}")
+    uncovered = [r for r in leaders if r["ticker"].upper() not in covered]
+    print(f"\ntop-40 RS leaders: {len(leaders)-len(uncovered)} covered, {len(uncovered)} UNCOVERED")
+    for r in uncovered:
+        tk = r["ticker"].upper()
+        flags = []
+        if not TD.get(tk):
+            flags.append("NO-DESC")
+        if tk in cd_tickers:
+            flags.append("COOLDOWN")
+        print(f"  {tk:6} RS{r['rs_composite']:5.0f} #{r['rs_rank']:<4} "
+              f"{(TD.get(tk) or '(no desc)')[:50]:50} {' '.join(flags)}")
 
 
 asyncio.run(main())
