@@ -179,20 +179,28 @@ The authoritative pipeline, end to end:
 1. **Claude** (`_classify_catalyst_claude`) grades the catalyst magnitude over the grounded SEC+
    news text → `catalyst_quality` (game_changer/strong/routine/weak) + the analysis. This is the
    **floor** catalyst grade.
-2. **Perplexity** runs in parallel as an INDEPENDENT second opinion → `pplx_quality` (stored in the
-   `gemini_validation` column — legacy name). It feeds the **floor only**, two ways: (a) **agreement**
-   `pplx==catalyst_quality` → `confidence_multiplier=1.2`, which scales `ep_score`; (b) **hedge
-   downgrade** — if Perplexity self-acknowledges null search results, Claude's grade is knocked one
-   notch. **Perplexity is a cross-check on Claude's floor grade; it is NOT an input to the judge.**
+2. **Perplexity** plays THREE distinct roles — keep them separate:
+   - **(corpus / source)** its web-search answer is folded into `grounded_text` by
+     `build_grounded_text` as `[Web summary]`, ordered **primary-LAST** (after the SEC filing +
+     Benzinga wires) and tracked in provenance as `web_perplexity` — explicitly NOT a
+     `has_direct_source`. So Perplexity's TEXT **does** reach the judge (which reads `grounded_text`),
+     as the least-trusted tail of the corpus. (It is the confabulation-prone leg — RUM/PGY — which is
+     exactly why #210 backbone + #233 demote-to-labeled-candidate exist.)
+   - **(grade cross-check)** its independent GRADE `pplx_quality` (`gemini_validation` column, legacy
+     name) feeds the **floor only**: (a) agreement `pplx==catalyst_quality` → `confidence_multiplier
+     =1.2` scaling `ep_score`; (b) hedge-downgrade if it self-acknowledges null search.
+   - **The judge consumes Perplexity's TEXT (in the corpus) but NOT its grade or the floor multiplier.**
 3. Deterministic floor downgrades (revenue-weak missing-YoY, prose-mismatch) can lower
    `catalyst_quality`. `ep_score` + `catalyst_quality` → **floor_tier** (`baseline_floor_tier`).
-4. **The Judge** (Opus, `grade_holistic`) independently re-grades the same grounded text + the
-   deterministic deal÷cap materiality + active narratives → `tier` / `direction_vs_floor` /
-   `fire_axes`. It does **not** see Perplexity or the floor multiplier.
+4. **The Judge** (Opus, `grade_holistic`) independently re-grades the same `grounded_text` (which
+   INCLUDES Perplexity's primary-last `[Web summary]`) + the deterministic deal÷cap materiality +
+   active narratives → `tier` / `direction_vs_floor` / `fire_axes`. It does **not** consume
+   Perplexity's separate grade or the floor multiplier.
 5. **Authority** (`_resolve_grade_authority`): judge load-bearing → `score_tier = judge_tier` drives
    the alert + ORB entry; `baseline_floor_tier` is kept as the counterfactual.
 
-**So the judge is the final word on tier; Perplexity only shaped the floor.**
+**So the judge is the final word on tier. Perplexity's GRADE only shaped the (now-secondary) floor;
+its TEXT is one — primary-last, least-reliable — source in the corpus the judge reads.**
 
 ### Coherence fix shipped 2026-06-17 (display-only — no grade-math, no schema)
 The alert now **resolves to the judge** and shows the provenance:
