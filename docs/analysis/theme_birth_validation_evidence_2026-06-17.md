@@ -67,11 +67,18 @@ instead of 6 days later. Key properties that make this low-risk:
 for the sign-off decision at zero membership-behavior risk. Recommend going straight to live given the
 validator is already trusted, but the shadow is the fail-safe.
 
-## Recommendation
+## Recommendation — birth-validation SHIPPED 2026-06-17 (operator-signed)
 
-1. Root-cause the post-assignment validation gap (above).
-2. Run the SAME description-match the Mon/Wed/Fri pass uses at BIRTH + at identity-change (rename /
-   description revision), so the 73%/6-day-median tail collapses toward 0.
-3. CHANGE_PROCESS entry + sign-off (membership behavior change). Re-run this probe after to confirm the
-   latency distribution shifts left. Add the probe to the monthly backward-check sweep
+1. ✅ Root-cause resolved (above): discovery skipped the validator.
+2. ✅ Birth-validation live: `_validate_new_themes_at_birth` runs the SAME Mon/Wed/Fri validator on
+   discovered themes' founding members before `_save_themes` (`theme_engine.py`, after
+   name-inheritance). 5 unit tests (`tests/test_theme_birth_validation.py`) incl. the min-survivor
+   guard semantics + an end-to-end pass through the real validator. CLAUDE.md Theme Engine SSoT
+   updated same commit.
+3. **Identity-change half (FOLLOW-ON, not yet built):** re-validate at the name-inheritance /
+   description-revision point — smaller tail; do as a separate step.
+4. **VERIFY + RE-RUN PROBE (owed):** after the first post-deploy nightly theme run, re-run
+   `scripts/_theme_birth_validation_evidence.py` — the strip-latency distribution should shift left
+   (strips landing ≤1h instead of the 6-day median), and `theme_birth_validated` audit rows should
+   appear. Add the probe to the monthly backward-check sweep
    (`feedback_methodology_insights_need_periodic_revalidation`).

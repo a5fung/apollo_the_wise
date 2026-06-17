@@ -1345,6 +1345,41 @@ async def _save_themes(themes: list[dict]) -> None:
         """, today, final_names)
 
 
+async def _validate_new_themes_at_birth(
+    new_themes: list[dict],
+    changelog: list[dict],
+    protected: set[tuple[str, str]] | None,
+) -> list[dict]:
+    """#266 (operator-signed 2026-06-17): run the SAME `_validate_theme_membership` on each
+    newly-DISCOVERED theme's founding members BEFORE persist.
+
+    Root cause (docs/analysis/theme_birth_validation_evidence_2026-06-17.md): the discovery path
+    never ran the description-match validator, so a born theme's mismatched members sat ~6d
+    (median) until the next Mon/Wed/Fri rescore. This changes WHEN the validator runs, not WHAT
+    it checks — the validator's own min-survivor guard (PRUNE_MIN_TICKERS) keeps small/born-bad
+    themes intact (identical to Mon/Wed/Fri semantics), and its per-ticker cooldown +
+    `ticker_revalidated_out` audit make the strips land at birth (~0d on the re-run latency
+    probe). Mutates `new_themes` in place; emits a `theme_birth_validated` roll-up per stripped
+    theme. Sequential — new themes per run are few; `_VALIDATION_SEMAPHORE` still bounds
+    concurrency inside the validator against other callers."""
+    for nt in new_themes:
+        tks = list(nt.get("tickers") or [])
+        if len(tks) < NEW_THEME_MIN_STOCKS:
+            continue
+        validated = await _validate_theme_membership(
+            nt["name"], tks, changelog, protected=protected)
+        if len(validated) != len(tks):
+            stripped = sorted(set(tks) - set(validated))
+            nt["tickers"] = validated
+            logger.info(f"[birth validation #266] '{nt['name']}' stripped at birth: {stripped}")
+            await log_audit_event(
+                "theme_birth_validated",
+                summary=f"Birth-validation stripped {len(stripped)} from new theme '{nt['name']}'",
+                detail=f"Removed: {', '.join(stripped)} | kept: {', '.join(validated)}",
+            )
+    return new_themes
+
+
 async def _validate_theme_membership(
     theme_name: str,
     tickers: list[str],
@@ -3944,6 +3979,12 @@ async def run_theme_engine(
                     continue
                 logger.info(f"[name inheritance] '{nt['name']}' → '{old_name}' (Jaccard match with retired theme)")
                 nt["name"] = old_name
+
+    # --- Step 3b (#266, operator-signed 2026-06-17): validate DISCOVERED themes AT BIRTH ---
+    # Run AFTER name-inheritance (the validator judges members against the FINAL name) and
+    # BEFORE persist. Extracted to _validate_new_themes_at_birth for unit coverage; same
+    # #213-tuned validator the Mon/Wed/Fri pass uses — changes WHEN it runs, not WHAT it checks.
+    await _validate_new_themes_at_birth(new_themes, changelog, protected_set)
 
     # Log new themes + write to audit log
     for nt in new_themes:
