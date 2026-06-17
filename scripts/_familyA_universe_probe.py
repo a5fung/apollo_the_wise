@@ -14,6 +14,7 @@ Run (no deploy needed — the SQL is embedded; gates nothing):
     cat scripts/_familyA_universe_probe.py | ssh apollo@HOST 'docker exec -i apollo-market python -'
 """
 import asyncio
+import os
 from agents.market_intelligence.db import get_pool
 
 KNOWN = ["COO", "HYLN", "ALHC", "APPS", "NTAP", "MNTS"]
@@ -158,30 +159,45 @@ async def main():
     else:
         print("  ✅ no canary divergence — the proposer and the confirmer agree.")
 
-    print(f"\n=== ANCHOR STABILITY ({scan_a} → {scan_b}) — the scan-stable-key invariant ===")
+    print(f"\n=== RAW ANCHOR DRIFT ({scan_a} → {scan_b}) — INFORMATIONAL (carry-forward absorbs it) ===")
     both = sorted(set(qa) & set(qb))
-    new_leg, suspect = [], []
+    new_leg, carried = [], []
     for t in both:
         ra, rb = qa[t], qb[t]
         aa, ab = ra["anchor_date"], rb["anchor_date"]
         if aa == ab:
             continue
-        # benign: a NEW higher high formed on day B → a legitimately new leg, new key expected.
-        # suspect: the anchor moved WITHOUT a new high (tie-break flip / windowing artifact) — the bug.
+        # new-higher-high → a legitimately NEW leg (select_consolidation_keys seeds the new anchor).
+        # lesser-peak re-anchor (old peak aged out) → the job CARRIES the original anchor (no dupe).
         if ab > aa and (rb["runup_high"] or 0) > (ra["runup_high"] or 0):
             new_leg.append((t, aa.isoformat(), ab.isoformat()))
         else:
-            suspect.append((t, aa.isoformat(), ab.isoformat()))
+            carried.append((t, aa.isoformat(), ab.isoformat()))
     print(f"  qualifying on BOTH days ......... {len(both)}")
-    print(f"  anchor IDENTICAL ............... {len(both) - len(new_leg) - len(suspect)}")
-    print(f"  new-higher-high (benign) ....... {len(new_leg)}")
-    if suspect:
-        print(f"  ⚠️  SUSPECT DRIFT ({len(suspect)}) — anchor moved with NO new high (the duplicate-row bug):")
-        for t, aa, ab in suspect[:20]:
-            print(f"      {t:5} {aa} → {ab}")
-        print("  → keying is NOT stable; widen/redefine the anchor window before un-pausing the job.")
-    else:
-        print("  ✅ PASS — no suspect drift; every same-setup name kept its anchor (key is stable).")
+    print(f"  raw anchor IDENTICAL .......... {len(both) - len(new_leg) - len(carried)}")
+    print(f"  new-higher-high → new leg ..... {len(new_leg)}  (universe anchor wins — correct)")
+    print(f"  lesser-peak re-anchor ......... {len(carried)}  (CARRIED to original — no duplicate row)")
+    if carried:
+        for t, aa, ab in carried[:20]:
+            print(f"      {t:5} raw {aa} → {ab}  (job keeps {aa})")
+    print("  → raw SQL drift is EXPECTED; the un-pause gate is the carry-forward unit test on these")
+    print("    same snapshots: tests/test_anticipation_consolidation.py::test_carry_forward_*.")
+
+    # Fixture dump (DUMP_FIXTURE=1): the two real qualifying snapshots → captured into
+    # tests/fixtures so the carry-forward test runs the REAL select_consolidation_keys on the
+    # actual 6/15→6/16 drift (real data + real fn, no deploy). Single-sourced off this SQL.
+    if os.environ.get("DUMP_FIXTURE"):
+        import json
+
+        def _snap(q):
+            return [{"ticker": t, "anchor_date": r["anchor_date"].isoformat(),
+                     "runup_high": float(r["runup_high"]) if r["runup_high"] is not None else None,
+                     "dvol_med": float(r["dvol_med"]) if r["dvol_med"] is not None else None}
+                    for t, r in sorted(q.items())]
+        print("<<<FIXTURE_JSON>>>")
+        print(json.dumps({"scan_a": scan_a.isoformat(), "scan_b": scan_b.isoformat(),
+                          "a": _snap(qa), "b": _snap(qb)}))
+        print("<<<END_FIXTURE_JSON>>>")
 
 
 if __name__ == "__main__":

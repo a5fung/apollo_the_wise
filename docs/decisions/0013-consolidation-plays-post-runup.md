@@ -165,30 +165,41 @@ Two architectural corrections from the advisor (6/17) re-shaped the literal plan
   `detect_pullback_shape`), states `coiled | post_runup | aged`. **Scope = the RECORDER + the
   shortlist; the 3 entry modes + realized-R settlement are deferred** (the signed deliverable is the
   shortlist for judgment; tightness is ordering-only).
+- `anticipation.select_consolidation_keys` — the CARRY-FORWARD: unions the fresh §2 proposer with
+  existing non-aged rows so a base's anchor stays its ORIGINAL key when the rolling window drifts (a
+  lesser-peak re-anchor is carried; only a new higher high seeds a new leg). The fix for the 7/71
+  live drift below.
 - `mi_anticipation_consolidation` (new table, PK `(ticker, anchor_date)`) + `upsert_consolidation` +
-  `get_consolidation_state_map` + `get_consolidation_board`.
-- `_consolidation_readiness_job` (17:35 ET) — written, **un-registered (paused)**.
+  `get_consolidation_state_map` (carries `runup_high`/`dvol_med` for the carry-forward) +
+  `get_consolidation_board`.
+- `_consolidation_readiness_job` (17:35 ET, seed∪live union via `select_consolidation_keys`) —
+  written, **un-registered (paused)**.
 - Tests: `tests/test_anticipation_consolidation.py` (runup canary · the absolute-anchor invariance
   property · states · Family-A-shapes-never-gap-undercut). The Family-B golden test stays green.
 
-**THE GATE before un-pausing (two production traps).** Run `scripts/_familyA_universe_probe.py`
-against the live DB; it checks BOTH:
-1. **Anchor stability** — the `(ticker, anchor_date)` key is scan-stable only if the anchor does not
-   drift as the rolling window slides. The probe compares the emitted anchor for every name
-   qualifying on the two most-recent scan dates and FAILS on any **suspect drift** (anchor moved with
-   no new higher high).
-2. **Proposer-vs-confirmer agreement (advisor 6/17)** — the SQL `best_r10` (loose: max over all
-   10-windows ending in the last 12 sessions) is only the *proposer*; the JOB's authoritative gate is
-   `evaluate_consolidation` = `peak/min` over the **single** 10-bar window *ending at the anchor*.
-   `best_r10 ≥ 1.15` does NOT imply the pure ratio ≥ 1.15, so a name (notably COO at its 1.15 border)
-   can read IN in the SQL funnel yet be silently DROPPED by the job. The probe computes the pure ratio
-   for the canary names and FAILS if any SQL-IN name falls below 1.15 on the pure gate. If they diverge
-   at COO, align the two window definitions before un-pausing.
+**Boundary discipline (advisor 6/17):** §2 membership stays EXACTLY as signed (the rolling MAX/MIN
+universe gate). Key-stability is a SEPARATE job-layer concern — the carry-forward changes WHICH
+`(ticker, anchor)` the job evaluates, not WHAT qualifies. It is implementation / inform-and-proceed,
+not a re-sign; the stability fix does not leak into the gate.
 
-Un-pausing = (a) probe shows COO IN on the PURE gate + no suspect drift, (b) uncomment the
-`add_job` block, (c) add `consolidation_readiness` to `INTELLIGENCE_OWNED_JOB_IDS`, (d) rewire the
-`/anticipation` board reader `mi_anticipation_lifecycle → mi_anticipation_consolidation`. SSoT = this
-ADR (NOT `delayed_ep_reentry.md`, which is Family B's).
+**The anchor-drift trap — FOUND live, FIXED, and proven (6/17).** The 6/17 probe run showed the
+rolling-window anchor drifts for **7/71** names in a single day (6/15→6/16), all off the aging-out
+`2026-05-26` peak: when the true peak ages out of the 15-session window the anchor jumps to a lesser
+peak → a duplicate lifecycle row for the SAME leg. Fix = `anticipation.select_consolidation_keys`
+(CARRY-FORWARD): the job unions the fresh §2 proposer with existing non-aged rows (mirrors Family-B's
+seed∪live union) and keeps a base's ORIGINAL anchor unless today's runup_high is a genuinely new
+higher high (a new leg). Proven on the REAL two snapshots in
+`tests/test_anticipation_consolidation.py::test_carry_forward_absorbs_real_615_to_616_drift` (all 7
+carry their original anchor, exactly one key each — no duplicate). The proposer-vs-confirmer
+cross-check also PASSED clean (COO IN on the pure gate at 1.153; zero divergence).
+
+**THE GATE before un-pausing.** (a) The carry-forward unit test green (real-snapshot fixture
+`scripts/_familyA_drift_snapshots.json`); (b) `scripts/_familyA_universe_probe.py` shows COO IN on the
+PURE gate + the proposer/confirmer agree (raw SQL drift is now EXPECTED and absorbed — informational
+only); (c) uncomment the `add_job` block; (d) add `consolidation_readiness` to
+`INTELLIGENCE_OWNED_JOB_IDS`; (e) rewire the `/anticipation` board reader `mi_anticipation_lifecycle →
+mi_anticipation_consolidation`; (f) after the first live run, confirm no ticker has two non-aged rows.
+SSoT = this ADR (NOT `delayed_ep_reentry.md`, which is Family B's).
 - **Phase 2 — Shared universe + coil** (reuse the flag substrate). Output = the shortlist (gates produce
   it; tightness orders it, ordering-only). All 6 known-good names already appear in `mi_flag_candidates`.
   **#15 folds in here.**

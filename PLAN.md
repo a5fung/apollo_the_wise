@@ -49,7 +49,7 @@ _Last CLOSE: 2026-06-16._
 
 ## Family A — consolidation plays post a runup (ADR 0013 · reset of #270)
 
-- #270 | 2026-06-18 | in_progress | Phase 1 BUILT 6/17 (new mi_anticipation_consolidation table + evaluate_consolidation + paused _consolidation_readiness_job + tests, all SHADOW). REMAINING GATE: run _familyA_universe_probe.py live (COO IN + no anchor suspect-drift) → un-pause job + rewire /anticipation board → deploy
+- #270 | 2026-06-18 | in_progress | Phase 1 BUILT + VERIFIED 6/17 (new mi_anticipation_consolidation table + evaluate_consolidation + select_consolidation_keys carry-forward + paused job + 13 tests, all SHADOW). Live probe GREEN: COO IN on pure gate (1.153), proposer/confirmer agree, carry-forward absorbs the real 7/71 anchor drift. REMAINING: un-pause add_job + classify id + rewire /anticipation board (lifecycle→consolidation) + deploy market-agent; then confirm no dup rows after first 17:35 ET run
 - #289 | 2026-06-18 | pending | folds into Phase 2 (shared universe+coil) — general-anticipation selection/ranking layer
 - #297 | 2026-06-23 | pending | FAMILY B EP rework — inherits the gap-anchored replay()/evaluate_candidate + mi_anticipation_lifecycle + ARCHIVE/clean its phantom rows (decoupled from #270 Phase 1)
 - #283 | 2026-06-23 | pending | wick_fill promotion eval (shadow→live), gated behind Family A

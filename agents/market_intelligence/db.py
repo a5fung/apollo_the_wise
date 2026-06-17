@@ -6353,13 +6353,17 @@ async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
 
 
 async def get_consolidation_state_map() -> dict[tuple, dict]:
-    """{(ticker, anchor_date): {state}} for every Family-A row — the job's prior-state lookup
-    for transition dedup. One query."""
+    """{(ticker, anchor_date): {state, runup_high, dvol_med}} for every Family-A row — the job's
+    prior-state lookup for transition dedup AND the carry-forward (anchor.select_consolidation_keys
+    needs runup_high for the same-leg/new-leg branch + dvol_med to preserve on carried rows). One query."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker, anchor_date, state FROM mi_anticipation_consolidation")
-    return {(r["ticker"], r["anchor_date"]): {"state": r["state"]} for r in rows}
+            "SELECT ticker, anchor_date, state, runup_high, dvol_med FROM mi_anticipation_consolidation")
+    return {(r["ticker"], r["anchor_date"]): {
+        "state": r["state"],
+        "runup_high": float(r["runup_high"]) if r["runup_high"] is not None else None,
+        "dvol_med": float(r["dvol_med"]) if r["dvol_med"] is not None else None} for r in rows}
 
 
 async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_ratio,

@@ -709,6 +709,45 @@ def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_wind
     }
 
 
+def select_consolidation_keys(universe, existing):
+    """Decide which (ticker, anchor_date) the readiness job evaluates — the CARRY-FORWARD that keeps
+    the lifecycle key STABLE when the rolling-window anchor drifts. The §2 universe re-derives the
+    anchor each scan; a base whose runup peak ages out of the 15-session window would otherwise
+    re-key to a lesser peak → a DUPLICATE row for the SAME leg (the 6/17 probe: 7/71 names drifted in
+    one day, all off the aging-out 2026-05-26 peak). Mirrors Family-B's seed∪live key union, plus the
+    'same leg or new leg?' branch a rolling anchor needs (Family-B's gap_day is event-fixed, so its
+    union is trivially stable).
+
+    universe: [{'ticker','anchor_date','runup_high','dvol_med'}] — the fresh §2 proposer.
+    existing: {ticker: [{'anchor_date','runup_high','dvol_med'}]} — the non-aged rows already recorded.
+    Returns [{'ticker','anchor_date','dvol_med'}] to evaluate:
+      • every existing non-aged row, with ITS stored anchor (carry-forward — the stable key);
+      • a universe candidate ONLY when it is a genuinely NEW setup: the ticker has no existing
+        non-aged row, OR today's runup_high exceeds EVERY existing anchor's high (a new higher-high
+        leg). A universe re-anchor to a LESSER peak (the old peak aged out) is IGNORED — the carried
+        row already covers that leg.
+    Changes WHICH keys are evaluated, NOT §2 membership (the gate is unchanged — job-layer concern)."""
+    out, seen = [], set()
+    for tk, rows in existing.items():
+        for r in rows:
+            key = (tk, r["anchor_date"])
+            if key not in seen:
+                out.append({"ticker": tk, "anchor_date": r["anchor_date"],
+                            "dvol_med": r.get("dvol_med")})
+                seen.add(key)
+    for u in universe:
+        key = (u["ticker"], u["anchor_date"])
+        if key in seen:
+            continue
+        ex = existing.get(u["ticker"])
+        if not ex or (u.get("runup_high") or 0) > max((r.get("runup_high") or 0) for r in ex):
+            out.append({"ticker": u["ticker"], "anchor_date": u["anchor_date"],
+                        "dvol_med": u.get("dvol_med")})
+            seen.add(key)
+        # else: a re-anchor to a LESSER peak (old peak aged out) → the carried row covers it; skip.
+    return out
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 3b intraday FIRST5 / GDL confirmation entry (Phase 6, ported from
 # scripts/_270_entry_replay.py). PURE: the EXECUTION-role EOD job supplies minute bars +

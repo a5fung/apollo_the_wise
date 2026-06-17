@@ -2820,13 +2820,16 @@ async def _consolidation_readiness_job():
     telemetry, never submits.
 
     DB-sourced ground truth only (no module state — containers restart): the universe PROPOSER
-    (get_anticipation_universe) pre-filters to the signed §2 set; the pure
-    anticipation.evaluate_consolidation re-confirms the runup per candidate (the authoritative
-    gate — the COO canary) + records the coil/tightness telemetry; UPSERT keyed on the ABSOLUTE
-    (ticker, anchor_date); Telegram the newly-COILED transitions (deduped via the prior-state map).
+    (get_anticipation_universe) pre-filters to the signed §2 set; select_consolidation_keys UNIONS
+    it with the existing non-aged rows (CARRY-FORWARD — keeps a base's ORIGINAL key when its
+    rolling-window anchor would otherwise drift to a lesser peak); the pure
+    anticipation.evaluate_consolidation re-confirms the runup per key (the authoritative gate — the
+    COO canary) + records the coil/tightness telemetry; UPSERT keyed on (ticker, anchor_date);
+    Telegram the newly-COILED transitions (deduped via the prior-state map).
 
-    PAUSED until the anchor-stability invariant is verified live (6/16-vs-6/17 anchor identity) —
-    a scan-relative key would write duplicate rows nightly and break this dedup.
+    PAUSED until the carry-forward is verified live (tests/test_anticipation_consolidation.py runs
+    select_consolidation_keys on the two real 6/15→6/16 universe snapshots and asserts the 7
+    drift-prone names carry their original anchor — the un-pause gate).
     """
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
@@ -2840,9 +2843,18 @@ async def _consolidation_readiness_job():
         universe = await get_anticipation_universe(today)
         state_map = await get_consolidation_state_map()
 
+        # CARRY-FORWARD: union the fresh §2 proposer with existing non-aged rows so a base whose
+        # rolling-window anchor drifts (peak aging out) keeps its ORIGINAL key (no duplicate rows).
+        existing = {}
+        for (tk, anc), v in state_map.items():
+            if v["state"] != "aged":
+                existing.setdefault(tk, []).append(
+                    {"anchor_date": anc, "runup_high": v["runup_high"], "dvol_med": v["dvol_med"]})
+        keys = de.select_consolidation_keys(universe, existing)
+
         written, transitions = 0, []
-        for u in universe:
-            ticker, anchor_date = u["ticker"], u["anchor_date"]
+        for k in keys:
+            ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
             try:
                 bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
                 if len(bars) < 30:
@@ -2858,7 +2870,7 @@ async def _consolidation_readiness_job():
                     pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
                     fresh_tightening=cons["fresh_tightening"],
                     fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
-                    tight_close_streak=cons["tight_close_streak"], dvol_med=u["dvol_med"],
+                    tight_close_streak=cons["tight_close_streak"], dvol_med=dvol_med,
                     last_eval=today)
                 written += 1
                 prior = state_map.get((ticker, anchor_date))
@@ -3765,11 +3777,12 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER.
     # The #270 rebuild on the SIGNED universe (runup MAX/MIN≥1.15 → coil → shortlist). Keyed on
-    # the ABSOLUTE (ticker, anchor_date). PAUSED until the anchor-stability invariant is verified
-    # live (6/16-vs-6/17 anchor identity via scripts/_familyA_universe_probe.py) — a scan-relative
-    # key would write duplicate rows nightly and break the transition dedup. Un-pausing = uncomment
-    # this block + add "consolidation_readiness" to INTELLIGENCE_OWNED_JOB_IDS + rewire the
-    # /anticipation board reader from mi_anticipation_lifecycle → mi_anticipation_consolidation.
+    # (ticker, anchor_date), kept stable by select_consolidation_keys' CARRY-FORWARD (the live probe
+    # showed the raw rolling-window anchor drifts 7/71 names/day; carry-forward absorbs it — proven
+    # in tests/test_anticipation_consolidation.py::test_carry_forward_*). PAUSED until that gate is
+    # green + the board rewire. Un-pausing = uncomment this block + add "consolidation_readiness" to
+    # INTELLIGENCE_OWNED_JOB_IDS + rewire the /anticipation board reader from mi_anticipation_lifecycle
+    # → mi_anticipation_consolidation.
     #   _scheduler.add_job(
     #       audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
     #       CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),

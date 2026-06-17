@@ -11,7 +11,25 @@ Pins the Phase-1 SHADOW RECORDER (`evaluate_consolidation` + `consolidation_shap
   4. Family-A shapes never emit the gap-anchored `gap_low_undercut` (that's Family B / the
      deferred U&R entry mode), and telemetry stays JSON/SQL-native.
 """
+import json
+from pathlib import Path
+
 import agents.market_intelligence.anticipation as de
+
+# Two REAL §2 universe snapshots (6/15 → 6/16, live DB) — the 7 anchor-drift names the probe
+# exposed. The carry-forward test runs the REAL select_consolidation_keys on real data (no deploy).
+_SNAP = Path(__file__).resolve().parent.parent / "scripts" / "_familyA_drift_snapshots.json"
+_DRIFT = ["ATKR", "BSX", "IMVT", "KNSA", "ROL", "SBRA", "UHS"]
+
+
+def _load_snap():
+    return json.loads(_SNAP.read_text(encoding="utf-8"))
+
+
+def _seed_existing(snap_rows):
+    """Existing non-aged rows as if recorded on scan_a (one anchor per ticker on first seed)."""
+    return {r["ticker"]: [{"anchor_date": r["anchor_date"], "runup_high": r["runup_high"],
+                           "dvol_med": r["dvol_med"]}] for r in snap_rows}
 
 
 def _runup_then_coil(peak_idx=14, n_coil=8, *, lo=10.0, peak=11.6, coil_c=11.4,
@@ -121,3 +139,50 @@ def test_consolidation_telemetry_native_types():
     assert isinstance(tel["tight_close_streak"], int)
     for k in ("fresh_2bar_tr_pct", "atr14_pct"):
         assert tel[k] is None or isinstance(tel[k], float)
+
+
+# ── 5. carry-forward on the REAL 6/15→6/16 drift (the un-pause gate, advisor 6/17) ───────────
+def test_carry_forward_absorbs_real_615_to_616_drift():
+    # The 7 names whose rolling-window anchor drifted off the aging-out 2026-05-26 peak. Seeded
+    # from scan_a, select_consolidation_keys MUST resolve each to its scan_a anchor (carried) —
+    # NOT the drifted scan_b anchor — and to exactly ONE key (no duplicate row for the same leg).
+    d = _load_snap()
+    a = {r["ticker"]: r for r in d["a"]}
+    b = {r["ticker"]: r for r in d["b"]}
+    keys = de.select_consolidation_keys(d["b"], _seed_existing(d["a"]))
+    by_ticker = {}
+    for k in keys:
+        by_ticker.setdefault(k["ticker"], []).append(k["anchor_date"])
+    for t in _DRIFT:
+        assert t in a and t in b and a[t]["anchor_date"] != b[t]["anchor_date"]   # really drifted
+        assert b[t]["runup_high"] <= a[t]["runup_high"]            # lesser peak = same leg, not new
+        ancs = by_ticker.get(t, [])
+        assert ancs == [a[t]["anchor_date"]]                       # carried original, exactly once
+
+
+def test_new_higher_high_seeds_a_new_leg():
+    # A scan_b name whose runup_high EXCEEDS its scan_a anchor = a genuinely new leg → its scan_b
+    # anchor is seeded (the only case where the universe anchor wins over the carried one).
+    d = _load_snap()
+    a = {r["ticker"]: r for r in d["a"]}
+    keyset = {(k["ticker"], k["anchor_date"])
+              for k in de.select_consolidation_keys(d["b"], _seed_existing(d["a"]))}
+    checked = 0
+    for r in d["b"]:
+        t = r["ticker"]
+        if (t in a and r["anchor_date"] != a[t]["anchor_date"]
+                and (r["runup_high"] or 0) > (a[t]["runup_high"] or 0)):
+            assert (t, r["anchor_date"]) in keyset
+            checked += 1
+    assert checked >= 1                                            # fixture has real new-high legs
+
+
+def test_brand_new_ticker_seeded_with_universe_anchor():
+    d = _load_snap()
+    a_tickers = {r["ticker"] for r in d["a"]}
+    keyset = {(k["ticker"], k["anchor_date"])
+              for k in de.select_consolidation_keys(d["b"], _seed_existing(d["a"]))}
+    new_only = [r for r in d["b"] if r["ticker"] not in a_tickers]
+    assert new_only                                                # 262 > 232 → genuinely-new names
+    for r in new_only:
+        assert (r["ticker"], r["anchor_date"]) in keyset
