@@ -269,6 +269,7 @@ async def grade_holistic(
     timeout: float = 15.0,
     model: str = MODEL,
     image_png: bytes | None = None,
+    chart_note: str | None = None,
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
@@ -276,11 +277,17 @@ async def grade_holistic(
     concurrency; the `wait_for` bounds total time incl. queueing for the 9:45 cutoff.
 
     `image_png` (#267 chart-vision, W4) optionally attaches a point-in-time daily chart so
-    the judge can read the price/MA/volume structure. None = byte-identical text-only call
-    (the live grade path passes None until the rubric axis is sign-off-gated live; only the
-    eval harness passes a chart today)."""
+    the judge can read the price/MA/volume structure. `chart_note` is the CANDIDATE chart-axis
+    INSTRUCTION appended to the prompt — without it the image is unanchored (the base rubric is
+    catalyst/theme-oriented and never asks the judge to read a chart, so it likely wouldn't).
+    Both default None = byte-identical text-only call. The LIVE grade path passes None for both
+    (the rubric axis is sign-off-gated); ONLY the eval harness sets them, on its with-chart arm —
+    the chart_note text is precisely what the operator is labeling the value of."""
+    prompt = _build_judge_prompt(payload)
+    if chart_note:
+        prompt = f"{prompt}\n{chart_note}"
     return await invoke_forced_tool(
-        client, _build_judge_prompt(payload),
+        client, prompt,
         tool=_JUDGE_TOOL, tool_name="grade_ep",
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",

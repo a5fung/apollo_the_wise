@@ -59,6 +59,14 @@ async def main(min_fwd: float, limit: int, out: str, exclude: str | None):
     print(f"wrote {len(kept)} known-good clean breakouts (fwd_5d ≥ {min_fwd}%) → {out}")
     if kept:
         print("  sample:", ", ".join(f"{r['ticker']}({r['fwd_5d_pct']:.0f}%)" for r in kept[:8]))
+    else:
+        # LOUD on empty (advisor 2026-06-17): a silent empty keep-side reverts the chart eval to
+        # one-sided (deadcat-only), re-opening Gap B. The likely cause is the (ticker, alert_date=
+        # scan_date) join not aligning — mi_ep_scan_outcomes.scan_date may differ from the alert's
+        # alert_date. Diagnose before the eval; fallback = judge-kept-HIGH rows from mi_ep_alerts.
+        print("  ⚠️  EMPTY keep-side — the chart eval would be ONE-SIDED (can't catch false "
+              "rejections). Check the alert_date↔scan_date join alignment, or hand-source a keep "
+              "cohort, BEFORE running eval_chart_judge.")
 
 
 if __name__ == "__main__":

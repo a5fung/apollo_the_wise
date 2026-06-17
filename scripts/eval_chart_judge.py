@@ -66,6 +66,29 @@ LIMIT 1
 _OPUS_IN_PER_M = 5.0
 _OPUS_OUT_PER_M = 25.0
 
+# CANDIDATE chart-axis instruction — appended to the prompt on the WITH-CHART arm ONLY (advisor
+# 2026-06-17). Without it the image is unanchored: the base rubric is catalyst/theme-oriented and
+# never asks the judge to read a chart, so it would likely ignore the attachment → few/random
+# deltas the operator misreads as "chart doesn't help." This text IS the thing the operator labels
+# the value of; promoting any of it into the LIVE _build_judge_prompt is the separate sign-off step.
+CHART_AXIS_NOTE = """
+--- ATTACHED: DAILY CHART (technical-structure axis — candidate) ---
+A daily candlestick chart is attached (10/20/50 SMAs + volume pane), rendered through the PRIOR
+trading day — it does NOT show the alert-day move, by design. Read it as ONE additional axis in your
+holistic grade (it informs, it does not override a strong catalyst). Weigh, per momentum/EP
+methodology (Qullamaggie / Pradeep / Stamatoudis):
+  • Prior trend & leadership — is there a real prior advance to pivot from (the "post a runup"), or
+    is this a low/basing name with no thrust?
+  • Base quality — a tight, orderly consolidation / contraction near the highs is constructive; a
+    wide, sloppy, or broken-down structure is a negative.
+  • Volume — dry-up through the base (quiet right side) is constructive; persistent heavy selling is
+    a negative.
+  • Location vs the MA stack — riding above a rising 10/20/50 stack is constructive; far extended
+    above it invites exhaustion; below a falling stack is a broken chart.
+  • Over-extension / climax — a parabolic, far-from-MA move is lower-quality entry even on good news.
+Let this technical read nudge the tier up or down within your existing rubric; cite the decisive
+chart feature in your rationale."""
+
 
 def read_cohort(spec: str) -> tuple[str, list[tuple[str, date]]]:
     """`PATH:LABEL` → (label, [(ticker, alert_date), ...]). CSV uses cols 0,1 (ticker, ISO date);
@@ -107,9 +130,10 @@ def _modal_stable(verdicts: list):
     return (c[0][0] if c else None), stable, tiers
 
 
-async def _grade(client, sem, payload, image_png):
+async def _grade(client, sem, payload, image_png, chart_note):
     async with sem:
-        return await grade_holistic(client, payload, timeout=40, image_png=image_png)
+        return await grade_holistic(client, payload, timeout=40,
+                                    image_png=image_png, chart_note=chart_note)
 
 
 async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, outdir):
@@ -133,8 +157,12 @@ async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, out
     grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
     payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text both arms
 
-    no_chart = await asyncio.gather(*[_grade(client, sem, payload, None) for _ in range(replicates)])
-    with_chart = await asyncio.gather(*[_grade(client, sem, payload, png) for _ in range(replicates)])
+    # no-chart arm = the EXISTING prompt, text-only (baseline). with-chart arm = existing prompt +
+    # candidate CHART_AXIS_NOTE + the image. The delta measures that candidate axis (advisor).
+    no_chart = await asyncio.gather(
+        *[_grade(client, sem, payload, None, None) for _ in range(replicates)])
+    with_chart = await asyncio.gather(
+        *[_grade(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
     nc_modal, nc_stable, nc_tiers = _modal_stable(no_chart)
     wc_modal, wc_stable, wc_tiers = _modal_stable(with_chart)
     both_stable = nc_stable and wc_stable
