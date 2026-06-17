@@ -38,10 +38,10 @@ right/wrong. The agent never self-certifies (ADR 0011: the operator owns the fli
   labels seeing the SAME chart the judge saw.
 
 ## 6/18 RUNBOOK (in order — none of these steps is optional)
-1. **Deploy the renderer dep.** `requirements/base.txt` gained `mplfinance` + `matplotlib`; the
-   eval runs in the apollo-market image, so it must be rebuilt:
-   `bash scripts/deploy.sh market-agent` (or `both`). Confirm `docker ps` shows apollo-market
-   "Up <seconds>".
+1. **Deploy the renderer dep.** ✅ ALREADY DONE — `mplfinance` 0.12.10b0 + `matplotlib` 3.11.0 were
+   baked into the apollo-market image by the 2026-06-17 `deploy.sh both` (commit `5599dbc`); verified
+   `docker exec apollo-market python -c "import mplfinance"`. If a later rebuild drops it, re-run
+   `bash scripts/deploy.sh both`. Otherwise skip to step 2.
 2. **Generate the KEEP side + CONFIRM non-empty:**
    `docker exec apollo-market python /app/scripts/build_clean_breakout_cohort.py --out /app/clean_breakout_cohort.csv`
    → it prints the count. If it prints the ⚠️ EMPTY warning, the `(ticker, alert_date=scan_date)`
