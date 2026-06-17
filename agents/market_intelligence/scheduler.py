@@ -2122,18 +2122,17 @@ async def _catalyst_downgrade_digest_job():
             now_et.date(),
             CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
         )
+        if not rows:
+            return 0
         # Defer to the load-bearing judge (#249): a catalyst the FLOOR downgraded but the JUDGE
         # promoted to an authoritative HIGH should not read as a bare downgrade contradicting the
         # HIGH alert 20 min earlier (LZB 6/17). Annotate those lines so the digest is coherent
-        # with the alert rather than fighting it.
+        # with the alert rather than fighting it. (Only queried when there ARE downgrades.)
         judge_rows = await conn.fetch(
             "SELECT ticker, score_tier, grade_engine_authority FROM mi_ep_alerts WHERE alert_date = $1",
             now_et.date(),
         )
     judge_map = {jr["ticker"]: jr for jr in judge_rows}
-
-    if not rows:
-        return 0
 
     lines = [
         f"📉 *Catalyst downgrades — morning digest ({len(rows)})*",

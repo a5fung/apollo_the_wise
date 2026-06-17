@@ -15,10 +15,11 @@ import pytest
 from tests.conftest import make_mock_pool
 
 
-def _make_pool(audit_rows: list[dict]):
-    """Wire `conn.fetch` to return the given rows."""
+def _make_pool(audit_rows: list[dict], judge_rows: "list[dict] | None" = None):
+    """Wire `conn.fetch`: 1st call = downgrade audit rows, 2nd = judge-verdict rows (the
+    judge-defer query added 6/17; only fetched when there ARE downgrades)."""
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(return_value=audit_rows)
+    conn.fetch = AsyncMock(side_effect=[audit_rows, judge_rows or []])
     return pool, conn
 
 
@@ -82,6 +83,40 @@ async def test_digest_job_renders_compact_per_ticker_lines():
     assert "Q-rev YoY missing (no prior-year comparable)" in msg
     # Drilldown footer present
     assert "/rubric" in msg
+
+
+@pytest.mark.asyncio
+async def test_digest_annotates_judge_promoted_ticker():
+    """A floor-downgraded name the JUDGE promoted to an authoritative HIGH is annotated, so the
+    digest stops contradicting the HIGH alert (LZB 6/17). A non-promoted name stays plain."""
+    from agents.market_intelligence import scheduler
+
+    audit_rows = [
+        {"summary": "LZB: strong → routine (earnings catalyst, q_rev_yoy_missing_no_prior_year_comparable)",
+         "detail": None, "created_at": None},
+        {"summary": "FOO: strong → routine (earnings catalyst, news_corpus_sparse_no_q_rev)",
+         "detail": None, "created_at": None},
+    ]
+    judge_rows = [
+        {"ticker": "LZB", "score_tier": "HIGH", "grade_engine_authority": "judge"},
+        {"ticker": "FOO", "score_tier": "MODERATE", "grade_engine_authority": "floor"},
+    ]
+    pool, _conn = _make_pool(audit_rows, judge_rows)
+    sent = []
+
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
+        count = await scheduler._catalyst_downgrade_digest_job()
+
+    assert count == 2
+    msg = sent[0]
+    lzb_line = next(l for l in msg.splitlines() if "LZB" in l)
+    foo_line = next(l for l in msg.splitlines() if "FOO" in l)
+    assert "judge promoted to HIGH" in lzb_line     # promoted → annotated
+    assert "judge promoted" not in foo_line          # not promoted → plain downgrade line
 
 
 def test_humanize_rubric_composite_reason():
