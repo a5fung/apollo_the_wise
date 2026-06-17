@@ -5,13 +5,22 @@
 load-bearing (ADR 0011) — this measures a CANDIDATE chart axis; promoting it into the live
 `_build_judge_prompt` is a separate CHANGE_PROCESS + operator-sign-off step, NOT done here.
 
-## What the eval measures
-Re-grade a cohort of historical EP alerts through the holistic judge **twice** per row:
-- **no-chart arm** — the existing prompt, text-only (today's behaviour, the baseline).
-- **with-chart arm** — existing prompt **+ candidate `CHART_AXIS_NOTE` + the rendered daily chart**.
+## What the eval measures — THREE-ARM ABLATION (advisor 2026-06-17)
+Re-grade a cohort of historical EP alerts through the holistic judge across **three arms**, each ×K:
+- **A baseline** — the existing prompt, text-only (today's behaviour).
+- **B instruction-only** — existing prompt + the candidate technical-axis note, **NO image**.
+- **C instruction+chart** — existing prompt + the chart-framed note + the rendered daily chart.
 
-Surface the rows whose verdict CHANGED → the operator labels each right/wrong. The agent never
-self-certifies (ADR 0011: the operator owns the flip gate).
+The B and C notes share a **byte-identical 5-factor body**; the only difference is the framing
+sentence + whether a PNG is attached. Two attributions fall out:
+- **B − A = what the free TEXT instruction buys** — shippable WITHOUT any vision pipeline.
+- **C − B = the chart's MARGINAL visual lift** — *the actual "does vision help" number*, and the
+  one the W4 decision (image tokens on the load-bearing path, mplfinance in prod) rides on.
+
+Without this split, a two-arm "with-vs-without chart" eval confounds the image with the instruction
+text — the operator could green-light a vision pipeline when `+ "consider technical structure"` in
+the prompt delivered the same lift for free. Surface both delta sets → the operator labels each
+right/wrong. The agent never self-certifies (ADR 0011: the operator owns the flip gate).
 
 ## Disciplines baked in (advisor 2026-06-17)
 - **No lookahead** — the chart is rendered through the **prior trading day** (`mi_daily_closes
@@ -43,12 +52,16 @@ self-certifies (ADR 0011: the operator owns the flip gate).
    → confirm charts render (render rate), both arms call, 0 deltas is fine (smoke ≠ efficacy).
 4. **Full two-sided run (operator-triggered — API spend, ~$ single-digit):**
    `docker exec apollo-market python /app/scripts/eval_chart_judge.py --cohort /app/deadcat_cohort.csv:reject --cohort /app/clean_breakout_cohort.csv:keep --replicates 3 --outdir /app/_chart_eval`
-5. **Label.** Pull the `_chart_eval/*.png` + the delta output. Operator labels each delta:
-   - REJECT side: a chart-driven downgrade is a **correct catch**.
-   - KEEP side: a chart-driven downgrade is a **false rejection** (the failure mode to watch).
-6. **Decide (gated).** If the labels support the axis, promoting `CHART_AXIS_NOTE` (or a refinement)
-   into the live `_build_judge_prompt` is a CHANGE_PROCESS entry + operator sign-off (load-bearing
-   judge). Not before.
+5. **Label.** Pull the `_chart_eval/*.png` + the delta output. The output is split into
+   **INSTRUCTION DELTAS (B−A)** and **VISUAL DELTAS (C−B)**; each is further split reject/keep:
+   - REJECT side: a downgrade is a **correct catch**.
+   - KEEP side: a downgrade is a **false rejection** (the failure mode to watch).
+   The decision rides on the **VISUAL (C−B)** deltas: if they're sparse or the **instruction (B−A)**
+   already captured the lift, the axis ships as **text**, not a vision pipeline.
+6. **Decide (gated).** If the labels support it, promoting the axis (the text instruction, and/or the
+   chart) into the live `_build_judge_prompt` / live grade path is a CHANGE_PROCESS entry + operator
+   sign-off (load-bearing judge). Not before. The B/C split tells you WHICH to promote (text vs
+   text+vision).
 
 ## Candidate `CHART_AXIS_NOTE` (what's being measured)
 Lives in `scripts/eval_chart_judge.py` (eval-only). Reads, in short: a daily chart (10/20/50 SMA +

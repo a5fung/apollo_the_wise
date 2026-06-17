@@ -66,28 +66,45 @@ LIMIT 1
 _OPUS_IN_PER_M = 5.0
 _OPUS_OUT_PER_M = 25.0
 
-# CANDIDATE chart-axis instruction — appended to the prompt on the WITH-CHART arm ONLY (advisor
-# 2026-06-17). Without it the image is unanchored: the base rubric is catalyst/theme-oriented and
-# never asks the judge to read a chart, so it would likely ignore the attachment → few/random
-# deltas the operator misreads as "chart doesn't help." This text IS the thing the operator labels
-# the value of; promoting any of it into the LIVE _build_judge_prompt is the separate sign-off step.
-CHART_AXIS_NOTE = """
---- ATTACHED: DAILY CHART (technical-structure axis — candidate) ---
-A daily candlestick chart is attached (10/20/50 SMAs + volume pane), rendered through the PRIOR
-trading day — it does NOT show the alert-day move, by design. Read it as ONE additional axis in your
-holistic grade (it informs, it does not override a strong catalyst). Weigh, per momentum/EP
-methodology (Qullamaggie / Pradeep / Stamatoudis):
-  • Prior trend & leadership — is there a real prior advance to pivot from (the "post a runup"), or
-    is this a low/basing name with no thrust?
+# CANDIDATE chart-axis instruction. THREE-ARM ABLATION (advisor 2026-06-17): the eval must isolate
+# the VISION contribution from the free TEXT instruction, because the W4 decision is whether to ship
+# a vision pipeline. So the instruction body is shared and the ONLY difference between arms B and C
+# is whether an image is attached + the one framing sentence:
+#   A baseline       = no note, no image (today's behaviour)
+#   B instruction    = the 5-factor note, framed "from the data you have", NO image
+#   C note+image     = the 5-factor note, framed "a chart is attached", + the rendered chart
+# B−A = what the text instruction buys (shippable WITHOUT vision). C−B = the chart's MARGINAL visual
+# contribution = the actual "does vision help" number. Promoting any of this into the LIVE
+# _build_judge_prompt is the separate sign-off step (load-bearing judge).
+# The 5-factor body + closing — BYTE-IDENTICAL across arms B and C so only the modality differs.
+_AXIS_LEAD = ("As ONE additional axis in your holistic grade (it informs, it does not override a "
+              "strong catalyst), weigh the name's recent daily technical structure, per momentum/EP "
+              "methodology (Qullamaggie / Pradeep / Stamatoudis):")
+_CHART_FACTORS = """  • Prior trend & leadership — is there a real prior advance to pivot from (the
+    "post a runup"), or is this a low/basing name with no thrust?
   • Base quality — a tight, orderly consolidation / contraction near the highs is constructive; a
     wide, sloppy, or broken-down structure is a negative.
   • Volume — dry-up through the base (quiet right side) is constructive; persistent heavy selling is
     a negative.
   • Location vs the MA stack — riding above a rising 10/20/50 stack is constructive; far extended
-    above it invites exhaustion; below a falling stack is a broken chart.
-  • Over-extension / climax — a parabolic, far-from-MA move is lower-quality entry even on good news.
+    above it invites exhaustion; below a falling stack is a broken structure.
+  • Over-extension / climax — a parabolic, far-from-trend move is lower-quality entry even on good news.
 Let this technical read nudge the tier up or down within your existing rubric; cite the decisive
-chart feature in your rationale."""
+technical feature in your rationale."""
+
+# Arm C — the ONLY difference from B is the "a chart is attached / read the chart" framing + the PNG.
+CHART_AXIS_NOTE = f"""
+--- ATTACHED: DAILY CHART (technical-structure axis — candidate) ---
+A daily candlestick chart is attached (10/20/50 SMAs + volume pane), rendered through the PRIOR
+trading day — it does NOT show the alert-day move, by design. Read the chart. {_AXIS_LEAD}
+{_CHART_FACTORS}"""
+
+# Arm B — same lead + factors, framed to reason from the numeric context; NO image, no dangling
+# "attached chart" reference (which would be a lie with no PNG sent).
+CHART_AXIS_NOTE_TEXT_ONLY = f"""
+--- TECHNICAL-STRUCTURE AXIS (candidate, from the data provided — no chart attached) ---
+{_AXIS_LEAD}
+{_CHART_FACTORS}"""
 
 
 def read_cohort(spec: str) -> tuple[str, list[tuple[str, date]]]:
@@ -137,8 +154,11 @@ async def _grade(client, sem, payload, image_png, chart_note):
 
 
 async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, outdir):
-    """Re-grade one cohort row text-only ×K vs with-chart ×K (BOTH arms replicated). Renders +
-    saves the point-in-time chart PNG. Read-only. Returns the per-row record or a skip dict."""
+    """Re-grade one cohort row across the THREE ablation arms, each ×K replicates (advisor 2026-06-17):
+      A baseline    = existing prompt, no note, no image
+      B instruction = existing prompt + the text-only axis note, NO image
+      C note+image  = existing prompt + the chart-framed axis note + the rendered chart
+    Renders + saves the point-in-time chart PNG. Read-only. Returns the per-row record or a skip."""
     row = await conn.fetchrow(_ALERT_ROW_SQL, ticker, alert_date)
     if row is None:
         return {"skip": "no_alert_row", "ticker": ticker, "alert_date": alert_date, "label": label}
@@ -155,38 +175,52 @@ async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, out
 
     mc, sector, company = await fetch_profile(ticker)
     grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
-    payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text both arms
+    payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text payload, all arms
 
-    # no-chart arm = the EXISTING prompt, text-only (baseline). with-chart arm = existing prompt +
-    # candidate CHART_AXIS_NOTE + the image. The delta measures that candidate axis (advisor).
-    no_chart = await asyncio.gather(
-        *[_grade(client, sem, payload, None, None) for _ in range(replicates)])
-    with_chart = await asyncio.gather(
+    a = await asyncio.gather(*[_grade(client, sem, payload, None, None) for _ in range(replicates)])
+    b = await asyncio.gather(
+        *[_grade(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY) for _ in range(replicates)])
+    c = await asyncio.gather(
         *[_grade(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
-    nc_modal, nc_stable, nc_tiers = _modal_stable(no_chart)
-    wc_modal, wc_stable, wc_tiers = _modal_stable(with_chart)
-    both_stable = nc_stable and wc_stable
+    a_modal, a_stable, a_tiers = _modal_stable(a)
+    b_modal, b_stable, b_tiers = _modal_stable(b)
+    c_modal, c_stable, c_tiers = _modal_stable(c)
     return {
         "ticker": ticker, "alert_date": alert_date, "label": label, "floor": row["floor_tier"],
         "png_path": png_path, "n_daily": len(daily),
-        "nc_modal": nc_modal, "nc_stable": nc_stable, "nc_tiers": nc_tiers,
-        "wc_modal": wc_modal, "wc_stable": wc_stable, "wc_tiers": wc_tiers,
-        "wc_verdict": next((v for v in with_chart if v), None),
-        "both_stable": both_stable,
-        "chart_changed": (both_stable and nc_modal != wc_modal),
+        "a_modal": a_modal, "a_stable": a_stable, "a_tiers": a_tiers,
+        "b_modal": b_modal, "b_stable": b_stable, "b_tiers": b_tiers,
+        "c_modal": c_modal, "c_stable": c_stable, "c_tiers": c_tiers,
+        "b_verdict": next((v for v in b if v), None),
+        "c_verdict": next((v for v in c if v), None),
+        # instruction effect (B vs A) — credible only when both arms stable.
+        "instruction_changed": (a_stable and b_stable and a_modal != b_modal),
+        # MARGINAL VISUAL effect (C vs B) — the real "does vision help" signal.
+        "visual_changed": (b_stable and c_stable and b_modal != c_modal),
+        "all_stable": a_stable and b_stable and c_stable,
     }
 
 
-def _format_delta(r) -> list:
-    """Render one chart-delta record into operator-review lines. EXTRACTED + pure (mirrors
-    eval_tape_judge advisor-C): the smoke yields 0 deltas, so this never runs until the expensive
-    full run — a KeyError here would crash AFTER the Opus spend. The PNG path lets the operator
-    open the exact chart the judge saw."""
-    v = r.get("wc_verdict") or {}
+def _format_instruction_delta(r) -> list:
+    """B vs A — what the free TEXT instruction buys (shippable WITHOUT vision)."""
+    v = r.get("b_verdict") or {}
     return [
         f"\n  {r['ticker']:6} {r['alert_date']}  [{r['label']}]  (floor={r['floor']})",
-        f"     no-chart={r['nc_modal']}  →  with-chart="
-        f"{format_tier_transition(r['nc_modal'], r['wc_modal'])}",
+        f"     A baseline={r['a_modal']}  →  B instruction-only="
+        f"{format_tier_transition(r['a_modal'], r['b_modal'])}",
+        f"     judge: {(v.get('rationale') or '')[:240]}",
+    ]
+
+
+def _format_visual_delta(r) -> list:
+    """C vs B — the chart's MARGINAL visual contribution beyond the same instruction (the actual
+    'does vision help' signal). Includes the PNG so the operator labels seeing the judge's chart."""
+    v = r.get("c_verdict") or {}
+    return [
+        f"\n  {r['ticker']:6} {r['alert_date']}  [{r['label']}]  (floor={r['floor']})",
+        f"     B instruction-only={r['b_modal']}  →  C +chart="
+        f"{format_tier_transition(r['b_modal'], r['c_modal'])}  "
+        f"(A baseline was {r['a_modal']})",
         f"     chart: {r['png_path']}",
         f"     judge: {(v.get('rationale') or '')[:240]}",
     ]
@@ -205,15 +239,18 @@ async def main(cohorts: list[str], limit: int | None, replicates: int, outdir: s
     by_label = Counter(p[0] for p in pairs)
     print("=" * 80)
     print(f"#267 CHART-VISION JUDGE EVAL — {len(pairs)} row(s) "
-          f"[{', '.join(f'{k}:{v}' for k, v in by_label.items())}], {replicates}× per arm")
-    print(f"  scope: {len(pairs)} rows × 2 arms × {replicates} repl = "
-          f"~{len(pairs) * 2 * replicates} Opus judge calls (WITH arm carries ~1.2K image tok/call)")
-    # rough cost: assume ~2.5K in (text payload) + ~1.2K image on with-arm, ~250 out, per call
-    in_tok = len(pairs) * replicates * (2500 + (2500 + 1200))
-    out_tok = len(pairs) * 2 * replicates * 250
+          f"[{', '.join(f'{k}:{v}' for k, v in by_label.items())}], 3-ARM ablation, {replicates}× per arm")
+    print("  arms: A baseline · B instruction-only (no image) · C instruction+chart")
+    print(f"  scope: {len(pairs)} rows × 3 arms × {replicates} repl = "
+          f"~{len(pairs) * 3 * replicates} Opus judge calls (arm C carries ~1.2K image tok/call)")
+    # rough cost: A + B = ~2.5K in each; C = ~2.5K + ~1.2K image; ~250 out per call.
+    in_tok = len(pairs) * replicates * (2500 + 2500 + (2500 + 1200))
+    out_tok = len(pairs) * 3 * replicates * 250
     est = in_tok / 1e6 * _OPUS_IN_PER_M + out_tok / 1e6 * _OPUS_OUT_PER_M
     print(f"  est cost ~${est:.2f} (rough; Opus ${_OPUS_IN_PER_M}/{_OPUS_OUT_PER_M} per Mtok)")
     print(f"  charts → {outdir}/  ·  READ-ONLY · operator labels the deltas · NO self-certify")
+    print("  ATTRIBUTION: B−A = what the TEXT instruction buys (no vision needed); C−B = the chart's")
+    print("              MARGINAL visual lift = the actual 'does VISION help' number for the W4 call.")
     print("  TWO-SIDED check: a reject-only cohort can't catch the chart causing FALSE rejections.")
     print("=" * 80)
     if not pairs:
@@ -251,26 +288,35 @@ async def main(cohorts: list[str], limit: int | None, replicates: int, outdir: s
         print("  Nothing graded — check the cohort dates exist in mi_ep_alerts / mi_daily_closes.")
         return
 
-    unstable = [r for r in graded if not r["both_stable"]]
-    print(f"\nJUDGE NOISE FLOOR ({replicates}× per arm): {n - len(unstable)}/{n} STABLE on both arms, "
-          f"{len(unstable)} unstable on ≥1 arm (excluded from the chart-delta read).")
+    unstable = [r for r in graded if not r["all_stable"]]
+    print(f"\nJUDGE NOISE FLOOR ({replicates}× per arm): {n - len(unstable)}/{n} STABLE on all 3 arms, "
+          f"{len(unstable)} unstable on ≥1 arm (excluded from the delta reads).")
     for r in unstable:
         print(f"    ~ {r['ticker']:6} {r['alert_date']} [{r['label']}]  "
-              f"no-chart={r['nc_tiers']} with-chart={r['wc_tiers']}")
+              f"A={r['a_tiers']} B={r['b_tiers']} C={r['c_tiers']}")
 
-    deltas = [r for r in graded if r["chart_changed"]]
-    print(f"\nCHART DELTAS (both arms STABLE, modals differ): {len(deltas)}")
-    # split by label so a reject-side flip (good) vs a keep-side flip (a FALSE rejection) is obvious
-    for lbl in sorted({r["label"] for r in deltas}):
-        side = [r for r in deltas if r["label"] == lbl]
-        print(f"\n  ── {lbl} ({len(side)}) ──")
-        for r in side:
-            print("\n".join(_format_delta(r)))
+    def _section(title, key, fmt):
+        deltas = [r for r in graded if r[key]]
+        print(f"\n{title}: {len(deltas)}")
+        for lbl in sorted({r["label"] for r in deltas}):  # split reject vs keep side
+            side = [r for r in deltas if r["label"] == lbl]
+            print(f"\n  ── {lbl} ({len(side)}) ──")
+            for r in side:
+                print("\n".join(fmt(r)))
+
+    # B−A: the free TEXT instruction effect (shippable without any vision pipeline).
+    _section("INSTRUCTION DELTAS  (B vs A — text instruction alone, A&B stable, modals differ)",
+             "instruction_changed", _format_instruction_delta)
+    # C−B: the chart's MARGINAL visual lift — THE number the vision-pipeline decision rides on.
+    _section("VISUAL DELTAS  (C vs B — chart's marginal lift over the same instruction; B&C stable)",
+             "visual_changed", _format_visual_delta)
 
     print("\n" + "-" * 80)
     print("HARD gate (ADR 0011): the OPERATOR labels each delta right/wrong — the agent does NOT "
-          "self-certify. On the KEEP side a chart-driven downgrade is a FALSE rejection; on the "
-          "REJECT side it is a correct catch. A smoke proves render+flow only, not efficacy.")
+          "self-certify. THE VISION DECISION rides on the VISUAL deltas (C−B): if they are few or "
+          "the instruction (B−A) already captured the lift, the chart axis ships as TEXT, not a "
+          "vision pipeline. KEEP-side downgrade = false rejection; REJECT-side = correct catch. A "
+          "smoke proves render+flow only, not efficacy.")
 
 
 if __name__ == "__main__":
