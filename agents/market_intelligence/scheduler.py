@@ -130,7 +130,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ep_scan_watchdog", "9m_ep_scan", "parabolic_scan", "flag_break_scan",
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
-    "anticipation_readiness", "anticipation_3b",
+    "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -3794,16 +3794,15 @@ def start_scheduler() -> AsyncIOScheduler:
     # The #270 rebuild on the SIGNED universe (runup MAX/MIN≥1.15 → coil → shortlist). Keyed on
     # (ticker, anchor_date), kept stable by select_consolidation_keys' CARRY-FORWARD (the live probe
     # showed the raw rolling-window anchor drifts 7/71 names/day; carry-forward absorbs it — proven
-    # in tests/test_anticipation_consolidation.py::test_carry_forward_*). PAUSED until that gate is
-    # green + the board rewire. Un-pausing = uncomment this block + add "consolidation_readiness" to
-    # INTELLIGENCE_OWNED_JOB_IDS + rewire the /anticipation board reader from mi_anticipation_lifecycle
-    # → mi_anticipation_consolidation.
-    #   _scheduler.add_job(
-    #       audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
-    #       CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
-    #       id="consolidation_readiness",
-    #       replace_existing=True,
-    #   )
+    # in tests/test_anticipation_consolidation.py::test_carry_forward_*). UN-PAUSED 2026-06-17
+    # (operator decision 4 fast-follow — collect data asap, observe-only). 17:35 ET after the 17:00
+    # nightly_data_pull. Surfaces via /anticipation (now reads mi_anticipation_consolidation).
+    _scheduler.add_job(
+        audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
+        CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        id="consolidation_readiness",
+        replace_existing=True,
+    )
 
     # Telegram polling-bot health watchdog: every 2 min, 24/7 (#153). Raw (not
     # audit_wrap'd) — it's a high-frequency liveness check that self-guards and

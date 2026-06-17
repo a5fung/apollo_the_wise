@@ -2801,51 +2801,52 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_anticipation_query(self, request: AgentRequest) -> AgentResponse:
-        """`/anticipation` — the Pradeep anticipation-play lifecycle board (SHADOW, #270). A
-        post-thrust name tightens and you ANTICIPATE the continuation: watched (thrust/gap) →
-        armed (prior-low undercut) → coiled/ready (reclaim set-up) → triggered (entry fired) →
-        settled realized_r. The U&R undercut-reclaim is the trigger; no EP/catalyst required.
-        Observational — no trades. Companion to the 17:35 ET readiness job. Monospace."""
-        from agents.market_intelligence.db import get_anticipation_lifecycle_board
+        """`/anticipation` — Family A "consolidation plays post a runup" board (ADR 0013, SHADOW,
+        #270). A name runs up (MAX/MIN close ≥1.15 over a rolling 10 sessions), then COILS into a
+        tight consolidation; the board is the shortlist surfaced for operator judgment
+        (ordering-only, tightest-first — NOT an auto-selected top-N). No EP/catalyst required; no
+        trades. Companion to the 17:35 ET consolidation_readiness shadow recorder. Monospace."""
+        from agents.market_intelligence.db import get_consolidation_board
 
-        rows = await get_anticipation_lifecycle_board()
+        rows = await get_consolidation_board()
         if not rows:
             return self._ok(request, result=(
-                "⏱️ *Anticipation lifecycle* — no rows yet "
-                "(the 17:35 ET shadow run seeds it)."))
+                "⏱️ *Consolidation plays post-runup* (Family A) — no rows yet "
+                "(the 17:35 ET shadow recorder seeds it)."))
 
-        order = {"triggered": 0, "ready": 1, "coiled": 2, "armed": 3, "watched": 4, "expired": 5}
-        labels = {
-            "triggered": "🎯 TRIGGERED (entry fired)",
-            "ready": "✅ READY (reclaim — awaiting 3b entry)",
-            "coiled": "🌀 COILED", "armed": "🔫 ARMED (gap-low undercut)",
-            "watched": "👁 WATCHED (gap)", "expired": "💤 EXPIRED",
-        }
-        # underscore-free tactic labels (raw 'first5_break'/'gdl_reclaim' would desync Markdown)
-        # — single-sourced from the sip_payload() short map so the two never drift.
-        from agents.market_intelligence.anticipation import _SIP_TACTIC_SHORT as tac
+        labels = {"coiled": "🪙 COILED — tight; the shortlist for judgment",
+                  "post_runup": "👁 POST-RUNUP — ran up, not yet coiled"}
         by_state: dict[str, list] = {}
         for r in rows:
             by_state.setdefault(r["state"], []).append(r)
 
-        out = ["⏱️ *Anticipation lifecycle* (SHADOW — observe, no trades)", ""]
-        for st in sorted(by_state, key=lambda s: order.get(s, 9)):
-            grp = by_state[st]
+        def _f(v):  # asyncpg may hand back Decimal — coerce for format specs
+            return float(v) if v is not None else None
+
+        out = ["⏱️ *Consolidation plays post-runup* (Family A · SHADOW — observe, ordering-only)", ""]
+        for st in ("coiled", "post_runup"):
+            grp = by_state.get(st)
+            if not grp:
+                continue
             out.append(f"*{labels.get(st, st)}* ({len(grp)})")
-            for r in grp[:10]:
-                gd = r["gap_day"].isoformat() if r.get("gap_day") else "?"
+            for r in grp[:12]:
+                anc = r["anchor_date"].isoformat()[5:] if r.get("anchor_date") else "?"  # MM-DD
+                ru = _f(r.get("runup_ratio"))
+                tp = _f(r.get("today_pct"))
+                rmv = _f(r.get("rmv_5d"))
                 extra = []
-                if r.get("base_run"):
-                    extra.append(f"base{r['base_run']}")
-                if r.get("rmv_5d") is not None:
-                    extra.append(f"rmv{r['rmv_5d']:.0f}")
-                if r.get("entry_tactic"):
-                    extra.append(tac.get(r["entry_tactic"], r["entry_tactic"]))
-                if r.get("settled") and r.get("realized_r") is not None:
-                    extra.append(f"R={r['realized_r']:+.1f}")
+                if r.get("tight_close_streak"):
+                    extra.append(f"tight{r['tight_close_streak']}")
+                if rmv is not None:
+                    extra.append(f"rmv{rmv:.0f}")
+                if r.get("fresh_tightening"):
+                    extra.append("fresh↓")
                 tail = ("  " + " ".join(extra)) if extra else ""
-                out.append(f"  `{r['ticker']:<5}` gap {gd}{tail}")
+                out.append(
+                    f"  `{r['ticker']:<5}` {ru:.2f}x peak {anc} +{r.get('coil_days', 0)}d "
+                    f"today {tp * 100:+.2f}%{tail}")
             out.append("")
+        out.append("_Tightest-first. Surfaced for judgment — no trades._")
         return self._ok(request, result="\n".join(out).strip())
 
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:
