@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Apollo pre-push hook — run the full test suite before pushing, mirroring CI
+# (`python -m pytest tests/ -q`). Catches the class where a local SUBSET test run
+# passes but the FULL suite (which CI runs) fails — the 2026-06-17 downgrade-digest
+# mock regression that broke CI and spammed failure emails.
+#
+# Activation: `git config core.hooksPath .githooks` (one-time per clone; same setting
+# the pre-commit hook already uses, so no extra step if pre-commit is active).
+#
+# Bypass a single push (emergency hotfix only): `git push --no-verify`.
+#
+# Only runs when the pushed commits touch Python — a docs/PLAN-only push skips the
+# suite so the gate doesn't train operators toward --no-verify. If the pushed range
+# can't be determined, it runs the suite (fail-safe: a safety gate must not fail open).
+set -uo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+zero="0000000000000000000000000000000000000000"
+saw_ref=0
+py_changed=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    saw_ref=1
+    [ -z "${local_sha:-}" ] && continue
+    [ "$local_sha" = "$zero" ] && continue                 # branch delete — nothing to test
+    if [ "$remote_sha" = "$zero" ]; then
+        py_changed=1                                       # new branch/ref → run the suite
+    elif git diff --name-only "$remote_sha..$local_sha" 2>/dev/null | grep -qE '\.py$'; then
+        py_changed=1
+    fi
+done
+[ "$saw_ref" -eq 0 ] && py_changed=1                       # couldn't read refs → fail-safe
+
+if [ "$py_changed" -eq 0 ]; then
+    exit 0                                                  # no Python in this push — skip
+fi
+
+echo "▶ pre-push: running full test suite (python -m pytest tests/ -q) — mirrors CI…"
+if ! python -m pytest tests/ -q; then
+    echo "✘ pre-push: test suite FAILED — push blocked (this is exactly what CI would reject)."
+    echo "  Fix the failures, or bypass with: git push --no-verify (emergency only)."
+    exit 1
+fi
+echo "✓ pre-push: suite green."
+exit 0
