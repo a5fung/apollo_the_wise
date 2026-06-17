@@ -40,8 +40,11 @@ account_mode. Plus, fetched at pass time:
 
 One row per (position, pass): `position_id, ticker, decision_date, account_mode, verdict (enum),
 rationale, pct_from_entry, r_multiple (nullable), hold_days, current_price, trailed_stop, orb_low,
-stop_above_entry (bool), partial_taken (bool), time_stop_eligible (bool), model, created_at`. Bounded
-enum CHECK constraint, like the skip-reason/action vocabularies.
+stop_above_entry (bool), partial_taken (bool), model, created_at`. Bounded enum CHECK constraint,
+like the skip-reason/action vocabularies. The writer (`insert_position_mgmt_decision`) takes the
+**assembled payload** (which carries `partial_taken`), NOT the bare `compute_position_metrics()` dict.
+(`time_stop_eligible` deferred to part 2: it needs `hold_days` + peak excursion per #91 — a
+hold_days-only proxy would falsely flag long winners like FPS, so the column is omitted until computed.)
 
 **No auto-computed `agree_with_mechanical` bool (advisor B).** The mechanical system has no verdict in
 the 4-enum vocabulary — at a 16:00 snapshot it is almost always "holding with stop at X," so a baked

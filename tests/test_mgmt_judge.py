@@ -76,10 +76,10 @@ def test_all_verdicts_normalize():
 def test_assemble_carries_metrics_thesis_and_posture():
     pos = {"ticker": "FPS", "entry_price": 53.79, "orb_low": 52.67, "stop_price": 59.03,
            "hold_days": 15, "remaining_shares": 109, "account_mode": "paper",
-           "partial_taken": False, "time_stop_eligible": True}
+           "partial_taken": False}
     thesis = {"catalyst": "FDA approval", "score_tier": "HIGH", "ep_score": 72, "catalyst_quality": "strong"}
     p = assemble_mgmt_inputs(pos, current_price=56.0, thesis=thesis)
     assert p["ticker"] == "FPS" and p["hold_days"] == 15
     assert p["r_multiple"] > 0 and p["stop_above_entry"] is True   # from compute_position_metrics
-    assert p["time_stop_eligible"] is True and p["partial_taken"] is False
+    assert p["partial_taken"] is False
     assert p["entry_grade_tier"] == "HIGH" and "FDA approval" in p["catalyst"]

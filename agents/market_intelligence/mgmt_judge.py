@@ -84,7 +84,8 @@ def assemble_mgmt_inputs(position: dict, current_price: Optional[float],
         **m,
         # mechanical posture — DESCRIPTIVE (agreement assessed at operator label time, not here)
         "partial_taken": bool(position.get("partial_taken")),
-        "time_stop_eligible": bool(position.get("time_stop_eligible")),
+        # (time_stop_eligible deferred to part 2 — needs hold_days + peak excursion per #91; a
+        #  hold_days-only proxy would falsely flag long WINNERS like FPS, so omit until computed)
         # original entry thesis
         "catalyst": (thesis.get("catalyst") or "")[:800],
         "entry_grade_tier": thesis.get("score_tier"),
@@ -113,7 +114,7 @@ Ticker: {p.get('ticker')}  |  held {p.get('hold_days')} day(s)  |  shares: {p.ge
 Entry: {p.get('entry_price')}  |  Current: {p.get('current_price')}
 Move from entry: {f'{pct * 100:+.1f}%' if pct is not None else 'n/a'}  |  R (vs original entry risk): {r if r is not None else 'n/a'}
 Original entry stop (ORB low): {p.get('orb_low')}  |  Current trailed stop: {p.get('trailed_stop')}  |  Stop above entry (profit locked): {_b(p.get('stop_above_entry'))}
-Partial already taken: {_b(p.get('partial_taken'))}  |  Time-stop eligible (≥5d meander): {_b(p.get('time_stop_eligible'))}
+Partial already taken: {_b(p.get('partial_taken'))}
 
 --- ORIGINAL ENTRY THESIS ---
 Entry grade tier: {p.get('entry_grade_tier') or 'n/a'}  |  EP score: {p.get('ep_score')}  |  catalyst quality: {p.get('catalyst_quality')}
