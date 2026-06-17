@@ -121,6 +121,7 @@ def assemble_judge_inputs(
     revenue_stage: bool | None = None,
     has_direct_source: bool | None = None,
     active_narratives: list[dict] | None = None,
+    tape: dict | None = None,
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
@@ -136,7 +137,14 @@ def assemble_judge_inputs(
     narrative cohorts as [{run_date, name, tickers, thesis}], NOT a boolean — the judge
     semantically matches the catalyst against active narratives, so a NEW JOINER of a
     spreading story lights the axis even when ticker-set membership (in_narrative_cohort)
-    is false (the RCAT 5/28 class). None/empty → prompt byte-identical to pre-change."""
+    is false (the RCAT 5/28 class). None/empty → prompt byte-identical to pre-change.
+
+    `tape` (v2.0-P2 / #299) is the structured tape-feature block — opening-range character
+    (OR range ÷ ATR; the violent-open KLAR/DELL/NVTS cohort), premarket-volume-curve shape
+    vs the minute-volume baselines (mi_minute_volume_curves), liquidity/spread flags. This
+    is the PAYLOAD STRUCTURE only (behavior-neutral, like active_narratives): the scan does
+    NOT pass it yet — wiring it into the live judge is gated on the with-vs-without eval +
+    sign-off (the judge is load-bearing). None → prompt byte-identical to pre-change."""
     return {
         "ticker": r.get("ticker"),
         "grounded_text": (grounded_text or r.get("catalyst") or "")[:6000],
@@ -164,6 +172,7 @@ def assemble_judge_inputs(
         "market_cap": market_cap,
         "sector": sector,
         "revenue_stage": revenue_stage,
+        "tape": tape,
     }
 
 
@@ -184,6 +193,18 @@ def _build_judge_prompt(p: dict) -> str:
 --- ACTIVE NARRATIVE COHORTS (Lane 2 — groups that recently gapped together on a SHARED story; discovered EOD on prior days) ---
 {lines}
 Match the CATALYST against these narratives: a catalyst that JOINS an active narrative (same story, new name — e.g. a drone-defense contract while a drone-defense cohort is active) lights the theme/narrative axis EVEN IF this ticker is not listed as a cohort member. A name merely sharing a sector with a cohort, without the story, does not."""
+    # Tape-feature block (v2.0-P2 / #299). Rendered ONLY when the scan passes a tape dict —
+    # absent/None keeps the prompt byte-identical to the pre-change form, so the structure
+    # ships behavior-neutral (the wire-in is eval-gated; the judge is load-bearing).
+    tape_block = ""
+    t = p.get("tape")
+    if t:
+        tape_block = f"""
+
+--- TAPE / INTRADAY CHARACTER (structured; opening-range vs the name's own volatility, premarket pace vs its baseline) ---
+Opening-range ÷ ATR: {t.get('opening_range_atr')} (>~0.25-0.30 = a violent open — bracket geometry is structurally poor; weigh entry quality, not just the catalyst)
+Premarket volume-curve vs baseline: {t.get('pm_vol_curve')}
+Liquidity / spread: {t.get('liquidity')}"""
     return f"""{_RUBRIC}
 
 --- SETUP ---
@@ -198,7 +219,7 @@ Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {
 {p.get('grounded_text') or 'No grounded corpus.'}
 
 --- ANALYST NOTE ---
-{p.get('analysis') or '(none)'}"""
+{p.get('analysis') or '(none)'}{tape_block}"""
 
 
 def format_tier_transition(floor_tier, judge_tier) -> str:

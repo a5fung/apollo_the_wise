@@ -222,3 +222,29 @@ def test_narrative_fields_truncated():
     p = assemble_judge_inputs(dict(_R_BASE), active_narratives=[fat])
     c = p["active_narratives"][0]
     assert len(c["name"]) == 80 and len(c["tickers"]) == 12 and len(c["thesis"]) == 200
+
+
+# ── v2.0-P2 / #299 tape-feature payload (STRUCTURE only — wire-in is eval-gated) ──
+_TAPE = {"opening_range_atr": 0.41, "pm_vol_curve": "front-loaded, 2.3x baseline by 9:30",
+         "liquidity": "tight spread, $80M/day"}
+
+
+def test_payload_carries_tape_passthrough():
+    assert assemble_judge_inputs(dict(_R_BASE), tape=_TAPE)["tape"] == _TAPE
+    assert assemble_judge_inputs(dict(_R_BASE))["tape"] is None
+
+
+def test_prompt_byte_identical_when_no_tape():
+    # Behavior-neutral: shipping the structure does NOT change the load-bearing judge
+    # until the scan passes a tape dict (eval-gated wire-in).
+    p_none = assemble_judge_inputs(dict(_R_BASE))
+    legacy = dict(p_none)
+    legacy.pop("tape")
+    assert _build_judge_prompt(legacy) == _build_judge_prompt(p_none)
+
+
+def test_prompt_renders_tape_when_present():
+    prompt = _build_judge_prompt(assemble_judge_inputs(dict(_R_BASE), tape=_TAPE))
+    assert "TAPE / INTRADAY CHARACTER" in prompt
+    assert "0.41" in prompt and "front-loaded, 2.3x baseline by 9:30" in prompt
+    assert "violent open" in prompt  # the OR-vs-ATR guidance the judge weighs
