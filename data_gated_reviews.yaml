@@ -6590,3 +6590,43 @@ reviews:
       Task #233 holds the full context.
     status: pending
     added_on: 2026-06-10
+
+  - review_id: ninem_day2_retire_for_consolidation
+    title: "9M Day-2 ORB entry → RETIRE for consolidation entries (cut-over decision)"
+    question: |
+      Should the 9M Day-2 ORB entry be RETIRED and 9M demoted to a pure
+      universe-to-watch that FEEDS the Family-A consolidation/tightness entry
+      (operator vision + methodology memory user_pradeep_9m_universe_methodology:
+      "9M EP = universe, NOT an entry trigger; the entry comes from
+      tightness→expansion")? Decide on the head-to-head: for the SAME 9M day-2
+      names, does the consolidation entry match-or-beat the Day-2 ORB on realized R?
+    predicate_sql: null   # gated on prerequisites that don't exist yet (Family A entry layer); date-only surface
+    threshold: 0
+    earliest_review_date: 2026-09-15
+    status: pending
+    added_on: 2026-06-17
+    action_when_ready: |
+      CUT-OVER DECISION (operator sign-off + CHANGE_PROCESS — this RETIRES a live
+      setup, so it is hard-gated, NOT agent-self-certified).
+
+      PREREQUISITES (all must hold before the decision is meaningful):
+        1. Family-A consolidation ENTRY layer is BUILT (ADR 0013 Phase 3 entry
+           modes — anticipate/confirm/U&R), not just the Phase-1 shadow recorder.
+        2. The 9M universe is WIRED INTO it (#311 "9M→flag pipeline"): every
+           confirmed 9M sugar baby is also evaluated as a consolidation-entry
+           candidate, shadow-tracking realized R.
+        3. N>=15 settled HEAD-TO-HEAD pairs: for the same 9M day-2 names, the
+           Day-2 ORB realized R vs the consolidation-entry realized R.
+
+      DECISION: if the consolidation entry MATCHES-OR-BEATS the Day-2 ORB on
+      realized R (and the operator agrees on the methodology) → RETIRE 9M Day-2
+      ORB (flip the 9m_day2 strategy to shadow/retired in mi_strategies), 9M
+      becomes a universe feeder only. If the prerequisites aren't met or the
+      read is inconclusive → status=deferred + bump earliest_review_date (the
+      expected path if Family-A build slips).
+
+      COUPLING (risk-management): the 9M Day-2 ORB -> LIVE-MONEY promotion (Q3 per
+      launch plan) is BLOCKED until this decision — do NOT take the Day-2 ORB to
+      real money while its entry mechanism is a retirement candidate. This review
+      supersedes / fronts the 9M-live-promotion decision. Tracked: PLAN #326;
+      Family-B rework #297; P4 9M->flag pipeline #311.
