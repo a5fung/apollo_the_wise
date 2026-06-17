@@ -832,12 +832,15 @@ async def _ep_scan_job():
                         # NON-NEGOTIABLE (feedback_no_silent_trading_failures): a
                         # logger.error-only swallow here is EXACTLY what hid the
                         # LZB gap for ~4 days — the daily invariant caught it, we
-                        # didn't. Make the write-failure LOUD: audit row (error
-                        # check + weekly review surface it) + Telegram.
+                        # didn't. Make the write-failure LOUD. The immediate
+                        # Telegram below is the real-time alert; the audit row
+                        # (named `*_error` so it matches the '%error%' surfacer)
+                        # is the durable backstop for `show errors` + the Sunday
+                        # weekly review (7d window).
                         logger.error(f"Could not insert out-of-ORB skip for {ep['ticker']}: {ins_e}")
                         try:
                             await log_audit_event(
-                                "skip_row_write_failed",
+                                "skip_row_write_error",
                                 f"{ep['ticker']} out-of-ORB skip row NOT persisted — "
                                 f"{type(ins_e).__name__}: {ins_e}",
                             )
