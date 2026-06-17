@@ -31,14 +31,41 @@ known **at birth**, so this class is fully birth-detectable. A member stripped f
 6 days after birth *could have been caught at creation*. (Where the theme's own description was later
 revised, that's the "+ identity-change" half of #266 — same validation, applied at the rename.)
 
-## The one root-cause to resolve before building (fix-design, not evidence)
+## Root-cause — RESOLVED (deterministic code trace, 2026-06-17)
 
-The **0% at ≤1h** is the key anomaly: CLAUDE.md states "Post-assignment validation: immediately
-validates newly assigned stocks." If it ran a description-match at birth it would catch these. So
-either post-assignment validation (a) isn't running, (b) doesn't do the description-match the periodic
-pass does, or (c) is materially more lenient. **#266 is therefore "find out why post-assignment
-validation misses birth description-mismatches, then strengthen it,"** NOT necessarily a brand-new
-pass. Root-cause that before the CHANGE_PROCESS change.
+The **0% at ≤1h** is because **theme BIRTH (discovery) never runs the description-match validator on
+the founding members.** `_validate_theme_membership` is called at exactly two sites (grep-confirmed):
+- `theme_engine.py:1754` — inside `_rescore_existing_theme` (the **Mon/Wed/Fri** rescore of
+  **existing** themes).
+- `theme_engine.py:2371` — post-assignment, but only for tickers **assigned to an existing theme**
+  (`_assign_uncovered_to_themes`; it iterates `existing_themes` with `newly_added` tickers).
+
+The discovery → persist path (`run_theme_engine` Step 3/4, lines ~3895–4004) is:
+`_discover_new_themes` → `_score_new_theme` → name-inheritance → `_strip_commodity_contradictions`
+(a narrow deterministic gold-in-uranium strip, NOT the general industry-match) → `_save_themes`.
+**No `_validate_theme_membership` anywhere on that path.** So a theme born today with mismatched
+members is validated for the FIRST time on the next Mon/Wed/Fri `_rescore_existing_theme` run — the
+6.0-day median latency, exactly. (CLAUDE.md's "Post-assignment validation: immediately validates newly
+assigned stocks" is true but applies ONLY to assign-to-existing, not to discovery births.)
+
+## The fix (minimal, single-source) — CHANGE_PROCESS + operator sign-off
+
+Run the **same, already-trusted `_validate_theme_membership`** (Sonnet, #213-tuned) on each
+newly-discovered theme's members in Step 3, **before `_save_themes`** — i.e. validate at birth
+instead of 6 days later. Key properties that make this low-risk:
+- **Not a new validator** — it's the identical function the Mon/Wed/Fri pass already runs and the
+  operator already trusts; #266 only changes WHEN it runs (at birth), not WHAT it checks. Same
+  Sonnet model, same prompt, same protected-set/exclusion shields.
+- A birth-validation that strips a new theme below `NEW_THEME_MIN_STOCKS=2` → the theme simply isn't
+  born (the desired outcome, not a regression).
+- Cost: a few extra Sonnet calls per run (one per discovered theme, bounded by `_VALIDATION_SEMAPHORE`).
+- **Identity-change half** (secondary): re-validate at the name-inheritance point (`theme_engine.py`
+  ~3946) / description revision. Smaller tail; propose as a follow-on after birth-validation lands.
+
+**Safe-subset option** (if the operator wants evidence before flipping live): a SHADOW pass that logs
+`would_strip_at_birth: TICKER from THEME` without removing — gathers the specific names + correctness
+for the sign-off decision at zero membership-behavior risk. Recommend going straight to live given the
+validator is already trusted, but the shadow is the fail-safe.
 
 ## Recommendation
 
