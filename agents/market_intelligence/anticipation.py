@@ -590,6 +590,125 @@ def evaluate_candidate(bars, gap_day, min_base=MATURE_DAYS):
     return row
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# FAMILY A — "consolidation plays post a runup" (ADR 0013, operator-signed §2). A SEPARATE
+# lifecycle from the gap-anchored machine above (`replay`/`evaluate_candidate` = FAMILY B, the
+# delayed-EP/fishhook rework, #297): runup → coil (constructive tightening; undercut ALLOWED) →
+# [3 entry modes DEFERRED]. This Phase-1 build is the SHADOW RECORDER only — it confirms the
+# runup canary + records the coil/tightness telemetry per (ticker, anchor_date). The signed
+# deliverable is the SHORTLIST for operator judgment; tightness is ORDERING-ONLY (an open
+# question — the 6/16 probe did NOT show it isolating the picks). Entry modes (Anticipate /
+# Confirm-flag / U&R) + realized-R settlement + the flag-detector WATCH_UR change are later,
+# separately-gated phases.
+#
+# ANCHOR-STABILITY INVARIANT (the production trap the advisor flagged 6/17): the lifecycle key
+# is the ABSOLUTE runup-peak-close date, NOT a scan-relative "last N bars from today" index. A
+# scan-relative key drifts as the window slides → the nightly re-scan writes a DUPLICATE row for
+# the same setup → transition-dedup silently breaks (this project's recurring failure class).
+# The peak-close date for an active consolidation does not move day-to-day, so the same setup
+# re-keys identically. Verified empirically (6/16-vs-6/17) before the job is un-paused.
+#
+# Reuses the tightening PRIMITIVES (`compute_fresh_tightening`, `compute_rmv`, `tight_close_streak`,
+# `_sma`, `_adv`) — but NOT `detect_pullback_shape`, whose `gap_low_undercut` is gap-anchored
+# (FAMILY B). Family-A coil shapes are the constructive pivots (MA-pullback / low-vol rest); the
+# base-low undercut → U&R is an ENTRY MODE, deferred with the rest.
+# ═════════════════════════════════════════════════════════════════════════════
+RUNUP_MIN = 1.15        # §2 SIGNED: MAX(close)/MIN(close) ≥ 1.15 = a "runup" (a ≥15% leg)
+RUNUP_WINDOW = 10       # §2 SIGNED: over a rolling 10-session window
+CONSOL_AGE_OUT = 20     # sessions past the peak before the setup ages out (board hygiene, NOT a gate)
+TIGHT_SERIES_MIN = 2    # Pradeep "a series of tight days in the previous two bars" → ≥2 (ranking, not a gate)
+
+
+def consolidation_shapes(bars, i):
+    """The constructive-coil SHAPE(s) bar `i` exhibits — the Family-A analog of
+    `detect_pullback_shape` WITHOUT the gap-anchored `gap_low_undercut` (that's FAMILY B / the
+    deferred U&R entry mode). Reuses the same MA-near + low-vol-rest constants — no new gate
+    numbers. Returns (primary | None, [all_shapes])."""
+    b = bars[i]
+    closes = [x["c"] for x in bars]
+    vols = [x["v"] for x in bars]
+    shapes = []
+    for lbl, n in (("ma10", 10), ("ma20", 20)):          # close pulled into a moving average
+        ma = _sma(closes, i, n)
+        if ma and abs(b["c"] - ma) / b["c"] * 100.0 <= _MA_NEAR_PCT:
+            shapes.append(f"{lbl}_pullback")
+    rng = (b["h"] - b["l"]) / b["c"] if b["c"] else 1.0  # tight + quiet, no pivot
+    adv = _adv(vols, i)
+    if rng <= TIGHT_RANGE and adv and b["v"] <= VOL_CONTRACT * adv:
+        shapes.append("low_vol_rest")
+    primary = next((s for s in ("ma10_pullback", "ma20_pullback", "low_vol_rest") if s in shapes), None)
+    return primary, shapes
+
+
+def consolidation_telemetry(bars, i, anchor_idx):
+    """The Family-A coil RECORD at bar `i` (records, gates nothing). base_age = bars since the
+    runup peak so the fresh-tightening primitive has a base to measure against. Reuses the shared
+    tightness atoms; returns a flat JSON/SQL-native dict."""
+    base_age = max(i - anchor_idx, 0)
+    recent = [b["v"] for b in bars[max(anchor_idx, i - 5):i]] if i > anchor_idx else []
+    recent_avg_vol = (sum(recent) / len(recent)) if recent else None
+    fires, fresh_tr_pct, atr14_pct = compute_fresh_tightening(
+        bars, i, base_age, recent_avg_vol=recent_avg_vol)
+    primary, shapes = consolidation_shapes(bars, i)
+    return {
+        "pullback_shape": primary,
+        "pullback_shapes": ",".join(shapes) if shapes else None,
+        "fresh_tightening": bool(fires),
+        "fresh_2bar_tr_pct": round(fresh_tr_pct, 3) if fresh_tr_pct is not None else None,
+        "atr14_pct": round(atr14_pct, 3) if atr14_pct is not None else None,
+        "tight_close_streak": tight_close_streak(bars, i),   # Pradeep's "series of tight days"
+    }
+
+
+def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_window=RUNUP_WINDOW):
+    """Derive the current FAMILY-A consolidation row for (anchor_date) from daily bars, or None if
+    anchor_date isn't in the bars OR the runup canary fails (< runup_min over the window ending at
+    the peak — COO at exactly 1.15 is the on-border IN canary). SHADOW recorder: confirms the
+    runup + records the coil/tightness telemetry; NO entry / stop / settlement (deferred). State:
+      coiled     constructive tightening present (fresh_tightening fired OR a ≥TIGHT_SERIES_MIN
+                 tight-close series) — the ordering signal, NOT a selection gate
+      post_runup in the universe (tight today) but not a developed tight series yet
+      aged       coil ran > CONSOL_AGE_OUT sessions past the peak (stale → ages out of the board)
+    rmv_5d/15d + tight_close_streak are recorded TELEMETRY ordering signals, NOT gates (advisor 6/16)."""
+    anchor_idx = next((j for j, b in enumerate(bars) if b["date"] == anchor_date), None)
+    if anchor_idx is None:
+        return None
+    closes = [b["c"] for b in bars]
+    lo = min(closes[max(0, anchor_idx - runup_window + 1):anchor_idx + 1])
+    runup_ratio = (closes[anchor_idx] / lo) if lo else None
+    if runup_ratio is None or runup_ratio < runup_min:
+        return None                              # not a post-runup setup (the canary gate)
+
+    last_idx = len(bars) - 1
+    last = bars[last_idx]
+    prev = bars[last_idx - 1] if last_idx > 0 else None
+    coil_days = last_idx - anchor_idx
+    tel = consolidation_telemetry(bars, last_idx, anchor_idx)
+
+    if coil_days > CONSOL_AGE_OUT:
+        state = "aged"                            # DEFENSIVE: with the universe anchor at rn≤15,
+                                                  # coil_days≤14 < CONSOL_AGE_OUT, so the job never
+                                                  # writes 'aged' today; reachable only if the anchor
+                                                  # window is later widened (the fixture exercises it).
+    elif tel["fresh_tightening"] or tel["tight_close_streak"] >= TIGHT_SERIES_MIN:
+        state = "coiled"
+    else:
+        state = "post_runup"
+
+    return {
+        "anchor_date": anchor_date,
+        "state": state,
+        "runup_ratio": round(runup_ratio, 4),
+        "runup_high": round(closes[anchor_idx], 4),
+        "coil_days": coil_days,
+        "last_close": round(last["c"], 4),
+        "today_pct": (round(abs(last["c"] / prev["c"] - 1), 5) if prev and prev["c"] else None),
+        "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
+        "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
+        **tel,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 3b intraday FIRST5 / GDL confirmation entry (Phase 6, ported from
 # scripts/_270_entry_replay.py). PURE: the EXECUTION-role EOD job supplies minute bars +

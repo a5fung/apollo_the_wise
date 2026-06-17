@@ -1493,6 +1493,40 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS atr14_pct         FLOAT;
             ALTER TABLE mi_anticipation_lifecycle ADD COLUMN IF NOT EXISTS tight_close_streak INT;
 
+            -- ── FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) ──────────
+            -- A SEPARATE shadow lifecycle from mi_anticipation_lifecycle (which stays gap-anchored
+            -- for FAMILY B / #297 to reclaim). DIFFERENT schema: runup + coil metrics, no gap
+            -- columns. Keyed on an ABSOLUTE anchor (the runup-peak-close date) so a nightly re-scan
+            -- emits the SAME key for the same setup — the anchor-stability invariant (a scan-relative
+            -- key would write a duplicate row each night, the recurring failure class). SHADOW
+            -- RECORDER: state + tightness telemetry only; NO entry/stop/realized_r (deferred phases).
+            CREATE TABLE IF NOT EXISTS mi_anticipation_consolidation (
+                ticker          TEXT NOT NULL,
+                anchor_date     DATE NOT NULL,           -- the runup-peak-close date = the stable key
+                state           TEXT NOT NULL,           -- coiled | post_runup | aged
+                runup_ratio     FLOAT,                   -- MAX/MIN close over the runup window (≥1.15 = IN)
+                runup_high      FLOAT,                   -- the peak close (consolidation pivot)
+                coil_days       INT,                     -- sessions since the peak
+                last_close      FLOAT,
+                today_pct       FLOAT,                   -- |close %change| today (the ≤1.0% inclusion gate)
+                rmv_5d          FLOAT,                   -- recorded TELEMETRY ordering signals (NOT gates)
+                rmv_15d         FLOAT,
+                pullback_shape  TEXT,                    -- constructive coil pivot (ma10/ma20/low_vol_rest)
+                pullback_shapes TEXT,
+                fresh_tightening   BOOLEAN,              -- _compute_fresh_tightening fired (reused primitive)
+                fresh_2bar_tr_pct  FLOAT,
+                atr14_pct       FLOAT,
+                tight_close_streak INT,                  -- Pradeep "series of tight days" (ranking input)
+                dvol_med        FLOAT,                   -- 20-session median $-volume (liquidity floor sanity)
+                last_eval       DATE,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (ticker, anchor_date),
+                CHECK (state IN ('coiled','post_runup','aged'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_consolidation_state
+                ON mi_anticipation_consolidation(state, anchor_date DESC);
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
@@ -6246,6 +6280,131 @@ async def get_anticipation_gap_seeds(scan_date: date, seed_window_days: int = 25
               AND s.trade_date >= $1 - ($2::int * INTERVAL '1 day')
             ORDER BY s.ticker, s.trade_date
         """, scan_date, seed_window_days)
+    return [dict(r) for r in rows]
+
+
+# ── FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2). The cheap nightly
+#    PROPOSER (mirrors get_anticipation_gap_seeds' role for Family B): SQL pre-filters to the
+#    signed universe; the pure anticipation.evaluate_consolidation re-confirms the runup per
+#    candidate (authoritative gate) + records the coil telemetry. ──────────────────────────────
+
+
+async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
+        dvol_min: float = 20_000_000.0, runup_min: float = 1.15,
+        incl_max: float = 0.010) -> list[dict]:
+    """The signed §2 Family-A universe as-of scan_date: names that ran up (MAX/MIN close ≥ 1.15
+    over a rolling 10-session window, best over the last 12 sessions) and are compressing today
+    (|close %change| ≤ 1.0% — the LOCKED inclusion gate; ≤0.4% is a ranking marker, not the gate),
+    above the price + liquidity floors. Emits the ABSOLUTE anchor = the earliest date of the MAX
+    close in the last 15 sessions (deterministic on ties → scan-stable key). Ordered tightest-first.
+    The pure evaluate_consolidation re-confirms the runup over the anchor-ending window."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            WITH p AS (SELECT $1::date AS d),
+            b AS (
+                SELECT ticker, trade_date, close, volume,
+                       row_number() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
+                FROM mi_daily_closes, p
+                WHERE trade_date <= p.d AND trade_date > p.d - INTERVAL '60 days'
+                  AND close > 0 AND volume > 0
+            ),
+            w AS (SELECT * FROM b WHERE rn <= 25),
+            liq AS (
+                SELECT ticker,
+                       percentile_cont(0.5) WITHIN GROUP (ORDER BY close*volume) AS dvol_med,
+                       count(*) AS n
+                FROM w GROUP BY ticker
+            ),
+            roll AS (
+                SELECT ticker, rn,
+                       max(close) OVER ww / NULLIF(min(close) OVER ww, 0) AS r10
+                FROM w
+                WINDOW ww AS (PARTITION BY ticker ORDER BY trade_date
+                              ROWS BETWEEN 9 PRECEDING AND CURRENT ROW)
+            ),
+            ru AS (SELECT ticker, max(r10) FILTER (WHERE rn <= 12) AS best_r10
+                   FROM roll GROUP BY ticker),
+            pk AS (                              -- absolute, scan-stable anchor (earliest peak-close)
+                SELECT DISTINCT ON (ticker) ticker, trade_date AS anchor_date, close AS runup_high
+                FROM w WHERE rn <= 15
+                ORDER BY ticker, close DESC, trade_date ASC
+            ),
+            td AS (
+                SELECT a.ticker, a.close AS c0, c.close AS c1
+                FROM w a JOIN w c ON c.ticker = a.ticker AND c.rn = 2
+                WHERE a.rn = 1
+            )
+            SELECT liq.ticker, pk.anchor_date, pk.runup_high, ru.best_r10 AS runup_ratio,
+                   liq.dvol_med, td.c0 AS last_close,
+                   abs(td.c0 / NULLIF(td.c1, 0) - 1) AS today_pct
+            FROM liq
+            JOIN ru USING (ticker)
+            JOIN pk USING (ticker)
+            JOIN td USING (ticker)
+            WHERE liq.n >= 15
+              AND td.c0 >= $2
+              AND liq.dvol_med >= $3
+              AND ru.best_r10 >= $4
+              AND abs(td.c0 / NULLIF(td.c1, 0) - 1) <= $5
+            ORDER BY today_pct ASC
+        """, scan_date, price_min, dvol_min, runup_min, incl_max)
+    return [dict(r) for r in rows]
+
+
+async def get_consolidation_state_map() -> dict[tuple, dict]:
+    """{(ticker, anchor_date): {state}} for every Family-A row — the job's prior-state lookup
+    for transition dedup. One query."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, anchor_date, state FROM mi_anticipation_consolidation")
+    return {(r["ticker"], r["anchor_date"]): {"state": r["state"]} for r in rows}
+
+
+async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_ratio,
+        runup_high, coil_days, last_close, today_pct, rmv_5d, rmv_15d, pullback_shape,
+        pullback_shapes, fresh_tightening, fresh_2bar_tr_pct, atr14_pct,
+        tight_close_streak, dvol_med, last_eval) -> None:
+    """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date)."""
+    def _dd(v):
+        return date.fromisoformat(v) if isinstance(v, str) else v
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_anticipation_consolidation
+                (ticker, anchor_date, state, runup_ratio, runup_high, coil_days, last_close,
+                 today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
+                 fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, last_eval, updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW())
+            ON CONFLICT (ticker, anchor_date) DO UPDATE SET
+                state=EXCLUDED.state, runup_ratio=EXCLUDED.runup_ratio,
+                runup_high=EXCLUDED.runup_high, coil_days=EXCLUDED.coil_days,
+                last_close=EXCLUDED.last_close, today_pct=EXCLUDED.today_pct,
+                rmv_5d=EXCLUDED.rmv_5d, rmv_15d=EXCLUDED.rmv_15d,
+                pullback_shape=EXCLUDED.pullback_shape, pullback_shapes=EXCLUDED.pullback_shapes,
+                fresh_tightening=EXCLUDED.fresh_tightening,
+                fresh_2bar_tr_pct=EXCLUDED.fresh_2bar_tr_pct, atr14_pct=EXCLUDED.atr14_pct,
+                tight_close_streak=EXCLUDED.tight_close_streak, dvol_med=EXCLUDED.dvol_med,
+                last_eval=EXCLUDED.last_eval, updated_at=NOW()
+        """, ticker, _dd(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
+             today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
+             fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _dd(last_eval))
+
+
+async def get_consolidation_board(limit: int = 25) -> list[dict]:
+    """The Family-A shortlist for operator judgment — coiled/post_runup names ordered tightest-
+    first (tight_close_streak desc, today_pct asc). Ordering-only (NOT an auto-selected top-N)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT ticker, anchor_date, state, runup_ratio, runup_high, coil_days, last_close,
+                   today_pct, tight_close_streak, pullback_shape, fresh_tightening, rmv_5d, dvol_med
+            FROM mi_anticipation_consolidation
+            WHERE state <> 'aged'
+            ORDER BY tight_close_streak DESC NULLS LAST, today_pct ASC NULLS LAST
+            LIMIT $1
+        """, limit)
     return [dict(r) for r in rows]
 
 

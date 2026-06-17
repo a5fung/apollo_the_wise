@@ -1,10 +1,11 @@
 # ADR 0013 — Consolidation plays post a runup (Family A) + deletion of the #270 +40% phantom
 
-**Status:** PROPOSED — pending operator sign-off on **§2 Criteria to ratify**. The immediate
-contamination-stop (both anticipation shadow jobs un-registered) is SHIPPED 2026-06-16; everything
-else (Phases 1–5 in §4) is GATED behind sign-off of §2. Committing this ADR records the proposed
-design — it does NOT ratify the gates.
-**Date:** 2026-06-16.
+**Status:** §2 **SIGNED** (operator, 2026-06-16/17 — "approved … and signed off"). **Phase 1 BUILT**
+2026-06-17 (SHADOW recorder — new `mi_anticipation_consolidation` table + `evaluate_consolidation` +
+the paused `_consolidation_readiness_job`); jobs stay PAUSED until the anchor-stability invariant is
+verified live (see §4 Phase 1). Phases 2–5 described, not committed. The immediate contamination-stop
+(both gap-anchored shadow jobs un-registered) shipped 2026-06-16.
+**Date:** 2026-06-16 (created); 2026-06-17 (§2 signed + Phase 1 built).
 **Driver:** operator reset of #270 after catching a phantom criterion; relayed Gemini review folded in.
 **Source of truth for every threshold here:** `docs/methodology/operator_shared_notes.md` (the verbatim
 Pradeep Bonde thread + the 6/16 verification probes). **Provenance rule (this ADR's core discipline):**
@@ -136,15 +137,58 @@ in `mi_job_runs` after the deploy.
 
 ---
 
-## 4. Phases 1–5 (PENDING §2 sign-off — described, not committed)
+## 4. Phases 1–5
 
-- **Phase 1 — Delete the phantom + purge contaminated state.** Remove `anticipation.GAP=0.40` + the
-  undercut-required ARMED gate in `replay()`. Replace `get_anticipation_gap_seeds`'s
-  `close ≥ 1.40·prev_close` with the §2 universe (`MAX/MIN ≥ 1.15` over rolling 10 sessions +
-  `last_close ≥ $5` + liquidity floor + ≤1.0% today-compression); rename off "gap"; re-run and confirm
-  COO lands IN (the canary). **HARD-DELETE** the phantom-era `mi_anticipation_lifecycle` rows (or move to
-  a `_archive` table) — do NOT leave them behind a `WHERE` filter to trip a backtest later. SSoT
-  `docs/setups/delayed_ep_reentry.md` updated in the SAME commit (CHANGE_PROCESS).
+### Phase 1 — BUILT 2026-06-17 (SHADOW recorder; jobs PAUSED pending anchor-stability verify)
+
+Two architectural corrections from the advisor (6/17) re-shaped the literal plan; §2 criteria are
+**unchanged** (this is implementation, not methodology):
+
+1. **`replay()` is the gap-anchored FAMILY-B machine — left UNTOUCHED.** The plan's "delete
+   `GAP=0.40` + the undercut gate in `replay()`" was incoherent: `replay()` / `evaluate_candidate` /
+   `mi_anticipation_lifecycle` ARE the gap→undercut→reclaim delayed-EP machine the golden test pins.
+   That machine + its phantom rows now belong to **#297 (Family B)** to reclaim. Family A gets a
+   **NEW, separate** lifecycle — not a re-key of the shared gap-anchored table (its columns are
+   runup+coil, not gap-sense; nothing is shared but the tightness primitives).
+2. **The HARD-DELETE is DECOUPLED from Phase 1.** The phantom `mi_anticipation_lifecycle` rows are
+   #297's to archive/clean (prefer archive over delete — look-before-you-delete). Phase 1 does NOT
+   touch that table; it writes only the new one. No destructive prod op gates this build.
+
+**What Phase 1 actually shipped (all SHADOW, all PAUSED):**
+- `db.get_anticipation_universe(scan_date)` — the signed §2 universe proposer (`MAX/MIN ≥ 1.15` over a
+  rolling 10-session window, best over last 12 · `last_close ≥ $5` · `dvol_med ≥ $20M` · `|today %chg|
+  ≤ 1.0%`). Emits the **ABSOLUTE anchor** = earliest date of the MAX close in the last 15 sessions
+  (deterministic on ties → a scan-stable key).
+- `anticipation.evaluate_consolidation(bars, anchor_date)` — pure: re-confirms the runup over the
+  anchor-ending window (the authoritative COO canary gate), records the coil/tightness telemetry
+  (reusing `compute_fresh_tightening` / `compute_rmv` / `tight_close_streak`, NOT the gap-anchored
+  `detect_pullback_shape`), states `coiled | post_runup | aged`. **Scope = the RECORDER + the
+  shortlist; the 3 entry modes + realized-R settlement are deferred** (the signed deliverable is the
+  shortlist for judgment; tightness is ordering-only).
+- `mi_anticipation_consolidation` (new table, PK `(ticker, anchor_date)`) + `upsert_consolidation` +
+  `get_consolidation_state_map` + `get_consolidation_board`.
+- `_consolidation_readiness_job` (17:35 ET) — written, **un-registered (paused)**.
+- Tests: `tests/test_anticipation_consolidation.py` (runup canary · the absolute-anchor invariance
+  property · states · Family-A-shapes-never-gap-undercut). The Family-B golden test stays green.
+
+**THE GATE before un-pausing (two production traps).** Run `scripts/_familyA_universe_probe.py`
+against the live DB; it checks BOTH:
+1. **Anchor stability** — the `(ticker, anchor_date)` key is scan-stable only if the anchor does not
+   drift as the rolling window slides. The probe compares the emitted anchor for every name
+   qualifying on the two most-recent scan dates and FAILS on any **suspect drift** (anchor moved with
+   no new higher high).
+2. **Proposer-vs-confirmer agreement (advisor 6/17)** — the SQL `best_r10` (loose: max over all
+   10-windows ending in the last 12 sessions) is only the *proposer*; the JOB's authoritative gate is
+   `evaluate_consolidation` = `peak/min` over the **single** 10-bar window *ending at the anchor*.
+   `best_r10 ≥ 1.15` does NOT imply the pure ratio ≥ 1.15, so a name (notably COO at its 1.15 border)
+   can read IN in the SQL funnel yet be silently DROPPED by the job. The probe computes the pure ratio
+   for the canary names and FAILS if any SQL-IN name falls below 1.15 on the pure gate. If they diverge
+   at COO, align the two window definitions before un-pausing.
+
+Un-pausing = (a) probe shows COO IN on the PURE gate + no suspect drift, (b) uncomment the
+`add_job` block, (c) add `consolidation_readiness` to `INTELLIGENCE_OWNED_JOB_IDS`, (d) rewire the
+`/anticipation` board reader `mi_anticipation_lifecycle → mi_anticipation_consolidation`. SSoT = this
+ADR (NOT `delayed_ep_reentry.md`, which is Family B's).
 - **Phase 2 — Shared universe + coil** (reuse the flag substrate). Output = the shortlist (gates produce
   it; tightness orders it, ordering-only). All 6 known-good names already appear in `mi_flag_candidates`.
   **#15 folds in here.**

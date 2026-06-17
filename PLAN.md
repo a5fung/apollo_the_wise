@@ -49,9 +49,9 @@ _Last CLOSE: 2026-06-16._
 
 ## Family A — consolidation plays post a runup (ADR 0013 · reset of #270)
 
-- #270 | 2026-06-17 | in_progress | Phase 1: replace phantom universe (signed §2) + re-key + HARD-DELETE contaminated rows + golden rework + re-register jobs
+- #270 | 2026-06-18 | in_progress | Phase 1 BUILT 6/17 (new mi_anticipation_consolidation table + evaluate_consolidation + paused _consolidation_readiness_job + tests, all SHADOW). REMAINING GATE: run _familyA_universe_probe.py live (COO IN + no anchor suspect-drift) → un-pause job + rewire /anticipation board → deploy
 - #289 | 2026-06-18 | pending | folds into Phase 2 (shared universe+coil) — general-anticipation selection/ranking layer
-- #297 | 2026-06-23 | pending | FAMILY B EP rework (delayed-EP/fishhook/MAGNA53/9M) — next & separate, post-launch
+- #297 | 2026-06-23 | pending | FAMILY B EP rework — inherits the gap-anchored replay()/evaluate_candidate + mi_anticipation_lifecycle + ARCHIVE/clean its phantom rows (decoupled from #270 Phase 1)
 - #283 | 2026-06-23 | pending | wick_fill promotion eval (shadow→live), gated behind Family A
 
 ## Stocks in Play — detection / setups / entries / 9M / flags

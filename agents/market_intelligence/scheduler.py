@@ -2813,6 +2813,76 @@ async def _anticipation_3b_job():
         logger.error(f"anticipation 3b job failed: {e}", exc_info=True)
 
 
+async def _consolidation_readiness_job():
+    """FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER.
+    Replaces the +40% phantom universe with the signed runup→coil universe. 17:35 ET, after the
+    17:00 nightly_data_pull refreshes mi_daily_closes. SHADOW: records the shortlist + tightness
+    telemetry, never submits.
+
+    DB-sourced ground truth only (no module state — containers restart): the universe PROPOSER
+    (get_anticipation_universe) pre-filters to the signed §2 set; the pure
+    anticipation.evaluate_consolidation re-confirms the runup per candidate (the authoritative
+    gate — the COO canary) + records the coil/tightness telemetry; UPSERT keyed on the ABSOLUTE
+    (ticker, anchor_date); Telegram the newly-COILED transitions (deduped via the prior-state map).
+
+    PAUSED until the anchor-stability invariant is verified live (6/16-vs-6/17 anchor identity) —
+    a scan-relative key would write duplicate rows nightly and break this dedup.
+    """
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.db import (
+        get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
+        upsert_consolidation,
+    )
+    try:
+        today = et_today()
+        universe = await get_anticipation_universe(today)
+        state_map = await get_consolidation_state_map()
+
+        written, transitions = 0, []
+        for u in universe:
+            ticker, anchor_date = u["ticker"], u["anchor_date"]
+            try:
+                bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
+                if len(bars) < 30:
+                    continue
+                cons = de.evaluate_consolidation(bars, anchor_date.isoformat())
+                if cons is None:
+                    continue  # runup canary failed — the proposer's coarse gate didn't re-confirm
+                await upsert_consolidation(
+                    ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
+                    runup_high=cons["runup_high"], coil_days=cons["coil_days"],
+                    last_close=cons["last_close"], today_pct=cons["today_pct"],
+                    rmv_5d=cons["rmv_5d"], rmv_15d=cons["rmv_15d"],
+                    pullback_shape=cons["pullback_shape"], pullback_shapes=cons["pullback_shapes"],
+                    fresh_tightening=cons["fresh_tightening"],
+                    fresh_2bar_tr_pct=cons["fresh_2bar_tr_pct"], atr14_pct=cons["atr14_pct"],
+                    tight_close_streak=cons["tight_close_streak"], dvol_med=u["dvol_med"],
+                    last_eval=today)
+                written += 1
+                prior = state_map.get((ticker, anchor_date))
+                prior_state = prior["state"] if prior else None
+                if prior_state in (None, "post_runup") and cons["state"] == "coiled":
+                    transitions.append((ticker, anchor_date, cons))
+            except Exception as e:
+                logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
+
+        logger.info(f"consolidation readiness: {len(universe)} universe, {written} rows, "
+                    f"{len(transitions)} newly coiled")
+        if transitions:
+            lines = ["🪙 *Anticipation (SHADOW) — newly COILED post-runup* "
+                     "(consolidation tightening; surfaced for judgment, ordering-only):"]
+            for ticker, anchor_date, c in transitions[:12]:
+                lines.append(f"  • {ticker} runup {c['runup_ratio']:.2f}x "
+                             f"(peak {anchor_date.isoformat()}, +{c['coil_days']}d) "
+                             f"tight-streak {c['tight_close_streak']} today {c['today_pct']*100:.2f}%")
+            lines.append("/anticipation for the full shortlist.")
+            await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"consolidation readiness job failed: {e}", exc_info=True)
+
+
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
 
@@ -3669,16 +3739,17 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # #270 Step 3 anticipation readiness + 3b (SHADOW) — PAUSED 2026-06-16 (ADR-0013).
+    # FAMILY B — gap-anchored anticipation readiness + 3b (SHADOW) — PAUSED 2026-06-16 (ADR-0013).
     # Root cause (root-caused 2026-06-16): the universe seed `get_anticipation_gap_seeds`
     # hard-gates on a +40% one-day gap (`close >= 1.40*prev_close`) reverse-engineered from
     # ONE stock (MNTS), never the operator's methodology, never sign-off-surfaced. Both jobs
     # write `mi_anticipation_lifecycle` off that phantom universe nightly, contaminating the
-    # shadow telemetry. The matched pair is UN-REGISTERED here to stop active contamination
-    # while the "consolidation plays post a runup" (Family A) rebuild proceeds: Phase 1
-    # rebuilds the universe + HARD-DELETES the phantom rows, then re-registers these jobs.
-    # The IDs remain in INTELLIGENCE_OWNED_JOB_IDS (classified-but-unregistered is harmless,
-    # one-directional guard) so re-registration in Phase 1 is a one-block uncomment.
+    # shadow telemetry. The matched pair is UN-REGISTERED to stop active contamination. The
+    # gap-anchored machine (`replay`/`evaluate_candidate` + `mi_anticipation_lifecycle`) now
+    # belongs to FAMILY B / #297 (delayed-EP/fishhook rework) to reclaim — it is NOT the
+    # Family-A consolidation rebuild. Its phantom rows are #297's to archive/clean (decoupled
+    # from this Phase 1, per advisor 6/17). IDs remain in INTELLIGENCE_OWNED_JOB_IDS
+    # (classified-but-unregistered is harmless) so #297 re-registration is a one-block uncomment.
     #   _scheduler.add_job(
     #       audit_wrap(_anticipation_readiness_job, "anticipation_readiness"),
     #       CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
@@ -3689,6 +3760,20 @@ def start_scheduler() -> AsyncIOScheduler:
     #       audit_wrap(_anticipation_3b_job, "anticipation_3b"),
     #       CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
     #       id="anticipation_3b",
+    #       replace_existing=True,
+    #   )
+
+    # FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2) SHADOW RECORDER.
+    # The #270 rebuild on the SIGNED universe (runup MAX/MIN≥1.15 → coil → shortlist). Keyed on
+    # the ABSOLUTE (ticker, anchor_date). PAUSED until the anchor-stability invariant is verified
+    # live (6/16-vs-6/17 anchor identity via scripts/_familyA_universe_probe.py) — a scan-relative
+    # key would write duplicate rows nightly and break the transition dedup. Un-pausing = uncomment
+    # this block + add "consolidation_readiness" to INTELLIGENCE_OWNED_JOB_IDS + rewire the
+    # /anticipation board reader from mi_anticipation_lifecycle → mi_anticipation_consolidation.
+    #   _scheduler.add_job(
+    #       audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
+    #       CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+    #       id="consolidation_readiness",
     #       replace_existing=True,
     #   )
 
