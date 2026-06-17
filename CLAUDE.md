@@ -2,26 +2,25 @@
 
 ## Session Protocol (open + close — the anti-drift ritual)
 
-**SoT for active work = the #-task tracker.** The calendar (dated/timed plan), `BACKLOG.md` (human cross-view), and `data_gated_reviews.yaml` (evidence-gated lane) all REFERENCE #IDs — they never own task state. On conflict, the #-tracker wins; reconcile the others to it. (Why: with ~7 logging surfaces and no single owner, planned work slips between them — 2026-06-01 the calendar's drawdown-breaker flip + theme-shadow verify slipped silently because nothing reconciled them.)
+**SoT for ALL planned work = `PLAN.md`** (consolidated 2026-06-16 — `feedback-runway-not-in-open-ritual`: the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× because nothing reconciled them reliably). `PLAN.md` is the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed. (Mechanical because every prose-discipline reconcile here has failed — only gates hold.)
 
 **OPEN** (first actions, every session):
 1. `git pull origin main`.
-2. Pull TODAY's calendar (operator is on **PDT** — memory `feedback-operator-timezone-pdt`; harness/git timestamps are UTC) + the `next-session-pickup` memory + read "Changes Made — Recent".
-3. STATE the day's plan (timed/planned items + ready #-tasks) before reacting to the first message.
+2. **`python scripts/check_plan.py --today`** → prints OVERDUE + due-today tasks = the day's plan. Read `next-session-pickup` for in-flight context (operator is **PDT** — `feedback-operator-timezone-pdt`).
+3. STATE that day's plan before reacting to the first message.
 
 **CLOSE** (when the operator wraps, or before ending):
-1. Reconcile done-vs-planned against the calendar + the day's #-tasks. If a big-rock project advanced / completed / shifted timeline, update the **Active Major Projects roster** in `BACKLOG.md` (the operator's progress + completion-timeline view). **Verify EVERY #-task opened this session is filed under a project** in `BACKLOG.md`'s "Open tasks by project" (Misc if none) — the close is the backstop, not the primary filing point (see the project-filing rule below). No loose tasks. **MECHANICAL step (not eyeballed):** refresh `.apollo_open_tasks.json` from the #-tracker (one `{"id","status"}` row per non-completed task) and run `python scripts/check_task_project_filing.py` — it FAILS on any open task not filed under a project. The pre-commit hook (Gate 2) re-runs this whenever `BACKLOG.md`/the snapshot is staged, so an unfiled task can't be committed.
-2. Roll EVERY undone planned item forward — reschedule on the calendar AND/OR add to `next-session-pickup`. Name any unplanned work that displaced the plan, so nothing slips silently.
-2b. **DEFERRAL AUDIT** (added 2026-06-09): sweep the session for everything deferred, parked, or flagged as a residual/watch-item — review findings, "do later", "post-X" gates — and verify EACH exists in a #-task (its own task, or inside an existing task's body). Chat, pickup-prose, and review writeups do NOT count as filed; the pickup gets rewritten, tasks don't. (Why: 6/9 operator audit found 4 unfiled deferrals, incl. a CLAUDE.md-ceiling item floating as prose since 5/29 — the filing check catches unbucketed tasks, but nothing catches a deferral that never became a task except this step.)
-3. If code changed: `git add <files>` → commit → `git push origin main`.
+1. **Update `PLAN.md` — the single reconcile step.** For every task touched this session: set its status; REBUMP any ETA now ≤ today to a real future date (or close the task). FILE every new item / deferral / finding / watch-item as a PLAN.md line under a project with an ETA — chat & pickup prose do NOT count (the pickup gets rewritten, PLAN.md doesn't). Refresh `.apollo_open_tasks.json` from the harness so the completeness cross-check stays honest.
+2. **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps.
+3. If code changed: `git add <files>` → commit → `git push origin main` (pre-commit Gate 2 re-runs the check).
 
 **"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. Silent-failure class this catches: gdrive backup (5/24–31), #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.
 
-**On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run the OPEN reconciliation immediately, in any session phase — pull today's calendar (PDT) + `next-session-pickup` + open #-tasks + the roster, reconcile, and report true state (done / in-flight / slipped). One phrase covers every surface; the operator never has to pick "backlog vs task list." (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
+**On-demand reconcile (operator trigger):** "**where do we stand**" (or similar) = run `python scripts/check_plan.py --today` + read `next-session-pickup` for in-flight context, then report true state (done / in-flight / slipped). One file, one command. (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
 
-**Capture (operator trigger):** "**track it**" / "**track this**" = log it as a #-task immediately (the SoT). Route to `data_gated_reviews.yaml` if evidence-gated, the roster if a big-rock, or a memory if it's a fact/feedback — and confirm back WHERE it went + the #. Default to over-capturing; this is the operator's guarantee a passing idea isn't lost. (Capture should also happen automatically in-flow — this trigger is the explicit backstop for asides.)
+**Capture (operator trigger):** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
 
-**EVERY #-task gets a project AT CREATION — non-negotiable, not deferred to a sweep.** The moment you open a task (TaskCreate, "track it", or in-flow), file it under a project in `BACKLOG.md`'s "Open tasks by project": an existing project, **Miscellaneous** if none fits, or **propose a NEW project to the operator** if it's a genuine new big-rock. Tag the task `metadata.project` in the same action. The #-tracker owns task STATE; the project bucket is filed atomically with creation so nothing floats loose. The CLOSE ritual only VERIFIES this (backstop), it is not the primary filing point. **MECHANICAL ENFORCEMENT (shipped 2026-06-06): `scripts/check_task_project_filing.py` + pre-commit Gate 2** reconcile the open-task snapshot (`.apollo_open_tasks.json`) against BACKLOG's "Open tasks by project" and FAIL the commit on any unfiled task — the "create→file" rule is no longer prose-that-needs-memory. The one residual is "task created but snapshot never refreshed" → the CLOSE step refreshes the snapshot unconditionally, and the operator triggers CLOSE regardless (so they're never the checker). **#176's remaining piece** is the create-time bridge (a `PostToolUse`-on-`TaskCreate` hook → append `#ID` to an unfiled ledger the pre-commit refuses on) + the scheduled drift ping; not yet built (tool-hook firing for `TaskCreate` is unverified in this harness). (Why this is bolded: 2026-06-05 — 17 tasks filed since the prior sweep had NO project; 2026-06-06 — #216/#217 created with a `metadata.project` tag but absent from BACKLOG, and the OPERATOR had to catch it. A passive "a new task lands under a project" note relied on memory and failed twice — same class as the timezone bug. The CHECK existing and firing IS the codification; a paragraph alone is what failed.)
+**EVERY task gets a project + ETA AT CREATION — non-negotiable, not deferred to a sweep.** The moment you open a task (or "track it", or in-flow), write it as a `PLAN.md` line under a project with an ETA — that IS the filing, done atomically so nothing floats loose. `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, or any open snapshot task not filed — the "create→file" rule is a gate, not memory. (Why mechanical: a passive "a new task lands under a project" note relied on memory and failed repeatedly — same class as the timezone bug; the gate is the codification, a paragraph alone is what failed.)
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
@@ -35,18 +34,14 @@ When you discover an issue or a worth-doing improvement, **default to fixing/bui
 
 NOT reasons (these mean *just do it*): "it's late / after-hours," "it's minor/quick," "let me batch it," habit. When the FULL change is legitimately gated, **ship the SAFE SUBSET now** (shadow / telemetry / read-only analysis) and defer only the gated part — never the whole thing (e.g. 2026-06-01 cooldown: shipped the shadow now, gated only the live-flip on realized-R). This bias NEVER overrides the safety line (no bypassing safety gates, no untested trade-state, no fabricated evidence) — those gates route you to the safe version, NOT to the backlog. Doing-now shrinks the backlog and is the surest way to not lose things.
 
-## 📋 Backlog / TODO / Task questions → `BACKLOG.md`
+## 📋 Backlog / TODO / Task / "what's next" questions → `PLAN.md`
 
-When the user asks about backlog, todo, tasks, what's ready, what's open,
-or "what should I work on next" — consult `BACKLOG.md` at repo root FIRST.
-It's the master index pointing to detail files (`data_gated_reviews.yaml`,
-memory backlogs, incident docs).
-
-Detail files retain runtime behavior (YAML predicates, memory auto-load,
-etc.); `BACKLOG.md` is the cross-cutting view. When filing, closing, or
-status-changing an item in its detail file, mirror in `BACKLOG.md`. If
-they drift, source files own truth — but mirror back ASAP to keep the
-quick-scan view honest.
+When the user asks about backlog, todo, tasks, what's ready/open, "what should
+I work on next", or where we stand — `PLAN.md` at repo root is the SINGLE source
+(projects → tasks → ETA + status; the long-horizon launch lives there as dated
+tasks). Run `python scripts/check_plan.py --today` for the day's plan. Only
+`data_gated_reviews.yaml` retains separate runtime behavior (YAML predicates,
+weekly auto-surface) and it references #IDs back into PLAN.md.
 
 At the end (if code changed):
 ```bash

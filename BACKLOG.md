@@ -1,4 +1,10 @@
-# Apollo Backlog — Master Index
+> ⛔ **RETIRED 2026-06-16 — do NOT file or read plan state here.** The single source of truth for all
+> planned work is now **`PLAN.md`** (projects → tasks → ETA + status; the long-horizon launch lives there
+> as dated tasks; `python scripts/check_plan.py --today` = the day's plan). Everything below this banner is
+> a **FROZEN ARCHIVE** kept only for historical reference — it is no longer maintained or reconciled.
+> Data-gated reviews keep their runtime home in `data_gated_reviews.yaml`; history is in `CHANGELOG.md` / git.
+
+# Apollo Backlog — Master Index (ARCHIVE — see PLAN.md)
 
 Single quick-scan view of all open work. Points to canonical detail files;
 does not replace them.

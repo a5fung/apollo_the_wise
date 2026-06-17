@@ -30,15 +30,16 @@ if git diff --cached --name-only | grep -qx 'data_gated_reviews.yaml'; then
     fi
 fi
 
-# ── Gate 2: task<->project filing (the "every #-task gets a project" rule) ──
-# Fires when BACKLOG.md or the open-task snapshot is staged. Catches the
-# 2026-06-06 class (open #-task in NO project bucket — operator had to catch it
-# by hand). Makes the filing rule MECHANICAL instead of prose-that-needs-memory.
-if git diff --cached --name-only | grep -qE '^(BACKLOG\.md|\.apollo_open_tasks\.json)$'; then
-    if ! python scripts/check_task_project_filing.py; then
-        echo "✘ pre-commit: an open #-task is not filed under a project in BACKLOG.md."
-        echo "  File it under 'Open tasks by project' (Miscellaneous if none fits),"
-        echo "  re-stage BACKLOG.md, re-commit."
+# ── Gate 2: PLAN.md — the single source of truth (2026-06-16 consolidation) ──
+# PLAN.md is THE plan: every task under a project, with an ETA + status, no past
+# ETA on an open task, every open snapshot task filed. Fires when PLAN.md (or the
+# snapshot it cross-checks) is staged — which is every CLOSE. Replaces the old
+# BACKLOG/snapshot filing gate; makes "know the plan / no gaps" mechanical, not prose.
+if git diff --cached --name-only | grep -qE '^(PLAN\.md|\.apollo_open_tasks\.json)$'; then
+    if ! python scripts/check_plan.py; then
+        echo "✘ pre-commit: PLAN.md failed the single-SoT gate (see above)."
+        echo "  Every task needs a project + ETA + status; no open task may have a PAST ETA"
+        echo "  (CLOSE rebumps stale dates); every open task must be filed. Fix, re-stage, re-commit."
         echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
         exit 1
     fi
