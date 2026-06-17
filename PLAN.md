@@ -77,6 +77,7 @@ _Last CLOSE: 2026-06-16._
 
 - #284 | 2026-06-18 | in_progress | M&A acquirer-direction title-leak fix — awaiting operator sign-off (HARD-gate list) + shadow-validate
 - #285 | 2026-06-19 | pending | graduate M&A accuracy review into monthly backward-check sweep (auto-run + Telegram)
+- #317 | 2026-06-18 | pending | EP-alert `catalyst` field contradicts the judge (QURE 6/17: field says "no fresh catalyst/technical" while judge correctly grades game-changer FDA from the same 8-K). GRADE is right; the displayed catalyst narrative is stale/self-contradictory → align the displayed catalyst with the grounded analysis the judge reads, or suppress the "no catalyst" prose when has_direct_source + high grade. Trust bug on the load-bearing alert (pre-6/22)
 - #269 | 2026-06-19 | in_progress | rubric v3 verify (AKTS forward outcome = first live promote-cohort point) + promote-cap eval harness
 - #210 | 2026-06-23 | pending | catalyst-sourcing backbone umbrella (direct primary sources)
 - #211 | 2026-06-23 | in_progress | news-gap discovery loop (unknown-rate KPI) — needs new scheduler job
@@ -162,3 +163,4 @@ _Launch DoD: docs/roadmap/launch-2026-06-22.md · v1.1/v2.0 map: docs/roadmap/ap
 - #195 | 2026-06-23 | in_progress | SECURITY — rotate portfolio-app2 app_password (operator action)
 - #246 | 2026-06-23 | pending | theme_engine isinstance(anthropic.APIError) TypeError in local test env
 - #248 | 2026-06-19 | pending | regime engine: post-pullback hysteresis + spy_vs_200ma NULL fix + stale docstring
+- #318 | 2026-06-18 | in_progress | morning-brief economic-calendar times shown in UTC not ET — prompt hardened in _get_economic_calendar (force "8:30 AM ET", ban UTC); deploys with next market-agent push, VERIFY at tomorrow's 9AM brief (Perplexity-honored?)

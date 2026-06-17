@@ -1485,7 +1485,8 @@ async def _get_economic_calendar() -> str | None:
     day_str = today.strftime("%A, %B %d, %Y")
     query = (
         f"What are the key US economic events, data releases, and Fed speeches scheduled for {day_str}? "
-        f"Include times (Eastern). One item per line, maximum 5 items. No preamble."
+        f"Give EVERY time in US Eastern Time formatted exactly like '8:30 AM ET' — convert any UTC/GMT "
+        f"time to ET and NEVER output UTC/GMT. One item per line, maximum 5 items. No preamble."
     )
     try:
         from agents.market_intelligence.theme_engine import _is_garbage
