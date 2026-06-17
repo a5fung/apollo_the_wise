@@ -321,6 +321,32 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_3m FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_6m FLOAT;
 
+            -- P3 Management Judge (ADR 0014) — SHADOW telemetry: one bounded-enum verdict per
+            -- open position per daily pass. NO execution authority; observe/opine only.
+            CREATE TABLE IF NOT EXISTS mi_position_mgmt_decisions (
+                id              SERIAL PRIMARY KEY,
+                position_id     INT,
+                ticker          TEXT NOT NULL,
+                decision_date   DATE NOT NULL,
+                account_mode    TEXT,
+                verdict         TEXT NOT NULL CHECK (verdict IN ('HOLD','PARTIAL_TAKE','TRAIL_TIGHTEN','FORCE_EXIT')),
+                rationale       TEXT,
+                confidence      NUMERIC,
+                pct_from_entry  NUMERIC,
+                r_multiple      NUMERIC,
+                hold_days       INT,
+                current_price   NUMERIC,
+                trailed_stop    NUMERIC,
+                orb_low         NUMERIC,
+                stop_above_entry BOOLEAN,
+                partial_taken   BOOLEAN,
+                time_stop_eligible BOOLEAN,
+                model           TEXT,
+                created_at      TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (position_id, decision_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_pos_mgmt_date ON mi_position_mgmt_decisions(decision_date DESC);
+
             CREATE TABLE IF NOT EXISTS mi_ep_alerts (
                 id SERIAL PRIMARY KEY,
                 ticker TEXT NOT NULL,
@@ -7010,6 +7036,34 @@ async def get_open_live_trades() -> list[dict[str, Any]]:
             ORDER BY alert_date ASC
         """)
     return [dict(r) for r in rows]
+
+
+async def insert_position_mgmt_decision(position_id, ticker, decision_date, *, account_mode,
+        verdict, rationale, confidence, metrics: dict, hold_days, current_price, model) -> None:
+    """Write one P3 management-judge SHADOW row (ADR 0014). Idempotent per (position_id,
+    decision_date) so a same-day re-run updates rather than duplicates. `metrics` = the
+    compute_position_metrics() dict (pct_from_entry, r_multiple, trailed_stop, orb_low,
+    stop_above_entry). Telemetry only — no trade-state."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_position_mgmt_decisions
+                (position_id, ticker, decision_date, account_mode, verdict, rationale, confidence,
+                 pct_from_entry, r_multiple, hold_days, current_price, trailed_stop, orb_low,
+                 stop_above_entry, partial_taken, time_stop_eligible, model)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+            ON CONFLICT (position_id, decision_date) DO UPDATE SET
+                verdict=EXCLUDED.verdict, rationale=EXCLUDED.rationale,
+                confidence=EXCLUDED.confidence, pct_from_entry=EXCLUDED.pct_from_entry,
+                r_multiple=EXCLUDED.r_multiple, current_price=EXCLUDED.current_price,
+                trailed_stop=EXCLUDED.trailed_stop, orb_low=EXCLUDED.orb_low,
+                stop_above_entry=EXCLUDED.stop_above_entry, partial_taken=EXCLUDED.partial_taken,
+                time_stop_eligible=EXCLUDED.time_stop_eligible, model=EXCLUDED.model,
+                created_at=NOW()
+        """, position_id, ticker, decision_date, account_mode, verdict, rationale, confidence,
+             metrics.get("pct_from_entry"), metrics.get("r_multiple"), hold_days, current_price,
+             metrics.get("trailed_stop"), metrics.get("orb_low"), metrics.get("stop_above_entry"),
+             bool(metrics.get("partial_taken")), bool(metrics.get("time_stop_eligible")), model)
 
 
 async def get_9m_live_trades(days: int = 90) -> list[dict[str, Any]]:
