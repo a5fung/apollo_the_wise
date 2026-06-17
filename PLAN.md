@@ -25,7 +25,7 @@ _Last CLOSE: 2026-06-16._
 - #261 | 2026-06-17 | pending | scripts/ namespace reorg (ops/evals/probes split + path sweep) — needs a focused block
 - #226 | 2026-06-17 | pending | R3 Lane-2 narrative→mi_themes canonization (advisory; blocked_by #214 naming stability)
 - #266 | 2026-06-17 | pending | theme membership validation at BIRTH + identity-change (evidence run; CHANGE_PROCESS)
-- #299 | 2026-06-17 | in_progress | P2 tape-features SLICE B: compute (OR÷ATR + pm vol-curve vs mi_minute_volume_curves) + wire into scan behind a with-vs-without eval — SLICE A payload-structure DONE+shipped 6/16 (behavior-neutral)
+- #299 | 2026-06-19 | in_progress | P2 tape-features SLICE B. COMPUTE CORE DONE 6/17 (agents/market_intelligence/tape_features.py: compute_or_atr [reuses _atr_14] + compute_pm_vol_curve [compute_rvol_at_time] + compute_liquidity_tag + build_tape→None-when-empty=behavior-neutral; 10 tests, judge byte-identical preserved). NOT wired (nothing touches live judge). REMAINING (next focused block, eval-gated — judge is load-bearing): (1) scan fetches OR bars+ATR+premkt vol → build_tape → assemble_judge_inputs(tape=) behind a flag; (2) with-vs-without judge eval, segmented by which features present (TIMING: OR÷ATR only computable for post-9:35 alerts; pm-vol-curve is the pre-open feature). SLICE A structure shipped 6/16
 - #267 | 2026-06-18 | pending | judge chart-vision: renderer + payload + rubric axis + with/without eval (operator labels ~6/18)
 - #300 | 2026-06-18 | pending | P3 management-judge SHADOW (HOLD/PARTIAL/TRAIL/EXIT telemetry, zero authority)
 - #255 | 2026-06-18 | pending | judge precedent-retrieval v1 (kind=review) + periodic-review nudge
@@ -113,7 +113,7 @@ _Last CLOSE: 2026-06-16._
 
 ## Operational safety / hardening
 
-- #288 | 2026-06-17 | in_progress | Prong B idle-review escalation — redeploy market-agent (escaper fix a6c45a0 shipped via 0ee3704; verify) before ~6/23 grace
+- #288 | 2026-06-19 | in_progress | Prong B idle-review escalation — REDEPLOY DONE 6/17 (both-deploy; a6c45a0 ⊆ deployed HEAD, boot applied new schema, container healthy). Remaining verify-live: clean /reviews + escalation render on next idle-review fire
 - #290 | 2026-06-18 | pending | fix dead_zone_reevaluation broken predicate (column dc_fwd.high does not exist)
 - #291 | 2026-06-18 | pending | triage the 26 idle data-gated reviews (run/defer/ratify each; incl #54)
 - #273 | 2026-06-19 | in_progress | LLM credit-exhaustion alerting — decorator-hook sweep + spend telemetry + low-balance warning
