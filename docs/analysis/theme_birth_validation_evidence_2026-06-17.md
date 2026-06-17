@@ -77,8 +77,18 @@ validator is already trusted, but the shadow is the fail-safe.
    updated same commit.
 3. **Identity-change half (FOLLOW-ON, not yet built):** re-validate at the name-inheritance /
    description-revision point — smaller tail; do as a separate step.
-4. **VERIFY + RE-RUN PROBE (owed):** after the first post-deploy nightly theme run, re-run
-   `scripts/_theme_birth_validation_evidence.py` — the strip-latency distribution should shift left
-   (strips landing ≤1h instead of the 6-day median), and `theme_birth_validated` audit rows should
-   appear. Add the probe to the monthly backward-check sweep
-   (`feedback_methodology_insights_need_periodic_revalidation`).
+4. **VERIFY — on the AUDIT ROWS, not the existing probe (advisor 2026-06-17):** the primary signal is
+   **`theme_birth_validated` audit rows** (+ the `ticker_revalidated_out` / `validation_cooldown_triggered`
+   rows written at birth) appearing after the next nightly theme run.
+   ⚠ **The existing `scripts/_theme_birth_validation_evidence.py` CANNOT see birth strips** — its JOIN
+   gates on `s.ticker = ANY(b.tickers)`, but birth-validation removes the ticker *before* `_save_themes`,
+   so a birth-stripped ticker never enters `mi_themes.tickers`; the JOIN drops it. Re-running it and
+   seeing "no left-shift" would be a **false negative**, not proof birth-validation didn't fire.
+   The birth fingerprint: a `mi_validation_cooldowns` row whose `removed_at ≈ the theme's created_at`
+   AND whose ticker is **absent** from that theme's persisted `mi_themes.tickers`.
+   Single-night volume is likely 0–few (few births/run; the min-guard means only ≥3-member new themes
+   with a clear mismatch strip) — **zero strips one night = no signal, not a failure;** accumulate over
+   several runs.
+   For the monthly backward-check sweep, the probe must FIRST drop the `s.ticker = ANY(b.tickers)`
+   gate (measure latency by `removed_at − created_at` independent of current membership) — until then
+   use the `theme_birth_validated` count.
