@@ -3669,25 +3669,28 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # #270 Step 3 anticipation readiness (SHADOW): 5:35 PM ET, after nightly_data_pull
-    # refreshes mi_daily_closes. Intelligence-role; observes + alerts, never submits.
-    _scheduler.add_job(
-        audit_wrap(_anticipation_readiness_job, "anticipation_readiness"),
-        CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
-        id="anticipation_readiness",
-        replace_existing=True,
-    )
-
-    # #270 Step 3 anticipation 3b FIRST5/gdl watch + fill-sim (SHADOW): 4:20 PM ET, after the
-    # close (full day-0 minute bars available via Polygon REST). Intelligence-role (creds-less
-    # → structural-shadow by service). Runs before the 5:35 readiness job, which preserves the
-    # minute-tactic entries this job records.
-    _scheduler.add_job(
-        audit_wrap(_anticipation_3b_job, "anticipation_3b"),
-        CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
-        id="anticipation_3b",
-        replace_existing=True,
-    )
+    # #270 Step 3 anticipation readiness + 3b (SHADOW) — PAUSED 2026-06-16 (ADR-0013).
+    # Root cause (root-caused 2026-06-16): the universe seed `get_anticipation_gap_seeds`
+    # hard-gates on a +40% one-day gap (`close >= 1.40*prev_close`) reverse-engineered from
+    # ONE stock (MNTS), never the operator's methodology, never sign-off-surfaced. Both jobs
+    # write `mi_anticipation_lifecycle` off that phantom universe nightly, contaminating the
+    # shadow telemetry. The matched pair is UN-REGISTERED here to stop active contamination
+    # while the "consolidation plays post a runup" (Family A) rebuild proceeds: Phase 1
+    # rebuilds the universe + HARD-DELETES the phantom rows, then re-registers these jobs.
+    # The IDs remain in INTELLIGENCE_OWNED_JOB_IDS (classified-but-unregistered is harmless,
+    # one-directional guard) so re-registration in Phase 1 is a one-block uncomment.
+    #   _scheduler.add_job(
+    #       audit_wrap(_anticipation_readiness_job, "anticipation_readiness"),
+    #       CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+    #       id="anticipation_readiness",
+    #       replace_existing=True,
+    #   )
+    #   _scheduler.add_job(
+    #       audit_wrap(_anticipation_3b_job, "anticipation_3b"),
+    #       CronTrigger(hour=16, minute=20, day_of_week="mon-fri", timezone="America/New_York"),
+    #       id="anticipation_3b",
+    #       replace_existing=True,
+    #   )
 
     # Telegram polling-bot health watchdog: every 2 min, 24/7 (#153). Raw (not
     # audit_wrap'd) — it's a high-frequency liveness check that self-guards and
