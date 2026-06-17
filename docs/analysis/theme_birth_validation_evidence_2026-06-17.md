@@ -8,7 +8,7 @@ identity-change) add measurable value, or is it redundant?
 mismatched members ~6 days earlier than today. CHANGE_PROCESS + sign-off still required (it changes
 theme membership behavior); one root-cause must be resolved first (below).
 
-## The data (read-only, `scripts/_theme_birth_validation_evidence.py`, 60-day window)
+## The data (read-only, `scripts/probes/_theme_birth_validation_evidence.py`, 60-day window)
 
 - **1,338** themes born with ≥2 members; **608** member-strips within 14d of birth.
 - **Strip latency from birth — the decisive metric:**
@@ -80,7 +80,7 @@ validator is already trusted, but the shadow is the fail-safe.
 4. **VERIFY — on the AUDIT ROWS, not the existing probe (advisor 2026-06-17):** the primary signal is
    **`theme_birth_validated` audit rows** (+ the `ticker_revalidated_out` / `validation_cooldown_triggered`
    rows written at birth) appearing after the next nightly theme run.
-   ⚠ **The existing `scripts/_theme_birth_validation_evidence.py` CANNOT see birth strips** — its JOIN
+   ⚠ **The existing `scripts/probes/_theme_birth_validation_evidence.py` CANNOT see birth strips** — its JOIN
    gates on `s.ticker = ANY(b.tickers)`, but birth-validation removes the ticker *before* `_save_themes`,
    so a birth-stripped ticker never enters `mi_themes.tickers`; the JOIN drops it. Re-running it and
    seeing "no left-shift" would be a **false negative**, not proof birth-validation didn't fire.

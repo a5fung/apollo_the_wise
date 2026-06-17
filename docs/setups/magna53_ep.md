@@ -119,7 +119,7 @@ but would re-defer the material ONDS case.
 **Evidence**: real title-fires are **N=3 in 120d** (KALV/MYRG/ONDS) — BELOW the N≥10 ship
 bar, so flagged augmented-with-synthetic + shadow-validate (per sample-size discipline).
 Labeled backtest **N=14 (6 acquirer / 8 target)** incl. the positional trap and CECO
-out-of-scope: **14/14** (`scripts/_284_mna_acquirer_backtest.py`). **16/16** unit tests
+out-of-scope: **14/14** (`scripts/probes/_284_mna_acquirer_backtest.py`). **16/16** unit tests
 (`tests/test_ma_filter_direction.py`, incl. updated `test_title_acquirer_*` reflecting the
 new behavior + ONDS/MYRG pass + Acme-target still fires + conservative-without-name).
 

@@ -20,7 +20,7 @@ ssh apollo@<box> 'docker exec apollo-postgres psql -U apollo -d apollo -tAF "\t"
       WHERE table_schema='"'"'public'"'"' AND table_name LIKE '"'"'mi\_%'"'"' \
       ORDER BY table_name, ordinal_position;"' > scripts/_prod_columns_258.tsv
 # 2. classify
-python scripts/_schema_consolidation_audit_258.py
+python scripts/probes/_schema_consolidation_audit_258.py
 ```
 
 ## Audit result (2026-06-13, against live prod)

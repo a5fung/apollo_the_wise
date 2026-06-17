@@ -31,9 +31,9 @@ A schema change shipped 2026-05-10 (`35c1f6c` — add `lowest_price_seen` / `hig
 | **2026-05-14 09:39:09** | CSCO entry fill — same UPDATE failure. Stop fired at $115.04. | trade_stream ERROR log |
 | **2026-05-14 09:35 – 10:50** | CRMD bleeds from $8.36 → $7.93 (intended stop was $8.45; breach $0.52 deep). Unrealized P&L drifts to -$955. **No further alerts.** | broker position polling |
 | **2026-05-14 ~10:50** | User notices price drift on CRMD position; Telegram-flags to Claude Code session. | user report |
-| **2026-05-14 11:08:04** | Manual market SELL submitted (`scripts/_emergency_close_crmd.py`). Filled 2214 @ $8.01. P&L -$778.02. Position flat. | broker fill confirmation |
+| **2026-05-14 11:08:04** | Manual market SELL submitted (`scripts/probes/_emergency_close_crmd.py`). Filled 2214 @ $8.01. P&L -$778.02. Position flat. | broker fill confirmation |
 | **2026-05-14 ~11:11** | Commit `96fd7ee` shipped: `::numeric` casts disambiguate `$2`. Deployed; preflight green. | git log |
-| **2026-05-14 ~11:14** | Backfill `filled_at` on KLAR/CSCO (`scripts/_backfill_filled_at.py`). | reconciliation log |
+| **2026-05-14 ~11:14** | Backfill `filled_at` on KLAR/CSCO (`scripts/probes/_backfill_filled_at.py`). | reconciliation log |
 
 ---
 
@@ -184,8 +184,8 @@ The `live_cutover_decision` review in `data_gated_reviews.yaml` is updated to ad
 - Commit `35c1f6c` (2026-05-10) — bug-introducing
 - Commit `96fd7ee` (2026-05-14) — same-day fix
 - Commit `6f28604` (2026-05-14) — backfill + CLAUDE.md
-- `scripts/_emergency_close_crmd.py` — manual recovery
-- `scripts/_reconcile_crmd_close.py` — DB reconciliation
-- `scripts/_backfill_filled_at.py` — KLAR/CSCO backfill
+- `scripts/probes/_emergency_close_crmd.py` — manual recovery
+- `scripts/probes/_reconcile_crmd_close.py` — DB reconciliation
+- `scripts/probes/_backfill_filled_at.py` — KLAR/CSCO backfill
 - Related architectural lesson: 2026-05-13 outage (preflight needs more than just credentials)
 - Related architectural lesson: 2026-05-07 splits_ingest premature-apply (flag tracked PROCEDURE-ran, not OUTCOME-correct)

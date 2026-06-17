@@ -194,7 +194,7 @@ carry their original anchor, exactly one key each — no duplicate). The propose
 cross-check also PASSED clean (COO IN on the pure gate at 1.153; zero divergence).
 
 **THE GATE before un-pausing.** (a) The carry-forward unit test green (real-snapshot fixture
-`scripts/_familyA_drift_snapshots.json`); (b) `scripts/_familyA_universe_probe.py` shows COO IN on the
+`scripts/_familyA_drift_snapshots.json`); (b) `scripts/probes/_familyA_universe_probe.py` shows COO IN on the
 PURE gate + the proposer/confirmer agree (raw SQL drift is now EXPECTED and absorbed — informational
 only); (c) uncomment the `add_job` block; (d) add `consolidation_readiness` to
 `INTELLIGENCE_OWNED_JOB_IDS`; (e) rewire the `/anticipation` board reader `mi_anticipation_lifecycle →
