@@ -2806,6 +2806,7 @@ class MarketIntelligenceAgent(BaseAgent):
         tight consolidation; the board is the shortlist surfaced for operator judgment
         (ordering-only, tightest-first — NOT an auto-selected top-N). No EP/catalyst required; no
         trades. Companion to the 17:35 ET consolidation_readiness shadow recorder. Monospace."""
+        from agents.market_intelligence.anticipation import format_consolidation_row
         from agents.market_intelligence.db import get_consolidation_board
 
         rows = await get_consolidation_board()
@@ -2820,9 +2821,6 @@ class MarketIntelligenceAgent(BaseAgent):
         for r in rows:
             by_state.setdefault(r["state"], []).append(r)
 
-        def _f(v):  # asyncpg may hand back Decimal — coerce for format specs
-            return float(v) if v is not None else None
-
         out = ["⏱️ *Consolidation plays post-runup* (Family A · SHADOW — observe, ordering-only)", ""]
         for st in ("coiled", "post_runup"):
             grp = by_state.get(st)
@@ -2830,21 +2828,11 @@ class MarketIntelligenceAgent(BaseAgent):
                 continue
             out.append(f"*{labels.get(st, st)}* ({len(grp)})")
             for r in grp[:12]:
-                anc = r["anchor_date"].isoformat()[5:] if r.get("anchor_date") else "?"  # MM-DD
-                ru = _f(r.get("runup_ratio"))
-                tp = _f(r.get("today_pct"))
-                rmv = _f(r.get("rmv_5d"))
-                extra = []
-                if r.get("tight_close_streak"):
-                    extra.append(f"tight{r['tight_close_streak']}")
-                if rmv is not None:
-                    extra.append(f"rmv{rmv:.0f}")
-                if r.get("fresh_tightening"):
-                    extra.append("fresh↓")
-                tail = ("  " + " ".join(extra)) if extra else ""
-                out.append(
-                    f"  `{r['ticker']:<5}` {ru:.2f}x peak {anc} +{r.get('coil_days', 0)}d "
-                    f"today {tp * 100:+.2f}%{tail}")
+                out.append(format_consolidation_row(
+                    r["ticker"], r.get("anchor_date"), r.get("runup_ratio"),
+                    r.get("coil_days", 0), r.get("today_pct"),
+                    tight_close_streak=r.get("tight_close_streak"), rmv_5d=r.get("rmv_5d"),
+                    fresh_tightening=r.get("fresh_tightening")))
             out.append("")
         out.append("_Tightest-first. Surfaced for judgment — no trades._")
         return self._ok(request, result="\n".join(out).strip())

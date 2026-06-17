@@ -186,3 +186,30 @@ def test_brand_new_ticker_seeded_with_universe_anchor():
     assert new_only                                                # 262 > 232 → genuinely-new names
     for r in new_only:
         assert (r["ticker"], r["anchor_date"]) in keyset
+
+
+# ── shared row format: the SINGLE source for /anticipation + the newly-COILED digest ──
+# (the two surfaces had drifted into different inline formats; operator-flagged 2026-06-17)
+import datetime as _dt
+
+
+def test_consolidation_row_matches_command_format():
+    row = de.format_consolidation_row(
+        "NUVL", _dt.date(2026, 6, 11), 1.40, 4, 0.0002, tight_close_streak=6)
+    assert row == "  `NUVL ` 1.40x peak 06-11 +4d today +0.02%  tight6"
+
+
+def test_consolidation_row_optional_tail_segments():
+    row = de.format_consolidation_row(
+        "PAYO", _dt.date(2026, 6, 15), 1.39, 2, 0.0, tight_close_streak=2, rmv_5d=0,
+        fresh_tightening=True)
+    assert row.endswith("today +0.00%  tight2 rmv0 fresh↓")
+    # no optional fields → no tail
+    bare = de.format_consolidation_row("X", _dt.date(2026, 6, 1), 1.2, 0, 0.01)
+    assert bare == "  `X    ` 1.20x peak 06-01 +0d today +1.00%"
+
+
+def test_consolidation_row_is_none_safe():
+    # asyncpg Decimals / missing fields must not crash the digest or the command.
+    row = de.format_consolidation_row("XYZ", None, None, None, None)
+    assert row == "  `XYZ  ` ?x peak ? +0d today n/a"

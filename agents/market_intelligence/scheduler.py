@@ -2919,13 +2919,16 @@ async def _consolidation_readiness_job():
         logger.info(f"consolidation readiness: {len(universe)} universe, {written} rows, "
                     f"{len(transitions)} newly coiled")
         if transitions:
-            lines = ["🪙 *Anticipation (SHADOW) — newly COILED post-runup* "
-                     "(consolidation tightening; surfaced for judgment, ordering-only):"]
+            # Same row format as `/anticipation` (de.format_consolidation_row, the single source —
+            # the two surfaces had drifted; operator-flagged 2026-06-17).
+            lines = [f"🪙 *Consolidation plays post-runup* (Family A · SHADOW) — newly COILED "
+                     f"({len(transitions)})", ""]
             for ticker, anchor_date, c in transitions[:12]:
-                lines.append(f"  • {ticker} runup {c['runup_ratio']:.2f}x "
-                             f"(peak {anchor_date.isoformat()}, +{c['coil_days']}d) "
-                             f"tight-streak {c['tight_close_streak']} today {c['today_pct']*100:.2f}%")
-            lines.append("/anticipation for the full shortlist.")
+                lines.append(de.format_consolidation_row(
+                    ticker, anchor_date, c["runup_ratio"], c["coil_days"], c["today_pct"],
+                    tight_close_streak=c.get("tight_close_streak"), rmv_5d=c.get("rmv_5d"),
+                    fresh_tightening=c.get("fresh_tightening")))
+            lines += ["", "/anticipation for the full shortlist."]
             await send_telegram_message("\n".join(lines))
     except Exception as e:
         logger.error(f"consolidation readiness job failed: {e}", exc_info=True)

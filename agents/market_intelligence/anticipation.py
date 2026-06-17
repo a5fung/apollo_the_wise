@@ -709,6 +709,36 @@ def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_wind
     }
 
 
+def format_consolidation_row(ticker, anchor_date, runup_ratio, coil_days, today_pct,
+                             tight_close_streak=None, rmv_5d=None, fresh_tightening=False) -> str:
+    """ONE monospace Telegram row for a Family-A consolidation candidate — the SINGLE shared row
+    format for `/anticipation` (agent.py) AND the 17:35 ET newly-COILED digest (scheduler.py). The
+    two had drifted into different inline formats (2026-06-17); this is the one source so they can't
+    again (feedback_single_source_of_truth). None-safe; tightest-first ordering is the caller's job.
+
+        `NUVL ` 1.40x peak 06-11 +4d today +0.02%  tight6 rmv0 fresh↓
+    """
+    def _f(v):
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    ru, tp, rmv = _f(runup_ratio), _f(today_pct), _f(rmv_5d)
+    anc = anchor_date.isoformat()[5:] if anchor_date else "?"      # MM-DD
+    extra = []
+    if tight_close_streak:
+        extra.append(f"tight{tight_close_streak}")
+    if rmv is not None:
+        extra.append(f"rmv{rmv:.0f}")
+    if fresh_tightening:
+        extra.append("fresh↓")
+    tail = ("  " + " ".join(extra)) if extra else ""
+    ru_s = f"{ru:.2f}x" if ru is not None else "?x"
+    tp_s = f"{tp * 100:+.2f}%" if tp is not None else "n/a"
+    return f"  `{ticker:<5}` {ru_s} peak {anc} +{coil_days or 0}d today {tp_s}{tail}"
+
+
 def select_consolidation_keys(universe, existing):
     """Decide which (ticker, anchor_date) the readiness job evaluates — the CARRY-FORWARD that keeps
     the lifecycle key STABLE when the rolling-window anchor drifts. The §2 universe re-derives the
