@@ -3828,8 +3828,15 @@ reviews:
     added_on: 2026-05-17
 
   - review_id: phase5_meta_rubric_calibration
-    title: "Phase 5 — meta-rubric composition + threshold calibration"
+    title: "Phase 5 — meta-rubric composition + threshold calibration [PLAN #329]"
     question: |
+      📌 PLAN ANCHOR (added 2026-06-18): this review is now #-linked to PLAN task
+      #329 (the advisory composition BUILD; ETA-driven) — it had floated with NO
+      PLAN task/ETA, which the 6/18 sweep flagged. THIS registry review governs
+      only the forward-data-gated WEIGHT CALIBRATION (threshold=30, earliest 9/8)
+      + Phase-6 gating decision; the ADVISORY composite build is un-gated (operator
+      6/04, see below) and tracked under #329, not blocked here.
+
       ⚠ REFRAME 2026-05-30 (methodology-fidelity — operator reinforced 3×):
       we IMPLEMENT a known methodology, we do NOT discover one from data. The
       composite SHIPS ADVISORY with METHODOLOGY-ORDERED weights as its inputs
