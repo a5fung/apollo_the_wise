@@ -145,12 +145,14 @@ async def classify_orb_cancellation(
     )
 
     # Real-time silent-trigger / gap-through alert (2026-05-28, AVAV).
-    # Operator-escalated P0: when the cancellation classifier finds the
-    # price actually crossed the trigger (would_have_filled or gap_through),
-    # that's a missed-fill signal that needs immediate operator visibility
-    # — not a weekly-review artifact. AVAV was mis-labelled `clean_miss`
-    # due to a separate bug; this alert path catches the genuine cases
-    # going forward.
+    # The linked review was DOWNGRADED P0 -> P2 on 2026-06-03 (operator-ratified,
+    # order-record-grounded): these are entry-side fill-rate/opportunity-cost
+    # events (limit too tight -> gap/no-trigger -> no fill), NOT exit-side
+    # protective-stop / naked-position failures. When the cancellation classifier
+    # finds price actually crossed the trigger (would_have_filled or gap_through),
+    # that's a missed-fill signal worth immediate visibility — not a weekly-review
+    # artifact. AVAV was mis-labelled `clean_miss` due to a separate bug; this path
+    # catches the genuine cases. (The (P2) label below MUST match the registry severity.)
     if classification in ("would_have_filled", "gap_through"):
         try:
             from agents.market_intelligence.briefing import send_telegram_message
@@ -173,7 +175,7 @@ async def classify_orb_cancellation(
                 f"  • Window: {t0.strftime('%H:%M')}–{t1.strftime('%H:%M')} ET\n\n"
                 f"_{'Order never triggered despite price crossing the limit-reachable zone — '  if classification == 'would_have_filled' else 'Trigger fired but price gapped past limit before fill — '}"
                 f"investigate via Alpaca order history + SIP bar fetch.\n"
-                f"Linked to data_gated_reviews.yaml::alpaca_stop_trigger_reliability (P0)._"
+                f"Linked to data_gated_reviews.yaml::alpaca_stop_trigger_reliability (P2)._"
             )
         except Exception as e:
             logger.error(f"silent_trigger Telegram failed for {ticker}: {e}")
