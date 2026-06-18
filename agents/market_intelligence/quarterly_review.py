@@ -241,6 +241,15 @@ async def quarterly_backward_check_sweep_job():
         from core.notifications import notify_job_failure
         await notify_job_failure("quarterly_backward_check_sweep", str(e))
 
+    # #337 — monthly judge-judgment review, folded into this monthly job (reuse, not a new job).
+    # INDEPENDENTLY guarded: a review failure must never break the backward-check sweep above.
+    try:
+        from agents.market_intelligence.judge_review import run as _run_judge_review
+        await _run_judge_review(days=30, send=True)
+        logger.info("Monthly judge review sent")
+    except Exception as e:
+        logger.exception(f"Monthly judge review failed (non-critical): {e}")
+
 
 if __name__ == "__main__":
     # Direct invocation: run + print digest. Doesn't Telegram.

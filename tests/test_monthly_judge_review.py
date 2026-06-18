@@ -5,18 +5,22 @@ the direction/agreement counts, the fwd-outcome buckets, and the Unjustified-Dem
 from scripts.monthly_judge_review import aggregate_judge_review, format_judge_review
 
 _ROWS = [
-    # promote, judge HIGH over floor MODERATE, ran +8% → promote bucket, NOT agree
+    # promote, judge HIGH over floor MODERATE, ran +8% → promote bucket, NOT agree.
+    # SEC-sourced corpus (assessable + direct) + became a trade (+$1200).
     {"ticker": "AAA", "alert_date": "2026-06-10", "judge_tier": "HIGH",
-     "baseline_floor_tier": "MODERATE", "judge_direction": "promote", "fwd_5d_pct": 8.0},
+     "baseline_floor_tier": "MODERATE", "judge_direction": "promote", "fwd_5d_pct": 8.0,
+     "grounded_text": "[SEC 8-K filed 2026-06-10, items 2.02] beat", "traded": True,
+     "realized_pnl": 1200.0},
     # hold, judge HIGH == floor HIGH → agree; +3%
     {"ticker": "BBB", "alert_date": "2026-06-11", "judge_tier": "HIGH",
      "baseline_floor_tier": "HIGH", "judge_direction": "hold", "fwd_5d_pct": 3.0},
     # demote to none, but ran +9% → UNJUSTIFIED demote (the guard)
     {"ticker": "CCC", "alert_date": "2026-06-12", "judge_tier": "none",
      "baseline_floor_tier": "HIGH", "judge_direction": "demote", "fwd_5d_pct": 9.0},
-    # demote, correctly avoided (-4%)
+    # demote, correctly avoided (-4%). Web-only corpus → assessable but NOT a direct source.
     {"ticker": "DDD", "alert_date": "2026-06-13", "judge_tier": "none",
-     "baseline_floor_tier": "MODERATE", "judge_direction": "demote", "fwd_5d_pct": -4.0},
+     "baseline_floor_tier": "MODERATE", "judge_direction": "demote", "fwd_5d_pct": -4.0,
+     "grounded_text": "[Web summary] sector momentum"},
     # promote but outcome not settled → counted in n, excluded from settled stats
     {"ticker": "EEE", "alert_date": "2026-06-17", "judge_tier": "HIGH",
      "baseline_floor_tier": "MODERATE", "judge_direction": "promote", "fwd_5d_pct": None},
@@ -54,7 +58,18 @@ def test_formatter_surfaces_not_prescribes():
     assert "proposed change" not in text.lower() and "should " not in text.lower()
 
 
+def test_direct_source_footprint_and_realized():
+    a = aggregate_judge_review(_ROWS)
+    # AAA ([SEC…) + DDD ([Web summary]) are assessable; only AAA is a direct source.
+    assert a["direct_assessable"] == 2 and a["direct_present"] == 1
+    # Only AAA carried traded=True / realized_pnl.
+    assert a["traded_n"] == 1 and a["traded_pnl"] == 1200.0
+    text = format_judge_review(a, 30)
+    assert "has_direct_source footprint" in text and "Realized" in text
+
+
 def test_empty_rows_safe():
     a = aggregate_judge_review([])
     assert a["n"] == 0 and a["agreement_rate"] == 0.0
+    assert a["direct_assessable"] == 0 and a["traded_n"] == 0
     assert "n=0" in format_judge_review(a, 30)

@@ -40,6 +40,9 @@ from collections import Counter
 
 from agents.market_intelligence.db import get_pool
 from agents.market_intelligence.ep_grade_judge import format_tier_transition, grade_holistic
+# Single source for the marker-recompute (shared with the monthly review); re-exported here so
+# scripts.eval_judge_enrich.recompute_has_direct_source keeps resolving.
+from agents.market_intelligence.judge_review import recompute_has_direct_source  # noqa: F401
 from scripts._judge_replay_common import (
     build_judge_payload, fetch_narratives_for, fetch_profile, resolve_grounded_text,
 )
@@ -60,21 +63,6 @@ ORDER BY alert_date, ticker
 # Materiality tiers that mean "the judge leaned on materiality" (the highest-risk pattern when
 # has_direct_source was falsely "no" — ADR 0011 rubric clause 1/2).
 _MATERIAL_LEAN = {"transformative", "material"}
-
-
-def recompute_has_direct_source(grounded_text: str | None) -> tuple[bool, bool]:
-    """(has_direct, has_markers) from the STORED corpus, deterministically. build_grounded_text
-    prefixes each source: '[SEC <form> filed …]', '[Benzinga …]', '[Web summary] …'. A direct
-    source = an SEC filing or a Benzinga wire present (mirrors classify_catalyst_sources'
-    sec_*/benzinga_pr rule). `has_markers` is False for pre-W1 / thin-grounded rows that carry no
-    section markers at all — those can't be assessed from stored text and are excluded from the
-    blast-radius denominator."""
-    if not grounded_text:
-        return False, False
-    has_markers = ("[SEC " in grounded_text or "[Benzinga " in grounded_text
-                   or "[Web summary]" in grounded_text)
-    has_direct = ("[SEC " in grounded_text or "[Benzinga " in grounded_text)
-    return has_direct, has_markers
 
 
 async def _fetch_theme_heat_asof(conn, ticker: str, alert_date):
