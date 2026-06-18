@@ -692,7 +692,7 @@ reviews:
         WHERE a.alert_date >= '2026-03-20'
           AND a.score_tier = 'HIGH'
           AND (lt.id IS NULL OR lt.status IN ('cancelled', 'skipped'))
-          AND (dc_fwd.high - dc_alert.close) / dc_alert.close >= 0.10
+          AND (dc_fwd.high_price - dc_alert.close) / dc_alert.close >= 0.10
       ) t
     threshold: 20
     earliest_review_date: 2026-06-15
@@ -5142,7 +5142,14 @@ reviews:
       DO NOT ship a change without N≥10 + advisor review. Today's ROIV
       and PURR are the trigger events; future closed-cohort data drives
       the decision.
-    status: pending
+
+      ✅ RESOLVED 2026-06-18 (Option A — deprecate). #327 replay supplied N=36
+      Day-2 ORB fills (not N=4): no robust edge (filled median −0.24R; +3.2R total
+      entirely 3 outliers; −1.4R within-name on the 17 consolidation-fired names).
+      9m_day2 demoted paper→shadow (operator-signed, DB-confirmed); ninem.md SSoT
+      updated; replacement entry = consolidation (#327 Phase B). Evidence:
+      docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md.
+    status: done
     added_on: 2026-05-21
 
   - review_id: b50_revenue_stage_verdict_audit_trail
@@ -6603,8 +6610,17 @@ reviews:
     predicate_sql: null   # decided on a directional shadow read, not a rigid cohort count — date-surfaced
     threshold: 0
     earliest_review_date: 2026-07-07
-    status: pending
+    status: done   # ✅ DECIDED 2026-06-18 (pulled in early from 7/7)
     added_on: 2026-06-17
+    resolution_2026_06_18: |
+      DECISION MADE (operator-signed): RETIRE 9M Day-2 ORB → shadow, pulled in early
+      from 7/7 on the #327 Phase-A directional read. CLAIM A (Day-2 ORB earns no robust
+      edge: filled median −0.24R; +3.2R total entirely 3 outliers; −1.4R within-name on
+      the 17 consolidation-fired names) carries the retire, self-standing. 9m_day2 demoted
+      paper→shadow (DB-confirmed); CHANGE_PROCESS done in ninem.md (the 5/31 "don't demote"
+      reversal documented). Forward-shadow confirmation (consolidation working on 9M names =
+      CLAIM B) is #327 Phase B (PLAN, ETA 6/20). Doc:
+      docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md.
     action_when_ready: |
       CUT-OVER DECISION — MOVE FAST (operator 2026-06-17: "weeks not months; done >
       perfect; the ONLY valid delay is real-$ risk"). This is all SHADOW/PAPER, so
