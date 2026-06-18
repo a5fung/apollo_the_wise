@@ -38,6 +38,11 @@ _STATUSES = {"pending", "in_progress", "blocked"}
 # `- #298 | 2026-06-17 | in_progress | title...`
 _TASK = re.compile(r"^- #(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\w+)\s*\|\s*(.+?)\s*$")
 _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
+# Buried-work tripwire (operator 2026-06-17): high-signal phrases that mean a task description is
+# DESCRIBING undone critical work inline instead of TRACKING it as its own dated task. Rare +
+# high-signal (only #326 tripped it at authoring) so this can be a hard gate, not just a warning.
+# The #326/#327 miss: "CRITICAL-PATH BUILD ... = #311[8/1]" buried the near-term build in prose.
+_BURIED_WORK = re.compile(r"critical[- ]path build|the only (real )?blocker|critical path\s*[=:]", re.I)
 
 
 def parse(text: str):
@@ -103,6 +108,23 @@ def main(argv: list[str]) -> int:
     for t in past:
         errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
                       f"rebump to a future date at CLOSE, or close the task")
+
+    # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
+    # IMMEDIATELY followed by the #id of the task that does it — forcing "name it -> point at the
+    # task", never "name it -> describe it in prose" (the #326/#327 miss, operator 2026-06-17). The
+    # immediate-ref rule is what makes this robust: a naive "has a near-term ref somewhere on the
+    # line" check is gameable by an INCIDENTAL ref (#326 says "reuse #270 recorder"), so it would NOT
+    # have caught the original. This version WOULD have ("CRITICAL-PATH BUILD (the only real blocker"
+    # -> no #id after the phrase). Catches the SHAPE; not a 100% proof of good decomposition.
+    for t in tasks:
+        for m in _BURIED_WORK.finditer(t["title"]):
+            tail = t["title"][m.end(): m.end() + 12]
+            if not re.match(r"[\s:=(\[–—-]{0,8}#\d+", tail):
+                errors.append(
+                    f"L{t['line']}: task #{t['id']} says \"{m.group(0)}\" but does not IMMEDIATELY "
+                    f"reference the #task that does it — file that build as its OWN dated task and put "
+                    f"its #id right after the phrase (buried-work tripwire); got: ...{tail!r}")
+                break  # one flag per task is enough
 
     # completeness: every OPEN harness task (the snapshot) must be filed in PLAN.md
     plan_ids = {t["id"] for t in tasks}
