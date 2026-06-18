@@ -1484,9 +1484,10 @@ async def _get_economic_calendar() -> str | None:
     today = _et_today()
     day_str = today.strftime("%A, %B %d, %Y")
     query = (
-        f"What are the key US economic events, data releases, and Fed speeches scheduled for {day_str}? "
-        f"Give EVERY time in US Eastern Time formatted exactly like '8:30 AM ET' — convert any UTC/GMT "
-        f"time to ET and NEVER output UTC/GMT. One item per line, maximum 5 items. No preamble."
+        f"List up to 5 key scheduled US economic events, data releases, or Fed speeches for {day_str}. "
+        f"Format EACH on one line as '<time> ET — <event name>', e.g. '8:30 AM ET — Initial Jobless "
+        f"Claims'. EVERY line MUST contain the event NAME — never output a time with no event. "
+        f"Give all times in US Eastern Time (convert any UTC/GMT to ET; NEVER output UTC/GMT). No preamble."
     )
     try:
         from agents.market_intelligence.theme_engine import _is_garbage
@@ -1506,13 +1507,20 @@ async def _get_economic_calendar() -> str | None:
             sentences = _SENTENCE_SPLIT_RE.split(text)
             raw_lines = [s.strip() for s in sentences if s.strip()]
 
+        # A line that is ONLY a time (no event name) is content-less — drop it. Guards the
+        # 2026-06-18 "bare-times" regression: better to show fewer/no items than meaningless
+        # times. Iterate all lines (not [:5]) so dropped bare-time lines don't starve the cap.
+        time_only = re.compile(r"^\d{1,2}:\d{2}\s*(?:AM|PM)?\s*ET\b[\s—\-–:.]*$", re.IGNORECASE)
         bullets = []
-        for line in raw_lines[:5]:
+        for line in raw_lines:
             # Strip leading numbering (1. 2. etc) or bullet chars
             line = re.sub(r"^[\d]+[.)]\s*", "", line)
             line = re.sub(r"^[-•]\s*", "", line).strip()
-            if line:
-                bullets.append(f"• {line}")
+            if not line or time_only.match(line):
+                continue
+            bullets.append(f"• {line}")
+            if len(bullets) >= 5:
+                break
         return "\n".join(bullets) if bullets else None
     except Exception as e:
         logger.warning(f"Economic calendar fetch failed: {e}")
