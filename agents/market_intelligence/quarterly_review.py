@@ -241,7 +241,11 @@ async def quarterly_backward_check_sweep_job():
         from core.notifications import notify_job_failure
         await notify_job_failure("quarterly_backward_check_sweep", str(e))
 
-    # #337 — monthly judge-judgment review, folded into this monthly job (reuse, not a new job).
+    # #337 — monthly judge-judgment review, folded into this job (reuse, not a new job).
+    # NB: despite the "quarterly_" name + docstring, this job is registered on a MONTHLY cron
+    # (scheduler.py: CronTrigger(day=1) id="monthly_backward_check_sweep", converted 2026-05-22).
+    # The judge review intentionally rides that MONTHLY cadence — do NOT "fix" the name to quarterly
+    # without also re-homing this review, or it silently goes quarterly.
     # INDEPENDENTLY guarded: a review failure must never break the backward-check sweep above.
     try:
         from agents.market_intelligence.judge_review import run as _run_judge_review

@@ -19,18 +19,23 @@ judge is OPERATOR labels on the sampled rows, never this module's own score.
 """
 import statistics
 
+from agents.market_intelligence.ep_grade_judge import format_tier_transition
+
 _SQL = """
 SELECT a.ticker, a.alert_date, a.score_tier, a.baseline_floor_tier,
        a.judge_tier, a.judge_direction, a.judge_materiality_tier, a.fire_axes,
-       a.judge_rationale, a.grounded_text,
-       o.fwd_5d_pct, o.fwd_10d_pct,
+       a.grounded_text,
+       o.fwd_5d_pct,
        t.realized_pnl, t.traded
 FROM mi_ep_alerts a
 LEFT JOIN mi_ep_scan_outcomes o ON o.ticker = a.ticker AND o.scan_date = a.alert_date
 -- Aggregate trades per (ticker, alert_date) FIRST so a multi-leg trade can't fan-out the alert
--- row and double-count the judge decision.
+-- row and double-count the judge decision. Only CLOSED legs count toward realized P&L (the
+-- codebase-wide convention; open/partial legs carry total_pnl=0 / unrealized and must not leak).
 LEFT JOIN (
-    SELECT ticker, alert_date, SUM(total_pnl) AS realized_pnl, TRUE AS traded
+    SELECT ticker, alert_date,
+           SUM(total_pnl) FILTER (WHERE status = 'closed') AS realized_pnl,
+           TRUE AS traded
     FROM mi_live_trades GROUP BY ticker, alert_date
 ) t ON t.ticker = a.ticker AND t.alert_date = a.alert_date
 WHERE a.alert_date >= (CURRENT_DATE - ($1::int))
@@ -45,8 +50,8 @@ _UNJUSTIFIED_DEMOTE_5D = 5.0
 def recompute_has_direct_source(grounded_text):
     """(has_direct, has_markers) from the STORED corpus, deterministically. build_grounded_text
     prefixes each source: '[SEC <form> filed …]', '[Benzinga …]', '[Web summary] …'. A direct
-    source = an SEC filing or a Benzinga wire present (mirrors classify_catalyst_sources'
-    sec_*/benzinga_pr rule). `has_markers` is False for pre-W1 / thin-grounded rows that carry no
+    source = an SEC filing or a Benzinga wire present (mirrors corpus_provenance's
+    sec_*/benzinga_pr rule, ep_detector.py). `has_markers` is False for pre-W1 / thin-grounded rows that carry no
     section markers at all — excluded from the assessable denominator."""
     if not grounded_text:
         return False, False
@@ -134,7 +139,8 @@ def format_judge_review(agg, days):
         L.append("   (none — no winners demoted this window)")
     for r in ud[:15]:
         L.append(f"   {r['alert_date']} {r['ticker']:6s} "
-                 f"{r.get('baseline_floor_tier')}→{r.get('judge_tier')}  fwd5d {r['fwd_5d_pct']:+.1f}%")
+                 f"{format_tier_transition(r.get('baseline_floor_tier'), r.get('judge_tier'))}"
+                 f"  fwd5d {r['fwd_5d_pct']:+.1f}%")
     L.append("")
     da, dp = agg.get("direct_assessable", 0), agg.get("direct_present", 0)
     pct = (100 * dp / da) if da else 0.0

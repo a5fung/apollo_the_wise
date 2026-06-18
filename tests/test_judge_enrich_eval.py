@@ -35,3 +35,17 @@ def test_thin_grounded_has_no_markers_excluded():
 def test_empty_and_none():
     assert recompute_has_direct_source("") == (False, False)
     assert recompute_has_direct_source(None) == (False, False)
+
+
+def test_recompute_pinned_to_build_grounded_text():
+    # PIN producer→consumer (the agreement guard, cheapest form): recompute_has_direct_source
+    # sniffs build_grounded_text's literal section prefixes. If that producer's prefix format
+    # drifts, this breaks LOUDLY instead of the #329 footprint silently lying. Drives the corpus
+    # through the REAL producer and asserts the consumer agrees.
+    from agents.market_intelligence.ep_detector import build_grounded_text
+    sec = {"form": "8-K", "filed": "2026-06-18", "items": "2.02", "text": "Q1 revenue +44% YoY"}
+    bz = [{"created_at": "2026-06-18T12:30:00Z", "title": "Big deal", "summary": "details"}]
+    assert recompute_has_direct_source(build_grounded_text(sec, [], None)) == (True, True)   # SEC → direct
+    assert recompute_has_direct_source(build_grounded_text(None, bz, None)) == (True, True)   # Benzinga → direct
+    assert recompute_has_direct_source(build_grounded_text(None, [], "web")) == (False, True) # web → assessable, not direct
+    assert recompute_has_direct_source(build_grounded_text(None, [], None)) == (False, False) # nothing → None corpus

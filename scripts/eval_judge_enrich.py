@@ -142,11 +142,10 @@ async def run_regrade(days: int, limit: int, replicates: int) -> None:
         rows = await conn.fetch(_SIZE_SQL, days)
     # Re-grade only the assessable rows with a direct source the judge was blind to (the at-risk
     # signal) — that's where enrich can move the verdict. Cap by --limit for cost control.
-    cohort = []
-    for r in rows:
-        has_direct, has_markers = recompute_has_direct_source(r["grounded_text"])
-        if has_markers and has_direct:
-            cohort.append((r, has_direct))
+    # Cohort = assessable rows that DO have a direct source (has_direct is True by the filter,
+    # so we don't carry it — the enriched arm passes has_direct_source=True for all of them).
+    cohort = [r for r in rows
+              if all(recompute_has_direct_source(r["grounded_text"]))]  # (has_direct, has_markers) both True
     cohort = cohort[:limit] if limit else cohort
     if not cohort:
         print("eval_judge_enrich --regrade: no direct-source rows in window — nothing to re-grade.")
@@ -156,25 +155,27 @@ async def run_regrade(days: int, limit: int, replicates: int) -> None:
 
     flips, noise = [], []
     async with pool.acquire() as conn:
-        for r, has_direct in cohort:
+        for r in cohort:
             mc, sector, company = await fetch_profile(r["ticker"])
             grounded, _ = await resolve_grounded_text(r, company, grounded=False)  # stored corpus
             narr = await fetch_narratives_for(r["alert_date"])
             stage, score = await _fetch_theme_heat_asof(conn, r["ticker"], r["alert_date"])
 
-            # BLIND arm × K (today's payload — no has_direct_source, no theme heat).
+            # BLIND arm × K (today's payload — no has_direct_source, no theme heat). The payload is
+            # invariant across replicates — build it ONCE; only the model call repeats (to measure
+            # the judge's run-to-run variance, the noise floor).
+            p, _m = build_judge_payload(r, grounded, mc, sector, active_narratives=narr)
             blind_tiers = []
             for _ in range(max(1, replicates)):
-                p, _m = build_judge_payload(r, grounded, mc, sector, active_narratives=narr)
                 v = await grade_holistic(_get_client(), p, timeout=25)
                 blind_tiers.append(v.get("tier") if v else None)
             stable = len(set(blind_tiers)) == 1
             blind = blind_tiers[0]
 
-            # ENRICHED arm (recomputed direct-source + as-of theme heat).
+            # ENRICHED arm (direct-source True for this cohort + as-of theme heat).
             pe, _m = build_judge_payload(
                 r, grounded, mc, sector, active_narratives=narr,
-                has_direct_source=has_direct, theme_stage=stage, theme_score=score)
+                has_direct_source=True, theme_stage=stage, theme_score=score)
             ve = await grade_holistic(_get_client(), pe, timeout=25, include_axis_reads=True)
             enriched = ve.get("tier") if ve else None
 
