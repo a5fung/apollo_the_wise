@@ -39,7 +39,7 @@ _Last CLOSE: 2026-06-16._
 
 ## Live-money cutover — MAGNA53 (the GO-direction gates)
 
-- #150 | 2026-06-18 | pending | Alpaca stop-trigger / share-reservation race — explicit sell-retry fix (CONFIRM shipped)
+- #150 | 2026-06-25 | in_progress | Alpaca stop-trigger / share-reservation race — explicit sell-retry fix. CONFIRMED SHIPPED 6/18: `order_manager._is_share_reservation_lag()` + bounded retry (held_for_orders / "insufficient qty available") present + mature in HEAD since the FTRE 2026-05-09 incident. Remaining (verify-live) = observe a clean retry on the NEXT real share-reservation-lag event (event-driven, can't force) → then close. Live-money-promotion gate.
 - #151 | 2026-06-19 | in_progress | partial-exit hardening N=7 clean cycles (stalled on quiet flow, not failures)
 - #183 | 2026-06-19 | in_progress | ORB classifier IEX/window mislabel
 - #184 | 2026-06-20 | in_progress | broker-authoritative trade-state mirror (ADR 0008) increments 2/3
