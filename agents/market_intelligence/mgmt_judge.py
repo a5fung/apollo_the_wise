@@ -220,11 +220,29 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
         return msg
 
     snaps = await get_snapshot_all()
+    if not snaps:
+        # get_snapshot_all swallows errors → {}. If the whole snapshot is empty, EVERY price would
+        # be None and the judge would grade EVERY position blind-on-price → a full batch of garbage
+        # verdicts in the very telemetry the operator labels. Skip the pass instead (advisor).
+        from agents.market_intelligence.briefing import send_telegram_message
+        await log_audit_event(
+            "position_mgmt_judge_skipped", f"{today}: empty snapshot — pass skipped, no rows written")
+        msg = "🧭 Mgmt-judge (shadow): snapshot empty — pass skipped (no blind-on-price verdicts)."
+        if send:
+            await send_telegram_message(msg)
+        return msg
+
     client = _get_claude()
     lines = []
     for pos in positions:
         tk = pos.get("ticker")
         px = snapshot_price(snaps.get(tk))
+        if px is None:
+            # Per-ticker missing price: don't write a price-blind verdict for this one — audit + skip.
+            await log_audit_event(
+                "position_mgmt_judge_null", f"{tk} {today}: no live price in snapshot — skipped")
+            lines.append(f"{tk}: ⚠️ no live price — skipped")
+            continue
         thesis = await _fetch_entry_thesis(tk, pos.get("alert_date"))
         payload = assemble_mgmt_inputs(pos, px, thesis)
         verdict = await manage_holistic(client, payload)
