@@ -2247,6 +2247,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "catalyst_quality": catalyst_quality,
             "catalyst": news_summary[:500],
             "claude_analysis": claude_analysis,
+            # #317: whether the catalyst sources include a DIRECT/primary source (SEC filing /
+            # press wire) — load-bearing for the alert's catalyst-display coherence. When True,
+            # claude_analysis is grounded in it and the separate Perplexity discovery narrative
+            # (the "catalyst" field) is suppressed in the alert (it sometimes contradicts the grade).
+            "has_direct_source": _has_direct_source,
             "gemini_validation": pplx_quality,  # DB column name kept for compatibility
             "confidence_multiplier": confidence_multiplier,
             "vol_percentile": vol_pct,

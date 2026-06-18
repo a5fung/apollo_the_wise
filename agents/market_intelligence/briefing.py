@@ -2198,6 +2198,17 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     catalyst_text = _sanitize_perplexity_filler(catalyst_text)
     catalyst_text = _truncate_sentence(catalyst_text, 300)
 
+    # #317 (A) — catalyst-display coherence on the load-bearing alert. ep["catalyst"] is the
+    # Perplexity DISCOVERY narrative (news_summary), a different text from claude_analysis (the
+    # judge's grounded rationale shown in italics above). When the grade rests on a DIRECT source
+    # (SEC filing / press wire → has_direct_source), the grounded catalyst IS the italic, and the
+    # discovery line is redundant — and sometimes CONTRADICTS the grade (SWBI 6/18: "positioning/
+    # flow move, no clean catalyst" while the judge graded HIGH on the 8-K). Suppress it then.
+    # Keep it when there is NO direct source (it's the only catalyst info) or when claude_analysis
+    # is empty (never leave the alert with zero catalyst).
+    _judge_grounded = bool(ep.get("has_direct_source")) and bool((ep.get("claude_analysis") or "").strip())
+    catalyst_block = "" if _judge_grounded else f"Catalyst: {catalyst_text}\n\n"
+
     # Sugar Baby Convergence tag — operator escalation cue. Pure telemetry:
     # DB failure here MUST NEVER break the underlying EP alert (the trading
     # signal). Default to no-tag on any exception, log loud audit, proceed.
@@ -2287,7 +2298,10 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         + f" | Score: *{ep['ep_score']:.0f}*\n"
         + fire_line + "\n"
         f"_{ep.get('claude_analysis', '')}_\n\n"
-        f"Catalyst: {catalyst_text}\n\n"
+        # Catalyst line: shown unless the grade rests on a direct source (#317 — then the italic
+        # claude_analysis above already carries the grounded catalyst; the discovery line is
+        # suppressed to avoid the contradiction/redundancy).
+        + catalyst_block
         # Grade provenance — floor (Claude) · Perplexity cross-check · judge verdict. Always
         # shown so the operator sees how the final tier was reached + where Perplexity fits.
         + format_grade_provenance(ep)
