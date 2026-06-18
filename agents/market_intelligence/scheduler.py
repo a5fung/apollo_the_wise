@@ -131,6 +131,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
+    "consolidation_entry_settle",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -2987,6 +2988,65 @@ async def _consolidation_readiness_job():
         logger.error(f"consolidation readiness job failed: {e}", exc_info=True)
 
 
+async def _consolidation_entry_settle_job():
+    """FAMILY A — #327 forward-shadow SETTLEMENT (operator "build the machinery now", 6/18). 17:40
+    ET mon-fri, just after the readiness job (17:35) + the 17:00 nightly_data_pull. For each OPEN
+    mi_consolidation_entry_shadow row that now has ≥ENTRY_SETTLE_WINDOW forward trading bars, settle
+    outcome (capture/stop/open) + fwd_mfe_r (the validated asymmetric bet under coiled_low) +
+    realized_r (the bankable +1R/+3R day-5 harvest) and write it back — flipping outcome non-NULL
+    also frees the open-dedup for a new leg. SHADOW: telemetry only, no execution.
+
+    DB-sourced ground truth (no module state): a coarse entry_date pre-filter bounds the bars-fetch
+    to ripe rows; the pure de.settle_entry_shadow re-checks the EXACT forward-bar count and ABSTAINS
+    if short (re-tried next run). Verify-live loudly: logs open-considered vs settled so a silent-0
+    (the recurring class) is distinguishable from 'nothing ripe yet'."""
+    from datetime import timedelta
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.db import (
+        get_settleable_consolidation_entry_shadows, get_anticipation_ohlcv,
+        settle_consolidation_entry_shadow,
+    )
+    try:
+        today = et_today()
+        # ENTRY_SETTLE_WINDOW=12 trading bars ≈ 17 calendar days; the exact bar-count gate is in
+        # settle_entry_shadow, so this floor only needs to be a safe over-include.
+        ripe = await get_settleable_consolidation_entry_shadows(today - timedelta(days=17))
+        settled = []
+        for r in ripe:
+            try:
+                bars = de.db_rows_to_bars(await get_anticipation_ohlcv(r["ticker"], today))
+                entry_idx = next((j for j, b in enumerate(bars)
+                                  if b["date"] == r["entry_date"].isoformat()), None)
+                if entry_idx is None:
+                    continue  # entry day not in the fetched window (shouldn't happen at 340d lookback)
+                res = de.settle_entry_shadow(bars, entry_idx, float(r["stop_price"]),
+                                             target_r=float(r["target_r"]))
+                if res is None:
+                    continue  # not enough forward bars yet — abstain, retry next run
+                if await settle_consolidation_entry_shadow(
+                        r["id"], outcome=res["outcome"], realized_r=res["realized_r"],
+                        fwd_mfe_r=res["fwd_mfe_r"]):
+                    settled.append((r["ticker"], res))
+            except Exception as e:
+                logger.error(f"entry-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)
+
+        logger.info(f"consolidation entry settle: {len(ripe)} ripe-open considered, "
+                    f"{len(settled)} settled")
+        if settled:
+            cap = sum(1 for _, s in settled if s["outcome"] == "capture")
+            lines = [f"📐 *Consolidation entry SETTLED* (#327 forward SHADOW · {len(settled)}; "
+                     f"{cap} capture):", ""]
+            for ticker, s in settled[:12]:
+                lines.append(f"  `{ticker:<5}` {s['outcome']:<7} "
+                             f"realized {s['realized_r']:+.2f}R  mfe {s['fwd_mfe_r']:+.1f}R")
+            lines += ["", "SHADOW — forward-edge readout accrues; observe-only, no sizing."]
+            await send_telegram_message("\n".join(lines))
+    except Exception as e:
+        logger.error(f"consolidation entry settle job failed: {e}", exc_info=True)
+
+
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
 
@@ -3878,6 +3938,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="consolidation_readiness",
+        replace_existing=True,
+    )
+
+    # #327 forward-shadow SETTLEMENT (6/18) — 17:40 ET, just after the readiness job writes the
+    # day's entries + the 17:00 nightly_data_pull. Settles OPEN entry-shadow rows that have reached
+    # the ENTRY_SETTLE_WINDOW (12 fwd bars) → capture/stop/open + realized_r. SHADOW, observe-only.
+    _scheduler.add_job(
+        audit_wrap(_consolidation_entry_settle_job, "consolidation_entry_settle"),
+        CronTrigger(hour=17, minute=40, day_of_week="mon-fri", timezone="America/New_York"),
+        id="consolidation_entry_settle",
         replace_existing=True,
     )
 

@@ -6483,6 +6483,74 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
     return row is not None
 
 
+async def get_settleable_consolidation_entry_shadows(entry_on_or_before: date) -> list[dict]:
+    """OPEN #327 entry-shadow rows whose entry_date is old enough that the forward window has
+    likely elapsed (coarse calendar pre-filter; the pure settle_entry_shadow re-checks the EXACT
+    forward-bar count and abstains if short). Bounds the bars-fetch work to ripe rows."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, anchor_date, entry_date, entry_price, stop_price, target_r
+            FROM mi_consolidation_entry_shadow
+            WHERE outcome IS NULL AND entry_date <= $1
+            ORDER BY entry_date ASC
+        """, entry_on_or_before)
+    return [dict(r) for r in rows]
+
+
+async def settle_consolidation_entry_shadow(row_id: int, *, outcome, realized_r, fwd_mfe_r) -> bool:
+    """Write back one settled #327 entry-shadow row (SHADOW — telemetry). Flips outcome non-NULL
+    (which also FREES the open-dedup partial index for a genuinely new coil leg on the same key).
+    Guarded on outcome IS NULL so a double-settle is a no-op. Returns True iff a row was settled."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_consolidation_entry_shadow
+            SET outcome=$2, realized_r=$3, fwd_mfe_r=$4, settled_at=NOW()
+            WHERE id=$1 AND outcome IS NULL
+        """, row_id, outcome, realized_r, fwd_mfe_r)
+    return res.endswith(" 1")
+
+
+async def get_consolidation_entry_shadow_summary() -> dict:
+    """The #327 forward-shadow READOUT — open/settled counts + the settled cohort's capture/stop
+    rates, median realized_r + fwd_mfe_r, split by origin (9m vs family_a). The instrument that
+    will answer the #326 cut-over once N accrues (decision metric = realized_r; entry-quality =
+    capture% + fwd_mfe_r). Ordering/aggregate only — never an auto-decision."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        overall = await conn.fetchrow("""
+            SELECT count(*) FILTER (WHERE outcome IS NULL)              AS open_n,
+                   count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
+                   count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
+                   count(*) FILTER (WHERE outcome = 'stop')             AS stop_n,
+                   count(*) FILTER (WHERE outcome = 'open')             AS timeout_n,
+                   -- orphan canary: open rows past the settle horizon = halt/delist-while-open the
+                   -- settle job can't resolve (advisor 6/18 — make the survivorship residual VISIBLE,
+                   -- never silent). 24 calendar days safely exceeds the 12-bar window.
+                   count(*) FILTER (WHERE outcome IS NULL AND entry_date
+                       < (NOW() AT TIME ZONE 'America/New_York')::date - INTERVAL '24 days')
+                                                                        AS open_overdue_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY fwd_mfe_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_fwd_mfe_r,
+                   COALESCE(sum(realized_r) FILTER (WHERE outcome IS NOT NULL), 0) AS total_realized_r
+            FROM mi_consolidation_entry_shadow
+        """)
+        by_origin = await conn.fetch("""
+            SELECT origin,
+                   count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
+                   count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r
+            FROM mi_consolidation_entry_shadow GROUP BY origin ORDER BY origin
+        """)
+    out = dict(overall)
+    out["by_origin"] = [dict(r) for r in by_origin]
+    return out
+
+
 async def get_recent_9m_tickers(since_date: date) -> set:
     """Tickers with a 9M Day-2 candidate on/after `since_date` — the #327 forward shadow's origin
     tag ('9m' = a 9M day seeded the runup; else 'family_a'). Coarse set membership, telemetry only

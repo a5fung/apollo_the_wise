@@ -94,27 +94,11 @@ def run_of_tight(flags, lo, hi, n, contraction=None):
 
 
 def bet_outcome(bars, ai, end_idx, stop):
-    """The asymmetric bet from a close-of-Nth entry under a fixed stop. Returns (outcome, mfe_R)
-    where outcome ∈ capture (MFE hit +TARGET_R first) / stop (stop hit first) / open (neither by
-    window end); mfe_R = UNCAPPED favorable excursion / risk (the entry-quality measure, not the
-    harvested R). Pessimistic on a same-bar tie? No — a same-bar target is credited (capture), the
-    rare ambiguity is second-order for a directional read."""
-    entry = bars[ai]["c"]
-    if stop is None or stop >= entry:
-        return None
-    risk = entry - stop
-    tgt = entry + TARGET_R * risk
-    mfe, out = entry, "open"
-    for i in range(ai + 1, min(ai + 1 + WINDOW, end_idx + 1)):
-        b = bars[i]
-        mfe = max(mfe, b["h"])
-        if b["h"] >= tgt:
-            out = "capture"
-            break
-        if b["l"] <= stop:
-            out = "stop"
-            break
-    return out, (mfe - entry) / risk
+    """The asymmetric bet from a close-of-Nth entry under a fixed stop. DELEGATES to the production
+    single-source anticipation.entry_bet_outcome (pinned by tests/test_consolidation_entry_settle.py)
+    so the forward-shadow settlement and this sweep can't drift. `end_idx` is always the last index
+    here (fires_for passes len(bars)-1), which the production fn reads to natively."""
+    return _ant.entry_bet_outcome(bars, ai, stop, target_r=TARGET_R, window=WINDOW)
 
 
 def stop_value(bars, rr, ai, run_lo, kind):

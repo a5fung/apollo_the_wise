@@ -776,6 +776,69 @@ def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV
     }
 
 
+# ── #327 forward-shadow SETTLEMENT (operator "build the machinery now", 6/18) ──
+# The validation's PRIMARY metric was the asymmetric bet (capture% + UNCAPPED MFE/risk under a
+# FIXED stop) — the clean entry-quality signal (the harvest buries good entries, #270-Step-0). The
+# secondary, decision-relevant column is the BANKABLE realized R under the +1R/+3R day-5 ladder
+# (SETTLE_RULE) — faithful to the offline #327 replay. We record BOTH; they intentionally use
+# DIFFERENT horizons (the 12-bar OBSERVATION window for the bet vs the rule's own day-5 time-stop).
+ENTRY_SETTLE_WINDOW = 12   # forward trading bars to observe the asymmetric bet (the validation horizon)
+
+
+def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=ENTRY_SETTLE_WINDOW):
+    """The validated asymmetric bet from a close-of-coil entry under a FIXED `stop`, over `window`
+    forward bars: returns (outcome, fwd_mfe_r) where outcome ∈ capture (MFE hits +target_r×risk
+    first) / stop (stop hit first) / open (neither by window end); fwd_mfe_r = UNCAPPED favorable
+    excursion / risk (the entry-quality measure). None if risk ≤ 0. The SINGLE source — the offline
+    sweep (scripts/_327_entry_signal.bet_outcome) delegates here, pinned by the settle test. A
+    same-bar target is credited capture (the rare h≥tgt & l≤stop tie is second-order for this read)."""
+    entry = bars[entry_idx]["c"]
+    if stop is None or stop >= entry:
+        return None
+    risk = entry - stop
+    tgt = entry + target_r * risk
+    mfe, out = entry, "open"
+    for i in range(entry_idx + 1, min(entry_idx + 1 + window, len(bars))):
+        b = bars[i]
+        mfe = max(mfe, b["h"])
+        if b["h"] >= tgt:
+            out = "capture"
+            break
+        if b["l"] <= stop:
+            out = "stop"
+            break
+    return out, (mfe - entry) / risk
+
+
+def settle_entry_shadow(bars, entry_idx, stop_price, *, target_r=ENTRY_TARGET_R,
+                        window=ENTRY_SETTLE_WINDOW, rule=None):
+    """Settle one #327 entry-shadow row from its daily bars, or None to ABSTAIN (still provisional).
+    Returns {outcome, fwd_mfe_r, realized_r}:
+      outcome / fwd_mfe_r ← entry_bet_outcome (the validated bet under coiled_low, the 12-bar horizon)
+      realized_r          ← settle_row's anticipation harvest under SETTLE_RULE (the bankable R; a
+                            close entry → settled faithfully on the daily path). REUSES the tested
+                            settlement core, not a 2nd copy.
+
+    Settles as soon as the outcome is DEFINITIVE — a capture or stop is FINAL regardless of the
+    remaining window; only 'open' stays provisional until the full `window` elapses. This rescues a
+    name that stops/captures then HALTS/gets acquired (the bare 12-bar gate would orphan it →
+    outcome NULL forever → a survivorship hole in capture%; the residual halt-while-GENUINELY-open
+    is surfaced via the readout's open_overdue count, never silently dropped — advisor 6/18).
+    realized_r ABSTAINS (None) when the harvest's own min bars aren't present yet (a halt within <5
+    bars); the outcome still settles — closing the survivorship hole is what matters."""
+    bet = entry_bet_outcome(bars, entry_idx, stop_price, target_r=target_r, window=window)
+    if bet is None:
+        return None
+    outcome, fwd_mfe_r = bet
+    if outcome == "open" and (len(bars) - 1 - entry_idx) < window:
+        return None   # neither target nor stop yet + window incomplete → provisional, abstain
+    st = settle_row(entry_tactic="anticipation", entry_price=bars[entry_idx]["c"],
+                    stop_price=stop_price, bars=bars, entry_idx=entry_idx, rule=rule or SETTLE_RULE)
+    realized_r = st["realized_r"] if st else None
+    return {"outcome": outcome, "fwd_mfe_r": round(fwd_mfe_r, 4),
+            "realized_r": round(realized_r, 4) if realized_r is not None else None}
+
+
 def format_consolidation_row(ticker, anchor_date, runup_ratio, coil_days, today_pct,
                              tight_close_streak=None, rmv_5d=None, fresh_tightening=False) -> str:
     """ONE monospace Telegram row for a Family-A consolidation candidate — the SINGLE shared row
