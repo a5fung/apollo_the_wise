@@ -99,7 +99,8 @@ async def show_board():
         print(f"\n{'🪙 Coiling' if st=='coiled' else '👁 Post-runup'} ({len(grp)})")
         for r in grp[:12]:
             print(de.format_consolidation_row(r["ticker"], r.get("runup_ratio"),
-                  r.get("coil_days", 0), rmv_5d=r.get("rmv_5d"), fresh_tightening=r.get("fresh_tightening")))
+                  r.get("coil_days", 0), rmv_5d=r.get("rmv_5d"),
+                  fresh_tightening=r.get("fresh_tightening"), coiled=(st == "coiled")))
     print(f"\n📐 Settled ({len(settled)})")
     for r in settled[:8]:
         print(de.format_entry_settled_row(r["ticker"], r["outcome"], r["realized_r"]))

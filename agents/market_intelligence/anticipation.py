@@ -861,10 +861,16 @@ def _tightness_word(rmv):
 
 
 def format_consolidation_row(ticker, runup_ratio, coil_days, rmv_5d=None,
-                             fresh_tightening=False) -> str:
-    """A coiling/post-runup candidate row.  `LUNL ` +70% · coiling 14d · very tight · tightening↓"""
+                             fresh_tightening=False, coiled=True) -> str:
+    """A Family-A candidate row.  coiled=True (the tight shortlist):
+        `LUNL ` +70% · coiling 14d · very tight · tightening↓
+    coiled=False (post-runup, NOT coiled yet — the tightness word would read as a contradiction in
+    that section, so omit it; show only runup + age):
+        `FUTU ` +17% · 15d since peak"""
     ru, rmv = _num(runup_ratio), _num(rmv_5d)
     ru_s = f"+{(ru - 1) * 100:.0f}%" if ru is not None else "?%"
+    if not coiled:
+        return f"  `{ticker:<5}` {ru_s} · {coil_days or 0}d since peak"
     parts = [ru_s, f"coiling {coil_days or 0}d"]
     word = _tightness_word(rmv)
     if word:

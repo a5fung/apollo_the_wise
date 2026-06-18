@@ -199,9 +199,17 @@ def test_consolidation_row_plain_words():
         "  `TENB ` +26% · coiling 12d · loose"
 
 
+def test_consolidation_row_post_runup_omits_tightness():
+    # post-runup (not coiled): the tightness word reads as a contradiction there → omit it, show
+    # only runup + age (operator readability, 6/18). rmv is ignored in this mode.
+    assert de.format_consolidation_row("FUTU", 1.17, 15, rmv_5d=0, coiled=False) == \
+        "  `FUTU ` +17% · 15d since peak"
+
+
 def test_consolidation_row_is_none_safe():
     # asyncpg Decimals / missing fields must not crash the digest or the command.
     assert de.format_consolidation_row("XYZ", None, None) == "  `XYZ  ` ?% · coiling 0d"
+    assert de.format_consolidation_row("XYZ", None, None, coiled=False) == "  `XYZ  ` ?% · 0d since peak"
 
 
 def test_entry_fired_row():
