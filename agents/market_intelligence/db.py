@@ -6551,6 +6551,31 @@ async def get_consolidation_entry_shadow_summary() -> dict:
     return out
 
 
+async def get_consolidation_entry_shadows(*, status=None, settled_on=None, limit=12) -> list[dict]:
+    """#327 entry-shadow rows for the /anticipation board + the daily Family-A digest — ONE reader.
+      status='open'    → outcome IS NULL (recent fires, the would-be entries)
+      status='settled' → outcome IS NOT NULL (recent results)
+      settled_on=<date>→ settled that ET day (the digest's settled-today section)."""
+    conds, args = [], []
+    if status == "open":
+        conds.append("outcome IS NULL")
+    elif status == "settled":
+        conds.append("outcome IS NOT NULL")
+    if settled_on is not None:
+        args.append(settled_on)
+        conds.append(f"(settled_at AT TIME ZONE 'America/New_York')::date = ${len(args)}")
+    order = "entry_date DESC, ticker" if status == "open" else "settled_at DESC NULLS LAST"
+    args.append(limit)
+    where = (" WHERE " + " AND ".join(conds)) if conds else ""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"SELECT ticker, anchor_date, entry_date, entry_price, stop_price, signal_n, rmv_5d, "
+            f"origin, outcome, realized_r, fwd_mfe_r, settled_at "
+            f"FROM mi_consolidation_entry_shadow{where} ORDER BY {order} LIMIT ${len(args)}", *args)
+    return [dict(r) for r in rows]
+
+
 async def get_recent_9m_tickers(since_date: date) -> set:
     """Tickers with a 9M Day-2 candidate on/after `since_date` — the #327 forward shadow's origin
     tag ('9m' = a 9M day seeded the runup; else 'family_a'). Coarse set membership, telemetry only

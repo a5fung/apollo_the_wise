@@ -188,28 +188,33 @@ def test_brand_new_ticker_seeded_with_universe_anchor():
         assert (r["ticker"], r["anchor_date"]) in keyset
 
 
-# ── shared row format: the SINGLE source for /anticipation + the newly-COILED digest ──
-# (the two surfaces had drifted into different inline formats; operator-flagged 2026-06-17)
-import datetime as _dt
-
-
-def test_consolidation_row_matches_command_format():
-    row = de.format_consolidation_row(
-        "NUVL", _dt.date(2026, 6, 11), 1.40, 4, 0.0002, tight_close_streak=6)
-    assert row == "  `NUVL ` 1.40x peak 06-11 +4d today +0.02%  tight6"
-
-
-def test_consolidation_row_optional_tail_segments():
-    row = de.format_consolidation_row(
-        "PAYO", _dt.date(2026, 6, 15), 1.39, 2, 0.0, tight_close_streak=2, rmv_5d=0,
-        fresh_tightening=True)
-    assert row.endswith("today +0.00%  tight2 rmv0 fresh↓")
-    # no optional fields → no tail
-    bare = de.format_consolidation_row("X", _dt.date(2026, 6, 1), 1.2, 0, 0.01)
-    assert bare == "  `X    ` 1.20x peak 06-01 +0d today +1.00%"
+# ── shared plain-words row formats: the SINGLE source for /anticipation + the daily Family-A
+#    digest (operator 6/18 — glanceable, no acronym soup; the two must not drift again). ──
+def test_consolidation_row_plain_words():
+    # 1.70 runup, deeply contracted (rmv≤15) + a fresh tightening
+    row = de.format_consolidation_row("LUNL", 1.70, 14, rmv_5d=0, fresh_tightening=True)
+    assert row == "  `LUNL ` +70% · coiling 14d · very tight · tightening↓"
+    # loose (rmv>40) → "loose", no tightening flag
+    assert de.format_consolidation_row("TENB", 1.26, 12, rmv_5d=65) == \
+        "  `TENB ` +26% · coiling 12d · loose"
 
 
 def test_consolidation_row_is_none_safe():
     # asyncpg Decimals / missing fields must not crash the digest or the command.
-    row = de.format_consolidation_row("XYZ", None, None, None, None)
-    assert row == "  `XYZ  ` ?x peak ? +0d today n/a"
+    assert de.format_consolidation_row("XYZ", None, None) == "  `XYZ  ` ?% · coiling 0d"
+
+
+def test_entry_fired_row():
+    assert de.format_entry_fired_row("PRIM", 101.30, 100.09, "9m") == \
+        "  `PRIM ` buy 101.30 · stop 100.09 (-1.2%) · 9M"
+    # family_a origin → no tag
+    assert de.format_entry_fired_row("X", 10.0, 9.5, "family_a") == \
+        "  `X    ` buy 10.00 · stop 9.50 (-5.0%)"
+
+
+def test_entry_settled_row():
+    assert de.format_entry_settled_row("PRIM", "capture", 3.0) == "  `PRIM ` ✓ captured +3.0R"
+    assert de.format_entry_settled_row("X", "stop", -1.0) == "  `X    ` ✗ stopped -1.0R"
+    assert de.format_entry_settled_row("X", "open", 0.4) == "  `X    ` ○ timed out +0.4R"
+    # None realized_r (early-definitive settle) → no R suffix, still labeled
+    assert de.format_entry_settled_row("X", "capture", None) == "  `X    ` ✓ captured"

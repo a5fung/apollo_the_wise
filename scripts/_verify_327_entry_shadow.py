@@ -22,8 +22,8 @@ row reaches the 12-bar window). Insert a synthetic OPEN row, settle it via the r
 settle_consolidation_entry_shadow, assert outcome flips + the open-dedup FREES (a fresh insert on the
 same key now succeeds), then DELETE both. Proves the UPDATE write-back + the dedup-free semantics.
 
---run-settle: run the real _consolidation_entry_settle_job once (confirms it runs clean on live data;
-0 settled today is legitimate — nothing has 12 forward bars yet).
+--run-settle: run the real _run_entry_shadow_settlement step once (confirms it runs clean on live
+data; 0 settled today is legitimate — nothing has 12 forward bars yet).
 """
 import asyncio
 import sys
@@ -71,11 +71,46 @@ async def settle_probe():
     print("SETTLE PROBE OK — UPDATE write-back + double-settle guard + open-dedup-free verified on real Postgres.")
 
 
+async def show_board():
+    """Render the consolidated /anticipation board off real data (the same reads + formatters the
+    handler uses) — confirms the unified board renders clean on the live rows."""
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.db import (
+        get_consolidation_board, get_consolidation_entry_shadows,
+        get_consolidation_entry_shadow_summary)
+    board = await get_consolidation_board()
+    fired = await get_consolidation_entry_shadows(status="open", limit=12)
+    settled = await get_consolidation_entry_shadows(status="settled", limit=8)
+    summ = await get_consolidation_entry_shadow_summary()
+    print("⏱️ Consolidation plays (Family A · SHADOW)")
+    if summ["settled_n"]:
+        print(f"edge: {summ['settled_n']} settled · "
+              f"{round(summ['capture_n']/summ['settled_n']*100)}% capture · {summ['med_realized_r']} R")
+    else:
+        print(f"edge: 0 settled (first ~7/7) · {summ['open_n']} watching")
+    print(f"\n🎯 Entry fired ({len(fired)})")
+    for r in fired[:12]:
+        print(de.format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"], r.get("origin")))
+    by_state = {}
+    for r in board:
+        by_state.setdefault(r["state"], []).append(r)
+    for st in ("coiled", "post_runup"):
+        grp = by_state.get(st, [])
+        print(f"\n{'🪙 Coiling' if st=='coiled' else '👁 Post-runup'} ({len(grp)})")
+        for r in grp[:12]:
+            print(de.format_consolidation_row(r["ticker"], r.get("runup_ratio"),
+                  r.get("coil_days", 0), rmv_5d=r.get("rmv_5d"), fresh_tightening=r.get("fresh_tightening")))
+    print(f"\n📐 Settled ({len(settled)})")
+    for r in settled[:8]:
+        print(de.format_entry_settled_row(r["ticker"], r["outcome"], r["realized_r"]))
+
+
 async def run_settle():
-    from agents.market_intelligence.scheduler import _consolidation_entry_settle_job
-    print("Running _consolidation_entry_settle_job once (SHADOW)…")
-    await _consolidation_entry_settle_job()
-    print("settle job ran clean (see the log line 'N ripe-open considered, N settled').")
+    from agents.market_intelligence.scheduler import _run_entry_shadow_settlement
+    from agents.market_intelligence.collector import et_today
+    print("Running _run_entry_shadow_settlement once (SHADOW)…")
+    settled = await _run_entry_shadow_settlement(et_today())
+    print(f"settlement ran clean — {len(settled)} settled (see log 'N ripe considered, N settled').")
 
 
 async def run_and_report():
@@ -119,6 +154,8 @@ async def main():
         await settle_probe()
     elif "--run-settle" in sys.argv:
         await run_settle()
+    elif "--board" in sys.argv:
+        await show_board()
     else:
         await run_and_report()
 

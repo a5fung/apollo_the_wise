@@ -1,6 +1,6 @@
 """#327 FORWARD-SHADOW SETTLEMENT — the capture/stop/open bet + the settle wiring (operator 6/18).
 
-Pins the settlement core the live _consolidation_entry_settle_job calls:
+Pins the settlement core the live _run_entry_shadow_settlement step calls:
   1. entry_bet_outcome — the validated asymmetric bet under a FIXED stop: capture (MFE hits
      +target_r×risk first), stop (stop first), open (neither by the window), with the UNCAPPED
      fwd_mfe_r; risk≤0 → None;

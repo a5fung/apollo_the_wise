@@ -2801,40 +2801,67 @@ class MarketIntelligenceAgent(BaseAgent):
         return self._ok(request, result="\n".join(lines))
 
     async def _handle_anticipation_query(self, request: AgentRequest) -> AgentResponse:
-        """`/anticipation` — Family A "consolidation plays post a runup" board (ADR 0013, SHADOW,
-        #270). A name runs up (MAX/MIN close ≥1.15 over a rolling 10 sessions), then COILS into a
-        tight consolidation; the board is the shortlist surfaced for operator judgment
-        (ordering-only, tightest-first — NOT an auto-selected top-N). No EP/catalyst required; no
-        trades. Companion to the 17:35 ET consolidation_readiness shadow recorder. Monospace."""
-        from agents.market_intelligence.anticipation import format_consolidation_row
-        from agents.market_intelligence.db import get_consolidation_board
+        """`/anticipation` — the ONE Family-A "consolidation plays post a runup" board (ADR 0013,
+        SHADOW, #270/#327). The whole lifecycle in one place (operator 6/18 — consolidate, don't add
+        surfaces): an edge-so-far header (the forward readout) → 🎯 entries fired → 🪙 coiling →
+        👁 post-runup → 📐 recently settled. A name runs up (≥+15% over a rolling 10 sessions), COILS
+        tight, the entry signal fires (N≥3 tight days), then settles capture/stop forward. Ordering-
+        only, tightest-first — never an auto-selected top-N. No catalyst required; no trades."""
+        from agents.market_intelligence.anticipation import (
+            format_consolidation_row, format_entry_fired_row, format_entry_settled_row)
+        from agents.market_intelligence.db import (
+            get_consolidation_board, get_consolidation_entry_shadows,
+            get_consolidation_entry_shadow_summary)
 
-        rows = await get_consolidation_board()
-        if not rows:
+        board = await get_consolidation_board()
+        fired = await get_consolidation_entry_shadows(status="open", limit=12)
+        settled = await get_consolidation_entry_shadows(status="settled", limit=8)
+        summ = await get_consolidation_entry_shadow_summary()
+
+        if not (board or fired or settled):
             return self._ok(request, result=(
-                "⏱️ *Consolidation plays post-runup* (Family A) — no rows yet "
+                "⏱️ *Consolidation plays* (Family A) — nothing in the lifecycle yet "
                 "(the 17:35 ET shadow recorder seeds it)."))
 
-        labels = {"coiled": "🪙 COILED — tight; the shortlist for judgment",
-                  "post_runup": "👁 POST-RUNUP — ran up, not yet coiled"}
-        by_state: dict[str, list] = {}
-        for r in rows:
-            by_state.setdefault(r["state"], []).append(r)
+        out = ["⏱️ *Consolidation plays* (Family A · SHADOW — observe, ordering-only)"]
+        # edge-so-far header = the forward readout (folds the would-be /readout in)
+        if summ["settled_n"]:
+            cap_pct = round(summ["capture_n"] / summ["settled_n"] * 100)
+            med = summ["med_realized_r"]
+            med_s = f"{med:+.1f}R median" if med is not None else "–R median"
+            out.append(f"_edge so far: {summ['settled_n']} settled · {cap_pct}% capture · {med_s}_")
+        else:
+            out.append(f"_edge so far: 0 settled (first results ~7/7) · {summ['open_n']} watching_")
+        out.append("")
 
-        out = ["⏱️ *Consolidation plays post-runup* (Family A · SHADOW — observe, ordering-only)", ""]
+        if fired:
+            out.append(f"🎯 *Entry fired* ({len(fired)})")
+            out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
+                                           r.get("origin")) for r in fired]
+            out.append("")
+
+        labels = {"coiled": "🪙 *Coiling* — tightest first",
+                  "post_runup": "👁 *Post-runup* — ran up, not coiled yet"}
+        by_state: dict[str, list] = {}
+        for r in board:
+            by_state.setdefault(r["state"], []).append(r)
         for st in ("coiled", "post_runup"):
             grp = by_state.get(st)
             if not grp:
                 continue
-            out.append(f"*{labels.get(st, st)}* ({len(grp)})")
-            for r in grp[:12]:
-                out.append(format_consolidation_row(
-                    r["ticker"], r.get("anchor_date"), r.get("runup_ratio"),
-                    r.get("coil_days", 0), r.get("today_pct"),
-                    tight_close_streak=r.get("tight_close_streak"), rmv_5d=r.get("rmv_5d"),
-                    fresh_tightening=r.get("fresh_tightening")))
+            out.append(f"{labels[st]} ({len(grp)})")
+            out += [format_consolidation_row(r["ticker"], r.get("runup_ratio"),
+                    r.get("coil_days", 0), rmv_5d=r.get("rmv_5d"),
+                    fresh_tightening=r.get("fresh_tightening")) for r in grp[:12]]
             out.append("")
-        out.append("_Tightest-first. Surfaced for judgment — no trades._")
+
+        if settled:
+            out.append(f"📐 *Settled* (recent {len(settled)})")
+            out += [format_entry_settled_row(r["ticker"], r["outcome"], r["realized_r"])
+                    for r in settled]
+            out.append("")
+
+        out.append("_SHADOW — surfaced for judgment, no trades._")
         return self._ok(request, result="\n".join(out).strip())
 
     async def _handle_partial_now_command(self, request: AgentRequest) -> AgentResponse:

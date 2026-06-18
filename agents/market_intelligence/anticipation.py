@@ -839,34 +839,59 @@ def settle_entry_shadow(bars, entry_idx, stop_price, *, target_r=ENTRY_TARGET_R,
             "realized_r": round(realized_r, 4) if realized_r is not None else None}
 
 
-def format_consolidation_row(ticker, anchor_date, runup_ratio, coil_days, today_pct,
-                             tight_close_streak=None, rmv_5d=None, fresh_tightening=False) -> str:
-    """ONE monospace Telegram row for a Family-A consolidation candidate — the SINGLE shared row
-    format for `/anticipation` (agent.py) AND the 17:35 ET newly-COILED digest (scheduler.py). The
-    two had drifted into different inline formats (2026-06-17); this is the one source so they can't
-    again (feedback_single_source_of_truth). None-safe; tightest-first ordering is the caller's job.
+# ── Plain-words Family-A row formatters (operator 6/18 — glanceable, no acronym soup). The SINGLE
+#    shared formats for /anticipation (agent.py) AND the daily Family-A digest (scheduler.py) so the
+#    two can't drift (feedback_single_source_of_truth). None-safe; ordering is the caller's job. ──
+def _num(v):
+    try:
+        return float(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
 
-        `NUVL ` 1.40x peak 06-11 +4d today +0.02%  tight6 rmv0 fresh↓
-    """
-    def _f(v):
-        try:
-            return float(v) if v is not None else None
-        except (TypeError, ValueError):
-            return None
 
-    ru, tp, rmv = _f(runup_ratio), _f(today_pct), _f(rmv_5d)
-    anc = anchor_date.isoformat()[5:] if anchor_date else "?"      # MM-DD
-    extra = []
-    if tight_close_streak:
-        extra.append(f"tight{tight_close_streak}")
-    if rmv is not None:
-        extra.append(f"rmv{rmv:.0f}")
+def _tightness_word(rmv):
+    """RMV (0-100 contraction index, lower = tighter) → a plain-words tightness label, or None."""
+    if rmv is None:
+        return None
+    if rmv <= 15:
+        return "very tight"
+    if rmv <= 40:
+        return "tight"
+    return "loose"
+
+
+def format_consolidation_row(ticker, runup_ratio, coil_days, rmv_5d=None,
+                             fresh_tightening=False) -> str:
+    """A coiling/post-runup candidate row.  `LUNL ` +70% · coiling 14d · very tight · tightening↓"""
+    ru, rmv = _num(runup_ratio), _num(rmv_5d)
+    ru_s = f"+{(ru - 1) * 100:.0f}%" if ru is not None else "?%"
+    parts = [ru_s, f"coiling {coil_days or 0}d"]
+    word = _tightness_word(rmv)
+    if word:
+        parts.append(word)
     if fresh_tightening:
-        extra.append("fresh↓")
-    tail = ("  " + " ".join(extra)) if extra else ""
-    ru_s = f"{ru:.2f}x" if ru is not None else "?x"
-    tp_s = f"{tp * 100:+.2f}%" if tp is not None else "n/a"
-    return f"  `{ticker:<5}` {ru_s} peak {anc} +{coil_days or 0}d today {tp_s}{tail}"
+        parts.append("tightening↓")
+    return f"  `{ticker:<5}` " + " · ".join(parts)
+
+
+def format_entry_fired_row(ticker, entry_price, stop_price, origin=None) -> str:
+    """A #327 entry-shadow that fired — the would-be anticipate entry.
+        `PRIM ` buy 101.30 · stop 100.09 (−1.2%) · 9M"""
+    e, s = _num(entry_price), _num(stop_price)
+    stop_pct = f" ({(s / e - 1) * 100:+.1f}%)" if (e and s) else ""
+    tag = " · 9M" if origin == "9m" else ""
+    e_s = f"buy {e:.2f}" if e is not None else "buy ?"
+    s_s = f"stop {s:.2f}" if s is not None else "stop ?"
+    return f"  `{ticker:<5}` {e_s} · {s_s}{stop_pct}{tag}"
+
+
+def format_entry_settled_row(ticker, outcome, realized_r) -> str:
+    """A settled #327 entry-shadow.  `PRIM ` ✓ captured +3.0R · ✗ stopped −1.0R · ○ timed out +0.4R"""
+    r = _num(realized_r)
+    icon, word = {"capture": ("✓", "captured"), "stop": ("✗", "stopped"),
+                  "open": ("○", "timed out")}.get(outcome, ("·", outcome or "?"))
+    r_s = f" {r:+.1f}R" if r is not None else ""
+    return f"  `{ticker:<5}` {icon} {word}{r_s}"
 
 
 def select_consolidation_keys(universe, existing):
