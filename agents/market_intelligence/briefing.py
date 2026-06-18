@@ -2352,12 +2352,18 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
                     "\nTheme: ⚠️ none tracked — possible BLIND SPOT "
                     "(judge inferred a theme/narrative but the engine has no cohort — verify; #325)"
                 )
+            elif _axes is not None:
+                # STANDS-ALONE case (operator 6/18): the judge DID render a verdict and lit no
+                # theme/narrative axis (empty list, or another axis only like catalyst — SWBI).
+                # Combined with no engine cohort, the stock is genuinely on its own — a single-name
+                # move. Explicitly distinguished from the blind-spot case above so the operator
+                # never confuses "we missed the theme" with "there is no theme."
+                text += "\nTheme: — none (stock stands alone — no engine cohort, judge lit no theme)"
             else:
-                # STANDS-ALONE case (operator 6/18): neither the engine nor the judge sees a theme.
-                # The stock is genuinely on its own — a single-name move with no cohort behind it.
-                # Explicitly distinguished from the blind-spot case above so the operator never
-                # confuses "we missed the theme" with "there is no theme."
-                text += "\nTheme: — none (stock stands alone — no engine cohort, no judge-inferred theme)"
+                # JUDGE-SILENT case: _axes is None = judge fail-open (no verdict). We only know the
+                # engine tracks no cohort; we CANNOT claim "stands alone" because the judge never
+                # weighed in. Report the honest unknown rather than overclaiming either way.
+                text += "\nTheme: — none tracked (engine has no cohort; judge rendered no verdict)"
         except Exception as _te:
             logger.debug(f"Theme membership lookup failed (non-critical): {_te}")
     except Exception as _e:
