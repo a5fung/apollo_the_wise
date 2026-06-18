@@ -6,6 +6,7 @@ import asyncio
 
 from agents.market_intelligence.ep_grade_judge import (
     assemble_judge_inputs, grade_holistic, _normalize_verdict, _build_judge_prompt,
+    _judge_tool, _JUDGE_TOOL,
 )
 
 
@@ -248,3 +249,63 @@ def test_prompt_renders_tape_when_present():
     assert "TAPE / INTRADAY CHARACTER" in prompt
     assert "0.41" in prompt and "front-loaded, 2.3x baseline by 9:30" in prompt
     assert "violent open" in prompt  # the OR-vs-ATR guidance the judge weighs
+
+
+# ── #329 Path A — theme HEAT into the payload (byte-identical when absent) ───
+def test_payload_carries_theme_heat():
+    p = assemble_judge_inputs(dict(_R_BASE), theme_stage="Accelerating", theme_score=92.0)
+    assert p["theme_stage"] == "Accelerating" and p["theme_score"] == 92.0
+
+
+def test_prompt_byte_identical_when_no_theme_heat():
+    # Behavior-neutral: the theme-heat plumbing does NOT change the live judge until the scan
+    # passes theme_stage in (eval arm + #335 flip — the judge is load-bearing).
+    p_none = assemble_judge_inputs(dict(_R_BASE))
+    p_explicit_none = assemble_judge_inputs(dict(_R_BASE), theme_stage=None, theme_score=None)
+    assert _build_judge_prompt(p_none) == _build_judge_prompt(p_explicit_none)
+    legacy = dict(p_none)
+    legacy.pop("theme_stage")
+    legacy.pop("theme_score")
+    assert _build_judge_prompt(legacy) == _build_judge_prompt(p_none)
+
+
+def test_prompt_renders_theme_heat_when_present():
+    p = assemble_judge_inputs(dict(_R_BASE, in_active_theme=True),
+                              theme_stage="Accelerating", theme_score=92.0)
+    prompt = _build_judge_prompt(p)
+    assert "In active theme (Lane 1): yes (stage Accelerating, score 92)" in prompt
+
+
+def test_prompt_theme_heat_without_score():
+    p = assemble_judge_inputs(dict(_R_BASE, in_active_theme=True), theme_stage="Fading")
+    assert "(stage Fading)" in _build_judge_prompt(p)
+
+
+# ── #329 Path A — axis_reads diagnostic (eval-only; live tool byte-identical) ─
+def test_judge_tool_byte_identical_when_axis_reads_off():
+    assert _judge_tool(False) is _JUDGE_TOOL  # same object → live tool def unchanged
+    assert "axis_reads" not in _JUDGE_TOOL["input_schema"]["properties"]
+
+
+def test_judge_tool_adds_axis_reads_when_on():
+    tool = _judge_tool(True)
+    assert "axis_reads" in tool["input_schema"]["properties"]
+    # Still NOT required → fail-open (a model omission never fails the verdict).
+    assert "axis_reads" not in tool["input_schema"]["required"]
+    # The base tool was NOT mutated by the deepcopy variant.
+    assert "axis_reads" not in _JUDGE_TOOL["input_schema"]["properties"]
+
+
+def test_normalize_passes_axis_reads_through():
+    reads = [{"axis": "theme", "lit": True, "direction": "promote", "note": "hot cohort"}]
+    v = _normalize_verdict(dict(_VALID, axis_reads=reads))
+    assert v["axis_reads"] == reads
+    assert _normalize_verdict(dict(_VALID))["axis_reads"] is None      # absent → None, not fabricated
+    assert _normalize_verdict(dict(_VALID, axis_reads="nope"))["axis_reads"] is None  # non-list ignored
+
+
+def test_grade_holistic_preserves_axis_reads():
+    reads = [{"axis": "structure", "lit": False, "direction": "hold", "note": "extended"}]
+    client = _Client(inp=dict(_VALID, axis_reads=reads))
+    v = _run(grade_holistic(client, {"ticker": "X"}, include_axis_reads=True))
+    assert v["axis_reads"] == reads

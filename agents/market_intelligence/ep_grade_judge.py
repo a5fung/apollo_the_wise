@@ -17,6 +17,7 @@ the floor and a real EP is never killed by a judge hiccup.
 from __future__ import annotations
 
 import asyncio
+import copy
 import hashlib
 import logging
 
@@ -57,6 +58,46 @@ _JUDGE_TOOL = {
         "required": ["grade", "tier", "direction_vs_floor", "fire_axes", "rationale"],
     },
 }
+
+# Per-axis traceability (#329, Path A — operator-signed 2026-06-18). EVAL/DIAGNOSTIC ONLY:
+# adds an OPTIONAL `axis_reads` to the judge's output so every grade is reconstructable per
+# axis (theme/structure/gap/... : lit? direction? one-line why) WITHOUT a second model. It is
+# gated behind `include_axis_reads` (default False) so the LIVE tool def is byte-identical —
+# adding a schema property changes the tool spec sent to the model, which is NOT behavior-neutral
+# on the live (load-bearing) path the way a prompt-block addition is. The live flip rides #335.
+_AXIS_READS_PROP = {
+    "type": "array",
+    "description": "Per-axis read (diagnostic): which axes you weighed and how they moved the grade.",
+    "items": {
+        "type": "object",
+        "properties": {
+            "axis": {"type": "string",
+                     "enum": ["catalyst", "theme", "narrative", "structure", "gap", "materiality"]},
+            "lit": {"type": "boolean"},
+            "direction": {"type": "string", "enum": ["promote", "hold", "demote"]},
+            "note": {"type": "string"},
+        },
+        "required": ["axis", "lit"],
+    },
+}
+
+_AXIS_READS_NOTE = (
+    "\nADDITIONALLY populate `axis_reads`: one entry per axis you actually weighed "
+    "(catalyst / theme / narrative / structure / gap / materiality) with lit (bool), "
+    "direction vs the floor, and a <=1-line note. This is for traceability — it does not "
+    "change your tier/grade verdict."
+)
+
+
+def _judge_tool(include_axis_reads: bool = False) -> dict:
+    """Return the grade_ep tool spec. `include_axis_reads=False` (the LIVE default) returns the
+    base `_JUDGE_TOOL` UNCHANGED (same object) so the live tool def is byte-identical. The eval
+    arm passes True to get the diagnostic `axis_reads` property (still NOT required → fail-open)."""
+    if not include_axis_reads:
+        return _JUDGE_TOOL
+    tool = copy.deepcopy(_JUDGE_TOOL)
+    tool["input_schema"]["properties"]["axis_reads"] = _AXIS_READS_PROP
+    return tool
 
 # Rubric VERSIONING (operator directive 2026-06-11): every signed rubric change
 # bumps the human label; the hash is computed FROM the text so any edit — signed
@@ -123,6 +164,8 @@ def assemble_judge_inputs(
     has_direct_source: bool | None = None,
     active_narratives: list[dict] | None = None,
     tape: dict | None = None,
+    theme_stage: str | None = None,
+    theme_score: float | None = None,
 ) -> dict:
     """Pack the per-candidate signals (already computed in run_ep_scan) into the judge
     payload. Builds nothing new — pulls from the result dict `r` plus the few extras the
@@ -155,6 +198,13 @@ def assemble_judge_inputs(
         "materiality_tier": materiality_tier,
         "in_active_theme": bool(r.get("in_active_theme")),
         "in_narrative_cohort": bool(r.get("in_narrative_cohort")),
+        # Theme HEAT (#329 Path A) — stage/score from get_theme_membership. Today the judge gets
+        # only the in_active_theme BOOLEAN, so it can't weight Accelerating-92 vs Fading-41 (the
+        # Pradeep #1 catalyst). Rendered in the prompt ONLY when theme_stage is present →
+        # byte-identical to the pre-change form when absent (the narrative/tape pattern). The scan
+        # does NOT pass these yet — the wire-in is the eval arm + the #335 flip (judge is load-bearing).
+        "theme_stage": theme_stage,
+        "theme_score": theme_score,
         "active_narratives": [
             {
                 "run_date": str(c.get("run_date") or ""),
@@ -180,6 +230,14 @@ def assemble_judge_inputs(
 def _build_judge_prompt(p: dict) -> str:
     def _b(v):
         return "yes" if v else "no"
+    # Theme HEAT (#329 Path A) — appended to the in_active_theme line ONLY when a stage is present,
+    # so the prompt is byte-identical to the pre-change form when theme_stage is None/absent.
+    theme_heat = ""
+    _ts = p.get("theme_stage")
+    if _ts:
+        _tsc = p.get("theme_score")
+        _tsc_txt = f", score {_tsc:.0f}" if isinstance(_tsc, (int, float)) else ""
+        theme_heat = f" (stage {_ts}{_tsc_txt})"
     # Lane-2 narratives block (plan lane2-judge-theme-axis). Rendered ONLY when cohorts
     # exist — empty/missing list keeps the prompt byte-identical to the pre-change form,
     # so shipping this is behavior-neutral until the scan passes cohorts in.
@@ -213,7 +271,7 @@ Ticker: {p.get('ticker')}  |  Sector: {p.get('sector') or 'unknown'}
 Market cap: {format_market_cap(p.get('market_cap'))}  |  Revenue-stage: {_b(p.get('revenue_stage'))}
 Gap: {p.get('gap_pct')}%  |  Pre-mkt RVOL: {p.get('pm_rvol')}  |  Vol %ile: {p.get('vol_percentile')}
 Floor grade (the system's current gap+enum verdict): tier={p.get('floor_tier')} catalyst={p.get('floor_catalyst_quality')}
-In active theme (Lane 1): {_b(p.get('in_active_theme'))}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
+In active theme (Lane 1): {_b(p.get('in_active_theme'))}{theme_heat}  |  In narrative cohort (Lane 2): {_b(p.get('in_narrative_cohort'))}
 Deal-size ÷ market-cap (deterministic ratio, when a deal value is parseable): {p.get('materiality_tier') or 'n/a — judge materiality yourself'}  |  Direct source present: {_b(p.get('has_direct_source'))}{narr_block}
 
 --- GROUNDED CATALYST CORPUS (SEC + wires + web) ---
@@ -248,6 +306,10 @@ def _normalize_verdict(raw: dict) -> dict | None:
         _axes_raw = raw.get("fire_axes")
         axes = (None if _axes_raw is None
                 else [a for a in _axes_raw if a in ("catalyst", "theme", "narrative")])
+        # axis_reads (#329 Path A) — OPTIONAL diagnostic; preserved as-is when the (eval) tool
+        # variant elicited it, else None. Never required → its absence never fails the verdict.
+        _ar = raw.get("axis_reads")
+        axis_reads = _ar if isinstance(_ar, list) else None
         return {
             "grade": grade,
             "tier": tier,
@@ -256,6 +318,7 @@ def _normalize_verdict(raw: dict) -> dict | None:
             "fire_axes": axes,
             "rationale": (raw.get("rationale") or "")[:1000],
             "confidence": raw.get("confidence"),
+            "axis_reads": axis_reads,
         }
     except (AttributeError, TypeError):
         return None
@@ -270,6 +333,7 @@ async def grade_holistic(
     model: str = MODEL,
     image_png: bytes | None = None,
     chart_note: str | None = None,
+    include_axis_reads: bool = False,
 ) -> dict | None:
     """One holistic judge call. Returns the verdict dict (schema), or None on any
     error/timeout — the caller then falls back to the conviction floor (FAIL-OPEN). The
@@ -282,13 +346,20 @@ async def grade_holistic(
     catalyst/theme-oriented and never asks the judge to read a chart, so it likely wouldn't).
     Both default None = byte-identical text-only call. The LIVE grade path passes None for both
     (the rubric axis is sign-off-gated); ONLY the eval harness sets them, on its with-chart arm —
-    the chart_note text is precisely what the operator is labeling the value of."""
+    the chart_note text is precisely what the operator is labeling the value of.
+
+    `include_axis_reads` (#329 Path A) is EVAL/DIAGNOSTIC ONLY: True elicits the per-axis
+    `axis_reads` traceability (extended tool + a prompt note). Default False → the tool def AND
+    prompt are byte-identical to the pre-change live call. The live grade path leaves it False;
+    the eval harness sets it True. Wiring it live rides #335 (judge is load-bearing)."""
     prompt = _build_judge_prompt(payload)
     if chart_note:
         prompt = f"{prompt}\n{chart_note}"
+    if include_axis_reads:
+        prompt = f"{prompt}{_AXIS_READS_NOTE}"
     return await invoke_forced_tool(
         client, prompt,
-        tool=_JUDGE_TOOL, tool_name="grade_ep",
+        tool=_judge_tool(include_axis_reads), tool_name="grade_ep",
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",
         semaphore=semaphore, timeout=timeout, model=model, image_png=image_png)
