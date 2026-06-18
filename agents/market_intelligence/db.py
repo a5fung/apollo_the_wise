@@ -6925,19 +6925,27 @@ async def upsert_data_quality(record: dict[str, Any]) -> None:
 async def get_data_quality_expected(
     step: str, metric: str, lookback: int = 5,
 ) -> Optional[float]:
-    """Average value of last N successful (passed=TRUE) quality checks for a step/metric."""
+    """Median value of the last N quality checks for a step/metric (ANY pass/fail status).
+
+    MEDIAN-of-last-N, NOT the old AVG-of-last-N-SUCCESSFUL: averaging only passed runs DEADLOCKED on
+    an intended universe step-down — when a deliberate change shrinks the count (e.g. the #286 RS
+    $10M liquidity floor, 2026-06-16: ~3960→~2450 scored), every run then fails the check, so no run
+    ever updates the baseline and the false alarm fires forever. Including all runs lets the baseline
+    self-heal to the new normal; median (vs mean) is robust to the mixed transition window and a lone
+    anomalous night, and clears the false alarm on the next run. A real sudden drop still alerts for
+    the transition window before the new level becomes the baseline."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT AVG(value) AS avg_val
+            SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY value) AS med_val
             FROM (
                 SELECT value FROM mi_data_quality
-                WHERE step = $1 AND metric = $2 AND passed = TRUE
+                WHERE step = $1 AND metric = $2
                 ORDER BY run_date DESC
                 LIMIT $3
             ) sub
         """, step, metric, lookback)
-        return float(row["avg_val"]) if row and row["avg_val"] is not None else None
+        return float(row["med_val"]) if row and row["med_val"] is not None else None
 
 
 async def get_data_quality_issues(run_date: date) -> list[dict[str, Any]]:
