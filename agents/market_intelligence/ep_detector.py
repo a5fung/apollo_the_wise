@@ -339,6 +339,11 @@ async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> N
             "materiality_tier": r.get("materiality_tier"),
             "market_cap": r.get("market_cap"),
             "sector": r.get("sector"),
+            # #329 data-readiness: log has_direct_source so the monthly judge review can track,
+            # over time, how often the judge graded WITHOUT seeing a direct source (the call-site
+            # blindness this trace exposes). Available on r since #317; the judge doesn't yet
+            # CONSUME it (that's the #335 flip) — logging it here makes the gap measurable.
+            "has_direct_source": r.get("has_direct_source"),
         }
         detail = (f"{r.get('ticker')} floor={floor_tier} judge={v.get('tier')} "
                   f"dir={direction} outcome={outcome}")

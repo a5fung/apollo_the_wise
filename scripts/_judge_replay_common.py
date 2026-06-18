@@ -48,13 +48,16 @@ async def fetch_profile(ticker):
 
 
 def build_judge_payload(row, grounded_text, market_cap, sector, active_narratives=None,
-                        tape=None):
+                        tape=None, has_direct_source=None, theme_stage=None, theme_score=None):
     """(payload, rule_mat) — mirrors run_ep_scan._judge_shadow's assembly exactly:
     W4 deterministic deal/cap rule tier + assemble_judge_inputs over the row.
     `active_narratives` (lane2-judge-theme-axis): point-in-time PRIOR-day Lane-2
     cohorts for this row's alert_date — None keeps the payload pre-change-identical.
     `tape` (#299 v2.0-P2): the point-in-time tape-feature dict — None keeps the payload
-    byte-identical (the with-vs-without arm of eval_tape_judge passes the computed dict)."""
+    byte-identical (the with-vs-without arm of eval_tape_judge passes the computed dict).
+    `has_direct_source`/`theme_stage`/`theme_score` (#329 Path A enrich): the inputs the LIVE
+    call site does NOT thread today — None keeps the payload byte-identical (the BLIND arm of
+    eval_judge_enrich); the ENRICHED arm passes them to measure the verdict delta."""
     rule_mat = rule_materiality(
         extract_deal_value(f"{row['catalyst'] or ''} {row['claude_analysis'] or ''}"),
         market_cap)
@@ -68,7 +71,9 @@ def build_judge_payload(row, grounded_text, market_cap, sector, active_narrative
     }
     payload = assemble_judge_inputs(r, grounded_text=grounded_text, market_cap=market_cap,
                                     sector=sector, materiality_tier=rule_mat,
-                                    active_narratives=active_narratives, tape=tape)
+                                    active_narratives=active_narratives, tape=tape,
+                                    has_direct_source=has_direct_source,
+                                    theme_stage=theme_stage, theme_score=theme_score)
     return payload, rule_mat
 
 
