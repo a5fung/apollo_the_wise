@@ -1,8 +1,8 @@
 # 9M EP — Virgin 9M, Sugar Baby, Day 2 ORB
 
 **Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) Live (paper/telemetry). **Stage 3 (Day-2 ORB)
-RETIRED → shadow 2026-06-18** (operator-signed; #327 read — see change log; flip pending live
-execution). Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
+RETIRED → shadow 2026-06-18** (operator-signed; #327 read — see change log; flip EXECUTED,
+DB-confirmed shadow). Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
 **Code**:
 - Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`)
@@ -127,10 +127,10 @@ the "freezes the cohort" objection does not apply when the cohort can be reconst
 (Claim A), not by the replacement's magnitude; #327 Phase B's forward-shadow is the out-of-sample
 confirmation before any consolidation live sizing.
 
-**Status**: **DECISION SIGNED 2026-06-18 (operator).** Flip pending operator execution of the live
-`mi_strategies` write (read-only agent does not mutate live trade config). **VERIFY-LIVE**: next
-9:31 ET `_9m_day2_orb_job` shows `9m_day2` resolving to shadow (no paper submit) — until confirmed
-this stays "signed, not verified-live". Replacement entry = #327 Phase B (consolidation shadow).
+**Status**: **SIGNED + FLIP EXECUTED 2026-06-18** (operator ran `/strategy 9m_day2 demote` →
+DB-confirmed `phase=shadow, enabled=t`; the sanctioned path handles cache-invalidation + audit, no
+restart). **VERIFY-LIVE remaining**: next 9:31 ET `_9m_day2_orb_job` resolves shadow / no paper
+submit (behavioral confirmation; tomorrow). Replacement entry = #327 Phase B (consolidation shadow).
 
 ### 2026-05-17 — P7.3b 9M universe-watch (Pradeep methodology)
 
