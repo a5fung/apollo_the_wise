@@ -709,6 +709,73 @@ def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_wind
     }
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# #327 ENTRY SIGNAL — the validated coil-apex timing gate (SHADOW, SINGLE-SOURCE).
+# Validated 2026-06-18 (docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md):
+# across the 9M coil cohort, PERSISTENCE — N consecutive tight days — NOT rmv DEPTH — times the
+# entry. N=3 lifts capture 32%→44% and median uncapped MFE +0.8R→+2.1R, STOP-MATCHED, and the
+# lift survives turning each knob (Δ +9–12pp) in a robust REGION: daily range ≤5–7%, vol ≤1.0×ADV,
+# rmv_5d ≤30–40, N=2–3. It VANISHES under over-tight level gates (range≤4% → Δ0; vol≤0.7 noisy) →
+# the gate sits at the inclusive edge. This is THE single source for the signal: the offline sweep
+# (scripts/_327_entry_signal.py) AND the live entry-watch (scheduler._consolidation_readiness_job)
+# both call is_entry_tight — tests/test_consolidation_entry_signal.py pins it so the forward shadow
+# measures the validated signal, not a re-implementation that drifted. SHADOW: records the would-be
+# entry; ZERO execution authority.
+# ─────────────────────────────────────────────────────────────────────────────
+ENTRY_RMV_MAX = 40.0     # rmv_5d ≤ this = contracted (robust 30–40; 40 = the inclusive edge)
+ENTRY_RANGE_MAX = 0.07   # daily (H−L)/C ≤ this (== TIGHT_RANGE; robust 5–7%)
+ENTRY_VOL_MAX = 1.0      # vol ≤ this × ADV20 (== VOL_CONTRACT, the quiet "rest")
+ENTRY_TIGHT_N = 3        # consecutive tight days before the fire (the validated count; 2–3 region)
+ENTRY_TARGET_R = 3.0     # "capture" = forward MFE reaches +TARGET_R × risk before the stop (settle def)
+
+
+def is_entry_tight(bars, rmv_rows, vols, i, *, rmv_max=ENTRY_RMV_MAX,
+                   range_max=ENTRY_RANGE_MAX, vol_max=ENTRY_VOL_MAX) -> bool:
+    """One bar's #327 tightness gate — contracted rmv_5d + tight daily range + quiet volume.
+    Backward-looking only (reads bars/rmv_rows/vols up to `i`). The SINGLE per-bar feature the
+    offline sweep and the live entry-watch share (pinned by the golden test). `rmv_rows`/`vols` are
+    passed in (not rederived per-bar) so a run-scan over many bars stays cheap."""
+    rmv = _compute_rmv(rmv_rows, i, lookback=5)
+    if rmv is None or rmv > rmv_max:
+        return False
+    c = bars[i]["c"]
+    if not c or (bars[i]["h"] - bars[i]["l"]) / c > range_max:
+        return False
+    adv = _adv(vols, i)
+    return bool(adv) and bars[i]["v"] <= vol_max * adv
+
+
+def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV_MAX,
+                    range_max=ENTRY_RANGE_MAX, vol_max=ENTRY_VOL_MAX):
+    """Point-in-time #327 entry signal AS OF bar `idx` (reads only bars[:idx+1]): do the trailing
+    N bars — all strictly AFTER the runup peak `anchor_idx` — each pass is_entry_tight? Returns the
+    fire record (the would-be anticipate entry + both measured stops + the gate readings) on a fire,
+    else None. The coil-apex bet: capture the imminent expansion, or take a quick tight-stop loss.
+    SHADOW only — the live job RECORDS the row, never submits."""
+    run_lo = idx - n + 1
+    if run_lo < 0 or run_lo <= anchor_idx or idx >= len(bars):
+        return None                                  # the coil run must form AFTER the runup peak
+    rr = bars_to_rmv_rows(bars)
+    vols = [b["v"] for b in bars]
+    if not all(is_entry_tight(bars, rr, vols, j, rmv_max=rmv_max, range_max=range_max,
+                              vol_max=vol_max) for j in range(run_lo, idx + 1)):
+        return None
+    entry = bars[idx]["c"]
+    adv = _adv(vols, idx)
+    return {
+        "entry_date": bars[idx]["date"],
+        "entry_price": round(entry, 4),
+        "signal_n": n,
+        "rmv_5d": _compute_rmv(rr, idx, lookback=5),
+        "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / entry, 5) if entry else None,
+        "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
+        "stop_kind": "coiled_low",                   # the validated default stop (robustness baseline)
+        "stop_price": round(bars[idx]["l"], 4),      # coiled_low = the entry bar's low
+        "structural_low": round(min(bars[j]["l"] for j in range(run_lo, idx + 1)), 4),  # alt stop, recorded
+        "target_r": ENTRY_TARGET_R,
+    }
+
+
 def format_consolidation_row(ticker, anchor_date, runup_ratio, coil_days, today_pct,
                              tight_close_streak=None, rmv_5d=None, fresh_tightening=False) -> str:
     """ONE monospace Telegram row for a Family-A consolidation candidate — the SINGLE shared row

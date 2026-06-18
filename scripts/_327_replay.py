@@ -100,11 +100,22 @@ def load_minute() -> dict[tuple, list[dict]]:
 # tight, quiet base day — reuse anticipation.TIGHT_RANGE / VOL_CONTRACT), then the first
 # EXPANSION day = first subsequent bar whose close breaks above the base high (max high over
 # the coil run) on above-quiet volume. That is where the intraday FIRST5-break fires (Phase 3).
-def find_consolidation_breakout(bars: list[dict], anchor_idx: int, scan: int = COIL_SCAN):
-    closes = [b["c"] for b in bars]
+def consolidation_scan(bars: list[dict], anchor_idx: int, scan: int = COIL_SCAN):
+    """Coil→expansion scan. Returns (confirmed, scan_days):
+      confirmed  = {coil_start_idx, breakout_idx, base_high} for the first DAILY-CLOSE break above
+                   the evolving coil base (close > base_high on above-quiet vol), or None.
+      scan_days  = [(idx, date, base_high_asof), …] for every post-coil day up to AND INCLUDING
+                   the confirmed-close break day — the substrate for the intraday-break arm
+                   (caveat #1). base_high_asof is the base BEFORE folding day i's own high (the
+                   advisor trap): a live watcher breaks the THEN-current base, so the intraday
+                   entry can fire on an EARLIER, weaker-close day than the daily-close break.
+    Bounded scope (advisor): scan_days runs only to the confirmed break, and callers use it ONLY
+    for confirmed names — so the de-rating it measures is a CONSERVATIVE lower bound (names that
+    coil but never confirm-close-break would add only failed intraday breaks, widening it)."""
     vols = [b["v"] for b in bars]
     hi_end = min(anchor_idx + scan, len(bars) - 1)
     coil_start = base_high = None
+    scan_days: list[tuple] = []
     for i in range(anchor_idx + 1, hi_end + 1):
         b = bars[i]
         rng = (b["h"] - b["l"]) / b["c"] if b["c"] else 1.0
@@ -114,13 +125,21 @@ def find_consolidation_breakout(bars: list[dict], anchor_idx: int, scan: int = C
             if is_coil:
                 coil_start, base_high = i, b["h"]
             continue
+        scan_days.append((i, b["date"], base_high))      # as-of base BEFORE folding day i (trap)
         if is_coil:
             base_high = max(base_high, b["h"])
             continue
         if b["c"] > base_high and b["v"] > adv:          # break above the coil base = expansion
-            return {"coil_start_idx": coil_start, "breakout_idx": i, "base_high": base_high}
+            return ({"coil_start_idx": coil_start, "breakout_idx": i, "base_high": base_high},
+                    scan_days)
         base_high = max(base_high, b["h"])               # drift day: fold into the evolving base
-    return None
+    return None, scan_days
+
+
+def find_consolidation_breakout(bars: list[dict], anchor_idx: int, scan: int = COIL_SCAN):
+    """The confirmed-CLOSE breakout only (Phase-A arm) — a thin wrapper over consolidation_scan so
+    both arms share ONE coil definition and the Phase-A numbers stay byte-identical."""
+    return consolidation_scan(bars, anchor_idx, scan)[0]
 
 
 def runup_ratio_at(bars, anchor_idx, window=de.RUNUP_WINDOW):
@@ -142,7 +161,8 @@ def analyze_name(c, daily) -> dict:
     r = {"ticker": tk, "alert_date": ad, "prior_low": c["low"], "anchor_found": False,
          "arm1_day": None, "arm1_idx": None, "arm1_fwd_ok": False,
          "runup": None, "canary": False, "base_high": None,
-         "arm2_coil": None, "arm2_breakout": None, "arm2_idx": None, "arm2_fwd_ok": False}
+         "arm2_coil": None, "arm2_breakout": None, "arm2_idx": None, "arm2_fwd_ok": False,
+         "arm2_scan": [], "arm2i_idx": None, "arm2i_day": None, "arm2i_r": None, "arm2g_r": None}
     bars = daily.get(tk)
     if not bars:
         return r
@@ -158,7 +178,7 @@ def analyze_name(c, daily) -> dict:
     ru = runup_ratio_at(bars, ai)
     r["runup"] = round(ru, 3) if ru else None
     r["canary"] = bool(ru and ru >= RUNUP_CANARY)
-    bo = find_consolidation_breakout(bars, ai)
+    bo, scan_days = consolidation_scan(bars, ai)
     if bo:
         bi = bo["breakout_idx"]
         r["arm2_coil"] = bars[bo["coil_start_idx"]]["date"]
@@ -166,6 +186,7 @@ def analyze_name(c, daily) -> dict:
         r["arm2_idx"] = bi
         r["base_high"] = bo["base_high"]
         r["arm2_fwd_ok"] = (last - bi) >= SETTLE_FWD
+        r["arm2_scan"] = scan_days       # bounded to the confirmed break (intraday-arm substrate)
     return r
 
 
@@ -195,13 +216,18 @@ def settle_arm1(minute_rth, prior_low, daily_forward):
     return None                                                    # never triggered = clean miss
 
 
-def settle_arm2(minute_rth, base_high, daily_forward):
+def settle_arm2(minute_rth, base_high, daily_forward, genuine=False):
     """Consolidation: intraday FIRST5-break above the coil base; STOP = first-5-min OR low.
-    Returns (realized_r, entry, stop) or None."""
+    Returns (realized_r, entry, stop) or None. genuine=True requires a TRUE break (entry strictly
+    > base_high) — detect_first5_break carries a 2% reclaim tolerance (gdl*0.98) that admits OR5
+    highs up to 2% UNDER the base; that's right for a gap-low reclaim but too loose for a coil-base
+    break, so the caveat-#1 timing comparison uses genuine=True on BOTH arms (isolates the DAY)."""
     res = de.detect_first5_break(minute_rth, gdl=base_high or 0.0)
     if not res:
         return None
     entry, stop, bi = res
+    if genuine and base_high and entry <= base_high:
+        return None
     out = de.simulate_first5(entry, stop, minute_rth, bi, daily_forward, rule=de.SETTLE_RULE)
     return (out["realized_r"], entry, stop) if out else None
 
@@ -256,9 +282,13 @@ def phase1(rows):
             needed.append((r["ticker"], r["arm1_day"], "day2"))
         if r["arm2_breakout"]:
             needed.append((r["ticker"], r["arm2_breakout"], "consol"))
+        for (_idx, d, _bh) in r["arm2_scan"]:            # caveat-#1 intraday arm: every post-coil day
+            needed.append((r["ticker"], d, "postcoil"))
     NEEDED_OUT.write_text("\n".join(f"{t}|{d}|{a}" for t, d, a in sorted(set(needed))) + "\n",
                           encoding="utf-8")
-    print(f"  minute-days to pull (Phase 2)        : {len(set(needed))}  -> {NEEDED_OUT.name}")
+    n_postcoil = len({(r["ticker"], d) for r in rows for (_i, d, _b) in r["arm2_scan"]})
+    print(f"  minute-days to pull (Phase 2)        : {len(set((t, d) for t, d, _ in needed))}"
+          f"  -> {NEEDED_OUT.name}  (incl {n_postcoil} post-coil days for the caveat-#1 arm)")
 
 
 def phase3(rows, daily, minute):
@@ -285,8 +315,35 @@ def phase3(rows, daily, minute):
                 rth = de.polygon_to_rth_minutes(raw, r["arm2_breakout"])
                 s = settle_arm2(rth, r["base_high"], _daily_forward(bars, r["arm2_idx"]))
                 r["arm2_r"] = s[0] if s else (0.0 if rth else None)
+                # genuine-break value on the SAME confirmed-close day (consistent trigger w/ arm2i)
+                sg = settle_arm2(rth, r["base_high"], _daily_forward(bars, r["arm2_idx"]), genuine=True)
+                r["arm2g_r"] = sg[0] if sg else (0.0 if rth else None)
             else:
                 r["arm2_r"] = None
+        # ARM 2-INTRADAY (caveat #1): the FIRST post-coil day with a GENUINE first-5 break above the
+        # AS-OF base (entry > base; marginal sub-base pokes a real watcher ignores are skipped) —
+        # the entry a LIVE watcher gets even when the day closes weak (the confirmed-close arm
+        # cannot). Same stop / harvest / forward window AND the same genuine trigger as arm2g, so
+        # the only thing that differs is the entry DAY = the daily-close selection bias.
+        any_scan_data = False
+        for (idx, d, bh) in r["arm2_scan"]:
+            raw = minute.get((r["ticker"], d))
+            if not raw:
+                continue
+            any_scan_data = True
+            rth = de.polygon_to_rth_minutes(raw, d)
+            res = de.detect_first5_break(rth, gdl=bh or 0.0)
+            if not res:
+                continue
+            entry, stop, bi = res
+            if bh and entry <= bh:                         # not a GENUINE break above the as-of base
+                continue                                   # keep scanning for a real expansion day
+            out = de.simulate_first5(entry, stop, rth, bi, _daily_forward(bars, idx), rule=de.SETTLE_RULE)
+            r["arm2i_idx"], r["arm2i_day"] = idx, d
+            r["arm2i_r"] = out["realized_r"] if out else None
+            break                                          # first genuine intraday break = live entry
+        if r["arm2i_idx"] is None and r["arm2_idx"] is not None:
+            r["arm2i_r"] = 0.0 if any_scan_data else None  # coiled, never broke intraday = 0R
 
     # ---- ARM 1 over its settleable universe (no-trigger = 0R; data-missing excluded) ----
     a1 = [r for r in rows if r["arm1_fwd_ok"] and r.get("arm1_r") is not None]
@@ -368,10 +425,40 @@ def phase3(rows, daily, minute):
         print(f"  within-name delta (consol-Day2) median {d2['median']-d1['median']:+.2f}R  "
               f"mean {d2['mean']-d1['mean']:+.2f}R")
 
+    # ---- CAVEAT-#1 CORRECTION (Phase B offline): confirmed-close timing vs first-intraday-break
+    # timing on the SAME consolidation names. The intraday arm enters on the first post-coil
+    # first-5 break — often an EARLIER, weaker-close day, the entry a LIVE watcher actually gets.
+    # The drop arm2 -> arm2i is the daily-close selection bias, measured (conservative lower bound:
+    # names that coil but never confirm-close-break are excluded by the bounded scan). ----
+    cc, cg, ci, moved = [], [], [], 0
+    for r in rows:
+        if r["arm2_idx"] is None or not r["arm2_fwd_ok"]:
+            continue
+        a2g, a2i = r.get("arm2g_r"), r.get("arm2i_r")
+        if a2g is None or a2i is None:
+            continue                                       # minute data missing on one side
+        cc.append(r.get("arm2_r") if r.get("arm2_r") is not None else 0.0)
+        cg.append(a2g)
+        ci.append(a2i)
+        if r["arm2i_idx"] is not None and r["arm2i_idx"] < r["arm2_idx"]:
+            moved += 1                                     # live entry fired earlier than the close break
+    if cg:
+        print(f"\nCAVEAT-#1 — daily-close-confirmed vs first-intraday-break entry  (N={len(cg)} consolidation names)")
+        print(f"  [Phase-A loose trigger] confirmed-close: full {_fmt(_stats(cc))}")
+        print(f"  [genuine break on BOTH arms (entry>base) — isolates the entry DAY:]")
+        print(f"  ARM 2g confirmed-close timing : full {_fmt(_stats(cg))}")
+        print(f"                                  filled {_fmt(_stats([x for x in cg if x != 0.0]))}")
+        print(f"  ARM 2i first-intraday-break   : full {_fmt(_stats(ci))}")
+        print(f"                                  filled {_fmt(_stats([x for x in ci if x != 0.0]))}")
+        print(f"  entries that moved EARLIER (weaker-close day): {moved}/{len(cg)}")
+        print(f"  selection-bias de-rate (arm2i - arm2g, genuine)  median {_median(ci) - _median(cg):+.2f}R  "
+              f"mean {sum(ci) / len(ci) - sum(cg) / len(cg):+.2f}R")
+
     print("\n(MFE-free: realized R via the day-0 minute scale-out + daily trail to the day-5 "
-          "time stop, both arms identical. N small -> DIRECTIONAL; read median + ex-top3. "
-          "Arm-2 magnitude is UPWARD-biased: breakout days are daily-close-confirmed, so weak-"
-          "close failed breakouts a live watcher would take are excluded — Phase B measures it.)")
+          "time stop, both arms identical. N small -> DIRECTIONAL; read median + ex-top3. The "
+          "CAVEAT-#1 block above quantifies the daily-close selection bias by re-timing Arm-2 to "
+          "the first intraday first-5 break a live watcher would take — direction + rough magnitude, "
+          "not a ship number; conservative lower bound on the bias.)")
 
 
 def main():

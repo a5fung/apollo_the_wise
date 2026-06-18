@@ -2880,21 +2880,27 @@ async def _consolidation_readiness_job():
     COO canary) + records the coil/tightness telemetry; UPSERT keyed on (ticker, anchor_date);
     Telegram the newly-COILED transitions (deduped via the prior-state map).
 
-    PAUSED until the carry-forward is verified live (tests/test_anticipation_consolidation.py runs
-    select_consolidation_keys on the two real 6/15→6/16 universe snapshots and asserts the 7
-    drift-prone names carry their original anchor — the un-pause gate).
+    UN-PAUSED 2026-06-17 (carry-forward verified by tests/test_anticipation_consolidation.py — the
+    7 real 6/15→6/16 drift names carry their original anchor). Registered at 17:35 ET mon-fri.
+
+    #327 FORWARD SHADOW (operator "wire it", 6/18): per key, after the consolidation upsert, fire
+    the validated entry signal (anticipation.entry_signal_at — N≥ENTRY_TIGHT_N tight days at the
+    coil apex) AS OF the latest bar and record one shadow row per OPEN coil
+    (insert_consolidation_entry_shadow; open-dedup pins the first fire). SHADOW — no execution.
     """
+    from datetime import timedelta
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.briefing import send_telegram_message
     from agents.market_intelligence.db import (
         get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
-        upsert_consolidation,
+        upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
     )
     try:
         today = et_today()
         universe = await get_anticipation_universe(today)
         state_map = await get_consolidation_state_map()
+        nine_m = await get_recent_9m_tickers(today - timedelta(days=90))  # #327 origin tag
 
         # CARRY-FORWARD: union the fresh §2 proposer with existing non-aged rows so a base whose
         # rolling-window anchor drifts (peak aging out) keeps its ORIGINAL key (no duplicate rows).
@@ -2905,7 +2911,7 @@ async def _consolidation_readiness_job():
                     {"anchor_date": anc, "runup_high": v["runup_high"], "dvol_med": v["dvol_med"]})
         keys = de.select_consolidation_keys(universe, existing)
 
-        written, transitions = 0, []
+        written, transitions, entries_fired = 0, [], []
         for k in keys:
             ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
             try:
@@ -2915,6 +2921,26 @@ async def _consolidation_readiness_job():
                 cons = de.evaluate_consolidation(bars, anchor_date.isoformat())
                 if cons is None:
                     continue  # runup canary failed — the proposer's coarse gate didn't re-confirm
+
+                # #327 FORWARD SHADOW: fire the validated entry signal AS OF the latest bar (the coil
+                # apex — N consecutive tight days post-runup). SHADOW recorder; the open-dedup pins
+                # one row to the first fire day. anchor_idx re-located here (evaluate_consolidation
+                # already confirmed the anchor is in-bars, so this is guaranteed non-None).
+                anchor_idx = next((j for j, b in enumerate(bars)
+                                   if b["date"] == anchor_date.isoformat()), None)
+                if anchor_idx is not None:
+                    sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
+                    if sig:
+                        origin = "9m" if ticker in nine_m else "family_a"
+                        if await insert_consolidation_entry_shadow(
+                                ticker, anchor_date, entry_date=sig["entry_date"],
+                                entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
+                                stop_price=sig["stop_price"], structural_low=sig["structural_low"],
+                                signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"],
+                                range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
+                                target_r=sig["target_r"], origin=origin):
+                            entries_fired.append((ticker, origin, sig))
+
                 await upsert_consolidation(
                     ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
                     runup_high=cons["runup_high"], coil_days=cons["coil_days"],
@@ -2934,7 +2960,17 @@ async def _consolidation_readiness_job():
                 logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
 
         logger.info(f"consolidation readiness: {len(universe)} universe, {written} rows, "
-                    f"{len(transitions)} newly coiled")
+                    f"{len(transitions)} newly coiled, {len(entries_fired)} #327 entry-shadows fired")
+        if entries_fired:
+            lines = [f"🎯 *Consolidation ENTRY signal fired* (#327 forward SHADOW · "
+                     f"{len(entries_fired)}) — N≥{de.ENTRY_TIGHT_N} tight days at the coil apex:", ""]
+            for ticker, origin, sig in entries_fired[:12]:
+                tag = " 9M" if origin == "9m" else ""
+                lines.append(f"  `{ticker:<5}`{tag} entry {sig['entry_price']:.2f} "
+                             f"stop {sig['stop_price']:.2f} (coiled_low) "
+                             f"rmv{(sig['rmv_5d'] or 0):.0f} n{sig['signal_n']}")
+            lines += ["", "SHADOW — recording the would-be anticipate entry; settlement tracked forward."]
+            await send_telegram_message("\n".join(lines))
         if transitions:
             # Same row format as `/anticipation` (de.format_consolidation_row, the single source —
             # the two surfaces had drifted; operator-flagged 2026-06-17).

@@ -1552,6 +1552,45 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_consolidation_state
                 ON mi_anticipation_consolidation(state, anchor_date DESC);
 
+            -- ── #327 FORWARD SHADOW — the consolidation ENTRY-watch (operator "wire it", 6/18) ──
+            -- Records the would-be ANTICIPATE entry the MOMENT the validated #327 signal fires
+            -- (≥ENTRY_TIGHT_N consecutive tight days post-runup; anticipation.entry_signal_at).
+            -- Validation: docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md — the
+            -- forward, out-of-sample read on the chosen REGION (range≤5–7%, vol≤1.0×, rmv≤30–40,
+            -- N=2–3). One row per (ticker, anchor_date) coil WHILE OPEN; the settlement columns fill
+            -- in a LATER phase that reads these rows retroactively (so deferring loses no data).
+            -- SHADOW: zero execution authority. Stop recorded as coiled_low (the validated default)
+            -- + structural_low (the alternate) so settlement can choose without re-deriving.
+            CREATE TABLE IF NOT EXISTS mi_consolidation_entry_shadow (
+                id              SERIAL PRIMARY KEY,
+                ticker          TEXT NOT NULL,
+                anchor_date     DATE NOT NULL,        -- the runup-peak key (== mi_anticipation_consolidation)
+                entry_date      DATE NOT NULL,        -- the fire day (close of the Nth tight day)
+                entry_price     FLOAT NOT NULL,       -- close on the fire day = the anticipate entry
+                stop_kind       TEXT NOT NULL,        -- 'coiled_low' (the validated default)
+                stop_price      FLOAT NOT NULL,       -- coiled_low = the fire-bar low
+                structural_low  FLOAT,                -- alt stop (base low over the run) — recorded, unused yet
+                signal_n        INT NOT NULL,         -- consecutive tight days at the fire
+                rmv_5d          FLOAT,                -- the gate readings at the fire (telemetry)
+                range_pct       FLOAT,
+                vol_ratio       FLOAT,
+                target_r        FLOAT NOT NULL,       -- "capture" = fwd MFE ≥ this × risk (settlement def)
+                origin          TEXT NOT NULL,        -- '9m' (a 9M day seeded the runup) | 'family_a' (general)
+                -- settlement (filled by a later phase; NULL = still open / unsettled) --
+                outcome         TEXT,                 -- capture | stop | open | NULL(unsettled)
+                realized_r      FLOAT,
+                fwd_mfe_r       FLOAT,
+                settled_at      TIMESTAMPTZ,
+                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CHECK (outcome IS NULL OR outcome IN ('capture','stop','open')),
+                CHECK (origin IN ('9m','family_a'))
+            );
+            -- one OPEN shadow per coil (dedup); a settled row frees the key for a genuinely new leg.
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_cons_entry_shadow_open
+                ON mi_consolidation_entry_shadow(ticker, anchor_date) WHERE outcome IS NULL;
+            CREATE INDEX IF NOT EXISTS idx_cons_entry_shadow_unsettled
+                ON mi_consolidation_entry_shadow(entry_date) WHERE outcome IS NULL;
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
@@ -6419,6 +6458,40 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
         """, ticker, _dd(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
              today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
              fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _dd(last_eval))
+
+
+async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
+        entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, range_pct,
+        vol_ratio, target_r, origin) -> bool:
+    """Record one #327 forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial unique
+    index (ticker, anchor_date) WHERE outcome IS NULL makes a re-fire on an already-OPEN coil a
+    no-op, so the entry stays pinned to the FIRST fire day (== the offline run_of_tight semantics).
+    Returns True iff a NEW row was written (the job's 'fired' signal)."""
+    def _dd(v):
+        return date.fromisoformat(v) if isinstance(v, str) else v
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO mi_consolidation_entry_shadow
+                (ticker, anchor_date, entry_date, entry_price, stop_kind, stop_price,
+                 structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+            ON CONFLICT (ticker, anchor_date) WHERE outcome IS NULL DO NOTHING
+            RETURNING id
+        """, ticker, _dd(anchor_date), _dd(entry_date), entry_price, stop_kind, stop_price,
+             structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin)
+    return row is not None
+
+
+async def get_recent_9m_tickers(since_date: date) -> set:
+    """Tickers with a 9M Day-2 candidate on/after `since_date` — the #327 forward shadow's origin
+    tag ('9m' = a 9M day seeded the runup; else 'family_a'). Coarse set membership, telemetry only
+    (a 90d superset of the ~15-session runup window is fine for the tag)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ticker FROM mi_9m_day2_candidates WHERE alert_date >= $1", since_date)
+    return {r["ticker"] for r in rows}
 
 
 async def get_consolidation_board(limit: int = 25) -> list[dict]:
