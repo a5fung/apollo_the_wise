@@ -2338,13 +2338,26 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         # Theme membership — surface for EVERY EP alert (independent of rubric)
         try:
             _theme = await get_theme_membership(ep["ticker"])
-            if not _theme and _axes and any(a in ("theme", "narrative") for a in _axes):
-                # The judge lit the theme/narrative axis but the ticker is in NO tracked cluster
-                # (JBL 6/17: judge-inferred AI-infra theme, in_active_theme=False). Show the
-                # judge's basis instead of a bare "Theme: —" that contradicts the 🔥 fire line.
-                text += "\nTheme: 🔥 judge-inferred (not in a tracked cohort — see analysis)"
-            else:
+            if _theme:
+                # In a tracked engine cohort — the strongest, unambiguous case.
                 text += "\n" + format_theme_for_telegram(_theme)
+            elif _axes and any(a in ("theme", "narrative") for a in _axes):
+                # BLIND-SPOT case (operator 6/18): the judge lit the theme/narrative axis but the
+                # ticker is in NO tracked engine cluster (JBL 6/17: judge-inferred AI-infra theme,
+                # in_active_theme=False). This is NOT "no theme" — it's "a theme our engine isn't
+                # tracking." Pradeep ranks theme as the #1 catalyst, so a COVERAGE blind spot here
+                # is materially worse than a true standalone and must be called out as such, not
+                # hidden behind a bare "Theme: —". Verify whether a real cohort exists (#325).
+                text += (
+                    "\nTheme: ⚠️ none tracked — possible BLIND SPOT "
+                    "(judge inferred a theme/narrative but the engine has no cohort — verify; #325)"
+                )
+            else:
+                # STANDS-ALONE case (operator 6/18): neither the engine nor the judge sees a theme.
+                # The stock is genuinely on its own — a single-name move with no cohort behind it.
+                # Explicitly distinguished from the blind-spot case above so the operator never
+                # confuses "we missed the theme" with "there is no theme."
+                text += "\nTheme: — none (stock stands alone — no engine cohort, no judge-inferred theme)"
         except Exception as _te:
             logger.debug(f"Theme membership lookup failed (non-critical): {_te}")
     except Exception as _e:
