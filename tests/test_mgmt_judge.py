@@ -5,8 +5,34 @@ import asyncio
 
 from agents.market_intelligence.mgmt_judge import (
     VERDICTS, _normalize_mgmt_verdict, assemble_mgmt_inputs, compute_position_metrics,
-    manage_holistic,
+    manage_holistic, snapshot_price, format_mgmt_line,
 )
+
+
+# ── Part 2 (ADR 0014): snapshot price source (NEVER mi_daily_closes — the QURE stale-close trap) ──
+def test_snapshot_price_prefers_last_trade():
+    assert snapshot_price({"lastTrade": {"p": 44.69}, "day": {"c": 26.99}}) == 44.69
+
+
+def test_snapshot_price_falls_back_to_day_then_min():
+    assert snapshot_price({"day": {"c": 26.99}}) == 26.99
+    assert snapshot_price({"day": {"o": 25.0}}) == 25.0          # c missing → o
+    assert snapshot_price({"min": {"c": 30.5}}) == 30.5          # only minute bar
+    assert snapshot_price({}) is None
+    assert snapshot_price(None) is None
+
+
+def test_format_mgmt_line_shadow():
+    payload = {"ticker": "FPS", "pct_from_entry": 0.0931, "r_multiple": 4.96, "hold_days": 15}
+    line = format_mgmt_line(payload, {"verdict": "HOLD", "rationale": "Thesis intact, profit locked."})
+    assert line.startswith("FPS: HOLD (+9.3%, +5.0R, 15d) —")
+
+
+def test_format_mgmt_line_handles_none_metrics():
+    # 9M-class position: r_multiple None (orb_low isn't the risk basis) → "R n/a", never crashes.
+    payload = {"ticker": "QURE", "pct_from_entry": None, "r_multiple": None, "hold_days": 0}
+    line = format_mgmt_line(payload, {"verdict": "FORCE_EXIT", "rationale": "x"})
+    assert "n/a" in line and "R n/a" in line
 
 
 def test_manage_holistic_none_client_fails_open():

@@ -137,7 +137,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "judge_delta_digest", "catalyst_downgrade_digest", "9m_pace_digest",
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
     "evening_briefing", "friday_watchlist", "hud_refresh",
-    "sugar_babies_cohort_refresh",
+    "sugar_babies_cohort_refresh", "position_mgmt_judge",
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
@@ -2285,6 +2285,23 @@ async def _9m_pace_digest_job():
     return len(ranked)
 
 
+async def _position_mgmt_judge_job():
+    """ADR 0014 / #300 P3 — the 16:00-class daily SHADOW management-judge pass over open live
+    positions. ZERO execution authority: one bounded verdict (HOLD/PARTIAL_TAKE/TRAIL_TIGHTEN/
+    FORCE_EXIT) + rationale per position, persisted to mi_position_mgmt_decisions + a digest line,
+    accruing the agree/disagree-with-mechanical evidence the load-bearing P3 will need (graduation
+    = post-launch + own evidence + CHANGE_PROCESS + sign-off). DB-sourced ground truth; current
+    price from a LIVE snapshot (never mi_daily_closes — the part-1 QURE stale-close artifact);
+    per-position fail-open. Skips non-trading days."""
+    now_et = datetime.now(_ET)
+    if not get_market_status(now_et.date()).is_trading_day:
+        logger.info("position mgmt judge: non-trading day — skip")
+        return 0
+    from agents.market_intelligence.mgmt_judge import run_position_mgmt_judge
+    await run_position_mgmt_judge(send=True)
+    return 1
+
+
 async def _judge_delta_digest_job():
     """EOD push of the EP Holistic Grade Judge's bidirectional deltas (#240 / W3,
     2026-06-09). The judge_delta_review.py / unjustified_demotion_sweep.py surfaces
@@ -4294,6 +4311,19 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id="intraday_signals_eod_digest",
         replace_existing=True,
+    )
+
+    # P3 management-judge SHADOW pass (ADR 0014 / #300): 16:02 ET — one bounded EXIT verdict per
+    # open live position, telemetry-only (zero execution authority). Staggered 2 min after the
+    # 16:00 entry-technique digest so the two snapshot/LLM passes don't fire the same tick; still
+    # "16:00-class", before the 17:00 nightly pull (so the snapshot is today's live price, not a
+    # stale close — the part-1 QURE caveat). INTELLIGENCE-owned.
+    _scheduler.add_job(
+        audit_wrap(_position_mgmt_judge_job, "position_mgmt_judge"),
+        CronTrigger(hour=16, minute=2, day_of_week="mon-fri", timezone="America/New_York"),
+        id="position_mgmt_judge",
+        replace_existing=True,
+        misfire_grace_time=1800,
     )
 
     # Materiality SHADOW writer (16:25 ET) RETIRED 2026-06-10 (#249): the holistic

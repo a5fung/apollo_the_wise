@@ -156,3 +156,93 @@ async def manage_holistic(
         normalize=_normalize_mgmt_verdict, label="management judge",
         subject=payload.get("ticker") or "",
         semaphore=semaphore, timeout=timeout, model=model)
+
+
+# ── Part 2 (ADR 0014): the 16:00-class daily pass over open positions ─────────
+
+def snapshot_price(snap: Optional[dict]) -> Optional[float]:
+    """Current price from a Polygon snapshot dict (ADR 0014 caveat C: a live snapshot, NEVER
+    mi_daily_closes — the 16:00 pass runs before the 17:00 nightly pull populates today's close;
+    a stale close gave QURE a false −8R/FORCE_EXIT in the part-1 smoke). lastTrade.p (the last
+    print) → day.c/o (today so far) → min.c. None if nothing usable."""
+    if not isinstance(snap, dict):
+        return None
+    lt = (snap.get("lastTrade") or {}).get("p")
+    if lt:
+        return float(lt)
+    day = snap.get("day") or {}
+    for k in ("c", "o"):
+        if day.get(k):
+            return float(day[k])
+    mc = (snap.get("min") or {}).get("c")
+    return float(mc) if mc else None
+
+
+def format_mgmt_line(payload: dict, verdict: dict) -> str:
+    """One shadow-digest line per position. Pure — fixture-tested."""
+    pct, r = payload.get("pct_from_entry"), payload.get("r_multiple")
+    pct_s = f"{pct * 100:+.1f}%" if pct is not None else "n/a"
+    r_s = f"{r:+.1f}R" if r is not None else "R n/a"
+    return (f"{payload.get('ticker')}: {verdict['verdict']} "
+            f"({pct_s}, {r_s}, {payload.get('hold_days')}d) — {verdict['rationale'][:120]}")
+
+
+async def _fetch_entry_thesis(ticker, alert_date) -> Optional[dict]:
+    """Original entry grade from mi_ep_alerts (catalyst + judge tier + ep_score) — None if absent."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT catalyst, score_tier, ep_score, catalyst_quality
+            FROM mi_ep_alerts WHERE ticker = $1 AND alert_date = $2
+            ORDER BY ep_score DESC NULLS LAST LIMIT 1
+        """, ticker, alert_date)
+    return dict(row) if row else None
+
+
+async def run_position_mgmt_judge(send: bool = False) -> str:
+    """ADR 0014 daily pass: one SHADOW management verdict per open live position. DB-sourced ground
+    truth (feedback_scheduler_aggregators_db_sourced — no module state), current price from a live
+    snapshot, fail-open per position (None verdict → audit `position_mgmt_judge_null`, no row, never
+    raises). ZERO execution authority — telemetry + a digest line only."""
+    from agents.market_intelligence.db import (
+        get_open_live_trades, insert_position_mgmt_decision, log_audit_event)
+    from agents.market_intelligence.collector import get_snapshot_all, et_today
+    from agents.market_intelligence.ep_detector import _get_claude
+
+    today = et_today()
+    positions = await get_open_live_trades()
+    if not positions:
+        msg = "🧭 Mgmt-judge (shadow): no open positions today."
+        if send:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(msg)
+        return msg
+
+    snaps = await get_snapshot_all()
+    client = _get_claude()
+    lines = []
+    for pos in positions:
+        tk = pos.get("ticker")
+        px = snapshot_price(snaps.get(tk))
+        thesis = await _fetch_entry_thesis(tk, pos.get("alert_date"))
+        payload = assemble_mgmt_inputs(pos, px, thesis)
+        verdict = await manage_holistic(client, payload)
+        if verdict:
+            await insert_position_mgmt_decision(
+                pos.get("id"), tk, today, account_mode=pos.get("account_mode"),
+                verdict=verdict["verdict"], rationale=verdict["rationale"],
+                confidence=verdict.get("confidence"), payload=payload,
+                hold_days=pos.get("hold_days"), current_price=px, model=MODEL)
+            lines.append(format_mgmt_line(payload, verdict))
+        else:
+            await log_audit_event(
+                "position_mgmt_judge_null", f"{tk} {today}: management judge fail-open (no verdict)")
+            lines.append(f"{tk}: ⚠️ judge fail-open (no verdict)")
+
+    text = (f"🧭 Mgmt-judge (SHADOW · zero authority) — {len(positions)} open position(s):\n"
+            + "\n".join(lines))
+    if send:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(text)
+    return text
