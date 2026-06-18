@@ -107,7 +107,16 @@ The named SSoT (CLAUDE.md HARD rule) **confirms** this spec and is not supersede
   Theme-as-input (#328) likewise documents under the meta-rubric/theme SSoT, not by editing the
   fundamentals rubric.
 
-## 3. The architectural fork (needs sign-off — this decides what #330/#331 build)
+## 3. The architectural fork — ✅ DECIDED 2026-06-18 (operator): PATH A
+
+> **Operator chose Path A — enrich the ONE judge.** So #330/#331/#328 build judge *axis inputs +
+> per-axis `axis_reads` traceability*, NOT a separate numeric grade surface. Path B's standalone
+> calibrated composite remains the forward-data-gated registry cross-check (`phase5_meta_rubric_
+> calibration`, ~9/8, N≥30) — a cross-check, never a second authority. Calibration of Path A rides
+> the existing operator-labeled eval (ADR-0011 go-live gate). Default `axis_reads` granularity =
+> per-axis {lit? · direction · ≤1-line why}; revisit if a numeric per-axis contribution is wanted.
+
+
 
 The registry review (`phase5_meta_rubric_calibration`) envisioned a **separate logistic-regression
 numeric composite** (`meta_rubric_score`) — that prose predates the judge. Two coherent paths:
