@@ -5329,7 +5329,10 @@ class MarketIntelligenceAgent(BaseAgent):
         async with pool.acquire() as conn:
             alert = await conn.fetchrow("""
                 SELECT ticker, alert_date, score_tier, ep_score, gap_pct,
-                       catalyst, catalyst_quality, rel_volume
+                       catalyst, catalyst_quality, rel_volume,
+                       grade_engine_authority, baseline_floor_tier, judge_tier,
+                       judge_direction, judge_materiality_tier, judge_rationale,
+                       fire_axes, rubric_version
                 FROM mi_ep_alerts
                 WHERE ticker = $1 AND alert_date = $2
                 ORDER BY ep_score DESC
@@ -5387,6 +5390,25 @@ class MarketIntelligenceAgent(BaseAgent):
                 else:
                     cat = cat_full
                 lines.append(f"   {cat}")
+            # #329-trace: the judge decision trace (periodic-review surface). Shows HOW the
+            # authoritative tier was reached — judge tier + direction vs the floor, materiality,
+            # which axes lit, and the load-bearing rationale — so a grade is reconstructable.
+            if alert.get("grade_engine_authority"):
+                _fa = alert.get("fire_axes")
+                _fa_txt = ", ".join(_fa) if isinstance(_fa, (list, tuple)) and _fa else "—"
+                _bits = [f"⚖️ judge: {alert.get('judge_tier') or alert.get('score_tier')}"]
+                if alert.get("judge_direction"):
+                    _bits.append(f"{alert['judge_direction']} vs floor {alert.get('baseline_floor_tier') or 'n/a'}")
+                if alert.get("judge_materiality_tier"):
+                    _bits.append(f"materiality {alert['judge_materiality_tier']}")
+                _bits.append(f"axes {_fa_txt}")
+                if alert.get("rubric_version"):
+                    _bits.append(f"rubric {alert['rubric_version']}")
+                lines.append("   " + " · ".join(_bits))
+                _jr = (alert.get("judge_rationale") or "").strip()
+                if _jr:
+                    _jr = _jr if len(_jr) <= 200 else _jr[:200].rsplit(" ", 1)[0] + "…"
+                    lines.append(f"   \"{_jr}\"")
         else:
             if scan and scan.get("filter_reason"):
                 # #171 — it WAS scanned, just not alerted; show why (e.g. cooldown).

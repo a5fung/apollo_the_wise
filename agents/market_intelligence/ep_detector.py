@@ -2490,6 +2490,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # mutate r AFTER the write succeeds (DB-first), so
                             # the Telegram alert never renders axes the row lacks.
                             r["fire_axes"] = v.get("fire_axes")
+                            # #329-trace (display-only): surface the JUDGE's own
+                            # rationale + materiality on the alert. Same DB-first
+                            # discipline as fire_axes — only after the write, so
+                            # the alert never shows a "why" the row lacks. The
+                            # alert italic leads with judge_rationale when the
+                            # judge is authoritative (it was showing the FLOOR's
+                            # analysis under an authoritative judge — same
+                            # coherence gap as #319).
+                            r["judge_rationale"] = v.get("rationale")
+                            r["judge_materiality_tier"] = v.get("materiality_tier")
                 if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority

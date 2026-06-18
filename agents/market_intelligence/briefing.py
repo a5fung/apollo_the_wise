@@ -2185,6 +2185,32 @@ def format_grade_provenance(ep: dict) -> str:
     return "🔎 " + " · ".join(parts)
 
 
+def resolve_why_text(ep: dict) -> str:
+    """#329-trace: the alert's italic "why" leads with the JUDGE's OWN rationale when the judge is
+    authoritative — it was showing the FLOOR's analysis (claude_analysis) under an authoritative
+    judge, the same coherence gap #319 fixed for the headline. Floor/fallback authority (or a judge
+    that rendered no rationale) → the floor analysis, as before."""
+    if ep.get("grade_engine_authority") == "judge":
+        jr = (ep.get("judge_rationale") or "").strip()
+        if jr:
+            return jr
+    return ep.get("claude_analysis") or ""
+
+
+def format_judge_trace_suffix(ep: dict) -> str:
+    """#329-trace: the judge's DIVERGENCE signals folded onto the fire line (NOT a new block) —
+    materiality tier + whether a DIRECT primary source backed the grade. These are the at-a-glance
+    "does this rating align with expectation?" cues alongside the lit fire axes. Empty string when
+    neither is present (byte-identical to the pre-change fire line)."""
+    bits = []
+    mat = ep.get("judge_materiality_tier")
+    if mat:
+        bits.append(f"materiality {mat}")
+    if ep.get("has_direct_source"):
+        bits.append("direct-source ✓")
+    return (" · " + " · ".join(bits)) if bits else ""
+
+
 async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     """Send an immediate EP alert to Telegram."""
     tier_e = TIER_EMOJI.get(ep.get("score_tier", ""), "")
@@ -2280,12 +2306,18 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     # grade itself): the holistic judge's verdict names which axes lit
     # (catalyst/theme/narrative). Absent key = judge fail-open (no verdict) →
     # no line; empty list = judge saw no fire.
+    # #329-trace (display-only): fold the judge's divergence signals (materiality + direct-source)
+    # onto the fire line so the operator can eyeball "does this rating align?" without a new block.
+    _trace_suffix = format_judge_trace_suffix(ep)
     fire_line = ""
     _axes = ep.get("fire_axes")
     if _axes:
-        fire_line = f"🔥 Fire (judge): {', '.join(_axes)}\n"
+        fire_line = f"🔥 Fire (judge): {', '.join(_axes)}{_trace_suffix}\n"
     elif _axes is not None:
-        fire_line = "🔥 Fire (judge): *⚠️ none seen* — no axis lit\n"
+        fire_line = f"🔥 Fire (judge): *⚠️ none seen* — no axis lit{_trace_suffix}\n"
+
+    # The italic "why" leads with the judge's own rationale when authoritative (see resolve_why_text).
+    _why_text = resolve_why_text(ep)
 
     head_e, head_label = resolve_headline_grade(ep)
     text = (
@@ -2297,7 +2329,7 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n"
         + fire_line + "\n"
-        f"_{ep.get('claude_analysis', '')}_\n\n"
+        f"_{_why_text}_\n\n"
         # Catalyst line: shown unless the grade rests on a direct source (#317 — then the italic
         # claude_analysis above already carries the grounded catalyst; the discovery line is
         # suppressed to avoid the contradiction/redundancy).

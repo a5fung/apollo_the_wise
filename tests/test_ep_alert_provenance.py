@@ -7,6 +7,7 @@ Pins the pure formatters: _judge_direction, resolve_headline_grade, format_grade
 """
 from agents.market_intelligence.briefing import (
     _judge_direction, resolve_headline_grade, format_grade_provenance,
+    resolve_why_text, format_judge_trace_suffix,
 )
 
 # The three real 6/17 alerts (in-memory dict shape send_ep_alert receives).
@@ -74,3 +75,36 @@ def test_provenance_omits_perplexity_when_absent_and_judge_when_floor():
     p = format_grade_provenance({"catalyst_quality": "routine", "grade_engine_authority": "floor"})
     assert "Floor: routine (Claude)" in p
     assert "Perplexity" not in p and "Judge" not in p
+
+
+# ── #329-trace: resolve_why_text — lead the italic with the JUDGE rationale ───
+def test_why_leads_with_judge_rationale_when_authoritative():
+    ep = dict(LZB, judge_rationale="Transformative deal vs a $120M micro-cap; theme hot.",
+              claude_analysis="floor's weaker take")
+    assert resolve_why_text(ep) == "Transformative deal vs a $120M micro-cap; theme hot."
+
+
+def test_why_falls_back_to_floor_analysis_when_not_judge():
+    ep = {"grade_engine_authority": "floor", "claude_analysis": "floor analysis",
+          "judge_rationale": "should be ignored"}
+    assert resolve_why_text(ep) == "floor analysis"
+
+
+def test_why_falls_back_when_judge_has_no_rationale():
+    # Authoritative judge but empty rationale → don't blank the alert; show floor analysis.
+    ep = dict(LZB, judge_rationale="  ", claude_analysis="floor analysis")
+    assert resolve_why_text(ep) == "floor analysis"
+    assert resolve_why_text({"grade_engine_authority": "judge"}) == ""  # nothing at all → empty
+
+
+# ── #329-trace: format_judge_trace_suffix — divergence cues on the fire line ──
+def test_trace_suffix_includes_materiality_and_source():
+    s = format_judge_trace_suffix({"judge_materiality_tier": "transformative", "has_direct_source": True})
+    assert s == " · materiality transformative · direct-source ✓"
+
+
+def test_trace_suffix_partial_and_empty():
+    assert format_judge_trace_suffix({"judge_materiality_tier": "minor"}) == " · materiality minor"
+    assert format_judge_trace_suffix({"has_direct_source": True}) == " · direct-source ✓"
+    assert format_judge_trace_suffix({}) == ""               # byte-identical fire line when absent
+    assert format_judge_trace_suffix({"has_direct_source": False}) == ""
