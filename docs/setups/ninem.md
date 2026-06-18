@@ -1,6 +1,8 @@
 # 9M EP — Virgin 9M, Sugar Baby, Day 2 ORB
 
-**Phase**: Live (paper). Production-active across all three sub-stages.
+**Phase**: Stages 1–2 (intraday 9M + sugar-baby EOD) Live (paper/telemetry). **Stage 3 (Day-2 ORB)
+RETIRED → shadow 2026-06-18** (operator-signed; #327 read — see change log; flip pending live
+execution). Replacement entry = consolidation tightness→expansion (#327 Phase B, shadow-first).
 **Origin**: Pradeep Bonde virgin 9-million-share (9M) day methodology.
 **Code**:
 - Intraday detection: `agents/market_intelligence/ninem_detector.py`, scheduler every 5 min 9:30-16:00 ET (`9m_ep_scan`)
@@ -84,9 +86,51 @@ User-facing Telegram is batched per scan tick. Per-ticker DB inserts + audit eve
 
 2. **9M Day 2 stop discrepancy** (CLAUDE.md 2026-05-01 session 1): the ORIGINAL bug was that order_manager.py read `trade["orb_low"]` for stop, but 9M Day 2 writes `stop_price = prior_day_low`. Fixed; documented for SSoT continuity.
 
-3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`.
+3. **9M Day-2 ORB = legacy/bridge mechanism, NOT the methodology entry (#65, architecture direction analyzed 2026-05-31, advisor-reviewed).** Per Pradeep methodology the 9M event is a WATCH-UNIVERSE trigger; the *intended* entry comes from tightness→expansion (the flag-class / entry-technique layer). That path is **already wired and running in shadow** (P7.3b `ninem_universe_watch` carryforward, 2026-05-17) and is the **TARGET** 9M entry. The mechanical Day-2 ORB (Stage 3 above) runs in **parallel as a legacy/bridge** — the only 9M *paper* entry until the entry-technique detectors (flag-break #94 / support-test #95 / MA-pullback #96 / U&R #98) graduate (N≥10, earliest 7/15). Evidence 2026-05-31: N=4 clean-closed = −$1,541 / 75% loss; it mechanically enters clinical biotechs (ROIV/PURR) the MAGNA53 revenue-stage gate would block — a *gateable* defect, not proof the strategy is worthless. **Which mechanism trades the cohort is a layer-2 (evidence-gated) decision** — do NOT demote `9m_day2` on N=4 (demote→shadow freezes the cohort at N=4 forever; shadow = no fills). Operational options A (deprecate) / B (revenue-stage gate now) / C (rename) in `data_gated_reviews.yaml::ninem_day2_mechanical_vs_methodology_alignment`. Portfolio map: `docs/setups/PORTFOLIO.md`. **→ RESOLVED 2026-06-18 (option A, deprecate): #327 replay (N=36, not N=4) confirmed Day-2 ORB has no robust edge → retired to shadow, consolidation entry is the replacement. See the 2026-06-18 change-log entry (the layer-2 evidence-gated decision this limitation deferred).**
 
 ## Change log (newest first)
+
+### 2026-06-18 — RETIRE 9M Day-2 ORB entry → shadow (consolidation replacement) [operator-SIGNED]
+
+**Trigger**: #327 replay directional read (the #326 cut-over question) + operator decision
+2026-06-18. The methodology has always held (limitation #3) that the Day-2 ORB is a legacy/bridge
+mechanism, not the intended entry; #327 measured whether the consolidation (tightness→expansion)
+entry beats it on the same 9M names.
+
+**Evidence** (`docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md`): symmetric
+two-arm replay over the 121-row `mi_9m_day2_candidates` cohort, both arms settled identically
+(`anticipation.SETTLE_RULE`, same forward window, MFE-free via the day-0-minute scale-out). **N=36
+Day-2 ORB fills** (≥10 floor met): filled median **−0.24R**, win 47%, and the only positive total
+(+3.2R) is *entirely* 3 outliers (top-3 = 190% of total, ex-top-3 negative). On the **17 names
+where the consolidation entry fired, Day-2 ORB returned −1.4R** (net negative; 10/17 didn't even
+trigger) vs consolidation +25.0R. Mechanism: Day-2's wide prior-day-low stop (~6–14%) vs the
+consolidation entry's tight first-5-min-low stop (~1–3.5%). **CLAIM A (Day-2 ORB earns no robust
+edge) is solid and self-standing — it carries this retire.** (CLAIM B, consolidation is *better*,
+is selection-inflated and stays Phase-B-shadow-gated; it is NOT relied on for the retire.)
+
+**Anticipated effect**: `mi_strategies` `9M Day 2 ORB` `phase: paper → shadow`. No more paper
+Day-2 ORB submits; intraday 9M detection + sugar-baby EOD sweep + `ninem_universe_watch`
+carryforward all CONTINUE (shadow = telemetry only, the cohort is NOT frozen — see reversal note).
+The consolidation entry-watch (#327 Phase B) becomes the replacement, shadow-first.
+
+**Reversion-flag**: **REVERSAL of 2026-05-31** (limitation #3: "do NOT demote 9m_day2 on N=4 —
+demote→shadow freezes the cohort at N=4 forever; shadow = no fills"). **Why the prior reasoning
+was wrong** (not merely outdated): it rested on the premise that *paper trading was the only way
+to grow Day-2 outcome N*. That premise was incorrect — the Day-2 cohort is **replayable** from
+historical sugar-baby minute bars. #327 obtained **N=36 on clean minute bars** (larger *and*
+cleaner than the IEX-contaminated live paper fills 5/31 sought to accumulate, per the Gate-3
+paper-IEX finding). So keeping a no-edge entry live was never required to answer the edge question;
+the "freezes the cohort" objection does not apply when the cohort can be reconstructed offline.
+
+**Caveat (anti-overfit)**: N=36 is one ~2-month in-sample window (a 2nd window is data-blocked —
+`mi_daily_closes` starts 2025-05-12). The retire is justified by the *incumbent being weak*
+(Claim A), not by the replacement's magnitude; #327 Phase B's forward-shadow is the out-of-sample
+confirmation before any consolidation live sizing.
+
+**Status**: **DECISION SIGNED 2026-06-18 (operator).** Flip pending operator execution of the live
+`mi_strategies` write (read-only agent does not mutate live trade config). **VERIFY-LIVE**: next
+9:31 ET `_9m_day2_orb_job` shows `9m_day2` resolving to shadow (no paper submit) — until confirmed
+this stays "signed, not verified-live". Replacement entry = #327 Phase B (consolidation shadow).
 
 ### 2026-05-17 — P7.3b 9M universe-watch (Pradeep methodology)
 
