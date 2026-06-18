@@ -48,7 +48,9 @@ Legend: ✅ present & adequate · 🟡 present but raw/implicit · ❌ absent.
 |---|---|---|---|---|---|---|
 | Catalyst magnitude/quality | ✅ (grounded corpus, clause 1/4) | ✅ (6 axes) | rubric ✅ / judge 🟡 prose | rubric ✅ / judge ❌ | rubric ✅ / judge 🟡 rationale | — (adequate) |
 | Catalyst materiality, company-relative (`user_catalyst_depth`) | ✅ (deal÷cap tier + clause 2) | ❌ | judge tier output | 🟡 deterministic ratio tiers | ✅ `materiality_tier` | — (#189 shipped) |
-| Catalyst freshness (ADR 0011 v3) | ✅ (clause 1 + `has_direct_source`) | ❌ | judge 🟡 prose | ❌ | 🟡 rationale | — (adequate) |
+| Catalyst freshness (ADR 0011 v3) | 🟡 clause 1 prose — but `has_direct_source` is **NOT threaded** (see below) so the freshness signal is degraded | ❌ | judge 🟡 prose | ❌ | 🟡 rationale | **call-site fix (§2.1)** |
+| **`has_direct_source`** (direct SEC/wire source present) | ❌ **NOT passed at the live call site** → prompt always renders "Direct source present: no" | ❌ | ❌ | ❌ | ❌ | **§2.1 — likely live defect** |
+| **`revenue_stage`** | ❌ **NOT passed at the live call site** → always "Revenue-stage: no" | n/a | ❌ | ❌ | ❌ | **§2.1** |
 | **Catalyst durability — forward ≥4Q** (`user_catalyst_depth` 6/16) | 🟡 only if corpus mentions guidance | ❌ (trailing accel only) | ❌ | ❌ | ❌ | **#333** |
 | **Theme — membership** (Pradeep #1) | 🟡 **boolean `in_active_theme` only** | ❌ | ❌ (flat +10 floor bonus) | ❌ | `fire_axes` lists "theme" | **#328** |
 | **Theme — STAGE & SCORE (heat)** | ❌ **NOT in payload** (computed by `get_theme_membership`, shown on alert, never reaches judge) | ❌ | ❌ | ❌ | ❌ | **#328 (the sharp one)** |
@@ -68,10 +70,42 @@ Legend: ✅ present & adequate · 🟡 present but raw/implicit · ❌ absent.
    / MA-stack context, so clause 5 ("gap alignment modulates") has nothing to operate on.
    **Fix = pass the structure context (#330) → then alignment (#331) becomes possible.**
 
-So the build STARTS by **enriching the judge payload** (passing inputs it's blind to) — cheap,
-shadow-only, no grade-math change — before any scored composite.
+### 2.1 The call-site finding — the judge is blind to signals its OWN rubric cites (verified `ep_detector.py:2431`)
+The live judge call passes only `grounded_text, market_cap, sector, materiality_tier,
+active_narratives`. It does **not** thread `has_direct_source`, `revenue_stage`, or theme
+stage/score. Because `_build_judge_prompt` renders those fields unconditionally, the judge
+**always** sees "Direct source present: no" and "Revenue-stage: no". Rubric v3 clause 1 leans on
+`has_direct_source` ("=false + materiality-driven promotion = highest-risk, prefer the floor
+tier") — so the judge applies freshness skepticism **universally** and cannot credit a genuinely
+fresh, directly-sourced 8-K. `has_direct_source` IS now on the result dict (threaded for #317
+today) — it's computed, just not passed. **This is a likely live grade-affecting defect, not only
+a theme gap.** Priority order for the enrich: `has_direct_source` (rubric actively depends on it)
+> theme stage/score > structure context.
+
+### 2.2 Gate reality — the judge is LOAD-BEARING (toggle ON since 6/10)
+Enriching the **live** payload changes live verdicts immediately → every enrich item is
+grade-affecting and rides **#335** (CHANGE_PROCESS + N≥10 backtest + sign-off + DB toggle). The
+build + measurement is done on the **eval/shadow arm** first (the with-vs-without delta is exactly
+the #335 evidence). "Shadow-safe" holds ONLY on the eval arm — there is no byte-neutral live edit
+here (a themed/sourced name's prompt changes by construction). So the build STARTS by enriching
+the payload **on the eval arm** and measuring the verdict delta, before any scored composite.
 
 ---
+
+### 2.3 Reconciliation against the rubric SSoT (`docs/setups/catalyst_rubric.md`)
+The named SSoT (CLAUDE.md HARD rule) **confirms** this spec and is not superseded by it:
+- It declares itself the **fundamentals component only** and "MUST NOT be the sole input to the
+  final label" — so structure/gap/theme being absent from it is *by design*, not an omission.
+- It explicitly defers composition: "Phase 5 meta-rubric combines [catalyst] with theme heat
+  (Phase 3), technical structure (Phase 4.1), and gap alignment (Phase 4.2)." → **#329 is that
+  Phase 5; the §3 fork is genuinely open, NOT re-deciding a settled design.**
+- Governing rule to honor: *"Do not over-tune the catalyst rubric to compensate for missing
+  upstream signals. Add those signals as separate inputs, each with their own SSoT + quarterly
+  review."* → **#330 (structure) and #331 (gap-alignment) each get their OWN `docs/setups/*.md`
+  SSoT; the composition logic (#329) gets a NEW `docs/setups/meta_rubric.md` SSoT** (the
+  same-commit update target when those land — NOT this analysis doc, and NOT `catalyst_rubric.md`).
+  Theme-as-input (#328) likewise documents under the meta-rubric/theme SSoT, not by editing the
+  fundamentals rubric.
 
 ## 3. The architectural fork (needs sign-off — this decides what #330/#331 build)
 
@@ -108,8 +142,8 @@ cluster).
 
 | Step | Task | ETA | Gated? |
 |---|---|---|---|
-| Enrich judge payload: theme stage/score + 1 rubric line (SHADOW eval arm) | #328/#329 | 6/24 | un-gated (shadow) |
-| Add `axis_reads` per-axis traceability to `grade_ep` schema (SHADOW) | #329 | 6/24 | un-gated (byte-neutral when absent, like tape/narrative) |
+| Enrich payload (eval arm): `has_direct_source` (§2.1, highest priority) + `revenue_stage` + theme stage/score; measure verdict delta | #328/#329 | 6/24 | build/measure un-gated on eval arm; LIVE payload edit is grade-affecting → #335 |
+| Add `axis_reads` per-axis traceability to `grade_ep` schema (eval arm; byte-neutral when absent, like tape/narrative) | #329 | 6/24 | build un-gated; live use rides #335 |
 | Catalyst durability forward axis | #333 | 6/27 | behind #210/#211 sourcing |
 | Structure context into payload + structure axis read | #330 | 6/30 | un-gated (shadow) |
 | Gap-alignment axis read (needs #330 levels) | #331 | 7/02 | un-gated (shadow) |
