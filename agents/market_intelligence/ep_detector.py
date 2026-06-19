@@ -1529,9 +1529,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # never touches the live grade or the cache. This is the BFLY mechanism (the
             # 8:12 PR after the 7:00 routine grade). Cheap per-tick check (1 Benzinga call,
             # gated on cheap preconditions); the expensive re-grade runs only on the trigger.
+            # PREMARKET-ONLY (advisor 6/19): same guard as the enrichment shadow — keep the
+            # re-poll's SEC GET + Sonnet call OFF the ORB entry window. BFLY's PR (8:12 ET)
+            # is premarket, so the late-source class is still covered.
             _st = _repoll_shadow_state.get(ticker)
-            _in_orb = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 45)
-            if (_st and not _st["logged"] and _in_orb and _st["quality"] == "routine"
+            _in_window = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+            if (_st and not _st["logged"] and _in_window and _st["quality"] == "routine"
                     and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
                     import time as _time
@@ -1541,11 +1544,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                              if is_primary_subject_news(n, ticker, profile.get("companyName", ""))]
                     _cur = len(_benz)
                     if should_repoll_shadow(catalyst_quality, _st["count"], _cur,
-                                            _st["logged"], _in_orb):
+                                            _st["logged"], _in_window):
                         _st["logged"] = True  # exactly once
-                        _ext = await get_sec_recent_filings(
-                            ticker, forms=("8-K", "6-K"), lookback_days=400,
-                            max_filings=10, want_text=True)
+                        # Reuse the enrichment-shadow's 400d fetch (no second EDGAR hit);
+                        # fall back to a bounded fetch only if the uncached tick didn't run.
+                        _ext = _st.get("ext_filings")
+                        if _ext is None:
+                            _ext = await get_sec_recent_filings(
+                                ticker, forms=("8-K", "6-K"), lookback_days=400,
+                                max_filings=8, want_text=True)
                         _today_sec = nearest_today_filing(_ext, today)
                         _prior_agr = recent_filing_by_item(
                             _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
@@ -1661,14 +1668,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             )
             _repoll_shadow_state[ticker] = {
                 "count": _grade_src_count, "quality": catalyst_quality, "logged": False,
+                "ext_filings": None,
             }
-            if os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true":
+            # PREMARKET-ONLY guard (advisor 6/19): the shadow does extra SEC GETs + a Sonnet
+            # call SYNCHRONOUSLY on run_ep_scan — the order-submission path. Confining it to
+            # premarket (< 9:30 ET) keeps it OFF the 9:30–10:00 ORB entry window (no added
+            # latency where orders submit; no EDGAR-budget contention with the live grade
+            # fetch during entries). The motivating case (BFLY's PR, 8:12 ET) is premarket, so
+            # coverage is preserved; only open-driven gappers are skipped.
+            _shadow_premarket = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+            if (_shadow_premarket
+                    and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
                     import time as _time
                     _t0 = _time.monotonic()
                     _ext = await get_sec_recent_filings(
                         ticker, forms=("8-K", "6-K"), lookback_days=400,
-                        max_filings=10, want_text=True)
+                        max_filings=8, want_text=True)
+                    _repoll_shadow_state[ticker]["ext_filings"] = _ext  # reuse on re-poll
                     _today_sec = nearest_today_filing(_ext, today) or sec_filing
                     _prior_agr = recent_filing_by_item(
                         _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))

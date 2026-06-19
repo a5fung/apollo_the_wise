@@ -108,6 +108,10 @@ async def main():
     thrash = {t: n for t, n in tickers.items() if n > 1}
     print(f"  THRASH CHECK (each ticker/day must fire exactly once): "
           f"{'⚠️ ' + str(thrash) if thrash else 'OK (no ticker fired >1×)'}")
+    if thrash:
+        print("    NOTE: a mid-day container RESTART clears _repoll_shadow_state, so a "
+              "ticker can legitimately fire twice across a restart — check mi_job_runs / "
+              "container uptime before reading this as a logic bug (advisor 6/19).")
     if repoll:
         lat = [d.get("shadow_latency_s", 0) for d in repoll if d.get("shadow_latency_s")]
         print(f"  latency s: p50={_pctile(lat,50):.1f} p95={_pctile(lat,95):.1f} "

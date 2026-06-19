@@ -107,7 +107,15 @@ replay) — its value is conditional on the enrichment.
   source lands after a routine grade in the ORB window (`should_repoll_shadow`; never
   re-polls a firing grade). Flag `ENRICH_SHADOW_ENABLED`; error-wrapped.
 
-**Anticipated effect**: ZERO live behavior change (shadow writes audit rows only). Offline
+**Hot-path safety (advisor 6/19)**: the shadow runs SYNCHRONOUSLY on `run_ep_scan` (the
+order-submission path), so it is **PREMARKET-ONLY** (< 9:30 ET) — it never adds SEC GETs /
+a Sonnet call inside the 9:30–10:00 ORB entry window, and never contends with the live
+grade's EDGAR fetch during entries. The 400d SEC fetch is bounded (`max_filings=8`) and
+fetched once/ticker/day (the re-poll reuses it). Latency is logged (`shadow_latency_s`);
+Monday verify includes a scan-wall-time check, not just "rows wrote". Cost: grade-path LLM
++ SEC calls roughly double premarket (acceptable for telemetry; killable via the flag).
+
+**Anticipated effect**: ZERO live grade-VALUE change (shadow writes audit rows only). Offline
 two-case: BFLY routine→strong (cites today's news sized by the deal), BTQ ATM-dilution
 canary stays routine. Offline 60-name cohort: BFLY-rise + AEHR-restore + CASY gc→strong
 (conservative, still fires), 0 inflation — BUT the offline baseline is no-web and can't
