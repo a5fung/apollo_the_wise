@@ -92,7 +92,7 @@ The script runs 11 idempotent phases:
 6. Reload nginx
 7. Bring up postgres + redis (300s pg_isready timeout)
 8. Drop+recreate apollo DB, restore from sql.gz
-9. Run `scripts/deploy.sh both` — full 5-gate preflight chain
+9. Bring up the split topology: `scripts/deploy.sh execution` THEN `scripts/deploy.sh both` (#349 — execution is profile-gated + holds the creds, so it must come up first; `both` alone leaves the system unable to trade AND false-fails the creds-preflight). Each runs the full 5-gate preflight chain.
 10. Run validation: `readiness_check.py`, `preflight_check.py`, `docker compose ps`
 11. Print operator followup checklist
 

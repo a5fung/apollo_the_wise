@@ -367,11 +367,23 @@ phase_restore_sql() {
 
 # ── Phase 9: bring up apollo services ────────────────────────────────
 phase_app_up() {
-    banner "Phase 9: deploy.sh both (runs 5-gate preflight chain)"
+    banner "Phase 9: bring up split topology — apollo-execution THEN both (preflight chain)"
     if ! should_run; then return 0; fi
     cd "$APP_DIR"
+    # #349: the split topology (#256) needs apollo-execution up FIRST. It is profile-gated
+    # (profiles:["split"], "does NOT auto-start") and holds the Alpaca creds; `deploy.sh both`
+    # = market-agent + orchestrator only and does NOT start it. Without execution: (a) the
+    # restored system can't place/manage a single trade (market-agent's creds are blanked —
+    # it's the intelligence half), and (b) deploy.sh's creds-preflight falls back to the
+    # creds-LESS apollo-market (#278) and false-fails `ALPACA_PAPER_API_KEY not set` → exit 4
+    # → THIS phase aborts mid-disaster with a confusing auth error. So: execution first (its
+    # preflight passes against the creds container), THEN market-agent + orchestrator (whose
+    # creds-preflight now routes to the running apollo-execution). Both are normal,
+    # independently-supported deploy scopes. VALIDATE end-to-end in the live DR rehearsal.
+    sudo -u "$APP_USER" bash scripts/deploy.sh execution \
+        || err "deploy.sh execution failed; inspect output and re-run with --force phase_app_up"
     sudo -u "$APP_USER" bash scripts/deploy.sh both \
-        || err "deploy.sh failed; inspect output and re-run with --force phase_app_up"
+        || err "deploy.sh both failed; inspect output and re-run with --force phase_app_up"
     mark_done
     ok "Phase 9 complete"
 }
