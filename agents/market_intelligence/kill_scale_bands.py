@@ -19,7 +19,10 @@ this stays dependency-free and testable.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # ── SIGNED band thresholds (safeguards.md #268b). Change ONLY via CHANGE_PROCESS. ──
 _KILL_T20 = -1.05        # trailing-20 expectancy ≤ this (worse than worst healthy window −1.03)
@@ -205,6 +208,115 @@ async def get_active_override(account_mode: str = "live") -> dict | None:
         d = {}
     return {"direction": d.get("direction"), "reason": d.get("reason"),
             "since": row["created_at"].date().isoformat()}
+
+
+_LAST_BAND_SAFEGUARD = "kill_scale_band"  # mi_safeguard_state PK with account_mode
+
+
+async def get_last_band(account_mode: str = "live") -> tuple[str | None, str | None]:
+    """The last-evaluated band + its transition date (for dedup + the 'since' on the alert)."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
+            "SELECT state, last_transition_at FROM mi_safeguard_state "
+            "WHERE safeguard = $1 AND account_mode = $2", _LAST_BAND_SAFEGUARD, account_mode)
+    if not row:
+        return None, None
+    since = row["last_transition_at"].date().isoformat() if row["last_transition_at"] else None
+    return row["state"], since
+
+
+async def set_last_band(account_mode: str, band: str) -> None:
+    """Persist the evaluated band; bumps last_transition_at only on an actual change."""
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        await c.execute(
+            """
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state,
+                  last_transition_at = CASE WHEN mi_safeguard_state.state <> EXCLUDED.state
+                                            THEN NOW() ELSE mi_safeguard_state.last_transition_at END,
+                  updated_at = NOW()
+            """, _LAST_BAND_SAFEGUARD, account_mode, band)
+
+
+async def record_override(direction: str, reason: str, account_mode: str = "live") -> None:
+    """Write a `kill_scale_override` audit row (safeguards.md operator condition #2). The
+    verdict reader (get_active_override) then annotates instead of re-prompting."""
+    from agents.market_intelligence.db import log_audit_event
+    import json
+    await log_audit_event("kill_scale_override",
+                          f"operator override: {direction}",
+                          json.dumps({"direction": direction, "reason": reason,
+                                      "account_mode": account_mode}))
+
+
+async def clear_override(account_mode: str = "live") -> None:
+    """Write a `kill_scale_override_cleared` audit row — ends the active override."""
+    from agents.market_intelligence.db import log_audit_event
+    import json
+    await log_audit_event("kill_scale_override_cleared", "operator cleared override",
+                          json.dumps({"account_mode": account_mode}))
+
+
+async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) -> dict:
+    """Daily EOD evaluation (mirrors the drawdown-tier alert cadence — the band inputs only
+    refresh at the 16:12 equity snapshot, so daily-resolution is correct). Evaluates the
+    SIGNED bands, and on a TRANSITION from the last-persisted band emits an immediate Telegram
+    (transition-only, deduped via mi_safeguard_state) + a `kill_scale_band_transition` audit
+    row. Fully error-wrapped — telemetry must never break the EOD chain. Returns a summary."""
+    try:
+        inputs = await assemble_band_inputs(account_mode)
+        verdict = evaluate_kill_scale_bands(
+            inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
+            drawdown_tier=inputs["drawdown_tier"])
+        prev_band, _ = await get_last_band(account_mode)
+        override = await get_active_override(account_mode)
+        transitioned = is_transition(prev_band, verdict.band)
+
+        if transitioned:
+            await set_last_band(account_mode, verdict.band)
+            from agents.market_intelligence.db import log_audit_event
+            import json
+            await log_audit_event(
+                "kill_scale_band_transition",
+                f"{account_mode} {prev_band or '∅'} → {verdict.band}",
+                json.dumps({"account_mode": account_mode, "prev_band": prev_band,
+                            "band": verdict.band, "n_trades": verdict.n_trades,
+                            "trailing_20": verdict.trailing_20, "cum_r": verdict.cum_r,
+                            "reasons": verdict.reasons}))
+            # Don't ping for the very first HOLD baseline (∅→HOLD pre-launch) — only real signal.
+            notable = not (prev_band is None and verdict.band == "HOLD")
+            if send and notable:
+                from agents.market_intelligence.briefing import send_telegram_message
+                arrow = f"{prev_band or '∅'} → {verdict.band}"
+                await send_telegram_message(
+                    f"📊 *Kill/scale band change* ({account_mode}): {arrow}\n"
+                    + format_band_line(verdict, override))
+        return {"band": verdict.band, "prev_band": prev_band, "transitioned": transitioned,
+                "n_trades": verdict.n_trades, "override_active": override is not None}
+    except Exception as e:  # noqa: BLE001 — telemetry must never break the EOD chain
+        logger.warning(f"run_band_evaluation({account_mode}) skipped: {e}")
+        return {"error": str(e)}
+
+
+async def band_digest_section(account_mode: str = "live") -> list[str]:
+    """The weekly-review section (a SECTION of the existing digest, not a new surface —
+    feedback_consolidate_surfaces). SURFACES the verdict + numbers; never prescribes code."""
+    try:
+        inputs = await assemble_band_inputs(account_mode)
+        verdict = evaluate_kill_scale_bands(
+            inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
+            drawdown_tier=inputs["drawdown_tier"])
+        override = await get_active_override(account_mode)
+        return ["", "*🎚️ Kill/scale bands* (live-money, #268b):", format_band_line(verdict, override)]
+    except Exception as e:  # noqa: BLE001
+        return ["", f"_kill/scale band eval unavailable: {e}_"]
 
 
 def format_band_line(v: BandVerdict, override: dict | None = None) -> str:

@@ -5,7 +5,7 @@ healthy +0.95R/30% year (#268 Phase B envelope — trailing-20 p5 −0.63R / min
 worst streak 15, maxDD −24.1R). These tests pin each band's boundary against that envelope.
 """
 from agents.market_intelligence.kill_scale_bands import (
-    evaluate_kill_scale_bands, current_losing_streak, is_transition,
+    evaluate_kill_scale_bands, current_losing_streak, is_transition, format_band_line,
     _SAMPLE_FLOOR, _SCALE_MIN_TRADES,
 )
 
@@ -126,3 +126,17 @@ def test_is_transition():
     assert is_transition("HOLD", "REDUCE") is True
     assert is_transition("REDUCE", "KILL") is True
     assert is_transition("REDUCE", "HOLD") is True    # recovery is a transition too
+
+
+# ── verdict line rendering (digest + alert) ──
+
+def test_format_band_line_shows_band_numbers_and_override():
+    v = evaluate_kill_scale_bands(_rs(-1.0, 19) + [5.0], equity_above_start=False)  # REDUCE
+    line = format_band_line(v)
+    assert "REDUCE" in line
+    assert "t20=" in line and "streak=" in line and "cum=" in line
+    # override annotation surfaces when active
+    annotated = format_band_line(v, override={"since": "2026-06-22", "direction": "trade through",
+                                              "reason": "regime shift"})
+    assert "OVERRIDE ACTIVE since 2026-06-22" in annotated
+    assert "regime shift" in annotated

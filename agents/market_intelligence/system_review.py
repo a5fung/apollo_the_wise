@@ -178,6 +178,17 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     if crypto_section:
         message = f"{message}\n\n{crypto_section}"
 
+    # Kill/scale band verdict (#275) — a SECTION of the weekly digest (not a new
+    # surface). SURFACES the live-money band + numbers + any active override; the
+    # mechanical evaluation (the weekly layer of safeguards.md condition #1).
+    try:
+        from agents.market_intelligence.kill_scale_bands import band_digest_section
+        band_lines = await band_digest_section("live")
+        if band_lines:
+            message = f"{message}\n" + "\n".join(band_lines)
+    except Exception:
+        logger.exception("kill/scale band section render failed")
+
     await send_telegram_message(message)
 
     logger.info(f"Weekly review complete: {window_start}..{today}")

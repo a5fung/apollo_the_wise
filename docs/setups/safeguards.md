@@ -185,9 +185,16 @@ data accrues, through this change process.
    additionally Telegram immediately** at trade-close evaluation (operator
    requirement 2026-06-12: every band hit surfaces as an alert, not just in
    the Sunday summary; transition-only, deduped — same pattern as the
-   drawdown-tier alerts). Implementation = **#275** (runway slot Fri 6/19;
-   meaningful once live trades exist post-6/22). Until #275 ships, the
-   evaluation runs manually on request ("evaluate the bands").
+   drawdown-tier alerts). ✅ **IMPLEMENTED #275 (2026-06-19)**: weekly-digest
+   verdict section (`system_review`) + a daily **16:13 ET** EOD evaluation
+   (`kill_scale_band_eval` job → `kill_scale_bands.run_band_evaluation`) that
+   Telegrams on a band TRANSITION (deduped via `mi_safeguard_state`;
+   daily-resolution mirrors the drawdown-tier alert — the band inputs only
+   refresh at the 16:12 equity snapshot, so per-trade granularity would read
+   stale equity). On-demand: `scripts/evaluate_kill_scale_bands.py`. Evaluator =
+   `kill_scale_bands.evaluate_kill_scale_bands` (12 boundary tests pin the bands
+   OUTSIDE the healthy envelope). Meaningful once live trades accrue post-6/22
+   (pre-launch: HOLD below the 20-trade floor; ∅→HOLD baseline is not alerted).
 2. **Quarterly REVIEW of the bands themselves**: registered as
    `data_gated_reviews.yaml::kill_scale_bands_quarterly_review` — auto-surfaces
    in the Sunday review when due, **first due 2026-08-01**, recurring quarterly
@@ -212,10 +219,13 @@ kill/scale: continue at full size, reason: ...". Apollo then (a) writes a
 (b) adds a change-log entry here. Nothing mechanical needs bypassing — the
 bands are decision triggers, not code blocks.
 
-*Mechanism (once #275 ships)*: the Sunday digest's band evaluation reads
-active `kill_scale_override` rows and annotates its verdict line ("REDUCE
-triggered — operator override ACTIVE since <date>: <reason>") instead of
-re-prompting every week. #275 includes this override-awareness.
+*Mechanism (#275 SHIPPED 2026-06-19)*: the digest + transition-alert band
+evaluation reads active `kill_scale_override` rows (cleared-aware via a later
+`kill_scale_override_cleared`) and annotates its verdict line ("… — operator
+OVERRIDE ACTIVE since <date>: <reason>") instead of re-prompting every week.
+Write surface: `scripts/set_kill_scale_override.py set "<direction>" "<reason>"`
+(or `clear`); or tell Apollo "override kill/scale: …" and it calls
+`record_override`. STILL add a change-log entry here when you set one.
 
 *Scope limit*: this override covers the BANDS only. The mechanical guards —
 2% daily-loss limit and the tiered drawdown breaker (including its −12% BLOCK

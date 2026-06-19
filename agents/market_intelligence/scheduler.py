@@ -138,7 +138,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
-    "chart_axis_shadow", "chart_axis_shadow_weekly_digest",
+    "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
@@ -1250,6 +1250,17 @@ async def _account_equity_snapshot_job():
     except Exception as e:
         logger.error(f"Account equity snapshot/recompute failed: {e}")
         await notify_job_failure("account_equity_snapshot", str(e))
+
+
+async def _kill_scale_band_job():
+    """Run at 4:13 PM ET — right after the 16:12 equity snapshot + drawdown recompute, when
+    the band inputs (cohort R, equity, drawdown tier) are freshest. Evaluate the SIGNED
+    live-money kill/scale bands (#268b/#275) and Telegram on a band TRANSITION only (deduped
+    via mi_safeguard_state — mirrors the drawdown-tier alert). DB-sourced + fully error-wrapped
+    inside run_band_evaluation, so a band-eval hiccup can never break the EOD chain. Pre-launch
+    (no live closed trades) it HOLDs below the sample floor and stays silent."""
+    from agents.market_intelligence.kill_scale_bands import run_band_evaluation
+    await run_band_evaluation("live", send=True)
 
 
 async def _stuck_fill_watchdog_job():
@@ -4413,6 +4424,16 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_account_equity_snapshot_job, "account_equity_snapshot"),
         CronTrigger(hour=16, minute=12, day_of_week="mon-fri", timezone="America/New_York"),
         id="account_equity_snapshot",
+        replace_existing=True,
+    )
+
+    # Kill/scale band EOD evaluation: 4:13 PM ET — one minute after the equity
+    # snapshot/drawdown recompute so the band inputs are fresh. Telegram on a band
+    # TRANSITION only (#275 / signed #268b bands). Intelligence-owned, DB-sourced.
+    _scheduler.add_job(
+        audit_wrap(_kill_scale_band_job, "kill_scale_band_eval"),
+        CronTrigger(hour=16, minute=13, day_of_week="mon-fri", timezone="America/New_York"),
+        id="kill_scale_band_eval",
         replace_existing=True,
     )
 
