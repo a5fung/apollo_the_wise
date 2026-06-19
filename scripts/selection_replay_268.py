@@ -284,6 +284,7 @@ async def stage_simulate(args) -> None:
         source_filter=_SOURCE,
         or_window_bars=args.or_window,
         wide_open_atr_mult=args.wide_open_atr,
+        stop_model=args.stop_model, stop_atr_k=args.stop_atr_k,
     )
     # Custom per-trade CSV with computed R: risk basis = Σ shares×(entry−stop)
     # over actual entries (re-entries included). Consistent across cohorts —
@@ -291,15 +292,19 @@ async def stage_simulate(args) -> None:
     out = args.csv
     buf = io.StringIO()
     w = csv.writer(buf)
+    # orb_low + entry_stop carry the COVERAGE check (did the stop model change the stop, and by
+    # how much) — a model that no-ops on most trades manufactures lift (W2 study-1 lesson #1).
     w.writerow(["ticker", "alert_date", "skipped", "skip_reason",
-                "total_pnl", "risk_dollars", "r_multiple", "hold_days"])
+                "total_pnl", "risk_dollars", "r_multiple", "hold_days",
+                "orb_low", "entry_stop"])
     for t in list(result.trades) + list(result.skipped_trades):
         risk = sum(e.shares * max(e.entry_price - e.stop_price, 0.0001)
                    for e in t.entries)
         r_mult = (t.total_pnl / risk) if risk and not t.skipped else 0.0
+        entry_stop = t.entries[0].stop_price if t.entries else 0.0
         w.writerow([t.ticker, t.alert_date, t.skipped, t.skip_reason or "",
                     f"{t.total_pnl:.2f}", f"{risk:.2f}", f"{r_mult:.3f}",
-                    t.hold_days])
+                    t.hold_days, f"{(t.orb_low or 0):.4f}", f"{entry_stop:.4f}"])
     Path(out).write_text(buf.getvalue(), encoding="utf-8")
     print(f"simulated {len(result.trades)} trades "
           f"(+{len(result.skipped_trades)} skipped) → {out}")
@@ -367,6 +372,12 @@ def main() -> None:
                     help="opening-range window in 1-min bars (1 = live)")
     ap.add_argument("--wide-open-atr", dest="wide_open_atr", type=float, default=None,
                     help="skip when OR range > this multiple of ATR14 (e.g. 0.275)")
+    # W2 study #2 — day-1 STOP geometry (default orb_low = live). Threaded into sizing AND exit.
+    ap.add_argument("--stop-model", dest="stop_model", default="orb_low",
+                    choices=["orb_low", "atr_floor", "atr_cap", "day_low"],
+                    help="day-1 stop geometry (orb_low = live)")
+    ap.add_argument("--stop-atr-k", dest="stop_atr_k", type=float, default=1.0,
+                    help="ATR multiple for atr_floor/atr_cap (e.g. 0.5/1.0/1.5)")
     args = ap.parse_args()
     # Resolve the CSV path ONCE — simulate writes it, report reads it.
     # Geometry variants get their own CSV so the baseline is never clobbered.
@@ -375,6 +386,10 @@ def main() -> None:
         variant += f"_orw{args.or_window}"
     if args.wide_open_atr is not None:
         variant += f"_woatr{args.wide_open_atr}"
+    if args.stop_model != "orb_low":
+        variant += f"_stop{args.stop_model}"
+        if args.stop_model in ("atr_floor", "atr_cap"):
+            variant += f"{args.stop_atr_k}"
     args.csv = args.csv or f"/tmp/selection_replay_268_{args.date_from}_{args.date_to}{variant}.csv"
 
     stages = [(args.scan, stage_scan), (args.grade, stage_grade),

@@ -5,7 +5,9 @@ import asyncio
 import logging
 from datetime import date, datetime, timedelta
 
-from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14, validate_orb_entry
+from agents.market_intelligence.backtester.filters import (
+    check_filters, compute_atr_14, get_prior_day_low, resolve_entry_stop, validate_orb_entry,
+)
 from agents.market_intelligence.backtester.intraday import ensure_intraday_table, get_intraday_bars
 from agents.market_intelligence.backtester.models import (
     BacktestResult,
@@ -35,6 +37,9 @@ def _simulate_day1(
     atr_14: float | None = None,
     or_window_bars: int = 1,
     wide_open_atr_mult: float | None = None,
+    stop_model: str = "orb_low",
+    stop_atr_k: float = 1.0,
+    prior_day_low: float | None = None,
 ) -> BacktestTrade | None:
     """
     Simulate Day 1 intraday trading on 1-min bars (ORB entry).
@@ -115,7 +120,9 @@ def _simulate_day1(
                 attempt += 1
                 entry_price = round(orb_high * (1 + ENTRY_SLIPPAGE_PCT), 2)
                 shares = position_size / entry_price
-                current_stop = orb_low
+                # W2 study #2: day-1 stop geometry (orb_low live default; threaded into sizing too).
+                current_stop = resolve_entry_stop(entry_price, orb_low, atr_14,
+                                                  prior_day_low, stop_model, stop_atr_k)
                 current_shares = shares
                 in_position = True
 
@@ -359,12 +366,16 @@ async def simulate_trade(
     regime_record: dict | None = None,
     or_window_bars: int = 1,
     wide_open_atr_mult: float | None = None,
+    stop_model: str = "orb_low",
+    stop_atr_k: float = 1.0,
 ) -> BacktestTrade:
     """
     Full trade simulation: Day 1 ORB intraday + Day 2+ SMA trailing stop.
     """
     # Compute ATR before Day 1 for stop width validation
     atr_14, atr_pct = await compute_atr_14(ticker, alert_date)
+    # W2 study #2 — prior-day low only when the day_low arm needs it (one extra read, that arm only)
+    prior_day_low = await get_prior_day_low(ticker, alert_date) if stop_model == "day_low" else None
 
     # Fetch Day 1 intraday bars
     bars = await get_intraday_bars(ticker, alert_date)
@@ -381,16 +392,21 @@ async def simulate_trade(
         )
         return trade
 
-    # Risk-based position sizing: use the OR-window high/low (window=1 = first bar)
+    # Risk-based position sizing: use the OR-window high/low (window=1 = first bar). W2 study #2 —
+    # size off the CHOSEN stop (not always orb_low) so every arm risks the same $ → R is comparable.
     if bars and regime_record:
         orb_high, orb_low = _or_window_range(bars, or_window_bars)
         if orb_high > 0 and orb_low > 0:
-            position_size = _position_size(orb_high, orb_low, regime_record)
+            sizing_stop = resolve_entry_stop(orb_high, orb_low, atr_14,
+                                             prior_day_low, stop_model, stop_atr_k)
+            position_size = _position_size(orb_high, sizing_stop, regime_record)
 
     # Day 1 simulation (ORB entry with ATR validation)
     trade = _simulate_day1(ticker, bars, position_size, atr_14=atr_14,
                            or_window_bars=or_window_bars,
-                           wide_open_atr_mult=wide_open_atr_mult)
+                           wide_open_atr_mult=wide_open_atr_mult,
+                           stop_model=stop_model, stop_atr_k=stop_atr_k,
+                           prior_day_low=prior_day_low)
     if trade is None:
         return BacktestTrade(
             ticker=ticker, alert_date=alert_date,
@@ -446,6 +462,8 @@ async def run_backtest(
     source_filter: str | None = None,
     or_window_bars: int = 1,
     wide_open_atr_mult: float | None = None,
+    stop_model: str = "orb_low",
+    stop_atr_k: float = 1.0,
 ) -> BacktestResult:
     """
     Run full EP gap trading backtest over a date range.
@@ -522,7 +540,8 @@ async def run_backtest(
         logger.info(f"Simulating {ticker} on {alert_date} (score={alert.get('ep_score', 0):.0f})")
         trade = await simulate_trade(ticker, alert_date, alert, position_size, regime_record=regime_record,
                                      or_window_bars=or_window_bars,
-                                     wide_open_atr_mult=wide_open_atr_mult)
+                                     wide_open_atr_mult=wide_open_atr_mult,
+                                     stop_model=stop_model, stop_atr_k=stop_atr_k)
 
         if trade.skipped:
             skipped.append(trade)

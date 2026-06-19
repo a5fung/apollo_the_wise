@@ -133,6 +133,48 @@ async def compute_atr_14(ticker: str, as_of_date: date) -> tuple[float | None, f
     return atr_14, atr_pct
 
 
+# ── W2 study #2 — stop-geometry knob (#276). The live MAGNA53 day-1 stop is ORB low; this resolver
+# lets the offline replay vary ONLY that geometry (held constant: selection, entry, exit, sizing-
+# rule). It is threaded into BOTH the risk-based sizing AND the exit so each arm risks the same $
+# (else R is not comparable — advisor 6/18). lower price = WIDER stop. OFFLINE/backtester only.
+def resolve_entry_stop(
+    entry_price: float, orb_low: float, atr_14: float | None,
+    prior_day_low: float | None, stop_model: str, stop_atr_k: float,
+) -> float:
+    """Day-1 entry stop per `stop_model`:
+      orb_low   = the live baseline (the ORB low).
+      atr_floor = WIDEN too-tight ORBs to >= k*ATR below entry (min ⇒ the wider of orb_low / the
+                  ATR-distance stop) — only ever widens; the motivated arm (noise-stopout fix).
+      atr_cap   = TIGHTEN wide ORBs to <= k*ATR below entry (max) — the SUSPECT direction (the
+                  1-min sim under-counts intra-bar stop-outs → flatters tighter stops; discount).
+      day_low   = the prior trading day's low (structural, 9M-analog wider stop).
+    Degenerate results (≤0 or ≥ entry) fall back to orb_low — never a non-positive risk."""
+    stop = orb_low
+    if atr_14 is not None and atr_14 > 0:
+        if stop_model == "atr_floor":
+            stop = min(orb_low, entry_price - stop_atr_k * atr_14)
+        elif stop_model == "atr_cap":
+            stop = max(orb_low, entry_price - stop_atr_k * atr_14)
+    if stop_model == "day_low" and prior_day_low is not None:
+        stop = prior_day_low
+    if stop <= 0 or stop >= entry_price:
+        return orb_low
+    return stop
+
+
+async def get_prior_day_low(ticker: str, alert_date: date) -> float | None:
+    """Low of the most recent trading day STRICTLY before `alert_date` (mi_daily_closes) — the
+    structural-stop source for the day_low arm. None if absent. OFFLINE/backtester only."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """SELECT low_price FROM mi_daily_closes
+               WHERE ticker = $1 AND trade_date < $2 AND low_price IS NOT NULL
+               ORDER BY trade_date DESC LIMIT 1""",
+            ticker, alert_date)
+    return float(row["low_price"]) if row and row["low_price"] is not None else None
+
+
 async def _check_atr_pct(ticker: str, trade_date: date) -> str | None:
     """Check 14-day ATR% <= 15%. Returns skip reason or None."""
     _atr_14, atr_pct = await compute_atr_14(ticker, trade_date)
