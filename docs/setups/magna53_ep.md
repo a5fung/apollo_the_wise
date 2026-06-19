@@ -82,6 +82,45 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-06-19 — #344 catalyst corpus-completeness — SHADOW (live flip GATED)
+
+**Trigger**: BFLY 6/18 ran +56% with no alert. Graded `routine` because (1) at the
+7:00 ET grade its corpus was EMPTY (the Midjourney PR hit Benzinga at 8:12 ET, after the
+grade) and the per-day catalyst cache pinned that routine grade all day, and (2) the
+6/18 news was an *update to an existing material partnership* — the $74M Midjourney
+co-development/license ($15M one-time + $10M/yr + $9M milestones) was disclosed in a
+PRIOR 8-K (2025-11-18, item 1.01), never in the grade corpus. Operator labeled BFLY a
+real EP (HARD gate); `routine` was wrong. Evidence: `docs/analysis/missed_ep_bfly_2026-06-18.md`,
+`docs/analysis/late_source_replay_344_2026-06-19.md`. Cache re-poll ALONE recovers
+nothing (the 8:12 PR is headline-only → re-grading it stays routine; proven 0/12 in the
+replay) — its value is conditional on the enrichment.
+
+**Change (SHADOW only — live grade UNCHANGED)**:
+- `collector.get_alpaca_news(include_content=True)` — stop discarding full Benzinga PR
+  bodies (grade path only; default off elsewhere).
+- `ep_detector.assemble_grade_corpus` (SSoT; the #344 replay imports it) — anchors the
+  grade DATE and appends age-labeled PRIOR item-1.01 agreement + item-2.02 revenue
+  context for MATERIALITY sizing, explicitly NOT as today's catalyst (prevents the
+  date-confusion that mis-dates stale filings as fresh).
+- `ep_grade_enrich_shadow` (uncached, once/ticker/day): current vs enriched grade,
+  web-inclusive. `ep_repoll_shadow` (cached path): re-grade ONCE when a new primary-subject
+  source lands after a routine grade in the ORB window (`should_repoll_shadow`; never
+  re-polls a firing grade). Flag `ENRICH_SHADOW_ENABLED`; error-wrapped.
+
+**Anticipated effect**: ZERO live behavior change (shadow writes audit rows only). Offline
+two-case: BFLY routine→strong (cites today's news sized by the deal), BTQ ATM-dilution
+canary stays routine. Offline 60-name cohort: BFLY-rise + AEHR-restore + CASY gc→strong
+(conservative, still fires), 0 inflation — BUT the offline baseline is no-web and can't
+measure web×enrichment double-counting, so it is NOT the flip gate.
+
+**FLIP GATE (load-bearing — make enriched the live grade)**: requires Monday+ live shadow
+data showing production net-correctness (enriched lifts true catalysts, inflates nothing —
+read via `scripts/_344_shadow_verify.py`), re-poll fires once with tolerable latency, then
+CHANGE_PROCESS + operator sign-off. Until then the live grade is byte-identical to before.
+
+**REVERSION**: set `ENRICH_SHADOW_ENABLED=false` (kills the shadow); the live grade path
+is unchanged regardless.
+
 ### 2026-06-14 — M&A filter: acquirer-direction on the TITLE path (#284) — AWAITING SIGN-OFF
 
 **Trigger**: 6/14 materiality dig (advisor-prompted, off the Sunday weekly review)
