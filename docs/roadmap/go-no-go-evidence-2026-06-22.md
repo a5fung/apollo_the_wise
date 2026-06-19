@@ -46,6 +46,17 @@ not yet rehearsed on the split topology).
 | **#275 — kill/scale bands** | ✅ SHIPPED 6/19 | Evaluator (12 boundary tests prove silence through the healthy year) + daily 16:13 transition alert + weekly digest + override. Verifies-live as trades accrue post-launch. |
 | **#349 — DR restore (split topology)** | 🟡 FIX APPLIED · rehearsal pending | Found 6/19: restore.sh brought up no execution + aborted on the creds-preflight. Fixed (execution-first → both) + operator-signed. **Not yet rehearsed on the split topology** — the pre-split 5/25 drill doesn't cover it. Live rehearsal is operator-triggered. |
 
+**Implementation verification (code-verified 6/19, #303 readiness audit — claims above traced to source, not prose):**
+the safeguard implementations the GO relies on are present in the code that fires on a real entry —
+- Panic button: highest-priority gate in `_check_safeguards` (`live_tracker.py:105`, before any other guard) + 2nd gate at the submit chokepoint (`order_manager.py:186`); both fail-SAFE (unreadable→block, distinct `infra:halt_state_unreadable`).
+- Day-1 equity guards all in `_check_safeguards`: `LIVE_TRADING_ENABLED` master kill (`live_tracker.py:92`), daily-loss (`:191`), 5-loss circuit breaker (`:220`), tiered drawdown breaker (`:240`, multiplier→0 blocks).
+- Creds boot-block incl. the 2026-05-13 outage class: `phase=live` under `ENABLE_LIVE_MODE=false` → BOOT BLOCKED (`agent.py:7037+`).
+- Kill/scale band job registered 16:13 ET mon-fri, `INTELLIGENCE_OWNED`, enforced by the unclassified-job boot guard (`scheduler.py:185,4434`).
+- #349 DR fix in place: `restore.sh:383` runs `deploy.sh execution` **then** `deploy.sh both`.
+- Monday verify scripts all present (`_344_shadow_verify.py`, `evaluate_kill_scale_bands.py`, `set_kill_scale_override.py`).
+
+No new gaps surfaced; the audit re-confirmed the gate composite is code-backed (the same audit class that caught #349).
+
 ---
 
 ## 2. Economics — the envelope the GO is sized within (#268 Phase B)
