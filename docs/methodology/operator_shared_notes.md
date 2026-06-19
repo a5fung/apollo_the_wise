@@ -10,6 +10,54 @@ durable home that survives context compaction — grep here before asking the op
 
 ---
 
+## 2026-06-19 — Operator label + Gemini EP analysis on BFLY 6/18 (the #344 catalyst-correctness case)
+
+**Operator correction of Apollo's `routine` grade reasoning ("no named customer or partner; no
+contract value"):** *"this is technically incorrect because the partner/customer is mid journey and
+the contract value is $74M previously disclosed in 8k filing."*
+
+**Operator label (HARD gate):** BFLY 6/18 **IS** an Episodic Pivot — `routine` is the WRONG grade.
+Maps to #344 → the "should grade higher" branch: re-point the 6/22 gate at catalyst-CORRECTNESS, not
+the cache fix.
+
+Gemini's EP analysis the operator shared, verbatim:
+
+> You are completely right—good catch. Q1 earnings were actually reported back on April 30th.
+> Yesterday's gap up was driven entirely by an unexpected commercial partnership, not an earnings report.
+>
+> **The Actual Catalyst: Midjourney Medical**
+> Midjourney announced the launch of a new division, Midjourney Medical, alongside a prototype
+> full-body tomographic ultrasound scanner. The critical detail for Butterfly Network is that the
+> current scanner prototype incorporates **40 Butterfly Ultrasound-on-Chip modules per system** under
+> a co-development agreement. A previously filed agreement also disclosed up to **$74 million** in
+> expected payments to Butterfly over a five-year term.
+>
+> **Does this qualify as an Episodic Pivot (EP)? Yes.** While earnings are the most common driver, an
+> EP requires a fundamental, unexpected news event that permanently alters a stock's valuation
+> trajectory and triggers massive institutional accumulation. A high-profile, hardware-scaling
+> partnership hits that requirement perfectly.
+>
+> | EP Criteria | $BFLY Data (June 18, 2026) | Verdict |
+> | :--- | :--- | :--- |
+> | **Surprise Catalyst** | High-visibility AI hardware integration (40 chips/scanner) out of nowhere. | ✅ Pass |
+> | **Volume Surge** | Traded ~60.4 million shares, completely dwarfing its average daily volume. | ✅ Pass |
+> | **Price Action (The Close)** | Opened at $7.21, closed at $8.90 (+55.9%), just pennies off the High of Day ($8.94) — sustained buying, not a "gap and crap" exhaustion. | ✅ Pass |
+> | **Thematic Resonance** | Directly attaches a MedTech hardware supplier to the massive AI infrastructure theme. | ✅ Pass |
+>
+> **Tactical View:** Textbook Episodic Pivot. Massive volume + strong close near highs confirm
+> institutional demand absorbing overhead supply. The stock has effectively reset its base. Focus
+> shifts to post-EP risk management — watching for a tight consolidation flag holding the upper half
+> of the momentum candle without heavy distribution volume.
+
+**The fix this scopes (to verify):** the catalyst was a MATERIAL escalation of an EXISTING partnership
+(Midjourney named in the 6/18 PR; the $74M / 5-yr terms in a PRIOR 8-K that the grounded corpus did
+NOT carry — replay found SEC=0 in-window, the deal 8-K is ~Nov-2025). So the grade was made without
+the prior material-agreement context → likely a CORPUS-COMPLETENESS gap (surface prior agreement terms
+when a PR updates an existing partnership) and/or a named-partner / materiality recognition gap — NOT a
+cache-timing problem. CHANGE_PROCESS + N≥10 cohort + sign-off before any load-bearing grade change.
+
+---
+
 ## 2026-06-16 — Pradeep Bonde (@PradeepBonde / stockbee), full ANTICIPATION thread (posted 2026-06-15)
 
 The complete playbook for the anticipation setup = our #270. Verbatim, in chronological order (each
