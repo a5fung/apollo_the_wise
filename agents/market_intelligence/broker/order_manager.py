@@ -31,7 +31,7 @@ from agents.market_intelligence.constants import (
     mode_prefix,
     ENABLE_LIVE_MODE,
 )
-from agents.market_intelligence.db import get_pool, log_audit_event
+from agents.market_intelligence.db import get_pool, log_audit_event, get_manual_halt_state
 
 logger = logging.getLogger(__name__)
 
@@ -171,6 +171,27 @@ async def submit_entry(trade_id: int) -> dict | None:
     duplicate orders from concurrent calls (e.g., double-click).
     """
     pool = await get_pool()
+
+    # #345 manual halt — defense-in-depth so the `/pause` panic button covers EVERY
+    # real-money submit path, not just the auto-submit funnel (_check_safeguards).
+    # The telegram_confirm proposal-confirm path reaches submit_entry directly,
+    # bypassing _check_safeguards. Peek account_mode BEFORE the atomic claim so a
+    # halted/unreadable LIVE submit aborts WITHOUT leaving the row stuck in
+    # 'submitting' (status stays 'confirmed' → re-submittable after /resume).
+    # Fail-SAFE (unreadable blocks); paper/shadow unaffected.
+    async with pool.acquire() as conn:
+        _peek = await conn.fetchrow(
+            "SELECT account_mode FROM mi_live_trades WHERE id = $1", trade_id)
+    if _peek and (_peek["account_mode"] or current_account_mode()) == "live":
+        _halt = await get_manual_halt_state()
+        if _halt in ("on", "unreadable"):
+            logger.warning(f"submit_entry {trade_id}: blocked by manual trading halt ({_halt})")
+            await log_audit_event(
+                "trade_submit_blocked_by_halt",
+                f"trade {trade_id} blocked at submit_entry — manual trading halt ({_halt})",
+                json.dumps({"trade_id": trade_id, "halt_state": _halt}),
+            )
+            return None
 
     # Atomic lock: only proceed if status is 'confirmed' and claim it
     async with pool.acquire() as conn:

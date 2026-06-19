@@ -104,3 +104,66 @@ def test_gate_skips_halt_for_paper_mode():
             raised = e
     assert raised is sentinel       # flow passed the halt block to the pool
     halt_mock.assert_not_awaited()  # the halt was never consulted for paper
+
+
+# ── submit_entry chokepoint (covers the telegram_confirm path that skips
+#    _check_safeguards) ─────────────────────────────────────────────────────
+
+def test_submit_entry_blocked_by_halt_on_live():
+    # The confirm path reaches submit_entry without _check_safeguards; the halt must
+    # still block a LIVE submit (and leave the row 'confirmed' — no atomic claim).
+    from agents.market_intelligence.broker import order_manager as om
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value={"account_mode": "live"})
+
+    @asynccontextmanager
+    async def _acquire():
+        yield conn
+
+    pool = MagicMock()
+    pool.acquire = _acquire
+
+    async def _get_pool():
+        return pool
+
+    with patch.object(om, "get_pool", _get_pool), \
+         patch.object(om, "get_manual_halt_state", AsyncMock(return_value="on")), \
+         patch.object(om, "log_audit_event", AsyncMock()):
+        result = asyncio.run(om.submit_entry(123))
+    assert result is None
+    # only the pre-claim peek ran; the 'submitting' UPDATE (claim) never fired
+    conn.fetchrow.assert_awaited_once()
+
+
+def test_submit_entry_paper_not_gated_by_halt():
+    # Paper submit must not consult the halt at all (telemetry path unaffected).
+    from agents.market_intelligence.broker import order_manager as om
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(return_value={"account_mode": "paper"})
+
+    @asynccontextmanager
+    async def _acquire():
+        yield conn
+
+    pool = MagicMock()
+    pool.acquire = _acquire
+
+    async def _get_pool():
+        return pool
+
+    halt_mock = AsyncMock(return_value="on")
+    sentinel = RuntimeError("reached atomic claim — halt correctly skipped for paper")
+
+    # After the peek (paper), the next fetchrow is the atomic claim — trip it to prove
+    # flow passed the halt gate without consulting it.
+    conn.fetchrow = AsyncMock(side_effect=[{"account_mode": "paper"}, sentinel])
+    with patch.object(om, "get_pool", _get_pool), \
+         patch.object(om, "get_manual_halt_state", halt_mock), \
+         patch.object(om, "log_audit_event", AsyncMock()):
+        raised = None
+        try:
+            asyncio.run(om.submit_entry(123))
+        except RuntimeError as e:
+            raised = e
+    assert raised is sentinel
+    halt_mock.assert_not_awaited()
