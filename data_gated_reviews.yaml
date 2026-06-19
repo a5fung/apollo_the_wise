@@ -5251,10 +5251,25 @@ reviews:
       Created as audit trail entry — no methodology decision pending.
       Surfaces the #50 ship→revert→restore cycle in YAML so it's
       durable beyond the CLAUDE.md change log rotation (~2wk).
-      Cross-reference: #55 (next re-check 2026-06-20), #59 (dedup
+      Cross-reference: #55 (re-check DONE 2026-06-19, see below), #59 (dedup
       hygiene fix that triggered the correction), #66/#68 (urgent
       flag + revert commits), feedback_sample_size_discipline.md
       (meta-lessons captured).
+
+      2026-06-19 #55 RE-CHECK (the scheduled 6/20 re-check, run a day early):
+      b50 backward-check re-run on the 60d HIGH cohort (now N=26 in the $0
+      band, ≥10). Finding = the evidence does NOT support the $5M ratchet —
+      the $0–5M clinical-stage band is positive-edge (+4.34% avg, tail winners
+      ALOY +50.9% / QBTS +38.5% / ASPI +30.6%) so $5M would over-block (the
+      script's own decision matrix); the only clearly-bad band ($0, −7.71%/−12%
+      median) is ALREADY excluded by the 0.01 pin. KEEP REVENUE_STAGE_MIN_USD
+      =0.01, no code change (operator to ratify — HARD gate). The gate touches
+      only the earnings routine→strong BOOST, not alert admission. Durable doc:
+      docs/analysis/revenue_stage_threshold_55_2026-06-19.md. Next re-check rides
+      the quarterly rule-review sweep (Aug 1). Open thread for then: the N/A /
+      no-yf-data fail-soft (−17% cohort flows through boost-eligible) is a more
+      interesting lever than the $0–5M ratchet, but needs a 2nd revenue source,
+      not a threshold move.
 
   - review_id: flag_detector_graduation_evidence_n30
     title: "Flag detector TRIGGERED-as-EOD-classification is structurally wrong (#92 — re-framed)"
