@@ -70,23 +70,49 @@ Pre-registered discipline (carried from study #1's two artifact catches):
   judge verdicts for 2025-06…2026-03 are gone; the judge-JOIN can only see ~7
   weeks (2026-03-16…05-04). The 1-month smoke (n=30) and this run (n=44) overlap
   heavily and agree on the monotonic degradation, so the **direction is robust**,
-  but the absolute n is modest. The within-study comparison is exact (all arms ran
-  the identical 44 trades).
+  but the absolute n is modest.
+- **VALIDITY ANCHOR — the within-study comparison is EXACT regardless of n.** The
+  stop model is applied at the entry (engine line 118) *after* the breakout / skip
+  gates, so it **never changes which trades enter** — all six arms run the
+  identical 44 trades on the identical price paths; only the stop (and its risk-
+  based share count) differs. So the small/pruned cohort weakens *generalization*,
+  not the *relative* ranking of the arms.
+- **Why no-change survives the small-n (structural, not a data assertion):**
+  (a) the winner-R compression is near-mechanical — risk-based sizing means a wider
+  stop = fewer shares = smaller R *and* fewer dollars on the tail winners that
+  carry the strategy, for the same path; so widening's only possible rescue is a
+  bounded reduction in −1R stop-outs. (b) The 4-level **monotonic ladder**
+  (+0.66 → +0.48 → +0.27 → +0.14R) is not what n=44 sampling noise produces —
+  noise doesn't ladder. (c) A second-order mechanic actually *flatters* the wider
+  arms (survivors get their Day-2 floor raised to `day1_low`, tighter than their
+  wide entry stop) and they still lost. The *net* degradation's magnitude is
+  empirical (the loser-side recovery rate is where small-n bites), but the
+  mechanical compression caps how much a fuller cohort could plausibly move a
+  +1.40-vs-+0.14R gap.
+- **REGIME-LOCALITY + near-circularity (the real scope limit).** The retained
+  window is ONE recent, likely trend-favorable regime — and it is largely the same
+  tape the live ORB-low stop just traded, so "recent cohort confirms recent stop"
+  is weak *independent* confirmation. Stop geometry is plausibly regime-dependent
+  (a wider stop may earn its keep in chop). So the earned claim is **"ORB-low holds
+  in the recent regime,"** not "stop tuning is dead forever."
 - **1-min IEX-bar sim**, ~47% scan recall, single pass (same as Phase B / study
   #1). Directional, not a pinned live number.
-- The wider arms' losses are large enough (ΔR −0.74 to −1.27, Δ$ −1.6k to −16.5k)
-  that the cohort caveat does not threaten the **no-change** conclusion — a fuller
-  cohort would only need to overturn a 10×-dollar gap.
 
 ## Decision & follow-ups
 
 - **No live stop change.** ORB-low holds; the kill/scale bands (signed,
   calibrated on the orb_low R-distribution) need **no re-derivation** — the
   winning geometry IS orb_low.
-- The W2 entry-mechanics program (5-min OR study #1, stop geometry study #2) has
-  now tested OR-window and stop placement and found the **live geometry optimal on
-  both** — entry-mechanics is not where the edge is hiding; close the W2
-  "tune the bracket" thread.
+- **RECOMMENDATION (regime-conditioned, not a finding): pause the W2 "tune the
+  bracket" thread.** The two W2 entry-mechanics studies (5-min OR #1, stop geometry
+  #2) both found the live geometry best *in the recent retained regime* — OR-window
+  and stop placement each tested, neither beat the live rule. That makes
+  entry-mechanics a low-EV place to keep digging *right now*, so the recommendation
+  is to deprioritize it, NOT a proven "the edge isn't here." The evidence is n=44
+  over a single ~7-week window that overlaps the tape the live stop already trades
+  (regime-locality + near-circularity, see Caveats) — too narrow to retire the
+  question. Re-open it on a regime shift (the kill/scale band review, or a chop
+  regime where a wider stop could earn its keep).
 - *Only if* a stop change is ever seriously contemplated: re-judge the full
   Phase-B window first (paid re-grade — the verdicts were pruned) to lift n. Not
   warranted by this confirmatory result.
