@@ -138,6 +138,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "intraday_signals_eod_digest", "eod_ep_recap", "morning_briefing",
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
+    "chart_axis_shadow", "chart_axis_shadow_weekly_digest",
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
@@ -3046,6 +3047,179 @@ async def _run_entry_shadow_settlement(today):
     return settled
 
 
+# ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
+# Decision-window start: deltas before this date (the same-day 6/18 verify-live smoke) are
+# UNCOUNTED by the registry predicate (`created_at >= '2026-06-19'`) so the machinery check can't
+# pollute the decision N. Backstop: N>=10 deltas OR this date, whichever first.
+_CHART_AXIS_SHADOW_START = "2026-06-19"
+_CHART_AXIS_SHADOW_BACKSTOP = "2026-07-31"
+_CHART_AXIS_SHADOW_DAILY_CAP = 8   # per-day candidate cap (cost guard ~ HIGH+MODERATE/day)
+_CHART_AXIS_SHADOW_REPLICATES = 3  # per arm, for the judge noise floor
+_CHART_AXIS_SHADOW_PNG_DIR = "/app/_chart_axis_shadow"  # delta charts persisted for labeling
+
+
+async def _chart_axis_shadow_job():
+    """#343 chart-vision judge-axis SHADOW recorder. EOD (17:50 ET mon-fri), entirely OFF the live
+    9:45 grade path. For each of today's EP HIGH+MODERATE alerts (capped), re-grades through the
+    holistic judge TWICE — arm B (the candidate text-only axis note, NO chart) and arm C (the same
+    note + a point-in-time prior-day daily chart) — FRESH ×3 each, and emits a
+    `chart_axis_shadow_delta` audit row when BOTH arms are modal-stable and the verdict DIFFERS
+    (the chart changed the call = the labelable signal). The operator labels the deltas at N>=10 /
+    7-31 (data_gated_reviews `chart_vision_axis_shadow_decision`); promotion into the live rubric
+    axis is the separate sign-off step (ADR 0011).
+
+    SHADOW INVARIANT: writes ONLY mi_audit_log (`chart_axis_shadow_*`) + delta PNG files — never
+    mi_ep_alerts / mi_safeguard_state / anything the EP/judge path reads. `grade_holistic` is pure
+    (no DB writes). Own AsyncAnthropic client + own semaphore (never the live grader's). Fail-open:
+    any error logs + continues; an empty cohort (e.g. the 6/19 holiday) is a clean no-op.
+
+    IDEMPOTENT: a same-day re-run skips tickers already marked graded/norender; an API-failed
+    candidate leaves NO marker, so it retries on a same-day re-run. Cohort is today-only by design.
+    """
+    import os
+    import anthropic
+    from agents.market_intelligence import chart_axis as ca
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import (
+        get_chart_axis_shadow_cohort, get_chart_axis_shadow_processed_tickers, log_audit_event,
+    )
+    from scripts._judge_replay_common import (
+        build_judge_payload, fetch_profile, resolve_grounded_text,
+    )
+    client = None
+    try:
+        today = et_today()
+        cohort = await get_chart_axis_shadow_cohort(today, limit=_CHART_AXIS_SHADOW_DAILY_CAP)
+        already = await get_chart_axis_shadow_processed_tickers(today)
+        pending = [r for r in cohort if r["ticker"] not in already]
+        if not pending:
+            logger.info(f"chart-axis shadow: {len(cohort)} cohort, 0 pending (all processed / "
+                        f"empty {today}) — no-op")
+            return
+
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            logger.warning("chart-axis shadow: no ANTHROPIC_API_KEY — skip")
+            return
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        sem = asyncio.Semaphore(3)  # OWN bound; never the live grader's semaphore
+        os.makedirs(_CHART_AXIS_SHADOW_PNG_DIR, exist_ok=True)
+
+        graded = deltas = norender = 0
+        for row in pending:
+            ticker, alert_date = row["ticker"], row["alert_date"]
+            try:
+                png, n_daily = await ca.render_prior_day_chart(ticker, alert_date)
+                if png is None:
+                    # data shortfall (too few prior bars) — won't change on re-run; mark handled.
+                    await log_audit_event("chart_axis_shadow_norender", ticker,
+                                          f"no chart (n_daily={n_daily}) {alert_date}")
+                    norender += 1
+                    continue
+                mc, sector, company = await fetch_profile(ticker)
+                grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
+                payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)
+
+                bc = await ca.grade_b_c(client, sem, payload, png, _CHART_AXIS_SHADOW_REPLICATES)
+                if bc["b_verdict"] is None or bc["c_verdict"] is None:
+                    # an arm fully failed (API) — leave NO marker so a same-day re-run retries.
+                    logger.warning(f"chart-axis shadow {ticker}: arm produced no verdict — retry")
+                    continue
+
+                # grading COMPLETED (both arms ran; instability is itself a finding) → mark graded.
+                await log_audit_event(
+                    "chart_axis_shadow_graded", ticker,
+                    f"floor={row['floor_tier']} B={bc['b_tiers']} C={bc['c_tiers']} "
+                    f"stable={bc['both_stable']} {alert_date}")
+                graded += 1
+
+                if bc["visual_changed"]:
+                    png_path = os.path.join(
+                        _CHART_AXIS_SHADOW_PNG_DIR, f"{ticker}_{alert_date.isoformat()}.png")
+                    try:
+                        with open(png_path, "wb") as f:
+                            f.write(png)
+                    except OSError as e:
+                        logger.warning(f"chart-axis shadow {ticker}: PNG save failed: {e}")
+                        png_path = ""
+                    bv, cv = bc["b_verdict"], bc["c_verdict"]
+                    detail = json.dumps({
+                        "ticker": ticker, "alert_date": alert_date.isoformat(),
+                        "floor_tier": row["floor_tier"],
+                        "b_modal": bc["b_modal"], "c_modal": bc["c_modal"],
+                        "direction": cv.get("direction_vs_floor"),
+                        "b_rationale": (bv.get("rationale") or "")[:600],
+                        "c_rationale": (cv.get("rationale") or "")[:600],
+                        "png_path": png_path,
+                    })
+                    await log_audit_event(
+                        "chart_axis_shadow_delta",
+                        f"{ticker} {bc['b_modal']}→{bc['c_modal']} (chart moved the verdict)",
+                        detail)
+                    deltas += 1
+            except Exception as e:
+                logger.error(f"chart-axis shadow {ticker}/{alert_date}: {e}", exc_info=True)
+
+        logger.info(f"chart-axis shadow: {len(pending)} pending, {graded} graded, "
+                    f"{deltas} deltas, {norender} no-render")
+    except Exception as e:
+        logger.error(f"chart-axis shadow job failed: {e}", exc_info=True)
+    finally:
+        if client is not None:
+            try:
+                await client.close()
+            except Exception:
+                pass
+
+
+async def _chart_axis_shadow_weekly_digest_job():
+    """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. Sends
+    each delta's chart inline (Telegram sendPhoto) with the no-chart→with-chart caption + BOTH
+    rationales, plus the running delta count and days to the 7-31 backstop so the decision never
+    arrives by surprise. Empty week → quiet (no Telegram). Read-only; the operator owns the label
+    + the eventual promote/hold call (ADR 0011)."""
+    import os
+    from datetime import date as _date
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.db import get_audit_log, get_chart_axis_shadow_delta_count
+    from agents.market_intelligence.briefing import send_telegram_message, send_telegram_photo
+    try:
+        rows = await get_audit_log(event_type="chart_axis_shadow_delta", since_hours=168, limit=50)
+        total = await get_chart_axis_shadow_delta_count(_date.fromisoformat(_CHART_AXIS_SHADOW_START))
+        days_left = (_date.fromisoformat(_CHART_AXIS_SHADOW_BACKSTOP) - et_today()).days
+        if not rows:
+            logger.info("chart-axis weekly digest: 0 new deltas — quiet")
+            return
+        head = (f"📈 *Chart-vision shadow — {len(rows)} new delta(s) to label* (#343)\n"
+                f"Running N={total}/10 · decision by {_CHART_AXIS_SHADOW_BACKSTOP} "
+                f"({days_left}d) — label each: did the chart move it the RIGHT way?")
+        await send_telegram_message(head)
+        for r in rows:
+            try:
+                d = json.loads(r.get("detail") or "{}")
+            except (ValueError, TypeError):
+                d = {}
+            caption = (f"{d.get('ticker','?')} {d.get('alert_date','')}  "
+                       f"floor={d.get('floor_tier')}\n"
+                       f"no-chart={d.get('b_modal')} → +chart={d.get('c_modal')} "
+                       f"({d.get('direction')})\n"
+                       f"why(+chart): {(d.get('c_rationale') or '')[:300]}")
+            png_path = d.get("png_path") or ""
+            sent = False
+            if png_path and os.path.exists(png_path):
+                try:
+                    with open(png_path, "rb") as f:
+                        sent = await send_telegram_photo(f.read(), caption=caption,
+                                                         filename=os.path.basename(png_path))
+                except OSError:
+                    sent = False
+            if not sent:  # chart missing/expired — still surface the text so it's labelable
+                await send_telegram_message(
+                    caption + ("\n(chart image unavailable — see audit detail)" if png_path else ""))
+    except Exception as e:
+        logger.error(f"chart-axis weekly digest failed: {e}", exc_info=True)
+
+
 async def _theme_round_trip_validator_job():
     """Run daily at 6:00 AM ET (Area 2, 2026-05-15).
 
@@ -3940,6 +4114,24 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="consolidation_readiness",
+        replace_existing=True,
+    )
+
+    # #343 chart-vision judge-axis SHADOW — 17:50 ET mon-fri, EOD (scan idle since 10:00, after the
+    # 17:00 nightly pull). Grades today's EP HIGH+MODERATE B (text-axis) vs C (+chart) and logs the
+    # deltas the operator labels. SHADOW: audit-only writes, never the live grade path. (#267/#343)
+    _scheduler.add_job(
+        audit_wrap(_chart_axis_shadow_job, "chart_axis_shadow"),
+        CronTrigger(hour=17, minute=50, day_of_week="mon-fri", timezone="America/New_York"),
+        id="chart_axis_shadow",
+        replace_existing=True,
+    )
+    # Sunday 19:30 ET — push the week's new chart-axis deltas (chart inline) for operator labeling
+    # + the running N vs the 7/31 backstop. Empty week → quiet.
+    _scheduler.add_job(
+        audit_wrap(_chart_axis_shadow_weekly_digest_job, "chart_axis_shadow_weekly_digest"),
+        CronTrigger(day_of_week="sun", hour=19, minute=30, timezone="America/New_York"),
+        id="chart_axis_shadow_weekly_digest",
         replace_existing=True,
     )
 

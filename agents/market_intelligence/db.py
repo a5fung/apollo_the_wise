@@ -6600,6 +6600,80 @@ async def get_recent_9m_tickers(since_date: date) -> set:
     return {r["ticker"] for r in rows}
 
 
+# ── #343 chart-vision judge-axis SHADOW (read-only telemetry; never read by the live path) ──
+
+# The judge-payload column set (mirrors scripts/_judge_replay_common.REPLAY_SQL exactly so
+# build_judge_payload assembles an identical payload), scoped to ONE trading day's HIGH/MODERATE
+# EP alerts — the daily shadow cohort. DISTINCT ON (ticker) keeps the latest alert per name.
+_CHART_AXIS_COHORT_COLS = """ticker, alert_date, detected_at,
+       COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
+       score_tier, catalyst_quality, catalyst, claude_analysis,
+       in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
+       ep_score, grounded_text"""
+
+
+async def get_prior_daily_ohlcv(ticker: str, alert_date: date, lookback: int = 160) -> list[dict]:
+    """Daily OHLCV STRICTLY before `alert_date` (the prior-trading-day cut — NO alert-day candle;
+    the lookahead contract for the chart-vision axis, chart_render.py), ascending, as dicts
+    bars_to_df accepts. lookback > the render window so MA-50 has its runway. mi_daily_closes'
+    column is `close`; bars_to_df expects the key `close_price` → alias here. ONE source for this
+    point-in-time fetch (both the offline eval and the live EOD shadow call it)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT trade_date, open_price, high_price, low_price, close AS close_price, volume
+               FROM mi_daily_closes
+               WHERE ticker = $1 AND trade_date < $2
+               ORDER BY trade_date DESC LIMIT $3""",
+            ticker, alert_date, lookback)
+    return [dict(r) for r in reversed(rows)]
+
+
+async def get_chart_axis_shadow_cohort(trade_date: date, limit: int = 8) -> list[dict]:
+    """Today's judge-graded EP HIGH+MODERATE alerts — the #343 chart-axis shadow cohort. DISTINCT
+    ON (ticker) latest per name; HIGH-first then ep_score-desc so the per-day cap keeps the best.
+    Read-only. Returns rows carrying the build_judge_payload column set."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(f"""
+            SELECT * FROM (
+                SELECT DISTINCT ON (ticker) {_CHART_AXIS_COHORT_COLS}
+                FROM mi_ep_alerts
+                WHERE alert_date = $1 AND score_tier IN ('HIGH', 'MODERATE')
+                ORDER BY ticker, detected_at DESC
+            ) c
+            ORDER BY (score_tier = 'HIGH') DESC, ep_score DESC NULLS LAST
+            LIMIT $2
+        """, trade_date, limit)
+    return [dict(r) for r in rows]
+
+
+async def get_chart_axis_shadow_processed_tickers(trade_date: date) -> set:
+    """Tickers already processed by the chart-axis shadow on `trade_date` (ET) — graded OR
+    no-render. Idempotency for a same-day re-run: a `graded`/`norender` marker means "done, don't
+    re-spend"; an API-failed candidate left NO marker → it retries on a same-day re-run."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT summary FROM mi_audit_log
+               WHERE event_type IN ('chart_axis_shadow_graded', 'chart_axis_shadow_norender')
+                 AND created_at >= ($1::date AT TIME ZONE 'America/New_York')
+                 AND created_at <  (($1::date + INTERVAL '1 day')::date AT TIME ZONE 'America/New_York')""",
+            trade_date)
+    return {r["summary"] for r in rows}
+
+
+async def get_chart_axis_shadow_delta_count(since_date: date) -> int:
+    """Total `chart_axis_shadow_delta` rows since `since_date` (the decision-window start) — the
+    running N the weekly digest reports against the N>=10 / 2026-07-31 backstop."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await conn.fetchval(
+            "SELECT count(*) FROM mi_audit_log "
+            "WHERE event_type = 'chart_axis_shadow_delta' AND created_at >= $1",
+            since_date) or 0
+
+
 async def get_consolidation_board(limit: int = 25) -> list[dict]:
     """The Family-A shortlist for operator judgment — coiled/post_runup names ordered tightest-
     first (tight_close_streak desc, today_pct asc). Ordering-only (NOT an auto-selected top-N)."""

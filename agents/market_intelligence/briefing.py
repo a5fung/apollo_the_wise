@@ -2110,6 +2110,38 @@ async def send_telegram_message(
         return False
 
 
+async def send_telegram_photo(
+    photo_bytes: bytes, caption: str = "", chat_id: int | None = None,
+    filename: str = "chart.png",
+) -> bool:
+    """Send a PNG inline via Telegram sendPhoto. Same token/chat-id resolution as
+    send_telegram_message; returns False on any failure, never raises. Used by the #343 chart-axis
+    weekly digest so the operator labels a delta seeing the SAME chart the judge saw (a path alone
+    is unlabelable). Caption is capped at Telegram's 1024-char sendPhoto limit."""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not chat_id:
+        ids = [x.strip() for x in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "").split(",") if x.strip()]
+        if not ids:
+            logger.error("No TELEGRAM_ALLOWED_USER_IDS configured for photo delivery")
+            return False
+        chat_id = int(ids[0])
+    if not bot_token:
+        logger.error("TELEGRAM_BOT_TOKEN not set")
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/sendPhoto",
+                data={"chat_id": str(chat_id), "caption": caption[:1024]},
+                files={"photo": (filename, photo_bytes, "image/png")},
+            )
+            r.raise_for_status()
+        return True
+    except Exception as e:
+        logger.error(f"Telegram photo send failed: {e}")
+        return False
+
+
 async def edit_telegram_message(
     chat_id: int, message_id: int, text: str, parse_mode: str = "Markdown"
 ) -> bool:

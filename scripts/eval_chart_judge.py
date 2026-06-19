@@ -38,11 +38,14 @@ import asyncio
 import csv
 import os
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date
 
-from agents.market_intelligence.chart_render import bars_to_df, render_daily_chart_png
+from agents.market_intelligence.chart_axis import (  # SINGLE SOURCE — see chart_axis.py
+    CHART_AXIS_NOTE, CHART_AXIS_NOTE_TEXT_ONLY, grade_b_c, modal_stable, render_prior_day_chart,
+    _grade,
+)
 from agents.market_intelligence.db import get_pool
-from agents.market_intelligence.ep_grade_judge import format_tier_transition, grade_holistic
+from agents.market_intelligence.ep_grade_judge import format_tier_transition
 from scripts._judge_replay_common import (
     build_judge_payload, fetch_profile, resolve_grounded_text,
 )
@@ -66,45 +69,17 @@ LIMIT 1
 _OPUS_IN_PER_M = 5.0
 _OPUS_OUT_PER_M = 25.0
 
-# CANDIDATE chart-axis instruction. THREE-ARM ABLATION (advisor 2026-06-17): the eval must isolate
-# the VISION contribution from the free TEXT instruction, because the W4 decision is whether to ship
-# a vision pipeline. So the instruction body is shared and the ONLY difference between arms B and C
-# is whether an image is attached + the one framing sentence:
-#   A baseline       = no note, no image (today's behaviour)
-#   B instruction    = the 5-factor note, framed "from the data you have", NO image
-#   C note+image     = the 5-factor note, framed "a chart is attached", + the rendered chart
+# THREE-ARM ABLATION (advisor 2026-06-17): the eval isolates the VISION contribution from the free
+# TEXT instruction, because the W4 decision is whether to ship a vision pipeline:
+#   A baseline    = no note, no image (today's behaviour)
+#   B instruction = the candidate 5-factor note, framed "from the data you have", NO image
+#   C note+image  = the SAME note, framed "a chart is attached", + the rendered chart
 # B−A = what the text instruction buys (shippable WITHOUT vision). C−B = the chart's MARGINAL visual
-# contribution = the actual "does vision help" number. Promoting any of this into the LIVE
-# _build_judge_prompt is the separate sign-off step (load-bearing judge).
-# The 5-factor body + closing — BYTE-IDENTICAL across arms B and C so only the modality differs.
-_AXIS_LEAD = ("As ONE additional axis in your holistic grade (it informs, it does not override a "
-              "strong catalyst), weigh the name's recent daily technical structure, per momentum/EP "
-              "methodology (Qullamaggie / Pradeep / Stamatoudis):")
-_CHART_FACTORS = """  • Prior trend & leadership — is there a real prior advance to pivot from (the
-    "post a runup"), or is this a low/basing name with no thrust?
-  • Base quality — a tight, orderly consolidation / contraction near the highs is constructive; a
-    wide, sloppy, or broken-down structure is a negative.
-  • Volume — dry-up through the base (quiet right side) is constructive; persistent heavy selling is
-    a negative.
-  • Location vs the MA stack — riding above a rising 10/20/50 stack is constructive; far extended
-    above it invites exhaustion; below a falling stack is a broken structure.
-  • Over-extension / climax — a parabolic, far-from-trend move is lower-quality entry even on good news.
-Let this technical read nudge the tier up or down within your existing rubric; cite the decisive
-technical feature in your rationale."""
-
-# Arm C — the ONLY difference from B is the "a chart is attached / read the chart" framing + the PNG.
-CHART_AXIS_NOTE = f"""
---- ATTACHED: DAILY CHART (technical-structure axis — candidate) ---
-A daily candlestick chart is attached (10/20/50 SMAs + volume pane), rendered through the PRIOR
-trading day — it does NOT show the alert-day move, by design. Read the chart. {_AXIS_LEAD}
-{_CHART_FACTORS}"""
-
-# Arm B — same lead + factors, framed to reason from the numeric context; NO image, no dangling
-# "attached chart" reference (which would be a lie with no PNG sent).
-CHART_AXIS_NOTE_TEXT_ONLY = f"""
---- TECHNICAL-STRUCTURE AXIS (candidate, from the data provided — no chart attached) ---
-{_AXIS_LEAD}
-{_CHART_FACTORS}"""
+# contribution = the actual "does vision help" number. The candidate notes (CHART_AXIS_NOTE /
+# CHART_AXIS_NOTE_TEXT_ONLY) + the B/C grade-compare core live in agents.market_intelligence.
+# chart_axis — the SINGLE SOURCE shared with the live EOD shadow (#343), so the operator labels the
+# byte-identical instruction in both. Promoting any of this into the LIVE _build_judge_prompt is the
+# separate sign-off step (load-bearing judge).
 
 
 def read_cohort(spec: str) -> tuple[str, list[tuple[str, date]]]:
@@ -126,52 +101,20 @@ def read_cohort(spec: str) -> tuple[str, list[tuple[str, date]]]:
     return label, rows
 
 
-async def fetch_prior_daily_ohlcv(conn, ticker: str, alert_date: date, lookback: int = 160):
-    """Daily OHLCV STRICTLY before alert_date (the prior-trading-day cut — no alert-day candle),
-    ascending, as dicts bars_to_df accepts. lookback>render window so the MA-50 has its runway."""
-    rows = await conn.fetch(
-        # mi_daily_closes' column is `close`; bars_to_df expects the key `close_price`
-        # (chart_render._OHLCV_KEYS) → alias. (Latent bug: never hit before because every prior
-        # cohort row skipped at the alert-row lookup; surfaced 2026-06-18 on the rebuilt 2026 cohort.)
-        """SELECT trade_date, open_price, high_price, low_price, close AS close_price, volume
-           FROM mi_daily_closes
-           WHERE ticker = $1 AND trade_date < $2
-           ORDER BY trade_date DESC LIMIT $3""",
-        ticker, alert_date, lookback)
-    return [dict(r) for r in reversed(rows)]
-
-
-def _modal_stable(verdicts: list):
-    """(modal_tier|None, stable_bool, tiers_list) — stable iff every replicate returned the same
-    non-None tier (mirrors eval_tape_judge)."""
-    tiers = [v["tier"] if v else None for v in verdicts]
-    stable = len(set(tiers)) == 1 and tiers[0] is not None
-    c = Counter(t for t in tiers if t).most_common(1)
-    return (c[0][0] if c else None), stable, tiers
-
-
-async def _grade(client, sem, payload, image_png, chart_note):
-    async with sem:
-        return await grade_holistic(client, payload, timeout=40,
-                                    image_png=image_png, chart_note=chart_note)
-
-
 async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, outdir):
     """Re-grade one cohort row across the THREE ablation arms, each ×K replicates (advisor 2026-06-17):
       A baseline    = existing prompt, no note, no image
-      B instruction = existing prompt + the text-only axis note, NO image
-      C note+image  = existing prompt + the chart-framed axis note + the rendered chart
+      B instruction = existing prompt + the text-only axis note, NO image  ┐ grade_b_c (chart_axis,
+      C note+image  = existing prompt + the chart-framed axis note + chart  ┘ shared with #343 shadow)
     Renders + saves the point-in-time chart PNG. Read-only. Returns the per-row record or a skip."""
     row = await conn.fetchrow(_ALERT_ROW_SQL, ticker, alert_date)
     if row is None:
         return {"skip": "no_alert_row", "ticker": ticker, "alert_date": alert_date, "label": label}
 
-    daily = await fetch_prior_daily_ohlcv(conn, ticker, alert_date)
-    df = bars_to_df(daily)
-    png = render_daily_chart_png(df, ticker, as_of=alert_date - timedelta(days=1))
+    png, n_daily = await render_prior_day_chart(ticker, alert_date)
     if png is None:
         return {"skip": "no_chart", "ticker": ticker, "alert_date": alert_date, "label": label,
-                "n_daily": len(daily)}
+                "n_daily": n_daily}
     png_path = os.path.join(outdir, f"{ticker}_{alert_date.isoformat()}.png")
     with open(png_path, "wb") as f:
         f.write(png)
@@ -180,27 +123,19 @@ async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, out
     grounded_text, _ = await resolve_grounded_text(dict(row), company, grounded=False)
     payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text payload, all arms
 
+    # Arm A is eval-only (the live baseline = no note/no image); B + C come from the shared core.
     a = await asyncio.gather(*[_grade(client, sem, payload, None, None) for _ in range(replicates)])
-    b = await asyncio.gather(
-        *[_grade(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY) for _ in range(replicates)])
-    c = await asyncio.gather(
-        *[_grade(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
-    a_modal, a_stable, a_tiers = _modal_stable(a)
-    b_modal, b_stable, b_tiers = _modal_stable(b)
-    c_modal, c_stable, c_tiers = _modal_stable(c)
+    a_modal, a_stable, a_tiers = modal_stable(a)
+    bc = await grade_b_c(client, sem, payload, png, replicates)
     return {
         "ticker": ticker, "alert_date": alert_date, "label": label, "floor": row["floor_tier"],
-        "png_path": png_path, "n_daily": len(daily),
+        "png_path": png_path, "n_daily": n_daily,
         "a_modal": a_modal, "a_stable": a_stable, "a_tiers": a_tiers,
-        "b_modal": b_modal, "b_stable": b_stable, "b_tiers": b_tiers,
-        "c_modal": c_modal, "c_stable": c_stable, "c_tiers": c_tiers,
-        "b_verdict": next((v for v in b if v), None),
-        "c_verdict": next((v for v in c if v), None),
+        **bc,
         # instruction effect (B vs A) — credible only when both arms stable.
-        "instruction_changed": (a_stable and b_stable and a_modal != b_modal),
-        # MARGINAL VISUAL effect (C vs B) — the real "does vision help" signal.
-        "visual_changed": (b_stable and c_stable and b_modal != c_modal),
-        "all_stable": a_stable and b_stable and c_stable,
+        "instruction_changed": (a_stable and bc["b_stable"] and a_modal != bc["b_modal"]),
+        # bc already carries visual_changed (C vs B) — the real "does vision help" signal.
+        "all_stable": a_stable and bc["both_stable"],
     }
 
 
