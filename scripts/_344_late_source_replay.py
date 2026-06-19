@@ -350,29 +350,38 @@ async def main():
             FROM prov GROUP BY ticker, alert_date HAVING count(*) >= 2
             ORDER BY alert_date, ticker
             """, since)
+        # ELIGIBLE denominator: only a day whose FIRST grade was has_direct_source=false
+        # could possibly flip false->true on a later re-grade. A day that started 'true'
+        # was never a candidate — reporting flips over all multi-row days inflates the
+        # denominator (advisor 6/19). Check A is restart-TIMED corroboration only, not
+        # the spine: the load-bearing evidence is the complete enumeration (stage-2 = a
+        # full census via production's own source funcs) + the hand-read of each case.
+        eligible = [m for m in multi if m["hds_seq"][0] == "false"]
         n_flip = n_flip_up = 0
         flip_up_detail = []
-        for m in multi:
+        for m in eligible:
             qs, hs = m["q_seq"], m["hds_seq"]
             first_q = qs[0]
             best_later = max(qs[1:], key=lambda q: _TIER_RANK.get(q, 0))
-            flipped = (hs[0] == "false") and any(h == "true" for h in hs[1:])
+            flipped = any(h == "true" for h in hs[1:])
             increased = _TIER_RANK.get(best_later, 0) > _TIER_RANK.get(first_q, 0)
             if flipped:
                 n_flip += 1
             if flipped and increased:
                 n_flip_up += 1
                 flip_up_detail.append((m["ticker"], str(m["alert_date"]), qs, hs))
-        print(f"\n{'-'*78}\nCHECK A — cache-fix natural experiment (multi-row days = real "
-              f"production re-grades)\n{'-'*78}")
-        print(f"  ticker/days with >=2 provenance rows (restart re-grades): {len(multi)}")
-        print(f"  of those, has_direct_source flipped false->true on a later row: {n_flip}")
+        print(f"\n{'-'*78}\nCHECK A — cache-fix natural experiment (restart re-grades; "
+              f"corroboration only)\n{'-'*78}")
+        print(f"  ticker/days with >=2 provenance rows: {len(multi)}")
+        print(f"  ...of which ELIGIBLE (first grade had has_direct_source=false): {len(eligible)}")
+        print(f"  of eligible, has_direct_source flipped false->true on a later row: {n_flip}")
         print(f"  ...AND that later row graded a HIGHER tier (fix would have value): {n_flip_up}")
         for (tk, ad, qs, hs) in flip_up_detail:
             print(f"     ↑ {tk} {ad}: grade_seq={qs}  hds_seq={hs}")
         if n_flip_up == 0:
-            print("  → production's OWN web-inclusive re-grades never lifted the tier on a "
-                  "false->true flip: the staleness surface exists but doesn't recover an alert.")
+            print(f"  → across {len(eligible)} eligible production re-grades, none flipped "
+                  "false->true with a tier increase: corroborates that the staleness "
+                  "surface, while real, recovers no alert in this window.")
 
         # ── CHECK B (advisor 6/19): any SAME-DAY before-grade direct source? ──
         # stage1-minus-stage2 = members with a direct source NOT in-window. If any is
@@ -396,11 +405,12 @@ async def main():
                   "(stale), not a same-day source the grade missed. Flank is clean.")
 
         print(f"\n{'='*78}")
-        print("GATE READ: the no-web reconstruction can only UNDERCOUNT recoveries "
-              "(production keeps web; with-web grade >= no-web). So '0 reconstructed "
-              "recoveries' does NOT by itself prove the fix is useless — CHECK A "
-              "(production's own re-grades) is the load-bearing evidence, and the "
-              "BFLY/BTQ catalyst-correctness labels are the operator's call.")
+        print("GATE READ — load-bearing evidence = the ENUMERATION (stage-2): a COMPLETE "
+              "census of the addressable surface via production's own source funcs "
+              "(web-independent), plus the hand-read of each in-window case. The no-web "
+              "re-grade can only UNDERCOUNT recoveries, and Check A only samples "
+              "restart-TIMED re-grades — both are CORROBORATION, not the spine. The "
+              "BFLY/BTQ catalyst-correctness labels are the operator's call (HARD gate).")
         print(f"{'='*78}\n")
 
 

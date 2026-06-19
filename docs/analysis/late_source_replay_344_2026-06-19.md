@@ -61,51 +61,64 @@ The BFLY miss is therefore **not** a cache-staleness problem — it is either a
 **materiality-rubric** question (should a no-financials product PR that gaps the
 stock +13.5% grade above routine?).
 
-### Case 2 — BTQ 2026-06-18 → stays `routine` (correct)
+### Case 2 — BTQ 2026-06-18 → stays `routine`
 In-window source: SEC 6-K — an **at-the-market (ATM) equity offering** sales
 agreement with Cantor Fitzgerald for up to C$150M. Re-grade reasoning: *"a share
 issuance/dilution mechanism, not a positive business catalyst — ATM offerings are
 typically neutral-to-negative for existing shareholders and do not explain a
-gap-up."* → routine. This is a **correct rejection** (dilution is not a catalyst).
+gap-up."* → routine. Agent reads this as a clear correct rejection (dilution is not
+a catalyst), but the HARD gate requires the operator's label (below) — the agent
+does not self-classify even the easy one.
 
-## The load-bearing evidence — production's OWN re-grades (Check A)
+## Why the verdict holds — the LOAD-BEARING evidence is the enumeration
 
-The no-web reconstruction above can only **undercount** recoveries: production's
-cache-fix re-poll keeps the web layer (`with-web grade ≥ no-web grade` — you can't
-downgrade *from* routine), so "direct source alone grades routine" does **not**
-prove production's web-inclusive re-poll would. So "0 reconstructed recoveries"
-does **not** by itself settle the gate. The decisive test uses a **natural
-experiment already in the data**: a container restart clears `_catalyst_cache`, so
-the next scan re-grades with the **full** web+direct corpus — exactly what the
-#344 re-poll would do. A *later same-day* `ep_catalyst_provenance` row is therefore
-a **real production re-grade.**
+The spine is **not** the no-web re-grade or the restart experiment — both are
+corroboration. The spine is the **complete enumeration plus the hand-read of each
+case:**
 
-> **Check A:** across **23** ticker/days with ≥2 provenance rows (real restart
-> re-grades), `has_direct_source` flipped `false→true` on a later row **0** times,
-> and **0** later re-grades lifted the tier.
+1. **Stage-2 is a full census, web-independent.** Counting how many web-only grades
+   had a primary-subject direct source land in the ORB window uses production's own
+   `get_alpaca_news` / `get_sec_recent_filings` / `is_primary_subject_news` — it
+   does **not** depend on the no-web re-grade, so the no-web caveat doesn't touch
+   it. The answer is **2 of 21**. The addressable surface is tiny and fully
+   enumerated.
+2. **Both cases read by hand.** BFLY = a no-financials product/prototype PR; BTQ =
+   an ATM dilution. Neither is an EP-grade catalyst on its face. This reading never
+   relies on the no-web re-grade.
 
-**The cache fix's exact trigger condition (`has_direct_source` False→True) never
-fired in production across every day of available evidence.** This is production's
-actual web-inclusive behavior — it cannot undercount the way the reconstruction
-can. The staleness *mechanism* exists, but the sample never exercises it to a
-recovery.
+That pairing settles the gate. The two corroborating checks below only fail to
+contradict it.
 
-**Check B (the #210 flank):** of the 10 cases with a direct source that was *not*
-in-window, **0** were same-day before-grade primary-subject sources — every one is
-a prior-day (stale) filing. So production never graded web-only *despite* an
-available same-day direct source; there is no live #210 sourcing gap hiding here.
+**Corroboration A — production's own restart re-grades (timing-limited).** A
+container restart clears `_catalyst_cache`, so a later same-day
+`ep_catalyst_provenance` row is a real production re-grade on the full web+direct
+corpus. Across **12 eligible** ticker/days (first grade `has_direct_source=false`,
+so a `false→true` flip was actually possible; 23 multi-row days total),
+`has_direct_source` flipped `false→true` **0** times and **0** re-grades lifted the
+tier. Caveat: this only samples *restart-timed* re-grades, not the continuous
+re-poll the fix would run — corroboration, not the spine.
+
+**Corroboration B — the #210 flank.** Of the 10 cases with a direct source that was
+*not* in-window, **0** were same-day before-grade primary-subject sources — every
+one is a prior-day (stale) filing. Production never graded web-only *despite* an
+available same-day direct source; no live #210 sourcing gap hiding here.
+
+(Note the no-web reconstruction can only **undercount** recoveries — production's
+re-poll keeps web and `with-web grade ≥ no-web grade` — so "0 reconstructed
+recoveries" is a floor, not the argument. The enumeration + hand-read is.)
 
 ## Gate read
 
-**#344's cache surgery is NOT launch-blocking.** Production's own re-grades never
-hit the fix's trigger (false→true) and never recovered an alert (Check A: 0/23);
-the reconstruction's addressable surface is tiny (2/21) and the in-window sources
-that do arrive are weak catalysts (product hype, dilution) that grade routine on
-the merits (BFLY, BTQ). The staleness mechanism is real but the sample doesn't
-exercise it to a single recovery — so the hot-path cache surgery is **deferred,
-not shipped**, for 6/22. Caveat: the window is short (provenance only since 6/7);
-the fire-through path is **unexercised** (0 recoveries → untested code if a wider
-window ever reaches stage 3).
+**#344's cache surgery is NOT launch-blocking.** The addressable surface is fully
+enumerated at **2 of 21** web-only grades, and both in-window sources are weak
+catalysts (product hype, dilution) that grade routine on the merits (BFLY, BTQ) —
+so the cache re-poll has nothing to recover. Production's own restart re-grades
+corroborate (0 of 12 eligible flipped), and there's no same-day sourcing gap. The
+staleness *mechanism* is real but the data doesn't exercise it to a single
+recovery — so the hot-path cache surgery is **deferred, not shipped**, for 6/22.
+Caveat: the window is short (provenance only since 6/7); the fire-through path is
+**unexercised** (0 recoveries → untested code if a wider window ever reaches
+stage 3).
 
 **This reframes #344.** The live question the operator raised ("was BFLY a missed
 EP?") is now a **catalyst-correctness / materiality** question, not a timing fix:
