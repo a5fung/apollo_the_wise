@@ -121,23 +121,55 @@ Caveat: the window is short (provenance only since 6/7); the fire-through path i
 stage 3).
 
 **This reframes #344.** The live question the operator raised ("was BFLY a missed
-EP?") is now a **catalyst-correctness / materiality** question, not a timing fix:
+EP?") is a **catalyst-correctness / corpus-completeness** question, not a timing fix.
 
-## ⚖️ Operator labels needed (HARD gate — agent must not self-classify)
+## ⚖️ Operator label LANDED 2026-06-19 — BFLY IS a real EP
 
-1. **BFLY 6/18** — is `routine` the **correct** grade for a no-financials
-   product/prototype PR that gapped the stock +13.5%? Or should the
-   product/innovation catalyst grade strong+ (a materiality-rubric change)?
-2. **BTQ 6/18** — confirm `routine` (ATM dilution) is correct (agent reads it as a
-   clear correct rejection, but the gate requires your label).
+The operator labeled BFLY 6/18 a **textbook EP** (`routine` is WRONG) and corrected
+the grade reasoning: the partner **is** named (Midjourney) and the contract value
+**does** exist ($74M / 5yr, prior 8-K). Gemini concurs. (Verbatim in
+`docs/methodology/operator_shared_notes.md`.)
 
-**If (1) = "routine is correct":** the 6/22 gate is satisfied by *this*
-shadow-validation — the cache fix isn't needed and is **deferred** (kept on the
-backlog, not built; Check A = 0/23 production flips is the evidence). **If (1) =
-"should be higher":** the real work is a catalyst-materiality rubric change for
-product/innovation catalysts → CHANGE_PROCESS + N≥10 backtest + sign-off (a NEW
-task, NOT the cache fix), and the 6/22 launch gate should be re-pointed at that
-question.
+## Root-cause decomposition (probes `_344_bfly_corpus_scope.py` / `_344_include_content_check.py`)
+
+- **BFLY's grade-time corpus was EMPTY.** At the 7:00 ET grade there were **zero**
+  primary-subject sources — the BusinessWire/Midjourney PR didn't hit Benzinga until
+  8:12 ET. So `routine` faithfully reflects "nothing was knowable at grade time."
+- **The 8:12 PR is headline-only** (body = 0 chars even with `include_content=True`)
+  — so a cache re-poll on it would *also* stay routine (confirmed by the late-source
+  replay). The PR alone can't rescue BFLY.
+- **The $74M deal is real and on file but was NOT in the corpus:** 2025-11-18 8-K
+  item 1.01 = Co-Development & Licensing Agreement with Midjourney, Inc. (exclusive
+  license; $15M one-time + $10M/yr + up to $9M milestones ≈ $74M/5yr); 2026-02-26
+  8-K = $6.8M Q4 Midjourney revenue. The 6/18 news was an *update to this existing
+  partnership*, but the grounded corpus carried none of it.
+- **Two corpus gaps, decomposed:** (a) `get_alpaca_news` omits `include_content=True`
+  → discards full Benzinga bodies generally (recovers 0c→~3–7k for most items, but
+  *not* BFLY's headline flash); (b) no prior item-1.01-8K / revenue-attribution
+  enrichment — the load-bearing lever for BFLY.
+
+## Enrichment eval (`--enrich`) — works mechanically, but exposes a real inflation risk
+
+Re-grading BFLY with the prior-agreement exhibit substance in the corpus DID lift
+`routine → strong` — **but for the WRONG reason.** The grader's rationale cited the
+7-week-old Q1 earnings 8-K (filed 2026-04-30) as *"today's"* catalyst — a
+**date-confusion inflation artifact**, not the Midjourney escalation. Naively
+prepending prior filings makes the freshness rule mis-time stale filings as fresh.
+This is exactly the inflation the net-correctness metric must catch — so the fix is
+**not** "dump prior 8-Ks into the corpus."
+
+## Gate status & the operator decision
+
+**The corpus-completeness fix is real but #210-scale, not a clean 6/22 validation.**
+It needs: (a) `include_content=True` (a separable, general win — its own validation);
+(b) prior item-1.01 agreement + revenue-attribution context, **exhibit-extracted**
+and labeled UNAMBIGUOUSLY as prior/context (not "today"); (c) a freshness/materiality
+rubric that correctly treats "today's update to an existing material partnership";
+(d) the **net catalyst-correctness** cohort validation (distribution shift +
+false-positive direction, NOT BFLY-recovery) → CHANGE_PROCESS + N≥10 + operator
+sign-off. **Operator decision for 6/22:** slip the launch until this validates ·
+accept the known gap and ship with a caveat (build #210 fix post-launch with
+evidence) · or de-scope to the clean `include_content` win now + #210 later.
 
 ## Reproduce
 
@@ -145,4 +177,5 @@ question.
 docker cp scripts/_344_late_source_replay.py apollo-market:/app/scripts/
 docker exec apollo-market python scripts/_344_late_source_replay.py --lookback-days 12 --orb-cutoff 09:45
 # single case: --ticker BFLY --lookback-days 3
+# enrichment eval: --enrich --lookback-days 12   (single: --enrich --ticker BFLY --lookback-days 3)
 ```

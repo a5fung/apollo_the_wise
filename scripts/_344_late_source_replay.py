@@ -71,6 +71,13 @@ def _parse_args():
     ap.add_argument("--limit", type=int, default=60,
                     help="cap LLM re-grades (applied to the late-source subset only).")
     ap.add_argument("--ticker", default=None, help="single-case mode (e.g. BFLY).")
+    ap.add_argument("--enrich", action="store_true",
+                    help="ENRICHMENT mode (#344 fix eval): re-grade ALL graded gappers in "
+                         "the window under corpus-enrichment arms (include_content / prior "
+                         "item-1.01 8-K + revenue / both) vs a no-web baseline, and report "
+                         "NET catalyst-correctness (distribution shift + per-rise detail for "
+                         "operator labeling) — NOT BFLY-recovery (which the fix recovers by "
+                         "construction).")
     return ap.parse_args()
 
 
@@ -155,6 +162,204 @@ async def _gather_direct_sources(ticker, alert_date, company, first_grade_ts, cu
     return in_window_sec, in_window_benzinga[:3], events
 
 
+async def _fetch_benzinga(ticker, alert_date, include_content):
+    """Primary-subject Benzinga items via Alpaca News, with optional full bodies.
+    get_alpaca_news() does NOT pass include_content=True (arm-(a) gap), so call the
+    NewsClient directly here to compare headline-only vs full-body corpora."""
+    import os
+    from alpaca.data.historical.news import NewsClient
+    from alpaca.data.requests import NewsRequest
+    api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
+    secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
+    start = datetime(alert_date.year, alert_date.month, alert_date.day, tzinfo=timezone.utc) \
+        - timedelta(days=10)
+    end = datetime(alert_date.year, alert_date.month, alert_date.day, 23, 59, 59, tzinfo=timezone.utc)
+    out = []
+    try:
+        client = NewsClient(api_key=api_key, secret_key=secret)
+        req = NewsRequest(symbols=ticker, start=start, end=end, limit=30,
+                          include_content=include_content)
+        loop = asyncio.get_event_loop()
+        resp = await loop.run_in_executor(None, lambda: client.get_news(req))
+        items = resp.dict().get("news", []) if hasattr(resp, "dict") else resp.model_dump().get("news", [])
+        for n in items:
+            ca = n.get("created_at", "")
+            out.append({
+                "title": n.get("headline", "") or "", "headline": n.get("headline", "") or "",
+                "summary": n.get("summary", "") or "", "content": n.get("content", "") or "",
+                "symbols": list(n.get("symbols", []) or []),
+                "created_at": ca.isoformat() if hasattr(ca, "isoformat") else str(ca),
+            })
+    except Exception:
+        pass
+    return out
+
+
+def _recent_filing_by_item(filings, item_code, on_before):
+    """Most recent filing whose `items` contains item_code, filed <= on_before, with text."""
+    cands = []
+    for f in filings or []:
+        if item_code not in (f.get("items") or "") or not f.get("text"):
+            continue
+        try:
+            fd = date.fromisoformat(f["filed"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if fd <= on_before:
+            cands.append((fd, f))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: x[0], reverse=True)
+    return cands[0][1]
+
+
+def _substantive_slice(text, markers, n):
+    """Skip the iXBRL/cover boilerplate (the disclosure body lives past it) — return a
+    window around the first substantive marker, else fall back to the head."""
+    if not text:
+        return ""
+    low = text.lower()
+    best = None
+    for mk in markers:
+        i = low.find(mk)
+        if i > 150 and (best is None or i < best):  # past the cover header
+            best = i
+    start = max(0, best - 80) if best is not None else 0
+    return text[start:start + n]
+
+
+def _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k):
+    """Build the grounded corpus for one enrichment arm. Agreement/earnings context is
+    prepended (survives the grader's 6000-char cut) so the grade sees the deal terms —
+    SUBSTANTIVE-sliced to skip the iXBRL cover boilerplate (the #344 enrichment bug)."""
+    benz = (benz_wc if arm in ("content", "both") else benz_nc)[:3]
+    body = build_grounded_text(sec_nearby, benz, None) or ""
+    if arm in ("agreement", "both"):
+        ctx = []
+        if agreement_8k:
+            terms = _substantive_slice(
+                agreement_8k.get("text") or "",
+                ("entered into", "definitive agreement", "agreement (the",
+                 "license", "pursuant to the agreement", "co-development"), 1600)
+            ctx.append(f"[PRIOR MATERIAL AGREEMENT — 8-K item 1.01 filed "
+                       f"{agreement_8k.get('filed')}]\n{terms}")
+        if earnings_8k:
+            rev = _substantive_slice(
+                earnings_8k.get("text") or "",
+                ("revenue", "net cash", "partnership contributed", "total revenue"), 1000)
+            ctx.append(f"[RECENT EARNINGS — 8-K item 2.02 filed "
+                       f"{earnings_8k.get('filed')}]\n{rev}")
+        if ctx:
+            body = "\n\n".join(ctx) + "\n\n[TODAY'S NEWS]\n" + (body or "(no same-day primary source)")
+    return body
+
+
+async def run_enrich_mode(c, args, since):
+    """#344 enrichment eval — NET catalyst-correctness across all graded gappers."""
+    rows = await c.fetch(
+        """
+        SELECT DISTINCT ON (d.ticker, d.alert_date)
+               d.ticker, d.alert_date::date AS alert_date, l.created_at AS grade_ts,
+               d.catalyst_quality AS live_q
+        FROM mi_audit_log l
+        CROSS JOIN LATERAL (
+            SELECT (l.detail::jsonb->>'ticker') AS ticker,
+                   (l.detail::jsonb->>'alert_date') AS alert_date,
+                   (l.detail::jsonb->>'catalyst_quality') AS catalyst_quality
+        ) d
+        WHERE l.event_type = 'ep_catalyst_provenance'
+          AND (l.detail::jsonb->>'alert_date')::date >= $1
+          AND ($2::text IS NULL OR d.ticker = $2)
+        ORDER BY d.ticker, d.alert_date, l.created_at ASC
+        """, since, args.ticker)
+
+    print(f"\n{'='*78}")
+    print(f"#344 ENRICHMENT EVAL — net catalyst-correctness across {len(rows)} graded "
+          f"gappers\n  arms: baseline(no-web) · +content(full Benzinga) · +agreement(prior "
+          f"1.01 8-K+rev) · +both")
+    print(f"{'='*78}")
+
+    dist = {a: {"game_changer": 0, "strong": 0, "routine": 0, "mna": 0}
+            for a in ("baseline", "both")}
+    rises = []
+    for r in rows[: args.limit]:
+        ticker, alert_date, grade_ts = r["ticker"], r["alert_date"], r["grade_ts"]
+        if grade_ts.tzinfo is None:
+            grade_ts = grade_ts.replace(tzinfo=timezone.utc)
+        mc, sector, company = await fetch_profile(ticker)
+        profile = {"companyName": company or "", "sector": sector or "",
+                   "marketCap": mc, "description": ""}
+        filings = await get_sec_recent_filings(
+            ticker, forms=("8-K", "6-K"), lookback_days=400, max_filings=30, want_text=True)
+        sec_nearby, _b, _e = await _gather_direct_sources(ticker, alert_date, company,
+                                                          grade_ts, grade_ts)
+        agreement_8k = _recent_filing_by_item(filings, "1.01", alert_date)
+        earnings_8k = _recent_filing_by_item(filings, "2.02", alert_date)
+        benz_nc = [n for n in await _fetch_benzinga(ticker, alert_date, False)
+                   if is_primary_subject_news(n, ticker, company or "")
+                   and (_to_aware_utc(n.get("created_at")) or grade_ts) <= grade_ts]
+        benz_wc = [n for n in await _fetch_benzinga(ticker, alert_date, True)
+                   if is_primary_subject_news(n, ticker, company or "")
+                   and (_to_aware_utc(n.get("created_at")) or grade_ts) <= grade_ts]
+
+        grades, analyses, corpora = {}, {}, {}
+        for arm in ("baseline", "both"):
+            corpus = _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k)
+            corpora[arm] = corpus
+            q, an = (await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus)) \
+                if corpus else ("routine", "(empty corpus)")
+            grades[arm] = q
+            analyses[arm] = an
+            dist[arm][q] = dist[arm].get(q, 0) + 1
+
+        if args.ticker:  # single-case diagnostic
+            print(f"\n--- DIAG {ticker} {alert_date} ---")
+            print(f"  prior 1.01 8-K: {agreement_8k.get('filed') if agreement_8k else 'NONE FOUND'}"
+                  f"   earnings 2.02 8-K: {earnings_8k.get('filed') if earnings_8k else 'NONE'}")
+            print(f"  benzinga ≤grade: nc={len(benz_nc)} wc={len(benz_wc)}  "
+                  f"sec_nearby={'yes' if sec_nearby else 'no'}")
+            print(f"  +both corpus ({len(corpora['both'])}c) lead:\n    "
+                  + corpora['both'][:1100].replace(chr(10), chr(10) + '    '))
+            for arm in ("baseline", "both"):
+                print(f"  [{arm}] → {grades[arm]}: {analyses[arm][:280]}")
+
+        if _TIER_RANK.get(grades["both"], 0) > _TIER_RANK.get(grades["baseline"], 0):
+            # Attribute: which arm alone drove the rise?
+            attr = {}
+            for arm in ("content", "agreement"):
+                corpus = _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k)
+                attr[arm] = (await _classify_catalyst_claude(
+                    ticker, [], profile, grounded_text=corpus))[0] if corpus else "routine"
+            drivers = [a for a in ("content", "agreement")
+                       if _TIER_RANK.get(attr[a], 0) > _TIER_RANK.get(grades["baseline"], 0)]
+            rises.append({
+                "ticker": ticker, "alert_date": str(alert_date), "live_q": r["live_q"],
+                "base": grades["baseline"], "both": grades["both"], "drivers": drivers or ["combined"],
+                "has_agreement": agreement_8k is not None,
+                "agreement_filed": agreement_8k.get("filed") if agreement_8k else None,
+            })
+
+    print(f"\nGRADE DISTRIBUTION  (baseline → +both):")
+    for tier in ("game_changer", "strong", "routine", "mna"):
+        print(f"  {tier:>12}: {dist['baseline'][tier]:>3}  →  {dist['both'][tier]:>3}")
+    n_rise = len(rises)
+    print(f"\nRISES under enrichment (grade lifted vs baseline): {n_rise} of {len(rows[:args.limit])}")
+    print(f"{'-'*78}\nPer-rise detail — ⚖️ operator labels each: TRUE catalyst recovery or "
+          f"INFLATION?\n{'-'*78}")
+    for x in rises:
+        tag = "/".join(x["drivers"])
+        print(f"  {x['ticker']:6} {x['alert_date']}  base={x['base']} → both={x['both']}  "
+              f"(live grade was {x['live_q']})  driver={tag}  "
+              f"prior_1.01_8K={x['agreement_filed'] or 'none'}")
+    print(f"\n{'='*78}")
+    print("GATE READ: enrichment is net-positive ONLY IF the RISES are true catalysts "
+          "(operator-labeled), not inflation. BFLY recovering is expected (the fix was "
+          "built from it) — the load-bearing question is whether names that should STAY "
+          "routine got lifted. Baseline here is no-web (isolates the enrichment delta); "
+          "the live flip stays CHANGE_PROCESS + N>=10 + sign-off.")
+    print(f"{'='*78}\n")
+
+
 async def main():
     args = _parse_args()
     from agents.market_intelligence.db import get_pool
@@ -165,6 +370,9 @@ async def main():
     since = today - timedelta(days=args.lookback_days)
 
     async with pool.acquire() as c:
+        if args.enrich:
+            await run_enrich_mode(c, args, since)
+            return
         # ── Cohort: web-only grades, deduped to the EARLIEST grade per ticker/day
         # (container-restart re-fires log a 2nd provenance row later in the day —
         # 6/15's 118 is almost all re-fires; min(created_at) is the real grade). ──
