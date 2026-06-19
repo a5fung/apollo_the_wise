@@ -1666,7 +1666,7 @@ reviews:
       OPPOSITE of the FTRE incident. 0 partial-trail-race misses → fix VERIFIED.
       RECOMMEND: ratify GATE 2 GREEN + status=done (operator sign-off — safeguard
       gate, not agent-unilateral per CHANGE_PROCESS).
-    status: pending  # → done on operator ratification of the 6/18 root-cause
+    status: done  # RATIFIED by operator 2026-06-18 — GATE 2 GREEN (RCAT 6/01 root-cause = the fix working; defense-in-depth handled a transient APIError, broker coverage confirmed, 0 partial-trail-race misses)
     added_on: 2026-05-10
 
   - review_id: paper_r_expectancy_validation
@@ -5012,7 +5012,14 @@ reviews:
       4. For each MISSING deliverable, file as cutover blocker + add to
          BACKLOG.md "Live-cutover blockers" section.
       F (operator sign-off) → flag to user separately at 5/22.
-    status: pending
+    resolution_2026_06_18: |
+      All 6 Gate-5 deliverables COMPLETE. Code (operator-verified 6/18): A naked-
+      position remediation (live, seen working in the RCAT case + order_manager/
+      trade_stream), B/C/G already shipped (G = deploy gate [5c/7]), D
+      _stuck_fill_watchdog_job (scheduler:1254, registered), E test_db_update_
+      prepare.py (+ deploy gate [5b/7]). F = operator SIGNED OFF on the CRMD/IBM
+      post-mortem 2026-06-18. Gate 5 GREEN.
+    status: done  # operator signed off F 2026-06-18 → all A-G complete, Gate 5 green
     added_on: 2026-05-19
 
   - review_id: l2_baseline_window_trending_metrics
