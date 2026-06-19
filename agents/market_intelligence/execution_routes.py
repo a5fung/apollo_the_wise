@@ -39,6 +39,7 @@ _EXEC_HANDLERS = {
     "sync_positions": _ec._sync_positions_inprocess,
     "sync_positions_for_mode": _ec._sync_positions_for_mode_inprocess,
     "place_timestop_sell": _ec._place_timestop_sell_inprocess,
+    "cancel_unfilled_entries": _ec._cancel_unfilled_entries_inprocess,
 }
 
 

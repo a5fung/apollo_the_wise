@@ -1212,8 +1212,28 @@ class MarketIntelligenceAgent(BaseAgent):
                 f"Re-check with /pause or /resume.",
             )
         if want_halt:
+            # Cancel resting (unfilled) real-money entry brackets so a mid-morning
+            # /pause stops fills-already-in-flight, not just NEW orders (#345 advisor
+            # #2). Reuses the proven 10:00/EOD cancel path, scoped to the live account;
+            # the 10:00 ET cleanup remains the backstop. If the cancel fails, the halt
+            # is still ON (new entries blocked) — surfaced honestly, not silent.
+            cancelled = None
+            try:
+                from agents.market_intelligence import execution_client as _ec
+                cancelled = await _ec.cancel_unfilled_entries(
+                    reason="manual /pause", account_mode="live"
+                )
+            except Exception as e:
+                logger.error(f"/pause: resting-entry cancel failed (halt still ON): {e}")
+            cancel_line = (
+                f"Cancelled {cancelled} resting real-money entry order(s)."
+                if cancelled is not None else
+                "⚠️ Resting-entry cancel FAILED — halt is ON (new entries blocked); "
+                "cancel manually or rely on the 10:00 ET cleanup backstop."
+            )
             return self._ok(request, result=(
                 "⏸️ *Real-money trading PAUSED* (#345).\n"
+                f"{cancel_line}\n"
                 "Blocks ALL new LIVE-account entries (incl. staged-paper proposals). "
                 "Open positions are untouched — they keep their resting broker stops.\n"
                 "Send `/resume` to lift."

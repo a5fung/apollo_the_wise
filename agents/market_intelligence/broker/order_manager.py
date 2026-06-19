@@ -1932,13 +1932,18 @@ async def finalize_stop_fill(
 # ── EOD Cleanup ──────────────────────────────────────────────────────────────
 
 
-async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
+async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:
     """Cancel all unfilled entry orders. Returns count cancelled.
 
-    Called from two distinct cleanup paths — passing the right reason keeps
-    skip_reason and Telegram copy honest:
+    Called from cleanup paths AND the operator panic button — passing the right
+    reason keeps skip_reason and Telegram copy honest:
     - 10:00 ET ORB-window cleanup → reason="ORB window unfilled"
     - 4:05 PM EOD cleanup         → reason="EOD unfilled" (default)
+    - operator /pause (#345)       → reason="manual /pause", account_mode="live"
+
+    account_mode (#345): when set, cancel ONLY that mode's resting entries — so
+    /pause cancels resting REAL-MONEY brackets without touching paper. None (the
+    cleanup paths) = all modes.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -1953,7 +1958,8 @@ async def cancel_unfilled_entries(reason: str = "EOD unfilled") -> int:
             LEFT JOIN mi_ep_alerts a
               ON a.ticker = t.ticker AND a.alert_date = t.alert_date
             WHERE t.status = 'order_placed' AND t.entry_order_id IS NOT NULL
-        """)
+              AND ($1::text IS NULL OR t.account_mode = $1)
+        """, account_mode)
 
     cancelled = 0
     cancelled_tickers: list[str] = []

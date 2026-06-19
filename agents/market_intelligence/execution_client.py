@@ -54,7 +54,7 @@ _CROSS_FNS = frozenset({
     "subscribe_orb_candidate", "reset_bar_stream_daily_state",
     "record_skipped_trade", "trigger_orb_entry",
     "submit_9m_day2_trade", "execute_partial_exit", "sync_positions",
-    "sync_positions_for_mode", "place_timestop_sell",
+    "sync_positions_for_mode", "place_timestop_sell", "cancel_unfilled_entries",
 })
 
 # HTTP timeout is split by what the call DOES on the execution side, not one flat
@@ -78,6 +78,7 @@ _HTTP_COMMAND_TIMEOUT_SECONDS = 180.0
 _SLOW_COMMAND_FNS = frozenset({
     "trigger_orb_entry", "submit_9m_day2_trade", "execute_partial_exit",
     "sync_positions", "sync_positions_for_mode", "place_timestop_sell",
+    "cancel_unfilled_entries",
 })
 
 
@@ -304,6 +305,18 @@ async def _sync_positions_inprocess(*args, **kwargs):
 async def sync_positions(*args, **kwargs):
     """DB↔Alpaca position reconcile across all enabled modes."""
     return await _dispatch("sync_positions", _sync_positions_inprocess, args, kwargs)
+
+
+async def _cancel_unfilled_entries_inprocess(*args, **kwargs):
+    from agents.market_intelligence.broker.order_manager import cancel_unfilled_entries as _f
+    return await _f(*args, **kwargs)
+
+
+async def cancel_unfilled_entries(*args, **kwargs):
+    """Cancel resting unfilled entry brackets (operator /pause #345). The 10:00 ET /
+    EOD cleanup jobs call the order_manager fn in-process directly; this facade is
+    the cross-service path the /pause command (intelligence) uses to reach execution."""
+    return await _dispatch("cancel_unfilled_entries", _cancel_unfilled_entries_inprocess, args, kwargs)
 
 
 async def _sync_positions_for_mode_inprocess(*args, **kwargs):
