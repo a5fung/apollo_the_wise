@@ -6602,10 +6602,12 @@ async def get_recent_9m_tickers(since_date: date) -> set:
 
 # ── #343 chart-vision judge-axis SHADOW (read-only telemetry; never read by the live path) ──
 
-# The judge-payload column set (mirrors scripts/_judge_replay_common.REPLAY_SQL exactly so
-# build_judge_payload assembles an identical payload), scoped to ONE trading day's HIGH/MODERATE
-# EP alerts — the daily shadow cohort. DISTINCT ON (ticker) keeps the latest alert per name.
-_CHART_AXIS_COHORT_COLS = """ticker, alert_date, detected_at,
+# SINGLE SOURCE for the judge-payload column set — also imported by scripts/_judge_replay_common
+# (REPLAY_SQL) + scripts/eval_chart_judge (_ALERT_ROW_SQL), and used by the #343 shadow cohort
+# below, so build_judge_payload always reads an IDENTICAL payload. Was triplicated by hand — the
+# #236 lockstep-divergence class feedback_single_source_of_truth was written to kill (db.py is the
+# schema SoT + imports nothing from the judge layer, so it's the safe home — no import cycle).
+EP_JUDGE_PAYLOAD_COLS = """ticker, alert_date, detected_at,
        COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
        score_tier, catalyst_quality, catalyst, claude_analysis,
        in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
@@ -6637,7 +6639,7 @@ async def get_chart_axis_shadow_cohort(trade_date: date, limit: int = 8) -> list
     async with pool.acquire() as conn:
         rows = await conn.fetch(f"""
             SELECT * FROM (
-                SELECT DISTINCT ON (ticker) {_CHART_AXIS_COHORT_COLS}
+                SELECT DISTINCT ON (ticker) {EP_JUDGE_PAYLOAD_COLS}
                 FROM mi_ep_alerts
                 WHERE alert_date = $1 AND score_tier IN ('HIGH', 'MODERATE')
                 ORDER BY ticker, detected_at DESC
@@ -6649,18 +6651,20 @@ async def get_chart_axis_shadow_cohort(trade_date: date, limit: int = 8) -> list
 
 
 async def get_chart_axis_shadow_processed_tickers(trade_date: date) -> set:
-    """Tickers already processed by the chart-axis shadow on `trade_date` (ET) — graded OR
-    no-render. Idempotency for a same-day re-run: a `graded`/`norender` marker means "done, don't
-    re-spend"; an API-failed candidate left NO marker → it retries on a same-day re-run."""
+    """Tickers already processed (graded OR no-render) for the cohort of `trade_date`. Idempotency:
+    a marker means "done, don't re-spend"; an API-failed candidate left NO marker → it retries.
+
+    Keyed on the marker's alert_date (encoded in the summary as `ticker|alert_date`), NOT created_at
+    — so dedup holds even when the job grades a PRIOR trading day (the verify one-shot's whole job;
+    a created_at window would miss markers written on a different wall-clock day than the cohort)."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT DISTINCT summary FROM mi_audit_log
                WHERE event_type IN ('chart_axis_shadow_graded', 'chart_axis_shadow_norender')
-                 AND created_at >= ($1::date AT TIME ZONE 'America/New_York')
-                 AND created_at <  (($1::date + INTERVAL '1 day')::date AT TIME ZONE 'America/New_York')""",
-            trade_date)
-    return {r["summary"] for r in rows}
+                 AND summary LIKE '%|' || $1""",
+            trade_date.isoformat())
+    return {r["summary"].split("|", 1)[0] for r in rows}
 
 
 async def get_chart_axis_shadow_delta_count(since_date: date) -> int:

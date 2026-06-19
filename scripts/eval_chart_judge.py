@@ -41,23 +41,18 @@ from collections import Counter
 from datetime import date
 
 from agents.market_intelligence.chart_axis import (  # SINGLE SOURCE — see chart_axis.py
-    CHART_AXIS_NOTE, CHART_AXIS_NOTE_TEXT_ONLY, grade_b_c, modal_stable, render_prior_day_chart,
-    _grade,
+    grade_b_c, grade_one, modal_stable, render_prior_day_chart,
 )
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import EP_JUDGE_PAYLOAD_COLS, get_pool
 from agents.market_intelligence.ep_grade_judge import format_tier_transition
 from scripts._judge_replay_common import (
     build_judge_payload, fetch_profile, resolve_grounded_text,
 )
 
-# Per-(ticker, alert_date) fetch of the same columns REPLAY_SQL exposes — the cohort is explicit
-# (ticker, date) pairs from a CSV, not a recency window.
-_ALERT_ROW_SQL = """
-SELECT ticker, alert_date, detected_at,
-       COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
-       score_tier, catalyst_quality, catalyst, claude_analysis,
-       in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
-       ep_score, grounded_text
+# Per-(ticker, alert_date) fetch of the SAME columns REPLAY_SQL exposes (db.EP_JUDGE_PAYLOAD_COLS,
+# the one source) — the cohort is explicit (ticker, date) pairs from a CSV, not a recency window.
+_ALERT_ROW_SQL = f"""
+SELECT {EP_JUDGE_PAYLOAD_COLS}
 FROM mi_ep_alerts
 WHERE ticker = $1 AND alert_date = $2
 ORDER BY detected_at DESC
@@ -124,7 +119,7 @@ async def eval_one(client, sem, conn, ticker, alert_date, label, replicates, out
     payload, _ = build_judge_payload(dict(row), grounded_text, mc, sector)  # SAME text payload, all arms
 
     # Arm A is eval-only (the live baseline = no note/no image); B + C come from the shared core.
-    a = await asyncio.gather(*[_grade(client, sem, payload, None, None) for _ in range(replicates)])
+    a = await asyncio.gather(*[grade_one(client, sem, payload, None, None) for _ in range(replicates)])
     a_modal, a_stable, a_tiers = modal_stable(a)
     bc = await grade_b_c(client, sem, payload, png, replicates)
     return {

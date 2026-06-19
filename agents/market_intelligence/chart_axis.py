@@ -78,7 +78,9 @@ async def render_prior_day_chart(ticker: str, alert_date: date):
     return png, len(daily)
 
 
-async def _grade(client, sem, payload, image_png, chart_note):
+async def grade_one(client, sem, payload, image_png, chart_note):
+    """One sem-bounded judge call (shared by grade_b_c's B/C arms + the eval's arm A). Public —
+    imported cross-module, so no leading underscore."""
     async with sem:
         return await grade_holistic(client, payload, timeout=40,
                                     image_png=image_png, chart_note=chart_note)
@@ -91,9 +93,9 @@ async def grade_b_c(client, sem, payload, png, replicates: int) -> dict:
     the two modals differ — an arm that itself flips is noise, not a chart effect. SHADOW only; the
     live grade path never calls this (it grades once, no note/image)."""
     b = await asyncio.gather(
-        *[_grade(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY) for _ in range(replicates)])
+        *[grade_one(client, sem, payload, None, CHART_AXIS_NOTE_TEXT_ONLY) for _ in range(replicates)])
     c = await asyncio.gather(
-        *[_grade(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
+        *[grade_one(client, sem, payload, png, CHART_AXIS_NOTE) for _ in range(replicates)])
     b_modal, b_stable, b_tiers = modal_stable(b)
     c_modal, c_stable, c_tiers = modal_stable(c)
     return {

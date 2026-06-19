@@ -12,17 +12,15 @@ from agents.market_intelligence.catalyst_materiality import (
     extract_deal_value, rule_materiality,
 )
 from agents.market_intelligence.collector import get_fmp_profile
+from agents.market_intelligence.db import EP_JUDGE_PAYLOAD_COLS
 from agents.market_intelligence.ep_grade_judge import assemble_judge_inputs
 
 # Floor = COALESCE(baseline_floor_tier, score_tier): baseline_floor_tier is NULL on
 # pre-W2 rows (added ~2026-06-08 15:10 ET); score_tier is the floor verdict that
 # actually drove them. detected_at = the grade timestamp (grounded-reconstruction cut).
-REPLAY_SQL = """
-SELECT ticker, alert_date, detected_at,
-       COALESCE(baseline_floor_tier, score_tier) AS floor_tier,
-       score_tier, catalyst_quality, catalyst, claude_analysis,
-       in_active_theme, in_narrative_cohort, gap_pct, pm_rvol, vol_percentile,
-       ep_score, grounded_text
+# Column list = db.EP_JUDGE_PAYLOAD_COLS (the ONE source — see its docstring; #236 lockstep class).
+REPLAY_SQL = f"""
+SELECT {EP_JUDGE_PAYLOAD_COLS}
 FROM mi_ep_alerts
 WHERE alert_date >= (CURRENT_DATE - ($1::int))
   AND score_tier IN ('HIGH', 'MODERATE')

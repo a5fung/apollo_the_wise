@@ -3051,6 +3051,9 @@ async def _run_entry_shadow_settlement(today):
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
 # manual smoke before it stays out of the decision. Backstop: N>=10 deltas OR the 7-31 date.
+# ⚠️ THESE TWO DATES ARE HAND-SYNCED with data_gated_reviews.yaml → review_id
+# `chart_vision_axis_shadow_decision` (predicate_sql: created_at >= '2026-06-19', CURRENT_DATE >=
+# '2026-07-31'). YAML SQL can't import a Python constant — if you bump either date, change BOTH.
 _CHART_AXIS_SHADOW_START = "2026-06-19"
 _CHART_AXIS_SHADOW_BACKSTOP = "2026-07-31"
 _CHART_AXIS_SHADOW_DAILY_CAP = 8   # per-day candidate cap (cost guard ~ HIGH+MODERATE/day)
@@ -3096,8 +3099,10 @@ async def _run_chart_axis_shadow(today):
     )
     client = None
     try:
-        cohort = await get_chart_axis_shadow_cohort(today, limit=_CHART_AXIS_SHADOW_DAILY_CAP)
-        already = await get_chart_axis_shadow_processed_tickers(today)
+        cohort, already = await asyncio.gather(  # independent reads
+            get_chart_axis_shadow_cohort(today, limit=_CHART_AXIS_SHADOW_DAILY_CAP),
+            get_chart_axis_shadow_processed_tickers(today),
+        )
         pending = [r for r in cohort if r["ticker"] not in already]
         if not pending:
             logger.info(f"chart-axis shadow: {len(cohort)} cohort, 0 pending (all processed / "
@@ -3118,8 +3123,10 @@ async def _run_chart_axis_shadow(today):
                 png, n_daily = await ca.render_prior_day_chart(ticker, alert_date)
                 if png is None:
                     # data shortfall (too few prior bars) — won't change on re-run; mark handled.
-                    await log_audit_event("chart_axis_shadow_norender", ticker,
-                                          f"no chart (n_daily={n_daily}) {alert_date}")
+                    # summary = ticker|alert_date so dedup keys on the COHORT, not write wall-clock.
+                    await log_audit_event("chart_axis_shadow_norender",
+                                          f"{ticker}|{alert_date.isoformat()}",
+                                          f"no chart (n_daily={n_daily})")
                     norender += 1
                     continue
                 mc, sector, company = await fetch_profile(ticker)
@@ -3133,10 +3140,11 @@ async def _run_chart_axis_shadow(today):
                     continue
 
                 # grading COMPLETED (both arms ran; instability is itself a finding) → mark graded.
+                # summary = ticker|alert_date so dedup keys on the COHORT, not write wall-clock.
                 await log_audit_event(
-                    "chart_axis_shadow_graded", ticker,
+                    "chart_axis_shadow_graded", f"{ticker}|{alert_date.isoformat()}",
                     f"floor={row['floor_tier']} B={bc['b_tiers']} C={bc['c_tiers']} "
-                    f"stable={bc['both_stable']} {alert_date}")
+                    f"stable={bc['both_stable']}")
                 graded += 1
 
                 if bc["visual_changed"]:
@@ -3184,15 +3192,18 @@ async def _chart_axis_shadow_weekly_digest_job():
     from agents.market_intelligence.db import get_audit_log, get_chart_axis_shadow_delta_count
     from agents.market_intelligence.briefing import send_telegram_message, send_telegram_photo
     try:
-        rows = await get_audit_log(event_type="chart_axis_shadow_delta", since_hours=168, limit=50)
-        total = await get_chart_axis_shadow_delta_count(_date.fromisoformat(_CHART_AXIS_SHADOW_START))
+        rows, total = await asyncio.gather(  # independent reads
+            get_audit_log(event_type="chart_axis_shadow_delta", since_hours=168, limit=50),
+            get_chart_axis_shadow_delta_count(_date.fromisoformat(_CHART_AXIS_SHADOW_START)),
+        )
         days_left = (_date.fromisoformat(_CHART_AXIS_SHADOW_BACKSTOP) - et_today()).days
         if not rows:
             logger.info("chart-axis weekly digest: 0 new deltas — quiet")
             return
         head = (f"📈 *Chart-vision shadow — {len(rows)} new delta(s) to label* (#343)\n"
                 f"Running N={total}/10 · decision by {_CHART_AXIS_SHADOW_BACKSTOP} "
-                f"({days_left}d) — label each: did the chart move it the RIGHT way?")
+                f"({days_left}d) — label each: did the chart move it the RIGHT way?\n"
+                "(label when you can — the decision gate re-pulls every delta, nothing's lost.)")
         await send_telegram_message(head)
         for r in rows:
             try:
