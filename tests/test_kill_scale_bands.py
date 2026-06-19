@@ -140,3 +140,71 @@ def test_format_band_line_shows_band_numbers_and_override():
                                               "reason": "regime shift"})
     assert "OVERRIDE ACTIVE since 2026-06-22" in annotated
     assert "regime shift" in annotated
+
+
+# ── run_band_evaluation: the live-money alert path (transition → send once + persist) ──
+
+import asyncio  # noqa: E402
+import agents.market_intelligence.kill_scale_bands as ksb  # noqa: E402
+
+
+def _wire(monkeypatch, *, rs, prev_band, override=None):
+    """Mock run_band_evaluation's DB/Telegram edges; drive the band via the cohort `rs`.
+    Returns (sent, persisted, audited) recorders."""
+    sent, persisted, audited = [], [], []
+
+    async def fake_inputs(mode):
+        return {"realized_rs": rs, "equity_above_start": False,
+                "drawdown_tier": "OK", "account_mode": mode}
+
+    async def fake_last_band(mode):
+        return (prev_band, "2026-06-20" if prev_band else None)
+
+    async def fake_override(mode):
+        return override
+
+    async def fake_set(mode, band):
+        persisted.append(band)
+
+    async def fake_send(msg):
+        sent.append(msg); return True
+
+    async def fake_audit(evt, summary, detail):
+        audited.append(evt)
+
+    monkeypatch.setattr(ksb, "assemble_band_inputs", fake_inputs)
+    monkeypatch.setattr(ksb, "get_last_band", fake_last_band)
+    monkeypatch.setattr(ksb, "get_active_override", fake_override)
+    monkeypatch.setattr(ksb, "set_last_band", fake_set)
+    import agents.market_intelligence.briefing as briefing
+    import agents.market_intelligence.db as dbmod
+    monkeypatch.setattr(briefing, "send_telegram_message", fake_send)
+    monkeypatch.setattr(dbmod, "log_audit_event", fake_audit)
+    return sent, persisted, audited
+
+
+def test_band_transition_sends_once_and_persists(monkeypatch):
+    # HOLD → REDUCE (t20 −0.70): one Telegram, persists the new band, audits the transition.
+    sent, persisted, audited = _wire(monkeypatch, rs=_rs(-1.0, 19) + [5.0], prev_band="HOLD")
+    res = asyncio.run(ksb.run_band_evaluation("live", send=True))
+    assert res["band"] == "REDUCE" and res["transitioned"] is True
+    assert persisted == ["REDUCE"]
+    assert len(sent) == 1 and "REDUCE" in sent[0]
+    assert "kill_scale_band_transition" in audited
+
+
+def test_band_no_transition_is_silent(monkeypatch):
+    # Already REDUCE, still REDUCE → no send, no persist, no audit.
+    sent, persisted, audited = _wire(monkeypatch, rs=_rs(-1.0, 19) + [5.0], prev_band="REDUCE")
+    res = asyncio.run(ksb.run_band_evaluation("live", send=True))
+    assert res["transitioned"] is False
+    assert persisted == [] and sent == [] and audited == []
+
+
+def test_band_baseline_hold_persists_but_does_not_alert(monkeypatch):
+    # ∅ → HOLD pre-launch baseline: persists (so it won't re-fire) but is NOT alerted.
+    sent, persisted, audited = _wire(monkeypatch, rs=_rs(0.5, 20), prev_band=None)
+    res = asyncio.run(ksb.run_band_evaluation("live", send=True))
+    assert res["band"] == "HOLD" and res["transitioned"] is True
+    assert persisted == ["HOLD"]          # primed so the next eval has a baseline
+    assert sent == []                     # ∅→HOLD baseline suppressed

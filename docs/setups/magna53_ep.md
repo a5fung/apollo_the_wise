@@ -144,6 +144,11 @@ measure web×enrichment double-counting, so it is NOT the flip gate.
 data showing production net-correctness (enriched lifts true catalysts, inflates nothing —
 read via `scripts/_344_shadow_verify.py`), re-poll fires once with tolerable latency, then
 CHANGE_PROCESS + operator sign-off. Until then the live grade is byte-identical to before.
+**⚠️ The flip MUST carry the grade window**: the validated shadow grades the enriched corpus
+at `max_chars=_GRADE_ENRICH_MAX_CHARS` (12000); the live path defaults to 6000. The flip has
+to pass `max_chars=_GRADE_ENRICH_MAX_CHARS` on the live `_classify_catalyst_claude` call, or
+the appended dilution/agreement context truncates and the live grade won't reproduce the
+measured shadow (the original truncation bug, re-introduced at flip).
 
 **REVERSION**: set `ENRICH_SHADOW_ENABLED=false` (kills the shadow); the live grade path
 is unchanged regardless.
