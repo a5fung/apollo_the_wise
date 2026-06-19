@@ -55,7 +55,7 @@ from agents.market_intelligence.ep_detector import (
     # #344 SSoT: the SAME corpus-assembly the live grade path uses (advisor #5 — no
     # validate-one-thing-ship-another divergence).
     assemble_grade_corpus, recent_filing_by_item, nearest_today_filing,
-    recent_dilution_filing, _DILUTION_WINDOW_DAYS,
+    recent_dilution_filing,
 )
 from scripts._grounded_reconstruct import _to_aware_utc
 from scripts._judge_replay_common import fetch_profile
@@ -252,11 +252,16 @@ async def run_enrich_mode(c, args, since, cutoff_t):
         prior_before = alert_date - timedelta(days=_TODAY_WINDOW_DAYS + 1)
         prior_agreement = recent_filing_by_item(filings, "1.01", prior_before)
         recent_earnings = recent_filing_by_item(filings, "2.02", alert_date)
-        # #238 dilution overhang — tight-window 424B5/8-K(3.02) fetch, point-in-time
-        # (filed <= alert_date). Fed to the FIX arm only as dated negative context.
+        # #238 dilution overhang — SEPARATE fetch so a 424B5 never pollutes today_sec/prior
+        # (nearest_today_filing would otherwise grab a same-day prospectus as "today's news"
+        # on exactly the inverse-BTQ canary). NOTE (advisor 6/19): get_sec_recent_filings
+        # anchors its cutoff on et_today(), NOT alert_date — a tight 21d lookback would
+        # exclude every historical alert's offering (cutoff = today−21d) → dilution=none
+        # cohort-wide, a silent no-op. Use the 400d reach; recent_dilution_filing's own
+        # 21d-of-alert window does the recency constraint. (The LIVE path uses a tight 21d
+        # fetch because there et_today()==grade day.) Fed to the FIX arm only.
         dil_filings = await get_sec_recent_filings(
-            ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
-            max_filings=4, want_text=True)
+            ticker, forms=("424B5", "8-K"), lookback_days=400, max_filings=30, want_text=True)
         dilution = recent_dilution_filing(dil_filings, alert_date)
         # Today's Benzinga (include_content) up to the ORB cutoff = what the re-poll sees.
         today_benz = [n for n in await _fetch_benzinga(ticker, alert_date, True)

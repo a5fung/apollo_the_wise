@@ -1617,7 +1617,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         if _dilution is None and "dilution" not in _st:
                             _dil_ext = await get_sec_recent_filings(
                                 ticker, forms=("424B5", "8-K"),
-                                lookback_days=_DILUTION_WINDOW_DAYS, max_filings=4,
+                                lookback_days=_DILUTION_WINDOW_DAYS, max_filings=8,
                                 want_text=True)
                             _dilution = recent_dilution_filing(_dil_ext, today)
                         _pplx = await search_news_perplexity(
@@ -1761,7 +1761,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # max_filings. Point-in-time (filed <= today). Reused on re-poll.
                     _dil_ext = await get_sec_recent_filings(
                         ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
-                        max_filings=4, want_text=True)
+                        max_filings=8, want_text=True)
                     _dilution = recent_dilution_filing(_dil_ext, today)
                     _repoll_shadow_state[ticker]["dilution"] = _dilution
                     _benz_full = await get_alpaca_news(ticker, include_content=True)
