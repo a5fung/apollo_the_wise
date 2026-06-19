@@ -48,7 +48,7 @@ _Last CLOSE: 2026-06-16._
 - #302 | 2026-06-20 | pending | P6 replay-regression v0 (weekly scheduled selection-replay report)
 - #55  | 2026-06-20 | pending | revenue-stage threshold quarterly review (REVENUE_STAGE_MIN_USD)
 - #303 | 2026-06-20 | pending | full-program advisor review + launch-readiness checklist + DR restore rehearsal
-- #304 | 2026-06-21 | pending | launch rehearsal (staging→prod) + GO/NO-GO evidence pack + docs/CHANGELOG
+- #304 | 2026-06-21 | in_progress | launch rehearsal (staging→prod) + GO/NO-GO evidence pack + docs/CHANGELOG. ✅ EVIDENCE PACK ASSEMBLED 6/19 (accelerated from Sun): docs/roadmap/go-no-go-evidence-2026-06-22.md — single operator-facing GO/NO-GO surface: gate composite (P0s cleared · GATE2 ratified · GATE3 GO-supportive +2.18R START-SMALL · gate5 signed · #344 shadow/flip-Monday · #345 panic ✅ · #275 bands ✅ · #349 DR fix applied/rehearsal-pending) + #268 Phase B economics + #268b signed criteria + residual-risks (honest: #344 flip Monday, #349 unrehearsed, SIP-not-live, edge-concentration) + the mechanical GO steps + NO-GO path + the Monday checklist. SURFACES not prescribes (#305 is the operator's call). REMAINING: the live staging→prod launch rehearsal (may need coordination) + docs/CHANGELOG launch-notes + operator review of the pack.
 - #305 | 2026-06-22 | pending | 🚀 6/22 GO/NO-GO decision with operator (NO-GO under signed rules = launch-complete)
 
 ## Live-money cutover — MAGNA53 (the GO-direction gates)
