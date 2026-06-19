@@ -77,11 +77,12 @@ async def show_board():
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.db import (
         get_consolidation_board, get_consolidation_entry_shadows,
-        get_consolidation_entry_shadow_summary)
+        get_consolidation_entry_shadow_summary, get_open_shadow_tickers)
     board = await get_consolidation_board()
     fired = await get_consolidation_entry_shadows(status="open", limit=12)
     settled = await get_consolidation_entry_shadows(status="settled", limit=8)
     summ = await get_consolidation_entry_shadow_summary()
+    graduated = await get_open_shadow_tickers()
     print("⏱️ Consolidation plays (Family A · SHADOW)")
     if summ["settled_n"]:
         print(f"edge: {summ['settled_n']} settled · "
@@ -93,6 +94,8 @@ async def show_board():
         print(de.format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"], r.get("origin")))
     by_state = {}
     for r in board:
+        if r["ticker"] in graduated:   # uncapped open-shadow set — show once, furthest stage only
+            continue
         by_state.setdefault(r["state"], []).append(r)
     for st in ("coiled", "post_runup"):
         grp = by_state.get(st, [])

@@ -2895,6 +2895,7 @@ async def _consolidation_readiness_job():
     from agents.market_intelligence.db import (
         get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
         upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
+        get_open_shadow_tickers,
     )
     try:
         today = et_today()
@@ -2982,9 +2983,14 @@ async def _consolidation_readiness_job():
                 digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
                                                         sig["stop_price"], origin))
             digest.append("")
-        if transitions:
-            digest.append(f"🪙 *Newly coiled* ({len(transitions)}) — tightest first")
-            for ticker, anchor_date, c in transitions[:12]:
+        # a name with ANY open entry-shadow (today's OR a prior day's) has graduated past "newly
+        # coiled" — show it once. Use the UNCAPPED open set so a prior-day fire still suppresses it
+        # (else the lifecycle runs backward in the feed; altitude review 6/18).
+        graduated = await get_open_shadow_tickers()
+        newly_coiled = [x for x in transitions if x[0] not in graduated]
+        if newly_coiled:
+            digest.append(f"🪙 *Newly coiled* ({len(newly_coiled)}) — tightest first")
+            for ticker, anchor_date, c in newly_coiled[:12]:
                 digest.append(de.format_consolidation_row(ticker, c["runup_ratio"],
                               c["coil_days"], rmv_5d=c.get("rmv_5d"),
                               fresh_tightening=c.get("fresh_tightening")))

@@ -2807,16 +2807,20 @@ class MarketIntelligenceAgent(BaseAgent):
         👁 post-runup → 📐 recently settled. A name runs up (≥+15% over a rolling 10 sessions), COILS
         tight, the entry signal fires (N≥3 tight days), then settles capture/stop forward. Ordering-
         only, tightest-first — never an auto-selected top-N. No catalyst required; no trades."""
+        import asyncio
         from agents.market_intelligence.anticipation import (
             format_consolidation_row, format_entry_fired_row, format_entry_settled_row)
         from agents.market_intelligence.db import (
             get_consolidation_board, get_consolidation_entry_shadows,
-            get_consolidation_entry_shadow_summary)
+            get_consolidation_entry_shadow_summary, get_open_shadow_tickers)
 
-        board = await get_consolidation_board()
-        fired = await get_consolidation_entry_shadows(status="open", limit=12)
-        settled = await get_consolidation_entry_shadows(status="settled", limit=8)
-        summ = await get_consolidation_entry_shadow_summary()
+        # independent reads → one round-trip batch
+        board, fired, settled, summ, graduated = await asyncio.gather(
+            get_consolidation_board(),
+            get_consolidation_entry_shadows(status="open", limit=12),
+            get_consolidation_entry_shadows(status="settled", limit=8),
+            get_consolidation_entry_shadow_summary(),
+            get_open_shadow_tickers())
 
         if not (board or fired or settled):
             return self._ok(request, result=(
@@ -2840,10 +2844,16 @@ class MarketIntelligenceAgent(BaseAgent):
                                            r.get("origin")) for r in fired]
             out.append("")
 
+        # a name with an open entry-shadow has GRADUATED past the watch lists — show it once, in its
+        # furthest-along stage only (else it reads as "we'd enter this" + "still just watching" at
+        # once; the entry signal and the coiled-state run on different tightness axes). `graduated`
+        # is the UNCAPPED open-shadow set, not the display-capped `fired` list (advisor + altitude 6/18).
         labels = {"coiled": "🪙 *Coiling* — tightest first",
                   "post_runup": "👁 *Post-runup* — ran up, not coiled yet"}
         by_state: dict[str, list] = {}
         for r in board:
+            if r["ticker"] in graduated:
+                continue
             by_state.setdefault(r["state"], []).append(r)
         for st in ("coiled", "post_runup"):
             grp = by_state.get(st)

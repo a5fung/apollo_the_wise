@@ -6576,6 +6576,19 @@ async def get_consolidation_entry_shadows(*, status=None, settled_on=None, limit
     return [dict(r) for r in rows]
 
 
+async def get_open_shadow_tickers() -> set:
+    """Tickers with an OPEN #327 entry-shadow — the 'has graduated past the watch lists' set, the
+    ONE source for the 'show a name once, at its furthest lifecycle stage' rule consulted by BOTH
+    the /anticipation board AND the daily digest. UNCAPPED on purpose: a display limit (the board's
+    fired list is capped at 12) must NOT let a graduated name leak back into the coiling/post-runup
+    watch lists, and the digest must suppress names that fired on a PRIOR day too (not just today's)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ticker FROM mi_consolidation_entry_shadow WHERE outcome IS NULL")
+    return {r["ticker"] for r in rows}
+
+
 async def get_recent_9m_tickers(since_date: date) -> set:
     """Tickers with a 9M Day-2 candidate on/after `since_date` — the #327 forward shadow's origin
     tag ('9m' = a 9M day seeded the runup; else 'family_a'). Coarse set membership, telemetry only
