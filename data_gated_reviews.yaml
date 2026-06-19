@@ -6689,3 +6689,34 @@ reviews:
       promotion (Q3) stays BLOCKED until this decision — never promote-then-retire.
       Acceleration applies to the SHADOW/PAPER flip ONLY; real money keeps full gates.
       Tracked: PLAN #326; critical path = #270 Step 3 (the shadow wiring) / #297 / #311.
+
+  - review_id: chart_vision_axis_shadow_decision
+    title: "Chart-vision judge axis — SHADOW → promote/hold decision (#267/#343)"
+    question: |
+      Does the chart-vision axis (#267) earn promotion into the live LOAD-BEARING
+      judge (_build_judge_prompt)? 6/18 eval: text framing dead (B-A=0), chart 2/2
+      operator-correct but thin (C-B=2/36). #343 wires it in SHADOW (logs with-chart
+      vs no-chart delta, zero trade impact). DECIDE at N>=10 operator-labeled
+      chart-deltas OR the 2026-07-31 backstop, whichever first:
+        - precision holds (~8+/10 correct) -> promote load-bearing (CHANGE_PROCESS,
+          ADR 0011 + operator sign-off).
+        - mixed/low -> hold; the axis isn't pulling weight.
+    predicate_sql: |
+      -- OR-backstop (returns 1 = ready) so it surfaces at N>=10 OR by 2026-07-31,
+      -- not the registry's default AND (which would wait forever if N never hits 10).
+      SELECT CASE WHEN (
+               SELECT count(*) FROM mi_audit_log
+               WHERE event_type = 'chart_axis_shadow_delta'
+                 AND created_at >= '2026-06-19'
+             ) >= 10 OR CURRENT_DATE >= DATE '2026-07-31'
+             THEN 1 ELSE 0 END;
+    threshold: 1
+    earliest_review_date: 2026-06-19
+    action_when_ready: |
+      Pull the chart_axis_shadow_delta rows + their charts; operator labels each
+      with-chart change right/wrong. Precision holds -> CHANGE_PROCESS to promote
+      the chart axis into live _build_judge_prompt (load-bearing, operator sign-off).
+      Else hold + re-snapshot docs/analysis/chart_vision_eval_267_2026-06-18.md.
+      Promotion is NEVER agent-self-certified (ADR 0011).
+    status: pending
+    added_on: 2026-06-18
