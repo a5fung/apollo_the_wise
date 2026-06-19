@@ -69,9 +69,10 @@ Perplexity's web synthesis alone.
 
 **Why no direct source — the timeline (all ET):**
 - **7:00** — EP scan grades BFLY `routine` on web-only sourcing (gap then +13.5%).
-- **~8:05** — BFLY issues its PR on BusinessWire ("Provides Commentary on
-  Midjourney Medical's Full Body Ultrasound Scanner") — the primary source Benzinga
-  carries. *This is after the 7:00 grade.*
+- **8:12** — the primary-subject PR hits Benzinga/Alpaca news ("Butterfly Network
+  Provides Updates On Its Midjourney Medical And The Midjourney Scanner...",
+  single-symbol `['BFLY']`). *This is 72 min after the 7:00 grade.* (BusinessWire
+  issued it ~8:05.)
 - The underlying $74M agreement 8-K was filed **2025-11-17** — 7 months old, so
   `get_sec_recent_filings` correctly finds no *recent* 8-K. The 6/18 catalyst was
   the PR + a third party's (Midjourney) product unveiling, not a fresh filing.
@@ -120,10 +121,14 @@ claim a non-earnings deal day.
   became available later the same day; measure how many would re-grade
   strong/game_changer and fire, and at what precision. **BFLY is case #1.** The
   load-bearing flip into the live grade stays CHANGE_PROCESS + sign-off.
-- **Open localization owed before building:** confirm the 8:05 ET BFLY PR is in
-  `get_alpaca_news` (Benzinga) — i.e. that a re-poll would actually have found it
-  (timing) vs. a Benzinga coverage/`is_primary_subject_news` filter miss. If the PR
-  is NOT in Benzinga even now, the cache fix alone won't catch BFLY and a coverage
-  source is also needed (then #210 re-enters). Verify before committing the fix.
+- **Localization RESOLVED (read-only probe, 2026-06-18):** the primary-subject PR
+  IS in Benzinga/Alpaca at **8:12 ET**, single-symbol `['BFLY']`, and
+  `is_primary_subject_news` **keeps it** (`keep=True`). SEC recent-filings = 0 (deal
+  8-K was Nov-2025). At the 7:00 grade the only BFLY item was a 6:10 ET 20-ticker
+  roundup (correctly dropped). ⇒ **PURE TIMING**, not coverage, not filter — a cache
+  re-poll WOULD have caught it. #210 does NOT re-enter. **Fix trigger:** on a cached
+  `has_direct_source=false` tick, re-poll Benzinga+SEC and invalidate/re-grade when
+  the count of *primary-subject direct* items increases vs the cached grade (roundups
+  stay filtered, so they don't trigger pointless re-grades).
 - No threshold/gap-override band-aid (would re-admit the routine-catalyst noise the
   50-floor is designed to filter).
