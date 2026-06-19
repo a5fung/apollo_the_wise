@@ -189,6 +189,18 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     except Exception:
         logger.exception("kill/scale band section render failed")
 
+    # Replay-regression (#302) — the live R-dist beside the #268b calibration card; the P6
+    # "weekly report" input (b) to the quarterly band review. SURFACES + persists a snapshot;
+    # never verdicts (the divergence statistic isn't valid at low N). persist=True so the
+    # quarterly review reads the accruing distribution over time.
+    try:
+        from agents.market_intelligence.replay_regression import run_replay_regression
+        rr = await run_replay_regression("live", persist=True)
+        if rr.get("lines"):
+            message = f"{message}\n" + "\n".join(rr["lines"])
+    except Exception:
+        logger.exception("replay-regression section render failed")
+
     await send_telegram_message(message)
 
     logger.info(f"Weekly review complete: {window_start}..{today}")

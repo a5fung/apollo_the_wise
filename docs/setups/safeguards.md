@@ -203,7 +203,17 @@ data accrues, through this change process.
    envelope, P6 divergence, the override log, the demote-side watch-metric.
 3. **Event-driven**: a P6 replay-regression report showing the accruing
    distribution diverging from the calibration envelope pulls the review
-   forward — don't wait for the quarter boundary.
+   forward — don't wait for the quarter boundary. ✅ **IMPLEMENTED #302 v0
+   (2026-06-19)**: `replay_regression.py` surfaces the accruing LIVE R-dist
+   beside the `CALIBRATION_ENVELOPE` (#268b, now a single code constant in
+   `kill_scale_bands.py`) as a SECTION of the Sunday weekly review + persists a
+   `replay_regression_snapshot` audit row each week (the quarterly review's
+   input (b) history); on-demand `scripts/replay_regression.py`. SURFACES only
+   — **no automated divergence verdict** (comparing a small live cohort to the
+   full-year n=399 envelope dimension-by-dimension is statistically invalid;
+   path stats maxDD/streak can't be reached for months, per-trade expectancy is
+   noise at low N — the operator judges divergence at the quarterly review).
+   LIVE-only (paper's R-dist is the IEX selection artifact).
 
 A band change from any layer requires its own change-log entry here; the bands
 are never silently re-tuned.

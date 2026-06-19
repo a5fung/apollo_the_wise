@@ -34,6 +34,24 @@ _SCALE_MIN_TRADES = 40   # trailing-40 needs ≥ this many trades
 _SCALE_T40 = 0.50        # trailing-40 expectancy ≥ this to scale up
 _SAMPLE_FLOOR = 20       # no strategy-health band (expectancy/streak/cum-R) before this many
 
+# ── #268b Phase-B calibration envelope — the healthy +0.95R year the bands sit OUTSIDE. ──
+# SINGLE CODE SOURCE for the fingerprint (was prose-only in this module's docstring +
+# duplicated in safeguards.md, docs/analysis/selection_replay_268_phaseB.md, and
+# data_gated_reviews.yaml). The #302 replay-regression report compares the accruing LIVE
+# distribution against this card. NB: expectancy/win_rate are per-trade (comparable at any
+# N); max_dd_r/worst_streak are full-year PATH stats (a short live cohort can't reach them —
+# NOT a low-N comparison, advisor 2026-06-19). Change ONLY via CHANGE_PROCESS.
+CALIBRATION_ENVELOPE = {
+    "source": "#268b Phase B, n=399",
+    "n": 399,
+    "expectancy_r": 0.95,
+    "win_rate": 0.30,
+    "max_dd_r": -24.1,
+    "worst_streak": 15,
+    "trailing20_p5_r": -0.63,
+    "trailing20_min_r": -1.03,
+}
+
 # The four bands (severity worst→best). NB: transition alerting fires on ANY change
 # (`is_transition` is a plain inequality), not on worsening only — the ordering is
 # documentation, not gating logic.
