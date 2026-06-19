@@ -19,14 +19,14 @@ async def main():
         print('usage: set_kill_scale_override.py set "<direction>" "<reason>"  |  clear')
         return
     if sys.argv[1] == "clear":
-        await clear_override("live")
+        await clear_override()
         print("kill/scale override CLEARED")
     else:
         direction = sys.argv[2] if len(sys.argv) > 2 else "(unspecified)"
         reason = sys.argv[3] if len(sys.argv) > 3 else ""
-        await record_override(direction, reason, "live")
+        await record_override(direction, reason)
         print(f"kill/scale override SET: {direction} — {reason}")
-    print("active override now:", await get_active_override("live"))
+    print("active override now:", await get_active_override())
 
 
 if __name__ == "__main__":

@@ -474,6 +474,10 @@ _GRADE_TODAY_WINDOW_DAYS = 10  # a filing within this many days of the gap = "to
 # window so the appended prior-agreement / dilution context actually reaches the model.
 _GRADE_TODAY_MAX_CHARS = 6000   # today's-news cap inside the enriched corpus
 _GRADE_ENRICH_MAX_CHARS = 12000  # grade window for the enriched corpus
+# INVARIANT: the enriched grade window MUST exceed the today's-news cap, or the appended
+# dilution/agreement context gets sliced off again (the #238/#344 truncation bug). Fail loud
+# at import if a future edit lowers the enrich cap below the today cap.
+assert _GRADE_ENRICH_MAX_CHARS > _GRADE_TODAY_MAX_CHARS, "enrich window must exceed today cap"
 
 _AGREEMENT_MARKERS = (
     "entered into", "definitive agreement", "agreement (the", "license",

@@ -11,17 +11,13 @@ import asyncio
 import sys
 
 from agents.market_intelligence.kill_scale_bands import (
-    assemble_band_inputs, evaluate_kill_scale_bands, get_active_override, format_band_line,
+    assess_bands, format_band_line,
 )
 
 
 async def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "live"
-    inputs = await assemble_band_inputs(mode)
-    verdict = evaluate_kill_scale_bands(
-        inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
-        drawdown_tier=inputs["drawdown_tier"])
-    override = await get_active_override(mode)
+    inputs, verdict, override = await assess_bands(mode)
     print(f"\n{'='*70}\n#275 KILL/SCALE BANDS — account_mode={mode}\n{'='*70}")
     print(f"  drawdown tier (persisted): {inputs['drawdown_tier']} · "
           f"equity_above_start={inputs['equity_above_start']}")

@@ -19,6 +19,7 @@ this stays dependency-free and testable.
 """
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 
@@ -33,9 +34,10 @@ _SCALE_MIN_TRADES = 40   # trailing-40 needs ≥ this many trades
 _SCALE_T40 = 0.50        # trailing-40 expectancy ≥ this to scale up
 _SAMPLE_FLOOR = 20       # no strategy-health band (expectancy/streak/cum-R) before this many
 
-# Ordered worst→best for transition severity comparison.
+# The four bands (severity worst→best). NB: transition alerting fires on ANY change
+# (`is_transition` is a plain inequality), not on worsening only — the ordering is
+# documentation, not gating logic.
 BANDS = ("KILL", "REDUCE", "HOLD", "SCALE")
-_SEVERITY = {b: i for i, b in enumerate(BANDS)}  # KILL=0 (most severe) … SCALE=3
 
 
 def _mean_tail(rs: list[float], n: int) -> float | None:
@@ -132,7 +134,7 @@ def evaluate_kill_scale_bands(realized_rs, *, equity_above_start: bool,
 def is_transition(prev_band: str | None, new_band: str) -> bool:
     """A band TRANSITION worth an immediate alert: any change from the last-evaluated band
     (first observation of a non-HOLD band also counts). prev_band None = no prior eval."""
-    if new_band not in _SEVERITY:
+    if new_band not in BANDS:
         return False
     return prev_band != new_band
 
@@ -167,26 +169,33 @@ async def assemble_band_inputs(account_mode: str = "live") -> dict:
         dd = await c.fetchval(
             "SELECT state FROM mi_safeguard_state "
             "WHERE safeguard = 'drawdown_breaker' AND account_mode = $1", account_mode)
-        # Equity vs starting equity = earliest vs latest live snapshot (SCALE input).
-        eq = await c.fetch(
-            "SELECT equity FROM mi_account_equity_snapshots "
-            "WHERE account_mode = $1 ORDER BY snapshot_date ASC", account_mode)
+        # Equity vs starting equity = earliest vs latest live snapshot (SCALE input). Read
+        # only the two endpoints — the snapshot table grows ~252 rows/yr/mode forever.
+        eq = await c.fetchrow(
+            """
+            SELECT (SELECT equity FROM mi_account_equity_snapshots
+                    WHERE account_mode = $1 ORDER BY snapshot_date ASC  LIMIT 1) AS first_eq,
+                   (SELECT equity FROM mi_account_equity_snapshots
+                    WHERE account_mode = $1 ORDER BY snapshot_date DESC LIMIT 1) AS last_eq
+            """, account_mode)
 
     rs = [float(t["total_pnl"]) / float(t["risk_dollars"]) for t in trades]
     # Map the persisted breaker state to a band tier; legacy TRIPPED → REDUCE (safeguards.md).
     tier = {"BLOCK": "BLOCK", "REDUCE": "REDUCE", "WATCH": "WATCH", "TRIPPED": "REDUCE"}.get(
         (dd or "OK").upper(), "OK")
-    equity_above_start = (len(eq) >= 2 and float(eq[-1]["equity"]) > float(eq[0]["equity"]))
+    equity_above_start = (eq["first_eq"] is not None and eq["last_eq"] is not None
+                          and float(eq["last_eq"]) > float(eq["first_eq"]))
     return {"realized_rs": rs, "drawdown_tier": tier,
             "equity_above_start": equity_above_start, "account_mode": account_mode}
 
 
-async def get_active_override(account_mode: str = "live") -> dict | None:
+async def get_active_override() -> dict | None:
     """The most recent ACTIVE operator override (a `kill_scale_override` audit row not yet
     cleared by a later `kill_scale_override_cleared`) — so the verdict annotates instead of
-    re-prompting weekly (safeguards.md operator condition #2)."""
+    re-prompting weekly (safeguards.md operator condition #2). Overrides are GLOBAL, not
+    per-account-mode: the bands are a single live-money concept and the override is one
+    operator decision (if per-mode override ever becomes real, give it structured storage)."""
     from agents.market_intelligence.db import get_pool
-    import json
     pool = await get_pool()
     async with pool.acquire() as c:
         row = await c.fetchrow(
@@ -245,23 +254,30 @@ async def set_last_band(account_mode: str, band: str) -> None:
             """, _LAST_BAND_SAFEGUARD, account_mode, band)
 
 
-async def record_override(direction: str, reason: str, account_mode: str = "live") -> None:
-    """Write a `kill_scale_override` audit row (safeguards.md operator condition #2). The
-    verdict reader (get_active_override) then annotates instead of re-prompting."""
+async def record_override(direction: str, reason: str) -> None:
+    """Write a `kill_scale_override` audit row (safeguards.md operator condition #2; GLOBAL).
+    The verdict reader (get_active_override) then annotates instead of re-prompting."""
     from agents.market_intelligence.db import log_audit_event
-    import json
     await log_audit_event("kill_scale_override",
                           f"operator override: {direction}",
-                          json.dumps({"direction": direction, "reason": reason,
-                                      "account_mode": account_mode}))
+                          json.dumps({"direction": direction, "reason": reason}))
 
 
-async def clear_override(account_mode: str = "live") -> None:
-    """Write a `kill_scale_override_cleared` audit row — ends the active override."""
+async def clear_override() -> None:
+    """Write a `kill_scale_override_cleared` audit row — ends the active (global) override."""
     from agents.market_intelligence.db import log_audit_event
-    import json
-    await log_audit_event("kill_scale_override_cleared", "operator cleared override",
-                          json.dumps({"account_mode": account_mode}))
+    await log_audit_event("kill_scale_override_cleared", "operator cleared override", "{}")
+
+
+async def assess_bands(account_mode: str = "live") -> tuple[dict, BandVerdict, dict | None]:
+    """Shared assemble→evaluate→override pipeline. The digest, the EOD alert, and the
+    on-demand script all go through here, so the inputs-dict → evaluator-kwargs mapping lives
+    in ONE place (a change to assemble_band_inputs or evaluate_kill_scale_bands lands once)."""
+    inputs = await assemble_band_inputs(account_mode)
+    verdict = evaluate_kill_scale_bands(
+        inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
+        drawdown_tier=inputs["drawdown_tier"])
+    return inputs, verdict, await get_active_override()
 
 
 async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) -> dict:
@@ -271,18 +287,13 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
     (transition-only, deduped via mi_safeguard_state) + a `kill_scale_band_transition` audit
     row. Fully error-wrapped — telemetry must never break the EOD chain. Returns a summary."""
     try:
-        inputs = await assemble_band_inputs(account_mode)
-        verdict = evaluate_kill_scale_bands(
-            inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
-            drawdown_tier=inputs["drawdown_tier"])
+        _, verdict, override = await assess_bands(account_mode)
         prev_band, _ = await get_last_band(account_mode)
-        override = await get_active_override(account_mode)
         transitioned = is_transition(prev_band, verdict.band)
 
         if transitioned:
             await set_last_band(account_mode, verdict.band)
             from agents.market_intelligence.db import log_audit_event
-            import json
             await log_audit_event(
                 "kill_scale_band_transition",
                 f"{account_mode} {prev_band or '∅'} → {verdict.band}",
@@ -308,7 +319,6 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
         # itself is down the log.warning above is the trail.
         try:
             from agents.market_intelligence.db import log_audit_event
-            import json
             await log_audit_event(
                 "kill_scale_band_eval_error",
                 f"band eval failed ({account_mode}): {e}",
@@ -322,11 +332,7 @@ async def band_digest_section(account_mode: str = "live") -> list[str]:
     """The weekly-review section (a SECTION of the existing digest, not a new surface —
     feedback_consolidate_surfaces). SURFACES the verdict + numbers; never prescribes code."""
     try:
-        inputs = await assemble_band_inputs(account_mode)
-        verdict = evaluate_kill_scale_bands(
-            inputs["realized_rs"], equity_above_start=inputs["equity_above_start"],
-            drawdown_tier=inputs["drawdown_tier"])
-        override = await get_active_override(account_mode)
+        _, verdict, override = await assess_bands(account_mode)
         return ["", "*🎚️ Kill/scale bands* (live-money, #268b):", format_band_line(verdict, override)]
     except Exception as e:  # noqa: BLE001
         return ["", f"_kill/scale band eval unavailable: {e}_"]

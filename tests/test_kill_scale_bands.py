@@ -160,7 +160,7 @@ def _wire(monkeypatch, *, rs, prev_band, override=None):
     async def fake_last_band(mode):
         return (prev_band, "2026-06-20" if prev_band else None)
 
-    async def fake_override(mode):
+    async def fake_override():           # get_active_override is global (no account_mode)
         return override
 
     async def fake_set(mode, band):
