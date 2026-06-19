@@ -1,10 +1,19 @@
 # Missed EP — BFLY 2026-06-18 (catalyst-sourcing evidence case for #210)
 
-**One-liner:** BFLY (Butterfly Network) ran +56% on a Midjourney AI-imaging
-partnership announcement and we fired **no real-time EP alert** on any track.
-Root cause = **catalyst-sourcing gap** (#210): the actual deal never reached the
-grader's news corpus, so the catalyst graded `routine`, which mathematically caps
-the MAGNA53 score below the alert threshold regardless of the gap.
+**One-liner:** BFLY (Butterfly Network) ran +56% on a Midjourney-scanner
+partnership PR and we fired **no real-time EP alert** on any track. Root cause is
+**catalyst-CACHE STALENESS (timing), NOT missing sourcing.** The live scan already
+fetches SEC 8-K/6-K + Benzinga press wires; BFLY graded `routine` at the **7:00 ET**
+scan on **web-only** sourcing — *before* its own PR published (~8:05 ET) — and the
+per-day catalyst cache pinned that pre-PR `routine` grade for the rest of the day,
+so the direct-source PR was never re-fetched. Routine caps the MAGNA53 score below
+the alert threshold regardless of the gap.
+
+> **CORRECTION (2026-06-18, later same session):** an earlier draft of this doc
+> blamed a "catalyst-sourcing gap (#210) — build the 8-K/PR-wire leg." That was
+> **wrong**: `run_ep_scan` already fetches `get_sec_recent_filings(8-K,6-K)` +
+> `get_alpaca_news` (Benzinga) and feeds `build_grounded_text`. Scoping the build
+> against the code falsified the premise. The real defect is the **cache**, below.
 
 ## The move (textbook EP)
 
@@ -48,21 +57,45 @@ real-time actionable EP alert.
 **Net:** the only operator-facing mention of BFLY all day was a #2 line in an EOD
 "watchlist, not entries" digest. The actionable EP track missed it entirely.
 
-## Root cause = #210 (catalyst sourcing), not a grading bug
+## Root cause = catalyst-CACHE staleness (timing), not missing sourcing
 
-The grader behaved correctly given a corpus that lacked the real catalyst. The
-catalyst was a **partnership / commercial-deal announcement** — the kind of event
-that lives in an **8-K Item 1.01 (material agreement) or a PR-wire press release**,
-NOT in earnings data and NOT reliably discoverable by LLM web-scrape (which returned
-only "AI imaging theme" ambient chatter). This is precisely the failure mode #210
-(direct primary sources over LLM-discovery) exists to fix; see memory
-`feedback_catalyst_sourcing_direct_over_llm` ("LLMs confabulate when discovering;
-reliable only when judging grounded text").
+**The fetchers exist and ran.** `run_ep_scan` (ep_detector.py:1382) already fetches
+`get_sec_recent_filings(ticker, forms=("8-K","6-K"))` + `get_alpaca_news` (Benzinga
+press wires, #210 Wave A) and assembles them via `build_grounded_text` →
+SEC → Benzinga PR → web. `corpus_provenance` records what the grade consumed.
+**For BFLY that record was `{"web_perplexity": 1}, has_direct_source=false`** — i.e.
+no SEC filing and no Benzinga PR were present at grade time; the grade ran on
+Perplexity's web synthesis alone.
 
-The specific leg BFLY stresses: **the partnership / commercial-deal 8-K + PR-wire
-sourcing path.** #238 already covers the EDGAR *negative*-catalyst leg (dilution
-S-3/424B5/8-K-3.02); BFLY shows the symmetric *positive* leg (8-K 1.01 partnership)
-is equally unsourced today.
+**Why no direct source — the timeline (all ET):**
+- **7:00** — EP scan grades BFLY `routine` on web-only sourcing (gap then +13.5%).
+- **~8:05** — BFLY issues its PR on BusinessWire ("Provides Commentary on
+  Midjourney Medical's Full Body Ultrasound Scanner") — the primary source Benzinga
+  carries. *This is after the 7:00 grade.*
+- The underlying $74M agreement 8-K was filed **2025-11-17** — 7 months old, so
+  `get_sec_recent_filings` correctly finds no *recent* 8-K. The 6/18 catalyst was
+  the PR + a third party's (Midjourney) product unveiling, not a fresh filing.
+- **rest of day** — every 5-min scan reuses the **cached** 7:00 `routine` grade and
+  re-fetches nothing.
+
+**The mechanism (ep_detector.py:1359–1379):** the per-day catalyst cache is "one
+evaluation per ticker per day" — `if cached: <reuse grade, skip ALL fetches>`. So a
+grade made on incomplete (web-only, `has_direct_source=false`) sourcing at 7:00 is
+**pinned for the whole day**; the direct-source PR that lands at 8:05 is never seen.
+This is a timing + cache-invalidation defect, not a sourcing-coverage gap and not a
+grading bug (the grader graded thin pre-PR chatter correctly).
+
+## The fix (surgical, cost-aware)
+
+Don't cache a `has_direct_source=false` grade as terminal. On a cached tick where
+the grade lacked a direct source, **cheaply re-poll the free/error-wrapped direct
+sources** (SEC + Benzinga) — and only if a direct source *now* exists that didn't
+before, **invalidate the cache and re-grade** (bounded: until a direct source
+appears or the ORB window closes). This bounds the expensive LLM re-grade to "a new
+primary source actually arrived," preserving the cache's cost purpose while closing
+the premarket-PR-after-first-scan hole. Distinct from the #210 sourcing backbone
+(which is about *adding* sources); this is about *re-reading the sources we already
+fetch* when they update intraday.
 
 ## Secondary smell (not the cause; self-corrected here)
 
@@ -76,9 +109,21 @@ claim a non-earnings deal day.
 
 ## Implication
 
-- File as a named evidence case under **#210** (partnership/8-K-1.01 + PR-wire leg).
-- This is a clean "lost-alpha" case (+56% EP, zero real-time alert) — the operator-
-  facing kind of miss that justifies the direct-sourcing backbone investment.
-- No tonight fix: the remedy is the #210/#211 build (direct deal sourcing), not a
-  threshold tweak. A threshold/gap-override band-aid would re-admit the routine-
-  catalyst noise the 50-floor is designed to filter.
+- The fix is a **surgical cache-invalidation** (PLAN **#344**), not a sourcing
+  build — meaningfully smaller than the original framing implied.
+- **Operator made it a HARD 6/22 GO/NO-GO gate** (2026-06-18). Because the fix is
+  small and validates offline via replay, the gate is plausibly satisfiable without
+  slipping 6/22 — but that's conditional on the replay showing the re-grade actually
+  recovers catalysts at acceptable precision (re-grading too eagerly could over-fire).
+- **Shadow-validation design (the gate evidence):** replay recent gappers where the
+  first grade was `has_direct_source=false` but a direct source (Benzinga PR / 8-K)
+  became available later the same day; measure how many would re-grade
+  strong/game_changer and fire, and at what precision. **BFLY is case #1.** The
+  load-bearing flip into the live grade stays CHANGE_PROCESS + sign-off.
+- **Open localization owed before building:** confirm the 8:05 ET BFLY PR is in
+  `get_alpaca_news` (Benzinga) — i.e. that a re-poll would actually have found it
+  (timing) vs. a Benzinga coverage/`is_primary_subject_news` filter miss. If the PR
+  is NOT in Benzinga even now, the cache fix alone won't catch BFLY and a coverage
+  source is also needed (then #210 re-enters). Verify before committing the fix.
+- No threshold/gap-override band-aid (would re-admit the routine-catalyst noise the
+  50-floor is designed to filter).
