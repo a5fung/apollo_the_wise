@@ -3048,30 +3048,39 @@ async def _run_entry_shadow_settlement(today):
 
 
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
-# Decision-window start: deltas before this date (the same-day 6/18 verify-live smoke) are
-# UNCOUNTED by the registry predicate (`created_at >= '2026-06-19'`) so the machinery check can't
-# pollute the decision N. Backstop: N>=10 deltas OR this date, whichever first.
+# Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
+# created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
+# manual smoke before it stays out of the decision. Backstop: N>=10 deltas OR the 7-31 date.
 _CHART_AXIS_SHADOW_START = "2026-06-19"
 _CHART_AXIS_SHADOW_BACKSTOP = "2026-07-31"
 _CHART_AXIS_SHADOW_DAILY_CAP = 8   # per-day candidate cap (cost guard ~ HIGH+MODERATE/day)
 _CHART_AXIS_SHADOW_REPLICATES = 3  # per arm, for the judge noise floor
-_CHART_AXIS_SHADOW_PNG_DIR = "/app/_chart_axis_shadow"  # delta charts persisted for labeling
 
 
 async def _chart_axis_shadow_job():
-    """#343 chart-vision judge-axis SHADOW recorder. EOD (17:50 ET mon-fri), entirely OFF the live
-    9:45 grade path. For each of today's EP HIGH+MODERATE alerts (capped), re-grades through the
-    holistic judge TWICE — arm B (the candidate text-only axis note, NO chart) and arm C (the same
-    note + a point-in-time prior-day daily chart) — FRESH ×3 each, and emits a
-    `chart_axis_shadow_delta` audit row when BOTH arms are modal-stable and the verdict DIFFERS
-    (the chart changed the call = the labelable signal). The operator labels the deltas at N>=10 /
-    7-31 (data_gated_reviews `chart_vision_axis_shadow_decision`); promotion into the live rubric
-    axis is the separate sign-off step (ADR 0011).
+    """#343 chart-vision judge-axis SHADOW recorder. EOD (17:50 ET mon-fri) — grades TODAY's cohort.
+    Thin wrapper over _run_chart_axis_shadow so the verify one-shot can drive the SAME emit path
+    against a prior trading day (the scheduled fire is always et_today())."""
+    from agents.market_intelligence.collector import et_today
+    await _run_chart_axis_shadow(et_today())
 
-    SHADOW INVARIANT: writes ONLY mi_audit_log (`chart_axis_shadow_*`) + delta PNG files — never
-    mi_ep_alerts / mi_safeguard_state / anything the EP/judge path reads. `grade_holistic` is pure
-    (no DB writes). Own AsyncAnthropic client + own semaphore (never the live grader's). Fail-open:
-    any error logs + continues; an empty cohort (e.g. the 6/19 holiday) is a clean no-op.
+
+async def _run_chart_axis_shadow(today):
+    """Date-parameterized core, entirely OFF the live 9:45 grade path. For each of `today`'s EP
+    HIGH+MODERATE alerts (capped), re-grades through the holistic judge TWICE — arm B (the candidate
+    text-only axis note, NO chart) and arm C (the same note + a point-in-time prior-day daily chart)
+    — FRESH ×3 each, and emits a `chart_axis_shadow_delta` audit row when BOTH arms are modal-stable
+    and the verdict DIFFERS (the chart changed the call = the labelable signal). The operator labels
+    the deltas at N>=10 / 7-31 (data_gated_reviews `chart_vision_axis_shadow_decision`); promotion
+    into the live rubric axis is the separate sign-off step (ADR 0011).
+
+    SHADOW INVARIANT: writes ONLY mi_audit_log (`chart_axis_shadow_*`) — never mi_ep_alerts /
+    mi_safeguard_state / anything the EP/judge path reads, and NO files. Delta charts are RE-RENDERED
+    at digest time from the audit row's ticker+alert_date (render is deterministic — mi_daily_closes
+    < alert_date), so there is no ephemeral container-disk dependency to survive deploys.
+    `grade_holistic` is pure (no DB writes). Own AsyncAnthropic client + own semaphore (never the
+    live grader's). Fail-open: any error logs + continues; an empty cohort (e.g. the 6/19 holiday) is
+    a clean no-op.
 
     IDEMPOTENT: a same-day re-run skips tickers already marked graded/norender; an API-failed
     candidate leaves NO marker, so it retries on a same-day re-run. Cohort is today-only by design.
@@ -3079,7 +3088,6 @@ async def _chart_axis_shadow_job():
     import os
     import anthropic
     from agents.market_intelligence import chart_axis as ca
-    from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.db import (
         get_chart_axis_shadow_cohort, get_chart_axis_shadow_processed_tickers, log_audit_event,
     )
@@ -3088,7 +3096,6 @@ async def _chart_axis_shadow_job():
     )
     client = None
     try:
-        today = et_today()
         cohort = await get_chart_axis_shadow_cohort(today, limit=_CHART_AXIS_SHADOW_DAILY_CAP)
         already = await get_chart_axis_shadow_processed_tickers(today)
         pending = [r for r in cohort if r["ticker"] not in already]
@@ -3103,7 +3110,6 @@ async def _chart_axis_shadow_job():
             return
         client = anthropic.AsyncAnthropic(api_key=api_key)
         sem = asyncio.Semaphore(3)  # OWN bound; never the live grader's semaphore
-        os.makedirs(_CHART_AXIS_SHADOW_PNG_DIR, exist_ok=True)
 
         graded = deltas = norender = 0
         for row in pending:
@@ -3134,15 +3140,9 @@ async def _chart_axis_shadow_job():
                 graded += 1
 
                 if bc["visual_changed"]:
-                    png_path = os.path.join(
-                        _CHART_AXIS_SHADOW_PNG_DIR, f"{ticker}_{alert_date.isoformat()}.png")
-                    try:
-                        with open(png_path, "wb") as f:
-                            f.write(png)
-                    except OSError as e:
-                        logger.warning(f"chart-axis shadow {ticker}: PNG save failed: {e}")
-                        png_path = ""
                     bv, cv = bc["b_verdict"], bc["c_verdict"]
+                    # detail is SELF-CONTAINED: the chart is re-rendered at digest time from
+                    # ticker+alert_date (deterministic) — no saved-PNG dependency across deploys.
                     detail = json.dumps({
                         "ticker": ticker, "alert_date": alert_date.isoformat(),
                         "floor_tier": row["floor_tier"],
@@ -3150,7 +3150,6 @@ async def _chart_axis_shadow_job():
                         "direction": cv.get("direction_vs_floor"),
                         "b_rationale": (bv.get("rationale") or "")[:600],
                         "c_rationale": (cv.get("rationale") or "")[:600],
-                        "png_path": png_path,
                     })
                     await log_audit_event(
                         "chart_axis_shadow_delta",
@@ -3173,13 +3172,14 @@ async def _chart_axis_shadow_job():
 
 
 async def _chart_axis_shadow_weekly_digest_job():
-    """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. Sends
-    each delta's chart inline (Telegram sendPhoto) with the no-chart→with-chart caption + BOTH
-    rationales, plus the running delta count and days to the 7-31 backstop so the decision never
-    arrives by surprise. Empty week → quiet (no Telegram). Read-only; the operator owns the label
-    + the eventual promote/hold call (ADR 0011)."""
-    import os
+    """#343 — Sunday push of the week's new chart-axis SHADOW deltas for OPERATOR labeling. RE-RENDERS
+    each delta's chart from the audit row's ticker+alert_date (render is deterministic — no saved-PNG
+    dependency, survives deploys) and sends it inline (Telegram sendPhoto) with the no-chart→with-chart
+    caption + the with-chart rationale, plus the running delta count and days to the 7-31 backstop so
+    the decision never arrives by surprise. Empty week → quiet (no Telegram). Read-only; the operator
+    owns the label + the eventual promote/hold call (ADR 0011)."""
     from datetime import date as _date
+    from agents.market_intelligence import chart_axis as ca
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.db import get_audit_log, get_chart_axis_shadow_delta_count
     from agents.market_intelligence.briefing import send_telegram_message, send_telegram_photo
@@ -3204,18 +3204,18 @@ async def _chart_axis_shadow_weekly_digest_job():
                        f"no-chart={d.get('b_modal')} → +chart={d.get('c_modal')} "
                        f"({d.get('direction')})\n"
                        f"why(+chart): {(d.get('c_rationale') or '')[:300]}")
-            png_path = d.get("png_path") or ""
+            ticker, ad = d.get("ticker"), d.get("alert_date")
             sent = False
-            if png_path and os.path.exists(png_path):
-                try:
-                    with open(png_path, "rb") as f:
-                        sent = await send_telegram_photo(f.read(), caption=caption,
-                                                         filename=os.path.basename(png_path))
-                except OSError:
-                    sent = False
-            if not sent:  # chart missing/expired — still surface the text so it's labelable
-                await send_telegram_message(
-                    caption + ("\n(chart image unavailable — see audit detail)" if png_path else ""))
+            if ticker and ad:
+                try:  # re-render the SAME point-in-time chart the judge saw (deterministic)
+                    png, _ = await ca.render_prior_day_chart(ticker, _date.fromisoformat(ad))
+                    if png:
+                        sent = await send_telegram_photo(png, caption=caption,
+                                                         filename=f"{ticker}_{ad}.png")
+                except Exception as e:
+                    logger.warning(f"chart-axis digest re-render {ticker}: {e}")
+            if not sent:  # render unavailable — still surface the text so it's labelable
+                await send_telegram_message(caption + "\n(chart re-render unavailable)")
     except Exception as e:
         logger.error(f"chart-axis weekly digest failed: {e}", exc_info=True)
 
