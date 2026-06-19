@@ -302,6 +302,19 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
                 "n_trades": verdict.n_trades, "override_active": override is not None}
     except Exception as e:  # noqa: BLE001 — telemetry must never break the EOD chain
         logger.warning(f"run_band_evaluation({account_mode}) skipped: {e}")
+        # Don't let a persistent failure silently FREEZE the band (audit_wrap sees a clean
+        # return, not a raise) — emit a *_error row so the nightly error-check + morning
+        # banner surface it (feedback_no_silent_trading_failures). Best-effort: if the DB
+        # itself is down the log.warning above is the trail.
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            import json
+            await log_audit_event(
+                "kill_scale_band_eval_error",
+                f"band eval failed ({account_mode}): {e}",
+                json.dumps({"account_mode": account_mode, "error": str(e)}))
+        except Exception:
+            pass
         return {"error": str(e)}
 
 
