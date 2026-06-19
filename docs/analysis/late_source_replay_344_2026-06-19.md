@@ -161,6 +161,15 @@ prepending prior filings makes the freshness rule mis-time stale filings as fres
 This is exactly the inflation the net-correctness metric must catch — so the fix is
 **not** "dump prior 8-Ks into the corpus."
 
+> **⚠️ Superseded 6/19 (truncation fix):** the offline enrichment numbers on this page (and
+> PLAN #344's "0 inflation across 60") were measured under a grounded-corpus truncation bug —
+> `_classify_catalyst_claude` sliced `grounded_text[:6000]`, so for any long-today-news name
+> the appended prior-agreement context was cut off before grading (advisor-caught during #238).
+> The fix (today's-news capped 6000 + enriched graded at 12000; see
+> `dilution_canary_238_2026-06-19.md`) is now live in the shadow. Do not cite these offline
+> numbers as fresh flip evidence — the Mon–Tue live shadow (fixed code) supersedes them. BFLY
+> itself is unaffected (its 0c-body corpus was never truncated).
+
 ## Gate status & the operator decision
 
 **The corpus-completeness fix is real but #210-scale, not a clean 6/22 validation.**
