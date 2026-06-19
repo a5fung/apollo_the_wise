@@ -136,7 +136,7 @@ _Last CLOSE: 2026-06-16._
 - #192 | 2026-06-23 | pending | deferred-findings-to-task discipline follow-up
 - #272 | 2026-06-22 | in_progress | LAUNCH 6/22 umbrella (SSoT docs/roadmap/launch-2026-06-22.md)
 - #274 | 2026-06-19 | pending | 2-member theme immortality fix (dissolve-on-flagged-pair, CHANGE_PROCESS)
-- #276 | 2026-06-19 | in_progress | W2 entry-mechanics program (Mon stop-geometry study next)
+- #276 | 2026-06-22 | in_progress | W2 entry-mechanics program. ✅ STUDY #2 (stop geometry) DONE 6/18 (doc docs/analysis/w2_entry_study2_2026-06-18.md): added an offline stop_model knob (orb_low/atr_floor/atr_cap/day_low, threaded into sizing AND exit so R is comparable; 9 tests; harness c6b0029, deployed). RESULT on the retained judge-HIGH cohort (n=44; mi_ep_alerts pruned to 2026-03-16+ #341): WIDENING the stop monotonically HURTS in the trustworthy direction — baseline orb_low +1.40R/+$20.9k → atr_floor 0.5/1.0/1.5 +0.66/+0.48/+0.27R → day_low +0.14R/+$4.4k (stopout 59%→7% but R-multiples+$ collapse with the wider denominator). atr_cap +0.04R is noise (9% coverage, SUSPECT tighter direction, top-5-carried). VERDICT = **no live stop change; ORB-low optimal**; kill/scale bands need no re-derivation (winner IS orb_low). Both W2 levers now tested (study #1 OR-window+skip-wide-open dead/not-shippable; study #2 stop no-change) → entry-mechanics is NOT where the edge hides; RECOMMEND CLOSE the "tune the bracket" thread (operator ack at launch checkpoint). Exit/management tune is the separate #306 (v1.1-W3, 7/01).
 
 ## Operational safety / hardening
 
