@@ -130,7 +130,10 @@ async def fetch_prior_daily_ohlcv(conn, ticker: str, alert_date: date, lookback:
     """Daily OHLCV STRICTLY before alert_date (the prior-trading-day cut — no alert-day candle),
     ascending, as dicts bars_to_df accepts. lookback>render window so the MA-50 has its runway."""
     rows = await conn.fetch(
-        """SELECT trade_date, open_price, high_price, low_price, close_price, volume
+        # mi_daily_closes' column is `close`; bars_to_df expects the key `close_price`
+        # (chart_render._OHLCV_KEYS) → alias. (Latent bug: never hit before because every prior
+        # cohort row skipped at the alert-row lookup; surfaced 2026-06-18 on the rebuilt 2026 cohort.)
+        """SELECT trade_date, open_price, high_price, low_price, close AS close_price, volume
            FROM mi_daily_closes
            WHERE ticker = $1 AND trade_date < $2
            ORDER BY trade_date DESC LIMIT $3""",
