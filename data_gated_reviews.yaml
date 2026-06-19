@@ -1328,7 +1328,7 @@ reviews:
 
       Origin: 2026-05-09 DeepVue/TraderLion review + advisor approval.
       See TI6 in project_trading_ideas_backlog.md for full design.
-    status: pending
+    status: done  # RATIFIED by operator 2026-06-19 (#54) — verdict: RMV stays diagnostic telemetry, the COILED gate stays ≤7%-range + base_run (no new gate). See PLAN #291.
     added_on: 2026-05-09
 
   - review_id: apollo_trades_dashboard_db_flip
