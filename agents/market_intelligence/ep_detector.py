@@ -475,6 +475,15 @@ _AGREEMENT_MARKERS = (
     "purchase agreement",
 )
 _REVENUE_MARKERS = ("revenue", "net cash", "partnership contributed", "total revenue")
+# #238 dilution feed: a RECENT priced takedown (424B5) or actual equity sale (8-K item
+# 3.02) is a capital-raise overhang fed to the grader as DATED NEGATIVE context (not a
+# deterministic skip — the LLM stays judge so a real EP that also raises capital still
+# fires). Recency window keeps a stale shelf-takedown from suppressing today's gap.
+_DILUTION_WINDOW_DAYS = 21
+_DILUTION_MARKERS = (
+    "shares of", "per share", "offering", "proceeds", "purchase price",
+    "underwrit", "placement", "prospectus supplement", "registered direct",
+)
 
 
 def _grade_substantive_slice(text: str, markers: tuple, n: int) -> str:
@@ -541,13 +550,43 @@ def nearest_today_filing(filings: list, alert_date: date):
     return cands[0][1]
 
 
+def recent_dilution_filing(filings: list, on_before: date,
+                           within_days: int = _DILUTION_WINDOW_DAYS):
+    """#238: most recent DILUTIVE capital-raise filing — a 424B5 priced takedown OR an
+    8-K item 3.02 actual unregistered equity sale — filed in (on_before - within_days,
+    on_before]. POINT-IN-TIME: only PRE-grade filings; an offering filed AFTER today's gap
+    is raising INTO strength, a different animal, and is excluded by the on_before cutoff.
+    The recency window keeps a stale shelf-takedown from suppressing today's catalyst."""
+    floor = on_before - timedelta(days=within_days)
+    cands = []
+    for f in filings or []:
+        form = f.get("form") or ""
+        items = f.get("items") or ""
+        is_dilutive = form.startswith("424B5") or (form.startswith("8-K") and "3.02" in items)
+        if not is_dilutive:
+            continue
+        try:
+            fd = date.fromisoformat(f["filed"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if floor < fd <= on_before:
+            cands.append((fd, f))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: x[0], reverse=True)
+    return cands[0][1]
+
+
 def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreement_8k,
-                          recent_earnings_8k, perplexity_answer=None, *, enrich: bool) -> str:
+                          recent_earnings_8k, perplexity_answer=None, *, enrich: bool,
+                          dilution_filing=None) -> str:
     """SINGLE source of truth for the grounded grade corpus (live grade path + offline
     replay). Anchors the grade DATE so the freshness rule sizes prior-dated context
     correctly instead of mis-timing it as today (the #344 date-confusion root cause).
     When `enrich`, appends clearly-dated + age-labeled PRIOR material-agreement + revenue
-    context — for MATERIALITY sizing only, never as today's catalyst."""
+    context — for MATERIALITY sizing only, never as today's catalyst — and, when present,
+    a RECENT dilutive-filing (#238) block as dated NEGATIVE context the grader weighs
+    against today's move (it stays judge; a real EP that also raises capital still fires)."""
     today_text = build_grounded_text(today_sec, (today_benz or [])[:3], perplexity_answer) or ""
     parts = [
         f"DATE CONTEXT: today is {alert_date.isoformat()}. Grade ONLY a catalyst that is "
@@ -574,6 +613,21 @@ def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreeme
             f"{recent_earnings_8k.get('filed')}, "
             f"{_grade_age_label(alert_date, recent_earnings_8k.get('filed'))}; "
             f"company financial scale, NOT today's catalyst]\n{rev}")
+    if enrich and dilution_filing:
+        form = dilution_filing.get("form") or "424B5/8-K"
+        kind = ("priced offering / prospectus supplement" if form.startswith("424B")
+                else "unregistered equity sale (8-K item 3.02)")
+        dtxt = _grade_substantive_slice(dilution_filing.get("text") or "",
+                                        _DILUTION_MARKERS, 700)
+        parts.append(
+            f"[RECENT DILUTIVE FILING — {form} ({kind}) filed "
+            f"{dilution_filing.get('filed')}, "
+            f"{_grade_age_label(alert_date, dilution_filing.get('filed'))}; a fresh "
+            f"capital raise / dilution overhang. Weigh AGAINST today's move: a gap into a "
+            f"freshly-priced dilutive raise is frequently a pump rather than a clean "
+            f"catalyst. But do NOT auto-reject — a genuine EP catalyst can coincide with an "
+            f"opportunistic raise; judge whether TODAY'S news is itself materially bullish.]"
+            + (f"\n{dtxt}" if dtxt else ""))
     return "\n\n".join(parts)
 
 
@@ -1557,12 +1611,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         _prior_agr = recent_filing_by_item(
                             _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
                         _recent_earn = recent_filing_by_item(_ext, "2.02", today)
+                        # #238 dilution — reuse what the enrichment tick already found;
+                        # fall back to a tight fetch only if the uncached tick didn't run.
+                        _dilution = _st.get("dilution")
+                        if _dilution is None and "dilution" not in _st:
+                            _dil_ext = await get_sec_recent_filings(
+                                ticker, forms=("424B5", "8-K"),
+                                lookback_days=_DILUTION_WINDOW_DAYS, max_filings=4,
+                                want_text=True)
+                            _dilution = recent_dilution_filing(_dil_ext, today)
                         _pplx = await search_news_perplexity(
                             f"What caused {ticker} stock to gap up? Latest catalyst and news.",
                             recency="week")
                         _corpus = assemble_grade_corpus(
                             today, _today_sec, _benz[:3], _prior_agr, _recent_earn,
-                            _pplx, enrich=True)
+                            _pplx, enrich=True, dilution_filing=_dilution)
                         _rq, _ran = await _classify_catalyst_claude(
                             ticker, [], profile, grounded_text=_corpus)
                         await log_audit_event(
@@ -1574,6 +1637,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 "would_change": _rq != catalyst_quality,
                                 "grade_src_count": _st["count"], "current_src_count": _cur,
                                 "has_prior_agreement": _prior_agr is not None,
+                                "has_dilution": _dilution is not None,
+                                "dilution_form": _dilution.get("form") if _dilution else None,
                                 "repoll_analysis": (_ran or "")[:300],
                                 "shadow_latency_s": round(_time.monotonic() - _t0, 2),
                             }),
@@ -1690,6 +1755,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _prior_agr = recent_filing_by_item(
                         _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
                     _recent_earn = recent_filing_by_item(_ext, "2.02", today)
+                    # #238 dilution overhang — separate tight-window fetch (424B5 priced
+                    # takedown + recent 8-Ks for item 3.02); kept off the 400d agreement
+                    # fetch so a recent prospectus can't crowd the 7-month-old 1.01 out of
+                    # max_filings. Point-in-time (filed <= today). Reused on re-poll.
+                    _dil_ext = await get_sec_recent_filings(
+                        ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
+                        max_filings=4, want_text=True)
+                    _dilution = recent_dilution_filing(_dil_ext, today)
+                    _repoll_shadow_state[ticker]["dilution"] = _dilution
                     _benz_full = await get_alpaca_news(ticker, include_content=True)
                     _today_benz = [
                         n for n in (_benz_full or [])
@@ -1697,7 +1771,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     ][:3]
                     _enr_corpus = assemble_grade_corpus(
                         today, _today_sec, _today_benz, _prior_agr, _recent_earn,
-                        perplexity_answer, enrich=True)
+                        perplexity_answer, enrich=True, dilution_filing=_dilution)
                     _enr_q, _enr_an = await _classify_catalyst_claude(
                         ticker, all_news, profile, grounded_text=_enr_corpus)
                     await log_audit_event(
@@ -1709,6 +1783,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "changed": _enr_q != catalyst_quality,
                             "has_prior_agreement": _prior_agr is not None,
                             "prior_agreement_filed": _prior_agr.get("filed") if _prior_agr else None,
+                            "has_dilution": _dilution is not None,
+                            "dilution_form": _dilution.get("form") if _dilution else None,
+                            "dilution_filed": _dilution.get("filed") if _dilution else None,
                             "enriched_analysis": (_enr_an or "")[:300],
                             "shadow_latency_s": round(_time.monotonic() - _t0, 2),
                         }),

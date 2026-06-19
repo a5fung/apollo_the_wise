@@ -55,6 +55,7 @@ from agents.market_intelligence.ep_detector import (
     # #344 SSoT: the SAME corpus-assembly the live grade path uses (advisor #5 — no
     # validate-one-thing-ship-another divergence).
     assemble_grade_corpus, recent_filing_by_item, nearest_today_filing,
+    recent_dilution_filing, _DILUTION_WINDOW_DAYS,
 )
 from scripts._grounded_reconstruct import _to_aware_utc
 from scripts._judge_replay_common import fetch_profile
@@ -251,6 +252,12 @@ async def run_enrich_mode(c, args, since, cutoff_t):
         prior_before = alert_date - timedelta(days=_TODAY_WINDOW_DAYS + 1)
         prior_agreement = recent_filing_by_item(filings, "1.01", prior_before)
         recent_earnings = recent_filing_by_item(filings, "2.02", alert_date)
+        # #238 dilution overhang — tight-window 424B5/8-K(3.02) fetch, point-in-time
+        # (filed <= alert_date). Fed to the FIX arm only as dated negative context.
+        dil_filings = await get_sec_recent_filings(
+            ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
+            max_filings=4, want_text=True)
+        dilution = recent_dilution_filing(dil_filings, alert_date)
         # Today's Benzinga (include_content) up to the ORB cutoff = what the re-poll sees.
         today_benz = [n for n in await _fetch_benzinga(ticker, alert_date, True)
                       if is_primary_subject_news(n, ticker, company or "")
@@ -259,7 +266,8 @@ async def run_enrich_mode(c, args, since, cutoff_t):
         grades, analyses, corpora = {}, {}, {}
         for arm, enrich in (("baseline", False), ("fix", True)):
             corpus = assemble_grade_corpus(alert_date, today_sec, today_benz,
-                                           prior_agreement, recent_earnings, enrich=enrich)
+                                           prior_agreement, recent_earnings, enrich=enrich,
+                                           dilution_filing=dilution if enrich else None)
             corpora[arm] = corpus
             q, an = await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus)
             grades[arm], analyses[arm] = q, an
@@ -269,7 +277,8 @@ async def run_enrich_mode(c, args, since, cutoff_t):
             print(f"\n--- DIAG {ticker} {alert_date} ---")
             print(f"  today_sec={'yes' if today_sec else 'no'}  today_benz≤cutoff={len(today_benz)}"
                   f"  prior_1.01={prior_agreement.get('filed') if prior_agreement else 'none'}"
-                  f"  earnings_2.02={recent_earnings.get('filed') if recent_earnings else 'none'}")
+                  f"  earnings_2.02={recent_earnings.get('filed') if recent_earnings else 'none'}"
+                  f"  dilution={dilution.get('form') + '@' + dilution.get('filed') if dilution else 'none'}")
             print(f"  FIX corpus ({len(corpora['fix'])}c):\n    "
                   + corpora['fix'][:1400].replace(chr(10), chr(10) + '    '))
             for arm in ("baseline", "fix"):
@@ -281,6 +290,7 @@ async def run_enrich_mode(c, args, since, cutoff_t):
                 "base": grades["baseline"], "fix": grades["fix"],
                 "dir": "↑ RISE" if _TIER_RANK.get(grades["fix"], 0) > _TIER_RANK.get(grades["baseline"], 0) else "↓ fall",
                 "prior_1_01": prior_agreement.get("filed") if prior_agreement else None,
+                "dilution": (dilution.get("form") + "@" + dilution.get("filed")) if dilution else None,
                 "fix_reason": analyses["fix"][:240],
             })
 
@@ -292,7 +302,8 @@ async def run_enrich_mode(c, args, since, cutoff_t):
           f"\n{'-'*78}")
     for x in rises:
         print(f"  {x['dir']}  {x['ticker']:6} {x['alert_date']}  base={x['base']} → fix={x['fix']}  "
-              f"(live was {x['live_q']})  prior_1.01={x['prior_1_01'] or 'none'}")
+              f"(live was {x['live_q']})  prior_1.01={x['prior_1_01'] or 'none'}  "
+              f"dilution={x['dilution'] or 'none'}")
         print(f"      fix reasoning: {x['fix_reason']}")
     print(f"\n{'='*78}")
     print("GATE READ: net-positive iff RISES are true catalysts AND nothing that should "
