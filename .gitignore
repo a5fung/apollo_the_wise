@@ -53,3 +53,10 @@ Thumbs.db
 # #267 chart-vision eval — emitted chart PNGs (runtime output, not source)
 _chart_eval/
 clean_breakout_cohort.csv
+
+# Session-scratch probe OUTPUT data (regenerable; never source) — 6/19 hygiene sweep
+scripts/*.tsv
+scripts/*.err
+/replay268_*.csv
+scripts/_catalyst_type_cohort.json
+_chart_eval_267/
