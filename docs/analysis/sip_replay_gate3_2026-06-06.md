@@ -30,6 +30,29 @@ doc when the verdict materially moves.
 **Cohort split (fail-fast headline):** cancelled (IEX-dropped) N=21 → 14 `would_have_filled`,
 7 `clean_miss`, **0 `gap_through`**. SIP-recoverable = 14/14 = **100%** of the recoverable set.
 
+## Refresh 2026-06-18 (pre-launch re-run, cohort grown — verdict HOLDS)
+
+Re-ran `sip_replay_r_cohort.py` on the current cohort 4 days before the 6/22 go/no-go.
+The cohort grew (N=33→38 SIP-augmented; REAL-only 19→23) and **the verdict did not
+materially move** — GO-supportive (reduced-size) stands.
+
+| Cohort (2026-06-18) | N | E[R] | win% | totR |
+|---|---|---|---|---|
+| REAL-only (IEX) | 23 | −0.448 | 22% | −10.3R |
+| SIP-augmented (real + 15 sim) | 38 | +0.196 | 29% | +7.4R |
+| **synth-FILLED** (same-exit) | 17 | **−1.00** | 0% | −17.0R |
+| **synth-CANCELLED** (same-exit) | 15 | **+1.183** | 40% | +17.7R |
+| **SELECTION delta** | — | **+2.18R** | — | — |
+
+- Selection delta **+2.18R** (was +2.27) — robust. `gap_through=0` (26 cancelled → 15
+  would_have_filled, 11 clean_miss) → 100% of dropped winners reachable at the limit.
+- Standalone synth-CANCELLED trim curve unchanged in shape: survives drop-top-3 (+0.087),
+  crosses 0 at drop-4 → concentrated edge → **START-SMALL**. 6/6 winners convincing fills.
+- The raw paper figure widened to −$9,475-class / REAL-only −0.45 E[R] purely via IEX
+  selection; the SIP-reconstructed cohort stays positive. **GATE-3 = GO-supportive holds.**
+- Same load-bearing caveats as the original (below) — decision-grade DIRECTION, not a
+  pinned live E[R]; reliability gates are a separate hard path.
+
 ## What it means
 
 The filled paper cohort looks like a losing system (−0.43 E[R]) **only because IEX
