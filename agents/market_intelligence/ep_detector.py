@@ -458,6 +458,147 @@ def corpus_provenance(sec_filing: Optional[dict],
     return {"sources": sources, "has_direct_source": has_direct}
 
 
+# ── #344 corpus-completeness enrichment (SSoT — the replay imports these) ──────────
+# Today's news alone under-grades a catalyst that is an UPDATE to an existing material
+# partnership (BFLY 6/18: the $74M Midjourney co-dev license was in a prior 8-K, not the
+# 6/18 PR). These helpers assemble a grade corpus that adds clearly-DATED prior
+# material-agreement + revenue context for MATERIALITY sizing, with a "today" anchor so
+# the freshness rule can't mis-time stale filings as today's catalyst (the date-confusion
+# trap). Used in SHADOW first (web-inclusive net-correctness telemetry); the live grade
+# flip is gated on shadow data + operator sign-off (CHANGE_PROCESS).
+_GRADE_TODAY_WINDOW_DAYS = 10  # a filing within this many days of the gap = "today's"
+
+_AGREEMENT_MARKERS = (
+    "entered into", "definitive agreement", "agreement (the", "license",
+    "pursuant to the agreement", "co-development", "controlled equity",
+    "at-the-market", "at the market", "sales agreement", "credit agreement",
+    "purchase agreement",
+)
+_REVENUE_MARKERS = ("revenue", "net cash", "partnership contributed", "total revenue")
+
+
+def _grade_substantive_slice(text: str, markers: tuple, n: int) -> str:
+    """Skip the iXBRL/cover boilerplate (the disclosure body lives past it) — a window
+    around the first substantive marker, else the head."""
+    if not text:
+        return ""
+    low = text.lower()
+    best = None
+    for mk in markers:
+        i = low.find(mk)
+        if i > 150 and (best is None or i < best):
+            best = i
+    start = max(0, best - 80) if best is not None else 0
+    return text[start:start + n]
+
+
+def _grade_age_label(alert_date: date, filed_str: str) -> str:
+    try:
+        d = date.fromisoformat(filed_str)
+    except (ValueError, TypeError):
+        return "date unknown"
+    days = (alert_date - d).days
+    if days >= 60:
+        return f"~{days // 30} months BEFORE today's gap"
+    if days >= 1:
+        return f"~{days} days BEFORE today's gap"
+    return "TODAY"
+
+
+def recent_filing_by_item(filings: list, item_code: str, on_before: date):
+    """Most recent filing whose `items` contains item_code, filed <= on_before, with text."""
+    cands = []
+    for f in filings or []:
+        if item_code not in (f.get("items") or "") or not f.get("text"):
+            continue
+        try:
+            fd = date.fromisoformat(f["filed"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if fd <= on_before:
+            cands.append((fd, f))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: x[0], reverse=True)
+    return cands[0][1]
+
+
+def nearest_today_filing(filings: list, alert_date: date):
+    """The same-day / near catalyst SEC filing (filed within the today-window, <= alert)."""
+    cands = []
+    for f in filings or []:
+        if not f.get("text"):
+            continue
+        try:
+            fd = date.fromisoformat(f["filed"])
+        except (ValueError, TypeError, KeyError):
+            continue
+        if alert_date - timedelta(days=_GRADE_TODAY_WINDOW_DAYS) <= fd <= alert_date:
+            cands.append((fd, f))
+    if not cands:
+        return None
+    cands.sort(key=lambda x: x[0], reverse=True)
+    return cands[0][1]
+
+
+def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreement_8k,
+                          recent_earnings_8k, perplexity_answer=None, *, enrich: bool) -> str:
+    """SINGLE source of truth for the grounded grade corpus (live grade path + offline
+    replay). Anchors the grade DATE so the freshness rule sizes prior-dated context
+    correctly instead of mis-timing it as today (the #344 date-confusion root cause).
+    When `enrich`, appends clearly-dated + age-labeled PRIOR material-agreement + revenue
+    context — for MATERIALITY sizing only, never as today's catalyst."""
+    today_text = build_grounded_text(today_sec, (today_benz or [])[:3], perplexity_answer) or ""
+    parts = [
+        f"DATE CONTEXT: today is {alert_date.isoformat()}. Grade ONLY a catalyst that is "
+        f"FRESH as of today. Items explicitly dated BEFORE today below are BACKGROUND for "
+        f"sizing how MATERIAL today's news is to this company — they are NOT themselves "
+        f"today's catalyst, and a stale agreement or a dilutive financing is never a buy "
+        f"catalyst on its own.",
+        "[TODAY'S NEWS — the catalyst to grade]\n"
+        + (today_text or "(no same-day primary source found)"),
+    ]
+    if enrich and prior_agreement_8k:
+        terms = _grade_substantive_slice(prior_agreement_8k.get("text") or "",
+                                         _AGREEMENT_MARKERS, 1600)
+        parts.append(
+            f"[PRIOR CONTEXT — material agreement (8-K item 1.01) filed "
+            f"{prior_agreement_8k.get('filed')}, "
+            f"{_grade_age_label(alert_date, prior_agreement_8k.get('filed'))}; "
+            f"BACKGROUND for materiality, NOT today's catalyst]\n{terms}")
+    if enrich and recent_earnings_8k:
+        rev = _grade_substantive_slice(recent_earnings_8k.get("text") or "",
+                                       _REVENUE_MARKERS, 1000)
+        parts.append(
+            f"[PRIOR CONTEXT — most recent earnings (8-K item 2.02) filed "
+            f"{recent_earnings_8k.get('filed')}, "
+            f"{_grade_age_label(alert_date, recent_earnings_8k.get('filed'))}; "
+            f"company financial scale, NOT today's catalyst]\n{rev}")
+    return "\n\n".join(parts)
+
+
+def should_repoll_shadow(cached_quality: str, grade_source_count: int,
+                         current_source_count: int, already_logged: bool,
+                         in_orb_window: bool) -> bool:
+    """#344 re-poll trigger (pure → unit-tested). Shadow-re-grade a CACHED grade exactly
+    ONCE when a NEW primary-subject direct source appears within the ORB window — but
+    NEVER re-poll a grade that already fires (non-routine is terminal for the miss-class
+    we fix: BFLY graded routine pre-PR, the PR arrived later, the cache pinned routine)."""
+    if already_logged:
+        return False                         # exactly once — no per-tick thrash
+    if not in_orb_window:
+        return False                         # only the ORB-actionable window
+    if cached_quality != "routine":
+        return False                         # never re-poll a firing/terminal grade
+    return current_source_count > grade_source_count  # a NEW direct source arrived
+
+
+# Re-poll shadow dedup state (module-level, mirrors _catalyst_cache lifecycle — cleared
+# on a new trading day; a restart re-arming it just re-logs once, harmless for shadow).
+_repoll_shadow_state: dict = {}
+_repoll_shadow_date = None
+
+
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None) -> tuple[str, str]:
     """
     Use Claude to classify catalyst quality via structured tool use.
@@ -1360,9 +1501,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # A stock oscillating near the 15% threshold gets re-scored every 5 min;
         # the catalyst is the same each time. One evaluation per ticker per day.
         global _catalyst_cache, _catalyst_cache_date
+        global _repoll_shadow_state, _repoll_shadow_date  # #344 re-poll shadow dedup
         if _catalyst_cache_date != today:
             _catalyst_cache.clear()
             _catalyst_cache_date = today
+        if _repoll_shadow_date != today:
+            _repoll_shadow_state.clear()
+            _repoll_shadow_date = today
 
         _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
@@ -1377,6 +1522,57 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
             logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
+
+            # #344 re-poll SHADOW (cached path): if a NEW primary-subject source appeared
+            # after a ROUTINE grade within the ORB window, shadow-re-grade ONCE with the
+            # full enriched (web-inclusive) corpus and log what WOULD fire — telemetry only,
+            # never touches the live grade or the cache. This is the BFLY mechanism (the
+            # 8:12 PR after the 7:00 routine grade). Cheap per-tick check (1 Benzinga call,
+            # gated on cheap preconditions); the expensive re-grade runs only on the trigger.
+            _st = _repoll_shadow_state.get(ticker)
+            _in_orb = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 45)
+            if (_st and not _st["logged"] and _in_orb and _st["quality"] == "routine"
+                    and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
+                try:
+                    import time as _time
+                    _t0 = _time.monotonic()
+                    _benz0 = await get_alpaca_news(ticker, include_content=True)
+                    _benz = [n for n in (_benz0 or [])
+                             if is_primary_subject_news(n, ticker, profile.get("companyName", ""))]
+                    _cur = len(_benz)
+                    if should_repoll_shadow(catalyst_quality, _st["count"], _cur,
+                                            _st["logged"], _in_orb):
+                        _st["logged"] = True  # exactly once
+                        _ext = await get_sec_recent_filings(
+                            ticker, forms=("8-K", "6-K"), lookback_days=400,
+                            max_filings=10, want_text=True)
+                        _today_sec = nearest_today_filing(_ext, today)
+                        _prior_agr = recent_filing_by_item(
+                            _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
+                        _recent_earn = recent_filing_by_item(_ext, "2.02", today)
+                        _pplx = await search_news_perplexity(
+                            f"What caused {ticker} stock to gap up? Latest catalyst and news.",
+                            recency="week")
+                        _corpus = assemble_grade_corpus(
+                            today, _today_sec, _benz[:3], _prior_agr, _recent_earn,
+                            _pplx, enrich=True)
+                        _rq, _ran = await _classify_catalyst_claude(
+                            ticker, [], profile, grounded_text=_corpus)
+                        await log_audit_event(
+                            "ep_repoll_shadow",
+                            f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)",
+                            json.dumps({
+                                "ticker": ticker, "alert_date": today.isoformat(),
+                                "cached_quality": catalyst_quality, "repoll_quality": _rq,
+                                "would_change": _rq != catalyst_quality,
+                                "grade_src_count": _st["count"], "current_src_count": _cur,
+                                "has_prior_agreement": _prior_agr is not None,
+                                "repoll_analysis": (_ran or "")[:300],
+                                "shadow_latency_s": round(_time.monotonic() - _t0, 2),
+                            }),
+                        )
+                except Exception as _e:
+                    logger.debug(f"{ticker}: repoll shadow skipped — {_e}")
         else:
             # Fetch all external data concurrently
             profile, fmp_news, ratings, perplexity_answer, sec_filings, alpaca_news = await asyncio.gather(
@@ -1450,6 +1646,58 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
             except Exception as _e:
                 logger.debug(f"{ticker}: provenance log skipped — {_e}")
+
+            # #344 enrichment SHADOW (once/ticker/day, uncached path) — web-INCLUSIVE
+            # net-correctness telemetry: re-grade with prior material-agreement context
+            # added, log current vs enriched. NEVER changes the live grade. Arms the
+            # re-poll shadow state (grade-time direct-source count + quality). Fully
+            # error-wrapped + flag-killable — can't break or slow-fail the scan.
+            # Re-poll trigger signal = primary-subject Benzinga count (the dominant
+            # late-source class is a PR arriving after a routine grade; cheap = 1 call/tick
+            # to re-check). Same-day SEC-only late catalysts are a known v1 gap to measure.
+            _grade_src_count = sum(
+                1 for n in (alpaca_news or [])
+                if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
+            )
+            _repoll_shadow_state[ticker] = {
+                "count": _grade_src_count, "quality": catalyst_quality, "logged": False,
+            }
+            if os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true":
+                try:
+                    import time as _time
+                    _t0 = _time.monotonic()
+                    _ext = await get_sec_recent_filings(
+                        ticker, forms=("8-K", "6-K"), lookback_days=400,
+                        max_filings=10, want_text=True)
+                    _today_sec = nearest_today_filing(_ext, today) or sec_filing
+                    _prior_agr = recent_filing_by_item(
+                        _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
+                    _recent_earn = recent_filing_by_item(_ext, "2.02", today)
+                    _benz_full = await get_alpaca_news(ticker, include_content=True)
+                    _today_benz = [
+                        n for n in (_benz_full or [])
+                        if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
+                    ][:3]
+                    _enr_corpus = assemble_grade_corpus(
+                        today, _today_sec, _today_benz, _prior_agr, _recent_earn,
+                        perplexity_answer, enrich=True)
+                    _enr_q, _enr_an = await _classify_catalyst_claude(
+                        ticker, all_news, profile, grounded_text=_enr_corpus)
+                    await log_audit_event(
+                        "ep_grade_enrich_shadow",
+                        f"{ticker} {catalyst_quality} → {_enr_q}",
+                        json.dumps({
+                            "ticker": ticker, "alert_date": today.isoformat(),
+                            "current_quality": catalyst_quality, "enriched_quality": _enr_q,
+                            "changed": _enr_q != catalyst_quality,
+                            "has_prior_agreement": _prior_agr is not None,
+                            "prior_agreement_filed": _prior_agr.get("filed") if _prior_agr else None,
+                            "enriched_analysis": (_enr_an or "")[:300],
+                            "shadow_latency_s": round(_time.monotonic() - _t0, 2),
+                        }),
+                    )
+                except Exception as _e:
+                    logger.debug(f"{ticker}: enrich shadow skipped — {_e}")
 
             # Skip M&A / buyout — price capped at deal value, no momentum trade.
             # Single-source filter (ma_filter.is_likely_ma) — same logic used by

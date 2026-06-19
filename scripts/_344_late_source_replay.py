@@ -52,6 +52,9 @@ from agents.market_intelligence.collector import (
 )
 from agents.market_intelligence.ep_detector import (
     build_grounded_text, _classify_catalyst_claude,
+    # #344 SSoT: the SAME corpus-assembly the live grade path uses (advisor #5 — no
+    # validate-one-thing-ship-another divergence).
+    assemble_grade_corpus, recent_filing_by_item, nearest_today_filing,
 )
 from scripts._grounded_reconstruct import _to_aware_utc
 from scripts._judge_replay_common import fetch_profile
@@ -195,67 +198,18 @@ async def _fetch_benzinga(ticker, alert_date, include_content):
     return out
 
 
-def _recent_filing_by_item(filings, item_code, on_before):
-    """Most recent filing whose `items` contains item_code, filed <= on_before, with text."""
-    cands = []
-    for f in filings or []:
-        if item_code not in (f.get("items") or "") or not f.get("text"):
-            continue
-        try:
-            fd = date.fromisoformat(f["filed"])
-        except (ValueError, TypeError, KeyError):
-            continue
-        if fd <= on_before:
-            cands.append((fd, f))
-    if not cands:
-        return None
-    cands.sort(key=lambda x: x[0], reverse=True)
-    return cands[0][1]
+# Corpus-assembly helpers (assemble_grade_corpus / recent_filing_by_item /
+# nearest_today_filing) are imported from ep_detector — the SINGLE source of truth so the
+# replay validates the EXACT code the live grade path ships (advisor #5).
+_TODAY_WINDOW_DAYS = 10  # mirror ep_detector._GRADE_TODAY_WINDOW_DAYS for the prior cutoff
 
 
-def _substantive_slice(text, markers, n):
-    """Skip the iXBRL/cover boilerplate (the disclosure body lives past it) — return a
-    window around the first substantive marker, else fall back to the head."""
-    if not text:
-        return ""
-    low = text.lower()
-    best = None
-    for mk in markers:
-        i = low.find(mk)
-        if i > 150 and (best is None or i < best):  # past the cover header
-            best = i
-    start = max(0, best - 80) if best is not None else 0
-    return text[start:start + n]
-
-
-def _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k):
-    """Build the grounded corpus for one enrichment arm. Agreement/earnings context is
-    prepended (survives the grader's 6000-char cut) so the grade sees the deal terms —
-    SUBSTANTIVE-sliced to skip the iXBRL cover boilerplate (the #344 enrichment bug)."""
-    benz = (benz_wc if arm in ("content", "both") else benz_nc)[:3]
-    body = build_grounded_text(sec_nearby, benz, None) or ""
-    if arm in ("agreement", "both"):
-        ctx = []
-        if agreement_8k:
-            terms = _substantive_slice(
-                agreement_8k.get("text") or "",
-                ("entered into", "definitive agreement", "agreement (the",
-                 "license", "pursuant to the agreement", "co-development"), 1600)
-            ctx.append(f"[PRIOR MATERIAL AGREEMENT — 8-K item 1.01 filed "
-                       f"{agreement_8k.get('filed')}]\n{terms}")
-        if earnings_8k:
-            rev = _substantive_slice(
-                earnings_8k.get("text") or "",
-                ("revenue", "net cash", "partnership contributed", "total revenue"), 1000)
-            ctx.append(f"[RECENT EARNINGS — 8-K item 2.02 filed "
-                       f"{earnings_8k.get('filed')}]\n{rev}")
-        if ctx:
-            body = "\n\n".join(ctx) + "\n\n[TODAY'S NEWS]\n" + (body or "(no same-day primary source)")
-    return body
-
-
-async def run_enrich_mode(c, args, since):
-    """#344 enrichment eval — NET catalyst-correctness across all graded gappers."""
+async def run_enrich_mode(c, args, since, cutoff_t):
+    """#344 combined-fix eval — re-poll (ORB-cutoff corpus) + enrichment (prior-agreement
+    context). Baseline = today's sources at the ORB cutoff (what a cache re-poll alone
+    sees); fix = that PLUS include_content + dated prior-agreement/revenue context. The
+    delta isolates the enrichment; both sit at the ORB cutoff so the cache re-poll's
+    contribution (today's late PR is present) is held constant (advisor #1/#2)."""
     rows = await c.fetch(
         """
         SELECT DISTINCT ON (d.ticker, d.alert_date)
@@ -274,89 +228,77 @@ async def run_enrich_mode(c, args, since):
         """, since, args.ticker)
 
     print(f"\n{'='*78}")
-    print(f"#344 ENRICHMENT EVAL — net catalyst-correctness across {len(rows)} graded "
-          f"gappers\n  arms: baseline(no-web) · +content(full Benzinga) · +agreement(prior "
-          f"1.01 8-K+rev) · +both")
+    print(f"#344 COMBINED-FIX EVAL (re-poll@ORB + prior-agreement enrichment) — "
+          f"{len(rows)} graded gappers")
+    print(f"  baseline = today's sources @ {args.orb_cutoff} ET (re-poll alone) · "
+          f"fix = +include_content +dated prior 1.01/2.02 context")
     print(f"{'='*78}")
 
     dist = {a: {"game_changer": 0, "strong": 0, "routine": 0, "mna": 0}
-            for a in ("baseline", "both")}
+            for a in ("baseline", "fix")}
     rises = []
     for r in rows[: args.limit]:
-        ticker, alert_date, grade_ts = r["ticker"], r["alert_date"], r["grade_ts"]
-        if grade_ts.tzinfo is None:
-            grade_ts = grade_ts.replace(tzinfo=timezone.utc)
+        ticker, alert_date = r["ticker"], r["alert_date"]
+        cutoff_ts = datetime.combine(alert_date, cutoff_t, tzinfo=_ET)
         mc, sector, company = await fetch_profile(ticker)
         profile = {"companyName": company or "", "sector": sector or "",
                    "marketCap": mc, "description": ""}
         filings = await get_sec_recent_filings(
             ticker, forms=("8-K", "6-K"), lookback_days=400, max_filings=30, want_text=True)
-        sec_nearby, _b, _e = await _gather_direct_sources(ticker, alert_date, company,
-                                                          grade_ts, grade_ts)
-        agreement_8k = _recent_filing_by_item(filings, "1.01", alert_date)
-        earnings_8k = _recent_filing_by_item(filings, "2.02", alert_date)
-        benz_nc = [n for n in await _fetch_benzinga(ticker, alert_date, False)
-                   if is_primary_subject_news(n, ticker, company or "")
-                   and (_to_aware_utc(n.get("created_at")) or grade_ts) <= grade_ts]
-        benz_wc = [n for n in await _fetch_benzinga(ticker, alert_date, True)
-                   if is_primary_subject_news(n, ticker, company or "")
-                   and (_to_aware_utc(n.get("created_at")) or grade_ts) <= grade_ts]
+        today_sec = nearest_today_filing(filings, alert_date)
+        # PRIOR context must be strictly older than the today-window (don't relabel
+        # today's own filing as "prior").
+        prior_before = alert_date - timedelta(days=_TODAY_WINDOW_DAYS + 1)
+        prior_agreement = recent_filing_by_item(filings, "1.01", prior_before)
+        recent_earnings = recent_filing_by_item(filings, "2.02", alert_date)
+        # Today's Benzinga (include_content) up to the ORB cutoff = what the re-poll sees.
+        today_benz = [n for n in await _fetch_benzinga(ticker, alert_date, True)
+                      if is_primary_subject_news(n, ticker, company or "")
+                      and (_to_aware_utc(n.get("created_at")) or cutoff_ts) <= cutoff_ts]
 
         grades, analyses, corpora = {}, {}, {}
-        for arm in ("baseline", "both"):
-            corpus = _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k)
+        for arm, enrich in (("baseline", False), ("fix", True)):
+            corpus = assemble_grade_corpus(alert_date, today_sec, today_benz,
+                                           prior_agreement, recent_earnings, enrich=enrich)
             corpora[arm] = corpus
-            q, an = (await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus)) \
-                if corpus else ("routine", "(empty corpus)")
-            grades[arm] = q
-            analyses[arm] = an
+            q, an = await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus)
+            grades[arm], analyses[arm] = q, an
             dist[arm][q] = dist[arm].get(q, 0) + 1
 
         if args.ticker:  # single-case diagnostic
             print(f"\n--- DIAG {ticker} {alert_date} ---")
-            print(f"  prior 1.01 8-K: {agreement_8k.get('filed') if agreement_8k else 'NONE FOUND'}"
-                  f"   earnings 2.02 8-K: {earnings_8k.get('filed') if earnings_8k else 'NONE'}")
-            print(f"  benzinga ≤grade: nc={len(benz_nc)} wc={len(benz_wc)}  "
-                  f"sec_nearby={'yes' if sec_nearby else 'no'}")
-            print(f"  +both corpus ({len(corpora['both'])}c) lead:\n    "
-                  + corpora['both'][:1100].replace(chr(10), chr(10) + '    '))
-            for arm in ("baseline", "both"):
-                print(f"  [{arm}] → {grades[arm]}: {analyses[arm][:280]}")
+            print(f"  today_sec={'yes' if today_sec else 'no'}  today_benz≤cutoff={len(today_benz)}"
+                  f"  prior_1.01={prior_agreement.get('filed') if prior_agreement else 'none'}"
+                  f"  earnings_2.02={recent_earnings.get('filed') if recent_earnings else 'none'}")
+            print(f"  FIX corpus ({len(corpora['fix'])}c):\n    "
+                  + corpora['fix'][:1400].replace(chr(10), chr(10) + '    '))
+            for arm in ("baseline", "fix"):
+                print(f"  [{arm}] → {grades[arm]}: {analyses[arm][:320]}")
 
-        if _TIER_RANK.get(grades["both"], 0) > _TIER_RANK.get(grades["baseline"], 0):
-            # Attribute: which arm alone drove the rise?
-            attr = {}
-            for arm in ("content", "agreement"):
-                corpus = _assemble_corpus(arm, sec_nearby, benz_nc, benz_wc, agreement_8k, earnings_8k)
-                attr[arm] = (await _classify_catalyst_claude(
-                    ticker, [], profile, grounded_text=corpus))[0] if corpus else "routine"
-            drivers = [a for a in ("content", "agreement")
-                       if _TIER_RANK.get(attr[a], 0) > _TIER_RANK.get(grades["baseline"], 0)]
+        if _TIER_RANK.get(grades["fix"], 0) != _TIER_RANK.get(grades["baseline"], 0):
             rises.append({
                 "ticker": ticker, "alert_date": str(alert_date), "live_q": r["live_q"],
-                "base": grades["baseline"], "both": grades["both"], "drivers": drivers or ["combined"],
-                "has_agreement": agreement_8k is not None,
-                "agreement_filed": agreement_8k.get("filed") if agreement_8k else None,
+                "base": grades["baseline"], "fix": grades["fix"],
+                "dir": "↑ RISE" if _TIER_RANK.get(grades["fix"], 0) > _TIER_RANK.get(grades["baseline"], 0) else "↓ fall",
+                "prior_1_01": prior_agreement.get("filed") if prior_agreement else None,
+                "fix_reason": analyses["fix"][:240],
             })
 
-    print(f"\nGRADE DISTRIBUTION  (baseline → +both):")
+    print(f"\nGRADE DISTRIBUTION  (baseline @ORB → fix):")
     for tier in ("game_changer", "strong", "routine", "mna"):
-        print(f"  {tier:>12}: {dist['baseline'][tier]:>3}  →  {dist['both'][tier]:>3}")
-    n_rise = len(rises)
-    print(f"\nRISES under enrichment (grade lifted vs baseline): {n_rise} of {len(rows[:args.limit])}")
-    print(f"{'-'*78}\nPer-rise detail — ⚖️ operator labels each: TRUE catalyst recovery or "
-          f"INFLATION?\n{'-'*78}")
+        print(f"  {tier:>12}: {dist['baseline'][tier]:>3}  →  {dist['fix'][tier]:>3}")
+    print(f"\nGRADE CHANGES under the fix: {len(rises)} of {len(rows[:args.limit])}")
+    print(f"{'-'*78}\n⚖️ operator labels each: TRUE catalyst, or INFLATION (should stay routine)?"
+          f"\n{'-'*78}")
     for x in rises:
-        tag = "/".join(x["drivers"])
-        print(f"  {x['ticker']:6} {x['alert_date']}  base={x['base']} → both={x['both']}  "
-              f"(live grade was {x['live_q']})  driver={tag}  "
-              f"prior_1.01_8K={x['agreement_filed'] or 'none'}")
+        print(f"  {x['dir']}  {x['ticker']:6} {x['alert_date']}  base={x['base']} → fix={x['fix']}  "
+              f"(live was {x['live_q']})  prior_1.01={x['prior_1_01'] or 'none'}")
+        print(f"      fix reasoning: {x['fix_reason']}")
     print(f"\n{'='*78}")
-    print("GATE READ: enrichment is net-positive ONLY IF the RISES are true catalysts "
-          "(operator-labeled), not inflation. BFLY recovering is expected (the fix was "
-          "built from it) — the load-bearing question is whether names that should STAY "
-          "routine got lifted. Baseline here is no-web (isolates the enrichment delta); "
-          "the live flip stays CHANGE_PROCESS + N>=10 + sign-off.")
+    print("GATE READ: net-positive iff RISES are true catalysts AND nothing that should "
+          "stay routine got lifted (the BTQ-class ATM-dilution canary MUST stay routine). "
+          "Baseline=today's sources @ORB (re-poll alone); fix adds dated prior context. "
+          "Live flip = port assemble_grade_corpus to ep_detector + CHANGE_PROCESS + sign-off.")
     print(f"{'='*78}\n")
 
 
@@ -371,7 +313,7 @@ async def main():
 
     async with pool.acquire() as c:
         if args.enrich:
-            await run_enrich_mode(c, args, since)
+            await run_enrich_mode(c, args, since, cutoff_t)
             return
         # ── Cohort: web-only grades, deduped to the EARLIEST grade per ticker/day
         # (container-restart re-fires log a 2nd provenance row later in the day —

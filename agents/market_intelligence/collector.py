@@ -409,6 +409,7 @@ async def get_alpaca_news(
     to_date: Optional[date] = None,
     lookback_days: int = 7,
     limit: int = 20,
+    include_content: bool = False,
 ) -> list[dict]:
     """Stock news via Alpaca News API (`alpaca.data.historical.news.NewsClient`).
 
@@ -441,11 +442,15 @@ async def get_alpaca_news(
 
     try:
         client = NewsClient(api_key=api_key, secret_key=secret)
+        # include_content=True pulls the full Benzinga article body (otherwise only
+        # headline + summary). #344: the EP grade path was silently discarding PR
+        # bodies — fuller corpus for catalyst grading. Default off for other callers.
         req = NewsRequest(
             symbols=ticker,
             start=start_dt,
             end=end_dt,
             limit=limit,
+            include_content=include_content,
         )
         loop = asyncio.get_event_loop()
         resp = await loop.run_in_executor(None, lambda: client.get_news(req))

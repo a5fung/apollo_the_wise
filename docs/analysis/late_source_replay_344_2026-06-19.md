@@ -109,14 +109,17 @@ recoveries" is a floor, not the argument. The enumeration + hand-read is.)
 
 ## Gate read
 
-**#344's cache surgery is NOT launch-blocking.** The addressable surface is fully
-enumerated at **2 of 21** web-only grades, and both in-window sources are weak
-catalysts (product hype, dilution) that grade routine on the merits (BFLY, BTQ) —
-so the cache re-poll has nothing to recover. Production's own restart re-grades
-corroborate (0 of 12 eligible flipped), and there's no same-day sourcing gap. The
-staleness *mechanism* is real but the data doesn't exercise it to a single
-recovery — so the hot-path cache surgery is **deferred, not shipped**, for 6/22.
-Caveat: the window is short (provenance only since 6/7); the fire-through path is
+**The cache re-poll ALONE recovers nothing** — but it is NOT dead; it is the
+*necessary trigger* of the combined fix (see "Combined fix" below). The addressable
+surface for a re-poll-alone is fully enumerated at **2 of 21** web-only grades, and
+both in-window sources are weak catalysts *as presented to the grade-time corpus*
+(BFLY's PR is headline-only; BTQ is dilution). Re-polling those alone stays routine
+(0 of 12 eligible production re-grades flipped). So a cache re-poll *by itself* is
+worthless — its value is **conditional on the prior-agreement enrichment** that gives
+the re-grade the materiality context (BFLY's $74M Midjourney deal). The two ship
+together or not at all: without the re-poll BFLY never re-grades after 8:12 ET;
+without enrichment the re-grade stays routine. Caveat: the window is short (provenance
+only since 6/7); the fire-through path is
 **unexercised** (0 recoveries → untested code if a wider window ever reaches
 stage 3).
 
