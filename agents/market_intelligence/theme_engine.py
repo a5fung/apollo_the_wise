@@ -3069,6 +3069,15 @@ If none of these apply, call report_themes directly — advisor consultation is 
                                # drone/UAS cluster was discovered, deliberated, then lost).
         loop_guard = 0         # hard ceiling — defense in depth against a runaway loop.
 
+        # #325 (2026-06-18): bumped 1500→4000 — INFRA CAPACITY, not a criterion change (the
+        # disposition line still says "return zero when in doubt"). The prompt induces reasoning
+        # text ("ask yourself…", "consult the advisor FIRST…"); at 1500 a long real prompt could
+        # burn the budget on deliberation and hit the token ceiling BEFORE emitting the tool call
+        # → "stopped without calling report_themes" → forced report had no room either. The
+        # assignment LLM next door already runs 4000. The per-call telemetry below makes the
+        # stop_reason DURABLE (the funnel was logs-only and died on container recreate).
+        _DISCOVERY_MAX_TOKENS = 4000
+
         while True:
             loop_guard += 1
             if loop_guard > 8:
@@ -3076,13 +3085,34 @@ If none of these apply, call report_themes directly — advisor consultation is 
                 return []
             response = await client.messages.create(
                 model=THEME_MODEL,
-                max_tokens=1500,
+                max_tokens=_DISCOVERY_MAX_TOKENS,
                 tools=[_THEME_DISCOVERY_TOOL, _ADVISOR_TOOL],
                 tool_choice=({"type": "tool", "name": "report_themes"} if force_report else {"type": "auto"}),
                 messages=messages,
             )
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            # DURABLE per-call diagnostic (mi_audit_log survives container recreate, unlike the
+            # logs). stop_reason='max_tokens' = truncated before the tool call (capacity); 'end_turn'
+            # with 0 tool_uses = the model chose to stop/answer in prose (criterion). The #325 fork.
+            try:
+                await log_audit_event(
+                    "theme_discovery_llm_call",
+                    summary=(f"stop={response.stop_reason} out_tok={response.usage.output_tokens} "
+                             f"forced={force_report} tool_uses={len(tool_uses)} iter={loop_guard}"),
+                    detail=json.dumps({
+                        "stop_reason": response.stop_reason,
+                        "output_tokens": response.usage.output_tokens,
+                        "max_tokens": _DISCOVERY_MAX_TOKENS,
+                        "force_report": force_report,
+                        "n_tool_uses": len(tool_uses),
+                        "tool_names": [b.name for b in tool_uses],
+                        "iteration": loop_guard,
+                    }),
+                )
+            except Exception:
+                pass  # telemetry must never break the run
 
             # Model produced no tool call. Don't silently discard the whole discovery
             # pass (#173: the ADR-0007 shadow wrote 0 rows for days this way) — compel one
