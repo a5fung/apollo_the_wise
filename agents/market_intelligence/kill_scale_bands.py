@@ -132,3 +132,90 @@ def is_transition(prev_band: str | None, new_band: str) -> bool:
     if new_band not in _SEVERITY:
         return False
     return prev_band != new_band
+
+
+# ── Data source + presentation (DB-sourced; the pure core above stays import-free) ──────
+
+_BAND_EMOJI = {"SCALE": "🟢", "HOLD": "⚪", "REDUCE": "🟠", "KILL": "🔴"}
+
+
+async def assemble_band_inputs(account_mode: str = "live") -> dict:
+    """Gather the live closed-trade cohort + equity/drawdown inputs for the band evaluator.
+    DB-sourced only (no Alpaca call) so it runs anywhere, anytime — pre-launch it returns an
+    empty cohort → the evaluator HOLDs below the sample floor.
+
+    realized R = `total_pnl / risk_dollars` over `status='closed'` methodology trades
+    (`pnl_attribution IS NULL`), chronological — the SAME definition as the #291 GATE-3
+    cohort (`scripts/sip_replay_r_cohort.py`); keep them in lockstep if either changes.
+    """
+    from agents.market_intelligence.db import get_pool
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        trades = await c.fetch(
+            """
+            SELECT total_pnl, risk_dollars
+            FROM mi_live_trades
+            WHERE status = 'closed' AND account_mode = $1
+              AND pnl_attribution IS NULL
+              AND risk_dollars IS NOT NULL AND risk_dollars <> 0
+            ORDER BY alert_date ASC, id ASC
+            """, account_mode)
+        # Persisted drawdown tier (NOT a live Alpaca call — the recompute cron owns it).
+        dd = await c.fetchval(
+            "SELECT state FROM mi_safeguard_state "
+            "WHERE safeguard = 'drawdown_breaker' AND account_mode = $1", account_mode)
+        # Equity vs starting equity = earliest vs latest live snapshot (SCALE input).
+        eq = await c.fetch(
+            "SELECT equity FROM mi_account_equity_snapshots "
+            "WHERE account_mode = $1 ORDER BY snapshot_date ASC", account_mode)
+
+    rs = [float(t["total_pnl"]) / float(t["risk_dollars"]) for t in trades]
+    # Map the persisted breaker state to a band tier; legacy TRIPPED → REDUCE (safeguards.md).
+    tier = {"BLOCK": "BLOCK", "REDUCE": "REDUCE", "WATCH": "WATCH", "TRIPPED": "REDUCE"}.get(
+        (dd or "OK").upper(), "OK")
+    equity_above_start = (len(eq) >= 2 and float(eq[-1]["equity"]) > float(eq[0]["equity"]))
+    return {"realized_rs": rs, "drawdown_tier": tier,
+            "equity_above_start": equity_above_start, "account_mode": account_mode}
+
+
+async def get_active_override(account_mode: str = "live") -> dict | None:
+    """The most recent ACTIVE operator override (a `kill_scale_override` audit row not yet
+    cleared by a later `kill_scale_override_cleared`) — so the verdict annotates instead of
+    re-prompting weekly (safeguards.md operator condition #2)."""
+    from agents.market_intelligence.db import get_pool
+    import json
+    pool = await get_pool()
+    async with pool.acquire() as c:
+        row = await c.fetchrow(
+            """
+            SELECT detail, created_at FROM mi_audit_log
+            WHERE event_type = 'kill_scale_override'
+            ORDER BY created_at DESC LIMIT 1
+            """)
+        if not row:
+            return None
+        cleared = await c.fetchval(
+            "SELECT 1 FROM mi_audit_log WHERE event_type = 'kill_scale_override_cleared' "
+            "AND created_at > $1 LIMIT 1", row["created_at"])
+    if cleared:
+        return None
+    try:
+        d = json.loads(row["detail"])
+    except Exception:
+        d = {}
+    return {"direction": d.get("direction"), "reason": d.get("reason"),
+            "since": row["created_at"].date().isoformat()}
+
+
+def format_band_line(v: BandVerdict, override: dict | None = None) -> str:
+    """One-line Telegram/digest verdict — band + the numbers that drove it, override-aware."""
+    emoji = _BAND_EMOJI.get(v.band, "⚪")
+    t20 = f"{v.trailing_20:+.2f}R" if v.trailing_20 is not None else "n/a"
+    t40 = f"{v.trailing_40:+.2f}R" if v.trailing_40 is not None else "n/a"
+    head = (f"{emoji} *Kill/scale band: {v.band}* — {v.action}\n"
+            f"  n={v.n_trades} · t20={t20} · t40={t40} · streak={v.streak} · cum={v.cum_r:+.1f}R\n"
+            f"  {'; '.join(v.reasons)}")
+    if override:
+        head += (f"\n  ⚠️ operator OVERRIDE ACTIVE since {override['since']} "
+                 f"({override.get('direction') or '?'}): {override.get('reason') or ''}")
+    return head
