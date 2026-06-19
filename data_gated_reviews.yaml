@@ -1645,7 +1645,28 @@ reviews:
       Origin: 2026-05-09 FTRE incident + fix.
       Code: broker/order_manager.py::get_pending_exit_qty + update_stop /
       sync_positions integrations.
-    status: pending
+    root_cause_2026_06_18: |
+      TRIAGED (operator-approved prod read). Path exercised: 5 paper partial-then-
+      close trades (BW/PURR/IBM/CRSR/RCAT). 6 naked_position_detected events since
+      5/10, ALL auto-remediated. Mapped: 3 = known IBM 5/27-28 docker-exec cascade
+      (separate, postmortem'd), 2 = FPS (NOT partial-trail trades). The ONLY one on
+      a partial-trail trade = RCAT 6/01 — ROOT-CAUSED to the fix WORKING, not a race
+      it missed:
+        - 16:36:51 partial_exit_started (operator /partialnow, sell 509/1529)
+        - 16:36:53 partial_exit_aborted — replacement stop hit a TRANSIENT APIError
+          → code correctly ABORTED (did not proceed uncovered) → naked_position_
+          detected cleared stop_order_id defensively.
+        - 16:37:00 (+7s) stop_ack_broker_covered: broker had 1529 sh covering 1529
+          remaining = NO actual naked exposure (atomic replace failed → original
+          stop intact; the partial never executed, success=False).
+        - 17:15 operator retried → stop replaced cleanly, sell filled @$14.88,
+          +$1,175.79 committed.
+      VERDICT: defense-in-depth handled a transient broker APIError exactly right
+      (abort > proceed-naked, detect, confirm broker coverage, safe retry) — the
+      OPPOSITE of the FTRE incident. 0 partial-trail-race misses → fix VERIFIED.
+      RECOMMEND: ratify GATE 2 GREEN + status=done (operator sign-off — safeguard
+      gate, not agent-unilateral per CHANGE_PROCESS).
+    status: pending  # → done on operator ratification of the 6/18 root-cause
     added_on: 2026-05-10
 
   - review_id: paper_r_expectancy_validation
