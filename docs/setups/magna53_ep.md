@@ -102,6 +102,18 @@ replay) — its value is conditional on the enrichment.
   grade DATE and appends age-labeled PRIOR item-1.01 agreement + item-2.02 revenue
   context for MATERIALITY sizing, explicitly NOT as today's catalyst (prevents the
   date-confusion that mis-dates stale filings as fresh).
+- **#238 dilution feed** (2026-06-19): `assemble_grade_corpus(dilution_filing=)` also appends
+  a dated, age-labeled NEGATIVE-context block when a recent 424B5 (priced takedown) or 8-K
+  item 3.02 (actual equity sale) is on file — point-in-time (filed ≤ grade), 21-day recency
+  window (`recent_dilution_filing`). Framed "weigh AGAINST today's move … but do NOT
+  auto-reject — a real EP can coincide with an opportunistic raise": the LLM stays JUDGE (a
+  deterministic skip would violate `feedback-catalyst-sourcing-direct-over-llm`). Separate
+  tight 424B5/8-K fetch so a prospectus can't crowd the 400d agreement-finder; `has_dilution`
+  / `dilution_form` on the shadow rows. Offline canary 6/19 (`docs/analysis/dilution_canary_238_2026-06-19.md`):
+  SAFETY direction PASSED — 4 names / 6 alerts incl. the false-positive-risk WDC, 0 wrong
+  suppressions (ELVN strong + same-day 424B5 still fires; SHAZ game_changer + 3.02 still fires).
+  Suppression value (a catalyst-less pump held routine) was unexercised offline → watched on
+  the live `has_dilution` rows at the #347 flip.
 - `ep_grade_enrich_shadow` (uncached, once/ticker/day): current vs enriched grade,
   web-inclusive. `ep_repoll_shadow` (cached path): re-grade ONCE when a new primary-subject
   source lands after a routine grade in the ORB window (`should_repoll_shadow`; never
