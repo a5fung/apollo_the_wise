@@ -101,7 +101,12 @@ replay) — its value is conditional on the enrichment.
 - `ep_detector.assemble_grade_corpus` (SSoT; the #344 replay imports it) — anchors the
   grade DATE and appends age-labeled PRIOR item-1.01 agreement + item-2.02 revenue
   context for MATERIALITY sizing, explicitly NOT as today's catalyst (prevents the
-  date-confusion that mis-dates stale filings as fresh).
+  date-confusion that mis-dates stale filings as fresh). **Window budgeting (6/19 fix):**
+  the grader slices `grounded_text[:max_chars]`; the appended context would be truncated by
+  a long today's-news 8-K, so today's-news is capped to `_GRADE_TODAY_MAX_CHARS=6000` (the
+  lean live grader's effective today-window) and the enriched corpus is graded with
+  `_GRADE_ENRICH_MAX_CHARS=12000`. The live non-enriched path is unchanged (`max_chars`
+  defaults to 6000).
 - **#238 dilution feed** (2026-06-19): `assemble_grade_corpus(dilution_filing=)` also appends
   a dated, age-labeled NEGATIVE-context block when a recent 424B5 (priced takedown) or 8-K
   item 3.02 (actual equity sale) is on file — point-in-time (filed ≤ grade), 21-day recency
@@ -109,9 +114,11 @@ replay) — its value is conditional on the enrichment.
   auto-reject — a real EP can coincide with an opportunistic raise": the LLM stays JUDGE (a
   deterministic skip would violate `feedback-catalyst-sourcing-direct-over-llm`). Separate
   tight 424B5/8-K fetch so a prospectus can't crowd the 400d agreement-finder; `has_dilution`
-  / `dilution_form` on the shadow rows. Offline canary 6/19 (`docs/analysis/dilution_canary_238_2026-06-19.md`):
-  SAFETY direction PASSED — 4 names / 6 alerts incl. the false-positive-risk WDC, 0 wrong
-  suppressions (ELVN strong + same-day 424B5 still fires; SHAZ game_changer + 3.02 still fires).
+  / `dilution_form` on the shadow rows. Offline canary 6/19 (`docs/analysis/dilution_canary_238_2026-06-19.md`),
+  block confirmed IN the grade window (after the truncation fix below): SAFETY direction
+  PASSED — 4 names / 6 alerts incl. the false-positive-risk WDC, **0 wrong suppressions**; the
+  one change (ELVN game_changer→strong) is a conservative temper that STILL FIRES and matches
+  the live grade; SHAZ game_changer + 3.02 unchanged, WDC strong×2 + stale 8-K/A 3.02 unchanged.
   Suppression value (a catalyst-less pump held routine) was unexercised offline → watched on
   the live `has_dilution` rows at the #347 flip.
 - `ep_grade_enrich_shadow` (uncached, once/ticker/day): current vs enriched grade,
