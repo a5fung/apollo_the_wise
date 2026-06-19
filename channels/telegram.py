@@ -1763,7 +1763,9 @@ class TelegramChannel:
                      # 2026-06-16 #54 Prong B data-gated-review board
                      "datareviews",
                      # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
-                     "anticipation"):
+                     "anticipation",
+                     # 2026-06-19 #345 one-command real-money trading halt
+                     "pause", "resume"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message)
