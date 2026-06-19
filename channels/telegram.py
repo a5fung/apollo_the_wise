@@ -1817,6 +1817,8 @@ class TelegramChannel:
             BotCommand("datareviews",  "📅 Data-gated reviews — ready / overdue / broken-query"),
             BotCommand("missed",       "Missed EPs — top winners we didn't enter (opportunity cost)"),
             BotCommand("strategy",     "Strategy registry — phases, KPIs, enable/disable/promote"),
+            BotCommand("pause",        "⏸️ HALT all new real-money entries (instant kill switch)"),
+            BotCommand("resume",       "▶️ Resume real-money entries after /pause"),
             BotCommand("status",       "System health + API spend"),
             BotCommand("help",         "Capabilities, rules, command reference"),
             BotCommand("start",        "Restart / re-introduce"),

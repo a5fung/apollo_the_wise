@@ -691,6 +691,12 @@ class MarketIntelligenceAgent(BaseAgent):
         if task in ("strategy", "/strategy") or task.startswith(("strategy ", "/strategy ", "strategy:")):
             return await self._handle_strategy_command(request)
 
+        # Manual real-money trading halt (#345): /pause halts, /resume lifts.
+        # EXACT match only — never startswith — so bare "pause"/"resume" can't
+        # swallow unrelated natural-language messages (the #260 cascade hazard).
+        if task in ("pause", "/pause", "resume", "/resume"):
+            return await self._handle_pause_command(request)
+
         # Journal — add (colon disambiguates from query) or query
         if any(k in task for k in ["journal:", "log trade", "note trade", "add journal"]):
             return await self._handle_journal_add(request)
@@ -1175,6 +1181,47 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as e:
             logger.exception(f"Strategy command failed: {e}")
             return self._error(request, f"Strategy command failed: {e}")
+
+    async def _handle_pause_command(self, request: AgentRequest) -> AgentResponse:
+        """`/pause` halts ALL new real-money entries; `/resume` lifts it (#345).
+
+        DB-backed runtime halt (mi_safeguard_state) — read per-entry by
+        `_check_safeguards`, so it takes effect on the NEXT entry with no redeploy.
+        Sets the state, then READS IT BACK and reports the ACTUAL stored value — a
+        silent upsert failure must never be reported as success (advisor 2026-06-19).
+        """
+        from agents.market_intelligence.db import set_trading_halted, get_manual_halt_state
+        task = request.task.strip().lower().lstrip("/")
+        want_halt = task.startswith("pause")
+        expected = "on" if want_halt else "off"
+        try:
+            await set_trading_halted(want_halt)
+            state = await get_manual_halt_state()  # read-back: report what is ACTUALLY stored
+        except Exception as e:
+            logger.exception(f"pause/resume command failed: {e}")
+            return self._error(
+                request,
+                f"⚠️ Could not change the trading-halt state: {e}\nState is UNCHANGED — "
+                f"re-check with /pause or /resume.",
+            )
+        if state != expected:
+            return self._error(
+                request,
+                f"⚠️ Halt state did NOT change as expected (wanted `{expected}`, reads "
+                f"`{state}`). If unreadable, the real-money path is failing SAFE (blocked). "
+                f"Re-check with /pause or /resume.",
+            )
+        if want_halt:
+            return self._ok(request, result=(
+                "⏸️ *Real-money trading PAUSED* (#345).\n"
+                "Blocks ALL new LIVE-account entries (incl. staged-paper proposals). "
+                "Open positions are untouched — they keep their resting broker stops.\n"
+                "Send `/resume` to lift."
+            ))
+        return self._ok(request, result=(
+            "▶️ *Real-money trading RESUMED.*\n"
+            "New LIVE-account entries can fire again (subject to all other safeguards)."
+        ))
 
     async def _handle_data_refresh(self, request: AgentRequest) -> AgentResponse:
         """Kick off regime + RS + theme engines in the background and return immediately."""
@@ -5266,6 +5313,8 @@ class MarketIntelligenceAgent(BaseAgent):
             "/setup":          self._handle_setup_query,
             "/dryrun":         self._handle_dryrun,
             "/strategy":       self._handle_strategy_command,
+            "/pause":          self._handle_pause_command,
+            "/resume":         self._handle_pause_command,
             "/watchlist":      self._handle_friday_watchlist,
             "/missed":         self._handle_missed_query,
             "/eps_detail":     self._handle_eps_detail,

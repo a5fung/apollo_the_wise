@@ -2331,6 +2331,48 @@ async def set_holistic_judge_enabled(enabled: bool) -> None:
         """, *_JUDGE_TOGGLE, "on" if enabled else "off")
 
 
+_MANUAL_HALT = ("manual_trading_halt", "live")  # (safeguard, account_mode) PK
+
+
+async def get_manual_halt_state() -> str:
+    """#345 — the operator's one-command real-money trading halt (`/pause`).
+    Returns "on" (halted), "off" (allowed), or "unreadable" (DB error). Read
+    per-entry by `_check_safeguards`; durable across restarts (mi_safeguard_state),
+    instant revert with NO redeploy.
+
+    FAIL-SAFE: any error → "unreadable", which the live-path gate treats as BLOCKED
+    (a halt that fails open under stress is worse than none — protect capital). The
+    DISTINCT "unreadable" state lets the gate use a distinct skip reason so the
+    operator is never told "you paused" when a DB error caused the block. Mirrors the
+    fail-direction of the sibling safeguard reads (account fetch fails closed)."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = $2", *_MANUAL_HALT)
+        return "on" if (row and row["state"] == "on") else "off"
+    except Exception as e:  # noqa: BLE001 — fail-SAFE to halted is the contract
+        logger.warning(f"manual_halt_state read failed → unreadable (failing safe): {e}")
+        return "unreadable"
+
+
+async def set_trading_halted(halted: bool) -> None:
+    """Flip the manual real-money trading halt (#345, operator `/pause`/`/resume`).
+    Upserts the mi_safeguard_state row. Does NOT swallow errors — the command
+    handler MUST read the state back via get_manual_halt_state() and report the
+    ACTUAL value, so a silent upsert failure can never be reported as success."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
+                                            last_transition_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            ON CONFLICT (safeguard, account_mode) DO UPDATE
+              SET state = EXCLUDED.state, last_transition_at = NOW(), updated_at = NOW()
+        """, *_MANUAL_HALT, "on" if halted else "off")
+
+
 # update_ep_alert_grade_override merged into update_ep_alert_judge_result
 # (#247, 2026-06-10) — the judge_*-write + score_tier override are one atomic
 # UPDATE now; the two-statement window is gone.

@@ -11,12 +11,13 @@ This is **not** a per-setup quality gate (those live in setup-specific SSoTs lik
 
 ## Active safeguards (in order)
 
-1. **`live_trading_enabled`** — env-gate kill switch (`LIVE_TRADING_ENABLED`). Returns False if disabled. No skip reason — the entire pipeline early-exits.
-2. **`max_concurrent_positions`** (`BLOCK_MAX_POSITIONS`) — count of open `mi_live_trades` rows in `('filled','order_placed','pending_confirmation','confirmed')` ≥ `MAX_CONCURRENT_LIVE_POSITIONS` (5). Bounds total simultaneous exposure.
-3. **PDT guards** — ⚠️ **RETIRED 2026-06-04 (#181).** FINRA Rule 4210 + Alpaca's new intraday-margin framework eliminated the PDT designation and the $25K floor; the `BLOCK_PDT_LOCKOUT_ACTIVE` / `BLOCK_PDT_LOCKOUT_IMMINENT` guards were removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check (margin-deficit orders rejected) — no Apollo-side day-trade gate replaces it. See change log 2026-06-04. *(Was: at equity < $25K, block if `pattern_day_trader=True` or `daytrade_count ≥ 3`.)*
-4. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of today's closed-trade `total_pnl` ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop. Magnitude-based, not count-based.
-5. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **DEPRECATED**: superseded by drawdown breaker (#6); will be removed after #6 promotes to active. Threshold bumped 5→10 on 2026-05-08 as a stand-in.
-6. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
+1. **`live_trading_enabled`** — env-gate kill switch (`LIVE_TRADING_ENABLED`). Returns False if disabled. No skip reason — the entire pipeline early-exits. ⚠️ BOOT-READ (restart-gated) — for an INSTANT runtime halt use #2.
+2. **`manual_trading_halt`** (`BLOCK_TRADING_PAUSED`) — operator's one-command runtime kill switch (#345, 2026-06-19). `/pause` sets `mi_safeguard_state(safeguard='manual_trading_halt', account_mode='live')='on'`; read **per-entry** in `_check_safeguards` (LIVE path only) so it takes effect on the NEXT entry with **NO redeploy**; `/resume` lifts. FAIL-SAFE: an unreadable flag blocks the live path under a DISTINCT `INFRA_HALT_STATE_UNREADABLE` reason (never mislabels as operator-paused). Blocks NEW entries only — open positions keep their resting broker stops (not a flatten). Paper/shadow unaffected. HARD gate: required live + verified before `live_real_enabled=TRUE`.
+3. **`max_concurrent_positions`** (`BLOCK_MAX_POSITIONS`) — count of open `mi_live_trades` rows in `('filled','order_placed','pending_confirmation','confirmed')` ≥ `MAX_CONCURRENT_LIVE_POSITIONS` (5). Bounds total simultaneous exposure.
+4. **PDT guards** — ⚠️ **RETIRED 2026-06-04 (#181).** FINRA Rule 4210 + Alpaca's new intraday-margin framework eliminated the PDT designation and the $25K floor; the `BLOCK_PDT_LOCKOUT_ACTIVE` / `BLOCK_PDT_LOCKOUT_IMMINENT` guards were removed from `_check_safeguards`. Overextension is now Alpaca's broker-side intraday-margin pre-trade check (margin-deficit orders rejected) — no Apollo-side day-trade gate replaces it. See change log 2026-06-04. *(Was: at equity < $25K, block if `pattern_day_trader=True` or `daytrade_count ≥ 3`.)*
+5. **`daily_loss_limit`** (`BLOCK_DAILY_LOSS`) — sum of today's closed-trade `total_pnl` ≤ `-equity * DAILY_LOSS_LIMIT_PCT` (-2%). Catastrophic intraday backstop. Magnitude-based, not count-based.
+6. **`circuit_breaker`** (`BLOCK_CIRCUIT_BREAKER`) — last `CIRCUIT_BREAKER_CONSEC_LOSSES` (=10) closed trades all losses, cooldown until `latest_loss_at + CIRCUIT_BREAKER_COOLDOWN_DAYS` (=1d). **DEPRECATED**: superseded by drawdown breaker (#7); will be removed after #7 promotes to active. Threshold bumped 5→10 on 2026-05-08 as a stand-in.
+7. **`drawdown_breaker`** (`BLOCK_DRAWDOWN_BREAKER`) — ACTIVE as of 2026-06-03. Persisted state machine; when `mi_safeguard_state.state='TRIPPED'`, blocks. See "Drawdown breaker — Mechanics" below.
 
 ## Drawdown breaker — Mechanics
 
@@ -229,6 +230,22 @@ overridden again. Pre-commitment is preserved by making overrides visible,
 not impossible.
 
 ## Change log (newest first)
+
+### 2026-06-19 — Manual real-money trading halt `/pause` added (#345, operator-requested)
+New highest-priority runtime safeguard `manual_trading_halt` (`BLOCK_TRADING_PAUSED`):
+a one-command operator kill switch for ALL new real-money entries. Motivation: the
+only prior controls were per-strategy `/strategy disable` and the boot-read
+`LIVE_TRADING_ENABLED` env (restart-gated, too slow). DB-backed
+(`mi_safeguard_state`, mirrors the holistic-judge toggle), read per-entry in
+`_check_safeguards` → instant, no redeploy. `/pause` halts, `/resume` lifts; both
+read the state back and report the ACTUAL stored value. FAIL-SAFE: an unreadable flag
+blocks the live path under a DISTINCT `INFRA_HALT_STATE_UNREADABLE` reason (consistent
+with the sibling account-fetch read, which also fails closed). Scope: LIVE account
+only (paper/shadow telemetry unaffected); blocks NEW entries, does NOT flatten open
+positions (they keep resting broker stops). Advisor-reviewed (fail-direction,
+read-back, exact-match routing to avoid the #260 cascade swallow, deploy
+execution-first). 8 tests (`tests/test_trading_pause.py`). **HARD launch gate:
+`live_real_enabled=TRUE` not permitted until this is live + verified.**
 
 ### 2026-06-12 — Kill/scale criteria bands SIGNED (#268b)
 

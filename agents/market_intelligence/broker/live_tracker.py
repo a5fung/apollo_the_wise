@@ -38,13 +38,15 @@ from agents.market_intelligence.broker.skip_reasons import (
     BLOCK_CIRCUIT_BREAKER,
     BLOCK_DAILY_LOSS,
     BLOCK_MAX_POSITIONS,
+    BLOCK_TRADING_PAUSED,
+    INFRA_HALT_STATE_UNREADABLE,
     SETUP_ACCOUNT_FETCH_FAILED,
     humanize,
 )
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, get_manual_halt_state
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     MAX_CONCURRENT_LIVE_POSITIONS,
@@ -93,6 +95,23 @@ async def _check_safeguards(
 
     if account_mode is None:
         account_mode = current_account_mode()
+
+    # Manual real-money halt (#345) — the operator's one-command `/pause` kill switch.
+    # Highest-priority gate: a manual halt overrides every other safeguard. LIVE path
+    # only (paper/shadow telemetry keeps running). DB-backed (mi_safeguard_state), read
+    # per-entry so `/pause` takes effect on the NEXT entry with no redeploy. Fail-SAFE:
+    # an unreadable halt state blocks the live path (capital protection) under a DISTINCT
+    # reason so the operator is never told "you paused" when a DB error caused it.
+    if account_mode == "live":
+        halt = await get_manual_halt_state()
+        if halt == "on":
+            logger.info(f"Safeguard [{account_mode}] blocked: manual trading halt (/pause)")
+            return False, BLOCK_TRADING_PAUSED, 0.0
+        if halt == "unreadable":
+            logger.error(
+                f"Safeguard [{account_mode}] blocked: halt-state unreadable → failing safe"
+            )
+            return False, INFRA_HALT_STATE_UNREADABLE, 0.0
 
     pool = await get_pool()
     async with pool.acquire() as conn:
