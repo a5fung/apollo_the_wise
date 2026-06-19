@@ -11,7 +11,7 @@ from datetime import timedelta
 
 from agents.market_intelligence.ep_detector import (
     should_repoll_shadow, assemble_grade_corpus, recent_dilution_filing,
-    _DILUTION_WINDOW_DAYS,
+    _DILUTION_WINDOW_DAYS, _GRADE_TODAY_MAX_CHARS, _GRADE_ENRICH_MAX_CHARS,
 )
 
 
@@ -138,3 +138,19 @@ def test_corpus_enriched_includes_dated_dilution_negative_context():
     assert "do NOT auto-reject" in c
     # Substantive slice surfaced past the boilerplate.
     assert "offering price" in c
+
+
+def test_long_today_news_does_not_truncate_dilution_block():
+    # The truncation bug (advisor 6/19): a long today's-news 8-K body pushed the appended
+    # dilution block past the 6000-char grade window → sliced off → never graded. The fix
+    # caps today's-news AND grades the enriched corpus with a larger window.
+    long_today = {"form": "8-K", "filed": _GRADE_DAY.isoformat(), "items": "8.01",
+                  "text": "BOILERPLATE COVER " + "x" * 12000 + " material agreement details"}
+    c = assemble_grade_corpus(_GRADE_DAY, long_today, [], _AGREEMENT, _EARNINGS,
+                              enrich=True, dilution_filing=_424B5)
+    # today's-news is capped to its effective window (not the full 12000+ char body).
+    assert "x" * (_GRADE_TODAY_MAX_CHARS + 200) not in c
+    # the dilution block lands INSIDE the enriched grade window (the fix) ...
+    assert "RECENT DILUTIVE FILING" in c[:_GRADE_ENRICH_MAX_CHARS]
+    # ... and is emitted BEFORE the lowest-value earnings block (the reorder).
+    assert c.index("RECENT DILUTIVE FILING") < c.index("most recent earnings")

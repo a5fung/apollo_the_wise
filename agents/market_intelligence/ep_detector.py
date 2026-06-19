@@ -467,6 +467,13 @@ def corpus_provenance(sec_filing: Optional[dict],
 # trap). Used in SHADOW first (web-inclusive net-correctness telemetry); the live grade
 # flip is gated on shadow data + operator sign-off (CHANGE_PROCESS).
 _GRADE_TODAY_WINDOW_DAYS = 10  # a filing within this many days of the gap = "today's"
+# Corpus-window budgeting (the grader slices grounded_text[:max_chars]; the enriched
+# corpus appends context AFTER today's news, so a long today's-news would push it past a
+# 6000 window — the #238/#344 truncation bug, advisor 6/19). Cap today's news to the same
+# effective window the lean live grader sees, then grade the enriched corpus with a larger
+# window so the appended prior-agreement / dilution context actually reaches the model.
+_GRADE_TODAY_MAX_CHARS = 6000   # today's-news cap inside the enriched corpus
+_GRADE_ENRICH_MAX_CHARS = 12000  # grade window for the enriched corpus
 
 _AGREEMENT_MARKERS = (
     "entered into", "definitive agreement", "agreement (the", "license",
@@ -587,7 +594,11 @@ def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreeme
     context — for MATERIALITY sizing only, never as today's catalyst — and, when present,
     a RECENT dilutive-filing (#238) block as dated NEGATIVE context the grader weighs
     against today's move (it stays judge; a real EP that also raises capital still fires)."""
-    today_text = build_grounded_text(today_sec, (today_benz or [])[:3], perplexity_answer) or ""
+    # Cap today's news to the SAME effective window the lean live grader sees (it slices
+    # grounded_text[:6000]) so the appended prior/dilution context isn't pushed out of the
+    # enriched grade window by a long 8-K body (the truncation bug, advisor 6/19).
+    today_text = (build_grounded_text(today_sec, (today_benz or [])[:3], perplexity_answer)
+                  or "")[:_GRADE_TODAY_MAX_CHARS]
     parts = [
         f"DATE CONTEXT: today is {alert_date.isoformat()}. Grade ONLY a catalyst that is "
         f"FRESH as of today. Items explicitly dated BEFORE today below are BACKGROUND for "
@@ -605,14 +616,8 @@ def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreeme
             f"{prior_agreement_8k.get('filed')}, "
             f"{_grade_age_label(alert_date, prior_agreement_8k.get('filed'))}; "
             f"BACKGROUND for materiality, NOT today's catalyst]\n{terms}")
-    if enrich and recent_earnings_8k:
-        rev = _grade_substantive_slice(recent_earnings_8k.get("text") or "",
-                                       _REVENUE_MARKERS, 1000)
-        parts.append(
-            f"[PRIOR CONTEXT — most recent earnings (8-K item 2.02) filed "
-            f"{recent_earnings_8k.get('filed')}, "
-            f"{_grade_age_label(alert_date, recent_earnings_8k.get('filed'))}; "
-            f"company financial scale, NOT today's catalyst]\n{rev}")
+    # Dilution (#238) is a SHORT, decision-critical NEGATIVE flag — emit it BEFORE the
+    # lowest-value "financial scale" earnings block so it survives any window budget (advisor 6/19).
     if enrich and dilution_filing:
         form = dilution_filing.get("form") or "424B5/8-K"
         kind = ("priced offering / prospectus supplement" if form.startswith("424B")
@@ -628,6 +633,14 @@ def assemble_grade_corpus(alert_date: date, today_sec, today_benz, prior_agreeme
             f"catalyst. But do NOT auto-reject — a genuine EP catalyst can coincide with an "
             f"opportunistic raise; judge whether TODAY'S news is itself materially bullish.]"
             + (f"\n{dtxt}" if dtxt else ""))
+    if enrich and recent_earnings_8k:
+        rev = _grade_substantive_slice(recent_earnings_8k.get("text") or "",
+                                       _REVENUE_MARKERS, 1000)
+        parts.append(
+            f"[PRIOR CONTEXT — most recent earnings (8-K item 2.02) filed "
+            f"{recent_earnings_8k.get('filed')}, "
+            f"{_grade_age_label(alert_date, recent_earnings_8k.get('filed'))}; "
+            f"company financial scale, NOT today's catalyst]\n{rev}")
     return "\n\n".join(parts)
 
 
@@ -653,7 +666,8 @@ _repoll_shadow_state: dict = {}
 _repoll_shadow_date = None
 
 
-async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None) -> tuple[str, str]:
+async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None,
+                                    max_chars: int = 6000) -> tuple[str, str]:
     """
     Use Claude to classify catalyst quality via structured tool use.
     Returns: (quality, analysis_text)
@@ -661,12 +675,16 @@ async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict
 
     Uses tool_choice to guarantee schema-valid output — no string parsing,
     no silent fallback to "routine" on format deviations.
+
+    `max_chars` bounds the grounded corpus fed to the model. Default 6000 = the lean live
+    grade path (unchanged). The enriched shadow passes a larger window so the appended
+    prior-agreement / dilution context survives a long today's-news (truncation fix 6/19).
     """
     if grounded_text:
         # Grounded summary (SEC 8-K body + web synthesis), UNTRUNCATED — the catalyst body
         # lives past the first ~200 chars (after the 8-K iXBRL cover), so the old per-item
         # [:200] starved the grader and forced confabulation from raw headlines (#190 / RUM 6/4).
-        news_text = grounded_text[:6000]
+        news_text = grounded_text[:max_chars]
     else:
         news_text = "\n".join([f"- {n.get('title', '')} {n.get('text', '')[:200]}" for n in news[:5]])
     company_desc = profile.get("description", "")[:300]
@@ -1627,7 +1645,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             today, _today_sec, _benz[:3], _prior_agr, _recent_earn,
                             _pplx, enrich=True, dilution_filing=_dilution)
                         _rq, _ran = await _classify_catalyst_claude(
-                            ticker, [], profile, grounded_text=_corpus)
+                            ticker, [], profile, grounded_text=_corpus,
+                            max_chars=_GRADE_ENRICH_MAX_CHARS)
                         await log_audit_event(
                             "ep_repoll_shadow",
                             f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)",
@@ -1773,7 +1792,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         today, _today_sec, _today_benz, _prior_agr, _recent_earn,
                         perplexity_answer, enrich=True, dilution_filing=_dilution)
                     _enr_q, _enr_an = await _classify_catalyst_claude(
-                        ticker, all_news, profile, grounded_text=_enr_corpus)
+                        ticker, all_news, profile, grounded_text=_enr_corpus,
+                        max_chars=_GRADE_ENRICH_MAX_CHARS)
                     await log_audit_event(
                         "ep_grade_enrich_shadow",
                         f"{ticker} {catalyst_quality} → {_enr_q}",

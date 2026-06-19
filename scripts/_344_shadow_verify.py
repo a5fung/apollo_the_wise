@@ -81,7 +81,8 @@ async def main():
 
     # ── Enrichment shadow ──
     print(f"\n[ep_grade_enrich_shadow]  graded={len(enrich)}  "
-          f"with_prior_agreement={sum(1 for d in enrich if d.get('has_prior_agreement'))}")
+          f"with_prior_agreement={sum(1 for d in enrich if d.get('has_prior_agreement'))}  "
+          f"with_dilution={sum(1 for d in enrich if d.get('has_dilution'))}  (#238)")
     if not enrich:
         print("  (no rows yet — run after a live market scan)")
     else:
@@ -99,8 +100,18 @@ async def main():
             arrow = "↑" if _TIER.get(d.get("enriched_quality"), 0) > _TIER.get(d.get("current_quality"), 0) else "↓"
             print(f"    {arrow} {d.get('ticker'):6} {d.get('alert_date')}  "
                   f"{d.get('current_quality')} → {d.get('enriched_quality')}  "
-                  f"prior_1.01={d.get('prior_agreement_filed') or 'none'}")
+                  f"prior_1.01={d.get('prior_agreement_filed') or 'none'}  "
+                  f"dilution={d.get('dilution_form') or 'none'}")
             print(f"        {(d.get('enriched_analysis') or '')[:200]}")
+
+        # ── #238 suppression-value read (the dilution cases the FLIP gate watches) ──
+        dil = [d for d in enrich if d.get("has_dilution")]
+        print(f"\n  💧 DILUTION CASES ({len(dil)}) — #238 suppression value: does a "
+              f"catalyst-less pump-into-dilution stay routine? (real-EP+raise must STILL fire)")
+        for d in dil:
+            print(f"    {d.get('ticker'):6} {d.get('alert_date')}  {d.get('dilution_form')}@"
+                  f"{d.get('dilution_filed')}  current={d.get('current_quality')} → "
+                  f"enriched={d.get('enriched_quality')}")
 
     # ── Re-poll shadow ──
     print(f"\n[ep_repoll_shadow]  fired={len(repoll)}")

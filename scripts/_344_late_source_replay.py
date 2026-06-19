@@ -55,7 +55,7 @@ from agents.market_intelligence.ep_detector import (
     # #344 SSoT: the SAME corpus-assembly the live grade path uses (advisor #5 — no
     # validate-one-thing-ship-another divergence).
     assemble_grade_corpus, recent_filing_by_item, nearest_today_filing,
-    recent_dilution_filing,
+    recent_dilution_filing, _GRADE_ENRICH_MAX_CHARS,
 )
 from scripts._grounded_reconstruct import _to_aware_utc
 from scripts._judge_replay_common import fetch_profile
@@ -274,7 +274,11 @@ async def run_enrich_mode(c, args, since, cutoff_t):
                                            prior_agreement, recent_earnings, enrich=enrich,
                                            dilution_filing=dilution if enrich else None)
             corpora[arm] = corpus
-            q, an = await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus)
+            # The fix arm grades with the enriched window so its appended prior/dilution
+            # context survives a long today's-news (the truncation fix, advisor 6/19).
+            mc = _GRADE_ENRICH_MAX_CHARS if enrich else 6000
+            q, an = await _classify_catalyst_claude(ticker, [], profile, grounded_text=corpus,
+                                                    max_chars=mc)
             grades[arm], analyses[arm] = q, an
             dist[arm][q] = dist[arm].get(q, 0) + 1
 
@@ -284,6 +288,13 @@ async def run_enrich_mode(c, args, since, cutoff_t):
                   f"  prior_1.01={prior_agreement.get('filed') if prior_agreement else 'none'}"
                   f"  earnings_2.02={recent_earnings.get('filed') if recent_earnings else 'none'}"
                   f"  dilution={dilution.get('form') + '@' + dilution.get('filed') if dilution else 'none'}")
+            # Prove the dilution block actually REACHES the grader (advisor 6/19: the block is
+            # appended last; if today's-news + prior context overflow the window it gets sliced
+            # off → "fix==base" would be a truncation artifact, not a real read).
+            if dilution:
+                in_window = "RECENT DILUTIVE FILING" in corpora['fix'][:_GRADE_ENRICH_MAX_CHARS]
+                print(f"  dilution block in grade window: {'YES' if in_window else '⚠️ NO (truncated!)'}"
+                      f"  (fix corpus {len(corpora['fix'])}c, window {_GRADE_ENRICH_MAX_CHARS}c)")
             print(f"  FIX corpus ({len(corpora['fix'])}c):\n    "
                   + corpora['fix'][:1400].replace(chr(10), chr(10) + '    '))
             for arm in ("baseline", "fix"):
