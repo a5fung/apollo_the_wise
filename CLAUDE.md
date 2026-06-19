@@ -271,8 +271,8 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - `mi_paper_trades` = EOD simulation table (LIVE_TRADING_ENABLED=true, ALPACA_PAPER=true)
 - `mi_live_trades` = actual Alpaca order table
 - ORB entry at 9:31 AM; bracket order: stop-limit buy at ORB high, OTO with stop-loss at ORB low. Always `order_class=OrderClass.OTO` — alpaca-py silently drops `stop_loss` kwarg without it.
-- Safeguards: max 4 positions, 2% daily loss limit, 5-loss circuit breaker (1-day cooldown auto-release)
-- Kill switch: `LIVE_TRADING_ENABLED=false`
+- Safeguards (SSoT `docs/setups/safeguards.md`): max 5 positions (`MAX_CONCURRENT_LIVE_POSITIONS`), 2% daily loss limit, tiered drawdown breaker (active 2026-06-03), `/pause` runtime halt (#345). The count-based circuit breaker is 10 losses but DEPRECATED — superseded by the drawdown breaker.
+- Kill switch: `LIVE_TRADING_ENABLED=false` (boot-read) · `/pause` (instant runtime, #345)
 
 ### Telegram Formatting
 - NEVER use pipe tables — Telegram can't render them. Use monospace code blocks.
