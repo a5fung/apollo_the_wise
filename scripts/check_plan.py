@@ -67,6 +67,16 @@ def parse(text: str):
             errors.append(f"L{n}: task #{tid} is not under a `## <project>` header (loose task)")
         if status not in _STATUSES:
             errors.append(f"L{n}: task #{tid} bad status '{status}' (use {sorted(_STATUSES)})")
+        # Filing-quality gate (operator 2026-06-20, the 9-ghost lesson): a task must be filed
+        # with actionable detail + a clear outcome, NOT a placeholder bucket. Ban the exact
+        # markers that produced 9 contentless stubs ("(SiP backlog — confirm scope/title at
+        # triage)"). High-signal substrings — a real task title never contains these.
+        _tl = title.lower()
+        if "confirm scope" in _tl or "at triage" in _tl:
+            errors.append(
+                f"L{n}: task #{tid} has a PLACEHOLDER title ('{title[:55]}…') — file it with "
+                f"actionable detail + a clear outcome (definition-of-done), not a 'confirm scope "
+                f"at triage' stub. (the 9-ghost lesson, operator 2026-06-20)")
         try:
             eta = date.fromisoformat(eta_s)
         except ValueError:
