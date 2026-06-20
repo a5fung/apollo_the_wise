@@ -378,15 +378,12 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-19 (Fri) — launch-readiness push (6/22 GO/NO-GO set up)
+### 2026-06-20 (Sat) — task burndown + filing-quality gate
 
-*(The 6/12 block graduated to CHANGELOG.md on 6/19. Full detail of the below lives in PLAN.md + `docs/roadmap/go-no-go-evidence-2026-06-22.md`.)*
+*(Detail in PLAN.md + git log. The 6/19 launch-readiness block graduated to CHANGELOG.md.)*
 
-- **#304 GO/NO-GO evidence pack** assembled + advisor-corrected: the operator's HARD #344 catalyst gate is recorded as THEIR call (agent must not self-close a HARD gate); GATE-3 numbers traced to primary `sip_replay_r_cohort.py` output (+2.18R selection delta, crosses 0 at drop-4 → START-SMALL).
-- **#303 launch-readiness audit**: every safeguard code-verified (panic button both gates, day-1 equity guards, creds boot-block, band job, #349 DR fix); SSoT-consistency fixed a stale CLAUDE.md blurb ("max 4/5-loss" → actual 5/10-deprecated).
-- **#302 P6 replay-regression** built + deployed: Sunday-digest section surfacing the live R-dist vs the #268b calibration envelope — SURFACES only, no auto-verdict (invalid at low N). `CALIBRATION_ENVELOPE` promoted to a single constant.
-- **#55 revenue-stage re-check**: evidence does NOT support the $5M ratchet (the $0–5M band has positive-edge tail winners) → keep `REVENUE_STAGE_MIN_USD=0.01`. The gate touches only the earnings boost.
-- **Operator launch decisions 6/19**: #344 = shadow + flip (Wed 6/24 earliest; Mon–Wed real money on the pre-fix grade, accepted) · #349 DR not gating GO (rehearsal next couple days) · #55 ratified · #301 deferred post-cutover.
+- **Backlog burndown 132→115** by REAL completion only (operator directive: reverse the every-week-grows count — close/ship, never reclassify): #246 theme_engine isinstance-guard, #324 deploy execution-drift warn, #285 M&A dedup; +13 contentless stubs git-archaeology'd to closure; #134/#165($10 floor)/#113 operator-decided. New **filing-quality gate** in `check_plan.py` bans placeholder titles ("confirm scope"/"at triage") — the 9-ghost lesson. Single SoT stays; reduce by completion only.
+- **#349 DR rehearsal PASSED** end-to-end on the split topology (drill-mode neuters `.env` before Phase 9; prod untouched). **Monday GO runbook** built — surfaces the SQL-only flip gotcha (live_real_enabled/size_mult/max_positions have no /strategy command). **#261 caught**: 5 sweep tools mis-moved to `probes/` → back to root.
 
 ### Older entries graduated to CHANGELOG.md
 
@@ -396,6 +393,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 - Compressed 2026-06-10 (#262): 2026-05-29 + 2026-06-01 (partial-exit hardening arc).
 - Compressed 2026-06-12 (#262): 2026-06-10 (judge load-bearing day) + 2026-06-11 detail bullets (rubric v2 · replay Phase A/blocker · MNTS cluster).
 - Compressed 2026-06-19: 2026-06-12 (#268 Phase B closed + promote +1.26R edge · kill/scale bands SIGNED #275 · alert-layer writer gaps · rubric v3/AKTS freshness · W2 study #1 5-min-OR-dead + skip-wide-open artifact).
+- Compressed 2026-06-20: 2026-06-19 (#304 GO/NO-GO pack advisor-corrected · #303 launch-readiness audit · #302 replay-regression deployed · #55 keep-0.01 · operator launch decisions #344/#349/#55/#301).
 
 Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filter", "CRMD", "dual-account", "Gate 5", "purpose-tagged stop", "drawdown breaker", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
 

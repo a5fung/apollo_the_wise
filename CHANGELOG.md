@@ -8,6 +8,13 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 
 ---
 
+### 2026-06-19 — launch-readiness push (6/22 GO/NO-GO set up)
+- **#304 GO/NO-GO evidence pack** assembled + advisor-corrected: operator's HARD #344 catalyst gate recorded as THEIR call (agent must not self-close a HARD gate); GATE-3 numbers traced to primary `sip_replay_r_cohort.py` (+2.18R selection delta, crosses 0 at drop-4 -> START-SMALL).
+- **#303 launch-readiness audit**: every safeguard code-verified (panic button both gates, day-1 equity guards, creds boot-block, band job, #349 DR fix); fixed a stale CLAUDE.md blurb ("max 4/5-loss" -> 5/10-deprecated).
+- **#302 P6 replay-regression** built + deployed: Sunday-digest section surfacing the live R-dist vs the #268b calibration envelope — SURFACES only, no auto-verdict (invalid at low N); `CALIBRATION_ENVELOPE` promoted to a single constant in kill_scale_bands.py.
+- **#55 revenue-stage re-check**: evidence does NOT support the $5M ratchet ($0–5M band has positive-edge tail winners) -> keep `REVENUE_STAGE_MIN_USD=0.01`; the gate touches only the earnings boost.
+- **Operator launch decisions**: #344 shadow + Wed-6/24-earliest flip (Mon–Wed real money on the pre-fix grade, accepted) · #349 DR not gating GO · #55 ratified · #301 deferred post-cutover.
+
 ### 2026-06-12 — #268 CLOSED + kill/scale bands SIGNED · launch runway day 1
 - **#268 Phase B**: 1307/1307 judged (rubric v2 uniform). Floor +0.90R/28% (n=410) vs judge +0.95R/30% (n=399); **promote cohort +1.26R/33% = the consistent edge both phases**; demote side flips sign vs Phase A → standing watch-metric, not an assumed save (`docs/analysis/selection_replay_268_phaseB.md`). Contamination fix verified live (SHAZ/AKTS fired with 1,522 replay rows in-table).
 - **Kill/scale bands SIGNED** (safeguards.md, launch DoD-1): REDUCE t20 ≤ −0.70R / streak ≥ 16; KILL t20 ≤ −1.05R / cum −30R / BLOCK tier; SCALE 40 trades ≥ +0.5R; 20-trade floor — every threshold outside the healthy-year envelope (a +0.95R year contains −24R DD + 15-loss streak). Operator conditions mechanical: quarterly review (registry `kill_scale_bands_quarterly_review`, first 8/1) + logged override authority (bands only). #275 = digest eval + transition alerts + override (built 6/19).
