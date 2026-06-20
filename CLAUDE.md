@@ -11,7 +11,7 @@
 
 **CLOSE** (when the operator wraps, or before ending):
 1. **Update `PLAN.md` — the single reconcile step.** For every task touched this session: set its status; REBUMP any ETA now ≤ today to a real future date (or close the task). FILE every new item / deferral / finding / watch-item as a PLAN.md line under a project with an ETA — chat & pickup prose do NOT count (the pickup gets rewritten, PLAN.md doesn't). Refresh `.apollo_open_tasks.json` from the harness so the completeness cross-check stays honest.
-2. **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps. Then **`check_plan.py --audit-new`** flags tasks CREATED this session that look thin (short + no pointer/DoD) — **enrich each before committing** (detail isn't hard-gateable — semantic; this scoped new-task CLOSE review is the backstop, operator 6/20).
+2. **`python scripts/check_plan.py`** must pass — it FAILS on any missing project/ETA/status, any past ETA, or any open task not filed. Green = no gaps. Then **`check_plan.py --audit-new`** flags thin PLAN lines (short + no pointer/DoD) — it git-diffs PLAN.md vs `origin/main`, so an ADDED line is a *new OR re-titled* task (git sees both as additions); **enrich each before committing** (detail isn't hard-gateable — semantic; this scoped new-task CLOSE review is the backstop, operator 6/20).
 3. If code changed: `git add <files>` → commit → `git push origin main` (pre-commit Gate 2 re-runs the check).
 
 **"Done" = VERIFIED-LIVE, not "deployed."** A #-task → `completed` ONLY when its effect is confirmed in production (shadow writes rows · alert fires · backup uploads · cron run checked). "Shipped/deployed" → keep `in_progress` + a verify step until confirmed. Silent-failure class this catches: gdrive backup (5/24–31), #173 theme-shadow 0-rows, FLNC-invisible — all looked done, none were.
@@ -162,7 +162,7 @@ Order matters — first match wins:
 ```python
 re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
 ```
-Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR, MY, ME, IS, IT, IF...). **Update all three skip sets** when adding words: `execute_task` routing block, `_handle_single_score`, `_handle_fundamentals_query`.
+Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py`) — add new ones THERE (one place). Each ticker-extraction site extends it: `_PREPOSITION_SKIP | {site-specific command words}` (e.g. `{"RS","SCORE"}` in `_handle_single_score`). #260 (2026-06-10) deduped the former three hand-synced copies into this base; `tests/test_execute_task_routing.py` freezes the routing cascade.
 
 ## Key Domain Concepts
 
@@ -378,12 +378,12 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-20 (Sat) — task burndown + filing-quality gate
+### 2026-06-20 (Sat) — real-money auto-entry · filing-quality gates · burndown
 
-*(Detail in PLAN.md + git log. The 6/19 launch-readiness block graduated to CHANGELOG.md.)*
+*(Full detail graduated to CHANGELOG.md — this is the live-reference summary.)*
 
-- **Backlog burndown 132→115** by REAL completion only (operator directive: reverse the every-week-grows count — close/ship, never reclassify): #246 theme_engine isinstance-guard, #324 deploy execution-drift warn, #285 M&A dedup; +13 contentless stubs git-archaeology'd to closure; #134/#165($10 floor)/#113 operator-decided. New **filing-quality gate** in `check_plan.py` bans placeholder titles ("confirm scope"/"at triage") — the 9-ghost lesson. Single SoT stays; reduce by completion only.
-- **#349 DR rehearsal PASSED** end-to-end on the split topology (drill-mode neuters `.env` before Phase 9; prod untouched). **Monday GO runbook** built — surfaces the SQL-only flip gotcha (live_real_enabled/size_mult/max_positions have no /strategy command). **#261 caught**: 5 sweep tools mis-moved to `probes/` → back to root.
+- **Live AUTO-ENTRY wired** (`entry_pipeline._should_auto_enter`, operator-signed): a `phase=live` + `live_real_enabled=True` strategy now AUTO-FIRES real money (was a manual STAGED-PAPER proposal). Config: full 1% / NULL cap / $5k account. **HARD gate — not permitted until `/pause` verified-live.** SSoT safeguards.md + magna53_ep.md.
+- **Filing-quality gates** in `check_plan.py`: high-stakes pointer gate (a launch/real-money/cutover task must POINT at its runbook/#ref — the #305 lesson) + CLOSE-ritual `--audit-new` (surfaces thin tasks added this session). Burndown 132→113 by real completion only (#65/#260/#285/#324 + 13 stubs). **#349 DR rehearsal PASSED** → Monday GO runbook (`docs/roadmap/monday_go_runbook.md`).
 
 ### Older entries graduated to CHANGELOG.md
 
