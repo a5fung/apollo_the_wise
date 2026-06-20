@@ -287,6 +287,22 @@ If decryption fails:
 
 ---
 
+## Appendix — Rehearsal / drill mode (validate restore.sh without a real outage)
+
+To rehearse on a **throwaway box** without disturbing prod. The catch: `restore.sh` restores
+the **LIVE** secrets — same Telegram bot token, same **shared** Alpaca paper account — so an
+un-neutered drill box fights prod for the bot and could mutate prod's paper trade state.
+
+1. Run `restore.sh` through Phase 8; **Ctrl-C at the `Phase 9` banner** (Phases 1–8 are safe — no live connections; markers make re-runs idempotent).
+2. **Safety-edit the restored `.env` BEFORE Phase 9 boots services** (Phase 5 overwrites `.env` from the bundle, so edit *after* it, *before* Phase 9):
+   - `LIVE_TRADING_ENABLED=false` — blocks **all** order submits (the box shares prod's paper account; this stops it mutating prod's trade state). ⚠ This makes the deploy's preflight intentionally report `live_trading_disabled` and exit **4** — **expected in a drill, not a failure.** The #349 topology is validated by the containers coming up, *not* by exit 0. (`_check_safeguards` short-circuits on this flag before the Alpaca auth, so the live creds-auth path isn't exercised in drill mode — it's covered from-code + by execution coming up healthy.)
+   - Telegram: to avoid a poll-conflict with prod's bot, either (a) use a **separate valid BotFather token**, or (b) accept that `apollo-orchestrator` will **crash-loop** — `python-telegram-bot` validates the token against Telegram at startup, so a dummy/invalid token hard-fails orchestrator boot (`InvalidToken: rejected by the server`). The orchestrator is **not** part of the #349 execution-topology fix; `apollo-execution` + `apollo-market` + postgres + redis coming up healthy is the validation.
+3. Run Phase 9 **directly** (avoids restore.sh's interactive passphrase re-prompt, which fires on every invocation): `cd $APP_DIR && sudo -u apollo bash scripts/deploy.sh execution && sudo -u apollo bash scripts/deploy.sh both`.
+4. Validate: `docker ps` (apollo-execution + apollo-market + postgres + redis healthy); `docker exec apollo-market python scripts/readiness_check.py --verbose` (L1 invariants on the restored DB).
+5. **Teardown:** `crontab -u apollo -r` (so the box can't upload to prod's gdrive at 02:00 ET), then **delete the box**.
+
+**Last validated: 2026-06-20 (#349, split topology).** Restore mechanics + execution-first topology (apollo-execution up FIRST + healthy, the bug it fixes) + restored-DB coherence (16,684 audit rows, 206 trades, all 6 L1 invariants pass) — all PASS. The exit-4/`live_trading_disabled` and the orchestrator crash were the intentional drill safety-edits, not defects.
+
 ## Related docs
 
 - [`gdrive_backup_recovery.md`](gdrive_backup_recovery.md) — OAuth token recovery if `gdrive_backup_failed` events surface with `invalid_grant`
