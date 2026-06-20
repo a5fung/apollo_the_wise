@@ -11,6 +11,56 @@ here). Validated 2026-06-20 (#303) against HEAD.
 > `position_size_multiplier`, `max_concurrent_positions` are **SQL-only** (deliberately — the
 > real-money gate is not a casual `/strategy` action). Do the steps in order; order matters.
 
+> 💰 **Two independent clocks.** The creds + flip + deploy (steps 1–5) is the *fast* clock —
+> minutes. **Funding is the *slow* clock — days** (ACH/wire settlement). They are decoupled:
+> you can wire creds and stage the flip while money is still in transit. But **real fills
+> require settled buying power**, so the funding clock — not the flip — gates the actual
+> first trade. **Section F below is a HARD GATE: do not count the launch as armed until it's
+> green.** If you flip while funding is pending, the system fails SAFE (every auto-entry →
+> `setup:size_too_small` skip, no positions, no errors — see why in F), so an "unfunded live"
+> account silently no-ops. Recommended: **hold the step-2 flip until F is green** so "live"
+> always means "can actually trade."
+
+---
+
+## F. Funding gate (the SLOW clock — start EARLY; HALT here until settled)
+
+**Why this gates everything (traced to code):** sizing reads the **live, settled equity** at
+trade time — `order_manager.py:112` `risk_dollars = equity × risk_pct`, `:124`
+`max_position = equity × 0.20`. So:
+- **$0 settled** → `risk_dollars = 0` → 0 shares → `setup:size_too_small` skip. Fail-safe (no
+  error, no naked risk) but **no real trade fires** — a "launched" but unfunded account is a
+  silent no-op.
+- **Partially settled** (e.g. $2k of $5k cleared) → it trades, but sized off the *smaller*
+  balance (~$20 risk / $400 max position), not your intended $5k.
+
+So real fills require **settled buying power ≥ your intended start size** *before* the 9:31 ET
+ORB window. The deposit clock is **days, not minutes** — initiate it as early as Alpaca allows.
+
+**State tracker — mark each as it lands (this is the "what's pending" surface):**
+```
+[ ] F1 — Live account OPENED + APPROVED (api.alpaca.markets)
+[ ] F2 — Transfer INITIATED (ACH/wire) — do this EARLIEST; ACH commonly takes a few
+         business days, and a brand-new account may not get instant-deposit buying power
+[ ] F3 — Deposit POSTED to the live account (shows in Alpaca dashboard balance)
+[ ] F4 — Buying power SETTLED & AVAILABLE ≥ intended start size (~$5,000 for the $5k start)
+[ ] F5 — account_blocked = false AND trading_blocked = false (new accounts can carry a hold)
+```
+
+**How to check — authoritative source = the Alpaca LIVE dashboard** (`app.alpaca.markets`,
+LIVE not paper): the **Cash / Buying Power** figure is the source of truth for F3/F4, and
+Account → Status for F5. No code path is needed for this read (and it works *before* creds are
+even wired). Apollo's own confirming read comes after deploy (step 4b, `/status`).
+
+> ⏸️ **HALT RULE.** Do **not** treat the GO as armed until **F4 = green** (and F5 clear). If
+> F4 is red on Monday morning:
+> - **Preferred:** HOLD — leave magna53 at `phase=paper` (skip step 2), keep staging the rest,
+>   and resume the flip the day buying power settles. Re-run this whole runbook from step 0 that
+>   day (Monday-specific verifies in step 0 re-confirm on the new day).
+> - **If you flip anyway:** it's safe — every entry hits `setup:size_too_small` and skips, no
+>   real money moves — but understand the day is a **no-op**, not a live launch. Watch
+>   `mi_audit_log` for `setup:size_too_small` to confirm that's why nothing fired.
+
 ---
 
 ## 0. Pre-GO baseline (confirm BEFORE changing anything)
@@ -64,6 +114,11 @@ step 3, or the container won't boot. (This boot-block is the 2026-05-13 outage g
 
 ## 2. Flip the strategy row to real money (SQL — no command exists)
 
+> ⏸️ **Precondition: Section F (funding) must be green** — `F4` buying power settled ≥ start
+> size, `F5` not blocked. This is the real-money switch; flipping it on an unfunded account
+> just produces silent `size_too_small` skips (safe, but a no-op). HOLD here if funding is
+> still pending.
+
 **Action** — one UPDATE on `mi_strategies` (START-SMALL sizing; pick the multiplier/cap):
 ```sql
 -- START-SMALL = the $5,000 account itself (operator decision 2026-06-20). Full size:
@@ -115,6 +170,21 @@ deploy; only `block:*` passes through.
 **Confirm:** the deploy's preflight block shows `✓ magna53 mode=live PASS` (or a benign
 `BLOCKED-OK block:*`), **not** a `live_trading_disabled` / `ALPACA_LIVE_API_KEY` / account-fetch
 failure. If it failed here, the deploy already aborted — **do not** consider the GO done.
+⚠️ Preflight checks auth + account fetch + safeguards but **NOT** `buying_power > 0` — it will
+print PASS against a $0 live account. Funding is verified separately, in 4b.
+
+## 4b. Confirm Apollo SEES the funds (closes the funding loop)
+
+**Action:** send **`/status`** in Telegram (now that live creds + `ENABLE_LIVE_MODE=true` are
+deployed, it renders the `💰 LIVE-$ (real money)` block).
+**What it does:** Apollo's own read of `get_account('live')` — `Equity` + `Buying power` for the
+live account. This is the confirmation that the *container* sees the funded account, not just
+the dashboard (catches a wrong-account-keyed creds mistake, or a deposit that posted to paper).
+**Confirm:** the `💰 LIVE-$` block shows `Buying power: ${settled amount}` matching the Alpaca
+dashboard (Section F4) — **not** `$0.00` and **not** `⚠️ Account fetch failed`.
+> ⏸️ **HALT** if `/status` shows live buying power `$0.00` (or a fetch error) — the auto-entry
+> would `size_too_small`-skip all day. Roll back to `phase=paper` (step-2 rollback) and resume
+> once funds settle, OR knowingly accept a no-op day.
 
 ## 5. Confirm the panic button BEFORE the first ORB window
 
@@ -142,4 +212,4 @@ RESUMED state. This is the one-keystroke kill switch for the live day.
 
 ---
 
-*One-line GO checklist:* audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=1.0`+`max_concurrent_positions=NULL` → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + full-size + the AUTO-ENTERED Telegram.
+*One-line GO checklist:* **[F] funding settled — Alpaca dashboard buying power ≥ start size + not blocked (HALT if pending)** → audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=1.0`+`max_concurrent_positions=NULL` → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → **`/status` 💰 LIVE-$ buying power matches the dashboard (HALT if $0)** → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + full-size + the AUTO-ENTERED Telegram.
