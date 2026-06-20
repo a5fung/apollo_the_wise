@@ -75,18 +75,18 @@ _Last CLOSE: 2026-06-16._
 - #326 | 2026-06-20 | in_progress | **DECISION SIGNED 2026-06-18 (operator): RETIRE 9M Day-2 ORB → shadow** (pulled in from 7/7 on the #327 Claim-A read; option A/deprecate in ninem.md). CHANGE_PROCESS done (ninem.md change-log, REVERSAL of 5/31 documented). (1) ✅ FLIP EXECUTED 2026-06-18 (`/strategy 9m_day2 demote` → DB-confirmed phase=shadow, enabled=t). REMAINING (= verified-live): (2) verify next 9:31 ET `_9m_day2_orb_job` resolves shadow / no paper submit (tomorrow); (3) #327 Phase B consolidation shadow stood up as the replacement (so the cohort isn't dark). Original task text below. — 9M Day-2 ORB entry → RETIRE for consolidation entries (CUT-OVER DECISION, operator vision). MOVE FAST (operator 6/17: weeks not months; all SHADOW/PAPER = no real $ at risk in the swap). CRITICAL-PATH BUILD = #327 (the consolidation entry-watch + shadow-settle + 9M-universe feed → Day-2 ORB & consolidation run PARALLEL on the same names; reuses #270 recorder + #94 flag-break + #270 harvest, all LIVE/BUILT — integration not from-scratch). DECIDE ~7/7, PULL EARLIER on a clear DIRECTIONAL read (operator judgment, NOT a rigid N) → retire 9m_day2 to shadow (sign-off + CHANGE_PROCESS — that gate stays). COUPLING (only real-$ caution): BLOCKS the 9M Day-2 → live-money promotion (Q3); acceleration is shadow-only. Registry ninem_day2_retire_for_consolidation. **6/18 DIRECTIONAL READ IN (#327 Phase A): supports RETIRE (Claim A — Day-2 ORB no robust edge, solid) + consolidation as replacement (Claim B — promising, Phase-B-shadow-gated). 2 OPERATOR DECISIONS surfaced: (1) the GO/timing on retire; (2) SCOPE — consolidation fires on only ~⅓ of 9M names, so retiring Day-2 narrows the entered universe to ⅓; decide whether the other ⅔ (no consolidation setup) keep an entry path or go unentered. See the doc's "Read for #326".**
 - #168 | 2026-06-23 | in_progress | shadow-detector quality/actionability filter for LIVE-ping graduation (evidence-gated)
 - #167 | 2026-06-23 | in_progress | Lane-2 narrative theme detector (shadow) — ongoing
-- #170 | 2026-06-23 | in_progress | (Stocks-in-Play backlog item — confirm scope at triage)
+- #170 | 2026-07-15 | in_progress | EP cooldown re-setup admission: the ~60d cooldown over-suppresses legit re-setups (~7-10d separates extended-continuation from re-setup) → shorten or add a fresh-catalyst/re-based override. (Scope recovered 6/20; shadow classifier LIVE ep_detector.py:1345-1358 fail-open; live-flip ship gated on realized-R + CHANGE_PROCESS, review data_gated_reviews #170.)
 - #56  | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
 - #60  | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
 - #65  | 2026-06-23 | pending | per-strategy sizing/cap follow-ups
 - #81  | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
 - #97  | 2026-06-23 | in_progress | (SiP backlog — confirm scope/title at triage)
-- #113 | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
+- #113 | 2026-07-15 | pending | ⚠ SCOPE THIN — EP-detection calibration (SiP umbrella, paired w/ #56 per sweep a5b45ff); only a two-word bucket label survives in git. OPERATOR: recall the real scope to retitle, or close if subsumed. (Recovered 6/20; not closeable from code alone.)
 - #115 | 2026-06-23 | pending | /simplify deferral (filed #115)
 - #116 | 2026-06-23 | pending | /simplify deferral (filed #116)
-- #134 | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
-- #146 | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
-- #178 | 2026-06-23 | pending | (SiP backlog — confirm scope/title at triage)
+- #134 | 2026-07-15 | pending | ⚠ SCOPE UNRECOVERABLE — Stocks-in-Play WS-C entry-technique item (grouped w/ #97/#98/#146); no descriptive text survives in git, only the WS-C bucket. OPERATOR: recall to retitle, or close. (Recovered 6/20; not closeable from code alone.)
+- #146 | 2026-07-15 | pending | Flag detector: allow direct TIGHTENING→TRIGGERED (drop/weaken the COILED prerequisite) on close>base_high_close + volume confirm — gated on N≥10 backtest. (Scope recovered 6/20 from ADR 0005 + flag_continuation.md; verified NOT shipped: flag_detector.py:626-635 still requires coiled_today/was_coiled_recent; intraday detector works around it.)
+- #178 | 2026-07-15 | pending | Merge /setup + /why into ONE filter-reason observability command (entry-execution-observability thread, relates #150/#171). (Scope recovered 6/20 from PORTFOLIO.md/ab38d85; verified NOT shipped: _handle_setup_query agent.py:3148 + _handle_why_query :5357 still separate.)
 
 ## Judge & catalyst — v1.1 program
 
@@ -129,9 +129,7 @@ _Last CLOSE: 2026-06-16._
 - #264 | 2026-06-23 | in_progress | news-source-quality drift: min-N floor + composition context (false-alarm fix)
 - #207 | 2026-08-01 | pending | model-eval governance quarterly review (data-gated)
 - #197 | 2026-06-23 | in_progress | cap+1 game_changer slot SHADOW — promotion-gated N≥30
-- #149 | 2026-06-23 | in_progress | (judge/catalyst quality item — confirm scope at triage)
-- #165 | 2026-06-23 | pending | (judge/catalyst item — confirm scope at triage)
-- #191 | 2026-06-23 | pending | (catalyst-sourcing item — confirm scope at triage)
+- #165 | 2026-07-15 | pending | ⚠ SCOPE UNRECOVERABLE — North Star theme-discovery / theme-load-bearing item; only a two-word bucket survives in git. LIKELY SUBSUMED by #328/#329 (theme-as-scored-rubric-input) + #322 (detection gap) — OPERATOR: confirm subsumed → close, or recall real scope. (Recovered 6/20.)
 - #192 | 2026-06-23 | pending | deferred-findings-to-task discipline follow-up
 - #272 | 2026-06-22 | in_progress | LAUNCH 6/22 umbrella (SSoT docs/roadmap/launch-2026-06-22.md). #344 gate ✅ SHADOW-VALIDATED 6/19 (cache-staleness fix is NOT launch-blocking — Check A 0/23 production flips; doc late_source_replay_344_2026-06-19.md) → no longer blocks GO on building a cache fix; remaining #344 dependency = operator's BFLY/BTQ catalyst-correctness label (routine-correct → gate satisfied; should-be-higher → re-point gate at a materiality-rubric task). ✅ #344 HARD GATE OPERATOR-RESOLVED 6/19: "shadow plus Monday flip is good" — shadow-now + the Mon/Tue live flip (#347) SATISFIES the catalyst gate; CONDITIONAL only on Monday's clean #346 shadow verify (dirty read → NO-GO trigger). #349 DR: operator decided NOT to gate GO on the rehearsal (runs separately, next couple days). So 6/22 GO/NO-GO now rides only on Monday's mechanical verifies + START-SMALL sizing.
 - #274 | 2026-06-22 | pending | 2-member theme immortality fix (dissolve-on-flagged-pair, CHANGE_PROCESS)
@@ -160,7 +158,6 @@ _Last CLOSE: 2026-06-16._
 - #176 | 2026-06-23 | pending | SoT/roster drift tooling — create-time hook + scheduled ping (residual)
 - #216 | 2026-06-23 | pending | jsonb codec consolidation (root-fix of #179) — POST-launch by design (protects window)
 - #172 | 2026-06-23 | pending | partial-exit /simplify refactor (blocked behind #151 architectural split)
-- #152 | 2026-06-23 | pending | (op-safety item — confirm scope at triage)
 
 ## Apollo Trades dashboard (portfolio-app2)
 
