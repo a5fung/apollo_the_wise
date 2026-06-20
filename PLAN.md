@@ -124,7 +124,6 @@ _Last CLOSE: 2026-06-16._
 - #237 | 2026-06-22 | pending | shared scheduled_eod_digest helper (the ~6-job 16:xx digest family)
 - #239 | 2026-06-22 | pending | Wave-A trailing-baseline dedup + _emit_shadow_row envelope (/simplify deferrals)
 - #265 | 2026-06-23 | pending | judge-flip-day review residuals (SQL-text SSoT, shared feeds list, WATCH cancel window)
-- #264 | 2026-06-23 | in_progress | news-source-quality drift: min-N floor + composition context (false-alarm fix)
 - #207 | 2026-08-01 | pending | model-eval governance quarterly review (data-gated)
 - #197 | 2026-06-23 | in_progress | cap+1 game_changer slot SHADOW — promotion-gated N≥30
 - #165 | 2026-07-15 | pending | ✅ SCOPE RECOVERED 6/20 (was mis-bucketed "theme-discovery" by the 6/16 sweep — WRONG). REAL origin = ADR-0007 APPS framing (commit 5e14eb3, 5/31): the **$10 RS PRICE floor** (`min_price=10.0`, db.py:4561/4657/4707/5794 — still LIVE) filters sub-$10 IGNITION movers (APPS $8.78, +68% over 3 days 5/27-29) out of get_rs_leaders + the selectors BEFORE rank/sector/grouping. Task = make the price floor gate-aware / lower it so legit sub-$10 ignition names aren't silently dropped. DISTINCT from #286 (the $10M dollar-VOLUME floor, closed 6/20 = keep) — but the same "is RS-leader filtering cosmetic since entry detectors gate independently?" question may apply → operator judgment. RS-engine task, evidence-gated (N≥10 sub-$10-ignition cohort + sign-off).
