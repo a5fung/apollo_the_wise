@@ -55,6 +55,14 @@ _HIGH_STAKES = re.compile(r"🚀|GO/NO-?GO|real[- ]money|\bcutover\b|go[- ]live"
 _POINTER = re.compile(r"\.(?:md|py|sql|yaml|sh)\b|\bmemory \w|\[\[|CHANGE_PROCESS|\bSSoT\b", re.I)
 # A definition-of-done / outcome signal: an arrow, a DoD/verify/outcome marker, a done-tick.
 _DOD = re.compile(r"→|->|⮕|\bDoD\b|verif|definition.of.done|outcome|✅|⚠", re.I)
+_ANY_TASK_REF = re.compile(r"#\d+")
+
+
+def _refs_other_task(title: str, tid: int | None) -> bool:
+    """True if the title cross-references a DIFFERENT #task — a pointer. A self-reference
+    (the task's own #id in its own line) does NOT count, so it's stripped first."""
+    other = title.replace(f"#{tid}", "") if tid is not None else title
+    return bool(_ANY_TASK_REF.search(other))
 
 
 def looks_thin(title: str, tid: int | None = None) -> bool:
@@ -64,8 +72,7 @@ def looks_thin(title: str, tid: int | None = None) -> bool:
     SURFACE-for-review, not a hard gate: "adequate detail" is semantic and a hard block
     over-flags terse-but-fine tasks (a full-backlog sweep flagged 34, most fine). Scoped to
     tasks ADDED this session, the false-positive cost is a quick eyeball, not noise."""
-    other = title.replace(f"#{tid}", "") if tid is not None else title  # a self-ref is not a pointer
-    rich = bool(_POINTER.search(title)) or bool(re.search(r"#\d+", other)) or bool(_DOD.search(title))
+    rich = bool(_POINTER.search(title)) or _refs_other_task(title, tid) or bool(_DOD.search(title))
     return len(title) < 120 and not rich
 
 
@@ -104,8 +111,7 @@ def parse(text: str):
         # High-stakes pointer gate (the #305 lesson): a launch/real-money/cutover task must
         # reference where its execution lives — a runbook/doc, a #task, a memory, or its SSoT.
         if _HIGH_STAKES.search(title):
-            _other = title.replace(f"#{tid}", "")  # a self-reference is not a pointer
-            if not (_POINTER.search(title) or re.search(r"#\d+", _other)):
+            if not (_POINTER.search(title) or _refs_other_task(title, tid)):
                 errors.append(
                     f"L{n}: task #{tid} is HIGH-STAKES (launch/real-money/cutover) but does NOT "
                     f"point at where its execution lives — add its runbook/doc file, a #task xref, "
