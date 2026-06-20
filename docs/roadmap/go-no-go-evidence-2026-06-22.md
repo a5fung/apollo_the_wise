@@ -20,11 +20,11 @@ crosses below at drop-4) → the evidence supports **reduced-size GO**, not full
 **The HARD #344 catalyst gate is now operator-RESOLVED (2026-06-19): "shadow plus Monday flip
 is good."** The operator labeled BFLY a real EP / `routine` WRONG, then accepted that the
 corpus-completeness fix shipping as a **premarket shadow now + the live flip after the shadow
-validates (#347)** SATISFIES the gate — the live flip need not have landed before GO. **⚠
-PRECISE TIMELINE (confirm this is what you meant by "Monday flip"):** #347 needs ~2 shadow days
-(Mon 6/22 + Tue 6/23) → the flip lands **Wed 6/24 earliest**, gated on CHANGE_PROCESS + your
-sign-off. So if GO is Monday, **real money trades Mon–Wed on the PRE-fix grade — BFLY-class
-names won't fire live until the flip.** This remains **conditional on Monday's shadow verify
+validates (#347)** SATISFIES the gate — the live flip need not have landed before GO. **PRECISE
+TIMELINE (operator CONFIRMED 6/19 "that's fine"):** #347 needs ~2 shadow days (Mon 6/22 + Tue
+6/23) → the flip lands **Wed 6/24 earliest**, gated on CHANGE_PROCESS + sign-off. So if GO is
+Monday, **real money trades Mon–Wed on the PRE-fix grade — BFLY-class names won't fire live
+until the flip** — operator accepts this. This remains **conditional on Monday's shadow verify
 (#346) being clean** (a bad shadow read is a NO-GO trigger).
 
 **#349 (DR rehearsal): operator decided NOT to gate GO on it** — the split-topology rehearsal
