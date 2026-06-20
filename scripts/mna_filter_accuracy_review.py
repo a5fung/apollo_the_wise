@@ -28,15 +28,20 @@ _MATERIAL_PEAK_PCT = 20.0
 async def _fwd_rows(conn, event_type: str, ticker_expr: str, lookback_days: int):
     """Distinct (ticker, fire_day) for an event type, with forward peak high
     over [fire_day .. +7 cal days] vs fire-day open and low."""
+    # DISTINCT ON (ticker, fire-day) — one row per ticker per ET day (#59 dedup
+    # hygiene). A container restart re-fires the same audit event, and the prior
+    # `DISTINCT ... , detail` kept each as a separate row (RGTI ×5 in the 6/20
+    # smoke) → duplicate surfacing inflates the digest. Keep the most recent detail.
     return await conn.fetch(f"""
         WITH fires AS (
-            SELECT DISTINCT
+            SELECT DISTINCT ON ({ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date)
                 {ticker_expr} AS ticker,
                 (created_at AT TIME ZONE 'America/New_York')::date AS d,
                 left(regexp_replace(detail::text, '\\s+', ' ', 'g'), 130) AS detail
             FROM mi_audit_log
             WHERE event_type = $1
               AND created_at >= now() - ($2 || ' days')::interval
+            ORDER BY {ticker_expr}, (created_at AT TIME ZONE 'America/New_York')::date, created_at DESC
         )
         SELECT f.ticker, f.d AS fire_day, f.detail,
                c0.open_price, c0.low_price, w.peak_high,
