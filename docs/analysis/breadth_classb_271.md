@@ -6,9 +6,20 @@ anchor-validated (below), AND wired live: `class_b_color()` (breadth_color_rules
 the pre-Monday freeze for this market-independent change (orchestrator + intelligence-side only;
 no trade/boot-path impact) and pinned the §C Monday rollback to a validated SHA (`f116fae`) so main
 can advance freely. Commits `80156d3` (/breadth→/regime merge) + `f116fae` (CLASS B). Deploys GREEN
-by the #278 manual criteria. **VERIFY-LIVE PENDING:** cells render once `breadth_monitor` carries
-`up_20_5d` (next `calculate_breadth_full` run) — confirm `/regime` shows the 5d±20% cell. Read-only
-analysis: `scripts/_271_breadth_classb.sql` + `_271_analyze.py`.
+by the #278 manual criteria. ✅ **VERIFY-LIVE DONE 2026-06-20:** the live nightly regime job
+writes `up_20_5d_pct`/`down_20_5d_pct` + raw counts to `breadth_monitor` on every run since 6/15
+(first post-wiring run; 6/12 and earlier are empty, predating the deploy) — sane values matching
+the calibration (up 1.4–2.4%, down 0.4–0.7%, e.g. 6/18 up 1.75%/88 · down 0.66%/33, all NEUTRAL =
+correct for a non-extreme stretch; 6/17 climbed to 2.38%, near the 2.7% AMBER line). End-to-end
+render confirmed via `coerce_breadth_monitor` → `class_b_color` → the "5d ±20%" cell. The 5/27
+AMBER anchor was validated at analysis time (4.3% → amber; the threshold logic is verified in
+code). #271 COMPLETE. Read-only analysis: `scripts/_271_breadth_classb.sql` + `_271_analyze.py`.
+
+> Side-note (out of #271 scope, app-resilient): `mi_market_regime.breadth_monitor` is stored
+> **double-encoded** — a JSON string inside the JSONB column — so raw SQL `->>`/`?` indexing
+> returns null (must `(... #>> '{}')::jsonb ->> key`); `coerce_breadth_monitor` decodes it for the
+> app, so rendering is unaffected. Same class as the #287 "exits double-encoded as jsonb-string"
+> finding. Minor hygiene; left as-is.
 
 ## The gap
 
