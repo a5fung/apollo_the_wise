@@ -43,6 +43,16 @@ _PROJECT = re.compile(r"^##\s+(.+?)\s*$")
 # high-signal (only #326 tripped it at authoring) so this can be a hard gate, not just a warning.
 # The #326/#327 miss: "CRITICAL-PATH BUILD ... = #311[8/1]" buried the near-term build in prose.
 _BURIED_WORK = re.compile(r"critical[- ]path build|the only (real )?blocker|critical path\s*[=:]", re.I)
+# High-stakes pointer gate (operator 2026-06-20, the #305 lesson): the filing-quality gate
+# bans only the contentless-stub PHRASES ("confirm scope"/"at triage"), so #305 — the
+# real-money launch GO — slipped as a plausible-sounding one-liner with no runbook/config.
+# "Adequate detail" is semantic + can't be gated without over-flagging terse-but-fine tasks
+# (a sweep flagged 34, most fine). But the highest-consequence class IS catchable cheaply:
+# a launch / real-money / cutover task must POINT at where its execution lives. NARROW
+# (fires only on high-stakes markers) + recognizes every legit pointer form (a doc/runbook
+# file, another #task, a memory, or its SSoT/CHANGE_PROCESS) → ~zero false positives.
+_HIGH_STAKES = re.compile(r"🚀|GO/NO-?GO|real[- ]money|\bcutover\b|go[- ]live", re.I)
+_POINTER = re.compile(r"\.(?:md|py|sql|yaml|sh)\b|\bmemory \w|\[\[|CHANGE_PROCESS|\bSSoT\b", re.I)
 
 
 def parse(text: str):
@@ -77,6 +87,16 @@ def parse(text: str):
                 f"L{n}: task #{tid} has a PLACEHOLDER title ('{title[:55]}…') — file it with "
                 f"actionable detail + a clear outcome (definition-of-done), not a 'confirm scope "
                 f"at triage' stub. (the 9-ghost lesson, operator 2026-06-20)")
+        # High-stakes pointer gate (the #305 lesson): a launch/real-money/cutover task must
+        # reference where its execution lives — a runbook/doc, a #task, a memory, or its SSoT.
+        if _HIGH_STAKES.search(title):
+            _other = title.replace(f"#{tid}", "")  # a self-reference is not a pointer
+            if not (_POINTER.search(title) or re.search(r"#\d+", _other)):
+                errors.append(
+                    f"L{n}: task #{tid} is HIGH-STAKES (launch/real-money/cutover) but does NOT "
+                    f"point at where its execution lives — add its runbook/doc file, a #task xref, "
+                    f"a memory, or its SSoT/CHANGE_PROCESS. A real-money task must never be a bare "
+                    f"line (the #305 lesson, operator 2026-06-20).")
         try:
             eta = date.fromisoformat(eta_s)
         except ValueError:
