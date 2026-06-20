@@ -251,6 +251,44 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-06-20 — Live AUTO-ENTRY wired (real-money, operator-signed; START-SMALL launch)
+
+**Trigger**: pre-launch hardening (6/20) found auto-entry for live was never wired —
+`entry_pipeline.submit_trade_entry` auto-submitted only `account_mode='paper'`
+(`if is_paper:`); every live entry fell through to a manual [Confirm] Telegram proposal
+(5-min `CONFIRMATION_TIMEOUT_SEC`). That contradicted CLAUDE.md's dual-account table
+(live + `live_real_enabled=True` → "real fills") and would have made Monday's
+"real-money launch" silently require a manual tap per entry. Operator directed auto-entry
+for the START-SMALL cutover ("with starting smaller $ we can just start with auto entry").
+
+**Evidence**: operator decision + user-reviewed design (entry-mechanic, not a
+threshold/detection change → no backtest applies). Risk bounded by START-SMALL sizing
+(`position_size_multiplier=0.25` → quarter-size) + `max_concurrent_positions=2` (wk1) +
+the unchanged safeguard stack + `/pause`.
+
+**Anticipated effect**: `_should_auto_enter(account_mode, live_real_enabled)` now gates the
+funnel — paper → auto (unchanged); live + `live_real_enabled=True` → **AUTO-ENTER real
+money** (NEW); live + `live_real_enabled=False` → staged-paper proposal (unchanged ramp).
+Monday, MAGNA53 ORB entries auto-fire quarter-size real money at ~9:31 with an
+"AUTO-ENTERED" Telegram per fill instead of a manual proposal. ALL safeguards still gate it
+(they run before the branch); `submit_entry` re-checks `/pause` (defense in depth). No
+per-trade human gate remains — `/pause` + sizing + the position cap + daily-loss are the
+protections.
+
+**Reversion-flag**: NEW (the live auto-entry path was previously unimplemented —
+proposal-only). Rollback: `live_real_enabled=false` → back to the staged-paper proposal
+(per-entry, no redeploy) · `/pause` · `phase=paper`.
+
+**HARD-gate reaffirmation**: this makes `/pause` the ONLY per-trade kill for live (no
+human-in-loop). The existing HARD gate stands and is now MORE load-bearing —
+`live_real_enabled=TRUE` is not permitted until `/pause` (#345) is live + verified
+(runbook step 5 verifies it before the first ORB window Monday).
+
+**Status**: shipped (code) 2026-06-20 on main with `tests/test_entry_auto_enter.py` (4-case
+truth table + live-requires-flag pin; full suite 1024 green). Advisor review pending
+(overloaded) — operator-signed pre-deploy. Verify-live = first MAGNA53 auto-entry Monday
+(AUTO-ENTERED Telegram + `per_strategy_sizing_applied` quarter-size + bracket has a stop leg).
+
 ### 2026-06-19 — Manual real-money trading halt `/pause` added (#345, operator-requested)
 New highest-priority runtime safeguard `manual_trading_halt` (`BLOCK_TRADING_PAUSED`):
 a one-command operator kill switch for ALL new real-money entries. Motivation: the

@@ -141,6 +141,24 @@ SpecBuilder = Callable[
 SkipHook = Callable[[str], Awaitable[None]]
 
 
+def _should_auto_enter(account_mode: str, live_real_enabled: bool) -> bool:
+    """Auto-submit the bracket immediately (True) vs. send a manual-confirm Telegram
+    proposal (False).
+
+    - paper                              -> True  (paper always auto-confirms)
+    - live + live_real_enabled=True      -> True  (REAL-money auto-entry; operator-signed
+                                                   2026-06-20, START-SMALL launch)
+    - live + live_real_enabled=False     -> False (staged-paper ramp: proposal only)
+
+    Live auto-entry has NO per-trade human gate, so it leans on the upstream
+    `_check_safeguards` (LIVE_TRADING_ENABLED, /pause halt, max-positions, daily-loss,
+    drawdown breaker) + `submit_entry`'s #345 /pause re-check + START-SMALL sizing
+    (position_size_multiplier) + the position cap. live_real_enabled gates real money;
+    safeguards.md HARD-gates it on /pause being verified-live.
+    """
+    return account_mode == "paper" or (account_mode == "live" and bool(live_real_enabled))
+
+
 async def submit_trade_entry(
     *,
     alert_context: dict,
@@ -409,11 +427,16 @@ async def submit_trade_entry(
         logger.debug(f"{strategy_label} {ticker}: trade row insert hit unique conflict")
         return {"ticker": ticker, "action": ACTION_SKIPPED, "reason": WINDOW_DUPLICATE}
 
-    # 7. Submit bracket.
+    # 7. Submit bracket. Auto-enter vs. staged-paper proposal (see _should_auto_enter):
+    # paper auto-confirms; a phase=live strategy auto-enters REAL money only when
+    # live_real_enabled=True (operator-signed 2026-06-20). All _check_safeguards rules
+    # ran above; submit_entry re-checks the /pause halt (defense in depth).
     is_paper = account_mode == "paper"
+    live_real_enabled = bool(strategy.live_real_enabled) if strategy else False
 
-    if is_paper:
-        logger.info(f"{strategy_label} paper auto-confirm: {ticker} (trade_id={trade_id})")
+    if _should_auto_enter(account_mode, live_real_enabled):
+        _mode_label = "paper" if is_paper else "LIVE real-$"
+        logger.info(f"{strategy_label} {_mode_label} auto-enter: {ticker} (trade_id={trade_id})")
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE mi_live_trades SET status='confirmed', confirmed_at=NOW() WHERE id=$1",
@@ -473,8 +496,7 @@ async def submit_trade_entry(
         )
         return {"ticker": ticker, "action": ACTION_AUTO_ENTERED, "trade_id": trade_id}
 
-    # Live (non-paper) — send Telegram proposal for manual confirmation.
-    live_real_enabled = bool(strategy.live_real_enabled) if strategy else False
+    # Live + NOT live_real_enabled — staged-paper ramp: Telegram proposal, manual confirm.
     sent = await send_trade_proposal(
         alert_context, order_spec, trade_id,
         live_real_enabled=live_real_enabled,

@@ -82,6 +82,17 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-06-20 — Live AUTO-ENTRY for the real-money cutover (operator-signed)
+
+MAGNA53 at `phase=live` + `live_real_enabled=True` now **auto-enters real money** through
+the shared `entry_pipeline.submit_trade_entry` funnel (previously every live entry sent a
+manual [Confirm] Telegram proposal — auto-entry was never wired for live). START-SMALL:
+quarter-size via `position_size_multiplier=0.25`, `max_concurrent_positions=2` wk1. Entry
+detection/criteria are UNCHANGED — this is an entry-MECHANIC change only. Full design,
+safety envelope, reversion path, and the `/pause` HARD-gate reaffirmation live in
+`safeguards.md` change log 2026-06-20 (the portfolio-entry SSoT). Verify-live = first
+auto-entry Monday.
+
 ### 2026-06-19 — #344 catalyst corpus-completeness — SHADOW (live flip GATED)
 
 **Trigger**: BFLY 6/18 ran +56% with no alert. Graded `routine` because (1) at the
