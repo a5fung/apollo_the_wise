@@ -69,6 +69,16 @@ QUARTERLY_BACKWARD_CHECK_SCRIPTS = [
     # blindness via descriptions per #90).
     ("M&A filter Path B FP-rate (#88)",
      "scripts._b88_mna_filter_path_b_fp_rate", []),
+    # M&A filter ACCURACY review (#284/#285, graduated 2026-06-20). Distinct from
+    # the #88 Path-B FP-rate check above: this surfaces BOTH error directions for
+    # operator judgment — over-fire (suppressed names that then ran >= +20% =
+    # MATERIAL-MISS CANDIDATEs, the ONDS/SUNE class) AND under-fire (#284
+    # acquirer-passes that might have been genuine targets). SURFACES, never
+    # classifies (HARD-gate rules #3/#4). Graduated from the Sunday-review-when-ripe
+    # data-gated surfacing into the monthly sweep per
+    # feedback_methodology_insights_need_periodic_revalidation. 35d monthly window.
+    ("M&A filter accuracy review (#284/#285)",
+     "scripts.mna_filter_accuracy_review", []),
     # Intraday flag-break detector evidence (#94, added 2026-05-23).
     # Shadow-phase monthly re-evaluation. Tracks signal sustainment for
     # decision-gate at N>=10 settled breaks. Graduation to Phase 2

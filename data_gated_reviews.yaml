@@ -570,9 +570,12 @@ reviews:
           #284 title-direction change (mna_acquirer_title_skipped).
       Cadence: MONTHLY during the #284 validation window, relax to QUARTERLY
       once stable (aligns with the operator's quarterly-rule-review preference).
-      Should graduate into the monthly backward-check sweep (auto-run + Telegram)
-      per `feedback_methodology_insights_need_periodic_revalidation` — filed as a
-      gated follow-on (touches scheduler/combined).
+      ✅ GRADUATED 2026-06-20 (#285): now AUTO-RUNS in the monthly backward-check
+      sweep (quarterly_review.QUARTERLY_BACKWARD_CHECK_SCRIPTS → 1st-of-month
+      Telegram digest), so this data-gated Sunday-surfacing is RETIRED (earliest
+      pushed to 9999 to avoid double-surfacing). The two over/under-fire lists now
+      ride the monthly digest; the operator FP/TP judgment + CHANGE_PROCESS routing
+      below is unchanged — read them off the monthly sweep instead of running ad-hoc.
     question: |
       Run `scripts/mna_filter_accuracy_review.py` (read-only) on the box:
         docker exec apollo-market python -m scripts.mna_filter_accuracy_review 35
@@ -588,16 +591,16 @@ reviews:
       -- Calendar floor for a recurring read-only review, not data accrual.
       SELECT 1;
     threshold: 1
-    earliest_review_date: 2026-07-15
+    earliest_review_date: 9999-12-31  # GRADUATED to the monthly sweep (#285) — no longer Sunday-surfaced
     action_when_ready: |
-      1. Run the script (above); review the two surfaced lists.
+      (Now read off the 1st-of-month backward-check sweep digest, not run ad-hoc.)
+      1. Review the two surfaced lists in the monthly digest.
       2. For each flagged item, make the FP/TP call (operator). Confirmed FPs ->
          CHANGE_PROCESS fix + regression case added to _284_mna_acquirer_backtest.py.
-      3. BUMP earliest_review_date forward: +1 month while #284 is validating,
-         then +3 months (quarterly) once two clean monthly reviews pass.
       SSoT: docs/setups/magna53_ep.md (M&A filter change log).
-    status: pending
+    status: done
     added_on: 2026-06-14
+    closed_on: 2026-06-20
 
   - review_id: gap_atr_3_5x_band_negative_ev
     title: "gap/ATR 3-5x band — negative avg 5d return despite normal WR"
