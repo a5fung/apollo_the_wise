@@ -86,9 +86,11 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 MAGNA53 at `phase=live` + `live_real_enabled=True` now **auto-enters real money** through
 the shared `entry_pipeline.submit_trade_entry` funnel (previously every live entry sent a
-manual [Confirm] Telegram proposal — auto-entry was never wired for live). START-SMALL:
-quarter-size via `position_size_multiplier=0.25`, `max_concurrent_positions=2` wk1. Entry
-detection/criteria are UNCHANGED — this is an entry-MECHANIC change only. Full design,
+manual [Confirm] Telegram proposal — auto-entry was never wired for live). START-SMALL =
+the **$5,000 account** itself (operator 2026-06-20): `position_size_multiplier=1.0` (full
+1% risk/trade) + NO tight count cap (`max_concurrent_positions=NULL` → global 5) for broad
+participation on a low-WR strategy (#197). Entry detection/criteria are UNCHANGED — this is
+an entry-MECHANIC change only. Full design,
 safety envelope, reversion path, and the `/pause` HARD-gate reaffirmation live in
 `safeguards.md` change log 2026-06-20 (the portfolio-entry SSoT). Verify-live = first
 auto-entry Monday.

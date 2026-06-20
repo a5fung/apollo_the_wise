@@ -262,17 +262,24 @@ not impossible.
 for the START-SMALL cutover ("with starting smaller $ we can just start with auto entry").
 
 **Evidence**: operator decision + user-reviewed design (entry-mechanic, not a
-threshold/detection change → no backtest applies). Risk bounded by START-SMALL sizing
-(`position_size_multiplier=0.25` → quarter-size) + `max_concurrent_positions=2` (wk1) +
-the unchanged safeguard stack + `/pause`.
+threshold/detection change → no backtest applies). **Sizing/cap reasoned through with the
+operator 2026-06-20**: START-SMALL = the **$5,000 account itself**, so
+`position_size_multiplier=1.0` (full 1% risk/trade ≈ $50, often less under the 20% capital
+cap) and **NO tight count cap** (`max_concurrent_positions=NULL` → shares global 5). A
+low-WR (~25%) winner-driven strategy needs broad participation — a tight cap randomly
+excludes potential winners (P(≥1 winner): 25%/44%/58% at 1/2/3 candidates) and **#197** is
+our own evidence (the cap-blocked cohort beat the broad one: FTNT/FLNC/PCT). Risk is bounded
+by per-trade size + the $5k account + 2% daily-loss + drawdown breaker, NOT by count;
+worst correlated day ≈ (positions open) × 1% (rarely >3 fire in the ORB window) = small
+absolute $ on $5k.
 
 **Anticipated effect**: `_should_auto_enter(account_mode, live_real_enabled)` now gates the
 funnel — paper → auto (unchanged); live + `live_real_enabled=True` → **AUTO-ENTER real
 money** (NEW); live + `live_real_enabled=False` → staged-paper proposal (unchanged ramp).
-Monday, MAGNA53 ORB entries auto-fire quarter-size real money at ~9:31 with an
+Monday, MAGNA53 ORB entries auto-fire full-1% real money on the $5k account at ~9:31 with an
 "AUTO-ENTERED" Telegram per fill instead of a manual proposal. ALL safeguards still gate it
 (they run before the branch); `submit_entry` re-checks `/pause` (defense in depth). No
-per-trade human gate remains — `/pause` + sizing + the position cap + daily-loss are the
+per-trade human gate remains — `/pause` + sizing + the $5k account + daily-loss are the
 protections.
 
 **Reversion-flag**: NEW (the live auto-entry path was previously unimplemented —

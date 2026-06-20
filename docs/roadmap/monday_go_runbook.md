@@ -66,20 +66,23 @@ step 3, or the container won't boot. (This boot-block is the 2026-05-13 outage g
 
 **Action** — one UPDATE on `mi_strategies` (START-SMALL sizing; pick the multiplier/cap):
 ```sql
--- 0.25 multiplier ≈ quarter-size; max_concurrent_positions=1 for the FIRST session
--- (advisor 2026-06-20: the live auto-entry path has never executed — cap=1 means exactly
--- ONE controlled real-money fire validates it before a second can fire; bump to 2 after a
--- clean first session). Trade-off: may miss a 2nd day-1 setup.
+-- START-SMALL = the $5,000 account itself (operator decision 2026-06-20). Full size:
+-- position_size_multiplier=1.0 (1% risk/trade ≈ $50, often less under the 20% capital cap);
+-- NO tight count cap (max_concurrent_positions=NULL → shares the global 5) — a low-WR
+-- winner-driven strategy needs broad participation (#197: the cap-blocked names were the
+-- winners). Risk bounded by per-trade size + the $5k account + 2% daily-loss + drawdown
+-- breaker, NOT by count. Worst correlated day ≈ (positions open) × 1% (rarely >3 fire in
+-- the ORB window) — small absolute $ on $5k, the point of starting here.
 UPDATE mi_strategies
    SET phase='live', live_real_enabled=true,
-       position_size_multiplier=0.25, max_concurrent_positions=1
+       position_size_multiplier=1.0, max_concurrent_positions=NULL
  WHERE strategy_id='magna53';
 ```
 **What each field does (traced to code):**
 - `phase='live'` → `resolve_account_mode_for_strategy` (`constants.py:153`) routes submits to the **live** Alpaca account.
 - `live_real_enabled=true` → **AUTO-ENTERS real money** at the ORB window — no manual confirm (wired 2026-06-20, `entry_pipeline._should_auto_enter`, operator-signed); `=false` → 🟡 STAGED-PAPER Telegram proposal (manual [Confirm], the ramp). **This is THE real-money switch — and as of 6/20 it means AUTO-FIRE, not a proposal.** Each fill sends an "AUTO-ENTERED" Telegram; `/pause` is now the only per-trade kill.
-- `position_size_multiplier=0.25` → `entry_pipeline.py:357-371`: `new_shares = floor(shares × strategy_mult × drawdown_mult)`, then **recomputes** `position_size` + `risk_dollars`; a `<1` result skips `setup:size_too_small`; emits `per_strategy_sizing_applied`. **This is the number real money rides on** — at 0.25 the position is quarter-size.
-- `max_concurrent_positions=2` → per-strategy slot cap in `_check_safeguards` (`block:strategy_position_cap`, #65); NULL = share the global 5.
+- `position_size_multiplier=1.0` → `entry_pipeline.py:357-371`: `new_shares = floor(shares × strategy_mult × drawdown_mult)`, then **recomputes** `position_size` + `risk_dollars`; a `<1` result skips `setup:size_too_small`; emits `per_strategy_sizing_applied`. **This is the number real money rides on** — at 1.0 the trade runs full 1% risk; the $5k account is the start-small lever (operator 2026-06-20).
+- `max_concurrent_positions=NULL` → shares the global cap (`MAX_CONCURRENT_LIVE_POSITIONS=5`) in `_check_safeguards` (`block:strategy_position_cap`, #65). NO tight per-strategy cap — broad participation for the low-WR strategy (operator 2026-06-20, #197 evidence); 5 is a runaway ceiling that rarely binds.
 
 **Why SQL not `/strategy promote`:** `promote` (strategies/telegram.py) only advances `phase`
 along the ladder AND is gated on `check_promotion_eligibility` (refuses if the registry verdict
@@ -133,10 +136,10 @@ RESUMED state. This is the one-keystroke kill switch for the live day.
 
 ## Post-GO first-fire watch (read-only; verdicts are the operator's)
 - `docker exec apollo-market python scripts/verify_monday_firstfire.py` — the shadow/grade/judge/detector first-fire harness.
-- **First real-money ORB = the integration test** (advisor 2026-06-20): the live auto-entry path has NEVER executed before — the auto *mechanism* is exercised by paper daily, but `account_mode='live'` routing is first-time Monday. It fails SAFE (a rejected order → `AUTO_ENTER_FAILED` Telegram, no position). The one thing that is NOT auto-safe is the **stop leg**: with no human-in-loop, the per-trade catastrophic guard IS the OTO bracket's stop leg. So on the FIRST auto-entry, BEFORE anything else: confirm (a) the live-account submit landed, (b) `per_strategy_sizing_applied` audit row shows quarter-size shares, (c) **the bracket has its stop leg attached** (`/positions` or `mi_live_trades.stop_order_id` non-null), and (d) `/pause` is in hand. Only after that first fire validates clean should you raise `max_concurrent_positions` 1→2.
+- **First real-money ORB = the integration test** (advisor 2026-06-20): the live auto-entry path has NEVER executed before — the auto *mechanism* is exercised by paper daily, but `account_mode='live'` routing is first-time Monday. It fails SAFE (a rejected order → `AUTO_ENTER_FAILED` Telegram, no position). The one thing that is NOT auto-safe is the **stop leg**: with no human-in-loop, the per-trade catastrophic guard IS the OTO bracket's stop leg. So on the FIRST auto-entry, BEFORE anything else: confirm (a) the live-account submit landed, (b) `per_strategy_sizing_applied` audit row shows full-1% shares, (c) **the bracket has its stop leg attached** (`/positions` or `mi_live_trades.stop_order_id` non-null), and (d) `/pause` is in hand. No cap to raise (broad participation by design) — but the first fire is still the live-path validation: if its stop leg isn't attached, `/pause` and investigate before the day continues.
 - `scripts/evaluate_kill_scale_bands.py` (#275) + `scripts/replay_regression.py` (#302) — both read `live` now; the bands/R-dist start accruing real data.
 - Watch `mi_audit_log` for any `*_error` / `cross_account_event_rejected` in the first hour.
 
 ---
 
-*One-line GO checklist:* audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=0.25`+`max_concurrent_positions=1` (first session) → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + quarter-size BEFORE raising cap 1→2.
+*One-line GO checklist:* audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=1.0`+`max_concurrent_positions=NULL` → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + full-size + the AUTO-ENTERED Telegram.
