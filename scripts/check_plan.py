@@ -53,6 +53,20 @@ _BURIED_WORK = re.compile(r"critical[- ]path build|the only (real )?blocker|crit
 # file, another #task, a memory, or its SSoT/CHANGE_PROCESS) → ~zero false positives.
 _HIGH_STAKES = re.compile(r"🚀|GO/NO-?GO|real[- ]money|\bcutover\b|go[- ]live", re.I)
 _POINTER = re.compile(r"\.(?:md|py|sql|yaml|sh)\b|\bmemory \w|\[\[|CHANGE_PROCESS|\bSSoT\b", re.I)
+# A definition-of-done / outcome signal: an arrow, a DoD/verify/outcome marker, a done-tick.
+_DOD = re.compile(r"→|->|⮕|\bDoD\b|verif|definition.of.done|outcome|✅|⚠", re.I)
+
+
+def looks_thin(title: str, tid: int | None = None) -> bool:
+    """Heuristic for the CLOSE-time NEW-TASK audit (operator 2026-06-20): a freshly created
+    task that needs more detail before the session ends — SHORT and lacking ALL of a pointer
+    (file/#task/memory/SSoT) AND a definition-of-done/outcome signal. This is deliberately a
+    SURFACE-for-review, not a hard gate: "adequate detail" is semantic and a hard block
+    over-flags terse-but-fine tasks (a full-backlog sweep flagged 34, most fine). Scoped to
+    tasks ADDED this session, the false-positive cost is a quick eyeball, not noise."""
+    other = title.replace(f"#{tid}", "") if tid is not None else title  # a self-ref is not a pointer
+    rich = bool(_POINTER.search(title)) or bool(re.search(r"#\d+", other)) or bool(_DOD.search(title))
+    return len(title) < 120 and not rich
 
 
 def parse(text: str):
@@ -131,6 +145,40 @@ def main(argv: list[str]) -> int:
             print(f"  #{t['id']:<4} [{t['status']:<11}] {t['project']} — {t['title']}")
         if not due:
             print("  (none)")
+        return 0
+
+    if "--audit-new" in argv:
+        # CLOSE-ritual NEW-TASK audit (operator 2026-06-20): flag tasks ADDED this session
+        # that look thin, so DETAIL gets added before the session ends. "Adequate detail"
+        # can't be a hard commit-gate (semantic — over-flags terse-but-fine tasks), so it is
+        # a scoped CLOSE review of only the new lines. Default base = origin/main (correct
+        # when the session batches its commit at CLOSE); pass an explicit ref if you pushed
+        # PLAN.md mid-session: `--audit-new <session-start-ref>`.
+        import subprocess
+        idx = argv.index("--audit-new")
+        base = argv[idx + 1] if idx + 1 < len(argv) and not argv[idx + 1].startswith("-") else "origin/main"
+        try:
+            diff = subprocess.run(
+                ["git", "diff", base, "--", "PLAN.md"], cwd=str(REPO),
+                capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+        except Exception as e:
+            print(f"[audit-new] could not `git diff {base} -- PLAN.md`: {e}")
+            return 0
+        added = [ln[1:].strip() for ln in diff.splitlines()
+                 if ln.startswith("+") and not ln.startswith("+++") and ln[1:].lstrip().startswith("- #")]
+        new = [{"id": int(m.group(1)), "title": m.group(4)}
+               for m in (_TASK.match(ln) for ln in added) if m]
+        thin = [t for t in new if looks_thin(t["title"], t["id"])]
+        print(f"=== NEW-TASK AUDIT — {len(new)} task(s) added vs {base} ===")
+        if not new:
+            print("  (no new tasks this session)")
+        elif not thin:
+            print(f"  OK: all {len(new)} new task(s) carry detail (pointer / DoD / length).")
+        else:
+            print(f"  WARN: {len(thin)} new task(s) look THIN — add detail + a clear outcome before CLOSE:")
+            for t in thin:
+                print(f"      #{t['id']}  {t['title'][:90]}")
+            print("  (project+ETA+status are already gated; this checks DETAIL on new tasks.)")
         return 0
 
     # validation gate

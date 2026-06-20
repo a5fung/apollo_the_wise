@@ -58,3 +58,22 @@ def test_non_high_stakes_terse_task_is_not_touched():
     # (broad 'adequate detail' is semantic and intentionally NOT gated — it over-flags).
     assert not _hs("shared scheduled_eod_digest helper (the ~6-job 16:xx digest family)")
     assert not _hs("regime engine: spy_vs_200ma NULL fix + stale docstring")
+
+
+# ── CLOSE-ritual new-task DETAIL audit (operator 2026-06-20): looks_thin heuristic ──
+# A SURFACE-for-review (not a hard gate) for tasks ADDED this session — it intentionally
+# over-flags (detail is semantic), so we pin only the clear ends of the spectrum.
+
+def test_looks_thin_flags_the_genuinely_thin():
+    from scripts.check_plan import looks_thin
+    # the #305-class contentless lines — including the self-ref edge case (#115 in its own line)
+    assert looks_thin("/simplify deferral (filed #115)", 115)
+    assert looks_thin("per-strategy sizing/cap follow-ups")
+
+
+def test_looks_thin_clears_anything_with_a_real_signal():
+    from scripts.check_plan import looks_thin
+    assert not looks_thin("regime spy_vs_200ma NULL fix — see docs/setups/regime.md")  # file-ref
+    assert not looks_thin("dedup the caches → one shared util, tests green")            # DoD arrow
+    assert not looks_thin("detector boilerplate dedup (pairs with #116)")              # xref to ANOTHER task
+    assert not looks_thin("x" * 125)                                                    # long enough to carry detail
