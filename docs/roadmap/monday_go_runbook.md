@@ -30,6 +30,17 @@ docker exec apollo-postgres psql -U apollo -d apollo -c \
 grep -E "^ENABLE_LIVE_MODE=|^LIVE_TRADING_ENABLED=" /home/apollo/apollo_the_wise/.env
 ```
 
+⚠️ **AUTO-ENTRY AUDIT (added 2026-06-20, advisor):** live auto-entry is now GENERIC —
+**any** `phase=live` + `live_real_enabled=True` strategy auto-fires real money (not just
+magna53). Before the flip, confirm magna53 is the ONLY one, with **no WHERE filter**:
+```bash
+docker exec apollo-postgres psql -U apollo -d apollo -c \
+  "SELECT strategy_id, phase, live_real_enabled, enabled FROM mi_strategies ORDER BY phase, strategy_id;"
+```
+**Gate:** nothing other than magna53 may show `phase=live AND live_real_enabled=t`
+(9m_day2 must read `phase=shadow`). A second unexpected live+True row would auto-fire
+real money on Monday.
+
 **Gate:** only proceed if Monday's verifies are clean (#346 shadow, #275 band job, scan
 wall-time unchanged) AND the operator has called GO (#305).
 
@@ -55,15 +66,18 @@ step 3, or the container won't boot. (This boot-block is the 2026-05-13 outage g
 
 **Action** — one UPDATE on `mi_strategies` (START-SMALL sizing; pick the multiplier/cap):
 ```sql
--- 0.25 multiplier ≈ quarter-size; cap concurrent live positions (e.g. 2-3) for week 1
+-- 0.25 multiplier ≈ quarter-size; max_concurrent_positions=1 for the FIRST session
+-- (advisor 2026-06-20: the live auto-entry path has never executed — cap=1 means exactly
+-- ONE controlled real-money fire validates it before a second can fire; bump to 2 after a
+-- clean first session). Trade-off: may miss a 2nd day-1 setup.
 UPDATE mi_strategies
    SET phase='live', live_real_enabled=true,
-       position_size_multiplier=0.25, max_concurrent_positions=2
+       position_size_multiplier=0.25, max_concurrent_positions=1
  WHERE strategy_id='magna53';
 ```
 **What each field does (traced to code):**
 - `phase='live'` → `resolve_account_mode_for_strategy` (`constants.py:153`) routes submits to the **live** Alpaca account.
-- `live_real_enabled=true` → the real-$ gate downstream of mode resolution; `=false` would only send a 🟡 STAGED-PAPER Telegram proposal (no auto-submit). **This is THE real-money switch.**
+- `live_real_enabled=true` → **AUTO-ENTERS real money** at the ORB window — no manual confirm (wired 2026-06-20, `entry_pipeline._should_auto_enter`, operator-signed); `=false` → 🟡 STAGED-PAPER Telegram proposal (manual [Confirm], the ramp). **This is THE real-money switch — and as of 6/20 it means AUTO-FIRE, not a proposal.** Each fill sends an "AUTO-ENTERED" Telegram; `/pause` is now the only per-trade kill.
 - `position_size_multiplier=0.25` → `entry_pipeline.py:357-371`: `new_shares = floor(shares × strategy_mult × drawdown_mult)`, then **recomputes** `position_size` + `risk_dollars`; a `<1` result skips `setup:size_too_small`; emits `per_strategy_sizing_applied`. **This is the number real money rides on** — at 0.25 the position is quarter-size.
 - `max_concurrent_positions=2` → per-strategy slot cap in `_check_safeguards` (`block:strategy_position_cap`, #65); NULL = share the global 5.
 
@@ -119,10 +133,10 @@ RESUMED state. This is the one-keystroke kill switch for the live day.
 
 ## Post-GO first-fire watch (read-only; verdicts are the operator's)
 - `docker exec apollo-market python scripts/verify_monday_firstfire.py` — the shadow/grade/judge/detector first-fire harness.
-- First real-money ORB: confirm the live-account submit + the `per_strategy_sizing_applied` audit row (shares = quarter-size) + the bracket has a stop leg.
+- **First real-money ORB = the integration test** (advisor 2026-06-20): the live auto-entry path has NEVER executed before — the auto *mechanism* is exercised by paper daily, but `account_mode='live'` routing is first-time Monday. It fails SAFE (a rejected order → `AUTO_ENTER_FAILED` Telegram, no position). The one thing that is NOT auto-safe is the **stop leg**: with no human-in-loop, the per-trade catastrophic guard IS the OTO bracket's stop leg. So on the FIRST auto-entry, BEFORE anything else: confirm (a) the live-account submit landed, (b) `per_strategy_sizing_applied` audit row shows quarter-size shares, (c) **the bracket has its stop leg attached** (`/positions` or `mi_live_trades.stop_order_id` non-null), and (d) `/pause` is in hand. Only after that first fire validates clean should you raise `max_concurrent_positions` 1→2.
 - `scripts/evaluate_kill_scale_bands.py` (#275) + `scripts/replay_regression.py` (#302) — both read `live` now; the bands/R-dist start accruing real data.
 - Watch `mi_audit_log` for any `*_error` / `cross_account_event_rejected` in the first hour.
 
 ---
 
-*One-line GO checklist:* env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier`+`cap` → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → `/pause`+`/resume` confirmed → watch the first fill.
+*One-line GO checklist:* audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=0.25`+`max_concurrent_positions=1` (first session) → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + quarter-size BEFORE raising cap 1→2.
