@@ -1,6 +1,10 @@
 # Secrets — NEVER commit these
 .env
 *.env
+# DR / backup artifacts — full DB dumps + encrypted secrets bundles (never in the public repo)
+apollo-*.sql.gz
+apollo-secrets-*.tar.gz.gpg
+*.sql.gz
 # .env.staging, .env.production, … (`*.env` does NOT match a trailing .staging suffix):
 .env.*
 secrets/
