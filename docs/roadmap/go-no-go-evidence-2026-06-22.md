@@ -105,6 +105,12 @@ to dial it (#65). At 0.25%, the R-bands bind before the equity bands (strategy h
 
 ## 5. What GO means mechanically (it is NOT a switch)
 
+> 📋 **Validated step-by-step execution runbook: `docs/roadmap/monday_go_runbook.md`** (#303,
+> 6/20) — each step traced to code + exact commands/SQL + confirm + rollback. Key gotcha it
+> surfaces: `live_real_enabled` / `position_size_multiplier` / `max_concurrent_positions` are
+> **SQL-only** (no `/strategy` command), and the live creds must be in `.env` *before* the
+> deploy or the boot-block fires.
+
 Current state confirmed 6/19: `magna53 phase=paper · live_real_enabled=f · multiplier 1.0 ·
 cap NULL · ENABLE_LIVE_MODE=false` (the live Alpaca account is not yet wired). So go-live is a
 **deliberate staged config + deploy**, not a toggle the GO decision throws:
