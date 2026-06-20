@@ -146,7 +146,6 @@ _Last CLOSE: 2026-06-16._
 - #340 | 2026-07-01 | pending | DQ delta-check (the more-correct long-term design, deferred from #339; operator chose self-heal for the rare-step case): alert on a >X% night-over-night DROP vs the trailing median rather than vs a frozen baseline — catches sudden real drops AND auto-adapts to intended step-changes without the deadlock. Scope: applies to both ingest + rs_engine + sector checks; pick X; keep a one-time transition-window alert so an intended step-down is NOTED once, not silent.
 - #273 | 2026-06-22 | in_progress | LLM credit-exhaustion alerting — decorator-hook sweep + spend telemetry + low-balance warning
 - #287 | 2026-06-23 | pending | partial-exit trade-state cleanup (FPS #183 stuck flag + 8-trade exits double-encoding) — operator-gated
-- #277 | 2026-06-23 | pending | #256 split go-live: ✅ http-ORB handoff VERIFIED CLEAN 6/16 (RXT/NTLA); close after a 2nd HIGH-day confirm
 - #278 | 2026-06-23 | pending | deploy.sh preflight role-aware (intelligence false-fail), low-urgency
 - #279 | 2026-06-23 | pending | W2 split /simplify deferrals (derive _EXEC_HANDLERS; bidirectional partition guard; dedup feed resolver)
 - #280 | 2026-06-23 | pending | staging own paper account (before any market-hours staging use)
