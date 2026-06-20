@@ -383,7 +383,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 *(Full detail graduated to CHANGELOG.md — this is the live-reference summary.)*
 
 - **Live AUTO-ENTRY wired** (`entry_pipeline._should_auto_enter`, operator-signed): a `phase=live` + `live_real_enabled=True` strategy now AUTO-FIRES real money (was a manual STAGED-PAPER proposal). Config: full 1% / NULL cap / $5k account. **HARD gate — not permitted until `/pause` verified-live.** SSoT safeguards.md + magna53_ep.md.
-- **Filing-quality gates** in `check_plan.py`: high-stakes pointer gate (a launch/real-money/cutover task must POINT at its runbook/#ref — the #305 lesson) + CLOSE-ritual `--audit-new` (surfaces thin tasks added this session). Burndown 132→113 by real completion only (#65/#260/#285/#324 + 13 stubs). **#349 DR rehearsal PASSED** → Monday GO runbook (`docs/roadmap/monday_go_runbook.md`).
+- **Filing-quality gates** in `check_plan.py`: high-stakes pointer gate (a launch/real-money/cutover task must POINT at its runbook/#ref — the #305 lesson) + CLOSE-ritual `--audit-new` (surfaces thin tasks added this session). Burndown 132→112 by real completion only (#65/#260/#285/#324 + 13 stubs). **#349 DR rehearsal PASSED** → Monday GO runbook (`docs/roadmap/monday_go_runbook.md`).
 
 ### Older entries graduated to CHANGELOG.md
 
