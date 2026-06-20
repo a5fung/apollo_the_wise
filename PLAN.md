@@ -199,7 +199,6 @@ _Launch DoD: docs/roadmap/launch-2026-06-22.md · v1.1/v2.0 map: docs/roadmap/ap
 
 - #121 | 2026-06-23 | in_progress | shared Telegram formatting layer (consolidate ≥3 escapers, re-home off scheduler.py)
 - #195 | 2026-06-23 | in_progress | SECURITY — rotate portfolio-app2 app_password (operator action)
-- #246 | 2026-06-23 | pending | theme_engine isinstance(anthropic.APIError) TypeError in local test env
 - #334 | 2026-07-15 | pending | LOW-PRI theme-revive cooldown latch NOT YET WIRED (theme_engine.py:322, surfaced in 6/18 prose sweep): the one-way-latch arm is inert because no `revived_at` timestamp is persisted on mi_themes, so the only caller passes days_since_last_revive=None. Wire when revive goes live (persist revived_at, thread the delta). Filed not-dropped per the no-floating-prose directive; genuinely minor.
 - #248 | 2026-06-22 | pending | regime engine: post-pullback hysteresis + spy_vs_200ma NULL fix + stale docstring
 - #318 | 2026-06-22 | in_progress | morning-brief economic-calendar. ✅ ET FIX WORKED (6/18 brief showed "12:30 PM ET" etc.). BUT operator caught a NEW bug 6/18: calendar showed bare TIMES with NO event names (content-less) — the ET-hardening over-indexed the prompt on time-format. FIXED 6/18: prompt now requires '<time> ET — <event name>' per line + a parsing guard drops content-less bare-time lines (regex-tested). ✅ DEPLOYED 6/18 (deploy.sh both → DEPLOY OK, both containers recreated). VERIFY at 6/19 9 AM brief: named events shown.

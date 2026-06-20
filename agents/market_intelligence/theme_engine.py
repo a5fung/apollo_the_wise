@@ -26,6 +26,18 @@ from typing import Any
 
 import anthropic
 
+# #246: the transient-failure handlers below do `isinstance(e, (anthropic.APIError, …))`.
+# In some local/CI envs the `anthropic` module is stubbed/shadowed so `anthropic.APIError`
+# is NOT a real class → `isinstance()` raises `TypeError: arg 2 must be a type`. Resolve the
+# exception classes ONCE at import, keeping only actual types, so the guards can never
+# TypeError (an empty tuple is a valid, always-False isinstance arg). Real anthropic →
+# real classes (unchanged behaviour); stubbed anthropic → degrades to TimeoutError-only.
+def _real_types(*candidates) -> tuple:
+    return tuple(c for c in candidates if isinstance(c, type))
+
+_THEME_TRANSIENT_EXC = _real_types(getattr(anthropic, "APIError", None), asyncio.TimeoutError)
+_THEME_RATELIMIT_EXC = _real_types(getattr(anthropic, "RateLimitError", None))
+
 # Reused across all Haiku calls in this module — avoids rebuilding the HTTP client per call.
 _anthropic_client: anthropic.AsyncAnthropic | None = None
 
@@ -1607,7 +1619,7 @@ async def _validate_theme_membership(
         # event_type that doesn't trip the L1 silent_audit_error_window invariant.
         # Real bugs (parse errors, unexpected schema) still hit `validation_error`.
         raw_snippet = locals().get("raw", "<not set>")[:200]
-        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)):
+        if isinstance(e, _THEME_TRANSIENT_EXC):
             logger.warning(
                 f"Theme '{theme_name}': validation transient failure "
                 f"({type(e).__name__}: {e}) — keeping all tickers, will retry next run."
@@ -2209,7 +2221,7 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
     except Exception as e:
         # Transient Anthropic failures (5xx, network, timeout) resolve next run —
         # route to a non-`_error` event_type so they don't trip the L1 invariant.
-        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)) and not isinstance(e, anthropic.RateLimitError):
+        if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):
             logger.warning(
                 f"Claude theme assignment transient failure ({type(e).__name__}: {e}) — no assignments made, will retry next run."
             )
@@ -3201,7 +3213,7 @@ If none of these apply, call report_themes directly — advisor consultation is 
     except Exception as e:
         # Transient Anthropic failures (5xx, network, timeout) resolve next run —
         # route to a non-`_error` event_type so they don't trip the L1 invariant.
-        if isinstance(e, (anthropic.APIError, asyncio.TimeoutError)) and not isinstance(e, anthropic.RateLimitError):
+        if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):
             logger.warning(
                 f"Claude new theme discovery transient failure ({type(e).__name__}: {e}) — no new themes this run, will retry next run."
             )
