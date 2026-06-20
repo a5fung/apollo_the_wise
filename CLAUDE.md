@@ -376,16 +376,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-12 (Fri) — #268 CLOSED: 12-month replay + kill/scale bands SIGNED · launch runway day 1
-
-*(2026-06-11 — 🏁 NORTH STAR CLOSED a day early + rubric v2 + replay Phase A/blocker + MNTS cluster — graduated to CHANGELOG 6/11.)*
-
-- **Phase B**: 1307/1307 judged (rubric v2 uniform; post-credit-refill retry). Floor +0.90R/28% (n=410) vs judge +0.95R/30% (n=399); **promote cohort +1.26R/33% = the consistent edge both phases**; demote side flips sign vs Phase A → standing watch-metric, not an assumed save. Doc `docs/analysis/selection_replay_268_phaseB.md`. Contamination fix VERIFIED live (SHAZ/AKTS alerts fired with 1,522 replay rows in-table).
-- **Kill/scale bands SIGNED** (safeguards.md, launch DoD-1 evidence half): REDUCE t20 ≤ −0.70R / streak ≥ 16; KILL t20 ≤ −1.05R / cum −30R / BLOCK tier; SCALE 40 trades ≥ +0.5R; 20-trade floor — every threshold outside the healthy-year envelope (a +0.95R year contains −24R DD + 15-loss streak). Operator conditions codified: quarterly review (registry `kill_scale_bands_quarterly_review`, first 8/1) + logged override authority (bands only, never the mechanical guards). **#275** = digest band evaluation + immediate band-transition alerts + override awareness (Fri 6/19).
-- **Alert-layer gaps fixed off an operator question**: `regime_transition` had readers but NO writer → now emitted + Telegram on flips; drawdown tier changes were audit-only (the 6/05 REDUCE entry was silent) → now Telegram with sizing effect. Deployed (both scopes).
-- **LYG silent-trigger**: cleanest paper-IEX-trigger proof (SIP printed the 5.46 trigger, IEX never, order live) — class unchanged P2; registry row. ECOR banned (#274 = structural fix; nightly run confirmed the theme retired clean). #229 closed (gap_pct correct; dead-cat class → #267 test set).
-- **Rubric v3 LIVE** (`v3-2026-06-12-catalyst-freshness`): AKTS = the judge's first WRONG load-bearing promote (May-2024 Lilly deal surfaced UNDATED by a web-only corpus, `has_direct_source=false`) — operator caught it in hours = the FIRST live operator label. Freshness clause shipped to judge rule 1 + grade prompt; ADR 0011 3c; AKTS = named regression probe. Delta-digest polish same evening (materiality= label, word-boundary rationale truncation).
-- **W2 study #1 (#276)**: 5-min OR DEAD (+0.15R); skip-wide-open NOT SHIPPABLE after TWO artifact catches — ATR-coverage no-op (pre-Oct-2025) faked a +49% lift across the whole sweep; post-backfill (OHLC→2025-05) the +3.63R lift is 91% in 5 outliers, median −1R, total P&L −40%. Lessons in the doc: verify a conditional filter OPERATED across the cohort; decompose winners for outlier concentration. Mon = stop-geometry on the clean harness.
+*(No un-graduated Recent entries — the 6/12 block graduated to CHANGELOG.md on 6/19; this session's work lives in PLAN.md.)*
 
 ### Older entries graduated to CHANGELOG.md
 
@@ -394,6 +385,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 - Compressed 2026-06-07: 2026-05-22 → 2026-05-27 (weekly-review fixes · DR layer · SiP Phase 1 · detectors #94–#96 · #123 reconcile · IBM mass-close incident + #142).
 - Compressed 2026-06-10 (#262): 2026-05-29 + 2026-06-01 (partial-exit hardening arc).
 - Compressed 2026-06-12 (#262): 2026-06-10 (judge load-bearing day) + 2026-06-11 detail bullets (rubric v2 · replay Phase A/blocker · MNTS cluster).
+- Compressed 2026-06-19: 2026-06-12 (#268 Phase B closed + promote +1.26R edge · kill/scale bands SIGNED #275 · alert-layer writer gaps · rubric v3/AKTS freshness · W2 study #1 5-min-OR-dead + skip-wide-open artifact).
 
 Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filter", "CRMD", "dual-account", "Gate 5", "purpose-tagged stop", "drawdown breaker", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
 
