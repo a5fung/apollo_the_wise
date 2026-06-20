@@ -102,14 +102,19 @@ AFTER_PULL=$(git rev-parse HEAD)
 # coarse and biased safe: shared/ambiguous paths require BOTH services.
 if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
   CHANGED=$(git diff --name-only "$BEFORE_PULL".."$AFTER_PULL")
-  NEED_ORCH=0; NEED_MARKET=0
+  NEED_ORCH=0; NEED_MARKET=0; NEED_EXEC=0
   while IFS= read -r f; do
     [ -z "$f" ] && continue
     case "$f" in
       channels/*|core/*|main.py)              NEED_ORCH=1 ;;
+      # #324: broker/ + execution_routes RUN on apollo-execution (not the market-agent
+      # image that `both` recreates). They still need NEED_MARKET (shared image build)
+      # AND NEED_EXEC (recreate the running broker), else the fix lands in the image but
+      # the live apollo-execution stays stale — the LZB silent-dark class.
+      agents/market_intelligence/broker/*|agents/market_intelligence/execution_routes.py) NEED_MARKET=1; NEED_EXEC=1 ;;
       agents/market_intelligence/*|scripts/*) NEED_MARKET=1 ;;
       tests/*|docs/*|*.md|.apollo_open_tasks.json) ;;  # #221 deploy-irrelevant: docs/tests/governance/SoT — present in the image but never executed, so they require no redeploy
-      *)                                      NEED_ORCH=1; NEED_MARKET=1 ;;  # shared/, docker/, requirements/, … → both
+      *)                                      NEED_ORCH=1; NEED_MARKET=1; NEED_EXEC=1 ;;  # shared/, docker/, requirements/, … → all incl execution runtime
     esac
   done <<< "$CHANGED"
   MISSING=""
@@ -125,6 +130,21 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
     echo "$CHANGED" | sed 's/^/  /'
     echo "Re-run with a scope that covers it, e.g.: bash scripts/deploy.sh both"
     exit 11
+  fi
+  # #324: execution-runtime DRIFT — broker/ or execution_routes changed, but this scope
+  # does NOT recreate apollo-execution and it IS running. NOT an abort (a broker fix is a
+  # legit two-step: `both` builds the shared image, `deploy.sh execution` recreates the
+  # running broker). A loud WARNING — re-printed at the very end so it can't be missed the
+  # way the LZB fix was (DEPLOY OK printed, execution left dark). feedback_deploy_both_excludes_execution.
+  EXEC_DRIFT=0
+  if [ "$NEED_EXEC" = 1 ] && [[ "$SERVICES" != *apollo-execution* ]] \
+     && docker ps --format '{{.Names}}' | grep -qx 'apollo-execution'; then
+    EXEC_DRIFT=1
+    echo ""
+    echo "⚠️  EXECUTION-RUNTIME DRIFT (#324): this pull changed broker/ or execution_routes,"
+    echo "    which RUN on apollo-execution — but scope '$SCOPE' does NOT recreate it."
+    echo "    After this deploy you MUST also run:  bash scripts/deploy.sh execution"
+    echo "    (else the fix lands in the image but the LIVE broker stays on stale code)."
   fi
 fi
 
@@ -323,3 +343,10 @@ fi
 
 echo ""
 echo "=== DEPLOY OK — preflight passed for: $SERVICES ==="
+# #324: re-surface the execution-runtime drift as the LAST line — the DEPLOY OK above is
+# exactly what masked the LZB silent-dark deploy. Impossible to miss here.
+if [ "${EXEC_DRIFT:-0}" = 1 ]; then
+  echo ""
+  echo "⚠️  NOT DONE: broker/execution_routes changed — apollo-execution is STILL on stale code."
+  echo "    Run now:  bash scripts/deploy.sh execution   (#324, feedback_deploy_both_excludes_execution)"
+fi
