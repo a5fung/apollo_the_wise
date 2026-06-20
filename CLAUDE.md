@@ -376,7 +376,15 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-*(No un-graduated Recent entries — the 6/12 block graduated to CHANGELOG.md on 6/19; this session's work lives in PLAN.md.)*
+### 2026-06-19 (Fri) — launch-readiness push (6/22 GO/NO-GO set up)
+
+*(The 6/12 block graduated to CHANGELOG.md on 6/19. Full detail of the below lives in PLAN.md + `docs/roadmap/go-no-go-evidence-2026-06-22.md`.)*
+
+- **#304 GO/NO-GO evidence pack** assembled + advisor-corrected: the operator's HARD #344 catalyst gate is recorded as THEIR call (agent must not self-close a HARD gate); GATE-3 numbers traced to primary `sip_replay_r_cohort.py` output (+2.18R selection delta, crosses 0 at drop-4 → START-SMALL).
+- **#303 launch-readiness audit**: every safeguard code-verified (panic button both gates, day-1 equity guards, creds boot-block, band job, #349 DR fix); SSoT-consistency fixed a stale CLAUDE.md blurb ("max 4/5-loss" → actual 5/10-deprecated).
+- **#302 P6 replay-regression** built + deployed: Sunday-digest section surfacing the live R-dist vs the #268b calibration envelope — SURFACES only, no auto-verdict (invalid at low N). `CALIBRATION_ENVELOPE` promoted to a single constant.
+- **#55 revenue-stage re-check**: evidence does NOT support the $5M ratchet (the $0–5M band has positive-edge tail winners) → keep `REVENUE_STAGE_MIN_USD=0.01`. The gate touches only the earnings boost.
+- **Operator launch decisions 6/19**: #344 = shadow + flip (Wed 6/24 earliest; Mon–Wed real money on the pre-fix grade, accepted) · #349 DR not gating GO (rehearsal next couple days) · #55 ratified · #301 deferred post-cutover.
 
 ### Older entries graduated to CHANGELOG.md
 
@@ -392,7 +400,7 @@ Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filt
 ---
 
 ## Adding a "Changes Made" entry
-Keep new entries in **Recent** section above. After ~2 weeks, compress each entry to a single bullet (`topic — key change & lesson`) and **graduate it into `CHANGELOG.md`** — don't keep the compressed form in this file. Drop "Files Changed" lists (git tells you that), drop "Post-deploy verification" once verified, drop manual cleanup SQL once applied.
+Keep new entries in **Recent** section above. After ~2 weeks, compress each entry to a single bullet (`topic — key change & lesson`) and **graduate it into `CHANGELOG.md`** — don't keep the compressed form in this file. Drop "Files Changed" lists (git tells you that), drop "Post-deploy verification" once verified, drop manual cleanup SQL once applied. **⚠ Always leave ≥1 dated `### YYYY-MM-DD` entry in Recent** — `system_audit._recent_changes_context` (the Sonnet-hypothesis input) + its smoke test (`test_system_audit_recent_changes`) require it; graduating the LAST entry empties the section and reds CI (2026-06-19). A docs-only push skips the pre-push pytest gate, so this only surfaces in CI — run the test before a CLAUDE.md graduation.
 
 Older history: see `CHANGELOG.md` (compressed log, on-demand only — not auto-loaded). For genuinely architectural decisions where the *why* outlives the code, optionally write a short `docs/decisions/NNNN-topic.md` ADR.
 
