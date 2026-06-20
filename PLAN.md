@@ -112,7 +112,6 @@ _Last CLOSE: 2026-06-16._
 - #215 | 2026-06-23 | pending | surgical prompt de-bias / OPTX-residual (blocked_by #214 + clean cohort)
 - #258 | 2026-06-22 | in_progress | ensure_schema() consolidation (fold 33 ALTERs) — branch+staging-validated, post-#277
 - #259 | 2026-06-23 | in_progress | failure-policy decorators (@advisory_fail_open / @trade_state_fail_loud)
-- #260 | 2026-06-22 | in_progress | freeze execute_task keyword cascade (routing regression test + merge ticker skip-sets)
 - #237 | 2026-06-22 | pending | shared scheduled_eod_digest helper (the ~6-job 16:xx digest family)
 - #239 | 2026-06-22 | pending | Wave-A trailing-baseline dedup + _emit_shadow_row envelope (/simplify deferrals)
 - #265 | 2026-06-23 | pending | judge-flip-day review residuals (SQL-text SSoT, shared feeds list, WATCH cancel window)
