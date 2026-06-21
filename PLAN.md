@@ -178,6 +178,7 @@ _Launch DoD: docs/roadmap/launch-2026-06-22.md · v1.1/v2.0 map: docs/roadmap/ap
 
 ## Miscellaneous (no home project)
 
+- #351 | 2026-06-21 | pending | First research USE of the adopted Alpaca backtest skill (#350): run an Apollo-style PRICE study — a daily breakout (e.g. 20-day high) or ORB-geometry test on a relevant name/universe. DoD: a run folder under ~/alpaca-backtests/ with report.md + data_fingerprint + the discipline checklist applied (memory reference_alpaca_skills_backtest_discipline). Exercises the W2-class fit; NOT signal-dependent (no DB-derived signals).
 - #121 | 2026-06-23 | in_progress | shared Telegram formatting layer (consolidate ≥3 escapers, re-home off scheduler.py)
 - #195 | 2026-06-23 | in_progress | SECURITY — rotate portfolio-app2 app_password (operator action)
 - #334 | 2026-07-15 | pending | LOW-PRI theme-revive cooldown latch NOT YET WIRED (theme_engine.py:322, surfaced in 6/18 prose sweep): the one-way-latch arm is inert because no `revived_at` timestamp is persisted on mi_themes, so the only caller passes days_since_last_revive=None. Wire when revive goes live (persist revived_at, thread the delta). Filed not-dropped per the no-floating-prose directive; genuinely minor.
