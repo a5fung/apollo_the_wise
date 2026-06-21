@@ -63,3 +63,8 @@ our own W2 +49%-artifact lesson:
 Operator installs the Alpaca CLI + paper creds → run ONE real backtest (a W2-class price study is the
 natural first target) → confirm it runs off Alpaca data with no Hetzner DB → then flip the status and
 decide vendor (`.claude/skills/`) vs global (`~/.claude/skills/`).
+
+
+## UPDATE 2026-06-20 - VALIDATED -> ADOPTED
+
+First real CLI run 2026-06-20: SMA 50/200 cross on SPY, 2019-2024, SIP/split-adjusted. Ran END-TO-END off the Alpaca CLI with NO Hetzner DB -> the off-DB claim is CONFIRMED. Result (smoke test, not a strategy rec): strategy +72.6% vs SPY B&H +138% (CAGR 9.5% vs 15.6%), max DD -34.2% both, Sharpe 0.66 vs 0.83, 3 round trips, 67% win, ends long - textbook slow-trend-filter underperformance in a bull market (identical max DD = 50/200 too slow to dodge the 2020 crash). Run + artifacts: ~/alpaca-backtests/runs/2026-06-20_SPY_sma_cross_1day/ (fingerprint 3dce8ef3...). Status: ADOPTED for price/execution-mechanics studies. Install: GLOBAL ~/.claude/skills/ (NOT vendored into the repo - standing decision; vendor later if we want version control). #350 closed.
