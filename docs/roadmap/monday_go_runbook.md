@@ -3,7 +3,9 @@
 **Purpose:** the turnkey execution sequence for the MAGNA53 real-money cutover, **every step
 traced to code** so nothing is improvised. This is the EXECUTION surface; the GO/NO-GO DECISION
 lives in `go-no-go-evidence-2026-06-22.md`. Validated 2026-06-20 (#303); **restructured 2026-06-21
-into two phases** once funding timing was known.
+into two phases** once funding timing was known; **advisor-reviewed + code-verified 2026-06-21** —
+caught two launch-blockers (the legacy paper-cred boot-block in P1.2; the cached-registry restart in
+P2.1) + confirmed `/pause` is cache-independent.
 
 ## ⚡ Current situation (2026-06-21) — why this is TWO phases, not one Monday event
 - ✅ **Live Alpaca account CREATED** (operator, 6/21) → live API keys can be generated + wired now.
@@ -99,18 +101,36 @@ docker exec apollo-postgres psql -U apollo -d apollo -c \
   confirmed green in the **Sun 6/21 weekly digest** ✅.
 - **`#325`** theme run (~17:00 ET) — first valid test of the discovery fix (read `new_raw_llm`).
 
-## P1.2 — Wire live creds + enable dual-account (`.env`)
+## P1.2 — Wire creds + enable dual-account (`.env`)  ⚠ FOUR keys, not two
 
-Edit `/home/apollo/apollo_the_wise/.env`:
+> 🔴 **CRITICAL — verified 2026-06-21 (advisor review): prod runs on the LEGACY paper-cred names.**
+> The server `.env` today has `ALPACA_API_KEY` / `ALPACA_SECRET_KEY` (legacy) and **NOT** the
+> canonical `ALPACA_PAPER_API_KEY` / `ALPACA_PAPER_SECRET_KEY`. When `ENABLE_LIVE_MODE=true`, the
+> boot check (`agent.py:6883-6893`) **hard-requires the CANONICAL `ALPACA_PAPER_*` AND `ALPACA_LIVE_*`,
+> then `return`s BEFORE the legacy `ALPACA_API_KEY→paper` remap (line 6896)** — so a legacy-only `.env`
+> **BOOT-BLOCKS** (the 2026-05-13 outage class). You MUST add the canonical paper names too, or Phase 1's
+> deploy fails at boot.
+
+Edit `/home/apollo/apollo_the_wise/.env` — **four key lines + the flag** (copy the two PAPER values
+from the existing legacy lines in the same file; the two LIVE values are new):
 ```
+ALPACA_PAPER_API_KEY=<same value as the existing ALPACA_API_KEY>
+ALPACA_PAPER_SECRET_KEY=<same value as the existing ALPACA_SECRET_KEY>
 ALPACA_LIVE_API_KEY=<live key>
 ALPACA_LIVE_SECRET_KEY=<live secret>
 ENABLE_LIVE_MODE=true
 ```
-**Why order matters** (`agent.py::_bootstrap_alpaca_credentials`, ~6871/7037): `ENABLE_LIVE_MODE=true`
-**hard-requires** both live keys — boot-blocks if either is missing, so they must be in `.env`
-**before** the P1.4 deploy. (This boot-block is the 2026-05-13 outage guard.)
-**Confirm:** `grep -c "^ALPACA_LIVE_API_KEY=" .env` → 1; `ENABLE_LIVE_MODE=true` present.
+Leave the legacy `ALPACA_API_KEY` / `ALPACA_SECRET_KEY` in place (harmless + a rollback aid).
+**Confirm (names only, no values):**
+```bash
+grep -oE '^ALPACA_(PAPER|LIVE)_(API_KEY|SECRET_KEY)=' /home/apollo/apollo_the_wise/.env | sort -u
+# expect all FOUR; then:
+grep -E "^ENABLE_LIVE_MODE=true" /home/apollo/apollo_the_wise/.env
+```
+> 💡 **Recommended de-risk — add the two `ALPACA_PAPER_*` lines NOW (before Monday).** Copying the
+> legacy paper values under the canonical names is **behavior-neutral while `ENABLE_LIVE_MODE=false`**
+> (the boot remap already yields the same result), so it changes nothing today but removes the Monday
+> boot-block trap. Then Monday's P1.2 is just the two new live keys + `ENABLE_LIVE_MODE=true`.
 
 ## P1.3 — Stage the strategy to LIVE but `live_real_enabled=FALSE` (SQL)
 
@@ -179,6 +199,13 @@ confirmed · `#346` clean. magna53 is **staged-paper** — Monday's signals arri
 proposals (confirm them as paper to watch the flow, or ignore). **No real money has moved.** Now wait
 on funding (Section F).
 
+> 🔭 **Phase-1 watch-item (advisor 6/21):** `ENABLE_LIVE_MODE=true` turns on the **full dual-account
+> machinery for the first time** — the live `TradingStream`, `sync_positions` iterating `['paper','live']`,
+> and the **16:12 ET equity-snapshot job (both modes)** — all against an **UNFUNDED** live account. It
+> should handle `$0`/empty fine, but it's the first run ever: **glance at Monday's 16:12/EOD `mi_audit_log`**
+> to confirm the per-mode jobs didn't choke on the empty live account (no `account_equity_snapshot` / sync
+> errors for `account_mode='live'`).
+
 ---
 ---
 
@@ -192,16 +219,28 @@ Trigger: **F4 green** (Section F). Run this the morning of the first day buying 
 - **`/status` in Telegram:** the `💰 LIVE-$` block shows `Buying power: $<settled>` matching the dashboard.
 > ⏸️ **Do NOT proceed if buying power is $0 / pending / blocked.** Stay staged; check again next day.
 
-## P2.1 — Flip the ONE real-money switch (SQL — no redeploy)
+## P2.1 — Flip the ONE real-money switch (SQL) + RESTART to load it
 
 ```sql
 -- phase / multiplier / cap were already set in Phase 1. This flips ONLY the real-money switch.
 UPDATE mi_strategies SET live_real_enabled=true WHERE strategy_id='magna53';
 ```
-**Read per-entry from the DB → NO redeploy needed.** (If the container was restarted/redeployed since
-Phase 1, just re-confirm P1.5 preflight still shows `magna53 mode=live PASS`.)
-**Confirm:** `SELECT phase, live_real_enabled FROM mi_strategies WHERE strategy_id='magna53';` →
-`live`, `t`. Re-run the **no-filter** audit (P1.0) → magna53 is the **ONLY** `live`+`t` row.
+> 🔴 **The SQL alone is NOT enough — verified 2026-06-21 (advisor review).** The strategy registry is
+> a **process-wide cache** (`registry.py:50,90` — invalidate-only, **NO TTL**); `get_strategy` (called
+> per entry) reads the **cache**, not the DB. A raw SQL UPDATE does **not** call `invalidate_cache()`,
+> so the running container keeps serving the cached `live_real_enabled=FALSE` and **the flip silently
+> does nothing — you'd think you're live and you're not** (the worst failure mode for this step).
+
+**So: after the UPDATE, RESTART the cache-holding containers to reload the registry from the DB —**
+```bash
+cd /home/apollo/apollo_the_wise
+bash scripts/deploy.sh both        # reloads the registry in market + orchestrator
+bash scripts/deploy.sh execution   # AND the broker side that actually reads live_real_enabled at submit
+```
+Mid-week you're not racing the clock, so redeploy and remove all doubt.
+**Confirm (after the restart):** `SELECT phase, live_real_enabled FROM mi_strategies WHERE
+strategy_id='magna53';` → `live`, `t`; re-run the **no-filter** audit (P1.0) → magna53 is the **ONLY**
+`live`+`t` row; preflight prints `✓ magna53 mode=live PASS`.
 
 ## P2.2 — Re-confirm the panic button, then it's LIVE
 
@@ -243,8 +282,13 @@ live. (Nice alignment: real money and the enriched grade both come online ~mid-w
 independent flips with independent gates.)
 
 ## Consolidated rollback (any time, fastest → slowest)
-1. **`/pause`** — instant, runtime; blocks new real-money entries + cancels resting brackets (open positions keep their broker stops).
-2. **SQL** `live_real_enabled=false` (back to staged-paper) or `phase='paper'` — per-strategy, read per-entry, **no redeploy**.
+1. **`/pause` — THE instant kill (use it first).** Fresh DB read per entry (`db.py:2351` — **no cache**,
+   no redeploy, fail-safe to BLOCKED on a read error); blocks new real-money entries + cancels resting
+   brackets (open positions keep their broker stops). Verified 6/21 to be cache-independent, unlike the
+   strategy row.
+2. **SQL** `live_real_enabled=false` / `phase='paper'` — durable, BUT the strategy registry is **cached**
+   (invalidate-only), so a raw SQL change does **NOT take effect until the cache-holding containers
+   RESTART** (see P2.1). Sequence: **`/pause` first** (instant stop), THEN SQL + a redeploy (durable).
 3. **`LIVE_TRADING_ENABLED=false`** in `.env` — boot-read master kill (needs a restart).
 4. Full revert: `.env` (creds/ENABLE_LIVE_MODE) + SQL, redeploy both+execution.
 
@@ -252,12 +296,13 @@ independent flips with independent gates.)
 
 ## One-line checklists
 
-**PHASE 1 (Mon 6/22):** `#346` clean → audit `mi_strategies` (no-filter, nothing else live+t) → wire
-`ALPACA_LIVE_*`+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+**`live_real_enabled=false`**+`mult=1.0`+`cap=NULL`
-→ `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS`
-→ `/status` 💰 LIVE-$ renders (buying power $0 EXPECTED) + not blocked → `/pause`+`/resume`. **No real money.**
+**PHASE 1 (Mon 6/22):** `#346` clean → audit `mi_strategies` (no-filter, nothing else live+t) → `.env`:
+add **`ALPACA_PAPER_*` (canonical — copy the legacy values) + `ALPACA_LIVE_*` + `ENABLE_LIVE_MODE=true`**
+(FOUR keys — legacy-only BOOT-BLOCKS) → SQL `phase=live`+**`live_real_enabled=false`**+`mult=1.0`+`cap=NULL`
+→ `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` →
+`/status` 💰 LIVE-$ renders (BP $0 EXPECTED) + not blocked → `/pause`+`/resume`. **No real money.**
 
-**PHASE 2 (the day F4 settles, ~Wed 6/24+):** dashboard + `/status` buying power ≥ ~$5k settled & not
-blocked → SQL **`live_real_enabled=true`** (no redeploy) → re-audit (magna53 ONLY live+t) →
-`/pause`+`/resume` → **first auto-entry: stop leg attached + full-1% + AUTO-ENTERED Telegram** (no stop
-leg → `/pause` + investigate).
+**PHASE 2 (the day F4 settles, ~Wed 6/24+):** dashboard + `/status` BP ≥ ~$5k settled & not blocked → SQL
+**`live_real_enabled=true`** → **RESTART (`deploy.sh both`+`execution`) — the registry is CACHED, SQL alone
+is a silent no-op** → re-audit (magna53 ONLY live+t) + preflight PASS → `/pause`+`/resume` → **first
+auto-entry: stop leg attached + full-1% + AUTO-ENTERED Telegram** (no stop leg → `/pause` + investigate).
