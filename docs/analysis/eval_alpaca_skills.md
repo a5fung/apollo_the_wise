@@ -68,3 +68,14 @@ decide vendor (`.claude/skills/`) vs global (`~/.claude/skills/`).
 ## UPDATE 2026-06-20 - VALIDATED -> ADOPTED
 
 First real CLI run 2026-06-20: SMA 50/200 cross on SPY, 2019-2024, SIP/split-adjusted. Ran END-TO-END off the Alpaca CLI with NO Hetzner DB -> the off-DB claim is CONFIRMED. Result (smoke test, not a strategy rec): strategy +72.6% vs SPY B&H +138% (CAGR 9.5% vs 15.6%), max DD -34.2% both, Sharpe 0.66 vs 0.83, 3 round trips, 67% win, ends long - textbook slow-trend-filter underperformance in a bull market (identical max DD = 50/200 too slow to dodge the 2020 crash). Run + artifacts: ~/alpaca-backtests/runs/2026-06-20_SPY_sma_cross_1day/ (fingerprint 3dce8ef3...). Status: ADOPTED for price/execution-mechanics studies. Install: GLOBAL ~/.claude/skills/ (NOT vendored into the repo - standing decision; vendor later if we want version control). #350 closed.
+
+
+## UPDATE 2026-06-21 - FOUR runs + a W2 cross-validation (#351 closed)
+
+Ran four price studies through the skill (artifacts in ~/alpaca-backtests/runs/):
+1. SMA 50/200 cross SPY 2019-24 - the toolchain smoke test (#350).
+2. Donchian 20/10 breakout QQQ 2019-24: trailed B&H on return (+127% vs +238%) but HALF the drawdown (-15% vs -36%) and higher Sharpe (1.09 vs 0.94) - breakout buys risk control.
+3. Donchian 20/10 on a 5 mega-cap basket (AAPL/MSFT/AMZN/NVDA/META): breakout LOST to B&H on Sharpe on ALL 5 - because the basket is all survivors/winners (no blow-ups for the stop to protect against). Textbook survivorship bias - you cannot measure a risk-management edge on a basket of winners.
+4. TSLA 5-min ORB 2024 (in R): bare opening-range breakout = NO standalone edge (-0.019R/trade, total -3.6R, PF 0.97, 48% stopped over 185 trades).
+
+**KEY FINDING (banked):** run #4 INDEPENDENTLY REPRODUCES the W2 study's '5-min OR DEAD (+0.15R)' on a completely separate toolchain (Alpaca CLI minute bars). Two unrelated paths -> 'bare ORB geometry has ~0 edge.' Confirms Apollo's architecture: the edge is in the SELECTION (gap/EP/9M gating), NOT the entry geometry; the ORB is only the trigger. Skill is fully exercised across daily + minute + multi-symbol. #351 closed.
