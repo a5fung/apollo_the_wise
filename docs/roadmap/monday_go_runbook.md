@@ -1,77 +1,75 @@
-# Monday 6/22 — real-money GO runbook (validated)
+# MAGNA53 real-money launch runbook — TWO-PHASE (Mon 6/22 stage → mid-week go-live)
 
-**Purpose:** the turnkey execution sequence for the MAGNA53 real-money cutover, with **every
-step traced to code** so the flip is pre-checked, not improvised. This is the EXECUTION
-surface; the GO/NO-GO DECISION lives in `go-no-go-evidence-2026-06-22.md` (§5 there points
-here). Validated 2026-06-20 (#303) against HEAD.
+**Purpose:** the turnkey execution sequence for the MAGNA53 real-money cutover, **every step
+traced to code** so nothing is improvised. This is the EXECUTION surface; the GO/NO-GO DECISION
+lives in `go-no-go-evidence-2026-06-22.md`. Validated 2026-06-20 (#303); **restructured 2026-06-21
+into two phases** once funding timing was known.
 
-> ⚠️ **The flip is NOT a single switch.** It's: (1) creds + env in `.env`, (2) a
-> `mi_strategies` row UPDATE, (3) deploy, (4) preflight, (5) `/pause` confirm. And **three of
-> the four strategy-row fields have NO Telegram command** — `live_real_enabled`,
-> `position_size_multiplier`, `max_concurrent_positions` are **SQL-only** (deliberately — the
-> real-money gate is not a casual `/strategy` action). Do the steps in order; order matters.
+## ⚡ Current situation (2026-06-21) — why this is TWO phases, not one Monday event
+- ✅ **Live Alpaca account CREATED** (operator, 6/21) → live API keys can be generated + wired now.
+- ⏳ **Funding INITIATED Sat night 2026-06-20** (ACH). Settles in **a few business days — expect
+  ~Wed 6/24–Thu 6/25**; gate on the **actual** F4 read (below), NOT the estimate.
+- 🔑 **Consequence:** sizing reads **live SETTLED equity** (`order_manager.py:112/124`), so **no
+  real trade can fire until the cash clears** — Monday is too early regardless of what we flip.
 
-> 💰 **Two independent clocks.** The creds + flip + deploy (steps 1–5) is the *fast* clock —
-> minutes. **Funding is the *slow* clock — days** (ACH/wire settlement). They are decoupled:
-> you can wire creds and stage the flip while money is still in transit. But **real fills
-> require settled buying power**, so the funding clock — not the flip — gates the actual
-> first trade. **Section F below is a HARD GATE: do not count the launch as armed until it's
-> green.** If you flip while funding is pending, the system fails SAFE (every auto-entry →
-> `setup:size_too_small` skip, no positions, no errors — see why in F), so an "unfunded live"
-> account silently no-ops. Recommended: **hold the step-2 flip until F is green** so "live"
-> always means "can actually trade."
+So we split the launch:
 
----
+| Phase | When | What happens | Real money at risk? |
+|---|---|---|---|
+| **PHASE 1 — VALIDATE + STAGE** | **Mon 6/22** | wire live creds · deploy · preflight · `/pause` · `#346` shadow verify — magna53 staged at **`live_real_enabled=FALSE`** (🟡 STAGED-PAPER proposals) | **NO** — zero real-$ exposure, no funding dependency |
+| **PHASE 2 — ARM REAL MONEY** | **mid-week, the day F4 funds SETTLE (~Wed 6/24+)** | flip the one real-money switch **`live_real_enabled=TRUE`** · confirm `/status` buying power · first real auto-entry + **stop-leg watch** | **YES** — first real fills |
 
-## F. Funding gate (the SLOW clock — start EARLY; HALT here until settled)
+**Why split:** Phase 1 de-risks the never-run live path (the live-creds boot + `get_account('live')`
+preflight — the **2026-05-13 outage class**) with **no money at stake**. Phase 2 arms the real-money
+switch **only once the cash is actually there**, so "live" always means "can actually trade."
 
-**Why this gates everything (traced to code):** sizing reads the **live, settled equity** at
-trade time — `order_manager.py:112` `risk_dollars = equity × risk_pct`, `:124`
-`max_position = equity × 0.20`. So:
-- **$0 settled** → `risk_dollars = 0` → 0 shares → `setup:size_too_small` skip. Fail-safe (no
-  error, no naked risk) but **no real trade fires** — a "launched" but unfunded account is a
-  silent no-op.
-- **Partially settled** (e.g. $2k of $5k cleared) → it trades, but sized off the *smaller*
-  balance (~$20 risk / $400 max position), not your intended $5k.
-
-So real fills require **settled buying power ≥ your intended start size** *before* the 9:31 ET
-ORB window. The deposit clock is **days, not minutes** — initiate it as early as Alpaca allows.
-
-**State tracker — mark each as it lands (this is the "what's pending" surface):**
-```
-[ ] F1 — Live account OPENED + APPROVED (api.alpaca.markets)
-[ ] F2 — Transfer INITIATED (ACH/wire) — do this EARLIEST; ACH commonly takes a few
-         business days, and a brand-new account may not get instant-deposit buying power
-[ ] F3 — Deposit POSTED to the live account (shows in Alpaca dashboard balance)
-[ ] F4 — Buying power SETTLED & AVAILABLE ≥ intended start size (~$5,000 for the $5k start)
-[ ] F5 — account_blocked = false AND trading_blocked = false (new accounts can carry a hold)
-```
-
-**How to check — authoritative source = the Alpaca LIVE dashboard** (`app.alpaca.markets`,
-LIVE not paper): the **Cash / Buying Power** figure is the source of truth for F3/F4, and
-Account → Status for F5. No code path is needed for this read (and it works *before* creds are
-even wired). Apollo's own confirming read comes after deploy (step 4b, `/status`).
-
-> ⏸️ **HALT RULE.** Do **not** treat the GO as armed until **F4 = green** (and F5 clear). If
-> F4 is red on Monday morning:
-> - **Preferred:** HOLD — leave magna53 at `phase=paper` (skip step 2), keep staging the rest,
->   and resume the flip the day buying power settles. Re-run this whole runbook from step 0 that
->   day (Monday-specific verifies in step 0 re-confirm on the new day).
-> - **If you flip anyway:** it's safe — every entry hits `setup:size_too_small` and skips, no
->   real money moves — but understand the day is a **no-op**, not a live launch. Watch
->   `mi_audit_log` for `setup:size_too_small` to confirm that's why nothing fired.
+> ⚠️ **The flip is NOT a single switch.** Full path = (1) creds+env in `.env`, (2) a `mi_strategies`
+> UPDATE, (3) deploy, (4) preflight, (5) `/pause`. Three of the four strategy-row fields
+> (`live_real_enabled`, `position_size_multiplier`, `max_concurrent_positions`) are **SQL-only** —
+> no Telegram command (deliberate: the real-money gate is not a casual `/strategy` action).
 
 ---
 
-## 0. Pre-GO baseline (confirm BEFORE changing anything)
+## F. Funding gate — the clock that sets Phase 2's date
 
-Current state (confirmed 6/19, evidence pack §5) — this is what you're flipping FROM:
+**Why it gates everything (code):** sizing reads **live, settled equity** — `order_manager.py:112`
+`risk_dollars = equity × risk_pct`, `:124` `max_position = equity × 0.20`. **$0 settled → 0 shares
+→ `setup:size_too_small` skip** (fail-safe, no error, no naked risk, but **no real trade**).
+Partially settled → it trades but sized off the smaller balance. So real fills require **settled
+buying power ≥ start size** before any ORB window — and that's a days-long ACH clock.
 
+**State tracker — current marks (update as each lands):**
+```
+[x] F1 — Live account OPENED + APPROVED                         (2026-06-21)
+[x] F2 — Transfer INITIATED (ACH)                               (Sat night 2026-06-20)
+[ ] F3 — Deposit POSTED to the live account                     (~a few business days)
+[ ] F4 — Buying power SETTLED & AVAILABLE >= ~$5,000  <<< THIS DATE = Phase 2's trigger
+[ ] F5 — account_blocked = false AND trading_blocked = false    (new accounts can carry a hold)
+```
+
+**How to check — authoritative = the Alpaca LIVE dashboard** (`app.alpaca.markets`, LIVE not paper):
+the **Cash / Buying Power** figure is the source of truth for F3/F4; Account → Status for F5. After
+Phase 1's deploy, Apollo's own confirming read is **`/status`** (the `💰 LIVE-$` block).
+
+> ⏸️ **HARD GATE: Phase 2 does NOT start until F4 is green** (buying power settled ≥ start size)
+> **AND F5 clear.** Until then magna53 stays at `live_real_enabled=FALSE` from Phase 1 — staged,
+> safe, no real money. Check F4 daily from ~6/24; the day it's green is the day you run Phase 2.
+
+---
+---
+
+# ▶ PHASE 1 — Monday 2026-06-22 (VALIDATE + STAGE · no real money)
+
+Goal: prove the live path boots/deploys/preflights cleanly and the panic button works, with
+magna53 **staged at `live_real_enabled=FALSE`** so zero real money can move. Do these in order.
+
+## P1.0 — Pre-baseline (confirm BEFORE changing anything)
+
+This is what you're flipping FROM:
 ```
 magna53:  phase=paper · live_real_enabled=f · position_size_multiplier=1.0 · max_concurrent_positions=NULL
 env:      ENABLE_LIVE_MODE=false · LIVE_TRADING_ENABLED=true · (no ALPACA_LIVE_* creds wired)
 ```
-
 Confirm on the server (read-only):
 ```bash
 ssh apollo@87.99.134.162
@@ -79,137 +77,187 @@ docker exec apollo-postgres psql -U apollo -d apollo -c \
   "SELECT strategy_id, phase, live_real_enabled, enabled, position_size_multiplier, max_concurrent_positions FROM mi_strategies WHERE strategy_id='magna53';"
 grep -E "^ENABLE_LIVE_MODE=|^LIVE_TRADING_ENABLED=" /home/apollo/apollo_the_wise/.env
 ```
-
-⚠️ **AUTO-ENTRY AUDIT (added 2026-06-20, advisor):** live auto-entry is now GENERIC —
-**any** `phase=live` + `live_real_enabled=True` strategy auto-fires real money (not just
-magna53). Before the flip, confirm magna53 is the ONLY one, with **no WHERE filter**:
+⚠️ **AUTO-ENTRY AUDIT (no WHERE filter):** live auto-entry is GENERIC — **any** `phase=live` +
+`live_real_enabled=True` strategy auto-fires real money. Confirm magna53 will be the ONLY one:
 ```bash
 docker exec apollo-postgres psql -U apollo -d apollo -c \
   "SELECT strategy_id, phase, live_real_enabled, enabled FROM mi_strategies ORDER BY phase, strategy_id;"
 ```
-**Gate:** nothing other than magna53 may show `phase=live AND live_real_enabled=t`
-(9m_day2 must read `phase=shadow`). A second unexpected live+True row would auto-fire
-real money on Monday.
+**Gate:** nothing may show `phase=live AND live_real_enabled=t` (9m_day2 must read `phase=shadow`).
 
-**Gate:** only proceed if Monday's verifies are clean (#346 shadow, #275 band job, scan
-wall-time unchanged) AND the operator has called GO (#305).
+## P1.1 — Monday premarket verifies (the GO preconditions)
 
----
+- **`#346` shadow verify (the #344 HARD-gate condition):** after the premarket EP scans —
+  ```bash
+  docker exec apollo-market python scripts/_344_shadow_verify.py
+  ```
+  Confirm: `ep_grade_enrich_shadow` + `ep_repoll_shadow` rows WROTE · re-poll fired **exactly once
+  per ticker** (check container uptime first — a restart can dupe) · latency p95 OK · **AND scan
+  wall-time unchanged vs the pre-#344 baseline** (the real entry-path risk). **Clean → the #344
+  gate holds. Dirty → NO-GO trigger** (per the operator's 6/19 resolution).
+- **`#275` band job** fired clean + **`#302`** replay-regression section rendered — both already
+  confirmed green in the **Sun 6/21 weekly digest** ✅.
+- **`#325`** theme run (~17:00 ET) — first valid test of the discovery fix (read `new_raw_llm`).
 
-## 1. Wire live creds + enable dual-account (`.env`)
+## P1.2 — Wire live creds + enable dual-account (`.env`)
 
-**Action** — edit `/home/apollo/apollo_the_wise/.env`:
+Edit `/home/apollo/apollo_the_wise/.env`:
 ```
 ALPACA_LIVE_API_KEY=<live key>
 ALPACA_LIVE_SECRET_KEY=<live secret>
 ENABLE_LIVE_MODE=true
 ```
-**What it does / why order matters** (`agent.py::_bootstrap_alpaca_credentials`, ~6871/7037):
-`ENABLE_LIVE_MODE=true` **hard-requires** both `ALPACA_LIVE_API_KEY` AND `ALPACA_LIVE_SECRET_KEY`
-— boot-blocks if either is missing. So the creds must be in `.env` **before** the deploy in
-step 3, or the container won't boot. (This boot-block is the 2026-05-13 outage guard: a
-`phase=live` strategy under `ENABLE_LIVE_MODE=false` also boot-blocks.)
+**Why order matters** (`agent.py::_bootstrap_alpaca_credentials`, ~6871/7037): `ENABLE_LIVE_MODE=true`
+**hard-requires** both live keys — boot-blocks if either is missing, so they must be in `.env`
+**before** the P1.4 deploy. (This boot-block is the 2026-05-13 outage guard.)
 **Confirm:** `grep -c "^ALPACA_LIVE_API_KEY=" .env` → 1; `ENABLE_LIVE_MODE=true` present.
-**Rollback:** set `ENABLE_LIVE_MODE=false` (paper-only; live creds ignored).
 
-## 2. Flip the strategy row to real money (SQL — no command exists)
+## P1.3 — Stage the strategy to LIVE but `live_real_enabled=FALSE` (SQL)
 
-> ⏸️ **Precondition: Section F (funding) must be green** — `F4` buying power settled ≥ start
-> size, `F5` not blocked. This is the real-money switch; flipping it on an unfunded account
-> just produces silent `size_too_small` skips (safe, but a no-op). HOLD here if funding is
-> still pending.
-
-**Action** — one UPDATE on `mi_strategies` (START-SMALL sizing; pick the multiplier/cap):
 ```sql
--- START-SMALL = the $5,000 account itself (operator decision 2026-06-20). Full size:
--- position_size_multiplier=1.0 (1% risk/trade ≈ $50, often less under the 20% capital cap);
--- NO tight count cap (max_concurrent_positions=NULL → shares the global 5) — a low-WR
--- winner-driven strategy needs broad participation (#197: the cap-blocked names were the
--- winners). Risk bounded by per-trade size + the $5k account + 2% daily-loss + drawdown
--- breaker, NOT by count. Worst correlated day ≈ (positions open) × 1% (rarely >3 fire in
--- the ORB window) — small absolute $ on $5k, the point of starting here.
+-- PHASE 1: phase=live so preflight exercises the LIVE account path, but live_real_enabled=FALSE
+-- so it sends 🟡 STAGED-PAPER proposals (manual [Confirm]) — NO auto-fire, NO real money.
+-- Sizing fields are set NOW so Phase 2 only has to flip the one real-money switch.
 UPDATE mi_strategies
-   SET phase='live', live_real_enabled=true,
+   SET phase='live', live_real_enabled=false,
        position_size_multiplier=1.0, max_concurrent_positions=NULL
  WHERE strategy_id='magna53';
 ```
-**What each field does (traced to code):**
-- `phase='live'` → `resolve_account_mode_for_strategy` (`constants.py:153`) routes submits to the **live** Alpaca account.
-- `live_real_enabled=true` → **AUTO-ENTERS real money** at the ORB window — no manual confirm (wired 2026-06-20, `entry_pipeline._should_auto_enter`, operator-signed); `=false` → 🟡 STAGED-PAPER Telegram proposal (manual [Confirm], the ramp). **This is THE real-money switch — and as of 6/20 it means AUTO-FIRE, not a proposal.** Each fill sends an "AUTO-ENTERED" Telegram; `/pause` is now the only per-trade kill.
-- `position_size_multiplier=1.0` → `entry_pipeline.py:357-371`: `new_shares = floor(shares × strategy_mult × drawdown_mult)`, then **recomputes** `position_size` + `risk_dollars`; a `<1` result skips `setup:size_too_small`; emits `per_strategy_sizing_applied`. **This is the number real money rides on** — at 1.0 the trade runs full 1% risk; the $5k account is the start-small lever (operator 2026-06-20).
-- `max_concurrent_positions=NULL` → shares the global cap (`MAX_CONCURRENT_LIVE_POSITIONS=5`) in `_check_safeguards` (`block:strategy_position_cap`, #65). NO tight per-strategy cap — broad participation for the low-WR strategy (operator 2026-06-20, #197 evidence); 5 is a runaway ceiling that rarely binds.
+**What each field does (code):**
+- `phase='live'` → `resolve_account_mode_for_strategy` (`constants.py:153`) routes to the **live**
+  account → preflight (P1.4) exercises `get_account('live')`, the path that 500'd on 2026-05-13.
+- `live_real_enabled=false` → **🟡 STAGED-PAPER Telegram proposal**, manual [Confirm], **NO auto-fire**
+  (`entry_pipeline._should_auto_enter`). This is the designed ramp. **Phase 2 flips it to `true`.**
+- `position_size_multiplier=1.0` → full 1% risk/trade (`entry_pipeline.py:357-371`); the **$5k account
+  is the start-small lever** (operator 2026-06-20). Set now, inert until Phase 2.
+- `max_concurrent_positions=NULL` → shares the global cap `MAX_CONCURRENT_LIVE_POSITIONS=5` (#65);
+  NO tight per-strategy cap — broad participation for the low-WR strategy (#197). Set now, inert until Phase 2.
 
-**Why SQL not `/strategy promote`:** `promote` (strategies/telegram.py) only advances `phase`
-along the ladder AND is gated on `check_promotion_eligibility` (refuses if the registry verdict
-has blocking reasons) — it does **not** touch the other three fields. The GO is a deliberate
-operator decision, so set all four explicitly in one UPDATE.
-**Confirm:** re-run the step-0 SELECT → all four fields as set.
-**Rollback:** `UPDATE mi_strategies SET phase='paper', live_real_enabled=false WHERE strategy_id='magna53';` (instant, read per-entry — no redeploy).
+**Confirm:** re-run the P1.0 SELECT → `phase=live`, `live_real_enabled=f`, `multiplier=1.0`, `cap=NULL`.
 
-## 3. Deploy (both + execution) + verify the running image
+## P1.4 — Deploy (both + execution) + verify the running image
 
-**Action:**
 ```bash
 cd /home/apollo/apollo_the_wise
 bash scripts/deploy.sh both        # market-agent + orchestrator
 bash scripts/deploy.sh execution   # apollo-execution (the broker side — feedback_deploy_both_excludes_execution)
 ```
-**What it does:** rebuilds + recreates services on the new `.env` (live creds, ENABLE_LIVE_MODE).
-`both` does NOT recreate apollo-execution (the broker side that actually submits) — so the second
-deploy is **required** or the live-account submit path stays on the old image.
-**Confirm:** both print `DEPLOY OK` (all preflight gates); `docker ps` shows `apollo-execution`
-**Up <seconds>** (freshly recreated) + `apollo-market` Up + healthy.
-**Rollback:** revert `.env` (step 1) + the SQL (step 2), redeploy.
+`both` does NOT recreate apollo-execution (the broker side that submits) → the second deploy is
+**required** or the live-submit path stays on the old image.
+**Confirm:** both print `DEPLOY OK`; `docker ps` shows **apollo-execution Up <seconds>** (freshly
+recreated) + apollo-market Up + healthy.
+(Note: this deploy also carries the L2 persistence-dedup `63b116d` — monitoring-only, verified by `#352`.)
 
-## 4. Preflight green on the LIVE path
+## P1.5 — Preflight green on the LIVE path
 
-**What `deploy.sh` already ran** (`preflight_check.py`): walks every enabled non-shadow strategy
-through `_check_safeguards` — now `magna53` resolves `mode=live` → exercises `get_account('live')`
-(the exact path that 500'd in the 2026-05-13 outage). A `setup:*`/`infra:*` reason fails the
-deploy; only `block:*` passes through.
-**Confirm:** the deploy's preflight block shows `✓ magna53 mode=live PASS` (or a benign
-`BLOCKED-OK block:*`), **not** a `live_trading_disabled` / `ALPACA_LIVE_API_KEY` / account-fetch
-failure. If it failed here, the deploy already aborted — **do not** consider the GO done.
-⚠️ Preflight checks auth + account fetch + safeguards but **NOT** `buying_power > 0` — it will
-print PASS against a $0 live account. Funding is verified separately, in 4b.
+`deploy.sh` already ran `preflight_check.py` — it walks magna53 (now `mode=live`) through
+`_check_safeguards`, exercising `get_account('live')`.
+**Confirm:** the preflight block shows `✓ magna53 mode=live PASS` (or a benign `BLOCKED-OK block:*`),
+**not** `live_trading_disabled` / `ALPACA_LIVE_API_KEY` / account-fetch failure. A failure here aborts
+the deploy.
+⚠️ Preflight checks auth + account fetch + safeguards but **NOT `buying_power > 0`** — it PASSES on a
+$0 live account. That's fine for Phase 1 (we're not arming real money). Funding is gated in Phase 2.
 
-## 4b. Confirm Apollo SEES the funds (closes the funding loop)
+## P1.6 — Confirm Apollo SEES the live account (`/status`)
 
-**Action:** send **`/status`** in Telegram (now that live creds + `ENABLE_LIVE_MODE=true` are
-deployed, it renders the `💰 LIVE-$ (real money)` block).
-**What it does:** Apollo's own read of `get_account('live')` — `Equity` + `Buying power` for the
-live account. This is the confirmation that the *container* sees the funded account, not just
-the dashboard (catches a wrong-account-keyed creds mistake, or a deposit that posted to paper).
-**Confirm:** the `💰 LIVE-$` block shows `Buying power: ${settled amount}` matching the Alpaca
-dashboard (Section F4) — **not** `$0.00` and **not** `⚠️ Account fetch failed`.
-> ⏸️ **HALT** if `/status` shows live buying power `$0.00` (or a fetch error) — the auto-entry
-> would `size_too_small`-skip all day. Roll back to `phase=paper` (step-2 rollback) and resume
-> once funds settle, OR knowingly accept a no-op day.
+Send **`/status`** in Telegram → it now renders the `💰 LIVE-$ (real money)` block (Apollo's own
+`get_account('live')` read).
+**Confirm:** the `💰 LIVE-$` block renders **without** `⚠️ Account fetch failed` (proves the container
+reads the live account — catches wrong-account creds / deposit-to-paper). **Buying power will read $0
+or pending — that is EXPECTED in Phase 1** (funds unsettled). Also confirm **F5** here: account not blocked.
 
-## 5. Confirm the panic button BEFORE the first ORB window
+## P1.7 — Confirm the panic button
 
-**Action:** send `/pause` then `/resume` in Telegram (well before 9:31 ET).
-**What it does** (`agent.py::_handle_pause_command`, #345): `/pause` sets the DB halt
-(read per-entry by `_check_safeguards`, highest-priority gate), cancels resting live entry
-brackets, and **reads the state back** — it reports the ACTUAL stored value (a silent upsert
-failure is surfaced, never reported as success). `/resume` lifts it.
-**Confirm:** `/pause` → "⏸️ Real-money trading PAUSED"; `/resume` → "▶️ …RESUMED". End in the
-RESUMED state. This is the one-keystroke kill switch for the live day.
+Send `/pause` then `/resume` (well before any window). `/pause` (`agent.py::_handle_pause_command`,
+#345) sets the DB halt, cancels resting live brackets, and **reads the state back** (a silent upsert
+failure is surfaced, never reported as success).
+**Confirm:** `/pause` → "⏸️ Real-money trading PAUSED"; `/resume` → "▶️ …RESUMED". **End RESUMED.**
+
+### ✅ PHASE 1 DONE =
+live infra boots + deploys + preflights clean · `/status` reads the live account · panic button
+confirmed · `#346` clean. magna53 is **staged-paper** — Monday's signals arrive as 🟡 STAGED-PAPER
+proposals (confirm them as paper to watch the flow, or ignore). **No real money has moved.** Now wait
+on funding (Section F).
+
+---
+---
+
+# ▶ PHASE 2 — mid-week, the day funds SETTLE (~Wed 6/24+) (ARM REAL MONEY)
+
+Trigger: **F4 green** (Section F). Run this the morning of the first day buying power is settled.
+
+## P2.0 — GATE: confirm funds are actually there
+
+- **Alpaca LIVE dashboard:** Cash / Buying Power ≥ ~$5,000 settled (F4); Account Status not blocked (F5).
+- **`/status` in Telegram:** the `💰 LIVE-$` block shows `Buying power: $<settled>` matching the dashboard.
+> ⏸️ **Do NOT proceed if buying power is $0 / pending / blocked.** Stay staged; check again next day.
+
+## P2.1 — Flip the ONE real-money switch (SQL — no redeploy)
+
+```sql
+-- phase / multiplier / cap were already set in Phase 1. This flips ONLY the real-money switch.
+UPDATE mi_strategies SET live_real_enabled=true WHERE strategy_id='magna53';
+```
+**Read per-entry from the DB → NO redeploy needed.** (If the container was restarted/redeployed since
+Phase 1, just re-confirm P1.5 preflight still shows `magna53 mode=live PASS`.)
+**Confirm:** `SELECT phase, live_real_enabled FROM mi_strategies WHERE strategy_id='magna53';` →
+`live`, `t`. Re-run the **no-filter** audit (P1.0) → magna53 is the **ONLY** `live`+`t` row.
+
+## P2.2 — Re-confirm the panic button, then it's LIVE
+
+`/pause` → `/resume` (end RESUMED) before the next ORB window. From here, **`/pause` is the only
+per-trade kill** — each real fill sends an "AUTO-ENTERED" Telegram.
+
+## P2.3 — FIRST real auto-entry = the integration test (stop-leg watch)
+
+The live auto-entry path has **never executed** before — the auto *mechanism* runs in paper daily,
+but `account_mode='live'` routing is first-time. It fails SAFE (rejected order → `AUTO_ENTER_FAILED`
+Telegram, no position). The one thing NOT auto-safe is the **stop leg** — with no human in the loop,
+the per-trade catastrophic guard IS the OTO bracket's stop leg. **On the FIRST auto-entry, before
+anything else, confirm:**
+1. the live-account submit landed (an "AUTO-ENTERED" Telegram, not `AUTO_ENTER_FAILED`);
+2. `per_strategy_sizing_applied` audit row shows full-1% shares;
+3. **the bracket has its stop leg attached** — `/positions` or `mi_live_trades.stop_order_id` non-null;
+4. `/pause` is in hand.
+**If the stop leg isn't attached → `/pause` immediately and investigate before the day continues.**
+- `docker exec apollo-market python scripts/verify_monday_firstfire.py` — the first-fire harness.
+- `scripts/evaluate_kill_scale_bands.py` (#275) + `scripts/replay_regression.py` (#302) now read
+  `live` — bands/R-dist start accruing real data.
+- Watch `mi_audit_log` for any `*_error` / `cross_account_event_rejected` in the first hour.
+- **Behavioral note (from the GATE-3 read, 6/21):** the edge is **winner-concentrated** (the +2.18R
+  selection delta crosses 0 if you drop the top-4 winners). Expect a string of small reds before the
+  first big winner — **that is normal, not failure.** The signed kill/scale bands (#268b/#275) are
+  the pre-committed reduce/kill rule; **do not kill on an ordinary early losing streak.**
+
+### ✅ PHASE 2 DONE = real money is live, first auto-entry verified (stop leg attached + full-size + AUTO-ENTERED Telegram).
 
 ---
 
+## ⓘ Separate mid-week item — do NOT confuse with Phase 2
+
+**`#347` — the enriched-grade flip (Wed 6/24 earliest):** making the corpus-completeness fix the
+LIVE grade is a **different** action — needs ~2 shadow days + **CHANGE_PROCESS + operator sign-off +
+a deploy** (carry `max_chars=_GRADE_ENRICH_MAX_CHARS` on the live grade call). It is NOT part of
+arming real money. Until #347 lands, BFLY-class names grade on the **pre-fix** grade and won't fire
+live. (Nice alignment: real money and the enriched grade both come online ~mid-week, but they are
+independent flips with independent gates.)
+
 ## Consolidated rollback (any time, fastest → slowest)
-1. **`/pause`** — instant, runtime, blocks all new real-money entries + cancels resting brackets (open positions keep their broker stops).
-2. **SQL** `phase='paper'` / `live_real_enabled=false` — per-strategy, read per-entry, no redeploy.
+1. **`/pause`** — instant, runtime; blocks new real-money entries + cancels resting brackets (open positions keep their broker stops).
+2. **SQL** `live_real_enabled=false` (back to staged-paper) or `phase='paper'` — per-strategy, read per-entry, **no redeploy**.
 3. **`LIVE_TRADING_ENABLED=false`** in `.env` — boot-read master kill (needs a restart).
 4. Full revert: `.env` (creds/ENABLE_LIVE_MODE) + SQL, redeploy both+execution.
 
-## Post-GO first-fire watch (read-only; verdicts are the operator's)
-- `docker exec apollo-market python scripts/verify_monday_firstfire.py` — the shadow/grade/judge/detector first-fire harness.
-- **First real-money ORB = the integration test** (advisor 2026-06-20): the live auto-entry path has NEVER executed before — the auto *mechanism* is exercised by paper daily, but `account_mode='live'` routing is first-time Monday. It fails SAFE (a rejected order → `AUTO_ENTER_FAILED` Telegram, no position). The one thing that is NOT auto-safe is the **stop leg**: with no human-in-loop, the per-trade catastrophic guard IS the OTO bracket's stop leg. So on the FIRST auto-entry, BEFORE anything else: confirm (a) the live-account submit landed, (b) `per_strategy_sizing_applied` audit row shows full-1% shares, (c) **the bracket has its stop leg attached** (`/positions` or `mi_live_trades.stop_order_id` non-null), and (d) `/pause` is in hand. No cap to raise (broad participation by design) — but the first fire is still the live-path validation: if its stop leg isn't attached, `/pause` and investigate before the day continues.
-- `scripts/evaluate_kill_scale_bands.py` (#275) + `scripts/replay_regression.py` (#302) — both read `live` now; the bands/R-dist start accruing real data.
-- Watch `mi_audit_log` for any `*_error` / `cross_account_event_rejected` in the first hour.
-
 ---
 
-*One-line GO checklist:* **[F] funding settled — Alpaca dashboard buying power ≥ start size + not blocked (HALT if pending)** → audit `mi_strategies` (no filter) → magna53 is the ONLY `live`+`live_real_enabled=t` → env creds+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+`live_real_enabled=true`+`multiplier=1.0`+`max_concurrent_positions=NULL` → `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` → **`/status` 💰 LIVE-$ buying power matches the dashboard (HALT if $0)** → `/pause`+`/resume` confirmed → first auto-entry: verify stop leg + full-size + the AUTO-ENTERED Telegram.
+## One-line checklists
+
+**PHASE 1 (Mon 6/22):** `#346` clean → audit `mi_strategies` (no-filter, nothing else live+t) → wire
+`ALPACA_LIVE_*`+`ENABLE_LIVE_MODE=true` → SQL `phase=live`+**`live_real_enabled=false`**+`mult=1.0`+`cap=NULL`
+→ `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS`
+→ `/status` 💰 LIVE-$ renders (buying power $0 EXPECTED) + not blocked → `/pause`+`/resume`. **No real money.**
+
+**PHASE 2 (the day F4 settles, ~Wed 6/24+):** dashboard + `/status` buying power ≥ ~$5k settled & not
+blocked → SQL **`live_real_enabled=true`** (no redeploy) → re-audit (magna53 ONLY live+t) →
+`/pause`+`/resume` → **first auto-entry: stop leg attached + full-1% + AUTO-ENTERED Telegram** (no stop
+leg → `/pause` + investigate).
