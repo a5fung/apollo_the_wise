@@ -1140,6 +1140,26 @@ async def _last_band_for(conn, metric_name: str, lookback_days: int = 14) -> int
         return 0
 
 
+def _persistent_l2_downgrade(band: int, last_band: int, *, mad: float, p50: float, ratio: float) -> bool:
+    """A persisting band-3 (L2) that should fire ONCE on the transition, then quiet — the
+    PERSISTENCE axis (`_is_slow_drift` is the MAGNITUDE axis). A benign-but-material level shift
+    can sit in band 3 for days as its 30d median catches up — e.g. theme_count_active −32% across
+    the 2026-06-21 Choppy regime fired L2 four nights running.
+
+    SCOPE (advisor 2026-06-21): ONLY the stable (tight-MAD), non-collapse class is deduped — the
+    same class `_is_slow_drift` targets, MINUS its immateriality clause (here the move IS material,
+    which is why it reaches L2 at all). A genuine spike/collapse (≥5× ratio) or a HIGH-VARIANCE
+    metric's persistent breach KEEPS re-firing daily — you want the day-2 nag on a real pipeline
+    failure / stream disconnect (HIGH_ep_entry_rate, bar_stream_disconnect), not one-and-done.
+    Downgrades to L3 (audit-only, weekly digest); mirrors the L3 same-band dedup. Requires
+    `to_band` on the L2 payload so `_last_band_for` sees yesterday's band 3."""
+    if band != 3 or last_band != 3:
+        return False
+    stable = p50 > 0 and mad > 0 and (mad / p50) < _TIGHT_MAD_FRAC
+    not_collapse = ratio < _MULTIPLIER_THRESHOLD
+    return stable and not_collapse
+
+
 async def _compute_anomaly(
     conn,
     metric: MetricSpec,
@@ -1221,13 +1241,23 @@ async def _compute_anomaly(
     band, z, ratio = _classify_band(current, p50, mad, direction)
 
     if band == 3 and not warming:
-        return Anomaly(2, metric.name, {
+        last_band = await _last_band_for(conn, metric.name)
+        detail = {
             "current": current,
             "baseline_p50": p50, "baseline_p95": (baseline or {}).get("p95"),
             "mad": mad, "sample_n": sample_n,
             "z_score": round(z, 2), "ratio": round(ratio, 2),
             "regime_conditional": (baseline or {}).get("regime_conditional", False),
-        })
+            "to_band": band,  # 3 — recorded so _last_band_for can dedup a persisting L2
+        }
+        if _persistent_l2_downgrade(band, last_band, mad=mad, p50=p50, ratio=ratio):
+            # Already alerted on the transition INTO band 3; a persisting band 3 logs L3
+            # (audit-only, weekly digest) instead of re-firing the Telegram every nightly run.
+            detail["from_band"] = last_band
+            detail["warming"] = warming
+            detail["persistent_l2_downgrade"] = True
+            return Anomaly(3, metric.name, detail)
+        return Anomaly(2, metric.name, detail)
 
     # L3: drift band, threshold-crossing only.
     if band > 0:
