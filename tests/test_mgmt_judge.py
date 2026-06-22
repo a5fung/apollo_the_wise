@@ -25,14 +25,29 @@ def test_snapshot_price_falls_back_to_day_then_min():
 def test_format_mgmt_line_shadow():
     payload = {"ticker": "FPS", "pct_from_entry": 0.0931, "r_multiple": 4.96, "hold_days": 15}
     line = format_mgmt_line(payload, {"verdict": "HOLD", "rationale": "Thesis intact, profit locked."})
-    assert line.startswith("FPS: HOLD (+9.3%, +5.0R, 15d) —")
+    assert line.startswith("🟢 FPS — HOLD")                       # action emoji + ticker + verdict
+    assert "+9.3% / +5.0R / 15d" in line                          # at-a-glance metrics
+    assert line.endswith("\n   Thesis intact, profit locked.")    # rationale on its own indented line
 
 
 def test_format_mgmt_line_handles_none_metrics():
     # 9M-class position: r_multiple None (orb_low isn't the risk basis) → "R n/a", never crashes.
     payload = {"ticker": "QURE", "pct_from_entry": None, "r_multiple": None, "hold_days": 0}
     line = format_mgmt_line(payload, {"verdict": "FORCE_EXIT", "rationale": "x"})
-    assert "n/a" in line and "R n/a" in line
+    assert line.startswith("🔴 QURE — FORCE_EXIT")
+    assert "n/a / R n/a / 0d" in line
+
+
+def test_format_mgmt_line_clips_at_word_boundary():
+    # the readability fix: a long rationale is clipped to a WORD boundary (never mid-word) + ellipsis.
+    payload = {"ticker": "SYRE", "pct_from_entry": 0.017, "r_multiple": 0.49, "hold_days": 0}
+    long_r = ("Day-0 high-tier EP entry only modestly into the move with the thesis fully intact and "
+              "plenty of room above the structural stop, so it is far too early to de-risk here today "
+              "and the position should be given time to follow through on the catalyst before any trim.")
+    line = format_mgmt_line(payload, {"verdict": "HOLD", "rationale": long_r})
+    rationale_line = line.split("\n", 1)[1].strip()
+    assert rationale_line.endswith("…")               # clipped (it was > 240 chars)
+    assert not rationale_line[:-1].endswith(" ")       # the clip landed on a whole word, not mid-word
 
 
 def test_manage_holistic_none_client_fails_open():

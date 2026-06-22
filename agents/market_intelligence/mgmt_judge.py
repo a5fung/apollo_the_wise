@@ -178,13 +178,26 @@ def snapshot_price(snap: Optional[dict]) -> Optional[float]:
     return float(mc) if mc else None
 
 
+_VERDICT_EMOJI = {"HOLD": "🟢", "PARTIAL_TAKE": "🟡", "TRAIL_TIGHTEN": "🟡", "FORCE_EXIT": "🔴"}
+
+
+def _clip(text: str, n: int = 240) -> str:
+    """Collapse whitespace + clip to a WORD boundary (never mid-word) with an ellipsis."""
+    text = " ".join((text or "").split())
+    return text if len(text) <= n else text[:n].rsplit(" ", 1)[0].rstrip(" ,;:—-") + "…"
+
+
 def format_mgmt_line(payload: dict, verdict: dict) -> str:
-    """One shadow-digest line per position. Pure — fixture-tested."""
+    """One shadow-digest BLOCK per position: an at-a-glance head (action emoji · ticker · verdict ·
+    pct / R / days) + the one-sentence rationale on its OWN indented line, word-clipped so it never
+    cuts mid-word. Pure — fixture-tested."""
     pct, r = payload.get("pct_from_entry"), payload.get("r_multiple")
     pct_s = f"{pct * 100:+.1f}%" if pct is not None else "n/a"
     r_s = f"{r:+.1f}R" if r is not None else "R n/a"
-    return (f"{payload.get('ticker')}: {verdict['verdict']} "
-            f"({pct_s}, {r_s}, {payload.get('hold_days')}d) — {verdict['rationale'][:120]}")
+    v = verdict["verdict"]
+    head = (f"{_VERDICT_EMOJI.get(v, '•')} {payload.get('ticker')} — {v}   "
+            f"{pct_s} / {r_s} / {payload.get('hold_days')}d")
+    return f"{head}\n   {_clip(verdict['rationale'])}"
 
 
 async def _fetch_entry_thesis(ticker, alert_date) -> Optional[dict]:
@@ -241,7 +254,7 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
             # Per-ticker missing price: don't write a price-blind verdict for this one — audit + skip.
             await log_audit_event(
                 "position_mgmt_judge_null", f"{tk} {today}: no live price in snapshot — skipped")
-            lines.append(f"{tk}: ⚠️ no live price — skipped")
+            lines.append(f"⚠️ {tk} — no live price (skipped)")
             continue
         thesis = await _fetch_entry_thesis(tk, pos.get("alert_date"))
         payload = assemble_mgmt_inputs(pos, px, thesis)
@@ -256,10 +269,10 @@ async def run_position_mgmt_judge(send: bool = False) -> str:
         else:
             await log_audit_event(
                 "position_mgmt_judge_null", f"{tk} {today}: management judge fail-open (no verdict)")
-            lines.append(f"{tk}: ⚠️ judge fail-open (no verdict)")
+            lines.append(f"⚠️ {tk} — judge fail-open (no verdict)")
 
-    text = (f"🧭 Mgmt-judge (SHADOW · zero authority) — {len(positions)} open position(s):\n"
-            + "\n".join(lines))
+    text = (f"🧭 Mgmt-judge — SHADOW, zero authority · {len(positions)} open\n\n"
+            + "\n\n".join(lines))
     if send:
         from agents.market_intelligence.briefing import send_telegram_message
         await send_telegram_message(text)
