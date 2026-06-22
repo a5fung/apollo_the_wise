@@ -155,15 +155,20 @@ UPDATE mi_strategies
 
 **Confirm:** re-run the P1.0 SELECT → `phase=live`, `live_real_enabled=f`, `multiplier=1.0`, `cap=NULL`.
 
-## P1.4 — Deploy (both + execution) + verify the running image
+## P1.4 — Deploy: EXECUTION FIRST, then both + verify the running image
+
+> 🔴 **ORDER MATTERS — verified LIVE 2026-06-22 (launch-blocker #3).** `deploy.sh both`'s preflight
+> routes the creds gate (the `magna53 mode=live` account-fetch) to **apollo-execution**, and `both`
+> does NOT recreate execution. So `both`-first checks execution's OLD env (no `ALPACA_LIVE_*`) →
+> preflight **FAILS** ("ALPACA_LIVE_API_KEY not set"), and the `&& execution` never runs. Deploy
+> **execution FIRST** so it has the live creds (matches the #349 DR "execution-first → both" finding),
+> THEN both — whose preflight now finds execution's creds and passes.
 
 ```bash
 cd /home/apollo/apollo_the_wise
-bash scripts/deploy.sh both        # market-agent + orchestrator
-bash scripts/deploy.sh execution   # apollo-execution (the broker side — feedback_deploy_both_excludes_execution)
+bash scripts/deploy.sh execution   # FIRST — broker side gets the live creds; its preflight then passes
+bash scripts/deploy.sh both        # THEN market-agent + orchestrator; their preflight finds execution's creds
 ```
-`both` does NOT recreate apollo-execution (the broker side that submits) → the second deploy is
-**required** or the live-submit path stays on the old image.
 **Confirm:** both print `DEPLOY OK`; `docker ps` shows **apollo-execution Up <seconds>** (freshly
 recreated) + apollo-market Up + healthy.
 (Note: this deploy also carries the L2 persistence-dedup `63b116d` — monitoring-only, verified by `#352`.)
@@ -234,8 +239,8 @@ UPDATE mi_strategies SET live_real_enabled=true WHERE strategy_id='magna53';
 **So: after the UPDATE, RESTART the cache-holding containers to reload the registry from the DB —**
 ```bash
 cd /home/apollo/apollo_the_wise
-bash scripts/deploy.sh both        # reloads the registry in market + orchestrator
-bash scripts/deploy.sh execution   # AND the broker side that actually reads live_real_enabled at submit
+bash scripts/deploy.sh execution   # FIRST (execution-first order, per P1.4) — reloads registry + creds on the broker side
+bash scripts/deploy.sh both        # THEN market + orchestrator reload the registry too
 ```
 Mid-week you're not racing the clock, so redeploy and remove all doubt.
 **Confirm (after the restart):** `SELECT phase, live_real_enabled FROM mi_strategies WHERE
@@ -290,7 +295,7 @@ independent flips with independent gates.)
    (invalidate-only), so a raw SQL change does **NOT take effect until the cache-holding containers
    RESTART** (see P2.1). Sequence: **`/pause` first** (instant stop), THEN SQL + a redeploy (durable).
 3. **`LIVE_TRADING_ENABLED=false`** in `.env` — boot-read master kill (needs a restart).
-4. Full revert: `.env` (creds/ENABLE_LIVE_MODE) + SQL, redeploy both+execution.
+4. Full revert: `.env` (creds/ENABLE_LIVE_MODE) + SQL, redeploy execution then both.
 
 ---
 
@@ -299,10 +304,10 @@ independent flips with independent gates.)
 **PHASE 1 (Mon 6/22):** `#346` clean → audit `mi_strategies` (no-filter, nothing else live+t) → `.env`:
 add **`ALPACA_PAPER_*` (canonical — copy the legacy values) + `ALPACA_LIVE_*` + `ENABLE_LIVE_MODE=true`**
 (FOUR keys — legacy-only BOOT-BLOCKS) → SQL `phase=live`+**`live_real_enabled=false`**+`mult=1.0`+`cap=NULL`
-→ `deploy.sh both` then `execution` (both DEPLOY OK, execution Up) → preflight `magna53 mode=live PASS` →
+→ **`deploy.sh execution` THEN `both`** (execution-first — both DEPLOY OK) → preflight `magna53 mode=live PASS` →
 `/status` 💰 LIVE-$ renders (BP $0 EXPECTED) + not blocked → `/pause`+`/resume`. **No real money.**
 
 **PHASE 2 (the day F4 settles, ~Wed 6/24+):** dashboard + `/status` BP ≥ ~$5k settled & not blocked → SQL
-**`live_real_enabled=true`** → **RESTART (`deploy.sh both`+`execution`) — the registry is CACHED, SQL alone
+**`live_real_enabled=true`** → **RESTART (`deploy.sh execution` THEN `both`) — the registry is CACHED, SQL alone
 is a silent no-op** → re-audit (magna53 ONLY live+t) + preflight PASS → `/pause`+`/resume` → **first
 auto-entry: stop leg attached + full-1% + AUTO-ENTERED Telegram** (no stop leg → `/pause` + investigate).
