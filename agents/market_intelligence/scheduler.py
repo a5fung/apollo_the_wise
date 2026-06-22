@@ -2956,7 +2956,7 @@ async def _consolidation_readiness_job():
                                 signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"],
                                 range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
                                 target_r=sig["target_r"], origin=origin, entry_mode=mode):
-                            entries_fired.append((ticker, origin, sig))
+                            entries_fired.append((ticker, origin, mode, sig))
 
                 await upsert_consolidation(
                     ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
@@ -2994,10 +2994,22 @@ async def _consolidation_readiness_job():
                 digest.append(de.format_entry_settled_row(ticker, s["outcome"], s["realized_r"]))
             digest.append("")
         if entries_fired:
-            digest.append(f"🎯 *Entry fired today* ({len(entries_fired)}) — N≥{de.ENTRY_TIGHT_N} tight days at the apex")
-            for ticker, origin, sig in entries_fired[:12]:
-                digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
-                                                        sig["stop_price"], origin))
+            # Distinguish the entry TYPE: Anticipate (in-coil) and Confirm (base-high breakout) are
+            # DIFFERENT setups bundled into one lifecycle (#354) — the operator must see which is
+            # which, not a single mixed count (operator 6/22: "distinguish what the entry is").
+            antic = [(t, o, s) for (t, o, m, s) in entries_fired if m == "anticipate"]
+            confm = [(t, o, s) for (t, o, m, s) in entries_fired if m == "confirm"]
+            digest.append(f"🎯 *Entry fired today* ({len(entries_fired)}) — by entry type")
+            if antic:
+                digest.append(f"  📥 _Anticipate_ — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex) — {len(antic)}")
+                for ticker, origin, sig in antic[:12]:
+                    digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
+                                                            sig["stop_price"], origin))
+            if confm:
+                digest.append(f"  🚀 _Confirm_ — base-high breakout — {len(confm)}")
+                for ticker, origin, sig in confm[:12]:
+                    digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
+                                                            sig["stop_price"], origin))
             digest.append("")
         # a name with ANY open entry-shadow (today's OR a prior day's) has graduated past "newly
         # coiled" — show it once. Use the UNCAPPED open set so a prior-day fire still suppresses it

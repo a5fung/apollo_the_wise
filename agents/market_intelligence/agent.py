@@ -2906,9 +2906,19 @@ class MarketIntelligenceAgent(BaseAgent):
         out.append("")
 
         if fired:
-            out.append(f"🎯 *Entry fired* ({len(fired)})")
-            out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
-                                           r.get("origin")) for r in fired]
+            # Distinguish the entry TYPE (operator 6/22): Anticipate (in-coil) vs Confirm (base-high
+            # breakout) are different setups in one lifecycle (#354) — show which, not a mixed count.
+            antic = [r for r in fired if r.get("entry_mode") == "anticipate"]
+            confm = [r for r in fired if r.get("entry_mode") == "confirm"]
+            out.append(f"🎯 *Entry fired* ({len(fired)}) — by type")
+            if antic:
+                out.append(f"  📥 _Anticipate_ — in-coil ({len(antic)})")
+                out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
+                                               r.get("origin")) for r in antic]
+            if confm:
+                out.append(f"  🚀 _Confirm_ — base-high breakout ({len(confm)})")
+                out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
+                                               r.get("origin")) for r in confm]
             out.append("")
 
         # a name with an open entry-shadow has GRADUATED past the watch lists — show it once, in its
