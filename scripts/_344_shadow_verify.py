@@ -23,7 +23,7 @@ import asyncio
 import json
 import sys
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 _ET = ZoneInfo("America/New_York")
@@ -44,9 +44,9 @@ async def main():
     if "--since" in args:
         since_days = int(args[args.index("--since") + 1])
     elif args:
-        target = args[0]
+        target = date.fromisoformat(args[0])   # asyncpg binds $1::date → needs a date, not str
     else:
-        target = datetime.now(_ET).date().isoformat()
+        target = datetime.now(_ET).date()
 
     from agents.market_intelligence.db import get_pool
     pool = await get_pool()
@@ -60,7 +60,7 @@ async def main():
             where = "created_at AT TIME ZONE 'America/New_York' >= $1::date " \
                     "AND created_at AT TIME ZONE 'America/New_York' < $1::date + 1"
             params = (target,)
-            scope = target
+            scope = target.isoformat()
 
         async def _pull(evt):
             rows = await c.fetch(
