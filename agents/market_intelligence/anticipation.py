@@ -776,6 +776,49 @@ def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV
     }
 
 
+# ── CONFIRM entry mode (ADR 0013 §1 — flag→consolidation merge, 2026-06-22) ──────
+# The second Family-A entry mode: enter on the CONFIRMED breakout of the consolidation base, stop at
+# the base low. ADR §1 "Confirm = on the CONFIRMED breakout (base_high + volume)". Detected on the
+# SAME §2 consolidation universe via the daily bars — deliberately NOT by reusing the live #94
+# intraday flag-break job / mi_flag_breaks (which lives on the flag detector's separate 50%/60d
+# universe): gating Confirm by flag-cohort membership would silently under-detect on exactly the §2
+# names we are told to measure (the #270 phantom failure-mode in miniature) AND touch the load-bearing
+# live path. A NEW pure detector mirroring entry_signal_at keeps Confirm on the signed universe +
+# isolated. Returns the would-be entry; ZERO execution authority (the live job RECORDS, never submits).
+ENTRY_CONFIRM_VOL_MIN = 1.5   # breakout volume ≥ this × ADV20 (flag_detector's confirmed-break vol gate)
+
+
+def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
+    """Point-in-time CONFIRM entry AS OF bar `idx` (reads only bars[:idx+1]): the consolidation base
+    BREAKS OUT — today's close exceeds the highest base close (post-runup-peak, pre-break) AND volume
+    confirms (≥ vol_min × ADV20). Entry = the break-day close; stop = the base low (ADR §1 "base /
+    breakout low"). Returns the fire record on a fire, else None. SHADOW only."""
+    if idx < anchor_idx + 2 or idx >= len(bars):
+        return None                                  # need a base between the runup peak and the break
+    base_high = max(bars[j]["c"] for j in range(anchor_idx + 1, idx))   # consolidation high (post-peak, pre-break)
+    close = bars[idx]["c"]
+    if not close or close <= base_high:
+        return None                                  # today does not close above the base
+    vols = [b["v"] for b in bars]
+    adv = _adv(vols, idx)
+    if not adv or bars[idx]["v"] < vol_min * adv:
+        return None                                  # the break must come on confirming volume
+    rr = bars_to_rmv_rows(bars)
+    base_low = round(min(bars[j]["l"] for j in range(anchor_idx + 1, idx + 1)), 4)  # the stop = base low
+    return {
+        "entry_date": bars[idx]["date"],
+        "entry_price": round(close, 4),
+        "signal_n": 0,                               # n/a for confirm (not a tight-day-count signal) — sentinel
+        "rmv_5d": _compute_rmv(rr, idx, lookback=5),
+        "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / close, 5) if close else None,
+        "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
+        "stop_kind": "base_low",                     # Confirm stop = the base low
+        "stop_price": base_low,
+        "structural_low": base_low,
+        "target_r": ENTRY_TARGET_R,
+    }
+
+
 # ── #327 forward-shadow SETTLEMENT (operator "build the machinery now", 6/18) ──
 # The validation's PRIMARY metric was the asymmetric bet (capture% + UNCAPPED MFE/risk under a
 # FIXED stop) — the clean entry-quality signal (the harvest buries good entries, #270-Step-0). The

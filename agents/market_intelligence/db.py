@@ -1576,6 +1576,7 @@ async def initialize_schema() -> None:
                 vol_ratio       FLOAT,
                 target_r        FLOAT NOT NULL,       -- "capture" = fwd MFE ≥ this × risk (settlement def)
                 origin          TEXT NOT NULL,        -- '9m' (a 9M day seeded the runup) | 'family_a' (general)
+                entry_mode      TEXT NOT NULL DEFAULT 'anticipate',  -- 'anticipate' (in-coil) | 'confirm' (base-high break) — #354 ADR 0013 §1
                 -- settlement (filled by a later phase; NULL = still open / unsettled) --
                 outcome         TEXT,                 -- capture | stop | open | NULL(unsettled)
                 realized_r      FLOAT,
@@ -1585,9 +1586,24 @@ async def initialize_schema() -> None:
                 CHECK (outcome IS NULL OR outcome IN ('capture','stop','open')),
                 CHECK (origin IN ('9m','family_a'))
             );
-            -- one OPEN shadow per coil (dedup); a settled row frees the key for a genuinely new leg.
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_cons_entry_shadow_open
-                ON mi_consolidation_entry_shadow(ticker, anchor_date) WHERE outcome IS NULL;
+            -- entry_mode added 2026-06-22 (#354 flag→consolidation merge): back-fill existing rows
+            -- (DEFAULT 'anticipate' is correct — every pre-#354 row was an Anticipate entry) + enforce
+            -- the value set on existing prod tables (the inline CREATE covers only fresh ones).
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS entry_mode TEXT NOT NULL DEFAULT 'anticipate';
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mi_cons_entry_shadow_mode_chk') THEN
+                    ALTER TABLE mi_consolidation_entry_shadow
+                        ADD CONSTRAINT mi_cons_entry_shadow_mode_chk CHECK (entry_mode IN ('anticipate','confirm'));
+                END IF;
+            END $$;
+            -- one OPEN shadow per coil PER MODE (dedup): an Anticipate and a Confirm entry can BOTH be
+            -- open on the same (ticker, anchor) — same coil, two modes (#354). The pre-#354 2-col index
+            -- silently dropped the second mode's row; the 3-col index (NEW name → idempotent CREATE)
+            -- fixes it. A settled row frees the key for a genuinely new leg.
+            DROP INDEX IF EXISTS idx_cons_entry_shadow_open;
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_cons_entry_shadow_open_mode
+                ON mi_consolidation_entry_shadow(ticker, anchor_date, entry_mode) WHERE outcome IS NULL;
             CREATE INDEX IF NOT EXISTS idx_cons_entry_shadow_unsettled
                 ON mi_consolidation_entry_shadow(entry_date) WHERE outcome IS NULL;
 
@@ -6504,11 +6520,12 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
 
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
         entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, range_pct,
-        vol_ratio, target_r, origin) -> bool:
-    """Record one #327 forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial unique
-    index (ticker, anchor_date) WHERE outcome IS NULL makes a re-fire on an already-OPEN coil a
-    no-op, so the entry stays pinned to the FIRST fire day (== the offline run_of_tight semantics).
-    Returns True iff a NEW row was written (the job's 'fired' signal)."""
+        vol_ratio, target_r, origin, entry_mode='anticipate') -> bool:
+    """Record one Family-A forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial
+    unique index (ticker, anchor_date, entry_mode) WHERE outcome IS NULL makes a re-fire on an
+    already-OPEN coil+mode a no-op (entry stays pinned to the FIRST fire day) WHILE letting an
+    Anticipate and a Confirm entry coexist on the same coil (#354). Returns True iff a NEW row was
+    written (the job's 'fired' signal)."""
     def _dd(v):
         return date.fromisoformat(v) if isinstance(v, str) else v
     pool = await get_pool()
@@ -6516,12 +6533,12 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
         row = await conn.fetchrow("""
             INSERT INTO mi_consolidation_entry_shadow
                 (ticker, anchor_date, entry_date, entry_price, stop_kind, stop_price,
-                 structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-            ON CONFLICT (ticker, anchor_date) WHERE outcome IS NULL DO NOTHING
+                 structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin, entry_mode)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+            ON CONFLICT (ticker, anchor_date, entry_mode) WHERE outcome IS NULL DO NOTHING
             RETURNING id
         """, ticker, _dd(anchor_date), _dd(entry_date), entry_price, stop_kind, stop_price,
-             structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin)
+             structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin, entry_mode)
     return row is not None
 
 
@@ -6555,9 +6572,10 @@ async def settle_consolidation_entry_shadow(row_id: int, *, outcome, realized_r,
 
 
 async def get_consolidation_entry_shadow_summary() -> dict:
-    """The #327 forward-shadow READOUT — open/settled counts + the settled cohort's capture/stop
-    rates, median realized_r + fwd_mfe_r, split by origin (9m vs family_a). The instrument that
-    will answer the #326 cut-over once N accrues (decision metric = realized_r; entry-quality =
+    """The Family-A forward-shadow READOUT — open/settled counts + the settled cohort's capture/stop
+    rates, median realized_r + fwd_mfe_r, split by origin (9m vs family_a) AND by entry_mode
+    (anticipate vs confirm — ADR 0013 §1 "modes never blended", #354). The instrument that will
+    answer the #326 cut-over once N accrues (decision metric = realized_r; entry-quality =
     capture% + fwd_mfe_r). Ordering/aggregate only — never an auto-decision."""
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -6588,8 +6606,17 @@ async def get_consolidation_entry_shadow_summary() -> dict:
                        FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r
             FROM mi_consolidation_entry_shadow GROUP BY origin ORDER BY origin
         """)
+        by_mode = await conn.fetch("""
+            SELECT entry_mode,
+                   count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
+                   count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r
+            FROM mi_consolidation_entry_shadow GROUP BY entry_mode ORDER BY entry_mode
+        """)
     out = dict(overall)
     out["by_origin"] = [dict(r) for r in by_origin]
+    out["by_mode"] = [dict(r) for r in by_mode]   # #354 — never-blend the entry modes
     return out
 
 
@@ -6613,7 +6640,7 @@ async def get_consolidation_entry_shadows(*, status=None, settled_on=None, limit
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             f"SELECT ticker, anchor_date, entry_date, entry_price, stop_price, signal_n, rmv_5d, "
-            f"origin, outcome, realized_r, fwd_mfe_r, settled_at "
+            f"origin, entry_mode, outcome, realized_r, fwd_mfe_r, settled_at "
             f"FROM mi_consolidation_entry_shadow{where} ORDER BY {order} LIMIT ${len(args)}", *args)
     return [dict(r) for r in rows]
 

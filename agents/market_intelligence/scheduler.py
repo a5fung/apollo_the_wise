@@ -2942,16 +2942,20 @@ async def _consolidation_readiness_job():
                 anchor_idx = next((j for j, b in enumerate(bars)
                                    if b["date"] == anchor_date.isoformat()), None)
                 if anchor_idx is not None:
-                    sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
-                    if sig:
-                        origin = "9m" if ticker in nine_m else "family_a"
-                        if await insert_consolidation_entry_shadow(
+                    origin = "9m" if ticker in nine_m else "family_a"
+                    # Family-A entry modes recorded into the ONE shadow lifecycle, tagged by mode
+                    # (#354 ADR 0013 §1): Anticipate = the validated in-coil signal; Confirm = the
+                    # base-high breakout, detected on the SAME §2 universe (NOT the live #94 path).
+                    for mode, sig in (
+                            ("anticipate", de.entry_signal_at(bars, len(bars) - 1, anchor_idx)),
+                            ("confirm", de.confirm_signal_at(bars, len(bars) - 1, anchor_idx))):
+                        if sig and await insert_consolidation_entry_shadow(
                                 ticker, anchor_date, entry_date=sig["entry_date"],
                                 entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
                                 stop_price=sig["stop_price"], structural_low=sig["structural_low"],
                                 signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"],
                                 range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
-                                target_r=sig["target_r"], origin=origin):
+                                target_r=sig["target_r"], origin=origin, entry_mode=mode):
                             entries_fired.append((ticker, origin, sig))
 
                 await upsert_consolidation(

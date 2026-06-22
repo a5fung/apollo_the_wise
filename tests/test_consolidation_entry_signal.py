@@ -102,6 +102,53 @@ def test_entry_signal_none_when_not_tight():
     assert de.entry_signal_at(bars, len(bars) - 1, anchor) is None
 
 
+# ── 2b. confirm_signal_at — the CONFIRM entry mode (#354 flag→consolidation merge) ──
+# The DB-level coexist (an Anticipate + a Confirm row OPEN on the same ticker/anchor) is enforced by
+# the 3-col partial unique index idx_cons_entry_shadow_open_mode + the (ticker, anchor_date,
+# entry_mode) ON CONFLICT — deploy-verified (the pure CI suite has no DB). These pin the detector.
+def _breakout_series(brk_mult=1.05, brk_vol=1e7, **kw):
+    """A post-runup coil (via _coil_series) + a final BREAKOUT bar: close above the coil high."""
+    bars, anchor = _coil_series(**kw)
+    coil_high = max(b["c"] for b in bars[anchor + 1:])      # the base high (post-peak closes)
+    bars.append(_mk(round(coil_high * brk_mult, 4), 0.05, brk_vol, 9000))
+    return bars, anchor
+
+
+def test_confirm_fires_on_volume_breakout():
+    bars, anchor = _breakout_series(brk_mult=1.05, brk_vol=1e7)
+    sig = de.confirm_signal_at(bars, len(bars) - 1, anchor)
+    assert sig is not None
+    assert sig["stop_kind"] == "base_low"                   # Confirm stop = base low (≠ anticipate coiled_low)
+    assert sig["signal_n"] == 0                             # confirm is not a tight-day-count signal
+    assert sig["entry_price"] == round(bars[-1]["c"], 4)    # entry = the break-day close
+    assert sig["stop_price"] == round(min(b["l"] for b in bars[anchor + 1:]), 4)   # base low
+
+
+def test_confirm_none_without_close_above_base():
+    bars, anchor = _breakout_series(brk_mult=0.99, brk_vol=1e7)   # closes BELOW the base high
+    assert de.confirm_signal_at(bars, len(bars) - 1, anchor) is None
+
+
+def test_confirm_none_on_weak_volume():
+    bars, anchor = _breakout_series(brk_mult=1.05, brk_vol=1e5)   # break close, but no confirming volume
+    assert de.confirm_signal_at(bars, len(bars) - 1, anchor) is None
+
+
+def test_confirm_point_in_time_invariant_to_future_bars():
+    # Same look-ahead trap as entry_signal_at: the fire AS OF `idx` must read only bars[:idx+1].
+    bars, anchor = _breakout_series(brk_mult=1.05, brk_vol=1e7)
+    idx = len(bars) - 1
+    s1 = de.confirm_signal_at(bars, idx, anchor)
+    future = bars + [_mk(bars[-1]["c"] * 1.20, 0.15, 9e6, 9999)]
+    assert de.confirm_signal_at(future, idx, anchor) == s1
+
+
+def test_confirm_needs_a_base_between_peak_and_break():
+    # No room for a base (idx < anchor+2) → no fire (guards the empty-base max()).
+    bars, anchor = _breakout_series(brk_mult=1.05, brk_vol=1e7)
+    assert de.confirm_signal_at(bars, anchor + 1, anchor) is None
+
+
 # ── 3. the offline sweep DELEGATES to the single source (anti-re-inline pin) ───
 def _load_sweep():
     path = _ROOT / "scripts" / "_327_entry_signal.py"
