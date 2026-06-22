@@ -1,5 +1,9 @@
 # Apollo the Wise — Claude Context
 
+## 🛑 THE LINE — you do NOT control the system or the money (operator, 2026-06-22, ABSOLUTE)
+
+**NEVER**, on your own authority, change / disable / alter any **strategy, sell or entry discipline, sizing, target, safeguard, the trading system, or anything touching real money or live trade state** — that is the operator's **SOLE** authority. **Pausing broken code to fix a bug is NOT a license to change the strategy**: say "X is paused while we fix the bug; the fix restores it" — never "we'll run without X." If a genuine fork exists ("if not fixed by date Y, gate the launch vs run without the feature?"), **surface it as the operator's decision** — never pre-decide it, never bury it in a plan. In any doubt: **STOP and ask.** This line cannot be crossed. (Crossed once 6/22 — retracted; never again.)
+
 ## Session Protocol (open + close — the anti-drift ritual)
 
 **SoT for ALL planned work = `PLAN.md`** (consolidated 2026-06-16 — `feedback-runway-not-in-open-ritual`: the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× because nothing reconciled them reliably). `PLAN.md` is the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed. (Mechanical because every prose-discipline reconcile here has failed — only gates hold.)
@@ -378,24 +382,17 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-20 (Sat) — real-money auto-entry · filing-quality gates · burndown
+### 2026-06-22 (Mon) — MAGNA53 launch Phase 1 (staged, $0 real money) · partials paused
 
-*(Full detail graduated to CHANGELOG.md — this is the live-reference summary.)*
-
-- **Live AUTO-ENTRY wired** (`entry_pipeline._should_auto_enter`, operator-signed): a `phase=live` + `live_real_enabled=True` strategy now AUTO-FIRES real money (was a manual STAGED-PAPER proposal). Config: full 1% / NULL cap / $5k account. **HARD gate — not permitted until `/pause` verified-live.** SSoT safeguards.md + magna53_ep.md.
-- **Filing-quality gates** in `check_plan.py`: high-stakes pointer gate (a launch/real-money/cutover task must POINT at its runbook/#ref — the #305 lesson) + CLOSE-ritual `--audit-new` (surfaces thin tasks added this session). Burndown 132→112 by real completion only (#65/#260/#285/#324 + 13 stubs). **#349 DR rehearsal PASSED** → Monday GO runbook (`docs/roadmap/monday_go_runbook.md`).
+- Phase 1 live-validated (creds boot · preflight · `/status` · `/pause`); magna53 `live_real_enabled=FALSE`, real money = Phase 2 on ACH funds-settle (~Wed). 3 launch-blockers fixed live; two-phase runbook (`docs/roadmap/monday_go_runbook.md`).
+- **Partial exits PAUSED** (`_PARTIAL_EXIT_PAUSED=True`, bbe95a0) — recurring `pending_replace` race; durable fix = #151 (never-naked invariant + failure-matrix harness + converge). Partials are the **TESTED** sell discipline; the pause is **TEMPORARY**, the fix **RESTORES** them (NOT removed) — see THE LINE.
 
 ### Older entries graduated to CHANGELOG.md
 
-- Compressed 2026-05-17: 2026-04-30 → 2026-05-08.
-- Compressed 2026-05-24: 2026-05-10 → 2026-05-21 (dual-account · ALPACA_LIVE outage · CRMD/Gate 5 · Track 1 ownership + Gate 5 G · import-shadowing · backward-check hygiene).
-- Compressed 2026-06-07: 2026-05-22 → 2026-05-27 (weekly-review fixes · DR layer · SiP Phase 1 · detectors #94–#96 · #123 reconcile · IBM mass-close incident + #142).
-- Compressed 2026-06-10 (#262): 2026-05-29 + 2026-06-01 (partial-exit hardening arc).
-- Compressed 2026-06-12 (#262): 2026-06-10 (judge load-bearing day) + 2026-06-11 detail bullets (rubric v2 · replay Phase A/blocker · MNTS cluster).
-- Compressed 2026-06-19: 2026-06-12 (#268 Phase B closed + promote +1.26R edge · kill/scale bands SIGNED #275 · alert-layer writer gaps · rubric v3/AKTS freshness · W2 study #1 5-min-OR-dead + skip-wide-open artifact).
-- Compressed 2026-06-20: 2026-06-19 (#304 GO/NO-GO pack advisor-corrected · #303 launch-readiness audit · #302 replay-regression deployed · #55 keep-0.01 · operator launch decisions #344/#349/#55/#301).
+- 2026-06-22 graduated 2026-06-20 (real-money auto-entry wired · filing-quality gates · burndown 132→112 · #349 DR PASSED · Monday GO runbook).
+- Prior: 06-20→06-19 (#304 pack · #303 readiness · #302 replay-regression) · 06-19→06-12 (#268 Phase B · #275 bands SIGNED) · 06-12→06-10/11 (rubric v2) · 06-10→05-29/06-01 (partial-exit arc) · 06-07→05-22/27 (IBM mass-close #142 · DR layer · SiP) · 05-24→05-10/21 (dual-account · ALPACA_LIVE outage · CRMD/Gate 5) · 05-17→04-30/05-08.
 
-Search `CHANGELOG.md` for any concept above (e.g. "Continuation Flag", "M&A filter", "CRMD", "dual-account", "Gate 5", "purpose-tagged stop", "drawdown breaker", "splits_ingest premature-apply") to retrieve compressed form + git commit pointer.
+Search `CHANGELOG.md` for any concept (CRMD · dual-account · drawdown breaker · partial-exit · Gate 5) → compressed form + git commit.
 
 ---
 
