@@ -69,6 +69,28 @@ async def test_replace_order_passes_qty_and_stop_price():
 
 
 @pytest.mark.asyncio
+async def test_partial_exit_paused_takes_no_action():
+    """#151 HARD PAUSE (2026-06-22, operator): while _PARTIAL_EXIT_PAUSED, execute_partial_exit
+    returns False and touches NOTHING — it never reaches the breaker query, the stop replace, or
+    the sell — so the position keeps its FULL stop + size. Applies even to force=True (/partialnow),
+    since the pending_replace-race breaks that path too. The breaker mock raises if reached."""
+    from agents.market_intelligence.broker import order_manager
+
+    audited = []
+    async def _audit(evt, *a, **k):
+        audited.append(evt)
+        return None
+
+    with patch.object(order_manager, "_PARTIAL_EXIT_PAUSED", True), \
+         patch.object(order_manager, "log_audit_event", _audit), \
+         patch.object(order_manager, "_consecutive_partial_exit_failures",
+                      AsyncMock(side_effect=AssertionError("breaker reached PAST the pause guard"))):
+        ok = await order_manager.execute_partial_exit(221, 66, force=True)
+    assert ok is False
+    assert audited == ["partial_exit_paused"]
+
+
+@pytest.mark.asyncio
 async def test_replace_order_propagates_broker_errors():
     """If the broker rejects the replace (e.g., order already filled), the
     exception must propagate so execute_partial_exit's outer try/except can

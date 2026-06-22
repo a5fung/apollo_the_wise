@@ -1001,6 +1001,14 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
 # every day (the IBM 2026-05-27/28 shape: two days of silent same-trade failures).
 _PARTIAL_EXIT_BREAKER_THRESHOLD = 3
 _PARTIAL_EXIT_BREAKER_WINDOW_DAYS = 7
+# HARD PAUSE (2026-06-22, operator "pause and fix"): partial exits are disabled
+# pending the #151 pending_replace-race fix (the 3s verify-shares-free poll times
+# out → sell aborts → retry re-replaces into the SAME race → loops, never selling,
+# leaving the reduced stop under-covering the position; QURE 6/22, FPS 6/04, IBM
+# 5/27). While paused, a position simply keeps its FULL stop + FULL size — strictly
+# safer than the broken path. Flip to False ONLY in the commit that ships AND
+# verifies-live the fix. Tests monkeypatch this.
+_PARTIAL_EXIT_PAUSED = True
 
 
 async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS) -> int:
@@ -1074,6 +1082,22 @@ async def execute_partial_exit(
     scheduled cron path passes force=False so a string of recent failures pauses
     automatic retries instead of re-failing into the same fault daily.
     """
+    # ── HARD PAUSE (#151, 2026-06-22) — disabled until the pending_replace-race
+    # fix is verified-live. Take NO partial (no stop touch): the position keeps its
+    # full stop + size, strictly safer than the looping/under-covering broken path.
+    if _PARTIAL_EXIT_PAUSED:
+        logger.warning(
+            f"execute_partial_exit: PAUSED (#151 race fix pending) — trade {trade_id} "
+            f"keeps full stop+size, no partial taken (force={force})"
+        )
+        await log_audit_event(
+            "partial_exit_paused",
+            f"partial-exit PAUSED (#151 pending_replace-race fix pending) — trade "
+            f"{trade_id} keeps full stop + full size, no partial taken",
+            json.dumps({"trade_id": trade_id, "shares": int(shares), "force": force}),
+        )
+        return False
+
     # Circuit breaker (#151 c): if partial-exit attempts have failed at the
     # broker-interaction stages SINCE THE LAST SUCCESSFUL partial, refuse this
     # UNATTENDED attempt and alert. Success-aware (advisor 2026-05-29): a clean
