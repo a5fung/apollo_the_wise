@@ -148,7 +148,6 @@ _Last CLOSE: 2026-06-16._
 - #256 | 2026-06-23 | in_progress | #256 W4 closure (2-svc DR runbook · per-service uptime · nightly staging-restore)
 - #176 | 2026-06-23 | pending | SoT/roster drift tooling — create-time hook + scheduled ping (residual)
 - #216 | 2026-06-23 | pending | jsonb codec consolidation (root-fix of #179) — POST-launch by design (protects window)
-- #172 | 2026-06-23 | pending | partial-exit /simplify refactor (blocked behind #151 architectural split)
 
 ## Apollo Trades dashboard (portfolio-app2)
 
