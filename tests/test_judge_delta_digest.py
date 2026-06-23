@@ -7,7 +7,8 @@ The job's DB-query + Telegram-send shell is exercised by the prod scan; the pure
 formatter is what bugs (markdown/escaping, count, cap) live in.
 """
 # Alpaca SDK + backtester.filters stubbing handled by tests/conftest.py.
-from agents.market_intelligence.scheduler import _build_judge_delta_message
+# _build_judge_delta_message re-homed scheduler.py → briefing.py (#121, 2026-06-23).
+from agents.market_intelligence.briefing import _build_judge_delta_message
 
 
 def _row(ticker, direction, floor="MODERATE", judge="HIGH", mat="material", gap=12.0,

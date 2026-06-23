@@ -1982,6 +1982,103 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
 
 # ── Telegram delivery ──────────────────────────────────────────────────────────
 
+def _md_escape(s: str) -> str:
+    """Escape Telegram Markdown V1 control chars (`_`, `*`) in dynamic content.
+
+    Filed as #148, 2026-05-28: the downgrade digest's reason strings
+    (e.g. `news_corpus_sparse_no_q_rev`) and `from_quality` values
+    (e.g. `game_changer`) contain `_` which Markdown V1 reads as italic
+    delimiters. Unbalanced `_` count → Telegram 400. send_telegram_message
+    has a plain-text fallback but the cosmetic gap is visible.
+
+    Backticks deliberately NOT escaped — code spans are useful and
+    they're already escaped at template time when present.
+
+    Re-homed off scheduler.py into briefing.py (#121, 2026-06-23): a scheduler
+    shouldn't own message formatting, and this lives beside send_telegram_message
+    and its Markdown-V1 sibling _strip_markdown_markers. Behavior unchanged.
+    """
+    if not s:
+        return ""
+    return s.replace("_", r"\_").replace("*", r"\*")
+
+
+# Machine reason → human prose map (#143/#148 2026-05-28). Used by the
+# downgrade digest so operator-facing lines read as English instead of
+# `rubric_composite_11.0_below_22_label_weak`.
+_DOWNGRADE_REASON_STATIC = {
+    "q_rev_yoy_missing_no_prior_year_comparable": "Q-rev YoY missing (no prior-year comparable)",
+    "news_corpus_sparse_no_q_rev": "news corpus sparse, no Q-rev data",
+    "extraction_quality_low": "catalyst extraction confidence low",
+}
+
+_DOWNGRADE_REASON_RUBRIC_RE = re.compile(
+    r"^rubric_composite_(?P<score>[\d.]+)_below_(?P<thresh>\d+)_label_(?P<label>\w+)$"
+)
+
+
+def _humanize_downgrade_reason(reason: str) -> str:
+    """Convert machine reason code to operator-facing prose.
+
+    Examples:
+    - `rubric_composite_11.0_below_22_label_weak` → `rubric 11/39 below 22 floor (weak)`
+    - `q_rev_yoy_missing_no_prior_year_comparable` → `Q-rev YoY missing (no prior-year comparable)`
+    - unrecognized → reason verbatim with underscores spaced
+
+    Re-homed off scheduler.py (#121, 2026-06-23); behavior unchanged.
+    """
+    if not reason:
+        return ""
+    if reason in _DOWNGRADE_REASON_STATIC:
+        return _DOWNGRADE_REASON_STATIC[reason]
+    m = _DOWNGRADE_REASON_RUBRIC_RE.match(reason)
+    if m:
+        score = m.group("score").rstrip("0").rstrip(".") or m.group("score")
+        return f"rubric {score}/39 below {m.group('thresh')} floor ({m.group('label')})"
+    # Fallback: replace underscores with spaces so the raw reason is at
+    # least readable, even if we don't have a templated translation.
+    return reason.replace("_", " ")
+
+
+def _build_judge_delta_message(rows, authority_on: bool, date_str: str) -> str:
+    """Pure formatter for the judge-delta digest (testable without a DB). `rows`
+    are mi_ep_alerts rows (promote/demote, judge_tier non-null) already ordered
+    promotes-first. The subtitle reflects whether the deltas were load-bearing.
+
+    Re-homed off scheduler.py (#121, 2026-06-23); behavior unchanged.
+    """
+    n_promote = sum(1 for r in rows if r["judge_direction"] == "promote")
+    n_demote = len(rows) - n_promote
+    subtitle = ("_Load-bearing: these DROVE the paper grade/entry._" if authority_on
+                else "_Shadow: judge vs floor grade · drives nothing while toggle OFF._")
+    parts = [
+        f"🧑‍⚖️ *EP Judge deltas — EOD {date_str} (▲{n_promote} ▼{n_demote})*",
+        subtitle,
+    ]
+    from agents.market_intelligence.ep_grade_judge import format_tier_transition
+    # Row cap 12 × ~330 chars stays under Telegram's 4096 even on a heavy day.
+    for r in rows[:12]:
+        arrow = "▲" if r["judge_direction"] == "promote" else "▼"
+        mat = r["judge_materiality_tier"] or "n/a"
+        tier_part = format_tier_transition(r["baseline_floor_tier"], r["judge_tier"])
+        parts.append(
+            f"{arrow} `{r['ticker']}` {tier_part}  "
+            f"materiality={mat}  +{(r['gap_pct'] or 0):.1f}%"
+        )
+        if r["judge_rationale"]:
+            # Free-text judge rationale → escape Markdown actives (#148 class) so a
+            # stray _/* in the prose doesn't break the legacy-Markdown parse.
+            # Truncate at a WORD boundary with an ellipsis (operator 6/12: a hard
+            # slice cut the AKTS rationale mid-word with no signal it was cut).
+            rationale = r["judge_rationale"]
+            if len(rationale) > 280:
+                rationale = rationale[:280].rsplit(" ", 1)[0] + " …"
+            parts.append(f"   _{_md_escape(rationale)}_")
+    if len(rows) > 12:
+        parts.append(f"…+{len(rows) - 12} more — full list: /audit judge")
+    return "\n".join(parts)
+
+
 def _strip_markdown_markers(text: str) -> str:
     """Strip Telegram-Markdown control chars so a parse-failure plain-text
     fallback doesn't show literal *Foo* / _bar_ / `code` to the user.

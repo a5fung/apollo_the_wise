@@ -121,7 +121,7 @@ async def test_digest_annotates_judge_promoted_ticker():
 
 def test_humanize_rubric_composite_reason():
     """`rubric_composite_X_below_22_label_Y` → `rubric X/39 below 22 floor (Y)`."""
-    from agents.market_intelligence.scheduler import _humanize_downgrade_reason
+    from agents.market_intelligence.briefing import _humanize_downgrade_reason
     assert _humanize_downgrade_reason(
         "rubric_composite_11.0_below_22_label_weak"
     ) == "rubric 11/39 below 22 floor (weak)"
@@ -135,7 +135,7 @@ def test_humanize_rubric_composite_reason():
 
 def test_humanize_static_reason_map():
     """Known machine codes have curated prose translations."""
-    from agents.market_intelligence.scheduler import _humanize_downgrade_reason
+    from agents.market_intelligence.briefing import _humanize_downgrade_reason
     assert _humanize_downgrade_reason(
         "q_rev_yoy_missing_no_prior_year_comparable"
     ) == "Q-rev YoY missing (no prior-year comparable)"
@@ -147,7 +147,7 @@ def test_humanize_static_reason_map():
 def test_md_escape_underscores_and_stars():
     """#148: dynamic content with `_` or `*` must be escaped before joining
     into Markdown V1 digest lines, else Telegram 400."""
-    from agents.market_intelligence.scheduler import _md_escape
+    from agents.market_intelligence.briefing import _md_escape
     assert _md_escape("game_changer") == r"game\_changer"
     assert _md_escape("a_b_c") == r"a\_b\_c"
     assert _md_escape("Q-rev YoY missing (no prior-year comparable)") == \
@@ -159,7 +159,7 @@ def test_md_escape_underscores_and_stars():
 
 def test_humanize_unknown_reason_falls_back_to_spaced():
     """Unrecognized reason → underscores → spaces, no crash."""
-    from agents.market_intelligence.scheduler import _humanize_downgrade_reason
+    from agents.market_intelligence.briefing import _humanize_downgrade_reason
     assert _humanize_downgrade_reason(
         "some_brand_new_reason_we_havent_seen_yet"
     ) == "some brand new reason we havent seen yet"

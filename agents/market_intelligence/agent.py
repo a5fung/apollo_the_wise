@@ -2833,8 +2833,9 @@ class MarketIntelligenceAgent(BaseAgent):
 
         # Legacy-Markdown-safe: review_ids + blocked_by are underscore-heavy, which desyncs
         # Telegram's parser (italic on '_') — escape the free-text fields via the canonical
-        # _md_escape (#148) and avoid inline backtick/italic. Shared with the post-nightly escalation.
-        from agents.market_intelligence.scheduler import _md_escape as _esc
+        # _md_escape (#148; re-homed to briefing.py #121) and avoid inline backtick/italic.
+        # Shared with the post-nightly escalation.
+        from agents.market_intelligence.briefing import _md_escape as _esc
 
         lines = [f"📅 *Data-gated reviews — {today.isoformat()}*", ""]
         ready, errored = res.get("ready", []), res.get("errored", [])

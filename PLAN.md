@@ -183,7 +183,7 @@ _Launch DoD: docs/roadmap/launch-2026-06-22.md · v1.1/v2.0 map: docs/roadmap/ap
 
 ## Miscellaneous (no home project)
 
-- #121 | 2026-06-23 | in_progress | shared Telegram formatting layer (consolidate ≥3 escapers, re-home off scheduler.py)
+- #121 | 2026-07-15 | in_progress | **Telegram formatting layer — consolidate + re-home DONE; remaining = legacy-Markdown→HTML surface migration.** ✅ consolidate-escapers was already done (a6c45a0 6/15 — there's ONE canonical `_md_escape`, no real dupes; the "≥3" premise was stale). ✅ 6/23: re-homed `_md_escape` + `_humanize_downgrade_reason` (+ its maps) + `_build_judge_delta_message` from scheduler.py → briefing.py (its natural home, owns send_telegram_message; PURE move, byte-identical, 1065 tests green; commit-not-deployed — behavior-preserving, rides the next deploy). REMAINING (#121-epic): migrate the remaining legacy-Markdown Telegram surfaces to the shared HTML layer (`shared/telegram_format`; d9c872d/4e483ee in progress). DoD: all operator-facing Telegram on the HTML layer.
 - #195 | 2026-06-23 | in_progress | SECURITY — rotate portfolio-app2 app_password (operator action)
 - #334 | 2026-07-15 | pending | LOW-PRI theme-revive cooldown latch NOT YET WIRED (theme_engine.py:322, surfaced in 6/18 prose sweep): the one-way-latch arm is inert because no `revived_at` timestamp is persisted on mi_themes, so the only caller passes days_since_last_revive=None. Wire when revive goes live (persist revived_at, thread the delta). Filed not-dropped per the no-floating-prose directive; genuinely minor.
 - #248 | 2026-07-15 | pending | regime engine: post-pullback hysteresis + spy_vs_200ma NULL fix + stale docstring

@@ -746,10 +746,10 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
     transparency footer so the operator can see what was filtered and why.
     """
     from agents.market_intelligence.briefing import send_telegram_message
-    # Reuse the canonical Markdown escaper (#148) for free-text fields below
-    # (source like `mna_filter`, news-derived exclusion reasons) — their `_`/`*`
-    # otherwise break Markdown → 400 → plaintext fallback (4 of 51 fallbacks/30d).
-    from agents.market_intelligence.scheduler import _md_escape
+    # Reuse the canonical Markdown escaper (#148; re-homed to briefing.py #121) for
+    # free-text fields below (source like `mna_filter`, news-derived exclusion reasons)
+    # — their `_`/`*` otherwise break Markdown → 400 → plaintext fallback (4 of 51 fallbacks/30d).
+    from agents.market_intelligence.briefing import _md_escape
 
     climaxes = sorted(
         by_stage.get("climax", []),
