@@ -6738,3 +6738,26 @@ reviews:
       Promotion is NEVER agent-self-certified (ADR 0011).
     status: pending
     added_on: 2026-06-18
+
+  - review_id: ep_mcap_floor_500m_review
+    title: "EP $500M market-cap floor — is it filtering out net-winner near-miss gappers? (BLZE $487M seed)"
+    question: |
+      Over the accumulated NEAR-MISS cohort (clean EP-eligible gappers filtered ONLY
+      by the <$500M MIN_MARKET_CAP floor, esp. ~$400-500M), would lowering the floor
+      add net WINNERS or just noise? Is $500M the right floor, or are we observe-laning
+      tradeable BLZE-class names?
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-09-22
+    action_when_ready: |
+      Query mi_ep_scan_log for the NEAR-MISS cohort — distinct tickers filtered by
+      mcap_too_small in ~$400-500M that PASSED the EP entry gates (gap>=10% / rvol /
+      extension / price>=$5) since 2026-06-23 — + their FORWARD returns (would the EP
+      alert have won or been noise?). Need N>=~15 with outcomes (else defer for cohort
+      growth). Then the OPERATOR decides whether to lower MIN_MARKET_CAP
+      (backtester/filters.py:23 = the shared live+backtest gate) — a detection/safeguard
+      criterion -> CHANGE_PROCESS + sign-off + filter-list judgment, NEVER an agent call.
+      Seed: BLZE 2026-06-23 ($487M, $13M under the floor; gap 17.7->33.6%, rvol->6.65x;
+      observe-laned, not alerted). See PLAN #359.
+    status: pending
+    added_on: 2026-06-23
