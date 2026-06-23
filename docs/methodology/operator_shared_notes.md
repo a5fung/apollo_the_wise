@@ -10,6 +10,71 @@ durable home that survives context compaction — grep here before asking the op
 
 ---
 
+## 2026-06-22 — Gemini cross-reference: full Pradeep Bonde Anticipation blueprint (operator-shared)
+
+Operator shared this as a precise cross-reference for the #270 consolidation-play DEFINITION (after
+the consolidation detector was found firing on declines/uptrends — it never enforced a real
+consolidation). This is the canonical spec we BUILD TO. Verbatim:
+
+**1. THE VELOCITY LEG (run-up).** Two universes:
+- **Universe A (established trend):** Baseline Trend Intensity `C / C_65 > 1.05` (today's close ≥5%
+  above the close 65 days ago — grinding up, filters chop/downtrends) AND Velocity `15%+ thrust over
+  the last 10 days`.
+- **Universe B (Episodic Pivot):** 10-day gap scan for `L > H_1 AND V > V_1` (today's low strictly
+  above yesterday's high + volume surge).
+
+**2. THE CONSOLIDATION PHASE ("coiled spring")** — a valid consolidation is defined by FOUR
+dimensions; violate ANY one → the setup is VOIDED:
+
+- **DEPTH (price retracement) — "holds the gains":**
+  - **Upper Third Rule:** consolidate NEAR THE ABSOLUTE HIGH of the thrust; should NOT retrace more
+    than **20–30% of the preceding move**.
+  - **One-Strike Breakdown Rule:** during the consolidation, a **MAXIMUM of ONE** daily breakdown of
+    **≥4%**. Two days of 4%+ drops → accumulation structure is broken → DISCARD.
+  - **MA support:** price pauses long enough for the 10 EMA / 20 SMA to catch up (dynamic support).
+- **DURATION (time):** **3 to 20 trading days** sideways. Sweet spot **4–10 days** (short = more
+  explosive secondary burst; months-long = no urgency).
+- **RANGE (volatility contraction):** intraday swings must SHRINK left→right; daily ranges (H−L)
+  progressively tighten, closes tightly clustered. INVALID = "drunken man walk" (wild intraday swings,
+  long wicks, gap-up-close-low then gap-down-close-high — chaotic, untradable). VALID = "linear and
+  orderly." Ripe when it culminates in a **Narrow Range (NR) day**:
+  - **3-bar total range ≤ 1.5%**
+  - **Final daily range ≤ 0.3%**
+  - Daily contraction scan: today's close within a **1% band** of yesterday's close.
+- **VOLUME (the footprint):** volume dries up SYMMETRICALLY with the range. Absolute contraction:
+  tightest-day volume is **well below the 50-day average** AND a fraction of the velocity-leg volume.
+  Red-day volume during the pause < up-day volume during the velocity leg (institutions NOT dumping).
+  The "dead" day: the narrowest-range day just before the breakout has the LOWEST volume of the whole
+  3–20 day sequence (absolute equilibrium).
+- **FLOAT:** < 25M shares (ideal < 10M) — low supply + catalyst = the friction for a rapid burst.
+
+**3. TRIGGER:** Buy Stop just above the high of the narrow-range day (or OPG to execute at the opening
+print on a slight gap out of the tight range).
+
+**4. RISK / EXECUTION:**
+- **Stop:** hard stop just below the low of the narrow-range day or the bottom of the 3-day tight
+  block. Risk typically **2–4%**.
+- **Exit:** target a Momentum Burst of **8–20% in 3–5 days**. Sell **30–50%** into the initial thrust
+  (often within 1–2 days). Move the remainder's stop to **breakeven** immediately; trail the rest;
+  cut it if the burst fades.
+
+**HOW THIS MAPS TO OUR BUGS (the divergences to fix, not a new definition):**
+- DEPTH is the missing "holds near the high" gate — Upper-Third (≤20–30% retrace) + One-Strike (≤1
+  daily 4% breakdown). This is what cleanly rejects BTU/UFO/DRUG (multi-day 4%+ declines) that the
+  code lets in.
+- RANGE must be VOLATILITY-RELATIVE + a progressive contraction culminating in an NR day — NOT the
+  absolute `≤7%` range `is_entry_tight` uses (which admits quiet declines + drops high-ATR leaders).
+  Reconciles with the operator's own 6/16 note ("absolute range fails; ATR-normalized is the shape").
+- A rising name (PTGX) is still in the velocity leg, not consolidating → no NR day → no trigger.
+- The runup anchor must be the velocity-leg peak with the consolidation strictly AFTER it (the STM
+  anchor bug). The velocity definition (`C/C_65>1.05` + 15%/10d) is the run-up gate.
+
+Source (operator-shared, Gemini synthesis of Bonde's published materials): Stockbee.biz, "Low Range
+Bar Breakout Strategies" bootcamp (the 1% contraction + TTT params), "Stocks in Play: A Trading Guide"
+(EPs + OPG), LuxAlgo Stockbee screener ports (TI65 `C/C_65>1.05`).
+
+---
+
 ## 2026-06-19 — Operator label + Gemini EP analysis on BFLY 6/18 (the #344 catalyst-correctness case)
 
 **Operator correction of Apollo's `routine` grade reasoning ("no named customer or partner; no
