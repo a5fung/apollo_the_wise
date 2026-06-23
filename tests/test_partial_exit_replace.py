@@ -331,6 +331,9 @@ async def test_abort_immediately_reprotects_in_process():
     assert args[2] == 200.0, (      # broker_qty = live TOTAL qty, NOT DB / qty_available
         f"re-protect must size off broker TOTAL qty 200.0 — got {args[2]}"
     )
+    # stop_price is never-naked-critical: None here → _ensure_stop_coverage's place
+    # branch can't place a stop ("no stop_price → manual intervention") → naked.
+    assert args[3] == 95.0, f"re-protect must carry the DB stop_price 95.0 — got {args[3]}"
 
 
 @pytest.mark.asyncio
@@ -380,3 +383,256 @@ async def test_abort_sends_single_telegram():
     msg = h["telegram"].call_args.args[0]
     assert "ABORTED" in msg
     assert "Coverage repaired" in msg  # the folded-in _ensure_stop_coverage outcome
+
+
+# ─── #151 (2026-06-23) extend in-process re-protect to the OTHER two abort ────
+# paths in execute_partial_exit: (1) replacement-rejected + old-stop-confirmed-dead
+# and (2) verify-stop-dead-before-sell. Both previously nulled stop_order_id and
+# returned inside the advisory lock, leaning on the slow EOD sync cron to
+# re-protect. They now route through the SAME post-lock _ensure_stop_coverage call
+# the sell-failure path uses — closing the naked window in-process.
+#
+# NOTE (conscious coverage gap): `ensure_cov_mock` is mocked, so these tests verify
+# the re-protect CALL (with broker-truth TOTAL qty 200.0) and that the stale stop
+# was nulled BEFORE that call — not the actual stop_order_id write-back inside
+# _ensure_stop_coverage. The real write-back (place branch persists the new id) is
+# covered by tests/test_never_naked_invariant.py.
+
+
+async def _build_partial_exit_harness(*, replace_side_effect, get_order_return):
+    """Shared harness builder for the two stop-failure abort paths.
+
+    replace_side_effect → alpaca.replace_order behavior (raise → path #1;
+        return a live new order → path #2 reaches Step 1b verify).
+    get_order_return → alpaca.get_order behavior. Path #1: the old-stop verify
+        read in the except returns DEAD. Path #2: the new-stop verify poll
+        returns DEAD.
+
+    Trade: 200 shares, selling 66. The MARKET SELL mock RAISES if reached so any
+    test that accidentally falls through to a sell fails loudly (guard regression
+    tripwire).
+    """
+    from agents.market_intelligence.broker import order_manager as om
+
+    trade = {
+        "id": 221, "ticker": "IBM", "remaining_shares": 200,
+        "stop_price": 95.0, "hard_stop": 95.0, "stop_order_id": "old_stop_id",
+        "account_mode": "paper", "signal_type": "magna53", "entry_price": 100.0,
+    }
+
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(side_effect=[trade, None])  # trade lookup, then dedup=None
+    conn.execute = AsyncMock()
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=acquire_cm)
+
+    audited = []
+
+    async def _audit(evt, *a, **k):
+        audited.append(evt)
+
+    replace_mock = AsyncMock(**replace_side_effect)
+    get_order_mock = AsyncMock(**get_order_return)
+    # post-lock re-protect reads the live TOTAL position qty.
+    get_position_mock = AsyncMock(return_value={"qty": 200.0, "qty_available": 200.0})
+    # MUST NOT be reached on either stop-failure abort path.
+    sell_mock = AsyncMock(side_effect=AssertionError(
+        "place_market_sell reached on a stop-failure abort path — guard regression!"
+    ))
+    cancel_mock = AsyncMock()
+    place_stop_mock = AsyncMock(return_value={"id": "should_not_be_called", "status": "new"})
+    set_stop_mock = AsyncMock()
+    ensure_cov_mock = AsyncMock(return_value="🛡 Coverage placed IBM: stop 200 @ $95.00")
+    telegram_mock = AsyncMock(return_value=True)
+
+    def _make_coid(account_mode, signal_type, ticker):
+        return f"apollo_{account_mode}_{signal_type}_{ticker}_123"
+
+    patches = [
+        patch.object(om, "_PARTIAL_EXIT_PAUSED", False),
+        patch.object(om, "_consecutive_partial_exit_failures", AsyncMock(return_value=0)),
+        patch.object(om, "_trade_advisory_lock", _noop_blocking_lock()),
+        patch.object(om, "get_pool", AsyncMock(return_value=pool)),
+        patch.object(om, "log_audit_event", _audit),
+        patch.object(om, "send_telegram_message", telegram_mock),
+        patch.object(om, "set_stop_order_id", set_stop_mock),
+        patch.object(om, "_ensure_stop_coverage", ensure_cov_mock),
+        patch.object(om.alpaca, "replace_order", replace_mock),
+        patch.object(om.alpaca, "get_order", get_order_mock),
+        patch.object(om.alpaca, "get_position", get_position_mock),
+        patch.object(om.alpaca, "place_market_sell", sell_mock),
+        patch.object(om.alpaca, "cancel_order", cancel_mock),
+        patch.object(om.alpaca, "place_stop_order", place_stop_mock),
+        patch.object(om.alpaca, "make_client_order_id", _make_coid),
+    ]
+    return om, {
+        "patches": patches, "audited": audited, "replace": replace_mock,
+        "get_order": get_order_mock, "sell": sell_mock, "cancel": cancel_mock,
+        "place_stop": place_stop_mock, "set_stop": set_stop_mock,
+        "ensure_cov": ensure_cov_mock, "telegram": telegram_mock,
+        "get_position": get_position_mock,
+    }
+
+
+async def _drive_replace_failed_old_stop_dead():
+    """Path #1: replace_order RAISES (both attempts); the except verifies the OLD
+    stop and the broker reports it DEAD ('rejected') → old_stop_live=False → null +
+    abort_reprotect. new_stop_id stays None so Step 1b is skipped."""
+    return await _build_partial_exit_harness(
+        replace_side_effect={"side_effect": RuntimeError("replace boom")},
+        # except-block verify of old_stop_id → DEAD.
+        get_order_return={"return_value": {"id": "old_stop_id", "status": "rejected"}},
+    )
+
+
+async def _drive_verify_stop_dead():
+    """Path #2: replace_order SUCCEEDS (new_stop_id assigned) → Step 1b verify polls
+    get_order(new_stop_id) → DEAD ('canceled') → verify_outcome='dead' → null +
+    abort_reprotect."""
+    return await _build_partial_exit_harness(
+        replace_side_effect={"return_value": {"id": "new_stop_id", "status": "new"}},
+        # Step 1b verify poll of new_stop_id → DEAD.
+        get_order_return={"return_value": {"id": "new_stop_id", "status": "canceled"}},
+    )
+
+
+@pytest.mark.asyncio
+async def test_old_stop_dead_abort_immediately_reprotects():
+    """#151 Path #1 (replacement rejected + old stop confirmed dead): re-protects
+    IN-PROCESS via _ensure_stop_coverage with broker-truth TOTAL qty 200.0 (not DB
+    remaining, not qty_available), AFTER the advisory lock releases. The market sell
+    is NEVER reached."""
+    from contextlib import ExitStack
+    om, h = await _drive_replace_failed_old_stop_dead()
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        ok = await om.execute_partial_exit(221, 66, force=True)
+
+    assert ok is False
+    h["sell"].assert_not_called()             # guard held: no sell after stop failure
+    h["place_stop"].assert_not_called()       # no inline rollback place
+    h["ensure_cov"].assert_called_once()      # immediate in-process re-protect
+    args = h["ensure_cov"].call_args.args
+    assert args[0] == 221                      # trade_id
+    assert args[1] == "IBM"                    # ticker
+    assert args[2] == 200.0, (                 # broker TOTAL qty, not DB/qty_available
+        f"re-protect must size off broker TOTAL qty 200.0 — got {args[2]}"
+    )
+    assert args[3] == 95.0, f"re-protect must carry the DB stop_price 95.0 — got {args[3]}"
+
+
+@pytest.mark.asyncio
+async def test_old_stop_dead_nulls_then_reprotects_no_naked_alert():
+    """#151 Path #1: the stale (dead) stop pointer IS nulled (the invariant is
+    'stop_order_id never points at a dead order'), but the null is FOLLOWED by the
+    in-process re-protect — never left nulled-without-reprotect. The inline 🚨 naked
+    alert + 'sync_positions will remediate' audit are gone; one folded post-lock
+    Telegram remains."""
+    from contextlib import ExitStack
+    om, h = await _drive_replace_failed_old_stop_dead()
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        await om.execute_partial_exit(221, 66, force=True)
+
+    # Stale dead pointer nulled (path #1 SHOULD null — opposite of the sell-fail path
+    # which keeps its live reduced stop).
+    null_calls = [c for c in h["set_stop"].call_args_list
+                  if (len(c.args) >= 2 and c.args[1] is None)]
+    assert null_calls, "path #1 must null the dead stop pointer"
+    # …and re-protect ran after it (not left nulled-without-reprotect).
+    h["ensure_cov"].assert_called_once()
+    # The stale 'sync_positions will remediate' surface is gone; re-protect is now
+    # the remediator.
+    assert "naked_position_detected" not in h["audited"]
+    assert "partial_exit_aborted" in h["audited"]
+    # ONE folded Telegram, and it does NOT claim a sell happened.
+    assert h["telegram"].call_count == 1, (
+        f"path #1 must send exactly ONE telegram, got {h['telegram'].call_count}"
+    )
+    msg = h["telegram"].call_args.args[0]
+    assert "ABORTED" in msg
+    assert "sell failed" not in msg.lower()   # no sell ran → comms must not say so
+
+
+@pytest.mark.asyncio
+async def test_verify_stop_dead_abort_immediately_reprotects():
+    """#151 Path #2 (replacement verified DEAD before sell): re-protects IN-PROCESS
+    via _ensure_stop_coverage with broker-truth TOTAL qty 200.0, AFTER the lock
+    releases. The market sell is NEVER reached."""
+    from contextlib import ExitStack
+    om, h = await _drive_verify_stop_dead()
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        ok = await om.execute_partial_exit(221, 66, force=True)
+
+    assert ok is False
+    h["sell"].assert_not_called()
+    h["place_stop"].assert_not_called()
+    h["ensure_cov"].assert_called_once()
+    args = h["ensure_cov"].call_args.args
+    assert args[0] == 221
+    assert args[1] == "IBM"
+    assert args[2] == 200.0, (
+        f"re-protect must size off broker TOTAL qty 200.0 — got {args[2]}"
+    )
+    assert args[3] == 95.0, f"re-protect must carry the DB stop_price 95.0 — got {args[3]}"
+
+
+@pytest.mark.asyncio
+async def test_verify_stop_dead_nulls_then_reprotects_no_naked_alert():
+    """#151 Path #2: the dead new stop pointer IS nulled, but FOLLOWED by the
+    in-process re-protect (never nulled-without-reprotect). Inline 🚨 alert +
+    'sync_positions will remediate' audit gone; one folded post-lock Telegram."""
+    from contextlib import ExitStack
+    om, h = await _drive_verify_stop_dead()
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        await om.execute_partial_exit(221, 66, force=True)
+
+    null_calls = [c for c in h["set_stop"].call_args_list
+                  if (len(c.args) >= 2 and c.args[1] is None)]
+    assert null_calls, "path #2 must null the dead stop pointer"
+    h["ensure_cov"].assert_called_once()
+    assert "naked_position_detected" not in h["audited"]
+    assert "partial_exit_aborted" in h["audited"]
+    assert h["telegram"].call_count == 1, (
+        f"path #2 must send exactly ONE telegram, got {h['telegram'].call_count}"
+    )
+    msg = h["telegram"].call_args.args[0]
+    assert "ABORTED" in msg
+    assert "sell failed" not in msg.lower()
+
+
+@pytest.mark.asyncio
+async def test_verify_stop_uncertain_still_returns_inside_lock_no_reprotect():
+    """#151 GUARDRAIL: the 'uncertain' verify outcome (stop still pending after the
+    budget, NOT dead) is UNCHANGED — it keeps its stop, returns False inside the
+    lock, and does NOT trigger the in-process re-protect (the position is
+    over-covered/safe, nothing to fix). Confirms the dead/uncertain split."""
+    from contextlib import ExitStack
+    # replace succeeds; verify poll never confirms live nor dead → 'uncertain'.
+    om, h = await _build_partial_exit_harness(
+        replace_side_effect={"return_value": {"id": "new_stop_id", "status": "new"}},
+        get_order_return={"return_value": {"id": "new_stop_id", "status": "pending_replace"}},
+    )
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        ok = await om.execute_partial_exit(221, 66, force=True)
+
+    assert ok is False
+    h["sell"].assert_not_called()
+    h["ensure_cov"].assert_not_called()       # uncertain → NO re-protect (stop kept)
+    # uncertain path keeps the stop → never nulls.
+    for c in h["set_stop"].call_args_list:
+        if len(c.args) >= 2:
+            assert c.args[1] is not None, "uncertain path must NOT null the stop"
+    msg = h["telegram"].call_args.args[0]
+    assert "SKIPPED" in msg
