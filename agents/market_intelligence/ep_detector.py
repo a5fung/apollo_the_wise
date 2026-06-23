@@ -302,6 +302,30 @@ def _resolve_grade_authority(judge_authority: bool, verdict: "dict | None", floo
     return floor_tier, "fallback", True
 
 
+def _resolve_catalyst_text(claude_analysis, news_summary, has_direct_source, limit):
+    """Pick the text persisted to the alert's `catalyst` field (#360 / CHANGE_PROCESS
+    2026-06-23, operator-signed).
+
+    WHY: the Perplexity `news_summary` is a DISCOVERY narrative — when Perplexity can't
+    find the catalyst it confabulates a disclaimer ("no specific catalyst"), which then
+    CONTRADICTS the grade that was grounded on a primary source. QURE alert 12310 is the
+    proof case: its stored `catalyst` disclaimed a catalyst while `claude_analysis`
+    (grounded on the 8-K) correctly led with the FDA AMT-130 BLA. The principle: the LLM
+    is the JUDGE of grounded text, NOT a discoverer. So when a DIRECT/primary source was
+    found (`has_direct_source` truthy), prefer the grounded `claude_analysis`; otherwise
+    keep the existing Perplexity narrative.
+
+    Fail-safe: the grounded branch requires a NON-EMPTY claude_analysis (it can be None on
+    an LLM-call failure), so a failed grade falls back to `news_summary` rather than
+    blanking the field. NEVER returns blank by construction — the fallback is exactly the
+    pre-#360 line `news_summary[:limit]` (which may itself be "" if there's no news), so the
+    no-direct-source path is byte-identical to prior behavior. Same clip limit as before —
+    #360 changes only WHICH field sources the text, not the clip."""
+    if has_direct_source and claude_analysis and claude_analysis.strip():
+        return claude_analysis[:limit]
+    return news_summary[:limit]
+
+
 async def _emit_grade_decision(r: dict, floor_tier, verdict: "dict | None") -> None:
     """Comprehensive per-candidate grade decision trace (W2a #243 / ADR 0011 logging
     requirement — OPERATOR-signed). ONE `ep_grade_decision` audit row per graded candidate
@@ -2616,7 +2640,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "ep_score": ep_score,
             "score_tier": tier,
             "catalyst_quality": catalyst_quality,
-            "catalyst": news_summary[:500],
+            # #360: grounded claude_analysis when a direct source was found, else the
+            # Perplexity narrative (see _resolve_catalyst_text). Same clip (500).
+            "catalyst": _resolve_catalyst_text(claude_analysis, news_summary, _has_direct_source, 500),
             "claude_analysis": claude_analysis,
             # #317: whether the catalyst sources include a DIRECT/primary source (SEC filing /
             # press wire) — load-bearing for the alert's catalyst-display coherence. When True,
@@ -2655,7 +2681,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             "rel_volume": rel_volume,
             "ep_score": ep_score,
             "score_tier": tier,
-            "catalyst": news_summary[:500],
+            # #360: same source resolution as the in-memory result above (anti-drift).
+            "catalyst": _resolve_catalyst_text(claude_analysis, news_summary, _has_direct_source, 500),
             "catalyst_quality": catalyst_quality,
             "claude_analysis": claude_analysis,
             "gemini_validation": pplx_quality,  # DB column name kept for compatibility
