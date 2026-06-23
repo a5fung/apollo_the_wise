@@ -1486,6 +1486,10 @@ async def _emit_l2(metric: MetricSpec, anomaly: Anomaly, event_deltas: list[dict
             "z_score": anomaly.body.get("z_score"),
             "ratio": anomaly.body.get("ratio"),
             "regime_conditional": anomaly.body.get("regime_conditional", False),
+            # to_band (the band the L2 is firing at, = 3) — same key the L3 path writes
+            # and _last_band_for/_persistent_l2_downgrade read, so tomorrow's run sees the
+            # prior band and dedups a persisting L2 (fire-once-then-quiet, #352).
+            "to_band": anomaly.body.get("to_band"),
             "event_deltas": event_deltas,
             "drill_sql": metric.drill_sql,
             "code_pointers": metric.code_pointers,

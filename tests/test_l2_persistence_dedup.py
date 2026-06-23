@@ -12,6 +12,7 @@ downgrade a persisting band 3 to L3 (audit-only, still in the weekly digest). SC
 or a HIGH-VARIANCE metric's persistent breach (a real pipeline failure / stream disconnect) KEEPS
 re-firing daily — you want the day-2 nag there. Mirrors the L3 same-band dedup.
 """
+import json
 from collections import namedtuple
 from datetime import date
 
@@ -107,3 +108,94 @@ async def test_persisting_healthy_variance_still_fires_l2(monkeypatch):
     a = await system_audit._compute_anomaly(conn=None, metric=spec, current_regime=None)
     assert a is not None and a.level == 2
     assert "persistent_l2_downgrade" not in a.body
+
+
+# ── Write-path round-trip: _emit_l2 persists to_band, _last_band_for reads it (#352) ──
+#
+# The decision-level tests above mock `_last_band_for` to return last_band directly, so they
+# never touch `_emit_l2` — the actual bug surface. #352: the L2 audit row's `detail` JSON was
+# missing `to_band` (only the L3 path wrote it), so the next nightly run's `_last_band_for`
+# read the prior L2 row, found no `to_band`, returned 0, and the persistence dedup could never
+# recognize a still-same-band L2 -> it re-fired the Telegram every night (6/12->6/22 in prod).
+# This test exercises the real write -> store -> read round trip end to end.
+
+
+class _FakeConn:
+    """Stand-in for an asyncpg conn: returns the most-recent captured audit row to
+    `_last_band_for`, mirroring `SELECT detail ... ORDER BY created_at DESC LIMIT 1`."""
+
+    def __init__(self, rows):
+        self._rows = rows  # list of detail-JSON strings, oldest-first
+
+    async def fetchrow(self, *_args, **_kwargs):
+        if not self._rows:
+            return None
+        return {"detail": self._rows[-1]}
+
+
+def _l2_spec():
+    async def _fetch(_conn):
+        return 30.0
+    return system_audit.MetricSpec(
+        name="theme_count_active", fetch_today=_fetch, drill_sql="-- noop"
+    )
+
+
+@pytest.mark.asyncio
+async def test_emit_l2_persists_to_band_then_last_band_reads_it(monkeypatch):
+    # 1) Fire a fresh band-3 L2 (transition into band 3): _emit_l2 must write to_band=3.
+    captured: list[str] = []
+
+    async def _capture_audit(event_type, summary, detail=""):
+        captured.append(detail)
+    monkeypatch.setattr(system_audit, "log_audit_event", _capture_audit)
+
+    async def _zero(*a, **k):
+        return 0
+    monkeypatch.setattr(system_audit, "count_today_anomalies", _zero)
+
+    async def _send_ok(_text):
+        return True
+
+    import agents.market_intelligence.briefing as briefing
+    monkeypatch.setattr(briefing, "send_telegram_message", _send_ok)
+
+    spec = _l2_spec()
+    body = {
+        "current": 30.0, "baseline_p50": 44.0, "baseline_p95": 54.0,
+        "mad": 1.0, "sample_n": 21, "z_score": -14.0, "ratio": 1.47,
+        "regime_conditional": False,
+        "to_band": 3,  # set by _compute_anomaly's band-3 branch — must survive into the row
+    }
+    anomaly = system_audit.Anomaly(2, spec.name, body)
+    await system_audit._emit_l2(spec, anomaly, event_deltas=[])
+
+    assert len(captured) == 1
+    persisted = json.loads(captured[0])
+    assert persisted["level"] == 2
+    assert persisted["key"] == "theme_count_active"
+    assert persisted["to_band"] == 3, "L2 audit row must carry to_band for the dedup to work"
+
+    # 2) The next nightly run reads that row back via the REAL _last_band_for parse and must
+    #    recover band 3 — proving written + read line up on the same key.
+    conn = _FakeConn(captured)
+    last = await system_audit._last_band_for(conn, spec.name)
+    assert last == 3
+
+    # 3) End to end: with last_band=3 recovered, a still-band-3 L2 downgrades to L3 (no repeat
+    #    Telegram). This is the fire-once-then-quiet behavior the missing to_band defeated.
+    monkeypatch.setattr(system_audit, "get_market_status", lambda d: _FakeStatus(True, "t"))
+    monkeypatch.setattr(system_audit, "et_today", lambda: date(2026, 6, 22))
+
+    async def _noop(*a, **k):
+        return None
+    monkeypatch.setattr(system_audit, "_record_metric_sample", _noop)
+
+    async def _baseline(*a, **k):
+        return {"p50": 44.0, "p95": 54.0, "mad": 1.0, "sample_n": 21}
+    monkeypatch.setattr(system_audit, "get_metric_baseline", _baseline)
+
+    a2 = await system_audit._compute_anomaly(conn=conn, metric=spec, current_regime=None)
+    assert a2 is not None and a2.level == 3
+    assert a2.body.get("persistent_l2_downgrade") is True
+    assert a2.body["to_band"] == 3
