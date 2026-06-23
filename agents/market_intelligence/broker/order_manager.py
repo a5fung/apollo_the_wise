@@ -1002,14 +1002,19 @@ async def update_stop(trade_id: int, new_stop_price: float) -> bool:
 # every day (the IBM 2026-05-27/28 shape: two days of silent same-trade failures).
 _PARTIAL_EXIT_BREAKER_THRESHOLD = 3
 _PARTIAL_EXIT_BREAKER_WINDOW_DAYS = 7
-# HARD PAUSE (2026-06-22, operator "pause and fix"): partial exits are disabled
-# pending the #151 pending_replace-race fix (the 3s verify-shares-free poll times
-# out → sell aborts → retry re-replaces into the SAME race → loops, never selling,
-# leaving the reduced stop under-covering the position; QURE 6/22, FPS 6/04, IBM
-# 5/27). While paused, a position simply keeps its FULL stop + FULL size — strictly
-# safer than the broken path. Flip to False ONLY in the commit that ships AND
-# verifies-live the fix. Tests monkeypatch this.
-_PARTIAL_EXIT_PAUSED = True
+# UN-PAUSED 2026-06-23 (operator sign-off): the #151 durable fix is shipped + verified.
+# The pending_replace-race that forced the 2026-06-22 pause is fixed at the ROOT:
+#  (1) a Postgres advisory lock on trade_id serializes the (CROSS-PROCESS) partial vs
+#      the never-naked reconciler — proven on the real prod DB (an asyncio.Lock was a
+#      no-op given the EXECUTION_MODE=http service split);
+#  (2) the rollback/cancel block is GONE — never cancel a pending_replace (uncancelable
+#      while pending, G6-confirmed);
+#  (3) ALL 3 abort paths re-protect IMMEDIATELY in-process via _ensure_stop_coverage
+#      (no naked window — does NOT wait for the EOD-cadence sync net).
+# Validated end-to-end on the REAL paper broker (scripts/_partial_exit_paper_validation.py:
+# clean partial 6→4 + forced-abort re-protect 4→6, zero naked / zero sold / zero cancel).
+# Tests monkeypatch this. (Pause history: QURE 6/22, FPS 6/04, IBM 5/27 — #151 / ADR 0009.)
+_PARTIAL_EXIT_PAUSED = False
 
 
 async def _consecutive_partial_exit_failures(floor_days: int = _PARTIAL_EXIT_BREAKER_WINDOW_DAYS) -> int:
