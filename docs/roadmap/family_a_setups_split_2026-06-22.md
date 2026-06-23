@@ -1,12 +1,12 @@
 # Family-A Setups — the Split, Rebuild & Roadmap (2026-06-22)
 
-**Durable home for the 3 setups, their next steps, and WHY.** This session uncovered a structurally
-broken consolidation detector + a chain of methodology mistakes; the operator split the work into 3
-distinct setups. Read this before touching any of them. SSoT for the trackable next steps = the PLAN
+**Durable home for the 2 setups + the Sugar-Babies condition, their next steps, and WHY.** This session uncovered a structurally
+broken consolidation detector + a chain of methodology mistakes; the operator split the work into 2
+distinct setups (Anticipation + HTF); Sugar Babies is a related CONDITION, not a setup. Read this before touching any of them. SSoT for the trackable next steps = the PLAN
 #-tasks cited below; SSoT for the methodology = `docs/methodology/operator_shared_notes.md` + ADR 0013.
 
 > **TIMELINE (operator 2026-06-22): this is a FAST-FOLLOW to Phase 2 real-money trading (~Wed 6/24 on
-> ACH settle) — COMPLETE ALL 3 SETUPS THIS WEEK (target 2026-06-27).** Not July. All shadow / no money,
+> ACH settle) — COMPLETE BOTH SETUPS + RESOLVE THE SUGAR-BABIES ROLE THIS WEEK (target 2026-06-27).** Not July. All shadow / no money,
 > so it runs in parallel with the live launch without touching it. Tomorrow's FIRST priority is still
 > the money-critical #151 + Phase 2 (advisor); Family-A is the immediate fast-follow right after.
 
@@ -18,7 +18,7 @@ had **no consolidation/holds gate at all** — `is_entry_tight` only checked "qu
 ≤7% + low vol), which a slow bleed-down passes. Investigating it surfaced that the code had **silently
 diverged from a methodology the operator already signed** (`operator_shared_notes.md` 6/16 + ADR 0013:
 tightness must be VOLATILITY-RELATIVE; the absolute ≤7% had been wrong for weeks). Operator decision:
-**un-merge into 3 clean setups** + rename for clarity. Full diagnosis:
+**un-merge into 2 setups (Anticipation + HTF) + 1 condition (Sugar Babies)** + rename for clarity. Full diagnosis:
 `docs/analysis/consolidation_runup_defect_2026-06-22.md`.
 
 ---
@@ -74,7 +74,7 @@ tightest-day low / 10–20 EMA, max-loss 5–8%; manage = scale **33–50% at 3�
 2. Add the **breakout entry** (flag-high + ≥150% ADV) + the **EMA-trail management** (scale → BE → trail).
 3. Refine/rename flag → HTF.
 
-## Setup 3 — PERSISTENT SUGAR BABIES · TBD, revisit · #357
+## Related CONDITION (NOT a Family-A setup) — PERSISTENT SUGAR BABIES · TBD · #357
 **What it is (clarified 6/22):** NOT a setup — a stock **CONDITION** (recurring 9M-EP: ≥3 9M EOD
 prints / 180d, `mi_sugar_babies_cohort`). The Telegram surface overlays the flag/HTF **stage** on the
 9M cohort. Operator's thinking: any setup can include a sugar-baby stock or not → it's likely an
