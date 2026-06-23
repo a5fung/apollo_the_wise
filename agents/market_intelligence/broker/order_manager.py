@@ -2436,6 +2436,274 @@ async def _try_adopt_existing_stop(
     return adopt_id
 
 
+# Substring signatures of Alpaca's "stop trigger is above current price" rejection.
+# A protective sell-stop must sit BELOW the market; when the stop_price we want is
+# above the last trade, Alpaca refuses it. This is NOT a transient error — retrying
+# can't fix a price that's structurally invalid — so the never-naked invariant
+# converges (ONE alert, leave for operator) instead of looping. The breach-exit
+# decision (market out vs hold) is the operator's/strategy's call, not the
+# reconciler's. Real incident 2026-06-23. Matched case-insensitively on str(exc).
+_STOP_ABOVE_MARKET_SIGNATURES = (
+    "must be less than current price",
+    "must be less than the current price",
+    "stop price must be less",
+)
+
+
+def _is_stop_above_market(exc: Exception) -> bool:
+    """True iff the broker rejected a sell-stop because its trigger is at/above
+    the current market price (structural breach — the position is already through
+    where the stop would sit). Distinguished from transient/qty errors so the
+    invariant converges instead of retrying an un-retryable price."""
+    msg = str(exc).lower()
+    return any(sig in msg for sig in _STOP_ABOVE_MARKET_SIGNATURES)
+
+
+async def _ensure_stop_coverage(
+    trade_id: int,
+    ticker: str,
+    broker_qty: float,
+    db_stop_price: float | None,
+    signal_type: str,
+    account_mode: str,
+) -> str | None:
+    """#151 never-naked coverage invariant.
+
+    Guarantee EXACTLY ONE live sell-stop covering `target = broker_qty −
+    pending_exit_qty(trade_id)` for a filled position. Closes the gap the
+    orphan-remediation loop structurally cannot: that loop only acts when the
+    stop is NULL/just-cleared or DEAD (it `continue`s past a LIVE stop at the
+    `order_status not in DEAD_STATES` gate). A LIVE-but-UNDER-COVERING stop
+    (e.g. a 134-share stop left behind by a failed/aborted partial on a
+    163-share position) sails through untouched → the un-trimmed shares are
+    NAKED. This brings coverage back to `target` so any partial-exit failure
+    leaves the position "no profit trimmed", never "naked".
+
+    BROKER TRUTH ONLY for sizing:
+      * `broker_qty` is the Alpaca position qty (caller passes `qty`, the TOTAL
+        position — NOT `qty_available`, which already nets out held-for-orders
+        and would double-subtract).
+      * The live stop is discovered via `get_open_orders` (like
+        `_try_adopt_existing_stop`), NEVER the stale in-memory `remaining_shares`
+        / `stop_order_id` (the qty-sync + orphan loop write the DB but do not
+        mutate the already-fetched `db_trades` rows; 109-vs-28 incident
+        2026-06-23).
+
+    Decision tree (0.5-share tolerance, matching the 2523 qty-sync / 2415 adopt):
+      * target <= 0 (pending exits cover everything)        → no-op (None)
+      * |live_stop_qty − target| <= 0.5                     → no-op (None)
+      * over-covered (live_stop_qty > target + 0.5)         → no-op (Phase 2b
+            dedup/down-size deferred — never our job to shrink coverage here)
+      * >1 live sell-stop                                    → ambiguous, no-op
+            (a duplicate has no cleanup path; Phase 2b dedup deferred)
+      * under-covered, exactly ONE live stop                → atomic qty-only
+            `replace_order` to `target` (keeps the accepted stop_price → can't
+            breach); SINGLE stop, never an additive 2nd order.
+      * under-covered, NO live stop                          → `place_stop_order`
+            at `db_stop_price` (the place branch is the only one that can breach).
+
+    Idempotent: a 2nd consecutive run sees coverage == target → no-op, no new
+    orders. Every submit is MODE-SCOPED via `make_client_order_id(account_mode,
+    ...)`. On a stop-above-market BREACH (place branch), emit ONE discrepancy
+    line + audit and CONVERGE — no retry, no auto-market-exit, no stop_order_id
+    write (the breach-exit is the operator's call).
+
+    Returns a human discrepancy string when it acted/flagged (for the batched
+    Telegram), else None.
+    """
+    target = float(broker_qty) - float(await get_pending_exit_qty(trade_id))
+    if target <= 0.5:
+        # Pending exits account for the whole (or all-but-noise) position —
+        # nothing to protect beyond what's already in flight. The orphan loop's
+        # own "fully covered by pending exits" guard handles the no-stop variant;
+        # here we just decline to place/replace.
+        return None
+
+    # Discover the live sell-stop(s) from broker truth.
+    try:
+        open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
+    except Exception as e:
+        logger.warning(
+            f"_ensure_stop_coverage: get_open_orders failed for {ticker}: {e}"
+        )
+        return None  # ambiguous (couldn't read broker) — defer to next run
+
+    live_stops = []
+    for o in open_orders:
+        side = str(o.get("side", "")).lower()
+        otype = str(o.get("type", "")).lower()
+        status = _canonical_order_status(o.get("status"))
+        if "sell" not in side or "stop" not in otype:
+            continue
+        if status not in _STOP_CONFIRMED_LIVE_STATUSES:
+            continue
+        live_stops.append(o)
+
+    if len(live_stops) > 1:
+        # Ambiguous: more than one live sell-stop. Adding/replacing here could
+        # leave a dangling duplicate with no cleanup path. Flag only; Phase 2b
+        # dedup-cancel is the place that owns this.
+        await log_audit_event(
+            "stop_coverage_ambiguous",
+            f"{ticker}: {len(live_stops)} live sell-stops vs target {target:.0f} "
+            f"— skipping coverage repair (Phase 2b dedup deferred)",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "live_stop_count": len(live_stops),
+                "target_qty": target,
+            }),
+        )
+        return (
+            f"⚠️ {ticker}: {len(live_stops)} live stops (target {target:.0f}) "
+            f"— ambiguous, left for review"
+        )
+
+    live_stop = live_stops[0] if live_stops else None
+    live_qty = None
+    if live_stop is not None:
+        try:
+            live_qty = float(live_stop.get("qty")) if live_stop.get("qty") is not None else None
+        except (TypeError, ValueError):
+            live_qty = None
+
+    # Fully covered (within tolerance) or over-covered → no-op.
+    if live_qty is not None and live_qty >= target - 0.5:
+        return None
+
+    # Under-covered (or no live stop): re-protect to `target` as a SINGLE stop.
+    coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+
+    if live_stop is not None:
+        # Atomic qty-only replace — keeps the already-accepted stop_price (so it
+        # cannot breach) and never opens a share-release window. New order id
+        # must be persisted.
+        try:
+            new_order = await alpaca.replace_order(
+                live_stop["id"],
+                qty=int(target),
+                account_mode=account_mode,
+                client_order_id=coid,
+            )
+        except Exception as e:
+            logger.error(
+                f"_ensure_stop_coverage: replace under-covering stop failed for "
+                f"{ticker} ({live_qty}→{target:.0f}): {e}"
+            )
+            await log_audit_event(
+                "stop_coverage_repair_failed",
+                f"{ticker}: replace under-covering stop {live_qty}→{int(target)} failed: {e}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "live_stop_qty": live_qty, "target_qty": target,
+                    "error": str(e),
+                }),
+            )
+            return f"⚠️ {ticker}: failed to widen stop coverage {live_qty}→{target:.0f}: {e}"
+        await set_stop_order_id(
+            trade_id, new_order["id"],
+            reason="sync_coverage_repair",
+            account_mode=account_mode,
+        )
+        await log_audit_event(
+            "stop_coverage_repaired",
+            f"{ticker}: under-covering stop {live_qty}→{int(target)} "
+            f"(replaced {live_stop['id'][:8]}→{new_order['id'][:8]})",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode,
+                "old_stop_id": live_stop["id"], "new_stop_id": new_order["id"],
+                "live_stop_qty": live_qty, "target_qty": target,
+            }),
+        )
+        return (
+            f"🛡 Coverage repaired {ticker}: stop {live_qty:.0f}→{target:.0f} "
+            f"(under-covering after partial-exit failure)"
+        )
+
+    # No live stop at all → place one at the DB stop price. This is the ONLY
+    # branch that can breach (the price we choose may now be above market).
+    if not db_stop_price:
+        await log_audit_event(
+            "stop_coverage_no_price",
+            f"{ticker}: under-covered (target {target:.0f}) with no live stop and "
+            f"no DB stop_price — manual intervention",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode, "target_qty": target,
+            }),
+        )
+        return (
+            f"⚠️ {ticker}: no stop & no stop_price (target {target:.0f}) "
+            f"— manual intervention needed"
+        )
+    try:
+        new_order = await alpaca.place_stop_order(
+            ticker, int(target), float(db_stop_price),
+            account_mode=account_mode, client_order_id=coid,
+        )
+    except Exception as e:
+        if _is_stop_above_market(e):
+            # BREACH: the protective trigger is at/above current price. NOT
+            # retryable. ONE alert, converge, leave for operator. Do NOT
+            # auto-market-exit and do NOT write stop_order_id.
+            await log_audit_event(
+                "stop_coverage_breach",
+                f"{ticker}: stop ${db_stop_price:.2f} would sit above market — "
+                f"position through the stop. Operator action required (no auto-exit).",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "intended_stop_price": float(db_stop_price),
+                    "target_qty": target, "error": str(e),
+                }),
+            )
+            logger.error(
+                f"_ensure_stop_coverage: BREACH for {ticker} — stop "
+                f"${db_stop_price:.2f} above market; converging (no retry, no auto-exit)"
+            )
+            return (
+                f"🚨 {ticker}: stop ${db_stop_price:.2f} is ABOVE market — "
+                f"position breached the stop. Operator decision needed (no auto-exit)."
+            )
+        # Any other placement error: surface it, no retry inside the invariant
+        # (the reconciler runs again on its cadence).
+        logger.error(
+            f"_ensure_stop_coverage: place coverage stop failed for {ticker}: {e}"
+        )
+        await log_audit_event(
+            "stop_coverage_repair_failed",
+            f"{ticker}: place coverage stop (target {int(target)}) failed: {e}",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "account_mode": account_mode, "target_qty": target,
+                "error": str(e),
+            }),
+        )
+        return f"⚠️ {ticker}: failed to place coverage stop (target {target:.0f}): {e}"
+    await set_stop_order_id(
+        trade_id, new_order["id"],
+        reason="sync_coverage_repair",
+        account_mode=account_mode,
+    )
+    await log_audit_event(
+        "stop_coverage_repaired",
+        f"{ticker}: placed coverage stop {int(target)} @ ${db_stop_price:.2f} "
+        f"(was no live stop)",
+        json.dumps({
+            "trade_id": trade_id, "ticker": ticker,
+            "account_mode": account_mode,
+            "new_stop_id": new_order["id"], "target_qty": target,
+            "stop_price": float(db_stop_price),
+        }),
+    )
+    return (
+        f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
+        f"(no live stop, under-covered)"
+    )
+
+
 async def sync_positions() -> list[str]:
     """
     Reconcile DB vs Alpaca positions per account_mode (dual-account #66).
@@ -2708,6 +2976,43 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             msg = f"⚠️ Failed to remediate orphaned stop for {ticker} after 3 attempts: {last_err}"
             discrepancies.append(msg)
             logger.error(f"sync_positions: stop remediation failed for {ticker}: {last_err}")
+
+    # #151 NEVER-NAKED COVERAGE INVARIANT — runs AFTER the orphan/adopt loop.
+    # The orphan loop only acts on a NULL/just-cleared or DEAD stop; a LIVE-but-
+    # UNDER-COVERING stop sails past its `order_status not in DEAD_STATES: continue`
+    # gate (e.g. a 134-share stop left by a failed/aborted partial on a 163-share
+    # position) → the un-trimmed shares are NAKED. This pass guarantees exactly
+    # one live stop at `broker_qty − pending_exit` for every filled position, so
+    # any partial-exit failure leaves it "no profit trimmed", never naked.
+    #
+    # Broker truth for sizing: `alpaca_map` was mutated (`del`) by the qty-sync
+    # loop above, so rebuild a fresh map from the intact `alpaca_positions` list.
+    # Use `qty` (TOTAL position) NOT `qty_available` (already nets held-for-orders
+    # → would double-subtract). The helper rediscovers the live stop via
+    # get_open_orders rather than trusting the stale in-memory trade row.
+    broker_qty_map = {p["symbol"]: p["qty"] for p in alpaca_positions}
+    for trade in db_trades:
+        ticker = trade["ticker"]
+        if trade["status"] != "filled":
+            continue
+        broker_qty = broker_qty_map.get(ticker)
+        if broker_qty is None or broker_qty <= 0:
+            continue  # not (or no longer) a live broker position — nothing to cover
+        try:
+            coverage_msg = await _ensure_stop_coverage(
+                trade["id"], ticker, float(broker_qty),
+                trade.get("stop_price") or trade.get("orb_low"),
+                trade.get("signal_type") or "unknown",
+                account_mode,
+            )
+        except Exception as e:
+            logger.error(
+                f"sync_positions: _ensure_stop_coverage raised for {ticker}: {e}",
+                exc_info=True,
+            )
+            coverage_msg = f"⚠️ {ticker}: coverage-invariant check errored: {e}"
+        if coverage_msg:
+            discrepancies.append(coverage_msg)
 
     if discrepancies:
         msg = (
