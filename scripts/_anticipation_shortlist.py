@@ -89,7 +89,27 @@ def main():
         f.write("|---|---|---|---|---|---|---|---|\n")
         for tk, r in rows:
             f.write(f"|   | {tk} | {r['runup']} | {r['baseD']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {r['today']} |\n")
-    print(f"wrote {len(rows)} candidates to {OUT}")
+    # FALSE-NEGATIVE CHECK (advisor de-bias): names the OLD §2 today-gate/anchor EXCLUDED, run
+    # through the NEW gates -> the operator confirms they SHOULD be in (catches the STM failure mode;
+    # the main list alone can only remove false-positives, never surface a false-negative).
+    checks = []
+    for path, asof, note in (
+            ("tests/fixtures/consolidation_acceptance_bars.psv", "6/22", "flag-board name (moved >1% today -> old §2 excluded it)"),
+            ("tests/fixtures/anticipation_pradeep_cohort_bars.psv", "6/15", "your 6/15 canonical Pradeep name (the ADR canary -> MUST survive)")):
+        for tk, b in load(path).items():
+            checks.append((tk, asof, note, row(b)))
+    with open(OUT, "a", encoding="utf-8") as f:
+        f.write("\n\n## FALSE-NEGATIVE CHECK — should these be IN? (mark G/X)\n\n")
+        f.write("Excluded by the OLD §2 today-gate/anchor, re-run through the NEW gates. A known-good\n")
+        f.write("name showing **NO** means the gates are still wrong (a false-negative survives).\n\n")
+        f.write("| LABEL | ticker | as-of | passes new gates | runup | bd4 | retr% | rmv | note |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|\n")
+        for tk, asof, note, r in checks:
+            if r:
+                f.write(f"|   | {tk} | {asof} | YES | {r['runup']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {note} |\n")
+            else:
+                f.write(f"|   | {tk} | {asof} | **NO — still excluded** | – | – | – | – | {note} |\n")
+    print(f"wrote {len(rows)} candidates + {len(checks)} false-negative checks to {OUT}")
     print("\nTop 20 (tightest + holding):")
     print(f"{'ticker':7} {'runup':6} {'baseD':6} {'bd4':4} {'retr%':6} {'rmv':4} {'today%':6}")
     for tk, r in rows[:20]:

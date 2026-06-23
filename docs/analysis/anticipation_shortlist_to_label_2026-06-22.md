@@ -312,3 +312,26 @@ current ordering as the gate. Gates so far: stable anchor (3-20d base) + runup>=
 |   | RDW | 2.26 | 16 | 9 | 49.7 | 25 | 9.3 |
 |   | AVEX | 1.68 | 16 | 10 | 56.8 | 0 | 4.5 |
 |   | LUNL | 1.86 | 16 | 11 | 80.4 | 13 | 7.5 |
+
+
+## FALSE-NEGATIVE CHECK — should these be IN? (mark G/X)
+
+Excluded by the OLD §2 today-gate/anchor, re-run through the NEW gates. A known-good
+name showing **NO** means the gates are still wrong (a false-negative survives).
+
+| LABEL | ticker | as-of | passes new gates | runup | bd4 | retr% | rmv | note |
+|---|---|---|---|---|---|---|---|---|
+|   | BTU | 6/22 | YES | 1.34 | 2 | 22.7 | 0 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | DELL | 6/22 | YES | 1.98 | 3 | 20.6 | 92 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | DRUG | 6/22 | YES | 1.2 | 5 | 33.9 | 0 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | FPS | 6/22 | YES | 1.44 | 2 | 17.6 | 83 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | PTGX | 6/22 | YES | 1.21 | 0 | 1.6 | 40 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | QTTB | 6/22 | YES | 2.55 | 3 | 15.1 | 100 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | STM | 6/22 | YES | 1.3 | 2 | 11.3 | 83 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | UFO | 6/22 | YES | 1.21 | 4 | 28.1 | 29 | flag-board name (moved >1% today -> old §2 excluded it) |
+|   | ALHC | 6/15 | YES | 1.55 | 0 | 3.9 | 0 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
+|   | APPS | 6/15 | YES | 1.53 | 0 | 4.5 | 0 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
+|   | COO | 6/15 | YES | 1.15 | 0 | 1.6 | 0 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
+|   | HYLN | 6/15 | YES | 1.86 | 2 | 16.8 | 37 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
+|   | MNTS | 6/15 | YES | 3.65 | 8 | 47.5 | 33 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
+|   | NTAP | 6/15 | YES | 1.52 | 1 | 11.4 | 19 | your 6/15 canonical Pradeep name (the ADR canary -> MUST survive) |
