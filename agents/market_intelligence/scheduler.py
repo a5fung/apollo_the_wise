@@ -104,6 +104,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "orb_reclassify_eod", "bar_stream_cleanup",
     # lifecycle / reconcile / safeguards
     "paper_trade_tracker", "morning_stop_refresh", "live_position_update",
+    "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
     "evening_position_backstop", JOB_ORDER_STATUS_RECONCILE,
     JOB_ORDER_STATUS_RECONCILE + "_open", "track_position_extremes",
     "stuck_fill_watchdog", "stop_ack_timeout_watchdog", "stream_health_watchdog",
@@ -1174,8 +1175,49 @@ async def _time_stop_scan_job():
     return len(new_candidates)
 
 
+async def _partial_exit_scan_job():
+    """Run at 3:45 PM ET (DURING market hours). Day 3-5 partial-profit exits.
+
+    #361 (2026-06-23): the partial-profit decision was SPLIT OUT of the 4:45 PM
+    `_live_position_update_job` into this dedicated market-hours trigger. WHY:
+    the 4:45 job fires AFTER the 16:00 ET close, so a partial's stop-replace
+    parked in `pending_replace` until the next session open — both old+new stops
+    reserved the shares (qty_available=0) and the partial aborted. At 3:45, the
+    stop-replace settles in ~0.2s and the sell fills. The partial decision LOGIC
+    is unchanged (single source of truth in apply_daily_exit_step); only the
+    trigger time moved. Execution-side job (partials touch the broker) →
+    registered in EXECUTION_OWNED_JOB_IDS. Guards mirror _live_position_update_job
+    exactly (LIVE_TRADING_ENABLED gate, try/except + notify_job_failure, the
+    moves-with-job import pattern).
+    """
+    from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+    if not LIVE_TRADING_ENABLED:
+        return
+    logger.info("Partial-exit scan starting (3:45 PM market-hours)...")
+    try:
+        from agents.market_intelligence.broker.live_tracker import (  # exec-boundary-ok: moves-with-job (W2)
+            run_partial_exits,
+        )
+        results = await run_partial_exits()
+        logger.info(f"Partial-exit scan complete: {len(results)} positions scanned")
+    except Exception as e:
+        import traceback
+        logger.error(f"Partial-exit scan failed: {e}\n{traceback.format_exc()}")
+        await notify_job_failure("partial_exit_scan", str(e))
+
+
 async def _live_position_update_job():
-    """Run at 4:45 PM ET. SMA trail, partials, stop updates for live positions. Send daily summary."""
+    """Run at 4:45 PM ET (EOD, on the close). SMA10/20 trail + stop updates for
+    live positions + daily summary.
+
+    #361 (2026-06-23): partials NO LONGER run here — the Day 3-5 partial-profit
+    decision was split into `_partial_exit_scan_job` (3:45 PM, market-hours) so
+    the partial's stop-replace settles intraday instead of parking in
+    `pending_replace` after the close. This job keeps ONLY the SMA-trail +
+    stop-update + daily-summary (which correctly run on the settled close), and
+    passes skip_partial_decision=True into update_open_positions_live so the
+    partial can never double-fire here.
+    """
     from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
     if not LIVE_TRADING_ENABLED:
         return
@@ -4823,7 +4865,36 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=1800,
     )
 
-    # Live position update: 4:45 PM ET — SMA trail, partials, stop updates.
+    # Partial-exit scan: 3:45 PM ET (DURING market hours) — Day 3-5
+    # partial-profit exits. #361 (2026-06-23): SPLIT OUT of the 4:45 PM
+    # live_position_update job. The 4:45 job fires after the 16:00 close, so a
+    # partial's stop-replace parked in `pending_replace` until next-session open
+    # (both old+new stops reserved the shares → qty_available=0 → partial
+    # aborted). At 3:45 the stop-replace settles in ~0.2s and the sell fills.
+    # The partial decision LOGIC is unchanged (single source of truth in
+    # apply_daily_exit_step); only the trigger time moved. No double-fire: the
+    # 4:45 job passes skip_partial_decision=True. Execution-owned (partials
+    # touch the broker) → in EXECUTION_OWNED_JOB_IDS. ZoneInfo per #-tz rule
+    # (pytz banned).
+    # misfire_grace_time=600 (10 min): 3:45 is now the ONLY partial window (the
+    # 4:45 job can no longer backstop it, #361). APScheduler's ~1s default would
+    # silently DROP the day's partial if the scheduler were briefly busy at
+    # 15:45:00. A 10-min grace still fires the partial well within market hours
+    # (before the 16:00 close, so the stop-replace settles intraday — the whole
+    # point of the split). Cap it at 600s so a long-after-close misfire (which
+    # would reintroduce the pending_replace problem) is NOT honored.
+    _scheduler.add_job(
+        audit_wrap(_partial_exit_scan_job, "partial_exit_scan"),
+        CronTrigger(hour=15, minute=45, day_of_week="mon-fri",
+                    timezone=ZoneInfo("America/New_York")),
+        id="partial_exit_scan",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # Live position update: 4:45 PM ET — SMA trail + stop updates + summary.
+    # #361 (2026-06-23): partials MOVED to partial_exit_scan (3:45 PM) — see
+    # the registration above. This job no longer takes partials.
     # PAUSED 2026-05-29 (#151, advisor Option D) after 2 days of automated
     # partial-take failures; RE-ENABLED 2026-06-01 once the restoration
     # conditions were substantively met:

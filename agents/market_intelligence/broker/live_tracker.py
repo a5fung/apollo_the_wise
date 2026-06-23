@@ -426,9 +426,24 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
 
 async def update_open_positions_live(today: date | None = None) -> list[dict]:
     """
-    Update open live positions: SMA trail + Day 3-5 partial profit.
+    Update open live positions: SMA10/20 trail + stop updates (EOD, on the close).
     Same logic as backtester/tracker.py update_open_positions(), but executes
     real orders via Alpaca.
+
+    #361 (2026-06-23): the Day 3-5 PARTIAL-PROFIT decision has been SPLIT OUT
+    of this EOD (4:45 PM) job into `run_partial_exits()`, which runs DURING
+    market hours (3:45 PM). Root cause: this job fires after the 16:00 ET close,
+    so a partial's stop-replace parks in `pending_replace` until the next
+    session open — both old+new orders reserve the shares, qty_available=0, and
+    the partial aborts. Running the partial mid-session (stop-replaces settle in
+    ~0.2s, the sell fills) fixes it. This job therefore passes
+    `skip_partial_decision=True` to `apply_daily_exit_step` so the partial branch
+    is bypassed here — the partial fires EXACTLY ONCE, at 3:45, NOT also at 4:45.
+    The SMA-trail / stop-update / running_closes advance / daily summary stay
+    here at 4:45 (EOD, on the settled close). When a 3:45 partial has already
+    filled, `finalize_partial_exit` has persisted partial_taken / breakeven_active /
+    reduced remaining_shares to the DB, so this job (which reads fresh from
+    mi_live_trades) computes the effective stop floored at entry correctly.
     """
     if today is None:
         today = et_today()
@@ -479,8 +494,12 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             "running_closes": running_closes_in,
         }
 
+        # #361: partials moved to run_partial_exits() (3:45 PM, market-hours).
+        # This 4:45 EOD job bypasses the partial branch so it never double-fires
+        # the partial — it owns ONLY the SMA-trail + stop-update + summary here.
         step = apply_daily_exit_step(state, daily_bars[0], today,
-                                     integer_partial_shares=True)
+                                     integer_partial_shares=True,
+                                     skip_partial_decision=True)
 
         logger.info(
             f"Processing {ticker}: day={step.hold_days} close=${step.bar_close:.2f} "
@@ -528,23 +547,16 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
                 continue
             # Alpaca still holds — re-run skipping the close branch.
             # hard_stop stays in state so effective_stop still floors at it.
+            # #361: partial branch is owned by run_partial_exits (3:45) — keep
+            # skip_partial_decision=True here so this EOD job never partials.
             step = apply_daily_exit_step(state, daily_bars[0], today,
                                          integer_partial_shares=True,
-                                         skip_hard_stop_close=True)
+                                         skip_hard_stop_close=True,
+                                         skip_partial_decision=True)
 
-        # 2. Partial profit branch — execute via helper, fall through on failure
-        if step.partial_fired:
-            partial_ok = await execute_partial_exit(trade["id"], int(step.partial_shares))
-            if not partial_ok:
-                # Helper failed (e.g. cancel-stop blocked). Re-run skipping
-                # partial decision so the rest of the ladder runs against
-                # original remaining; partial_taken/breakeven_active stay
-                # at their pre-step values. Next day retries.
-                step = apply_daily_exit_step(
-                    state, daily_bars[0], today,
-                    integer_partial_shares=True,
-                    skip_partial_decision=True,
-                )
+        # 2. Partial profit branch — MOVED to run_partial_exits() (3:45 PM ET,
+        # #361). With skip_partial_decision=True above, step.partial_fired is
+        # always False here, so this job runs ONLY the SMA-trail + stop ladder.
 
         # 3. SMA trail close
         if step.action == "sma_stopped":
@@ -564,66 +576,41 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         if step.effective_stop > current_stop + 0.01 and step.new_remaining > 0:
             await update_stop(trade["id"], round(step.effective_stop, 2))
 
-        # 2026-05-14 fix: when step.partial_fired, execute_partial_exit
-        # just submitted orders to Alpaca that may not have filled yet
-        # (after-hours, queued for next open). DO NOT write the optimistic
-        # post-partial state for partial_taken/total_pnl/remaining_shares —
-        # those come from finalize_partial_exit on actual WS fill.
-        # Non-partial fields (stop_price, hold_days, running_closes) are
-        # still safe to update from `step`.
+        # #361 (2026-06-23): the partial branch moved to run_partial_exits()
+        # (3:45 PM), and this job now passes skip_partial_decision=True, so
+        # step.partial_fired is always False here — the former `if
+        # step.partial_fired` UPDATE (which deliberately omitted
+        # breakeven_active to avoid the BW 5/14 optimistic-write incident) is
+        # dead code and has been removed. This job persists ONLY the
+        # state-machine / live_tracker-domain columns below.
         #
-        # BW 5/14 incident: post-close partial triggered at 16:45 ET, orders
-        # queued for next-day open, but optimistic UPDATE wrote
-        # partial_taken=TRUE + total_pnl=$1613.79 as if the partial had
-        # filled. /trades displayed bogus realized P&L on full open position.
+        # T1.4 refactor 2026-05-17: dropped stop_price + total_pnl +
+        # partial_taken + remaining_shares from this UPDATE.
+        #
+        # - stop_price: update_stop() above owns trail writes. Writing here is
+        #   redundant when update_stop succeeded and FALSELY OPTIMISTIC when it
+        #   failed (KLAR-class bug).
+        # - total_pnl / partial_taken / remaining_shares: step.new_X == state[X]
+        #   (no change, partial decision skipped). The "no-op idempotent write"
+        #   is actually a LOST UPDATE hazard if a WS fill arrived concurrently
+        #   between state-load and this UPDATE — the stale read would clobber the
+        #   WS write. Authorized writers: finalize_partial_exit,
+        #   finalize_full_exit, finalize_stop_fill, _sync_positions_for_mode.
+        #
+        # Keeps: hold_days, breakeven_active (state-machine derived — a 3:45
+        # partial that filled has already had finalize_partial_exit set
+        # breakeven_active=TRUE in the DB, and step reflects that fresh read),
+        # running_closes (live_tracker domain; appended exactly once here).
         async with pool.acquire() as conn:
-            if step.partial_fired:
-                # T1.2 refactor 2026-05-17: dropped stop_price from this UPDATE.
-                # update_stop() at line 589 is the authorized stop_price writer
-                # when effective_stop rises; if it didn't rise, writing it here
-                # is a no-op. If update_stop() FAILED upstream (returning False
-                # and nulling stop_order_id), this UPDATE would have falsely
-                # reported a stop_price the broker no longer holds.
-                #
-                # Per docs/architecture/trade-state-ownership.md: stop_price is
-                # owned by entry_pipeline._skip (INSERT) and update_stop()
-                # (trail). live_tracker keeps hold_days + running_closes
-                # (which are its domain).
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        hold_days = $2,
-                        running_closes = $3::jsonb
-                    WHERE id = $1
-                """, trade["id"], step.hold_days,
-                    json.dumps(step.new_running_closes))
-            else:
-                # T1.4 refactor 2026-05-17: dropped stop_price + total_pnl +
-                # partial_taken + remaining_shares from this UPDATE.
-                #
-                # - stop_price: update_stop() at line 589 owns trail writes.
-                #   Writing here is redundant when update_stop succeeded and
-                #   FALSELY OPTIMISTIC when it failed (KLAR-class bug).
-                # - total_pnl / partial_taken / remaining_shares: in the
-                #   no-partial branch, step.new_X == state[X] (no change). The
-                #   "no-op idempotent write" is actually a LOST UPDATE hazard
-                #   if a WS fill arrived concurrently between state-load and
-                #   this UPDATE — the stale read would clobber the WS write.
-                #   Authorized writers: finalize_partial_exit, finalize_full_exit,
-                #   finalize_stop_fill, _sync_positions_for_mode.
-                #
-                # Keeps: hold_days, breakeven_active (state-machine derived;
-                # only ever changed inside this function's domain when partial
-                # fires, which this branch by definition didn't), running_closes
-                # (live_tracker domain).
-                await conn.execute("""
-                    UPDATE mi_live_trades SET
-                        hold_days = $2,
-                        breakeven_active = $3,
-                        running_closes = $4::jsonb
-                    WHERE id = $1
-                """, trade["id"], step.hold_days,
-                    step.new_breakeven_active,
-                    json.dumps(step.new_running_closes))
+            await conn.execute("""
+                UPDATE mi_live_trades SET
+                    hold_days = $2,
+                    breakeven_active = $3,
+                    running_closes = $4::jsonb
+                WHERE id = $1
+            """, trade["id"], step.hold_days,
+                step.new_breakeven_active,
+                json.dumps(step.new_running_closes))
 
         logger.info(
             f"{ticker}: effective_stop=${step.effective_stop:.2f} "
@@ -634,6 +621,136 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         results.append({
             "ticker": ticker, "action": "updated",
             "effective_stop": step.effective_stop, "hold_days": step.hold_days,
+        })
+
+    return results
+
+
+async def run_partial_exits(today: date | None = None) -> list[dict]:
+    """Run the Day 3-5 partial-profit decision DURING market hours (3:45 PM ET).
+
+    #361 (2026-06-23): SPLIT OUT of the 4:45 PM `update_open_positions_live`
+    EOD job. The partial-profit decision LOGIC is UNCHANGED — it is still the
+    single source of truth in `apply_daily_exit_step` (we reuse it; we do not
+    duplicate the decision). Only WHEN it fires moved: from after the close
+    (4:45) to mid-session (3:45).
+
+    WHY 3:45 / market-hours: when the partial fired at 4:45 (after the 16:00 ET
+    close), its stop-replace parked in `pending_replace` until the next session
+    open. Both the old and the new stop reserved the shares → qty_available=0 →
+    the partial sell aborted. Mid-session, the stop-replace settles in ~0.2s and
+    the sell fills cleanly.
+
+    Acts ONLY on the partial branch (`step.partial_fired`) → `execute_partial_exit`.
+    Persists NOTHING here:
+      - The reduced remaining / partial_taken / breakeven_active / exits are
+        committed by `finalize_partial_exit` on the actual WS fill (the only
+        authorized writer — BW 5/14 optimistic-write protocol).
+      - running_closes / hold_days / SMA-trail stop stay OWNED by the 4:45 job.
+        Writing running_closes here would DOUBLE-APPEND today's close (the
+        append at exit_logic.py line ~98 runs every call), corrupting the SMA
+        basis — so this function deliberately discards the rest of `step`.
+
+    No double-fire: the 4:45 job passes `skip_partial_decision=True`, so the
+    partial can fire only here, exactly once per day.
+
+    Note: at 3:45 `get_index_history` returns today's FORMING daily bar (live
+    Polygon aggregate), so `bar_close` is the intraday last trade, not the
+    settled close. For the Day 3-4 branch (`bar_close > entry_price`) this is an
+    intraday evaluation — implicit in the operator's choice of a market-hours
+    trigger. Day 5+ is unconditional and unaffected.
+    """
+    if today is None:
+        today = et_today()
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        open_trades = await conn.fetch("""
+            SELECT * FROM mi_live_trades
+            WHERE status = 'filled' AND remaining_shares > 0
+            ORDER BY alert_date ASC
+        """)
+
+    if not open_trades:
+        logger.info("run_partial_exits: no open live positions")
+        return []
+
+    logger.info(
+        f"run_partial_exits: scanning {len(open_trades)} open positions for "
+        f"Day 3-5 partials: {[dict(t)['ticker'] for t in open_trades]}"
+    )
+    results: list[dict] = []
+
+    for trade in open_trades:
+        trade = dict(trade)
+        ticker = trade["ticker"]
+        alert_date = trade["alert_date"]
+        running_closes_in = trade.get("running_closes", [])
+        if isinstance(running_closes_in, str):
+            running_closes_in = json.loads(running_closes_in or "[]")
+        exits_in = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+        hard_stop = trade.get("hard_stop") or trade["stop_price"]
+
+        if trade["remaining_shares"] <= 0 or today <= alert_date:
+            continue
+
+        today_str = today.strftime("%Y-%m-%d")
+        daily_bars = await get_index_history(ticker, today_str, today_str)
+        if not daily_bars:
+            logger.debug(f"run_partial_exits: no daily bar for {ticker} on {today}")
+            results.append({"ticker": ticker, "action": "no_data"})
+            continue
+
+        state = {
+            "alert_date": alert_date,
+            "remaining_shares": trade["remaining_shares"],
+            "entry_price": trade["entry_price"],
+            "hard_stop": hard_stop,
+            "partial_taken": trade.get("partial_taken", False),
+            "breakeven_active": trade.get("breakeven_active", False),
+            "exits": exits_in,
+            "running_closes": running_closes_in,
+        }
+
+        # Single-source-of-truth partial decision. We discard everything in
+        # `step` EXCEPT partial_fired / partial_shares — the SMA-trail, stop,
+        # and running_closes advance are the 4:45 job's domain (see docstring).
+        #
+        # skip_hard_stop_close=True is REQUIRED here (matches the 4:45 job's
+        # post-verify re-run): at 3:45 the forming bar's `bar_low` is the
+        # intraday low, so a position that WICKED to/through its hard_stop
+        # intraday but recovered (still open, still green) would short-circuit
+        # `apply_daily_exit_step` at its step-1 hard-stop close — returning
+        # partial_fired=False BEFORE the partial branch — and we'd silently DROP
+        # that day's partial. The real Alpaca resting stop is the actual stop
+        # mechanism (the backtest-pure bar_low<=hard_stop close is a no-op once
+        # the position is confirmed held); these positions ARE held (the query
+        # filters status='filled' AND remaining_shares>0). Skipping the close
+        # branch keeps the partial decision alive — faithful to the validated
+        # live behavior. We still act ONLY on partial_fired; the close path is
+        # never executed from this partial-only job.
+        step = apply_daily_exit_step(state, daily_bars[0], today,
+                                     integer_partial_shares=True,
+                                     skip_hard_stop_close=True)
+
+        if not step.partial_fired:
+            results.append({"ticker": ticker, "action": "no_partial"})
+            continue
+
+        logger.info(
+            f"run_partial_exits: {ticker} day={step.hold_days} "
+            f"close=${step.bar_close:.2f} partial_shares={step.partial_shares:.0f}"
+        )
+
+        partial_ok = await execute_partial_exit(trade["id"], int(step.partial_shares))
+        # finalize_partial_exit commits the DB state on the actual WS fill; if
+        # the helper aborts/fails it has already audit-logged + (where relevant)
+        # re-protected the stop. Nothing to persist here either way — the 4:45
+        # job and the WS fill own all state writes.
+        results.append({
+            "ticker": ticker,
+            "action": "partial_submitted" if partial_ok else "partial_failed",
+            "shares": int(step.partial_shares),
         })
 
     return results

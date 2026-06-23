@@ -299,7 +299,8 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 | 4:10 PM | EOD EP recap (HIGH outcomes + feed telemetry) |
 | 4:15 PM | **Post-EOD audit** (L1 invariants + trade-side L2/L3) |
 | 4:30 PM (mon-fri) | **News source quality drift check** (#71/#72 — audit row + 24h-dedup Telegram if drift) |
-| 4:45 PM | Position update |
+| 3:45 PM (mon-fri) | **Partial-exit scan** (`partial_exit_scan` — Day 3-5 partial-profit, runs DURING market hours so the stop-replace settles intraday instead of parking in `pending_replace` after the close; SPLIT from the 4:45 job, #361) |
+| 4:45 PM | Position update (SMA trail + stop updates + daily summary — partials moved to the 3:45 scan, #361) |
 | 9:35 AM–3:55 PM (every 5 min, mon-fri) | **Intraday flag-break scan** (shadow — catches moment TIGHTENING/COILED/TRIGGERED ticker breaks above base_high with volume confirmation; `/flagbreaks`, #94) |
 | 9:00 AM–4:45 PM (every 15 min, mon-fri) + boot | **Order-status reconcile** (DB↔Alpaca silent-stop catcher; `order_status_reconciled` audit row on divergence, audit-only #123) |
 | 4:00 PM (mon-fri) | **9M EP Pace EOD digest** (whole-day rollup of pace/anticipation, dedup vs same-day actuals, cap 20; #133, hourly→EOD 2026-06-07. Actual 9M still rides the prompt per-5-min digest) + **Entry-technique EOD digest** (`run_intraday_signals_eod_digest` — one roll-up of the 5 intraday shadow detectors; #168, replaced ~23/day per-tick pings now default-off) |
