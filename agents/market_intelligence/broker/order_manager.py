@@ -2519,6 +2519,30 @@ async def reconcile_all_modes(lookback_days: int = 90) -> dict:
     return totals
 
 
+def _live_sell_stops(open_orders: list) -> list:
+    """The SINGLE shared definition of "what counts as a live sell-stop" — a
+    sell-side, stop-type order whose canonical status is in
+    `_STOP_CONFIRMED_LIVE_STATUSES`. Both the adopt site (`_try_adopt_existing_stop`)
+    and the coverage site (`_ensure_stop_coverage`) filter through this so they
+    can't drift on the definition (a divergence would risk a naked position).
+
+    PURE: takes the already-fetched open orders and returns the matching subset.
+    The CALLER owns the `get_open_orders` fetch and its error handling — the fetch
+    is deliberately NOT folded in here (each site has its own warning message).
+    """
+    live_stops = []
+    for o in open_orders:
+        side = str(o.get("side", "")).lower()
+        otype = str(o.get("type", "")).lower()
+        status = _canonical_order_status(o.get("status"))
+        if "sell" not in side or "stop" not in otype:
+            continue
+        if status not in _STOP_CONFIRMED_LIVE_STATUSES:
+            continue
+        live_stops.append(o)
+    return live_stops
+
+
 async def _try_adopt_existing_stop(
     trade_id: int,
     ticker: str,
@@ -2543,14 +2567,7 @@ async def _try_adopt_existing_stop(
         logger.warning(f"_try_adopt_existing_stop: get_open_orders failed for {ticker}: {e}")
         return None
     candidates = []
-    for o in open_orders:
-        side = str(o.get("side", "")).lower()
-        otype = str(o.get("type", "")).lower()
-        status = _canonical_order_status(o.get("status"))
-        if "sell" not in side or "stop" not in otype:
-            continue
-        if status not in _STOP_CONFIRMED_LIVE_STATUSES:
-            continue
+    for o in _live_sell_stops(open_orders):
         oqty = o.get("qty")
         try:
             if oqty is not None and float(oqty) >= float(remaining_qty) - 0.5:
@@ -2684,16 +2701,7 @@ async def _ensure_stop_coverage(
             )
             return None  # ambiguous (couldn't read broker) — defer to next run
 
-        live_stops = []
-        for o in open_orders:
-            side = str(o.get("side", "")).lower()
-            otype = str(o.get("type", "")).lower()
-            status = _canonical_order_status(o.get("status"))
-            if "sell" not in side or "stop" not in otype:
-                continue
-            if status not in _STOP_CONFIRMED_LIVE_STATUSES:
-                continue
-            live_stops.append(o)
+        live_stops = _live_sell_stops(open_orders)
 
         if len(live_stops) > 1:
             # Ambiguous: more than one live sell-stop. Adding/replacing here could
