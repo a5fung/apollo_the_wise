@@ -11,6 +11,7 @@ import json
 import logging
 import math
 import os
+from contextlib import asynccontextmanager
 from datetime import date, datetime, time as datetime_time, timezone
 from zoneinfo import ZoneInfo
 
@@ -1069,6 +1070,88 @@ def _is_share_reservation_lag(err: Exception) -> bool:
     )
 
 
+# ── #151 cross-PROCESS trade-state lock (advisory, DB-global) ─────────────────
+# execute_partial_exit and _ensure_stop_coverage run in DIFFERENT PROCESSES in
+# production (service split, EXECUTION_MODE=http — the partial is HTTP-triggerable
+# cross-container). An asyncio.Lock is a no-op across processes. A Postgres
+# *advisory* lock IS process-global: it serializes the partial (which reduces the
+# stop) against the reconciler's coverage repair (_ensure_stop_coverage), so the
+# reconciler can never "repair" a stop the partial is mid-flight reducing — the
+# race that produced the under-covering/naked window (FPS/QURE/IBM).
+#
+# Two-int form pg_advisory_lock(classid, objid): a fixed namespace constant +
+# trade_id. Session-level (NOT xact) so it's held across our own commits and
+# auto-released the instant the dedicated connection closes — the backstop if a
+# process dies mid-hold. We take a DEDICATED pooled connection and hold it for
+# the lock's lifetime, releasing the lock + the connection in finally.
+#
+# Non-re-entrant by design: each call site acquires the lock for `trade_id`
+# exactly ONCE and releases before doing anything that could acquire it again
+# (the abort re-protect calls _ensure_stop_coverage only AFTER releasing). So
+# there is no self-deadlock; the DB-global lock only ever serializes the
+# cross-process partial-vs-reconciler pair.
+_TRADE_LOCK_NAMESPACE = 0x504152  # "PAR" — fits int4; arbitrary fixed namespace
+
+
+@asynccontextmanager
+async def _trade_advisory_lock(trade_id: int):
+    """BLOCKING session-level advisory lock on (namespace, trade_id).
+
+    Acquires a dedicated connection from the pool, blocks until the lock is held
+    (`pg_advisory_lock`), yields, then unlocks + releases the connection in
+    `finally`. Session-level → if this process dies the lock auto-releases when
+    the connection closes (backstop). Used by execute_partial_exit at the TOP.
+    """
+    pool = await get_pool()
+    conn = await pool.acquire()
+    locked = False
+    try:
+        await conn.fetchval(
+            "SELECT pg_advisory_lock($1, $2)",
+            _TRADE_LOCK_NAMESPACE, int(trade_id),
+        )
+        locked = True
+        yield
+    finally:
+        try:
+            if locked:
+                await conn.fetchval(
+                    "SELECT pg_advisory_unlock($1, $2)",
+                    _TRADE_LOCK_NAMESPACE, int(trade_id),
+                )
+        finally:
+            await pool.release(conn)
+
+
+@asynccontextmanager
+async def _trade_advisory_try_lock(trade_id: int):
+    """NON-BLOCKING session-level advisory lock on (namespace, trade_id).
+
+    Yields True if the lock was acquired (caller proceeds), False if another
+    holder has it (caller SKIPS). Unlocks + releases the connection in `finally`.
+    Used by _ensure_stop_coverage so the reconciler defers to an in-flight
+    partial rather than repairing a stop mid-reduction.
+    """
+    pool = await get_pool()
+    conn = await pool.acquire()
+    acquired = False
+    try:
+        acquired = bool(await conn.fetchval(
+            "SELECT pg_try_advisory_lock($1, $2)",
+            _TRADE_LOCK_NAMESPACE, int(trade_id),
+        ))
+        yield acquired
+    finally:
+        try:
+            if acquired:
+                await conn.fetchval(
+                    "SELECT pg_advisory_unlock($1, $2)",
+                    _TRADE_LOCK_NAMESPACE, int(trade_id),
+                )
+        finally:
+            await pool.release(conn)
+
+
 async def execute_partial_exit(
     trade_id: int, shares: int, *, force: bool = False,
 ) -> bool:
@@ -1147,520 +1230,548 @@ async def execute_partial_exit(
             }),
         )
 
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        trade = await conn.fetchrow(
-            "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
-        )
-    if not trade:
-        logger.warning(f"execute_partial_exit: trade {trade_id} not found")
-        await log_audit_event(
-            "partial_exit_aborted",
-            f"trade_id={trade_id}: not found",
-            json.dumps({"trade_id": trade_id, "shares": int(shares)}),
-        )
-        return False
-
-    # Dedup against an already-pending exit order for this trade — without this,
-    # if a sell placed by yesterday's cron is still queued (e.g. after-hours
-    # market sell awaiting next open), today's cron would stack a duplicate.
-    async with pool.acquire() as conn:
-        pending = await conn.fetchrow("""
-            SELECT alpaca_order_id, qty, purpose FROM mi_live_orders
-            WHERE trade_id = $1
-              AND purpose IN ('partial_exit', 'full_exit')
-              AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
-            LIMIT 1
-        """, trade_id)
-    if pending:
-        logger.info(
-            f"execute_partial_exit: trade {trade_id} {trade['ticker']} already has "
-            f"pending {pending['purpose']} order {pending['alpaca_order_id']} — skip"
-        )
-        await log_audit_event(
-            "partial_exit_aborted",
-            f"{trade['ticker']}: pending {pending['purpose']} order already open ({pending['alpaca_order_id']})",
-            json.dumps({
-                "trade_id": trade_id, "ticker": trade["ticker"],
-                "pending_order_id": pending["alpaca_order_id"],
-                "pending_purpose": pending["purpose"],
-                "stage": "dedup_pending_exit",
-            }),
-        )
-        return False
-
-    ticker = trade["ticker"]
-    account_mode = trade.get("account_mode") or current_account_mode()
-    signal_type = trade.get("signal_type") or "unknown"
-    shares = int(shares)
-    full_remaining = int(trade["remaining_shares"])
-    new_remaining = full_remaining - shares
-    stop_price = trade["stop_price"] or trade.get("hard_stop")
-    old_stop_id = trade.get("stop_order_id")
-
-    logger.info(
-        f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
-        f"(new_remaining={new_remaining}, trade_id={trade_id})"
-    )
-    await log_audit_event(
-        "partial_exit_started",
-        f"{ticker}: sell {shares} of {full_remaining} (new_remaining={new_remaining})",
-        json.dumps({
-            "trade_id": trade_id, "ticker": ticker,
-            "shares": shares, "full_remaining": full_remaining,
-            "new_remaining": new_remaining,
-            "stop_price": float(stop_price) if stop_price else None,
-            "old_stop_id": old_stop_id,
-        }),
-    )
-
-    # Step 1: Atomically REPLACE stop with reduced qty. Replace is race-free
-    # vs cancel+new (IBM 2026-05-27 false-naked: 43ms between cancel + new
-    # submit; Alpaca's share-reservation system hadn't cleared so the new
-    # stop was rejected with "insufficient qty available" — held_for_orders
-    # = 26). Alpaca's replace_order_by_id is atomic broker-side: no share
-    # release window.
-    new_stop_id = None
-    if old_stop_id and stop_price and new_remaining > 0:
-        # Same-window retry (#136 follow-through). replace_order is atomic
-        # so the original cancel-new race shouldn't recur, but other
-        # transient broker failures (5xx, network blip) still warrant
-        # a single same-tick retry before aborting. Skipping methodology
-        # window costs an extra trading day at next-open price — too
-        # expensive vs a 1s wait + retry.
-        new_stop_order = None
-        last_err: Exception | None = None
-        for attempt in (1, 2):
-            try:
-                coid_stop = alpaca.make_client_order_id(
-                    account_mode, signal_type, ticker,
-                )
-                new_stop_order = await alpaca.replace_order(
-                    old_stop_id,
-                    qty=new_remaining,
-                    stop_price=float(stop_price),
-                    account_mode=account_mode,
-                    client_order_id=coid_stop,
-                )
-                break
-            except Exception as e:
-                last_err = e
-                logger.warning(
-                    f"execute_partial_exit: replace attempt {attempt} failed "
-                    f"for {ticker}: {e}"
-                )
-                if attempt < 2:
-                    await asyncio.sleep(1.5)
-        try:
-            if new_stop_order is None:
-                raise last_err if last_err else RuntimeError("replace_order unreached")
-            new_stop_id = new_stop_order["id"]
-            # Persist immediately — if we crash after this, sync_positions sees correct qty.
-            await set_stop_order_id(
-                trade_id, new_stop_id,
-                reason="partial_replacement",
-                account_mode=account_mode,
+    # ── #151 cross-PROCESS serialization (advisory lock on trade_id) ─────────
+    # Hold a DB-global advisory lock for this trade_id across the entire stop-
+    # reduce → verify → sell sequence so the reconciler's _ensure_stop_coverage
+    # (which runs in a DIFFERENT process under EXECUTION_MODE=http) cannot repair
+    # a stop we are mid-reducing. An asyncio.Lock would be a no-op cross-process;
+    # this is process-global. Released on CM exit (below), BEFORE the abort
+    # re-protect (which itself takes the try-lock on this trade_id).
+    abort_reprotect = False
+    abort_ctx: dict = {}
+    async with _trade_advisory_lock(trade_id):
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            trade = await conn.fetchrow(
+                "SELECT * FROM mi_live_trades WHERE id = $1", trade_id,
             )
-            async with pool.acquire() as conn:
-                await conn.execute("""
-                    INSERT INTO mi_live_orders
-                        (trade_id, alpaca_order_id, ticker, side, order_type, qty,
-                         stop_price, status, raw_response, purpose, exit_reason)
-                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
-                            'stop_loss', 'stop_hit')
-                    ON CONFLICT (alpaca_order_id) DO NOTHING
-                """, trade_id, new_stop_id, ticker, float(new_remaining),
-                    float(stop_price), new_stop_order["status"], json.dumps(new_stop_order))
+        if not trade:
+            logger.warning(f"execute_partial_exit: trade {trade_id} not found")
+            await log_audit_event(
+                "partial_exit_aborted",
+                f"trade_id={trade_id}: not found",
+                json.dumps({"trade_id": trade_id, "shares": int(shares)}),
+            )
+            return False
+
+        # Dedup against an already-pending exit order for this trade — without this,
+        # if a sell placed by yesterday's cron is still queued (e.g. after-hours
+        # market sell awaiting next open), today's cron would stack a duplicate.
+        async with pool.acquire() as conn:
+            pending = await conn.fetchrow("""
+                SELECT alpaca_order_id, qty, purpose FROM mi_live_orders
+                WHERE trade_id = $1
+                  AND purpose IN ('partial_exit', 'full_exit')
+                  AND status NOT IN ('filled', 'cancelled', 'rejected', 'expired')
+                LIMIT 1
+            """, trade_id)
+        if pending:
             logger.info(
-                f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
-                f"@${stop_price:.2f} (order {new_stop_id})"
+                f"execute_partial_exit: trade {trade_id} {trade['ticker']} already has "
+                f"pending {pending['purpose']} order {pending['alpaca_order_id']} — skip"
             )
             await log_audit_event(
-                "partial_exit_stop_replaced",
-                f"{ticker}: stop reissued for {new_remaining} sh @${float(stop_price):.2f} ({new_stop_id})",
+                "partial_exit_aborted",
+                f"{trade['ticker']}: pending {pending['purpose']} order already open ({pending['alpaca_order_id']})",
                 json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "new_stop_id": new_stop_id, "new_remaining": new_remaining,
-                    "stop_price": float(stop_price),
+                    "trade_id": trade_id, "ticker": trade["ticker"],
+                    "pending_order_id": pending["alpaca_order_id"],
+                    "pending_purpose": pending["purpose"],
+                    "stage": "dedup_pending_exit",
                 }),
             )
-        except Exception as e:
-            # Replacement stop failed. CRITICAL: replace_order_by_id is ATOMIC —
-            # a REJECTED replace (validation error like sub-penny stop, or a
-            # pre-HTTP Pydantic failure) leaves the ORIGINAL stop (old_stop_id)
-            # LIVE and unchanged broker-side. The old handler assumed
-            # "old cancelled → naked" and fired a 🚨 manual-stop alert; that is a
-            # FALSE naked (RCAT 2026-06-01: sub-penny 11.955 rejected, original
-            # 11.96 stop intact the whole time — exact shape this fn's L445-451
-            # comment already documented for the str(qty) trigger). Verify the
-            # old stop on the broker BEFORE alarming. No sell has happened yet.
-            logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
-            old_stop_live = False
-            if old_stop_id:
+            return False
+
+        ticker = trade["ticker"]
+        account_mode = trade.get("account_mode") or current_account_mode()
+        signal_type = trade.get("signal_type") or "unknown"
+        shares = int(shares)
+        full_remaining = int(trade["remaining_shares"])
+        new_remaining = full_remaining - shares
+        stop_price = trade["stop_price"] or trade.get("hard_stop")
+        old_stop_id = trade.get("stop_order_id")
+
+        logger.info(
+            f"Partial exit: {ticker} selling {shares} of {full_remaining} shares "
+            f"(new_remaining={new_remaining}, trade_id={trade_id})"
+        )
+        await log_audit_event(
+            "partial_exit_started",
+            f"{ticker}: sell {shares} of {full_remaining} (new_remaining={new_remaining})",
+            json.dumps({
+                "trade_id": trade_id, "ticker": ticker,
+                "shares": shares, "full_remaining": full_remaining,
+                "new_remaining": new_remaining,
+                "stop_price": float(stop_price) if stop_price else None,
+                "old_stop_id": old_stop_id,
+            }),
+        )
+
+        # Step 1: Atomically REPLACE stop with reduced qty. Replace is race-free
+        # vs cancel+new (IBM 2026-05-27 false-naked: 43ms between cancel + new
+        # submit; Alpaca's share-reservation system hadn't cleared so the new
+        # stop was rejected with "insufficient qty available" — held_for_orders
+        # = 26). Alpaca's replace_order_by_id is atomic broker-side: no share
+        # release window.
+        new_stop_id = None
+        if old_stop_id and stop_price and new_remaining > 0:
+            # Same-window retry (#136 follow-through). replace_order is atomic
+            # so the original cancel-new race shouldn't recur, but other
+            # transient broker failures (5xx, network blip) still warrant
+            # a single same-tick retry before aborting. Skipping methodology
+            # window costs an extra trading day at next-open price — too
+            # expensive vs a 1s wait + retry.
+            new_stop_order = None
+            last_err: Exception | None = None
+            for attempt in (1, 2):
                 try:
-                    _chk = await alpaca.get_order(old_stop_id, account_mode=account_mode)
-                    _old_status = _canonical_order_status(_chk.get("status") if _chk else None)
-                    old_stop_live = _old_status in _STOP_CONFIRMED_LIVE_STATUSES
-                except Exception as _verr:
-                    logger.warning(
-                        f"execute_partial_exit: could not verify old stop {old_stop_id} "
-                        f"for {ticker} after replace failure: {_verr}"
+                    coid_stop = alpaca.make_client_order_id(
+                        account_mode, signal_type, ticker,
                     )
-            if old_stop_live:
-                # Atomic replace was rejected → original stop still protects the
-                # full position. NOT naked. Keep stop_order_id, abort cleanly,
-                # retry next window. Calm message (no manual-stop call to action,
-                # which would create a duplicate-stop oversell).
+                    new_stop_order = await alpaca.replace_order(
+                        old_stop_id,
+                        qty=new_remaining,
+                        stop_price=float(stop_price),
+                        account_mode=account_mode,
+                        client_order_id=coid_stop,
+                    )
+                    break
+                except Exception as e:
+                    last_err = e
+                    logger.warning(
+                        f"execute_partial_exit: replace attempt {attempt} failed "
+                        f"for {ticker}: {e}"
+                    )
+                    if attempt < 2:
+                        await asyncio.sleep(1.5)
+            try:
+                if new_stop_order is None:
+                    raise last_err if last_err else RuntimeError("replace_order unreached")
+                new_stop_id = new_stop_order["id"]
+                # Persist immediately — if we crash after this, sync_positions sees correct qty.
+                await set_stop_order_id(
+                    trade_id, new_stop_id,
+                    reason="partial_replacement",
+                    account_mode=account_mode,
+                )
+                async with pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO mi_live_orders
+                            (trade_id, alpaca_order_id, ticker, side, order_type, qty,
+                             stop_price, status, raw_response, purpose, exit_reason)
+                        VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
+                                'stop_loss', 'stop_hit')
+                        ON CONFLICT (alpaca_order_id) DO NOTHING
+                    """, trade_id, new_stop_id, ticker, float(new_remaining),
+                        float(stop_price), new_stop_order["status"], json.dumps(new_stop_order))
+                logger.info(
+                    f"Partial exit {ticker}: replacement stop placed for {new_remaining} shares "
+                    f"@${stop_price:.2f} (order {new_stop_id})"
+                )
+                await log_audit_event(
+                    "partial_exit_stop_replaced",
+                    f"{ticker}: stop reissued for {new_remaining} sh @${float(stop_price):.2f} ({new_stop_id})",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                        "stop_price": float(stop_price),
+                    }),
+                )
+            except Exception as e:
+                # Replacement stop failed. CRITICAL: replace_order_by_id is ATOMIC —
+                # a REJECTED replace (validation error like sub-penny stop, or a
+                # pre-HTTP Pydantic failure) leaves the ORIGINAL stop (old_stop_id)
+                # LIVE and unchanged broker-side. The old handler assumed
+                # "old cancelled → naked" and fired a 🚨 manual-stop alert; that is a
+                # FALSE naked (RCAT 2026-06-01: sub-penny 11.955 rejected, original
+                # 11.96 stop intact the whole time — exact shape this fn's L445-451
+                # comment already documented for the str(qty) trigger). Verify the
+                # old stop on the broker BEFORE alarming. No sell has happened yet.
+                logger.error(f"execute_partial_exit: replacement stop failed for {ticker}: {e}")
+                old_stop_live = False
+                if old_stop_id:
+                    try:
+                        _chk = await alpaca.get_order(old_stop_id, account_mode=account_mode)
+                        _old_status = _canonical_order_status(_chk.get("status") if _chk else None)
+                        old_stop_live = _old_status in _STOP_CONFIRMED_LIVE_STATUSES
+                    except Exception as _verr:
+                        logger.warning(
+                            f"execute_partial_exit: could not verify old stop {old_stop_id} "
+                            f"for {ticker} after replace failure: {_verr}"
+                        )
+                if old_stop_live:
+                    # Atomic replace was rejected → original stop still protects the
+                    # full position. NOT naked. Keep stop_order_id, abort cleanly,
+                    # retry next window. Calm message (no manual-stop call to action,
+                    # which would create a duplicate-stop oversell).
+                    await log_audit_event(
+                        "partial_exit_aborted",
+                        f"{ticker}: replacement stop rejected ({type(e).__name__}); "
+                        f"original stop {old_stop_id} still LIVE — position protected, no action",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "old_stop_id": old_stop_id, "new_remaining": new_remaining,
+                            "stop_price": float(stop_price), "stage": "place_new_stop",
+                            "old_stop_intact": True, "error": str(e)[:500],
+                        }),
+                    )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ Partial exit skipped for {ticker}: "
+                        f"replacement stop rejected ({type(e).__name__}).\n"
+                        f"_Original stop still live — position protected, no shares sold. "
+                        f"Cron will retry next window._"
+                    )
+                    return False
+                # Old stop NOT confirmed live → genuine naked risk → remediate + alert.
+                # broker-confirmed: reached only after the alpaca.get_order(old_stop_id)
+                # read above (L1254-1258) set old_stop_live=False — i.e. the broker
+                # itself confirmed the old stop is not in a live status. This is the
+                # #151 verify-stop-live fix; the null is broker-evidenced, not inferred.
+                await set_stop_order_id(
+                    trade_id, None,
+                    reason="partial_naked",
+                    account_mode=account_mode,
+                )
                 await log_audit_event(
                     "partial_exit_aborted",
-                    f"{ticker}: replacement stop rejected ({type(e).__name__}); "
-                    f"original stop {old_stop_id} still LIVE — position protected, no action",
+                    f"{ticker}: replacement stop failed AND old stop not live — position naked, {type(e).__name__}",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker,
                         "old_stop_id": old_stop_id, "new_remaining": new_remaining,
                         "stop_price": float(stop_price), "stage": "place_new_stop",
-                        "old_stop_intact": True, "error": str(e)[:500],
-                    }),
-                )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ Partial exit skipped for {ticker}: "
-                    f"replacement stop rejected ({type(e).__name__}).\n"
-                    f"_Original stop still live — position protected, no shares sold. "
-                    f"Cron will retry next window._"
-                )
-                return False
-            # Old stop NOT confirmed live → genuine naked risk → remediate + alert.
-            # broker-confirmed: reached only after the alpaca.get_order(old_stop_id)
-            # read above (L1254-1258) set old_stop_live=False — i.e. the broker
-            # itself confirmed the old stop is not in a live status. This is the
-            # #151 verify-stop-live fix; the null is broker-evidenced, not inferred.
-            await set_stop_order_id(
-                trade_id, None,
-                reason="partial_naked",
-                account_mode=account_mode,
-            )
-            await log_audit_event(
-                "partial_exit_aborted",
-                f"{ticker}: replacement stop failed AND old stop not live — position naked, {type(e).__name__}",
-                json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "old_stop_id": old_stop_id, "new_remaining": new_remaining,
-                    "stop_price": float(stop_price), "stage": "place_new_stop",
-                    "stale_stop_id_cleared": old_stop_id,
-                    "error": str(e)[:500],
-                }),
-            )
-            await log_audit_event(
-                "naked_position_detected",
-                f"{ticker}: stop_order_id cleared; sync_positions will remediate",
-                json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "stop_price": float(stop_price),
-                    "remaining_shares": float(new_remaining),
-                    "source": "execute_partial_exit",
-                }),
-            )
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
-                f"Old stop cancelled but new stop failed: {e}\n"
-                f"*Position unprotected — place a manual stop immediately!*"
-            )
-            return False
-
-    # Step 1b: VERIFY the replacement stop is actually live on the broker
-    # BEFORE freeing shares via the market sell. A replace can return a new
-    # order_id that the broker then rejects/cancels — "looked successful,
-    # actually dead". G6 guards that shape at deploy time; this is its runtime
-    # analog on the production path. Selling against a dead stop = naked.
-    #
-    # Tolerate the pending_replace → new settling window (≤~1s observed) so we
-    # don't manufacture a false-naked on a stop that's merely still settling
-    # (the lesson the paper-Alpaca harness taught us 2026-05-29). Poll a short
-    # budget, then classify: live → sell; dead → abort+null+remediate; still
-    # pending after budget → abort WITHOUT nulling (keep the best-guess stop,
-    # ask operator to verify) since we have NOT sold and the stop likely lives.
-    if new_stop_id:
-        verify_status = None
-        verify_outcome = "uncertain"  # live | dead | uncertain
-        for _ in range(12):  # ~3s budget at 0.25s/poll
-            chk = await alpaca.get_order(new_stop_id, account_mode=account_mode)
-            verify_status = _canonical_order_status(chk.get("status") if chk else None)
-            if verify_status in _STOP_CONFIRMED_LIVE_STATUSES:
-                verify_outcome = "live"
-                break
-            if verify_status in _STOP_DEAD_STATUSES or verify_status == "filled":
-                verify_outcome = "dead"
-                break
-            await asyncio.sleep(0.25)
-
-        if verify_outcome != "live":
-            logger.error(
-                f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
-                f"not confirmed live before sell (outcome={verify_outcome}, "
-                f"last_status={verify_status}) — aborting sell"
-            )
-            if verify_outcome == "dead":
-                # Stop is gone broker-side. Null so sync_positions Path C
-                # detects the orphan and re-places protection.
-                await set_stop_order_id(
-                    trade_id, None,
-                    reason="partial_verify_stop_dead",
-                    account_mode=account_mode,
-                )
-                await log_audit_event(
-                    "partial_exit_aborted",
-                    f"{ticker}: replacement stop confirmed DEAD before sell "
-                    f"(status={verify_status}) — nulled for remediation",
-                    json.dumps({
-                        "trade_id": trade_id, "ticker": ticker,
-                        "new_stop_id": new_stop_id, "new_remaining": new_remaining,
-                        "stop_price": float(stop_price) if stop_price else None,
-                        "stage": "verify_stop_live", "verify_outcome": verify_outcome,
-                        "last_status": verify_status,
-                        "stale_stop_id_cleared": new_stop_id,
+                        "stale_stop_id_cleared": old_stop_id,
+                        "error": str(e)[:500],
                     }),
                 )
                 await log_audit_event(
                     "naked_position_detected",
-                    f"{ticker}: replacement stop dead pre-sell; sync_positions will remediate",
+                    f"{ticker}: stop_order_id cleared; sync_positions will remediate",
                     json.dumps({
                         "trade_id": trade_id, "ticker": ticker,
-                        "stop_price": float(stop_price) if stop_price else None,
-                        "remaining_shares": float(full_remaining),
-                        "source": "execute_partial_exit_verify",
+                        "stop_price": float(stop_price),
+                        "remaining_shares": float(new_remaining),
+                        "source": "execute_partial_exit",
                     }),
                 )
                 await send_telegram_message(
                     f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
-                    f"Replacement stop confirmed dead before sell (status={verify_status}).\n"
-                    f"No shares sold. *stop_order_id nulled — sync_positions will re-place; "
-                    f"verify on Alpaca.*"
+                    f"Old stop cancelled but new stop failed: {e}\n"
+                    f"*Position unprotected — place a manual stop immediately!*"
                 )
-            else:
-                # Uncertain (still pending after budget). We did NOT sell, so the
-                # full position is intact. Keep new_stop_id persisted (it likely
-                # IS live, just slow to settle) rather than null it and trigger a
-                # false-naked that could cancel a good stop. Ask operator to eyeball.
-                await log_audit_event(
-                    "partial_exit_aborted",
-                    f"{ticker}: replacement stop not confirmed live within budget "
-                    f"(status={verify_status}) — sell skipped, stop kept",
-                    json.dumps({
-                        "trade_id": trade_id, "ticker": ticker,
-                        "new_stop_id": new_stop_id, "new_remaining": new_remaining,
-                        "stop_price": float(stop_price) if stop_price else None,
-                        "stage": "verify_stop_live", "verify_outcome": verify_outcome,
-                        "last_status": verify_status,
-                    }),
+                return False
+
+        # Step 1b: VERIFY the replacement stop is actually live on the broker
+        # BEFORE freeing shares via the market sell. A replace can return a new
+        # order_id that the broker then rejects/cancels — "looked successful,
+        # actually dead". G6 guards that shape at deploy time; this is its runtime
+        # analog on the production path. Selling against a dead stop = naked.
+        #
+        # Tolerate the pending_replace → new settling window (≤~1s observed) so we
+        # don't manufacture a false-naked on a stop that's merely still settling
+        # (the lesson the paper-Alpaca harness taught us 2026-05-29). Poll a short
+        # budget, then classify: live → sell; dead → abort+null+remediate; still
+        # pending after budget → abort WITHOUT nulling (keep the best-guess stop,
+        # ask operator to verify) since we have NOT sold and the stop likely lives.
+        if new_stop_id:
+            verify_status = None
+            verify_outcome = "uncertain"  # live | dead | uncertain
+            for _ in range(12):  # ~3s budget at 0.25s/poll
+                chk = await alpaca.get_order(new_stop_id, account_mode=account_mode)
+                verify_status = _canonical_order_status(chk.get("status") if chk else None)
+                if verify_status in _STOP_CONFIRMED_LIVE_STATUSES:
+                    verify_outcome = "live"
+                    break
+                if verify_status in _STOP_DEAD_STATUSES or verify_status == "filled":
+                    verify_outcome = "dead"
+                    break
+                await asyncio.sleep(0.25)
+
+            if verify_outcome != "live":
+                logger.error(
+                    f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
+                    f"not confirmed live before sell (outcome={verify_outcome}, "
+                    f"last_status={verify_status}) — aborting sell"
                 )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
-                    f"replacement stop not confirmed live (status={verify_status}).\n"
-                    f"No shares sold; stop {new_stop_id[:8]} kept for {new_remaining} sh. "
-                    f"_Verify on Alpaca; cron will retry next window._"
-                )
+                if verify_outcome == "dead":
+                    # Stop is gone broker-side. Null so sync_positions Path C
+                    # detects the orphan and re-places protection.
+                    await set_stop_order_id(
+                        trade_id, None,
+                        reason="partial_verify_stop_dead",
+                        account_mode=account_mode,
+                    )
+                    await log_audit_event(
+                        "partial_exit_aborted",
+                        f"{ticker}: replacement stop confirmed DEAD before sell "
+                        f"(status={verify_status}) — nulled for remediation",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                            "stop_price": float(stop_price) if stop_price else None,
+                            "stage": "verify_stop_live", "verify_outcome": verify_outcome,
+                            "last_status": verify_status,
+                            "stale_stop_id_cleared": new_stop_id,
+                        }),
+                    )
+                    await log_audit_event(
+                        "naked_position_detected",
+                        f"{ticker}: replacement stop dead pre-sell; sync_positions will remediate",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "stop_price": float(stop_price) if stop_price else None,
+                            "remaining_shares": float(full_remaining),
+                            "source": "execute_partial_exit_verify",
+                        }),
+                    )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}🚨 *PARTIAL EXIT ABORTED* for {ticker}!\n"
+                        f"Replacement stop confirmed dead before sell (status={verify_status}).\n"
+                        f"No shares sold. *stop_order_id nulled — sync_positions will re-place; "
+                        f"verify on Alpaca.*"
+                    )
+                else:
+                    # Uncertain (still pending after budget). We did NOT sell, so the
+                    # full position is intact. Keep new_stop_id persisted (it likely
+                    # IS live, just slow to settle) rather than null it and trigger a
+                    # false-naked that could cancel a good stop. Ask operator to eyeball.
+                    await log_audit_event(
+                        "partial_exit_aborted",
+                        f"{ticker}: replacement stop not confirmed live within budget "
+                        f"(status={verify_status}) — sell skipped, stop kept",
+                        json.dumps({
+                            "trade_id": trade_id, "ticker": ticker,
+                            "new_stop_id": new_stop_id, "new_remaining": new_remaining,
+                            "stop_price": float(stop_price) if stop_price else None,
+                            "stage": "verify_stop_live", "verify_outcome": verify_outcome,
+                            "last_status": verify_status,
+                        }),
+                    )
+                    await send_telegram_message(
+                        f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
+                        f"replacement stop not confirmed live (status={verify_status}).\n"
+                        f"No shares sold; stop {new_stop_id[:8]} kept for {new_remaining} sh. "
+                        f"_Verify on Alpaca; cron will retry next window._"
+                    )
+                return False
+
+            logger.info(
+                f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
+                f"confirmed live (status={verify_status}) — proceeding to sell"
+            )
+
+        # Step 1c (#151 Phase 1, docs/decisions/0009): VERIFY the shares are
+        # actually FREE before selling. A live new stop (Step 1b) is NOT enough —
+        # the OLD stop can stay stuck in `pending_replace` and keep reserving the
+        # whole position even after replace_order returns a live new order (FPS
+        # 2026-06-04/05: new 109 stop live, old 163 stop stuck pending_replace →
+        # qty_available=0 → sell rejected "insufficient qty" → false-naked +
+        # starved rollback). "New stop is live" passed both days and it still
+        # broke. Poll the broker's qty_available until it covers the partial; if
+        # it never frees within budget, ABORT BEFORE SELLING — the position is
+        # OVER-covered (safe), not naked. Keep the stop, retry next window.
+        avail_ok = False
+        last_avail = None
+        for _ in range(12):  # ~3s budget at 0.25s/poll
+            _pos = await alpaca.get_position(ticker, account_mode=account_mode)
+            last_avail = _pos.get("qty_available") if _pos else None
+            if last_avail is not None and last_avail >= shares:
+                avail_ok = True
+                break
+            await asyncio.sleep(0.25)
+        if not avail_ok:
+            logger.error(
+                f"execute_partial_exit: {ticker} qty_available={last_avail} < {shares} "
+                f"after budget — old stop likely still reserving shares "
+                f"(pending_replace limbo); aborting BEFORE sell (over-covered, safe)"
+            )
+            await log_audit_event(
+                "partial_exit_aborted",
+                f"{ticker}: shares not free (qty_available={last_avail} < {shares}) — "
+                f"sell skipped, position over-covered (safe), retry next window",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker, "shares": shares,
+                    "qty_available": last_avail, "new_remaining": new_remaining,
+                    "new_stop_id": new_stop_id, "old_stop_id": old_stop_id,
+                    "stage": "verify_shares_free",
+                }),
+            )
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
+                f"shares not free to sell (available {last_avail} < {shares}).\n"
+                f"_Old stop likely still settling (pending_replace) — position "
+                f"protected, no shares sold. Cron will retry next window._"
+            )
             return False
 
-        logger.info(
-            f"execute_partial_exit: replacement stop {new_stop_id} for {ticker} "
-            f"confirmed live (status={verify_status}) — proceeding to sell"
-        )
-
-    # Step 1c (#151 Phase 1, docs/decisions/0009): VERIFY the shares are
-    # actually FREE before selling. A live new stop (Step 1b) is NOT enough —
-    # the OLD stop can stay stuck in `pending_replace` and keep reserving the
-    # whole position even after replace_order returns a live new order (FPS
-    # 2026-06-04/05: new 109 stop live, old 163 stop stuck pending_replace →
-    # qty_available=0 → sell rejected "insufficient qty" → false-naked +
-    # starved rollback). "New stop is live" passed both days and it still
-    # broke. Poll the broker's qty_available until it covers the partial; if
-    # it never frees within budget, ABORT BEFORE SELLING — the position is
-    # OVER-covered (safe), not naked. Keep the stop, retry next window.
-    avail_ok = False
-    last_avail = None
-    for _ in range(12):  # ~3s budget at 0.25s/poll
-        _pos = await alpaca.get_position(ticker, account_mode=account_mode)
-        last_avail = _pos.get("qty_available") if _pos else None
-        if last_avail is not None and last_avail >= shares:
-            avail_ok = True
-            break
-        await asyncio.sleep(0.25)
-    if not avail_ok:
-        logger.error(
-            f"execute_partial_exit: {ticker} qty_available={last_avail} < {shares} "
-            f"after budget — old stop likely still reserving shares "
-            f"(pending_replace limbo); aborting BEFORE sell (over-covered, safe)"
-        )
-        await log_audit_event(
-            "partial_exit_aborted",
-            f"{ticker}: shares not free (qty_available={last_avail} < {shares}) — "
-            f"sell skipped, position over-covered (safe), retry next window",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker, "shares": shares,
-                "qty_available": last_avail, "new_remaining": new_remaining,
-                "new_stop_id": new_stop_id, "old_stop_id": old_stop_id,
-                "stage": "verify_shares_free",
-            }),
-        )
-        await send_telegram_message(
-            f"{mode_prefix(account_mode)}⚠️ Partial exit SKIPPED for {ticker}: "
-            f"shares not free to sell (available {last_avail} < {shares}).\n"
-            f"_Old stop likely still settling (pending_replace) — position "
-            f"protected, no shares sold. Cron will retry next window._"
-        )
-        return False
-
-    # Step 2: Market sell the partial (shares are now free from the stop).
-    try:
-        coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-        # #150: the atomic replace frees the shares, but Alpaca's share-hold
-        # (held_for_orders) can lag the replace ack by ~ms, so an immediate
-        # sell transiently rejects with "insufficient qty available" (confirmed
-        # 2026-05-29). Retry that SPECIFIC clean rejection a few times with
-        # backoff before the outer except rolls the partial back. Fresh COID
-        # per attempt avoids dup-COID rejection. Non-lag errors re-raise
-        # immediately (no retry) so genuine failures still roll back fast.
-        order = None
-        for _attempt in range(3):
-            try:
-                order = await alpaca.place_market_sell(
-                    ticker, shares,
-                    account_mode=account_mode, client_order_id=coid_sell,
-                )
-                break
-            except Exception as _se:
-                if _is_share_reservation_lag(_se) and _attempt < 2:
-                    logger.warning(
-                        f"execute_partial_exit: {ticker} sell hit share-reservation "
-                        f"lag (attempt {_attempt + 1}/3): {_se} — retry in 0.5s"
-                    )
-                    await asyncio.sleep(0.5)
-                    coid_sell = alpaca.make_client_order_id(
-                        account_mode, signal_type, ticker,
-                    )
-                    continue
-                raise
-        async with pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO mi_live_orders
-                    (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
-                     purpose, exit_reason, raw_response)
-                VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
-                        'partial_exit', 'partial_profit', $6::jsonb)
-                ON CONFLICT (alpaca_order_id) DO NOTHING
-            """, trade_id, order["id"], ticker, float(shares),
-                order.get("status", "new"), json.dumps(order))
-        await log_audit_event(
-            "partial_exit_sell_placed",
-            f"{ticker}: market sell {shares} placed ({order.get('id')}, status={order.get('status', 'new')})",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker,
-                "shares": shares, "order_id": order.get("id"),
-                "order_status": order.get("status"),
-            }),
-        )
-    except Exception as e:
-        logger.error(f"Partial exit sell failed for {ticker} after stop replaced: {e}")
-        await log_audit_event(
-            "partial_exit_sell_failed",
-            f"{ticker}: market sell raised — {type(e).__name__}, attempting rollback",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker,
-                "shares": shares, "new_stop_id": new_stop_id,
-                "full_remaining": full_remaining,
-                "stop_price": float(stop_price) if stop_price else None,
-                "error": str(e)[:500],
-            }),
-        )
-        # Rollback: restore stop for full original qty so nothing sits unprotected.
-        if new_stop_id:
-            await alpaca.cancel_order(new_stop_id, account_mode=account_mode)
+        # Step 2: Market sell the partial (shares are now free from the stop).
         try:
-            coid_rollback = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-            rollback = await alpaca.place_stop_order(
-                ticker, full_remaining, float(stop_price),
-                account_mode=account_mode, client_order_id=coid_rollback,
-            )
-            await set_stop_order_id(
-                trade_id, rollback["id"],
-                reason="partial_rollback",
-                account_mode=account_mode,
-            )
+            coid_sell = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+            # #150: the atomic replace frees the shares, but Alpaca's share-hold
+            # (held_for_orders) can lag the replace ack by ~ms, so an immediate
+            # sell transiently rejects with "insufficient qty available" (confirmed
+            # 2026-05-29). Retry that SPECIFIC clean rejection a few times with
+            # backoff before the outer except rolls the partial back. Fresh COID
+            # per attempt avoids dup-COID rejection. Non-lag errors re-raise
+            # immediately (no retry) so genuine failures still roll back fast.
+            order = None
+            for _attempt in range(3):
+                try:
+                    order = await alpaca.place_market_sell(
+                        ticker, shares,
+                        account_mode=account_mode, client_order_id=coid_sell,
+                    )
+                    break
+                except Exception as _se:
+                    if _is_share_reservation_lag(_se) and _attempt < 2:
+                        logger.warning(
+                            f"execute_partial_exit: {ticker} sell hit share-reservation "
+                            f"lag (attempt {_attempt + 1}/3): {_se} — retry in 0.5s"
+                        )
+                        await asyncio.sleep(0.5)
+                        coid_sell = alpaca.make_client_order_id(
+                            account_mode, signal_type, ticker,
+                        )
+                        continue
+                    raise
             async with pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO mi_live_orders
-                        (trade_id, alpaca_order_id, ticker, side, order_type, qty,
-                         stop_price, status, raw_response, purpose, exit_reason)
-                    VALUES ($1, $2, $3, 'sell', 'stop', $4, $5, $6, $7::jsonb,
-                            'stop_loss', 'stop_hit')
+                        (trade_id, alpaca_order_id, ticker, side, order_type, qty, status,
+                         purpose, exit_reason, raw_response)
+                    VALUES ($1, $2, $3, 'sell', 'market', $4, $5,
+                            'partial_exit', 'partial_profit', $6::jsonb)
                     ON CONFLICT (alpaca_order_id) DO NOTHING
-                """, trade_id, rollback["id"], ticker, float(full_remaining),
-                    float(stop_price), rollback.get("status", "new"), json.dumps(rollback))
+                """, trade_id, order["id"], ticker, float(shares),
+                    order.get("status", "new"), json.dumps(order))
             await log_audit_event(
-                "partial_exit_rolled_back",
-                f"{ticker}: stop restored to full {full_remaining} sh @${float(stop_price):.2f} ({rollback['id']})",
+                "partial_exit_sell_placed",
+                f"{ticker}: market sell {shares} placed ({order.get('id')}, status={order.get('status', 'new')})",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,
-                    "rollback_stop_id": rollback["id"],
-                    "full_remaining": full_remaining,
-                    "stop_price": float(stop_price),
+                    "shares": shares, "order_id": order.get("id"),
+                    "order_status": order.get("status"),
                 }),
             )
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}⚠️ Partial exit FAILED for {ticker}: {e}\n"
-                f"Stop restored for full {full_remaining} shares @${stop_price:.2f}"
-            )
-            logger.warning(
-                f"Partial exit {ticker}: sell failed, stop rolled back to {full_remaining} shares"
-            )
-        except Exception as e2:
-            logger.error(f"Partial exit rollback ALSO failed for {ticker}: {e2}")
-            # new_stop_id was just cancelled; rollback didn't place anything.
-            # Null stop_order_id so sync_positions Path C remediates.
-            await set_stop_order_id(
-                trade_id, None,
-                reason="partial_rollback_failed",
-                account_mode=account_mode,
-            )
+        except Exception as e:
+            # CONVERGE, don't loop (#151 durable fix, 2026-06-23). The market sell
+            # raised AFTER we reduced the stop to `new_remaining` but BEFORE any
+            # shares sold — so the broker now has a reduced stop (`new_remaining`,
+            # e.g. 134) resting under a STILL-FULL position (`full_remaining`, e.g.
+            # 200). That is UNDER-covered: the un-sold shares (200−134=66) are
+            # NAKED until we re-protect. The OLD rollback block here (cancel the
+            # reduced stop → place a full-qty stop → null on failure) is GONE: it
+            # re-replaced into the SAME pending_replace race that broke this path
+            # repeatedly (QURE 6/22, FPS 6/04, IBM 5/27), and cancelling a
+            # `pending_replace` stop is exactly the move that widened the naked
+            # window. Instead: abort cleanly, leave the reduced stop UNTOUCHED
+            # (never cancel a pending_replace, never null stop_order_id), set a
+            # flag, and the instant the advisory lock releases (CM exit below)
+            # re-protect to broker truth via _ensure_stop_coverage IN-PROCESS —
+            # closing the naked window in sub-second, not at the next sync cron.
+            logger.error(f"Partial exit sell failed for {ticker} after stop reduced: {e}")
             await log_audit_event(
-                "partial_exit_rollback_failed",
-                f"{ticker}: CRITICAL — sell failed AND rollback failed, position naked",
+                "partial_exit_sell_failed",
+                f"{ticker}: market sell raised — {type(e).__name__}; aborting, "
+                f"re-protecting to broker truth (no rollback, no cancel)",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,
+                    "shares": shares, "new_stop_id": new_stop_id,
                     "full_remaining": full_remaining,
                     "stop_price": float(stop_price) if stop_price else None,
-                    "stale_stop_id_cleared": new_stop_id,
-                    "sell_error": str(e)[:500],
-                    "rollback_error": str(e2)[:500],
+                    "error": str(e)[:500],
                 }),
+            )
+            # Defer the SINGLE Telegram + the in-process re-protect to AFTER the
+            # advisory lock releases (the lock CM exits below) — _ensure_stop_coverage
+            # takes the try-lock on the same trade_id and would SKIP if we still held
+            # it. abort_ctx carries everything the post-lock re-protect needs.
+            abort_reprotect = True
+            abort_ctx = {"error": str(e)}
+
+        # Step 3: Pending fill — DO NOT commit P&L / remaining_shares / partial_taken
+        # at submit time. The order may be queued (after-hours) and fill at next open
+        # at an unknown price; using the placement-time response here meant fill_price
+        # fell back to entry_price → printed P&L $0.00 on a sale that hadn't happened.
+        # finalize_partial_exit() runs from the WS fill handler with the real fill price.
+        # Skipped on the abort path (no sell placed) — that path re-protects + alerts
+        # AFTER the advisory lock releases, below.
+        if not abort_reprotect:
+            await send_telegram_message(
+                f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
+                f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
+                f"_Confirms with real P&L on fill._"
+            )
+        _abort_reprotect_out = abort_reprotect
+        _abort_ctx_out = abort_ctx
+        _ticker_out, _account_mode_out, _signal_type_out = ticker, account_mode, signal_type
+        _stop_price_out = stop_price
+
+    # ── Advisory lock RELEASED here (the `async with _trade_advisory_lock` CM
+    # exits as control leaves the wrapped body above). Now — and ONLY now — is it
+    # safe to call _ensure_stop_coverage, which takes the try-lock on this same
+    # trade_id; calling it while we still held the lock would SKIP and leave the
+    # position under-covered. The brief release→re-protect gap is benign:
+    # _ensure_stop_coverage is idempotent, so if the sync cron also fires in that
+    # window, whichever runs second sees coverage already == target and no-ops.
+    if _abort_reprotect_out:
+        # IMMEDIATE re-protect to BROKER TRUTH (kills the latency gap vs the next
+        # sync cron). Fetch the live total position qty — NOT DB full_remaining
+        # (stale-DB → wrong-size order, the 109-vs-28 class) and NOT qty_available
+        # (already nets held-for-orders → double-subtract). _ensure_stop_coverage
+        # nets pending exits internally; the failed sell placed none, so target
+        # resolves to the full position.
+        coverage_msg = None
+        try:
+            _pos = await alpaca.get_position(_ticker_out, account_mode=_account_mode_out)
+            _broker_qty = float(_pos.get("qty")) if _pos and _pos.get("qty") is not None else None
+            if _broker_qty and _broker_qty > 0:
+                coverage_msg = await _ensure_stop_coverage(
+                    trade_id, _ticker_out, _broker_qty,
+                    float(_stop_price_out) if _stop_price_out else None,
+                    _signal_type_out or "unknown",
+                    _account_mode_out,
+                )
+            else:
+                logger.warning(
+                    f"execute_partial_exit: abort re-protect — no live broker position "
+                    f"for {_ticker_out} (qty={_broker_qty}); nothing to re-protect"
+                )
+        except Exception as _re:
+            logger.error(
+                f"execute_partial_exit: abort re-protect via _ensure_stop_coverage "
+                f"raised for {_ticker_out}: {_re}"
             )
             await log_audit_event(
-                "naked_position_detected",
-                f"{ticker}: stop_order_id cleared; sync_positions will remediate",
+                "partial_exit_reprotect_failed",
+                f"{_ticker_out}: in-process re-protect after sell-failure raised "
+                f"({type(_re).__name__}) — next sync cron will remediate",
                 json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "stop_price": float(stop_price) if stop_price else None,
-                    "remaining_shares": float(full_remaining),
-                    "source": "execute_partial_exit_rollback",
+                    "trade_id": trade_id, "ticker": _ticker_out,
+                    "error": str(_re)[:500],
                 }),
             )
-            await send_telegram_message(
-                f"{mode_prefix(account_mode)}🚨 *CRITICAL* {ticker}: partial sell failed AND stop rollback failed!\n"
-                f"Sell error: {e}\nRollback error: {e2}\n"
-                f"*Position may have NO stop — sync_positions will retry; verify on Alpaca.*"
-            )
+            coverage_msg = f"⚠️ re-protect call raised: {_re}"
+        # ONE Telegram for the whole abort: the sell failure + the re-protect
+        # outcome folded together (no separate alert from the except block above).
+        # coverage_msg is None ONLY when _ensure_stop_coverage returned None — i.e.
+        # it found coverage already == target (a partial already re-protected, or
+        # the reconciler raced the try-lock) OR it couldn't read the broker
+        # (get_open_orders failed) and deferred. The first is fine; the second
+        # leaves the position UNDER-covered and unfixed, so the fallback must NOT
+        # claim "safe" — it tells the operator to verify and that the sync cron is
+        # the backstop.
+        _cov_line = coverage_msg or (
+            "_Re-protect deferred (coverage already met, or broker read failed) — "
+            "verify the stop covers the full position on Alpaca; sync cron will "
+            "reconcile._"
+        )
+        await send_telegram_message(
+            f"{mode_prefix(_account_mode_out)}⚠️ Partial exit ABORTED for {_ticker_out}: "
+            f"sell failed ({_abort_ctx_out.get('error', 'unknown')}).\n"
+            f"No shares sold.\n{_cov_line}"
+        )
         return False
 
-    # Step 3: Pending fill — DO NOT commit P&L / remaining_shares / partial_taken
-    # at submit time. The order may be queued (after-hours) and fill at next open
-    # at an unknown price; using the placement-time response here meant fill_price
-    # fell back to entry_price → printed P&L $0.00 on a sale that hadn't happened.
-    # finalize_partial_exit() runs from the WS fill handler with the real fill price.
-    await send_telegram_message(
-        f"{mode_prefix(account_mode)}📋 *Partial exit order placed:* {ticker}\n"
-        f"Market sell {shares} sh — pending fill (Order {order['id'][:8]})\n"
-        f"_Confirms with real P&L on fill._"
-    )
     return True
 
 
@@ -2511,96 +2622,192 @@ async def _ensure_stop_coverage(
     Returns a human discrepancy string when it acted/flagged (for the batched
     Telegram), else None.
     """
-    target = float(broker_qty) - float(await get_pending_exit_qty(trade_id))
-    if target <= 0.5:
-        # Pending exits account for the whole (or all-but-noise) position —
-        # nothing to protect beyond what's already in flight. The orphan loop's
-        # own "fully covered by pending exits" guard handles the no-stop variant;
-        # here we just decline to place/replace.
-        return None
-
-    # Discover the live sell-stop(s) from broker truth.
-    try:
-        open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
-    except Exception as e:
-        logger.warning(
-            f"_ensure_stop_coverage: get_open_orders failed for {ticker}: {e}"
-        )
-        return None  # ambiguous (couldn't read broker) — defer to next run
-
-    live_stops = []
-    for o in open_orders:
-        side = str(o.get("side", "")).lower()
-        otype = str(o.get("type", "")).lower()
-        status = _canonical_order_status(o.get("status"))
-        if "sell" not in side or "stop" not in otype:
-            continue
-        if status not in _STOP_CONFIRMED_LIVE_STATUSES:
-            continue
-        live_stops.append(o)
-
-    if len(live_stops) > 1:
-        # Ambiguous: more than one live sell-stop. Adding/replacing here could
-        # leave a dangling duplicate with no cleanup path. Flag only; Phase 2b
-        # dedup-cancel is the place that owns this.
-        await log_audit_event(
-            "stop_coverage_ambiguous",
-            f"{ticker}: {len(live_stops)} live sell-stops vs target {target:.0f} "
-            f"— skipping coverage repair (Phase 2b dedup deferred)",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker,
-                "account_mode": account_mode,
-                "live_stop_count": len(live_stops),
-                "target_qty": target,
-            }),
-        )
-        return (
-            f"⚠️ {ticker}: {len(live_stops)} live stops (target {target:.0f}) "
-            f"— ambiguous, left for review"
-        )
-
-    live_stop = live_stops[0] if live_stops else None
-    live_qty = None
-    if live_stop is not None:
-        try:
-            live_qty = float(live_stop.get("qty")) if live_stop.get("qty") is not None else None
-        except (TypeError, ValueError):
-            live_qty = None
-
-    # Fully covered (within tolerance) or over-covered → no-op.
-    if live_qty is not None and live_qty >= target - 0.5:
-        return None
-
-    # Under-covered (or no live stop): re-protect to `target` as a SINGLE stop.
-    coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
-
-    if live_stop is not None:
-        # Atomic qty-only replace — keeps the already-accepted stop_price (so it
-        # cannot breach) and never opens a share-release window. New order id
-        # must be persisted.
-        try:
-            new_order = await alpaca.replace_order(
-                live_stop["id"],
-                qty=int(target),
-                account_mode=account_mode,
-                client_order_id=coid,
+    # ── #151 cross-PROCESS lock: defer to an IN-FLIGHT partial. ──────────────
+    # execute_partial_exit holds the BLOCKING advisory lock on this trade_id
+    # while it reduces the stop. If we (the reconciler, possibly a different
+    # process under EXECUTION_MODE=http) tried to 'repair' coverage mid-reduce
+    # we'd fight the partial. Take the NON-BLOCKING try-lock: if a partial holds
+    # it, SKIP this trade entirely (return None) — the partial owns coverage and
+    # its own abort path re-protects. If we get the lock, do the coverage check
+    # under it (auto-unlocked on CM exit).
+    async with _trade_advisory_try_lock(trade_id) as _have_lock:
+        if not _have_lock:
+            logger.info(
+                f"_ensure_stop_coverage: coverage skipped — partial in-flight "
+                f"(advisory lock held) for trade {trade_id} {ticker}"
             )
+            return None
+        target = float(broker_qty) - float(await get_pending_exit_qty(trade_id))
+        if target <= 0.5:
+            # Pending exits account for the whole (or all-but-noise) position —
+            # nothing to protect beyond what's already in flight. The orphan loop's
+            # own "fully covered by pending exits" guard handles the no-stop variant;
+            # here we just decline to place/replace.
+            return None
+
+        # Discover the live sell-stop(s) from broker truth.
+        try:
+            open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
         except Exception as e:
-            logger.error(
-                f"_ensure_stop_coverage: replace under-covering stop failed for "
-                f"{ticker} ({live_qty}→{target:.0f}): {e}"
+            logger.warning(
+                f"_ensure_stop_coverage: get_open_orders failed for {ticker}: {e}"
             )
+            return None  # ambiguous (couldn't read broker) — defer to next run
+
+        live_stops = []
+        for o in open_orders:
+            side = str(o.get("side", "")).lower()
+            otype = str(o.get("type", "")).lower()
+            status = _canonical_order_status(o.get("status"))
+            if "sell" not in side or "stop" not in otype:
+                continue
+            if status not in _STOP_CONFIRMED_LIVE_STATUSES:
+                continue
+            live_stops.append(o)
+
+        if len(live_stops) > 1:
+            # Ambiguous: more than one live sell-stop. Adding/replacing here could
+            # leave a dangling duplicate with no cleanup path. Flag only; Phase 2b
+            # dedup-cancel is the place that owns this.
             await log_audit_event(
-                "stop_coverage_repair_failed",
-                f"{ticker}: replace under-covering stop {live_qty}→{int(target)} failed: {e}",
+                "stop_coverage_ambiguous",
+                f"{ticker}: {len(live_stops)} live sell-stops vs target {target:.0f} "
+                f"— skipping coverage repair (Phase 2b dedup deferred)",
                 json.dumps({
                     "trade_id": trade_id, "ticker": ticker,
                     "account_mode": account_mode,
+                    "live_stop_count": len(live_stops),
+                    "target_qty": target,
+                }),
+            )
+            return (
+                f"⚠️ {ticker}: {len(live_stops)} live stops (target {target:.0f}) "
+                f"— ambiguous, left for review"
+            )
+
+        live_stop = live_stops[0] if live_stops else None
+        live_qty = None
+        if live_stop is not None:
+            try:
+                live_qty = float(live_stop.get("qty")) if live_stop.get("qty") is not None else None
+            except (TypeError, ValueError):
+                live_qty = None
+
+        # Fully covered (within tolerance) or over-covered → no-op.
+        if live_qty is not None and live_qty >= target - 0.5:
+            return None
+
+        # Under-covered (or no live stop): re-protect to `target` as a SINGLE stop.
+        coid = alpaca.make_client_order_id(account_mode, signal_type, ticker)
+
+        if live_stop is not None:
+            # Atomic qty-only replace — keeps the already-accepted stop_price (so it
+            # cannot breach) and never opens a share-release window. New order id
+            # must be persisted.
+            try:
+                new_order = await alpaca.replace_order(
+                    live_stop["id"],
+                    qty=int(target),
+                    account_mode=account_mode,
+                    client_order_id=coid,
+                )
+            except Exception as e:
+                logger.error(
+                    f"_ensure_stop_coverage: replace under-covering stop failed for "
+                    f"{ticker} ({live_qty}→{target:.0f}): {e}"
+                )
+                await log_audit_event(
+                    "stop_coverage_repair_failed",
+                    f"{ticker}: replace under-covering stop {live_qty}→{int(target)} failed: {e}",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "account_mode": account_mode,
+                        "live_stop_qty": live_qty, "target_qty": target,
+                        "error": str(e),
+                    }),
+                )
+                return f"⚠️ {ticker}: failed to widen stop coverage {live_qty}→{target:.0f}: {e}"
+            await set_stop_order_id(
+                trade_id, new_order["id"],
+                reason="sync_coverage_repair",
+                account_mode=account_mode,
+            )
+            await log_audit_event(
+                "stop_coverage_repaired",
+                f"{ticker}: under-covering stop {live_qty}→{int(target)} "
+                f"(replaced {live_stop['id'][:8]}→{new_order['id'][:8]})",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode,
+                    "old_stop_id": live_stop["id"], "new_stop_id": new_order["id"],
                     "live_stop_qty": live_qty, "target_qty": target,
+                }),
+            )
+            return (
+                f"🛡 Coverage repaired {ticker}: stop {live_qty:.0f}→{target:.0f} "
+                f"(under-covering after partial-exit failure)"
+            )
+
+        # No live stop at all → place one at the DB stop price. This is the ONLY
+        # branch that can breach (the price we choose may now be above market).
+        if not db_stop_price:
+            await log_audit_event(
+                "stop_coverage_no_price",
+                f"{ticker}: under-covered (target {target:.0f}) with no live stop and "
+                f"no DB stop_price — manual intervention",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode, "target_qty": target,
+                }),
+            )
+            return (
+                f"⚠️ {ticker}: no stop & no stop_price (target {target:.0f}) "
+                f"— manual intervention needed"
+            )
+        try:
+            new_order = await alpaca.place_stop_order(
+                ticker, int(target), float(db_stop_price),
+                account_mode=account_mode, client_order_id=coid,
+            )
+        except Exception as e:
+            if _is_stop_above_market(e):
+                # BREACH: the protective trigger is at/above current price. NOT
+                # retryable. ONE alert, converge, leave for operator. Do NOT
+                # auto-market-exit and do NOT write stop_order_id.
+                await log_audit_event(
+                    "stop_coverage_breach",
+                    f"{ticker}: stop ${db_stop_price:.2f} would sit above market — "
+                    f"position through the stop. Operator action required (no auto-exit).",
+                    json.dumps({
+                        "trade_id": trade_id, "ticker": ticker,
+                        "account_mode": account_mode,
+                        "intended_stop_price": float(db_stop_price),
+                        "target_qty": target, "error": str(e),
+                    }),
+                )
+                logger.error(
+                    f"_ensure_stop_coverage: BREACH for {ticker} — stop "
+                    f"${db_stop_price:.2f} above market; converging (no retry, no auto-exit)"
+                )
+                return (
+                    f"🚨 {ticker}: stop ${db_stop_price:.2f} is ABOVE market — "
+                    f"position breached the stop. Operator decision needed (no auto-exit)."
+                )
+            # Any other placement error: surface it, no retry inside the invariant
+            # (the reconciler runs again on its cadence).
+            logger.error(
+                f"_ensure_stop_coverage: place coverage stop failed for {ticker}: {e}"
+            )
+            await log_audit_event(
+                "stop_coverage_repair_failed",
+                f"{ticker}: place coverage stop (target {int(target)}) failed: {e}",
+                json.dumps({
+                    "trade_id": trade_id, "ticker": ticker,
+                    "account_mode": account_mode, "target_qty": target,
                     "error": str(e),
                 }),
             )
-            return f"⚠️ {ticker}: failed to widen stop coverage {live_qty}→{target:.0f}: {e}"
+            return f"⚠️ {ticker}: failed to place coverage stop (target {target:.0f}): {e}"
         await set_stop_order_id(
             trade_id, new_order["id"],
             reason="sync_coverage_repair",
@@ -2608,100 +2815,19 @@ async def _ensure_stop_coverage(
         )
         await log_audit_event(
             "stop_coverage_repaired",
-            f"{ticker}: under-covering stop {live_qty}→{int(target)} "
-            f"(replaced {live_stop['id'][:8]}→{new_order['id'][:8]})",
+            f"{ticker}: placed coverage stop {int(target)} @ ${db_stop_price:.2f} "
+            f"(was no live stop)",
             json.dumps({
                 "trade_id": trade_id, "ticker": ticker,
                 "account_mode": account_mode,
-                "old_stop_id": live_stop["id"], "new_stop_id": new_order["id"],
-                "live_stop_qty": live_qty, "target_qty": target,
+                "new_stop_id": new_order["id"], "target_qty": target,
+                "stop_price": float(db_stop_price),
             }),
         )
         return (
-            f"🛡 Coverage repaired {ticker}: stop {live_qty:.0f}→{target:.0f} "
-            f"(under-covering after partial-exit failure)"
+            f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
+            f"(no live stop, under-covered)"
         )
-
-    # No live stop at all → place one at the DB stop price. This is the ONLY
-    # branch that can breach (the price we choose may now be above market).
-    if not db_stop_price:
-        await log_audit_event(
-            "stop_coverage_no_price",
-            f"{ticker}: under-covered (target {target:.0f}) with no live stop and "
-            f"no DB stop_price — manual intervention",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker,
-                "account_mode": account_mode, "target_qty": target,
-            }),
-        )
-        return (
-            f"⚠️ {ticker}: no stop & no stop_price (target {target:.0f}) "
-            f"— manual intervention needed"
-        )
-    try:
-        new_order = await alpaca.place_stop_order(
-            ticker, int(target), float(db_stop_price),
-            account_mode=account_mode, client_order_id=coid,
-        )
-    except Exception as e:
-        if _is_stop_above_market(e):
-            # BREACH: the protective trigger is at/above current price. NOT
-            # retryable. ONE alert, converge, leave for operator. Do NOT
-            # auto-market-exit and do NOT write stop_order_id.
-            await log_audit_event(
-                "stop_coverage_breach",
-                f"{ticker}: stop ${db_stop_price:.2f} would sit above market — "
-                f"position through the stop. Operator action required (no auto-exit).",
-                json.dumps({
-                    "trade_id": trade_id, "ticker": ticker,
-                    "account_mode": account_mode,
-                    "intended_stop_price": float(db_stop_price),
-                    "target_qty": target, "error": str(e),
-                }),
-            )
-            logger.error(
-                f"_ensure_stop_coverage: BREACH for {ticker} — stop "
-                f"${db_stop_price:.2f} above market; converging (no retry, no auto-exit)"
-            )
-            return (
-                f"🚨 {ticker}: stop ${db_stop_price:.2f} is ABOVE market — "
-                f"position breached the stop. Operator decision needed (no auto-exit)."
-            )
-        # Any other placement error: surface it, no retry inside the invariant
-        # (the reconciler runs again on its cadence).
-        logger.error(
-            f"_ensure_stop_coverage: place coverage stop failed for {ticker}: {e}"
-        )
-        await log_audit_event(
-            "stop_coverage_repair_failed",
-            f"{ticker}: place coverage stop (target {int(target)}) failed: {e}",
-            json.dumps({
-                "trade_id": trade_id, "ticker": ticker,
-                "account_mode": account_mode, "target_qty": target,
-                "error": str(e),
-            }),
-        )
-        return f"⚠️ {ticker}: failed to place coverage stop (target {target:.0f}): {e}"
-    await set_stop_order_id(
-        trade_id, new_order["id"],
-        reason="sync_coverage_repair",
-        account_mode=account_mode,
-    )
-    await log_audit_event(
-        "stop_coverage_repaired",
-        f"{ticker}: placed coverage stop {int(target)} @ ${db_stop_price:.2f} "
-        f"(was no live stop)",
-        json.dumps({
-            "trade_id": trade_id, "ticker": ticker,
-            "account_mode": account_mode,
-            "new_stop_id": new_order["id"], "target_qty": target,
-            "stop_price": float(db_stop_price),
-        }),
-    )
-    return (
-        f"🛡 Coverage placed {ticker}: stop {target:.0f} @ ${db_stop_price:.2f} "
-        f"(no live stop, under-covered)"
-    )
 
 
 async def sync_positions() -> list[str]:

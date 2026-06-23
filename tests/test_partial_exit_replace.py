@@ -217,3 +217,166 @@ def test_is_share_reservation_lag_matches_only_clean_rejection():
     assert _is_share_reservation_lag(Exception("Read timed out")) is False
     assert _is_share_reservation_lag(Exception("connection reset by peer")) is False
     assert _is_share_reservation_lag(Exception("order already filled")) is False
+
+
+# ─── #151 DURABLE fix: converge-hardening + in-process abort re-protect ───────
+
+from contextlib import asynccontextmanager  # noqa: E402
+
+
+def _noop_blocking_lock():
+    """Stand-in for order_manager._trade_advisory_lock that holds no real PG lock
+    (unit tests have no pool). Just an async-CM that yields."""
+    @asynccontextmanager
+    async def _cm(trade_id):
+        yield
+    return _cm
+
+
+async def _drive_partial_to_sell_then_fail(monkeypatch_targets):
+    """Drive execute_partial_exit all the way through a successful stop-reduce +
+    verify + shares-free, then make the market sell RAISE. Returns the order_manager
+    module + a dict of the spy mocks so the caller can assert on the abort path.
+
+    Trade: 200 shares, selling 66, reduced stop to 134; sell then fails.
+    """
+    from agents.market_intelligence.broker import order_manager as om
+
+    trade = {
+        "id": 221, "ticker": "IBM", "remaining_shares": 200,
+        "stop_price": 95.0, "hard_stop": 95.0, "stop_order_id": "old_stop_id",
+        "account_mode": "paper", "signal_type": "magna53", "entry_price": 100.0,
+    }
+
+    conn = MagicMock()
+    conn.fetchrow = AsyncMock(side_effect=[trade, None])  # trade lookup, then dedup=None
+    conn.execute = AsyncMock()
+    acquire_cm = MagicMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=None)
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=acquire_cm)
+
+    audited = []
+
+    async def _audit(evt, *a, **k):
+        audited.append(evt)
+
+    # Broker calls along the happy path up to the sell:
+    replace_mock = AsyncMock(return_value={"id": "new_stop_id", "status": "new"})
+    # get_order: verify-stop-live poll → live ("new")
+    get_order_mock = AsyncMock(return_value={"id": "new_stop_id", "status": "new"})
+    # get_position: (1) shares-free poll → qty_available covers; (2) abort re-protect
+    #   → total qty. Make ONE mock serve both (qty + qty_available both present).
+    get_position_mock = AsyncMock(return_value={"qty": 200.0, "qty_available": 200.0})
+    # the market sell RAISES — the failure under test.
+    sell_mock = AsyncMock(side_effect=RuntimeError("Read timed out"))
+    cancel_mock = AsyncMock()
+    place_stop_mock = AsyncMock(return_value={"id": "should_not_be_called", "status": "new"})
+    set_stop_mock = AsyncMock()
+    ensure_cov_mock = AsyncMock(return_value="🛡 Coverage repaired IBM: stop 134→200")
+    telegram_mock = AsyncMock(return_value=True)
+
+    def _make_coid(account_mode, signal_type, ticker):
+        return f"apollo_{account_mode}_{signal_type}_{ticker}_123"
+
+    patches = [
+        patch.object(om, "_PARTIAL_EXIT_PAUSED", False),
+        patch.object(om, "_consecutive_partial_exit_failures", AsyncMock(return_value=0)),
+        patch.object(om, "_trade_advisory_lock", _noop_blocking_lock()),
+        patch.object(om, "get_pool", AsyncMock(return_value=pool)),
+        patch.object(om, "log_audit_event", _audit),
+        patch.object(om, "send_telegram_message", telegram_mock),
+        patch.object(om, "set_stop_order_id", set_stop_mock),
+        patch.object(om, "_ensure_stop_coverage", ensure_cov_mock),
+        patch.object(om.alpaca, "replace_order", replace_mock),
+        patch.object(om.alpaca, "get_order", get_order_mock),
+        patch.object(om.alpaca, "get_position", get_position_mock),
+        patch.object(om.alpaca, "place_market_sell", sell_mock),
+        patch.object(om.alpaca, "cancel_order", cancel_mock),
+        patch.object(om.alpaca, "place_stop_order", place_stop_mock),
+        patch.object(om.alpaca, "make_client_order_id", _make_coid),
+    ]
+    return om, {
+        "patches": patches, "audited": audited, "replace": replace_mock,
+        "sell": sell_mock, "cancel": cancel_mock, "place_stop": place_stop_mock,
+        "set_stop": set_stop_mock, "ensure_cov": ensure_cov_mock,
+        "telegram": telegram_mock, "get_position": get_position_mock,
+    }
+
+
+@pytest.mark.asyncio
+async def test_abort_immediately_reprotects_in_process():
+    """#151 POST-ABORT IMMEDIATE RE-PROTECT (MUST PASS): when the market sell
+    fails after the stop was reduced, the function — AFTER releasing the advisory
+    lock — calls _ensure_stop_coverage DIRECTLY (in-process) to re-protect to
+    broker truth, instead of waiting for the next sync cron. broker_qty passed
+    must be the live TOTAL position qty (200.0), never DB remaining or
+    qty_available."""
+    from contextlib import ExitStack
+    om, h = await _drive_partial_to_sell_then_fail(None)
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        ok = await om.execute_partial_exit(221, 66, force=True)
+
+    assert ok is False
+    # The sell was attempted and failed.
+    assert h["sell"].called
+    # IMMEDIATE re-protect: _ensure_stop_coverage called directly on the abort path.
+    h["ensure_cov"].assert_called_once()
+    args = h["ensure_cov"].call_args.args
+    assert args[0] == 221           # trade_id
+    assert args[1] == "IBM"         # ticker
+    assert args[2] == 200.0, (      # broker_qty = live TOTAL qty, NOT DB / qty_available
+        f"re-protect must size off broker TOTAL qty 200.0 — got {args[2]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_abort_does_not_rollback_or_null_stop():
+    """#151 ROLLBACK GONE + NEVER-NULL: the sell-failure abort path must NOT
+    cancel the reduced stop (cancelling a pending_replace is the move that left
+    positions naked) and must NOT null stop_order_id (no set_stop_order_id(...,
+    None)). It converges: leaves the reduced stop live, re-protects via coverage."""
+    from contextlib import ExitStack
+    om, h = await _drive_partial_to_sell_then_fail(None)
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        await om.execute_partial_exit(221, 66, force=True)
+
+    # ROLLBACK GONE: no cancel of the reduced stop, no additive full-qty stop place.
+    h["cancel"].assert_not_called()
+    h["place_stop"].assert_not_called()
+    # NEVER-NULL: set_stop_order_id is never called with None on this path.
+    for call in h["set_stop"].call_args_list:
+        # positional or kw — assert no None second arg
+        if len(call.args) >= 2:
+            assert call.args[1] is not None, "must never null stop_order_id on abort"
+        assert call.kwargs.get("stop_order_id", "x") is not None
+    # The legacy rollback audit events must NOT be emitted.
+    assert "partial_exit_rolled_back" not in h["audited"]
+    assert "partial_exit_rollback_failed" not in h["audited"]
+    # ONE failure audit (sell_failed), not a rollback cascade.
+    assert "partial_exit_sell_failed" in h["audited"]
+
+
+@pytest.mark.asyncio
+async def test_abort_sends_single_telegram():
+    """#151 ONE Telegram: the abort path folds the sell-failure + re-protect
+    outcome into a SINGLE message — the except block does not send its own alert
+    and the success 'order placed' message is suppressed."""
+    from contextlib import ExitStack
+    om, h = await _drive_partial_to_sell_then_fail(None)
+    with ExitStack() as stack:
+        for p in h["patches"]:
+            stack.enter_context(p)
+        await om.execute_partial_exit(221, 66, force=True)
+
+    assert h["telegram"].call_count == 1, (
+        f"abort must send exactly ONE telegram, got {h['telegram'].call_count}"
+    )
+    msg = h["telegram"].call_args.args[0]
+    assert "ABORTED" in msg
+    assert "Coverage repaired" in msg  # the folded-in _ensure_stop_coverage outcome

@@ -16,12 +16,26 @@ These call `_ensure_stop_coverage` directly (the extracted helper) — same
 pattern as `_try_adopt_existing_stop` — so the qty arithmetic + branch
 selection are tested without threading through the two prior sync loops.
 """
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 
 # Reuse the auto-loaded alpaca-SDK stub from conftest.py.
+
+
+def _fake_try_lock(acquired: bool):
+    """Build a stand-in for order_manager._trade_advisory_try_lock that yields
+    `acquired` WITHOUT touching a real Postgres pool. The real helper acquires a
+    pooled connection + runs pg_try_advisory_lock; these unit tests don't have a
+    pool, so we patch it. acquired=True → coverage proceeds (the prior behaviour
+    these tests assert); acquired=False → reconciler defers to an in-flight
+    partial and returns None."""
+    @asynccontextmanager
+    async def _cm(trade_id):
+        yield acquired
+    return _cm
 
 
 def _live_stop(order_id, qty, stop_price=95.0, status="new"):
@@ -33,7 +47,7 @@ def _live_stop(order_id, qty, stop_price=95.0, status="new"):
     }
 
 
-def _patches(open_orders, pending_qty, *, replace=None, place=None):
+def _patches(open_orders, pending_qty, *, replace=None, place=None, lock_acquired=True):
     """Patch the broker + DB surface _ensure_stop_coverage touches.
 
     open_orders: list returned by alpaca.get_open_orders (broker truth for the
@@ -72,6 +86,10 @@ def _patches(open_orders, pending_qty, *, replace=None, place=None):
     set_stop_mock = AsyncMock()
 
     ctx = [
+        # #151: patch the cross-process advisory try-lock so unit tests don't hit
+        # a real pool. Default True → coverage proceeds (asserts the repair logic);
+        # False → reconciler defers to an in-flight partial.
+        patch.object(om, "_trade_advisory_try_lock", _fake_try_lock(lock_acquired)),
         patch.object(om, "log_audit_event", _audit),
         patch.object(om, "get_pending_exit_qty", AsyncMock(return_value=pending_qty)),
         patch.object(om, "set_stop_order_id", set_stop_mock),
@@ -317,3 +335,26 @@ async def test_integration_coverage_uses_broker_qty_not_stale_db():
         f"broker_qty must be Alpaca truth 28.0, not stale DB 109 — got {args[2]}"
     )
     assert args[5] == "paper"      # account_mode (loop's mode)
+
+
+@pytest.mark.asyncio
+async def test_reconciler_skips_when_partial_holds_lock():
+    """#151 cross-process lock: when a partial-exit holds the advisory lock on
+    this trade_id, pg_try_advisory_lock returns FALSE → _ensure_stop_coverage
+    SKIPS the trade entirely: returns None and places/replaces NOTHING (the
+    in-flight partial owns coverage; its own abort path re-protects). Without
+    this skip, the reconciler would 'repair' a stop the partial is mid-reducing
+    — the exact cross-process race the lock exists to kill."""
+    # lock_acquired=False → the try-lock yields False inside _ensure_stop_coverage.
+    # The position LOOKS under-covered (live 134 stop, target 200) — the case that
+    # WOULD trigger a replace if the lock were free — so this proves the skip is
+    # the lock, not a coincidental no-op branch.
+    h = _patches([_live_stop("stop_134", 134)], pending_qty=0, lock_acquired=False)
+    result = await _run(h, broker_qty=200)
+
+    assert result is None, "must skip (return None) while a partial holds the lock"
+    h["replace"].assert_not_called()
+    h["place"].assert_not_called()
+    h["set_stop"].assert_not_called()
+    # get_open_orders is never even reached — we bail before any broker read.
+    h["get_open"].assert_not_called()
