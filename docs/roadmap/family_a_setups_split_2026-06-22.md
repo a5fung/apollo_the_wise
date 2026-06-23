@@ -1,4 +1,10 @@
-# Family-A Setups — the Split, Rebuild & Roadmap (2026-06-22)
+# Family A — CONSOLIDATION Setups (the Split, Rebuild & Roadmap · 2026-06-22)
+
+> **Family A = the CONSOLIDATION setups (operator 2026-06-22).** Both members require a **run-up → a
+> CONSOLIDATION → an entry around the consolidation point** — HTF enters on the breakout, Anticipation
+> in the coil. So whenever we say **"consolidation," it means Family A** (a family of setups). Contrast
+> **Family B = EP / gap-ups** (MAGNA53 EP, 9M EP, gap-ups) — entries around the **GAP-UP area**, not a
+> consolidation. Sugar Babies is a CONDITION, not a member of either.
 
 **Durable home for the 2 setups + the Sugar-Babies condition, their next steps, and WHY.** This session uncovered a structurally
 broken consolidation detector + a chain of methodology mistakes; the operator split the work into 2
