@@ -5,6 +5,11 @@ broken consolidation detector + a chain of methodology mistakes; the operator sp
 distinct setups. Read this before touching any of them. SSoT for the trackable next steps = the PLAN
 #-tasks cited below; SSoT for the methodology = `docs/methodology/operator_shared_notes.md` + ADR 0013.
 
+> **TIMELINE (operator 2026-06-22): this is a FAST-FOLLOW to Phase 2 real-money trading (~Wed 6/24 on
+> ACH settle) — COMPLETE ALL 3 SETUPS THIS WEEK (target 2026-06-27).** Not July. All shadow / no money,
+> so it runs in parallel with the live launch without touching it. Tomorrow's FIRST priority is still
+> the money-critical #151 + Phase 2 (advisor); Family-A is the immediate fast-follow right after.
+
 ## The arc — why we're here
 The flag→consolidation **merge** (#354, befb41e) built a Confirm/breakout entry on a consolidation
 detector that was structurally broken: the runup anchor measured the runup INSIDE the base (real
