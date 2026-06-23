@@ -45,16 +45,22 @@ retrace vs tight names 0–1/≤11%); confirmed the gate must be volatility-rela
    gate cites a source; sign-off for any threshold change).
 6. **Re-validate** against the de-biased labels (the COO canary must survive).
 
-## Setup 2 — HTF (High Tight Flag) · QUEUED, operator details pending · #356
-**What it is:** the former flag / flag_continuation detector → its OWN setup: big runup → tight base →
-enter on the **confirmed BREAKOUT** (base-high + volume). `flag_detector.py` is LIVE + load-bearing
-(`/flags`, the #94 intraday break, the digest) and was **UNCHANGED this session** (clean).
-**NEXT STEPS:**
-1. **Operator provides the HTF spec/details** ("I'll go into details of that later", 6/22).
-2. **Reconcile flag_detector's params** — the `50%/60d` runup was a prior session's UNSOURCED pick
-   (first commit 2026-05-01, never validated; "VCP/Qullamaggie" attribution is unverified). Needs the
-   operator's actual basis, not inheritance.
-3. Refine/rename flag → HTF. Any detection-criterion change = CHANGE_PROCESS + sign-off (load-bearing).
+## Setup 2 — HTF (High Tight Flag) · SPEC GROUNDED 6/22, ready to build · #356
+**What it is:** the former flag / flag_continuation detector → its OWN setup: a massive runup → a
+shallow tight flag → enter on the **confirmed BREAKOUT** on volume. `flag_detector.py` is LIVE +
+load-bearing (`/flags`, the #94 intraday break, the digest) and was **UNCHANGED this session** (clean).
+**SPEC (grounded 6/22, `operator_shared_notes.md` — O'Neil/Minervini/Qullamaggie):** flagpole
+**90–100%+ / 4–8wk** (`C≥1.9×C₄₀` or `High₄₀≥1.9×Low₄₀`); flag **≤10–25% pullback near the 40d high**,
+3–5wk, volume dry-up + right-side tightening; trend above 10/20/50 MA; catalyst-backed; entry =
+breakout above the flag high on **≥150% ADV** (buy-stop-limit 5–10¢ above the pivot); stop below the
+tightest-day low / 10–20 EMA, max-loss 5–8%; manage = scale **33–50% at 3–5d → breakeven → trail
+10/20 EMA**.
+**NEXT STEPS (build — can quick-start):**
+1. **Reconcile `flag_detector`'s UNSOURCED `50%/60d`** → the sourced **90%/40d + ≤25% pullback**
+   (the 50/60 was a prior session's pick, first commit 2026-05-01, never validated). CHANGE_PROCESS +
+   N≥10 backtest + sign-off (load-bearing `/flags`).
+2. Add the **breakout entry** (flag-high + ≥150% ADV) + the **EMA-trail management** (scale → BE → trail).
+3. Refine/rename flag → HTF.
 
 ## Setup 3 — PERSISTENT SUGAR BABIES · TBD, revisit · #357
 **What it is (clarified 6/22):** NOT a setup — a stock **CONDITION** (recurring 9M-EP: ≥3 9M EOD

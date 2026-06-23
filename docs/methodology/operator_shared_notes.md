@@ -10,6 +10,59 @@ durable home that survives context compaction — grep here before asking the op
 
 ---
 
+## 2026-06-22 — HTF (High Tight Flag) blueprint (operator-shared, Gemini research) — grounds setup #356
+
+Operator shared this to GROUND the HTF setup (the former flag → its OWN setup, #356) so we can
+quick-start even if not shipping today. Canonical HTF spec + primary sources. Verbatim:
+
+**FLAGPOLE (surge):** price surges **90–100%+ in 4–8 weeks**. O'Neil's original = **100–120% in 4–8
+weeks** (modern scanners relax to 90% to catch near-doubles). Scanner signature: **C ≥ 1.9 × C₄₀**
+(close ≥90% above the close 40 trading days ago) OR **High₄₀ ≥ 1.9 × Low₄₀**. Lookback 40 days (~8
+wks); tighten to 20 for faster 4-wk flagpoles. *Shows undeniable institutional demand / extreme momentum.*
+
+**FLAG (consolidation):** a SHALLOW pullback of **≤10–25% from the high**, lasting **3–5 weeks**
+(sometimes 5–10 days). Scanner: **Close ≥ 0.75 × High₄₀** (within 25% of the 40-day high). Plus volume
+DRIES UP + daily ranges CONTRACT tightly on the right side of the flag (the coiled spring). *Rejects
+pump-and-dumps: if it doubles then gives back >25%, the trend is broken.*
+
+**TREND:** price above the 10/20/50-day MAs; a Stage-2 uptrend (Minervini) before the flag forms.
+
+**LIQUIDITY / VOL:** ADV > 500,000 shares; ADR > 4%.
+
+**CATALYST:** the flagpole is backed by a massive fundamental catalyst — revolutionary product / a
+"monster" earnings surprise (O'Neil) / an Episodic Pivot (earnings gap, FDA, defense contract — Qulla).
+
+**ENTRY:** WAIT for the breakout above the flag's downtrend line / the absolute high of the flag, on a
+MASSIVE volume surge (project ≥150% of ADV in the first 30–60 min). Pivot = the high of the TIGHTEST
+daily candle on the right side of the flag. Order = **Buy Stop Limit 5–10¢ above the pivot** (only buys
+on the break; protects vs slippage on a wild gap). DO NOT buy early in anticipation.
+
+**STOP:** just below the low of the flag's tightest consolidation day, OR below the 10/20-day EMA.
+Pivot-low = 1–2% below the tightest multi-day contraction. Hard max-loss cap **5–8%** from entry.
+
+**SIZING:** risk **0.5–1%** of equity. `Shares = Equity × Risk% / (Entry − Stop)`.
+
+**MANAGEMENT:** (1) scale out **33–50% into strength 3–5 days** after the breakout; (2) move the
+remainder's stop to **breakeven**; (3) trail the runner on the **10/20-day EMA** — sell the rest ONLY
+on a daily close below it. **TARGET:** measure the flagpole height ($) + add to the breakout point
+("stocks that double tend to double again").
+
+**SOURCES:** **O'Neil** (*How to Make Money in Stocks* — the ORIGINATOR: 100–120%/4–8wk flagpole,
+≤10–25%/3–5wk pullback, fundamental catalyst; the rarest/most powerful pattern). **Minervini** (*Trade
+Like a Stock Market Wizard* — HTF under the VCP umbrella: progressive tightening 20%→10%→4% + extreme
+volume dry-up; Stage-2 prerequisite; buys the pivot on high volume). **Qullamaggie** (open-sourced —
+EP-ignited flagpoles, shorter 5–10 day flags, scale at 3–5 days + trail the 10/20-EMA; cites O'Neil).
+MarketSmith (O'Neil's team) HTF webinar. **ThinkScript/TC2000 scanner provided** (the two signatures:
+the 90%+ 40-day surge + the ≤25% pullback near the 40-day high).
+
+**HOW THIS MAPS TO OUR BUILD (#356):** the live `flag_detector` uses an UNSOURCED **50%/60d** runup;
+HTF's sourced spec is **90%/40d surge + ≤25% pullback near the 40d high** (tighter/stronger than the
+current 50%/60d). The HTF rebuild reconciles `flag_detector` to THIS spec (90%/40d, ≤25% pullback,
+breakout entry on volume, the EMA-trail management). Load-bearing `/flags` → CHANGE_PROCESS + N≥10
+backtest + sign-off.
+
+---
+
 ## 2026-06-22 — Gemini cross-reference: full Pradeep Bonde Anticipation blueprint (operator-shared)
 
 Operator shared this as a precise cross-reference for the #270 consolidation-play DEFINITION (after
