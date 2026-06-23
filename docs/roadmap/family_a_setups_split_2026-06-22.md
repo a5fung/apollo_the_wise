@@ -56,6 +56,9 @@ breakout above the flag high on **≥150% ADV** (buy-stop-limit 5–10¢ above t
 tightest-day low / 10–20 EMA, max-loss 5–8%; manage = scale **33–50% at 3–5d → breakeven → trail
 10/20 EMA**.
 **NEXT STEPS (build — can quick-start):**
+0. **KEEP the existing 5-stage state machine** (unqualified→WATCH→TIGHTENING→COILED→TRIGGERED) — the
+   operator likes the per-stock stage display ("I like how it shows which stage a stock is at in the
+   flag", 6/22). Swap only the CRITERIA underneath each stage, NOT the staging/progression/display.
 1. **Reconcile `flag_detector`'s UNSOURCED `50%/60d`** → the sourced **90%/40d + ≤25% pullback**
    (the 50/60 was a prior session's pick, first commit 2026-05-01, never validated). CHANGE_PROCESS +
    N≥10 backtest + sign-off (load-bearing `/flags`).
