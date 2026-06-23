@@ -66,7 +66,11 @@ def row(bars):
     today = abs(bars[-1]["c"] / prev - 1) * 100 if prev else None
     return {"runup": round(runup, 2), "baseD": len(base), "bd4": bd4,
             "retrace": round(retrace, 1), "rmv": round(rmv) if rmv is not None else None,
-            "today": round(today, 1) if today is not None else None}
+            "today": round(today, 1) if today is not None else None,
+            # the dates so the operator can chart the exact setup window:
+            "runup_from": bars[max(0, ai - 10)]["date"],   # runup leg starts ~here
+            "base_start": bars[ai]["date"],                # the runup PEAK = base begins here
+            "base_end": bars[-1]["date"]}                  # latest bar = base ends here (eval day)
 
 
 def main():
@@ -85,10 +89,11 @@ def main():
         f.write("current ordering as the gate. Gates so far: stable anchor (3-20d base) + runup>=15%.\n")
         f.write("`bd4`=#>=4% daily breakdowns in the base · `retr%`=max retrace from peak · `rmv`=tightness (0-100, low=tight) · `today%`=today's move.\n\n")
         f.write(f"{len(rows)} post-runup candidates (live universe of {len(bars)}). Tight+holding first.\n\n")
-        f.write("| LABEL | ticker | runup | baseD | bd4 | retr% | rmv | today% |\n")
-        f.write("|---|---|---|---|---|---|---|---|\n")
+        f.write("| LABEL | ticker | runup | runup-from | base-start (peak) | base-end (eval) | baseD | bd4 | retr% | rmv | today% |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
         for tk, r in rows:
-            f.write(f"|   | {tk} | {r['runup']} | {r['baseD']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {r['today']} |\n")
+            f.write(f"|   | {tk} | {r['runup']} | {r['runup_from']} | {r['base_start']} | {r['base_end']} | "
+                    f"{r['baseD']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {r['today']} |\n")
     # FALSE-NEGATIVE CHECK (advisor de-bias): names the OLD §2 today-gate/anchor EXCLUDED, run
     # through the NEW gates -> the operator confirms they SHOULD be in (catches the STM failure mode;
     # the main list alone can only remove false-positives, never surface a false-negative).
@@ -102,13 +107,14 @@ def main():
         f.write("\n\n## FALSE-NEGATIVE CHECK — should these be IN? (mark G/X)\n\n")
         f.write("Excluded by the OLD §2 today-gate/anchor, re-run through the NEW gates. A known-good\n")
         f.write("name showing **NO** means the gates are still wrong (a false-negative survives).\n\n")
-        f.write("| LABEL | ticker | as-of | passes new gates | runup | bd4 | retr% | rmv | note |\n")
-        f.write("|---|---|---|---|---|---|---|---|---|\n")
+        f.write("| LABEL | ticker | as-of | passes | base-start (peak) | base-end | runup | bd4 | retr% | rmv | note |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
         for tk, asof, note, r in checks:
             if r:
-                f.write(f"|   | {tk} | {asof} | YES | {r['runup']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {note} |\n")
+                f.write(f"|   | {tk} | {asof} | YES | {r['base_start']} | {r['base_end']} | {r['runup']} | "
+                        f"{r['bd4']} | {r['retrace']} | {r['rmv']} | {note} |\n")
             else:
-                f.write(f"|   | {tk} | {asof} | **NO — still excluded** | – | – | – | – | {note} |\n")
+                f.write(f"|   | {tk} | {asof} | **NO — still excluded** | – | – | – | – | – | – | {note} |\n")
     print(f"wrote {len(rows)} candidates + {len(checks)} false-negative checks to {OUT}")
     print("\nTop 20 (tightest + holding):")
     print(f"{'ticker':7} {'runup':6} {'baseD':6} {'bd4':4} {'retr%':6} {'rmv':4} {'today%':6}")
