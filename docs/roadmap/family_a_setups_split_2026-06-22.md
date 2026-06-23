@@ -45,6 +45,15 @@ retrace vs tight names 0–1/≤11%); confirmed the gate must be volatility-rela
    gate cites a source; sign-off for any threshold change).
 6. **Re-validate** against the de-biased labels (the COO canary must survive).
 
+▶ **FOLD-IN from the 6/22 /simplify** (don't refactor now — apply when rebuilding the detector): (a)
+`entry_signal_at` + `confirm_signal_at` share 6/10 return fields + the `rr`/`vols`/`adv` setup — extract
+one `_entry_record(...)` / telemetry-tail helper (keep the two detectors separate); (b) the Anticipate/
+Confirm display split is hand-duplicated across `scheduler.py` + `agent.py` (already drifting) — hoist
+the sub-header labels + `entry_mode` literals to shared constants in `anticipation.py`, or one
+`format_entry_fired_section`; (c) `db.py` `by_mode` is YAGNI (computed, no consumer, mirrors the dead
+`by_origin`) — wire a per-mode "edge so far" line OR cut it. (Note: the Confirm/U&R path is being DROPPED
+per the strict-anticipate split, so much of this dissolves anyway.)
+
 ## Setup 2 — HTF (High Tight Flag) · SPEC GROUNDED 6/22, ready to build · #356
 **What it is:** the former flag / flag_continuation detector → its OWN setup: a massive runup → a
 shallow tight flag → enter on the **confirmed BREAKOUT** on volume. `flag_detector.py` is LIVE +
