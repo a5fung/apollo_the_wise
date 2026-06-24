@@ -41,6 +41,8 @@ def routed():
 # to the cascade (CLAUDE.md "Market Agent Routing" section).
 ROUTING_TABLE = [
     ("/flags", "_handle_slash_command"),                  # slash fast-path beats all NLP
+    ("/syncnow", "_handle_slash_command"),                # operator cmd → slash fast-path (#184c)
+    ("/syncnow paper", "_handle_slash_command"),          # mode arg stays on the fast-path
     ("friday watchlist", "_handle_friday_watchlist"),     # before generic watchlist
     ("track NVDA overnight", "_handle_watchlist"),
     ("parabolic exclude BTBT", "_handle_parabolic_exclusion"),  # before theme exclusion

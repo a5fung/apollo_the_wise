@@ -246,3 +246,69 @@ def test_normalize_slash_cmd_maps_to_dispatch_key(raw, expected):
     /syncnow WAS in the Available list (an invisible char made cmd != the key)."""
     from agents.market_intelligence.agent import _normalize_slash_cmd
     assert _normalize_slash_cmd(raw) == expected
+
+
+# ── Dispatch-routing regression (#184c, 2026-06-24) ──────────────────────────
+# The normalize tests above and the handler tests at the top of this file both
+# stop SHORT of the actual gap that produced "Unknown command": neither drives
+# the real `_handle_slash_command` dispatch DICT. So a removed dispatch entry, a
+# key/method name mismatch, or a normalize regression that breaks /syncnow
+# specifically would all pass the existing suite yet still fall through to
+# "Unknown command" in production. These tests pin the end-to-end dispatch:
+# /syncnow (clean + the 2026-06-04 invisible-char variants) must LAND on
+# _handle_sync_now_command and must NEVER return "Unknown command".
+
+@pytest.mark.parametrize("raw", [
+    "/syncnow",            # clean
+    "/SyncNow",            # case folded
+    "/syncnow​",      # trailing zero-width space (the 2026-06-04 bug)
+    "​/syncnow",      # leading zero-width
+    "/syncnow@ApolloBot",  # @botname suffix (group-chat form)
+    "/syncnow paper",      # mode arg still resolves the bare command key
+])
+@pytest.mark.asyncio
+async def test_syncnow_dispatches_to_handler_not_unknown(raw):
+    """The real `_handle_slash_command` dispatch dict must route /syncnow (and
+    its invisible-char / @botname / case / mode-arg forms) to
+    _handle_sync_now_command — never fall through to 'Unknown command'.
+
+    Regression for 2026-06-04: /syncnow WAS wired in all three places yet
+    returned 'Unknown command' because the parsed token != the dispatch key.
+    Pins routing, not just the normalizer-in-isolation (#184c)."""
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+
+    # A real instance is required: _handle_slash_command builds its dispatch dict
+    # from `self._handle_*` for EVERY command, so a bare fake agent can't even
+    # construct the table. We patch only the target handler on this instance.
+    agent = MarketIntelligenceAgent()
+    sentinel = object()
+    with patch.object(
+        agent, "_handle_sync_now_command",
+        new=AsyncMock(return_value=sentinel),
+    ) as handler_mock:
+        resp = await agent._handle_slash_command(_request(raw))
+    assert resp is sentinel, "/syncnow did not route to _handle_sync_now_command"
+    assert handler_mock.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_syncnow_routes_through_execute_task_slash_fast_path():
+    """A leading '/' must take the slash fast-path in execute_task and reach
+    _handle_slash_command (the same path the orchestrator HTTP POST exercises),
+    so /syncnow can never be captured by an earlier NLP keyword rule."""
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from shared.models import AgentRequest
+
+    agent = MarketIntelligenceAgent()
+    sentinel = object()
+    with patch.object(
+        agent, "_handle_slash_command",
+        new=AsyncMock(return_value=sentinel),
+    ) as slash_mock:
+        resp = await agent.execute_task(
+            AgentRequest(task="/syncnow", user_id=1, conversation_id="t"),
+        )
+    assert resp is sentinel
+    slash_mock.assert_awaited_once()
