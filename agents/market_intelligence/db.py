@@ -1013,6 +1013,39 @@ async def initialize_schema() -> None:
                 ON mi_theme_candidates_shadow(run_date DESC);
         """)
 
+        # ── Theme-axis shadow (#329 STEP-0) — meta-rubric theme-axis measurement scaffold ──
+        # SHADOW ONLY: logs, per scored EP HIGH, the AS-OF theme heat (stage/score, no
+        # lookahead) the live judge is structurally blind to, plus a DETERMINISTIC structural
+        # attribution score (catalyst grounded_text ∩ the theme's OTHER cohort tickers/keywords
+        # — the subject ticker is excluded so a name doesn't trivially attribute to itself).
+        # Drives NOTHING — pure measurement to let DATA size the theme weighting before #335.
+        # UNIQUE (ticker, alert_date): the EP scan re-runs every 5 min, so the writer upserts
+        # latest-scan-wins rather than appending a row per cycle. STEP-0b (the independent
+        # co-movement audit signal) is the fast-follow — see PLAN #329.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_theme_axis_shadow (
+                id SERIAL PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                alert_date DATE NOT NULL,
+                grade TEXT,
+                theme_name TEXT,
+                theme_stage TEXT,
+                theme_score FLOAT,
+                themeless_flag BOOLEAN NOT NULL DEFAULT FALSE,
+                structural_attribution_score INT NOT NULL DEFAULT 0,
+                structural_attributable BOOLEAN NOT NULL DEFAULT FALSE,
+                -- The actual matched terms (cohort tickers + theme keywords found in the
+                -- catalyst), for AUDITABILITY (#329 6/24: "deterministic, traceable, auditable").
+                -- Lets the later data-sizing pass separate a STRONG peer-cohort-ticker match
+                -- (theme-as-driver) from a TRIVIAL own-keyword match — the bare int can't.
+                matched_terms TEXT[] NOT NULL DEFAULT '{}',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_theme_axis_shadow_date
+                ON mi_theme_axis_shadow(alert_date DESC);
+        """)
+
         # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_correlation_clusters (
@@ -5059,6 +5092,38 @@ async def get_theme_history(
         "description": r["description"],
         "tickers": r["tickers"],
     } for r in rows]
+
+
+async def get_theme_heat_asof(conn: Any, ticker: str, alert_date: Any) -> "dict | None":
+    """The hottest active theme containing `ticker` AS OF `alert_date` (theme_date <= alert_date)
+    — NO lookahead (get_theme_membership would return TODAY's membership). Returns the theme's
+    name/stage/score/tickers/description, or None if `ticker` is uncovered as of that date.
+
+    SSoT for the as-of theme-heat read (#338-D): the prior inline copy lived in
+    scripts/eval_judge_enrich.py::_fetch_theme_heat_asof, which returned only (stage, score).
+    STEP-0 (#329) needs the cohort (tickers/description) for structural attribution too, so the
+    accessors are unified here. Semantics are byte-identical to the eval copy — theme_date <=
+    alert_date, stage != 'Retired', ORDER BY theme_date DESC, score DESC NULLS LAST — the only
+    failure mode that matters is reintroducing lookahead. Takes a live conn (callers already hold
+    one in a hot loop)."""
+    row = await conn.fetchrow("""
+        SELECT name, stage, score, tickers, description
+        FROM mi_themes
+        WHERE $1 = ANY(tickers)
+          AND stage != 'Retired'
+          AND theme_date <= $2
+        ORDER BY theme_date DESC, score DESC NULLS LAST
+        LIMIT 1
+    """, ticker, alert_date)
+    if not row:
+        return None
+    return {
+        "name": row["name"],
+        "stage": row["stage"],
+        "score": (float(row["score"]) if row["score"] is not None else None),
+        "tickers": list(row["tickers"] or []),
+        "description": row["description"],
+    }
 
 
 async def _resolve_weekly_snapshots(conn: Any, base_date: "date") -> list:

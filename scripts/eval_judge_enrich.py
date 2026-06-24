@@ -38,7 +38,7 @@ import argparse
 import asyncio
 from collections import Counter
 
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import get_pool, get_theme_heat_asof
 from agents.market_intelligence.ep_grade_judge import format_tier_transition, grade_holistic
 # Single source for the marker-recompute (shared with the monthly review); re-exported here so
 # scripts.eval_judge_enrich.recompute_has_direct_source keeps resolving.
@@ -66,21 +66,13 @@ _MATERIAL_LEAN = {"transformative", "material"}
 
 
 async def _fetch_theme_heat_asof(conn, ticker: str, alert_date):
-    """(stage, score) of the hottest theme containing `ticker` AS OF alert_date — theme_date <=
-    alert_date (NO lookahead; get_theme_membership would return TODAY's membership). None if
-    uncovered as of that date."""
-    row = await conn.fetchrow("""
-        SELECT stage, score
-        FROM mi_themes
-        WHERE $1 = ANY(tickers)
-          AND stage != 'Retired'
-          AND theme_date <= $2
-        ORDER BY theme_date DESC, score DESC NULLS LAST
-        LIMIT 1
-    """, ticker, alert_date)
-    if not row:
+    """(stage, score) of the hottest theme containing `ticker` AS OF alert_date — thin adapter
+    over the unified db.get_theme_heat_asof accessor (#338-D / #329 STEP-0); kept so this
+    script's call site stays a (stage, score) tuple. NO lookahead."""
+    heat = await get_theme_heat_asof(conn, ticker, alert_date)
+    if not heat:
         return None, None
-    return row["stage"], (float(row["score"]) if row["score"] is not None else None)
+    return heat["stage"], heat["score"]
 
 
 async def run_size_only(days: int) -> None:

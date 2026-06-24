@@ -2907,6 +2907,23 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # makes the silent-degradation case ('null': timeout/malformed → fail-open
                 # to floor) explicit + COUNTED. authority='floor' while the toggle is OFF.
                 await _emit_grade_decision(r, floor_tier, verdict)
+                # ── Theme-axis SHADOW (#329 STEP-0) ───────────────────────────────────
+                # Log the as-of theme heat + deterministic structural attribution for each
+                # scored EP HIGH — telemetry the live judge is blind to (theme stage/score),
+                # so DATA can size the theme weighting before the #335 load-bearing flip.
+                # Placed AFTER the override settles (2901-2903) + _emit_grade_decision so we
+                # read the FINAL authoritative score_tier, not the pre-override value.
+                # SHADOW: own conn, read-only on r, writes only mi_theme_axis_shadow, never
+                # raises (the writer swallows to an audit event). Gate = final tier == HIGH
+                # (face-value "scored EP HIGH"; _judge_shadow also runs on MODERATEs it could
+                # promote, so the gate is explicit — not floor-HIGH-inclusive).
+                if r.get("score_tier") == "HIGH":
+                    from agents.market_intelligence.theme_axis_shadow import (
+                        log_theme_axis_shadow,
+                    )
+                    _pool = await get_pool()
+                    async with _pool.acquire() as _tas_conn:
+                        await log_theme_axis_shadow(_tas_conn, r)
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
