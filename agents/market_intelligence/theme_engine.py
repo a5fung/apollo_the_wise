@@ -2445,10 +2445,12 @@ _THEME_DISCOVERY_TOOL = {
             "analysis_scratchpad": {
                 "type": "string",
                 "description": (
-                    "REQUIRED. Write your clustering reasoning BEFORE proposing themes. "
-                    "For each candidate group: (1) what shared catalyst or business model connects them, "
-                    "(2) which stocks clearly belong vs. are borderline, (3) whether the group is large "
-                    "enough (≥3 stocks) and coherent enough to name. Reject spurious clusters here."
+                    "REQUIRED but KEEP IT SHORT — one terse line per candidate cluster: the "
+                    "shared catalyst + keep/drop call (e.g. 'memory makers MU/SNDK/WDC — HBM "
+                    "demand, keep'). Do NOT write paragraphs or restate the rules; a verbose "
+                    "scratchpad here truncates the response before the themes array is emitted "
+                    "(the 6/22-24 zero-theme bug). The Rules below are the criterion — narrate, "
+                    "don't re-derive."
                 ),
             },
             "themes": {
@@ -3073,13 +3075,14 @@ Rules:
 {recall_disposition}
 - Focus on what the market is pricing in RIGHT NOW based on price action, not macro narratives
 
-Before calling report_themes, ask yourself: am I genuinely uncertain about any cluster?
-Consult the advisor FIRST if any of these apply:
+OUTPUT FORMAT — IMPORTANT:
+Do NOT write any free-text analysis before your tool call. All clustering reasoning belongs INSIDE the `report_themes` tool's `analysis_scratchpad` field (kept terse — one line per cluster). Free text before the tool call wastes the output budget and can cause the response to truncate before the themes array is emitted — that is exactly the bug that produced zero new themes 6/22-24.
+
+Consult the advisor ONLY if one of these genuinely applies:
 - A stock fits multiple possible themes and you're not sure which is the better home
-- You have a 2-stock cluster and aren't confident it's a real theme vs. coincidence
+- You have a borderline cluster and aren't confident it's a real theme vs. coincidence
 - Stocks share a sector label but their actual business drivers feel different to you
-- You want to name a theme but can't articulate a crisp specific thesis
-If none of these apply, call report_themes directly — advisor consultation is for real ambiguity only."""
+In every other case, skip the advisor and call `report_themes` immediately, with your terse reasoning in `analysis_scratchpad`."""
 
     try:
         client = _get_anthropic_client()
@@ -3091,13 +3094,27 @@ If none of these apply, call report_themes directly — advisor consultation is 
                                # drone/UAS cluster was discovered, deliberated, then lost).
         loop_guard = 0         # hard ceiling — defense in depth against a runaway loop.
 
-        # #325 (2026-06-18): bumped 1500→4000 — INFRA CAPACITY, not a criterion change (the
-        # disposition line still says "return zero when in doubt"). The prompt induces reasoning
-        # text ("ask yourself…", "consult the advisor FIRST…"); at 1500 a long real prompt could
-        # burn the budget on deliberation and hit the token ceiling BEFORE emitting the tool call
-        # → "stopped without calling report_themes" → forced report had no room either. The
-        # assignment LLM next door already runs 4000. The per-call telemetry below makes the
-        # stop_reason DURABLE (the funnel was logs-only and died on container recreate).
+        # #325 (2026-06-18): bumped 1500→4000 — INFRA CAPACITY, not a criterion change. The
+        # per-call telemetry below makes the stop_reason DURABLE (the funnel was logs-only and
+        # died on container recreate).
+        #
+        # ROOT FIX (2026-06-25): the cap bump alone did NOT cure the truncation — telemetry showed
+        # stop=max_tokens out_tok=4000 on the FORCED retry too (forced=True), so the budget was
+        # being consumed INSIDE the bounded tool output, not just on pre-tool deliberation. Two
+        # drivers, both now fixed by mirroring the proven assignment path (line ~2117, which had
+        # the identical 5/12-13 silent_stop and stayed fixed):
+        #   (1) the old `report_themes.analysis_scratchpad` demanded a HEAVY per-group 3-part
+        #       structured essay; over five input pools it alone overflowed 4000 inside the tool
+        #       call → truncated, unparseable themes → 0. Now a TERSE one-line-per-cluster scratchpad
+        #       (schema ~2445) keeps the emitted JSON bounded.
+        #   (2) the old prompt's "ask yourself… Consult the advisor FIRST" framing INDUCED pre-tool
+        #       free-reasoning text on the tool_choice=auto call → it burned the budget and stopped
+        #       with tool_uses=0. Replaced with assignment's recipe: a no-free-text-before-tool guard
+        #       + advisor-only-on-genuine-ambiguity + reason-in-scratchpad.
+        # tool_choice stays AUTO (not forced-from-start) so the #173 advisor path survives; the
+        # existing force_report fallback now actually LANDS because the forced call's output is
+        # bounded. Criterion is UNCHANGED — the Rules block + #214 breadth + _validate_theme_membership
+        # / _strip_sector_outliers gates own rejection; only narration verbosity changed.
         _DISCOVERY_MAX_TOKENS = 4000
 
         while True:
