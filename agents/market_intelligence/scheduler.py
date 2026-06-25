@@ -2587,6 +2587,19 @@ async def _post_nightly_audit_job():
         logger.error(f"Post-nightly audit failed: {e}", exc_info=True)
         await notify_job_failure("post_nightly_audit", str(e))
 
+    # Systematic anti-silent-failure NULL-RATE sweep (#370, operator 6/24): a normally-populated
+    # column that silently goes null (the spy_vs_200ma-for-3-weeks class) → ONE grouped Telegram.
+    # Own try/except so a sweep failure can't break the audit; the sweep is internally robust too.
+    try:
+        from agents.market_intelligence.health_checks import run_null_rate_sweep
+        sweep = await run_null_rate_sweep()
+        logger.info(
+            f"Null-rate sweep: {sweep['tables_scanned']} tables, "
+            f"{len(sweep['flags'])} flag(s), {len(sweep['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Null-rate sweep failed: {e}", exc_info=True)
+        await notify_job_failure("null_rate_sweep", str(e))
+
     # Data-gated-review escalation (#54 RMV-miss mitigation, Prong B). A review that's been
     # READY — or whose predicate has been ERRORING (a silently-broken locked query, the exact
     # #54 class) — beyond the grace window gets its OWN deterministic Telegram instead of rotting
