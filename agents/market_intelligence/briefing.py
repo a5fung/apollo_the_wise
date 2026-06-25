@@ -377,6 +377,16 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     # when classified. Marker via the shared _catalyst_type_mark helper.
     _ct = ep.get("catalyst_type")
     ct_suffix = f" {_catalyst_type_mark(_ct)}{_ct.replace('_', ' ')}" if _ct else ""
+    # Volume display: pre-market alerts have rel_volume ≈ 0 (it's today_volume/ADV and the day's
+    # barely started), so the meaningful figure is pm_rvol (pre-market relative volume). Prefer it
+    # when rel_volume is tiny/absent and pm_rvol exists; else show accumulated rel_volume. Operator
+    # 6/25: SNX/MU showed "rv 0.01x/0.03x" pre-market when pm_rvol was 12x/1.5x.
+    _rel_v = ep.get("rel_volume")
+    _pm_v = ep.get("pm_rvol")
+    if _pm_v and (_rel_v is None or _rel_v < 1.0):
+        vol_str = f"pm rvol {_pm_v:.1f}x"
+    else:
+        vol_str = f"rv {_rel_v or '?'}x"
     out: list[str] = []
     # Tier WORD on the line (not just the emoji) + a "catalyst" label on the grade, so HIGH (the
     # tier) and game-changer (the catalyst — already a scored COMPONENT of ep_score, not a rival
@@ -385,13 +395,13 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     if tier == "HIGH":
         out.append(
             f"{lead}{tier_e} *{tier}* `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
-            f"rv {ep.get('rel_volume') or '?'}x "
+            f"{vol_str} "
             f"score *{ep['ep_score']:.0f}* {cat_e} {quality} catalyst{gem}{conf}{ct_suffix}"
         )
     else:
         out.append(
             f"{lead}{tier_e} {tier} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality} catalyst{ct_suffix}"
+            f"{vol_str}  score {ep['ep_score']:.0f} {cat_e} {quality} catalyst{ct_suffix}"
         )
     if ep.get("claude_analysis"):
         out.append(f"{lead}  _{_truncate_sentence(ep['claude_analysis'], 180)}_")
