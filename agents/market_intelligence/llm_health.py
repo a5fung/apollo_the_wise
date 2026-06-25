@@ -204,3 +204,15 @@ async def alert_credit_exhausted(context: str, exc: BaseException,
         )
     except Exception:
         pass
+
+
+async def maybe_alert_credit_exhausted(context: str, exc: BaseException,
+                                       provider: str = "anthropic") -> None:
+    """Single home for the is_credit_error -> alert_credit_exhausted -> swallow contract that was
+    hand-copied at the LLM call sites. ALWAYS safe in a fail-open except block — never raises (the
+    point is to ADD an alert to a path that already degrades gracefully, not turn it into a crash)."""
+    try:
+        if is_credit_error(exc):
+            await alert_credit_exhausted(context, exc, provider=provider)
+    except Exception as _e:  # noqa: BLE001 — swallow-by-design; never raise into a fail-open caller
+        logger.debug("maybe_alert_credit_exhausted swallowed for %s: %s", context, _e)

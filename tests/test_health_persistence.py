@@ -132,9 +132,9 @@ def _captured_telegram(monkeypatch):
 
 @pytest.fixture
 def _frozen_today(monkeypatch):
-    """Pin _et_today so cadence is deterministic. Returns a setter the test calls to advance days."""
+    """Pin et_today so cadence is deterministic. Returns a setter the test calls to advance days."""
     box = {"d": date(2026, 6, 25)}
-    monkeypatch.setattr(health_checks, "_et_today", lambda: box["d"])
+    monkeypatch.setattr(health_checks, "et_today", lambda: box["d"])
     return box
 
 

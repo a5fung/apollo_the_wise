@@ -97,15 +97,28 @@ class _FakeConn:
         self._table_for_job = table_for_job  # job_id -> table name (for COUNT routing)
 
     async def fetch(self, sql, *args):
-        # The run-dates query.
-        assert "mi_job_runs" in sql
-        job_id = args[0]
-        entry = self._jobs.get(job_id)
-        if entry == "ERROR":
-            raise RuntimeError(f"boom on {job_id}")
-        run_dates, _counts = entry
-        limit = args[1]
-        return [{"run_date": d} for d in run_dates[:limit]]
+        if "mi_job_runs" in sql:
+            # The run-dates query.
+            job_id = args[0]
+            entry = self._jobs.get(job_id)
+            if entry == "ERROR":
+                raise RuntimeError(f"boom on {job_id}")
+            run_dates, _counts = entry
+            limit = args[1]
+            return [{"run_date": d} for d in run_dates[:limit]]
+        if "COUNT(*)" in sql:
+            # The grouped per-date COUNT (one row per date that HAS rows — mirrors real GROUP BY; an
+            # absent date -> 0 via the caller's .get). Route by the table in the FROM clause.
+            wanted = args[0]
+            for job_id, table in self._table_for_job.items():
+                if f'FROM "{table}"' in sql:
+                    entry = self._jobs.get(job_id)
+                    if entry == "ERROR":
+                        raise RuntimeError(f"boom counting {table}")
+                    _dates, counts = entry
+                    return [{"d": d, "n": counts[d]} for d in wanted if counts.get(d, 0) > 0]
+            raise AssertionError(f"unexpected count query: {sql[:80]}")
+        raise AssertionError(f"unexpected fetch query: {sql[:80]}")
 
     async def fetchval(self, sql, *args):
         # The per-date COUNT(*) query. Identify the job by the table named in the FROM clause.

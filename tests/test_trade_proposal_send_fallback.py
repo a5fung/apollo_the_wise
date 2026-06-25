@@ -87,3 +87,23 @@ async def test_catalyst_underscore_sanitized(monkeypatch):
     await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
     assert "game changer" in sent["text"]      # sanitized form present
     assert "game_changer" not in sent["text"]  # the raw underscore that 400'd is gone
+
+
+@pytest.mark.asyncio
+async def test_plain_text_fallback_keeps_confirm_button(monkeypatch):
+    # Trade-stakes guard (advisor 6/25): a fallback proposal that RENDERS but whose Confirm button is
+    # dead = a missed live entry at Phase-2. The plain-text (parse_mode=None) send MUST still carry the
+    # reply_markup with the trade_confirm callback_data — parse_mode renders TEXT, it must never strip
+    # the button. Pins the shared-keyboard contract so a future _post refactor can't silently drop it.
+    payloads = []
+
+    def _post(payload):
+        payloads.append(payload)
+        return _Resp(fail=(payload.get("parse_mode") == "Markdown"))  # Markdown 400s -> fallback fires
+
+    _install_mocks(monkeypatch, _post)
+    await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
+    fallback = next(p for p in payloads if p.get("parse_mode") is None)
+    cbs = [b["callback_data"] for row in fallback["reply_markup"]["inline_keyboard"] for b in row]
+    assert "trade_confirm:234" in cbs  # the Confirm button survives the plain-text fallback
+    assert "trade_skip:234" in cbs     # ...and Skip

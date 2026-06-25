@@ -1605,13 +1605,8 @@ async def _validate_theme_membership(
         # #273: credit exhaustion would silently keep all tickers (validation
         # degraded) with no alert. Detect + alert (deduped) before the fail-open.
         # Ordered before the rate-limit branch — is_credit_error excludes 429.
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted("theme validation", e)
-        except Exception:
-            pass
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme validation", e)
         # Defensive: some anthropic SDK versions raise subclasses or proxies that
         # escape the anthropic.RateLimitError clause above. Route any rate-limit
         # error here so the audit log gives the correct cause — mislabeling 429s
@@ -2232,13 +2227,8 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
         # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
         # it would otherwise be MISLABELED transient and retry forever silently.
         # Detect + alert (deduped) at the top, before any branch.
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted("theme assignment", e)
-        except Exception:
-            pass
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme assignment", e)
         # Transient Anthropic failures (5xx, network, timeout) resolve next run —
         # route to a non-`_error` event_type so they don't trip the L1 invariant.
         if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):
@@ -3234,13 +3224,8 @@ If none of these apply, call report_themes directly — advisor consultation is 
         # #273: a credit-exhaustion BadRequestError is an APIError subclass, so
         # it would otherwise be MISLABELED transient and retry forever silently.
         # Detect + alert (deduped) at the top, before any branch.
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted("theme discovery", e)
-        except Exception:
-            pass
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme discovery", e)
         # Transient Anthropic failures (5xx, network, timeout) resolve next run —
         # route to a non-`_error` event_type so they don't trip the L1 invariant.
         if isinstance(e, _THEME_TRANSIENT_EXC) and not isinstance(e, _THEME_RATELIMIT_EXC):

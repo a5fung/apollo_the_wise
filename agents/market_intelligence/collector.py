@@ -947,14 +947,8 @@ async def search_news_perplexity(
         # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
         # catalyst cross-check (and every other Perplexity use) silently returns
         # "" and degrades. Alert it (terminal + actionable) before failing open.
-        try:
-            from agents.market_intelligence.llm_health import (
-                alert_credit_exhausted, is_credit_error)
-            if is_credit_error(e):
-                await alert_credit_exhausted(
-                    "Perplexity news search", e, provider="perplexity")
-        except Exception:
-            pass
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("Perplexity news search", e, provider="perplexity")
         logger.warning(f"Perplexity search failed: {e}")
         return ""
 

@@ -261,3 +261,58 @@ async def test_inproc_pregate_suppresses_same_process_burst(monkeypatch):
 
     assert len(sent) == 1               # only the first burst member alerts
     assert len(db.written) == 1
+
+
+# ── maybe_alert_credit_exhausted: the single-home wrapper the 4 call sites share ──
+#
+# Extracted in the 6/25 /simplify (was hand-copied at theme_engine ×3 + collector).
+# Its contract: classify -> alert-if-credit -> NEVER raise into the fail-open caller.
+
+@pytest.mark.asyncio
+async def test_maybe_alert_fires_on_credit_exhaustion(monkeypatch):
+    calls = []
+
+    async def _spy(context, exc, provider="anthropic"):
+        calls.append((context, provider))
+
+    monkeypatch.setattr(llm_health, "alert_credit_exhausted", _spy)
+    await llm_health.maybe_alert_credit_exhausted("theme validation", anthropic_credit_400())
+    assert calls == [("theme validation", "anthropic")]
+
+
+@pytest.mark.asyncio
+async def test_maybe_alert_silent_on_transient_rate_limit(monkeypatch):
+    # The make-or-break property, preserved through the wrapper: a 429 must NOT alert.
+    calls = []
+
+    async def _spy(context, exc, provider="anthropic"):
+        calls.append((context, provider))
+
+    monkeypatch.setattr(llm_health, "alert_credit_exhausted", _spy)
+    await llm_health.maybe_alert_credit_exhausted("theme assignment", anthropic_rate_limit_429())
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_maybe_alert_passes_provider_through(monkeypatch):
+    calls = []
+
+    async def _spy(context, exc, provider="anthropic"):
+        calls.append((context, provider))
+
+    monkeypatch.setattr(llm_health, "alert_credit_exhausted", _spy)
+    await llm_health.maybe_alert_credit_exhausted(
+        "Perplexity news search", perplexity_402(), provider="perplexity")
+    assert calls == [("Perplexity news search", "perplexity")]
+
+
+@pytest.mark.asyncio
+async def test_maybe_alert_never_raises_into_failopen_caller(monkeypatch):
+    # Called from a fail-open except block, it must NEVER propagate — even if the
+    # classifier explodes. A crash here would turn a graceful LLM degradation into a
+    # hard failure of the calling job (theme assignment/discovery/validation).
+    def _boom_classify(exc):
+        raise RuntimeError("classifier exploded")
+
+    monkeypatch.setattr(llm_health, "is_credit_error", _boom_classify)
+    await llm_health.maybe_alert_credit_exhausted("theme discovery", anthropic_credit_400())  # no raise

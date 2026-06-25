@@ -63,6 +63,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.db import get_pool, log_audit_event
+from shared.dates import et_today  # canonical ET-today (tz-bug-class centralization, /simplify 6/25)
 
 _ET = ZoneInfo("America/New_York")  # codebase tz rule — never naive datetime.now()
 
@@ -475,7 +476,16 @@ async def _check_job(
     if len(run_dates) < k:
         return None  # not enough successful runs in history → skip (heartbeat territory, not ours)
 
-    counts = [await _new_rows_on_date(conn, table, date_col, d) for d in run_dates]
+    # One grouped COUNT keyed by date instead of a per-date round-trip each (/simplify 6/25 efficiency,
+    # ~16 COUNT(*) -> 4 across the sweep, every nightly run). A run-date absent from the GROUP BY result
+    # had 0 rows that day -> .get(d, 0) preserves the prior _new_rows_on_date `int(val or 0)` semantics.
+    _rows = await conn.fetch(
+        f'SELECT "{date_col}" AS d, COUNT(*) AS n FROM "{table}" '
+        f'WHERE "{date_col}" = ANY($1::date[]) GROUP BY "{date_col}"',
+        run_dates,
+    )
+    _by_date = {r["d"]: int(r["n"] or 0) for r in _rows}
+    counts = [_by_date.get(d, 0) for d in run_dates]
     verdict = _evaluate_job_liveness(counts, min_expected_rows, k)
     if verdict is None:
         return None
@@ -843,12 +853,6 @@ async def run_health_heartbeat(conn=None) -> dict[str, Any]:
 _NAG_CADENCE_DAYS = 1
 
 
-def _et_today():
-    """Today's date in ET (the codebase tz rule — never date.today()/naive now()). Isolated so tests
-    can monkeypatch it without touching the wall clock, and so the cadence is deterministic in tests."""
-    return datetime.now(_ET).date()
-
-
 # ── The CRUX: the two CONCRETE direct re-check fns. ──────────────────────────────────────────────
 # Each takes (conn, target_key) and returns True iff the UNDERLYING condition is STILL broken, by
 # reading the LATEST-DATE condition DIRECTLY — never the rolling baseline (that is what self-poisons).
@@ -974,7 +978,7 @@ async def reconcile_health_flags(
         "nags": [], "resolutions": [], "errors": [],
     }
     try:
-        today = _et_today()
+        today = et_today()
         current_keys: set[str] = set()
 
         # ── (a) UPSERT current flags ──────────────────────────────────────────────────────────────
