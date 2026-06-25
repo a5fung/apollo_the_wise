@@ -42,18 +42,32 @@ Worst inflations:
 - **Gap-VANISHED** (AXTI 16.8→−0.5, DYN 17.9→1.6): the stored gap is essentially fiction at the open —
   these are the false HIGHs. This is the operator's SNX class (a real but unrepresentative thin print).
 
-## Guard implications (STEP-2 — operator + CHANGE_PROCESS)
+## Impact — does the inflation COST us? NO (this reverses the hypothesis)
 
-Target the **vanished** class, keep the **faded** class. Candidate signals (need backtest + sign-off):
-1. **Sanity-bound** the pre-market `current` against the recent range (e.g. reject/clamp a price far
-   outside the trailing N-day high/low) — directly catches the SNX/$315 + AXTI cases.
-2. **Liquidity gate** — require min pre-market volume / ≥N prints at the gap level before trusting it
-   (distinguishes thin-but-real from a lone print).
-3. **Re-confirm/re-score at the open** — keep the early alert, but re-grade the gap on the opening
-   print before the score is load-bearing.
-- ⚠ DETECTION criterion → CHANGE_PROCESS + N≥10 backtest + operator sign-off before any change.
-- Open methodology question for the operator: is scoring on the pre-market gap (vs a confirmed open
-  gap) the right design at all, given a measurable ~14% inflation rate?
+Forward 5-day returns by inflation bucket (HIGH alerts since 5/1, n_sessions_5d ≥ 4):
 
-**STEP-1 status: DONE** (frequency + impact quantified). STEP-2 (guard design + backtest) is the
-operator-gated next step.
+| bucket | n | avg fwd_5d | win rate |
+|---|---|---|---|
+| inflated > 10% | 13 | **+12.0%** | **100%** |
+| inflated 3–10% | 30 | +9.5% | 90% |
+| normal (≤ 3%) | 232 | +10.4% | 92% |
+
+The inflated-gap HIGHs do NOT underperform — the >10% bucket wins MORE than normal. The pre-market
+gap, even when it fades by the open (AXTI 16.8 → −0.5), still captures real catalyst energy that
+plays out over 5 days; the names recover/run. So the "inflation" is **not a P&L problem.**
+
+## Conclusion — DON'T build the detection guard
+
+The outcome data flips STEP-2. A guard that filtered/down-weighted the inflated-gap HIGHs would
+**remove winners** (the >10% bucket is +12% / 100%). The gap LOOKS wrong but trades RIGHT — this is
+exactly the case the backtest-before-deploy discipline exists to catch.
+
+- **Detection / score: leave the pre-market gap as-is.** No guard, no CHANGE_PROCESS change. (Small
+  samples 13/30 add caution, but the direction is clearly not-worse — there is no edge to recover by
+  guarding, and real downside in losing the faded-but-running names.)
+- **Display only (safe, no detection change):** the operator's *confusion* was real — optionally show
+  both the stored gap and, once available, the open gap, so a faded pre-market reading (the SNX
+  thread) doesn't mislead. That's the only fix worth considering, and it's display, not strategy.
+
+**STEP-1 + impact: DONE. Recommendation = NO detection guard (it would cost winners); at most a
+display tweak. Operator call.** Re-open only if a larger sample changes the bucket comparison.
