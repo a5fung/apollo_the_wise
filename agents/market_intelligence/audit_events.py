@@ -38,6 +38,13 @@ CATALYST_DOWNGRADE_CARVEOUT_APPLIED = "catalyst_downgrade_carveout_applied"  # #
 ANTHROPIC_RATE_LIMITED = "anthropic_rate_limited"
 VALIDATION_RATE_LIMITED = "validation_rate_limited"
 
+# ── LLM credit / quota exhaustion (#273) ────────────────────────────────────
+# Distinct from the *_rate_limited events above: a rate-limit self-heals on
+# retry; credit exhaustion is TERMINAL until the operator refills. One row per
+# provider per ~6h is the dedup token for the Telegram alert (see llm_health.py).
+ANTHROPIC_CREDITS_EXHAUSTED = "anthropic_credits_exhausted"
+PERPLEXITY_CREDITS_EXHAUSTED = "perplexity_credits_exhausted"
+
 # ── M&A filter ──────────────────────────────────────────────────────────────
 MNA_FILTER_FIRED = "mna_filter_fired"
 MNA_ACQUIRER_TITLE_SKIPPED = "mna_acquirer_title_skipped"  # #284 acquirer-side title not fired
