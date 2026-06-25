@@ -378,16 +378,20 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     _ct = ep.get("catalyst_type")
     ct_suffix = f" {_catalyst_type_mark(_ct)}{_ct.replace('_', ' ')}" if _ct else ""
     out: list[str] = []
+    # Tier WORD on the line (not just the emoji) + a "catalyst" label on the grade, so HIGH (the
+    # tier) and game-changer (the catalyst — already a scored COMPONENT of ep_score, not a rival
+    # verdict) read as two facets of one call. Operator 6/25: the brief showed only "game changer"
+    # per-name, so it looked like a competing classification vs the alert's "HIGH".
     if tier == "HIGH":
         out.append(
-            f"{lead}{tier_e} `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
+            f"{lead}{tier_e} *{tier}* `{ep['ticker']}` gap *{ep['gap_pct']:.1f}%* "
             f"rv {ep.get('rel_volume') or '?'}x "
-            f"score *{ep['ep_score']:.0f}* {cat_e} {quality}{gem}{conf}{ct_suffix}"
+            f"score *{ep['ep_score']:.0f}* {cat_e} {quality} catalyst{gem}{conf}{ct_suffix}"
         )
     else:
         out.append(
-            f"{lead}{tier_e} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
-            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality}{ct_suffix}"
+            f"{lead}{tier_e} {tier} `{ep['ticker']}` gap {ep['gap_pct']:.1f}%  "
+            f"rv {ep.get('rel_volume') or '?'}x  score {ep['ep_score']:.0f} {cat_e} {quality} catalyst{ct_suffix}"
         )
     if ep.get("claude_analysis"):
         out.append(f"{lead}  _{_truncate_sentence(ep['claude_analysis'], 180)}_")
