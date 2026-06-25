@@ -468,7 +468,10 @@ async def run_regime_engine(trade_date: date | None = None) -> dict:
     """
     today = trade_date or et_today()
     today_str = today.strftime("%Y-%m-%d")
-    from_date = (today - timedelta(days=250)).strftime("%Y-%m-%d")
+    # 365 cal days ≈ 252 trading bars: the 200-day MA needs ≥200, and the old 250 cal (~171
+    # bars) silently returned <200 → spy_vs_200ma was NULL for ~3 weeks, leaving the regime
+    # blind to the long-term trend (#371, found 2026-06-24). Verified live: 250d→171, 365d→252.
+    from_date = (today - timedelta(days=365)).strftime("%Y-%m-%d")
 
     logger.info(f"Regime engine: fetching SPY/VIX history...")
 
