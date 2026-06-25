@@ -23,7 +23,11 @@ import httpx
 logger = logging.getLogger(__name__)
 
 POLYGON_BASE = "https://api.polygon.io"
-FMP_BASE = "https://financialmodelingprep.com/api"
+# FMP migrated off the legacy /api/v3/ API — it now 403s on EVERY endpoint
+# (incl. the free quote, verified 2026-06-25, #380). The current API is /stable/
+# (query-param style: ?symbol=AAPL). `_fmp_get` has no live callers today; this
+# base is correct for any future re-wire. (Was "https://financialmodelingprep.com/api".)
+FMP_BASE = "https://financialmodelingprep.com/stable"
 
 # (Removed 2026-05-21: _fmp_paywall_alerted flag and FMP-paywall alerting.
 # FMP news call stripped entirely — get_fmp_news now goes straight to yfinance.
@@ -50,32 +54,127 @@ async def _polygon_get(path: str, params: dict | None = None) -> Any:
             await asyncio.sleep(POLYGON_RATE_DELAY - elapsed)
 
         all_params = {"apiKey": api_key, **(params or {})}
-        async with httpx.AsyncClient(timeout=30) as client:
-            for attempt in range(3):
-                r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
-                _polygon_last_call = asyncio.get_event_loop().time()
-                if r.status_code == 429:
-                    wait = 15 * (attempt + 1)  # 15s, 30s, 45s
-                    logger.warning(f"Polygon 429 — waiting {wait}s (attempt {attempt + 1}/3)")
-                    await asyncio.sleep(wait)
-                    continue
-                r.raise_for_status()
+        # #380/#370 loud-failure guard wraps the WHOLE retry loop: a retried 429
+        # (`continue`) never reaches this except, so only a SUSTAINED failure
+        # (final-attempt raise, or a transport/timeout error mid-loop) alerts.
+        # The wrapper RE-RAISES so callers' existing fallbacks still run — loud,
+        # but still gracefully degrading.
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                for attempt in range(3):
+                    r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
+                    _polygon_last_call = asyncio.get_event_loop().time()
+                    if r.status_code == 429:
+                        wait = 15 * (attempt + 1)  # 15s, 30s, 45s
+                        logger.warning(f"Polygon 429 — waiting {wait}s (attempt {attempt + 1}/3)")
+                        await asyncio.sleep(wait)
+                        continue
+                    r.raise_for_status()
+                    return r.json()
+                r.raise_for_status()  # raise on final attempt
                 return r.json()
-            r.raise_for_status()  # raise on final attempt
-            return r.json()
+        except Exception as e:
+            from agents.market_intelligence.llm_health import maybe_alert_api_failure
+            await maybe_alert_api_failure("polygon", e, context=f"GET {path}")
+            raise
 
 
 async def _fmp_get(path: str, params: dict | None = None) -> Any:
-    """GET request to FMP API."""
+    """GET request to FMP's `/stable/` API.
+
+    NOTE (#380, 2026-06-25): this helper currently has NO live callers — the
+    fundamentals/profile/news data flow migrated off FMP-REST to yfinance +
+    Polygon `/vX/reference/financials` long ago (commit 5c3f25b). It is kept as
+    the canonical FMP transport for any future re-wire (see #380 mapping doc).
+
+    The base now points at FMP's `/stable/` API (the legacy `/api/v3/` returns
+    403 Forbidden on every endpoint incl. the free quote — verified 2026-06-25).
+    The `/stable/` API takes the symbol as a QUERY param (`?symbol=AAPL`), NOT a
+    path segment (`/income-statement/AAPL`) — callers must pass it in `params`,
+    e.g. `_fmp_get("/income-statement", {"symbol": t, "period": "quarter"})`.
+    Several `/stable/` endpoints (key-metrics, ratios, news/stock-latest) are
+    402 Payment Required on the free tier — see the #380 mapping for what's
+    available vs paid.
+    """
     api_key = os.environ.get("FMP_API_KEY", "")
     if not api_key:
         raise RuntimeError("FMP_API_KEY not set")
 
     all_params = {"apikey": api_key, **(params or {})}
-    async with httpx.AsyncClient(timeout=30) as client:
-        r = await client.get(f"{FMP_BASE}{path}", params=all_params)
-        r.raise_for_status()
-        return r.json()
+    # #380/#370 loud-failure guard: a 403 (deprecated v3) / 402 (paid-only) /
+    # transport error here previously failed SILENTLY (the caller's except
+    # swallowed it). Alert before re-raising so the caller's fallback still runs.
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(f"{FMP_BASE}{path}", params=all_params)
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("fmp", e, context=f"GET {path}")
+        raise
+
+
+# FMP /stable/ income-statement → our normalized quarter dict (#380 mapping).
+#
+# THE FIELD MAP (verified live 2026-06-25 against the real /stable/ response —
+# the v3 names differed, which is why a naive base-URL swap would have produced
+# null fundamentals even once wired). Stable uses camelCase top-level fields; the
+# Polygon source `fetch_ep_fundamentals.compute_growth_deltas` consumes already
+# matches this normalized shape, so this adapter lets a future re-wire feed FMP
+# into the SAME growth/acceleration math without changing that code.
+#
+#   our field          ← FMP /stable/ income-statement field
+#   revenue            ← revenue
+#   gross_profit       ← grossProfit
+#   operating_income   ← operatingIncome
+#   net_income         ← netIncome
+#   eps_basic          ← eps
+#   eps_diluted        ← epsDiluted
+#   fiscal_period      ← period          (e.g. "Q2")
+#   fiscal_year        ← fiscalYear
+#   end_date           ← date
+#   filing_date        ← filingDate
+#
+# NOT WIRED: no live caller routes FMP into the grade today — wiring it in is a
+# new structured grade source (methodology change, operator/#380 + CHANGE_PROCESS
+# gated). This adapter + `_fmp_get` are the tested SEAM for that decision, not a
+# live behavior change.
+_FMP_STABLE_INCOME_MAP = {
+    "revenue": "revenue",
+    "gross_profit": "grossProfit",
+    "operating_income": "operatingIncome",
+    "net_income": "netIncome",
+    "eps_basic": "eps",
+    "eps_diluted": "epsDiluted",
+}
+
+
+def normalize_fmp_stable_quarter(report: dict) -> dict:
+    """Map one FMP `/stable/income-statement` quarter into the normalized quarter
+    shape consumed by `fetch_ep_fundamentals.compute_growth_deltas` (revenue,
+    eps, margins, fiscal_year/period). Pure + side-effect-free; the #380 re-wire
+    seam. Margins are COMPUTED from absolutes (the free tier has no ratios/
+    key-metrics endpoint — both 402), matching the Polygon path exactly."""
+    out: dict = {
+        "source": "fmp_stable",
+        "fiscal_period": report.get("period"),
+        "fiscal_year": report.get("fiscalYear"),
+        "end_date": report.get("date"),
+        "filing_date": report.get("filingDate"),
+    }
+    for our_field, fmp_field in _FMP_STABLE_INCOME_MAP.items():
+        v = report.get(fmp_field)
+        out[our_field] = v if isinstance(v, (int, float)) else None
+    rev = out.get("revenue")
+    if rev and rev > 0:
+        if out.get("gross_profit") is not None:
+            out["gross_margin"] = out["gross_profit"] / rev
+        if out.get("operating_income") is not None:
+            out["op_margin"] = out["operating_income"] / rev
+        if out.get("net_income") is not None:
+            out["net_margin"] = out["net_income"] / rev
+    return out
 
 
 # ── Polygon endpoints ──────────────────────────────────────────────────────────
@@ -969,8 +1068,18 @@ async def search_news_perplexity(
         # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
         # catalyst cross-check (and every other Perplexity use) silently returns
         # "" and degrades. Alert it (terminal + actionable) before failing open.
-        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        from agents.market_intelligence.llm_health import (
+            is_credit_error, maybe_alert_api_failure, maybe_alert_credit_exhausted,
+        )
         await maybe_alert_credit_exhausted("Perplexity news search", e, provider="perplexity")
+        # #380/#370: a NON-credit failure here (5xx, timeout, connect, a non-
+        # 401/402 4xx) is the silent-degradation class too. Alert it via the
+        # data-API guard — but ONLY when it's not already a credit error, so a
+        # 401/402 doesn't double-fire (credit + api_failure). Dedup is keyed by
+        # (provider, error-class) so this never collides with the credit alarm.
+        # Contract is UNCHANGED: this only alerts, then we still return "".
+        if not is_credit_error(e):
+            await maybe_alert_api_failure("perplexity", e, context="news search")
         logger.warning(f"Perplexity search failed: {e}")
         return ""
 

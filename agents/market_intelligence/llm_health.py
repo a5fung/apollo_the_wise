@@ -216,3 +216,199 @@ async def maybe_alert_credit_exhausted(context: str, exc: BaseException,
             await alert_credit_exhausted(context, exc, provider=provider)
     except Exception as _e:  # noqa: BLE001 — swallow-by-design; never raise into a fail-open caller
         logger.debug("maybe_alert_credit_exhausted swallowed for %s: %s", context, _e)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# #380 / #370 — DATA-API loud-failure guard (extends the #273 credit pattern to
+# the data-fetch layer: Polygon, FMP, Perplexity-news).
+#
+# THE GAP this closes: the data-API wrappers RAISE on an HTTP/transport error,
+# but their callers SWALLOW it (fail-open: except → fallback → empty). So a
+# provider going dark (FMP's deprecated /api/v3/ → 403 on everything, a Polygon
+# outage, a Perplexity 5xx) degrades the catalyst grade / RS universe / news
+# corpus SILENTLY — exactly the "how did an API call fail silently?" class the
+# operator flagged on 2026-06-25. The FMP 403 sat invisible for months precisely
+# because nothing surfaced it (0 FMP errors in 72h of logs).
+#
+# THE FIX: a deduped operator alert fired AT THE WRAPPER's catch point, BEFORE
+# the exception propagates to the swallowing caller. The wrapper's existing
+# propagation is PRESERVED — `_fmp_get`/`_polygon_get` still re-raise (so the
+# caller's fallback runs), `search_news_perplexity` still returns "" — the
+# loudness comes from the ALERT, not from changing the contract. Graceful
+# degradation, but LOUD.
+#
+# This is REACTIVE (alerts on observed failure), the same shape as the #273
+# credit alarm. It does NOT alert on a code bug (JSONDecodeError/KeyError) — only
+# on a genuine network/HTTP failure (positive classification below).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Per-process pre-gate for the data-API alarm. Keyed by (provider, error_class)
+# so a 500 right after a 403 is NOT suppressed for 6h (the credit pre-gate keys
+# by provider alone because a single provider has ONE exhaustion condition; a
+# data API can flap across distinct failure modes). NON-authoritative — the
+# audit-log lookback below is the durable, restart-proof dedup.
+_last_api_alert_ts: dict[tuple[str, str], float] = {}
+
+# Providers we surface a data-API alarm for. Anything else routes to "other"
+# (still alerts — better a generic loud row than a silent swallow).
+_API_PROVIDERS = ("polygon", "fmp", "perplexity")
+
+
+def classify_api_failure(exc: BaseException) -> str | None:
+    """Bucket a data-API exception into a coarse error-CLASS, or None when the
+    exception is NOT a network/HTTP failure (so we never alert on a code bug).
+
+    Returns one of: "http_4xx" | "http_5xx" | "timeout" | "connect" | "transport"
+    — or None for anything that isn't a PROVIDER-HEALTH failure: a non-network
+    code bug (JSONDecodeError / KeyError, which must NOT masquerade as "the
+    provider is down"), OR an HTTP 404 (see below).
+
+    404 CARVE-OUT (load-bearing): a 404 is "this ITEM doesn't exist," a per-CALL
+    data condition — NOT a provider outage. Polygon's per-ticker endpoints
+    (`/v3/reference/tickers/{ticker}`, the I:VIX index, per-ticker aggregates)
+    routinely 404 on unknown/delisted tickers; alerting on those would fire a
+    misleading "Polygon DOWN" several times a day (the 6h dedup can't save it —
+    there's always SOME delisted ticker), training the operator to ignore the
+    alarm. The actual failure this guard exists for — FMP's deprecated-API block
+    and an auth/plan revocation — is 401/403, which stays loud. So 404 → None
+    (no alert); 401/403/429/other-4xx/5xx/timeout/connect → loud.
+
+    Positive classification by httpx type name (duck-typed so a stubbed httpx in
+    tests still classifies). 429 IS included for the data layer (Polygon already
+    retries 3× internally, so a 429 that reaches the except is SUSTAINED rate-
+    limiting worth surfacing; the 6h dedup bounds the spam) — this is the
+    deliberate inverse of the credit classifier, which excludes 429 because LLM
+    429s self-heal and are handled by separate backoff.
+    """
+    try:
+        name = type(exc).__name__
+        # Timeouts: httpx.TimeoutException + subclasses (ConnectTimeout,
+        # ReadTimeout, WriteTimeout, PoolTimeout) all end in "Timeout"/"TimeoutException".
+        if "Timeout" in name:
+            return "timeout"
+        if name in ("ConnectError",):
+            return "connect"
+        # HTTP status error (from raise_for_status()): bucket by status family.
+        code = _status_code(exc)
+        if name == "HTTPStatusError" or (code is not None and 400 <= code < 600):
+            # 404 = item-not-found (per-call data condition), NOT provider health.
+            if code == 404:
+                return None
+            if code is not None and 500 <= code < 600:
+                return "http_5xx"
+            if code is not None and 400 <= code < 500:
+                return "http_4xx"
+            return "http_error"
+        # Other httpx transport failures (ConnectError handled above):
+        # NetworkError, ReadError, RemoteProtocolError, ProxyError, etc. The
+        # httpx base for these is TransportError.
+        if name.endswith(("Error",)) and (
+            "httpx" in type(exc).__module__
+            or name in ("TransportError", "NetworkError", "ReadError",
+                        "RemoteProtocolError", "ProxyError", "ProtocolError",
+                        "ConnectError")
+        ):
+            return "transport"
+        return None
+    except Exception:  # classifier must never raise into a fail-open path
+        return None
+
+
+async def alert_api_failure(provider: str, exc: BaseException,
+                            context: str = "") -> None:
+    """One deduped operator alert that a DATA API (Polygon/FMP/Perplexity) is
+    failing. ALWAYS safe to call from a fail-open/except block — never raises.
+
+    Caller contract: call this at the wrapper's catch point, THEN let the
+    wrapper propagate as it already does (re-raise or return its fallback). This
+    function only ALERTS — it never re-raises, never swallows the caller's flow.
+
+    Dedup (per (provider, error-class) per ~6h): mirrors alert_credit_exhausted.
+    The audit row `api_failure_<provider>` is the durable dedup token; we look
+    back `_ALERT_WINDOW_HOURS` for a row of the SAME provider AND error-class
+    (the class is recorded in the row summary as `class=<cls>` and matched on
+    read) and suppress a repeat. A non-authoritative in-process pre-gate keyed
+    by (provider, class) collapses a same-process stampede before the row lands.
+    """
+    try:
+        cls = classify_api_failure(exc)
+        if cls is None:
+            return  # not a network/HTTP failure — don't cry wolf on a code bug
+
+        provider = provider if provider in _API_PROVIDERS else "other"
+        event_type = f"api_failure_{provider}"
+        key = (provider, cls)
+        now = time.monotonic()
+
+        # In-process pre-gate (accelerator only — NOT the source of truth).
+        last = _last_api_alert_ts.get(key)
+        if last is not None and (now - last) < _ALERT_WINDOW_S:
+            return
+
+        # Authoritative dedup: a SAME-(provider,class) row within the window?
+        try:
+            from agents.market_intelligence.db import get_audit_log
+            recent = await get_audit_log(
+                event_type=event_type, since_hours=_ALERT_WINDOW_HOURS, limit=20,
+            )
+            for row in (recent or []):
+                if f"class={cls}" in (row.get("summary") or ""):
+                    _last_api_alert_ts[key] = now  # keep the pre-gate honest
+                    return
+        except Exception:
+            # DB unavailable — fall through and alert (better a possible dup than
+            # a silently-swallowed API outage, the whole bug class #380/#370).
+            pass
+
+        # Claim the window in-process before any await that could interleave.
+        _last_api_alert_ts[key] = now
+
+        code = _status_code(exc)
+        code_str = f" HTTP {code}" if code is not None else ""
+        label = provider.upper()
+
+        # Audit row FIRST (durable dedup token + queryable record). The
+        # `class=<cls>` marker is load-bearing — the lookback matches on it.
+        try:
+            from agents.market_intelligence.db import log_audit_event
+            await log_audit_event(
+                event_type,
+                f"{label} API FAILURE class={cls}{code_str}"
+                + (f" — {context}" if context else ""),
+                str(exc)[:400],
+            )
+        except Exception:
+            pass
+
+        # Then the operator Telegram (a data source going dark IS actionable —
+        # it degrades the grade / universe / news corpus until fixed).
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            from shared.telegram_format import b, esc
+            await send_telegram_message(
+                f"⚠️ {b(f'{label} DATA-API FAILURE')} ({esc(cls)}{esc(code_str)})"
+                + (f" in {esc(context)}" if context else "")
+                + ".\n"
+                + f"The {esc(label)} fetch is failing — the catalyst grade / RS "
+                + "universe / news corpus that depends on it is silently "
+                + "degrading until it recovers.\n"
+                + "Check the provider status + our API key/plan, then verify the "
+                + "next scan's data.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+    except Exception as _e:  # absolute belt-and-suspenders — never raise upward
+        logger.debug("alert_api_failure swallowed for %s: %s", provider, _e)
+
+
+async def maybe_alert_api_failure(provider: str, exc: BaseException,
+                                  context: str = "") -> None:
+    """Convenience wrapper: classify-then-alert, fully swallow-safe. Identical in
+    spirit to maybe_alert_credit_exhausted but for the data-API layer. Safe to
+    call from any wrapper's except block; it only ALERTS (the caller keeps full
+    control of propagation)."""
+    try:
+        await alert_api_failure(provider, exc, context=context)
+    except Exception as _e:  # noqa: BLE001 — swallow-by-design
+        logger.debug("maybe_alert_api_failure swallowed for %s: %s", provider, _e)
