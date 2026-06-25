@@ -65,150 +65,119 @@ def _determine_regime(
     """
     Returns: (regime_label, description, ep_threshold)
     """
-    signals = []
-    bearish_count = 0
-    bullish_count = 0
+    # Each signal carries its WEIGHT (delta): >0 bullish, <0 bearish, 0 neutral. The weights are
+    # identical to the prior bullish_count/bearish_count increments — the change is display-only
+    # (so the message can group bullish vs bearish vs neutral); the 5 regime tests pin the net.
+    signals = []  # list of (delta, text)
 
-    # SPY vs 50MA
+    def add(delta, text):
+        signals.append((delta, text))
+
+    # SPY vs 50MA — flat ON/just-above the line is NEUTRAL not bullish (#372); BELOW stays caution.
     if spy_vs_50ma is not None:
         if spy_vs_50ma > 2:
-            bullish_count += 2
-            signals.append(f"SPY is {spy_vs_50ma:.1f}% above its 50MA (bullish)")
+            add(2, f"SPY {spy_vs_50ma:+.1f}% vs 50MA — above")
         elif spy_vs_50ma > 1:
-            bullish_count += 1
-            signals.append(f"SPY is {spy_vs_50ma:.1f}% above its 50MA (modestly above)")
+            add(1, f"SPY {spy_vs_50ma:+.1f}% vs 50MA — modestly above")
         elif spy_vs_50ma >= 0:
-            # Flat ON / just-above the 50MA is NEUTRAL, not bullish (#372, operator 6/24): on the
-            # line is no trend signal. Counting any positive (even +0.0%) as +1 inflated a choppy
-            # tape to Bull. 0 to +1% scores 0; BELOW the line stays caution (next branch) — a
-            # two-sided neutral band wrongly un-counted that caution (backtest 6/16-18).
-            signals.append(f"SPY {spy_vs_50ma:+.1f}% vs its 50MA (flat — neutral)")
+            add(0, f"SPY {spy_vs_50ma:+.1f}% vs 50MA — flat (on the line)")
         elif spy_vs_50ma > -3:
-            bearish_count += 1
-            signals.append(f"SPY is {abs(spy_vs_50ma):.1f}% below its 50MA (caution)")
+            add(-1, f"SPY {spy_vs_50ma:.1f}% vs 50MA — below (caution)")
         else:
-            bearish_count += 2
-            signals.append(f"SPY is {abs(spy_vs_50ma):.1f}% below its 50MA (bearish)")
+            add(-2, f"SPY {spy_vs_50ma:.1f}% vs 50MA — well below")
 
-    # QQQ vs 50MA (growth stock health)
+    # QQQ vs 50MA (growth health)
     if qqq_vs_50ma is not None:
         if qqq_vs_50ma > 2:
-            bullish_count += 1
-            signals.append(f"QQQ vs 50MA: +{qqq_vs_50ma:.1f}% (growth leading)")
+            add(1, f"QQQ {qqq_vs_50ma:+.1f}% vs 50MA — growth leading")
         elif qqq_vs_50ma > 0:
-            signals.append(f"QQQ vs 50MA: +{qqq_vs_50ma:.1f}% (growth holding)")
+            add(0, f"QQQ {qqq_vs_50ma:+.1f}% vs 50MA — holding (not leading)")
         elif qqq_vs_50ma > -5:
-            bearish_count += 1
-            signals.append(f"QQQ vs 50MA: {qqq_vs_50ma:.1f}% (growth under pressure)")
+            add(-1, f"QQQ {qqq_vs_50ma:.1f}% vs 50MA — under pressure")
         else:
-            bearish_count += 2
-            signals.append(f"QQQ vs 50MA: {qqq_vs_50ma:.1f}% (growth breakdown)")
+            add(-2, f"QQQ {qqq_vs_50ma:.1f}% vs 50MA — growth breakdown")
 
-    # SPY vs 200MA
+    # SPY vs 200MA (long-term trend)
     if spy_vs_200ma is not None:
         if spy_vs_200ma < -10:
-            bearish_count += 2
-            signals.append(f"SPY is {abs(spy_vs_200ma):.1f}% below its 200MA (bear market territory)")
+            add(-2, f"SPY {spy_vs_200ma:.1f}% vs 200MA — bear-market territory")
         elif spy_vs_200ma < 0:
-            bearish_count += 1
-            signals.append(f"SPY is {abs(spy_vs_200ma):.1f}% below its 200MA (below long-term trend)")
+            add(-1, f"SPY {spy_vs_200ma:.1f}% vs 200MA — below long-term trend")
         else:
-            bullish_count += 1
-            signals.append(f"SPY is {spy_vs_200ma:.1f}% above its 200MA (above long-term trend)")
+            add(1, f"SPY {spy_vs_200ma:+.1f}% vs 200MA — above long-term trend")
 
     # VIX
     if vix is not None:
         if vix >= 35:
-            bearish_count += 3
-            signals.append(f"VIX at {vix:.1f} — crisis-level fear")
+            add(-3, f"VIX {vix:.1f} — crisis-level fear")
         elif vix >= 25:
-            bearish_count += 2
-            signals.append(f"VIX at {vix:.1f} — elevated fear, risk-off")
+            add(-2, f"VIX {vix:.1f} — elevated fear, risk-off")
         elif vix >= 20:
-            bearish_count += 1
-            signals.append(f"VIX at {vix:.1f} — above average volatility, cautious")
+            add(-1, f"VIX {vix:.1f} — above-average volatility, cautious")
         else:
-            bullish_count += 1
-            signals.append(f"VIX at {vix:.1f} — low fear, risk-on")
+            add(1, f"VIX {vix:.1f} — low fear, risk-on")
 
     # T2108 — full-universe breadth (% above 40MA)
     if t2108 is not None:
         if t2108 < 25:
-            bearish_count += 2
-            signals.append(f"T2108 {t2108:.0f}% above 40MA — oversold breadth")
+            add(-2, f"T2108 {t2108:.0f}% — oversold breadth")
         elif t2108 < 40:
-            bearish_count += 1
-            signals.append(f"T2108 {t2108:.0f}% above 40MA — weak breadth")
+            add(-1, f"T2108 {t2108:.0f}% — weak breadth")
         elif t2108 <= 70:
-            bullish_count += 1
-            signals.append(f"T2108 {t2108:.0f}% above 40MA — healthy breadth")
+            add(1, f"T2108 {t2108:.0f}% — healthy breadth")
         else:
-            signals.append(f"T2108 {t2108:.0f}% above 40MA — overbought")
+            add(0, f"T2108 {t2108:.0f}% — overbought breadth")
     elif breadth_pct is not None:
         # Fallback to old breadth if T2108 not available yet
         if breadth_pct < 20:
-            bearish_count += 2
-            signals.append(f"{breadth_pct:.0f}% breadth — oversold")
+            add(-2, f"{breadth_pct:.0f}% breadth — oversold")
         elif breadth_pct < 40:
-            bearish_count += 1
-            signals.append(f"{breadth_pct:.0f}% breadth — weak")
+            add(-1, f"{breadth_pct:.0f}% breadth — weak")
         elif breadth_pct > 85:
-            signals.append(f"{breadth_pct:.0f}% breadth — overbought")
+            add(0, f"{breadth_pct:.0f}% breadth — overbought")
         else:
-            bullish_count += 1
-            signals.append(f"{breadth_pct:.0f}% breadth — healthy")
+            add(1, f"{breadth_pct:.0f}% breadth — healthy")
 
-    # Pradeep 1M momentum count (stocks up 50%+ in 1 month)
+    # Pradeep 1M momentum (stocks up 50%+ in 1 month)
     if pradeep_1m_50 is not None:
         if pradeep_1m_50 >= 50:
-            bullish_count += 1
-            signals.append(f"Momentum: {pradeep_1m_50} stocks up 50%+/1M (strong)")
+            add(1, f"Momentum: {pradeep_1m_50} stocks +50%/1M — strong")
         elif pradeep_1m_50 < 10:
-            bearish_count += 1
-            signals.append(f"Momentum: {pradeep_1m_50} stocks up 50%+/1M (dying)")
+            add(-1, f"Momentum: {pradeep_1m_50} stocks +50%/1M — dying")
         else:
-            signals.append(f"Momentum: {pradeep_1m_50} stocks up 50%+/1M")
+            add(0, f"Momentum: {pradeep_1m_50} stocks +50%/1M")
 
     # Consecutive breakdown days (700+ stocks down 4%+ per day)
     if consec_breakdown_days is not None and consec_breakdown_days >= 3:
-        bearish_count += 2
-        signals.append(f"Breakdown: {consec_breakdown_days} consecutive days of 700+ stocks down 4%+")
+        add(-2, f"Breakdown: {consec_breakdown_days} straight days of 700+ stocks down 4%+")
 
-    # +/-4% ratio — rolling count of +4% vs -4% daily moves
+    # +/-4% ratio — rolling count of +4% vs -4% daily moves. 1.0-1.25x = BALANCED not bullish (#372).
     ratio = pct4_ratio_10d if pct4_ratio_10d is not None else pct4_ratio_5d
     window = "10d" if pct4_ratio_10d is not None else "5d"
     if ratio is not None:
         if ratio >= 2.0:
-            bullish_count += 2
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — strong breadth momentum")
+            add(2, f"+/-4% ratio ({window}) {ratio:.1f}x — strong breadth momentum")
         elif ratio >= 1.25:
-            bullish_count += 1
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — bullish breadth")
+            add(1, f"+/-4% ratio ({window}) {ratio:.1f}x — bullish breadth")
         elif ratio >= 1.0:
-            # 1.0-1.25x = roughly equal +4%/-4% days = BALANCED, not bullish (#372). Counting
-            # 1.0x as +1 was the same flat-is-bull error; BELOW 1.0 (more -4% days) stays weak
-            # (next branch) — keeping the bearish caution the prior two-sided band un-counted.
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — balanced (neutral)")
+            add(0, f"+/-4% ratio ({window}) {ratio:.1f}x — balanced")
         elif ratio <= 0.5:
-            bearish_count += 2
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — bearish breadth momentum")
+            add(-2, f"+/-4% ratio ({window}) {ratio:.1f}x — bearish breadth momentum")
         else:
-            bearish_count += 1
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — weak breadth")
+            add(-1, f"+/-4% ratio ({window}) {ratio:.1f}x — weak breadth")
 
-    # Whipsaw / breadth divergence (#373, operator 6/24): the index holding up while RECENT
-    # breadth is both negative (5d +/-4% < 1.0) AND deteriorating vs the 10d — fewer names
-    # carrying the tape = chop, not a clean trend. The engine had NO direct choppiness signal;
-    # this nudges a breadth-divergent "Bull" toward Choppy ("raise the bar, size down").
+    # Whipsaw / breadth divergence (#373, operator 6/24): index holding up while RECENT breadth
+    # narrows (5d +/-4% < 1.0 and < the 10d) — fewer names carrying the tape = chop, not a clean
+    # trend. The engine had NO direct choppiness signal; nudges a divergent "Bull" toward Choppy.
     _index_up = (spy_vs_50ma is not None and spy_vs_50ma >= 0) or (
         qqq_vs_50ma is not None and qqq_vs_50ma >= 0)
     if (_index_up and pct4_ratio_5d is not None and pct4_ratio_5d < 1.0
             and (pct4_ratio_10d is None or pct4_ratio_5d < pct4_ratio_10d)):
-        bearish_count += 1
-        signals.append(
-            f"Breadth divergence: index up but +/-4% 5d {pct4_ratio_5d:.2f}x narrowing — choppy")
+        add(-1, f"Breadth divergence: index up but +/-4% 5d {pct4_ratio_5d:.2f}x narrowing")
 
     # Determine regime
+    bullish_count = sum(d for d, _ in signals if d > 0)
+    bearish_count = -sum(d for d, _ in signals if d < 0)
     net = bullish_count - bearish_count
     if net >= 4:
         regime = "Bull"
@@ -227,7 +196,22 @@ def _determine_regime(
         ep_threshold = 80
         verdict = "Crisis conditions — only game-changer EPs warrant attention."
 
-    description = verdict + "\n" + "\n".join(f"  • {s}" for s in signals)
+    # Grouped description (operator 6/24): split signals into bullish / bearish / neutral so the
+    # message makes the net obvious at a glance instead of a flat list that buries the driver.
+    bull = [t for d, t in signals if d > 0]
+    bear = [t for d, t in signals if d < 0]
+    neut = [t for d, t in signals if d == 0]
+    parts = [
+        verdict,
+        f"Net score {net:+d}  ({bullish_count} bullish · {bearish_count} bearish · {len(neut)} neutral)",
+    ]
+    if bull:
+        parts.append("🟢 Bullish:\n" + "\n".join(f"  • {t}" for t in bull))
+    if bear:
+        parts.append("🔴 Bearish:\n" + "\n".join(f"  • {t}" for t in bear))
+    if neut:
+        parts.append("⚪ Neutral:\n" + "\n".join(f"  • {t}" for t in neut))
+    description = "\n".join(parts)
     return regime, description, ep_threshold
 
 
