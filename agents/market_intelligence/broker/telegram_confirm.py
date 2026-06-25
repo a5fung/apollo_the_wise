@@ -41,7 +41,9 @@ async def send_trade_proposal(
     risk = order_spec["risk_dollars"]
     shares = order_spec["shares"]
     score = order_spec.get("ep_score", 0)
-    catalyst = alert.get("catalyst_quality", "N/A")
+    # Sanitize the rubric grade: "game_changer" etc. carry "_" which Markdown reads as italic →
+    # an unclosed entity → Telegram 400 (the parse-fragility class; SNX 6/25 trade #234).
+    catalyst = (alert.get("catalyst_quality") or "N/A").replace("_", " ")
     gap = alert.get("gap_pct", 0)
     regime = order_spec.get("regime", "Unknown")
     # Show risk as % only — don't leak account equity
@@ -89,24 +91,37 @@ async def send_trade_proposal(
     allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
     chat_id = int(allowed.split(",")[0].strip())
 
-    try:
+    async def _post(parse_mode: "str | None") -> None:
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "disable_web_page_preview": True,
+            "reply_markup": keyboard,
+        }
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                json={
-                    "chat_id": chat_id,
-                    "text": text,
-                    "parse_mode": "Markdown",
-                    "disable_web_page_preview": True,
-                    "reply_markup": keyboard,
-                },
+                f"https://api.telegram.org/bot{bot_token}/sendMessage", json=payload
             )
             resp.raise_for_status()
+
+    try:
+        await _post("Markdown")
         logger.info(f"Trade proposal sent: {ticker} (trade_id={trade_id})")
         return True
     except Exception as e:
-        logger.error(f"Failed to send trade proposal for {ticker}: {e}")
-        return False
+        # Markdown can 400 on an unescaped char in a dynamic field (SNX 6/25 trade #234 —
+        # "game_changer" underscore → "can't find end of entity"). A live-trade proposal MUST
+        # reach the operator, so retry PLAIN TEXT (keeps the Confirm/Skip buttons) before giving up.
+        logger.warning(f"Trade proposal Markdown send failed for {ticker} ({e}) — retrying plain text")
+        try:
+            await _post(None)
+            logger.info(f"Trade proposal sent (plain-text fallback): {ticker} (trade_id={trade_id})")
+            return True
+        except Exception as e2:
+            logger.error(f"Failed to send trade proposal for {ticker} (markdown + plain): {e2}")
+            return False
 
 
 async def handle_callback(callback_data: str, user_id: int | None = None) -> dict:
