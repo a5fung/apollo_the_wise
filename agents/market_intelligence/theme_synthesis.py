@@ -230,11 +230,17 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         client = _get_anthropic_client()
         resp = await client.messages.create(
             model=SYNTHESIS_MODEL,
-            max_tokens=2000,
+            # 4000 (was 2000): match the #325 theme-DISCOVERY bump. A forced tool call whose
+            # cohorts JSON exceeds the cap truncates (stop_reason='max_tokens') and silently
+            # yields an empty/partial `cohorts` — indistinguishable from a genuine "no cohorts"
+            # unless we record the stop_reason. Discovery proposed 0 for 3 days straight
+            # (6/22-24) with no way to tell which; that silent ambiguity is the bug.
+            max_tokens=4000,
             tools=[_SYNTHESIS_TOOL],
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],
         )
+        stop_reason = getattr(resp, "stop_reason", None)
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},
         )
@@ -257,6 +263,10 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
         json.dumps({
             "run_date": str(rd), "n_candidates": len(by_ticker),
             "n_proposed": len(proposed), "n_kept": len(kept),
+            # 'max_tokens' => truncated, raise the cap; 'tool_use'/'end_turn' + 0 proposed
+            # => the model genuinely found no emerging cohorts (a prompt/candidate-quality
+            # question, not a silent failure).
+            "stop_reason": stop_reason,
             "kept": [{"name": c["name"], "tickers": c["tickers"],
                       "confidence": c["confidence"]} for c in kept],
             "dropped": dropped,
