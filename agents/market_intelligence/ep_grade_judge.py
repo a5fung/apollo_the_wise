@@ -362,4 +362,5 @@ async def grade_holistic(
         tool=_judge_tool(include_axis_reads), tool_name="grade_ep",
         normalize=_normalize_verdict, label="holistic judge",
         subject=payload.get("ticker") or "",
-        semaphore=semaphore, timeout=timeout, model=model, image_png=image_png)
+        semaphore=semaphore, timeout=timeout, model=model, image_png=image_png,
+        log_caller="ep_grade_judge")  # #377 cost meter

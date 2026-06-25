@@ -3153,6 +3153,24 @@ In every other case, skip the advisor and call `report_themes` immediately, with
             except Exception:
                 pass  # telemetry must never break the run
 
+            # COST METER (#377). Log this turn's token cost to api_usage. Each
+            # iteration of this multi-turn loop is a separate billed call, so we
+            # log per-turn (not once at the end). Isolated in its own try/except —
+            # a logging/DB failure must NEVER alter discovery output (the HARD
+            # CONSTRAINT): logging is additive observability only. We deliberately
+            # do NOT route this loop through invoke_forced_tool / a forced-tool
+            # transport — that would change tool_choice and break the #173
+            # advisor/force_report path. ADDITIVE is the correct shape for the loop.
+            try:
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(
+                    model=THEME_MODEL,
+                    caller="theme_discovery",
+                    usage=response.usage,
+                )
+            except Exception:
+                pass  # cost logging must never break the run
+
             # Model produced no tool call. Don't silently discard the whole discovery
             # pass (#173: the ADR-0007 shadow wrote 0 rows for days this way) — compel one
             # final report_themes so the model commits its best judgment first. A forced

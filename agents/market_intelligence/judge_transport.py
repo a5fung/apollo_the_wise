@@ -46,6 +46,7 @@ async def invoke_forced_tool(
     model: str,
     max_tokens: int = 500,
     image_png: Optional[bytes] = None,
+    log_caller: Optional[str] = None,
 ) -> Optional[dict]:
     """One forced-tool judge call. Returns `normalize(tool_input)`, or None on any error/timeout
     (FAIL-OPEN — the caller falls back to its floor / writes nothing, never raises). `semaphore`
@@ -55,7 +56,13 @@ async def invoke_forced_tool(
 
     `image_png` (optional, #267 chart-vision) attaches a rendered daily chart as a multimodal
     image block; None keeps the call byte-identical to the text-only path. The judge model must
-    support vision (Opus does)."""
+    support vision (Opus does).
+
+    `log_caller` (optional, #377 cost meter): when set, the call's token cost is logged to
+    api_usage under this caller label. None = no logging (byte-identical to the pre-#377 path).
+    The logging is isolated in its own try/except AFTER the verdict is extracted — a DB/logging
+    failure can NEVER alter the verdict nor get misclassified as credit exhaustion by the
+    fail-open except below (that would change grading behavior, which the cost meter must not)."""
     if client is None:
         return None
 
@@ -73,7 +80,21 @@ async def invoke_forced_tool(
     try:
         resp = await asyncio.wait_for(_call(), timeout=timeout)
         tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
-        return normalize(tool_block.input)
+        verdict = normalize(tool_block.input)
+        # COST METER (#377). Isolated from the verdict path: this runs AFTER the
+        # verdict is extracted and in its own try/except, so a logging/DB failure
+        # cannot fall into the fail-open `except` below (which would run the error
+        # through is_credit_error and return None, i.e. turn a good grade into a
+        # fail-open — a behavior change the cost meter must never cause).
+        if log_caller:
+            try:
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(
+                    model=model, caller=log_caller, usage=getattr(resp, "usage", None),
+                )
+            except Exception as _log_e:  # noqa: BLE001 — additive logging, never affects the verdict
+                logger.warning(f"{label} cost logging failed for {subject}: {_log_e}")
+        return verdict
     except Exception as e:  # noqa: BLE001 — fail-open is the contract
         # #273: credit exhaustion must ALERT (terminal + actionable), never vanish into the
         # fail-open — 6/11 produced 2,122 silent judge nulls.
