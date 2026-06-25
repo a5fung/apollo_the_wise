@@ -2600,6 +2600,19 @@ async def _post_nightly_audit_job():
         logger.error(f"Null-rate sweep failed: {e}", exc_info=True)
         await notify_job_failure("null_rate_sweep", str(e))
 
+    # Job-liveness sweep (#370 increment 3): a scheduled job that RAN successfully but produced
+    # NOTHING (theme synthesis truncating to 0 cohorts; theme-shadow 0 rows #173) — reads each output
+    # table's real new-row count, NOT the lying self-report. Own try/except; internally robust.
+    try:
+        from agents.market_intelligence.health_checks import run_job_liveness_sweep
+        jl = await run_job_liveness_sweep()
+        logger.info(
+            f"Job-liveness sweep: {jl['jobs_checked']} jobs, "
+            f"{len(jl['flags'])} flag(s), {len(jl['errors'])} error(s)")
+    except Exception as e:
+        logger.error(f"Job-liveness sweep failed: {e}", exc_info=True)
+        await notify_job_failure("job_liveness_sweep", str(e))
+
     # Data-gated-review escalation (#54 RMV-miss mitigation, Prong B). A review that's been
     # READY — or whose predicate has been ERRORING (a silently-broken locked query, the exact
     # #54 class) — beyond the grace window gets its OWN deterministic Telegram instead of rotting
