@@ -74,9 +74,15 @@ def _determine_regime(
         if spy_vs_50ma > 2:
             bullish_count += 2
             signals.append(f"SPY is {spy_vs_50ma:.1f}% above its 50MA (bullish)")
-        elif spy_vs_50ma > 0:
+        elif spy_vs_50ma > 1:
             bullish_count += 1
-            signals.append(f"SPY is {spy_vs_50ma:.1f}% above its 50MA (slightly bullish)")
+            signals.append(f"SPY is {spy_vs_50ma:.1f}% above its 50MA (modestly above)")
+        elif spy_vs_50ma >= 0:
+            # Flat ON / just-above the 50MA is NEUTRAL, not bullish (#372, operator 6/24): on the
+            # line is no trend signal. Counting any positive (even +0.0%) as +1 inflated a choppy
+            # tape to Bull. 0 to +1% scores 0; BELOW the line stays caution (next branch) — a
+            # two-sided neutral band wrongly un-counted that caution (backtest 6/16-18).
+            signals.append(f"SPY {spy_vs_50ma:+.1f}% vs its 50MA (flat — neutral)")
         elif spy_vs_50ma > -3:
             bearish_count += 1
             signals.append(f"SPY is {abs(spy_vs_50ma):.1f}% below its 50MA (caution)")
@@ -175,15 +181,32 @@ def _determine_regime(
         if ratio >= 2.0:
             bullish_count += 2
             signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — strong breadth momentum")
-        elif ratio >= 1.0:
+        elif ratio >= 1.25:
             bullish_count += 1
-            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — slightly bullish breadth")
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — bullish breadth")
+        elif ratio >= 1.0:
+            # 1.0-1.25x = roughly equal +4%/-4% days = BALANCED, not bullish (#372). Counting
+            # 1.0x as +1 was the same flat-is-bull error; BELOW 1.0 (more -4% days) stays weak
+            # (next branch) — keeping the bearish caution the prior two-sided band un-counted.
+            signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — balanced (neutral)")
         elif ratio <= 0.5:
             bearish_count += 2
             signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — bearish breadth momentum")
         else:
             bearish_count += 1
             signals.append(f"+/-4% ratio ({window}) {ratio:.1f}x — weak breadth")
+
+    # Whipsaw / breadth divergence (#373, operator 6/24): the index holding up while RECENT
+    # breadth is both negative (5d +/-4% < 1.0) AND deteriorating vs the 10d — fewer names
+    # carrying the tape = chop, not a clean trend. The engine had NO direct choppiness signal;
+    # this nudges a breadth-divergent "Bull" toward Choppy ("raise the bar, size down").
+    _index_up = (spy_vs_50ma is not None and spy_vs_50ma >= 0) or (
+        qqq_vs_50ma is not None and qqq_vs_50ma >= 0)
+    if (_index_up and pct4_ratio_5d is not None and pct4_ratio_5d < 1.0
+            and (pct4_ratio_10d is None or pct4_ratio_5d < pct4_ratio_10d)):
+        bearish_count += 1
+        signals.append(
+            f"Breadth divergence: index up but +/-4% 5d {pct4_ratio_5d:.2f}x narrowing — choppy")
 
     # Determine regime
     net = bullish_count - bearish_count
