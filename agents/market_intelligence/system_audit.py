@@ -1160,6 +1160,22 @@ def _persistent_l2_downgrade(band: int, last_band: int, *, mad: float, p50: floa
     return stable and not_collapse
 
 
+async def _recent_window_stable(conn, metric: "MetricSpec", days: int = 10) -> bool:
+    """Settled level-shift detector (#352 fix-2). The full-window (30d) MAD can be wide ONLY
+    because the baseline window spans a STRUCTURAL shift — e.g. theme_count_active across the
+    #286 universe cut + the #325 decline — which trips the `stable` gate in
+    `_persistent_l2_downgrade` (mad/p50 grows as the metric declines) so a persisting band-3
+    keeps re-firing L2 forever. A TIGHT *recent* window means the metric has SETTLED at a new
+    normal, not that it's still drifting. Returns True iff ≥5 recent samples and
+    recent_mad/recent_p50 < _TIGHT_MAD_FRAC. Safety: a stuck-at-zero outage has recent_p50==0
+    (not stable → keeps alerting); a spike/collapse has a wide recent window (not stable)."""
+    recent = await _fetch_history(conn, metric, lookback_days=days)
+    if len(recent) < 5:
+        return False
+    rp50, _, rmad, _ = _trimmed_median_mad(recent)
+    return rp50 > 0 and rmad > 0 and (rmad / rp50) < _TIGHT_MAD_FRAC
+
+
 async def _compute_anomaly(
     conn,
     metric: MetricSpec,
@@ -1250,12 +1266,25 @@ async def _compute_anomaly(
             "regime_conditional": (baseline or {}).get("regime_conditional", False),
             "to_band": band,  # 3 — recorded so _last_band_for can dedup a persisting L2
         }
-        if _persistent_l2_downgrade(band, last_band, mad=mad, p50=p50, ratio=ratio):
-            # Already alerted on the transition INTO band 3; a persisting band 3 logs L3
+        persistent = _persistent_l2_downgrade(band, last_band, mad=mad, p50=p50, ratio=ratio)
+        # Settled level-shift (#352 fix-2): when a persisting band-3's full-window MAD is wide
+        # only because the 30d baseline spans a structural shift (#286 cut + #325 decline), the
+        # stable gate above misses it — but a tight RECENT window means it has settled at a new
+        # normal. Quiet it the same way. (A stuck-at-zero outage or a spike is NOT recent-stable
+        # → keeps alerting.) Only applies to a PERSISTING band-3 (last_band==3); the transition
+        # INTO band-3 still fires L2 once.
+        settled = (
+            last_band == 3
+            and ratio < _MULTIPLIER_THRESHOLD
+            and await _recent_window_stable(conn, metric)
+        )
+        if persistent or settled:
+            # Already alerted on the transition INTO band 3; a persisting/settled band 3 logs L3
             # (audit-only, weekly digest) instead of re-firing the Telegram every nightly run.
             detail["from_band"] = last_band
             detail["warming"] = warming
             detail["persistent_l2_downgrade"] = True
+            detail["settled_level_shift"] = bool(settled)
             return Anomaly(3, metric.name, detail)
         return Anomaly(2, metric.name, detail)
 

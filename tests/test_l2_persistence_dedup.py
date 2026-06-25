@@ -61,7 +61,7 @@ def test_non_band3_never_downgrades():
 
 # ── Integration: _compute_anomaly fires once, then downgrades (stable only) ──
 
-def _setup(monkeypatch, *, last_band, current=30.0, mad=1.0):
+def _setup(monkeypatch, *, last_band, current=30.0, mad=1.0, recent_stable=False):
     monkeypatch.setattr(system_audit, "get_market_status", lambda d: _FakeStatus(True, "t"))
     monkeypatch.setattr(system_audit, "et_today", lambda: date(2026, 6, 21))
 
@@ -76,6 +76,10 @@ def _setup(monkeypatch, *, last_band, current=30.0, mad=1.0):
     async def _last(*a, **k):
         return last_band
     monkeypatch.setattr(system_audit, "_last_band_for", _last)
+
+    async def _recent(*a, **k):
+        return recent_stable
+    monkeypatch.setattr(system_audit, "_recent_window_stable", _recent)
 
     async def _fetch(_conn):
         return current
@@ -195,7 +199,80 @@ async def test_emit_l2_persists_to_band_then_last_band_reads_it(monkeypatch):
         return {"p50": 44.0, "p95": 54.0, "mad": 1.0, "sample_n": 21}
     monkeypatch.setattr(system_audit, "get_metric_baseline", _baseline)
 
+    async def _recent_noop(*a, **k):
+        return False
+    monkeypatch.setattr(system_audit, "_recent_window_stable", _recent_noop)
+
     a2 = await system_audit._compute_anomaly(conn=conn, metric=spec, current_regime=None)
     assert a2 is not None and a2.level == 3
     assert a2.body.get("persistent_l2_downgrade") is True
     assert a2.body["to_band"] == 3
+
+
+# ── Settled level-shift (#352 fix-2): a DECLINING metric whose wide 30d MAD masks a TIGHT ──
+# ── recent window has settled at a new normal -> downgrade, even when the stable gate fails. ──
+
+
+@pytest.mark.asyncio
+async def test_settled_level_shift_downgrades_to_l3(monkeypatch):
+    # mad 4 (wide full-window -> _persistent_l2_downgrade=False) BUT recent window is settled.
+    # This is the theme_count #286/#325 case: declined, full-window MAD grew, recent is tight.
+    spec = _setup(monkeypatch, last_band=3, mad=4.0, recent_stable=True)
+    a = await system_audit._compute_anomaly(conn=None, metric=spec, current_regime=None)
+    assert a is not None and a.level == 3
+    assert a.body.get("settled_level_shift") is True
+    assert a.body.get("persistent_l2_downgrade") is True
+
+
+@pytest.mark.asyncio
+async def test_settled_but_transition_still_fires_l2(monkeypatch):
+    # recent-stable but FIRST fire (last_band != 3): the transition INTO band 3 still alerts once.
+    spec = _setup(monkeypatch, last_band=0, mad=4.0, recent_stable=True)
+    a = await system_audit._compute_anomaly(conn=None, metric=spec, current_regime=None)
+    assert a is not None and a.level == 2
+    assert "settled_level_shift" not in a.body
+
+
+@pytest.mark.asyncio
+async def test_settled_but_collapse_still_fires_l2(monkeypatch):
+    # recent-stable + persisting, but a collapse (current 5 vs p50 44 -> ratio ~8.8) is NOT
+    # downgraded — a real collapse keeps re-firing even if the recent window happens to be tight.
+    spec = _setup(monkeypatch, last_band=3, current=5.0, mad=4.0, recent_stable=True)
+    a = await system_audit._compute_anomaly(conn=None, metric=spec, current_regime=None)
+    assert a is not None and a.level == 2
+    assert "settled_level_shift" not in a.body
+
+
+# ── _recent_window_stable unit (mocks _fetch_history's recent window) ──
+
+
+@pytest.mark.asyncio
+async def test_recent_window_stable_true_on_tight_settled(monkeypatch):
+    async def _hist(_conn, _metric, *, lookback_days):
+        return [17.0, 18.0, 17.0, 16.0, 18.0, 17.0]  # settled ~17, tight
+    monkeypatch.setattr(system_audit, "_fetch_history", _hist)
+    assert await system_audit._recent_window_stable(None, _l2_spec()) is True
+
+
+@pytest.mark.asyncio
+async def test_recent_window_unstable_on_wide(monkeypatch):
+    async def _hist(_conn, _metric, *, lookback_days):
+        return [42.0, 17.0, 50.0, 15.0, 40.0, 20.0]  # still swinging -> wide
+    monkeypatch.setattr(system_audit, "_fetch_history", _hist)
+    assert await system_audit._recent_window_stable(None, _l2_spec()) is False
+
+
+@pytest.mark.asyncio
+async def test_recent_window_stuck_at_zero_not_stable(monkeypatch):
+    async def _hist(_conn, _metric, *, lookback_days):
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]  # a real outage -> p50==0 -> keeps alerting
+    monkeypatch.setattr(system_audit, "_fetch_history", _hist)
+    assert await system_audit._recent_window_stable(None, _l2_spec()) is False
+
+
+@pytest.mark.asyncio
+async def test_recent_window_too_few_samples(monkeypatch):
+    async def _hist(_conn, _metric, *, lookback_days):
+        return [17.0, 17.0, 18.0]  # < 5 -> not enough to call it settled
+    monkeypatch.setattr(system_audit, "_fetch_history", _hist)
+    assert await system_audit._recent_window_stable(None, _l2_spec()) is False
