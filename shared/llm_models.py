@@ -94,5 +94,27 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     OPUS:       {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
     OPUS_4_6:   {"input": 5.00, "output": 25.00},
+    # ── Perplexity (#377 cost meter) ─────────────────────────────────────────
+    # Token rates verified against https://docs.perplexity.ai/guides/pricing
+    # (fetched 2026-06-25). Perplexity bills BOTH per-token AND a per-request
+    # search fee that varies by search-context size; the flat per-request fee
+    # below is the MEDIUM-context tier (the default our callers hit). The fee is
+    # added by log_perplexity_call as a flat cost_usd component, separate from
+    # the token cost. If Perplexity changes its published rates, update HERE only.
+    "sonar-pro": {"input": 3.00, "output": 15.00},
+    "sonar":     {"input": 1.00, "output": 1.00},
 }
 DEFAULT_PRICING_PER_MTOK: dict[str, float] = {"input": 3.00, "output": 15.00}
+
+# Perplexity per-request search fee in USD. Published 2026-06-25: sonar-pro
+# medium = $10/1k req ($0.010/req); sonar medium = $8/1k req ($0.008/req).
+# ASSUMED-MEDIUM: our callers do NOT set `search_context_size`, so the ACTUAL
+# billed tier is Perplexity's API default — not confirmed to be medium. Token
+# rates ARE confirmed; this per-request fee is the SOFT number. VERIFY the real
+# tier + rate at the quarterly pricing sweep (Perplexity tiers this by context
+# size and has changed it before). OPERATOR: confirm/adjust if exact $ matters.
+PERPLEXITY_REQUEST_FEE_USD: dict[str, float] = {
+    "sonar-pro": 0.010,
+    "sonar":     0.008,
+}
+DEFAULT_PERPLEXITY_REQUEST_FEE_USD: float = 0.010

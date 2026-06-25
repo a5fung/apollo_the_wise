@@ -199,3 +199,195 @@ def test_theme_discovery_logs_row_with_nonzero_cost(monkeypatch, captured_insert
     assert cost > 0
     # Sonnet = $3/M in, $15/M out → 3000/1e6*3 + 800/1e6*15 = 0.009 + 0.012 = 0.021
     assert cost == pytest.approx(0.021, abs=1e-6)
+
+
+# ── Rollout: usage-SHAPE traps (the silent-zero-row class) ───────────────────
+#
+# log_anthropic_call reads tokens via getattr(usage, "input_tokens", 0). On a
+# raw-REST site (catalyst_metrics_extractor) the SDK isn't used — usage is a
+# plain DICT, on which getattr returns the default 0 → a zero-cost row that ships
+# green against the attribute-object mocks above. The rollout fixed this by
+# wrapping the dict in a SimpleNamespace at that one site. These cases pin BOTH
+# the trap (a bare dict logs zero) AND the fix (the wrap logs nonzero), so a
+# regression that drops the wrap fails here instead of silently mis-metering.
+
+def test_anthropic_dict_usage_unwrapped_logs_zero(captured_inserts):
+    # Documents the trap: a raw dict passed straight to log_anthropic_call reads
+    # 0 tokens (getattr misses dict keys) — this is WHY the raw-REST site wraps it.
+    cost = _run(spend_tracker.log_anthropic_call(
+        model="claude-sonnet-4-6", caller="raw_dict",
+        usage={"input_tokens": 5000, "output_tokens": 1000},
+    ))
+    assert cost == 0.0
+    assert len(captured_inserts) == 1
+    _m, _c, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    assert in_tok == 0 and out_tok == 0 and logged_cost == 0.0
+
+
+def test_anthropic_dict_usage_wrapped_logs_nonzero(captured_inserts):
+    # The fix the metrics-extractor site applies: SimpleNamespace(**usage_dict).
+    from types import SimpleNamespace
+    cost = _run(spend_tracker.log_anthropic_call(
+        model="claude-sonnet-4-6", caller="catalyst_metrics_extractor",
+        usage=SimpleNamespace(**{"input_tokens": 5000, "output_tokens": 1000}),
+    ))
+    # Sonnet = $3/M in, $15/M out → 5000/1e6*3 + 1000/1e6*15 = 0.015 + 0.015 = 0.030
+    assert cost == pytest.approx(0.030, abs=1e-6)
+    assert len(captured_inserts) == 1
+    _m, caller, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    assert caller == "catalyst_metrics_extractor"
+    assert in_tok == 5000 and out_tok == 1000 and logged_cost > 0
+
+
+# ── Rollout: the Perplexity meter (separate shape) ───────────────────────────
+#
+# Perplexity usage uses OpenAI naming (prompt_tokens / completion_tokens) and
+# charges a per-request SEARCH FEE on top of tokens. log_perplexity_call maps the
+# names + folds in the fee. These pin (a) the dict-naming map, (b) the fee, and
+# (c) the cheaper "sonar" rate vs "sonar-pro".
+
+def test_perplexity_logs_tokens_plus_request_fee(captured_inserts):
+    cost = _run(spend_tracker.log_perplexity_call(
+        caller="perplexity_news_search", model="sonar-pro",
+        usage={"prompt_tokens": 2000, "completion_tokens": 500},
+    ))
+    # sonar-pro = $3/M in, $15/M out, +$0.010/req medium-context search fee:
+    #   2000/1e6*3 + 500/1e6*15 + 0.010 = 0.006 + 0.0075 + 0.010 = 0.0235
+    assert cost == pytest.approx(0.0235, abs=1e-6)
+    assert len(captured_inserts) == 1
+    model, caller, in_tok, out_tok, _cc, _cr, logged_cost = captured_inserts[0]
+    assert model == "sonar-pro" and caller == "perplexity_news_search"
+    # OpenAI naming was correctly mapped onto the api_usage in/out columns.
+    assert in_tok == 2000 and out_tok == 500
+    assert logged_cost > 0
+
+
+def test_perplexity_sonar_cheaper_rate_and_fee(captured_inserts):
+    # The ep_detector validation path uses the cheaper "sonar" model.
+    cost = _run(spend_tracker.log_perplexity_call(
+        caller="perplexity_catalyst_validate", model="sonar",
+        usage={"prompt_tokens": 1000, "completion_tokens": 100},
+    ))
+    # sonar = $1/M in, $1/M out, +$0.008/req fee:
+    #   1000/1e6*1 + 100/1e6*1 + 0.008 = 0.001 + 0.0001 + 0.008 = 0.0091
+    assert cost == pytest.approx(0.0091, abs=1e-6)
+    assert captured_inserts[0][0] == "sonar"
+
+
+def test_perplexity_no_usage_still_logs_request_fee(captured_inserts):
+    # A health-ping response may carry no usage block — the per-request fee (the
+    # dominant cost) must still land, with zero tokens.
+    cost = _run(spend_tracker.log_perplexity_call(
+        caller="perplexity_health", model="sonar-pro", usage=None,
+    ))
+    assert cost == pytest.approx(0.010, abs=1e-6)
+    _m, _c, in_tok, out_tok, _cc, _cr, _cost = captured_inserts[0]
+    assert in_tok == 0 and out_tok == 0
+
+
+def test_perplexity_log_failure_preserves_caller_result(monkeypatch):
+    # HARD CONSTRAINT mirror for the Perplexity sites: every wiring wraps
+    # log_perplexity_call in its own try/except, so a logging failure cannot
+    # change the search/validation result. We simulate the search choke point's
+    # exact wrapping shape and assert the "result" survives a raising logger.
+    async def _boom(**kwargs):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(spend_tracker, "log_perplexity_call", _boom)
+
+    async def _search_with_logging():
+        result = "AVAV gapped on a $990M Army contract award"  # the real return
+        try:
+            await spend_tracker.log_perplexity_call(
+                caller="perplexity_news_search", model="sonar-pro",
+                usage={"prompt_tokens": 10, "completion_tokens": 10},
+            )
+        except Exception:
+            pass
+        return result
+
+    assert _run(_search_with_logging()) == "AVAV gapped on a $990M Army contract award"
+
+
+# ── Rollout: SITE-level coverage (the typo guard) ────────────────────────────
+#
+# The isolation tests above prove the spend_tracker FUNCTIONS work. These two
+# drive the real WIRED call sites end-to-end (mock client → real production code
+# path → captured api_usage row), which is the only thing that catches a wrong
+# model constant / wrong caller label / wrong response variable at a site — the
+# exact "ships green" gap the committed test file warns about. One Anthropic-SDK
+# site (catalyst_materiality) and one forced-tool-transport site (mgmt_judge).
+
+def test_site_catalyst_materiality_logs_row(captured_inserts):
+    from agents.market_intelligence import catalyst_materiality as cm
+
+    class _U:
+        input_tokens = 800
+        output_tokens = 60
+        cache_creation_input_tokens = 0
+        cache_read_input_tokens = 0
+
+    class _TextBlock:
+        text = '{"tier": "material"}'
+
+    class _Resp:
+        content = [_TextBlock()]
+        usage = _U()
+
+    class _Messages:
+        async def create(self, **kw):
+            return _Resp()
+
+    client = type("C", (), {"messages": _Messages()})()
+
+    tier = _run(cm.judge_materiality_llm(
+        client, company="Acme", sector="Tech", market_cap=2.5e9,
+        catalyst="$270M contract", analysis="multi-year award",
+    ))
+    # Behavior unchanged: the real tier still parses out of the response.
+    assert tier == "material"
+
+    # The site passed the RIGHT model + caller to the meter.
+    assert len(captured_inserts) == 1
+    model, caller, in_tok, out_tok, _cc, _cr, cost = captured_inserts[0]
+    assert caller == "catalyst_materiality"
+    assert model == cm._MODEL              # SONNET
+    assert in_tok == 800 and out_tok == 60
+    assert cost > 0
+
+
+def test_site_mgmt_judge_logs_row(captured_inserts):
+    from agents.market_intelligence import mgmt_judge
+
+    class _U:
+        input_tokens = 1500
+        output_tokens = 120
+        cache_creation_input_tokens = 0
+        cache_read_input_tokens = 0
+
+    class _ToolBlock:
+        type = "tool_use"
+        input = {"verdict": "HOLD", "rationale": "structure intact"}
+
+    class _Resp:
+        content = [_ToolBlock()]
+        usage = _U()
+
+    class _Messages:
+        async def create(self, **kw):
+            return _Resp()
+
+    client = type("C", (), {"messages": _Messages()})()
+
+    verdict = _run(mgmt_judge.manage_holistic(
+        client, {"ticker": "NVDA", "rationale_inputs": "x"}, timeout=5.0))
+    # Behavior unchanged: the bounded verdict still comes back.
+    assert verdict is not None and verdict["verdict"] == "HOLD"
+
+    # The site threaded log_caller="mgmt_judge" through the transport.
+    assert len(captured_inserts) == 1
+    model, caller, in_tok, out_tok, _cc, _cr, cost = captured_inserts[0]
+    assert caller == "mgmt_judge"
+    assert model == mgmt_judge.MODEL
+    assert in_tok == 1500 and out_tok == 120
+    assert cost > 0

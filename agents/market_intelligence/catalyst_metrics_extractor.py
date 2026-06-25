@@ -168,6 +168,17 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
             )
             r.raise_for_status()
             data = r.json()
+            try:  # #377 cost meter — additive; raw-REST usage is a DICT (not an
+                  # SDK object), so wrap it in a namespace for log_anthropic_call's
+                  # getattr-based reader. Never alters extraction output.
+                from types import SimpleNamespace
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(
+                    model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
+                    usage=SimpleNamespace(**(data.get("usage") or {})),
+                )
+            except Exception:
+                pass
             content = data["content"][0]["text"].strip()
 
             # Strip optional code fences
@@ -183,6 +194,10 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
         logger.warning(f"catalyst_metrics_extractor: JSON parse failed: {e}")
         return None
     except Exception as e:
+        # #376: a 401/402 from the Anthropic REST endpoint (raise_for_status →
+        # httpx.HTTPStatusError) is credit exhaustion — alert it (deduped).
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("catalyst metrics extractor", e)
         logger.warning(f"catalyst_metrics_extractor: extraction call failed: {e}")
         return None
 

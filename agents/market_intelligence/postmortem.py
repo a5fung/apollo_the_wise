@@ -183,12 +183,21 @@ async def generate_postmortem_narrative(
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
+        try:  # #377 cost meter — additive, never alters the narrative
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=_MODEL, caller="postmortem",
+                                     usage=getattr(resp, "usage", None))
+        except Exception:
+            pass
         narrative = "".join(
             b.text for b in resp.content if hasattr(b, "text")
         ).strip()
         header = f"📋 *Postmortem — {ctx['ticker']} {ctx['alert_date']}*"
         return f"{header}\n\n{narrative}"
     except Exception as e:
+        # #376: alert on credit exhaustion (deduped) before the fallback.
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("postmortem", e)
         logger.warning(f"Postmortem LLM failed for {ticker}: {e} — using fallback")
         return _fallback_narrative(ctx)
 

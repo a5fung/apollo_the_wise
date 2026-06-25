@@ -155,7 +155,8 @@ async def manage_holistic(
         tool=_MGMT_TOOL, tool_name="manage_position",
         normalize=_normalize_mgmt_verdict, label="management judge",
         subject=payload.get("ticker") or "",
-        semaphore=semaphore, timeout=timeout, model=model)
+        semaphore=semaphore, timeout=timeout, model=model,
+        log_caller="mgmt_judge")  # #377 cost meter
 
 
 # ── Part 2 (ADR 0014): the 16:00-class daily pass over open positions ─────────

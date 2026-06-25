@@ -27,7 +27,9 @@ from typing import Any
 
 from agents.market_intelligence.db import get_pool
 from shared.llm_models import (
+    DEFAULT_PERPLEXITY_REQUEST_FEE_USD as _DEFAULT_PPLX_FEE,
     DEFAULT_PRICING_PER_MTOK as _DEFAULT_PRICING,
+    PERPLEXITY_REQUEST_FEE_USD as _PPLX_FEE,
     PRICING_PER_MTOK as _PRICING,
 )
 
@@ -130,5 +132,57 @@ async def log_anthropic_call(
             """,
             model, caller, input_tokens, output_tokens,
             cache_creation, cache_read, cost,
+        )
+    return cost
+
+
+async def log_perplexity_call(
+    *,
+    caller: str,
+    usage: Any = None,
+    model: str = "sonar-pro",
+) -> float:
+    """Log a Perplexity (#377 cost meter) call to api_usage. Separate shape from
+    Anthropic because Perplexity (a) names its usage fields OpenAI-style
+    (`prompt_tokens`/`completion_tokens`, NOT `input_tokens`/`output_tokens`) and
+    (b) charges a per-request SEARCH FEE on top of the token cost. Both are folded
+    into one `cost_usd` row here.
+
+    `usage` is the `usage` object from the Perplexity JSON response — a plain dict
+    OR an attribute object. We accept either via _get(); tokens default to 0 if
+    absent (the per-request fee still lands, which is the dominant cost anyway).
+    `model` selects the token + fee rates ("sonar-pro" default, "sonar" for the
+    cheaper validation path). Returns the computed cost in USD. Raises on DB
+    failure — callers wrap in try/except for fail-soft (mirrors log_anthropic_call).
+    """
+    def _get(u: Any, key: str) -> int:
+        if u is None:
+            return 0
+        if isinstance(u, dict):
+            return int(u.get(key) or 0)
+        return int(getattr(u, key, 0) or 0)
+
+    input_tokens = _get(usage, "prompt_tokens")
+    output_tokens = _get(usage, "completion_tokens")
+
+    prices = _PRICING.get(model, _DEFAULT_PRICING)
+    request_fee = _PPLX_FEE.get(model, _DEFAULT_PPLX_FEE)
+    token_cost = (
+        (input_tokens / 1_000_000) * prices["input"]
+        + (output_tokens / 1_000_000) * prices["output"]
+    )
+    cost = round(token_cost + request_fee, 6)
+
+    await _ensure_schema()
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO api_usage
+                (model, caller, input_tokens, output_tokens,
+                 cache_creation, cache_read, cost_usd)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            """,
+            model, caller, input_tokens, output_tokens, 0, 0, cost,
         )
     return cost

@@ -1256,11 +1256,25 @@ class TelegramChannel:
             import anthropic
             from shared.secrets import get_secrets
             client = anthropic.Anthropic(api_key=get_secrets().anthropic_api_key)
-            client.messages.create(
+            resp = client.messages.create(
                 model=HEALTHCHECK_MODEL,
                 max_tokens=5,
                 messages=[{"role": "user", "content": "ping"}],
             )
+            try:  # #377 cost meter — additive, never alters the health verdict.
+                # ORCHESTRATOR container: use core.spend (market-agent's
+                # spend_tracker imports agents.market_intelligence.db, which is
+                # NOT in the orchestrator image — that import would silently fail).
+                from core.spend import log_api_usage
+                _u = getattr(resp, "usage", None)
+                if _u is not None:
+                    await log_api_usage(
+                        model=HEALTHCHECK_MODEL, caller="healthcheck",
+                        input_tokens=getattr(_u, "input_tokens", 0) or 0,
+                        output_tokens=getattr(_u, "output_tokens", 0) or 0,
+                    )
+            except Exception:
+                pass
             return True, ""
         except anthropic.APIStatusError as e:
             if e.status_code == 529:

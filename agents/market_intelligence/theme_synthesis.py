@@ -240,12 +240,21 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],
         )
+        try:  # #377 cost meter — additive, never alters synthesis output
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=SYNTHESIS_MODEL, caller="theme_synthesis",
+                                     usage=getattr(resp, "usage", None))
+        except Exception:
+            pass
         stop_reason = getattr(resp, "stop_reason", None)
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},
         )
         proposed = tool_input.get("cohorts") or []
     except Exception as e:
+        # #376: credit exhaustion silently yields no cohorts — alert it (deduped).
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme synthesis", e)
         logger.exception("theme synthesis LLM call failed")
         await log_audit_event(
             "theme_synthesis_error", f"LLM call failed: {e}",

@@ -447,6 +447,13 @@ async def _nightly_data_pull():
                     max_tokens=2000,
                     messages=[{"role": "user", "content": prompt}],
                 )
+                try:  # #377 cost meter — additive, never alters the backfill
+                    from agents.market_intelligence.spend_tracker import log_anthropic_call
+                    await log_anthropic_call(model=DESCRIPTION_MODEL,
+                                             caller="description_backfill",
+                                             usage=getattr(resp, "usage", None))
+                except Exception:
+                    pass
                 import json
                 raw = resp.content[0].text.strip()
                 # Strip markdown code fences if present
@@ -469,6 +476,9 @@ async def _nightly_data_pull():
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.warning(f"Claude description parse failed: {e}")
     except Exception as e:
+        # #376: alert on credit exhaustion (deduped) before the fail-open.
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("description backfill", e)
         logger.error(f"Claude description enrichment failed: {e}")
 
     # 4b. Quote type enrichment — classify tracked stocks as EQUITY/ETF/etc.

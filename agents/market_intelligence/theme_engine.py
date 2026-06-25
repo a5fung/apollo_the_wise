@@ -407,6 +407,12 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             model=THEME_MODEL, max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
+        try:  # #377 cost meter — additive, never alters discovery output
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=THEME_MODEL, caller="narrative_theme_discovery",
+                                     usage=getattr(msg, "usage", None))
+        except Exception:
+            pass
         raw = _extract_json_object(msg.content[0].text if msg.content else "")
         parsed = json.loads(raw)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
@@ -425,6 +431,10 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
                               f"{out['date']}: {len(cand)} alerts -> {n} narrative theme(s): {out['names']}")
         return out
     except Exception as e:
+        # #376: a credit-exhaustion failure here silently yields no narrative
+        # themes — alert it (deduped) before the fail-open.
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("narrative theme discovery", e)
         logger.warning(f"discover_narrative_themes failed: {e}", exc_info=True)
         try:
             await log_audit_event("narrative_theme_discovery_failed", f"{out.get('date')}: {str(e)[:200]}")
@@ -721,6 +731,12 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
                 max_tokens=500,
                 messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
             )
+            try:  # #377 cost meter — additive, never alters description output
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(model=DESCRIPTION_MODEL, caller="theme_descriptions",
+                                         usage=getattr(resp, "usage", None))
+            except Exception:
+                pass
             raw = resp.content[0].text.strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -746,6 +762,10 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
             if dropped:
                 logger.warning(f"[theme descriptions] Haiku dropped {len(dropped)} tickers in chunk: {dropped}")
         except Exception as e:
+            # #376: credit exhaustion silently drops every description in the
+            # chunk — alert it (deduped) before continuing the fail-open loop.
+            from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+            await maybe_alert_credit_exhausted("theme descriptions", e)
             logger.error(f"[theme descriptions] Chunk {chunk_start//CHUNK_SIZE + 1} failed: {e}")
 
     if all_valid:
@@ -1475,6 +1495,12 @@ async def _validate_theme_membership(
                         detail=f"429 on {THEME_MODEL}",
                     )
                     await asyncio.sleep(wait)
+        try:  # #377 cost meter — additive, never alters validation output
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=THEME_MODEL, caller="theme_validation",
+                                     usage=getattr(resp, "usage", None))
+        except Exception:
+            pass
         # Defensive extraction — the model occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -2142,6 +2168,12 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
+            try:  # #377 cost meter — per-turn (each loop iter is a billed call); additive
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(model=THEME_MODEL, caller="theme_assignment",
+                                         usage=getattr(response, "usage", None))
+            except Exception:
+                pass
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -2654,6 +2686,12 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
+            try:  # #377 cost meter — per-turn (each loop iter is a billed call); additive
+                from agents.market_intelligence.spend_tracker import log_anthropic_call
+                await log_anthropic_call(model=THEME_MODEL, caller="theme_split",
+                                         usage=getattr(response, "usage", None))
+            except Exception:
+                pass
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -2725,6 +2763,9 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
                 break
 
     except Exception as e:
+        # #376: credit exhaustion silently skips the split — alert it (deduped).
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("theme split", e)
         logger.warning(f"[fat-theme split] '{name}': failed ({e}) — skipping split")
 
     return None, advisor_calls

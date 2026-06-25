@@ -6781,6 +6781,12 @@ class MarketIntelligenceAgent(BaseAgent):
                 "content": f"Context:\n{context}\n\nQuestion: {request.task}",
             }],
         )
+        try:  # #377 cost meter — additive, never alters the response
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=MARKET_AGENT_MODEL, caller="market_agent_general",
+                                     usage=getattr(response, "usage", None))
+        except Exception:
+            pass
         return self._ok(request, result=response.content[0].text)
 
 

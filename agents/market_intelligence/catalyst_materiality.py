@@ -223,6 +223,12 @@ async def judge_materiality_llm(client, *, company, sector, market_cap,
         system="You are a JSON API. Respond with valid JSON only.",
         messages=[{"role": "user", "content": prompt}],
     )
+    try:  # #377 cost meter — additive, never alters the materiality tier
+        from agents.market_intelligence.spend_tracker import log_anthropic_call
+        await log_anthropic_call(model=_MODEL, caller="catalyst_materiality",
+                                 usage=getattr(resp, "usage", None))
+    except Exception:
+        pass
     raw = getattr(resp.content[0], "text", "") or ""
     try:
         tier = (json.loads(_extract_json_object(raw)).get("tier") or "").lower()
@@ -260,5 +266,9 @@ async def assess_materiality(client, *, company, sector, market_cap,
             catalyst=catalyst, analysis=analysis,
         )
         return tier, ("llm" if tier is not None else "abstain")
-    except Exception:
+    except Exception as e:
+        # #376: credit exhaustion silently abstains (→ fails OPEN as material) —
+        # alert it (deduped) before returning.
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("catalyst materiality", e)
         return None, "abstain"

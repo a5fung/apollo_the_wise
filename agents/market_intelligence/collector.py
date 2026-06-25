@@ -865,6 +865,18 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
             )
             if r.status_code in (401, 402):
                 return False, r.status_code, r.text[:300]
+            try:  # #377 cost meter — additive, never alters the health verdict.
+                from agents.market_intelligence.spend_tracker import log_perplexity_call
+                _u = None
+                try:
+                    _u = r.json().get("usage")
+                except Exception:
+                    _u = None
+                await log_perplexity_call(
+                    caller="perplexity_health", model="sonar-pro", usage=_u,
+                )
+            except Exception:
+                pass
             return True, r.status_code, ""
     except Exception as e:
         # Network errors, timeouts, DNS — treat as transient, don't abort
@@ -942,7 +954,17 @@ async def search_news_perplexity(
                 },
             )
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
+            _data = r.json()
+            try:  # #377 cost meter — additive, never alters the search result.
+                # Covers #186A + the ~11 indirect callers of this choke point.
+                from agents.market_intelligence.spend_tracker import log_perplexity_call
+                await log_perplexity_call(
+                    caller="perplexity_news_search", model="sonar-pro",
+                    usage=_data.get("usage"),
+                )
+            except Exception:
+                pass
+            return _data["choices"][0]["message"]["content"]
     except Exception as e:
         # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
         # catalyst cross-check (and every other Perplexity use) silently returns

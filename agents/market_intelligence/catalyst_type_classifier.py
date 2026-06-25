@@ -187,6 +187,12 @@ async def classify_catalyst_type(
                     if attempt == 1:
                         raise
                     await asyncio.sleep(2 + attempt)
+        try:  # #377 cost meter — additive, never alters the classification
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=CATALYST_TYPE_MODEL, caller="catalyst_type_classifier",
+                                     usage=getattr(resp, "usage", None))
+        except Exception:
+            pass
         block = next(b for b in resp.content if b.type == "tool_use")
         ct = block.input.get("catalyst_type")
         if ct not in CATALYST_TYPES:
@@ -198,6 +204,9 @@ async def classify_catalyst_type(
         }
     except Exception as e:
         # Fail-open: telemetry never jeopardizes the alert.
+        # #376: alert on credit exhaustion (deduped) before failing open.
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("catalyst type classifier", e)
         logger.warning(
             f"catalyst_type classification failed for {ticker}: "
             f"{type(e).__name__}: {e}"

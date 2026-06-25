@@ -788,6 +788,12 @@ catalyst, say so explicitly."""
                         raise
                     await log_audit_event("anthropic_rate_limited", ticker, "retrying ep catalyst")
                     await asyncio.sleep(2 + random.random() * 3)
+        try:  # #377 cost meter — additive, never alters the catalyst grade
+            from agents.market_intelligence.spend_tracker import log_anthropic_call
+            await log_anthropic_call(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
+                                     usage=getattr(response, "usage", None))
+        except Exception:
+            pass
         tool_block = next(b for b in response.content if b.type == "tool_use")
         result = tool_block.input
         return result["quality"], result["analysis"]
@@ -836,7 +842,17 @@ Respond with ONLY the classification word."""
                 },
             )
             r.raise_for_status()
-            text = r.json()["choices"][0]["message"]["content"].strip().upper()
+            _data = r.json()
+            try:  # #377 cost meter — additive; this path uses the cheaper "sonar"
+                  # model (not sonar-pro). Never alters the validation result.
+                from agents.market_intelligence.spend_tracker import log_perplexity_call
+                await log_perplexity_call(
+                    caller="perplexity_catalyst_validate", model="sonar",
+                    usage=_data.get("usage"),
+                )
+            except Exception:
+                pass
+            text = _data["choices"][0]["message"]["content"].strip().upper()
         if "GAME_CHANGER" in text or "GAME CHANGER" in text:
             return "game_changer"
         elif "STRONG" in text:
@@ -844,6 +860,10 @@ Respond with ONLY the classification word."""
         else:
             return "routine"
     except Exception as e:
+        # #376: a 401/402 here is Perplexity credit exhaustion — alert (deduped).
+        from agents.market_intelligence.llm_health import maybe_alert_credit_exhausted
+        await maybe_alert_credit_exhausted("Perplexity catalyst validation", e,
+                                           provider="perplexity")
         logger.warning(f"Perplexity validation failed for {ticker}: {e}")
         return None
 
