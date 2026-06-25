@@ -47,10 +47,13 @@ DECOUPLED from the job's own (lying) self-reported rows_written. See its section
 noise-calibration (always-on K=1 vs legit-quiet K=3 cadence; ran-but-empty only; no-run = heartbeat).
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
-DEFERRED next increments (hard-check registry, heartbeat, partial-break) + the BASELINE-SELF-POISON
-limitation (the null sweep alerts day-1/2 of a silent null, then quiets as the null walks into its own
-rolling baseline — DoD "alert day-1" is MET; persistence re-nagging = increment 2): see PLAN #370.
-The self-poison is pinned by test_persistent_null_self_silences_known_limitation.
+The BASELINE-SELF-POISON limitation of THIS sweep (the null sweep alerts day-1/2 of a silent null,
+then quiets as the null walks into its own rolling baseline — DoD "alert day-1" is MET) is now
+ADDRESSED by INCREMENT 2 (`reconcile_health_flags` + the direct re-check fns, bottom of file): a
+flagged-AND-still-broken target keeps nagging daily, DECOUPLED from the rolling baseline. The
+self-poison of the sweep ITSELF is still pinned by test_persistent_null_self_silences_known_limitation
+(the sweep going quiet is BY DESIGN — increment 2's direct re-check is what keeps the alert alive).
+DEFERRED next increment: (5) the specific hard-check registry (backups etc., CHANGE_PROCESS). See PLAN #370.
 """
 from __future__ import annotations
 
@@ -286,6 +289,13 @@ async def run_null_rate_sweep(conn=None) -> dict[str, Any]:
 
     if errors:
         logger.warning("null_rate_sweep completed with %d error(s): %s", len(errors), errors)
+
+    # Persistence reconcile (#370 increment 2): record state + NAG flags the rolling baseline has
+    # self-silenced but that are STILL broken (the self-poison fix — the direct re-check is decoupled
+    # from the >=95% baseline gate). Internally robust; can't take down the sweep.
+    recon = await reconcile_health_flags(
+        conn, "null_sweep", all_flags, _recheck_null_flag, key_fn=_null_flag_target_key)
+    summary["persistence"] = {k: recon[k] for k in ("nagged", "resolved", "still_open")}
 
     return summary
 
@@ -565,6 +575,12 @@ async def run_job_liveness_sweep(conn=None) -> dict[str, Any]:
     if errors:
         logger.warning("job_liveness_sweep completed with %d error(s): %s", len(errors), errors)
 
+    # Persistence reconcile (#370 increment 2): nag job-liveness flags the K-consecutive cadence has
+    # self-silenced but whose latest successful run is STILL empty (direct re-check). Internally robust.
+    recon = await reconcile_health_flags(
+        conn, "job_liveness", all_flags, _recheck_job_liveness_flag, key_fn=_job_flag_target_key)
+    summary["persistence"] = {k: recon[k] for k in ("nagged", "resolved", "still_open")}
+
     return summary
 
 
@@ -788,3 +804,290 @@ async def run_health_heartbeat(conn=None) -> dict[str, Any]:
         )
 
     return summary
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# INCREMENT 2 — PERSISTENCE-TRACKING (the SELF-POISON fix, PLAN #370). The operator's exact pain.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+#
+# THE GAP (the KNOWN LIMITATION documented in increment 1's docstring + pinned by
+# test_persistent_null_self_silences_known_limitation): the null-rate sweep alerts DAY-1/2 of a
+# silent null, then SELF-SILENCES. As the persisting null walks into its own rolling 30-date
+# baseline, the baseline non-null rate drops below 95% and the alert goes quiet. The 200MA was null
+# for ~3 WEEKS; the sweep catches it day-1 then goes dark — the EXACT "looked fine for weeks" mode
+# #370 exists to kill. (Identical shape for job-liveness: K consecutive empty run-dates flag, then
+# as the broken run-dates age out of the K-window the sweep quiets while the job stays dead.)
+#
+# THE FIX: a STATE table (`mi_health_open_flags`) + a DIRECT re-check that is DECOUPLED from the
+# rolling baseline. Each sweep, AFTER it computes its current flags, calls `reconcile_health_flags`:
+#   (a) UPSERT each current flag → state ('open'; first_flagged set on insert, kept on update).
+#   (b) For each OPEN state row of this check_kind whose target is NOT in current_flags, it either
+#       RESOLVED (the column repopulated / the job produced rows) OR SELF-POISONED (the rolling
+#       baseline went quiet but the underlying break PERSISTS). We DISTINGUISH by calling
+#       `recheck_fn(target_key)` — the CRUX — which checks the UNDERLYING condition DIRECTLY (latest
+#       row still null? latest successful run-date still empty?), NOT the baseline. Still-broken →
+#       keep 'open' + re-alert on a once/day cadence (the persistence-nag); healthy → 'resolved'.
+#
+# WHY THE DIRECT RE-CHECK IS THE WHOLE POINT (and must NOT reuse the baseline-gated evaluators):
+# `_evaluate_column` / `_evaluate_job_liveness` carry the ≥95%-over-30d / K-consecutive baseline
+# gate that is EXACTLY what self-poisons. A recheck that reused them would self-silence in lockstep
+# with the sweep → the persistence-nag would be a silent no-op. So the recheck fns below read ONLY
+# the latest-date condition (fractions[0] == 0.0 for null; latest run-date count < min for job),
+# reusing the sweep's data-pulling primitives but NONE of its baseline decision logic.
+#
+# CADENCE: a still-open flag re-alerts at most ONCE PER ET DAY (last_alerted < today → nag + bump).
+# Not every run = no spam; not never = the whole point. The day a flag self-poisons out of
+# current_flags, the sweep goes silent and reconcile becomes the SOLE alerter → ≤1 Telegram/target/day.
+
+# Re-alert cadence: a persistent open flag re-nags at most once per ET day (compared on last_alerted).
+_NAG_CADENCE_DAYS = 1
+
+
+def _et_today():
+    """Today's date in ET (the codebase tz rule — never date.today()/naive now()). Isolated so tests
+    can monkeypatch it without touching the wall clock, and so the cadence is deterministic in tests."""
+    return datetime.now(_ET).date()
+
+
+# ── The CRUX: the two CONCRETE direct re-check fns. ──────────────────────────────────────────────
+# Each takes (conn, target_key) and returns True iff the UNDERLYING condition is STILL broken, by
+# reading the LATEST-DATE condition DIRECTLY — never the rolling baseline (that is what self-poisons).
+# The operator threads these into the sweeps as the recheck_fn for their check_kind.
+
+
+def _parse_null_target(target_key: str) -> tuple[str, str]:
+    """'mi_market_regime.spy_vs_200ma' → ('mi_market_regime', 'spy_vs_200ma'). rsplit on the LAST
+    dot so a column containing no dot is safe (table names here never contain a dot)."""
+    table, column = target_key.rsplit(".", 1)
+    return table, column
+
+
+def _parse_job_target(target_key: str) -> tuple[str, str]:
+    """'theme_synthesis:mi_theme_candidates_shadow' → ('theme_synthesis', 'mi_theme_candidates_shadow')."""
+    job_id, table = target_key.split(":", 1)
+    return job_id, table
+
+
+async def _recheck_null_flag(conn, target_key: str) -> bool:
+    """DIRECT re-check for a null_sweep flag: is `table.column` STILL entirely null in its LATEST date?
+
+    The crux of the self-poison fix. We pull the per-date non-null fractions (reusing the sweep's own
+    `_per_date_fractions`) but apply ONLY the latest-date trigger (`fractions[0] == 0.0`) — we do NOT
+    call `_evaluate_column`, whose ≥95%-baseline gate is the very thing that self-silences once the
+    null has aged into the baseline. The date_col comes from `_NULL_SWEEP_TABLES` so the direct check
+    can't drift from what the sweep checks. Returns True = still broken (keep nagging), False = healthy.
+    """
+    table, column = _parse_null_target(target_key)
+    date_col = next((dc for (t, dc) in _NULL_SWEEP_TABLES if t == table), None)
+    if date_col is None:
+        # Target not in the swept-tables config — can't re-check directly. Conservative: treat as
+        # still-broken (keep-open) so a config gap can't silently RESOLVE a real break.
+        logger.warning("recheck_null_flag: %s not in _NULL_SWEEP_TABLES — keeping open", table)
+        return True
+    date_rows = await _per_date_fractions(conn, table, date_col, [column])
+    fractions = _fractions_for_column(date_rows, column)
+    if not fractions:
+        # No rows at all for this table/date → the latest date produced nothing. That's a job-liveness
+        # concern, not a null-fill; we can't confirm a fill, so keep-open (don't silently resolve).
+        return True
+    return fractions[0] == 0.0  # latest date STILL entirely null → still broken
+
+
+async def _recheck_job_liveness_flag(conn, target_key: str) -> bool:
+    """DIRECT re-check for a job_liveness flag: did the job's LATEST successful run-date STILL produce
+    fewer than min_expected_rows?
+
+    Decoupled from the sweep's K-consecutive cadence gate (which self-silences as broken run-dates age
+    out of the K-window). We look ONLY at the most-recent successful trading-day run-date and ask "did
+    that run produce rows?" — reusing `_successful_run_dates` + `_new_rows_on_date`, never
+    `_evaluate_job_liveness`. min_expected_rows/date_col come from `_JOB_OUTPUT_CHECKS`. Returns True =
+    still broken (latest run still empty), False = healthy (the job produced rows again).
+    """
+    job_id, table = _parse_job_target(target_key)
+    cfg = next((c for c in _JOB_OUTPUT_CHECKS if c[0] == job_id and c[2] == table), None)
+    if cfg is None:
+        logger.warning("recheck_job_liveness_flag: %s not in _JOB_OUTPUT_CHECKS — keeping open",
+                       target_key)
+        return True  # config gap → conservative keep-open (never silently resolve a real break)
+    _job_id, _label, _table, date_col, min_rows, _k = cfg
+    run_dates = await _successful_run_dates(conn, job_id, limit=1)
+    if not run_dates:
+        # No recent successful run to judge against → can't confirm the job produced output. Keep-open
+        # (a non-running job is heartbeat's concern, but we must not silently resolve a persisted break).
+        return True
+    count = await _new_rows_on_date(conn, table, date_col, run_dates[0])
+    return count < min_rows  # latest successful run STILL produced too few rows → still broken
+
+
+# ── The reconcile driver: UPSERT current flags + nag/resolve persisted ones. ─────────────────────
+
+
+def _null_flag_target_key(f: dict[str, Any]) -> str:
+    """Stable target_key for a null_sweep flag dict: 'table.column'."""
+    return f"{f['table']}.{f['column']}"
+
+
+def _job_flag_target_key(f: dict[str, Any]) -> str:
+    """Stable target_key for a job_liveness flag dict: 'job_id:table'."""
+    return f"{f['job_id']}:{f['table']}"
+
+
+async def reconcile_health_flags(
+    conn,
+    check_kind: str,
+    current_flags: list[dict[str, Any]],
+    recheck_fn,
+    *,
+    key_fn,
+    detail_fn=None,
+) -> dict[str, Any]:
+    """Persistence-tracking reconcile for ONE check_kind (PLAN #370 increment 2) — the self-poison fix.
+
+    Called by a sweep AFTER it computes `current_flags`. Two passes, both scoped to `check_kind`:
+      (a) UPSERT each current flag → `mi_health_open_flags` (status='open'; first_flagged set on
+          INSERT, kept on open→open UPDATE, RESET on resolved→open re-break). No alert here — the
+          sweep already day-1/2 alerts everything in current_flags; we just record state.
+      (b) For each OPEN row of this check_kind whose target is NOT in current_flags: call
+          `recheck_fn(conn, target_key)` — the DIRECT, baseline-decoupled re-check.
+            still-broken → keep 'open'; re-alert at most once/ET-day (the persistence-nag).
+            healthy      → mark 'resolved' (optional ✅ recovered note).
+          recheck_fn raising → KEEP OPEN + log (never silently resolve on a broken re-check — that
+          would re-introduce the exact silent failure this increment kills).
+
+    Args:
+        check_kind:    'null_sweep' | 'job_liveness' — scopes every query (a null reconcile must not
+                       touch job rows).
+        current_flags: the flag dicts the sweep just produced (may be empty — a clean sweep still must
+                       nag persisted flags + resolve fixed ones).
+        recheck_fn:    async (conn, target_key) -> bool. True = still broken. The CRUX.
+        key_fn:        flag dict -> target_key (`_null_flag_target_key` / `_job_flag_target_key`).
+        detail_fn:     optional flag dict -> detail str stored on the state row.
+
+    Returns: summary dict {upserted, nagged, resolved, still_open, errors} for the caller's audit.
+
+    Robust by design: the whole body is wrapped so a reconcile failure can NEVER take down the sweep
+    that called it (a health guard whose own bookkeeping crashes the guard is the worst failure).
+    """
+    summary: dict[str, Any] = {
+        "check_kind": check_kind,
+        "upserted": 0, "nagged": 0, "resolved": 0, "still_open": 0,
+        "nags": [], "resolutions": [], "errors": [],
+    }
+    try:
+        today = _et_today()
+        current_keys: set[str] = set()
+
+        # ── (a) UPSERT current flags ──────────────────────────────────────────────────────────────
+        for f in current_flags:
+            key = key_fn(f)
+            current_keys.add(key)
+            detail = detail_fn(f) if detail_fn else ""
+            # first_flagged: today on INSERT; kept on open→open; RESET to today on resolved→open
+            # (a re-break after a healthy gap shouldn't report an inflated "STILL BROKEN (Nd)").
+            await conn.execute(
+                """
+                INSERT INTO mi_health_open_flags
+                    (check_kind, target_key, first_flagged, last_alerted, status, detail, updated_at)
+                VALUES ($1, $2, $3, NULL, 'open', $4, NOW())
+                ON CONFLICT (check_kind, target_key) DO UPDATE SET
+                    status = 'open',
+                    detail = EXCLUDED.detail,
+                    updated_at = NOW(),
+                    first_flagged = CASE
+                        WHEN mi_health_open_flags.status = 'resolved' THEN EXCLUDED.first_flagged
+                        ELSE mi_health_open_flags.first_flagged
+                    END
+                """,
+                check_kind, key, today, detail,
+            )
+            summary["upserted"] += 1
+
+        # ── (b) Reconcile OPEN rows NOT in current_flags: nag (still-broken) or resolve (healthy) ──
+        open_rows = await conn.fetch(
+            """
+            SELECT target_key, first_flagged, last_alerted, detail
+            FROM mi_health_open_flags
+            WHERE check_kind = $1 AND status = 'open'
+            """,
+            check_kind,
+        )
+        for row in open_rows:
+            target_key = row["target_key"]
+            if target_key in current_keys:
+                continue  # still in current_flags → the sweep is alerting it; reconcile (a) handled it
+
+            # The CRUX: DIRECT re-check, decoupled from the rolling baseline that self-poisoned.
+            try:
+                still_broken = await recheck_fn(conn, target_key)
+            except Exception as e:  # a broken re-check must KEEP-OPEN, never silently resolve
+                logger.warning("reconcile_health_flags: recheck %s/%s failed: %s — keeping open",
+                               check_kind, target_key, e)
+                summary["errors"].append({"target_key": target_key, "error": str(e)})
+                summary["still_open"] += 1
+                continue
+
+            if still_broken:
+                summary["still_open"] += 1
+                last_alerted = row["last_alerted"]
+                due = last_alerted is None or (today - last_alerted).days >= _NAG_CADENCE_DAYS
+                if due:
+                    days_open = (today - row["first_flagged"]).days + 1  # day-1 reads as "1d"
+                    await _send_persistence_nag(check_kind, target_key, days_open, row["first_flagged"])
+                    await conn.execute(
+                        """
+                        UPDATE mi_health_open_flags SET last_alerted = $3, updated_at = NOW()
+                        WHERE check_kind = $1 AND target_key = $2
+                        """,
+                        check_kind, target_key, today,
+                    )
+                    summary["nagged"] += 1
+                    summary["nags"].append({"target_key": target_key, "days_open": days_open})
+            else:
+                # The underlying condition healed → resolve + optional ✅ recovered note.
+                await conn.execute(
+                    """
+                    UPDATE mi_health_open_flags SET status = 'resolved', updated_at = NOW()
+                    WHERE check_kind = $1 AND target_key = $2
+                    """,
+                    check_kind, target_key,
+                )
+                summary["resolved"] += 1
+                summary["resolutions"].append(target_key)
+                await _send_recovery_note(check_kind, target_key)
+
+    except Exception as e:  # reconcile must NEVER take down the sweep that called it
+        logger.warning("reconcile_health_flags: %s reconcile failed: %s", check_kind, e)
+        summary["errors"].append({"reconcile": str(e)})
+
+    return summary
+
+
+async def _send_persistence_nag(check_kind: str, target_key: str, days_open: int, first_flagged) -> None:
+    """The persistence-nag Telegram — a STILL-BROKEN flag the rolling sweep has gone quiet on.
+    Names the target + days-open + since-date. Lazy import so a Telegram issue can't break tests."""
+    body = (
+        f"🩺 STILL BROKEN ({days_open}d): `{target_key}` "
+        f"{'null' if check_kind == 'null_sweep' else 'producing nothing'} since "
+        f"{first_flagged.isoformat() if hasattr(first_flagged, 'isoformat') else first_flagged}. "
+        "The rolling-baseline sweep self-silenced, but a direct re-check confirms it's STILL "
+        "broken (PLAN #370). It will keep nagging daily until the underlying signal repopulates."
+    )
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(body)
+    except Exception as e:
+        logger.warning("persistence_nag: telegram send failed for %s: %s", target_key, e)
+
+
+async def _send_recovery_note(check_kind: str, target_key: str) -> None:
+    """Optional ✅ recovered note when a persisted flag's underlying condition heals. Best-effort."""
+    body = (
+        f"✅ recovered: `{target_key}` "
+        f"({'column repopulated' if check_kind == 'null_sweep' else 'job producing rows again'}) "
+        "— a direct re-check confirms the silent break is fixed (PLAN #370)."
+    )
+    try:
+        from agents.market_intelligence.briefing import send_telegram_message
+        await send_telegram_message(body)
+    except Exception as e:
+        logger.warning("recovery_note: telegram send failed for %s: %s", target_key, e)

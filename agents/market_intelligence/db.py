@@ -979,6 +979,33 @@ async def initialize_schema() -> None:
                 ON mi_audit_log(event_type);
         """)
 
+        # ── Health-guard OPEN FLAGS — persistence tracking (PLAN #370 increment 2) ──
+        # The null-rate / job-liveness sweeps alert DAY-1/2 of a silent break, then SELF-SILENCE:
+        # as the persisting break walks into the rolling 30-date baseline, the baseline drops below
+        # the populated bar and the sweep goes quiet (the 200MA was null ~3 weeks; the sweep caught
+        # it day-1 then went dark). This table makes a STILL-BROKEN flag KEEP nagging, DECOUPLED
+        # from the rolling baseline: each sweep UPSERTs its current flags here, and for any open row
+        # NOT in the current flags, a DIRECT re-check (is the column STILL null in the latest row? is
+        # the job's output STILL empty?) — NOT the baseline — decides resolved vs persistence-nag.
+        #   check_kind   : 'null_sweep' | 'job_liveness' (scopes every reconcile query)
+        #   target_key   : 'mi_market_regime.spy_vs_200ma' | 'theme_synthesis:mi_theme_candidates_shadow'
+        #   first_flagged: ET date first seen broken (reset only on resolved→open, not open→open)
+        #   last_alerted : ET date of the most-recent Telegram (drives once/day re-alert cadence)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS mi_health_open_flags (
+                check_kind TEXT NOT NULL,
+                target_key TEXT NOT NULL,
+                first_flagged DATE NOT NULL,
+                last_alerted DATE,
+                status TEXT NOT NULL DEFAULT 'open',
+                detail TEXT DEFAULT '',
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (check_kind, target_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_health_open_flags_open
+                ON mi_health_open_flags(check_kind) WHERE status = 'open';
+        """)
+
         # ── Trading journal — user observations with auto-enriched context ─
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS mi_journal_entries (
