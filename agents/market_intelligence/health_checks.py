@@ -39,25 +39,10 @@ numeric columns self-exclude via the ≥95% gate, so the ACTIVE catches land on 
 high-value always-on signals — regime inputs, daily closes, rs scores.
 
 ──────────────────────────────────────────────────────────────────────────────────────────────
-DEFERRED (next increments of #370 — do NOT build here):
-  1. JOB → OUTPUT-LIVENESS sweep — "a job ran but its table got 0 rows today" (catches the theme
-     synthesis-truncation class). This null-rate sweep deliberately does NOT cover "no rows at all
-     today"; an empty latest date has no per-date fraction and is skipped, by design.
-  2. A specific HARD-CHECK registry (backups fresh, named invariants) under CHANGE_PROCESS.
-  3. The guard's OWN HEARTBEAT — if no health report has run in >26h, alert (a guard that silently
-     dies is the worst silent failure). Until built, this sweep has the same blind spot it cures.
-  4. PARTIAL-break detection (some-but-not-all rows null on the latest date) — intentionally NOT
-     caught this increment; the conservative entirely-null trigger avoids partial-population noise.
-
-KNOWN LIMITATION — BASELINE SELF-POISON (operator scoping decision; advisor-flagged):
-  This sweep fires DAY-1 and DAY-2 of a silent null, then SELF-SILENCES. Run daily, on day N the
-  baseline is the prior 30 dates, so a persisting null walks INTO the baseline: D0 baseline=30/30
-  populated → flags; D1 → 29/30=0.967 ≥ 0.95 → flags; D2 → 28/30=0.933 < 0.95 → quiet. After ~2
-  days the persistent null becomes the "new normal" and the alert stops — the very "looked fine for
-  weeks" mode the 200MA-null (null for ~3 WEEKS) was. DoD ("would have alerted DAY-1") IS met; but
-  re-alerting on a PERSISTENT null is collapse-class (cf. the L2 design, which keeps collapse-class
-  breaches firing) and belongs to the DEFERRED hard-check-registry / heartbeat increment, NOT here.
-  Whether 2-day alerting is acceptable for THIS increment is the operator's call.
+DEFERRED next increments (job→output-liveness, hard-check registry, heartbeat, partial-break) + the
+BASELINE-SELF-POISON limitation (this sweep alerts day-1/2 of a silent null, then quiets as the null
+walks into its own rolling baseline — DoD "alert day-1" is MET; persistence re-nagging = increment 2):
+see PLAN #370. The self-poison is pinned by test_persistent_null_self_silences_known_limitation.
 """
 from __future__ import annotations
 
@@ -110,9 +95,7 @@ def _evaluate_column(per_date_fractions: list[float]) -> dict[str, Any] | None:
 
     latest = per_date_fractions[0]
     baseline = per_date_fractions[1:]  # prior dates only — exclude the latest from the baseline
-
-    if len(baseline) < _MIN_BASELINE_DATES:
-        return None
+    # (len(baseline) >= _MIN_BASELINE_DATES is guaranteed by the line-93 guard above.)
 
     # TRIGGER: the latest date is ENTIRELY null. Conservative — a partial-null latest date
     # (some rows null) does not fire (deferred refinement). >0 means at least one row populated.
@@ -158,6 +141,11 @@ async def _per_date_fractions(conn, table: str, date_col: str, columns: list[str
     counts = ",\n               ".join(
         f'COUNT("{c}")::float AS "nn_{c}"' for c in columns
     )
+    # Bounded, NOT a full scan: every swept table has a DATE-LEADING index (PK or explicit), so the
+    # planner does Index-Scan-Backward + GroupAggregate + LIMIT early-stop — reading ~_RECENT_WINDOW
+    # dates, not the whole table. EXPLAIN-verified on mi_daily_closes (the largest): "Index Scan
+    # Backward using mi_daily_closes_pkey" with the Limit early-stopping at 30 groups. (No WHERE date
+    # bound needed; the LIMIT + index is the bound.)
     sql = f'''
         SELECT "{date_col}" AS d,
                COUNT(*)::float AS total,
@@ -196,13 +184,8 @@ async def _sweep_table(conn, table: str, date_col: str) -> dict[str, Any]:
         fractions = _fractions_for_column(date_rows, col)
         verdict = _evaluate_column(fractions)
         if verdict is not None:
-            flags.append({
-                "table": table,
-                "column": col,
-                "baseline_rate": verdict["baseline_rate"],
-                "baseline_n": verdict["baseline_n"],
-            })
-    return {"table": table, "columns_checked": len(columns), "dates": len(date_rows), "flags": flags}
+            flags.append({"table": table, "column": col, **verdict})
+    return {"columns_checked": len(columns), "flags": flags}
 
 
 def _format_flag(f: dict[str, Any]) -> str:
