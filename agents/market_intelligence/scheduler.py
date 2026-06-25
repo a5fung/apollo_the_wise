@@ -756,6 +756,17 @@ async def _morning_briefing_job():
         logger.error(f"Morning briefing failed: {e}\n{traceback.format_exc()}")
         await notify_job_failure(JOB_MORNING_BRIEFING, str(e))
 
+    # Health-guard HEARTBEAT (#370 increment 4): runs HERE (the 9 AM brief), independent of the 17:30
+    # audit that hosts the null-rate + job-liveness sweeps — if THAT job dies, this still fires. OWN
+    # try/except so an EP-scan or briefing failure above can't suppress the guard's own liveness check.
+    try:
+        from agents.market_intelligence.health_checks import run_health_heartbeat
+        hb = await run_health_heartbeat()
+        logger.info(f"Health heartbeat: {hb.get('status')}")
+    except Exception as e:
+        logger.error(f"Health heartbeat failed: {e}", exc_info=True)
+        await notify_job_failure("health_heartbeat", str(e))
+
 
 async def _ep_scan_job():
     """Run every 5 minutes 7:00–10:00 AM ET. Scan for EP gaps; HIGH alerts sent immediately.

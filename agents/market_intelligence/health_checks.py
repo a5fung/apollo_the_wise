@@ -55,9 +55,13 @@ The self-poison is pinned by test_persistent_null_self_silences_known_limitation
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.db import get_pool, log_audit_event
+
+_ET = ZoneInfo("America/New_York")  # codebase tz rule — never naive datetime.now()
 
 logger = logging.getLogger(__name__)
 
@@ -560,5 +564,227 @@ async def run_job_liveness_sweep(conn=None) -> dict[str, Any]:
 
     if errors:
         logger.warning("job_liveness_sweep completed with %d error(s): %s", len(errors), errors)
+
+    return summary
+
+
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+# INCREMENT 4 — the guard's own HEARTBEAT (`run_health_heartbeat`, PLAN #370). THE most important gap.
+# ══════════════════════════════════════════════════════════════════════════════════════════════
+#
+# Increments 1 + 3 catch OTHER silent failures (a column going null, a job producing nothing). But
+# they are themselves a single point of failure: BOTH run inside `_post_nightly_audit_job` (17:30 ET).
+# If THAT job dies — the cron misfires, the job errors before it reaches the sweep calls, a deploy
+# breaks the import — then NOTHING runs, and NOTHING alerts. The guard fails SILENTLY: the worst
+# possible case, and exactly the class #370 exists to kill. The heartbeat detects "the guard itself
+# hasn't run."
+#
+# WHAT IT CHECKS: the most-recent timestamp across the FOUR sweep audit events (the sweeps' own
+# proof-of-life — `health_null_sweep_clean/flagged` + `health_job_liveness_clean/flagged`). Every
+# successful 17:30 run writes at least one of these (each sweep ALWAYS logs clean-or-flagged at its
+# end). So a fresh sweep audit == "the 17:30 job ran AND reached the sweeps". A missing/stale one ==
+# the job died before producing any — whole-job death, which is the target. (A single sweep of the
+# two dying is already covered by its own notify_job_failure in the scheduler; the heartbeat owns the
+# both-dead / job-never-ran case the per-sweep guards structurally cannot see.) We filter to exactly
+# those four event types so the heartbeat's OWN `health_heartbeat_ok` rows can never self-satisfy a
+# later check (a heartbeat that proves itself alive off its own pulse is no heartbeat).
+#
+# INDEPENDENCE — the load-bearing design constraint: the heartbeat MUST run in a DIFFERENT scheduled
+# job than the sweeps, or it dies WITH them and proves nothing. The sweeps live in
+# `_post_nightly_audit_job` (17:30). The intended host is the MORNING BRIEFING job (`_morning_briefing_job`,
+# 09:00 ET) — an independent, reliably-firing job ~15.5h after the sweeps. This function is
+# host-AGNOSTIC (takes only a conn); the wiring is the operator's. HARD RULE: do NOT call it from
+# `_post_nightly_audit_job` — co-locating it there re-creates the single point of failure it exists to
+# remove.
+#
+# THE THRESHOLD — trading-day-aware, NOT a flat 26h (the make-or-break, advisor-refined). The sweep
+# host is a mon-fri cron (`day_of_week="mon-fri"`), so NO sweep runs Sat/Sun. A flat 26h threshold
+# would false-fire EVERY Monday morning (the most-recent sweep would be Friday 17:30 ≈ 63h ago, on a
+# perfectly healthy system) — the exact "noisy guard gets muted then misses the real failure" trap
+# increments 1+3 obsessed over. There is no flat value that both catches a missed WEEKNIGHT (needs
+# ≤ ~39h) and survives MONDAY (needs > 63h). So instead of wall-clock age we compute the cutoff =
+# the most-recent expected sweep run, and ALERT iff no sweep audit landed at/after it.
+#
+# The cutoff is PLAIN WEEKDAY ARITHMETIC, deliberately NOT the trading calendar (advisor-corrected):
+# the sweep host is a holiday-BLIND mon-fri cron ("runs mon-fri incl. holidays", per the increment-3
+# comment) — the sweeps EXECUTE and write a clean audit every weekday, holiday or not. So we expect a
+# sweep audit every weekday and must MATCH THE CRON, not the market. Using `get_market_status` would
+# skip weekday holidays (a sweep dying Thanksgiving evening wouldn't be caught Friday morning — a blind
+# spot on exactly #370's failure class). Weekday math catches it next morning, with no calendar import.
+
+# The four sweep audit event types — the sweeps' proof-of-life. A fresh row of ANY of these means the
+# 17:30 job ran and reached the sweep calls. NOT including health_heartbeat_* (those are THIS job's own
+# pulse and must never self-satisfy the check).
+_SWEEP_AUDIT_EVENTS: list[str] = [
+    "health_null_sweep_clean",
+    "health_null_sweep_flagged",
+    "health_job_liveness_clean",
+    "health_job_liveness_flagged",
+]
+
+_SWEEP_HOUR = 17    # the sweep host (_post_nightly_audit_job) fires at 17:30 ET
+_SWEEP_MINUTE = 30
+
+
+def _expected_sweep_cutoff(now_et: datetime) -> datetime:
+    """The most-recent expected sweep run (a mon-fri 17:30 ET) STRICTLY before `now_et`.
+
+    Pure date math (no calendar import) so it's trivially mock-free testable and matches the sweep
+    host's holiday-BLIND mon-fri cron exactly. A sweep audit at/after this cutoff == the 17:30 job
+    ran on schedule; nothing at/after == it died.
+
+    Walk back from today@17:30: if that instant is not strictly in the past, step a day; then roll any
+    Saturday/Sunday back to Friday (no sweep runs on the weekend). Examples (all ET):
+      - Tue 09:00  → Mon 17:30   (last night's sweep; ~15.5h, normal)
+      - Mon 09:00  → Fri 17:30   (weekend gap auto-widens; would be ~63h — NOT a false fire)
+      - Wed 18:00  → Wed 17:30   (tonight's sweep already due+past)
+    """
+    cutoff = now_et.replace(hour=_SWEEP_HOUR, minute=_SWEEP_MINUTE, second=0, microsecond=0)
+    if cutoff >= now_et:
+        cutoff -= timedelta(days=1)        # today's 17:30 hasn't happened yet → expect yesterday's
+    while cutoff.weekday() >= 5:           # 5=Sat, 6=Sun — no sweep ran; roll back to Friday
+        cutoff -= timedelta(days=1)
+    return cutoff
+
+
+def _evaluate_heartbeat(latest_ts: datetime | None, cutoff: datetime) -> dict[str, Any] | None:
+    """Pure decision: given the most-recent sweep-audit timestamp (or None) and the expected cutoff,
+    decide whether the guard has gone dark.
+
+    Returns a flag dict (reason) when the guard is dead, None when it's alive. Isolated + mock-free so
+    cases 1-3 test directly:
+      - latest_ts is None          → flag "never"   (the guard has NEVER run / its audit is broken)
+      - latest_ts < cutoff         → flag "stale"   (no sweep audit since the last expected 17:30 run)
+      - latest_ts >= cutoff        → None           (the guard ran on schedule — alive)
+    """
+    if latest_ts is None:
+        return {"reason": "never", "latest_ts": None}
+    if latest_ts < cutoff:
+        return {"reason": "stale", "latest_ts": latest_ts}
+    return None
+
+
+def _now_et() -> datetime:
+    """tz-aware now() in ET. Isolated so tests can monkeypatch it without touching the clock."""
+    return datetime.now(_ET)
+
+
+async def run_health_heartbeat(conn=None) -> dict[str, Any]:
+    """Run the guard's own HEARTBEAT (PLAN #370 increment 4) — detect "the silent-failure guard
+    itself hasn't run".
+
+    Queries the most-recent timestamp across the four sweep audit events. If the latest is OLDER than
+    the expected cutoff (the most-recent mon-fri 17:30 ET) — or there is NO sweep audit at all — the
+    guard has gone dark → ONE grouped Telegram. If fresh → audit-only (`health_heartbeat_ok`).
+
+    INDEPENDENCE: must be hosted in a DIFFERENT scheduled job than the sweeps (intended: the 09:00
+    morning briefing). Do NOT call from `_post_nightly_audit_job` — that would re-create the single
+    point of failure this exists to remove.
+
+    LOUD ON FAILURE (deliberately the OPPOSITE of the sweeps' swallow-and-report-clean pattern): if the
+    DB query / check itself throws, we send a DEGRADED Telegram, log at ERROR, and write a
+    `health_heartbeat_error` audit — we NEVER fall through to `health_heartbeat_ok`. A heartbeat that
+    cannot check must not pretend everything is fine; a silent heartbeat is the worst failure of all.
+
+    Args:
+        conn: optional asyncpg connection. If None, acquires one from the shared pool.
+
+    Returns:
+        Summary dict: status ("ok" | "alert" | "error"), latest_ts (iso str | None), cutoff (iso str).
+    """
+    if conn is None:
+        pool = await get_pool()
+        async with pool.acquire() as acquired:
+            return await run_health_heartbeat(acquired)
+
+    now_et = _now_et()
+    cutoff = _expected_sweep_cutoff(now_et)
+
+    # ── The check itself — LOUD on failure (never silently "ok") ──────────────────────────────────
+    try:
+        latest_ts = await conn.fetchval(
+            """
+            SELECT MAX(created_at)
+            FROM mi_audit_log
+            WHERE event_type = ANY($1::text[])
+            """,
+            _SWEEP_AUDIT_EVENTS,
+        )
+    except Exception as e:
+        # A heartbeat that can't run its own check must FAIL LOUD, not pretend healthy.
+        logger.error("health_heartbeat: check FAILED (cannot verify guard liveness): %s", e,
+                     exc_info=True)
+        body = (
+            "🩺 SILENT-FAILURE GUARD HEARTBEAT BROKEN — the heartbeat itself could not query the "
+            f"audit log ({type(e).__name__}). It cannot confirm the health sweeps are alive; treat "
+            "the guard as UNVERIFIED (PLAN #370)."
+        )
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(body)
+        except Exception as te:  # even the degraded alert failed — log, but do NOT report ok
+            logger.error("health_heartbeat: degraded telegram ALSO failed: %s", te)
+        try:
+            await log_audit_event(
+                "health_heartbeat_error",
+                f"heartbeat check failed: {type(e).__name__}: {e}",
+                detail=str({"cutoff": cutoff.isoformat()}),
+            )
+        except Exception as ae:
+            logger.error("health_heartbeat: error-audit write ALSO failed: %s", ae)
+        return {"status": "error", "latest_ts": None, "cutoff": cutoff.isoformat(),
+                "error": str(e)}
+
+    # Normalize the timestamp to ET so the < comparison is tz-consistent (created_at is TIMESTAMPTZ;
+    # asyncpg returns it tz-aware, but normalize defensively in case of a naive value).
+    if latest_ts is not None and latest_ts.tzinfo is None:
+        latest_ts = latest_ts.replace(tzinfo=_ET)
+
+    verdict = _evaluate_heartbeat(latest_ts, cutoff)
+    latest_iso = latest_ts.isoformat() if latest_ts is not None else None
+    summary = {
+        "status": "ok" if verdict is None else "alert",
+        "latest_ts": latest_iso,
+        "cutoff": cutoff.isoformat(),
+    }
+
+    # ── Alert ─────────────────────────────────────────────────────────────────────────────────────
+    if verdict is not None:
+        if verdict["reason"] == "never":
+            headline = "🩺 SILENT-FAILURE GUARD HASN'T RUN — EVER"
+            detail_line = ("there is NO health-sweep audit at all — the guard has never run, or its "
+                          "audit log is broken.")
+        else:
+            age_hours = round((now_et - latest_ts).total_seconds() / 3600)
+            headline = f"🩺 SILENT-FAILURE GUARD HASN'T RUN in {age_hours}h"
+            detail_line = (
+                f"the last health-sweep audit was {age_hours}h ago (before the expected "
+                f"{cutoff.strftime('%a %H:%M')} ET run) — the 17:30 sweeps may be DEAD."
+            )
+        body = (
+            f"{headline} — {detail_line} The health sweeps that catch silent failures appear to have "
+            "stopped; the system is currently BLIND to the silent-failure class (PLAN #370). Check "
+            "the 17:30 post-nightly audit job."
+        )
+        try:
+            from agents.market_intelligence.briefing import send_telegram_message
+            await send_telegram_message(body)
+        except Exception as e:
+            logger.error("health_heartbeat: telegram send failed on a REAL alert: %s", e)
+            summary["telegram_error"] = str(e)
+
+        await log_audit_event(
+            "health_heartbeat_stale",
+            f"guard liveness ALERT ({verdict['reason']}): latest sweep audit {latest_iso}, "
+            f"expected ≥ {cutoff.isoformat()}",
+            detail=str(summary),
+        )
+    else:
+        # Fresh → audit-only (do NOT Telegram a healthy heartbeat — Telegram is for real failures).
+        await log_audit_event(
+            "health_heartbeat_ok",
+            f"guard alive: latest sweep audit {latest_iso} ≥ cutoff {cutoff.isoformat()}",
+            detail=str(summary),
+        )
 
     return summary
