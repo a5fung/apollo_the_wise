@@ -23,9 +23,19 @@ _MAX_STOCKS = 10
 _CHAR_LIMIT = 280
 _ep_last_posted: date | None = None  # track last EP tweet date (1 per day max)
 
+# KILL SWITCH (operator 2026-06-26): X/Twitter auto-posting DISABLED. Flip to True to re-enable.
+# Disabled after a verify-render spuriously posted a stale SNX EP tweet, AND the EP-tweet path was
+# found to STILL render raw rel_volume (the pm_rvol/_resolve_ep_rvol fix never reached this third
+# surface — fix that before re-enabling). Gated at _get_client() so EVERY post path (EP / RS-leaders
+# / theme / custom) is off in one place; callers already treat a None client as "skip".
+_X_POSTING_ENABLED = False
+
 
 def _get_client() -> tuple[Any, Any] | None:
-    """Return (tweepy.Client, tweepy.API) or None if not configured."""
+    """Return (tweepy.Client, tweepy.API) or None if not configured / posting disabled."""
+    if not _X_POSTING_ENABLED:
+        logger.info("X posting disabled (_X_POSTING_ENABLED=False) — skipping tweet")
+        return None
     try:
         import tweepy
     except ImportError:
