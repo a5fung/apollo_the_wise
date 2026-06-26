@@ -54,15 +54,26 @@ async def _polygon_get(path: str, params: dict | None = None) -> Any:
             await asyncio.sleep(POLYGON_RATE_DELAY - elapsed)
 
         all_params = {"apiKey": api_key, **(params or {})}
-        # #380/#370 loud-failure guard wraps the WHOLE retry loop: a retried 429
-        # (`continue`) never reaches this except, so only a SUSTAINED failure
-        # (final-attempt raise, or a transport/timeout error mid-loop) alerts.
-        # The wrapper RE-RAISES so callers' existing fallbacks still run — loud,
-        # but still gracefully degrading.
+        # #380/#370 loud-failure guard wraps the WHOLE retry loop: a retried 429 OR a retried
+        # transient transport/timeout (`continue`) never reaches this except, so only a SUSTAINED
+        # failure (final-attempt raise) alerts. The wrapper RE-RAISES so callers' existing fallbacks
+        # still run — loud, but still gracefully degrading.
         try:
             async with httpx.AsyncClient(timeout=30) as client:
                 for attempt in range(3):
-                    r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
+                    try:
+                        r = await client.get(f"{POLYGON_BASE}{path}", params=all_params)
+                    except httpx.TransportError as te:
+                        # #383: a transient timeout / connection blip retries like a 429 — only a
+                        # SUSTAINED failure (all 3 attempts) falls through to the loud alert. (One
+                        # transient RYAAY timeout 6/25 fired a spurious alert; the same call returned
+                        # 7439 bars in 0.4s seconds later.) HTTPStatusError (4xx/5xx) is NOT caught
+                        # here — it raises below and alerts immediately, as it should.
+                        if attempt < 2:
+                            logger.warning(f"Polygon {type(te).__name__} — retry {attempt + 1}/3")
+                            await asyncio.sleep(2 * (attempt + 1))  # 2s, 4s
+                            continue
+                        raise  # final attempt — fall to the loud alert
                     _polygon_last_call = asyncio.get_event_loop().time()
                     if r.status_code == 429:
                         wait = 15 * (attempt + 1)  # 15s, 30s, 45s
