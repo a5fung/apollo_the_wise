@@ -40,3 +40,26 @@ def test_no_pm_rvol_falls_back_to_rel_volume():
     # no pre-market figure available → show rel_volume even if small (it's the only data).
     line = _line(rel_volume=0.03, pm_rvol=None)
     assert "rv 0.03x" in line
+
+
+def test_ep_alert_premarket_shows_pm_rvol_not_raw_rel_volume():
+    """The LIVE EP alert (send_ep_alert) — not just the brief line — must show pm_rvol pre-market.
+    Regression for the 6/26 SNX/MU split: the brief got the pm_rvol fix but send_ep_alert kept
+    rendering raw rel_volume (≈ 0 pre-market). Both now route through _resolve_ep_rvol."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence import briefing
+
+    ep = {"ticker": "SNX", "score_tier": "HIGH", "gap_pct": 8.0, "ep_score": 80,
+          "catalyst_quality": "game_changer", "rel_volume": 0.01, "pm_rvol": 12.085}
+    captured = {}
+
+    async def _cap(text, *a, **k):
+        captured["text"] = text
+        return True
+
+    with patch.object(briefing, "send_telegram_message", new=AsyncMock(side_effect=_cap)):
+        asyncio.run(briefing.send_ep_alert(ep))
+
+    assert "pm RVOL: *12.1x*" in captured["text"]    # the pre-market figure, labeled
+    assert "| RVOL: *0.01x*" not in captured["text"]  # NOT the raw rel_volume that reads ~0

@@ -355,6 +355,20 @@ def _catalyst_type_mark(ct: str | None) -> str:
     return "🎯" if ct in HIGH_CONVICTION_TYPES else "❓" if ct == "unknown" else "▫️"
 
 
+def _resolve_ep_rvol(ep: dict) -> tuple[str, bool]:
+    """Displayable RVOL string + whether it's the pre-market anchor — SINGLE SOURCE for the
+    brief/HUD line (_format_ep_ticker_block) AND the live EP-alert line. Pre-market alerts have
+    rel_volume ≈ 0 (today_volume/ADV, the day's barely started), so prefer pm_rvol (pre-market
+    relative volume) when rel_volume is tiny/absent. Operator 6/25: SNX/MU showed "rv 0.01x/0.03x"
+    pre-market when pm_rvol was 12x/1.5x — the brief got the fix but the alert kept reading raw
+    rel_volume. Returns ("12.0x", True) pre-market, ("3x", False) intraday-session."""
+    _rel_v = ep.get("rel_volume")
+    _pm_v = ep.get("pm_rvol")
+    if _pm_v and (_rel_v is None or _rel_v < 1.0):
+        return (f"{_pm_v:.1f}x", True)
+    return (f"{_rel_v or '?'}x", False)
+
+
 def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     """Format ONE EP alert as a list of lines — the single source of truth for
     EP per-ticker rendering, shared by the morning-briefing section AND the HUD
@@ -377,16 +391,9 @@ def _format_ep_ticker_block(ep: dict, lead: str = "") -> list[str]:
     # when classified. Marker via the shared _catalyst_type_mark helper.
     _ct = ep.get("catalyst_type")
     ct_suffix = f" {_catalyst_type_mark(_ct)}{_ct.replace('_', ' ')}" if _ct else ""
-    # Volume display: pre-market alerts have rel_volume ≈ 0 (it's today_volume/ADV and the day's
-    # barely started), so the meaningful figure is pm_rvol (pre-market relative volume). Prefer it
-    # when rel_volume is tiny/absent and pm_rvol exists; else show accumulated rel_volume. Operator
-    # 6/25: SNX/MU showed "rv 0.01x/0.03x" pre-market when pm_rvol was 12x/1.5x.
-    _rel_v = ep.get("rel_volume")
-    _pm_v = ep.get("pm_rvol")
-    if _pm_v and (_rel_v is None or _rel_v < 1.0):
-        vol_str = f"pm rvol {_pm_v:.1f}x"
-    else:
-        vol_str = f"rv {_rel_v or '?'}x"
+    # Volume display: prefer pre-market pm_rvol when session rel_volume reads ~0 (_resolve_ep_rvol).
+    _rv_str, _rv_pm = _resolve_ep_rvol(ep)
+    vol_str = f"pm rvol {_rv_str}" if _rv_pm else f"rv {_rv_str}"
     out: list[str] = []
     # Tier WORD on the line (not just the emoji) + a "catalyst" label on the grade, so HIGH (the
     # tier) and game-changer (the catalyst — already a scored COMPONENT of ep_score, not a rival
@@ -2463,12 +2470,13 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
     _why_text = resolve_why_text(ep)
 
     head_e, head_label = resolve_headline_grade(ep)
+    _rv_str, _rv_pm = _resolve_ep_rvol(ep)  # pm_rvol pre-market — same SSoT as the brief/HUD line
     text = (
         conv_tag +
         f"*EP ALERT {tier_e}*\n\n"
         f"*{ep['ticker']}* {head_e} {head_label}\n"
         f"{ct_line}"
-        f"Gap: *{ep['gap_pct']:.1f}%* | RVOL: *{ep.get('rel_volume') or '?'}x*"
+        f"Gap: *{ep['gap_pct']:.1f}%* | {'pm RVOL' if _rv_pm else 'RVOL'}: *{_rv_str}*"
         + (f" (intensity *{ep['projected_vol_multiple']:.0f}x*)" if ep.get('projected_vol_multiple') else "")
         + f" | Score: *{ep['ep_score']:.0f}*\n"
         + fire_line + "\n"
