@@ -281,3 +281,45 @@ Empirical threshold calibration still comes from the labeling pass.
 `rmv_15d` column + migration + insert), `scheduler` (caller), `scripts/_anticipation_shortlist.py`
 (lookback→15), `docs/methodology/primitives.md` (RMV row). Telemetry-only elsewhere — formula improved,
 no gate.
+
+### 2026-06-27 — Coil-finder SHADOW logger (#391, parallel to #327; NEW detector, no existing-gate change)
+
+**Trigger.** The operator's 6/27 labeling pass + chart reads showed the peak-anchored base detection
+(`evaluate_consolidation`, base = peak..now) swallows the post-runup *pullback* — CRWD read a 24% "band"
+because its 6/01 spike + a −21% pullback sat inside the "base." The operator re-anchored the model:
+**runup → pullback (any depth/shape; no fixed MA — CRWD's 20MA kiss was incidental) → coil**, with a HARD
+hold gate: the consolidation must hold above the **~50% retrace of the runup leg** (give back more than half
+= the runup is negated, not basing, *regardless of tightness*); tightness then *ranks* what survives.
+
+**What ships (NEW, additive — NOT a change to the #327 gate).** A new pure detector
+`anticipation.find_coil_setup(bars, i)` (runup leg → give-back `retrace` → recent-coil band/slope/adr +
+full-base duration) and a daily SHADOW logger `scheduler._coil_finder_shadow_job` (17:40 ET mon-fri,
+parallel to `consolidation_readiness`) that scans the signed-§2 universe, keeps coils that held
+≤ `COIL_HOLD_LIMIT` (=0.50, soft / operator-tunable), and writes `mi_anticipation_coil_shadow` + one digest.
+The existing #327 Anticipate/Confirm gate, `mi_consolidation_entry_shadow`, and all trade state are
+**untouched**.
+
+**Evidence.** Daily-replay validation over the prod DB (`scripts/_anticipation_coil_finder.py`,
+`docs/analysis/anticipation_coil_finder_validation_2026-06-27.md`): finds all 5 operator-named coils
+(GH/HNGE/CRWD/FTNT/DDOG) incl. HNGE's real May 6–28 base, and rejects GPGI (retraced 199% of its runup).
+The "poor" 4 (OSCR/UAL/PTGX/TVTX) read as valid/marginal coils per the operator's chart reads — confirming
+structure is a clean SCREEN, not a winner-picker (the catalyst layer selects). N=10 cohort.
+
+**Anticipated effect.** ~1–5 rows/day to `mi_anticipation_coil_shadow` (held tight coils on the ~150-name
+§2 universe); one `🔍 Coil-finder candidates` Telegram digest/day. No trade impact; no change to existing
+shadow counts.
+
+**Quality rankers deferred.** Duration (too-long) + orderliness (gappy) first cuts missed (peak-placement +
+gap-vs-range definitions); they live in full-base character and need forward-shadow data, not n=5 fitting.
+Recorded as ranking columns (`base_len_days`, `coil_adr_pct`) for later calibration.
+
+**Reversion-flag:** NEW (a parallel detector; does not modify or revert any prior #327 decision).
+
+**Status:** shipped-shadow 2026-06-27, awaiting forward-shadow validation. Operator-signed ("go", 6/27). The
+~50% hold cap + the rankers calibrate against the forward stream; whether the coil-finder becomes the
+load-bearing #327 gate is a *later* operator decision (CHANGE_PROCESS + N≥10 + sign-off).
+
+**Touched:** `anticipation.find_coil_setup` (+ `COIL_*` constants), `db` (`mi_anticipation_coil_shadow`
+table + `insert_anticipation_coil_shadow`), `scheduler` (`_coil_finder_shadow_job` + registration +
+`INTELLIGENCE_OWNED_JOB_IDS`), `tests/test_anticipation_coil_finder.py`. Validated logic:
+`scripts/_anticipation_coil_finder.py`.

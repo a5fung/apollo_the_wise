@@ -710,6 +710,84 @@ def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_wind
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+# #391 COIL-FINDER — operator-locked anticipation model (2026-06-27), SHADOW telemetry.
+# Anatomy: RUNUP (≥15% leg) → HOLD (consolidation low above ~50% retrace of the runup leg —
+# give back more than half and the runup is negated, regardless of tightness) → TIGHT flat
+# coil. Unlike evaluate_consolidation (peak-anchored base = peak..now, which swallows a
+# pullback and inflated CRWD to a 24% "base"), this measures the runup LEG, the give-back, and
+# the RECENT coil tightness SEPARATELY. Validated against the operator cohort in
+# docs/analysis/anticipation_coil_finder_validation_2026-06-27.md (finds all 5 operator coils
+# incl HNGE's May base; rejects GPGI's 199% retrace). The HOLD gate is applied by the CALLER
+# (the shadow job), NOT here — `retrace` is returned so the ~50% cap stays operator-tunable.
+# Pure; no I/O. Operates on db_rows_to_bars shape {date,o,h,l,c,v}.
+COIL_RUNUP_LB = 45        # window (bars) to locate the runup peak
+COIL_RUNUP_MIN = 1.15     # the leg must be ≥15% (peak / prior swing low)
+COIL_PRE_LB = 30          # look back this far before the peak for the runup-leg base (swing low)
+COIL_MIN_CONS = 4         # min consolidation bars after the peak
+COIL_WINDOW = 12          # tightness (band / slope / adr) measured over the recent N bars
+COIL_HOLD_LIMIT = 0.50    # SOFT, operator-tunable cap on the retrace of the runup leg the
+                          # consolidation may give back. The CALLER filters on it ("shallower
+                          # the better, 50% is the rough limit" — operator 6/27, to be tested).
+
+
+def find_coil_setup(bars, i):
+    """The #391 coil at bar `i`, or None. RUNUP leg → consolidation give-back (retrace) →
+    recent-coil tightness, all measured separately. Returns a flat dict (peak_date, runup,
+    cons_days, retrace, coil_days, base_len, band, slope, adr) or None if there is no qualifying
+    runup→consolidation. Does NOT apply the HOLD gate — returns `retrace` so the caller filters
+    on COIL_HOLD_LIMIT (keeps the ~50% cap tunable). Pure python, no numpy."""
+    closes = [b["c"] for b in bars]
+    if i < COIL_RUNUP_LB + 5:
+        return None
+    pk = max(range(i - COIL_RUNUP_LB, i + 1), key=lambda k: closes[k])   # runup peak
+    cons_days = i - pk
+    if cons_days < COIL_MIN_CONS:                                        # need a consolidation after it
+        return None
+    peak = closes[pk]
+    pre = min(range(max(0, pk - COIL_PRE_LB), pk + 1), key=lambda k: closes[k])
+    prelow = closes[pre]
+    leg = peak - prelow
+    if leg <= 0 or peak / prelow < COIL_RUNUP_MIN:
+        return None
+    cons = bars[pk + 1:i + 1]
+    retrace = (peak - min(b["l"] for b in cons)) / leg                   # fraction of the leg given back
+    win = cons[-min(len(cons), COIL_WINDOW):]                            # the recent coil
+    hi = max(b["h"] for b in win)
+    lo = min(b["l"] for b in win)
+    mc = sum(b["c"] for b in win) / len(win)
+    band = (hi - lo) / mc
+    ys = [b["c"] for b in win]
+    nx = len(ys)
+    xs = list(range(nx))
+    mxx = sum(xs) / nx
+    myy = sum(ys) / nx
+    den = sum((x - mxx) ** 2 for x in xs)
+    slope = (sum((x - mxx) * (y - myy) for x, y in zip(xs, ys)) / den / mc) if den else 0.0
+    # DURATION: how far back the close stays inside the coil [lo, hi] = the FULL base, not just the
+    # recent window (a months-long base is "too long to wait" — Pradeep 3-20d). A ranking signal.
+    base_len = 0
+    for k in range(i, -1, -1):
+        if lo <= bars[k]["c"] <= hi:
+            base_len += 1
+        else:
+            break
+    # ORDERLINESS: mean daily range % over the coil (gappy / drunken-man-walk = high; tight orderly = low).
+    adr = sum((b["h"] - b["l"]) / b["c"] for b in win) / len(win) * 100
+    return {
+        "peak_date": bars[pk]["date"],
+        "peak_price": peak,
+        "runup": peak / prelow,
+        "cons_days": cons_days,
+        "retrace": retrace,
+        "coil_days": len(win),
+        "base_len": base_len,
+        "band": band,
+        "slope": slope,
+        "adr": adr,
+    }
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # #327 ENTRY SIGNAL — the validated coil-apex timing gate (SHADOW, SINGLE-SOURCE).
 # Validated 2026-06-18 (docs/analysis/ninem_consolidation_vs_day2_replay_327_2026-06-18.md):
 # across the 9M coil cohort, PERSISTENCE — N consecutive tight days — NOT rmv DEPTH — times the
