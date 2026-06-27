@@ -10,6 +10,73 @@ durable home that survives context compaction — grep here before asking the op
 
 ---
 
+## 2026-06-27 — ANTICIPATION coil POSITIVE EXAMPLES + the detector's structure gap (operator-shared, charts) — grounds setup #354
+
+Operator reviewed the anticipation labeling worksheet (258 post-RMV-fix candidates) and flagged it's
+STILL wrong, both directions. Verbatim:
+- The shown candidates are **"average setup at best, most of them don't look tight at all or there's no
+  basing at all."** Many are **"a dip then rise, then continue to rise and that is counted as tightness,
+  there's no coiling in the structure itself, the range is wide and loose."**
+- Real coils are **MISSING** (false negatives): **"GH... clear run up and a clear flat basing structure,
+  and the past few days broke out from it"** does not appear. **"HNGE is another one that looks great on
+  the chart, clear run up, clear tight basing, clear break out."**
+
+**HNGE (Hinge Health, 1D) — 2 charts shared (wide + zoom), the canonical positive structure:**
+- Prior runup (steep advance into the area).
+- A **FLAT, SIDEWAYS base**: price oscillates inside a **tight HORIZONTAL band** (operator drew the flat
+  resistance line across the top). Small, range-bound candles, **NOT trending**; sits ON the rising MAs and
+  **HOLDS the level** (no breakdown) ~12–15 days.
+- **Breakout** up through the flat top on a big expansion candle.
+
+**GH — operator-described (not charted): clear runup → clear flat basing → broke out the past few days.**
+
+**The positive-class structural features the detector MUST encode (what the operator's eye uses, that RMV
+alone does NOT):**
+1. **FLATNESS** — the base oscillates around a LEVEL (near-zero slope), not climbing. (The admitted garbage
+   was DIRECTIONAL: dip→rise→rise.)
+2. **ABSOLUTE tightness** — a genuinely NARROW band, not just contracting-relative-to-the-runup (Gemini's
+   "6% is still a chainsaw" point, 2026-06-27 RMV review).
+3. **HOLDS + a clean flat RESISTANCE line** — the flat top that becomes the breakout pivot.
+
+**Implication:** RMV (relative volatility contraction) **cannot carry coil-detection alone** — it must be
+PAIRED with STRUCTURAL gates (flatness/sideways + absolute narrow range + flat-top pivot). The worksheet's
+candidate-SELECTION is the problem, not just the RMV thresholds. CALIBRATE from the operator's known-good
+coils (GH, HNGE, + more) as the POSITIVE class — reverse-engineer the shared structure — NOT from the
+detector's flawed candidate set (same data-grounded move as the 6/15 Pradeep cohort). Open diagnostic: are
+GH/HNGE missing because of (A) structure-detection (gates reject flat bases / rank grinds higher) or (B) the
+worksheet is a STALE 6/22 snapshot (their bases may have formed AFTER 6/22)? → the GH/HNGE bar-pull
+diagnoses it. (RMV recalibration that preceded this: commit 20c9c06; #387 = the M&A/buyout false-positive.)
+
+**RMV-creator reference chart (DOCU, 1D, from the video) — operator-shared 2026-06-27:** the creator
+annotates **"Tight Areas/Ranges"** (low-RMV, the coiled spring) → then BOTH **"Expansion Up"** AND
+**"Expansion Down."** KEY: **RMV is DIRECTION-AGNOSTIC** — a tight area precedes an expansion EITHER way
+(the creator labels up- and down-expansions off the same tight zones). RMV finds the SPRING, not the
+DIRECTION. This is exactly why ranking on RMV alone over-admits — it flags every tight zone, including
+ones that resolve DOWN or are mid-trend pauses. The bullish anticipation setup = RMV (the spring) **+**
+the bullish STRUCTURE/CONTEXT (post-runup + a flat, holding base → biases the break UP). The creator's
+own rule (video summary): RMV is highest-probability **"up the right-hand side of a BASE"** or **"first
+pullbacks to key MAs in an uptrend"** — i.e. RMV INSIDE a structure, never RMV alone. → The fix shape:
+the STRUCTURE (post-runup + flat/holding base) is the GATE; RMV is the TIMING within it — not RMV ranking
+the whole universe.
+
+**Gemini diagnosis of the worksheet garbage (operator-shared 2026-06-27, builds on the above):** the bulk
+of the false positives are **3–4 day post-runup PAUSES, not bases.** Mechanism: the 15-bar RMV baseline
+straddles the vertical runup leg; when the base is only 3–4 days old, the tiny recent 3-bar numerator vs
+the runup-inflated 15-bar denominator → rmv≈0 on a stock that "just stopped hyperventilating 72 hours ago"
+— a structural pause, not a base. (PAYO baseD 4/rmv 0; NUVL baseD 6/rmv 0; PTGX baseD 4/rmv 22.) Bonde/Qulla
+require a STABLE anchor — 3–4 days is a micro-swing, not a daily-chart base. FIXES (pre-RMV gates): **(1)
+baseD floor ≥ 6–7** (current gate 3–20; forces a recognizable horizontal pivot + a loose-hands shakeout).
+**(2) absolute NTR_3d cap < ~3–4%** (beta-adjusted) — relative contraction paired with an absolute ceiling,
+reject high-beta chainsaws regardless of the relative rmv. Keep the shadow gate at 30 to finish the batch.
+**CAVEATS (mine, NOT Gemini's, surfaced to the operator):** (a) Gemini INFERRED the labels (assumed
+ROKU/ZVRA=G) — it does not have them; operator said ALL shown are poor, so "the G's passed" is unvalidated.
+(b) baseD+NTR fix the false POSITIVES but NOT the false NEGATIVES (GH/HNGE missing) — separate diagnostic.
+(c) baseD+NTR give duration+tightness but NOT FLATNESS — a 6-day low-NTR GRIND still climbs; the operator's
+flat-sideways check (HNGE) is the piece Gemini omits. The 15-bar baseline spanning the runup is INTENDED
+(not the bug); the bug is the baseD floor admitting 3-day pauses where the baseline is ~all runup.
+
+---
+
 ## 2026-06-22 — HTF (High Tight Flag) blueprint (operator-shared, Gemini research) — grounds setup #356
 
 Operator shared this to GROUND the HTF setup (the former flag → its OWN setup, #356) so we can

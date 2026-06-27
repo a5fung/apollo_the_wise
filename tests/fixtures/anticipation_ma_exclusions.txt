@@ -1,0 +1,10 @@
+# Anticipation M&A / buyout-target exclusions — 2026-06-27 (#387)
+# A stock under acquisition pegs near the deal price -> ultra-tight (rmv~=0) -> reads as a max-coil,
+# but it's a buyout PEG, not a consolidation (it will NOT break out). RMV is price-blind to the catalyst.
+# Method: FMP M&A structured feed is premium (HTTP 403); Polygon news alone over-matches (conflates
+# acquirer vs target vs merely-mentioned). The clean discriminator = (Polygon M&A news headline)
+# INTERSECT (worksheet rmv ultra-tight = the peg). Both operator-confirmed.
+# (ROKU rmv 3 was M&A-news-flagged but the flag was speculative "Netflix missing out on Roku" noise
+#  -- a real coil, NOT excluded. The rmv cross-check is what separates a peg from a genuine coil.)
+PAYO
+NUVL
