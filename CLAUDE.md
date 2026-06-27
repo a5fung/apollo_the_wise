@@ -386,7 +386,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 ### 2026-06-22 (Mon) — MAGNA53 launch Phase 1 (staged, $0 real money) · partials paused
 
 - Phase 1 live-validated (creds boot · preflight · `/status` · `/pause`); magna53 `live_real_enabled=FALSE`, real money = Phase 2 on ACH funds-settle (~Wed). 3 launch-blockers fixed live; two-phase runbook (`docs/roadmap/monday_go_runbook.md`).
-- **Partial exits PAUSED** (`_PARTIAL_EXIT_PAUSED=True`, bbe95a0) — recurring `pending_replace` race; durable fix = #151 (never-naked invariant + failure-matrix harness + converge). Partials are the **TESTED** sell discipline; the pause is **TEMPORARY**, the fix **RESTORES** them (NOT removed) — see THE LINE.
+- **Partial exits — PAUSED 6/22, RESTORED 6/26** (`_PARTIAL_EXIT_PAUSED=False`, order_manager.py; #151 DONE — never-naked invariant + clean partial-exit cycles 6/23–24). The 6/22 pause was a TEMPORARY `pending_replace`-race mitigation; the #151 fix RESTORED them (the **TESTED** sell discipline, never removed) — see THE LINE. (The stale `=True` text here misled a 6/26 burndown — keep current.)
 
 ### Older entries graduated to CHANGELOG.md
 
