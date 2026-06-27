@@ -197,14 +197,17 @@ def _vix_context(v: float) -> str:
 
 
 def _ep_threshold_context(thresh: int) -> str:
-    if thresh >= 90:
+    # Bands match the LIVE regime thresholds (regime.py: Bull 65 · Choppy 70 · Correcting 75 ·
+    # Crisis 80). The old 90/85/80 cutoffs tracked a stale docstring and mislabelled every
+    # non-Bull regime as "standard" (operator 6/26: the brief printed "CORRECTING … standard").
+    if thresh >= 80:
         return f"≥{thresh} — crisis, very selective"
-    elif thresh >= 85:
+    elif thresh >= 75:
         return f"≥{thresh} — correcting, exceptional only"
-    elif thresh >= 80:
+    elif thresh >= 70:
         return f"≥{thresh} — choppy, raise your bar"
     else:
-        return f"≥{thresh} — standard"
+        return f"≥{thresh} — standard (bull)"
 
 
 # ── Section formatters ─────────────────────────────────────────────────────────
@@ -223,6 +226,15 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
     ep_thresh = regime.get("ep_threshold", 70)
 
     lines = [f"*{section_num}. MARKET CONDITION* {emoji} *{label.upper()}*"]
+
+    # Surface the pre-computed grouped "why" (regime.py builds it — operator asked 6/24) so the
+    # net driver is obvious. The evening brief previously discarded this field entirely — leaving
+    # the operator unable to tell what made it correcting when the raw breadth counts read green.
+    _desc = (regime.get("description") or "").strip()
+    if _desc:
+        # Drop the leading verdict line (already in the header) — keep net score + grouped signals.
+        for _dl in _desc.splitlines()[1:]:
+            lines.append(f"  {_dl}" if _dl.strip() else "")
 
     ma_parts = []
     if spy_vs_50 is not None:
@@ -339,6 +351,17 @@ def _format_regime_section(regime: dict, section_num: int = 1) -> str:
             )
 
     lines.append(f"  EP filter: {_ep_threshold_context(ep_thresh)}")
+    # Size note (operator 6/26): the regime LABEL does NOT cut share count — only the threshold
+    # rises. Size is VIX-scaled (continuous) plus a QQQ-EMA-bearish halve, both orthogonal to the
+    # label — so a CORRECTING regime alone means "fewer trades, not smaller ones."
+    if vix is not None:
+        from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+        _mult = vix_scaled_risk_pct(vix) / RISK_PCT
+        _qqq_bear = regime.get("qqq_ema_bullish") is False
+        if _qqq_bear:
+            _mult *= 0.5
+        _why = "VIX-scaled" + (" · ×0.5 QQQ-EMA bearish" if _qqq_bear else "")
+        lines.append(f"  EP size: ≈{_mult:.2f}× ({_why}, not a regime cut)")
     return "\n".join(lines)
 
 
