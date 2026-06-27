@@ -5494,43 +5494,59 @@ class MarketIntelligenceAgent(BaseAgent):
         # 🎯 Detection
         lines.append("")
         if alert:
+            _judge_auth = bool(alert.get("grade_engine_authority"))
             lines.append(
-                f"🎯 Detected: {alert['score_tier']} score {int(alert['ep_score'] or 0)}"
+                f"🎯 DETECTED — {alert['score_tier']} · score {int(alert['ep_score'] or 0)}"
             )
             lines.append(
-                f"   gap {float(alert.get('gap_pct') or 0):+.1f}%, "
-                f"cat={alert.get('catalyst_quality') or 'n/a'}"
+                f"   gap {float(alert.get('gap_pct') or 0):+.1f}% · "
+                f"catalyst {alert.get('catalyst_quality') or 'n/a'}"
             )
+            # Discovery-catalyst blurb: show ONLY when the judge is not authoritative. When it
+            # is, the judge's grounded rationale (its own section below) is the real "why" and
+            # the discovery narrative is the contradicting noise we suppress (#317/#336).
             cat_full = alert.get("catalyst") or ""
-            if cat_full:
-                if len(cat_full) > 140:
-                    cat = cat_full[:140].rsplit(" ", 1)[0] + "…"
-                else:
-                    cat = cat_full
+            if cat_full and not _judge_auth:
+                cat = cat_full if len(cat_full) <= 140 else cat_full[:140].rsplit(" ", 1)[0] + "…"
                 lines.append(f"   {cat}")
-            # #329-trace: the judge decision trace (periodic-review surface). Shows HOW the
-            # authoritative tier was reached — judge tier + direction vs the floor, materiality,
-            # which axes lit, and the load-bearing rationale — so a grade is reconstructable.
-            if alert.get("grade_engine_authority"):
+            # ⚖️ JUDGE — the load-bearing decision gets its OWN section (not crammed under
+            # Detected). Shows HOW the authoritative tier was reached so the grade is
+            # reconstructable: tier + direction vs floor, materiality, axes, rationale (#329/#336).
+            if _judge_auth:
+                lines.append("")
+                _jt = alert.get("judge_tier") or alert.get("score_tier")
+                _dir = alert.get("judge_direction")
+                _floor = alert.get("baseline_floor_tier") or "n/a"
+                _hdr = f"⚖️ JUDGE — {_jt}"
+                if _dir == "hold":
+                    _hdr += f" (held at floor {_floor})"
+                elif _dir:
+                    _hdr += f" ({_dir} vs floor {_floor})"
+                lines.append(_hdr)
                 _fa = alert.get("fire_axes")
                 _fa_txt = ", ".join(_fa) if isinstance(_fa, (list, tuple)) and _fa else "—"
-                _bits = [f"⚖️ judge: {alert.get('judge_tier') or alert.get('score_tier')}"]
-                if alert.get("judge_direction"):
-                    _bits.append(f"{alert['judge_direction']} vs floor {alert.get('baseline_floor_tier') or 'n/a'}")
+                _bits = []
                 if alert.get("judge_materiality_tier"):
                     _bits.append(f"materiality {alert['judge_materiality_tier']}")
-                _bits.append(f"axes {_fa_txt}")
-                if alert.get("rubric_version"):
-                    _bits.append(f"rubric {alert['rubric_version']}")
+                _bits.append(f"axis {_fa_txt}")
+                _rv = alert.get("rubric_version")
+                if _rv:
+                    _rvp = _rv.split("-")
+                    _rv_short = (
+                        f"{_rvp[0]} ({int(_rvp[2])}/{int(_rvp[3])})"
+                        if len(_rvp) >= 4 and _rvp[2].isdigit() and _rvp[3].isdigit()
+                        else _rv
+                    )
+                    _bits.append(f"rubric {_rv_short}")
                 lines.append("   " + " · ".join(_bits))
                 _jr = (alert.get("judge_rationale") or "").strip()
                 if _jr:
-                    _jr = _jr if len(_jr) <= 200 else _jr[:200].rsplit(" ", 1)[0] + "…"
+                    _jr = _jr if len(_jr) <= 220 else _jr[:220].rsplit(" ", 1)[0] + "…"
                     lines.append(f"   \"{_jr}\"")
         else:
             if scan and scan.get("filter_reason"):
                 # #171 — it WAS scanned, just not alerted; show why (e.g. cooldown).
-                lines.append(f"🎯 Detected: scanned, NOT alerted — {scan['filter_reason']}")
+                lines.append(f"🎯 DETECTED — scanned, NOT alerted — {scan['filter_reason']}")
                 scan_bits = [f"gap {float(scan.get('gap_pct') or 0):+.1f}%"]
                 if scan.get("ep_score") is not None:
                     scan_bits.append(
@@ -5538,7 +5554,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     )
                 lines.append("   " + ", ".join(scan_bits))
             else:
-                lines.append("🎯 Detected: no mi_ep_alerts row (not a recognised EP)")
+                lines.append("🎯 DETECTED — no mi_ep_alerts row (not a recognised EP)")
 
         # 💰 Outcome
         lines.append("")
@@ -5549,25 +5565,25 @@ class MarketIntelligenceAgent(BaseAgent):
             sp = trade.get("stop_price")
             pnl = trade.get("total_pnl")
             if status == "skipped" and reason:
-                lines.append(f"💰 Outcome: skipped — {humanize(reason)}")
+                lines.append(f"💰 OUTCOME — skipped — {humanize(reason)}")
             elif status in ("cancelled", "rejected") and reason:
-                lines.append(f"💰 Outcome: {status} — {humanize(reason)}")
+                lines.append(f"💰 OUTCOME — {status} — {humanize(reason)}")
                 if ep_pr and sp:
                     lines.append(f"   limit ${float(ep_pr):.2f}, stop ${float(sp):.2f}")
             elif status == "closed":
                 pnl_v = float(pnl or 0)
-                lines.append(f"💰 Outcome: closed P&L ${pnl_v:+,.2f}")
+                lines.append(f"💰 OUTCOME — closed P&L ${pnl_v:+,.2f}")
                 if ep_pr:
-                    lines.append(f"   entry ${float(ep_pr):.2f}, stop ${float(sp or 0):.2f}")
+                    lines.append(f"   entry ${float(ep_pr):.2f} · stop ${float(sp or 0):.2f}")
             elif status in ("filled", "order_placed", "pending_confirmation", "confirmed"):
-                lines.append(f"💰 Outcome: {status}")
+                lines.append(f"💰 OUTCOME — {status.replace('_', ' ')}")
                 if ep_pr:
-                    lines.append(f"   entry ${float(ep_pr):.2f}, stop ${float(sp or 0):.2f}")
+                    lines.append(f"   entry ${float(ep_pr):.2f} · stop ${float(sp or 0):.2f}")
             else:
                 tail = f" — {humanize(reason)}" if reason else ""
-                lines.append(f"💰 Outcome: {status}{tail}")
+                lines.append(f"💰 OUTCOME — {status.replace('_', ' ')}{tail}")
         else:
-            lines.append("💰 Outcome: no mi_live_trades row (silent drop — see lifecycle)")
+            lines.append("💰 OUTCOME — no mi_live_trades row (silent drop — see lifecycle)")
 
         # 🔍 Fill diagnosis — only meaningful for cancelled/rejected (or
         # skipped with a price-related reason). Fetches minute bars in the
@@ -5712,19 +5728,31 @@ class MarketIntelligenceAgent(BaseAgent):
                     return f"{label} — {summary[:80]}"
                 return label
 
-            cleaned = []
+            # Collapse consecutive-duplicate events (the same step logged twice ~1s apart) into
+            # one "×N" line, and use HH:MM (seconds are noise on a forensic read, not signal).
+            _items: list[tuple[str, str]] = []
             for ev in events:
                 line = _clean(ev)
                 if line is None:
                     continue
-                ts = ev["created_at"].astimezone(_ET).strftime("%H:%M:%S")
-                cleaned.append(f"  {ts}  {line}")
-            if cleaned:
+                ts = ev["created_at"].astimezone(_ET).strftime("%H:%M")
+                _items.append((ts, line))
+            _collapsed: list[str] = []
+            _i = 0
+            while _i < len(_items):
+                _ts, _lbl = _items[_i]
+                _n = 1
+                while _i + _n < len(_items) and _items[_i + _n][1] == _lbl:
+                    _n += 1
+                _suffix = f" ×{_n}" if _n > 1 else ""
+                _collapsed.append(f"   {_ts}  {_lbl}{_suffix}")
+                _i += _n
+            if _collapsed:
                 lines.append("")
-                lines.append(f"📅 Lifecycle ({len(cleaned)} events)")
-                lines.extend(cleaned[:25])
-                if len(cleaned) > 25:
-                    lines.append(f"  …{len(cleaned) - 25} more events")
+                lines.append("📅 LIFECYCLE")
+                lines.extend(_collapsed[:25])
+                if len(_collapsed) > 25:
+                    lines.append(f"   …{len(_collapsed) - 25} more")
 
         # Rubric snapshot (Phase 5, 2026-05-19) — append if cached
         # Theme membership (C8, 2026-05-19) — append for every /why
