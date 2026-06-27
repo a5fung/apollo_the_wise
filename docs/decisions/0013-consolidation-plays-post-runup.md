@@ -249,3 +249,35 @@ adapters). U&R: `anticipation.detect_gdl_reclaim`, the `fishhook_detector` recla
 - **Flag fix (Phase 4, separate):** a base_low undercut no longer flips INVALIDATED → routes to
   `WATCH_UR`; an undercut→reclaim surfaces (test a known U&R case). N≥10 backtest before deploy.
 - **No trade-state touched;** preflight green; `deploy.sh market-agent`.
+
+---
+
+## Change log
+
+### 2026-06-27 — RMV recalibration (min-max → ratio-to-baseline) + #327 entry gate moved to `rmv_15d`
+
+**What & why.** The RMV tightness primitive (`flag_detector._compute_rmv`) was rewritten from min-max
+normalization to the **creator-confirmed ratio-to-baseline** form (`SMA(NTR,3)/SMA(NTR,15)`, gap-aware
+NTR = TR÷close, floor 0.4 / ceiling 1.5 → 0–100). The old min-max let a single wide runup bar own the
+denominator, so any quiet follow-through read ~0 ("max coil") — it detected *runup exhaust*, not a coil.
+The operator's labeling worksheet (`anticipation_shortlist_to_label_2026-06-22.md`) surfaced it: the
+top-sorted `rmv≈0` names were all garbage (volatile/trending, no base). Root-cause confirmed by the
+indicator's creator (a walkthrough the operator relayed, 6/27).
+
+**The one gate change.** #327's **Anticipate** entry signal (`is_entry_tight` / `entry_signal_at`)
+gated on `rmv_5d ≤ 40`. The ratio form only reads "contracted" against the long baseline (a 5-bar window
+overlaps the recent run → ~50 for a real coil), so the gate **moved to `rmv_15d ≤ 30`** (creator's
+"<30 = getting tight"). The `30` is **PROVISIONAL** — the operator's labeling pass supplies the N≥10
+calibration evidence (CHANGE_PROCESS). Both `rmv_5d` and `rmv_15d` are recorded
+(`mi_consolidation_entry_shadow` gains an `rmv_15d` column).
+
+**Why no pre-deploy backtest gate.** #327 is **SHADOW** (zero execution — no paper, no live). The old
+metric was *known-wrong*; keeping it stable only poisoned the shadow data the gate exists to collect.
+Operator-signed 2026-06-27 ("we are not trading this setup yet … why keep something we know is wrong").
+Empirical threshold calibration still comes from the labeling pass.
+
+**Touched:** `flag_detector._compute_rmv` (+ `anticipation.compute_rmv` wrapper), `anticipation`
+(`is_entry_tight` gate, `entry_signal_at`/`confirm_signal_at` record both readings), `db` (entry-shadow
+`rmv_15d` column + migration + insert), `scheduler` (caller), `scripts/_anticipation_shortlist.py`
+(lookback→15), `docs/methodology/primitives.md` (RMV row). Telemetry-only elsewhere — formula improved,
+no gate.

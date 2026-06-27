@@ -61,7 +61,7 @@ def row(bars):
     bd4 = sum(1 for j in range(ai + 1, len(bars))
               if bars[j - 1]["c"] and (bars[j]["c"] / bars[j - 1]["c"] - 1) <= -0.04)
     retrace = (peak - min(b["c"] for b in base)) / peak * 100
-    rmv = de.compute_rmv(bars, len(bars) - 1, lookback=5)
+    rmv = de.compute_rmv(bars, len(bars) - 1, lookback=15)
     prev = bars[-2]["c"]
     today = abs(bars[-1]["c"] / prev - 1) * 100 if prev else None
     return {"runup": round(runup, 2), "baseD": len(base), "bd4": bd4,

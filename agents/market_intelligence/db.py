@@ -1631,7 +1631,8 @@ async def initialize_schema() -> None:
                 stop_price      FLOAT NOT NULL,       -- coiled_low = the fire-bar low
                 structural_low  FLOAT,                -- alt stop (base low over the run) — recorded, unused yet
                 signal_n        INT NOT NULL,         -- consecutive tight days at the fire
-                rmv_5d          FLOAT,                -- the gate readings at the fire (telemetry)
+                rmv_5d          FLOAT,                -- 2nd telemetry (the gate moved to rmv_15d 2026-06-27)
+                rmv_15d         FLOAT,                -- the GATE reading at the fire (#327 gates on rmv_15d)
                 range_pct       FLOAT,
                 vol_ratio       FLOAT,
                 target_r        FLOAT NOT NULL,       -- "capture" = fwd MFE ≥ this × risk (settlement def)
@@ -1651,6 +1652,11 @@ async def initialize_schema() -> None:
             -- the value set on existing prod tables (the inline CREATE covers only fresh ones).
             ALTER TABLE mi_consolidation_entry_shadow
                 ADD COLUMN IF NOT EXISTS entry_mode TEXT NOT NULL DEFAULT 'anticipate';
+            -- rmv_15d added 2026-06-27 (RMV min-max→ratio recalibration): the #327 gate moved
+            -- rmv_5d→rmv_15d (the ratio form reads "contracted" only vs the long baseline). Both are
+            -- recorded; existing rows keep rmv_5d, rmv_15d NULL until the next fire. See ADR 0013.
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS rmv_15d FLOAT;
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mi_cons_entry_shadow_mode_chk') THEN
                     ALTER TABLE mi_consolidation_entry_shadow
@@ -6611,8 +6617,8 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
 
 
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
-        entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, range_pct,
-        vol_ratio, target_r, origin, entry_mode='anticipate') -> bool:
+        entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, rmv_15d=None,
+        range_pct, vol_ratio, target_r, origin, entry_mode='anticipate') -> bool:
     """Record one Family-A forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial
     unique index (ticker, anchor_date, entry_mode) WHERE outcome IS NULL makes a re-fire on an
     already-OPEN coil+mode a no-op (entry stays pinned to the FIRST fire day) WHILE letting an
@@ -6625,12 +6631,12 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
         row = await conn.fetchrow("""
             INSERT INTO mi_consolidation_entry_shadow
                 (ticker, anchor_date, entry_date, entry_price, stop_kind, stop_price,
-                 structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin, entry_mode)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                 structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
             ON CONFLICT (ticker, anchor_date, entry_mode) WHERE outcome IS NULL DO NOTHING
             RETURNING id
         """, ticker, _dd(anchor_date), _dd(entry_date), entry_price, stop_kind, stop_price,
-             structural_low, signal_n, rmv_5d, range_pct, vol_ratio, target_r, origin, entry_mode)
+             structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
     return row is not None
 
 

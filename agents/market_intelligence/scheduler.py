@@ -2964,7 +2964,7 @@ async def _consolidation_readiness_job():
                                 ticker, anchor_date, entry_date=sig["entry_date"],
                                 entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
                                 stop_price=sig["stop_price"], structural_low=sig["structural_low"],
-                                signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"],
+                                signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"], rmv_15d=sig.get("rmv_15d"),
                                 range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
                                 target_r=sig["target_r"], origin=origin, entry_mode=mode):
                             entries_fired.append((ticker, origin, mode, sig))

@@ -176,63 +176,84 @@ def _atr_14(rows: list[dict], end_idx: int) -> Optional[float]:
     return sum(trs) / len(trs) if trs else None
 
 
+# RMV ratio-to-baseline calibration. FLOOR = the recent/baseline NTR ratio at which the spring is
+# fully coiled (RMV=0); CEILING = the ratio at which volatility is expanding (RMV=100). These are
+# CALIBRATABLE from the operator's anticipation-labeling pass (the worksheet that revealed the old
+# min-max form was minting false coils) — start at the creator's suggested 0.4 / 1.5.
+_RMV_FLOOR = 0.4
+_RMV_CEILING = 1.5
+# Recent-window NTR floor (percent): if every recent bar's NTR is below this, the recent window is
+# range-dead (trading halt / frozen feed / zero-tick days), NOT a coiled spring — return None, not a
+# phantom rmv 0 (Gemini-confirmed 2026-06-27). 0.05% sits safely under real ultra-tight coils
+# (PAYO 0.14%, NUVL 0.15%) yet above any genuinely halted 3-bar stretch.
+_RMV_DEAD_NTR_FLOOR = 0.05
+
+
+def _ntr(bar: dict, prev_close: Optional[float]) -> Optional[float]:
+    """Normalized True Range — the gap-aware Wilder TR as a percent of close. Normalizing by close
+    makes RMV price-level neutral (a $10 and a $500 name map onto the same 0-100 scale, no skew).
+    Returns None when close is non-positive (degenerate / bad bar)."""
+    close = float(bar["close"])
+    if close <= 0:
+        return None
+    return _wilder_tr(bar, prev_close) / close * 100.0
+
+
 def _compute_rmv(
     rows: list[dict],
     today_idx: int,
-    lookback: int = 5,
-    current_window: int = 2,
+    lookback: int = 15,
+    current_window: int = 3,
 ) -> Optional[float]:
-    """Relative Measured Volatility (DeepVue / TraderLion) — 0-100 contraction index.
+    """Relative Measured Volatility (DeepVue / TraderLion) — 0-100 contraction index, low = coiled.
 
-    Min-max normalization of smoothed current TR vs the rolling ATR range over
-    `lookback` sessions. RMV near 0 = contraction (current vol at the floor of
-    recent range); RMV near 100 = expansion (current vol at the ceiling).
+    RATIO-TO-BASELINE form (creator-confirmed 2026-06-27). Compares recent micro-trend volatility to
+    the rolling baseline volatility and maps the ratio onto 0-100:
+        ratio = mean(NTR over last `current_window` bars) / mean(NTR over last `lookback` bars)
+        RMV   = clamp( (ratio - FLOOR) / (CEILING - FLOOR) * 100,  0, 100 )
+    where NTR = gap-aware Wilder TR ÷ close × 100 (price-level neutral).
 
-    Both sides are smoothed (advisor-corrected from Gemini's naive single-bar
-    current/max form) so a single wick spike doesn't pollute the score:
-    - ATR_today = mean of last `current_window` TRs (default 2)
-    - ATR_min   = min of rolling `current_window`-bar ATRs over `lookback`
-    - ATR_max   = max of rolling `current_window`-bar ATRs over `lookback`
-    - RMV = (ATR_today − ATR_min) / (ATR_max − ATR_min) × 100
+    Why NOT min-max (the prior implementation): min-max normalized today's vol against the [min, max]
+    of the window, so a single wide RUNUP bar owned the denominator (ATR_max) and crushed any mildly
+    quiet follow-through day to ~0 — flagging "max coil" on the *exhaust* of the preceding move, not a
+    real base. That false-positived every post-runup name (operator's 6/27 labeling pass: the entire
+    rmv≈0 block was garbage). A ratio to the *average* baseline forces the recent window to be
+    legitimately, sustainedly quiet (2-4 bars) before RMV approaches 0.
 
-    Returns None if insufficient history (today_idx < lookback). Returns 0.0
-    when ATR_max == ATR_min (zero-variance window — fully degenerate
-    contraction; treat as maximum coil signal).
+    Returns None — never 0 — when history is insufficient (today_idx < lookback), a bar's close is
+    non-positive, the baseline volatility is 0, or the recent window is range-dead (every recent NTR
+    below _RMV_DEAD_NTR_FLOOR — a halt / frozen / dead feed). 0 is a REAL max-coil signal, so these
+    degenerate cases must be None: returning 0 there would mint a phantom coil buy on dead data.
 
-    Phase 1: telemetry-only. Phase 2 evaluates whether RMV-low diverges from
-    existing _compute_fresh_tightening signal — see TI #54 in tasklist.
+    Recorded as telemetry (rmv_5d + rmv_15d); since 2026-06-27 rmv_15d ALSO gates #327's SHADOW
+    consolidation-entry (anticipation.is_entry_tight / ENTRY_RMV_MAX) — no longer telemetry-only.
+    FLOOR/CEILING are calibratable from the operator's labeling pass.
     """
     if today_idx < lookback or current_window < 1:
         return None
 
-    # Build TR list spanning the lookback window + a small lead-in for the
-    # rolling current-window mean. Earliest TR needed is at
-    # (today_idx - lookback - current_window + 2).
-    earliest = max(0, today_idx - lookback - current_window + 1)
-    trs: list[float] = []
+    # NTR for each bar across the baseline window (the recent window is its trailing tail).
+    earliest = today_idx - lookback + 1
+    ntrs: list[float] = []
     for i in range(earliest, today_idx + 1):
         prev_close = float(rows[i - 1]["close"]) if i > 0 else None
-        trs.append(_wilder_tr(rows[i], prev_close))
-    if len(trs) < current_window:
+        v = _ntr(rows[i], prev_close)
+        if v is None:
+            return None  # non-positive close in the window — degenerate
+        ntrs.append(v)
+    if len(ntrs) < current_window:
         return None
+    if max(ntrs[-current_window:]) < _RMV_DEAD_NTR_FLOOR:
+        return None  # range-dead recent window (halt / frozen feed) — a void, not a coil (Gemini 2026-06-27)
 
-    # Rolling smoothed-TR series (each value = mean of last current_window TRs)
-    smoothed: list[float] = []
-    for i in range(current_window - 1, len(trs)):
-        smoothed.append(sum(trs[i - current_window + 1 : i + 1]) / current_window)
+    base = sum(ntrs) / len(ntrs)
+    recent = sum(ntrs[-current_window:]) / current_window
+    if base <= 0:
+        return None  # dead / frozen feed — never a real coil, do not mint 0
 
-    # Take the trailing `lookback` smoothed values for min/max baseline; the
-    # final value is ATR_today.
-    if len(smoothed) < lookback:
-        return None
-    window = smoothed[-lookback:]
-    atr_today = window[-1]
-    atr_min = min(window)
-    atr_max = max(window)
-
-    if atr_max == atr_min:
-        return 0.0
-    return (atr_today - atr_min) / (atr_max - atr_min) * 100.0
+    ratio = recent / base
+    rmv = (ratio - _RMV_FLOOR) / (_RMV_CEILING - _RMV_FLOOR) * 100.0
+    return max(0.0, min(100.0, rmv))
 
 
 def _compute_fresh_tightening(

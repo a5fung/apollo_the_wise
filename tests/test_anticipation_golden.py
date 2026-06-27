@@ -73,7 +73,9 @@ def test_rmv_adapter_matches_flag_detector():
     from agents.market_intelligence.flag_detector import _compute_rmv
     # asymmetric ranges (high/low at different distances from close) so a high↔low swap in
     # the adapter would change the TR and fail this test; contraction then expansion.
-    spec = [(1.2, 0.4), (1.0, 0.5), (0.7, 0.3), (0.5, 0.2), (0.3, 0.15),
+    # 16 bars so the default lookback=15 actually computes (idx 15); asymmetric ranges throughout.
+    spec = [(1.6, 0.7), (1.3, 0.5), (1.5, 0.6), (1.1, 0.45), (1.4, 0.55), (1.2, 0.5),
+            (1.2, 0.4), (1.0, 0.5), (0.7, 0.3), (0.5, 0.2), (0.3, 0.15),
             (0.2, 0.1), (0.15, 0.08), (0.1, 0.05), (0.9, 0.6), (1.4, 0.7)]
     bars = [{"date": f"d{i}", "o": 10.0, "h": 10.0 + hr, "l": 10.0 - lr, "c": 10.0}
             for i, (hr, lr) in enumerate(spec)]
@@ -85,3 +87,33 @@ def test_rmv_adapter_matches_flag_detector():
         assert direct == via_adapter, f"RMV adapter drift at idx {idx}: {direct} != {via_adapter}"
         seen_value = seen_value or (direct is not None)
     assert seen_value, "RMV never computed a non-None value — series too short to exercise the adapter"
+
+
+def test_rmv_tight_multibar_base_reads_near_zero():
+    """Sustained contraction (last 3 bars far tighter than the 15-bar baseline) → RMV at the floor."""
+    from agents.market_intelligence.flag_detector import _compute_rmv
+    rows = ([{"high_price": 10.5, "low_price": 9.5, "close": 10.0}] * 13
+            + [{"high_price": 10.05, "low_price": 9.95, "close": 10.0}] * 3)
+    rmv = _compute_rmv(rows, 15)
+    assert rmv is not None
+    assert rmv < 5.0  # recent/base ratio well under FLOOR → clamped near 0 (computed: 0.0)
+
+
+def test_rmv_one_quiet_day_after_runup_is_not_zero():
+    """The regression the rewrite fixes: 14 wide runup bars + ONE quiet inside day. The recent-3
+    window still holds 2 wide bars, so the ratio stays high. The OLD min-max form read ~0 here
+    (the single wide bar owned the max), falsely flagging max-coil; ratio-to-baseline must not."""
+    from agents.market_intelligence.flag_detector import _compute_rmv
+    rows = ([{"high_price": 10.5, "low_price": 9.5, "close": 10.0}] * 15
+            + [{"high_price": 10.05, "low_price": 9.95, "close": 10.0}])
+    rmv = _compute_rmv(rows, 15)
+    assert rmv is not None
+    assert rmv > 15.0  # NOT a phantom coil on one inside day (computed: 31.3, vs old min-max ~0)
+
+
+def test_rmv_dead_feed_returns_none_not_zero():
+    """Zero-variance series (frozen / halted feed) → baseline vol 0 → None, never a phantom 0 coil.
+    0 is a REAL max-coil signal, so a dead feed must not be able to mint it."""
+    from agents.market_intelligence.flag_detector import _compute_rmv
+    rows = [{"high_price": 10.0, "low_price": 10.0, "close": 10.0}] * 16
+    assert _compute_rmv(rows, 15) is None

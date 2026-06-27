@@ -218,7 +218,7 @@ def bars_to_rmv_rows(bars: list[dict]) -> list[dict]:
 
 
 def compute_rmv(bars: list[dict], today_idx: int,
-                lookback: int = 5, current_window: int = 2) -> Optional[float]:
+                lookback: int = 15, current_window: int = 3) -> Optional[float]:
     """RMV (0-100 contraction index) on replay-shaped bars via the canonical
     flag_detector._compute_rmv — recorded telemetry on the lifecycle row, NOT a gate."""
     return _compute_rmv(bars_to_rmv_rows(bars), today_idx,
@@ -722,7 +722,12 @@ def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_wind
 # measures the validated signal, not a re-implementation that drifted. SHADOW: records the would-be
 # entry; ZERO execution authority.
 # ─────────────────────────────────────────────────────────────────────────────
-ENTRY_RMV_MAX = 40.0     # rmv_5d ≤ this = contracted (robust 30–40; 40 = the inclusive edge)
+ENTRY_RMV_MAX = 30.0     # rmv_15d ≤ this = contracted. PROVISIONAL — creator's "<30 = getting tight"
+                         # on the ratio-to-baseline RMV (creator-confirmed 2026-06-27); the operator's
+                         # labeling pass calibrates the final value (the N≥10 evidence). Gate moved
+                         # rmv_5d→rmv_15d: the new ratio form only reads "contracted" against the long
+                         # baseline — the 5-bar window overlaps the recent run (~50 for a real coil).
+                         # #327 is SHADOW (not traded). See ADR 0013 change-log.
 ENTRY_RANGE_MAX = 0.07   # daily (H−L)/C ≤ this (== TIGHT_RANGE; robust 5–7%)
 ENTRY_VOL_MAX = 1.0      # vol ≤ this × ADV20 (== VOL_CONTRACT, the quiet "rest")
 ENTRY_TIGHT_N = 3        # consecutive tight days before the fire (the validated count; 2–3 region)
@@ -731,16 +736,20 @@ ENTRY_TARGET_R = 3.0     # "capture" = forward MFE reaches +TARGET_R × risk bef
 
 def is_entry_tight(bars, rmv_rows, vols, i, *, rmv_max=ENTRY_RMV_MAX,
                    range_max=ENTRY_RANGE_MAX, vol_max=ENTRY_VOL_MAX) -> bool:
-    """One bar's #327 tightness gate — contracted rmv_5d + tight daily range + quiet volume.
+    """One bar's #327 tightness gate — contracted rmv_15d + tight daily range + quiet volume.
     Backward-looking only (reads bars/rmv_rows/vols up to `i`). The SINGLE per-bar feature the
     offline sweep and the live entry-watch share (pinned by the golden test). `rmv_rows`/`vols` are
-    passed in (not rederived per-bar) so a run-scan over many bars stays cheap."""
-    rmv = _compute_rmv(rmv_rows, i, lookback=5)
+    passed in (not rederived per-bar) so a run-scan over many bars stays cheap. Gates on rmv_15d (the
+    ratio-RMV's canonical baseline) — rmv_5d's 5-bar window overlaps the recent run, reading ~50 for a
+    real coil (creator-confirmed 2026-06-27)."""
+    rmv = _compute_rmv(rmv_rows, i, lookback=15)
     if rmv is None or rmv > rmv_max:
         return False
     c = bars[i]["c"]
     if not c or (bars[i]["h"] - bars[i]["l"]) / c > range_max:
         return False
+    if not bars[i]["v"]:
+        return False  # volume-dead bar (halt / void) — a real VCP rest still trades shares (Gemini 2026-06-27)
     adv = _adv(vols, i)
     return bool(adv) and bars[i]["v"] <= vol_max * adv
 
@@ -766,7 +775,8 @@ def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV
         "entry_date": bars[idx]["date"],
         "entry_price": round(entry, 4),
         "signal_n": n,
-        "rmv_5d": _compute_rmv(rr, idx, lookback=5),
+        "rmv_5d": _compute_rmv(rr, idx, lookback=5),       # 2nd telemetry (NOT the gate now)
+        "rmv_15d": _compute_rmv(rr, idx, lookback=15),     # the gate reading (#327 gates on this)
         "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / entry, 5) if entry else None,
         "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
         "stop_kind": "coiled_low",                   # the validated default stop (robustness baseline)
@@ -810,6 +820,7 @@ def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
         "entry_price": round(close, 4),
         "signal_n": 0,                               # n/a for confirm (not a tight-day-count signal) — sentinel
         "rmv_5d": _compute_rmv(rr, idx, lookback=5),
+        "rmv_15d": _compute_rmv(rr, idx, lookback=15),   # parity with anticipate (telemetry; confirm gates on the breakout)
         "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / close, 5) if close else None,
         "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
         "stop_kind": "base_low",                     # Confirm stop = the base low

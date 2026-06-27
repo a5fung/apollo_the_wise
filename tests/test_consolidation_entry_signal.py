@@ -64,6 +64,54 @@ def test_is_entry_tight_rejects_loud_volume():
     assert de.is_entry_tight(bars, rr, vols, len(bars) - 1) is False
 
 
+def test_is_entry_tight_requires_contraction_not_just_quiet():
+    """The min-max→ratio regression (2026-06-27): a UNIFORMLY quiet series (tight range + low vol, but
+    NO prior expansion to contract from) must be REJECTED — RMV measures contraction vs a baseline, not
+    raw tightness. The old min-max read ~0 here (atr_max≈atr_min → the degenerate floor) and FALSELY
+    fired; the ratio form reads ~55 (recent ≈ baseline) → no fire. The range + vol gates pass, so this
+    isolates the RMV gate as the discriminator."""
+    bars = [_mk(20.0, 0.02, 8e5, d) for d in range(20)]   # flat: tight range, quiet vol, NO runup
+    rr = de.bars_to_rmv_rows(bars)
+    vols = [b["v"] for b in bars]
+    i = len(bars) - 1
+    assert (bars[i]["h"] - bars[i]["l"]) / bars[i]["c"] <= de.ENTRY_RANGE_MAX   # range gate would pass
+    assert bars[i]["v"] <= de.ENTRY_VOL_MAX * de._adv(vols, i)                  # vol gate would pass
+    assert de._compute_rmv(rr, i, lookback=15) > de.ENTRY_RMV_MAX              # but no contraction
+    assert de.is_entry_tight(bars, rr, vols, i) is False
+
+
+def test_is_entry_tight_rejects_recent_halt_with_live_baseline():
+    """The recent-halt edge (Gemini 2026-06-27): a trading halt — 3 flat, zero-range, zero-VOLUME bars —
+    inside an otherwise-live 15-bar baseline drives the recent NTR → 0 → ratio → 0 → a phantom 'max coil'.
+    RMV sees only price range, so a halt looks identical to a perfect coil. Verified pre-fix this session:
+    it fired True at rmv 0. The dead-data guards (the range-dead NTR floor in _compute_rmv + the
+    volume-dead bar in is_entry_tight) must REJECT it — a halt is a void, not a coiled spring."""
+    bars, day, base = [], 0, 16.0
+    for k in range(17):                                   # live, rising, volatile runup leg
+        c = base + 0.30 * base * k / 16
+        bars.append(_mk(c, 0.06, 2e6, day)); day += 1
+    peak = bars[-1]["c"]
+    for _ in range(3):                                    # the HALT: zero range, zero volume
+        bars.append(_mk(peak, 0.0, 0, day)); day += 1
+    rr = de.bars_to_rmv_rows(bars)
+    vols = [b["v"] for b in bars]
+    i = len(bars) - 1
+    assert de._compute_rmv(rr, i, lookback=15) is None    # range-dead recent window → None, not a phantom 0
+    assert de.is_entry_tight(bars, rr, vols, i) is False  # rejected, not a phantom coil
+
+
+def test_is_entry_tight_rejects_zero_volume_bar():
+    """The volume-dead half of the halt guard, isolated: a bar with a real (coil-tight) range but ZERO
+    volume is a void, not a rest — rejected even though the range + rmv gates would pass. Without the
+    guard the final `v <= vol_max·ADV` check passes on v=0 (0 ≤ anything) and it would fire (Gemini 6/27)."""
+    bars, _ = _coil_series(n_tight=8, rng=0.02, vol=8e5)
+    i = len(bars) - 1
+    bars[i]["v"] = 0                                       # halt the final coil bar's volume only
+    rr = de.bars_to_rmv_rows(bars)
+    vols = [b["v"] for b in bars]
+    assert de.is_entry_tight(bars, rr, vols, i) is False
+
+
 # ── 2. entry_signal_at — the N-run fire + look-ahead invariance ───────────────
 def test_entry_signal_fires_on_post_runup_tight_run():
     bars, anchor = _coil_series(n_tight=8, rng=0.02, vol=8e5)
@@ -75,6 +123,9 @@ def test_entry_signal_fires_on_post_runup_tight_run():
     # structural_low = base low over the N-run; with a flat coil it equals the bar low
     assert sig["structural_low"] <= sig["stop_price"] + 1e-9
     assert sig["entry_price"] == round(bars[-1]["c"], 4)
+    # the gate reading (rmv_15d) is recorded + within the gate; rmv_5d kept as 2nd telemetry
+    assert sig["rmv_15d"] is not None and sig["rmv_15d"] <= de.ENTRY_RMV_MAX
+    assert "rmv_5d" in sig
 
 
 def test_entry_signal_point_in_time_invariant_to_future_bars():
