@@ -6515,19 +6515,25 @@ async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
     """The signed §2 Family-A universe as-of scan_date: names that ran up (MAX/MIN close ≥ 1.15
     over a rolling 10-session window, best over the last 12 sessions) and are compressing today
     (|close %change| ≤ 1.0% — the LOCKED inclusion gate; ≤0.4% is a ranking marker, not the gate),
-    above the price + liquidity floors. Emits the ABSOLUTE anchor = the earliest date of the MAX
-    close in the last 15 sessions (deterministic on ties → scan-stable key). Ordered tightest-first.
-    The pure evaluate_consolidation re-confirms the runup over the anchor-ending window."""
+    above the price + liquidity floors. Emits the base-start anchor (#389) = the EARLIEST date within
+    2% of the 15-session peak close (not the argmax — a late marginal new-high inside the base must not
+    re-anchor/truncate it); runup_high stays the true window MAX so select_consolidation_keys' higher-high
+    leg test is unchanged. Deterministic → scan-stable key. Ordered tightest-first. The pure
+    evaluate_consolidation re-confirms the runup over the anchor-ending window."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             WITH p AS (SELECT $1::date AS d),
-            b AS (
-                SELECT ticker, trade_date, close, volume,
-                       row_number() OVER (PARTITION BY ticker ORDER BY trade_date DESC) AS rn
-                FROM mi_daily_closes, p
-                WHERE trade_date <= p.d AND trade_date > p.d - INTERVAL '60 days'
-                  AND close > 0 AND volume > 0
+            b AS (                               -- CS/ADRC only (or unknown) — reject ETFs/leveraged/
+                SELECT dc.ticker, dc.trade_date, dc.close, dc.volume,  -- preferred (operator 6/27: never
+                       row_number() OVER (PARTITION BY dc.ticker       -- anticipation setups)
+                                          ORDER BY dc.trade_date DESC) AS rn
+                FROM mi_daily_closes dc
+                CROSS JOIN p
+                LEFT JOIN mi_security_types st ON st.ticker = dc.ticker
+                WHERE dc.trade_date <= p.d AND dc.trade_date > p.d - INTERVAL '60 days'
+                  AND dc.close > 0 AND dc.volume > 0
+                  AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
             ),
             w AS (SELECT * FROM b WHERE rn <= 25),
             liq AS (
@@ -6545,10 +6551,15 @@ async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
             ),
             ru AS (SELECT ticker, max(r10) FILTER (WHERE rn <= 12) AS best_r10
                    FROM roll GROUP BY ticker),
-            pk AS (                              -- absolute, scan-stable anchor (earliest peak-close)
-                SELECT DISTINCT ON (ticker) ticker, trade_date AS anchor_date, close AS runup_high
-                FROM w WHERE rn <= 15
-                ORDER BY ticker, close DESC, trade_date ASC
+            pkmx AS (                             -- #389: the window peak height (true MAX close)
+                SELECT ticker, max(close) AS mx FROM w WHERE rn <= 15 GROUP BY ticker
+            ),
+            pk AS (                              -- #389 base-start anchor: EARLIEST bar within 2% of the
+                SELECT DISTINCT ON (w.ticker)    --   window peak (not the argmax → a late marginal new
+                       w.ticker, w.trade_date AS anchor_date, pkmx.mx AS runup_high  -- high can't truncate
+                FROM w JOIN pkmx USING (ticker)  --   the base). runup_high stays the true peak so the
+                WHERE w.rn <= 15 AND w.close >= 0.98 * pkmx.mx  -- carry-forward higher-high test is intact.
+                ORDER BY w.ticker, w.trade_date ASC
             ),
             td AS (
                 SELECT a.ticker, a.close AS c0, c.close AS c1

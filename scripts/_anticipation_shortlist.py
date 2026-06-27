@@ -13,7 +13,13 @@ from collections import defaultdict
 sys.path.insert(0, ".")
 from agents.market_intelligence import anticipation as de
 
-OUT = "docs/analysis/anticipation_shortlist_to_label_2026-06-22.md"
+OUT = "docs/analysis/anticipation_shortlist_to_label_2026-06-27.md"
+
+# #389 — earliest-in-tolerance peak anchor (mirrors db.get_anticipation_universe pk CTE). A flat-top
+# base's marginal LATE new-high must not re-anchor the clock and truncate the base: the base-start
+# peak is the EARLIEST bar that reached the runup-peak region (within 2% of the window max), not the
+# argmax. Data-hygiene tolerance, NOT a gate.
+ANCHOR_PEAK_TOL = 0.98
 
 
 def load(path):
@@ -36,13 +42,15 @@ def load(path):
 
 
 def stable_anchor_idx(bars, min_base=3, max_base=20):
+    """#389 — the EARLIEST bar within ANCHOR_PEAK_TOL of the window-max close = the base-start peak
+    (where the consolidation began), so an internal/late base high can't re-anchor + truncate baseD."""
     n = len(bars)
     end, start = n - min_base, max(0, n - max_base)
     if end <= start:
         return None
     mx = max(bars[j]["c"] for j in range(start, end))
     for j in range(start, end):
-        if bars[j]["c"] == mx:
+        if bars[j]["c"] >= ANCHOR_PEAK_TOL * mx:
             return j
     return None
 
@@ -74,15 +82,10 @@ def row(bars):
 
 
 def main():
+    # The fixture is now CS-filtered + complete at BUILD time (#388 scripts/build_anticipation_universe.py
+    # via get_common_stock_tickers — the mi_security_types SSoT). No static allowlist read here anymore;
+    # rebuild the fixture with build_anticipation_universe.py before regenerating this worksheet.
     bars = load("tests/fixtures/anticipation_universe_bars.psv")
-    # Common-stock filter (operator 6/27): drop ETFs / leveraged-inverse (ETV) / preferred /
-    # unclassified — never anticipation setups (SCO/SQQQ/TQQQ/BOIL leaked in). Allowlist = prod
-    # mi_security_types CS+ADRC, snapshotted to the fixture below (READ-ONLY query, 2026-06-27).
-    n_all = len(bars)
-    with open("tests/fixtures/anticipation_cs_allowlist.txt", encoding="utf-8") as fh:
-        cs = {ln.strip() for ln in fh if ln.strip()}
-    bars = {tk: b for tk, b in bars.items() if tk in cs}
-    n_dropped = n_all - len(bars)
     rows = []
     for tk, b in bars.items():
         r = row(b)
@@ -96,7 +99,7 @@ def main():
         f.write("This calibrates the volatility-relative holds/tightness thresholds — do NOT treat the\n")
         f.write("current ordering as the gate. Gates so far: stable anchor (3-20d base) + runup>=15%.\n")
         f.write("`bd4`=#>=4% daily breakdowns in the base · `retr%`=max retrace from peak · `rmv`=RELATIVE contraction vs the stock's own 15-bar baseline (0-100, low=contracting-after-the-runup, NOT absolute narrowness) · `today%`=today's move.\n\n")
-        f.write(f"{len(rows)} post-runup candidates (CS/ADRC universe of {len(bars)}; {n_dropped} ETF/leveraged/other dropped). Tight+holding first.\n\n")
+        f.write(f"{len(rows)} post-runup candidates (CS/ADRC universe of {len(bars)}, built #388 from mi_security_types). Tight+holding first.\n\n")
         f.write("| LABEL | ticker | runup | runup-from | base-start (peak) | base-end (eval) | baseD | bd4 | retr% | rmv | today% |\n")
         f.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
         for tk, r in rows:
