@@ -1442,6 +1442,21 @@ async def promote_shadow_themes(today) -> int:
             summary=f"Graduated {n} shadow cohort(s) into live mi_themes",
             detail=f"promoted={[t['name'] for t in themes]}")
     logger.info("[promote] graduated %d shadow cohort(s) into mi_themes", n)
+    # Self-verify (#370 systematic-failure-guard) — the nightly run confirms ITSELF, no human in the
+    # loop. SILENT-FAILURE (cohorts qualified but 0 written) -> alert, never a silent degrade.
+    # SUCCESS -> a one-line operator confirm so "it fired" is visible (silent success is invisible).
+    from agents.market_intelligence.briefing import send_telegram_message
+    if len(cohorts) > 0 and n == 0:
+        await log_audit_event(
+            "shadow_promotion_silent_failure",
+            summary=f"{len(cohorts)} shadow cohort(s) qualified but 0 graduated",
+            detail=f"qualified={[c['name'] for c in cohorts]}")
+        await send_telegram_message(
+            f"⚠️ Theme graduation RAN but wrote 0 rows despite {len(cohorts)} qualifying "
+            f"cohort(s) — check the shadow_promotion_silent_failure audit.")
+    elif n > 0:
+        await send_telegram_message(
+            f"🎓 {n} theme(s) graduated shadow→live this run. `/themes` for the list.")
     return n
 
 
