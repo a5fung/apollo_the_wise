@@ -669,7 +669,8 @@ def consolidation_telemetry(bars, i, anchor_idx):
 # the RECENT coil tightness SEPARATELY. Validated against the operator cohort in
 # docs/analysis/anticipation_coil_finder_validation_2026-06-27.md (finds all 5 operator coils
 # incl HNGE's May base; rejects GPGI's 199% retrace). The HOLD gate is applied by the CALLER
-# (the shadow job), NOT here — `retrace` is returned so the ~50% cap stays operator-tunable.
+# (evaluate_coil_consolidation), NOT here — `retrace` is returned so the cap lives in ONE place
+# (COIL_HOLD_LIMIT), tuned there.
 # Pure; no I/O. Operates on db_rows_to_bars shape {date,o,h,l,c,v}.
 COIL_RUNUP_LB = 45        # window (bars) to locate the runup peak
 COIL_RUNUP_MIN = 1.15     # the leg must be ≥15% (peak / prior swing low)
@@ -677,8 +678,8 @@ COIL_PRE_LB = 30          # look back this far before the peak for the runup-leg
 COIL_MIN_CONS = 4         # min consolidation bars after the peak
 COIL_WINDOW = 12          # tightness (band / slope / adr) measured over the recent N bars
 COIL_HOLD_LIMIT = 0.50    # SOFT, operator-tunable cap on the retrace of the runup leg the
-                          # consolidation may give back. The CALLER filters on it ("shallower
-                          # the better, 50% is the rough limit" — operator 6/27, to be tested).
+                          # consolidation may give back — evaluate_coil_consolidation gates on it
+                          # ("shallower the better, 50% is the rough limit" — operator 6/27, to be tested).
 
 
 def find_coil_setup(bars, i):
@@ -726,6 +727,7 @@ def find_coil_setup(bars, i):
     adr = sum((b["h"] - b["l"]) / b["c"] for b in win) / len(win) * 100
     return {
         "peak_date": bars[pk]["date"],
+        "peak_idx": pk,                      # the runup-peak index — lets the caller skip a re-scan
         "peak_price": peak,
         "runup": peak / prelow,
         "cons_days": cons_days,
@@ -753,9 +755,7 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
     if coil is None or coil["retrace"] > hold_limit:
         return None                                  # no runup→coil, or gave back > ~50% (negated)
     anchor_date = coil["peak_date"]
-    anchor_idx = next((j for j, b in enumerate(bars) if b["date"] == anchor_date), None)
-    if anchor_idx is None:
-        return None
+    anchor_idx = coil["peak_idx"]            # from find_coil_setup — provably in-bars, no re-scan
     last_idx = len(bars) - 1
     last = bars[last_idx]
     prev = bars[last_idx - 1] if last_idx > 0 else None
