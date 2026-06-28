@@ -63,4 +63,20 @@ if git diff --cached --name-only | grep -qx 'CLAUDE.md'; then
     fi
 fi
 
+# ── Gate 4: no-silent-failures ratchet (#381 swallow-a-failure class) ──
+# Fires when a scoped .py (agents/core/channels/shared) is staged. Blocks any NEW
+# broad+silent except beyond the tracked baseline — the FMP-403 (#380) / theme-
+# shadow-0-rows (#173) class where a real failure is swallowed behind a default.
+# Escape genuine control-flow with '# loud-ok: <reason>'. Mirrors deploy.sh [5k/7].
+if git diff --cached --name-only | grep -qE '^(agents|core|channels|shared)/.*\.py$'; then
+    if ! python scripts/preflight_no_silent_failures.py >/dev/null 2>&1; then
+        echo "✘ pre-commit: a NEW broad+silent except (swallowed failure) was introduced (#381)."
+        echo "  Run: python scripts/preflight_no_silent_failures.py"
+        echo "  Surface it (raise / log+alert / failure_policy.py decorator), or annotate"
+        echo "  genuine control-flow with '# loud-ok: <reason>'. Do NOT bury it via --update-baseline."
+        echo "  (Bypass with: git commit --no-verify — only if you know what you're doing.)"
+        exit 1
+    fi
+fi
+
 exit 0
