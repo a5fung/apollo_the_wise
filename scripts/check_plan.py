@@ -135,6 +135,50 @@ def parse(text: str):
     return tasks, errors
 
 
+_BUMP = re.compile(r'\[b(\d+)\]')
+_BUMP_OK = re.compile(r'\[(?:ok|blocked):', re.I)
+
+
+def _bump_count(title: str) -> int:
+    m = _BUMP.search(title)
+    return int(m.group(1)) if m else 0
+
+
+def _rebump_gate(tasks, errors) -> None:
+    """Rebump cap — HARD RULE (operator 2026-06-28): a task ETA may be rebumped AT MOST ONCE; a
+    2nd+ bump needs [ok:reason] (operator approval) or [blocked:reason] (physically impossible). The
+    default on a due task is UNBLOCK + SHIP, not bump. Each rebump tags [bN]; this gate forces the
+    tag to increment on any forward ETA-move vs HEAD, and blocks [b2]+ without an approval marker.
+    (The theme shadow lane sat 2026-06-02 -> void on silent re-bumps — never again.)"""
+    import subprocess
+    try:
+        head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
+                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if head.returncode != 0:
+            return  # no committed PLAN yet — nothing to diff against
+        prior, _ = parse(head.stdout)
+    except Exception:
+        return  # git unavailable — don't block a commit on infra
+    prior_eta = {t["id"]: t["eta"] for t in prior}
+    prior_bump = {t["id"]: _bump_count(t["title"]) for t in prior}
+    for t in tasks:
+        if str(t["status"]).lower() in ("completed", "done", "closed", "deleted"):
+            continue
+        tid, title = t["id"], t["title"]
+        cur = _bump_count(title)
+        pe, pb = prior_eta.get(tid), prior_bump.get(tid, 0)
+        if pe and t["eta"] and t["eta"] > pe and cur <= pb:
+            errors.append(
+                f"L{t['line']}: task #{tid} ETA moved forward ({pe} -> {t['eta']}) = a REBUMP, but the "
+                f"[b] tag did not increment — tag it [b{pb+1}]. The rebump cap is mechanical now "
+                f"(operator 2026-06-28: no more bumping into the void).")
+        if cur >= 2 and not _BUMP_OK.search(title):
+            errors.append(
+                f"L{t['line']}: task #{tid} is at [b{cur}] (rebumped {cur}x) — a 2nd+ rebump is FORBIDDEN "
+                f"without [ok:<reason>] (your approval) or [blocked:<physically impossible>]. The directive "
+                f"is UNBLOCK + SHIP, not bump (operator 2026-06-28).")
+
+
 def main(argv: list[str]) -> int:
     if not PLAN.exists():
         print(f"[plan] ERROR: {PLAN} not found — it is the single source of truth.")
@@ -197,6 +241,7 @@ def main(argv: list[str]) -> int:
     for t in past:
         errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
                       f"rebump to a future date at CLOSE, or close the task")
+    _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
     # IMMEDIATELY followed by the #id of the task that does it — forcing "name it -> point at the

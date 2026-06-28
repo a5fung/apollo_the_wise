@@ -4,6 +4,11 @@
 
 **NEVER**, on your own authority, change / disable / alter any **strategy, sell or entry discipline, sizing, target, safeguard, the trading system, or anything touching real money or live trade state** — that is the operator's **SOLE** authority. **Pausing broken code to fix a bug is NOT a license to change the strategy**: say "X is paused while we fix the bug; the fix restores it" — never "we'll run without X." If a genuine fork exists ("if not fixed by date Y, gate the launch vs run without the feature?"), **surface it as the operator's decision** — never pre-decide it, never bury it in a plan. In any doubt: **STOP and ask.** This line cannot be crossed. (Crossed once 6/22 — retracted; never again.)
 
+## Working rules (operator 2026-06-28 — HARD, override defaults)
+- **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag the PLAN line `[ok:reason]` or `[blocked:reason]`. Gated in `check_plan._rebump_gate`.
+- **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first", "validate-weeks", "visible-but-flagged") unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
+- **Concise — no essays.** A decision = the fork + a 1-line rec.
+
 ## Session Protocol (open + close — the anti-drift ritual)
 
 **SoT for ALL planned work = `PLAN.md`** (consolidated 2026-06-16 — `feedback-runway-not-in-open-ritual`: the plan lived across ~7 hand-synced surfaces and the launch-runway spine was missed 3× because nothing reconciled them reliably). `PLAN.md` is the ONE file: every task under a `## project` with an `ETA` date + `status`; the long-horizon plan (the 6/22 launch) lives there as dated tasks. The calendar is phone reminders only; `data_gated_reviews.yaml` keeps its runtime predicates but only references #IDs; the harness #-task list is a session scratch mirror. **On any conflict, PLAN.md wins.** Mechanically enforced by `scripts/check_plan.py` (pre-commit Gate 2): no task without project+ETA+status, no OPEN task with a PAST ETA, every open task filed. (Mechanical because every prose-discipline reconcile here has failed — only gates hold.)
@@ -26,7 +31,7 @@
 
 **Capture (operator trigger):** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
 
-**EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION — non-negotiable, not deferred to a sweep.** The moment you open a task (or "track it", or in-flow), write it as a `PLAN.md` line under a project with an ETA AND a real description: what the change is + its definition-of-done — **never a bare bucket label** (operator 2026-06-20, after 13 contentless "(SiP backlog — confirm scope/title at triage)" ghosts had to be git-archaeology'd back). `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, OR any **placeholder title** (bans the "confirm scope at triage" stub class) — the "create→file-with-substance" rule is a gate, not memory. (Why mechanical: a passive "a new task lands under a project" note relied on memory and failed repeatedly — same class as the timezone bug; the gate is the codification, a paragraph alone is what failed.)
+**EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION** (never a bare bucket label). `scripts/check_plan.py` (pre-commit Gate 2) FAILS the commit on any task missing a project/ETA/status, any past ETA, any open snapshot task not filed, or any **placeholder title** — the create→file-with-substance rule is a gate, not memory (operator 2026-06-20).
 
 Older session details live in git history; see `CHANGELOG.md` for a roadmap.
 
