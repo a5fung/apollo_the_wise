@@ -131,7 +131,6 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
-    "coil_finder_shadow",
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -2900,7 +2899,7 @@ async def _consolidation_readiness_job():
     (get_anticipation_universe) pre-filters to the signed §2 set; select_consolidation_keys UNIONS
     it with the existing non-aged rows (CARRY-FORWARD — keeps a base's ORIGINAL key when its
     rolling-window anchor would otherwise drift to a lesser peak); the pure
-    anticipation.evaluate_consolidation re-confirms the runup per key (the authoritative gate — the
+    anticipation.evaluate_coil_consolidation re-confirms the runup per key (the authoritative gate — the
     COO canary) + records the coil/tightness telemetry; UPSERT keyed on (ticker, anchor_date);
     Telegram the newly-COILED transitions (deduped via the prior-state map).
 
@@ -2912,7 +2911,7 @@ async def _consolidation_readiness_job():
     coil apex) AS OF the latest bar and record one shadow row per OPEN coil
     (insert_consolidation_entry_shadow; open-dedup pins the first fire). SHADOW — no execution.
     """
-    from datetime import timedelta
+    from datetime import date, timedelta
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.briefing import send_telegram_message
@@ -2941,18 +2940,23 @@ async def _consolidation_readiness_job():
             ticker, anchor_date, dvol_med = k["ticker"], k["anchor_date"], k["dvol_med"]
             try:
                 bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
-                if len(bars) < 30:
+                if len(bars) < 60:
                     continue
-                cons = de.evaluate_consolidation(bars, anchor_date.isoformat())
+                # #327 LIVE base detection: the COIL-FINDER (runup leg → hold-≤50% → tight) REPLACES
+                # the old peak-anchored evaluate_consolidation (which swallowed the post-runup
+                # pullback — CRWD read a 24% "base"). It finds the TRUE coil + its peak; the
+                # carry-forward key's anchor_date is just the candidate SEED now. A name with no held
+                # coil (runup gate / hold-≤50% gate) is simply not a candidate — skip, same as today.
+                cons = de.evaluate_coil_consolidation(bars)
                 if cons is None:
-                    continue  # runup canary failed — the proposer's coarse gate didn't re-confirm
+                    continue
+                anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
 
                 # #327 FORWARD SHADOW: fire the validated entry signal AS OF the latest bar (the coil
                 # apex — N consecutive tight days post-runup). SHADOW recorder; the open-dedup pins
-                # one row to the first fire day. anchor_idx re-located here (evaluate_consolidation
-                # already confirmed the anchor is in-bars, so this is guaranteed non-None).
+                # one row to the first fire day. anchor_idx from the coil peak (guaranteed in-bars).
                 anchor_idx = next((j for j, b in enumerate(bars)
-                                   if b["date"] == anchor_date.isoformat()), None)
+                                   if b["date"] == cons["anchor_date"]), None)
                 if anchor_idx is not None:
                     origin = "9m" if ticker in nine_m else "family_a"
                     # Family-A entry modes recorded into the ONE shadow lifecycle, tagged by mode
@@ -3041,55 +3045,6 @@ async def _consolidation_readiness_job():
             await send_telegram_message("\n".join(head + digest))
     except Exception as e:
         logger.error(f"consolidation readiness job failed: {e}", exc_info=True)
-
-
-async def _coil_finder_shadow_job():
-    """#391 COIL-FINDER daily SHADOW logger (operator-locked anticipation model, 2026-06-27). Runs
-    PARALLEL to _consolidation_readiness_job — does NOT touch the #327 gate, trade state, or any
-    existing detector. 17:40 ET mon-fri, after consolidation_readiness (17:35) + the 17:00
-    nightly_data_pull. LOGGER-ONLY: for each signed-§2 universe name, anticipation.find_coil_setup
-    (runup → give-back → recent-coil tightness); keep only coils that HELD ≤ COIL_HOLD_LIMIT of the
-    runup leg (the operator-tunable ~50% cap); write to mi_anticipation_coil_shadow; send ONE digest.
-    No settlement (the finder is point-in-time). SHADOW — zero execution authority. ADR 0013."""
-    from agents.market_intelligence import anticipation as de
-    from agents.market_intelligence.collector import et_today
-    from agents.market_intelligence.briefing import send_telegram_message
-    from agents.market_intelligence.db import (
-        get_anticipation_universe, get_anticipation_ohlcv, insert_anticipation_coil_shadow,
-    )
-    try:
-        today = et_today()
-        universe = await get_anticipation_universe(today)
-        candidates, written = [], 0
-        for u in universe:
-            ticker = u["ticker"]
-            try:
-                bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
-                if len(bars) < 60:
-                    continue
-                s = de.find_coil_setup(bars, len(bars) - 1)
-                if s is None or s["retrace"] > de.COIL_HOLD_LIMIT:   # gave back more than half → negated
-                    continue
-                if await insert_anticipation_coil_shadow(
-                        ticker, s["peak_date"], today,
-                        peak_price=round(s["peak_price"], 4), runup_ratio=round(s["runup"], 4),
-                        hold_retrace=round(s["retrace"], 4), coil_band_pct=round(s["band"] * 100, 3),
-                        coil_slope=round(s["slope"], 6), coil_adr_pct=round(s["adr"], 3),
-                        cons_days=s["cons_days"], base_len_days=s["base_len"], coil_days=s["coil_days"]):
-                    written += 1
-                candidates.append((ticker, s))
-            except Exception as e:
-                logger.error(f"coil_finder shadow {ticker}: {e}", exc_info=True)
-        logger.info(f"coil_finder shadow: {len(universe)} universe, {len(candidates)} held coils, "
-                    f"{written} new rows")
-        if candidates:
-            lines = [f"🔍 *Coil-finder candidates* (Family A · SHADOW) — {len(candidates)}, tightest first", ""]
-            for ticker, s in sorted(candidates, key=lambda x: x[1]["band"])[:12]:
-                lines.append(f"`{ticker:5}` runup {s['runup']:.2f} · retrace {s['retrace']*100:.0f}% · "
-                             f"band {s['band']*100:.1f}% · base {s['base_len']}d")
-            await send_telegram_message("\n".join(lines))
-    except Exception as e:
-        logger.error(f"coil_finder shadow job failed: {e}", exc_info=True)
 
 
 async def _run_entry_shadow_settlement(today):
@@ -4209,22 +4164,14 @@ def start_scheduler() -> AsyncIOScheduler:
     # 17:35 ET runs the WHOLE Family-A lifecycle: scan/coil + the #327 entry-watch + the
     # forward-shadow settlement (folded in via _run_entry_shadow_settlement) + ONE unified daily
     # digest. After the 17:00 nightly_data_pull. SHADOW, observe-only.
+    # The base detection is now the COIL-FINDER (anticipation.evaluate_coil_consolidation: runup leg
+    # → hold-≤50% → tight), which REPLACED the peak-anchored evaluate_consolidation on 2026-06-27
+    # (the old one swallowed the post-runup pullback — CRWD read 24%). Same job, same digest, same
+    # /anticipation board + entry-signals + settlement; only the base detector changed. ADR 0013.
     _scheduler.add_job(
         audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="consolidation_readiness",
-        replace_existing=True,
-    )
-
-    # #391 COIL-FINDER SHADOW — operator-locked anticipation model (runup → hold-≤50% of the runup
-    # leg → tight coil; 2026-06-27). A daily LOGGER PARALLEL to consolidation_readiness, on the same
-    # signed-§2 universe but a different (runup-leg-relative, pullback-tolerant) base model; writes
-    # mi_anticipation_coil_shadow + one digest. 17:40 ET mon-fri, after consolidation_readiness
-    # (17:35). SHADOW, observe-only — no gate / trade-state touch. ADR 0013 change-log 2026-06-27.
-    _scheduler.add_job(
-        audit_wrap(_coil_finder_shadow_job, "coil_finder_shadow"),
-        CronTrigger(hour=17, minute=40, day_of_week="mon-fri", timezone="America/New_York"),
-        id="coil_finder_shadow",
         replace_existing=True,
     )
 

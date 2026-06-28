@@ -82,7 +82,7 @@ async def main():
         rows_a = {r["ticker"]: dict(r) for r in await c.fetch(SQL, scan_a)}
 
         # PURE-GATE cross-check (advisor 6/17): the JOB's authoritative gate is
-        # anticipation.evaluate_consolidation = peak_close / MIN(close over the 10 bars ENDING AT
+        # anticipation's RETIRED evaluate_consolidation was peak_close / MIN(close over the 10 bars ENDING AT
         # the emitted anchor) ≥ 1.15 — a DIFFERENT (tighter) window than the SQL proposer's
         # best_r10 (max over all 10-windows ending in the last 12 sessions). best_r10 ≥ 1.15 does
         # NOT imply the pure ratio ≥ 1.15, so a name can read IN here yet be silently dropped by
@@ -131,7 +131,7 @@ async def main():
               f"{(r['runup_ratio'] or 0):>6.3f} {(r['today_pct'] or 0)*100:>7.2f} {anc:>11}  {stage}")
 
     print("\n=== PURE-GATE CROSS-CHECK — does the JOB's authoritative gate confirm the canary? ===")
-    print("  (SQL best_r10 is the loose proposer; evaluate_consolidation = peak/min over the")
+    print("  (SQL best_r10 is the loose proposer; the retired evaluate_consolidation was peak/min over the")
     print("   10 bars ENDING AT the anchor is what actually keeps/drops the name)")
     print(f"  {'tkr':5} {'best_r10':>9} {'pure_ratio':>11} {'anchor':>11}  verdict")
     canary_drop = []

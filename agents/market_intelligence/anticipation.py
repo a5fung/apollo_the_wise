@@ -660,55 +660,6 @@ def consolidation_telemetry(bars, i, anchor_idx):
     }
 
 
-def evaluate_consolidation(bars, anchor_date, *, runup_min=RUNUP_MIN, runup_window=RUNUP_WINDOW):
-    """Derive the current FAMILY-A consolidation row for (anchor_date) from daily bars, or None if
-    anchor_date isn't in the bars OR the runup canary fails (< runup_min over the window ending at
-    the peak — COO at exactly 1.15 is the on-border IN canary). SHADOW recorder: confirms the
-    runup + records the coil/tightness telemetry; NO entry / stop / settlement (deferred). State:
-      coiled     constructive tightening present (fresh_tightening fired OR a ≥TIGHT_SERIES_MIN
-                 tight-close series) — the ordering signal, NOT a selection gate
-      post_runup in the universe (tight today) but not a developed tight series yet
-      aged       coil ran > CONSOL_AGE_OUT sessions past the peak (stale → ages out of the board)
-    rmv_5d/15d + tight_close_streak are recorded TELEMETRY ordering signals, NOT gates (advisor 6/16)."""
-    anchor_idx = next((j for j, b in enumerate(bars) if b["date"] == anchor_date), None)
-    if anchor_idx is None:
-        return None
-    closes = [b["c"] for b in bars]
-    lo = min(closes[max(0, anchor_idx - runup_window + 1):anchor_idx + 1])
-    runup_ratio = (closes[anchor_idx] / lo) if lo else None
-    if runup_ratio is None or runup_ratio < runup_min:
-        return None                              # not a post-runup setup (the canary gate)
-
-    last_idx = len(bars) - 1
-    last = bars[last_idx]
-    prev = bars[last_idx - 1] if last_idx > 0 else None
-    coil_days = last_idx - anchor_idx
-    tel = consolidation_telemetry(bars, last_idx, anchor_idx)
-
-    if coil_days > CONSOL_AGE_OUT:
-        state = "aged"                            # DEFENSIVE: with the universe anchor at rn≤15,
-                                                  # coil_days≤14 < CONSOL_AGE_OUT, so the job never
-                                                  # writes 'aged' today; reachable only if the anchor
-                                                  # window is later widened (the fixture exercises it).
-    elif tel["fresh_tightening"] or tel["tight_close_streak"] >= TIGHT_SERIES_MIN:
-        state = "coiled"
-    else:
-        state = "post_runup"
-
-    return {
-        "anchor_date": anchor_date,
-        "state": state,
-        "runup_ratio": round(runup_ratio, 4),
-        "runup_high": round(closes[anchor_idx], 4),
-        "coil_days": coil_days,
-        "last_close": round(last["c"], 4),
-        "today_pct": (round(abs(last["c"] / prev["c"] - 1), 5) if prev and prev["c"] else None),
-        "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
-        "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
-        **tel,
-    }
-
-
 # ═════════════════════════════════════════════════════════════════════════════
 # #391 COIL-FINDER — operator-locked anticipation model (2026-06-27), SHADOW telemetry.
 # Anatomy: RUNUP (≥15% leg) → HOLD (consolidation low above ~50% retrace of the runup leg —
@@ -784,6 +735,50 @@ def find_coil_setup(bars, i):
         "band": band,
         "slope": slope,
         "adr": adr,
+    }
+
+
+def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
+    """#327 LIVE Family-A base detection (operator-integrated 2026-06-27) — REPLACES the
+    peak-anchored evaluate_consolidation, which anchored at the runup peak and called peak..now the
+    "base", swallowing the post-runup PULLBACK (CRWD read a 24% band because a −21% pullback sat
+    inside it). find_coil_setup locates the TRUE coil (runup LEG → give-back, measured separately)
+    and applies the HOLD gate (retrace ≤ hold_limit of the runup leg — give back more than half and
+    the runup is negated, NOT basing, regardless of tightness). The SAME tightness telemetry +
+    lifecycle state (coiled/post_runup/aged) are then recorded against the CORRECTED anchor (the
+    coil's runup peak), so upsert_consolidation + the board + the entry signals are unchanged.
+    Returns the evaluate_consolidation-shaped dict (anchor_date = the coil peak) or None when there
+    is no runup→coil OR it gave back > hold_limit. SHADOW recorder: NO entry/stop/settlement here."""
+    coil = find_coil_setup(bars, len(bars) - 1)
+    if coil is None or coil["retrace"] > hold_limit:
+        return None                                  # no runup→coil, or gave back > ~50% (negated)
+    anchor_date = coil["peak_date"]
+    anchor_idx = next((j for j, b in enumerate(bars) if b["date"] == anchor_date), None)
+    if anchor_idx is None:
+        return None
+    last_idx = len(bars) - 1
+    last = bars[last_idx]
+    prev = bars[last_idx - 1] if last_idx > 0 else None
+    coil_days = last_idx - anchor_idx                 # bars since the peak (board semantics, unchanged)
+    tel = consolidation_telemetry(bars, last_idx, anchor_idx)
+    if coil_days > CONSOL_AGE_OUT:
+        state = "aged"
+    elif tel["fresh_tightening"] or tel["tight_close_streak"] >= TIGHT_SERIES_MIN:
+        state = "coiled"
+    else:
+        state = "post_runup"
+    return {
+        "anchor_date": anchor_date,
+        "state": state,
+        "runup_ratio": round(coil["runup"], 4),
+        "runup_high": round(coil["peak_price"], 4),
+        "coil_days": coil_days,
+        "last_close": round(last["c"], 4),
+        "today_pct": (round(abs(last["c"] / prev["c"] - 1), 5) if prev and prev["c"] else None),
+        "rmv_5d": compute_rmv(bars, last_idx, lookback=5),
+        "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
+        "hold_retrace": round(coil["retrace"], 4),    # NEW: give-back of the runup leg (the hold gate)
+        **tel,
     }
 
 

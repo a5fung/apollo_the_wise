@@ -323,3 +323,34 @@ load-bearing #327 gate is a *later* operator decision (CHANGE_PROCESS + N≥10 +
 table + `insert_anticipation_coil_shadow`), `scheduler` (`_coil_finder_shadow_job` + registration +
 `INTELLIGENCE_OWNED_JOB_IDS`), `tests/test_anticipation_coil_finder.py`. Validated logic:
 `scripts/_anticipation_coil_finder.py`.
+
+### 2026-06-27 (same day) — INTEGRATED: coil-finder becomes the LIVE #327 base; old peak-anchor + the parallel shadow DELETED
+
+**Trigger.** Operator (emphatic, 2× interrupt): do NOT run the new detector parallel to a proven-broken
+one "to compare" — the old peak-anchored base is *known* broken (swallows the post-runup pullback; CRWD
+read 24%), so the parallel had zero value and was garbage-hoarding. Ship the replacement in days, not weeks.
+
+**What ships (REPLACEMENT, same day as the shadow above).** `anticipation.evaluate_coil_consolidation`
+(find_coil_setup → HOLD-≤50% gate → the SAME tightness telemetry + lifecycle state, anchored on the
+*corrected* coil peak) REPLACES the `de.evaluate_consolidation(bars, anchor_date)` call inside
+`scheduler._consolidation_readiness_job`. The coil's peak becomes the anchor for the entry-signals
+(`entry_signal_at`/`confirm_signal_at`), `upsert_consolidation`, the `🪙 Consolidation plays` digest, and
+the `/anticipation` board — all UNCHANGED (only the base detector swapped; the entry-apex timing + outcome
+settlement were never broken). The carry-forward key is now just the candidate seed.
+
+**Deleted** (no garbage kept): the parallel `_coil_finder_shadow_job` + its registration + the
+`INTELLIGENCE_OWNED_JOB_IDS` entry + the separate `🔍` digest; the `mi_anticipation_coil_shadow` table +
+`insert_anticipation_coil_shadow`. KEPT: `find_coil_setup` + `COIL_*` (now the live base) +
+`tests/test_anticipation_coil_finder.py`. The old `evaluate_consolidation` function was DELETED
+(proven-broken, no live callers) along with `tests/test_anticipation_consolidation.py` and the
+`scripts/_consolidation_acceptance_test.py` dual-anchor harness (both built on the broken model); the
+GOOD/GARBAGE acceptance intent is covered by `tests/test_anticipation_coil_finder.py` + the validation doc.
+
+**Anticipated effect.** ONE anticipation surface again (the `🪙` digest now reflects the corrected coils;
+no second digest). The forward shadow (`mi_consolidation_entry_shadow`) entry-signals now fire off correct
+bases. First run after deploy re-baselines anchors from old (buggy) keys to coil peaks — a one-time
+re-key, self-heals via carry-forward.
+
+**Reversion-flag:** REFINEMENT of the 2026-06-27 shadow entry above (parallel shadow → INTEGRATED as the
+live base; old peak-anchor base detection retired). **Status:** shipped, awaiting forward shadow. #327 is
+SHADOW (no trade state / money). Operator-signed the replacement.

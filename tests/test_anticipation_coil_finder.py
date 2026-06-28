@@ -6,7 +6,9 @@ assert the detector RETURNS the retrace and the job's filter would act on it.
 """
 from datetime import date, timedelta
 
-from agents.market_intelligence.anticipation import find_coil_setup, COIL_HOLD_LIMIT
+from agents.market_intelligence.anticipation import (
+    find_coil_setup, evaluate_coil_consolidation, COIL_HOLD_LIMIT,
+)
 
 _D0 = date(2026, 1, 1)
 
@@ -47,3 +49,29 @@ def test_deep_pullback_exceeds_hold_limit():
 def test_no_runup_flat_series_is_none():
     bars = _bars([100.0] * 55)                         # flat -> no >=15% leg
     assert find_coil_setup(bars, len(bars) - 1) is None
+
+
+# ── evaluate_coil_consolidation: the LIVE #327 base detector (coil-finder + hold gate +
+#    consolidation-shaped output anchored on the corrected coil peak) ──
+
+def test_evaluate_coil_consolidation_held_coil_returns_row_anchored_on_peak():
+    bars = _series(125.0)                              # shallow hold of the 100->130 leg
+    row = evaluate_coil_consolidation(bars)
+    assert row is not None
+    assert row["anchor_date"] == bars[39]["date"]      # anchored on the runup PEAK, not a coil bar
+    assert row["runup_ratio"] > 1.15
+    assert row["state"] in ("coiled", "post_runup", "aged")
+    assert row["hold_retrace"] <= COIL_HOLD_LIMIT
+    # consolidation-shaped: the fields upsert_consolidation + the board consume are present
+    for key in ("runup_high", "coil_days", "last_close", "rmv_15d", "pullback_shape",
+                "fresh_tightening", "tight_close_streak"):
+        assert key in row
+
+
+def test_evaluate_coil_consolidation_deep_pullback_is_none():
+    bars = _series(108.0)                              # gave back > half the leg -> hold gate drops it
+    assert evaluate_coil_consolidation(bars) is None
+
+
+def test_evaluate_coil_consolidation_no_runup_is_none():
+    assert evaluate_coil_consolidation(_bars([100.0] * 55)) is None

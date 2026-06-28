@@ -1673,33 +1673,6 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_cons_entry_shadow_unsettled
                 ON mi_consolidation_entry_shadow(entry_date) WHERE outcome IS NULL;
 
-            -- #391 COIL-FINDER SHADOW (operator-locked anticipation model, 2026-06-27). A daily
-            -- LOGGER parallel to mi_consolidation_entry_shadow: records coil candidates
-            -- (runup → hold-≤COIL_HOLD_LIMIT → tight) found by anticipation.find_coil_setup, with the
-            -- give-back (hold_retrace) + tightness / duration / orderliness ranking columns. SHADOW:
-            -- zero execution authority, no settlement (the finder is point-in-time). One row per
-            -- (ticker, anchor_date, detection_date) — a coil re-found on a later scan gets a fresh row
-            -- so the forward stream shows the coil evolving. See ADR 0013 change-log 2026-06-27.
-            CREATE TABLE IF NOT EXISTS mi_anticipation_coil_shadow (
-                id              SERIAL PRIMARY KEY,
-                ticker          TEXT NOT NULL,
-                anchor_date     DATE NOT NULL,        -- the runup peak (find_coil_setup peak_date)
-                detection_date  DATE NOT NULL,        -- the scan day the coil was logged
-                peak_price      FLOAT,
-                runup_ratio     FLOAT,                -- peak / prior swing low
-                hold_retrace    FLOAT,                -- fraction of the runup leg given back (the HOLD metric)
-                coil_band_pct   FLOAT,                -- (H−L)/mean-close over the recent coil window
-                coil_slope      FLOAT,                -- normalized close slope of the coil (≈0 = flat)
-                coil_adr_pct    FLOAT,                -- mean daily range % over the coil (orderliness)
-                cons_days       INT,                  -- bars since the runup peak
-                base_len_days   INT,                  -- bars the close held inside the coil [lo,hi] (duration)
-                coil_days       INT,                  -- length of the measured coil window
-                created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (ticker, anchor_date, detection_date)
-            );
-            CREATE INDEX IF NOT EXISTS idx_anticip_coil_shadow_date
-                ON mi_anticipation_coil_shadow(detection_date DESC);
-
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
@@ -6532,7 +6505,7 @@ async def get_anticipation_gap_seeds(scan_date: date, seed_window_days: int = 25
 
 # ── FAMILY A — "consolidation plays post a runup" (ADR 0013, signed §2). The cheap nightly
 #    PROPOSER (mirrors get_anticipation_gap_seeds' role for Family B): SQL pre-filters to the
-#    signed universe; the pure anticipation.evaluate_consolidation re-confirms the runup per
+#    signed universe; the pure anticipation.evaluate_coil_consolidation re-confirms the runup per
 #    candidate (authoritative gate) + records the coil telemetry. ──────────────────────────────
 
 
@@ -6546,7 +6519,7 @@ async def get_anticipation_universe(scan_date: date, *, price_min: float = 5.0,
     2% of the 15-session peak close (not the argmax — a late marginal new-high inside the base must not
     re-anchor/truncate it); runup_high stays the true window MAX so select_consolidation_keys' higher-high
     leg test is unchanged. Deterministic → scan-stable key. Ordered tightest-first. The pure
-    evaluate_consolidation re-confirms the runup over the anchor-ending window."""
+    evaluate_coil_consolidation re-confirms the runup over the anchor-ending window."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -6675,29 +6648,6 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
             RETURNING id
         """, ticker, _dd(anchor_date), _dd(entry_date), entry_price, stop_kind, stop_price,
              structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
-    return row is not None
-
-
-async def insert_anticipation_coil_shadow(ticker: str, anchor_date, detection_date, *,
-        peak_price, runup_ratio, hold_retrace, coil_band_pct, coil_slope, coil_adr_pct,
-        cons_days, base_len_days, coil_days) -> bool:
-    """Record one #391 coil-finder candidate (SHADOW — no execution, no settlement). IDEMPOTENT per
-    (ticker, anchor_date, detection_date): a re-log on the same scan day is a no-op. Returns True iff
-    a NEW row was written (the job's 'logged' signal). Parallel to insert_consolidation_entry_shadow;
-    the finder is point-in-time so there is no settlement phase."""
-    def _dd(v):
-        return date.fromisoformat(v) if isinstance(v, str) else v
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            INSERT INTO mi_anticipation_coil_shadow
-                (ticker, anchor_date, detection_date, peak_price, runup_ratio, hold_retrace,
-                 coil_band_pct, coil_slope, coil_adr_pct, cons_days, base_len_days, coil_days)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-            ON CONFLICT (ticker, anchor_date, detection_date) DO NOTHING
-            RETURNING id
-        """, ticker, _dd(anchor_date), _dd(detection_date), peak_price, runup_ratio, hold_retrace,
-             coil_band_pct, coil_slope, coil_adr_pct, cons_days, base_len_days, coil_days)
     return row is not None
 
 
