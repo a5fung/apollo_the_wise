@@ -73,8 +73,19 @@ This rule exists because we accumulated overfitting + oscillation across multipl
 ## What This Is
 Telegram-based personal assistant ("chief of staff") for momentum/EP trading (Qullamaggie, Pradeep Bonde, Marios Stamatoudis methodology). Routes to specialized sub-agents.
 
-## ⏰ Time Handling — ALWAYS ET
-**Rule:** every datetime/time comparison in this codebase is in America/New_York (ET). The container runs UTC; **naive `datetime.now()` returns UTC clock values with no tzinfo and silently breaks every ET-keyed comparison.** This bug class has recurred many times.
+## ⏰ Time Handling — ET for MARKET CODE · PT for the OPERATOR (two frames, NEVER conflate)
+
+**🟢 OPERATOR-FACING + PLANNING = PT (Pacific), ALWAYS.** Every date/time you SAY to the operator, every
+`PLAN.md` ETA, every "today / tomorrow / how-late-it-is" = the operator's **PT** day. The harness
+"Today's date" is **UTC** and is NOT the operator's day — never use it for operator-facing dates, tallies,
+or judging the hour. **When a date matters, RUN `python scripts/operator_now.py`** (don't guess off the
+harness UTC date). Mechanical backing: `check_plan.py` compares ETAs in PT (not ET); a SessionStart hook
+injects the PT date each session. [[feedback_operator_timezone_pdt]]
+
+**🔵 MARKET/CODE = ET (the rest of this section).** Every datetime/time comparison in TRADING code is in
+America/New_York (ET) — ORB windows, market hours, scan deadlines. The container runs UTC; **naive
+`datetime.now()` returns UTC clock values with no tzinfo and silently breaks every ET-keyed comparison.**
+This bug class has recurred many times.
 
 **PERMANENT FIX (2026-06-05), mechanically enforced.** Root cause was **pytz** (NOT ZoneInfo — commit `8de7849`'s label was wrong): a pytz zone attached via `tzinfo=` silently applies the LMT `-04:56` offset (shifted the ORB window +56 min, #180/#183). `_ET` is now `ZoneInfo("America/New_York")` everywhere, and deploy gate `[5h/7]` (`preflight_datetime_hygiene.py`) BANS `import pytz`, naive `datetime.now()`, bare `.astimezone()`, `datetime.utcnow()`, and `date.today()` in `agents/ core/ channels/ shared/` (escape: reviewed `# tz-ok: <reason>`; offline `backtester/` excluded). **pytz is BANNED — never reintroduce it.** Full story: memory `timezone_lmt_pytz_permanent_fix` + CHANGELOG.
 
@@ -383,17 +394,13 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-22 (Mon) — MAGNA53 launch Phase 1 (staged, $0 real money) · partials paused
+### 2026-06-27 — anticipation rebuild · #381 gate · HTF detection · PDT/ET fix (all live)
 
-- Phase 1 live-validated (creds boot · preflight · `/status` · `/pause`); magna53 `live_real_enabled=FALSE`, real money = Phase 2 on ACH funds-settle (~Wed). 3 launch-blockers fixed live; two-phase runbook (`docs/roadmap/monday_go_runbook.md`).
-- **Partial exits — PAUSED 6/22, RESTORED 6/26** (`_PARTIAL_EXIT_PAUSED=False`, order_manager.py; #151 DONE — never-naked invariant + clean partial-exit cycles 6/23–24). The 6/22 pause was a TEMPORARY `pending_replace`-race mitigation; the #151 fix RESTORED them (the **TESTED** sell discipline, never removed) — see THE LINE. (The stale `=True` text here misled a 6/26 burndown — keep current.)
+- 3 builds verified-live: **anticipation #327** coil-finder · **#381** swallow-a-failure ratchet gate · **HTF #356** detection (90/40 + Stage-2 NCI-catch + flag→HTF rename). Recurring **PDT/ET** confusion fixed MECHANICALLY: `check_plan`→PT · `scripts/operator_now.py` clock · ⏰ two-frames rule. **NEXT = major burndown.**
 
 ### Older entries graduated to CHANGELOG.md
 
-- 2026-06-22 graduated 2026-06-20 (real-money auto-entry wired · filing-quality gates · burndown 132→112 · #349 DR PASSED · Monday GO runbook).
-- Prior: 06-20→06-19 (#304 pack · #303 readiness · #302 replay-regression) · 06-19→06-12 (#268 Phase B · #275 bands SIGNED) · 06-12→06-10/11 (rubric v2) · 06-10→05-29/06-01 (partial-exit arc) · 06-07→05-22/27 (IBM mass-close #142 · DR layer · SiP) · 05-24→05-10/21 (dual-account · ALPACA_LIVE outage · CRMD/Gate 5) · 05-17→04-30/05-08.
-
-Search `CHANGELOG.md` for any concept (CRMD · dual-account · drawdown breaker · partial-exit · Gate 5) → compressed form + git commit.
+- 2026-06-27 graduated 2026-06-22 (MAGNA53 launch · partials restored #151). Older graduations (06-20→04-30): search `CHANGELOG.md` for any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
 
 ---
 

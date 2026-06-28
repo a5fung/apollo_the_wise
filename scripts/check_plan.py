@@ -8,7 +8,7 @@ the only kind of discipline that has ever held in this repo (the deploy bans, th
 WHAT this enforces on PLAN.md (every task line `- #<id> | <YYYY-MM-DD> | <status> | <title>`):
   - every task is under a `## <project>` header (filed under a project — no loose tasks);
   - every task has a parseable ETA date and a known status (pending|in_progress|blocked);
-  - NO open task has a PAST ETA (must be >= today ET) — the CLOSE ritual rebumps stale dates so the plan
+  - NO open task has a PAST ETA (must be >= today in the operator's PT day) — the CLOSE ritual rebumps stale dates so the plan
     never silently rots; a past ETA FAILS the commit;
   - task ids are unique.
 
@@ -16,7 +16,8 @@ USAGE:
   python scripts/check_plan.py            # validate (pre-commit gate). exit 1 on any violation.
   python scripts/check_plan.py --today    # OPEN helper: print OVERDUE + due-today open tasks = the day's plan.
 
-ASCII-only output (Windows cp1252 console). Stdlib only. ET "today" per the codebase tz rule.
+ASCII-only output (Windows cp1252 console). Stdlib only. "today" = the operator's PT day (PLAN ETAs are
+the operator's PLANNING dates, NOT market/ET — the "ALWAYS ET" rule is for trading code only).
 """
 from __future__ import annotations
 
@@ -33,7 +34,11 @@ if hasattr(sys.stdout, "reconfigure"):
 REPO = Path(__file__).resolve().parent.parent
 PLAN = REPO / "PLAN.md"
 SNAPSHOT = REPO / ".apollo_open_tasks.json"  # harness open-task checksum (plumbing, NOT a plan surface)
-_ET = ZoneInfo("America/New_York")
+# PLAN ETAs are the OPERATOR's PLANNING dates in THEIR timezone (Pacific) — NOT market/ET dates.
+# Comparing against ET force-churns tasks in the late-night-PT window (ET has rolled to tomorrow, PT
+# hasn't) — the recurring timezone friction. The codebase "ALWAYS ET" rule is for MARKET code (ORB
+# windows / market hours), NOT the operator's to-do dates. (Operator is PT; feedback_operator_timezone_pdt.)
+_OPERATOR_TZ = ZoneInfo("America/Los_Angeles")
 _STATUSES = {"pending", "in_progress", "blocked"}
 # `- #298 | 2026-06-17 | in_progress | title...`
 _TASK = re.compile(r"^- #(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(\w+)\s*\|\s*(.+?)\s*$")
@@ -135,12 +140,12 @@ def main(argv: list[str]) -> int:
         print(f"[plan] ERROR: {PLAN} not found — it is the single source of truth.")
         return 2
     tasks, errors = parse(PLAN.read_text(encoding="utf-8"))
-    today = datetime.now(_ET).date()
+    today = datetime.now(_OPERATOR_TZ).date()   # the operator's PT day, not ET (see _OPERATOR_TZ note)
 
     if "--today" in argv:
         overdue = sorted([t for t in tasks if t["eta"] and t["eta"] < today], key=lambda t: t["eta"])
         due = sorted([t for t in tasks if t["eta"] == today], key=lambda t: t["project"] or "")
-        print(f"=== PLAN — {today} (ET) ===  ({len(tasks)} open tasks total)")
+        print(f"=== PLAN — {today} (PT, operator's day) ===  ({len(tasks)} open tasks total)")
         print(f"\n-- OVERDUE ({len(overdue)}) — rebump or close at CLOSE --")
         for t in overdue or []:
             print(f"  #{t['id']:<4} {t['eta']}  [{t['status']:<11}] {t['project']} — {t['title']}")

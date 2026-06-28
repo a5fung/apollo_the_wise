@@ -21,8 +21,20 @@ _ET = ZoneInfo("America/New_York")
 
 
 def et_today() -> date:
-    """Return today's date in US/Eastern timezone."""
+    """Return today's date in US/Eastern timezone. MARKET/trading logic ONLY (trading day, ORB, hours)."""
     return datetime.now(_ET).date()
+
+
+# CANONICAL operator timezone (Pacific). The operator PLANS + reads dates in PT; the harness date is UTC
+# and the trading rule above is ET — three frames whose conflation recurred ~100x. Now mechanical:
+# check_plan.py compares PLAN ETAs in PT, scripts/operator_now.py is the clock. Use operator_today() for
+# OPERATOR-FACING dates (briefings, planning, "today"); et_today() is for MARKET logic only.
+OPERATOR_TZ = ZoneInfo("America/Los_Angeles")
+
+
+def operator_today() -> date:
+    """Today's date in the OPERATOR's timezone (PT) — operator-facing / planning dates, NOT market logic."""
+    return datetime.now(OPERATOR_TZ).date()
 
 
 def last_trading_day(from_date: date | None = None) -> date:
