@@ -2059,6 +2059,30 @@ class MarketIntelligenceAgent(BaseAgent):
             more = f" …+{len(watch) - 30}" if len(watch) > 30 else ""
             lines.append(f"  {names}{more}")
 
+        # HTF breakout-entry SHADOW readout (#356 Phase 3) — the would-be breakout edge, split by the
+        # stage the flag was in at the break. Only renders once rows accrue; never an entry.
+        try:
+            from agents.market_intelligence.db import get_htf_breakout_shadow_summary
+            _s = await get_htf_breakout_shadow_summary()
+            _o = _s.get("overall") or {}
+            if (_o.get("open_n") or 0) or (_o.get("settled_n") or 0):
+                _set = _o.get("settled_n") or 0
+                _cap = _o.get("capture_n") or 0
+                _caprate = f"{round(100 * _cap / _set)}%" if _set else "—"
+                lines.append("")
+                lines.append(f"🚩 *Breakout-entry shadow* — {_o.get('open_n') or 0} open · "
+                             f"{_set} settled ({_caprate} capture)")
+                for _bs in (_s.get("by_stage") or []):
+                    _bset = _bs.get("settled_n") or 0
+                    if _bset:
+                        _mr = _bs.get("med_realized_r")
+                        _mrs = f" · med {_mr:+.1f}R" if _mr is not None else ""
+                        lines.append(f"  {_bs.get('parent_stage') or '—'}: "
+                                     f"{_bs.get('capture_n') or 0}/{_bset} capture{_mrs}")
+                lines.append("_SHADOW — no money; flip gated on N≥10 + sign-off (#397)._")
+        except Exception as _e:   # loud-ok: shadow-summary footer, must not break the /htf board
+            logger.debug(f"htf shadow summary footer skipped: {_e}")
+
         lines.append("")
         lines.append("_Drill-down: `/flags TICKER` for 14-day history_")
         return self._ok(request, result="\n".join(lines))

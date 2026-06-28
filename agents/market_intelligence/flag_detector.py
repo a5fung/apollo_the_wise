@@ -1287,11 +1287,14 @@ _INTRADAY_SIGNAL_TABLES = [
     ("mi_flag_low_vol_rests",  "rest_date",     "😴", "Low-vol-rest"),
 ]
 
+# Parent-flag stage tag for the EOD roll-up (the operator asked the digest to show the stage too).
+_STAGE_EMOJI = {"TIGHTENING": "🔧", "COILED": "🌀", "TRIGGERED": "🎯"}
+
 
 def _build_intraday_signals_digest(scan_date, per_detector) -> Optional[str]:
     """Pure formatter for the EOD entry-technique digest.
 
-    `per_detector`: list of (emoji, label, [(ticker, in_cohort_bool), ...]).
+    `per_detector`: list of (emoji, label, [(ticker, in_cohort_bool, parent_stage), ...]).
     Returns the message, or None when EVERY detector is empty (suppress on
     zero-fire days — no message at all).
     """
@@ -1300,7 +1303,7 @@ def _build_intraday_signals_digest(scan_date, per_detector) -> Optional[str]:
         if not rows:
             continue
         total += len(rows)
-        names = ", ".join(("🍬" if c else "") + t for t, c in rows[:15])
+        names = ", ".join(_STAGE_EMOJI.get(st, "") + ("🍬" if c else "") + t for t, c, st in rows[:15])
         more = f" …+{len(rows) - 15}" if len(rows) > 15 else ""
         sections.append(f"{emoji} *{label}* ({len(rows)}): {names}{more}")
     if not sections:
@@ -1308,7 +1311,7 @@ def _build_intraday_signals_digest(scan_date, per_detector) -> Optional[str]:
     date_str = scan_date.strftime("%b %d") if hasattr(scan_date, "strftime") else str(scan_date)
     return "\n".join([
         f"📋 *Stocks-in-Play — entry-technique signals · {date_str}*",
-        f"_{total} shadow signals across {len(sections)} techniques · telemetry only, no entries._",
+        f"_{total} shadow signals across {len(sections)} techniques · stage 🔧tight 🌀coil 🎯trig · telemetry only, no entries._",
         "",
         *sections,
         "",
@@ -1330,14 +1333,15 @@ async def run_intraday_signals_eod_digest(scan_date) -> int:
         for table, dcol, emoji, label in _INTRADAY_SIGNAL_TABLES:
             try:
                 rows = await conn.fetch(
-                    f"SELECT ticker, COALESCE(in_sugar_baby_cohort, false) AS coh "
+                    f"SELECT ticker, COALESCE(in_sugar_baby_cohort, false) AS coh, parent_stage "
                     f"FROM {table} WHERE {dcol} = $1 ORDER BY ticker",
                     scan_date,
                 )
             except Exception as e:
                 logger.warning(f"intraday signals digest: {table} skipped — {e}")
                 rows = []
-            per_detector.append((emoji, label, [(r["ticker"], r["coh"]) for r in rows]))
+            per_detector.append((emoji, label,
+                                 [(r["ticker"], r["coh"], r["parent_stage"]) for r in rows]))
     msg = _build_intraday_signals_digest(scan_date, per_detector)
     if msg is None:
         logger.info("intraday signals EOD digest: zero fires — suppressed")
