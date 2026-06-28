@@ -1,0 +1,80 @@
+"""Spec-fidelity lock for the HTF (High Tight Flag) criteria (#356, 2026-06-27).
+
+Proves the SOURCED criteria are encoded (not the retired n=1 50/60), that the key
+gates fire, and that the empty-board path is graceful (no crash) — the things the
+incidental `-k flag` tests don't cover. SSoT: docs/setups/htf.md.
+"""
+from datetime import date, timedelta
+
+from agents.market_intelligence import flag_detector as fd
+
+
+# ── 1. the sourced CONSTANTS are encoded (catches a regression to 50/60) ─────
+
+def test_sourced_constants():
+    assert fd._RUNUP_MIN_RATIO == 1.90          # ≥90% flagpole (was n=1 1.50)
+    assert fd._RUNUP_LOOKBACK_DAYS == 40         # ~8wk (was n=1 60)
+    assert fd._FLAG_DEPTH_MIN == 0.75            # ≤25% pullback, absolute low
+    assert fd._SMA50_WINDOW == 50                # Stage-2 trend filter
+
+
+# ── 2. empty / missing input is graceful (the empty-board robustness) ────────
+
+def test_empty_rows_graceful():
+    out = fd.compute_flag_metrics([], ticker="X")
+    assert out["stage"] == "unqualified"
+    assert out["reason"] == "no_rows"
+
+
+# ── 3. end-to-end fixture: base → pole → pivot → flag ────────────────────────
+
+def _row(d, o, h, l, c, v):
+    return {"trade_date": d, "open_price": o, "high_price": h,
+            "low_price": l, "close": c, "volume": v}
+
+
+def _htf_rows(runup_ratio=2.0, flag_depth=0.10, vol_spike=True,
+              n_base=42, n_pole=20, n_flag=8, base_price=10.0):
+    """base (flat low) → pole (ramp to peak) → flag (consolidate). today = last."""
+    rows, d0, di = [], date(2026, 1, 1), 0
+    for _ in range(n_base):
+        rows.append(_row(d0 + timedelta(days=di), base_price, base_price * 1.01,
+                         base_price * 0.99, base_price, 1_000_000)); di += 1
+    peak = base_price * runup_ratio
+    for j in range(n_pole):
+        p = base_price + (peak - base_price) * ((j + 1) / n_pole)
+        v = 3_000_000 if (vol_spike and j == n_pole // 2) else 1_000_000
+        rows.append(_row(d0 + timedelta(days=di), p * 0.99, p * 1.005,
+                         p * 0.985, p, v)); di += 1
+    flag_price = peak * (1 - flag_depth)
+    for _ in range(n_flag):
+        rows.append(_row(d0 + timedelta(days=di), flag_price, flag_price * 1.01,
+                         flag_price * 0.99, flag_price, 800_000)); di += 1
+    return rows
+
+
+def test_valid_htf_qualifies():
+    out = fd.compute_flag_metrics(_htf_rows(runup_ratio=2.0, flag_depth=0.10),
+                                  ticker="HTF", recent_stages=[])
+    assert out["stage"] not in ("unqualified", "INVALIDATED"), out["reason"]
+    assert out["runup_pct"] >= 0.90
+
+
+def test_runup_below_90_rejected():
+    out = fd.compute_flag_metrics(_htf_rows(runup_ratio=1.6), ticker="LOW", recent_stages=[])
+    assert out["stage"] == "unqualified"
+    assert "below_90%" in (out["reason"] or "")
+
+
+def test_deep_flag_rejected_on_absolute_low():
+    # a 35% pullback flag breaks the ≤25% absolute-low depth gate
+    out = fd.compute_flag_metrics(_htf_rows(runup_ratio=2.0, flag_depth=0.35),
+                                  ticker="DEEP", recent_stages=[])
+    assert out["stage"] in ("unqualified", "INVALIDATED")
+
+
+def test_grinder_no_volume_spike_rejected():
+    out = fd.compute_flag_metrics(_htf_rows(runup_ratio=2.0, vol_spike=False),
+                                  ticker="GRIND", recent_stages=[])
+    assert out["stage"] == "unqualified"
+    assert "grinder" in (out["reason"] or "")

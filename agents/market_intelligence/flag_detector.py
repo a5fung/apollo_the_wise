@@ -54,9 +54,12 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
                                 # For a $100 / ATR $2 name (low vol), flat 1%
                                 # = $1 wins over $0.50. Whichever is harder to
                                 # cross by accident.
-_RUNUP_LOOKBACK_DAYS = 60       # Window for pre-pivot low (runup magnitude)
-_RUNUP_MIN_RATIO     = 1.50     # pivot_high / 60d_low ≥ 1.5×  (runup ≥ 50%)
-_PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
+# HTF flagpole (SOURCED — O'Neil/Minervini/Qullamaggie, operator_shared_notes.md 2026-06-22).
+# REPLACES the n=1 "50%/60d" (a single-case pick, first commit 2026-05-01, never validated — the
+# exact reason Family-A was split into the sourced setups). Spec: flagpole ≥90% in ~8wk.
+_RUNUP_LOOKBACK_DAYS = 40       # ~8-wk pole window (spec: C≥1.9×C₄₀ / High₄₀≥1.9×Low₄₀)
+_RUNUP_MIN_RATIO     = 1.90     # pivot_high / 40d_low ≥ 1.9×  (flagpole ≥ 90%)
+_FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
 
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
@@ -65,16 +68,10 @@ _PROXIMITY_BAND      = 0.20     # |close - pivot_high| / pivot_high ≤ 20%
 _DEAL_PIN_LOOKBACK_DAYS          = 10
 _DEAL_PIN_RANGE_THRESHOLD        = 0.005
 _DEAL_PIN_MIN_SUB_THRESHOLD_DAYS = 5
-# Runup-scaled proximity (2026-05-11 #80): high-runup names consolidate
-# proportionally deeper. TRT (runup 332%) was rejected at 25% off pivot
-# despite being a textbook flag. SIVE.ST 5/04 was the original anecdote.
-# Formula: effective_band = base + min(runup_pct, runup_cap) * scale.
-# At runup_pct=3.32 (TRT), band = 0.20 + 3.0*0.05 = 0.35 → 25% off
-# pivot passes. At runup_pct=0.5 (50% — minimum), band = 0.225 (small
-# bump, no surprise behavior change). Capped at runup=3.0 so a 10x
-# runup doesn't blow out to 70%+.
-_PROXIMITY_RUNUP_SCALE = 0.05   # per 1x of runup_pct above 0
-_PROXIMITY_RUNUP_CAP   = 3.0    # cap runup contribution at 3.0x
+# (Removed 2026-06-27: the #80 runup-scaled proximity band — superseded by the
+# HTF flat ≤25% absolute-low depth gate. #80 relaxed the band to ~35% for high-
+# runup names, right for a generic flag but wrong for HTF where ≤25% is the
+# "tight". Generic-flag recall is now Anticipation's. Rationale at the depth gate.)
 
 # ── Tightening gates ────────────────────────────────────────────────────────
 _RANGE_CONTRACTION_MAX = 0.75   # recent_5d / early_5d TR%   — ≤ 0.75 = tight
@@ -99,6 +96,7 @@ _COILED_LOOKBACK_DAYS = 5       # TRIGGERED requires COILED in last N days
 _ATR_WINDOW           = 14
 _SMA10_WINDOW         = 10
 _SMA20_WINDOW         = 20
+_SMA50_WINDOW         = 50      # HTF Stage-2 trend filter (spec: above 10/20/50)
 
 _STAGE_ORDER = ("unqualified", "WATCH", "TIGHTENING", "COILED", "TRIGGERED")
 
@@ -440,6 +438,7 @@ def compute_flag_metrics(
         "atr_14": None,
         "sma_10": None,
         "sma_20": None,
+        "sma_50": None,
         "breakout_close": None,
         "breakout_volume_ratio": None,
         "fresh_tight_fires": False,
@@ -518,14 +517,41 @@ def compute_flag_metrics(
         (r["trade_date"] for r in runup_rows if float(r["low_price"]) == runup_low), None
     )
     if (pivot_high / runup_low) < _RUNUP_MIN_RATIO:
-        base["reason"] = f"runup_{runup_pct*100:.0f}%_below_50%"
+        base["reason"] = f"runup_{runup_pct*100:.0f}%_below_90%"
+        return base
+
+    # ── Flagpole quality guards (Gemini 6/27) ──────────────────────────────
+    # mi_daily_closes is split-ADJUSTED (Polygon grouped-daily, adjusted=true),
+    # so reverse-splits shouldn't reach here — but guard the backstop AND require
+    # the institutional-volume signature the spec's "undeniable institutional
+    # demand" implies:
+    #  • data-artifact: a >50% single-day CLOSE jump with NO volume (< 2× the
+    #    window avg) is a split / bad tick, not a pole → reject.
+    #  • pole-volume: ≥1 day in the window at ≥ 2× the window's avg volume →
+    #    real accumulation; 0 spike-days = a slow low-volume "grinder" → reject.
+    win_vols = [float(r["volume"] or 0) for r in runup_rows]
+    avg_win_vol = (sum(win_vols) / len(win_vols)) if win_vols else 0.0
+    spike_days = 0
+    for i in range(1, len(runup_rows)):
+        prev_c = float(runup_rows[i - 1]["close"])
+        cur_c  = float(runup_rows[i]["close"])
+        v      = float(runup_rows[i]["volume"] or 0)
+        if prev_c > 0 and cur_c / prev_c > 1.50 and avg_win_vol > 0 and v < 2.0 * avg_win_vol:
+            base["reason"] = f"flagpole_data_artifact_{cur_c/prev_c:.1f}x_1d_no_vol"
+            return base
+        if avg_win_vol > 0 and v >= 2.0 * avg_win_vol:
+            spike_days += 1
+    if avg_win_vol > 0 and spike_days < 1:
+        base["reason"] = "flagpole_no_volume_confirmation_grinder"
         return base
 
     # ── INVALIDATED checks (override everything except actual breakout) ─
     sma_10 = _sma(rows, today_idx, _SMA10_WINDOW)
     sma_20 = _sma(rows, today_idx, _SMA20_WINDOW)
+    sma_50 = _sma(rows, today_idx, _SMA50_WINDOW)
     base["sma_10"] = sma_10
     base["sma_20"] = sma_20
+    base["sma_50"] = sma_50
 
     if base_age > _BASE_AGE_MAX:
         base["stage"]  = "INVALIDATED"
@@ -539,24 +565,33 @@ def compute_flag_metrics(
         base["stage"]  = "INVALIDATED"
         base["reason"] = f"close_{close_today:.2f}_below_sma20_{sma_20:.2f}"
         return base
+    # Trend filter (SOURCED — Stage-2 uptrend above the MAs; Minervini/O'Neil).
+    # Below the 50-day = not a Stage-2 trend → INVALIDATED. The MAs must also be
+    # stacked 10≥20≥50 (a proper uptrend) → else unqualified. The 10-day is NOT a
+    # close-above floor: a flag routinely tests the 10/20 on a support pullback
+    # (that's the stop/trail reference, not a veto). See docs/setups/htf.md.
+    if sma_50 is not None and close_today < sma_50:
+        base["stage"]  = "INVALIDATED"
+        base["reason"] = f"close_{close_today:.2f}_below_sma50_{sma_50:.2f}"
+        return base
+    if None not in (sma_10, sma_20, sma_50) and not (sma_10 >= sma_20 >= sma_50):
+        base["reason"] = f"ma_stack_not_stage2_{sma_10:.1f}/{sma_20:.1f}/{sma_50:.1f}"
+        return base
 
-    # ── Proximity gate: close within ±EFFECTIVE_BAND of pivot_close ─────
-    # Anchor on pivot_close (not pivot_high) so shooting-star pivots whose
-    # intraday high is 15-25% above the close don't structurally fail this
-    # gate forever. The base typically forms beneath the wick high but
-    # around the pivot's close.
-    # Runup-scaled band (2026-05-11 #80): a stock that ran 332% (TRT)
-    # consolidates proportionally deeper than one that ran 80%. Apply a
-    # linear scale, capped, so the gate doesn't over-reject high-runup
-    # textbook flags.
-    runup_pct = base.get("runup_pct") or 0.0
-    runup_contrib = min(max(runup_pct, 0.0), _PROXIMITY_RUNUP_CAP) * _PROXIMITY_RUNUP_SCALE
-    effective_band = _PROXIMITY_BAND + runup_contrib
-    off_pivot = abs(close_today - pivot_close) / pivot_close
-    if off_pivot > effective_band:
+    # ── Flag-depth gate (SOURCED ≤25%, on the ABSOLUTE low — Gemini 6/27) ──
+    # The flag's intraday LOW must hold within 25% of the pole top (base_low ≥
+    # 0.75×pivot_high). Uses the absolute low, NOT the close: O'Neil/Minervini
+    # reject a deep intraday shakeout that rallies to a tight close (the spring
+    # uncoiled). REPLACES the old off-pivot-close proximity + its #80 runup-
+    # scaling. Why #80 is WRONG for HTF (not just superseded — CHANGE_PROCESS
+    # #3): #80 RELAXED the band to ~35% for high-runup names, correct for a
+    # GENERIC flag (deeper bases are still valid setups) but WRONG for HTF,
+    # where ≤25% tightness is DEFINITIONAL — the "tight" in high-tight-flag.
+    # The generic-flag recall #80 served is now Anticipation's job; HTF is the
+    # tight subset.
+    if base_low < _FLAG_DEPTH_MIN * pivot_high:
         base["reason"] = (
-            f"close_{close_today:.2f}_off_pivot_close_{pivot_close:.2f}_"
-            f">{effective_band*100:.0f}%(scaled_for_runup_{runup_pct:.1f}x)"
+            f"flag_low_{base_low:.2f}_below_{_FLAG_DEPTH_MIN*100:.0f}%_of_pole_{pivot_high:.2f}"
         )
         return base
 

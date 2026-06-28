@@ -1,5 +1,11 @@
 # Continuation Flag — VCP / Qullamaggie Tightening
 
+> ⚠ **SUPERSEDED 2026-06-27 by `docs/setups/htf.md` (#356).** This detector was rebuilt into the sourced
+> HTF setup. The "Detection criteria" below (runup `50%/60d`, proximity `≤20%`) are the RETIRED **n=1**
+> values; the LIVE criteria are `90%/40d` + `≤25%` absolute-low depth + the `10/20/50` Stage-2 trend filter
+> + flagpole volume confirmation — see `htf.md` for the current spec + provenance. The universe/carryforward
+> and the 5-stage machine here are unchanged and still accurate.
+
 **Phase**: Shadow (telemetry-only). Promotion path: `telemetry_review` per `strategies/registry.py`.
 **Origin**: Mark Minervini VCP (Volatility Contraction Pattern) + Qullamaggie tightening flag methodology.
 **Code**: `agents/market_intelligence/flag_detector.py`, scheduler 17:25 ET cron `flag_continuation_scan`.
