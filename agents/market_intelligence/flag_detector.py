@@ -28,7 +28,10 @@ from agents.market_intelligence.parabolic_detector import _sma
 logger = logging.getLogger(__name__)
 
 _SCAN_CONCURRENCY = 8       # bound per-ticker history fetches
-_HISTORY_DAYS     = 260     # 40d pole + 25d base + the 200MA / 52w-high Stage-2 gate (needs ~250d)
+_HISTORY_DAYS     = 380     # CALENDAR days (get_recent_daily_history filters by trade_date, not row
+                            # count): ~0.685 trading-days/calendar-day, so 380 ≈ 260 TRADING rows —
+                            # enough for the 200d MA + 52w-high Stage-2 gate. (260 cal gave only ~178
+                            # trading rows → sma_200 was silently None / dead — advisor 6/27, #381 class.)
 
 # ── Universe / runup gates ──────────────────────────────────────────────────
 _PIVOT_LOOKBACK_DAYS = 25       # Walk back this far to find pivot-high bar
@@ -505,7 +508,7 @@ def compute_flag_metrics(
     base["base_high"] = base_high
     base["base_low"]  = base_low
 
-    # ── Runup magnitude: pivot_high / min(low) over 60 sessions ending at pivot
+    # ── Runup magnitude: pivot_high / min(low) over 40 sessions ending at pivot (sourced HTF)
     runup_window_start = max(0, pivot_idx - _RUNUP_LOOKBACK_DAYS + 1)
     runup_rows = rows[runup_window_start : pivot_idx + 1]
     if not runup_rows:
@@ -539,7 +542,7 @@ def compute_flag_metrics(
     for i in range(1, len(runup_rows)):
         prev_c = float(runup_rows[i - 1]["close"])
         cur_c  = float(runup_rows[i]["close"])
-        v      = float(runup_rows[i]["volume"] or 0)
+        v      = win_vols[i]                      # already coerced above
         if prev_c > 0 and cur_c / prev_c > 1.50 and avg_win_vol > 0 and v < 2.0 * avg_win_vol:
             base["reason"] = f"flagpole_data_artifact_{cur_c/prev_c:.1f}x_1d_no_vol"
             return base
