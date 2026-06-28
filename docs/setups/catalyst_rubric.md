@@ -225,6 +225,16 @@ trade reactions.
 
 ## Change log (newest first)
 
+### 2026-06-28 — #321 + #320 LIVE: recovered YoY DRIVES the gate + stale-boost reset (operator: these are BUGS)
+
+**The flip shipped (operator 6/28, `64e8ed4`).** The #149 shadow (below) accrued the cohort; the operator reframed both as BUGS, not strategy tuning: (a) #321 — the gate fired "no prior-year comparable" when the comparable IS available, just not in the news corpus; (b) #320 — the `confidence_multiplier` agreement-boost wasn't reset on the revenue-weak / prose-mismatch downgrades (only the pplx-hedge site reset it), so a routine name kept a 1.2× boost and phantom-alerted past the `score<50` skip.
+
+**#321 — recovered YoY now DRIVES the gate.** In the downgrade block, when `_downgrade_reason == q_rev_yoy_missing_no_prior_year_comparable`, `fundamentals.compute_yoy_from_prior_year(ticker, fiscal_period, value)` matches the extractor's CURRENT quarter (new `fiscal_period` field, emitted by `catalyst_metrics_extractor`) to yfinance's PRIOR-YEAR same quarter (a year old → reliable; the staleness is in the MATCH not the value — validated prod 20/21 covered cases <3% vs the extraction truth), computes YoY, unit/scale-guarded. `>= EARNINGS_REVENUE_GATE_MIN_YOY` → clears the downgrade (real growth); `< floor` → keeps it with the real number; `None` → stays the conservative downgrade (NEVER fabricates). LATENCY GUARD: the fetch is SKIPPED in the 9:30–9:45 ORB-cutoff window (earnings classify pre-market; the rescued grade caches in `_catalyst_cache`). Toggle `LIVE_YOY_RECOVERY` (default on; revert = env + redeploy).
+
+**#320 — `confidence_multiplier = 1.0` reset** added at the revenue-weak + prose-mismatch downgrade sites (mirrors the existing pplx-hedge reset). Shipped ATOMICALLY with #321 because the two MASK each other: of 16 phantom alerts since 5/14 (3 HIGH), 11 were #321-rescuable — the stale boost had been accidentally keeping the wrongly-downgraded winners alerting, so #320 alone would have dropped the rescues.
+
+**Verify:** the 10:10 catalyst-downgrade digest surfaces a "🟢 N rescued" line (from `catalyst_yoy_recovered_live` audit). Follow-up #400: a DB toggle (instant revert) + retire the now-redundant #149 shadow block.
+
 ### 2026-06-05 — #149 SHADOW: deterministic yfinance YoY recovery (advisory; gate UNCHANGED)
 
 **Root-cause framing.** The 5/28 carve-out (below) is LLM-corpus-dependent: it skips the downgrade only when the SAME news extraction that failed to produce `yoy_pct` *also* yields a beat + guidance signal. When the corpus is sparse, both fail → carve-out doesn't fire → downgrade stands. So the carve-out is a partial band-aid, not the root fix.
