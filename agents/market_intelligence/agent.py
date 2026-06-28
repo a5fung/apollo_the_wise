@@ -662,6 +662,11 @@ class MarketIntelligenceAgent(BaseAgent):
         ]):
             return await self._handle_parabolic_exclusion(request)
 
+        # Two-way theme lookup (distinct command so a ticker arg doesn't fall into the
+        # industry-RS branch below). `/themes_lookup TICKER` → its themes; `<name>` → its stocks.
+        if task.startswith("/themes_lookup"):
+            return await self._handle_theme_lookup(request)
+
         if any(k in task for k in ["exclude ", "ban from theme", "remove from theme", "kick from theme", "list exclusions", "show exclusions", "theme exclusions"]):
             return await self._handle_theme_exclusion(request)
 
@@ -3284,7 +3289,9 @@ class MarketIntelligenceAgent(BaseAgent):
         else:
             lines.append(f"{raw_count} events")
         if blurb:
-            lines.append(blurb)
+            # Label it as the company's business (🏢) so the description never reads as a theme
+            # membership (operator 6/28 missed RS #19 because the blurb looked like plain text).
+            lines.append(f"🏢 {blurb}")
 
         # Group events by date so the reader sees daily clusters at a glance.
         # Events are already date-DESC sorted.
@@ -4834,6 +4841,62 @@ class MarketIntelligenceAgent(BaseAgent):
             pass
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
+
+    async def _handle_theme_lookup(self, request: AgentRequest) -> AgentResponse:
+        """Two-way theme lookup. `/themes TICKER` → the themes it's in; `/themes <name>` → the
+        stocks in matching themes. Searches BOTH lanes — live mi_themes AND the #167 narrative
+        shadow (`get_narrative_theme_candidates`, the SAME table the dashboard exports) — each
+        tagged live vs 🌱 shadow so they're never conflated."""
+        import re as _re
+        from agents.market_intelligence.db import get_shadow_theme_candidates
+        # get_today_themes is already module-level (agent.py:73) — do NOT re-import from db (not there).
+        # get_shadow_theme_candidates = the FULL shadow lane (incl 'shadow_v2', where most cohorts
+        # live) — get_narrative_theme_candidates silently drops shadow_v2 (the gene-synthesis bug).
+
+        arg = _re.sub(r'^\s*/themes_lookup\b', '', request.task, flags=_re.I).strip()
+        if not arg:
+            return self._ok(request, result="Usage: `/themes TICKER` (its themes) · `/themes <name>` (its stocks).")
+
+        today_str = et_today().strftime("%Y-%m-%d")
+        live = await get_today_themes(today_str) or []
+        try:
+            shadow_raw = await get_shadow_theme_candidates(days=7) or []
+        except Exception as _e:
+            logger.warning(f"theme-lookup shadow fetch failed (degrading to live-only): {_e}")
+            shadow_raw = []
+        # dedup shadow by name, keep the latest run (rows arrive run_date DESC)
+        _seen: set[str] = set()
+        shadow = []
+        for s in shadow_raw:
+            nm = s.get("name")
+            if nm and nm not in _seen:
+                _seen.add(nm)
+                shadow.append(s)
+
+        tok = arg.split()
+        tk = tok[0].upper() if len(tok) == 1 and 2 <= len(tok[0]) <= 5 and tok[0].isalpha() else None
+        if tk:
+            live_hits = [t.get("name") for t in live if tk in (t.get("tickers") or [])]
+            shad_hits = [(s.get("name"), s.get("tickers") or []) for s in shadow if tk in (s.get("tickers") or [])]
+            if live_hits or shad_hits:
+                lines = [f"🔭 *{tk} — themes*", f"  LIVE: {' · '.join(live_hits) if live_hits else '—'}"]
+                for nm, tks in shad_hits:
+                    lines.append(f"  🌱 _shadow_: *{nm}*")
+                    lines.append(f"      {' · '.join(tks)}")
+                return self._ok(request, result="\n".join(lines))
+            return self._ok(request, result=f"🔭 *{tk}* — in no live or shadow theme. (`/setup {tk}` for its RS + detectors.)")
+
+        pat = _re.compile(_re.escape(arg), _re.I)
+        out = [f'🔭 *Themes matching "{arg}"*']
+        for t in live:
+            if pat.search(t.get("name") or ""):
+                out.append(f"\n*{t.get('name')}* _(live)_\n  {' · '.join((t.get('tickers') or [])[:15])}")
+        for s in shadow:
+            if pat.search(s.get("name") or ""):
+                out.append(f"\n🌱 *{s.get('name')}* _(shadow)_\n  {' · '.join((s.get('tickers') or [])[:15])}")
+        if len(out) == 1:
+            out.append("_no live or shadow theme matches — try a broader word, or `/themes` for the full list._")
+        return self._ok(request, result="\n".join(out))
 
     async def _handle_postmortem(self, request: AgentRequest) -> AgentResponse:
         """

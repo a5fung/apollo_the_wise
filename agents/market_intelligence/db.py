@@ -5021,6 +5021,24 @@ async def get_recent_rs_batch(
         return result
 
 
+async def get_shadow_theme_candidates(days: int = 7) -> list[dict]:
+    """ALL shadow theme candidates — the FULL shadow lane: ADR-0007 correlation ('shadow_v2'),
+    #167 narrative co-gap ('narrative_cogap'), and #240 synthesis ('rs_slope_synthesis'),
+    latest run per name within the window. Unlike get_narrative_theme_candidates (scoped to the
+    narrative lanes — it silently drops 'shadow_v2', which is where most cohorts live), this
+    surfaces EVERY shadow cohort, so the /themes two-way lookup and the dashboard snapshot export
+    read ONE consistent source. Returns [{name, tickers, source, run_date}]."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) name, tickers, source, run_date
+            FROM mi_theme_candidates_shadow
+            WHERE run_date >= CURRENT_DATE - $1::int
+            ORDER BY name, run_date DESC
+        """, days)
+    return [dict(r) for r in rows]
+
+
 async def get_prior_theme_scores(d: "str | date") -> dict[str, float]:
     """Get the most recent theme RS averages BEFORE the given date, keyed by theme name."""
     pool = await get_pool()

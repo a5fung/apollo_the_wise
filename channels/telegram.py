@@ -938,6 +938,32 @@ class TelegramChannel:
             await update.message.reply_text("Market agent not available.")
             return
 
+        # Two-way lookup: `/themes TICKER` (its themes) or `/themes <name>` (its stocks). With an
+        # arg, forward it for the lookup + reply directly (no drill-down buttons); bare `/themes`
+        # falls through to the stage-summary below.
+        _args = " ".join(context.args).strip() if context.args else ""
+        if _args:
+            lreq = AgentRequest(
+                task=f"/themes_lookup {_args}",
+                user_id=update.effective_user.id,
+                conversation_id=str(update.effective_user.id),
+            )
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    lresp = await client.post(
+                        f"{url}/task",
+                        json=lreq.model_dump(),
+                        headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+                    )
+                    lresp.raise_for_status()
+                    await update.message.reply_text(
+                        lresp.json().get("result") or "No match.",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+            except Exception as e:  # loud-ok: error surfaced to the user via reply_text below
+                await update.message.reply_text(f"Error: {e}")
+            return
+
         req = AgentRequest(
             task="/themes_detail SUMMARY",
             user_id=update.effective_user.id,
@@ -1815,6 +1841,7 @@ class TelegramChannel:
             BotCommand("trades",       "Positions + P&L — tap to drill down"),
             BotCommand("watchlist",    "Friday curated chart-review list (cross-source aggregator)"),
             BotCommand("setup",        "/setup TICKER [days] — reverse-lookup detector chronology"),
+            BotCommand("themes",       "/themes [TICKER|name] — themes; or two-way lookup (ticker↔theme, live+shadow)"),
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("htf",          "HTF (high tight flag) setups — TRIGGERED/COILED/TIGHTENING"),
