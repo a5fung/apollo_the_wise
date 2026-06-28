@@ -62,6 +62,44 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 # exact reason Family-A was split into the sourced setups). Spec: flagpole ≥90% in ~8wk.
 _RUNUP_LOOKBACK_DAYS = 40       # ~8-wk pole window (spec: C≥1.9×C₄₀ / High₄₀≥1.9×Low₄₀)
 _RUNUP_MIN_RATIO     = 1.90     # pivot_high / 40d_low ≥ 1.9×  (flagpole ≥ 90%)
+_HTF_BREAKOUT_TARGET_R = 3.0    # #356 Phase 3 shadow: "capture" = fwd MFE ≥ 3R (the settle threshold)
+_HTF_SETTLE_WINDOW = 12         # forward trading bars for the HTF breakout settlement
+
+
+def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_BREAKOUT_TARGET_R,
+                          window=_HTF_SETTLE_WINDOW):
+    """#356 Phase 3 — settle one HTF breakout-shadow row from daily bars. REUSES entry_bet_outcome's
+    asymmetric-bet R-math, but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close
+    (anticipation.entry_bet_outcome hardcodes entry=bars[idx]['c']) — so entry=entry_price AND the BREAK
+    DAY itself is in the forward window (the fill is intraday). Returns {outcome, fwd_mfe_r, realized_r}
+    or None to ABSTAIN (window incomplete + undecided). Capture credited on a same-bar high>=tgt tie.
+    bars are db_rows_to_bars dicts with c/h/l."""
+    entry = float(entry_price)
+    if stop is None or stop >= entry:
+        return None
+    risk = entry - stop
+    tgt = entry + target_r * risk
+    mfe, out = entry, "open"
+    for i in range(entry_idx, min(entry_idx + 1 + window, len(bars))):   # break day INCLUSIVE
+        b = bars[i]
+        mfe = max(mfe, b["h"])
+        if b["h"] >= tgt:
+            out = "capture"
+            break
+        if b["l"] <= stop:
+            out = "stop"
+            break
+    if out == "open" and (len(bars) - 1 - entry_idx) < window:
+        return None   # not enough forward bars yet — abstain, retry next run
+    if out == "capture":
+        realized_r = target_r
+    elif out == "stop":
+        realized_r = -1.0
+    else:   # mark-to-window: unrealized R at the window end
+        end = min(entry_idx + window, len(bars) - 1)
+        realized_r = (bars[end]["c"] - entry) / risk
+    return {"outcome": out, "fwd_mfe_r": round((mfe - entry) / risk, 2),
+            "realized_r": round(realized_r, 2)}
 _FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
 
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
@@ -1315,7 +1353,9 @@ async def run_intraday_flag_break_scan(scan_time):
                 WHERE scan_date < CURRENT_DATE
             )
             SELECT DISTINCT ON (c.ticker)
-                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age
+                   c.ticker, c.scan_date, c.stage, c.base_high, c.base_low, c.base_age,
+                   c.runup_pct, c.rmv_5d, c.rmv_15d, c.range_contraction_ratio,
+                   c.vol_contraction_ratio, c.atr_14, c.sma_10, c.sma_20
             FROM mi_flag_candidates c
             LEFT JOIN mi_daily_closes dc
                    ON dc.ticker = c.ticker
@@ -1424,6 +1464,14 @@ async def run_intraday_flag_break_scan(scan_time):
             "base_high": base_high,
             "base_low": float(cand["base_low"]) if cand["base_low"] else None,
             "base_age": cand["base_age"],
+            "runup_pct": cand.get("runup_pct"),
+            "rmv_5d": cand.get("rmv_5d"),
+            "rmv_15d": cand.get("rmv_15d"),
+            "range_contraction_ratio": cand.get("range_contraction_ratio"),
+            "vol_contraction_ratio": cand.get("vol_contraction_ratio"),
+            "atr_14": cand.get("atr_14"),
+            "sma_10": cand.get("sma_10"),
+            "sma_20": cand.get("sma_20"),
             "break_price": current_price,
             "pct_above_base_high": pct_above,
             "today_volume": today_volume,
@@ -1475,6 +1523,41 @@ async def run_intraday_flag_break_scan(scan_time):
                 )
             except Exception as e:
                 logger.debug(f"intraday_flag_break audit failed (non-critical): {e}")
+
+    # HTF breakout-entry SHADOW (#356 Phase 3) — record the would-be order SHAPE for each break. NO
+    # order is submitted; this is the edge dataset for the later paper gate. Records ALL stages (no
+    # pre-gate) + would-be REJECTS (would_reject_reason, not dropped). Wrapped so a shadow failure can
+    # NEVER break the live #94 detection above.
+    try:
+        from agents.market_intelligence.broker.order_manager import prepare_htf_breakout_order
+        for b in new_breaks:
+            _spec, _wreject = prepare_htf_breakout_order(
+                base_high=b["base_high"], base_low=b["base_low"],
+                sma_10=b.get("sma_10"), sma_20=b.get("sma_20"), regime_record=None)
+            await db.insert_htf_breakout_shadow(
+                b["ticker"], scan_time.date(), break_time=scan_time,
+                parent_scan_date=b["parent_scan_date"], parent_stage=b["parent_stage"],
+                base_high=b["base_high"], base_low=b["base_low"], base_age=b["base_age"],
+                runup_pct=b.get("runup_pct"),
+                # flagpole_ratio/flag_depth_pct are computed in compute_flag_metrics (Phase 1) but NOT
+                # persisted on mi_flag_candidates — being a candidate IS the HTF qualification (stage gates
+                # on them). Recorded NULL; #356 follow-up: persist them for value-level offline analysis.
+                flagpole_ratio=None, flag_depth_pct=None,
+                rmv_5d=b.get("rmv_5d"), rmv_15d=b.get("rmv_15d"),
+                range_contraction_ratio=b.get("range_contraction_ratio"),
+                vol_contraction_ratio=b.get("vol_contraction_ratio"),
+                atr_14=b.get("atr_14"),
+                entry_price=_spec["entry_price"], limit_price=_spec["limit_price"],
+                stop_loss_price=_spec["stop_loss_price"], stop_kind=_spec["stop_kind"],
+                max_loss_pct=_spec["max_loss_pct"], risk_per_share=_spec["risk_per_share"],
+                risk_dollars=_spec["risk_dollars"], shares=_spec["shares"],
+                position_size=_spec["position_size"], notional_basis=_spec["notional_basis"],
+                would_reject_reason=_wreject,
+                minutes_since_open=b["minutes_since_open"], today_volume=b["today_volume"],
+                adv_20=b["adv_20"], volume_pct_of_adv=b["volume_pct_of_adv"],
+                target_r=_HTF_BREAKOUT_TARGET_R)
+    except Exception as _e:   # loud-ok: shadow telemetry, must not break the live #94 scan
+        logger.warning(f"htf_breakout_shadow record failed (non-critical): {_e}")
 
     # Per-tick Telegram OFF by default for this shadow detector (#168 noise fix,
     # 2026-06-07). DB writes + audit still fire; the day's breaks are surfaced in

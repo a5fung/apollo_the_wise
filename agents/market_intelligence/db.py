@@ -1673,6 +1673,65 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_cons_entry_shadow_unsettled
                 ON mi_consolidation_entry_shadow(entry_date) WHERE outcome IS NULL;
 
+            -- HTF (High Tight Flag) breakout-entry SHADOW (#356 Phase 3). Records the would-be
+            -- breakout-entry ORDER SHAPE + settled outcome for every #94 flag-high break — NO order
+            -- submitted. The edge dataset for the later paper gate. Mirrors mi_consolidation_entry_shadow
+            -- (#327): idempotent open-dedup partial index, settled later by a daily job. Sizing is off a
+            -- FIXED notional (R is equity-independent — no live account fetch); would-be REJECTS are
+            -- recorded with would_reject_reason, NOT dropped (the shadow wants the rejects). The HTF-
+            -- qualification fields (flagpole_ratio, flag_depth_pct) are recorded so offline can reconstruct
+            -- "was this HTF-qualified" without pre-gating the dataset (advisor 2026-06-28).
+            CREATE TABLE IF NOT EXISTS mi_htf_breakout_shadow (
+                id                       SERIAL PRIMARY KEY,
+                ticker                   TEXT NOT NULL,
+                break_date               DATE NOT NULL,        -- ET date of the base_high break (the entry trigger)
+                break_time               TIMESTAMPTZ NOT NULL, -- moment of detection
+                parent_scan_date         DATE,                 -- the flag-identify scan_date
+                parent_stage             TEXT,                 -- TIGHTENING | COILED | TRIGGERED (recorded, not gated)
+                -- setup shape (going-in) --
+                base_high                FLOAT NOT NULL,       -- the break point = entry
+                base_low                 FLOAT,                -- a stop candidate
+                base_age                 INT,
+                runup_pct                FLOAT,
+                flagpole_ratio           FLOAT,                -- HTF-qualification field (the 90/40 pole)
+                flag_depth_pct           FLOAT,                -- HTF-qualification field (the <=25% depth)
+                rmv_5d                   FLOAT,
+                rmv_15d                  FLOAT,
+                range_contraction_ratio  FLOAT,
+                vol_contraction_ratio    FLOAT,
+                atr_14                   FLOAT,
+                -- order shape (computed, NOT submitted) --
+                entry_price              FLOAT NOT NULL,       -- base_high (stop-limit-buy)
+                limit_price              FLOAT,                -- stop_limit_buy_price(base_high)
+                stop_loss_price          FLOAT NOT NULL,
+                stop_kind                TEXT,                 -- base_low | sma_10 | sma_20
+                max_loss_pct             FLOAT,                -- the cap that bound the stop (5-8%)
+                risk_per_share           FLOAT,
+                risk_dollars             FLOAT,
+                shares                   INT,
+                position_size            FLOAT,
+                notional_basis           FLOAT,                -- the fixed notional used for sizing
+                would_reject_reason      TEXT,                 -- NULL = clean; else the gate that WOULD have rejected
+                -- volume context --
+                minutes_since_open       INT,
+                today_volume             BIGINT,
+                adv_20                   BIGINT,
+                volume_pct_of_adv        FLOAT,
+                -- settlement (filled by _htf_breakout_settle_job; NULL = unsettled) --
+                target_r                 FLOAT,
+                outcome                  TEXT,                 -- capture | stop | open | NULL
+                realized_r               FLOAT,
+                fwd_mfe_r                FLOAT,
+                settled_at               TIMESTAMPTZ,
+                created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CHECK (outcome IS NULL OR outcome IN ('capture','stop','open'))
+            );
+            -- one OPEN shadow per (ticker, break_date); a settled row frees the key for a later break.
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_htf_breakout_shadow_open
+                ON mi_htf_breakout_shadow(ticker, break_date) WHERE outcome IS NULL;
+            CREATE INDEX IF NOT EXISTS idx_htf_breakout_shadow_unsettled
+                ON mi_htf_breakout_shadow(break_date) WHERE outcome IS NULL;
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
@@ -6749,6 +6808,101 @@ async def get_consolidation_entry_shadow_summary() -> dict:
     out["by_origin"] = [dict(r) for r in by_origin]
     out["by_mode"] = [dict(r) for r in by_mode]   # #354 — never-blend the entry modes
     return out
+
+
+async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, parent_scan_date,
+        parent_stage, base_high, base_low, base_age, runup_pct, flagpole_ratio, flag_depth_pct,
+        rmv_5d, rmv_15d, range_contraction_ratio, vol_contraction_ratio, atr_14,
+        entry_price, limit_price, stop_loss_price, stop_kind, max_loss_pct, risk_per_share,
+        risk_dollars, shares, position_size, notional_basis, would_reject_reason,
+        minutes_since_open, today_volume, adv_20, volume_pct_of_adv, target_r) -> bool:
+    """Record one HTF breakout-entry forward-shadow (#356 Phase 3 — SHADOW, no execution). IDEMPOTENT:
+    the partial unique index (ticker, break_date) WHERE outcome IS NULL makes a re-fire on an already-OPEN
+    break a no-op (entry pinned to the FIRST break). A would-be REJECT (would_reject_reason set) is STILL
+    recorded — the shadow wants the rejects. Returns True iff a NEW row was written."""
+    def _dd(v):
+        return date.fromisoformat(v) if isinstance(v, str) else v
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            INSERT INTO mi_htf_breakout_shadow
+                (ticker, break_date, break_time, parent_scan_date, parent_stage, base_high, base_low,
+                 base_age, runup_pct, flagpole_ratio, flag_depth_pct, rmv_5d, rmv_15d,
+                 range_contraction_ratio, vol_contraction_ratio, atr_14, entry_price, limit_price,
+                 stop_loss_price, stop_kind, max_loss_pct, risk_per_share, risk_dollars, shares,
+                 position_size, notional_basis, would_reject_reason, minutes_since_open, today_volume,
+                 adv_20, volume_pct_of_adv, target_r)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,
+                    $24,$25,$26,$27,$28,$29,$30,$31,$32)
+            ON CONFLICT (ticker, break_date) WHERE outcome IS NULL DO NOTHING
+            RETURNING id
+        """, ticker, _dd(break_date), break_time, _dd(parent_scan_date) if parent_scan_date else None,
+             parent_stage, base_high, base_low, base_age, runup_pct, flagpole_ratio, flag_depth_pct,
+             rmv_5d, rmv_15d, range_contraction_ratio, vol_contraction_ratio, atr_14, entry_price,
+             limit_price, stop_loss_price, stop_kind, max_loss_pct, risk_per_share, risk_dollars, shares,
+             position_size, notional_basis, would_reject_reason, minutes_since_open, today_volume,
+             adv_20, volume_pct_of_adv, target_r)
+    return row is not None
+
+
+async def get_settleable_htf_breakout_shadows(break_on_or_before) -> list[dict]:
+    """OPEN HTF breakout-shadow rows whose break_date is old enough that the forward window has likely
+    elapsed (coarse pre-filter; the settle math re-checks the exact bar count + abstains if short)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT id, ticker, break_date, entry_price, base_high, stop_loss_price, target_r
+            FROM mi_htf_breakout_shadow
+            WHERE outcome IS NULL AND break_date <= $1
+            ORDER BY break_date ASC
+        """, break_on_or_before)
+    return [dict(r) for r in rows]
+
+
+async def settle_htf_breakout_shadow(row_id: int, *, outcome, realized_r, fwd_mfe_r) -> bool:
+    """Write back one settled HTF breakout-shadow row (SHADOW telemetry). Guarded WHERE outcome IS NULL
+    so a double-settle is a no-op + the open-dedup index frees for a later break. True iff a row settled."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute("""
+            UPDATE mi_htf_breakout_shadow
+            SET outcome=$2, realized_r=$3, fwd_mfe_r=$4, settled_at=NOW()
+            WHERE id=$1 AND outcome IS NULL
+        """, row_id, outcome, realized_r, fwd_mfe_r)
+    return res.endswith(" 1")
+
+
+async def get_htf_breakout_shadow_summary() -> dict:
+    """The HTF breakout forward-shadow READOUT — open/settled counts + the settled cohort's capture/stop
+    rates + median realized_r/fwd_mfe_r, split by parent_stage. Also surfaces the would-reject count + an
+    open-overdue canary (advisor: make the survivorship residual VISIBLE, never silent). Aggregate only."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        overall = await conn.fetchrow("""
+            SELECT count(*) FILTER (WHERE outcome IS NULL)              AS open_n,
+                   count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
+                   count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
+                   count(*) FILTER (WHERE outcome = 'stop')             AS stop_n,
+                   count(*) FILTER (WHERE outcome = 'open')             AS timeout_n,
+                   count(*) FILTER (WHERE would_reject_reason IS NOT NULL) AS would_reject_n,
+                   count(*) FILTER (WHERE outcome IS NULL AND break_date
+                       < (NOW() AT TIME ZONE 'America/New_York')::date - INTERVAL '24 days')
+                                                                        AS open_overdue_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY fwd_mfe_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_fwd_mfe_r
+            FROM mi_htf_breakout_shadow
+        """)
+        by_stage = await conn.fetch("""
+            SELECT parent_stage,
+                   count(*) FILTER (WHERE outcome IS NOT NULL)          AS settled_n,
+                   count(*) FILTER (WHERE outcome = 'capture')          AS capture_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE outcome IS NOT NULL)               AS med_realized_r
+            FROM mi_htf_breakout_shadow GROUP BY parent_stage ORDER BY parent_stage
+        """)
+    return {"overall": dict(overall) if overall else {}, "by_stage": [dict(r) for r in by_stage]}
 
 
 async def get_consolidation_entry_shadows(*, status=None, settled_on=None, limit=12) -> list[dict]:

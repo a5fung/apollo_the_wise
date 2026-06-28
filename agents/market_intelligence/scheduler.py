@@ -3033,6 +3033,14 @@ async def _consolidation_readiness_job():
         #    ordering). Settle ripe OPEN rows, then push a SINGLE digest of everything that changed
         #    today — only the non-empty sections (settled · entries fired · newly coiled). ──
         just_settled = await _run_entry_shadow_settlement(today)
+        # #356 Phase 3 — HTF breakout-shadow settlement folded into the SAME daily Family-A job (NOT a
+        # new surface). Never submits; the settled count is surfaced in the digest below so the operator
+        # SEES it firing (advisor: don't infer a live shadow from silence).
+        try:
+            htf_settled = await _htf_breakout_settle_job(today)
+        except Exception as _he:   # loud-ok: shadow settlement, must not break the Family-A digest job
+            logger.warning(f"htf_breakout_settle folded-call failed (non-critical): {_he}")
+            htf_settled = []
 
         logger.info(f"consolidation readiness: {len(universe)} universe, {written} rows, "
                     f"{len(transitions)} newly coiled, {len(entries_fired)} entries fired, "
@@ -3044,6 +3052,10 @@ async def _consolidation_readiness_job():
             digest.append(f"📐 *Settled today* ({len(just_settled)} · {cap} capture)")
             for ticker, s in just_settled[:12]:
                 digest.append(de.format_entry_settled_row(ticker, s["outcome"], s["realized_r"]))
+            digest.append("")
+        if htf_settled:
+            hcap = sum(1 for _, s in htf_settled if s["outcome"] == "capture")
+            digest.append(f"🚩 *HTF breakouts settled* ({len(htf_settled)} · {hcap} capture) — SHADOW (#356)")
             digest.append("")
         if entries_fired:
             # Distinguish the entry TYPE: Anticipate (in-coil) and Confirm (base-high breakout) are
@@ -3123,6 +3135,39 @@ async def _run_entry_shadow_settlement(today):
         except Exception as e:
             logger.error(f"entry-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)
     logger.info(f"entry-shadow settlement: {len(ripe)} ripe considered, {len(settled)} settled")
+    return settled
+
+
+async def _htf_breakout_settle_job(today):
+    """#356 Phase 3 — settle ripe HTF breakout-shadow rows from daily bars. Mirrors the #327 entry-shadow
+    settle job, but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close — so the R-math
+    uses flag_detector._htf_settle_from_bars (entry=base_high, break-day-inclusive). SHADOW telemetry;
+    never submits. Logs ripe-considered vs settled so a silent-0 is distinguishable from 'nothing ripe'."""
+    from datetime import timedelta
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.flag_detector import _htf_settle_from_bars
+    from agents.market_intelligence.db import (
+        get_settleable_htf_breakout_shadows, get_anticipation_ohlcv, settle_htf_breakout_shadow,
+    )
+    ripe = await get_settleable_htf_breakout_shadows(today - timedelta(days=24))
+    settled = []
+    for r in ripe:
+        try:
+            bars = de.db_rows_to_bars(await get_anticipation_ohlcv(r["ticker"], today))
+            entry_idx = next((j for j, b in enumerate(bars)
+                              if b["date"] == r["break_date"].isoformat()), None)
+            if entry_idx is None:
+                continue  # break day not in the fetched window
+            res = _htf_settle_from_bars(bars, entry_idx, entry_price=float(r["entry_price"]),
+                                        stop=float(r["stop_loss_price"]), target_r=float(r["target_r"]))
+            if res is None:
+                continue  # not enough forward bars yet — abstain, retry next run
+            if await settle_htf_breakout_shadow(r["id"], outcome=res["outcome"],
+                                                realized_r=res["realized_r"], fwd_mfe_r=res["fwd_mfe_r"]):
+                settled.append((r["ticker"], res))
+        except Exception as e:
+            logger.error(f"htf-breakout-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)
+    logger.info(f"htf-breakout-shadow settlement: {len(ripe)} ripe considered, {len(settled)} settled")
     return settled
 
 
