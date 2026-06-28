@@ -28,7 +28,7 @@ from agents.market_intelligence.parabolic_detector import _sma
 logger = logging.getLogger(__name__)
 
 _SCAN_CONCURRENCY = 8       # bound per-ticker history fetches
-_HISTORY_DAYS     = 90      # 60d runup window + 25d base + buffer
+_HISTORY_DAYS     = 260     # 40d pole + 25d base + the 200MA / 52w-high Stage-2 gate (needs ~250d)
 
 # ── Universe / runup gates ──────────────────────────────────────────────────
 _PIVOT_LOOKBACK_DAYS = 25       # Walk back this far to find pivot-high bar
@@ -97,6 +97,8 @@ _ATR_WINDOW           = 14
 _SMA10_WINDOW         = 10
 _SMA20_WINDOW         = 20
 _SMA50_WINDOW         = 50      # HTF Stage-2 trend filter (spec: above 10/20/50)
+_SMA200_WINDOW        = 200     # Stage-2 long-term trend (above it = a leader, not a crash-recovery)
+_STAGE2_NEAR_HIGH_MIN = 0.75    # pole top must be >= 75% of the 52w high (near highs, not -90% in a hole)
 
 _STAGE_ORDER = ("unqualified", "WATCH", "TIGHTENING", "COILED", "TRIGGERED")
 
@@ -439,6 +441,8 @@ def compute_flag_metrics(
         "sma_10": None,
         "sma_20": None,
         "sma_50": None,
+        "sma_200": None,
+        "high_52w": None,
         "breakout_close": None,
         "breakout_volume_ratio": None,
         "fresh_tight_fires": False,
@@ -576,6 +580,26 @@ def compute_flag_metrics(
         return base
     if None not in (sma_10, sma_20, sma_50) and not (sma_10 >= sma_20 >= sma_50):
         base["reason"] = f"ma_stack_not_stage2_{sma_10:.1f}/{sma_20:.1f}/{sma_50:.1f}"
+        return base
+    # ── Stage-2 long-term gate (SOURCED "Stage-2 uptrend", Minervini; operator 6/27
+    # NCI catch). The 10/20/50 alone PASSES a sharp CRASH-RECOVERY — the short MAs
+    # catch up fast — so NCI (spiked $110 → crashed $4 → bouncing $11 = −90% from its
+    # high, BELOW the 200d) slipped through as a "221% flagpole" that was a dead-cat
+    # bounce. A real HTF flags NEAR its highs from STRENGTH, so:
+    #  • near the 52w high: pivot_high ≥ 75% of the max high over the loaded history;
+    #  • above the 200d (when computable): close ≥ sma_200 (a leader, not a broken stock).
+    hi_52w = max(float(r["high_price"]) for r in rows)
+    base["high_52w"] = hi_52w
+    if hi_52w > 0 and pivot_high < _STAGE2_NEAR_HIGH_MIN * hi_52w:
+        base["reason"] = (
+            f"pole_{pivot_high:.2f}_only_{pivot_high/hi_52w*100:.0f}%_of_52w_high_{hi_52w:.2f}_(not_stage2)"
+        )
+        return base
+    sma_200 = _sma(rows, today_idx, _SMA200_WINDOW)
+    base["sma_200"] = sma_200
+    if sma_200 is not None and close_today < sma_200:
+        base["stage"]  = "INVALIDATED"
+        base["reason"] = f"close_{close_today:.2f}_below_sma200_{sma_200:.2f}_(not_stage2)"
         return base
 
     # ── Flag-depth gate (SOURCED ≤25%, on the ABSOLUTE low — Gemini 6/27) ──
@@ -1102,7 +1126,7 @@ async def send_flag_digest(
     universe_total = sum(len(v) for v in by_stage.values())
     date_str = f"{scan_date.strftime('%b')} {scan_date.day}" if hasattr(scan_date, "strftime") else str(scan_date)
     lines = [
-        f"🚩 *Flag Scanner — {date_str}*",
+        f"🚩 *HTF Scanner — {date_str}*",
         f"_{universe_total} tickers scanned · "
         f"{len(watch)} watch · {len(tightening)} tightening · "
         f"{len(coiled)} coiled · {len(triggered)} triggered_",

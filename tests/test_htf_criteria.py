@@ -78,3 +78,27 @@ def test_grinder_no_volume_spike_rejected():
                                   ticker="GRIND", recent_stages=[])
     assert out["stage"] == "unqualified"
     assert "grinder" in (out["reason"] or "")
+
+
+def _crash_recovery_rows():
+    """NCI-style (operator 6/27): spike to a high → crash → a recovery 'pole' far
+    below the prior high. The recovery passes the runup gate (+175%) but is NOT
+    Stage-2 (−90% from the 52w high) — must be rejected."""
+    rows, d0, di = [], date(2026, 1, 1), 0
+    def push(p, v=1_000_000):
+        nonlocal di
+        rows.append(_row(d0 + timedelta(days=di), p * 0.99, p * 1.005, p * 0.985, p, v)); di += 1
+    for _ in range(20): push(10.0)                       # base
+    for j in range(10): push(10 + 9 * (j + 1))           # spike to ~100 (the 52w high)
+    for j in range(10): push(100 - 9.5 * (j + 1))        # crash to ~5
+    for _ in range(40): push(5.0)                        # long low-base — pushes the spike OUT of the 50d window
+    for j in range(25):                                  # sharp recent pole 5 -> ~11 (+120%, passes sma50)
+        push(5 + (11 - 5) * ((j + 1) / 25), 3_000_000 if j == 12 else 1_000_000)
+    for _ in range(8): push(10.5, 800_000)               # flag ~10.5, near the pole top
+    return rows
+
+
+def test_crash_recovery_rejected_stage2():
+    out = fd.compute_flag_metrics(_crash_recovery_rows(), ticker="NCI", recent_stages=[])
+    assert out["stage"] in ("unqualified", "INVALIDATED"), out["reason"]
+    assert "52w_high" in (out["reason"] or "") or "stage2" in (out["reason"] or "")

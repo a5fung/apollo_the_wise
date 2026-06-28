@@ -63,6 +63,9 @@ HIDDEN_OK = {
     "fishhook",
     # Singular aliases paired with plural BotCommand
     "sugarbaby",
+    # /flags + /flag — legacy aliases of /htf (renamed flag→HTF, #356 2026-06-27);
+    # kept callable for muscle memory + old pinned messages, off the autocomplete menu.
+    "flags",
     "flag",
     # /reviews — hidden read alias of /review (bare /review reads the corpus);
     # kept callable for muscle memory but off the menu to avoid the confusable

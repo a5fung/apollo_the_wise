@@ -1942,7 +1942,7 @@ class MarketIntelligenceAgent(BaseAgent):
             rows = await get_ticker_flag_history(ticker, days=14)
             if not rows:
                 return self._ok(request, result=f"No flag-detector rows for `{ticker}` in last 14d.")
-            lines = [f"🚩 *{ticker} — Flag History (14d)*\n"]
+            lines = [f"🚩 *{ticker} — HTF History (14d)*\n"]
             for r in rows:
                 rr = r.get("range_contraction_ratio")
                 vr = r.get("vol_contraction_ratio")
@@ -5323,8 +5323,9 @@ class MarketIntelligenceAgent(BaseAgent):
             "/parabolic":      self._handle_parabolic_exclusion,
             "/wick":           self._handle_wick_query,
             "/fishhook":       self._handle_fishhook_query,
-            "/flags":          self._handle_flag_query,
-            "/flag":           self._handle_flag_query,
+            "/htf":            self._handle_flag_query,   # primary (renamed flag→HTF, #356)
+            "/flags":          self._handle_flag_query,   # alias (muscle memory)
+            "/flag":           self._handle_flag_query,   # alias
             "/sugarbabies":    self._handle_sugar_babies_query,
             "/sugarbaby":      self._handle_sugar_babies_query,
             "/timestop":       self._handle_time_stop_command,

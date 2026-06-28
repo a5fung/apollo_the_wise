@@ -822,7 +822,7 @@ class TelegramChannel:
     _IDEAS_STRATEGIES = [
         ("magna53",  "🎯 MAGNA53",   "/eps"),
         ("9m",       "🏦 9M",        "/9m"),
-        ("flags",    "🚩 Flags",     "/flags"),
+        ("flags",    "🚩 HTF",       "/htf"),
         ("fishhook", "🪝 Fishhook",  "/fishhook"),
         ("anticipation", "⏱️ Anticipation", "/anticipation"),
     ]
@@ -1759,7 +1759,7 @@ class TelegramChannel:
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
-                     "strategy", "watchlist", "wick", "why", "setup", "flags", "flag", "fishhook", "dryrun",
+                     "strategy", "watchlist", "wick", "why", "setup", "htf", "flags", "flag", "fishhook", "dryrun",
                      "missed", "trade",
                      # 2026-05-22+ new commands — must be registered here AND have a
                      # BotCommand entry above. Missing this list = silent drop in Telegram
@@ -1817,7 +1817,7 @@ class TelegramChannel:
             BotCommand("setup",        "/setup TICKER [days] — reverse-lookup detector chronology"),
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
-            BotCommand("flags",        "Continuation flag scan — TRIGGERED/COILED/TIGHTENING"),
+            BotCommand("htf",          "HTF (high tight flag) setups — TRIGGERED/COILED/TIGHTENING"),
             BotCommand("anticipation", "⏱️ Anticipation play (SHADOW, Pradeep) — watched/armed/coiled/ready/triggered"),
             BotCommand("detectors",    "🔭 Intraday entry-technique detectors (shadow) — today + 7d roll-up"),
             BotCommand("unknownrate", "🕳 Source-coverage KPI (#211) — unknown-rate on EP movers"),
