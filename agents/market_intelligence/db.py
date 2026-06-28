@@ -2038,6 +2038,10 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS consecutive_accelerating INT NOT NULL DEFAULT 0;
             ALTER TABLE mi_themes
                 ADD COLUMN IF NOT EXISTS pct_above_20sma REAL;
+            -- #226 shadow->live graduation: 'live' = natively discovered by the engine;
+            -- 'shadow_promoted' = graduated from mi_theme_candidates_shadow by promote_shadow_themes.
+            ALTER TABLE mi_themes
+                ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'live';
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides
@@ -5031,7 +5035,7 @@ async def get_shadow_theme_candidates(days: int = 7) -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT DISTINCT ON (name) name, tickers, source, run_date
+            SELECT DISTINCT ON (name) name, tickers, source, run_date, thesis
             FROM mi_theme_candidates_shadow
             WHERE run_date >= CURRENT_DATE - $1::int
             ORDER BY name, run_date DESC

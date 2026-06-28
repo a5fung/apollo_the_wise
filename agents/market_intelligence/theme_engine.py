@@ -1369,12 +1369,80 @@ async def _save_themes(themes: list[dict]) -> None:
                 t["score"], t.get("rs_avg"), t["description"], t["tickers"],
                 t.get("parent_theme"), days_active, consec_acc, t.get("pct_above_20sma"))
 
-        # Remove themes that were merged/retired — not in the final list
+        # Remove LIVE themes that were merged/retired — not in the final list. Scoped to
+        # source='live' so a same-day re-run can't clobber shadow_promoted rows (#226 graduation,
+        # which runs AFTER this in the nightly pull and owns its own source='shadow_promoted' rows).
         final_names = [t["name"] for t in themes]
         await conn.execute("""
             DELETE FROM mi_themes
-            WHERE theme_date = $1 AND name != ALL($2)
+            WHERE theme_date = $1 AND name != ALL($2) AND source = 'live'
         """, today, final_names)
+
+
+_PROMOTE_WINDOW_DAYS = 3
+_PROMOTE_MIN_MEMBERS = 3
+
+
+async def promote_shadow_themes(today) -> int:
+    """#226 — graduate shadow theme cohorts into the LIVE `mi_themes` table (operator 2026-06-28:
+    "we need to graduate this ASAP" — the missing promo path was the gap that let cohorts sit idle).
+    Reads the FULL shadow lane (`get_shadow_theme_candidates`, all sources incl 'shadow_v2'), promotes
+    every cohort with >= _PROMOTE_MIN_MEMBERS members seen in the last _PROMOTE_WINDOW_DAYS, canonicalizes
+    names vs live `mi_themes` (reuse `_canonicalize_theme_names` so a promoted cohort converges to the
+    canonical name when its ticker-set already exists), and upserts them as source='shadow_promoted'
+    rows for `today`. The theme lifecycle (7d recency cap -> Fading/Retired) self-cleans one-offs.
+
+    Runs AFTER `_save_themes` in the nightly pull; the live DELETE is source='live'-scoped so it can't
+    clobber promoted rows, and the ON CONFLICT update is guarded (WHERE source='shadow_promoted') so it
+    never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted."""
+    from agents.market_intelligence.db import get_shadow_theme_candidates
+    cands = await get_shadow_theme_candidates(days=_PROMOTE_WINDOW_DAYS)
+    cohorts = [c for c in cands if len(c.get("tickers") or []) >= _PROMOTE_MIN_MEMBERS]
+    if not cohorts:
+        logger.info("[promote] no shadow cohort met the >=%d-member bar", _PROMOTE_MIN_MEMBERS)
+        return 0
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        themes = [{"name": c["name"], "tickers": list(c.get("tickers") or []),
+                   "thesis": c.get("thesis")} for c in cohorts]
+        await _canonicalize_theme_names(conn, themes, today)
+        prior_rows = await conn.fetch("""
+            SELECT DISTINCT ON (name) name, days_active
+            FROM mi_themes WHERE name = ANY($1) AND theme_date < $2
+            ORDER BY name, theme_date DESC
+        """, [t["name"] for t in themes], today)
+        prior_map = {r["name"]: dict(r) for r in prior_rows}
+        n = 0
+        for t in themes:
+            members = t["tickers"]
+            rs_avg = await conn.fetchval("""
+                SELECT AVG(rs_composite) FROM mi_stock_scores
+                WHERE ticker = ANY($1)
+                  AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+            """, members)
+            prior = prior_map.get(t["name"])
+            days_active = (prior.get("days_active") or 0) + 1 if prior else 1
+            desc = t.get("thesis") or f"Graduated from the shadow lane ({len(members)} members)."
+            score = float(rs_avg) if rs_avg is not None else None
+            res = await conn.execute("""
+                INSERT INTO mi_themes
+                    (theme_date, name, stage, score, rs_avg, description, tickers,
+                     days_active, consecutive_accelerating, source)
+                VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
+                ON CONFLICT (theme_date, name) DO UPDATE SET
+                    score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
+                    description = EXCLUDED.description, tickers = EXCLUDED.tickers,
+                    days_active = EXCLUDED.days_active
+                WHERE mi_themes.source = 'shadow_promoted'
+            """, today, t["name"], score, desc, members, days_active)
+            if str(res).endswith(" 1"):   # "INSERT 0 1" on write; "INSERT 0 0" when the guard skipped a live theme
+                n += 1
+        await log_audit_event(
+            "shadow_themes_promoted",
+            summary=f"Graduated {n} shadow cohort(s) into live mi_themes",
+            detail=f"promoted={[t['name'] for t in themes]}")
+    logger.info("[promote] graduated %d shadow cohort(s) into mi_themes", n)
+    return n
 
 
 async def _validate_new_themes_at_birth(

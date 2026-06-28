@@ -586,6 +586,27 @@ async def _nightly_data_pull():
     except Exception as e:
         logger.warning(f"Narrative-theme discovery failed (non-fatal, #167): {e}")
 
+    # 5d. #226 GRADUATION — promote qualifying shadow cohorts (5b shadow_v2 + 5c narrative) into the
+    # LIVE mi_themes table (operator 2026-06-28: "graduate this ASAP" — the missing promo path was the
+    # gap that let cohorts sit idle). Runs AFTER the live theme save (5a; its DELETE is now
+    # source='live'-scoped so it can't clobber promoted rows) and AFTER the shadow lanes write, so it
+    # reads today's fresh cohorts. Error-wrapped + non-fatal: a promote failure must NEVER break the pull.
+    try:
+        from agents.market_intelligence.theme_engine import promote_shadow_themes
+        n_promoted = await promote_shadow_themes(_today)
+        logger.info(f"Shadow->live graduation (#226): promoted {n_promoted}")
+        summary_parts.append(f"promoted:{n_promoted}")
+    except Exception as e:
+        logger.warning(f"Shadow->live graduation failed (non-fatal, #226): {e}")
+        try:
+            await log_audit_event(
+                "shadow_promotion_failed",
+                summary="Shadow->live graduation raised (non-fatal)",
+                detail=f"{type(e).__name__}: {e}",
+            )
+        except Exception:  # loud-ok: outer logger.warning already surfaced the real error; audit is best-effort
+            pass
+
     # 6. Fundamental flags — fetch for top RS stocks + theme constituents
     try:
         from agents.market_intelligence.db import get_active_themes
