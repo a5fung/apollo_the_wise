@@ -2331,9 +2331,52 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 except Exception:
                     pass
 
+            # #321 LIVE rescue (operator 6/28: it's a BUG — the gate fires "no prior-year comparable"
+            # when the comparable IS available, just not in the news corpus). Recover the YoY from the
+            # prior-year SAME quarter and let it DRIVE the gate: recovered >= floor -> not weak (clear the
+            # downgrade); < floor -> legitimately weak (keep, with the real number); None -> stay
+            # conservative. Latency-bounded (off-corpus yfinance fetch, 4s cap, fail-open) + a revert
+            # toggle (LIVE_YOY_RECOVERY=false reverts to shadow-only). Runs only on the missing-YoY reason.
+            # Latency guard (advisor 6/28): the prior-year leg fetch must NOT run inside the 9:30-9:45
+            # ORB-cutoff window — a few × 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on
+            # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
+            # pre-9:30 and the rescued grade caches in _catalyst_cache for the in-window scans. A name
+            # first-seen in-window stays conservative (the safe old behavior) rather than risking the cutoff.
+            _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
+            if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
+                    and os.environ.get("LIVE_YOY_RECOVERY", "true").lower() == "true"
+                    and not _in_orb_cutoff):
+                _qr2 = _extracted.get("q_revenue_usd") or {}
+                try:
+                    from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
+                    _rec = await asyncio.wait_for(
+                        compute_yoy_from_prior_year(
+                            ticker, _extracted.get("fiscal_period"), _qr2.get("value")),
+                        timeout=4,
+                    )
+                except Exception:  # loud-ok: fail-open — timeout/error -> None -> stays the conservative downgrade (safe default)
+                    _rec = None
+                if _rec is not None:
+                    _ryoy = _rec["yoy_pct"]
+                    if _ryoy >= EARNINGS_REVENUE_GATE_MIN_YOY:
+                        _downgrade_reason = None   # real growth recovered — NOT a weak/missing-comparable name
+                        await log_audit_event(
+                            "catalyst_yoy_recovered_live",
+                            f"{ticker}: kept {catalyst_quality} — recovered prior-yr YoY "
+                            f"{_ryoy:+.1f}% (>= {EARNINGS_REVENUE_GATE_MIN_YOY:.0f})",
+                            json.dumps({"ticker": ticker, "alert_date": today.isoformat(),
+                                        "recovered_yoy_pct": _ryoy,
+                                        "prior_period": _rec.get("prior_period"),
+                                        "kept_quality": catalyst_quality}))
+                    else:
+                        _downgrade_reason = (
+                            f"q_rev_yoy_{_ryoy:.1f}pct_below_"
+                            f"{EARNINGS_REVENUE_GATE_MIN_YOY:.0f}pct_recovered")
+
             if _downgrade_reason:
                 _original_quality = catalyst_quality
                 catalyst_quality = "routine"
+                confidence_multiplier = 1.0  # #320: reset the stale agreement boost on downgrade (mirrors the pplx-hedge reset ~line 2016)
                 _qr_block = _extracted.get("q_revenue_usd") or {}
                 # #149 SHADOW capture: earnings name downgraded purely for a
                 # MISSING prior-year YoY comparable (LLM got a current-quarter
@@ -2425,6 +2468,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             if matched_marker:
                 original_quality = catalyst_quality
                 catalyst_quality = "routine"
+                confidence_multiplier = 1.0  # #320: reset the stale agreement boost on downgrade (mirrors the pplx-hedge reset ~line 2016)
                 await log_audit_event(
                     "catalyst_prose_mismatch_downgrade",
                     f"{ticker}: strong → routine "
