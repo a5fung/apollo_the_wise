@@ -5,9 +5,9 @@
 **NEVER**, on your own authority, change / disable / alter any **strategy, sell or entry discipline, sizing, target, safeguard, the trading system, or anything touching real money or live trade state** — that is the operator's **SOLE** authority. **Pausing broken code to fix a bug is NOT a license to change the strategy**: say "X is paused while we fix the bug; the fix restores it" — never "we'll run without X." If a genuine fork exists ("if not fixed by date Y, gate the launch vs run without the feature?"), **surface it as the operator's decision** — never pre-decide it, never bury it in a plan. In any doubt: **STOP and ask.** This line cannot be crossed. (Crossed once 6/22 — retracted; never again.)
 
 ## Working rules (operator 2026-06-28 — HARD, override defaults)
-- **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag the PLAN line `[ok:reason]` or `[blocked:reason]`. Gated in `check_plan._rebump_gate`.
-- **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first", "validate-weeks", "visible-but-flagged") unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
-- **Concise — no essays.** A decision = the fork + a 1-line rec.
+- **Max 1 rebump.** Due/overdue task → UNBLOCK + SHIP, not re-date. A 2nd bump is FORBIDDEN without my sign-off — tag `[ok:reason]`/`[blocked:reason]`. Gated in `check_plan._rebump_gate`.
+- **No conservatism unless REAL $ at risk.** Default = ship / graduate / load-bearing. Don't hedge ("shadow-first" etc.) unless it risks real money (THE LINE). Themes / grades / detectors = no money → ship full.
+- **Concise — no essays; never mention session length or ending/deferring a session — keep working.** A decision = the fork + a 1-line rec.
 
 ## Session Protocol (open + close — the anti-drift ritual)
 
