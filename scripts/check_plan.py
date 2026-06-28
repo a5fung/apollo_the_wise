@@ -144,6 +144,38 @@ def _bump_count(title: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+_BLOCKED_BY = re.compile(r'blocked_by:?\s*#(\d+)', re.I)
+_DEFER_UNTIL = re.compile(r'defer_until:\s*(\d{4}-\d{2}-\d{2})', re.I)
+
+
+def _dependency_gate(tasks, errors, today) -> None:
+    """Dependency gate (operator 2026-06-28): when a blocker resolves or a time-deferral expires, the
+    dependent MUST be re-dated — it can't keep sitting at a phantom ETA justified by a gate that already
+    passed (the #320/#321/#335 'post-launch' drift). A task tagged `blocked_by:#N` whose #N is no longer
+    open, or `defer_until:YYYY-MM-DD` whose date is past, FAILS the commit until re-dated. Use these
+    PARSEABLE tags for any deferral so the dependency is mechanically tracked, not buried in prose."""
+    open_ids = {t["id"] for t in tasks
+                if str(t["status"]).lower() not in ("completed", "done", "closed", "deleted")}
+    for t in tasks:
+        if str(t["status"]).lower() in ("completed", "done", "closed", "deleted"):
+            continue
+        for m in _BLOCKED_BY.finditer(t["title"]):
+            bid = int(m.group(1))
+            if bid not in open_ids:
+                errors.append(
+                    f"L{t['line']}: task #{t['id']} is `blocked_by:#{bid}` but #{bid} is no longer open "
+                    f"— the blocker CLEARED; un-defer + re-date #{t['id']} to a real ETA (dependency gate).")
+        m = _DEFER_UNTIL.search(t["title"])
+        if m:
+            try:
+                if date.fromisoformat(m.group(1)) < today:
+                    errors.append(
+                        f"L{t['line']}: task #{t['id']} `defer_until:{m.group(1)}` is PAST (today {today}) "
+                        f"— the deferral EXPIRED; re-date to a real near-term ETA (dependency gate).")
+            except ValueError:
+                pass
+
+
 def _rebump_gate(tasks, errors) -> None:
     """Rebump cap — HARD RULE (operator 2026-06-28): a task ETA may be rebumped AT MOST ONCE; a
     2nd+ bump needs [ok:reason] (operator approval) or [blocked:reason] (physically impossible). The
@@ -242,6 +274,7 @@ def main(argv: list[str]) -> int:
         errors.append(f"L{t['line']}: task #{t['id']} ETA {t['eta']} is PAST (today {today}) — "
                       f"rebump to a future date at CLOSE, or close the task")
     _rebump_gate(tasks, errors)   # HARD RULE: max 1 rebump, then [ok:]/[blocked:] or it FAILS (operator 6/28)
+    _dependency_gate(tasks, errors, today)   # blocker-cleared / defer_until-expired → re-date (operator 6/28)
 
     # buried-work tripwire: when a task NAMES critical-path/blocker build work, that phrase must be
     # IMMEDIATELY followed by the #id of the task that does it — forcing "name it -> point at the
