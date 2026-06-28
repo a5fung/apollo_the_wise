@@ -15,11 +15,12 @@ import pytest
 from tests.conftest import make_mock_pool
 
 
-def _make_pool(audit_rows: list[dict], judge_rows: "list[dict] | None" = None):
-    """Wire `conn.fetch`: 1st call = downgrade audit rows, 2nd = judge-verdict rows (the
-    judge-defer query added 6/17; only fetched when there ARE downgrades)."""
+def _make_pool(audit_rows: list[dict], judge_rows: "list[dict] | None" = None,
+               rescued_rows: "list[dict] | None" = None):
+    """Wire `conn.fetch`: 1st = downgrade audit rows, 2nd = #321 live-recovery rows, 3rd =
+    judge-verdict rows (judge-defer query 6/17; reached only when there ARE downgrades/rescues)."""
     pool, conn = make_mock_pool()
-    conn.fetch = AsyncMock(side_effect=[audit_rows, judge_rows or []])
+    conn.fetch = AsyncMock(side_effect=[audit_rows, rescued_rows or [], judge_rows or []])
     return pool, conn
 
 
@@ -117,6 +118,28 @@ async def test_digest_annotates_judge_promoted_ticker():
     foo_line = next(l for l in msg.splitlines() if "FOO" in l)
     assert "judge promoted to HIGH" in lzb_line     # promoted → annotated
     assert "judge promoted" not in foo_line          # not promoted → plain downgrade line
+
+
+@pytest.mark.asyncio
+async def test_digest_surfaces_rescued_when_no_downgrades():
+    """#321 self-verify: live YoY-recoveries present but ZERO downgrades → digest still sends (not
+    silent) and shows the rescued line, so the operator SEES the fix fired."""
+    from agents.market_intelligence import scheduler
+
+    rescued_rows = [{"summary": "LZB: kept strong — recovered prior-yr YoY +3.8% (>= 5)"}]
+    pool, _conn = _make_pool([], rescued_rows=rescued_rows)
+    sent = []
+
+    async def _fake_send(text, *args, **kwargs):
+        sent.append(text)
+
+    with patch.object(scheduler, "get_pool", new=AsyncMock(return_value=pool)), \
+         patch.object(scheduler, "send_telegram_message", new=_fake_send):
+        await scheduler._catalyst_downgrade_digest_job()
+
+    assert len(sent) == 1, "rescues present → digest must NOT be silent"
+    assert "rescued" in sent[0]
+    assert "LZB" in sent[0]
 
 
 def test_humanize_rubric_composite_reason():

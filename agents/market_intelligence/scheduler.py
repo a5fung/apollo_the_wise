@@ -2195,7 +2195,18 @@ async def _catalyst_downgrade_digest_job():
             now_et.date(),
             CATALYST_EARNINGS_REVENUE_WEAK_DOWNGRADE,
         )
-        if not rows:
+        # #321 self-verify: today's LIVE YoY-recoveries (a wrongly-downgraded name rescued by the
+        # prior-year comparable). Surfaced here so the operator SEES the fix firing, not infers from silence.
+        rescued = await conn.fetch(
+            """
+            SELECT summary FROM mi_audit_log
+            WHERE event_type = 'catalyst_yoy_recovered_live'
+              AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+            ORDER BY created_at ASC
+            """,
+            now_et.date(),
+        )
+        if not rows and not rescued:
             return 0
         # Defer to the load-bearing judge (#249): a catalyst the FLOOR downgraded but the JUDGE
         # promoted to an authoritative HIGH should not read as a bare downgrade contradicting the
@@ -2234,6 +2245,10 @@ async def _catalyst_downgrade_digest_job():
         if judge_promoted:
             line += "  _(↑ judge promoted to HIGH — authoritative)_"
         lines.append(line)
+    if rescued:
+        _rtix = ", ".join(_md_escape((rs["summary"] or "").split(":", 1)[0].strip()) for rs in rescued)
+        lines.append("")
+        lines.append(f"🟢 *{len(rescued)} rescued* — wrongly downgraded for a missing YoY, prior-year recovered (#321): {_rtix}")
     lines.append("")
     lines.append("_Drilldown: `/rubric TICKER` for full breakdown._")
     try:
