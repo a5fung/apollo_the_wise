@@ -2346,6 +2346,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         "alert_date": today,
                         "original_quality": _original_quality,
                         "llm_q_rev_value": _qr_block.get("value"),
+                        "fiscal_period": _extracted.get("fiscal_period"),  # #321: deterministic prior-year match
                     })
                 _gf_block = _extracted.get("guidance_fy_revenue_usd") or {}
                 # Rubric details if available (Phase 5 ship)
@@ -3003,22 +3004,27 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # latency-sensitive 9:45 ORB-cutoff path (post-loop, bounded, fail-open).
     if _yoy_shadow_candidates:
         try:
-            from agents.market_intelligence.fundamentals import get_fundamentals
+            from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
             from agents.market_intelligence.constants import (
                 EARNINGS_REVENUE_GATE_MIN_YOY as _GATE_MIN_YOY,
             )
 
             async def _shadow_recover_yoy(sc: dict) -> None:
                 try:
-                    f = await get_fundamentals(sc["ticker"])
-                    qr = f.get("quarterly_revenue") or []
-                    latest = qr[-1] if qr else {}
-                    yoy = latest.get("yoy_pct")
+                    # #321: period-MATCHED prior-year recovery (replaces the old crude qr[-1], which on a
+                    # gap day is the PRIOR quarter = wrong period → a stale/wrong YoY). The extractor's
+                    # value is the fresh current quarter; we pull the prior-year SAME quarter (a year old,
+                    # reliable) and COMPUTE YoY — feeds the gate decision, never fabricates (None stays
+                    # downgraded). Validated 2026-06-28: 20/21 covered cases matched the extraction truth.
+                    rec = await compute_yoy_from_prior_year(
+                        sc["ticker"], sc.get("fiscal_period"), sc.get("llm_q_rev_value")
+                    )
+                    yoy = rec.get("yoy_pct") if rec else None
                     recovered, corrected = _yoy_shadow_decision(yoy, _GATE_MIN_YOY)
                     await log_audit_event(
                         "catalyst_q_rev_yoy_shadow_recovered",
                         f"{sc['ticker']}: live=downgraded({sc['original_quality']}"
-                        f"→routine) yfinance_yoy="
+                        f"→routine) prioryr_yoy="
                         f"{f'{yoy:+.1f}%' if recovered else 'none'} "
                         f"→ corrected={corrected}",
                         json.dumps({
@@ -3027,8 +3033,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "original_quality": sc["original_quality"],
                             "live_decision": "downgraded_to_routine",
                             "llm_q_rev_value": sc["llm_q_rev_value"],
+                            "fiscal_period": sc.get("fiscal_period"),
                             "yfinance_yoy_pct": yoy if recovered else None,
-                            "yfinance_period": latest.get("period"),
+                            "prior_period": rec.get("prior_period") if rec else None,
+                            "prior_revenue_m": rec.get("prior_revenue_m") if rec else None,
+                            "match_method": "period_matched_prior_year",
                             "gate_min_yoy": _GATE_MIN_YOY,
                             "corrected_decision": corrected,
                             "recovered": recovered,
@@ -3036,7 +3045,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     )
                 except Exception as _se:
                     logger.warning(
-                        f"#149 yoy shadow recover failed for {sc.get('ticker')}: {_se}"
+                        f"#321 yoy shadow recover failed for {sc.get('ticker')}: {_se}"
                     )
 
             await asyncio.wait_for(

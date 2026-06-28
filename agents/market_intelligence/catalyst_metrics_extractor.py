@@ -64,6 +64,7 @@ Articles (multi-source corpus):
 Extract earnings metrics from the article corpus. Return ONLY a JSON object with this exact schema (use null when a number is not stated, use empty array [] when sources cannot be cited):
 
 {{
+  "fiscal_period": "<the fiscal quarter these results are FOR, exactly as the release labels it, e.g. 'Q2 FY2026' or 'Q3 2026' or 'fiscal Q1 2027'; null if the corpus does not state the period>",
   "q_revenue_usd": null OR {{"value": <number>, "yoy_pct": <number>, "beat_vs_est_pct": <number or null>, "sources": ["polygon", "fmp", ...], "confidence": "low" | "medium" | "high"}},
   "fy_revenue_usd": null OR {{"value": <number>, "yoy_pct": <number>, "sources": [...], "confidence": "..."}},
   "q_eps": null OR {{"value": <number>, "yoy_pct": <number or null>, "beat_vs_est_pct": <number or null>, "sources": [...], "confidence": "..."}},
@@ -77,6 +78,7 @@ Extract earnings metrics from the article corpus. Return ONLY a JSON object with
 }}
 
 EXTRACTION RULES:
+- "fiscal_period": the fiscal quarter the just-reported results cover, exactly as the release labels it (e.g. "Q2 FY2026", "Q3 2026", "fiscal Q1 2027"). It is the period the q_revenue/q_eps numbers are FOR — used downstream to align the prior-year comparable when YoY isn't stated. null if no period is stated in the corpus.
 - "yoy_pct" should be the explicit YoY growth percentage stated in articles (e.g., "revenue rose 11%" → 11.0). If raw quarter numbers are stated but YoY % is not stated, you MAY compute it (new - old) / old * 100 — but mark confidence "medium" unless multiple articles corroborate.
 - "value" fields are absolute dollars (USD). e.g., $82.9M → 82900000.
 - "beat_vs_est_pct": revenue or EPS beat vs analyst consensus estimate (e.g., "EPS of $0.63 beat estimate of $0.50" → +26.0). Negative if missed. Look for "beat estimate", "vs consensus", "vs analysts expected", "above/below estimate".

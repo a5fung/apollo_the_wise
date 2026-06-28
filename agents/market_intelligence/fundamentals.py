@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -397,6 +398,59 @@ async def get_fundamentals(ticker: str) -> dict[str, Any]:
 
     result["quality_flags"] = flags
     return result
+
+
+def _parse_fiscal_quarter(label: str) -> "tuple[int, int] | None":
+    """Parse a fiscal-period label to (quarter 1-4, full year). Handles the extractor's
+    'Q2 FY2026' / 'Q3 2026' / 'fiscal Q1 2027' AND yfinance's "Q2'26" form. None if unparseable."""
+    if not label:
+        return None
+    m = re.search(r'Q\s*([1-4])', label, re.I)
+    if not m:
+        return None
+    q = int(m.group(1))
+    ym = re.search(r"'(\d{2})\b", label) or re.search(r'(20\d{2})', label)  # 'FY2026' has no \b before 2026
+    if not ym:
+        return None
+    yr = int(ym.group(1))
+    if yr < 100:
+        yr += 2000
+    return (q, yr)
+
+
+async def compute_yoy_from_prior_year(
+    ticker: str, fiscal_period: "str | None", current_value_usd: "float | None",
+) -> "dict | None":
+    """#321 — recover q-revenue YoY when the news corpus stated the CURRENT quarter's revenue but NOT
+    the YoY %. The current value is fresh (same-day release); the PRIOR-YEAR same quarter is a year old,
+    so yfinance reliably has it (validated 2026-06-28: 20/21 covered cases matched the extraction truth
+    to <3%). Match the prior-year quarter DETERMINISTICALLY by fiscal_period, compute YoY, unit/scale
+    -guarded. Returns {yoy_pct, prior_period, prior_revenue_m, source} or None — None on any gap
+    (no parseable period / no matching prior-year quarter / scale-inconsistent), which the caller keeps
+    as the conservative downgrade. NEVER fabricate."""
+    cur = _parse_fiscal_quarter(fiscal_period or "")
+    if not cur or not current_value_usd or current_value_usd <= 0:
+        return None
+    q, yr = cur
+    prior_key = (q, yr - 1)
+    try:
+        f = await get_fundamentals(ticker)
+    except Exception:  # loud-ok: fail-open — None preserves the conservative downgrade; shadow caller audits the miss
+        return None
+    cur_m = current_value_usd / 1e6   # extraction value is absolute USD; yfinance revenue_m is $M
+    for row in (f.get("quarterly_revenue") or []):
+        if _parse_fiscal_quarter(row.get("period") or "") == prior_key:
+            prior_m = row.get("revenue_m")
+            if not prior_m or prior_m <= 0:
+                return None
+            yoy = (cur_m - prior_m) / abs(prior_m) * 100.0
+            # scale/currency sanity guard (advisor): a millions/thousands or FX mismatch corrupts the
+            # ratio. A real q-revenue YoY lives well inside this band; outside it = drop to None.
+            if not (-100.0 <= yoy <= 1000.0):
+                return None
+            return {"yoy_pct": round(yoy, 1), "prior_period": row.get("period"),
+                    "prior_revenue_m": prior_m, "source": "yfinance_prior_year"}
+    return None
 
 
 async def get_fundamentals_batch(
