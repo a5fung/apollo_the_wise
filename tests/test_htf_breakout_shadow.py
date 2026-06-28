@@ -50,7 +50,7 @@ def test_settle_none_when_stop_ge_entry():
 
 @pytest.mark.asyncio
 async def test_order_records_reject_never_drops():
-    from agents.market_intelligence.broker.order_manager import prepare_htf_breakout_order
+    from agents.market_intelligence.flag_detector import prepare_htf_breakout_order
     # base_low is 30% below entry -> stop distance > 8% cap -> would_reject set, but spec STILL returned
     spec, wreject = prepare_htf_breakout_order(base_high=100.0, base_low=70.0)
     assert spec is not None
@@ -60,7 +60,7 @@ async def test_order_records_reject_never_drops():
 
 @pytest.mark.asyncio
 async def test_order_picks_tightest_stop_within_cap():
-    from agents.market_intelligence.broker.order_manager import prepare_htf_breakout_order
+    from agents.market_intelligence.flag_detector import prepare_htf_breakout_order
     # base_low 90 (10% -> over cap), sma_10 96 (4% -> within), sma_20 93 (7% -> within)
     # tightest-within-cap = sma_10 (the highest stop that still respects the cap)
     spec, wreject = prepare_htf_breakout_order(base_high=100.0, base_low=90.0, sma_10=96.0, sma_20=93.0)

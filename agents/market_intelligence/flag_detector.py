@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
 from datetime import date, datetime, time as _dt_time
 from statistics import median as _median_stat
@@ -100,6 +101,69 @@ def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_B
         realized_r = (bars[end]["c"] - entry) / risk
     return {"outcome": out, "fwd_mfe_r": round((mfe - entry) / risk, 2),
             "realized_r": round(realized_r, 2)}
+
+
+HTF_SHADOW_NOTIONAL = 100_000.0   # fixed notional for the HTF breakout SHADOW sizing (R is equity-independent)
+_HTF_MAX_LOSS_PCT = 0.08          # the HTF cap (sourced 5-8%); prefer a tighter stop, flag if base_low exceeds
+
+
+def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
+                               regime_record=None, notional=None):
+    """#356 Phase 3 — the would-be HTF breakout-entry order SHAPE (SHADOW; NEVER submitted). Lives in
+    flag_detector (intelligence-side, PURE MATH) NOT broker/ — the shadow computes the shape but submits
+    nothing, so it must not import across the execution boundary (#154/#296 http split). Entry = base_high
+    (a stop-limit BUY); stop = the TIGHTEST of {base_low, sma_10, sma_20} within the 5-8% cap; sizing off a
+    FIXED notional. The reject gates become would_reject_reason (the row is ALWAYS returned — the shadow
+    wants the rejects). Returns (spec, would_reject_reason); would_reject_reason is None on a clean order."""
+    from agents.market_intelligence.constants import vix_scaled_risk_pct, RISK_PCT
+    notional = float(notional) if notional is not None else HTF_SHADOW_NOTIONAL
+    entry = float(base_high)
+    would_reject = None
+    cands = [(k, float(v)) for k, v in
+             (("base_low", base_low), ("sma_10", sma_10), ("sma_20", sma_20))
+             if v is not None and float(v) < entry]
+    if not cands:
+        stop = round(entry * (1 - _HTF_MAX_LOSS_PCT), 2)
+        stop_kind = "synthetic_cap"
+        would_reject = "no_valid_stop_below_entry"
+    else:
+        within = [(k, s) for k, s in cands if (entry - s) / entry <= _HTF_MAX_LOSS_PCT]
+        if within:
+            stop_kind, stop = max(within, key=lambda x: x[1])   # tightest within the cap
+        else:
+            stop_kind, stop = max(cands, key=lambda x: x[1])    # tightest available (still > cap)
+            would_reject = "stop_distance_gt_8pct"
+    risk_per_share = entry - stop
+    min_risk = entry * 0.02
+    if risk_per_share < min_risk:
+        risk_per_share = min_risk   # 2% floor — guards a near-zero stop from oversizing
+    vix_value = regime_record.get("vix") if regime_record else None
+    risk_pct = vix_scaled_risk_pct(vix_value, base_pct=RISK_PCT)
+    if regime_record and regime_record.get("qqq_ema_bullish") is False:
+        risk_pct *= 0.5
+    risk_dollars = notional * risk_pct
+    shares = math.floor(risk_dollars / risk_per_share) if risk_per_share > 0 else 0
+    max_position = notional * 0.20
+    if shares * entry > max_position:
+        shares = math.floor(max_position / entry)
+    if shares < 1 and would_reject is None:
+        would_reject = "size_lt_1_share"
+    # stop-limit BUY limit: 0.5% or $0.02 above entry (inlined from order_manager.stop_limit_buy_price —
+    # a pure formula; importing the broker module would cross the execution boundary, #154).
+    limit_price = round(max(entry * 1.005, entry + 0.02), 2)
+    spec = {
+        "entry_price": round(entry, 2),
+        "limit_price": limit_price,
+        "stop_loss_price": round(stop, 2),
+        "stop_kind": stop_kind,
+        "max_loss_pct": round((entry - stop) / entry, 4),
+        "risk_per_share": round(risk_per_share, 2),
+        "risk_dollars": round(max(shares, 0) * risk_per_share, 2),
+        "shares": max(shares, 0),
+        "position_size": round(max(shares, 0) * entry, 2),
+        "notional_basis": notional,
+    }
+    return spec, would_reject
 _FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
 
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
@@ -1529,7 +1593,6 @@ async def run_intraday_flag_break_scan(scan_time):
     # pre-gate) + would-be REJECTS (would_reject_reason, not dropped). Wrapped so a shadow failure can
     # NEVER break the live #94 detection above.
     try:
-        from agents.market_intelligence.broker.order_manager import prepare_htf_breakout_order
         for b in new_breaks:
             _spec, _wreject = prepare_htf_breakout_order(
                 base_high=b["base_high"], base_low=b["base_low"],
