@@ -185,7 +185,8 @@ def _rebump_gate(tasks, errors) -> None:
     import subprocess
     try:
         head = subprocess.run(["git", "show", "HEAD:PLAN.md"], cwd=str(REPO),
-                               capture_output=True, text=True, encoding="utf-8", errors="replace")
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               timeout=5)
         if head.returncode != 0:
             return  # no committed PLAN yet — nothing to diff against
         prior, _ = parse(head.stdout)

@@ -1412,14 +1412,19 @@ async def promote_shadow_themes(today) -> int:
             ORDER BY name, theme_date DESC
         """, [t["name"] for t in themes], today)
         prior_map = {r["name"]: dict(r) for r in prior_rows}
+        # Batch the RS lookup — ONE query for all members across all cohorts, not N+1 per theme.
+        _all_members = list({tk for t in themes for tk in t["tickers"]})
+        _rs_rows = await conn.fetch("""
+            SELECT ticker, rs_composite FROM mi_stock_scores
+            WHERE ticker = ANY($1)
+              AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+        """, _all_members)
+        _rs_by_tk = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
         n = 0
         for t in themes:
             members = t["tickers"]
-            rs_avg = await conn.fetchval("""
-                SELECT AVG(rs_composite) FROM mi_stock_scores
-                WHERE ticker = ANY($1)
-                  AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
-            """, members)
+            _vals = [_rs_by_tk[tk] for tk in members if tk in _rs_by_tk]
+            rs_avg = sum(_vals) / len(_vals) if _vals else None
             prior = prior_map.get(t["name"])
             days_active = (prior.get("days_active") or 0) + 1 if prior else 1
             desc = t.get("thesis") or f"Graduated from the shadow lane ({len(members)} members)."
