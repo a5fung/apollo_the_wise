@@ -6802,3 +6802,43 @@ reviews:
       If under threshold, the default is fine — mark done, no change.
     status: pending
     added_on: 2026-06-29
+
+  - review_id: consolidation_anticipate_paper_graduation
+    title: "#327 Anticipation entry-shadow -> PAPER graduation (anticipate-only)"
+    question: |
+      Does the ANTICIPATE in-coil entry (entry_signal_at, the Nth-tight-day close — NOT a breakout;
+      Confirm un-wired 6/29) show a real forward edge once N settle? Reminder for the #353 shadow->paper
+      flip. Review the anticipate cohort's settled R / expectancy (outlier-robust, not carried by 1 name).
+      The #326 directional read (replay) was promising-but-selection-inflated -> the LIVE forward shadow
+      is the only instrument that answers the live-edge question.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_consolidation_entry_shadow
+      WHERE entry_mode = 'anticipate' AND outcome IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-07
+    action_when_ready: |
+      Review the anticipate cohort (median realized_r, win%, expectancy; exclude outlier-carry). IF a
+      real edge holds -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #353 (register + wire
+      entry -> phase=paper, in PARALLEL with live magna53). IF thin/negative -> iterate the coil gates or
+      extend the shadow. NEVER auto-flip — paper is a real-money-path decision (THE LINE).
+    status: pending
+    added_on: 2026-06-29
+
+  - review_id: htf_breakout_paper_graduation
+    title: "#356 HTF breakout-shadow -> PAPER graduation"
+    question: |
+      Does the HTF (high-tight-flag) breakout entry (base_high stop-limit-buy — breakout IS the entry
+      here, the O'Neil/Minervini primary def, unlike anticipation) show a real edge once N settle?
+      Reminder for the #397 shadow->paper money gate. First HTF break was 2026-06-29; each capture
+      settles ~12 trading days later; HTF breaks are rare so N accrues slowly.
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-20
+    action_when_ready: |
+      Review the HTF cohort's settled R / win% / expectancy (capture% noted slightly high from
+      same-bar-tie). IF a real edge -> CHANGE_PROCESS + operator sign-off -> flip shadow->PAPER = #397
+      (money gate). IF thin -> iterate or extend. NEVER auto-flip. NB htf_adr_threshold_tune is a
+      SEPARATE review (the ADR-floor tune) — this one is the paper-graduation gate.
+    status: pending
+    added_on: 2026-06-29
