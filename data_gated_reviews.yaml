@@ -6761,3 +6761,22 @@ reviews:
       observe-laned, not alerted). See PLAN #359.
     status: pending
     added_on: 2026-06-23
+
+  - review_id: htf_adr_threshold_tune
+    title: "HTF ADR>4% floor — tune to the breakout-shadow winners' ADR distribution"
+    question: |
+      The HTF liquidity spec includes ADR (avg daily range) > 4%. But 4% is NOT canonical — the
+      methodology sources run ~3% to 6%. Encoded 6/28 as a STARTING value (_HTF_MIN_ADR_PCT=0.04 in
+      flag_detector.py). Once real HTF breakout-shadow rows settle, what ADR do the WINNERS (captures)
+      actually have vs the stops? Tune the floor to that evidence. (_HTF_MIN_ADV_SHARES=500k is firm —
+      only ADR is under review.)
+    predicate_sql: |
+      SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL;
+    threshold: 10
+    earliest_review_date: 2026-07-25
+    action_when_ready: |
+      Pull the settled HTF breakout-shadow cohort; compare the ADR distribution of captures vs stops;
+      tune _HTF_MIN_ADR_PCT (flag_detector.py) to the evidence + update docs/setups/htf.md. A data-fit,
+      not another guess — and don't drop it below where the winners actually live.
+    status: pending
+    added_on: 2026-06-28

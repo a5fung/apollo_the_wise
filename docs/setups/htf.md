@@ -32,7 +32,7 @@ criteria were swapped/added.
 | **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=260` |
 | **Flagpole data-artifact** | reject a >50% single-day close jump with `vol < 2× window avg` | Gemini 6/27 (split / bad-tick backstop) | runup-window guard |
 | **Flagpole volume** | ≥1 day in the 40d window at `vol ≥ 2× window avg` | spec "undeniable institutional demand"; Gemini 6/27 | `spike_days ≥ 1` |
-| **Liquidity** | ADV > 500k, ADR > 4% | spec | ⚠ VERIFY 6/28: the $5M dollar-vol universe floor does NOT cover it — ADV>500k PARTIAL (high-priced names clear $5M on <500k shares); ADR>4% ABSENT. ENCODING both (primary spec): `adv_20 ≥ 500_000` in the universe + an ADR>4% gate in `compute_flag_metrics` |
+| **Liquidity** | ADV > 500k shares, ADR > 4% | spec | ✅ ENCODED 6/28 in `compute_flag_metrics` (per-ticker — so EVERY universe path is gated, not just the organic SQL one; VERIFY found the $5M dollar-vol floor didn't cover it). Tunable named constants: `_HTF_MIN_ADV_SHARES=500_000` (firm liquidity floor) + `_HTF_MIN_ADR_PCT=0.04` (STARTING value — 4% is NOT canonical, sources 3-6%; DATA-GATED tune `htf_adr_threshold_tune` once the breakout-shadow accrues N≥10 settled winners). Impact: dropped 1 of 2 current candidates (under-liquid). |
 | **Tightness / vol dry-up** | volatility-relative range/vol contraction + RMV | ADR 0013 (signed) | UNCHANGED |
 | **Breakout entry** | close > flag-high on ≥150% ADV (buy-stop-limit) | spec | `_BREAKOUT_VOL_RATIO=1.50` (Phase-3 shadow) |
 | **Catalyst-backed** | — | spec | OUT OF SCOPE — separate catalyst axis (#189/#201), not flag geometry |

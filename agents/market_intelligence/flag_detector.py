@@ -63,6 +63,13 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 # exact reason Family-A was split into the sourced setups). Spec: flagpole ≥90% in ~8wk.
 _RUNUP_LOOKBACK_DAYS = 40       # ~8-wk pole window (spec: C≥1.9×C₄₀ / High₄₀≥1.9×Low₄₀)
 _RUNUP_MIN_RATIO     = 1.90     # pivot_high / 40d_low ≥ 1.9×  (flagpole ≥ 90%)
+# Liquidity / tradability floors (sourced HTF spec; VERIFY 6/28 found the $5M dollar-vol universe floor does
+# NOT cover them). TUNABLE named constants — value + rationale live in docs/setups/htf.md. _HTF_MIN_ADV is a
+# standard liquidity floor (firm). _HTF_MIN_ADR is a STARTING value — 4% is NOT canonical (sources run 3-6%),
+# so it is DATA-GATED for review once the breakout-shadow accrues real HTF winners (data_gated_reviews.yaml).
+_HTF_MIN_ADV_SHARES  = 500_000  # avg daily VOLUME floor (shares), trailing _LIQ_WINDOW
+_HTF_MIN_ADR_PCT     = 0.04     # avg daily RANGE floor (high-low)/close — STARTING value, data-gated tune
+_LIQ_WINDOW          = 20       # trailing sessions for the ADV / ADR average
 _HTF_BREAKOUT_TARGET_R = 3.0    # #356 Phase 3 shadow: "capture" = fwd MFE ≥ 3R (the settle threshold)
 _HTF_SETTLE_WINDOW = 12         # forward trading bars for the HTF breakout settlement
 
@@ -574,6 +581,22 @@ def compute_flag_metrics(
     close_today = float(today["close"])
     open_today  = float(today["open_price"])
     vol_today   = float(today["volume"] or 0)
+
+    # ── Liquidity / tradability floors (sourced HTF — the universe doesn't cover them, VERIFIED 6/28).
+    #    ADV > 500k shares + ADR > 4% over the trailing _LIQ_WINDOW. Gated HERE (per-ticker), not in the
+    #    universe SQL, so EVERY inclusion path is covered — not just the organic one. Early-reject before
+    #    the pivot/runup work. (ADR threshold is data-gated for tune — see the constants above.)
+    _liq = rows[-_LIQ_WINDOW:] if len(rows) >= _LIQ_WINDOW else rows
+    _adv_shares = sum(float(r["volume"] or 0) for r in _liq) / max(1, len(_liq))
+    if _adv_shares < _HTF_MIN_ADV_SHARES:
+        base["reason"] = f"adv_{_adv_shares/1000:.0f}k_below_{_HTF_MIN_ADV_SHARES // 1000}k_shares"
+        return base
+    _adr_vals = [(float(r["high_price"]) - float(r["low_price"])) / float(r["close"])
+                 for r in _liq if r.get("close") and float(r["close"]) > 0]
+    _adr = sum(_adr_vals) / len(_adr_vals) if _adr_vals else 0.0
+    if _adr < _HTF_MIN_ADR_PCT:
+        base["reason"] = f"adr_{_adr*100:.1f}pct_below_{_HTF_MIN_ADR_PCT*100:.0f}pct"
+        return base
 
     # ── Pivot anchor ─────────────────────────────────────────────────────
     pivot_idx, pivot_high = _find_pivot_high(
