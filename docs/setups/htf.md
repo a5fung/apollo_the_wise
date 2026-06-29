@@ -32,17 +32,20 @@ criteria were swapped/added.
 | **Stage-2 (long-term)** | `close ≥ 200d MA` AND `pivot_high ≥ 75% of the 52w high` (near highs, not a crash-recovery) | spec "Stage-2 uptrend (Minervini)" | `_SMA200_WINDOW`, `_STAGE2_NEAR_HIGH_MIN`; needs `_HISTORY_DAYS=260` |
 | **Flagpole data-artifact** | reject a >50% single-day close jump with `vol < 2× window avg` | Gemini 6/27 (split / bad-tick backstop) | runup-window guard |
 | **Flagpole volume** | ≥1 day in the 40d window at `vol ≥ 2× window avg` | spec "undeniable institutional demand"; Gemini 6/27 | `spike_days ≥ 1` |
-| **Liquidity** | ADV > 500k, ADR > 4% | spec | universe pre-filter (`rs_engine`) — VERIFY covers it |
+| **Liquidity** | ADV > 500k, ADR > 4% | spec | ⚠ VERIFY 6/28: the $5M dollar-vol universe floor does NOT cover it — ADV>500k PARTIAL (high-priced names clear $5M on <500k shares); ADR>4% ABSENT. ENCODING both (primary spec): `adv_20 ≥ 500_000` in the universe + an ADR>4% gate in `compute_flag_metrics` |
 | **Tightness / vol dry-up** | volatility-relative range/vol contraction + RMV | ADR 0013 (signed) | UNCHANGED |
 | **Breakout entry** | close > flag-high on ≥150% ADV (buy-stop-limit) | spec | `_BREAKOUT_VOL_RATIO=1.50` (Phase-3 shadow) |
 | **Catalyst-backed** | — | spec | OUT OF SCOPE — separate catalyst axis (#189/#201), not flag geometry |
 
 ### Reasoned deviations from the literal spec (documented per the provenance rule)
-- **Flagpole anchor:** the spec's `C≥1.9×C₄₀` is anchor-free (trailing 40d). The detector measures the
-  runup at the **pivot** (the pole top) — `pivot_high / min(low, 40d ending at pivot)` — because the
-  detector catches the FLAG (post-pole), so the pole magnitude is measured where the pole actually tops.
-  This is the detector-correct adaptation, NOT claimed "equivalent" — to be VERIFIED against the literal
-  formula on a handful of real names (the `/flags` eyeball); document as a confirmed deviation or correct it.
+- **Flagpole anchor (✅ VERIFIED 6/28 — the detector form IS the primary definition, not a deviation):**
+  the detector measures the runup at the **pivot** (the pole top) — `pivot_high / min(low, 40d ending at
+  pivot) ≥ 1.9`. This IS the primary O'Neil/Minervini definition: the pole is the run-up measured AT its
+  peak. Verify 6/28 (20 prod names) confirmed a today-anchored trailing-40d form (`high(40d)/low(40d)` from
+  scan_date) DIVERGES — it qualifies ~3/10 fewer post-pole bases, because today's window has walked off the
+  early-runup low and measures from INSIDE the flag, not the pole. Operator-confirmed 6/28: HTF is a
+  well-defined setup — use the PRIMARY definition, do NOT invent our own; the today-anchored form was a
+  non-primary interpretation, REJECTED. (memory `feedback_established_setup_use_primary_definition`)
 - **Flag depth on the absolute low (not the close):** the spec writes `Close≥0.75×High₄₀`; we tighten to
   `min(low)≥0.75×High₄₀`. O'Neil/Minervini reject a deep intraday shakeout that rallies to a tight close
   (the spring uncoiled). Operator-endorsed (Gemini 6/27); confirm via the eyeball.
