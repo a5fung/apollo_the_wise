@@ -405,3 +405,75 @@ async def test_perplexity_402_does_not_double_fire(monkeypatch):
     out = await collector.search_news_perplexity("why did X gap up?")
     assert out == ""
     assert api_alerts == []                          # NO data-API alarm on a credit 402
+
+
+# ── (5) #370 alpaca input-side: the AMBIENT broker READS alert, keep their propagation ──
+#
+# alpaca is the 4th provider (the broker, real-money-critical). Scope = the bulk READS only
+# (get_account / get_all_positions / get_open_orders) — on a pure read any exception genuinely IS
+# an API failure. The submit/bracket paths are EXCLUDED (a naked-guard RuntimeError there is a
+# safety-success, not an outage, and they're already loud via the entry pipeline).
+
+def test_classify_alpaca_retry_exception():
+    # alpaca-py's retry-exhausted wrapper carries no status code; treat as transport so a
+    # persistent broker outage still alerts (the corner case the status-code path misses).
+    class RetryException(Exception):
+        pass
+    assert llm_health.classify_api_failure(RetryException("retries exhausted")) == "transport"
+
+
+@pytest.mark.asyncio
+async def test_alpaca_get_account_alerts_then_reraises(monkeypatch):
+    import agents.market_intelligence.broker.alpaca_client as ac
+    alerts: list = []
+
+    async def _spy(provider, exc, context=""):
+        alerts.append((provider, context))
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _spy)
+
+    class _Boom:
+        def get_account(self):
+            raise _http_status_error(503)
+    monkeypatch.setattr(ac, "get_trading_client", lambda mode=None: _Boom())
+
+    with pytest.raises(httpx.HTTPStatusError):        # get_account RE-RAISES (propagation preserved)
+        await ac.get_account(account_mode="live")
+    assert alerts == [("alpaca", "get_account")]      # alerted BEFORE the re-raise
+
+
+@pytest.mark.asyncio
+async def test_alpaca_get_all_positions_alerts_then_returns_empty(monkeypatch):
+    import agents.market_intelligence.broker.alpaca_client as ac
+    alerts: list = []
+
+    async def _spy(provider, exc, context=""):
+        alerts.append((provider, context))
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _spy)
+
+    class _Boom:
+        def get_all_positions(self):
+            raise _http_status_error(500)
+    monkeypatch.setattr(ac, "get_trading_client", lambda mode=None: _Boom())
+
+    out = await ac.get_all_positions(account_mode="live")
+    assert out == []                                  # [] fallback PRESERVED (no behavior change)
+    assert alerts == [("alpaca", "get_all_positions")]  # but the silent [] is now LOUD
+
+
+@pytest.mark.asyncio
+async def test_alpaca_get_open_orders_alerts_then_returns_empty(monkeypatch):
+    import agents.market_intelligence.broker.alpaca_client as ac
+    alerts: list = []
+
+    async def _spy(provider, exc, context=""):
+        alerts.append((provider, context))
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", _spy)
+
+    class _Boom:
+        def get_orders(self, request):
+            raise _http_status_error(502)
+    monkeypatch.setattr(ac, "get_trading_client", lambda mode=None: _Boom())
+
+    out = await ac.get_open_orders(account_mode="live")
+    assert out == []
+    assert alerts == [("alpaca", "get_open_orders")]

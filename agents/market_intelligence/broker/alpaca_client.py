@@ -258,6 +258,11 @@ async def get_account(account_mode: str | None = None) -> dict:
         }
     except Exception as e:
         logger.error(f"Failed to get account: {e}")
+        # #370 input-side: a broker READ failing = a genuine alpaca API outage (not a per-call data
+        # condition). Fire the deduped provider alert (per error-class / ~6h), THEN re-raise — the
+        # caller's behavior is unchanged. The alert is alert-only + swallow-safe (never masks the raise).
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_account")
         raise
 
 
@@ -524,8 +529,12 @@ async def get_open_orders(
             request.symbols = [ticker]
         orders = client.get_orders(request)
         return [_order_to_dict(o) for o in orders]
-    except Exception as e:
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then the [] fallback
         logger.error(f"Failed to get open orders: {e}")
+        # #370 input-side: an orders-read failure silently returning [] looks like "no open orders" —
+        # the silent-failure class. Fire the deduped alpaca alert, then keep the [] fallback.
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_open_orders")
         return []
 
 
@@ -552,8 +561,13 @@ async def get_all_positions(account_mode: str | None = None) -> list[dict]:
         client = get_trading_client(account_mode)
         positions = client.get_all_positions()
         return [_position_to_dict(p) for p in positions]
-    except Exception as e:
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then the [] fallback
         logger.error(f"Failed to get all positions: {e}")
+        # #370 input-side: a positions-read failure that SILENTLY returns [] looks like "no positions"
+        # to sync_positions (the exact silent-failure class — a transient API error → false "gone from
+        # Alpaca"). Fire the deduped alpaca alert, then keep the [] fallback (behavior unchanged).
+        from agents.market_intelligence.llm_health import maybe_alert_api_failure
+        await maybe_alert_api_failure("alpaca", e, context="get_all_positions")
         return []
 
 

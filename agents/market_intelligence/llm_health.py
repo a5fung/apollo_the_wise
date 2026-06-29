@@ -288,6 +288,10 @@ def classify_api_failure(exc: BaseException) -> str | None:
             return "timeout"
         if name in ("ConnectError",):
             return "connect"
+        # alpaca-py's retry-exhausted wrapper carries no status code, but a RetryException means the
+        # underlying transport/API failure exhausted retries — a genuine persistent outage → alert.
+        if name in ("RetryException", "RetryError"):
+            return "transport"
         # HTTP status error (from raise_for_status()): bucket by status family.
         code = _status_code(exc)
         if name == "HTTPStatusError" or (code is not None and 400 <= code < 600):
