@@ -67,11 +67,18 @@ Family A (an EP run-up is just one way the run-up can happen — that subset is 
   `anticipation.compute_fresh_tightening` / `bars_to_ft_rows`).
 
 ### The three entry modes (differ ONLY by WHEN you enter)
-| Mode | When you enter | Stop |
-|---|---|---|
-| **Anticipate** | IN the coil, BEFORE the break | tight-range low |
-| **Confirm / flag** | on the CONFIRMED breakout (base_high + volume) | base / breakout low |
-| **U&R** (undercut & rally) | undercut the base low → reclaim it | undercut low (tightest → biggest cushion: the "U&R paradox") |
+**STATUS (operator 6/29 — implements the 6/22 "strictly anticipate" split):** the live shadow records
+**ANTICIPATE ONLY**. Confirm was UN-WIRED 6/29 — a 2nd entry mode MUDDIES the shadow's edge measurement
+(you can't read the anticipate edge if breakout-entries are mixed into the same cohort). U&R was never
+wired. The table is the conceptual reference; only Anticipate is generated. (`confirm_signal_at` left in
+code but unused — removal = #404. **Reversion**: re-wire in `scheduler.py::_consolidation_readiness_job`
+— needs operator sign-off, it changes what the shadow measures.)
+
+| Mode | When you enter | Stop | Wired? |
+|---|---|---|---|
+| **Anticipate** | IN the coil, BEFORE the break | tight-range low | ✅ LIVE (the only one) |
+| **Confirm / flag** | on the CONFIRMED breakout (base_high + volume) | base / breakout low | ❌ un-wired 6/29 |
+| **U&R** (undercut & rally) | undercut the base low → reclaim it | undercut low (tightest → biggest cushion: the "U&R paradox") | ❌ never wired (concept) |
 
 ### U&R is a GENERIC mechanic, not a Family-A-owned setup
 U&R = "price falls below some reference level, then reclaims it." Here the reference is the base low.

@@ -2998,17 +2998,19 @@ async def _consolidation_readiness_job():
                     # Family-A entry modes recorded into the ONE shadow lifecycle, tagged by mode
                     # (#354 ADR 0013 §1): Anticipate = the validated in-coil signal; Confirm = the
                     # base-high breakout, detected on the SAME §2 universe (NOT the live #94 path).
-                    for mode, sig in (
-                            ("anticipate", de.entry_signal_at(bars, len(bars) - 1, anchor_idx)),
-                            ("confirm", de.confirm_signal_at(bars, len(bars) - 1, anchor_idx))):
-                        if sig and await insert_consolidation_entry_shadow(
-                                ticker, anchor_date, entry_date=sig["entry_date"],
-                                entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
-                                stop_price=sig["stop_price"], structural_low=sig["structural_low"],
-                                signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"], rmv_15d=sig.get("rmv_15d"),
-                                range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
-                                target_r=sig["target_r"], origin=origin, entry_mode=mode):
-                            entries_fired.append((ticker, origin, mode, sig))
+                    # ANTICIPATE ONLY (operator 6/29): the in-coil signal. A 2nd entry mode MUDDIES
+                    # the shadow's edge measurement — Confirm (base-high breakout) UN-WIRED here (was
+                    # the #354 dual-mode; the operator's 6/22 "strictly anticipate, NO Confirm" split,
+                    # now actually implemented). confirm_signal_at left in place but unused — removal #404.
+                    sig = de.entry_signal_at(bars, len(bars) - 1, anchor_idx)
+                    if sig and await insert_consolidation_entry_shadow(
+                            ticker, anchor_date, entry_date=sig["entry_date"],
+                            entry_price=sig["entry_price"], stop_kind=sig["stop_kind"],
+                            stop_price=sig["stop_price"], structural_low=sig["structural_low"],
+                            signal_n=sig["signal_n"], rmv_5d=sig["rmv_5d"], rmv_15d=sig.get("rmv_15d"),
+                            range_pct=sig["range_pct"], vol_ratio=sig["vol_ratio"],
+                            target_r=sig["target_r"], origin=origin, entry_mode="anticipate"):
+                        entries_fired.append((ticker, origin, "anticipate", sig))
 
                 await upsert_consolidation(
                     ticker, anchor_date, state=cons["state"], runup_ratio=cons["runup_ratio"],
@@ -3058,22 +3060,11 @@ async def _consolidation_readiness_job():
             digest.append(f"🚩 *HTF breakouts settled* ({len(htf_settled)} · {hcap} capture) — SHADOW (#356)")
             digest.append("")
         if entries_fired:
-            # Distinguish the entry TYPE: Anticipate (in-coil) and Confirm (base-high breakout) are
-            # DIFFERENT setups bundled into one lifecycle (#354) — the operator must see which is
-            # which, not a single mixed count (operator 6/22: "distinguish what the entry is").
-            antic = [(t, o, s) for (t, o, m, s) in entries_fired if m == "anticipate"]
-            confm = [(t, o, s) for (t, o, m, s) in entries_fired if m == "confirm"]
-            digest.append(f"🎯 *Entry fired today* ({len(entries_fired)}) — by entry type")
-            if antic:
-                digest.append(f"  📥 _Anticipate_ — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex) — {len(antic)}")
-                for ticker, origin, sig in antic[:12]:
-                    digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
-                                                            sig["stop_price"], origin))
-            if confm:
-                digest.append(f"  🚀 _Confirm_ — base-high breakout — {len(confm)}")
-                for ticker, origin, sig in confm[:12]:
-                    digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
-                                                            sig["stop_price"], origin))
+            # ANTICIPATE ONLY (operator 6/29: Confirm un-wired — a 2nd entry mode muddies the shadow).
+            digest.append(f"🎯 *Anticipate entry fired today* ({len(entries_fired)}) — in-coil (N≥{de.ENTRY_TIGHT_N} tight days at apex)")
+            for ticker, origin, _m, sig in entries_fired[:12]:
+                digest.append(de.format_entry_fired_row(ticker, sig["entry_price"],
+                                                        sig["stop_price"], origin))
             digest.append("")
         # a name with ANY open entry-shadow (today's OR a prior day's) has graduated past "newly
         # coiled" — show it once. Use the UNCAPPED open set so a prior-day fire still suppresses it

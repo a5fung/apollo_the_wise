@@ -2936,20 +2936,14 @@ class MarketIntelligenceAgent(BaseAgent):
         out.append("")
 
         if fired:
-            # Distinguish the entry TYPE (operator 6/22): Anticipate (in-coil) vs Confirm (base-high
-            # breakout) are different setups in one lifecycle (#354) — show which, not a mixed count.
+            # ANTICIPATE ONLY (operator 6/29: Confirm un-wired). Filter to anticipate so prior tagged
+            # Confirm rows (from before the un-wire) don't surface — the shadow is one clean entry now.
             antic = [r for r in fired if r.get("entry_mode") == "anticipate"]
-            confm = [r for r in fired if r.get("entry_mode") == "confirm"]
-            out.append(f"🎯 *Entry fired* ({len(fired)}) — by type")
             if antic:
-                out.append(f"  📥 _Anticipate_ — in-coil ({len(antic)})")
+                out.append(f"🎯 *Entry fired* ({len(antic)}) — Anticipate, in-coil")
                 out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
                                                r.get("origin")) for r in antic]
-            if confm:
-                out.append(f"  🚀 _Confirm_ — base-high breakout ({len(confm)})")
-                out += [format_entry_fired_row(r["ticker"], r["entry_price"], r["stop_price"],
-                                               r.get("origin")) for r in confm]
-            out.append("")
+                out.append("")
 
         # a name with an open entry-shadow has GRADUATED past the watch lists — show it once, in its
         # furthest-along stage only (else it reads as "we'd enter this" + "still just watching" at
