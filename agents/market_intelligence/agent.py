@@ -4860,6 +4860,52 @@ class MarketIntelligenceAgent(BaseAgent):
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
+    async def _handle_promotetheme(self, request: AgentRequest) -> AgentResponse:
+        """Promote an emerging-theme synthesis CANDIDATE (mi_theme_candidates_shadow) into a LIVE
+        mi_themes theme — the one-tap action for the 🔭 Emerging-theme synthesis alert (operator 6/29:
+        decision-alerts must carry the action). The promoted theme behaves like ANY other (verified):
+        daily discovery re-writes it while its cohort co-moves; the 7d recency cap ages it out if the
+        cohort dissolves. No special treatment, no pinning. Themes are advisory (no money path).
+        Usage: `/promotetheme <name>` — case-insensitive substring; an exact name disambiguates."""
+        import re as _re
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.theme_engine import promote_candidate_by_name
+        body = _re.sub(r'^\s*/?promotetheme\b\s*', '', request.task or '', count=1,
+                       flags=_re.IGNORECASE).strip()
+        if not body:
+            return self._ok(request, result=(
+                "Usage: `/promotetheme <name>` — promote an emerging-theme candidate to a live theme.\n"
+                "Example: `/promotetheme Rare & Orphan Disease Biotech Re-Rating`\n"
+                "(substring match; the name is in the 🔭 Emerging-theme synthesis alert)."))
+        try:
+            res = await promote_candidate_by_name(body, et_today())
+        except Exception as e:
+            logger.exception(f"promotetheme failed: {e}")
+            return self._error(request, f"Promote failed: {e}")
+        st = res["status"]
+        if st == "not_found":
+            avail = res.get("available") or []
+            more = ("\n\nAvailable candidates (last 7d):\n" + "\n".join(f"  • {n}" for n in avail)
+                    if avail else "\n\n(No emerging-theme candidates in the last 7 days.)")
+            return self._ok(request, result=f"No candidate matches `{body}`.{more}")
+        if st == "ambiguous":
+            ms = "\n".join(f"  • {n}" for n in res["matches"])
+            return self._ok(request, result=(
+                f"`{body}` is ambiguous — {len(res['matches'])} matches:\n{ms}\n\nUse the full name."))
+        if st == "too_few":
+            return self._ok(request, result=(
+                f"*{res['name']}* has only {res['n_members']} member(s) — need ≥3. Not promoted."))
+        if st == "noop":
+            return self._ok(request, result=(
+                f"*{res['name']}* is already a live theme — left intact (nothing to do)."))
+        tk = " ".join(res["tickers"])
+        rename = (f"\n(canonicalized from \"{res['orig_name']}\" — its ticker-set already matched a "
+                  f"live theme's name)" if res.get("canonicalized") else "")
+        return self._ok(request, result=(
+            f"✅ Promoted *{res['name']}* to a live theme ({res['n_members']} members).\n`{tk}`{rename}\n\n"
+            f"It now flows through the normal theme lifecycle — re-discovered daily while the cohort "
+            f"co-moves, ages out if it dissolves."))
+
     async def _handle_theme_lookup(self, request: AgentRequest) -> AgentResponse:
         """Two-way theme lookup. `/themes TICKER` → the themes it's in; `/themes <name>` → the
         stocks in matching themes. Searches BOTH lanes — live mi_themes AND the #167 narrative
@@ -5393,6 +5439,7 @@ class MarketIntelligenceAgent(BaseAgent):
             "/eps":            self._handle_ep_query,
             "/9m":             self._handle_9m_ep_query,
             "/themes":         self._handle_theme_query,
+            "/promotetheme":   self._handle_promotetheme,
             "/clusters":       self._handle_correlation_clusters,
             "/regime":         self._handle_regime_query,
             "/positions":      self._handle_watchlist,

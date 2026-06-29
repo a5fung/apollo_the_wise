@@ -1465,6 +1465,84 @@ async def promote_shadow_themes(today) -> int:
     return n
 
 
+async def promote_candidate_by_name(name_query: str, today) -> dict:
+    """Operator-driven SINGLE-candidate promotion — the manual `/promotetheme` version of
+    `promote_shadow_themes`. Looks up the shadow candidate whose name matches `name_query`
+    (case-insensitive substring; an exact match disambiguates), validates >= _PROMOTE_MIN_MEMBERS,
+    canonicalizes vs live themes, and upserts ONE mi_themes row (source='shadow_promoted', same as the
+    nightly auto-promote). Returns a status dict for the Telegram confirm.
+
+    The promoted theme then behaves EXACTLY like any other (operator 6/29, verified): the daily
+    discovery re-writes it via `_canonicalize_theme_names`'s ticker-set match while its cohort
+    co-moves, and the 7d recency cap ages it out only if the cohort dissolves. No special treatment,
+    no pinning. The audit row records THAT it was operator-promoted; the lifecycle is identical.
+
+    status ∈ {'promoted', 'noop' (matched an existing live theme — left intact), 'not_found',
+              'ambiguous', 'too_few'}."""
+    from agents.market_intelligence.db import get_shadow_theme_candidates
+    q = (name_query or "").strip().strip('"').strip()
+    if not q:
+        return {"status": "not_found", "available": []}
+    cands = await get_shadow_theme_candidates(days=7)
+    # Word-based match: every query word must appear in the candidate name (case-insensitive). More
+    # forgiving than a literal substring — "rare orphan biotech" matches "Rare & Orphan Biotech ..."
+    # (the literal "& " between the words would defeat a raw substring search).
+    q_words = q.lower().split()
+    matches = [c for c in cands if all(w in (c.get("name") or "").lower() for w in q_words)]
+    if not matches:
+        return {"status": "not_found", "available": [c["name"] for c in cands[:8]]}
+    if len(matches) > 1:
+        exact = [c for c in matches if (c.get("name") or "").lower() == q.lower()]
+        if len(exact) == 1:
+            matches = exact
+        else:
+            return {"status": "ambiguous", "matches": [c["name"] for c in matches]}
+    cand = matches[0]
+    members = list(cand.get("tickers") or [])
+    if len(members) < _PROMOTE_MIN_MEMBERS:
+        return {"status": "too_few", "name": cand["name"], "n_members": len(members)}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        themes = [{"name": cand["name"], "tickers": members, "thesis": cand.get("thesis")}]
+        await _canonicalize_theme_names(conn, themes, today)   # converge to a live name if the set exists
+        t = themes[0]
+        _rs_rows = await conn.fetch("""
+            SELECT ticker, rs_composite FROM mi_stock_scores
+            WHERE ticker = ANY($1) AND score_date = (SELECT MAX(score_date) FROM mi_stock_scores)
+        """, t["tickers"])
+        _rs = {r["ticker"]: r["rs_composite"] for r in _rs_rows if r["rs_composite"] is not None}
+        _vals = [_rs[tk] for tk in t["tickers"] if tk in _rs]
+        rs_avg = sum(_vals) / len(_vals) if _vals else None
+        prior = await conn.fetchrow("""
+            SELECT days_active FROM mi_themes WHERE name = $1 AND theme_date < $2
+            ORDER BY theme_date DESC LIMIT 1
+        """, t["name"], today)
+        days_active = (prior["days_active"] or 0) + 1 if prior else 1
+        desc = t.get("thesis") or f"Operator-promoted ({len(t['tickers'])} members)."
+        score = float(rs_avg) if rs_avg is not None else None
+        res = await conn.execute("""
+            INSERT INTO mi_themes
+                (theme_date, name, stage, score, rs_avg, description, tickers,
+                 days_active, consecutive_accelerating, source)
+            VALUES ($1, $2, 'Nascent', $3, $3, $4, $5, $6, 0, 'shadow_promoted')
+            ON CONFLICT (theme_date, name) DO UPDATE SET
+                score = EXCLUDED.score, rs_avg = EXCLUDED.rs_avg,
+                description = EXCLUDED.description, tickers = EXCLUDED.tickers,
+                days_active = EXCLUDED.days_active
+            WHERE mi_themes.source = 'shadow_promoted'
+        """, today, t["name"], score, desc, t["tickers"], days_active)
+        wrote = str(res).endswith(" 1")   # "INSERT 0 1" on write; "0 0" when the guard skipped a live theme
+        await log_audit_event(
+            "theme_operator_promoted",
+            summary=(f"Operator promoted '{t['name']}' ({len(t['tickers'])} members)"
+                     + ("" if wrote else " — already a live theme, left intact")),
+            detail=f"query='{q}' candidate='{cand['name']}' final='{t['name']}' "
+                   f"tickers={t['tickers']} cand_source={cand.get('source')}")
+    return {"status": "promoted" if wrote else "noop", "name": t["name"],
+            "tickers": t["tickers"], "n_members": len(t["tickers"]),
+            "canonicalized": t["name"] != cand["name"], "orig_name": cand["name"]}
+
+
 async def _validate_new_themes_at_birth(
     new_themes: list[dict],
     changelog: list[dict],

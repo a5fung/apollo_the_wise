@@ -1804,6 +1804,8 @@ class TelegramChannel:
                      "datareviews",
                      # 2026-06-16 #270 anticipation play board (SHADOW, Pradeep)
                      "anticipation",
+                     # 2026-06-29 operator one-tap theme promotion (decision-alerts carry the action)
+                     "promotetheme",
                      # 2026-06-19 #345 one-command real-money trading halt
                      "pause", "resume"):
             app.add_handler(CommandHandler(_cmd, self._dispatch_market_slash))
@@ -1842,6 +1844,7 @@ class TelegramChannel:
             BotCommand("watchlist",    "Friday curated chart-review list (cross-source aggregator)"),
             BotCommand("setup",        "/setup TICKER [days] — reverse-lookup detector chronology"),
             BotCommand("themes",       "/themes [TICKER|name] — themes; or two-way lookup (ticker↔theme, live+shadow)"),
+            BotCommand("promotetheme", "/promotetheme <name> — promote an emerging-theme candidate to a live theme"),
             BotCommand("why",          "/why TICKER [date] — detection + entry diagnosis"),
             BotCommand("trade",        "/trade TICKER [date] — full trade anatomy (entry/stops/exits)"),
             BotCommand("htf",          "HTF (high tight flag) setups — TRIGGERED/COILED/TIGHTENING"),

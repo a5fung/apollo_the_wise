@@ -172,8 +172,11 @@ def format_synthesis_digest(kept: list[dict]) -> str:
             f"{code(' '.join(c['tickers']))}\n{i(c['thesis'])}"
         )
     lines.append(
-        "\n<i>RS-slope cohorts, cross-sector. Feeds the judge's narrative axis; "
-        "promotes to a live theme only via your judgment.</i>"
+        "\n<i>RS-slope cohorts, cross-sector. Already feeds the judge's narrative axis (advisory).</i>"
+    )
+    lines.append(
+        "▶ To promote one to a live theme (your judgment): <code>/promotetheme &lt;name&gt;</code> "
+        "— it then behaves like any other theme (re-discovered while the cohort co-moves)."
     )
     return "\n".join(lines)
 
