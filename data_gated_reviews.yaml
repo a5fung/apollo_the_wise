@@ -6780,3 +6780,25 @@ reviews:
       not another guess — and don't drop it below where the winners actually live.
     status: pending
     added_on: 2026-06-28
+
+  - review_id: perplexity_transient_timeout_alert_noise
+    title: "Is the #370 single-transient-timeout API-failure alert too noisy?"
+    question: |
+      The #370 input-side guard fires a deduped alert (once per provider+class / ~6h) on a perplexity
+      timeout. A SINGLE transient timeout (first seen 2026-06-29 09:10, recovered by 09:45 — 3/3 EP alerts
+      still graded) fires one alert. That is the RIGHT default — a real blip surfaced beats silence. But IF
+      perplexity's normal transient-timeout rate makes this chatty, tune it. Watch the frequency first.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log
+      WHERE event_type = 'api_failure_perplexity'
+        AND summary ILIKE '%timeout%'
+        AND created_at >= DATE '2026-06-29';
+    threshold: 6
+    earliest_review_date: 2026-07-06
+    action_when_ready: |
+      6+ transient-timeout alerts in ~1wk = genuinely chatty. Tune maybe_alert_api_failure: require
+      N-consecutive failures before alerting on the 'timeout' class (or a per-provider timeout-count
+      threshold) — NOT a blanket suppression (a sustained outage / a 4xx/5xx must STAY loud immediately).
+      If under threshold, the default is fine — mark done, no change.
+    status: pending
+    added_on: 2026-06-29
