@@ -319,24 +319,16 @@ async def get_minute_bars(ticker: str, from_date: str, to_date: str) -> list[dic
 
 async def get_vix_history(from_date: str, to_date: str) -> list[dict]:
     """
-    Get actual VIX daily closes. Tries Polygon I:VIX first (Indices plan),
-    falls back to yfinance ^VIX (free, reliable for daily bars).
+    Get actual VIX daily closes from yfinance ^VIX (free, reliable for daily bars).
     Returns list of dicts with at least {"c": float} matching get_index_history format.
-    """
-    # Try Polygon I:VIX (works on Indices plan, may 404 on Starter)
-    try:
-        data = await _polygon_get(
-            f"/v2/aggs/ticker/I:VIX/range/1/day/{from_date}/{to_date}",
-            {"adjusted": "true", "sort": "asc", "limit": 300},
-        )
-        bars = data.get("results", [])
-        if bars:
-            logger.debug(f"VIX history: got {len(bars)} bars from Polygon I:VIX")
-            return bars
-    except Exception as e:
-        logger.debug(f"Polygon I:VIX unavailable ({e}), falling back to yfinance")
 
-    # Fall back to yfinance ^VIX
+    NB (2026-06-30): Polygon I:VIX is NOT queried. I:VIX is a Polygon *Indices* ticker,
+    which our Starter plan (stocks only) does not include → it always returned HTTP 403,
+    and the #370 loud-failure layer surfaced that as a DAILY false alarm (yfinance was
+    already covering it via the old fallback, so the regime VIX never actually degraded —
+    the alert just mislabeled a self-healed, non-degrading failure). yfinance is the sole
+    source; re-add a Polygon-first attempt only if we ever buy the Indices plan.
+    """
     try:
         import yfinance as yf
         loop = asyncio.get_event_loop()
@@ -359,7 +351,7 @@ async def get_vix_history(from_date: str, to_date: str) -> list[dict]:
         logger.debug(f"VIX history: got {len(bars)} bars from yfinance ^VIX")
         return bars
     except Exception as e:
-        logger.error(f"VIX history failed (both Polygon and yfinance): {e}")
+        logger.error(f"VIX history failed (yfinance ^VIX): {e}")
         return []
 
 
