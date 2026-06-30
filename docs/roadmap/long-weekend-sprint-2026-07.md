@@ -53,6 +53,21 @@ decision — real-money launch task, not the agent's.**
 ## Track 5 — Apollo v1.1 fast-follow: open the lane
 - Start the post-launch v1.1 program (spec PART I, apollo-v1.1-v2.0.md).
 
+## Track 6 — Triage the 23 overdue data-gated reviews (the single biggest burndown lever)
+The data-gated review board has **23 ready/overdue reviews** (surfaced 6/30). Each: run it → CLOSE (evidence
+resolves it) OR convert to ONE gated #-task — both shrink the open/overdue surface. Route via `/datareviews`.
+- **FIRST-UP — P0:** `alpaca_stop_trigger_reliability` — a paper stop silently failed despite a SIP-confirmed
+  cross (real-money-safety; MITIGATED by the never-naked backstop [sync_positions remediates ≤15 min] so NOT
+  fire-now — but investigate the root cause).
+- **Cutover gates (overlap Track 1):** `drawdown_breaker_promotion` (GATE 1 of live cutover, 22≥14) ·
+  `paper_r_expectancy_validation` (GATE 3, 23≥10) · `unified_allocator_phase_1b` (#44 promotion, 21≥15).
+- **Detection / methodology (overlap North Star + Family A):** flag_proximity_band_calibration ·
+  flag_ma_pin_filter · flag_proximity_bypass_hysteresis · flag_detector_post_breakout_label ·
+  ep_cooldown_resetup_admission · rel_volume_large_cap_floor · theme_engine_narrative_blindness · fishhook_v3 ·
+  p74_alpha_capture_stage2 · gap_atr_3_5x_band · nbis_rubric_calibration · mna_filter_direction_blindness ·
+  gate5h_value_invariant · silent_failure_taxonomy · adv_probe_retirement · extraction_pipeline_smoke ·
+  breadth_cluster_view · perplexity_sanitizer · trade_stream_stop_placement.
+
 ---
 
 ## Sequencing
