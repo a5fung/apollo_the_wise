@@ -1940,7 +1940,7 @@ class MarketIntelligenceAgent(BaseAgent):
         task = request.task.lower()
         # Single-ticker history mode: `/flags XNDU` or `flags XNDU`
         cands = _re.findall(r'\b([A-Z]{2,5})\b', request.task.upper())
-        skip = _PREPOSITION_SKIP | {"FLAGS", "FLAG", "COILED", "WATCH",
+        skip = _PREPOSITION_SKIP | {"FLAGS", "FLAG", "HTF", "COILED", "WATCH",
                                      "SHOW", "TIGHTENING", "TIGHT"}
         ticker = next((t for t in cands if t not in skip), None)
         if ticker:
