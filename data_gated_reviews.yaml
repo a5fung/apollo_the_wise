@@ -67,6 +67,10 @@ reviews:
       (sonar-pro), cross-validation (base sonar), HOLISTIC JUDGE (Opus 4.8 since
       6/10 — the load-bearing row; eval_judge_models.py --grounded). Last swaps:
       judge Sonnet→Opus 2026-06-10 (#252), theme validation Haiku→Sonnet 6/06 (#213).
+      ▶ CANDIDATE 2026-06-30: Claude Sonnet 5 (claude-sonnet-5) released — "most agentic Sonnet",
+      ~Opus 4.8 at higher effort, cheaper ($2/$10 intro thru 8/31, $3/$15 std). Evaluate esp. for the
+      ORCHESTRATOR (Sonnet 4.6) + the #212 investigator loop (agentic gains); the grade converges across
+      models so INPUT-sourcing is the lever there. See the reference_sonnet5_release memory + the blog.
     predicate_sql: null
     threshold: 0
     earliest_review_date: 2026-08-01
