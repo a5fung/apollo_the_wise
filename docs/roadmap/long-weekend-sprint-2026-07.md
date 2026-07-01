@@ -56,6 +56,28 @@ decision — real-money launch task, not the agent's.**
 ## Track 6 — Triage the 23 overdue data-gated reviews (the single biggest burndown lever)
 The data-gated review board has **23 ready/overdue reviews** (surfaced 6/30). Each: run it → CLOSE (evidence
 resolves it) OR convert to ONE gated #-task — both shrink the open/overdue surface. Route via `/datareviews`.
+
+**⭐ Flagged by the 2026-07-01 monthly backward-check sweep — DO THESE WITH THE OPERATOR** (evidence attached;
+all already tracked → no new tasks). The sweep is re-runnable for full detail:
+`docker exec apollo-market python -m agents.market_intelligence.quarterly_review`. Decision-relevant signals:
+1. **M&A filter over-suppression** → `mna_filter_accuracy_review` + **#410** (buyout-pin guard). The filter
+   SUPPRESSED **SUNE → +216%** (also FRMI +25%, ONDS +23%, MMED +23% on the material-miss list; n=48 suppressed).
+   Operator FP/TP call — hard-gate #3/#4 bars the agent from classifying. (78% of `mna_filter_fired` events
+   matched on the "unknown" path — a data-quality angle for `mna_filter_direction_blindness`.)
+2. **Judge demoting winners** → the **#335/#329 grade-quality cluster** (~7/3) + the monthly judge review. 5
+   unjustified demotes: **HQ HIGH→MODERATE then +152%**, JBIO MOD→none +20.8%, XE +13.5%, AEHR HIGH→MOD +7.5%,
+   AUGO +7.3%. Root-cause candidate = **direct-source blindness: 79% of assessable rows had a DIRECT source the
+   judge was shown 'no' for** (the #329→#335 fix). Verdict = operator `/why`-labeling of the demotes + top promotes.
+3. **#92 flag-EOD graduation = STRUCTURAL NO-GO** → `flag_detector_post_breakout_label`. The sweep's own verdict:
+   EOD "TRIGGERED" is a post-hoc measurement, not an entry (the move already played out). **Candidate CLOSE** —
+   evidence resolves it (consistent with HTF Phase-3 riding the #94 intraday break, not the EOD scan).
+
+**Band datapoints to carry into the methodology reviews (context, not fire-now):** #77 Pradeep — the +40%+
+"extended" band UNDERperforms (-0.70%, 31% win) while +20-40% leads (+7.40%, 51%) → supports the extension-block
+direction · #53 gap/ATR — 2-3x best (43% win), <1.5x worst (29%, -5.2%) → `gap_atr_3_5x_band` · #78 decliner —
+shallow (-5/-10%) + STRONG catalyst bounces +6.6%/55%, deep (-20%+) craters -17% · #54 9M stop/ATR — 66 cand /
+8 entered / 12 stop_too_wide (RMV #54, data-ready) · #55 revenue-pin HELD (data re-confirms 0.01) · news-quality
+no-drift · #122 & #197 accruing (N<10).
 - **FIRST-UP — P0:** `alpaca_stop_trigger_reliability` — a paper stop silently failed despite a SIP-confirmed
   cross (real-money-safety; MITIGATED by the never-naked backstop [sync_positions remediates ≤15 min] so NOT
   fire-now — but investigate the root cause).
