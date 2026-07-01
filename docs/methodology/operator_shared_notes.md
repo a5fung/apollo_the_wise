@@ -393,3 +393,18 @@ have EP catalyst? Report what the data says; gate only on what holds. No invente
   test once #210/#211 source catalysts properly (the SSoT already filed this; now it has the source).
 - **Catalyst-quality bar** (2× 39%+ sales growth + 39%+ projected) = a concrete materiality input for
   #189 / the rubric.
+
+## RMV developer's settings (RMVP - Relative Measured Volatility Pivots) - shared by operator 2026-06-30
+
+Reference for our own RMV indicator (#54 / reference_rmv_tightness_metric memory - our RMV = `flag_detector._compute_rmv`, rmv_5d/15d). The developer's TradingView suite (prefix "DV"): "DV - Relative Measured Volatility (RMV)" (the 0-100 oscillator, reading **57.64** on CRWD = mid-range, not extreme-tight) + "DV - Relative Measured Volatility Pivots (RMVP)" (the pivots overlay) + "DV - Base Pivots" + "DV - Key Moving Averages".
+
+**RMVP settings (VERBATIM from the screenshot):**
+- Max Pivots: **2**
+- Breakout Threshold: **ADR**
+- Merge Within %: **0.3**
+- Breakout %: **2**
+- ADR Lookback: **20**
+- ADR Multiplier: **1.5**
+- Style: Line Color blue - Line Width 3 - Line Style Solid
+
+**Key takeaway for building our RMV:** the developer's logic is **ADR-based** (Average Daily Range over a 20-day lookback x a 1.5 multiplier as the volatility/breakout yardstick; pivots merge within 0.3%, breakout at 2%, max 2 pivots). At #54 eval: compare our rmv_5d/15d COMPUTATION BASIS against this ADR(20)x1.5 approach - if ours diverges, this is the canonical reference to reconcile against (established-setup -> use the primary definition, per feedback_established_setup_use_primary_definition). Chart context: CRWD daily, RMV 57.64, "$785.66 - 20 days - 21%" pivot annotation, Avg $ Vol 2.53B.
