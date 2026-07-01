@@ -4914,10 +4914,14 @@ def start_scheduler() -> AsyncIOScheduler:
     # shifts month-over-month surface regime inflections that quarterly
     # would miss by ~60 days. Methodology ship still requires N≥10-30
     # per script per the existing sample-size discipline.
+    # 2026-07-01 moved 08:00 -> 18:00 ET (after close) per operator — this heavy
+    # telemetry digest was landing on the market-day MORNING. It reads historical
+    # backward-check data (no fresh-EOD dependency), so any post-close slot works;
+    # runs after the 4:05-5:30 PM EOD jobs and before the 8 PM evening briefing.
     from agents.market_intelligence.quarterly_review import quarterly_backward_check_sweep_job
     _scheduler.add_job(
         audit_wrap(quarterly_backward_check_sweep_job, "monthly_backward_check_sweep"),
-        CronTrigger(day=1, hour=8, minute=0, timezone="America/New_York"),
+        CronTrigger(day=1, hour=18, minute=0, timezone="America/New_York"),
         id="monthly_backward_check_sweep",
         replace_existing=True,
         misfire_grace_time=86400,  # 24h grace — missed once isn't critical

@@ -331,7 +331,7 @@ Common English words live in the shared `_PREPOSITION_SKIP` frozenset (`agent.py
 | 9:00 PM | **Evening position backstop** (2nd `sync_positions` — catches late EXPIRED events) |
 | 2:00 AM | **Baseline refresh** (rebuild `mi_metric_baselines` 30d trailing) |
 | Sun 8:00 AM | Weekly system self-audit (7d metrics + L3 drift roll-up + news-source-quality section → Telegram digest) |
-| Monthly 1st 8:00 AM | **Monthly backward-check sweep** (regime-shift monitor — re-runs #50/#53/#54/#77 + news quality 90d view) |
+| Monthly 1st 6:00 PM | **Monthly backward-check sweep** (regime-shift monitor — re-runs #50/#53/#54/#77 + news quality 90d view) |
 
 ## Pre-commit hooks (one-time setup per clone)
 After fresh clone, activate the local pre-commit gates:

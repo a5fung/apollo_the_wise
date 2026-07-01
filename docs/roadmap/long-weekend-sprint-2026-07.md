@@ -71,8 +71,9 @@ resolves it) OR convert to ONE gated #-task — both shrink the open/overdue sur
 ---
 
 ## Sequencing
-- **7/3 (Fri, market closed):** batch ALL deploys on the one safe window — #405 + #406 + #342 + #279 + any
-  launch-project close needing a deploy. Deploy + verify once.
+- **7/3 (Fri, market closed):** batch ALL deploys on the one safe window — #405 + #406 + #342 + #279 +
+  the monthly-sweep 08:00→18:00 ET cron move (committed 7/1) + any launch-project close needing a deploy.
+  Deploy + verify once (incl. confirming the `monthly_backward_check_sweep` job registers at 18:00 ET).
 - **7/4–7/5:** the North-Star #328 build (deep-focus) + the launch-project push + the burndown workflow +
   the v1.1 kickoff.
 
