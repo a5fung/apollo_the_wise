@@ -112,15 +112,20 @@ def format_thread(rs_leaders: list[dict], regime: dict, briefing_date: str) -> l
 def format_ep_tweet(ep: dict) -> list[str]:
     """Format an EP alert as 1-2 tweets. Returns list of tweet texts."""
     from agents.market_intelligence.universe import get_description
+    # #384: route RVOL through the pm_rvol SSoT resolver — this was the THIRD
+    # display surface still rendering raw rel_volume (~0.01x pre-market when
+    # pm_rvol carries the real signal; SNX/MU 6/25 class). LOCAL import:
+    # briefing↔twitter would be circular at module top.
+    from agents.market_intelligence.briefing import _resolve_ep_rvol
 
     ticker = ep["ticker"]
     desc = get_description(ticker)
-    rvol = ep.get("rel_volume") or "?"
+    rvol_str, _ = _resolve_ep_rvol(ep)
 
     header = f"🔥 EP ALERT — ${ticker}"
     if desc:
         header += f" ({desc})"
-    stats = f"Gap {ep['gap_pct']:+.1f}% | RVol {rvol}x | Score {ep['ep_score']:.0f}"
+    stats = f"Gap {ep['gap_pct']:+.1f}% | RVol {rvol_str} | Score {ep['ep_score']:.0f}"
     catalyst_q = ep.get("catalyst_quality", "").replace("_", " ").title()
     footer = f"https://finviz.com/quote.ashx?t={ticker}\n#EP #momentum #trading"
 
