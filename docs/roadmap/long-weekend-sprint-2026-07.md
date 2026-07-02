@@ -78,9 +78,10 @@ direction · #53 gap/ATR — 2-3x best (43% win), <1.5x worst (29%, -5.2%) → `
 shallow (-5/-10%) + STRONG catalyst bounces +6.6%/55%, deep (-20%+) craters -17% · #54 9M stop/ATR — 66 cand /
 8 entered / 12 stop_too_wide (RMV #54, data-ready) · #55 revenue-pin HELD (data re-confirms 0.01) · news-quality
 no-drift · #122 & #197 accruing (N<10).
-- **FIRST-UP — P0:** `alpaca_stop_trigger_reliability` — a paper stop silently failed despite a SIP-confirmed
+- **FIRST-UP:** `alpaca_stop_trigger_reliability` — a paper stop silently failed despite a SIP-confirmed
   cross (real-money-safety; MITIGATED by the never-naked backstop [sync_positions remediates ≤15 min] so NOT
-  fire-now — but investigate the root cause).
+  fire-now — but investigate the root cause). NB: registry severity is **P2** (operator-ratified 6/03 — these
+  are entry-side fill-rate events, not exit-side stop failures; this doc said "P0" until the 7/2 review caught it).
 - **Cutover gates (overlap Track 1):** `drawdown_breaker_promotion` (GATE 1 of live cutover, 22≥14) ·
   `paper_r_expectancy_validation` (GATE 3, 23≥10) · `unified_allocator_phase_1b` (#44 promotion, 21≥15).
 - **Detection / methodology (overlap North Star + Family A):** flag_proximity_band_calibration ·
