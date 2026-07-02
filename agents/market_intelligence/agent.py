@@ -4711,9 +4711,9 @@ class MarketIntelligenceAgent(BaseAgent):
         # SPY/QQQ MAs, VIX context, Stockbee breadth (primary + secondary),
         # momentum counts, T2108, EP filter. One source of truth for regime
         # display across briefings and on-demand queries.
-        body = _format_regime_section(regime, section_num=1)
-        desc = (regime.get("description") or "").strip()
-        result = body + (f"\n\n_{desc}_" if desc else "")
+        # NB: _format_regime_section already embeds the grouped-why description
+        # (briefing.py) — appending it again here double-printed it (7/2 review fix).
+        result = _format_regime_section(regime, section_num=1)
         # /breadth merged into /regime (operator 6/14: "keep it simple") — append the
         # full Stockbee 10-day cluster matrix after the regime summary. Degrade gracefully:
         # a matrix-render failure must not error the whole /regime (the regime section is
@@ -4928,14 +4928,9 @@ class MarketIntelligenceAgent(BaseAgent):
         except Exception as _e:
             logger.warning(f"theme-lookup shadow fetch failed (degrading to live-only): {_e}")
             shadow_raw = []
-        # dedup shadow by name, keep the latest run (rows arrive run_date DESC)
-        _seen: set[str] = set()
-        shadow = []
-        for s in shadow_raw:
-            nm = s.get("name")
-            if nm and nm not in _seen:
-                _seen.add(nm)
-                shadow.append(s)
+        # get_shadow_theme_candidates returns DISTINCT ON (name) — already one
+        # row per name (latest run), no re-dedup needed (7/2 review fix).
+        shadow = shadow_raw
 
         tok = arg.split()
         tk = tok[0].upper() if len(tok) == 1 and 2 <= len(tok[0]) <= 5 and tok[0].isalpha() else None

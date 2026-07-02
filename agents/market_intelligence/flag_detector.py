@@ -1617,10 +1617,11 @@ async def run_intraday_flag_break_scan(scan_time):
 
     # HTF breakout-entry SHADOW (#356 Phase 3) — record the would-be order SHAPE for each break. NO
     # order is submitted; this is the edge dataset for the later paper gate. Records ALL stages (no
-    # pre-gate) + would-be REJECTS (would_reject_reason, not dropped). Wrapped so a shadow failure can
-    # NEVER break the live #94 detection above.
-    try:
-        for b in new_breaks:
+    # pre-gate) + would-be REJECTS (would_reject_reason, not dropped). Wrapped PER BREAK so a shadow
+    # failure can NEVER break the live #94 detection above AND one bad break can't drop the shadow
+    # rows for the rest of the tick (the edge dataset would accrue silent holes — #370 class).
+    for b in new_breaks:
+        try:
             _spec, _wreject = prepare_htf_breakout_order(
                 base_high=b["base_high"], base_low=b["base_low"],
                 sma_10=b.get("sma_10"), sma_20=b.get("sma_20"), regime_record=None)
@@ -1646,8 +1647,9 @@ async def run_intraday_flag_break_scan(scan_time):
                 minutes_since_open=b["minutes_since_open"], today_volume=b["today_volume"],
                 adv_20=b["adv_20"], volume_pct_of_adv=b["volume_pct_of_adv"],
                 target_r=_HTF_BREAKOUT_TARGET_R)
-    except Exception as _e:   # loud-ok: shadow telemetry, must not break the live #94 scan
-        logger.warning(f"htf_breakout_shadow record failed (non-critical): {_e}")
+        except Exception as _e:   # loud-ok: shadow telemetry, must not break the live #94 scan
+            logger.warning(
+                f"htf_breakout_shadow record failed for {b.get('ticker')} (non-critical): {_e}")
 
     # Per-tick Telegram OFF by default for this shadow detector (#168 noise fix,
     # 2026-06-07). DB writes + audit still fire; the day's breaks are surfaced in
