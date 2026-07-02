@@ -358,3 +358,90 @@ async def test_reconciler_skips_when_partial_holds_lock():
     h["set_stop"].assert_not_called()
     # get_open_orders is never even reached — we bail before any broker read.
     h["get_open"].assert_not_called()
+
+
+# ── #401: LIVE-specific naked-position loud alarm ────────────────────────────
+
+
+def _stale_stop_sync_ctx(om, send_mock):
+    """Shared mock scaffold: DB trade whose stop_order_id resolves to a DEAD
+    (canceled) broker order → the stale-stop branch fires naked_position_detected."""
+    from unittest.mock import AsyncMock, patch
+    from tests.conftest import make_mock_pool
+
+    db_trade = {
+        "id": 401, "ticker": "IBM", "remaining_shares": 5, "entry_price": 100.0,
+        "status": "filled", "stop_order_id": "dead_stop_401", "stop_price": 95.0,
+        "orb_low": 95.0, "signal_type": "magna53",
+    }
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[db_trade])
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=0)   # get_pending_exit_qty path
+    conn.fetchrow = AsyncMock(return_value=None)
+    alpaca_positions = [{
+        "symbol": "IBM", "qty": 5.0, "qty_available": 5.0,
+        "avg_entry_price": 100.0, "market_value": 500.0, "cost_basis": 500.0,
+        "unrealized_pl": 0.0, "unrealized_plpc": 0.0, "current_price": 100.0,
+        "side": "long",
+    }]
+    dead_order = {"id": "dead_stop_401", "status": "canceled",
+                  "side": "OrderSide.SELL", "type": "OrderType.STOP",
+                  "qty": 5, "stop_price": 95.0}
+
+    async def _noop_audit(*a, **k):
+        pass
+
+    return patch.object(om, "get_pool", AsyncMock(return_value=pool)), \
+        patch.object(om, "log_audit_event", _noop_audit), \
+        patch.object(om, "send_telegram_message", send_mock), \
+        patch.object(om, "set_stop_order_id", AsyncMock()), \
+        patch.object(om, "_try_adopt_existing_stop", AsyncMock(return_value=None)), \
+        patch.object(om, "_ensure_stop_coverage", AsyncMock(return_value=None)), \
+        patch.object(om.alpaca, "get_all_positions",
+                     AsyncMock(return_value=alpaca_positions)), \
+        patch.object(om.alpaca, "get_order", AsyncMock(return_value=dead_order))
+
+
+@pytest.mark.asyncio
+async def test_401_naked_live_position_fires_dedicated_alarm():
+    """#401: account_mode='live' + confirmed-dead stop → a DEDICATED
+    '🚨 NAKED LIVE POSITION' Telegram fires (not just the generic digest)."""
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence.broker import order_manager as om
+
+    send_mock = AsyncMock(return_value=True)
+    ctxs = _stale_stop_sync_ctx(om, send_mock)
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        for c in ctxs:
+            stack.enter_context(c)
+        await om._sync_positions_for_mode("live")
+
+    naked_alarms = [c.args[0] for c in send_mock.call_args_list
+                    if "NAKED LIVE POSITION" in str(c.args[0])]
+    assert len(naked_alarms) == 1, (
+        f"expected exactly one dedicated naked-live alarm, got {len(naked_alarms)}; "
+        f"all sends: {[str(c.args[0])[:60] for c in send_mock.call_args_list]}"
+    )
+    assert "IBM" in naked_alarms[0] and "canceled" in naked_alarms[0]
+
+
+@pytest.mark.asyncio
+async def test_401_paper_mode_no_dedicated_alarm():
+    """#401: the SAME dead-stop scenario in paper mode must NOT fire the
+    live-only alarm (the generic digest still covers it)."""
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence.broker import order_manager as om
+
+    send_mock = AsyncMock(return_value=True)
+    ctxs = _stale_stop_sync_ctx(om, send_mock)
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        for c in ctxs:
+            stack.enter_context(c)
+        await om._sync_positions_for_mode("paper")
+
+    assert not any("NAKED LIVE POSITION" in str(c.args[0])
+                   for c in send_mock.call_args_list), \
+        "paper-mode sync must not fire the live-only naked alarm"

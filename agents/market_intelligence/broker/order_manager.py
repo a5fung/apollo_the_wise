@@ -3064,6 +3064,19 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
                     "source": "sync_positions",
                 }),
             )
+            # #401 (advisor 6/28): a naked LIVE position gets its OWN loud alarm —
+            # real money must not be one bullet buried in the generic sync digest.
+            # The digest + auto-remediation below still run; this only escalates.
+            if account_mode == "live":
+                if not await send_telegram_message(
+                    f"🚨 NAKED LIVE POSITION — {ticker}: stop "
+                    f"{existing_stop_id[:8]} is {order_status}. "
+                    f"Auto-remediation (re-place/adopt) running now; verify in /trades."
+                ):
+                    logger.error(
+                        f"#401 naked-live escalation Telegram FAILED for {ticker} "
+                        f"(alert lost; digest + audit row still carry it)"
+                    )
         # #151 Phase 2 / #184 part-a (sync-first, adopt-only): BEFORE placing a
         # new stop, check whether the broker ALREADY has a live stop covering
         # this position that the DB merely lost track of (null / just-cleared
