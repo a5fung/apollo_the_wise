@@ -54,7 +54,7 @@ from agents.market_intelligence.collector import (
     get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, LIVE_SOURCE_SQL
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -1046,21 +1046,9 @@ def _score_ep(
     return round(final_score, 1), breakdown
 
 
-def _yoy_shadow_decision(yoy_pct, gate_min_yoy) -> tuple[bool, str]:
-    """#149 SHADOW: would an earnings name downgraded for a MISSING prior-year
-    YoY be KEPT if the deterministic yfinance YoY were used instead?
-
-    Returns (recovered, corrected) where:
-      recovered = a numeric YoY was actually found (the data exists)
-      corrected = "kept"      → recovered AND yoy >= gate threshold
-                  "stay_down" → no YoY found, OR YoY below threshold
-                                (the gate-better-in-both-directions case)
-    Advisory only; the live gate is never changed by this.
-    """
-    recovered = isinstance(yoy_pct, (int, float))
-    if recovered and yoy_pct >= gate_min_yoy:
-        return True, "kept"
-    return recovered, "stay_down"
+# _yoy_shadow_decision (#149) removed 2026-07-02 (#400b): the #321 LIVE YoY
+# recovery in the gate block supersedes the shadow — see the tombstone at the
+# former post-scan block for the full rationale.
 
 
 # _compute_fire_status (#201) removed 2026-06-10 (#249): the holistic judge's
@@ -1404,11 +1392,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     # Score each candidate (rate-limited FMP calls)
     results = []
     scan_log: list[dict] = []  # accumulated for batch DB write at end
-    # #149 SHADOW: earnings candidates downgraded purely for a missing prior-year
-    # YoY comparable. Captured in the gate block (cheap, no I/O) → processed in a
-    # decoupled post-scan block that fetches the deterministic yfinance YoY off
-    # the latency-sensitive ORB-cutoff path (advisory; does NOT change the gate).
-    _yoy_shadow_candidates: list[dict] = []
 
     def _scan_row(c: dict, *, reason: str | None, ep_score: float | None,
                   tier: str | None, catalyst_quality: str | None) -> dict:
@@ -2336,7 +2319,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # prior-year SAME quarter and let it DRIVE the gate: recovered >= floor -> not weak (clear the
             # downgrade); < floor -> legitimately weak (keep, with the real number); None -> stay
             # conservative. Latency-bounded (off-corpus yfinance fetch, 4s cap, fail-open) + a revert
-            # toggle (LIVE_YOY_RECOVERY=false reverts to shadow-only). Runs only on the missing-YoY reason.
+            # toggle — #400a: DB-instant via get_runtime_toggle('live_yoy_recovery', ...) with the
+            # LIVE_YOY_RECOVERY env as fallback; flipping the DB row to 'off' reverts to the
+            # conservative pre-fix downgrade in ≤60s, no redeploy. Runs only on the missing-YoY reason.
             # Latency guard (advisor 6/28): the prior-year leg fetch must NOT run inside the 9:30-9:45
             # ORB-cutoff window — a few × 4s serially could push the scan past 9:45 -> WINDOW_OUT_OF_ORB on
             # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
@@ -2344,7 +2329,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # first-seen in-window stays conservative (the safe old behavior) rather than risking the cutoff.
             _in_orb_cutoff = now_et.hour == 9 and 30 <= now_et.minute <= 45
             if (_downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable"
-                    and os.environ.get("LIVE_YOY_RECOVERY", "true").lower() == "true"
+                    and await get_runtime_toggle("live_yoy_recovery", "LIVE_YOY_RECOVERY")
                     and not _in_orb_cutoff):
                 _qr2 = _extracted.get("q_revenue_usd") or {}
                 try:
@@ -2378,19 +2363,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality = "routine"
                 confidence_multiplier = 1.0  # #320: reset the stale agreement boost on downgrade (mirrors the pplx-hedge reset ~line 2016)
                 _qr_block = _extracted.get("q_revenue_usd") or {}
-                # #149 SHADOW capture: earnings name downgraded purely for a
-                # MISSING prior-year YoY comparable (LLM got a current-quarter
-                # revenue but no prior-year number). The post-scan block fetches
-                # the deterministic yfinance YoY off the hot path. Cheap append
-                # only — no I/O here. Advisory; does NOT alter this downgrade.
-                if _downgrade_reason == "q_rev_yoy_missing_no_prior_year_comparable":
-                    _yoy_shadow_candidates.append({
-                        "ticker": ticker,
-                        "alert_date": today,
-                        "original_quality": _original_quality,
-                        "llm_q_rev_value": _qr_block.get("value"),
-                        "fiscal_period": _extracted.get("fiscal_period"),  # #321: deterministic prior-year match
-                    })
                 _gf_block = _extracted.get("guidance_fy_revenue_usd") or {}
                 # Rubric details if available (Phase 5 ship)
                 _rubric_summary = None
@@ -3035,70 +3007,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     except Exception as _e:
         logger.warning(f"catalyst_type post-scan block failed (non-critical): {_e}")
 
-    # ── #149 SHADOW: deterministic q_rev YoY recovery (ADVISORY) ──────────────
-    # Earnings candidates downgraded purely for a MISSING prior-year YoY
-    # comparable: the LLM news-corpus extraction got a current-quarter revenue
-    # but no prior-year number, so the rubric (Axis 1 needs YoY) couldn't score
-    # → safety-net downgrade to routine. yfinance's quarterly_income_stmt carries
-    # 8 quarters incl. the same quarter 1yr prior — a deterministic, LLM-corpus-
-    # independent source for exactly the missing comparable (probe 2026-06-05:
-    # 8/8 recoverable). Logs what the gate decision WOULD be with real YoY; does
-    # NOT change the live downgrade — gate-reversal is a CHANGE_PROCESS change
-    # gated on N>=10 + forward-return evidence (current cohort N=8). Off the
-    # latency-sensitive 9:45 ORB-cutoff path (post-loop, bounded, fail-open).
-    if _yoy_shadow_candidates:
-        try:
-            from agents.market_intelligence.fundamentals import compute_yoy_from_prior_year
-            from agents.market_intelligence.constants import (
-                EARNINGS_REVENUE_GATE_MIN_YOY as _GATE_MIN_YOY,
-            )
-
-            async def _shadow_recover_yoy(sc: dict) -> None:
-                try:
-                    # #321: period-MATCHED prior-year recovery (replaces the old crude qr[-1], which on a
-                    # gap day is the PRIOR quarter = wrong period → a stale/wrong YoY). The extractor's
-                    # value is the fresh current quarter; we pull the prior-year SAME quarter (a year old,
-                    # reliable) and COMPUTE YoY — feeds the gate decision, never fabricates (None stays
-                    # downgraded). Validated 2026-06-28: 20/21 covered cases matched the extraction truth.
-                    rec = await compute_yoy_from_prior_year(
-                        sc["ticker"], sc.get("fiscal_period"), sc.get("llm_q_rev_value")
-                    )
-                    yoy = rec.get("yoy_pct") if rec else None
-                    recovered, corrected = _yoy_shadow_decision(yoy, _GATE_MIN_YOY)
-                    await log_audit_event(
-                        "catalyst_q_rev_yoy_shadow_recovered",
-                        f"{sc['ticker']}: live=downgraded({sc['original_quality']}"
-                        f"→routine) prioryr_yoy="
-                        f"{f'{yoy:+.1f}%' if recovered else 'none'} "
-                        f"→ corrected={corrected}",
-                        json.dumps({
-                            "ticker": sc["ticker"],
-                            "alert_date": sc["alert_date"].isoformat(),
-                            "original_quality": sc["original_quality"],
-                            "live_decision": "downgraded_to_routine",
-                            "llm_q_rev_value": sc["llm_q_rev_value"],
-                            "fiscal_period": sc.get("fiscal_period"),
-                            "yfinance_yoy_pct": yoy if recovered else None,
-                            "prior_period": rec.get("prior_period") if rec else None,
-                            "prior_revenue_m": rec.get("prior_revenue_m") if rec else None,
-                            "match_method": "period_matched_prior_year",
-                            "gate_min_yoy": _GATE_MIN_YOY,
-                            "corrected_decision": corrected,
-                            "recovered": recovered,
-                        }),
-                    )
-                except Exception as _se:
-                    logger.warning(
-                        f"#321 yoy shadow recover failed for {sc.get('ticker')}: {_se}"
-                    )
-
-            await asyncio.wait_for(
-                asyncio.gather(
-                    *[_shadow_recover_yoy(sc) for sc in _yoy_shadow_candidates]
-                ),
-                timeout=30,
-            )
-        except Exception as _e:
-            logger.warning(f"#149 q_rev yoy shadow block failed (non-critical): {_e}")
+    # #149 shadow RETIRED 2026-07-02 (#400b). The #321 LIVE recovery (the
+    # q_rev_yoy_missing rescue in the gate block above) supersedes it: post-fix
+    # the shadow only re-fetched the same yfinance answer for names the rescue
+    # had already decided — rescue-None dupes (CHTR 6/29: the same stay_down
+    # logged every 5-min tick for hours) and in-ORB-window skips that stay
+    # conservative BY DESIGN (the latency guard). History lives in the
+    # catalyst_q_rev_yoy_shadow_recovered audit rows (last emitted 2026-07-02).
 
     return results

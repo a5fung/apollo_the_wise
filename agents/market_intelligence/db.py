@@ -2518,6 +2518,41 @@ async def set_trading_halted(halted: bool) -> None:
         """, *_MANUAL_HALT, "on" if halted else "off")
 
 
+_RUNTIME_TOGGLE_TTL_S = 60.0
+_runtime_toggle_cache: dict = {}
+
+
+async def get_runtime_toggle(name: str, env_var: str, default: bool = True) -> bool:
+    """#400a — instant-revert runtime toggle. Precedence: a mi_safeguard_state row
+    (safeguard=<name>, account_mode='global', state 'on'/'off') OVERRIDES the env
+    var; no row → env var → default. Flip with NO redeploy (~60s cache lag max):
+      INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+      VALUES ('<name>', 'global', 'off', NOW(), NOW())
+      ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+    Fail direction: DB error → the env value (fail-open to env — these toggle
+    grade-quality behaviors, NOT capital; the capital gate is get_manual_halt_state,
+    which fails CLOSED). The 60s cache keeps reads off hot scan paths."""
+    import os as _os
+    import time as _time
+    now = _time.monotonic()
+    hit = _runtime_toggle_cache.get(name)
+    if hit and now - hit[0] < _RUNTIME_TOGGLE_TTL_S:
+        return hit[1]
+    env_val = _os.environ.get(env_var, "true" if default else "false").lower() == "true"
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT state FROM mi_safeguard_state "
+                "WHERE safeguard = $1 AND account_mode = 'global'", name)
+        val = (row["state"] == "on") if row else env_val
+    except Exception as e:  # loud-ok: fail-open to the env value (grade-quality toggle, not capital)
+        logger.warning(f"runtime toggle {name} read failed → env fallback: {e}")
+        val = env_val
+    _runtime_toggle_cache[name] = (now, val)
+    return val
+
+
 # update_ep_alert_grade_override merged into update_ep_alert_judge_result
 # (#247, 2026-06-10) — the judge_*-write + score_tier override are one atomic
 # UPDATE now; the two-statement window is gone.
