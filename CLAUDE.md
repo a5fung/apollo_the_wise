@@ -399,13 +399,13 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-06-27 — anticipation rebuild · #381 gate · HTF detection · PDT/ET fix (all live)
+### 2026-07-01 — MAGNA53 launch days 1-2 · read-layer fixes · monthly-sweep move (all live)
 
-- 3 builds verified-live: **anticipation #327** coil-finder · **#381** swallow-a-failure ratchet gate · **HTF #356** detection (90/40 + Stage-2 NCI-catch + flag→HTF rename). Recurring **PDT/ET** confusion fixed MECHANICALLY: `check_plan`→PT · `scripts/operator_now.py` clock · ⏰ two-frames rule. **NEXT = major burndown.**
+- **Day-1 (6/30): FIRST auto-entry (AVAV)** — armed clean (stop attached), declined the non-breakout, cancelled clean; arm VERIFIED-LIVE, first FILL ahead (#305). Day-2: no fire. VIX I:VIX-403 + /htf read-fixes live; monthly sweep→6PM ET (a9752b5, deploys 7/3). NEXT = 7/3-7/5 sprint.
 
 ### Older entries graduated to CHANGELOG.md
 
-- 2026-06-27 graduated 2026-06-22 (MAGNA53 launch · partials restored #151). Older graduations (06-20→04-30): search `CHANGELOG.md` for any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
+- 2026-07-01 graduated 2026-06-27 (anticipation/HTF/PDT); older in `CHANGELOG.md` — search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
 
 ---
 
