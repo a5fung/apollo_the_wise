@@ -93,6 +93,32 @@ no-drift · #122 & #197 accruing (N<10).
 
 ---
 
+## Kickoff pre-sort (prepared 7/2 — so Friday opens executing, not triaging)
+
+**39 tasks carry ETA ≤ 7/5 vs realistic throughput ~20-25 on a 3-day push. Pre-sorted:**
+
+**⚡ First hour Friday:** the 2 operator calls (#305 close-criterion · #364 remove-buttons — F17 proved the
+buttons are structurally broken, not just unused) + THE DEPLOY BATCH (one pass, then verify): #342 · #401-verify ·
+#405 · #406 · #411 (sweep 18:00 cron) · the #412 F1-F3 fixes. Unblock #299 (funding cleared at the 6/28 arm).
+
+**COMMITTED (the tracks):**
+- T1 launch-push: #299 · #301 · #303 · #398 · #364(post-call) · hardening lane = #184 · #225 + **review F22/F16/F18**
+  (the breakeven lost-update + dead ambiguity-guard + exec-routes misclassification — all careful-path, paper-exercised;
+  F22 first, it's the live-money stop floor).
+- T2 North Star: #328 (headline build) · #329/#330/#331 (axis children as reached) · #210/#211 · #335 + #347 (the two
+  FLIP decisions — evidence → operator) · #400 (grade finishers; #320/#321 are close-candidates if verify-live confirms).
+- T4 burndown: #279 · #384 · #378 · Family-A quick wins #409 · #410 · #387 · #385 · #396 (HTF Phase-4) · #412 remainder.
+- T6 reviews: the 23 overdue (P2 stop-trigger first) + the 3 operator-together investigations (M&A/judge/#92).
+- #261 reorg **only together with F4** (the scripts/ import re-home) — else the #343 shadow dies silently.
+
+**PRE-DESIGNATED ROLLS (re-date honestly at kickoff, no shame):** #306 (v1.1-W3 is trade-state build — Track 5 only
+*opens the lane*; W3 → week of 7/6) · #368 (gated on #367's N≈25 accrual — physics, not effort) · #322 · #331-if-unreached ·
+#337-labeling (operator-paced). Anything else unstarted by Sun midday rolls with `[ok:sprint-triage]`.
+
+**WIP honesty (32 in_progress):** most are legitimately "shipped, accruing evidence" (done=verified-live makes that
+correct). Genuinely NOT-started-yet under an in_progress label: **#211** (the scheduler job doesn't exist yet) and
+**#261's remainder** — demote or do at kickoff. #320/#321 look verify-done → close-candidates.
+
 ## Sequencing
 - **7/3 (Fri, market closed):** batch ALL deploys on the one safe window — #405 + #406 + #342 + #279 +
   the monthly-sweep 08:00→18:00 ET cron move (committed 7/1) + any launch-project close needing a deploy.
