@@ -520,8 +520,18 @@ async def get_order(order_id: str, account_mode: str | None = None) -> dict | No
 async def get_open_orders(
     ticker: str | None = None,
     account_mode: str | None = None,
+    raise_on_error: bool = False,
 ) -> list[dict]:
-    """Get all open orders, optionally filtered by ticker."""
+    """Get all open orders, optionally filtered by ticker.
+
+    raise_on_error (F16, 2026-07-03): callers whose NEXT ACTION depends on
+    distinguishing "no open orders" from "couldn't read the broker" MUST pass
+    True — with the default [] fallback, a transient API failure is
+    indistinguishable from an empty book, and `_ensure_stop_coverage` would
+    place a stop while the real one may still be live (duplicate-stop /
+    oversell hazard; an accepted duplicate then wedges repair via the
+    >1-stops ambiguous branch). The alert still fires before the re-raise.
+    """
     try:
         client = get_trading_client(account_mode)
         request = GetOrdersRequest(status=QueryOrderStatus.OPEN)
@@ -529,12 +539,14 @@ async def get_open_orders(
             request.symbols = [ticker]
         orders = client.get_orders(request)
         return [_order_to_dict(o) for o in orders]
-    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then the [] fallback
+    except Exception as e:  # loud-ok: alerts via maybe_alert_api_failure below, then [] or re-raise
         logger.error(f"Failed to get open orders: {e}")
         # #370 input-side: an orders-read failure silently returning [] looks like "no open orders" —
-        # the silent-failure class. Fire the deduped alpaca alert, then keep the [] fallback.
+        # the silent-failure class. Fire the deduped alpaca alert, then [] fallback or re-raise (F16).
         from agents.market_intelligence.llm_health import maybe_alert_api_failure
         await maybe_alert_api_failure("alpaca", e, context="get_open_orders")
+        if raise_on_error:
+            raise
         return []
 
 

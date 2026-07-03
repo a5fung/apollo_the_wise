@@ -2692,9 +2692,14 @@ async def _ensure_stop_coverage(
             # here we just decline to place/replace.
             return None
 
-        # Discover the live sell-stop(s) from broker truth.
+        # Discover the live sell-stop(s) from broker truth. raise_on_error=True
+        # (F16, 7/3): get_open_orders' default [] fallback made this except
+        # UNREACHABLE — a transient read failure looked like "no live stop" and
+        # drove the place branch on a false premise (duplicate-stop hazard).
+        # Exceptions-out here makes the defer-on-ambiguity below work as designed.
         try:
-            open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
+            open_orders = await alpaca.get_open_orders(
+                ticker, account_mode=account_mode, raise_on_error=True)
         except Exception as e:
             logger.warning(
                 f"_ensure_stop_coverage: get_open_orders failed for {ticker}: {e}"

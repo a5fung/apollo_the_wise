@@ -445,3 +445,46 @@ async def test_401_paper_mode_no_dedicated_alarm():
     assert not any("NAKED LIVE POSITION" in str(c.args[0])
                    for c in send_mock.call_args_list), \
         "paper-mode sync must not fire the live-only naked alarm"
+
+
+# ── F16: broker-read ambiguity must DEFER, never drive the place branch ──────
+
+
+@pytest.mark.asyncio
+async def test_f16_broker_read_failure_defers_no_stop_placed():
+    """F16 (7/2 review): a get_open_orders failure in _ensure_stop_coverage must
+    DEFER (return None) — pre-fix, the [] fallback made 'API down' look like
+    'no live stop' and the place branch fired on a false premise."""
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence.broker import order_manager as om
+
+    @asynccontextmanager
+    async def _lock_ok(_tid):
+        yield True
+
+    place_spy = AsyncMock()
+    with patch.object(om, "_trade_advisory_try_lock", _lock_ok), \
+         patch.object(om, "get_pending_exit_qty", AsyncMock(return_value=0)), \
+         patch.object(om.alpaca, "get_open_orders",
+                      AsyncMock(side_effect=RuntimeError("api down"))), \
+         patch.object(om.alpaca, "place_stop_order", place_spy):
+        out = await om._ensure_stop_coverage(1, "IBM", 5.0, 95.0, "magna53", "live")
+    assert out is None, "broker-unreadable must defer, not act"
+    place_spy.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_f16_get_open_orders_raise_on_error_contract():
+    """F16: raise_on_error=True re-raises (after the #370 alert); the default
+    keeps the [] fallback for every legacy caller."""
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence.broker import alpaca_client as ac
+
+    with patch.object(ac, "get_trading_client", side_effect=RuntimeError("auth down")), \
+         patch("agents.market_intelligence.llm_health.maybe_alert_api_failure",
+               AsyncMock()) as alert:
+        assert await ac.get_open_orders("IBM", account_mode="paper") == []
+        with pytest.raises(RuntimeError):
+            await ac.get_open_orders("IBM", account_mode="paper", raise_on_error=True)
+    assert alert.await_count == 2, "the #370 alert fires on BOTH paths"
