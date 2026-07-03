@@ -1,5 +1,19 @@
 # Sprint Spec-Pack — prepared 7/2 evening (the Fable-half, done ahead)
 
+## ⚡ Pacing policy (operator 7/3: "chunk out work more to prevent limit casualties — you manage")
+The session token limit killed agent waves twice (7/2 review fan-out; 7/3 S6/S8/S9). Damage control
+that worked: persistent worktrees + committed work survive a kill; only the uncommitted tail is lost.
+Rules from here:
+1. **Max 2 concurrent Sonnet agents** (was 3-4). Stagger dispatches; prefer sequential for big cards.
+2. **Checkpoint commits**: every multi-item card instructs COMMIT-PER-ITEM on the worktree branch —
+   a limit-kill then costs only the current item. Single-item cards commit as soon as tests pass.
+3. **Targeted tests in agents; the full suite runs ONCE at the main-loop push gate** (pre-push runs
+   it anyway) — trims each agent's token budget materially.
+4. **Salvage protocol on a kill**: check the worktree (`git -C <wt> log/status`) BEFORE re-dispatching —
+   resume the same agent via SendMessage when work exists; fresh dispatch only when the tree is clean.
+5. Fable main loop: tight spot-checks, batched merges/pushes, no redundant re-verification of
+   agent-run suites.
+
 Companion to `long-weekend-sprint-2026-07.md` (§Kickoff pre-sort). **Model split:** Fable 5 =
 plan/design/review/careful-path; Sonnet 5 subagents = execution of the SPEC CARDS below (each
 self-contained: files → change → DoD → test). Every Sonnet diff gets Fable review before commit.
