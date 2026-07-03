@@ -597,15 +597,25 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
         #   WS write. Authorized writers: finalize_partial_exit,
         #   finalize_full_exit, finalize_stop_fill, _sync_positions_for_mode.
         #
-        # Keeps: hold_days, breakeven_active (state-machine derived — a 3:45
-        # partial that filled has already had finalize_partial_exit set
-        # breakeven_active=TRUE in the DB, and step reflects that fresh read),
+        # Keeps: hold_days, breakeven_active (monotonic — see below),
         # running_closes (live_tracker domain; appended exactly once here).
+        #
+        # F22 (7/2 review — #361 regression): breakeven_active is written as
+        # `old OR step`, MONOTONIC, never TRUE→FALSE. step.new_breakeven_active
+        # is a passthrough of this job's OPENING read (partial branch skipped),
+        # and the read→UPDATE window spans the whole job (network calls per
+        # ticker). If finalize_partial_exit (the only TRUE-writer, on the WS
+        # fill) lands inside that window — a delayed 3:45-partial fill, or an
+        # operator /partialnow — a plain `= $3` clobbers TRUE back to FALSE
+        # with NO self-heal (partial_taken stays TRUE so the partial never
+        # re-fires; the stop then floors below entry for the trade's life).
+        # OR-ing preserves it; safe because no writer legitimately resets the
+        # flag on an open row (order_manager:1858 is TRUE-only).
         async with pool.acquire() as conn:
             await conn.execute("""
                 UPDATE mi_live_trades SET
                     hold_days = $2,
-                    breakeven_active = $3,
+                    breakeven_active = (breakeven_active OR $3),
                     running_closes = $4::jsonb
                 WHERE id = $1
             """, trade["id"], step.hold_days,
