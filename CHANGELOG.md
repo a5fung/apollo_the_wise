@@ -11,6 +11,9 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 ### 2026-06-27 — anticipation rebuild · #381 gate · HTF detection · PDT/ET fix
 - 3 builds verified-live: anticipation #327 coil-finder · #381 swallow-a-failure ratchet gate · HTF #356 detection (90/40 + Stage-2 NCI-catch + flag→HTF rename). Recurring PDT/ET confusion fixed MECHANICALLY: `check_plan`→PT · `scripts/operator_now.py` clock · the ⏰ two-frames rule.
 
+### 2026-07-01 — MAGNA53 launch days 1-2 · read-layer fixes · monthly-sweep move
+- Day-1 (6/30): FIRST auto-entry (AVAV) — armed clean (stop attached), declined the non-breakout, cancelled clean; arm VERIFIED-LIVE, first FILL ahead (#305). Day-2: no fire. VIX I:VIX-403 + /htf read-fixes live; monthly backward-check sweep moved 8AM→6PM ET (a9752b5).
+
 ### 2026-06-22 (Mon) — MAGNA53 launch Phase 1 (staged, $0 real money) · partials paused→restored
 - Phase 1 live-validated (creds boot · preflight · `/status` · `/pause`); magna53 `live_real_enabled=FALSE`, real money = Phase 2 on ACH funds-settle (~Wed). 3 launch-blockers fixed live; two-phase runbook (`docs/roadmap/monday_go_runbook.md`).
 - **Partial exits — PAUSED 6/22, RESTORED 6/26** (`_PARTIAL_EXIT_PAUSED=False`, order_manager.py; #151 DONE — never-naked invariant + clean partial-exit cycles 6/23–24). The 6/22 pause was a TEMPORARY `pending_replace`-race mitigation; the #151 fix RESTORED them (the TESTED sell discipline, never removed) — see THE LINE.

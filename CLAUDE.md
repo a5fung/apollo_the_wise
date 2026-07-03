@@ -399,13 +399,13 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-07-01 — MAGNA53 launch days 1-2 · read-layer fixes · monthly-sweep move (all live)
+### 2026-07-02 — comprehensive review (23 findings) · 5 ships
 
-- **Day-1 (6/30): FIRST auto-entry (AVAV)** — armed clean (stop attached), declined the non-breakout, cancelled clean; arm VERIFIED-LIVE, first FILL ahead (#305). Day-2: no fire. VIX I:VIX-403 + /htf read-fixes live; monthly sweep→6PM ET (a9752b5, deploys 7/3). NEXT = 7/3-7/5 sprint.
+- **6/12→7/1 review**: 3 fixed + **#412** filed — top = F22 breakeven_active lost-update (#361 regression, careful-path). Ships: **#401** naked-live alarm · **#400** instant-revert + #149 retire · #384(1) tweet-RVOL · **#398** dashboard search + fresh snapshot (was 6/9-stale) · sweep-floor 3500→2200 (#340 evidence). Day-3: no fire; VIX fix clean. Deploy batch = 7/3.
 
 ### Older entries graduated to CHANGELOG.md
 
-- 2026-07-01 graduated 2026-06-27 (anticipation/HTF/PDT); older in `CHANGELOG.md` — search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
+- 2026-07-02 graduated 7/01 (launch days 1-2) — older in `CHANGELOG.md`; search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
 
 ---
 
