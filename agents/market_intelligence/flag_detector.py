@@ -63,6 +63,7 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 # exact reason Family-A was split into the sourced setups). Spec: flagpole ≥90% in ~8wk.
 _RUNUP_LOOKBACK_DAYS = 40       # ~8-wk pole window (spec: C≥1.9×C₄₀ / High₄₀≥1.9×Low₄₀)
 _RUNUP_MIN_RATIO     = 1.90     # pivot_high / 40d_low ≥ 1.9×  (flagpole ≥ 90%)
+_FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
 # Liquidity / tradability floors (sourced HTF spec; VERIFY 6/28 found the $5M dollar-vol universe floor does
 # NOT cover them). TUNABLE named constants — value + rationale live in docs/setups/htf.md. _HTF_MIN_ADV is a
 # standard liquidity floor (firm). _HTF_MIN_ADR is a STARTING value — 4% is NOT canonical (sources run 3-6%),
@@ -76,27 +77,20 @@ _HTF_SETTLE_WINDOW = 12         # forward trading bars for the HTF breakout sett
 
 def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_BREAKOUT_TARGET_R,
                           window=_HTF_SETTLE_WINDOW):
-    """#356 Phase 3 — settle one HTF breakout-shadow row from daily bars. REUSES entry_bet_outcome's
-    asymmetric-bet R-math, but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close
-    (anticipation.entry_bet_outcome hardcodes entry=bars[idx]['c']) — so entry=entry_price AND the BREAK
-    DAY itself is in the forward window (the fill is intraday). Returns {outcome, fwd_mfe_r, realized_r}
-    or None to ABSTAIN (window incomplete + undecided). Capture credited on a same-bar high>=tgt tie.
-    bars are db_rows_to_bars dicts with c/h/l."""
+    """#356 Phase 3 — settle one HTF breakout-shadow row from daily bars. Thin wrapper over
+    anticipation.entry_bet_outcome's asymmetric-bet R-math (F11 dedup — the SINGLE source for the
+    capture/stop/mfe loop), but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close
+    (entry_bet_outcome's default) — so calls with entry_price=entry_price AND include_entry_bar=True
+    (the BREAK DAY itself is in the forward window; the fill is intraday). Returns
+    {outcome, fwd_mfe_r, realized_r} or None to ABSTAIN (window incomplete + undecided). Capture
+    credited on a same-bar high>=tgt tie. bars are db_rows_to_bars dicts with c/h/l."""
+    from agents.market_intelligence.anticipation import entry_bet_outcome
     entry = float(entry_price)
-    if stop is None or stop >= entry:
+    bet = entry_bet_outcome(bars, entry_idx, stop, target_r=target_r, window=window,
+                            entry_price=entry, include_entry_bar=True)
+    if bet is None:
         return None
-    risk = entry - stop
-    tgt = entry + target_r * risk
-    mfe, out = entry, "open"
-    for i in range(entry_idx, min(entry_idx + 1 + window, len(bars))):   # break day INCLUSIVE
-        b = bars[i]
-        mfe = max(mfe, b["h"])
-        if b["h"] >= tgt:
-            out = "capture"
-            break
-        if b["l"] <= stop:
-            out = "stop"
-            break
+    out, fwd_mfe_r = bet
     if out == "open" and (len(bars) - 1 - entry_idx) < window:
         return None   # not enough forward bars yet — abstain, retry next run
     if out == "capture":
@@ -105,8 +99,9 @@ def _htf_settle_from_bars(bars, entry_idx, *, entry_price, stop, target_r=_HTF_B
         realized_r = -1.0
     else:   # mark-to-window: unrealized R at the window end
         end = min(entry_idx + window, len(bars) - 1)
+        risk = entry - stop
         realized_r = (bars[end]["c"] - entry) / risk
-    return {"outcome": out, "fwd_mfe_r": round((mfe - entry) / risk, 2),
+    return {"outcome": out, "fwd_mfe_r": round(fwd_mfe_r, 2),
             "realized_r": round(realized_r, 2)}
 
 
@@ -171,7 +166,6 @@ def prepare_htf_breakout_order(*, base_high, base_low, sma_10=None, sma_20=None,
         "notional_basis": notional,
     }
     return spec, would_reject
-_FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
 
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real

@@ -967,20 +967,31 @@ def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
 ENTRY_SETTLE_WINDOW = 12   # forward trading bars to observe the asymmetric bet (the validation horizon)
 
 
-def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=ENTRY_SETTLE_WINDOW):
+def entry_bet_outcome(bars, entry_idx, stop, *, target_r=ENTRY_TARGET_R, window=ENTRY_SETTLE_WINDOW,
+                      entry_price=None, include_entry_bar=False):
     """The validated asymmetric bet from a close-of-coil entry under a FIXED `stop`, over `window`
     forward bars: returns (outcome, fwd_mfe_r) where outcome ∈ capture (MFE hits +target_r×risk
     first) / stop (stop hit first) / open (neither by window end); fwd_mfe_r = UNCAPPED favorable
     excursion / risk (the entry-quality measure). None if risk ≤ 0. The SINGLE source — the offline
     sweep (scripts/_327_entry_signal.bet_outcome) delegates here, pinned by the settle test. A
-    same-bar target is credited capture (the rare h≥tgt & l≤stop tie is second-order for this read)."""
-    entry = bars[entry_idx]["c"]
+    same-bar target is credited capture (the rare h≥tgt & l≤stop tie is second-order for this read).
+
+    `entry_price` / `include_entry_bar` (F11, #356 dedup — flag_detector._htf_settle_from_bars'
+    two named deltas) generalize the close-of-coil default to an intraday-fill entry: `entry_price`
+    overrides the default fill (bars[entry_idx]['c']) — for an entry that fills at a different price
+    than the bar's close (e.g. a stop-limit-buy fill at base_high); `include_entry_bar` starts the
+    forward scan AT entry_idx instead of entry_idx+1 — for a fill that happens intraday, where the
+    entry bar's own remaining range is still live (vs. the default close-of-bar entry, where the
+    entry bar is already fully priced in and the scan starts the NEXT bar). Both default to the
+    ORIGINAL close-entry / next-bar-only semantics — EXACT prior behavior when omitted."""
+    entry = float(entry_price) if entry_price is not None else bars[entry_idx]["c"]
     if stop is None or stop >= entry:
         return None
     risk = entry - stop
     tgt = entry + target_r * risk
     mfe, out = entry, "open"
-    for i in range(entry_idx + 1, min(entry_idx + 1 + window, len(bars))):
+    start = entry_idx if include_entry_bar else entry_idx + 1
+    for i in range(start, min(entry_idx + 1 + window, len(bars))):
         b = bars[i]
         mfe = max(mfe, b["h"])
         if b["h"] >= tgt:
