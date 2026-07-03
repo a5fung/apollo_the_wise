@@ -115,6 +115,7 @@ async def test_http_timeout_is_split_by_call_weight(monkeypatch, name, expect_re
 
         async def post(self, *a, **k):
             class _R:
+                status_code = 200
                 def raise_for_status(self_):
                     pass
 
@@ -211,3 +212,80 @@ def test_exec_route_invokes_handler_and_unknown_404(monkeypatch):
 
     r404 = client.post("/exec/nonexistent", json={"args": [], "kwargs": {}})
     assert r404.status_code == 404
+
+
+# ── F18: "execution answered with an error" ≠ "unreachable" ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_f18_execution_side_error_raises_call_failed(monkeypatch):
+    """A typed 500 (the routes-side execution_error marker) must surface as
+    ExecutionCallFailed carrying the ORIGINAL type+message — pre-F18 it
+    collapsed into ExecutionUnreachable, discarding the reason (an Alpaca
+    rejection mid-ORB read as a network blip)."""
+    import httpx
+
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
+    monkeypatch.setattr(
+        "shared.secrets.get_secrets",
+        lambda: type("S", (), {"internal_api_secret": "x"})(),
+    )
+
+    class _Resp:
+        status_code = 500
+
+        def json(self):
+            return {"detail": {"execution_error": True,
+                               "error_type": "ValueError",
+                               "error_message": "alpaca rejected: insufficient qty"}}
+
+        def raise_for_status(self):
+            raise httpx.HTTPStatusError("500", request=None, response=None)
+
+    class _Client:
+        def __init__(self, *a, **k): ...
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **k): return _Resp()
+
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    with pytest.raises(ec.ExecutionCallFailed) as ei:
+        await ec._http_call("trigger_orb_entry", (), {})
+    assert "ValueError" in str(ei.value)
+    assert "insufficient qty" in str(ei.value)
+
+
+@pytest.mark.asyncio
+async def test_f18_bare_500_still_unreachable(monkeypatch):
+    """A 500 WITHOUT the marker (proxy error, crash-before-handler) stays
+    ExecutionUnreachable — the distinction must not over-classify."""
+    import httpx
+
+    monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
+    monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
+    monkeypatch.setattr(
+        "shared.secrets.get_secrets",
+        lambda: type("S", (), {"internal_api_secret": "x"})(),
+    )
+
+    class _Resp:
+        status_code = 500
+
+        def json(self):
+            return {"detail": "internal server error"}
+
+        def raise_for_status(self):
+            raise httpx.HTTPStatusError("500", request=None, response=None)
+
+    class _Client:
+        def __init__(self, *a, **k): ...
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def post(self, *a, **k): return _Resp()
+
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    with pytest.raises(ec.ExecutionUnreachable):
+        await ec._http_call("get_account", (), {})

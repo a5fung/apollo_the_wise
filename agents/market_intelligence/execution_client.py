@@ -44,6 +44,16 @@ class ExecutionUnreachable(RuntimeError):
     the wire hop raises this."""
 
 
+class ExecutionCallFailed(RuntimeError):
+    """The execution service RAN the function and it RAISED (F18, 7/3) —
+    carries the original error's type+message from the typed 500 body. DISTINCT
+    from ExecutionUnreachable: "execution answered with an error" and "couldn't
+    reach execution" demand different operator responses (an Alpaca rejection
+    mid-ORB is not a network blip). Semantics match in-process mode: the
+    original exception would have propagated to the caller — this class is that
+    propagation across the wire (callers' broad handlers catch it the same)."""
+
+
 # Functions that must run where the Alpaca creds + broker runtime state live.
 # When EXECUTION_MODE=http these dispatch to apollo-execution; otherwise they run
 # in-process. Pure-config / execution-only / Telegram-object fns are deliberately
@@ -119,8 +129,23 @@ async def _http_call(name: str, args, kwargs):
                     "Content-Type": "application/json",
                 },
             )
+            # F18: a typed 500 (execution_error marker) = the handler RAN and
+            # raised — re-raise the ORIGINAL type+message as ExecutionCallFailed,
+            # never collapse it into "unreachable".
+            if resp.status_code == 500:
+                try:
+                    _detail = (resp.json() or {}).get("detail") or {}
+                except Exception:  # loud-ok: non-JSON 500 falls through to Unreachable below
+                    _detail = {}
+                if isinstance(_detail, dict) and _detail.get("execution_error"):
+                    raise ExecutionCallFailed(
+                        f"execution call {name!r} failed IN the execution service: "
+                        f"{_detail.get('error_type')}: {_detail.get('error_message')}"
+                    )
             resp.raise_for_status()
             return resp.json()["result"]
+    except ExecutionCallFailed:
+        raise
     except Exception as e:
         # Never swallow into a broker-empty default — see ExecutionUnreachable.
         raise ExecutionUnreachable(

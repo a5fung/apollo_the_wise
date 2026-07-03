@@ -64,7 +64,22 @@ def register_execution_routes(app) -> None:
                                 detail=f"unknown execution function: {name}")
         args = payload.get("args") or []
         kwargs = payload.get("kwargs") or {}
-        result = await fn(*args, **kwargs)
+        try:
+            result = await fn(*args, **kwargs)
+        except Exception as e:  # loud-ok: re-shaped into a typed 500 the client re-raises (F18)
+            # F18 (7/2 review): without this, a REAL execution-side failure (an
+            # Alpaca rejection inside trigger_orb_entry, a DB error) became a
+            # bare FastAPI 500 that the client collapsed into ExecutionUnreachable
+            # — "couldn't reach" and "ran and failed" are different operator
+            # responses (module invariant, execution_client docstring). The
+            # marker lets the client re-raise the ORIGINAL type+message as
+            # ExecutionCallFailed, matching in-process propagation semantics.
+            logger.exception(f"execution call {name!r} raised")
+            raise HTTPException(status_code=500, detail={
+                "execution_error": True,
+                "error_type": type(e).__name__,
+                "error_message": str(e)[:2000],
+            })
         return {"result": result}
 
     logger.info(
