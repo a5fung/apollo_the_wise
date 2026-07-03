@@ -93,6 +93,11 @@ no-drift · #122 & #197 accruing (N<10).
 
 ---
 
+> **Execution companion: `sprint-spec-pack-2026-07.md`** (prepared 7/2 eve) — the deploy runsheet,
+> the two operator decision briefs, 12 Sonnet-5 spec cards (S1-S12), the Fable-only careful-path
+> designs (F22/F16/F18), and the model-tagged day flow. Fable 5 plans/designs/reviews; Sonnet 5
+> executes the cards; trade-state + deploys never delegate.
+
 ## Kickoff pre-sort (prepared 7/2 — so Friday opens executing, not triaging)
 
 **39 tasks carry ETA ≤ 7/5 vs realistic throughput ~20-25 on a 3-day push. Pre-sorted:**
