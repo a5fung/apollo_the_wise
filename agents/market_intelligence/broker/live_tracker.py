@@ -46,7 +46,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from agents.market_intelligence.collector import et_today, get_index_history
 from agents.market_intelligence.briefing import send_telegram_message
-from agents.market_intelligence.db import get_pool, get_manual_halt_state
+from agents.market_intelligence.db import get_pool, get_manual_halt_state, _coerce_date
 from agents.market_intelligence.constants import (
     LIVE_TRADING_ENABLED,
     MAX_CONCURRENT_LIVE_POSITIONS,
@@ -941,10 +941,9 @@ async def _insert_skipped_trade(
     # `today` (the alert_date) arrives as an ISO STRING when this is dispatched
     # over the intelligence→execution HTTP wire (_wire_default serializes dates);
     # coerce back so asyncpg's date_encode doesn't raise. This is the DB-write
-    # boundary — the same _dd idiom every other dated write here uses (LZB
-    # 2026-06-13: this one missed it → a HIGH alert sat with no terminal row).
-    if isinstance(today, str):
-        today = date.fromisoformat(today)
+    # boundary — routed through the shared db._coerce_date helper (LZB
+    # 2026-06-13: this site missed the coercion → a HIGH alert sat with no terminal row).
+    today = _coerce_date(today)
     ep_score = alert.get("ep_score") if alert else None
     catalyst_quality = alert.get("catalyst_quality") if alert else None
     gap_pct = alert.get("gap_pct") if alert else None

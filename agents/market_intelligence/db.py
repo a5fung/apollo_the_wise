@@ -87,6 +87,18 @@ def _jsonb_param(value):
     return json.loads(json.dumps(value or {}, default=str))
 
 
+def _coerce_date(v):
+    """Wire-boundary str->date coercion: dates arrive as ISO strings when a value crosses
+    the intelligence->execution HTTP boundary (JSON has no date type), but asyncpg's
+    date_encode raises on a bare str. Every dated DB-write function should route its
+    date params through this. None passes through unchanged. Was duplicated as an
+    in-function `_dd` closure in 4 places here plus an inline copy in
+    broker/live_tracker.py::_insert_skipped_trade before being consolidated (LZB
+    2026-06-13: a missed site 500-ed a HIGH alert's terminal skipped-trade row).
+    """
+    return date.fromisoformat(v) if isinstance(v, str) else v
+
+
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
@@ -6718,8 +6730,6 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
         pullback_shapes, fresh_tightening, fresh_2bar_tr_pct, atr14_pct,
         tight_close_streak, dvol_med, last_eval) -> None:
     """UPSERT one Family-A consolidation row, keyed on the absolute (ticker, anchor_date)."""
-    def _dd(v):
-        return date.fromisoformat(v) if isinstance(v, str) else v
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -6738,9 +6748,9 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
                 fresh_2bar_tr_pct=EXCLUDED.fresh_2bar_tr_pct, atr14_pct=EXCLUDED.atr14_pct,
                 tight_close_streak=EXCLUDED.tight_close_streak, dvol_med=EXCLUDED.dvol_med,
                 last_eval=EXCLUDED.last_eval, updated_at=NOW()
-        """, ticker, _dd(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
+        """, ticker, _coerce_date(anchor_date), state, runup_ratio, runup_high, coil_days, last_close,
              today_pct, rmv_5d, rmv_15d, pullback_shape, pullback_shapes, fresh_tightening,
-             fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _dd(last_eval))
+             fresh_2bar_tr_pct, atr14_pct, tight_close_streak, dvol_med, _coerce_date(last_eval))
 
 
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
@@ -6751,8 +6761,6 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
     already-OPEN coil+mode a no-op (entry stays pinned to the FIRST fire day) WHILE letting an
     Anticipate and a Confirm entry coexist on the same coil (#354). Returns True iff a NEW row was
     written (the job's 'fired' signal)."""
-    def _dd(v):
-        return date.fromisoformat(v) if isinstance(v, str) else v
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
@@ -6762,7 +6770,7 @@ async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, e
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
             ON CONFLICT (ticker, anchor_date, entry_mode) WHERE outcome IS NULL DO NOTHING
             RETURNING id
-        """, ticker, _dd(anchor_date), _dd(entry_date), entry_price, stop_kind, stop_price,
+        """, ticker, _coerce_date(anchor_date), _coerce_date(entry_date), entry_price, stop_kind, stop_price,
              structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
     return row is not None
 
@@ -6855,8 +6863,6 @@ async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, par
     the partial unique index (ticker, break_date) WHERE outcome IS NULL makes a re-fire on an already-OPEN
     break a no-op (entry pinned to the FIRST break). A would-be REJECT (would_reject_reason set) is STILL
     recorded — the shadow wants the rejects. Returns True iff a NEW row was written."""
-    def _dd(v):
-        return date.fromisoformat(v) if isinstance(v, str) else v
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
@@ -6871,7 +6877,7 @@ async def insert_htf_breakout_shadow(ticker: str, break_date, *, break_time, par
                     $24,$25,$26,$27,$28,$29,$30,$31,$32)
             ON CONFLICT (ticker, break_date) WHERE outcome IS NULL DO NOTHING
             RETURNING id
-        """, ticker, _dd(break_date), break_time, _dd(parent_scan_date) if parent_scan_date else None,
+        """, ticker, _coerce_date(break_date), break_time, _coerce_date(parent_scan_date) if parent_scan_date else None,
              parent_stage, base_high, base_low, base_age, runup_pct, flagpole_ratio, flag_depth_pct,
              rmv_5d, rmv_15d, range_contraction_ratio, vol_contraction_ratio, atr_14, entry_price,
              limit_price, stop_loss_price, stop_kind, max_loss_pct, risk_per_share, risk_dollars, shares,
@@ -7121,8 +7127,6 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
     """UPSERT a derived lifecycle row. day0_fills is intentionally OMITTED — the 3b/execution
     watch owns it, and leaving it out of the SET clause preserves it on update. The tightening-
     recorder columns (pullback_shape/armed_shape/fresh_*) are broad telemetry (operator 6/16)."""
-    def _dd(v):
-        return date.fromisoformat(v) if isinstance(v, str) else v
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute("""
@@ -7152,7 +7156,7 @@ async def upsert_anticipation_lifecycle(ticker: str, gap_day: date, *, state, ga
                 tight_close_streak=EXCLUDED.tight_close_streak,
                 updated_at=NOW()
         """, ticker, gap_day, state, gap_day_low, gap_day_vol, sma200_at_gap,
-             _dd(armed_date), _dd(coiled_date), _dd(ready_date), _dd(triggered_date), entry_tactic,
+             _coerce_date(armed_date), _coerce_date(coiled_date), _coerce_date(ready_date), _coerce_date(triggered_date), entry_tactic,
              entry_price, stop_price, reenter_count, base_run, rmv_5d, rmv_15d,
              tight_close_pct, fwd_mfe_pct, realized_r, settled, last_eval,
              pullback_shape, pullback_shapes, armed_shape, fresh_tightening,
