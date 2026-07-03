@@ -6991,8 +6991,9 @@ async def get_recent_9m_tickers(since_date: date) -> set:
 
 # ── #343 chart-vision judge-axis SHADOW (read-only telemetry; never read by the live path) ──
 
-# SINGLE SOURCE for the judge-payload column set — also imported by scripts/_judge_replay_common
-# (REPLAY_SQL) + scripts/eval_chart_judge (_ALERT_ROW_SQL), and used by the #343 shadow cohort
+# SINGLE SOURCE for the judge-payload column set — also imported by
+# agents/market_intelligence/judge_replay_common (REPLAY_SQL; re-homed 7/3 from scripts/, S1/F4)
+# + scripts/eval_chart_judge (_ALERT_ROW_SQL), and used by the #343 shadow cohort
 # below, so build_judge_payload always reads an IDENTICAL payload. Was triplicated by hand — the
 # #236 lockstep-divergence class feedback_single_source_of_truth was written to kill (db.py is the
 # schema SoT + imports nothing from the judge layer, so it's the safe home — no import cycle).

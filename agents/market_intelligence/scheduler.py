@@ -3209,7 +3209,7 @@ async def _run_chart_axis_shadow(today):
     from agents.market_intelligence.db import (
         get_chart_axis_shadow_cohort, get_chart_axis_shadow_processed_tickers, log_audit_event,
     )
-    from scripts._judge_replay_common import (
+    from agents.market_intelligence.judge_replay_common import (
         build_judge_payload, fetch_profile, resolve_grounded_text,
     )
     client = None
