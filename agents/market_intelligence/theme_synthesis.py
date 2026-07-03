@@ -243,12 +243,11 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],
         )
-        try:  # #377 cost meter — additive, never alters synthesis output
-            from agents.market_intelligence.spend_tracker import log_anthropic_call
-            await log_anthropic_call(model=SYNTHESIS_MODEL, caller="theme_synthesis",
-                                     usage=getattr(resp, "usage", None))
-        except Exception:
-            pass
+        # #377 cost meter — additive, never alters synthesis output. log_anthropic_call_safe
+        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
+                                       usage=getattr(resp, "usage", None))
         stop_reason = getattr(resp, "stop_reason", None)
         tool_input = next(
             (b.input for b in resp.content if getattr(b, "type", "") == "tool_use"), {},

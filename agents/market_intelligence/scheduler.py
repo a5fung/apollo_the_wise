@@ -447,13 +447,12 @@ async def _nightly_data_pull():
                     max_tokens=2000,
                     messages=[{"role": "user", "content": prompt}],
                 )
-                try:  # #377 cost meter — additive, never alters the backfill
-                    from agents.market_intelligence.spend_tracker import log_anthropic_call
-                    await log_anthropic_call(model=DESCRIPTION_MODEL,
-                                             caller="description_backfill",
-                                             usage=getattr(resp, "usage", None))
-                except Exception:
-                    pass
+                # #377 cost meter — additive, never alters the backfill. log_anthropic_call_safe
+                # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+                from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+                await log_anthropic_call_safe(model=DESCRIPTION_MODEL,
+                                               caller="description_backfill",
+                                               usage=getattr(resp, "usage", None))
                 import json
                 raw = resp.content[0].text.strip()
                 # Strip markdown code fences if present

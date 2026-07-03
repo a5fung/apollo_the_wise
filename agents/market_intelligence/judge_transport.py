@@ -82,18 +82,17 @@ async def invoke_forced_tool(
         tool_block = next(b for b in resp.content if getattr(b, "type", None) == "tool_use")
         verdict = normalize(tool_block.input)
         # COST METER (#377). Isolated from the verdict path: this runs AFTER the
-        # verdict is extracted and in its own try/except, so a logging/DB failure
-        # cannot fall into the fail-open `except` below (which would run the error
-        # through is_credit_error and return None, i.e. turn a good grade into a
+        # verdict is extracted, so a logging/DB failure cannot fall into the
+        # fail-open `except` below (which would run the error through
+        # is_credit_error and return None, i.e. turn a good grade into a
         # fail-open — a behavior change the cost meter must never cause).
+        # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
+        # swallows+warns internally, never raises.
         if log_caller:
-            try:
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(
-                    model=model, caller=log_caller, usage=getattr(resp, "usage", None),
-                )
-            except Exception as _log_e:  # noqa: BLE001 — additive logging, never affects the verdict
-                logger.warning(f"{label} cost logging failed for {subject}: {_log_e}")
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(
+                model=model, caller=log_caller, usage=getattr(resp, "usage", None),
+            )
         return verdict
     except Exception as e:  # noqa: BLE001 — fail-open is the contract
         # #273: credit exhaustion must ALERT (terminal + actionable), never vanish into the

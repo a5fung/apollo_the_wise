@@ -1568,13 +1568,12 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
         system=_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
-    try:
-        from agents.market_intelligence.spend_tracker import log_anthropic_call
-        await log_anthropic_call(
-            model=_MODEL, caller="system_review_weekly", usage=resp.usage,
-        )
-    except Exception as e:
-        logger.warning(f"Spend log (system_review_weekly) failed: {e}")
+    # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it swallows+warns
+    # internally, never raises.
+    from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+    await log_anthropic_call_safe(
+        model=_MODEL, caller="system_review_weekly", usage=getattr(resp, "usage", None),
+    )
     return "".join(block.text for block in resp.content if hasattr(block, "text")).strip()
 
 

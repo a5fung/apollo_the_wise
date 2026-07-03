@@ -407,12 +407,11 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             model=THEME_MODEL, max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
-        try:  # #377 cost meter — additive, never alters discovery output
-            from agents.market_intelligence.spend_tracker import log_anthropic_call
-            await log_anthropic_call(model=THEME_MODEL, caller="narrative_theme_discovery",
-                                     usage=getattr(msg, "usage", None))
-        except Exception:
-            pass
+        # #377 cost meter — additive, never alters discovery output. log_anthropic_call_safe
+        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
+                                       usage=getattr(msg, "usage", None))
         raw = _extract_json_object(msg.content[0].text if msg.content else "")
         parsed = json.loads(raw)
         themes = parsed.get("themes", []) if isinstance(parsed, dict) else []
@@ -731,12 +730,11 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
                 max_tokens=500,
                 messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
             )
-            try:  # #377 cost meter — additive, never alters description output
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(model=DESCRIPTION_MODEL, caller="theme_descriptions",
-                                         usage=getattr(resp, "usage", None))
-            except Exception:
-                pass
+            # #377 cost meter — additive, never alters description output. log_anthropic_call_safe
+            # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(model=DESCRIPTION_MODEL, caller="theme_descriptions",
+                                           usage=getattr(resp, "usage", None))
             raw = resp.content[0].text.strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -1661,12 +1659,11 @@ async def _validate_theme_membership(
                         detail=f"429 on {THEME_MODEL}",
                     )
                     await asyncio.sleep(wait)
-        try:  # #377 cost meter — additive, never alters validation output
-            from agents.market_intelligence.spend_tracker import log_anthropic_call
-            await log_anthropic_call(model=THEME_MODEL, caller="theme_validation",
-                                     usage=getattr(resp, "usage", None))
-        except Exception:
-            pass
+        # #377 cost meter — additive, never alters validation output. log_anthropic_call_safe
+        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_validation",
+                                       usage=getattr(resp, "usage", None))
         # Defensive extraction — the model occasionally returns non-text blocks
         # or empty content, which previously surfaced as cryptic parse errors.
         if not resp.content:
@@ -2334,12 +2331,12 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
-            try:  # #377 cost meter — per-turn (each loop iter is a billed call); additive
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(model=THEME_MODEL, caller="theme_assignment",
-                                         usage=getattr(response, "usage", None))
-            except Exception:
-                pass
+            # #377 cost meter — per-turn (each loop iter is a billed call); additive.
+            # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
+            # swallows+warns internally, never raises.
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
+                                           usage=getattr(response, "usage", None))
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -2731,15 +2728,14 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             summary=f"[{caller}] {question[:120]}",
             detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
         )
-        try:
-            from agents.market_intelligence.spend_tracker import log_anthropic_call
-            await log_anthropic_call(
-                model=THEME_ADVISOR_MODEL,
-                caller=f"theme_advisor_{caller}",
-                usage=resp.usage,
-            )
-        except Exception as e:
-            logger.warning(f"Spend log (theme_advisor_{caller}) failed: {e}")
+        # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it swallows+warns
+        # internally, never raises.
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(
+            model=THEME_ADVISOR_MODEL,
+            caller=f"theme_advisor_{caller}",
+            usage=getattr(resp, "usage", None),
+        )
         return verdict
     except Exception as e:
         logger.warning(f"Advisor call failed: {e}")
@@ -2852,12 +2848,12 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
-            try:  # #377 cost meter — per-turn (each loop iter is a billed call); additive
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(model=THEME_MODEL, caller="theme_split",
-                                         usage=getattr(response, "usage", None))
-            except Exception:
-                pass
+            # #377 cost meter — per-turn (each loop iter is a billed call); additive.
+            # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
+            # swallows+warns internally, never raises.
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_split",
+                                           usage=getattr(response, "usage", None))
 
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
@@ -3362,21 +3358,20 @@ In every other case, skip the advisor and call `report_themes` immediately, with
 
             # COST METER (#377). Log this turn's token cost to api_usage. Each
             # iteration of this multi-turn loop is a separate billed call, so we
-            # log per-turn (not once at the end). Isolated in its own try/except —
-            # a logging/DB failure must NEVER alter discovery output (the HARD
-            # CONSTRAINT): logging is additive observability only. We deliberately
-            # do NOT route this loop through invoke_forced_tool / a forced-tool
-            # transport — that would change tool_choice and break the #173
-            # advisor/force_report path. ADDITIVE is the correct shape for the loop.
-            try:
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(
-                    model=THEME_MODEL,
-                    caller="theme_discovery",
-                    usage=response.usage,
-                )
-            except Exception:
-                pass  # cost logging must never break the run
+            # log per-turn (not once at the end). A logging/DB failure must NEVER
+            # alter discovery output (the HARD CONSTRAINT): logging is additive
+            # observability only — log_anthropic_call_safe (the sanctioned wrapper,
+            # S2/F9) swallows+warns internally and never raises, so it can't break
+            # the run. We deliberately do NOT route this loop through
+            # invoke_forced_tool / a forced-tool transport — that would change
+            # tool_choice and break the #173 advisor/force_report path. ADDITIVE is
+            # the correct shape for the loop.
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(
+                model=THEME_MODEL,
+                caller="theme_discovery",
+                usage=getattr(response, "usage", None),
+            )
 
             # Model produced no tool call. Don't silently discard the whole discovery
             # pass (#173: the ADR-0007 shadow wrote 0 rows for days this way) — compel one

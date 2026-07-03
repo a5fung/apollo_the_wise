@@ -788,12 +788,11 @@ catalyst, say so explicitly."""
                         raise
                     await log_audit_event("anthropic_rate_limited", ticker, "retrying ep catalyst")
                     await asyncio.sleep(2 + random.random() * 3)
-        try:  # #377 cost meter — additive, never alters the catalyst grade
-            from agents.market_intelligence.spend_tracker import log_anthropic_call
-            await log_anthropic_call(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
-                                     usage=getattr(response, "usage", None))
-        except Exception:
-            pass
+        # #377 cost meter — additive, never alters the catalyst grade. log_anthropic_call_safe
+        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+        await log_anthropic_call_safe(model=GROUNDED_GRADE_MODEL, caller="ep_catalyst_grade",
+                                       usage=getattr(response, "usage", None))
         tool_block = next(b for b in response.content if b.type == "tool_use")
         result = tool_block.input
         return result["quality"], result["analysis"]

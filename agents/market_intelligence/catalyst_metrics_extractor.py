@@ -170,17 +170,16 @@ async def _call_claude_extraction(prompt: str) -> dict[str, Any] | None:
             )
             r.raise_for_status()
             data = r.json()
-            try:  # #377 cost meter — additive; raw-REST usage is a DICT (not an
-                  # SDK object), so wrap it in a namespace for log_anthropic_call's
-                  # getattr-based reader. Never alters extraction output.
-                from types import SimpleNamespace
-                from agents.market_intelligence.spend_tracker import log_anthropic_call
-                await log_anthropic_call(
-                    model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
-                    usage=SimpleNamespace(**(data.get("usage") or {})),
-                )
-            except Exception:
-                pass
+            # #377 cost meter — additive; raw-REST usage is a DICT (not an SDK object), so
+            # wrap it in a namespace for log_anthropic_call's getattr-based reader. Never
+            # alters extraction output. log_anthropic_call_safe is the sanctioned wrapper
+            # (S2/F9) — it swallows+warns internally, never raises.
+            from types import SimpleNamespace
+            from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+            await log_anthropic_call_safe(
+                model=_EXTRACTION_MODEL, caller="catalyst_metrics_extractor",
+                usage=SimpleNamespace(**(data.get("usage") or {})),
+            )
             content = data["content"][0]["text"].strip()
 
             # Strip optional code fences

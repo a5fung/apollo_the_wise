@@ -223,12 +223,11 @@ async def judge_materiality_llm(client, *, company, sector, market_cap,
         system="You are a JSON API. Respond with valid JSON only.",
         messages=[{"role": "user", "content": prompt}],
     )
-    try:  # #377 cost meter — additive, never alters the materiality tier
-        from agents.market_intelligence.spend_tracker import log_anthropic_call
-        await log_anthropic_call(model=_MODEL, caller="catalyst_materiality",
-                                 usage=getattr(resp, "usage", None))
-    except Exception:
-        pass
+    # #377 cost meter — additive, never alters the materiality tier. log_anthropic_call_safe
+    # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+    from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
+    await log_anthropic_call_safe(model=_MODEL, caller="catalyst_materiality",
+                                   usage=getattr(resp, "usage", None))
     raw = getattr(resp.content[0], "text", "") or ""
     try:
         tier = (json.loads(_extract_json_object(raw)).get("tier") or "").lower()

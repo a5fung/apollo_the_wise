@@ -12,13 +12,22 @@ pricing function, but uses market-agent's `db.get_pool` directly.
 
 Use from any market-agent module that makes an Anthropic call:
 
-    from agents.market_intelligence.spend_tracker import log_anthropic_call
+    from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
     response = await client.messages.create(...)
-    await log_anthropic_call(
+    await log_anthropic_call_safe(
         model="claude-haiku-4-5-20251001",
         caller="theme_advisor",
         usage=response.usage,
     )
+
+`log_anthropic_call_safe` is the SANCTIONED call-site wrapper (S2/F9, post-#377).
+Call sites must call it directly and must NOT re-wrap it in their own
+`try/except ... pass` — that ~16-site copy-paste pattern is exactly how spend
+telemetry could go dark with zero signal if the tracker ever broke (the May 2026
+outage class this file exists to prevent). Use the bare `log_anthropic_call`
+below only from within `spend_tracker.py` itself (or from a caller that has its
+own bespoke fail-soft/fail-loud handling, e.g. a forced-tool transport isolating
+the cost-log path from its verdict path).
 """
 from __future__ import annotations
 
@@ -134,6 +143,31 @@ async def log_anthropic_call(
             cache_creation, cache_read, cost,
         )
     return cost
+
+
+async def log_anthropic_call_safe(
+    *,
+    model: str,
+    caller: str,
+    usage: Any,
+) -> None:
+    """The SANCTIONED call-site wrapper for `log_anthropic_call` (S2/F9, 2026-07-03).
+
+    Calls `log_anthropic_call` and, on ANY Exception, logs exactly ONE WARNING
+    and returns — it never raises into the caller's real work.
+
+    This exists because the #377 cost meter was wired by copy-pasting
+    `try: ... await log_anthropic_call(...) except Exception: pass` at ~16 call
+    sites across the codebase. Most of those swallowed silently: if the tracker
+    broke, ALL spend telemetry went dark with zero signal — the exact class of
+    outage (12 days, May 2026) the tracker itself was built to catch. Call sites
+    MUST call this wrapper directly and must NOT re-wrap it in their own
+    try/except-pass; that reintroduces the same blind spot this fixes.
+    """
+    try:
+        await log_anthropic_call(model=model, caller=caller, usage=usage)
+    except Exception as e:  # loud-ok: sanctioned single warning sink for #377 cost-meter call sites (S2/F9) — the one place allowed to swallow a tracker failure, and it does so loudly
+        logger.warning(f"spend tracking failed at {caller}: {e}")
 
 
 async def log_perplexity_call(
