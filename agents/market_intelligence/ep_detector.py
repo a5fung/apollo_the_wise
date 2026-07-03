@@ -694,6 +694,97 @@ _repoll_shadow_state: dict = {}
 _repoll_shadow_date = None
 
 
+def _is_premarket(now_et: datetime) -> bool:
+    """True strictly before 9:30 ET. Shared guard for BOTH #344 shadows (enrichment +
+    re-poll) — advisor 6/19: the shadows do extra SEC GETs + a Sonnet call SYNCHRONOUSLY
+    on run_ep_scan, the order-submission path. Confining them to premarket keeps that
+    work OFF the 9:30-10:00 ORB entry window; the motivating case (BFLY's PR, 8:12 ET) is
+    premarket, so coverage is preserved."""
+    return now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+
+
+async def _build_enriched_corpus(
+    ticker: str, today: date, profile: dict, *,
+    ext_filings: Optional[list] = None,
+    sec_filing_fallback: Optional[dict] = None,
+    dilution: Optional[dict] = None,
+    dilution_computed: bool = False,
+    benzinga_items: Optional[list] = None,
+    perplexity_answer: Optional[str] = None,
+    news_for_classify: Optional[list] = None,
+    state_sink: Optional[dict] = None,
+):
+    """#344 shared corpus pipeline — used by BOTH the enrichment shadow (uncached grade
+    tick) and the re-poll shadow (cached grade tick): SEC 400d filings fetch/reuse ->
+    nearest/recent-filing + dilution selection -> primary-subject Benzinga filter
+    (content-bearing) -> assemble_grade_corpus -> _classify_catalyst_claude. Each shadow
+    block keeps its own trigger condition and audit-log call inline; only this
+    corpus-through-grade middle is shared.
+
+    Every fetched piece can be passed in already-computed (reuse, no second
+    EDGAR/Benzinga/Perplexity hit) or left None (fresh fetch). `dilution_computed`
+    disambiguates "not yet computed" (dilution=None -> fetch) from "computed and
+    genuinely found nothing" (dilution=None but dilution_computed=True -> don't
+    re-fetch) — mirrors the cached path's `"dilution" not in _st` check.
+
+    `state_sink`, when given, is written into AS SOON AS each piece is freshly fetched
+    (not just at the end) — matches the original inline code's ordering, where
+    ext_filings/dilution were cached into _repoll_shadow_state immediately so a later
+    exception (e.g. in the Benzinga fetch or the classify call) doesn't lose them.
+
+    Returns (quality, analysis, ext_filings, dilution, prior_agreement_8k,
+    recent_earnings_8k).
+    """
+    if ext_filings is None:
+        ext_filings = await get_sec_recent_filings(
+            ticker, forms=("8-K", "6-K"), lookback_days=400,
+            max_filings=8, want_text=True)
+        if state_sink is not None:
+            state_sink["ext_filings"] = ext_filings  # reuse on re-poll
+    today_sec = nearest_today_filing(ext_filings, today) or sec_filing_fallback
+    prior_agr = recent_filing_by_item(
+        ext_filings, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
+    recent_earn = recent_filing_by_item(ext_filings, "2.02", today)
+
+    # #238 dilution overhang — separate tight-window fetch (424B5 priced takedown +
+    # recent 8-Ks for item 3.02); kept off the 400d agreement fetch so a recent
+    # prospectus can't crowd the 7-month-old 1.01 out of max_filings. Point-in-time
+    # (filed <= today).
+    if not dilution_computed:
+        dil_ext = await get_sec_recent_filings(
+            ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
+            max_filings=8, want_text=True)
+        dilution = recent_dilution_filing(dil_ext, today)
+        if state_sink is not None:
+            state_sink["dilution"] = dilution  # reuse on re-poll
+
+    # F5 (2026-07-03): content-bearing Benzinga fetch — only paid here, once/ticker/day
+    # (the enrichment shadow's first tick, or the re-poll shadow's one trigger); the
+    # re-poll precheck that runs every tick uses a light include_content=False list to
+    # count, never this.
+    if benzinga_items is None:
+        benz_full = await get_alpaca_news(ticker, include_content=True)
+        benzinga_items = [
+            n for n in (benz_full or [])
+            if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
+        ][:3]
+
+    if perplexity_answer is None:
+        perplexity_answer = await search_news_perplexity(
+            f"What caused {ticker} stock to gap up? Latest catalyst and news.",
+            recency="week")
+
+    corpus = assemble_grade_corpus(
+        today, today_sec, benzinga_items, prior_agr, recent_earn,
+        perplexity_answer, enrich=True, dilution_filing=dilution)
+
+    quality, analysis = await _classify_catalyst_claude(
+        ticker, news_for_classify or [], profile, grounded_text=corpus,
+        max_chars=_GRADE_ENRICH_MAX_CHARS)
+
+    return quality, analysis, ext_filings, dilution, prior_agr, recent_earn
+
+
 async def _classify_catalyst_claude(ticker: str, news: list[dict], profile: dict, grounded_text=None,
                                     max_chars: int = 6000) -> tuple[str, str]:
     """
@@ -1629,54 +1720,37 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # after a ROUTINE grade within the ORB window, shadow-re-grade ONCE with the
             # full enriched (web-inclusive) corpus and log what WOULD fire — telemetry only,
             # never touches the live grade or the cache. This is the BFLY mechanism (the
-            # 8:12 PR after the 7:00 routine grade). Cheap per-tick check (1 Benzinga call,
-            # gated on cheap preconditions); the expensive re-grade runs only on the trigger.
+            # 8:12 PR after the 7:00 routine grade). Cheap per-tick check — F5 (2026-07-03):
+            # the count precheck uses include_content=False (no article bodies for a len());
+            # full content is fetched inside _build_enriched_corpus only when the trigger
+            # actually fires, once per ticker per day.
             # PREMARKET-ONLY (advisor 6/19): same guard as the enrichment shadow — keep the
             # re-poll's SEC GET + Sonnet call OFF the ORB entry window. BFLY's PR (8:12 ET)
             # is premarket, so the late-source class is still covered.
             _st = _repoll_shadow_state.get(ticker)
-            _in_window = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
+            _in_window = _is_premarket(now_et)
             if (_st and not _st["logged"] and _in_window and _st["quality"] == "routine"
                     and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
                     import time as _time
                     _t0 = _time.monotonic()
-                    _benz0 = await get_alpaca_news(ticker, include_content=True)
-                    _benz = [n for n in (_benz0 or [])
-                             if is_primary_subject_news(n, ticker, profile.get("companyName", ""))]
-                    _cur = len(_benz)
+                    _benz_light = await get_alpaca_news(ticker, include_content=False)
+                    _cur = sum(
+                        1 for n in (_benz_light or [])
+                        if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
+                    )
                     if should_repoll_shadow(catalyst_quality, _st["count"], _cur,
                                             _st["logged"], _in_window):
                         _st["logged"] = True  # exactly once
-                        # Reuse the enrichment-shadow's 400d fetch (no second EDGAR hit);
-                        # fall back to a bounded fetch only if the uncached tick didn't run.
-                        _ext = _st.get("ext_filings")
-                        if _ext is None:
-                            _ext = await get_sec_recent_filings(
-                                ticker, forms=("8-K", "6-K"), lookback_days=400,
-                                max_filings=8, want_text=True)
-                        _today_sec = nearest_today_filing(_ext, today)
-                        _prior_agr = recent_filing_by_item(
-                            _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
-                        _recent_earn = recent_filing_by_item(_ext, "2.02", today)
-                        # #238 dilution — reuse what the enrichment tick already found;
-                        # fall back to a tight fetch only if the uncached tick didn't run.
-                        _dilution = _st.get("dilution")
-                        if _dilution is None and "dilution" not in _st:
-                            _dil_ext = await get_sec_recent_filings(
-                                ticker, forms=("424B5", "8-K"),
-                                lookback_days=_DILUTION_WINDOW_DAYS, max_filings=8,
-                                want_text=True)
-                            _dilution = recent_dilution_filing(_dil_ext, today)
-                        _pplx = await search_news_perplexity(
-                            f"What caused {ticker} stock to gap up? Latest catalyst and news.",
-                            recency="week")
-                        _corpus = assemble_grade_corpus(
-                            today, _today_sec, _benz[:3], _prior_agr, _recent_earn,
-                            _pplx, enrich=True, dilution_filing=_dilution)
-                        _rq, _ran = await _classify_catalyst_claude(
-                            ticker, [], profile, grounded_text=_corpus,
-                            max_chars=_GRADE_ENRICH_MAX_CHARS)
+                        # Trigger fired (once/ticker/day) — pay for the content-bearing
+                        # corpus build here; reuse the enrichment shadow's 400d filings /
+                        # dilution fetch when it already ran today (no second EDGAR hit).
+                        _rq, _ran, _ext, _dilution, _prior_agr, _recent_earn = await _build_enriched_corpus(
+                            ticker, today, profile,
+                            ext_filings=_st.get("ext_filings"),
+                            dilution=_st.get("dilution"),
+                            dilution_computed="dilution" in _st,
+                        )
                         await log_audit_event(
                             "ep_repoll_shadow",
                             f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)",
@@ -1790,40 +1864,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # latency where orders submit; no EDGAR-budget contention with the live grade
             # fetch during entries). The motivating case (BFLY's PR, 8:12 ET) is premarket, so
             # coverage is preserved; only open-driven gappers are skipped.
-            _shadow_premarket = now_et.hour < 9 or (now_et.hour == 9 and now_et.minute < 30)
-            if (_shadow_premarket
+            if (_is_premarket(now_et)
                     and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
                     import time as _time
                     _t0 = _time.monotonic()
-                    _ext = await get_sec_recent_filings(
-                        ticker, forms=("8-K", "6-K"), lookback_days=400,
-                        max_filings=8, want_text=True)
-                    _repoll_shadow_state[ticker]["ext_filings"] = _ext  # reuse on re-poll
-                    _today_sec = nearest_today_filing(_ext, today) or sec_filing
-                    _prior_agr = recent_filing_by_item(
-                        _ext, "1.01", today - timedelta(days=_GRADE_TODAY_WINDOW_DAYS + 1))
-                    _recent_earn = recent_filing_by_item(_ext, "2.02", today)
-                    # #238 dilution overhang — separate tight-window fetch (424B5 priced
-                    # takedown + recent 8-Ks for item 3.02); kept off the 400d agreement
-                    # fetch so a recent prospectus can't crowd the 7-month-old 1.01 out of
-                    # max_filings. Point-in-time (filed <= today). Reused on re-poll.
-                    _dil_ext = await get_sec_recent_filings(
-                        ticker, forms=("424B5", "8-K"), lookback_days=_DILUTION_WINDOW_DAYS,
-                        max_filings=8, want_text=True)
-                    _dilution = recent_dilution_filing(_dil_ext, today)
-                    _repoll_shadow_state[ticker]["dilution"] = _dilution
-                    _benz_full = await get_alpaca_news(ticker, include_content=True)
-                    _today_benz = [
-                        n for n in (_benz_full or [])
-                        if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
-                    ][:3]
-                    _enr_corpus = assemble_grade_corpus(
-                        today, _today_sec, _today_benz, _prior_agr, _recent_earn,
-                        perplexity_answer, enrich=True, dilution_filing=_dilution)
-                    _enr_q, _enr_an = await _classify_catalyst_claude(
-                        ticker, all_news, profile, grounded_text=_enr_corpus,
-                        max_chars=_GRADE_ENRICH_MAX_CHARS)
+                    _enr_q, _enr_an, _ext, _dilution, _prior_agr, _recent_earn = await _build_enriched_corpus(
+                        ticker, today, profile,
+                        sec_filing_fallback=sec_filing,
+                        perplexity_answer=perplexity_answer,
+                        news_for_classify=all_news,
+                        state_sink=_repoll_shadow_state[ticker],
+                    )
                     await log_audit_event(
                         "ep_grade_enrich_shadow",
                         f"{ticker} {catalyst_quality} → {_enr_q}",
