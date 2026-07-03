@@ -122,8 +122,11 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
 # the check_fills class the 6/13 audit caught). A registered job in NEITHER set
 # fails the split-role boot loudly. Keep disjoint from EXECUTION_OWNED (the
 # verify script + a test assert this). Conditionally-registered jobs (e.g.
-# crypto) belong here too — the guard is one-directional (registered ⊆ classified),
-# so a classified-but-unregistered id is harmless.
+# crypto) belong here too — for THIS manifest the guard is one-directional
+# (registered ⊆ classified), so a classified-but-unregistered intelligence id is
+# harmless. EXECUTION_OWNED is stricter: checked BIDIRECTIONALLY in both split
+# roles (#279) — a stale execution entry fails boot, so execution jobs must stay
+# unconditionally registered.
 INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     # detection scans
     "ep_scan", "ep_scan_open", "ep_scan_start", "ep_scan_stop",
@@ -171,8 +174,17 @@ def _apply_role_partition(scheduler, role: str) -> dict:
         EXECUTION_OWNED_JOB_IDS or INTELLIGENCE_OWNED_JOB_IDS. An unclassified
         job would silently route to intelligence (the check_fills class) — this
         guard turns that into a loud boot failure at the cutover where it bites.
-      - execution: every id in EXECUTION_OWNED_JOB_IDS must be REGISTERED
-        (a missing one = a typo/rename that would silently drop a trade job).
+      - stale-entry (both split roles — was execution-only pre-#279): every id
+        in EXECUTION_OWNED_JOB_IDS must be REGISTERED. Together with the
+        omission guard this makes the partition check BIDIRECTIONAL: a renamed
+        job whose partition entry went stale fails as loudly as an
+        unpartitioned one, at whichever split service boots first (in execution
+        the stale id would silently DROP a trade/safeguard job; in intelligence
+        it's a dangling manifest entry that must not wait for the next
+        execution deploy to surface). Safe in both roles because every
+        execution-owned registration is unconditional by design — conditional
+        jobs (order_status_reconcile_boot, added post-partition) are
+        deliberately outside the set.
       - intelligence: NO execution-owned id may survive the removal.
     """
     registered = {j.id for j in scheduler.get_jobs()}
@@ -180,8 +192,8 @@ def _apply_role_partition(scheduler, role: str) -> dict:
         logger.info(f"Job partition: role=combined — all {len(registered)} jobs kept")
         return {"role": role, "kept": list(registered), "removed": []}
 
-    # Omission guard (one-directional: registered ⊆ classified). Runs only in
-    # split roles, so it can never break combined-mode production boot.
+    # Omission guard (registered ⊆ classified). Runs only in split roles, so it
+    # can never break combined-mode production boot.
     unclassified = registered - EXECUTION_OWNED_JOB_IDS - INTELLIGENCE_OWNED_JOB_IDS
     if unclassified:
         raise RuntimeError(
@@ -192,14 +204,16 @@ def _apply_role_partition(scheduler, role: str) -> dict:
             f"Refusing to boot."
         )
 
-    if role == "execution":
-        missing = EXECUTION_OWNED_JOB_IDS - registered
-        if missing:
-            raise RuntimeError(
-                f"Job partition FAILED (role=execution): expected execution jobs "
-                f"not registered: {sorted(missing)} — a missing id would silently "
-                f"DROP a trade/safeguard job. Refusing to boot."
-            )
+    # Stale-entry guard (EXECUTION_OWNED ⊆ registered) — the reverse direction
+    # of the omission guard, in BOTH split roles (#279; execution-only before).
+    missing = EXECUTION_OWNED_JOB_IDS - registered
+    if missing:
+        raise RuntimeError(
+            f"Job partition FAILED (role={role}): expected execution jobs "
+            f"not registered: {sorted(missing)} — a stale partition entry "
+            f"(renamed/removed job?). In execution role a missing id would "
+            f"silently DROP a trade/safeguard job. Refusing to boot."
+        )
 
     removed = []
     for jid in registered:

@@ -4,6 +4,11 @@ Checks the EXECUTION_OWNED_JOB_IDS set is well-formed and that the partition is
 a clean disjoint cover, WITHOUT booting the scheduler (so it's deploy/CI-safe).
 The live-registration reality is verified separately by the boot-time
 `_apply_role_partition` fail-loud guards + the boot log of kept/removed ids.
+Since #279 those boot guards are BIDIRECTIONAL in both split roles:
+registered ⊆ classified (omission) AND EXECUTION_OWNED ⊆ registered
+(stale/renamed partition entry). The registered set only exists at boot, so the
+reverse direction can't be checked statically here — for an offline
+real-registration check use scripts/probes/_w2_role_dryboot.py.
 
 Usage: python scripts/verify_job_partition.py
 Exit 0 = OK; non-zero = a partition definition problem.

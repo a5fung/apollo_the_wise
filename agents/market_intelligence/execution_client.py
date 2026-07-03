@@ -230,9 +230,16 @@ def get_data_feed_name() -> str:
     """Active market-data feed as a lowercase string ('iex' / 'sip'). PURE
     CONFIG (reads ALPACA_DATA_FEED) — never crosses the execution wire and needs
     no broker import, so the intelligence service can call it directly (advisor
-    6/13). Mirrors broker.alpaca_client.get_data_feed()'s resolution."""
+    6/13). SSoT for the env resolution (#279): broker.alpaca_client.
+    get_data_feed() derives its DataFeed enum FROM this — it lives here (not in
+    alpaca_client) because this direction keeps intelligence broker-import-free,
+    while broker code may freely import the facade."""
     raw = os.environ.get("ALPACA_DATA_FEED", "iex").strip().lower()
-    return "sip" if raw == "sip" else "iex"
+    if raw == "sip":
+        return "sip"
+    if raw and raw != "iex":
+        logger.warning(f"ALPACA_DATA_FEED={raw!r} not recognized; falling back to IEX")
+    return "iex"
 
 
 async def verify_accounts(*args, **kwargs):

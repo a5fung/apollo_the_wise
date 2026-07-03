@@ -100,13 +100,23 @@ def test_manifests_are_disjoint():
     assert sched.EXECUTION_OWNED_JOB_IDS.isdisjoint(sched.INTELLIGENCE_OWNED_JOB_IDS)
 
 
-def test_execution_missing_expected_job_fails_loud():
-    # An execution-owned id is NOT registered (a typo/rename) → must refuse boot
-    # rather than silently drop the trade/safeguard job.
+def test_stale_execution_entry_fails_loud_in_both_split_roles():
+    # An execution-owned id that is NOT registered (a typo/rename that left the
+    # partition entry stale) must refuse boot in BOTH split roles (#279 — was
+    # execution-only), as loudly as an unpartitioned job: in execution it would
+    # silently DROP a trade/safeguard job; in intelligence it's a dangling
+    # manifest entry that must not wait for the next execution deploy to surface.
     partial = _ALL - {"morning_stop_refresh"}
+    for role in ("execution", "intelligence"):
+        s = _FakeScheduler(partial)
+        with pytest.raises(RuntimeError,
+                           match="expected execution jobs not registered"):
+            sched._apply_role_partition(s, role)
+    # combined stays a strict no-op — never a new production failure mode.
     s = _FakeScheduler(partial)
-    with pytest.raises(RuntimeError, match="expected execution jobs not registered"):
-        sched._apply_role_partition(s, "execution")
+    out = sched._apply_role_partition(s, "combined")
+    assert out["removed"] == []
+    assert s.ids() == partial
 
 
 def test_intelligence_leak_guard_fires(monkeypatch):

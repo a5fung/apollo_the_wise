@@ -21,39 +21,23 @@ from agents.market_intelligence import execution_client as _ec
 
 logger = logging.getLogger(__name__)
 
-# Wire name → in-process implementation. Must mirror execution_client._CROSS_FNS
-# exactly (asserted at registration).
+# Wire name → in-process implementation — DERIVED from execution_client._CROSS_FNS
+# (#279; was a hand-written 16-entry mirror + a registration-time parity assert).
+# CONVENTION CONTRACT: every cross-listed wire name `<name>` has a
+# `_<name>_inprocess` body in execution_client (its module docstring is the
+# contract's home). Deriving the map makes route↔client drift impossible by
+# construction: a cross-listed name without a matching `_<name>_inprocess` body
+# fails the getattr RIGHT HERE at import — same fail-loud-at-boot semantics as
+# the old mirror assert, minus the hand-sync.
 _EXEC_HANDLERS = {
-    "get_account": _ec._get_account_inprocess,
-    "get_position": _ec._get_position_inprocess,
-    "get_all_positions": _ec._get_all_positions_inprocess,
-    "get_open_orders": _ec._get_open_orders_inprocess,
-    "get_first_bar": _ec._get_first_bar_inprocess,
-    "get_stream_status": _ec._get_stream_status_inprocess,
-    "trigger_orb_entry": _ec._trigger_orb_entry_inprocess,
-    "subscribe_orb_candidate": _ec._subscribe_orb_candidate_inprocess,
-    "reset_bar_stream_daily_state": _ec._reset_bar_stream_daily_state_inprocess,
-    "record_skipped_trade": _ec._record_skipped_trade_inprocess,
-    "submit_9m_day2_trade": _ec._submit_9m_day2_trade_inprocess,
-    "execute_partial_exit": _ec._execute_partial_exit_inprocess,
-    "sync_positions": _ec._sync_positions_inprocess,
-    "sync_positions_for_mode": _ec._sync_positions_for_mode_inprocess,
-    "place_timestop_sell": _ec._place_timestop_sell_inprocess,
-    "cancel_unfilled_entries": _ec._cancel_unfilled_entries_inprocess,
+    name: getattr(_ec, f"_{name}_inprocess") for name in sorted(_ec._CROSS_FNS)
 }
 
 
 def register_execution_routes(app) -> None:
     """Add POST /exec/{name} to `app`. Call only when runs_execution_jobs()."""
-    # The handler map and the client's cross list must match exactly, or a
-    # client call 404s (or an exposed route has no client). Fail loud at boot.
-    missing = _ec._CROSS_FNS - set(_EXEC_HANDLERS)
-    extra = set(_EXEC_HANDLERS) - _ec._CROSS_FNS
-    if missing or extra:
-        raise RuntimeError(
-            f"execution route/handler mismatch vs execution_client._CROSS_FNS: "
-            f"missing={sorted(missing)} extra={sorted(extra)}. Refusing to boot."
-        )
+    # Route↔client parity holds by construction — _EXEC_HANDLERS is derived from
+    # _CROSS_FNS at import, and a convention break fails the getattr there.
 
     @app.post("/exec/{name}")
     async def _exec_call(name: str, payload: dict,

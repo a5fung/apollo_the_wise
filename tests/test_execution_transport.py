@@ -147,6 +147,23 @@ def test_get_data_feed_name_is_pure_config_local(monkeypatch):
     assert "get_data_feed_name" not in ec._CROSS_FNS
 
 
+def test_alpaca_get_data_feed_delegates_to_single_resolver(monkeypatch):
+    # #279: alpaca_client.get_data_feed no longer re-parses ALPACA_DATA_FEED —
+    # it derives the enum from the ONE resolver (ec.get_data_feed_name). Pin
+    # the delegation (resolver output drives the enum) and one end-to-end env
+    # case so the two can't silently diverge again.
+    from agents.market_intelligence.broker import alpaca_client as ac
+
+    monkeypatch.setattr(ec, "get_data_feed_name", lambda: "sip")
+    assert ac.get_data_feed() is ac.DataFeed.SIP
+    monkeypatch.setattr(ec, "get_data_feed_name", lambda: "iex")
+    assert ac.get_data_feed() is ac.DataFeed.IEX
+
+    monkeypatch.undo()
+    monkeypatch.setenv("ALPACA_DATA_FEED", "garbage")  # resolver coerces → iex
+    assert ac.get_data_feed() is ac.DataFeed.IEX
+
+
 def test_wire_default_encodes_dates():
     assert ec._wire_default(date(2026, 6, 13)) == "2026-06-13"
     with pytest.raises(TypeError):
@@ -184,9 +201,17 @@ async def test_reset_bar_stream_routes_to_execution_inprocess(monkeypatch):
     assert "reset_bar_stream_daily_state" in ec._CROSS_FNS
 
 
-def test_routes_cover_cross_fns_exactly():
+def test_routes_derive_from_cross_fns_by_convention():
+    # #279: _EXEC_HANDLERS is DERIVED from _CROSS_FNS via the `_<name>_inprocess`
+    # naming convention (set equality now holds trivially by construction), so
+    # pin the CONVENTION instead: every wire name maps to exactly the
+    # execution_client `_<name>_inprocess` body — never the public dispatcher
+    # (or an inbound http request could loop back out as another http call).
     from agents.market_intelligence import execution_routes as er
     assert set(er._EXEC_HANDLERS) == set(ec._CROSS_FNS)
+    for name, fn in er._EXEC_HANDLERS.items():
+        assert fn is getattr(ec, f"_{name}_inprocess"), name
+        assert fn is not getattr(ec, name, None), name
 
 
 def test_exec_route_invokes_handler_and_unknown_404(monkeypatch):

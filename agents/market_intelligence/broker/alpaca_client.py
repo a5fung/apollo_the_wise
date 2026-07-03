@@ -53,12 +53,14 @@ logger = logging.getLogger(__name__)
 
 
 def get_data_feed() -> DataFeed:
-    raw = os.environ.get("ALPACA_DATA_FEED", "iex").strip().lower()
-    if raw == "sip":
-        return DataFeed.SIP
-    if raw and raw != "iex":
-        logger.warning(f"ALPACA_DATA_FEED={raw!r} not recognized; falling back to IEX")
-    return DataFeed.IEX
+    """DataFeed enum for the active feed. The env resolution is single-sourced
+    in execution_client.get_data_feed_name() (#279 — dedup; it lives there, not
+    here, so the intelligence service can resolve the feed name without a broker
+    import); this only maps the resolved string onto the alpaca-py enum."""
+    # Function-local import: execution_client is broker-import-free at module
+    # level, so this can never cycle — kept lazy to match the seam's style.
+    from agents.market_intelligence.execution_client import get_data_feed_name
+    return DataFeed.SIP if get_data_feed_name() == "sip" else DataFeed.IEX
 
 
 def extract_stop_leg_id(order) -> str | None:
