@@ -331,42 +331,25 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import httpx
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
-
         args = " ".join(context.args) if context.args else ""
         if not args.strip():
             await update.message.reply_text("Usage: `/setup TICKER [days]`", parse_mode=ParseMode.MARKDOWN)
             return
 
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
-        req = AgentRequest(
-            task=f"/setup {args}",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                ack = resp.json().get("result") or "(no response)"
+            ack = await self._post_market_task(f"/setup {args}", update.effective_user.id)
         except Exception as e:
             await update.message.reply_text(f"Error: {e}")
             return
+        if ack is None:
+            await update.message.reply_text("Market agent not available.")
+            return
+        ack = ack or "(no response)"
 
         # Market agent sends the timeline itself; only echo the ack if it's
         # a fallback body (delivery failed) or a usage hint.
         if not ack.startswith("📬"):
-            await update.message.reply_text(ack, parse_mode=ParseMode.MARKDOWN)
+            await self._reply_with_fallback(update, ack)
 
     # ── Onboarding helpers ────────────────────────────────────────────────────
 
@@ -827,6 +810,64 @@ class TelegramChannel:
         ("anticipation", "⏱️ Anticipation", "/anticipation"),
     ]
 
+    # ── S3/F13: single funnel for AgentRequest -> POST {url}/task -> reply ─────
+    # This boilerplate used to be hand-copied at 6+ call sites (/setup, /ep,
+    # /themes [both branches], /trades, /hud, /ideas, /dispatch_market_slash) and
+    # had already diverged: the /themes-arg lookup had NO plain-text retry on a
+    # Telegram Markdown-400 (an underscore-heavy theme name -> hard "Error:"
+    # reply) while /ideas degraded gracefully. These two helpers are the single
+    # source now; callers keep their own site-specific defaults/timeouts/error
+    # text, only the POST + the Markdown->plain fallback are shared.
+    async def _post_market_task(
+        self, task: str, user_id: int, timeout: float = 30
+    ) -> Optional[str]:
+        """POST an AgentRequest to the market agent's /task endpoint, return the
+        result text. Returns None if the market agent isn't registered (caller
+        shows its own "Market agent not available." message — kept out of this
+        helper so callers preserve their exact pre-refactor text). Raises on
+        transport/HTTP failure (httpx.HTTPStatusError, ConnectError, etc.) —
+        every existing call site already catches broadly and surfaces
+        `f"Error: {e}"`, so this simply funnels into that existing path."""
+        import httpx
+        from shared.models import AgentRequest
+        from shared.registry import get_agent_url
+
+        url = get_agent_url("market_intelligence")
+        if not url:
+            return None
+
+        req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            resp = await client.post(
+                f"{url}/task",
+                json=req.model_dump(),
+                headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
+            )
+            resp.raise_for_status()
+            return resp.json().get("result") or ""
+
+    async def _reply_with_fallback(
+        self,
+        update: Update,
+        text: str,
+        *,
+        reply_markup: Optional[InlineKeyboardMarkup] = None,
+    ):
+        """Send a market-agent result with Markdown, retrying as PLAIN TEXT on a
+        Telegram 400 (an unmatched `_`/`*` in dynamic content — e.g. an
+        underscore-heavy ticker or theme name — makes Telegram reject the whole
+        Markdown-parsed message). Mirrors /ideas' pre-existing degrade-gracefully
+        pattern so every market-slash site gets it, not just the ones that
+        happened to add it by hand. Returns the sent Message (callers like /hud
+        need the message_id to pin/store)."""
+        try:
+            return await update.message.reply_text(
+                text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup
+            )
+        except Exception as e:
+            logger.warning(f"Markdown send failed, retrying plain text: {e}")
+            return await update.message.reply_text(text, reply_markup=reply_markup)
+
     async def _dispatch_market_slash(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
@@ -842,36 +883,18 @@ class TelegramChannel:
         args = parts[1] if len(parts) > 1 else ""
         task = (cmd + " " + args).strip() if args else cmd
 
-        import uuid, httpx
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
-
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
-        req = AgentRequest(
-            task=task,
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            if "result" in data:
-                result = data["result"] or ""
-            else:
-                result = data.get("error") or "No response."
+            result = await self._post_market_task(task, update.effective_user.id)
         except Exception as e:
             logger.error(f"{cmd} failed: {e}")
             result = f"Error: {e}"
+        else:
+            # None = market agent not registered; "" (result key present but
+            # empty) is the deliberate /why, /setup already-delivered signal
+            # (body sent through send_telegram_message + inline keyboard) —
+            # preserved below so we don't echo a redundant trailer.
+            if result is None:
+                result = "Market agent not available."
 
         # Handlers that already delivered the response via Telegram (e.g.
         # /why, /setup — body sent through send_telegram_message + inline
@@ -891,36 +914,20 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import httpx
         from shared.dates import last_trading_day
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
 
         today_str = last_trading_day().isoformat()
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
-        req = AgentRequest(
-            task=f"/eps_detail ALL {today_str}",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                ep_text = resp.json().get("result") or "No EP data."
+            ep_text = await self._post_market_task(f"/eps_detail ALL {today_str}", update.effective_user.id)
         except Exception as e:
             await update.message.reply_text(f"Error: {e}")
             return
+        if ep_text is None:
+            await update.message.reply_text("Market agent not available.")
+            return
+        ep_text = ep_text or "No EP data."
 
-        await update.message.reply_text(ep_text, parse_mode=ParseMode.MARKDOWN)
+        await self._reply_with_fallback(update, ep_text)
 
     async def _handle_themes_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -929,58 +936,35 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import httpx
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
-
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
         # Two-way lookup: `/themes TICKER` (its themes) or `/themes <name>` (its stocks). With an
         # arg, forward it for the lookup + reply directly (no drill-down buttons); bare `/themes`
         # falls through to the stage-summary below.
         _args = " ".join(context.args).strip() if context.args else ""
         if _args:
-            lreq = AgentRequest(
-                task=f"/themes_lookup {_args}",
-                user_id=update.effective_user.id,
-                conversation_id=str(update.effective_user.id),
-            )
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
-                    lresp = await client.post(
-                        f"{url}/task",
-                        json=lreq.model_dump(),
-                        headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                    )
-                    lresp.raise_for_status()
-                    await update.message.reply_text(
-                        lresp.json().get("result") or "No match.",
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
+                lookup_text = await self._post_market_task(f"/themes_lookup {_args}", update.effective_user.id)
             except Exception as e:  # loud-ok: error surfaced to the user via reply_text below
                 await update.message.reply_text(f"Error: {e}")
+                return
+            if lookup_text is None:
+                await update.message.reply_text("Market agent not available.")
+                return
+            # S3/F13 fix: this used to send Markdown with no fallback — an
+            # underscore-heavy theme name 400'd Telegram and fell straight into
+            # the except above as a hard "Error: ..." reply. _reply_with_fallback
+            # gives it the same plain-text retry /ideas already had.
+            await self._reply_with_fallback(update, lookup_text or "No match.")
             return
 
-        req = AgentRequest(
-            task="/themes_detail SUMMARY",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                summary_text = resp.json().get("result") or "No theme data."
+            summary_text = await self._post_market_task("/themes_detail SUMMARY", update.effective_user.id)
         except Exception as e:
             await update.message.reply_text(f"Error: {e}")
             return
+        if summary_text is None:
+            await update.message.reply_text("Market agent not available.")
+            return
+        summary_text = summary_text or "No theme data."
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -989,7 +973,7 @@ class TelegramChannel:
                 InlineKeyboardButton("All Active", callback_data="themes:All"),
             ]
         ])
-        await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        await self._reply_with_fallback(update, summary_text, reply_markup=keyboard)
 
     async def _handle_trades_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -998,34 +982,20 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import httpx
         from shared.dates import last_trading_day
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
 
         today_str = last_trading_day().isoformat()
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
-        req = AgentRequest(
-            task=f"/trades_detail summary {today_str}",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                summary_text = resp.json().get("result") or "No trade data."
+            summary_text = await self._post_market_task(
+                f"/trades_detail summary {today_str}", update.effective_user.id
+            )
         except Exception as e:
             await update.message.reply_text(f"Error: {e}")
             return
+        if summary_text is None:
+            await update.message.reply_text("Market agent not available.")
+            return
+        summary_text = summary_text or "No trade data."
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -1036,14 +1006,10 @@ class TelegramChannel:
                 InlineKeyboardButton("Paper (legacy)", callback_data="trades:paper"),
             ],
         ])
-        try:
-            await update.message.reply_text(summary_text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
-        except Exception as markdown_err:
-            # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
-            # makes Telegram reject the whole message. Fall back to plain text so the user
-            # always sees something instead of silence.
-            logger.warning(f"/trades markdown send failed, retrying as plain text: {markdown_err}")
-            await update.message.reply_text(summary_text, reply_markup=keyboard)
+        # Any unmatched `_` or `*` in dynamic content (e.g. exit reasons like `stop_hit`)
+        # makes Telegram reject the whole message; _reply_with_fallback retries plain
+        # text so the user always sees something instead of silence.
+        await self._reply_with_fallback(update, summary_text, reply_markup=keyboard)
 
     async def _handle_hud_command(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -1052,33 +1018,23 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import uuid, httpx
-        from shared.models import AgentRequest
+        import httpx
         from shared.registry import get_agent_url
 
+        # url is still needed below for the separate /hud/pin store POST
+        # (a different endpoint/payload shape than the AgentRequest funnel).
         url = get_agent_url("market_intelligence")
         if not url:
             await update.message.reply_text("Market agent not available.")
             return
 
-        req = AgentRequest(
-            task="/hud",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                result = resp.json().get("result") or "No response."
+            result = await self._post_market_task("/hud", update.effective_user.id)
         except Exception as e:
             logger.error(f"/hud failed: {e}")
             await update.message.reply_text(f"Error: {e}")
             return
+        result = result or "No response."
 
         # Drill-down buttons: one tap per /hud section. Survive the hourly
         # refresh because editMessageText without reply_markup leaves the
@@ -1095,9 +1051,7 @@ class TelegramChannel:
                 InlineKeyboardButton("Watchlist", callback_data="hud:watchlist"),
             ],
         ])
-        sent_msg = await update.message.reply_text(
-            result, parse_mode=ParseMode.MARKDOWN, reply_markup=hud_keyboard
-        )
+        sent_msg = await self._reply_with_fallback(update, result, reply_markup=hud_keyboard)
 
         # Pin the message (shows system notification in chat — expected)
         try:
@@ -1136,41 +1090,18 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        import httpx
-        from shared.models import AgentRequest
-        from shared.registry import get_agent_url
-
-        url = get_agent_url("market_intelligence")
-        if not url:
-            await update.message.reply_text("Market agent not available.")
-            return
-
-        req = AgentRequest(
-            task="/ideas",
-            user_id=update.effective_user.id,
-            conversation_id=str(update.effective_user.id),
-        )
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    f"{url}/task",
-                    json=req.model_dump(),
-                    headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-                )
-                resp.raise_for_status()
-                result = resp.json().get("result") or "No response."
+            result = await self._post_market_task("/ideas", update.effective_user.id)
         except Exception as e:
             logger.error(f"/ideas failed: {e}")
             await update.message.reply_text(f"Error: {e}")
             return
+        if result is None:
+            await update.message.reply_text("Market agent not available.")
+            return
+        result = result or "No response."
 
-        try:
-            await update.message.reply_text(
-                result, parse_mode=ParseMode.MARKDOWN, reply_markup=self._ideas_keyboard()
-            )
-        except Exception as e:
-            logger.warning(f"/ideas markdown send failed, retrying plain: {e}")
-            await update.message.reply_text(result, reply_markup=self._ideas_keyboard())
+        await self._reply_with_fallback(update, result, reply_markup=self._ideas_keyboard())
 
     async def _handle_agents(
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
