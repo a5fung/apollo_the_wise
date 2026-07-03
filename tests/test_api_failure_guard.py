@@ -477,3 +477,60 @@ async def test_alpaca_get_open_orders_alerts_then_returns_empty(monkeypatch):
     out = await ac.get_open_orders(account_mode="live")
     assert out == []
     assert alerts == [("alpaca", "get_open_orders")]
+
+
+# ── (6) #406 — the REAL registration, not the stubbed maybe_alert_api_failure ──
+#
+# Every test above (and every alpaca_client call site) stubs
+# `llm_health.maybe_alert_api_failure` itself, so none of them ever exercised
+# `_API_PROVIDERS` / `_PROVIDER_CLASS` for "alpaca" — the exact gap that let
+# alpaca silently fall through to "other" (mis-bucketed event_type) with the
+# wrong-domain data-API consequence sentence. These call the REAL
+# `alert_api_failure("alpaca", ...)` with only db/Telegram mocked, so a
+# regression of either the registration or the provider-class copy fails here.
+
+@pytest.mark.asyncio
+async def test_alpaca_registered_not_bucketed_as_other(monkeypatch):
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("alpaca", _http_status_error(503),
+                                       context="get_account")
+
+    assert len(db.written) == 1
+    event_type, summary, _detail = db.written[0]
+    assert event_type == "api_failure_alpaca"          # NOT api_failure_other
+    assert "class=http_5xx" in summary
+
+
+@pytest.mark.asyncio
+async def test_alpaca_alert_uses_broker_domain_consequence(monkeypatch):
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("alpaca", _http_status_error(503),
+                                       context="get_account")
+
+    assert len(sent) == 1
+    msg = sent[0]
+    assert "BROKER-API" in msg
+    assert "position sync" in msg.lower() and "trade state" in msg.lower()
+    # the wrong-domain data-API sentence must NOT appear
+    assert "catalyst grade" not in msg.lower()
+    assert "news corpus" not in msg.lower()
+
+
+@pytest.mark.asyncio
+async def test_data_provider_alert_keeps_data_domain_consequence(monkeypatch):
+    # Guard the other direction: a genuine data-API provider must keep the
+    # ORIGINAL sentence — the #406 fix must not bleed broker copy onto data.
+    db = _DBStub(existing=[])
+    sent = _patch_db_and_telegram(monkeypatch, db)
+
+    await llm_health.alert_api_failure("polygon", _http_status_error(500))
+
+    assert len(sent) == 1
+    msg = sent[0]
+    assert "DATA-API" in msg
+    assert "catalyst grade" in msg.lower() and "news corpus" in msg.lower()
+    assert "position sync" not in msg.lower() and "trade state" not in msg.lower()

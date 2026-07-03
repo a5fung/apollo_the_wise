@@ -250,8 +250,36 @@ async def maybe_alert_credit_exhausted(context: str, exc: BaseException,
 _last_api_alert_ts: dict[tuple[str, str], float] = {}
 
 # Providers we surface a data-API alarm for. Anything else routes to "other"
-# (still alerts — better a generic loud row than a silent swallow).
-_API_PROVIDERS = ("polygon", "fmp", "perplexity")
+# (still alerts — better a generic loud row than a silent swallow). 'alpaca' is
+# the BROKER (real-money-critical reads: get_account / get_open_orders /
+# get_all_positions in broker/alpaca_client.py) — added #406. It was wired at
+# the alpaca_client call sites on 6/29 (maybe_alert_api_failure("alpaca", ...))
+# but never registered here, so every alpaca failure silently fell through to
+# "other" (mis-bucketed dedup/query event_type) AND inherited the data-API
+# consequence sentence below — wrong DOMAIN for a broker outage (which degrades
+# position-sync/trade-state, not the catalyst grade / RS universe / news
+# corpus). Still loud either way, but a mislabeled wrong-domain alert on a
+# real-money path trains the operator to dismiss it.
+_API_PROVIDERS = ("polygon", "fmp", "perplexity", "alpaca")
+
+# Alarm copy varies by provider CLASS, not per-provider — a small mapping, not
+# an if-chain. Data-APIs (polygon/fmp/perplexity/unlisted-"other") degrade the
+# catalyst grade / RS universe / news corpus; alpaca is the BROKER — its reads
+# feed position sync and trade state, a different domain entirely (#406).
+# Providers absent from `_PROVIDER_CLASS` default to "data" (the historical
+# sentence, and correct for "other").
+_PROVIDER_CLASS = {"alpaca": "broker"}
+
+_ALARM_COPY_BY_CLASS = {
+    "data": {
+        "kind": "DATA-API",
+        "consequence": "the catalyst grade / RS universe / news corpus that depends on it",
+    },
+    "broker": {
+        "kind": "BROKER-API",
+        "consequence": "position sync / trade state that depends on it",
+    },
+}
 
 
 def classify_api_failure(exc: BaseException) -> str | None:
@@ -370,6 +398,9 @@ async def alert_api_failure(provider: str, exc: BaseException,
         code = _status_code(exc)
         code_str = f" HTTP {code}" if code is not None else ""
         label = provider.upper()
+        copy = _ALARM_COPY_BY_CLASS[_PROVIDER_CLASS.get(provider, "data")]
+        kind = copy["kind"]
+        consequence = copy["consequence"]
 
         # Audit row FIRST (durable dedup token + queryable record). The
         # `class=<cls>` marker is load-bearing — the lookback matches on it.
@@ -384,18 +415,20 @@ async def alert_api_failure(provider: str, exc: BaseException,
         except Exception:
             pass
 
-        # Then the operator Telegram (a data source going dark IS actionable —
-        # it degrades the grade / universe / news corpus until fixed).
+        # Then the operator Telegram — a source going dark IS actionable.
+        # Consequence copy is provider-CLASS-specific (#406): a data source
+        # going dark degrades the grade/universe/news corpus; the broker
+        # (alpaca) going dark degrades position sync / trade state instead —
+        # a different domain, so the alert must say so.
         try:
             from agents.market_intelligence.briefing import send_telegram_message
             from shared.telegram_format import b, esc
             await send_telegram_message(
-                f"⚠️ {b(f'{label} DATA-API FAILURE')} ({esc(cls)}{esc(code_str)})"
+                f"⚠️ {b(f'{label} {kind} FAILURE')} ({esc(cls)}{esc(code_str)})"
                 + (f" in {esc(context)}" if context else "")
                 + ".\n"
-                + f"The {esc(label)} fetch is failing — the catalyst grade / RS "
-                + "universe / news corpus that depends on it is silently "
-                + "degrading until it recovers.\n"
+                + f"The {esc(label)} fetch is failing — {consequence} is "
+                + "silently degrading until it recovers.\n"
                 + "Check the provider status + our API key/plan, then verify the "
                 + "next scan's data.",
                 parse_mode="HTML",
