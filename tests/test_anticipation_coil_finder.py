@@ -7,7 +7,7 @@ assert the detector RETURNS the retrace and the job's filter would act on it.
 from datetime import date, timedelta
 
 from agents.market_intelligence.anticipation import (
-    find_coil_setup, evaluate_coil_consolidation, COIL_HOLD_LIMIT,
+    find_coil_setup, evaluate_coil_consolidation, coil_pin_reject_reason, COIL_HOLD_LIMIT,
 )
 
 _D0 = date(2026, 1, 1)
@@ -75,3 +75,52 @@ def test_evaluate_coil_consolidation_deep_pullback_is_none():
 
 def test_evaluate_coil_consolidation_no_runup_is_none():
     assert evaluate_coil_consolidation(_bars([100.0] * 55)) is None
+
+
+# ── #410 buyout/deal-PIN shape guard — NUVL 6/30 FP: gapped ~37% to the acquisition price and
+#    flatlined; the coil-finder read the post-deal PIN as a tight coil (buy 123.50/stop 123.43 =
+#    0.06% stop distance, the giveaway). ────────────────────────────────────────────────────────
+
+def test_normal_coil_is_not_pin_rejected():
+    """Sanity: the existing organic-coil fixture (shallow hold, ~1% daily range) must NOT trip the
+    buyout-pin guard — the guard only fires on the deal-pin flatness signature (<0.5% median range)."""
+    bars = _series(125.0)
+    coil = find_coil_setup(bars, len(bars) - 1)
+    assert coil is not None
+    assert coil_pin_reject_reason(bars, coil) is None
+    assert evaluate_coil_consolidation(bars) is not None   # unaffected — still a valid candidate
+
+
+def _nuvl_series():
+    """Buyout-PIN fixture (NUVL 6/30-shaped): 40 flat days at 100 (pre-deal base), ONE gap day to
+    137 (+37%, the entire leg lands in a SINGLE bar — a deal-price jump, not an organic runup),
+    then 15 near-dead-flat days at 137 (the post-deal PIN, hl_frac=0.0003 -> ~0.06% daily range,
+    matching NUVL's actual buy 123.50/stop 123.43 giveaway)."""
+    closes = [100.0] * 40 + [137.0] * 16   # index 40 = the gap day; 41..55 = the 15-day flat PIN
+    return _bars(closes, hl_frac=0.0003)
+
+
+def test_buyout_pin_gap_to_flat_rejected():
+    bars = _nuvl_series()
+    coil = find_coil_setup(bars, len(bars) - 1)
+    assert coil is not None                       # a real runup->coil STRUCTURE is found...
+    assert coil["retrace"] <= COIL_HOLD_LIMIT      # ...and it "held" — deceptively: it's the deal pin
+    assert coil_pin_reject_reason(bars, coil) == "gap_to_flat"
+    # the qualifier rejects it outright — NOT a silent drop; the job layer (scheduler.
+    # _consolidation_readiness_job) re-derives this exact reason and audits it
+    # (anticipation_coil_buyout_pin_rejected) rather than letting it surface as a false coil.
+    assert evaluate_coil_consolidation(bars) is None
+
+
+def test_buyout_pin_stop_floor_rejected_without_single_bar_gap():
+    """A pin that reads flat (<0.5% range) but whose runup was an ORGANIC multi-day climb (not a
+    single-bar gap) still trips the guard — via the plain stop_floor reason, not gap_to_flat."""
+    base = [100.0] * 30
+    runup = [100.0 + 3.0 * (k + 1) for k in range(10)]   # 103..130, a +30% MULTI-DAY leg
+    closes = base + runup + [129.5] * 15                  # flat pin just under the peak
+    bars = _bars(closes, hl_frac=0.0003)
+    coil = find_coil_setup(bars, len(bars) - 1)
+    assert coil is not None
+    assert coil["retrace"] <= COIL_HOLD_LIMIT
+    assert coil_pin_reject_reason(bars, coil) == "stop_floor"
+    assert evaluate_coil_consolidation(bars) is None

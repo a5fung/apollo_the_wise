@@ -2945,11 +2945,26 @@ async def _consolidation_readiness_job():
     the validated entry signal (anticipation.entry_signal_at — N≥ENTRY_TIGHT_N tight days at the
     coil apex) AS OF the latest bar and record one shadow row per OPEN coil
     (insert_consolidation_entry_shadow; open-dedup pins the first fire). SHADOW — no execution.
+
+    #387/#410 buyout/M&A GUARDS (operator-filed 2026-06-30, NUVL FP — gapped ~37% to the deal
+    price and flatlined; the coil-finder read the post-deal PIN as a tight coil, buy 123.50/stop
+    123.43 = 0.06% the giveaway): #410 is a pure price-SHAPE check baked into
+    anticipation.evaluate_coil_consolidation (coil_pin_reject_reason — reuses flag_detector's
+    proven deal-pin primitive); a reject is re-derived + audited here
+    (anticipation_coil_buyout_pin_rejected) since the pure function can't do I/O. #387 re-applies
+    the SAME news-backed single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use,
+    on the surviving coil candidates only (cost control) — a hit excludes + audits
+    (anticipation_mna_excluded). Neither guard touches the #327 gates themselves (runup / hold /
+    tightness) — additive exclusions only, per THE LINE (SHADOW-only, zero execution authority).
     """
     from datetime import date, timedelta
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.collector import et_today
     from agents.market_intelligence.briefing import send_telegram_message
+    from agents.market_intelligence.ma_filter import is_likely_ma
+    from agents.market_intelligence.audit_events import (
+        ANTICIPATION_MNA_EXCLUDED, ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
+    )
     from agents.market_intelligence.db import (
         get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
         upsert_consolidation, insert_consolidation_entry_shadow, get_recent_9m_tickers,
@@ -2984,7 +2999,42 @@ async def _consolidation_readiness_job():
                 # coil (runup gate / hold-≤50% gate) is simply not a candidate — skip, same as today.
                 cons = de.evaluate_coil_consolidation(bars)
                 if cons is None:
+                    # #410 buyout/deal-pin shape guard (NUVL 6/30 FP): evaluate_coil_consolidation
+                    # already applies coil_pin_reject_reason internally and returns None on a hit —
+                    # re-derive here ONLY to audit WHY (not silently dropped). Reject-path-only (pure,
+                    # no I/O) — never runs on the common accept path below.
+                    coil = de.find_coil_setup(bars, len(bars) - 1)
+                    if coil is not None and coil["retrace"] <= de.COIL_HOLD_LIMIT:
+                        pin_reason = de.coil_pin_reject_reason(bars, coil)
+                        if pin_reason:
+                            await log_audit_event(
+                                ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
+                                f"{ticker} coil rejected — {pin_reason} "
+                                f"(peak {coil['peak_date']}, retrace {coil['retrace']:.2%})",
+                                detail=str({"ticker": ticker, "reason": pin_reason, **coil})[:500],
+                            )
                     continue
+
+                # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose
+                # "tight days at the apex" turn out to be the post-acquisition PIN. Re-applies the SAME
+                # single-source filter (ma_filter.is_likely_ma) the EP/flag/9M paths use, gated on the
+                # coil candidate subset only (cost control — mirrors flag_detector's actionable-only
+                # gating, avoiding a Polygon lookup per scanned ticker). A confirmed M&A target is
+                # excluded from coil candidacy — audited, not silently dropped, rather than surfacing on
+                # the board as a false coil.
+                is_mna, mna_meta = await is_likely_ma(
+                    ticker, check_polygon=True, on_or_before=today, polygon_lookback_days=21,
+                )
+                if is_mna:
+                    await log_audit_event(
+                        ANTICIPATION_MNA_EXCLUDED,
+                        f"{ticker} excluded from coil candidacy via "
+                        f"{(mna_meta or {}).get('source', 'unknown')} (anchor {cons['anchor_date']})",
+                        detail=str({"ticker": ticker, "anchor_date": cons["anchor_date"],
+                                    **(mna_meta or {})})[:500],
+                    )
+                    continue
+
                 anchor_date = date.fromisoformat(cons["anchor_date"])   # the coil peak = the anchor now
 
                 # #327 FORWARD SHADOW: fire the validated entry signal AS OF the latest bar (the coil

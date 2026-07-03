@@ -49,6 +49,10 @@ PERPLEXITY_CREDITS_EXHAUSTED = "perplexity_credits_exhausted"
 MNA_FILTER_FIRED = "mna_filter_fired"
 MNA_ACQUIRER_TITLE_SKIPPED = "mna_acquirer_title_skipped"  # #284 acquirer-side title not fired
 
+# ── Anticipation coil-finder M&A / buyout-pin guards (#387/#410, 2026-06-30 NUVL FP) ────────
+ANTICIPATION_MNA_EXCLUDED = "anticipation_mna_excluded"  # #387 — ma_filter.is_likely_ma hit
+ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected"  # #410 — shape guard
+
 # ── Sugar Baby / convergence ────────────────────────────────────────────────
 SUGAR_BABY_CONVERGENCE_ALERT = "sugar_baby_convergence_alert"
 SUGAR_BABY_CONVERGENCE_CHECK_FAILED = "sugar_baby_convergence_check_failed"

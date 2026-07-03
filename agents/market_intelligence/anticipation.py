@@ -21,7 +21,9 @@ the COILED gate stays range + base_run). Reuse, not a 4th copy (search-before-bu
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from agents.market_intelligence.flag_detector import _compute_rmv, _compute_fresh_tightening
+from agents.market_intelligence.flag_detector import (
+    _compute_rmv, _compute_fresh_tightening, _evaluate_deal_pin,
+)
 
 # ── lifecycle thresholds — template-grounded (NOT self-certified). Calibration knobs
 #    #1 (EXPANSION floor) / #2 (trigger-volume floor) are probed (N=17 illustrative) and
@@ -740,6 +742,56 @@ def find_coil_setup(bars, i):
     }
 
 
+# ── Buyout / deal-PIN shape guard (#410, operator-filed 2026-06-30 post-NUVL FP) ──────────
+# NUVL 6/30: gapped ~37% to the acquisition price and flatlined — the "tight days at the apex"
+# the coil-finder read were the post-deal PIN, not an organic coil (buy 123.50 / stop 123.43 =
+# 0.06% stop distance was the giveaway). Independent of news (#387, ma_filter.is_likely_ma,
+# applied by the caller/job) — this is a pure price-SHAPE guard so an unannounced or
+# coverage-gap deal-pin still gets caught. REUSES flag_detector's proven deal-pin primitive
+# (`_evaluate_deal_pin`, the KALV 2026-05-11 catch — median (H-L)/close < 0.5% across >= 5 of
+# the sampled sessions) over the coil's own recent-tightness window rather than a parallel
+# formula (search-before-build).
+COIL_PIN_GAP_LEG_MIN = 0.60   # a single bar supplying >= this much of the WHOLE runup leg (60%+
+                               # of the peak/prelow move landing in ONE day) = a gap-driven leg,
+                               # not an organic multi-day climb — paired with the deal-pin
+                               # flatness test for the full gap-to-flat signature (NUVL: the
+                               # entire +37% leg was one bar -> ratio 1.0).
+
+
+def coil_pin_reject_reason(bars: list[dict], coil: dict) -> Optional[str]:
+    """Buyout/deal-PIN shape check on a `find_coil_setup` result. Returns a distinct reject
+    reason ('stop_floor' | 'gap_to_flat'), or None when the coil reads organic. Does NOT gate
+    inside find_coil_setup itself — mirrors the HOLD-gate split (retrace exposed, gated by
+    evaluate_coil_consolidation) so the raw coil dict stays inspectable/testable in isolation.
+    Pure; no I/O; the caller (evaluate_coil_consolidation) applies the reject, and the job layer
+    (scheduler._consolidation_readiness_job) re-derives + audits the distinct reason on a reject
+    so it is NOT silently dropped.
+
+      stop_floor  — the coil's own recent window fails the deal-pin flatness test: a real coil's
+                    tightest days still show SOME range; a pinned deal price does not (this is
+                    the "stop distance below a floor" guard — a would-be entry/stop off this
+                    window implies a sub-half-percent stop, which no genuine coil produces).
+      gap_to_flat — ADDITIONALLY, a single bar supplied >= COIL_PIN_GAP_LEG_MIN of the whole
+                    runup leg (a gap INTO the price, not a multi-day climb) — the classic
+                    gap-then-flatline deal-pin signature (NUVL).
+    """
+    pk, cons_days = coil["peak_idx"], coil["cons_days"]
+    i = pk + cons_days                      # == the bar index find_coil_setup(bars, i) was called with
+    cons = bars[pk + 1:i + 1]
+    win = cons[-min(len(cons), COIL_WINDOW):]
+    pin_sig = _evaluate_deal_pin(bars_to_rmv_rows(win))
+    if pin_sig is None or not pin_sig["is_pin"]:
+        return None                          # not enough window data, or a real (non-flat) coil
+    if pk > 0 and coil.get("runup"):
+        prior_close = bars[pk - 1]["c"]
+        peak_price = coil["peak_price"]
+        leg = peak_price - (peak_price / coil["runup"])      # == peak - prelow
+        bar_gap = peak_price - prior_close                    # the peak day's own single-bar move
+        if leg > 0 and prior_close and (bar_gap / leg) >= COIL_PIN_GAP_LEG_MIN:
+            return "gap_to_flat"
+    return "stop_floor"
+
+
 def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
     """#327 LIVE Family-A base detection (operator-integrated 2026-06-27) — REPLACES the
     peak-anchored evaluate_consolidation, which anchored at the runup peak and called peak..now the
@@ -754,6 +806,9 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
     coil = find_coil_setup(bars, len(bars) - 1)
     if coil is None or coil["retrace"] > hold_limit:
         return None                                  # no runup→coil, or gave back > ~50% (negated)
+    if coil_pin_reject_reason(bars, coil):
+        return None                                  # #410 buyout/deal-pin shape (NUVL-class FP) —
+                                                       # the job layer re-derives + audits the reason
     anchor_date = coil["peak_date"]
     anchor_idx = coil["peak_idx"]            # from find_coil_setup — provably in-bars, no re-scan
     last_idx = len(bars) - 1
