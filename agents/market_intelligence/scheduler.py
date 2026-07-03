@@ -3078,7 +3078,7 @@ async def _consolidation_readiness_job():
                               fresh_tightening=c.get("fresh_tightening")))
             digest.append("")
         if digest:
-            head = ["🪙 *Consolidation plays* (Family A · SHADOW) — today", ""]
+            head = ["🪙 *Anticipation plays* (Family A · SHADOW) — today", ""]
             digest.append("/anticipation for the full board.")
             await send_telegram_message("\n".join(head + digest))
     except Exception as e:

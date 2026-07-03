@@ -83,7 +83,7 @@ async def show_board():
     settled = await get_consolidation_entry_shadows(status="settled", limit=8)
     summ = await get_consolidation_entry_shadow_summary()
     graduated = await get_open_shadow_tickers()
-    print("⏱️ Consolidation plays (Family A · SHADOW)")
+    print("⏱️ Anticipation plays (Family A · SHADOW)")
     if summ["settled_n"]:
         print(f"edge: {summ['settled_n']} settled · "
               f"{round(summ['capture_n']/summ['settled_n']*100)}% capture · {summ['med_realized_r']} R")

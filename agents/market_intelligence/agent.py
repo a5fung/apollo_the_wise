@@ -2914,10 +2914,10 @@ class MarketIntelligenceAgent(BaseAgent):
 
         if not (board or fired or settled):
             return self._ok(request, result=(
-                "⏱️ *Consolidation plays* (Family A) — nothing in the lifecycle yet "
+                "⏱️ *Anticipation plays* (Family A) — nothing in the lifecycle yet "
                 "(the 17:35 ET shadow recorder seeds it)."))
 
-        out = ["⏱️ *Consolidation plays* (Family A · SHADOW — observe, ordering-only)"]
+        out = ["⏱️ *Anticipation plays* (Family A · SHADOW — observe, ordering-only)"]
         # edge-so-far header = the forward readout (folds the would-be /readout in)
         if summ["settled_n"]:
             cap_pct = round(summ["capture_n"] / summ["settled_n"] * 100)
