@@ -10,7 +10,7 @@ is a two-sided eval, not a perfect oracle.
 READ-ONLY. Runs on the server (needs prod DB). Output: deadcat_cohort.csv (ticker,date,fwd).
 
   docker exec apollo-market python /app/scripts/build_deadcat_cohort.py \
-      --max-fwd -8 --limit 40 --out /app/deadcat_cohort.csv
+      --max-fwd -8 --limit 40 --out /app/scripts/eval_data/deadcat_cohort.csv
 """
 import argparse
 import asyncio
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     ap.add_argument("--max-fwd", type=float, default=-8.0,
                     help="max fwd_5d_pct %% to count as a dead-cat reject (negative; e.g. -8)")
     ap.add_argument("--limit", type=int, default=40)
-    ap.add_argument("--out", type=str, default="deadcat_cohort.csv")
-    ap.add_argument("--exclude", type=str, default="clean_breakout_cohort.csv",
+    ap.add_argument("--out", type=str, default="scripts/eval_data/deadcat_cohort.csv")
+    ap.add_argument("--exclude", type=str, default="scripts/eval_data/clean_breakout_cohort.csv",
                     help="cohort CSV to exclude overlaps with (keeps the two sides disjoint)")
     args = ap.parse_args()
     asyncio.run(main(args.max_fwd, args.limit, args.out, args.exclude))

@@ -27,10 +27,10 @@ DISCIPLINE (advisor 2026-06-17):
 Run (read-only, on the server — needs prod DB + the mplfinance dep in the image):
   # smoke (machinery):
   docker exec apollo-market python /app/scripts/eval_chart_judge.py \
-      --cohort /app/deadcat_cohort.csv:reject --limit 4 --replicates 3 --outdir /app/_chart_eval
+      --cohort /app/scripts/eval_data/deadcat_cohort.csv:reject --limit 4 --replicates 3 --outdir /app/_chart_eval
   # full two-sided run (operator-triggered — costs ~2K Opus judge calls, WITH arm carries image tokens):
   docker exec apollo-market python /app/scripts/eval_chart_judge.py \
-      --cohort /app/deadcat_cohort.csv:reject --cohort /app/clean_breakout_cohort.csv:keep \
+      --cohort /app/scripts/eval_data/deadcat_cohort.csv:reject --cohort /app/scripts/eval_data/clean_breakout_cohort.csv:keep \
       --replicates 3 --outdir /app/_chart_eval
 """
 import argparse

@@ -9,7 +9,7 @@ the point is a two-sided eval, not a perfect oracle.
 READ-ONLY. Runs on the server (needs prod DB). Output: clean_breakout_cohort.csv (ticker,date,fwd).
 
   docker exec apollo-market python /app/scripts/build_clean_breakout_cohort.py \
-      --min-fwd 8 --limit 40 --out /app/clean_breakout_cohort.csv
+      --min-fwd 8 --limit 40 --out /app/scripts/eval_data/clean_breakout_cohort.csv
 """
 import argparse
 import asyncio
@@ -73,8 +73,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-fwd", type=float, default=8.0, help="min fwd_5d_pct %% to count as a clean win")
     ap.add_argument("--limit", type=int, default=40)
-    ap.add_argument("--out", type=str, default="clean_breakout_cohort.csv")
-    ap.add_argument("--exclude", type=str, default="deadcat_cohort.csv",
+    ap.add_argument("--out", type=str, default="scripts/eval_data/clean_breakout_cohort.csv")
+    ap.add_argument("--exclude", type=str, default="scripts/eval_data/deadcat_cohort.csv",
                     help="cohort CSV to exclude overlaps with (keeps the two sides disjoint)")
     args = ap.parse_args()
     asyncio.run(main(args.min_fwd, args.limit, args.out, args.exclude))
