@@ -125,9 +125,16 @@ _SKIP_TICKERS = SKIP_TICKERS
 # Catalyst cache — FMP + Claude + Perplexity results for today.
 # A stock oscillating near the 15% conviction threshold (e.g. BE at 13-15%)
 # gets re-scored every 5 min. The catalyst doesn't change; skip the API calls.
-# Keys: ticker → (catalyst_quality, confidence_multiplier, news_summary, claude_analysis)
+# Keys: ticker → (catalyst_quality, confidence_multiplier, news_summary,
+#                  claude_analysis, pplx_quality, filters_cleared)
+# filters_cleared (S6/#405, 2026-07-03): True once the ticker has passed the
+# 3 post-grade filters (M&A / routine-catalyst / pm-shares floor) — the cache
+# now stores a grade THE MOMENT IT COMPLETES, even for filter-failing tickers,
+# so they never trigger a full LLM re-grade on a later tick. See
+# `_post_grade_filters` — it re-runs the (time-sensitive) filters against the
+# cached grade fields every tick with zero LLM calls.
 # Resets automatically when the calendar date changes.
-_catalyst_cache: dict[str, tuple[str, float, str, str]] = {}
+_catalyst_cache: dict[str, tuple[str, float, str, str, "str | None", bool]] = {}
 _catalyst_cache_date: "date | None" = None
 
 # Prose-mismatch downgrade markers (#72, 2026-05-11). When the catalyst
@@ -1147,6 +1154,134 @@ def _score_ep(
 # historical (last heuristic row 2026-06-10); fire_axes is judge-written now.
 
 
+async def _post_grade_filters(
+    ticker: str,
+    catalyst_quality: str,
+    claude_analysis: str,
+    news_summary: str,
+    gap_pct: float,
+    today_volume: int,
+    pm_rvol: float | None,
+    today: "date",
+) -> str | None:
+    """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
+    pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
+    fresh-grade tick AND a later tick re-checking a cached-but-not-yet-cleared
+    grade can run them without any LLM call. ORDER + reason strings + thresholds
+    are byte-identical to the pre-#405 inline checks (FROZEN — this function
+    moves control flow, it does not tune criteria).
+
+    All three inputs besides `catalyst_quality`/`claude_analysis`/`news_summary`
+    (the settled grade fields) are per-tick/time-sensitive — gap_pct, today_volume,
+    pm_rvol from the live snapshot, and the M&A check's own Polygon news lookup
+    (`on_or_before=today`) — which is exactly why this must re-run every tick
+    instead of being decided once (BFLY class: routine grade at 7:00, M&A/PR
+    news lands at 8:12; pm-volume grows through the morning).
+
+    Returns the skip-reason string (same string previously passed to
+    `_log_filtered`), or None if the ticker clears all three.
+    """
+    # 1) M&A / buyout — price capped at deal value, no momentum trade.
+    # Single-source filter (ma_filter.is_likely_ma) — same logic used by
+    # flag/9M/parabolic detectors. Polygon backstop closes the Perplexity
+    # coverage-gap (AVNS 5/4: Perplexity returned "no specific news" for
+    # 4/14 going-private; Polygon had the headline the whole time).
+    #
+    # Sanitize Perplexity disclaimer text before feeding to keyword
+    # scanner (2026-05-14 perplexity_hallucination_keyword_leak fix).
+    # When Perplexity returns "No recent catalysts... Nearest match is X"
+    # the unrelated content trips M&A keywords on the wrong company.
+    from agents.market_intelligence.collector import strip_perplexity_disclaimer
+    _, news_is_disclaimer = strip_perplexity_disclaimer(news_summary)
+    catalyst_texts_for_filter = [claude_analysis]
+    if not news_is_disclaimer:
+        catalyst_texts_for_filter.append(news_summary)
+    else:
+        logger.info(f"{ticker}: Perplexity disclaimer in news_summary — excluding from M&A keyword scan")
+        await log_audit_event(
+            "perplexity_disclaimer_stripped",
+            f"{ticker}: news_summary suppressed from M&A keyword scan",
+            json.dumps({
+                "ticker": ticker,
+                "news_summary_lead": (news_summary or "")[:200],
+            }),
+        )
+    is_mna, mna_meta = await is_likely_ma(
+        ticker,
+        catalyst_quality=catalyst_quality,
+        catalyst_texts=catalyst_texts_for_filter,
+        check_polygon=True,
+        on_or_before=today,
+    )
+    if is_mna:
+        reason = "M&A/buyout catalyst — no momentum trade"
+        logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
+        # Filter behavior is ALWAYS applied; only audit log is
+        # deduped (#89, 2026-05-23). Summary now includes (ep)
+        # suffix matching the 4 other detector sites for
+        # consistent should_log_mna_filter_fired LIKE-keying.
+        from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
+        if await should_log_mna_filter_fired(ticker, "ep"):
+            await log_audit_event(
+                "mna_filter_fired",
+                f"{ticker} via {(mna_meta or {}).get('source', 'unknown')} (ep)",
+                json.dumps({
+                    "ticker": ticker,
+                    "alert_date": today.isoformat(),
+                    "detector": "ep",
+                    "catalyst_quality": catalyst_quality,
+                    "news_summary": (news_summary or "")[:200],
+                    **(mna_meta or {}),
+                }),
+            )
+        return reason
+
+    # 2) Skip routine catalysts outright
+    if catalyst_quality == "routine" and gap_pct < 12:
+        reason = f"routine catalyst, gap {gap_pct:.1f}%"
+        logger.info(f"Skip {ticker}: {reason}")
+        return reason
+
+    # 3) R6 pm-shares carve-out (2026-05-17 ship). Moved from pre-catalyst
+    # position so we can use catalyst_quality in the carve-out condition.
+    # Reject the absolute pm-shares floor UNLESS one of the carve-outs
+    # bypasses it:
+    #   1. pm_rvol ≥ 5x (relative anomaly — original 2026-05-08 carve-out)
+    #   2. gap ≥ 10% AND catalyst_quality='strong' (high-conviction —
+    #      NEW R6 carve-out; CPA 5/14 class: gap 13%, strong, but
+    #      pm-shares=7K blocked entry for 24 min in old pre-catalyst
+    #      position)
+    # Env-flagged for fast rollback: set R6_PMSHARES_CARVEOUT_ENABLED=false
+    # to disable carve-out #2 only (carve-out #1 always active).
+    _R6_ENABLED = os.environ.get(
+        "R6_PMSHARES_CARVEOUT_ENABLED", "true"
+    ).lower() == "true"
+    if today_volume < MIN_PREMARKET_SHARES:
+        bypass_reason = None
+        if pm_rvol is not None and pm_rvol >= 5.0:
+            bypass_reason = f"pm_rvol={pm_rvol:.1f}x ≥ 5.0x"
+        elif (
+            _R6_ENABLED
+            and gap_pct >= 10.0
+            and catalyst_quality == "strong"
+        ):
+            bypass_reason = (
+                f"R6 carve-out: gap={gap_pct:.1f}% + catalyst=strong"
+            )
+        if bypass_reason is None:
+            reason = (
+                f"pre-mkt volume {today_volume:,} < "
+                f"{MIN_PREMARKET_SHARES:,} shares"
+            )
+            logger.info(f"Skip {ticker}: {reason} (gap={gap_pct:.1f}%)")
+            return reason
+        logger.info(
+            f"{ticker}: pm-shares floor bypassed — {bypass_reason}"
+        )
+
+    return None
+
+
 async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
     """
     Run pre-market EP scan.
@@ -1692,7 +1827,16 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
 
         # Catalyst cache check — skip FMP/Claude/Perplexity if already evaluated today.
         # A stock oscillating near the 15% threshold gets re-scored every 5 min;
-        # the catalyst is the same each time. One evaluation per ticker per day.
+        # the catalyst is the same each time. One evaluation per ticker per day —
+        # S6/#405 (2026-07-03): this now holds even when the ticker fails the
+        # post-grade filters. Pre-#405 the M&A / routine-catalyst / pm-shares
+        # filters ran BEFORE the cache-store, so a filter-skipped ticker (CMCSA
+        # hitting the routine-catalyst filter, e.g.) was never cached — full
+        # LLM re-grade every 5-min tick (36x/day). Fix: cache the GRADE the
+        # moment it's fully computed (Claude + Perplexity + hedge-downgrade),
+        # tagged `filters_cleared`; the 3 filters re-run EVERY tick off the
+        # cached grade fields (no LLM) because they're time-sensitive — M&A/
+        # routine/pm-volume state changes through the morning (BFLY class).
         global _catalyst_cache, _catalyst_cache_date
         global _repoll_shadow_state, _repoll_shadow_date  # #344 re-poll shadow dedup
         if _catalyst_cache_date != today:
@@ -1706,14 +1850,38 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
         cached = _catalyst_cache.get(ticker)
         if cached:
-            # 5-tuple as of 2026-05-26 hotfix: pplx_quality added because the
-            # cached path skips the pplx_task creation/await block (lines
-            # ~948-1075), which left pplx_quality unbound when a cached
-            # ticker survived all filters and hit the result-build at L1683
-            # → UnboundLocalError that took down EP scans 11:45 + 13:55 ET.
-            catalyst_quality, confidence_multiplier, news_summary, claude_analysis, pplx_quality = cached
-            profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
+            # 6-tuple as of S6/#405 (2026-07-03) — filters_cleared appended.
+            # True = this grade already passed the M&A/routine/pm-volume
+            # filters (pre-#405 cache semantics: only survivors were ever
+            # cached, so this is "today's fast path unchanged"). False =
+            # graded but still filter-failing; re-run the filters fresh
+            # below (no LLM call) instead of trusting a stale pass/fail.
+            (catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+             pplx_quality, filters_cleared) = cached
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
+
+            if not filters_cleared:
+                skip_reason = await _post_grade_filters(
+                    ticker, catalyst_quality, claude_analysis, news_summary,
+                    c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
+                )
+                if skip_reason:
+                    logger.debug(
+                        f"{ticker}: cached grade ({catalyst_quality}) still filtered — {skip_reason}"
+                    )
+                    _log_filtered(c, skip_reason)
+                    continue
+                # A time-sensitive filter input cleared since the grade tick
+                # (pm-volume grew, M&A stopped matching, gap moved) — flip the
+                # flag and fall through EXACTLY as a fresh survivor would.
+                filters_cleared = True
+                _catalyst_cache[ticker] = (
+                    catalyst_quality, confidence_multiplier, news_summary,
+                    claude_analysis, pplx_quality, True,
+                )
+                logger.info(f"{ticker}: cached grade ({catalyst_quality}) now clears filters — proceeding")
+
+            profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
             logger.debug(f"{ticker}: using cached catalyst ({catalyst_quality}, {confidence_multiplier}x)")
 
             # #344 re-poll SHADOW (cached path): if a NEW primary-subject source appeared
@@ -1813,7 +1981,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 + news_summary)[:600]
             grounded_text = build_grounded_text(sec_filing, benzinga_items, perplexity_answer)
 
-            # Claude + Perplexity in parallel — cancel Perplexity if catalyst is routine
+            # Claude + Perplexity in parallel — BOTH always awaited now (S6/#405).
+            # The grade must be COMPLETE (Claude classification + Perplexity
+            # agreement + hedge-downgrade) before the post-grade filters run, so
+            # a filtered ticker's cached grade is fully reusable on a later tick
+            # with zero further LLM calls. Pre-#405 this cancelled pplx_task on
+            # a filter fail to save the call; that per-call saving is gone, but
+            # grading is now capped at ONE full evaluation per ticker per day
+            # (see the comment above) instead of the up-to-36x/day re-grade the
+            # bug produced — a large net cost win.
             claude_task = asyncio.create_task(
                 _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text))
             pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
@@ -1895,111 +2071,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 except Exception as _e:
                     logger.debug(f"{ticker}: enrich shadow skipped — {_e}")
 
-            # Skip M&A / buyout — price capped at deal value, no momentum trade.
-            # Single-source filter (ma_filter.is_likely_ma) — same logic used by
-            # flag/9M/parabolic detectors. Polygon backstop closes the Perplexity
-            # coverage-gap (AVNS 5/4: Perplexity returned "no specific news" for
-            # 4/14 going-private; Polygon had the headline the whole time).
-            #
-            # Sanitize Perplexity disclaimer text before feeding to keyword
-            # scanner (2026-05-14 perplexity_hallucination_keyword_leak fix).
-            # When Perplexity returns "No recent catalysts... Nearest match is X"
-            # the unrelated content trips M&A keywords on the wrong company.
-            from agents.market_intelligence.collector import strip_perplexity_disclaimer
-            _, news_is_disclaimer = strip_perplexity_disclaimer(news_summary)
-            catalyst_texts_for_filter = [claude_analysis]
-            if not news_is_disclaimer:
-                catalyst_texts_for_filter.append(news_summary)
-            else:
-                logger.info(f"{ticker}: Perplexity disclaimer in news_summary — excluding from M&A keyword scan")
-                await log_audit_event(
-                    "perplexity_disclaimer_stripped",
-                    f"{ticker}: news_summary suppressed from M&A keyword scan",
-                    json.dumps({
-                        "ticker": ticker,
-                        "news_summary_lead": (news_summary or "")[:200],
-                    }),
-                )
-            is_mna, mna_meta = await is_likely_ma(
-                ticker,
-                catalyst_quality=catalyst_quality,
-                catalyst_texts=catalyst_texts_for_filter,
-                check_polygon=True,
-                on_or_before=today,
-            )
-            if is_mna:
-                pplx_task.cancel()
-                reason = "M&A/buyout catalyst — no momentum trade"
-                logger.info(f"Skip {ticker}: {reason} ({(mna_meta or {}).get('source')})")
-                # Filter behavior is ALWAYS applied; only audit log is
-                # deduped (#89, 2026-05-23). Summary now includes (ep)
-                # suffix matching the 4 other detector sites for
-                # consistent should_log_mna_filter_fired LIKE-keying.
-                from agents.market_intelligence.ma_filter import should_log_mna_filter_fired
-                if await should_log_mna_filter_fired(ticker, "ep"):
-                    await log_audit_event(
-                        "mna_filter_fired",
-                        f"{ticker} via {(mna_meta or {}).get('source', 'unknown')} (ep)",
-                        json.dumps({
-                            "ticker": ticker,
-                            "alert_date": today.isoformat(),
-                            "detector": "ep",
-                            "catalyst_quality": catalyst_quality,
-                            "news_summary": (news_summary or "")[:200],
-                            **(mna_meta or {}),
-                        }),
-                    )
-                _log_filtered(c, reason)
-                continue
-
-            # Skip routine catalysts outright
-            if catalyst_quality == "routine" and c["gap_pct"] < 12:
-                pplx_task.cancel()
-                reason = f"routine catalyst, gap {c['gap_pct']:.1f}%"
-                logger.info(f"Skip {ticker}: {reason}")
-                _log_filtered(c, reason)
-                continue
-
-            # R6 pm-shares carve-out (2026-05-17 ship). Moved from pre-catalyst
-            # position so we can use catalyst_quality in the carve-out condition.
-            # Reject the absolute pm-shares floor UNLESS one of the carve-outs
-            # bypasses it:
-            #   1. pm_rvol ≥ 5x (relative anomaly — original 2026-05-08 carve-out)
-            #   2. gap ≥ 10% AND catalyst_quality='strong' (high-conviction —
-            #      NEW R6 carve-out; CPA 5/14 class: gap 13%, strong, but
-            #      pm-shares=7K blocked entry for 24 min in old pre-catalyst
-            #      position)
-            # Env-flagged for fast rollback: set R6_PMSHARES_CARVEOUT_ENABLED=false
-            # to disable carve-out #2 only (carve-out #1 always active).
-            _R6_ENABLED = os.environ.get(
-                "R6_PMSHARES_CARVEOUT_ENABLED", "true"
-            ).lower() == "true"
-            if c["today_volume"] < MIN_PREMARKET_SHARES:
-                pm_rvol_cur = c.get("pm_rvol")
-                bypass_reason = None
-                if pm_rvol_cur is not None and pm_rvol_cur >= 5.0:
-                    bypass_reason = f"pm_rvol={pm_rvol_cur:.1f}x ≥ 5.0x"
-                elif (
-                    _R6_ENABLED
-                    and c["gap_pct"] >= 10.0
-                    and catalyst_quality == "strong"
-                ):
-                    bypass_reason = (
-                        f"R6 carve-out: gap={c['gap_pct']:.1f}% + catalyst=strong"
-                    )
-                if bypass_reason is None:
-                    pplx_task.cancel()
-                    reason = (
-                        f"pre-mkt volume {c['today_volume']:,} < "
-                        f"{MIN_PREMARKET_SHARES:,} shares"
-                    )
-                    logger.info(f"Skip {ticker}: {reason} (gap={c['gap_pct']:.1f}%)")
-                    _log_filtered(c, reason)
-                    continue
-                logger.info(
-                    f"{ticker}: pm-shares floor bypassed — {bypass_reason}"
-                )
-
             pplx_quality = await pplx_task
 
             # Agreement logic
@@ -2049,10 +2120,34 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 catalyst_quality = downgraded
                 confidence_multiplier = 1.0  # cancel any agreement boost
 
-            # Store in cache for subsequent scans today (5-tuple as of 2026-05-26
-            # hotfix — pplx_quality MUST be in the cache or the cached-path
-            # unpack at L941 crashes when the ticker survives all filters).
-            _catalyst_cache[ticker] = (catalyst_quality, confidence_multiplier, news_summary, claude_analysis, pplx_quality)
+            # Post-grade filters — S6/#405 (2026-07-03): M&A / routine-catalyst /
+            # pm-shares-floor, extracted to _post_grade_filters so the IDENTICAL
+            # check can re-run on a later tick against a cached-but-not-yet-
+            # cleared grade with no LLM call. Order + reason strings unchanged;
+            # they now read the SETTLED (post-downgrade) catalyst_quality since
+            # grading (Claude + Perplexity + hedge-downgrade) completes before
+            # filtering — pre-#405 the filters ran ahead of the Perplexity
+            # await/downgrade block and saw the pre-downgrade value. This is a
+            # narrow, MORE-conservative-only corollary (a ticker that hedge-
+            # downgrades to routine+low-gap now correctly gets caught by the
+            # routine filter instead of slipping through) — see commit message.
+            skip_reason = await _post_grade_filters(
+                ticker, catalyst_quality, claude_analysis, news_summary,
+                c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
+            )
+
+            # Store in cache AT GRADE COMPLETION regardless of filter outcome
+            # (S6/#405) — 6-tuple: filters_cleared True/False per today's check.
+            # This is what makes the ticker reusable (no re-grade) on every
+            # later tick this trading day, whether it cleared or not.
+            _catalyst_cache[ticker] = (
+                catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
+                pplx_quality, skip_reason is None,
+            )
+
+            if skip_reason:
+                _log_filtered(c, skip_reason)
+                continue
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
         # Existing earnings-day override (below) only fires for MODERATE→HIGH
@@ -2118,9 +2213,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     }),
                 )
             # Also update cache so subsequent scan ticks see the boosted grade.
+            # filters_cleared stays True — only reachable post-filter (S6/#405).
             _catalyst_cache[ticker] = (
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
-                pplx_quality,
+                pplx_quality, True,
             )
         elif earnings_today_match and not revenue_stage and catalyst_quality in ("routine", None):
             # Pre-revenue company on earnings day — log the skip so operator
@@ -2456,7 +2552,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     )
                 _catalyst_cache[ticker] = (
                     catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis, pplx_quality,
+                    news_summary, claude_analysis, pplx_quality, True,
                 )
                 # Per-ticker Telegram suppressed (was 5-10 noise alerts per
                 # morning). Audit event above is the source of truth — the
@@ -2508,7 +2604,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
                 _catalyst_cache[ticker] = (
                     catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis, pplx_quality,
+                    news_summary, claude_analysis, pplx_quality, True,
                 )
                 # Visibility surface (advisor 2026-05-11): user needs to see
                 # the new behavior in action, not discover it by missing
