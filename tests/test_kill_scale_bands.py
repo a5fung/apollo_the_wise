@@ -164,7 +164,10 @@ def _wire(monkeypatch, *, rs, prev_band, override=None):
         return override
 
     async def fake_set(mode, band):
+        # Single-caller path — this caller always wins the atomic claim (see the dedicated
+        # concurrency test below for the two-caller race).
         persisted.append(band)
+        return True
 
     async def fake_send(msg):
         sent.append(msg); return True
@@ -208,3 +211,73 @@ def test_band_baseline_hold_persists_but_does_not_alert(monkeypatch):
     assert res["band"] == "HOLD" and res["transitioned"] is True
     assert persisted == ["HOLD"]          # primed so the next eval has a baseline
     assert sent == []                     # ∅→HOLD baseline suppressed
+
+
+# ── F21 — concurrent evaluations must dedup to exactly ONE alert (TOCTOU fix) ──
+
+def test_concurrent_transitions_dedup_to_one_alert(monkeypatch):
+    """Two concurrent evaluate calls (e.g. a scheduled EOD run + an on-demand `/audit`) that
+    would BOTH observe HOLD→REDUCE under the old unlocked read-then-write must still produce
+    exactly ONE Telegram + ONE audit row. `fake_last_band` captures its read synchronously
+    (before yielding) so BOTH callers read the SAME stale prior state — the TOCTOU half of the
+    bug — then yields so the two coroutines interleave. `fake_set` is the fake state store's
+    ATOMIC claim: a lock-guarded check-and-set on a single row, mirroring the real
+    `INSERT ... ON CONFLICT DO UPDATE ... WHERE state IS DISTINCT FROM ... RETURNING` — the
+    mechanism actually under test. Only one of the two calls should win the claim."""
+    sent, audited = [], []
+    store: dict[str, str] = {}          # fake mi_safeguard_state row: {account_mode: band}
+    claim_lock = asyncio.Lock()
+
+    async def fake_inputs(mode):
+        # Same cohort for both callers so both independently compute the SAME new band
+        # (REDUCE) — exactly the scenario in the bug report.
+        return {"realized_rs": _rs(-1.0, 19) + [5.0], "equity_above_start": False,
+                "drawdown_tier": "OK", "account_mode": mode}
+
+    async def fake_last_band(mode):
+        prev = store.get(mode)      # read captured BEFORE yielding — both callers see it stale
+        await asyncio.sleep(0)      # force interleaving with the concurrent evaluation
+        return (prev, None)
+
+    async def fake_override():
+        return None
+
+    async def fake_set(mode, band):
+        # The atomic claim under test: single-winner check-and-set on the shared row.
+        async with claim_lock:
+            if store.get(mode) == band:
+                return False
+            store[mode] = band
+            return True
+
+    async def fake_send(msg):
+        await asyncio.sleep(0)
+        sent.append(msg)
+        return True
+
+    async def fake_audit(evt, summary, detail):
+        audited.append(evt)
+
+    monkeypatch.setattr(ksb, "assemble_band_inputs", fake_inputs)
+    monkeypatch.setattr(ksb, "get_last_band", fake_last_band)
+    monkeypatch.setattr(ksb, "get_active_override", fake_override)
+    monkeypatch.setattr(ksb, "set_last_band", fake_set)
+    import agents.market_intelligence.briefing as briefing
+    import agents.market_intelligence.db as dbmod
+    monkeypatch.setattr(briefing, "send_telegram_message", fake_send)
+    monkeypatch.setattr(dbmod, "log_audit_event", fake_audit)
+
+    async def _run_both():
+        return await asyncio.gather(
+            ksb.run_band_evaluation("live", send=True),
+            ksb.run_band_evaluation("live", send=True),
+        )
+
+    results = asyncio.run(_run_both())
+
+    # Both calls computed REDUCE; exactly one claimed the transition.
+    assert [r["band"] for r in results] == ["REDUCE", "REDUCE"]
+    assert sorted(r["transitioned"] for r in results) == [False, True]
+    assert len(sent) == 1 and "REDUCE" in sent[0]
+    assert audited.count("kill_scale_band_transition") == 1
+    assert store["live"] == "REDUCE"

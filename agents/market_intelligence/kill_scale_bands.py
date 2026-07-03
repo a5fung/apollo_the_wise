@@ -254,22 +254,33 @@ async def get_last_band(account_mode: str = "live") -> tuple[str | None, str | N
     return row["state"], since
 
 
-async def set_last_band(account_mode: str, band: str) -> None:
-    """Persist the evaluated band; bumps last_transition_at only on an actual change."""
+async def set_last_band(account_mode: str, band: str) -> bool:
+    """Atomically CLAIM the band transition, returning True only if THIS call's write actually
+    changed the persisted state (F21 — the old read-then-write was a TOCTOU: `get_last_band()`
+    then `set_last_band()` unlocked let a concurrent scheduled + on-demand evaluation both
+    observe `transitioned=True` and both alert). The `WHERE state IS DISTINCT FROM` clause on
+    the `DO UPDATE` makes this a single-winner claim under Postgres's normal row-lock semantics:
+    a second concurrent caller blocks on the row lock, and once unblocked re-evaluates the WHERE
+    clause against the just-committed row — which by then already matches — so its UPDATE
+    touches nothing and RETURNING yields no row. Only the winner should audit/alert; the loser
+    sees `False` and skips (see `run_band_evaluation`). No-op (no write at all) when the state
+    is unchanged, so `last_transition_at`/`updated_at` only move on a genuine transition."""
     from agents.market_intelligence.db import get_pool
     pool = await get_pool()
     async with pool.acquire() as c:
-        await c.execute(
+        row = await c.fetchrow(
             """
             INSERT INTO mi_safeguard_state (safeguard, account_mode, state,
                                             last_transition_at, updated_at)
             VALUES ($1, $2, $3, NOW(), NOW())
             ON CONFLICT (safeguard, account_mode) DO UPDATE
               SET state = EXCLUDED.state,
-                  last_transition_at = CASE WHEN mi_safeguard_state.state <> EXCLUDED.state
-                                            THEN NOW() ELSE mi_safeguard_state.last_transition_at END,
+                  last_transition_at = NOW(),
                   updated_at = NOW()
+              WHERE mi_safeguard_state.state IS DISTINCT FROM EXCLUDED.state
+            RETURNING state
             """, _LAST_BAND_SAFEGUARD, account_mode, band)
+    return row is not None
 
 
 async def record_override(direction: str, reason: str) -> None:
@@ -303,14 +314,24 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
     refresh at the 16:12 equity snapshot, so daily-resolution is correct). Evaluates the
     SIGNED bands, and on a TRANSITION from the last-persisted band emits an immediate Telegram
     (transition-only, deduped via mi_safeguard_state) + a `kill_scale_band_transition` audit
-    row. Fully error-wrapped — telemetry must never break the EOD chain. Returns a summary."""
+    row. Fully error-wrapped — telemetry must never break the EOD chain. Returns a summary.
+
+    F21 dedup: `is_transition(prev_band, ...)` is a cheap LOCAL pre-check on a plain (unlocked)
+    read — under concurrency it can be stale, so it is NOT what prevents duplicate alerts. The
+    actual dedup is `set_last_band`'s ATOMIC claim: it is only attempted when the local check
+    says a transition might be happening, and the audit/Telegram below only fire when that
+    claim is actually won (`claimed is True`). A concurrent duplicate evaluation may also see
+    `locally_transitioned=True`, but loses the atomic claim and returns `transitioned=False`."""
     try:
         _, verdict, override = await assess_bands(account_mode)
         prev_band, _ = await get_last_band(account_mode)
-        transitioned = is_transition(prev_band, verdict.band)
+        locally_transitioned = is_transition(prev_band, verdict.band)
 
-        if transitioned:
-            await set_last_band(account_mode, verdict.band)
+        claimed = False
+        if locally_transitioned:
+            claimed = await set_last_band(account_mode, verdict.band)
+
+        if claimed:
             from agents.market_intelligence.db import log_audit_event
             await log_audit_event(
                 "kill_scale_band_transition",
@@ -327,7 +348,7 @@ async def run_band_evaluation(account_mode: str = "live", *, send: bool = True) 
                 await send_telegram_message(
                     f"📊 *Kill/scale band change* ({account_mode}): {arrow}\n"
                     + format_band_line(verdict, override))
-        return {"band": verdict.band, "prev_band": prev_band, "transitioned": transitioned,
+        return {"band": verdict.band, "prev_band": prev_band, "transitioned": claimed,
                 "n_trades": verdict.n_trades, "override_active": override is not None}
     except Exception as e:  # noqa: BLE001 — telemetry must never break the EOD chain
         logger.warning(f"run_band_evaluation({account_mode}) skipped: {e}")
