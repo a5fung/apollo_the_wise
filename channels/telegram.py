@@ -1422,7 +1422,7 @@ class TelegramChannel:
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
-        """Handle inline keyboard button presses (trade confirm/skip)."""
+        """Handle inline keyboard button presses (drill-downs)."""
         query = update.callback_query
         if not query or not query.data:
             return
@@ -1437,17 +1437,12 @@ class TelegramChannel:
 
         callback_data = query.data
 
-        # Forward trade callbacks to market agent
-        if callback_data.startswith("trade_confirm:") or callback_data.startswith("trade_skip:"):
-            try:
-                from agents.market_intelligence.broker.telegram_confirm import handle_callback
-                result = await handle_callback(callback_data, user_id=user_id)
-                if "confirm" in callback_data or "skip" in callback_data:
-                    await query.edit_message_reply_markup(reply_markup=None)
-            except Exception as e:
-                logger.error(f"Callback handling failed: {e}")
-
-        elif callback_data.startswith(("eps:", "themes:", "trades:")):
+        # trade_confirm:/trade_skip: branch REMOVED 2026-07-03 (#364/F17): the
+        # staged-proposal buttons are gone — that branch imported broker code
+        # DIRECTLY into this orchestrator process (execution-seam violation) and
+        # wedged trades at 'confirmed' on the creds-less container. A stale
+        # button press on an old message now just gets the answer() ack above.
+        if callback_data.startswith(("eps:", "themes:", "trades:")):
             await self._handle_drill_down_callback(query, callback_data)
 
         elif callback_data.startswith("hud:"):

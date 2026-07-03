@@ -16,10 +16,10 @@ Each cross-boundary function is factored into two parts:
     invisible to call sites.
 
 NOT every facade fn crosses (advisor 6/13): `get_data_feed_name` is pure config
-(reads an env var — kept local, no broker import), `verify_accounts` is
-execution-only (gated off in intelligence), and `handle_confirm_callback` takes
-a Telegram object (deferred, plan risk 2). These stay local passthroughs and
-have no HTTP route.
+(reads an env var — kept local, no broker import) and `verify_accounts` is
+execution-only (gated off in intelligence). These stay local passthroughs and
+have no HTTP route. (`handle_confirm_callback` was removed 2026-07-03 — #364/F17,
+the staged-confirm flow is gone.)
 
 A wire-hop failure RAISES `ExecutionUnreachable` — it is NEVER collapsed into a
 broker empty/None default. "Couldn't reach execution" must stay distinct from
@@ -347,10 +347,6 @@ async def place_timestop_sell(ticker: str, qty, account_mode: str,
         (ticker, qty, account_mode), {"strategy_tag": strategy_tag})
 
 
-async def handle_confirm_callback(*args, **kwargs):
-    """Telegram inline-button confirm/reject for staged trade proposals.
-    DEFERRED from HTTP (plan risk 2): the arg is a Telegram callback object, not
-    JSON-serializable. Stays a local passthrough until the confirm-callback
-    routing is designed (W2 step 5)."""
-    from agents.market_intelligence.broker.telegram_confirm import handle_callback
-    return await handle_callback(*args, **kwargs)
+# handle_confirm_callback REMOVED 2026-07-03 (#364/F17): the staged-proposal
+# Confirm/Skip flow is gone (never worked in the split topology — the W2-step-5
+# routing was never designed). send_trade_proposal remains as a buttonless FYI.

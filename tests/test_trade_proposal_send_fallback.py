@@ -1,9 +1,10 @@
 """Trade-proposal send must survive a Telegram Markdown 400 (the SNX 6/25 trade #234 class).
 
 A bare Markdown sendMessage 400s on an unescaped char in a dynamic field ("game_changer" → an
-unclosed italic entity). A live-trade proposal that silently fails = a missed entry, so the send
-now (1) sanitizes the catalyst underscore and (2) falls back to PLAIN TEXT — keeping the Confirm/Skip
-buttons — before giving up. These pin both.
+unclosed italic entity). A proposal that silently fails = a missed FYI, so the send (1) sanitizes
+the catalyst underscore and (2) falls back to PLAIN TEXT before giving up. These pin both — plus
+the #364 invariant: the proposal is a pure FYI, NO inline keyboard (the Confirm/Skip machinery
+was removed 2026-07-03; F17 proved it structurally broken).
 """
 import pytest
 
@@ -62,7 +63,7 @@ async def test_markdown_400_falls_back_to_plain_text(monkeypatch):
     _install_mocks(monkeypatch, _post)
     ok = await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
     assert ok is True                    # the proposal still reached the operator
-    assert posted == ["Markdown", None]  # tried Markdown, fell back to plain text (keeps buttons)
+    assert posted == ["Markdown", None]  # tried Markdown, fell back to plain text
 
 
 @pytest.mark.asyncio
@@ -90,11 +91,11 @@ async def test_catalyst_underscore_sanitized(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_plain_text_fallback_keeps_confirm_button(monkeypatch):
-    # Trade-stakes guard (advisor 6/25): a fallback proposal that RENDERS but whose Confirm button is
-    # dead = a missed live entry at Phase-2. The plain-text (parse_mode=None) send MUST still carry the
-    # reply_markup with the trade_confirm callback_data — parse_mode renders TEXT, it must never strip
-    # the button. Pins the shared-keyboard contract so a future _post refactor can't silently drop it.
+async def test_proposal_is_fyi_only_no_keyboard(monkeypatch):
+    # #364 invariant (operator-decided 7/3, F17): the proposal is a pure FYI — NO
+    # inline keyboard on ANY attempt. A reintroduced reply_markup would resurrect
+    # a dead button whose callback machinery no longer exists (a press would be a
+    # silent no-op at best, a wedge at worst). Pins its absence on both sends.
     payloads = []
 
     def _post(payload):
@@ -103,7 +104,9 @@ async def test_plain_text_fallback_keeps_confirm_button(monkeypatch):
 
     _install_mocks(monkeypatch, _post)
     await telegram_confirm.send_trade_proposal(_ALERT, _SPEC, trade_id=234, live_real_enabled=False)
-    fallback = next(p for p in payloads if p.get("parse_mode") is None)
-    cbs = [b["callback_data"] for row in fallback["reply_markup"]["inline_keyboard"] for b in row]
-    assert "trade_confirm:234" in cbs  # the Confirm button survives the plain-text fallback
-    assert "trade_skip:234" in cbs     # ...and Skip
+    assert len(payloads) == 2
+    for p in payloads:
+        assert "reply_markup" not in p, "#364: the proposal must carry no inline keyboard"
+    assert not hasattr(telegram_confirm, "handle_callback"), (
+        "#364: the confirm/skip callback machinery must stay removed"
+    )

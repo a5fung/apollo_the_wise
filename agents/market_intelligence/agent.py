@@ -623,16 +623,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 results["error"] = str(e)
             return results
 
-        @self.app.post("/broker/callback")
-        async def broker_callback(
-            body: dict,
-            _: str = Depends(verify_internal_secret),
-        ):
-            """Handle forwarded trade callback from Telegram inline buttons."""
-            from agents.market_intelligence.execution_client import handle_confirm_callback
-            callback_data = body.get("callback_data", "")
-            result = await handle_confirm_callback(callback_data)
-            return result
+        # /broker/callback route REMOVED 2026-07-03 (#364/F17): the trade-confirm
+        # buttons are gone; nothing ever POSTed here (the button press went via a
+        # direct import in channels/telegram.py — also removed).
 
     async def execute_task(self, request: AgentRequest) -> AgentResponse:
         task = request.task.lower()

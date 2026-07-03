@@ -1,22 +1,25 @@
 """
-Trade confirmation via Telegram inline keyboards.
+Staged-trade FYI proposals via Telegram.
 
-Sends trade proposals with [Confirm] [Skip] buttons.
+#364 (operator-decided 2026-07-03): the [Confirm]/[Skip] inline buttons and their
+callback machinery are REMOVED — review finding F17 proved the flow structurally
+broken under the HTTP split (the button press executed on a creds-less container
+and flipped status→'confirmed' BEFORE submit → permanent wedge; it never worked
+in prod). The proposal message stays as a pure FYI for the live+live_real_enabled=False
+phase; the row stays 'pending_confirmation' (inert — nothing can auto-submit it).
+If a staged/manual-confirm phase is ever wanted again, it needs a real routing
+design first (the W2-step-5 deferral) AND submit-before-flip ordering.
+
 Uses Telegram Bot API directly via httpx (same pattern as send_telegram_message).
 """
 from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
 
 import httpx
 
-from agents.market_intelligence.db import get_pool
-
 logger = logging.getLogger(__name__)
-
-VALID_ACTIONS = frozenset({"trade_confirm", "trade_skip"})
 
 
 async def send_trade_proposal(
@@ -27,13 +30,13 @@ async def send_trade_proposal(
     live_real_enabled: bool = False,
 ) -> bool:
     """
-    Send a trade proposal to Telegram with inline Confirm/Skip buttons.
+    Send a staged-trade FYI proposal to Telegram (no buttons — #364).
     Returns True if message was sent successfully.
 
-    When account_mode='live' AND live_real_enabled=False, the header swaps
-    to a STAGED-PAPER ramp banner so the user can distinguish strategies
-    that haven't been promoted to real-$ yet (manual Confirm tap is the
-    actual safety gate; the banner is decision-support).
+    When account_mode='live' AND live_real_enabled=False, the header shows the
+    STAGED-PAPER banner: the strategy hasn't been promoted to real-$, nothing
+    auto-submits, and there is NO in-chat confirm — arming real money is the
+    operator's SQL flip per the runbook (live_real_enabled=TRUE + restart).
     """
     ticker = order_spec["ticker"]
     entry = order_spec["entry_price"]
@@ -52,11 +55,11 @@ async def send_trade_proposal(
 
     from agents.market_intelligence.constants import current_account_mode, mode_prefix
     if current_account_mode() == "live" and not live_real_enabled:
-        header = f"🟡 *STAGED-PAPER ramp — confirm to enter REAL-$:* {ticker}"
+        header = f"🟡 *STAGED-PAPER (not armed — no auto-submit):* {ticker}"
     else:
-        header = f"{mode_prefix()}📊 *TRADE PROPOSAL: {ticker}*"
-    # Theme membership (C8, 2026-05-19) — surface for live-real trade proposals.
-    # Pradeep #1 catalyst type, helps inform manual Confirm/Skip decision.
+        header = f"{mode_prefix()}📊 *TRADE PROPOSAL (FYI): {ticker}*"
+    # Theme membership (C8, 2026-05-19) — surface on the proposal FYI.
+    # Pradeep #1 catalyst type; decision-support for the operator's read.
     theme_line = ""
     try:
         from agents.market_intelligence.catalyst_rubric_runtime import (
@@ -78,15 +81,6 @@ async def send_trade_proposal(
         f"{theme_line}"
     )
 
-    keyboard = {
-        "inline_keyboard": [
-            [
-                {"text": "✅ Confirm", "callback_data": f"trade_confirm:{trade_id}"},
-                {"text": "❌ Skip", "callback_data": f"trade_skip:{trade_id}"},
-            ]
-        ]
-    }
-
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     allowed = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
     chat_id = int(allowed.split(",")[0].strip())
@@ -96,7 +90,6 @@ async def send_trade_proposal(
             "chat_id": chat_id,
             "text": text,
             "disable_web_page_preview": True,
-            "reply_markup": keyboard,
         }
         if parse_mode:
             payload["parse_mode"] = parse_mode
@@ -113,7 +106,7 @@ async def send_trade_proposal(
     except Exception as e:
         # Markdown can 400 on an unescaped char in a dynamic field (SNX 6/25 trade #234 —
         # "game_changer" underscore → "can't find end of entity"). A live-trade proposal MUST
-        # reach the operator, so retry PLAIN TEXT (keeps the Confirm/Skip buttons) before giving up.
+        # reach the operator, so retry PLAIN TEXT before giving up.
         logger.warning(f"Trade proposal Markdown send failed for {ticker} ({e}) — retrying plain text")
         try:
             await _post(None)
@@ -124,112 +117,7 @@ async def send_trade_proposal(
             return False
 
 
-async def handle_callback(callback_data: str, user_id: int | None = None) -> dict:
-    """
-    Handle a callback from Telegram inline button press.
-    Format: 'trade_confirm:{id}' or 'trade_skip:{id}'
-
-    Security checks:
-    - LIVE_TRADING_ENABLED must be true
-    - User must be in allowed list
-    - Confirmation must be within timeout window
-    - Atomic status update prevents duplicate orders
-    """
-    from agents.market_intelligence.constants import (
-        LIVE_TRADING_ENABLED,
-        CONFIRMATION_TIMEOUT_SEC,
-    )
-
-    logger.info(f"Callback received: {callback_data} user_id={user_id}")
-
-    # Kill switch check
-    if not LIVE_TRADING_ENABLED:
-        logger.warning("Callback rejected: live trading disabled")
-        return {"error": "live trading is disabled"}
-
-    # Validate callback format
-    parts = callback_data.split(":")
-    if len(parts) != 2:
-        return {"error": "invalid callback format"}
-
-    action, trade_id_str = parts
-    if action not in VALID_ACTIONS:
-        return {"error": "invalid action"}
-
-    try:
-        trade_id = int(trade_id_str)
-    except ValueError:
-        return {"error": "invalid trade_id"}
-
-    # Validate user is authorized
-    if user_id is not None:
-        allowed_raw = os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "")
-        allowed_ids = {int(uid.strip()) for uid in allowed_raw.split(",") if uid.strip()}
-        if user_id not in allowed_ids:
-            logger.warning(f"Unauthorized callback attempt: user_id={user_id}")
-            return {"error": "unauthorized"}
-
-    pool = await get_pool()
-
-    if action == "trade_confirm":
-        # Atomic: only update if still pending — prevents duplicate orders
-        async with pool.acquire() as conn:
-            trade = await conn.fetchrow("""
-                UPDATE mi_live_trades SET
-                    status = 'confirmed',
-                    confirmed_at = NOW()
-                WHERE id = $1 AND status = 'pending_confirmation'
-                RETURNING *
-            """, trade_id)
-
-        if not trade:
-            logger.warning(f"Trade {trade_id} not available for confirmation (already processed or not found)")
-            return {"error": "trade not available (already processed or not found)"}
-
-        # Timeout check: reject if proposal is stale
-        proposed_at = trade.get("proposed_at")
-        if proposed_at:
-            if proposed_at.tzinfo is None:
-                proposed_at = proposed_at.replace(tzinfo=timezone.utc)
-            age_seconds = (datetime.now(timezone.utc) - proposed_at).total_seconds()
-            if age_seconds > CONFIRMATION_TIMEOUT_SEC:
-                # Roll back to expired
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE mi_live_trades SET status = 'expired' WHERE id = $1",
-                        trade_id,
-                    )
-                logger.warning(f"Trade {trade_id} expired: {age_seconds:.0f}s old")
-                return {"error": f"proposal expired ({age_seconds:.0f}s > {CONFIRMATION_TIMEOUT_SEC}s)"}
-
-        # Submit order
-        from agents.market_intelligence.broker.order_manager import submit_entry
-        order = await submit_entry(trade_id)
-
-        if order:
-            logger.info(f"Trade {trade_id} confirmed → order_id={order['id']}")
-            return {"action": "confirmed", "trade_id": trade_id, "order_id": order["id"]}
-        else:
-            logger.error(f"Trade {trade_id} confirmed but order submission failed")
-            return {"action": "confirmed_but_order_failed", "trade_id": trade_id}
-
-    elif action == "trade_skip":
-        async with pool.acquire() as conn:
-            result = await conn.execute("""
-                UPDATE mi_live_trades SET
-                    status = 'skipped',
-                    skip_reason = 'user_skipped'
-                WHERE id = $1 AND status = 'pending_confirmation'
-            """, trade_id)
-
-        from agents.market_intelligence.briefing import send_telegram_message
-        from agents.market_intelligence.constants import mode_prefix
-        async with pool.acquire() as conn:
-            ticker_row = await conn.fetchval(
-                "SELECT ticker FROM mi_live_trades WHERE id = $1", trade_id,
-            )
-        logger.info(f"Trade {trade_id} ({ticker_row}) skipped by user")
-        await send_telegram_message(f"{mode_prefix()}⏭ Skipped trade: {ticker_row or trade_id}")
-        return {"action": "skipped", "trade_id": trade_id}
-
-    return {"error": "invalid action"}
+# handle_callback (the Confirm/Skip callback machinery: atomic status flip,
+# timeout window, submit_entry call) REMOVED 2026-07-03 (#364, operator-decided;
+# review finding F17). It never worked in the multi-container prod topology and
+# its flip-before-submit ordering wedged trades at 'confirmed'. History in git.
