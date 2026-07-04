@@ -1083,6 +1083,31 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_theme_axis_shadow_date
                 ON mi_theme_axis_shadow(alert_date DESC);
+
+            -- #367 STEP-1: refined relevance signals, inheriting the #369 finding that
+            -- ticker-intersection is the WRONG instrument (grounded_text is the raw 8-K,
+            -- which names peers by COMPANY NAME, not ticker). Nullable schema-evolution
+            -- columns (established pattern — see mi_daily_closes open/high/low_price).
+            -- (a) company-NAME matching: same shape as the structural-attribution columns
+            -- above (score/attributable/matched-terms), but matching normalized company
+            -- NAMES against grounded_text instead of tickers.
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS name_attribution_score INT NOT NULL DEFAULT 0;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS name_attributable BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS matched_names TEXT[] NOT NULL DEFAULT '{}';
+            -- (b) co-movement: is the ticker moving WITH its theme cohort that day? NULL
+            -- when not computable (no cohort price data for alert_date). co_moving is a
+            -- separate NULLABLE bool (not a default-False) so "not computable" is
+            -- distinguishable from "computed False" — a health-gauge read must not conflate
+            -- the two.
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS cohort_move FLOAT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS ticker_move FLOAT;
+            ALTER TABLE mi_theme_axis_shadow
+                ADD COLUMN IF NOT EXISTS co_moving BOOLEAN;
         """)
 
         # ── Correlation clusters — statistical pre-pass for theme discovery ──────────
@@ -2171,6 +2196,10 @@ async def initialize_schema() -> None:
                 ADD COLUMN IF NOT EXISTS sector TEXT;
             ALTER TABLE mi_ticker_overrides
                 ADD COLUMN IF NOT EXISTS industry TEXT;
+            -- #367 STEP-1: persistent company-name cache (mirrors sector/industry) so the
+            -- theme-axis name-matching signal doesn't re-fetch yfinance on every scored HIGH.
+            ALTER TABLE mi_ticker_overrides
+                ADD COLUMN IF NOT EXISTS company_name TEXT;
             ALTER TABLE mi_parabolic_candidates
                 ADD COLUMN IF NOT EXISTS excluded_reason TEXT;
             ALTER TABLE mi_parabolic_candidates
@@ -7622,6 +7651,70 @@ async def get_sectors_batch(tickers: list[str]) -> dict[str, str]:
             tickers,
         )
     return {r["ticker"]: r["sector"] for r in rows}
+
+
+# ── Company-name cache (#367 STEP-1 theme-axis name-matching signal) ──────────
+# The subject-alert's own grounded_text is the raw SEC 8-K (#369 finding) — it names peers by
+# COMPANY NAME, not ticker. These accessors mirror get_descriptions_batch/get_sectors_batch:
+# a cache-only read (takes a live conn — the caller, theme_axis_shadow.py, already holds one
+# in the STEP-0 hot loop, same rationale as get_theme_heat_asof) plus a batch upsert used by
+# the fetch-and-cache helper (theme_axis_shadow._ensure_company_names) when a name is missing.
+
+async def get_company_names_batch(conn: Any, tickers: "list[str]") -> dict[str, str]:
+    """Cached company names (mi_ticker_overrides.company_name) for a ticker set. Read-only —
+    does NOT fetch; callers needing an uncached name fetch via collector.get_fmp_profile then
+    persist with upsert_company_names_batch."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        "SELECT ticker, company_name FROM mi_ticker_overrides "
+        "WHERE ticker = ANY($1) AND company_name IS NOT NULL AND company_name != ''",
+        tickers,
+    )
+    return {r["ticker"]: r["company_name"] for r in rows}
+
+
+async def upsert_company_names_batch(conn: Any, names: dict[str, str]) -> int:
+    """Batch-upsert company names into the mi_ticker_overrides cache. Does not touch
+    description/sector/industry. Returns count upserted (skips empty names)."""
+    rows = [(tk.upper(), name) for tk, name in names.items() if name]
+    if not rows:
+        return 0
+    await conn.executemany("""
+        INSERT INTO mi_ticker_overrides (ticker, company_name, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (ticker) DO UPDATE SET
+            company_name = EXCLUDED.company_name,
+            updated_at = NOW()
+    """, rows)
+    return len(rows)
+
+
+async def get_daily_moves(conn: Any, trade_date: Any, tickers: "list[str]") -> dict[str, float]:
+    """Same-day open->close pct move for a ticker set on trade_date, from mi_daily_closes.
+    Returns {ticker: pct_move} — tickers with missing/zero open_price or missing close are
+    simply absent (not 0.0), so callers can distinguish "no data" from "flat day".
+
+    open->close (not prev_close->close) is a deliberate simplification (#367 STEP-1): it needs
+    only a single day's row (no weekend/holiday-aware prior-trading-day lookup) and puts the
+    cohort and the subject ticker on the identical basis, which is all the co-movement compare
+    needs."""
+    if not tickers:
+        return {}
+    rows = await conn.fetch(
+        """
+        SELECT ticker, open_price, close FROM mi_daily_closes
+        WHERE trade_date = $1 AND ticker = ANY($2)
+        """,
+        trade_date, tickers,
+    )
+    moves = {}
+    for r in rows:
+        op, cl = r["open_price"], r["close"]
+        if op is None or cl is None or op == 0:
+            continue
+        moves[r["ticker"]] = (cl - op) / op * 100.0
+    return moves
 
 
 async def get_sector_rs_rank(
