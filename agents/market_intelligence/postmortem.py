@@ -183,8 +183,7 @@ async def generate_postmortem_narrative(
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        # #377 cost meter — additive, never alters the narrative. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=_MODEL, caller="postmortem",
                                        usage=getattr(resp, "usage", None))

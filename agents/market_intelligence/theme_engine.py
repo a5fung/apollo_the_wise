@@ -407,8 +407,7 @@ async def discover_narrative_themes(scan_date=None, persist: bool = True, backfi
             model=THEME_MODEL, max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
-        # #377 cost meter — additive, never alters discovery output. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="narrative_theme_discovery",
                                        usage=getattr(msg, "usage", None))
@@ -730,8 +729,7 @@ async def _ensure_descriptions(tickers: list[str]) -> None:
                 max_tokens=500,
                 messages=[{"role": "user", "content": PROMPT_PREFIX + "\n".join(chunk_lines)}],
             )
-            # #377 cost meter — additive, never alters description output. log_anthropic_call_safe
-            # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+            # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=DESCRIPTION_MODEL, caller="theme_descriptions",
                                            usage=getattr(resp, "usage", None))
@@ -1659,8 +1657,7 @@ async def _validate_theme_membership(
                         detail=f"429 on {THEME_MODEL}",
                     )
                     await asyncio.sleep(wait)
-        # #377 cost meter — additive, never alters validation output. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_validation",
                                        usage=getattr(resp, "usage", None))
@@ -2331,9 +2328,8 @@ In every other case, skip the advisor and call `assign_stocks_to_themes` immedia
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
-            # #377 cost meter — per-turn (each loop iter is a billed call); additive.
-            # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
-            # swallows+warns internally, never raises.
+            # #377 cost meter — per-turn (each loop iter is a billed call).
+            # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_assignment",
                                            usage=getattr(response, "usage", None))
@@ -2728,8 +2724,7 @@ async def _call_advisor(question: str, context: str, caller: str = "") -> str:
             summary=f"[{caller}] {question[:120]}",
             detail=f"Q: {question}\n\nContext: {context[:500]}\n\nVerdict: {verdict}",
         )
-        # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it swallows+warns
-        # internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(
             model=THEME_ADVISOR_MODEL,
@@ -2848,9 +2843,8 @@ If any answer is "no" or "unsure" → call consult_advisor first."""
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
-            # #377 cost meter — per-turn (each loop iter is a billed call); additive.
-            # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
-            # swallows+warns internally, never raises.
+            # #377 cost meter — per-turn (each loop iter is a billed call).
+            # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=THEME_MODEL, caller="theme_split",
                                            usage=getattr(response, "usage", None))
@@ -3360,12 +3354,11 @@ In every other case, skip the advisor and call `report_themes` immediately, with
             # iteration of this multi-turn loop is a separate billed call, so we
             # log per-turn (not once at the end). A logging/DB failure must NEVER
             # alter discovery output (the HARD CONSTRAINT): logging is additive
-            # observability only — log_anthropic_call_safe (the sanctioned wrapper,
-            # S2/F9) swallows+warns internally and never raises, so it can't break
-            # the run. We deliberately do NOT route this loop through
-            # invoke_forced_tool / a forced-tool transport — that would change
-            # tool_choice and break the #173 advisor/force_report path. ADDITIVE is
-            # the correct shape for the loop.
+            # observability only. S2/F9: safe wrapper — see
+            # spend_tracker.log_anthropic_call_safe. We deliberately do NOT route
+            # this loop through invoke_forced_tool / a forced-tool transport —
+            # that would change tool_choice and break the #173 advisor/
+            # force_report path. ADDITIVE is the correct shape for the loop.
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(
                 model=THEME_MODEL,

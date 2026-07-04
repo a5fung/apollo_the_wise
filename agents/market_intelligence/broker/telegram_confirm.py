@@ -115,9 +115,3 @@ async def send_trade_proposal(
         except Exception as e2:
             logger.error(f"Failed to send trade proposal for {ticker} (markdown + plain): {e2}")
             return False
-
-
-# handle_callback (the Confirm/Skip callback machinery: atomic status flip,
-# timeout window, submit_entry call) REMOVED 2026-07-03 (#364, operator-decided;
-# review finding F17). It never worked in the multi-container prod topology and
-# its flip-before-submit ordering wedged trades at 'confirmed'. History in git.

@@ -461,8 +461,7 @@ async def _nightly_data_pull():
                     max_tokens=2000,
                     messages=[{"role": "user", "content": prompt}],
                 )
-                # #377 cost meter — additive, never alters the backfill. log_anthropic_call_safe
-                # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+                # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
                 from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
                 await log_anthropic_call_safe(model=DESCRIPTION_MODEL,
                                                caller="description_backfill",

@@ -184,7 +184,6 @@ def mode_prefix(account_mode: str | None = None) -> str:
 # true: full alt-season Telegram alerts + briefing surfaces enabled.
 CRYPTO_RS_ENABLED = os.environ.get("CRYPTO_RS_ENABLED", "false").lower() == "true"
 MAX_CONCURRENT_LIVE_POSITIONS = 5
-CONFIRMATION_TIMEOUT_SEC = 300       # 5 min for user to tap Confirm/Skip
 DAILY_LOSS_LIMIT_PCT = 0.02          # 2% daily loss limit
 CIRCUIT_BREAKER_CONSEC_LOSSES = 10   # Pause after N consecutive losses (EP win rate ~25% → P(10 consec) ≈ 5.6%, vs P(5) = 24%).
                                      # Bumped 5→10 on 2026-05-08: at 5 the breaker tripped on 6-loss streak (BSX 4/23 → AMD 5/07)

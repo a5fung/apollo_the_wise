@@ -243,8 +243,7 @@ async def run_theme_synthesis(run_date: "date | None" = None) -> dict:
             tool_choice={"type": "tool", "name": "propose_emerging_cohorts"},
             messages=[{"role": "user", "content": prompt}],
         )
-        # #377 cost meter — additive, never alters synthesis output. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=SYNTHESIS_MODEL, caller="theme_synthesis",
                                        usage=getattr(resp, "usage", None))

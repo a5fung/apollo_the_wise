@@ -86,8 +86,7 @@ async def invoke_forced_tool(
         # fail-open `except` below (which would run the error through
         # is_credit_error and return None, i.e. turn a good grade into a
         # fail-open — a behavior change the cost meter must never cause).
-        # log_anthropic_call_safe is the sanctioned wrapper (S2/F9) — it
-        # swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         if log_caller:
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(

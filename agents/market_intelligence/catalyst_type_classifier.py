@@ -187,8 +187,7 @@ async def classify_catalyst_type(
                     if attempt == 1:
                         raise
                     await asyncio.sleep(2 + attempt)
-        # #377 cost meter — additive, never alters the classification. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=CATALYST_TYPE_MODEL, caller="catalyst_type_classifier",
                                        usage=getattr(resp, "usage", None))

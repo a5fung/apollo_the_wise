@@ -913,7 +913,7 @@ class MarketIntelligenceAgent(BaseAgent):
         from agents.market_intelligence.constants import (
             ACCOUNT_SIZE, RISK_PCT, MAX_POSITION_PCT,
             MAX_CONCURRENT_LIVE_POSITIONS, DAILY_LOSS_LIMIT_PCT,
-            CIRCUIT_BREAKER_CONSEC_LOSSES, CONFIRMATION_TIMEOUT_SEC,
+            CIRCUIT_BREAKER_CONSEC_LOSSES,
             LIVE_TRADING_ENABLED, current_account_mode,
         )
         from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
@@ -966,7 +966,6 @@ class MarketIntelligenceAgent(BaseAgent):
             f"  Max open positions: {MAX_CONCURRENT_LIVE_POSITIONS} (shared MAGNA53 + 9M EP)",
             f"  Daily loss limit:   {DAILY_LOSS_LIMIT_PCT*100:.0f}% = ${daily_loss_dollars:,}",
             f"  Circuit breaker:    pause after {CIRCUIT_BREAKER_CONSEC_LOSSES} consecutive losses",
-            f"  Confirm timeout:    {CONFIRMATION_TIMEOUT_SEC//60} min (live mode only)",
             "",
             "*MAGNA53 EP Entry Filters*",
             "  Min gap:            8%",
@@ -6926,8 +6925,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 "content": f"Context:\n{context}\n\nQuestion: {request.task}",
             }],
         )
-        # #377 cost meter — additive, never alters the response. log_anthropic_call_safe
-        # is the sanctioned wrapper (S2/F9) — it swallows+warns internally, never raises.
+        # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
         from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
         await log_anthropic_call_safe(model=MARKET_AGENT_MODEL, caller="market_agent_general",
                                        usage=getattr(response, "usage", None))
