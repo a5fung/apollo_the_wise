@@ -149,6 +149,16 @@ _Last CLOSE: 2026-06-16._
 
 - #315 | 2026-07-15 | pending | RS-theme dashboard R-items (memory rs-theme-dash-backlog): R1 mobile/public-URL (Tailscale) · R2 bump chart · R3 canonicalization · R4 forward returns
 
+## Fable planning reserve (operator 7/4 — Fable plans in max detail, Opus then executes purely)
+
+_Directive: reserve remaining Fable capacity for these two planning deliverables (post-Sunday-CLOSE);
+heavy execution goes to Sonnet cards or waits for Opus. Plans must be written to PURE-EXECUTION depth:
+explicit specs, DoDs, acceptance criteria, sequencing — zero open design forks except explicitly
+operator-gated ones._
+
+- #418 | 2026-07-07 | pending | FABLE PLAN 1 — Apollo v1.0 close-out & productization plan: treat Apollo as a complete product SHIPPED TO CUSTOMER, done. Deliverable = docs/roadmap/v1-closeout-productization.md: (a) define the v1.0 finish line (what stands between today's state and “complete product, done”); (b) disposition the full open board into closeout-blocking vs post-1.0; (c) productization sweep — runbooks/DR/monitoring/onboarding/cost-governance/docs maturity; (d) every item carries acceptance criteria + sequence, written for pure-Opus execution. DoD = operator walks the plan and signs the finish line.
+- #419 | 2026-07-08 | pending | FABLE PLAN 2 — Apollo Phase-2 mid/long-term roadmap: ideas, expansions, explorations, improvements in max detail. Builds on (revises IN PLACE, not forks — consolidate-surfaces rule) docs/roadmap/apollo-v1.1-v2.0.md PART II P1-P6 + the 6/10 three-axes diagnosis; adds new exploration lanes beyond it. Each item: evidence gate + design specced to pure-execution depth for Opus. Depends on #418 (the finish line defines where Phase 2 starts). DoD = operator-reviewed roadmap doc; items promote to #-tasks at execution start per the standing rule.
+
 ## Apollo v1.1 — fast-follow program (spec: docs/roadmap/apollo-v1.1-v2.0.md PART I)
 
 _W1 selection-replay + kill/scale = #268 (done) + #275; W2 entry-mechanics = #276; W4 chart-vision = #267 (Launch project). Below = the waves not yet broken into tasks._
