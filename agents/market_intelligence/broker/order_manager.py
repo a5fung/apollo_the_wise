@@ -2543,12 +2543,17 @@ def _live_sell_stops(open_orders: list) -> list:
     return live_stops
 
 
+# Distinct "couldn't read the broker" outcome for the adopt/place decision —
+# must never be conflated with "no adoptable stop" (F16-sibling, 7/3).
+_BROKER_UNREADABLE = object()
+
+
 async def _try_adopt_existing_stop(
     trade_id: int,
     ticker: str,
     remaining_qty: float,
     account_mode: str,
-) -> str | None:
+) -> "str | None | object":
     """#151 Phase 2 / #184 part-a (adopt-only): if the broker ALREADY has a
     live sell-stop covering this position, adopt it into the DB stop_order_id
     pointer (a PURE DB WRITE — no broker order placed or cancelled) rather than
@@ -2560,12 +2565,20 @@ async def _try_adopt_existing_stop(
     open order is a confirmed-live sell-stop with qty >= remaining. Zero
     candidates (nothing to adopt) or >1 (ambiguous) → None; never guess. No
     cancel/dedup here — that broker-mutating capability is deferred (Phase 2b).
+
+    F16-sibling (7/3 review, altitude pass): a broker-READ failure returns the
+    distinct _BROKER_UNREADABLE sentinel, NOT None — with None, "couldn't read"
+    was indistinguishable from "nothing to adopt" and the caller fell through
+    to place_stop_order while a real stop may exist (the same duplicate-stop
+    hazard F16 closed in _ensure_stop_coverage). The caller DEFERS on the
+    sentinel (next sync run re-checks).
     """
     try:
-        open_orders = await alpaca.get_open_orders(ticker, account_mode=account_mode)
+        open_orders = await alpaca.get_open_orders(
+            ticker, account_mode=account_mode, raise_on_error=True)
     except Exception as e:
         logger.warning(f"_try_adopt_existing_stop: get_open_orders failed for {ticker}: {e}")
-        return None
+        return _BROKER_UNREADABLE
     candidates = []
     for o in _live_sell_stops(open_orders):
         oqty = o.get("qty")
@@ -3094,6 +3107,15 @@ async def _sync_positions_for_mode(account_mode: str) -> list[str]:
             trade["id"], ticker,
             float(trade["remaining_shares"] or 0), account_mode,
         )
+        if adopted_id is _BROKER_UNREADABLE:
+            # F16-sibling: couldn't READ the broker's open orders — placing now
+            # could duplicate a live stop we simply failed to see. Defer this
+            # trade to the next sync run (same ambiguity semantics as
+            # _ensure_stop_coverage's defer).
+            msg = f"⏸ {ticker}: broker orders unreadable — stop remediation deferred to next sync"
+            discrepancies.append(msg)
+            logger.warning(f"sync_positions: {msg}")
+            continue
         if adopted_id:
             msg = f"🛡 Adopted existing broker stop for {ticker} ({adopted_id[:8]}) — no duplicate placed"
             discrepancies.append(msg)

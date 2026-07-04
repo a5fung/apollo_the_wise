@@ -488,3 +488,49 @@ async def test_f16_get_open_orders_raise_on_error_contract():
         with pytest.raises(RuntimeError):
             await ac.get_open_orders("IBM", account_mode="paper", raise_on_error=True)
     assert alert.await_count == 2, "the #370 alert fires on BOTH paths"
+
+
+@pytest.mark.asyncio
+async def test_f16_sibling_adopt_read_failure_defers_no_placement():
+    """F16-sibling (7/3 altitude pass): a broker-read failure inside
+    _try_adopt_existing_stop must DEFER the trade (no placement) — pre-fix it
+    returned None ('nothing to adopt') and sync fell through to
+    place_stop_order while a real stop may have existed."""
+    from unittest.mock import AsyncMock, patch
+    from agents.market_intelligence.broker import order_manager as om
+    from tests.conftest import make_mock_pool
+
+    db_trade = {
+        "id": 501, "ticker": "IBM", "remaining_shares": 5, "entry_price": 100.0,
+        "status": "filled", "stop_order_id": None, "stop_price": 95.0,
+        "orb_low": 95.0, "signal_type": "magna53",
+    }
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[db_trade])
+    conn.execute = AsyncMock()
+    conn.fetchval = AsyncMock(return_value=0)
+    conn.fetchrow = AsyncMock(return_value=None)
+    alpaca_positions = [{
+        "symbol": "IBM", "qty": 5.0, "qty_available": 5.0,
+        "avg_entry_price": 100.0, "market_value": 500.0, "cost_basis": 500.0,
+        "unrealized_pl": 0.0, "unrealized_plpc": 0.0, "current_price": 100.0,
+        "side": "long",
+    }]
+
+    async def _noop_audit(*a, **k):
+        pass
+
+    place_spy = AsyncMock()
+    with patch.object(om, "get_pool", AsyncMock(return_value=pool)), \
+         patch.object(om, "log_audit_event", _noop_audit), \
+         patch.object(om, "send_telegram_message", AsyncMock(return_value=True)), \
+         patch.object(om, "set_stop_order_id", AsyncMock()), \
+         patch.object(om, "_ensure_stop_coverage", AsyncMock(return_value=None)), \
+         patch.object(om.alpaca, "get_all_positions",
+                      AsyncMock(return_value=alpaca_positions)), \
+         patch.object(om.alpaca, "get_open_orders",
+                      AsyncMock(side_effect=RuntimeError("api down"))), \
+         patch.object(om.alpaca, "place_stop_order", place_spy):
+        await om._sync_positions_for_mode("live")
+
+    place_spy.assert_not_called()
