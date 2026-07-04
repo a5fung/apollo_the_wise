@@ -1256,8 +1256,10 @@ async def send_evening_briefing(chat_id: int | None = None) -> str:
         overrides = await get_ticker_overrides()
         if overrides:
             apply_overrides(overrides)
-    except Exception:
-        pass
+    except Exception as e:
+        # Advisory-only (briefing proceeds with stale/no overrides), but a
+        # DB outage here should be visible, not invisible — #381.
+        logger.warning(f"Ticker overrides refresh failed: {e}")
 
     # Collect all theme constituent tickers and fetch their RS data in one query
     all_theme_tickers = []
@@ -2246,8 +2248,9 @@ async def send_telegram_message(
                 "Telegram send exception",
                 f"{type(e).__name__}: {e} | chat={chat_id} | first_chunk={chunks[0][:300] if chunks else ''}",
             )
-        except Exception:
-            pass
+        except Exception:  # loud-ok: fallback-of-the-fallback — the primary
+            pass          # failure is already logger.error'd above; the audit
+                          # layer may share the same outage (e.g. DB down).
         return False
 
 
@@ -2421,8 +2424,9 @@ async def send_ep_alert(ep: dict, chat_id: int | None = None) -> None:
                 "sugar_baby_convergence_check_failed",
                 f"{ep['ticker']}: {type(_ce).__name__}: {str(_ce)[:200]}"
             )
-        except Exception:
-            pass
+        except Exception:  # loud-ok: fallback-of-the-fallback — the audit call
+            pass          # itself may share the same DB outage; nothing above
+                          # can handle it and the EP alert must still proceed.
     conv_tag = ""
     if conv:
         if conv["convergence_class"] == "breakout":
