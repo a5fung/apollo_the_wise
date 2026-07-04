@@ -38,6 +38,9 @@ class ExitStep:
 
     effective_stop: float
     active_sma: float | None
+    """The active trailing indicator value — SMA10/20 by default, or the 10/20 EMA when
+    `trail_mode='ema_10_20'` (#396 HTF Phase 4). Field name kept as `active_sma` for callers
+    already reading it; the VALUE's source depends on the trail_mode the caller requested."""
     bar_low: float | None
     bar_close: float | None
     hold_days: int
@@ -75,6 +78,8 @@ def apply_daily_exit_step(
     integer_partial_shares: bool = False,
     skip_partial_decision: bool = False,
     skip_hard_stop_close: bool = False,
+    trail_mode: str = "sma",
+    scale_fraction: float | None = None,
 ) -> ExitStep:
     """Compute one daily exit step.
 
@@ -88,7 +93,22 @@ def apply_daily_exit_step(
       False for backtest (fractional sim).
     skip_partial_decision: True to bypass the partial-profit branch
       entirely (used by live wrapper after partial helper fails).
+
+    trail_mode: 'sma' (DEFAULT, byte-identical to pre-#396 behavior) uses the
+      max(SMA10, SMA20) trail. 'ema_10_20' (#396 HTF Phase 4 management SHADOW,
+      OPT-IN — no existing caller passes this) uses the max(EMA10, EMA20) trail
+      instead via the `ema()` helper above — same downstream branch (close below
+      the trail -> close), just a different indicator source. Any other value
+      raises ValueError (fail loud, not a silent no-op).
+
+    scale_fraction: None (DEFAULT) preserves the EXACT original partial-sizing
+      arithmetic (`remaining // 3` / `remaining / 3` — the untouched behavior
+      every existing caller depends on). A float (e.g. 0.40, within the sourced
+      0.33-0.50 HTF range — docs/setups/htf.md) OPTS IN to a variable scale-out
+      fraction instead of the hardcoded 1/3 (#396 HTF Phase 4).
     """
+    if trail_mode not in ("sma", "ema_10_20"):
+        raise ValueError(f"apply_daily_exit_step: unknown trail_mode {trail_mode!r}")
     remaining = float(state.get("remaining_shares") or 0)
     alert_date = state["alert_date"]
     entry_price = state.get("entry_price")
@@ -141,14 +161,23 @@ def apply_daily_exit_step(
             new_total_pnl=total_pnl,
         )
 
-    # 2. SMA10/20 — same logic both call sites
+    # 2. Trail indicator — SMA10/20 (default, UNCHANGED) or the 10/20 EMA (opt-in, #396).
     active_sma = None
-    if len(running_closes) >= 20:
-        sma_10 = sum(running_closes[-10:]) / 10
-        sma_20 = sum(running_closes[-20:]) / 20
-        active_sma = sma_10 if sma_10 > sma_20 else sma_20
-    elif len(running_closes) >= 10:
-        active_sma = sum(running_closes[-10:]) / 10
+    if trail_mode == "ema_10_20":
+        ema_10 = ema(running_closes, 10)
+        ema_20 = ema(running_closes, 20)
+        if ema_20 is not None:
+            active_sma = ema_10 if (ema_10 is not None and ema_10 > ema_20) else ema_20
+        elif ema_10 is not None:
+            active_sma = ema_10
+    else:
+        # SMA10/20 — same logic both call sites (byte-identical to pre-#396)
+        if len(running_closes) >= 20:
+            sma_10 = sum(running_closes[-10:]) / 10
+            sma_20 = sum(running_closes[-20:]) / 20
+            active_sma = sma_10 if sma_10 > sma_20 else sma_20
+        elif len(running_closes) >= 10:
+            active_sma = sum(running_closes[-10:]) / 10
 
     # 3. Partial profit Day 3-5
     partial_fired = False
@@ -161,10 +190,18 @@ def apply_daily_exit_step(
             or hold_days >= 5
         )
         if take_partial:
-            if integer_partial_shares:
-                partial_shares = float(int(remaining) // 3)
+            if scale_fraction is None:
+                # UNCHANGED — the original hardcoded 1/3 arithmetic every existing caller depends on.
+                if integer_partial_shares:
+                    partial_shares = float(int(remaining) // 3)
+                else:
+                    partial_shares = remaining / 3
             else:
-                partial_shares = remaining / 3
+                # #396 opt-in variable scale (0.33-0.50, sourced — docs/setups/htf.md).
+                if integer_partial_shares:
+                    partial_shares = float(int(remaining * scale_fraction))
+                else:
+                    partial_shares = remaining * scale_fraction
             if partial_shares > 0:
                 partial_fired = True
                 partial_price = bar_close

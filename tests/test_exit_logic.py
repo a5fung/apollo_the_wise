@@ -247,3 +247,58 @@ def test_ema_hand_computed_one_step_past_seed():
 def test_ema_none_when_insufficient_data():
     assert ema([1.0, 2.0, 3.0], 5) is None
     assert ema([], 1) is None
+
+
+# ── apply_daily_exit_step opt-in params (#396 HTF Phase 4 — trail_mode / scale_fraction) ───
+
+
+def test_unknown_trail_mode_raises():
+    with pytest.raises(ValueError):
+        apply_daily_exit_step(base_state(), bar(99, 101), date(2026, 4, 5), trail_mode="wma")
+
+
+def test_ema_trail_mode_uses_ema_not_sma():
+    # 20 closes: first 10 at 120, last 10 at 100 (mirrors test_sma_uses_max_of_10_and_20's
+    # fixture) — but under EMA, the recency-weighted EMA10/EMA20 differ from the SMA10/20 in
+    # the equal-weight test, proving the ema_10_20 branch is actually driving active_sma (not
+    # silently falling back to SMA).
+    closes = [120.0] * 10 + [100.0] * 10
+    state = base_state(running_closes=closes, hard_stop=80.0,
+                       alert_date=date(2026, 3, 1))
+    step = apply_daily_exit_step(state, bar(105.0, 109.0), date(2026, 4, 5),
+                                 trail_mode="ema_10_20")
+    # SMA branch (existing test) computes active_sma == 109.45 exactly. The EMA branch must
+    # differ (EMA lags less on the last 10 105-ish closes than an equal-weight SMA20 would).
+    assert step.active_sma is not None
+    assert step.active_sma != pytest.approx(109.45)
+
+
+def test_ema_trail_mode_default_none_before_enough_data():
+    # Only 5 running closes -> both ema(.,10) and ema(.,20) are None -> active_sma stays None,
+    # mirroring the SMA branch's < 10-close behavior.
+    state = base_state(running_closes=[100.0] * 4, hard_stop=80.0)
+    step = apply_daily_exit_step(state, bar(101.0, 102.0), date(2026, 4, 5),
+                                 trail_mode="ema_10_20")
+    assert step.active_sma is None
+
+
+def test_scale_fraction_none_preserves_exact_default_arithmetic():
+    # scale_fraction=None (the default) must reproduce test_partial_integer_shares_for_live_path
+    # EXACTLY — the byte-identical-default proof for the new param.
+    state = base_state(remaining_shares=100, alert_date=date(2026, 4, 1),
+                       running_closes=[105.0] * 3)
+    step = apply_daily_exit_step(state, bar(106.0, 108.0), date(2026, 4, 5),
+                                 integer_partial_shares=True, scale_fraction=None)
+    assert step.partial_shares == 33
+    assert step.new_remaining == 67
+
+
+def test_scale_fraction_opt_in_variable_scale():
+    # scale_fraction=0.40 (sourced 0.33-0.50 range) on remaining=100 -> 40 shares scaled out,
+    # 60 remain — proves the opt-in branch is wired and DIFFERENT from the hardcoded 1/3.
+    state = base_state(remaining_shares=100, alert_date=date(2026, 4, 1),
+                       running_closes=[105.0] * 3)
+    step = apply_daily_exit_step(state, bar(106.0, 108.0), date(2026, 4, 5),
+                                 integer_partial_shares=True, scale_fraction=0.40)
+    assert step.partial_shares == 40
+    assert step.new_remaining == 60
