@@ -36,7 +36,7 @@ import os
 import random
 import re
 from datetime import date, datetime, timedelta
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 import anthropic
 
@@ -125,8 +125,6 @@ _SKIP_TICKERS = SKIP_TICKERS
 # Catalyst cache — FMP + Claude + Perplexity results for today.
 # A stock oscillating near the 15% conviction threshold (e.g. BE at 13-15%)
 # gets re-scored every 5 min. The catalyst doesn't change; skip the API calls.
-# Keys: ticker → (catalyst_quality, confidence_multiplier, news_summary,
-#                  claude_analysis, pplx_quality, filters_cleared)
 # filters_cleared (S6/#405, 2026-07-03): True once the ticker has passed the
 # 3 post-grade filters (M&A / routine-catalyst / pm-shares floor) — the cache
 # now stores a grade THE MOMENT IT COMPLETES, even for filter-failing tickers,
@@ -134,7 +132,21 @@ _SKIP_TICKERS = SKIP_TICKERS
 # `_post_grade_filters` — it re-runs the (time-sensitive) filters against the
 # cached grade fields every tick with zero LLM calls.
 # Resets automatically when the calendar date changes.
-_catalyst_cache: dict[str, tuple[str, float, str, str, "str | None", bool]] = {}
+class CachedGrade(NamedTuple):
+    """Catalyst-cache value shape (simplify GROUP 1, 2026-07-03) — was a
+    positional 6-tuple; named fields + `_replace()` for the single-field
+    updates at the earnings-boost / downgrade call sites. Zero behavior
+    change from the prior tuple (still a tuple; positional access/unpack
+    still works, but every write site now uses named fields or `_replace`)."""
+    catalyst_quality: str
+    confidence_multiplier: float
+    news_summary: str
+    claude_analysis: "str | None"
+    pplx_quality: "str | None"
+    filters_cleared: bool
+
+
+_catalyst_cache: dict[str, CachedGrade] = {}
 _catalyst_cache_date: "date | None" = None
 
 # Prose-mismatch downgrade markers (#72, 2026-05-11). When the catalyst
@@ -1850,14 +1862,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
         cached = _catalyst_cache.get(ticker)
         if cached:
-            # 6-tuple as of S6/#405 (2026-07-03) — filters_cleared appended.
-            # True = this grade already passed the M&A/routine/pm-volume
-            # filters (pre-#405 cache semantics: only survivors were ever
-            # cached, so this is "today's fast path unchanged"). False =
+            # filters_cleared: True = this grade already passed the M&A/routine/
+            # pm-volume filters (pre-#405 cache semantics: only survivors were
+            # ever cached, so this is "today's fast path unchanged"). False =
             # graded but still filter-failing; re-run the filters fresh
             # below (no LLM call) instead of trusting a stale pass/fail.
-            (catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
-             pplx_quality, filters_cleared) = cached
+            catalyst_quality = cached.catalyst_quality
+            confidence_multiplier = cached.confidence_multiplier
+            news_summary = cached.news_summary
+            claude_analysis = cached.claude_analysis
+            pplx_quality = cached.pplx_quality
+            filters_cleared = cached.filters_cleared
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
 
             if not filters_cleared:
@@ -1875,10 +1890,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 # (pm-volume grew, M&A stopped matching, gap moved) — flip the
                 # flag and fall through EXACTLY as a fresh survivor would.
                 filters_cleared = True
-                _catalyst_cache[ticker] = (
-                    catalyst_quality, confidence_multiplier, news_summary,
-                    claude_analysis, pplx_quality, True,
-                )
+                _catalyst_cache[ticker] = cached._replace(filters_cleared=True)
                 logger.info(f"{ticker}: cached grade ({catalyst_quality}) now clears filters — proceeding")
 
             profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
@@ -2137,10 +2149,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             )
 
             # Store in cache AT GRADE COMPLETION regardless of filter outcome
-            # (S6/#405) — 6-tuple: filters_cleared True/False per today's check.
-            # This is what makes the ticker reusable (no re-grade) on every
-            # later tick this trading day, whether it cleared or not.
-            _catalyst_cache[ticker] = (
+            # (S6/#405) — filters_cleared True/False per today's check. This is
+            # what makes the ticker reusable (no re-grade) on every later tick
+            # this trading day, whether it cleared or not.
+            _catalyst_cache[ticker] = CachedGrade(
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
                 pplx_quality, skip_reason is None,
             )
@@ -2214,9 +2226,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
             # Also update cache so subsequent scan ticks see the boosted grade.
             # filters_cleared stays True — only reachable post-filter (S6/#405).
-            _catalyst_cache[ticker] = (
-                catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
-                pplx_quality, True,
+            _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                catalyst_quality=catalyst_quality,
             )
         elif earnings_today_match and not revenue_stage and catalyst_quality in ("routine", None):
             # Pre-revenue company on earnings day — log the skip so operator
@@ -2550,9 +2561,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "gap_pct": c["gap_pct"],
                         }),
                     )
-                _catalyst_cache[ticker] = (
-                    catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis, pplx_quality, True,
+                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                    catalyst_quality=catalyst_quality,
+                    confidence_multiplier=confidence_multiplier,
                 )
                 # Per-ticker Telegram suppressed (was 5-10 noise alerts per
                 # morning). Audit event above is the source of truth — the
@@ -2602,9 +2613,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         "gap_pct": c["gap_pct"],
                     }),
                 )
-                _catalyst_cache[ticker] = (
-                    catalyst_quality, confidence_multiplier,
-                    news_summary, claude_analysis, pplx_quality, True,
+                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                    catalyst_quality=catalyst_quality,
+                    confidence_multiplier=confidence_multiplier,
                 )
                 # Visibility surface (advisor 2026-05-11): user needs to see
                 # the new behavior in action, not discover it by missing

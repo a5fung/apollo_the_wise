@@ -197,14 +197,14 @@ async def _tick(ticker, gap_pct, today_volume, pm_rvol, grade_calls, *,
     """
     cached = ep_detector._catalyst_cache.get(ticker)
     if cached:
-        (cq, cm, ns, ca, pq, filters_cleared) = cached
-        if not filters_cleared:
+        if not cached.filters_cleared:
             skip_reason = await ep_detector._post_grade_filters(
-                ticker, cq, ca, ns, gap_pct, today_volume, pm_rvol, _TODAY,
+                ticker, cached.catalyst_quality, cached.claude_analysis,
+                cached.news_summary, gap_pct, today_volume, pm_rvol, _TODAY,
             )
             if skip_reason:
                 return ("SKIP", skip_reason)
-            ep_detector._catalyst_cache[ticker] = (cq, cm, ns, ca, pq, True)
+            ep_detector._catalyst_cache[ticker] = cached._replace(filters_cleared=True)
         return "ENTER"
     # Fresh grade — the expensive LLM path.
     grade_calls.append(ticker)
@@ -212,7 +212,9 @@ async def _tick(ticker, gap_pct, today_volume, pm_rvol, grade_calls, *,
     skip_reason = await ep_detector._post_grade_filters(
         ticker, cq, ca, ns, gap_pct, today_volume, pm_rvol, _TODAY,
     )
-    ep_detector._catalyst_cache[ticker] = (cq, 1.0, ns, ca, pq, skip_reason is None)
+    ep_detector._catalyst_cache[ticker] = ep_detector.CachedGrade(
+        cq, 1.0, ns, ca, pq, skip_reason is None,
+    )
     if skip_reason:
         return ("SKIP", skip_reason)
     return "ENTER"
@@ -231,7 +233,7 @@ async def test_hard_gate_a_mna_filtered_stays_filtered_one_grade_call():
     assert r2 == ("SKIP", "M&A/buyout catalyst — no momentum trade")
     assert grade_calls == ["MNA1"], f"expected exactly 1 grade call, got {grade_calls}"
     # Never cached as entry-eligible.
-    assert ep_detector._catalyst_cache["MNA1"][5] is False
+    assert ep_detector._catalyst_cache["MNA1"].filters_cleared is False
 
 
 @pytest.mark.asyncio
@@ -244,13 +246,13 @@ async def test_hard_gate_b_filter_clears_on_later_tick_becomes_entry_eligible():
     with _no_mna(), _quiet_audit():
         r1 = await _tick("CLR1", 8.0, 100_000, None, grade_calls, grade_quality="routine")
         assert r1 == ("SKIP", "routine catalyst, gap 8.0%")
-        assert ep_detector._catalyst_cache["CLR1"][5] is False  # not yet cleared
+        assert ep_detector._catalyst_cache["CLR1"].filters_cleared is False  # not yet cleared
 
         r2 = await _tick("CLR1", 13.0, 100_000, None, grade_calls, grade_quality="routine")
 
     assert r2 == "ENTER"
     assert grade_calls == ["CLR1"], f"expected exactly 1 grade call, got {grade_calls}"
-    assert ep_detector._catalyst_cache["CLR1"][5] is True  # flipped
+    assert ep_detector._catalyst_cache["CLR1"].filters_cleared is True  # flipped
 
 
 @pytest.mark.asyncio
@@ -265,7 +267,7 @@ async def test_hard_gate_b_never_less_conservative_still_filtered_stays_filtered
     assert r1 == ("SKIP", "routine catalyst, gap 8.0%")
     assert r2 == ("SKIP", "routine catalyst, gap 9.0%")
     assert grade_calls == ["CLR2"]
-    assert ep_detector._catalyst_cache["CLR2"][5] is False
+    assert ep_detector._catalyst_cache["CLR2"].filters_cleared is False
 
 
 @pytest.mark.asyncio
@@ -276,7 +278,7 @@ async def test_hard_gate_c_survivor_path_unchanged():
     grade_calls = []
     with _no_mna(), _quiet_audit():
         r1 = await _tick("SURV1", 20.0, 100_000, None, grade_calls, grade_quality="game_changer")
-        assert ep_detector._catalyst_cache["SURV1"][5] is True  # cleared on first tick
+        assert ep_detector._catalyst_cache["SURV1"].filters_cleared is True  # cleared on first tick
 
         # Second tick: patch _post_grade_filters to blow up if invoked —
         # today's fast path (filters_cleared=True) must never call it.
