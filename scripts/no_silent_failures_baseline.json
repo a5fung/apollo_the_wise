@@ -31,7 +31,6 @@
     "agents/market_intelligence/quarterly_review.py": 1,
     "agents/market_intelligence/replay_regression.py": 1,
     "agents/market_intelligence/scheduler.py": 10,
-    "agents/market_intelligence/system_review.py": 6,
     "agents/market_intelligence/theme_axis_shadow.py": 1,
     "agents/market_intelligence/theme_engine.py": 11,
     "agents/market_intelligence/theme_synthesis.py": 1,
@@ -43,5 +42,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 163
+  "total": 157
 }

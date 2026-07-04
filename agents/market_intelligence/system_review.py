@@ -476,7 +476,8 @@ async def _aggregate_anomalies(days: int) -> dict:
     try:
         from agents.market_intelligence.system_audit import _recent_changes_context
         recent_changes = _recent_changes_context(limit=7)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Recent-changes context fetch failed: {e}")
         recent_changes = []
 
     l3_drifts = []
@@ -673,7 +674,8 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
         if isinstance(exits, str):
             try:
                 exits = json.loads(exits)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"exits[] JSON parse failed for {ticker} {alert_d}: {e}")
                 exits = []
         if not isinstance(exits, list):
             exits = []
@@ -696,8 +698,8 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
                 )
                 if gap_through_dollars > 0:
                     gap_through_cents.append(gap_through_dollars)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Gap-through calc failed for {ticker} {alert_d}: {e}")
 
         # Time-to-stop: filled_at → matching attempt's stop_hit time.
         time_to_stop_min: float | None = None
@@ -717,8 +719,8 @@ async def _aggregate_loser_breakdown(window_start: date) -> dict:
                     time_to_stop_min = round((ts - fa).total_seconds() / 60.0, 1)
                     if time_to_stop_min < 10:
                         n_fast_stop += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Time-to-stop calc failed for {ticker} {alert_d}: {e}")
 
         # Catalyst prose vs grade.
         prose_markers = _negative_prose(trade.get("catalyst_prose"))
@@ -929,8 +931,9 @@ async def _aggregate_audit_errors(days: int) -> dict:
         if isinstance(t, str):
             try:
                 t = datetime.fromisoformat(t.replace("Z", "+00:00"))
-            except Exception:
-                return None
+            except Exception:  # loud-ok: genuine optional-parse fallback — an
+                return None    # unparseable timestamp just drops out of the
+                               # recency ordering, nothing to alert on.
         if t is not None and getattr(t, "tzinfo", None) is None:
             t = t.replace(tzinfo=timezone.utc)
         return t
@@ -1105,8 +1108,8 @@ async def _aggregate_crypto_readiness(window_days: int) -> dict:
                 f"weekly review crypto aggregator crashed: {type(e).__name__}",
                 str(e)[:4000],
             )
-        except Exception:
-            pass  # double-failure: nothing more we can do
+        except Exception:  # loud-ok: double-failure — nothing more we can do
+            pass
         return {}
 
     # Hard gates for "ready to flip"
