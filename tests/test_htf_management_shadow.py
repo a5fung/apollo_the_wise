@@ -144,3 +144,62 @@ async def test_get_management_shadow_candidates_queries_join(monkeypatch):
                      "entry_price": 100.0, "stop_loss_price": 90.0, "shares": 100}]
     assert "LEFT JOIN mi_htf_management_shadow" in conn.fetch.await_args.args[0]
     assert "would_reject_reason IS NULL" in conn.fetch.await_args.args[0]
+
+
+# ── the scheduled job end-to-end (mocked DB) ────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_htf_management_shadow_job_upserts_and_audits(monkeypatch):
+    from agents.market_intelligence import scheduler
+    from agents.market_intelligence import db as dbmod
+    from agents.market_intelligence import collector
+
+    candidate = {"shadow_id": 1, "ticker": "XYZ", "break_date": date(2026, 6, 1),
+                 "entry_price": 100.0, "stop_loss_price": 90.0, "shares": 100}
+    monkeypatch.setattr(dbmod, "get_htf_management_shadow_candidates",
+                        AsyncMock(return_value=[candidate]))
+    # Entry day + one forward day that gaps straight through the hard stop -> a quick,
+    # unambiguous terminal outcome for an end-to-end wiring check (the lifecycle math itself
+    # is pinned separately against _htf_management_replay directly, above).
+    ohlcv_rows = [
+        {"trade_date": date(2026, 6, 1), "open_price": 100.0, "high_price": 101.0,
+         "low_price": 99.0, "close": 100.0, "volume": 1_000_000},
+        {"trade_date": date(2026, 6, 2), "open_price": 80.0, "high_price": 85.0,
+         "low_price": 80.0, "close": 80.0, "volume": 1_000_000},
+    ]
+    monkeypatch.setattr(dbmod, "get_anticipation_ohlcv", AsyncMock(return_value=ohlcv_rows))
+    upsert_mock = AsyncMock()
+    monkeypatch.setattr(dbmod, "upsert_htf_management_shadow", upsert_mock)
+    audit_mock = AsyncMock()
+    monkeypatch.setattr(dbmod, "log_audit_event", audit_mock)
+    monkeypatch.setattr(collector, "et_today", lambda: date(2026, 6, 3))
+
+    result = await scheduler._htf_management_shadow_job()
+
+    assert result == 1   # 1 row upserted
+    assert upsert_mock.await_count == 1
+    _args, kwargs = upsert_mock.await_args
+    assert _args[0] == 1                          # shadow_id
+    assert kwargs["status"] == "closed_hard_stop"
+    assert kwargs["remaining_shares"] == 0.0
+    assert audit_mock.await_count == 1
+    assert audit_mock.await_args.args[0] == "htf_management_shadow_run"
+
+
+@pytest.mark.asyncio
+async def test_htf_management_shadow_job_noop_on_empty_candidates(monkeypatch):
+    from agents.market_intelligence import scheduler
+    from agents.market_intelligence import db as dbmod
+    from agents.market_intelligence import collector
+
+    monkeypatch.setattr(dbmod, "get_htf_management_shadow_candidates",
+                        AsyncMock(return_value=[]))
+    audit_mock = AsyncMock()
+    monkeypatch.setattr(dbmod, "log_audit_event", audit_mock)
+    monkeypatch.setattr(collector, "et_today", lambda: date(2026, 6, 3))
+
+    result = await scheduler._htf_management_shadow_job()
+
+    assert result == 0
+    audit_mock.assert_not_awaited()   # empty day -> quiet, no audit noise

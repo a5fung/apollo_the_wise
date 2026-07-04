@@ -134,6 +134,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "flag_continuation_scan", "fishhook_eod_pass", "low_vol_rest_scan",
     "ma_pullback_scan", "support_test_scan", "undercut_rally_scan",
     "anticipation_readiness", "anticipation_3b", "consolidation_readiness",
+    "htf_management_shadow",  # #396 HTF Phase 4 — pure compute + DB/audit-log only, no broker calls
     # themes / validation
     "theme_synthesis", "theme_round_trip_validator", "post_validation_check",
     # judge / digests / briefings
@@ -3222,6 +3223,72 @@ async def _htf_breakout_settle_job(today):
     return settled
 
 
+async def _htf_management_shadow_job():
+    """#396 HTF Phase 4 — MANAGEMENT shadow (SEPARATE from Phase 3's fixed-3R bet settlement
+    above). For every clean Phase-3 breakout-shadow row still open (or never yet replayed),
+    replays the SOURCED management protocol (docs/setups/htf.md "Management, Phase 4, shadow":
+    scale 33-50% day 3-5 -> breakeven -> trail the 10/20 EMA -> exit on close-below) forward from
+    daily bars via flag_detector._htf_management_replay, and UPSERTs the current full lifecycle
+    snapshot. DB-SOURCED, restart-safe (feedback_scheduler_aggregators_db_sourced): every row is
+    a FULL recompute from mi_daily_closes each run — no incremental cross-run state is trusted,
+    so a container restart mid-lifecycle loses nothing (the next run just recomputes from bars +
+    the immutable Phase-3 entry spec). INTELLIGENCE-side — no broker calls, matches how the other
+    HTF shadow jobs (flag_continuation_scan / the Phase 3 settle folded into
+    consolidation_readiness) are classified. Audit-log only (CLAUDE.md: transient shadow
+    telemetry -> mi_audit_log, never a new Telegram surface) — never submits an order."""
+    from datetime import timedelta
+    from agents.market_intelligence import anticipation as de
+    from agents.market_intelligence.flag_detector import (
+        _htf_management_replay, _HTF_MGMT_SCALE_FRACTION, _HTF_MGMT_TRAIL_MODE,
+    )
+    from agents.market_intelligence.db import (
+        get_htf_management_shadow_candidates, get_anticipation_ohlcv,
+        upsert_htf_management_shadow, log_audit_event,
+    )
+    from agents.market_intelligence.collector import et_today
+    today = et_today()
+    candidates = await get_htf_management_shadow_candidates()
+    updated = newly_trail_exit = newly_hard_stop = 0
+    for r in candidates:
+        try:
+            bars = de.db_rows_to_bars(
+                await get_anticipation_ohlcv(r["ticker"], today, lookback_days=340))
+            entry_idx = next((j for j, b in enumerate(bars)
+                              if b["date"] == r["break_date"].isoformat()), None)
+            if entry_idx is None:
+                continue  # break day not yet in the fetched window (shouldn't happen at 340d)
+            res = _htf_management_replay(
+                bars, entry_idx, entry_price=float(r["entry_price"]),
+                initial_stop=float(r["stop_loss_price"]), shares=float(r["shares"] or 0))
+            if res is None:
+                continue  # degenerate spec (risk<=0 / no shares) — nothing to replay
+            await upsert_htf_management_shadow(
+                r["shadow_id"], r["ticker"], r["break_date"],
+                entry_price=float(r["entry_price"]), initial_stop=float(r["stop_loss_price"]),
+                initial_shares=float(r["shares"] or 0),
+                scale_fraction=_HTF_MGMT_SCALE_FRACTION, trail_mode=_HTF_MGMT_TRAIL_MODE,
+                status=res["status"], remaining_shares=res["remaining_shares"],
+                partial_taken=res["partial_taken"], breakeven_active=res["breakeven_active"],
+                events=res["events"], realized_r=res["realized_r"],
+                last_bar_date=res["last_bar_date"])
+            updated += 1
+            if res["status"] == "closed_trail_exit":
+                newly_trail_exit += 1
+            elif res["status"] == "closed_hard_stop":
+                newly_hard_stop += 1
+        except Exception as e:   # loud-ok: per-row shadow telemetry, must not drop the rest of the run
+            logger.error(f"htf-management-shadow replay {r.get('ticker')}/{r.get('shadow_id')}: {e}",
+                        exc_info=True)
+    logger.info(f"htf-management-shadow: {len(candidates)} candidates, {updated} upserted "
+                f"({newly_trail_exit} trail-exit, {newly_hard_stop} hard-stop this run)")
+    if candidates:
+        await log_audit_event(
+            "htf_management_shadow_run",
+            f"{len(candidates)} candidates, {updated} upserted, "
+            f"{newly_trail_exit} trail-exit, {newly_hard_stop} hard-stop")
+    return updated
+
+
 # ── #343 chart-vision judge-axis SHADOW (operator-approved 6/18, ~$30/6wk, HIGH+MODERATE) ──────
 # Decision-window start: the registry predicate counts `chart_axis_shadow_delta` rows with
 # created_at >= this date, so only the SCHEDULED accrual (first counted fire Mon 6/22) feeds N — a
@@ -4306,6 +4373,19 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_consolidation_readiness_job, "consolidation_readiness"),
         CronTrigger(hour=17, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
         id="consolidation_readiness",
+        replace_existing=True,
+    )
+
+    # #396 HTF Phase 4 — MANAGEMENT shadow, 17:36 ET mon-fri (right after consolidation_readiness,
+    # which folds in Phase 3's HTF settle — keeps the whole HTF shadow family scheduled adjacently).
+    # Needs today's daily-close bar (from nightly_data_pull @ 17:00) + the Phase 3 breakout-shadow
+    # rows (populated intraday by the live #94 scan, not EOD-gated). INTELLIGENCE-side — pure
+    # compute + DB/audit-log only, no broker calls (matches flag_continuation_scan/
+    # consolidation_readiness's classification below).
+    _scheduler.add_job(
+        audit_wrap(_htf_management_shadow_job, "htf_management_shadow"),
+        CronTrigger(hour=17, minute=36, day_of_week="mon-fri", timezone="America/New_York"),
+        id="htf_management_shadow",
         replace_existing=True,
     )
 
