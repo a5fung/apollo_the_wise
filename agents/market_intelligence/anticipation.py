@@ -869,6 +869,31 @@ ENTRY_TIGHT_N = 3        # consecutive tight days before the fire (the validated
 ENTRY_TARGET_R = 3.0     # "capture" = forward MFE reaches +TARGET_R × risk before the stop (settle def)
 
 
+# ── #385 volume dry-up TELEMETRY (Gemini review 6/27) — a SECOND, independent contraction axis
+#    alongside rmv_5d/rmv_15d. RMV (_compute_rmv) reads gap-aware TRUE RANGE only — it has no
+#    visibility into volume, so a range-tight bar on ELEVATED volume (a drift, not a rest) reads
+#    identically to a genuine low-volume coil. Recording the volume axis SEPARATELY lets the
+#    graduation eval test whether dry-up (reduced-but-active volume) predicts coil outcomes better
+#    than range contraction alone — "the two together separate a coil from a drift" (PLAN #385).
+#    Mirrors compute_rmv's OWN window shape (current_window=3 over lookback=15) so the two axes are
+#    directly comparable — same naming convention (_3/_15), never overloads rmv_*. TELEMETRY ONLY —
+#    not a gate; #327's is_entry_tight is unchanged (rmv_15d + range + vol-vs-ADV only). ──────────
+def volume_dryup(bars: list[dict], idx: int, *, current_window: int = 3, lookback: int = 15):
+    """(vol_sma_3, vol_sma_15, vol_dryup_ratio) at bar `idx` — plain volume SMAs over the trailing
+    `current_window` / `lookback` bars (mean(volume), NOT ADV-normalized) + their ratio (lower =
+    more dried up vs the recent baseline). Backward-looking only (reads bars[:idx+1]) — point-in-time
+    safe, same discipline as is_entry_tight's own gate reads. Returns (None, None, None) when fewer
+    than `lookback` bars are available ending at `idx` (mirrors _compute_rmv's own insufficient-
+    history floor) or the baseline mean is 0 (dead/void feed — no denominator to ratio against)."""
+    if idx < lookback - 1:
+        return None, None, None
+    vols = [b["v"] for b in bars]
+    vol_sma_3 = sum(vols[idx - current_window + 1: idx + 1]) / current_window
+    vol_sma_15 = sum(vols[idx - lookback + 1: idx + 1]) / lookback
+    ratio = round(vol_sma_3 / vol_sma_15, 4) if vol_sma_15 else None
+    return round(vol_sma_3, 1), round(vol_sma_15, 1), ratio
+
+
 def is_entry_tight(bars, rmv_rows, vols, i, *, rmv_max=ENTRY_RMV_MAX,
                    range_max=ENTRY_RANGE_MAX, vol_max=ENTRY_VOL_MAX) -> bool:
     """One bar's #327 tightness gate — contracted rmv_15d + tight daily range + quiet volume.
@@ -906,6 +931,7 @@ def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV
         return None
     entry = bars[idx]["c"]
     adv = _adv(vols, idx)
+    vol_sma_3, vol_sma_15, vol_dryup_ratio = volume_dryup(bars, idx)   # #385 — 2nd contraction axis
     return {
         "entry_date": bars[idx]["date"],
         "entry_price": round(entry, 4),
@@ -914,6 +940,9 @@ def entry_signal_at(bars, idx, anchor_idx, *, n=ENTRY_TIGHT_N, rmv_max=ENTRY_RMV
         "rmv_15d": _compute_rmv(rr, idx, lookback=15),     # the gate reading (#327 gates on this)
         "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / entry, 5) if entry else None,
         "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
+        "vol_sma_3": vol_sma_3,             # #385 volume dry-up telemetry — TELEMETRY ONLY, not a gate
+        "vol_sma_15": vol_sma_15,
+        "vol_dryup_ratio": vol_dryup_ratio,
         "stop_kind": "coiled_low",                   # the validated default stop (robustness baseline)
         "stop_price": round(bars[idx]["l"], 4),      # coiled_low = the entry bar's low
         "structural_low": round(min(bars[j]["l"] for j in range(run_lo, idx + 1)), 4),  # alt stop, recorded
@@ -950,6 +979,7 @@ def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
         return None                                  # the break must come on confirming volume
     rr = bars_to_rmv_rows(bars)
     base_low = round(min(bars[j]["l"] for j in range(anchor_idx + 1, idx + 1)), 4)  # the stop = base low
+    vol_sma_3, vol_sma_15, vol_dryup_ratio = volume_dryup(bars, idx)   # #385 — parity with anticipate
     return {
         "entry_date": bars[idx]["date"],
         "entry_price": round(close, 4),
@@ -958,6 +988,9 @@ def confirm_signal_at(bars, idx, anchor_idx, *, vol_min=ENTRY_CONFIRM_VOL_MIN):
         "rmv_15d": _compute_rmv(rr, idx, lookback=15),   # parity with anticipate (telemetry; confirm gates on the breakout)
         "range_pct": round((bars[idx]["h"] - bars[idx]["l"]) / close, 5) if close else None,
         "vol_ratio": round(bars[idx]["v"] / adv, 3) if adv else None,
+        "vol_sma_3": vol_sma_3,             # #385 volume dry-up telemetry — TELEMETRY ONLY, not a gate
+        "vol_sma_15": vol_sma_15,
+        "vol_dryup_ratio": vol_dryup_ratio,
         "stop_kind": "base_low",                     # Confirm stop = the base low
         "stop_price": base_low,
         "structural_low": base_low,

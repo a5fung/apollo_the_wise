@@ -70,10 +70,15 @@ def row(bars):
               if bars[j - 1]["c"] and (bars[j]["c"] / bars[j - 1]["c"] - 1) <= -0.04)
     retrace = (peak - min(b["c"] for b in base)) / peak * 100
     rmv = de.compute_rmv(bars, len(bars) - 1, lookback=15)
+    # #385 volume dry-up TELEMETRY (Gemini review 6/27) — rmv is RANGE-only; surface the volume axis
+    # too so the operator's labeling can cross-reference dry-up against range contraction (a genuine
+    # coil rests on reduced-but-active volume — the two together separate a coil from a drift).
+    _, _, vol_dryup = de.volume_dryup(bars, len(bars) - 1)
     prev = bars[-2]["c"]
     today = abs(bars[-1]["c"] / prev - 1) * 100 if prev else None
     return {"runup": round(runup, 2), "baseD": len(base), "bd4": bd4,
             "retrace": round(retrace, 1), "rmv": round(rmv) if rmv is not None else None,
+            "vol_dryup": round(vol_dryup, 2) if vol_dryup is not None else None,
             "today": round(today, 1) if today is not None else None,
             # the dates so the operator can chart the exact setup window:
             "runup_from": bars[max(0, ai - 10)]["date"],   # runup leg starts ~here
@@ -98,13 +103,13 @@ def main():
         f.write("Mark each **G** (real Pradeep Anticipation setup) or **X** (garbage) in the LABEL column.\n")
         f.write("This calibrates the volatility-relative holds/tightness thresholds — do NOT treat the\n")
         f.write("current ordering as the gate. Gates so far: stable anchor (3-20d base) + runup>=15%.\n")
-        f.write("`bd4`=#>=4% daily breakdowns in the base · `retr%`=max retrace from peak · `rmv`=RELATIVE contraction vs the stock's own 15-bar baseline (0-100, low=contracting-after-the-runup, NOT absolute narrowness) · `today%`=today's move.\n\n")
+        f.write("`bd4`=#>=4% daily breakdowns in the base · `retr%`=max retrace from peak · `rmv`=RELATIVE contraction vs the stock's own 15-bar baseline (0-100, low=contracting-after-the-runup, NOT absolute narrowness) · `vol_dryup`=#385 volume-SMA(3)/SMA(15) ratio, RELATIVE to the same 15-bar baseline (lower=more dried-up; cross-reference against rmv — a genuine coil contracts on BOTH range and volume, a drift may show tight range on undiminished volume) · `today%`=today's move.\n\n")
         f.write(f"{len(rows)} post-runup candidates (CS/ADRC universe of {len(bars)}, built #388 from mi_security_types). Tight+holding first.\n\n")
-        f.write("| LABEL | ticker | runup | runup-from | base-start (peak) | base-end (eval) | baseD | bd4 | retr% | rmv | today% |\n")
-        f.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
+        f.write("| LABEL | ticker | runup | runup-from | base-start (peak) | base-end (eval) | baseD | bd4 | retr% | rmv | vol_dryup | today% |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
         for tk, r in rows:
             f.write(f"|   | {tk} | {r['runup']} | {r['runup_from']} | {r['base_start']} | {r['base_end']} | "
-                    f"{r['baseD']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {r['today']} |\n")
+                    f"{r['baseD']} | {r['bd4']} | {r['retrace']} | {r['rmv']} | {r['vol_dryup']} | {r['today']} |\n")
     # FALSE-NEGATIVE CHECK (advisor de-bias): names the OLD §2 today-gate/anchor EXCLUDED, run
     # through the NEW gates -> the operator confirms they SHOULD be in (catches the STM failure mode;
     # the main list alone can only remove false-positives, never surface a false-negative).

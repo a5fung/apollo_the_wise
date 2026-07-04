@@ -1647,6 +1647,9 @@ async def initialize_schema() -> None:
                 rmv_15d         FLOAT,                -- the GATE reading at the fire (#327 gates on rmv_15d)
                 range_pct       FLOAT,
                 vol_ratio       FLOAT,
+                vol_sma_3       FLOAT,                 -- #385 volume dry-up TELEMETRY (not a gate)
+                vol_sma_15      FLOAT,
+                vol_dryup_ratio FLOAT,                 -- vol_sma_3/vol_sma_15, lower = more dried up
                 target_r        FLOAT NOT NULL,       -- "capture" = fwd MFE ≥ this × risk (settlement def)
                 origin          TEXT NOT NULL,        -- '9m' (a 9M day seeded the runup) | 'family_a' (general)
                 entry_mode      TEXT NOT NULL DEFAULT 'anticipate',  -- 'anticipate' (in-coil) | 'confirm' (base-high break) — #354 ADR 0013 §1
@@ -1669,6 +1672,18 @@ async def initialize_schema() -> None:
             -- recorded; existing rows keep rmv_5d, rmv_15d NULL until the next fire. See ADR 0013.
             ALTER TABLE mi_consolidation_entry_shadow
                 ADD COLUMN IF NOT EXISTS rmv_15d FLOAT;
+            -- #385 volume dry-up TELEMETRY (Gemini review 6/27): rmv_5d/rmv_15d read RANGE only —
+            -- a range-tight bar on elevated volume (a drift) looks identical to a genuine low-volume
+            -- rest. vol_sma_3/vol_sma_15 are the SAME window shape (current_window=3/lookback=15) on
+            -- the VOLUME axis instead (anticipation.volume_dryup) so the graduation eval can test
+            -- whether dry-up (vol_dryup_ratio, lower = more dried up) predicts outcome alongside range
+            -- contraction. TELEMETRY ONLY — existing rows keep these NULL until the next fire.
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS vol_sma_3 FLOAT;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS vol_sma_15 FLOAT;
+            ALTER TABLE mi_consolidation_entry_shadow
+                ADD COLUMN IF NOT EXISTS vol_dryup_ratio FLOAT;
             DO $$ BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'mi_cons_entry_shadow_mode_chk') THEN
                     ALTER TABLE mi_consolidation_entry_shadow
@@ -6835,23 +6850,29 @@ async def upsert_consolidation(ticker: str, anchor_date: date, *, state, runup_r
 
 async def insert_consolidation_entry_shadow(ticker: str, anchor_date: date, *, entry_date,
         entry_price, stop_kind, stop_price, structural_low, signal_n, rmv_5d, rmv_15d=None,
-        range_pct, vol_ratio, target_r, origin, entry_mode='anticipate') -> bool:
+        range_pct, vol_ratio, target_r, origin, entry_mode='anticipate',
+        vol_sma_3=None, vol_sma_15=None, vol_dryup_ratio=None) -> bool:
     """Record one Family-A forward-shadow entry (SHADOW — no execution). IDEMPOTENT: the partial
     unique index (ticker, anchor_date, entry_mode) WHERE outcome IS NULL makes a re-fire on an
     already-OPEN coil+mode a no-op (entry stays pinned to the FIRST fire day) WHILE letting an
     Anticipate and a Confirm entry coexist on the same coil (#354). Returns True iff a NEW row was
-    written (the job's 'fired' signal)."""
+    written (the job's 'fired' signal).
+
+    vol_sma_3/vol_sma_15/vol_dryup_ratio (#385, default None): the volume dry-up TELEMETRY axis
+    (anticipation.volume_dryup) alongside rmv_5d/rmv_15d's range axis — TELEMETRY ONLY, not a gate."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             INSERT INTO mi_consolidation_entry_shadow
                 (ticker, anchor_date, entry_date, entry_price, stop_kind, stop_price,
-                 structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                 structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio,
+                 vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
             ON CONFLICT (ticker, anchor_date, entry_mode) WHERE outcome IS NULL DO NOTHING
             RETURNING id
         """, ticker, _coerce_date(anchor_date), _coerce_date(entry_date), entry_price, stop_kind, stop_price,
-             structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio, target_r, origin, entry_mode)
+             structural_low, signal_n, rmv_5d, rmv_15d, range_pct, vol_ratio,
+             vol_sma_3, vol_sma_15, vol_dryup_ratio, target_r, origin, entry_mode)
     return row is not None
 
 
