@@ -285,8 +285,8 @@ class MarketIntelligenceAgent(BaseAgent):
                         continue
                     try:
                         strat_by_mode[resolve_account_mode_for_strategy(s)].append(sid)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"/account/status: mode resolution failed for strategy {sid}: {e}")
             except Exception as e:
                 logger.warning(f"/account/status: strategy routing fetch failed: {e}")
 
@@ -305,6 +305,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         "buying_power": float(account.get("buying_power", 0.0)),
                     }
                 except Exception as e:
+                    logger.warning(f"/account/status: account fetch failed for mode={mode}: {e}")
                     block["error"] = str(e)[:200]
                 result_modes.append(block)
 
@@ -552,7 +553,8 @@ class MarketIntelligenceAgent(BaseAgent):
                             t["current_price"] = None
                             t["unrealized_pnl"] = 0
                             t["market_value"] = 0
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"/trades/summary: position fetch failed for {t['ticker']}: {e}")
                         t["current_price"] = None
                         t["unrealized_pnl"] = 0
                         t["market_value"] = 0
@@ -562,7 +564,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 try:
                     account = await alpaca.get_account()
                     equity = account["equity"]
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"/trades/summary: account equity fetch failed: {e}")
                     equity = None
 
                 closed_count = (stats["winners"] or 0) + (stats["losers"] or 0)
@@ -578,6 +581,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     "recent_closed": [dict(r) for r in recent_closed],
                 }
             except Exception as e:
+                logger.warning(f"/trades/summary: live trades summary failed: {e}")
                 result["live"] = {"error": str(e)}
 
             # ── Paper (backtester) trades ──
@@ -585,6 +589,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 from agents.market_intelligence.backtester.tracker import get_paper_trading_summary
                 result["paper"] = await get_paper_trading_summary()
             except Exception as e:
+                logger.warning(f"/trades/summary: paper trading summary failed: {e}")
                 result["paper"] = {"error": str(e)}
 
             return result
@@ -619,6 +624,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 results["open_orders"] = len(orders)
                 results["status"] = "ok"
             except Exception as e:
+                logger.warning(f"/broker/test failed: {e}")
                 results["status"] = "error"
                 results["error"] = str(e)
             return results
@@ -1071,6 +1077,7 @@ class MarketIntelligenceAgent(BaseAgent):
             equity = float(account["equity"])
             buying_power = float(account["buying_power"])
         except Exception as e:
+            logger.warning(f"/dryrun: broker account fetch failed: {e}")
             broker_err = str(e)
 
         lines = [f"{mode_prefix()}*Pre-flight `/dryrun` — {today.isoformat()}*", ""]
@@ -1462,6 +1469,7 @@ class MarketIntelligenceAgent(BaseAgent):
         try:
             result = await assign_ticker_to_theme(ticker, theme_name)
         except Exception as e:
+            logger.warning(f"/assigntheme: assign_ticker_to_theme({ticker}, {theme_name!r}) failed: {e}")
             return self._ok(request, result=f"Assignment failed: {type(e).__name__}: {e}")
 
         if not result["matched"]:
@@ -4440,8 +4448,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 # Check yesterday too (gap may have been yesterday's event)
                 yesterday_log = await get_ep_scan_log((today - timedelta(days=1)).strftime("%Y-%m-%d"))
                 scan_entry = next((r for r in yesterday_log if r["ticker"] == ticker), None)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"/why {ticker}: scan-log lookup failed: {e}")
 
         if scan_entry:
             if scan_entry.get("filter_reason"):
@@ -4847,8 +4855,8 @@ class MarketIntelligenceAgent(BaseAgent):
                         act = "ret n/a"
                     lines.append(f"  • *{n['name']}* ({n['run_date']}): {tks}")
                     lines.append(f"      _{recall} · {act}_")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"/themes: nascent narrative-themes section failed (non-fatal): {e}")
 
         return self._ok(request, result="\n".join(lines), data={"themes": themes})
 
@@ -5238,7 +5246,8 @@ class MarketIntelligenceAgent(BaseAgent):
                             f"  Theme: *{theme_name}* ({stage})  →  "
                             f"#{rank_in_theme} of {len(composites)}"
                         )
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"theme peer-RS rank lookup failed for {theme_name}: {e}")
                     rs_context_lines.append(f"  Theme: *{theme_name}* ({stage})")
 
         # Layer 2: Industry RS (always shown; fetches sector on-demand if not cached)
@@ -5256,8 +5265,8 @@ class MarketIntelligenceAgent(BaseAgent):
                     await upsert_ticker_sectors_batch(
                         {ticker: {"sector": sector, "industry": industry}}
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"on-demand sector/industry fetch failed for {ticker}: {e}")
 
         if industry or sector:
             try:
@@ -6057,7 +6066,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 return raw
             try:
                 return _json.loads(raw or "[]")
-            except Exception:
+            except Exception as e:
+                logger.debug(f"/trade {ticker}: malformed exits JSON, showing empty: {e}")
                 return []
         exits = _parse_exits(trade.get("exits"))
 
@@ -6194,7 +6204,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 t_raw = ex.get("time") or ex.get("filled_at")
                 try:
                     t = _dt.fromisoformat(t_raw).replace(tzinfo=_ET) if t_raw else None
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"/trade {ticker}: malformed exit timestamp {t_raw!r}: {e}")
                     t = None
                 price = ex.get("price")
                 shares = int(ex.get("shares") or 0)
@@ -6273,6 +6284,7 @@ class MarketIntelligenceAgent(BaseAgent):
         try:
             result = await run_friday_watchlist(window_days=7, persist=False)
         except Exception as e:
+            logger.warning(f"/watchlist friday: run_friday_watchlist failed: {e}")
             return self._ok(request, result=f"Friday watchlist failed: `{e}`")
         if result["delivered"]:
             return self._ok(
@@ -6443,6 +6455,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     fmp_news=fmp_news,
                 )
             except Exception as e:
+                logger.warning(f"earnings-metrics extraction failed for {ticker}: {e}")
                 return self._ok(
                     request,
                     result=f"{ticker}: extraction failed — {e}",
@@ -6561,7 +6574,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 return raw
             try:
                 return _json.loads(raw or "[]")
-            except Exception:
+            except Exception as e:
+                logger.debug(f"/trades {view}: malformed exits JSON on a row, showing empty: {e}")
                 return []
 
         def _fmt_closed_line(r: dict, attempts: int = 0) -> list[str]:
@@ -6649,7 +6663,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 d = dict(r)
                 try:
                     pos = await alpaca.get_position(d["ticker"])
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"/trades: live-price fetch failed for {d['ticker']}: {e}")
                     pos = None
                 if pos:
                     d["current_price"] = pos.get("current_price")
