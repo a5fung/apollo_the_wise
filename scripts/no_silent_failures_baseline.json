@@ -11,7 +11,6 @@
     "agents/market_intelligence/catalyst_metrics_extractor.py": 1,
     "agents/market_intelligence/catalyst_rubric_runtime.py": 1,
     "agents/market_intelligence/catalyst_type_classifier.py": 1,
-    "agents/market_intelligence/collector.py": 7,
     "agents/market_intelligence/db.py": 1,
     "agents/market_intelligence/earnings_calendar.py": 2,
     "agents/market_intelligence/ep_detector.py": 11,
@@ -44,5 +43,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 170
+  "total": 163
 }

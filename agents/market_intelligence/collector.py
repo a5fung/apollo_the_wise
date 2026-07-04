@@ -767,7 +767,8 @@ async def _sec_exhibit_url(
         cands.sort()
         best = cands[0][1]
         return f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/{best}"
-    except Exception:
+    except Exception as e:
+        logger.debug(f"SEC exhibit lookup failed for {cik}/{acc_no}: {e}")
         return None
 
 
@@ -822,7 +823,8 @@ async def get_sec_recent_filings(
                 if want_text:
                     try:
                         rec["text"] = _strip_html((await client.get(url)).text)[:4000]
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"SEC filing text fetch failed for {ticker} {url}: {e}")
                         rec["text"] = ""
                     # 8-K (#210 Wave D): the primary doc is often a thin pointer; the
                     # results/PR substance (item 2.02/7.01/8.01) lives in EX-99.1.
@@ -841,8 +843,8 @@ async def get_sec_recent_filings(
                                             (rec["text"] + "\n\n[EX-99] " + ex_text).strip()
                                         )[:6000]
                                         rec["exhibit_url"] = ex_url
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug(f"8-K exhibit concat failed for {ticker}: {e}")
                 out.append(rec)
                 if len(out) >= max_filings:
                     break
@@ -919,8 +921,8 @@ async def get_overnight_snapshot(watchlist: list[dict]) -> list[dict]:
                             "category": item.get("category", "other"),
                             "triggered": abs(pct) >= threshold,
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Overnight snapshot: {symbol} fetch failed: {e}")
             return results
 
         return await asyncio.wait_for(loop.run_in_executor(None, _fetch), timeout=30)
@@ -972,13 +974,14 @@ async def check_perplexity_health() -> tuple[bool, int, str]:
                 _u = None
                 try:
                     _u = r.json().get("usage")
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Perplexity health usage parse failed: {e}")
                     _u = None
                 await log_perplexity_call(
                     caller="perplexity_health", model="sonar-pro", usage=_u,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Perplexity health cost-meter log failed: {e}")
             return True, r.status_code, ""
     except Exception as e:
         # Network errors, timeouts, DNS — treat as transient, don't abort
@@ -1064,8 +1067,8 @@ async def search_news_perplexity(
                     caller="perplexity_news_search", model="sonar-pro",
                     usage=_data.get("usage"),
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Perplexity news search cost-meter log failed: {e}")
             return _data["choices"][0]["message"]["content"]
     except Exception as e:
         # #273: a 402/401 here is Perplexity CREDIT exhaustion — the #186A
