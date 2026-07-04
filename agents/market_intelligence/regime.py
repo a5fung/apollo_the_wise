@@ -39,7 +39,9 @@ def _moving_average(closes: list[float], period: int) -> Optional[float]:
 
 
 def _ema(closes: list[float], period: int) -> Optional[float]:
-    """Exponential moving average over a list of closes."""
+    """Exponential moving average over a list of closes.
+    NB: broker/exit_logic.ema is a deliberate near-duplicate (kept import-free
+    on the broker side) — if the EMA definition ever changes, change BOTH."""
     if len(closes) < period:
         return None
     ema = sum(closes[:period]) / period

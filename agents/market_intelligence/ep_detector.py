@@ -811,10 +811,22 @@ async def _build_enriched_corpus(
             f"What caused {ticker} stock to gap up? Latest catalyst and news.",
             recency="week")
 
-    ext_filings, dilution, benzinga_items, perplexity_answer = await asyncio.gather(
+    # return_exceptions=True + re-raise-first (7/3 review): plain gather propagates
+    # the FIRST exception while sibling fetches keep running in the background —
+    # they'd write state_sink entries AFTER the caller caught + moved on (orphan
+    # writes into a possibly-rekeyed state dict), and a SECOND failing sibling's
+    # exception would go unretrieved. Waiting for all four, then re-raising the
+    # first failure, keeps the fail-fast contract with no background stragglers
+    # (premarket-only path — the extra wait on failure is fine).
+    _results = await asyncio.gather(
         _fetch_ext_filings(), _fetch_dilution(),
         _fetch_benzinga_items(), _fetch_perplexity_answer(),
+        return_exceptions=True,
     )
+    for _r in _results:
+        if isinstance(_r, BaseException):
+            raise _r
+    ext_filings, dilution, benzinga_items, perplexity_answer = _results
 
     today_sec = nearest_today_filing(ext_filings, today) or sec_filing_fallback
     prior_agr = recent_filing_by_item(

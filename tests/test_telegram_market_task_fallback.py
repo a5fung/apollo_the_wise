@@ -13,7 +13,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from telegram.constants import ParseMode
 
+from channels.telegram import TelegramChannel
+from tests.conftest import fake_httpx_client
 
 @pytest.fixture(autouse=True)
 def _stub_auth(monkeypatch):
@@ -25,10 +28,7 @@ def _stub_auth(monkeypatch):
     secret can't mask a regression (the honest-CI condition)."""
     monkeypatch.delenv("INTERNAL_API_SECRET", raising=False)
     monkeypatch.setattr("core.router.auth_headers", lambda: {"X-Apollo-Secret": "test"})
-from telegram.constants import ParseMode
 
-from channels.telegram import TelegramChannel
-from tests.conftest import fake_httpx_client
 
 
 def _make_channel():

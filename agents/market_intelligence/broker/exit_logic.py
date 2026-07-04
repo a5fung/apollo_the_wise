@@ -60,8 +60,13 @@ def ema(closes: list[float], window: int) -> float | None:
     the EMA value AS OF THE LAST element in `closes`. None when len(closes) < window —
     mirrors the None-on-insufficient-data contract the inline SMA10/20 trail already uses
     below. Pure function, no side effects. #396 HTF Phase 4 (management SHADOW) — the 10/20
-    EMA trail input; also usable anywhere an EMA (vs SMA) trail is wanted."""
-    if not closes or len(closes) < window:
+    EMA trail input; also usable anywhere an EMA (vs SMA) trail is wanted.
+
+    NB (7/3 review): near-duplicate of regime._ema — kept SEPARATE deliberately:
+    exit_logic is pure broker-side math with zero heavy imports; importing regime
+    (which pulls collector/db) would break that. The EMA definition is frozen
+    textbook math; if it ever changes, change BOTH (regime.py ~line 41)."""
+    if len(closes) < window:
         return None
     multiplier = 2.0 / (window + 1)
     value = sum(closes[:window]) / window

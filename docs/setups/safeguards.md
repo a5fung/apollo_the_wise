@@ -256,7 +256,7 @@ not impossible.
 **Trigger**: pre-launch hardening (6/20) found auto-entry for live was never wired —
 `entry_pipeline.submit_trade_entry` auto-submitted only `account_mode='paper'`
 (`if is_paper:`); every live entry fell through to a manual [Confirm] Telegram proposal
-(5-min `CONFIRMATION_TIMEOUT_SEC`). That contradicted CLAUDE.md's dual-account table
+(5-min `CONFIRMATION_TIMEOUT_SEC` — constant removed 2026-07-03 with the #364 confirm-flow deletion; historical reference). That contradicted CLAUDE.md's dual-account table
 (live + `live_real_enabled=True` → "real fills") and would have made Monday's
 "real-money launch" silently require a manual tap per entry. Operator directed auto-entry
 for the START-SMALL cutover ("with starting smaller $ we can just start with auto entry").

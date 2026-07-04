@@ -157,3 +157,40 @@ async def test_four_fetches_run_concurrently_not_sequentially(monkeypatch):
     assert sorted(entered) == sorted(
         ["ext_filings_sec", "dilution_sec", "benzinga", "perplexity"]
     )
+
+
+@pytest.mark.asyncio
+async def test_one_fetch_failure_raises_after_all_siblings_finish(monkeypatch):
+    """7/3 review fix: with return_exceptions=True + re-raise-first, a failing
+    fetch still raises to the caller, but only AFTER every sibling finished —
+    no background stragglers writing state_sink post-catch, no never-retrieved
+    sibling exceptions."""
+    sibling_done = {"benzinga": False, "perplexity": False}
+
+    async def fake_sec(ticker, forms=None, **kw):
+        raise RuntimeError("SEC down")
+
+    async def fake_benzinga(ticker, include_content=True):
+        await asyncio.sleep(0.01)  # finish AFTER the SEC failure
+        sibling_done["benzinga"] = True
+        return []
+
+    async def fake_pplx(prompt, recency="week"):
+        await asyncio.sleep(0.01)
+        sibling_done["perplexity"] = True
+        return "answer"
+
+    monkeypatch.setattr(ep_detector, "get_sec_recent_filings", fake_sec)
+    monkeypatch.setattr(ep_detector, "get_alpaca_news", fake_benzinga)
+    monkeypatch.setattr(ep_detector, "search_news_perplexity", fake_pplx)
+    monkeypatch.setattr(
+        ep_detector, "_classify_catalyst_claude",
+        AsyncMock(return_value=("routine", "x")),
+    )
+
+    with pytest.raises(RuntimeError, match="SEC down"):
+        await ep_detector._build_enriched_corpus("TEST", _TODAY, _PROFILE)
+
+    # The fail-fast contract raises, but both siblings ran to completion FIRST —
+    # the caller can never observe a late orphan write after catching.
+    assert sibling_done == {"benzinga": True, "perplexity": True}
