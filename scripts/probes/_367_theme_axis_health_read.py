@@ -15,7 +15,7 @@ Docker running), it prints exactly that and exits cleanly rather than fabricatin
 the parent session (which has prod DB access) runs it for the real read.
 
 Usage:
-  python scripts/theme_axis_signal_health_read.py [--since-days N]
+  python scripts/probes/_367_theme_axis_health_read.py [--since-days N]
 """
 from __future__ import annotations
 
