@@ -191,8 +191,8 @@ async def post_to_twitter(
         if resp is not None:
             try:
                 detail = f" | body={resp.text[:400]}"
-            except Exception:
-                pass
+            except Exception:  # loud-ok: fallback-of-the-fallback — only enriches
+                pass          # the log message; logger.error below still fires.
         api_codes = getattr(e, "api_codes", None)
         api_messages = getattr(e, "api_messages", None)
         if api_codes or api_messages:

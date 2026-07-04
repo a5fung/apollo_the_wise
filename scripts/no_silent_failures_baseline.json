@@ -38,7 +38,6 @@
     "agents/market_intelligence/theme_engine.py": 11,
     "agents/market_intelligence/theme_synthesis.py": 1,
     "agents/market_intelligence/trading_calendar.py": 3,
-    "agents/market_intelligence/twitter.py": 1,
     "channels/telegram.py": 24,
     "channels/webhooks.py": 1,
     "core/context.py": 1,
@@ -46,5 +45,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 174
+  "total": 173
 }
