@@ -3227,6 +3227,19 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     _pool = await get_pool()
                     async with _pool.acquire() as _tas_conn:
                         await log_theme_axis_shadow(_tas_conn, r)
+                    # ── ADR 0015 (#328) theme-axis CREDIT shadow ───────────────────────
+                    # SHADOW ONLY, distinct from the STEP-0 structural-attribution shadow
+                    # just above: computes theme_axis_credit() (the operator-signed
+                    # stage->credit table) against the SAME cached rubric result + as-of
+                    # membership, and logs 'theme_axis_shadow_adjusted' when informative.
+                    # Read-only on r, writes only mi_audit_log, NEVER mutates the live
+                    # label/tier (THE LINE — the flip to load-bearing is a separate
+                    # CHANGE_PROCESS gate, never on agent authority). Same gate/placement
+                    # as the STEP-0 shadow — final settled tier, low blast radius.
+                    from agents.market_intelligence.catalyst_rubric_runtime import (
+                        log_theme_axis_adjusted_shadow,
+                    )
+                    await log_theme_axis_adjusted_shadow(r)
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 
