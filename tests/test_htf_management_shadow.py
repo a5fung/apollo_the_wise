@@ -9,6 +9,7 @@ tests pin the LIFECYCLE (event sequence + terminal status + share accounting), u
 post-entry closes so the EMA trail is trivially known (a constant series' EMA == that constant).
 """
 from datetime import date
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -102,3 +103,44 @@ def test_variable_scale_fraction_and_trail_mode_are_wired_through():
                                  scale_fraction=0.50, trail_mode="ema_10_20")
     scale_evt = next(e for e in res["events"] if e["type"] == "scale_out")
     assert scale_evt["shares"] == 50.0
+
+
+# ── DB wiring (candidates query + idempotent upsert) — mocked pool ─────────
+
+
+@pytest.mark.asyncio
+async def test_upsert_management_shadow_writes_expected_params(monkeypatch):
+    from tests.conftest import make_mock_pool
+    from agents.market_intelligence import db as dbmod
+    pool, conn = make_mock_pool()
+    conn.execute = AsyncMock(return_value="INSERT 0 1")
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    await dbmod.upsert_htf_management_shadow(
+        1, "XYZ", "2026-06-28", entry_price=100.0, initial_stop=90.0, initial_shares=100.0,
+        scale_fraction=0.40, trail_mode="ema_10_20", status="open", remaining_shares=100.0,
+        partial_taken=False, breakeven_active=False,
+        events=[{"date": "2026-06-28", "type": "entry", "price": 100.0, "shares": 100.0}],
+        realized_r=None, last_bar_date=None,
+    )
+    assert conn.execute.await_count == 1
+    args = conn.execute.await_args.args
+    assert args[1] == 1               # shadow_id
+    assert args[2] == "XYZ"           # ticker
+    assert args[9] == "open"          # status
+
+
+@pytest.mark.asyncio
+async def test_get_management_shadow_candidates_queries_join(monkeypatch):
+    from tests.conftest import make_mock_pool
+    from agents.market_intelligence import db as dbmod
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[
+        {"shadow_id": 1, "ticker": "XYZ", "break_date": date(2026, 6, 28),
+         "entry_price": 100.0, "stop_loss_price": 90.0, "shares": 100},
+    ])
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    rows = await dbmod.get_htf_management_shadow_candidates()
+    assert rows == [{"shadow_id": 1, "ticker": "XYZ", "break_date": date(2026, 6, 28),
+                     "entry_price": 100.0, "stop_loss_price": 90.0, "shares": 100}]
+    assert "LEFT JOIN mi_htf_management_shadow" in conn.fetch.await_args.args[0]
+    assert "would_reject_reason IS NULL" in conn.fetch.await_args.args[0]

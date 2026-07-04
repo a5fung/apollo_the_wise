@@ -1744,6 +1744,45 @@ async def initialize_schema() -> None:
             CREATE INDEX IF NOT EXISTS idx_htf_breakout_shadow_unsettled
                 ON mi_htf_breakout_shadow(break_date) WHERE outcome IS NULL;
 
+            -- HTF Phase 4 MANAGEMENT shadow (#396) — a SIBLING table to mi_htf_breakout_shadow,
+            -- not new columns on it. Reason: mi_htf_breakout_shadow's `outcome` column + its
+            -- open-dedup partial index already implement ONE settlement mechanism (Phase 3's
+            -- fixed-3R capture/stop bet, _htf_settle_from_bars) — reusing the SAME column for a
+            -- second, DIFFERENT settlement question (Phase 4's scale-out+trail replay) would
+            -- either overload `outcome`'s CHECK constraint/vocabulary or force the two
+            -- settlements to share one lifecycle, which they must NOT (Phase 3 keeps answering
+            -- "would a fixed target have paid off"; Phase 4 answers "what would the actual sourced
+            -- management protocol have done" — same entry, two independent readouts). One row per
+            -- Phase-3 shadow row (shadow_id FK, 1:1), UPSERTed every job run (full recompute from
+            -- bars each time — no incremental cross-run state trusted, restart-safe by
+            -- construction; only in-flight ('open') rows are candidates for a run).
+            CREATE TABLE IF NOT EXISTS mi_htf_management_shadow (
+                id                SERIAL PRIMARY KEY,
+                shadow_id         INT NOT NULL REFERENCES mi_htf_breakout_shadow(id),
+                ticker            TEXT NOT NULL,
+                break_date        DATE NOT NULL,
+                entry_price       FLOAT NOT NULL,
+                initial_stop      FLOAT NOT NULL,
+                initial_shares    FLOAT NOT NULL,
+                scale_fraction    FLOAT NOT NULL,
+                trail_mode        TEXT NOT NULL,
+                status            TEXT NOT NULL DEFAULT 'open',   -- open | closed_trail_exit | closed_hard_stop
+                remaining_shares  FLOAT NOT NULL,
+                partial_taken     BOOLEAN NOT NULL DEFAULT FALSE,
+                breakeven_active  BOOLEAN NOT NULL DEFAULT FALSE,
+                events            JSONB NOT NULL DEFAULT '[]',    -- ordered entry->scale->BE->trail-exit log
+                realized_r        FLOAT,
+                last_bar_date     DATE,
+                settled_at        TIMESTAMPTZ,                    -- set once status leaves 'open'
+                created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CHECK (status IN ('open','closed_trail_exit','closed_hard_stop'))
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_htf_management_shadow_shadow_id
+                ON mi_htf_management_shadow(shadow_id);
+            CREATE INDEX IF NOT EXISTS idx_htf_management_shadow_open
+                ON mi_htf_management_shadow(break_date) WHERE status = 'open';
+
             -- Intraday support-test detections (#95, entry-technique #2 from
             -- user_tight_range_entry_techniques.md). Counter-trend mechanic:
             -- price tags base_low within tolerance and bounces. Per Morales
@@ -6985,6 +7024,76 @@ async def get_htf_breakout_shadow_summary() -> dict:
             FROM mi_htf_breakout_shadow GROUP BY parent_stage ORDER BY parent_stage
         """)
     return {"overall": dict(overall) if overall else {}, "by_stage": [dict(r) for r in by_stage]}
+
+
+async def get_htf_management_shadow_candidates() -> list[dict]:
+    """#396 HTF Phase 4 — Phase-3 breakout-shadow rows the management replay needs to (re)compute
+    this run: every CLEAN (would_reject_reason IS NULL — a would-be REJECT never entered, so
+    there is nothing to manage) row that either has no management-shadow row yet (never
+    replayed) OR whose management-shadow row is still 'open' (not yet resolved). A row whose
+    management status is already terminal (closed_trail_exit/closed_hard_stop) is EXCLUDED —
+    the replay is a full-recompute-from-bars each call, so a terminal row need never be revisited."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT b.id AS shadow_id, b.ticker, b.break_date, b.entry_price, b.stop_loss_price,
+                   b.shares
+            FROM mi_htf_breakout_shadow b
+            LEFT JOIN mi_htf_management_shadow m ON m.shadow_id = b.id
+            WHERE b.would_reject_reason IS NULL
+              AND (m.id IS NULL OR m.status = 'open')
+            ORDER BY b.break_date ASC
+        """)
+    return [dict(r) for r in rows]
+
+
+async def upsert_htf_management_shadow(shadow_id: int, ticker: str, break_date, *, entry_price,
+        initial_stop, initial_shares, scale_fraction, trail_mode, status, remaining_shares,
+        partial_taken, breakeven_active, events, realized_r, last_bar_date) -> None:
+    """#396 HTF Phase 4 — UPSERT the CURRENT full lifecycle snapshot for one management-shadow
+    row (idempotent: a same-day or later re-run always overwrites with the freshly-recomputed
+    state; never reads or trusts the prior row's contents). `settled_at` is stamped the first
+    time status leaves 'open' and then held (a later re-run of an already-terminal row would not
+    happen per get_htf_management_shadow_candidates's filter, but the CASE guards it either way)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO mi_htf_management_shadow
+                (shadow_id, ticker, break_date, entry_price, initial_stop, initial_shares,
+                 scale_fraction, trail_mode, status, remaining_shares, partial_taken,
+                 breakeven_active, events, realized_r, last_bar_date, settled_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,
+                    CASE WHEN $9 <> 'open' THEN NOW() ELSE NULL END)
+            ON CONFLICT (shadow_id) DO UPDATE SET
+                status=EXCLUDED.status, remaining_shares=EXCLUDED.remaining_shares,
+                partial_taken=EXCLUDED.partial_taken, breakeven_active=EXCLUDED.breakeven_active,
+                events=EXCLUDED.events, realized_r=EXCLUDED.realized_r,
+                last_bar_date=EXCLUDED.last_bar_date, updated_at=NOW(),
+                settled_at = CASE WHEN EXCLUDED.status <> 'open'
+                                  THEN COALESCE(mi_htf_management_shadow.settled_at, NOW())
+                                  ELSE mi_htf_management_shadow.settled_at END
+        """, shadow_id, ticker, _coerce_date(break_date), entry_price, initial_stop,
+             initial_shares, scale_fraction, trail_mode, status, remaining_shares, partial_taken,
+             breakeven_active, json.dumps(events), realized_r,
+             _coerce_date(last_bar_date) if last_bar_date else None)
+
+
+async def get_htf_management_shadow_summary() -> dict:
+    """#396 HTF Phase 4 — the management-shadow READOUT: open/closed counts, the closed cohort's
+    trail-exit vs hard-stop split + median realized_r. Aggregate only (mirrors
+    get_htf_breakout_shadow_summary's shape for the Phase 3 bet)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        overall = await conn.fetchrow("""
+            SELECT count(*) FILTER (WHERE status = 'open')               AS open_n,
+                   count(*) FILTER (WHERE status <> 'open')               AS closed_n,
+                   count(*) FILTER (WHERE status = 'closed_trail_exit')   AS trail_exit_n,
+                   count(*) FILTER (WHERE status = 'closed_hard_stop')    AS hard_stop_n,
+                   percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r)
+                       FILTER (WHERE status <> 'open')                   AS med_realized_r
+            FROM mi_htf_management_shadow
+        """)
+    return dict(overall) if overall else {}
 
 
 async def get_consolidation_entry_shadows(*, status=None, settled_on=None, limit=12) -> list[dict]:
