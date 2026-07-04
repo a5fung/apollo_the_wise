@@ -401,7 +401,7 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ### 2026-07-03 — sprint day 1: 12 Sonnet cards + careful-path trio · 2 deploys · /simplify
 
-- **Fable/Sonnet split's first full day**: 12/12 executor cards (S1-S12) + careful-path **F22/F16/F18 + F16-sibling** + **#364 removed** (F17). 2 deploys verified. /simplify → 7 fix groups + the F16-sibling SAFETY catch. **Burndown 113→101.** Operator: #305 closed-as-launched (→#413) · pacing policy (spec-pack §Pacing).
+- 17 executor cards + careful-path **F22/F16/F18+sibling/F14** + **#364 removed**. 2 deploys verified; 2 /simplify cycles. **113→101; #381 baseline 174→125.** ADRs **0015/0016** (theme+structure axes, 0015 calibrated on N=452). Allocator study: undecidable (telemetry gap named). Operator: #305→#413 · pacing policy (§Pacing).
 
 ### Older entries graduated to CHANGELOG.md
 
