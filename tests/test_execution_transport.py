@@ -250,6 +250,8 @@ async def test_f18_execution_side_error_raises_call_failed(monkeypatch):
     rejection mid-ORB read as a network blip)."""
     import httpx
 
+    from tests.conftest import fake_httpx_client
+
     monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
     monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
     monkeypatch.setattr(
@@ -257,24 +259,13 @@ async def test_f18_execution_side_error_raises_call_failed(monkeypatch):
         lambda: type("S", (), {"internal_api_secret": "x"})(),
     )
 
-    class _Resp:
-        status_code = 500
-
-        def json(self):
-            return {"detail": {"execution_error": True,
+    monkeypatch.setattr(httpx, "AsyncClient", fake_httpx_client(
+        status_code=500,
+        json_body={"detail": {"execution_error": True,
                                "error_type": "ValueError",
-                               "error_message": "alpaca rejected: insufficient qty"}}
-
-        def raise_for_status(self):
-            raise httpx.HTTPStatusError("500", request=None, response=None)
-
-    class _Client:
-        def __init__(self, *a, **k): ...
-        async def __aenter__(self): return self
-        async def __aexit__(self, *a): return False
-        async def post(self, *a, **k): return _Resp()
-
-    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+                               "error_message": "alpaca rejected: insufficient qty"}},
+        raise_on_status=True,
+    ))
 
     with pytest.raises(ec.ExecutionCallFailed) as ei:
         await ec._http_call("trigger_orb_entry", (), {})
@@ -288,6 +279,8 @@ async def test_f18_bare_500_still_unreachable(monkeypatch):
     ExecutionUnreachable — the distinction must not over-classify."""
     import httpx
 
+    from tests.conftest import fake_httpx_client
+
     monkeypatch.setattr(constants, "EXECUTION_MODE", "http")
     monkeypatch.setattr(constants, "EXECUTION_SERVICE_URL", "http://exec:8007")
     monkeypatch.setattr(
@@ -295,22 +288,11 @@ async def test_f18_bare_500_still_unreachable(monkeypatch):
         lambda: type("S", (), {"internal_api_secret": "x"})(),
     )
 
-    class _Resp:
-        status_code = 500
-
-        def json(self):
-            return {"detail": "internal server error"}
-
-        def raise_for_status(self):
-            raise httpx.HTTPStatusError("500", request=None, response=None)
-
-    class _Client:
-        def __init__(self, *a, **k): ...
-        async def __aenter__(self): return self
-        async def __aexit__(self, *a): return False
-        async def post(self, *a, **k): return _Resp()
-
-    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+    monkeypatch.setattr(httpx, "AsyncClient", fake_httpx_client(
+        status_code=500,
+        json_body={"detail": "internal server error"},
+        raise_on_status=True,
+    ))
 
     with pytest.raises(ec.ExecutionUnreachable):
         await ec._http_call("get_account", (), {})

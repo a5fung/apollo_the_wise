@@ -91,3 +91,55 @@ def make_mock_pool():
     pool.acquire = MagicMock(return_value=acquire_cm)
     return pool, conn
 
+
+# ─── Shared fake httpx.AsyncClient builder ─────────────────────────────────
+# Origin: test_execution_transport.py's two F18 pairs + test_telegram_market_task_
+# fallback.py's fake each hand-rolled a near-identical `async with httpx.AsyncClient
+# () as client: ... client.post(...)` stand-in. Per /simplify 2026-07-03 review,
+# collapsed to one builder (mirrors make_mock_pool's role for the DB pool side).
+def fake_httpx_client(status_code=200, json_body=None, raise_on_status=False):
+    """Build a fake httpx.AsyncClient CLASS whose `.post()` returns a canned response.
+
+    `raise_on_status=True` makes `.raise_for_status()` raise `httpx.HTTPStatusError` —
+    `json_body` stays readable off the response afterward either way (the F18 marker
+    a typed execution-side error carries lives in a 500 response's BODY, read via
+    `.json()` AFTER `.raise_for_status()` raises).
+
+    Returns the CLASS (not an instance) — pass it straight to
+    `monkeypatch.setattr(httpx, "AsyncClient", ...)`; a fresh instance is built per
+    `async with httpx.AsyncClient(...) as client:` call site, matching real usage.
+    The class records the most recent `.post(...)` call's args/kwargs on the class
+    attribute `last_post` (a class attr since instances are transient) so a caller can
+    assert on what was sent, e.g. `FakeClient.last_post["kwargs"]["json"]["task"]`.
+    """
+    import httpx as _httpx
+
+    class _FakeResp:
+        def __init__(self):
+            self.status_code = status_code
+
+        def json(self):
+            return json_body if json_body is not None else {}
+
+        def raise_for_status(self):
+            if raise_on_status:
+                raise _httpx.HTTPStatusError(str(status_code), request=None, response=None)
+
+    class _FakeAsyncClient:
+        last_post: dict = {}
+
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, *a, **k):
+            _FakeAsyncClient.last_post = {"args": a, "kwargs": k}
+            return _FakeResp()
+
+    return _FakeAsyncClient
+

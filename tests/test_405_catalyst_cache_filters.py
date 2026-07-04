@@ -81,106 +81,67 @@ def _quiet_audit():
 
 
 # ── 1. _post_grade_filters: order + reason strings + thresholds (FROZEN) ────
+# Collapsed from 10 near-identical functions into one parametrize (simplify GROUP 6,
+# 2026-07-03) — `ids` preserve the original test names 1:1 so `-k <old name>` still
+# selects the same case and failure output is unchanged. Every expected reason is the
+# EXACT string (not a substring) — `_post_grade_filters`'s pm-shares-floor message is
+# fully deterministic from `today_volume` (f"pre-mkt volume {today_volume:,} < "
+# f"{MIN_PREMARKET_SHARES:,} shares"), so the one case that used to assert a substring
+# (`..._r6_carveout_requires_strong_not_routine`, same today_volume=10_000 as the
+# no-carveout case) gets the identical exact string too — a strictly TIGHTER pin, not
+# a loosened one.
 
-@pytest.mark.asyncio
-async def test_filters_clear_returns_none():
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "AAPL", "strong", "analysis", "news", 15.0, 100_000, None, _TODAY,
-        )
-    assert reason is None
-
-
-@pytest.mark.asyncio
-async def test_mna_filter_fires_with_exact_reason_string():
-    with _yes_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "AVNS", "strong", "analysis", "news", 15.0, 100_000, None, _TODAY,
-        )
-    assert reason == "M&A/buyout catalyst — no momentum trade"
-
-
-@pytest.mark.asyncio
-async def test_routine_low_gap_filter_fires_with_exact_reason_string():
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "CMCSA", "routine", "analysis", "news", 8.5, 100_000, None, _TODAY,
-        )
-    assert reason == "routine catalyst, gap 8.5%"
-
-
-@pytest.mark.asyncio
-async def test_routine_filter_does_not_fire_at_gap_12_threshold():
+_FILTER_CASES = [
+    pytest.param(False, "AAPL", "strong", 15.0, 100_000, None, None,
+                 id="test_filters_clear_returns_none"),
+    pytest.param(True, "AVNS", "strong", 15.0, 100_000, None,
+                 "M&A/buyout catalyst — no momentum trade",
+                 id="test_mna_filter_fires_with_exact_reason_string"),
+    pytest.param(False, "CMCSA", "routine", 8.5, 100_000, None,
+                 "routine catalyst, gap 8.5%",
+                 id="test_routine_low_gap_filter_fires_with_exact_reason_string"),
     # Frozen threshold: strictly < 12 fires, >= 12 clears.
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "CMCSA", "routine", "analysis", "news", 12.0, 100_000, None, _TODAY,
-        )
-    assert reason is None
+    pytest.param(False, "CMCSA", "routine", 12.0, 100_000, None, None,
+                 id="test_routine_filter_does_not_fire_at_gap_12_threshold"),
+    pytest.param(False, "TINY", "strong", 5.0, 10_000, None,
+                 "pre-mkt volume 10,000 < 25,000 shares",
+                 id="test_pm_shares_floor_fires_below_threshold_no_carveout"),
+    # quality="strong" so the routine-gap filter (checked earlier) never fires —
+    # isolates the pm-shares carve-out specifically.
+    pytest.param(False, "TINY", "strong", 5.0, 10_000, 5.5, None,
+                 id="test_pm_shares_floor_bypassed_by_pm_rvol_carveout"),
+    pytest.param(False, "TINY", "strong", 11.0, 10_000, None, None,
+                 id="test_pm_shares_floor_bypassed_by_r6_strong_carveout"),
+    # gap=13% clears the earlier routine-gap filter (needs >= 12) so this isolates
+    # the R6 carve-out's own catalyst_quality=='strong' condition — "routine" at the
+    # same gap/volume must NOT get the carve-out (same reason string as the
+    # no-carveout case above — same today_volume=10_000).
+    pytest.param(False, "TINY", "routine", 13.0, 10_000, None,
+                 "pre-mkt volume 10,000 < 25,000 shares",
+                 id="test_pm_shares_floor_r6_carveout_requires_strong_not_routine"),
+    # A ticker that would ALSO fail the routine-gap filter must still report the
+    # M&A reason — pins M&A-first order (byte-identical to pre-#405).
+    pytest.param(True, "XYZ", "routine", 3.0, 100_000, None,
+                 "M&A/buyout catalyst — no momentum trade",
+                 id="test_order_mna_checked_before_routine_catalyst"),
+    # A ticker that would ALSO fail the pm-shares floor must still report the
+    # routine reason — pins routine-before-pm-volume order.
+    pytest.param(False, "XYZ", "routine", 3.0, 10_000, None,
+                 "routine catalyst, gap 3.0%",
+                 id="test_order_routine_checked_before_pm_shares_floor"),
+]
 
 
 @pytest.mark.asyncio
-async def test_pm_shares_floor_fires_below_threshold_no_carveout():
-    with _no_mna(), _quiet_audit():
+@pytest.mark.parametrize(
+    "mna,ticker,quality,gap_pct,today_volume,pm_rvol,expected", _FILTER_CASES,
+)
+async def test_post_grade_filters(mna, ticker, quality, gap_pct, today_volume, pm_rvol, expected):
+    with (_yes_mna() if mna else _no_mna()), _quiet_audit():
         reason = await ep_detector._post_grade_filters(
-            "TINY", "strong", "analysis", "news", 5.0, 10_000, None, _TODAY,
+            ticker, quality, "analysis", "news", gap_pct, today_volume, pm_rvol, _TODAY,
         )
-    assert reason == "pre-mkt volume 10,000 < 25,000 shares"
-
-
-@pytest.mark.asyncio
-async def test_pm_shares_floor_bypassed_by_pm_rvol_carveout():
-    # quality="strong" so the routine-gap filter (checked earlier) never
-    # fires — isolates the pm-shares carve-out specifically.
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "TINY", "strong", "analysis", "news", 5.0, 10_000, 5.5, _TODAY,
-        )
-    assert reason is None
-
-
-@pytest.mark.asyncio
-async def test_pm_shares_floor_bypassed_by_r6_strong_carveout():
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "TINY", "strong", "analysis", "news", 11.0, 10_000, None, _TODAY,
-        )
-    assert reason is None
-
-
-@pytest.mark.asyncio
-async def test_pm_shares_floor_r6_carveout_requires_strong_not_routine():
-    # gap=13% clears the earlier routine-gap filter (needs >= 12) so this
-    # isolates the R6 carve-out's own catalyst_quality=='strong' condition —
-    # "routine" at the same gap/volume must NOT get the carve-out.
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "TINY", "routine", "analysis", "news", 13.0, 10_000, None, _TODAY,
-        )
-    assert reason is not None
-    assert "pre-mkt volume" in reason
-
-
-@pytest.mark.asyncio
-async def test_order_mna_checked_before_routine_catalyst():
-    """A ticker that would ALSO fail the routine-gap filter must still report
-    the M&A reason — pins M&A-first order (byte-identical to pre-#405)."""
-    with _yes_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "XYZ", "routine", "analysis", "news", 3.0, 100_000, None, _TODAY,
-        )
-    assert reason == "M&A/buyout catalyst — no momentum trade"
-
-
-@pytest.mark.asyncio
-async def test_order_routine_checked_before_pm_shares_floor():
-    """A ticker that would ALSO fail the pm-shares floor must still report
-    the routine reason — pins routine-before-pm-volume order."""
-    with _no_mna(), _quiet_audit():
-        reason = await ep_detector._post_grade_filters(
-            "XYZ", "routine", "analysis", "news", 3.0, 10_000, None, _TODAY,
-        )
-    assert reason == "routine catalyst, gap 3.0%"
+    assert reason == expected
 
 
 # ── 2. Tick-contract hard-gate tests (a)/(b)/(c) ─────────────────────────────

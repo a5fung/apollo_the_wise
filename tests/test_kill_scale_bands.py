@@ -148,9 +148,16 @@ import asyncio  # noqa: E402
 import agents.market_intelligence.kill_scale_bands as ksb  # noqa: E402
 
 
-def _wire(monkeypatch, *, rs, prev_band, override=None):
+def _wire(monkeypatch, *, rs, prev_band, override=None, last_band_fn=None, set_fn=None):
     """Mock run_band_evaluation's DB/Telegram edges; drive the band via the cohort `rs`.
-    Returns (sent, persisted, audited) recorders."""
+    Returns (sent, persisted, audited) recorders.
+
+    `last_band_fn`/`set_fn` (simplify GROUP 6, 2026-07-03) let a caller override the
+    default single-caller `get_last_band`/`set_last_band` fakes with its own — e.g. the
+    concurrency test below needs a SHARED store + lock across two callers, not the
+    per-call `prev_band` constant / `persisted`-list recorder this default provides.
+    Reusing `_wire` for that case collapses 6 hand-rolled setattrs down to the 2 that
+    actually differ."""
     sent, persisted, audited = [], [], []
 
     async def fake_inputs(mode):
@@ -176,9 +183,9 @@ def _wire(monkeypatch, *, rs, prev_band, override=None):
         audited.append(evt)
 
     monkeypatch.setattr(ksb, "assemble_band_inputs", fake_inputs)
-    monkeypatch.setattr(ksb, "get_last_band", fake_last_band)
+    monkeypatch.setattr(ksb, "get_last_band", last_band_fn or fake_last_band)
     monkeypatch.setattr(ksb, "get_active_override", fake_override)
-    monkeypatch.setattr(ksb, "set_last_band", fake_set)
+    monkeypatch.setattr(ksb, "set_last_band", set_fn or fake_set)
     import agents.market_intelligence.briefing as briefing
     import agents.market_intelligence.db as dbmod
     monkeypatch.setattr(briefing, "send_telegram_message", fake_send)
@@ -223,24 +230,18 @@ def test_concurrent_transitions_dedup_to_one_alert(monkeypatch):
     bug — then yields so the two coroutines interleave. `fake_set` is the fake state store's
     ATOMIC claim: a lock-guarded check-and-set on a single row, mirroring the real
     `INSERT ... ON CONFLICT DO UPDATE ... WHERE state IS DISTINCT FROM ... RETURNING` — the
-    mechanism actually under test. Only one of the two calls should win the claim."""
-    sent, audited = [], []
+    mechanism actually under test. Only one of the two calls should win the claim.
+
+    Reuses `_wire` (simplify GROUP 6, 2026-07-03) for the 4 edges that DON'T need the
+    shared store — only `get_last_band`/`set_last_band` are overridden via
+    `last_band_fn`/`set_fn`; `prev_band` is unused (the override ignores it)."""
     store: dict[str, str] = {}          # fake mi_safeguard_state row: {account_mode: band}
     claim_lock = asyncio.Lock()
-
-    async def fake_inputs(mode):
-        # Same cohort for both callers so both independently compute the SAME new band
-        # (REDUCE) — exactly the scenario in the bug report.
-        return {"realized_rs": _rs(-1.0, 19) + [5.0], "equity_above_start": False,
-                "drawdown_tier": "OK", "account_mode": mode}
 
     async def fake_last_band(mode):
         prev = store.get(mode)      # read captured BEFORE yielding — both callers see it stale
         await asyncio.sleep(0)      # force interleaving with the concurrent evaluation
         return (prev, None)
-
-    async def fake_override():
-        return None
 
     async def fake_set(mode, band):
         # The atomic claim under test: single-winner check-and-set on the shared row.
@@ -250,22 +251,12 @@ def test_concurrent_transitions_dedup_to_one_alert(monkeypatch):
             store[mode] = band
             return True
 
-    async def fake_send(msg):
-        await asyncio.sleep(0)
-        sent.append(msg)
-        return True
-
-    async def fake_audit(evt, summary, detail):
-        audited.append(evt)
-
-    monkeypatch.setattr(ksb, "assemble_band_inputs", fake_inputs)
-    monkeypatch.setattr(ksb, "get_last_band", fake_last_band)
-    monkeypatch.setattr(ksb, "get_active_override", fake_override)
-    monkeypatch.setattr(ksb, "set_last_band", fake_set)
-    import agents.market_intelligence.briefing as briefing
-    import agents.market_intelligence.db as dbmod
-    monkeypatch.setattr(briefing, "send_telegram_message", fake_send)
-    monkeypatch.setattr(dbmod, "log_audit_event", fake_audit)
+    # Same cohort for both callers so both independently compute the SAME new band
+    # (REDUCE) — exactly the scenario in the bug report.
+    sent, _persisted, audited = _wire(
+        monkeypatch, rs=_rs(-1.0, 19) + [5.0], prev_band=None,
+        last_band_fn=fake_last_band, set_fn=fake_set,
+    )
 
     async def _run_both():
         return await asyncio.gather(
