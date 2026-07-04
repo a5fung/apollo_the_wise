@@ -336,15 +336,11 @@ class TelegramChannel:
             await update.message.reply_text("Usage: `/setup TICKER [days]`", parse_mode=ParseMode.MARKDOWN)
             return
 
-        try:
-            ack = await self._post_market_task(f"/setup {args}", update.effective_user.id)
-        except Exception as e:
-            await update.message.reply_text(f"Error: {e}")
-            return
+        ack = await self._post_market_task_or_reply(
+            update, f"/setup {args}", update.effective_user.id, "(no response)"
+        )
         if ack is None:
-            await update.message.reply_text("Market agent not available.")
             return
-        ack = ack or "(no response)"
 
         # Market agent sends the timeline itself; only echo the ack if it's
         # a fallback body (delivery failed) or a usage hint.
@@ -821,30 +817,53 @@ class TelegramChannel:
     async def _post_market_task(
         self, task: str, user_id: int, timeout: float = 30
     ) -> Optional[str]:
-        """POST an AgentRequest to the market agent's /task endpoint, return the
-        result text. Returns None if the market agent isn't registered (caller
-        shows its own "Market agent not available." message — kept out of this
-        helper so callers preserve their exact pre-refactor text). Raises on
-        transport/HTTP failure (httpx.HTTPStatusError, ConnectError, etc.) —
-        every existing call site already catches broadly and surfaces
+        """POST an AgentRequest to the market agent, return the result text.
+        Delegates the actual POST + error handling to `core.router.call_agent`
+        (simplify GROUP 3, 2026-07-03 — this used to hand-roll its own
+        POST {url}/task + headers, duplicating what call_agent already does for
+        the orchestrator). Returns None if the market agent isn't registered
+        (caller shows its own "Market agent not available." message — kept out
+        of this helper so callers preserve their exact pre-refactor text).
+        Raises RuntimeError on transport/HTTP/agent-side failure — every
+        existing call site already catches broadly and surfaces
         `f"Error: {e}"`, so this simply funnels into that existing path."""
-        import httpx
-        from shared.models import AgentRequest
+        from core.router import call_agent
+        from shared.models import AgentName, AgentRequest
         from shared.registry import get_agent_url
 
-        url = get_agent_url("market_intelligence")
-        if not url:
+        if not get_agent_url("market_intelligence"):
             return None
 
         req = AgentRequest(task=task, user_id=user_id, conversation_id=str(user_id))
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{url}/task",
-                json=req.model_dump(),
-                headers={"X-Apollo-Secret": self._secrets.internal_api_secret},
-            )
-            resp.raise_for_status()
-            return resp.json().get("result") or ""
+        resp = await call_agent(AgentName.MARKET_INTELLIGENCE, req, timeout=timeout)
+        if not resp.success:
+            raise RuntimeError(resp.error or "market agent call failed")
+        return resp.result or ""
+
+    async def _post_market_task_or_reply(
+        self, update: Update, task: str, user_id: int, default_text: str,
+    ) -> Optional[str]:
+        """Second-layer funnel over `_post_market_task` (simplify GROUP 3,
+        2026-07-03) — 6 call sites (/ep, /themes [both branches], /trades,
+        /hud, /ideas) each pasted the same try/except -> None-check ->
+        default-text boilerplate around `_post_market_task`. This sends the
+        "Error: {e}" / "Market agent not available." replies itself and
+        returns None (caller should return immediately without sending
+        anything else); on success it returns the result text — substituted
+        with `default_text` if empty — for the caller to send with its own
+        formatting (`_reply_with_fallback` + any keyboard). Restores the
+        None-check the /hud site had silently dropped (it showed "No
+        response." instead of "Market agent not available.")."""
+        try:
+            result = await self._post_market_task(task, user_id)
+        except Exception as e:
+            logger.error(f"{task} failed: {e}")
+            await update.message.reply_text(f"Error: {e}")
+            return None
+        if result is None:
+            await update.message.reply_text("Market agent not available.")
+            return None
+        return result or default_text
 
     async def _reply_with_fallback(
         self,
@@ -917,15 +936,11 @@ class TelegramChannel:
         from shared.dates import last_trading_day
 
         today_str = last_trading_day().isoformat()
-        try:
-            ep_text = await self._post_market_task(f"/eps_detail ALL {today_str}", update.effective_user.id)
-        except Exception as e:
-            await update.message.reply_text(f"Error: {e}")
-            return
+        ep_text = await self._post_market_task_or_reply(
+            update, f"/eps_detail ALL {today_str}", update.effective_user.id, "No EP data."
+        )
         if ep_text is None:
-            await update.message.reply_text("Market agent not available.")
             return
-        ep_text = ep_text or "No EP data."
 
         await self._reply_with_fallback(update, ep_text)
 
@@ -941,30 +956,23 @@ class TelegramChannel:
         # falls through to the stage-summary below.
         _args = " ".join(context.args).strip() if context.args else ""
         if _args:
-            try:
-                lookup_text = await self._post_market_task(f"/themes_lookup {_args}", update.effective_user.id)
-            except Exception as e:  # loud-ok: error surfaced to the user via reply_text below
-                await update.message.reply_text(f"Error: {e}")
-                return
+            lookup_text = await self._post_market_task_or_reply(
+                update, f"/themes_lookup {_args}", update.effective_user.id, "No match."
+            )
             if lookup_text is None:
-                await update.message.reply_text("Market agent not available.")
                 return
             # S3/F13 fix: this used to send Markdown with no fallback — an
             # underscore-heavy theme name 400'd Telegram and fell straight into
-            # the except above as a hard "Error: ..." reply. _reply_with_fallback
-            # gives it the same plain-text retry /ideas already had.
-            await self._reply_with_fallback(update, lookup_text or "No match.")
+            # a hard "Error: ..." reply. _reply_with_fallback gives it the same
+            # plain-text retry /ideas already had.
+            await self._reply_with_fallback(update, lookup_text)
             return
 
-        try:
-            summary_text = await self._post_market_task("/themes_detail SUMMARY", update.effective_user.id)
-        except Exception as e:
-            await update.message.reply_text(f"Error: {e}")
-            return
+        summary_text = await self._post_market_task_or_reply(
+            update, "/themes_detail SUMMARY", update.effective_user.id, "No theme data."
+        )
         if summary_text is None:
-            await update.message.reply_text("Market agent not available.")
             return
-        summary_text = summary_text or "No theme data."
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -985,17 +993,11 @@ class TelegramChannel:
         from shared.dates import last_trading_day
 
         today_str = last_trading_day().isoformat()
-        try:
-            summary_text = await self._post_market_task(
-                f"/trades_detail summary {today_str}", update.effective_user.id
-            )
-        except Exception as e:
-            await update.message.reply_text(f"Error: {e}")
-            return
+        summary_text = await self._post_market_task_or_reply(
+            update, f"/trades_detail summary {today_str}", update.effective_user.id, "No trade data."
+        )
         if summary_text is None:
-            await update.message.reply_text("Market agent not available.")
             return
-        summary_text = summary_text or "No trade data."
 
         keyboard = InlineKeyboardMarkup([
             [
@@ -1028,13 +1030,15 @@ class TelegramChannel:
             await update.message.reply_text("Market agent not available.")
             return
 
-        try:
-            result = await self._post_market_task("/hud", update.effective_user.id)
-        except Exception as e:
-            logger.error(f"/hud failed: {e}")
-            await update.message.reply_text(f"Error: {e}")
+        # #hud parity fix (simplify GROUP 3, 2026-07-03): routing through the shared
+        # helper restores the "Market agent not available." reply this site had
+        # silently dropped (it fell back to "No response." for BOTH the unregistered
+        # case and an empty result, losing the distinction).
+        result = await self._post_market_task_or_reply(
+            update, "/hud", update.effective_user.id, "No response."
+        )
+        if result is None:
             return
-        result = result or "No response."
 
         # Drill-down buttons: one tap per /hud section. Survive the hourly
         # refresh because editMessageText without reply_markup leaves the
@@ -1090,16 +1094,11 @@ class TelegramChannel:
         if not update.effective_user or not self._is_allowed(update.effective_user.id):
             return
 
-        try:
-            result = await self._post_market_task("/ideas", update.effective_user.id)
-        except Exception as e:
-            logger.error(f"/ideas failed: {e}")
-            await update.message.reply_text(f"Error: {e}")
-            return
+        result = await self._post_market_task_or_reply(
+            update, "/ideas", update.effective_user.id, "No response."
+        )
         if result is None:
-            await update.message.reply_text("Market agent not available.")
             return
-        result = result or "No response."
 
         await self._reply_with_fallback(update, result, reply_markup=self._ideas_keyboard())
 

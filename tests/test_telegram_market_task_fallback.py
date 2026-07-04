@@ -52,7 +52,11 @@ class _FakeResp:
 
 class _FakeAsyncClient:
     """Stand-in for httpx.AsyncClient — records the posted task, always returns
-    a canned market-agent result so we can isolate the Telegram-send fallback."""
+    a canned market-agent result so we can isolate the Telegram-send fallback.
+    Payload is a full AgentResponse shape (simplify GROUP 3, 2026-07-03:
+    _post_market_task now delegates to core.router.call_agent, which parses
+    the JSON via `AgentResponse(**response.json())` — a bare {"result": ...}
+    dict fails that validation)."""
 
     last_json = None
 
@@ -67,7 +71,12 @@ class _FakeAsyncClient:
 
     async def post(self, url, json, headers):
         _FakeAsyncClient.last_json = json
-        return _FakeResp({"result": "Chip_Stocks members: NVDA, AMD_Corp, INTC"})
+        return _FakeResp({
+            "request_id": json["request_id"],
+            "agent": "market_intelligence",
+            "success": True,
+            "result": "Chip_Stocks members: NVDA, AMD_Corp, INTC",
+        })
 
 
 @pytest.mark.asyncio
@@ -82,6 +91,10 @@ async def test_themes_arg_markdown_400_falls_back_to_plain_text(monkeypatch):
     )
 
     monkeypatch.setattr("shared.registry.get_agent_url", lambda name: "http://market-agent:9000")
+    # core.router.get_agent_url is a separately-bound name (`from shared.registry import
+    # get_agent_url`) — call_agent (which _post_market_task now delegates to) reads THIS
+    # binding, so it needs its own patch (simplify GROUP 3, 2026-07-03).
+    monkeypatch.setattr("core.router.get_agent_url", lambda name: "http://market-agent:9000")
     monkeypatch.setattr(httpx, "AsyncClient", _FakeAsyncClient)
 
     await channel._handle_themes_command(update, context)
@@ -107,6 +120,7 @@ async def test_themes_arg_both_sends_fail_no_unhandled_exception(monkeypatch):
     message.reply_text = AsyncMock(side_effect=Exception("still 400"))
 
     monkeypatch.setattr("shared.registry.get_agent_url", lambda name: "http://market-agent:9000")
+    monkeypatch.setattr("core.router.get_agent_url", lambda name: "http://market-agent:9000")
     monkeypatch.setattr(httpx, "AsyncClient", _FakeAsyncClient)
 
     # _reply_with_fallback only guards the FIRST attempt; a second failure is a
@@ -131,6 +145,7 @@ async def test_post_market_task_returns_none_when_agent_unregistered(monkeypatch
 async def test_post_market_task_returns_result_text(monkeypatch):
     channel = _make_channel()
     monkeypatch.setattr("shared.registry.get_agent_url", lambda name: "http://market-agent:9000")
+    monkeypatch.setattr("core.router.get_agent_url", lambda name: "http://market-agent:9000")
     monkeypatch.setattr(httpx, "AsyncClient", _FakeAsyncClient)
 
     result = await channel._post_market_task("/themes_detail SUMMARY", user_id=42)

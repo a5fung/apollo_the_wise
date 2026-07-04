@@ -27,6 +27,7 @@ def auth_headers() -> dict[str, str]:
 async def call_agent(
     agent: AgentName,
     request: AgentRequest,
+    timeout: float = AGENT_TIMEOUT,
 ) -> AgentResponse:
     """
     Send a task to a sub-agent via its internal HTTP API.
@@ -45,7 +46,7 @@ async def call_agent(
     logger.info(f"Routing task to {agent.value}: {request.task[:80]}...")
 
     try:
-        async with httpx.AsyncClient(timeout=AGENT_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
                 endpoint,
                 json=request.model_dump(),
@@ -54,12 +55,12 @@ async def call_agent(
             response.raise_for_status()
             return AgentResponse(**response.json())
     except httpx.TimeoutException:
-        logger.error(f"Agent {agent.value} timed out after {AGENT_TIMEOUT}s")
+        logger.error(f"Agent {agent.value} timed out after {timeout}s")
         return AgentResponse(
             request_id=request.request_id,
             agent=agent,
             success=False,
-            error=f"Agent timed out after {AGENT_TIMEOUT}s.",
+            error=f"Agent timed out after {timeout}s.",
         )
     except httpx.HTTPStatusError as e:
         logger.error(f"Agent {agent.value} returned HTTP {e.response.status_code}")
