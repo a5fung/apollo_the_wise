@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step
+from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step, ema
 
 
 def base_state(**overrides):
@@ -219,3 +219,31 @@ def test_state_input_not_mutated():
     apply_daily_exit_step(state, bar(101.0, 102.0), date(2026, 4, 5))
     assert state["running_closes"] == snapshot_running
     assert state["exits"] == snapshot_exits
+
+
+# ── ema() helper (#396 HTF Phase 4 — the EMA-trail input) ───────────────────
+
+
+def test_ema_hand_computed_seed_then_one_recursive_step():
+    # window=3, closes=[1,2,3,4,5]. seed = avg(1,2,3) = 2.0; multiplier = 2/(3+1) = 0.5.
+    # step c=4: value = (4-2)*0.5 + 2 = 3.0
+    # step c=5: value = (5-3)*0.5 + 3 = 4.0
+    assert ema([1.0, 2.0, 3.0, 4.0, 5.0], 3) == pytest.approx(4.0)
+
+
+def test_ema_exactly_window_length_equals_seed_sma():
+    # No values past the seed window -> ema == the plain SMA of those `window` closes.
+    closes = [10.0] * 10
+    assert ema(closes, 10) == pytest.approx(10.0)
+
+
+def test_ema_hand_computed_one_step_past_seed():
+    # seed = avg([10]*10) = 10.0; multiplier = 2/11; one more close of 20.
+    # value = (20-10)*(2/11) + 10 = 11.818181818181818
+    closes = [10.0] * 10 + [20.0]
+    assert ema(closes, 10) == pytest.approx(11.818181818181818)
+
+
+def test_ema_none_when_insufficient_data():
+    assert ema([1.0, 2.0, 3.0], 5) is None
+    assert ema([], 1) is None

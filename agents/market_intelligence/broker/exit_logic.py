@@ -51,6 +51,22 @@ class ExitStep:
     new_total_pnl: float
 
 
+def ema(closes: list[float], window: int) -> float | None:
+    """Standard EMA of `closes`, seeded with the SMA of the first `window` values then
+    recursively updated (smoothing factor 2/(window+1)) through the remaining closes. Returns
+    the EMA value AS OF THE LAST element in `closes`. None when len(closes) < window —
+    mirrors the None-on-insufficient-data contract the inline SMA10/20 trail already uses
+    below. Pure function, no side effects. #396 HTF Phase 4 (management SHADOW) — the 10/20
+    EMA trail input; also usable anywhere an EMA (vs SMA) trail is wanted."""
+    if not closes or len(closes) < window:
+        return None
+    multiplier = 2.0 / (window + 1)
+    value = sum(closes[:window]) / window
+    for c in closes[window:]:
+        value = (c - value) * multiplier + value
+    return value
+
+
 def apply_daily_exit_step(
     state: dict[str, Any],
     daily_bar: dict[str, Any] | None,
