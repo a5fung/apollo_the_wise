@@ -1069,9 +1069,10 @@ reviews:
       (same anti-pattern as conviction_floor_extension).
       Origin: 2026-05-04 SIVE.ST exploration. Advisor verdict: don't ship
       cleanup without production data on high-runup names.
-    status: pending
+    status: done
     added_on: 2026-05-04
-
+    resolution_2026_07_04: |
+      CLOSED as OBE (operator 7/4): calibrated the PRE-#356 50%/60d flag detector, replaced 6/27 by the sourced HTF (90/40 + <=25% + Stage-2). Re-file against HTF/anticipation only if a carried-over question emerges.
   - review_id: flag_proximity_bypass_hysteresis
     title: "Flag proximity early-return bypasses hysteresis"
     question: |
@@ -1112,10 +1113,10 @@ reviews:
             uses held_from_stage so a chain of holds breaks naturally.
       Both fixes are coupled — shipping (1) without (2) just delays the
       stale-stage problem. Origin: 2026-05-04 SIVE.ST exploration.
-    status: pending
+    status: done
     added_on: 2026-05-04
-
-
+    resolution_2026_07_04: |
+      CLOSED as OBE (operator 7/4): pre-#356 proximity/hysteresis mechanics no longer exist in the HTF rebuild.
   - review_id: orb_cutoff_extension
     title: "ORB cutoff extension — 10:00 ET → later? (shadow N≥20)"
     question: |
@@ -1181,7 +1182,7 @@ reviews:
       WHERE event_type = 'unified_allocation_decided'
         AND created_at > NOW() - INTERVAL '30 days'
     threshold: 15
-    earliest_review_date: 2026-06-02
+    earliest_review_date: 2026-08-04
     action_when_ready: |
       Pull the audit events:
         SELECT (created_at AT TIME ZONE 'America/New_York')::date AS day, summary, detail
@@ -1239,7 +1240,8 @@ reviews:
         N≥10 backtest evidence. We have N=2.
     status: pending
     added_on: 2026-05-08
-
+    resolution_2026_07_04: |
+      DISPOSITION 7/4 (operator): HOLD Phase-1A shadow + ADD TELEMETRY (docs/analysis/allocator_1b_comparison_2026-07-03.md: zero head-to-head days — pool mismatch + 9m_day2 shadow-demotion confounds; 6/6 intercepted winners positive-fwd = picks plausibly sound). Telemetry = PLAN #415 (real-contest eligibility flag + next-ranked cascade info + slots snapshot cadence). Re-review when genuine contested days accrue.
   - review_id: rmv_phase2_evaluation
     title: "RMV Phase 2 — divergence vs fresh_tightening (#54)"
     question: |
@@ -1511,9 +1513,10 @@ reviews:
       breaker — safer than shadow-during-learning-curve.
       Origin: 2026-05-08 #39 shadow ship; gating revised 2026-05-10 per
       advisor live-cutover review.
-    status: pending
+    status: done
     added_on: 2026-05-08
-
+    resolution_2026_07_04: |
+      GATE-1 CLOSED (operator 7/4, evidence pack 2026-07-04): the breaker is ACTIVE per-mode in prod (mi_safeguard_state paper=REDUCE / live=OK, live-confirmed 7/3), armed BEFORE cutover per the 6/3 tie-break; the cutover it gated occurred 6/22-6/28; tier transitions Telegram (6/12) and are TOCTOU-proof (7/3). Nothing left to promote.
   - review_id: drawdown_breaker_active_effectiveness
     title: "Drawdown breaker — ACTIVE-phase effectiveness (post-2026-06-03 flip)"
     question: |
@@ -1591,9 +1594,10 @@ reviews:
       coverage holds.
       Origin: 2026-05-04 AVNS investigation. Advisor recommended split:
       ship L0+L1 immediately (cheap, high-precision), gate L2 on data.
-    status: pending
+    status: done
     added_on: 2026-05-04
-
+    resolution_2026_07_04: |
+      CLOSED as OBE (operator 7/4): pre-#356 detector review; the deal-pin primitive itself carried forward into the coil buyout-pin guard (#410, 7/3).
   - review_id: ftre_partial_trail_verification
     title: "FTRE naked-window fix verification (#306, GATE 2 of live cutover)"
     question: |
@@ -1783,9 +1787,10 @@ reviews:
       Cohort reset: 2026-05-11 advisor review after 4 methodology ships
       contaminated the prior week's cohort (sample-size discipline
       violation; see memory feedback_sample_size_discipline).
-    status: pending
+    status: done
     added_on: 2026-05-10
-
+    resolution_2026_07_04: |
+      GATE-3 CLOSED (operator 7/4): raw cohort read -12.73R/n=20 since 5/12 — adjudicated at the GO as an IEX feed artifact by the #223 SIP-replay (selection delta +2.51R; GO-supportive, operator-ratified 6/19). The raw-paper-R premise was superseded by the SIP-reconstruction standard; live R accrual (kill/scale bands + the #413 lifecycle watch) is the going-forward measure.
   - review_id: live_cutover_decision
     title: "Live $ cutover decision — composite of 4 gates (advisor 2026-05-10 + user 2026-05-10)"
     question: |
@@ -3642,9 +3647,10 @@ reviews:
       4. Update flag_continuation.md SSoT change log.
       Origin: 2026-05-15 TRT case study. Related to EP Selectivity
       Phase 1 §G Class A vs B framework.
-    status: pending
+    status: done
     added_on: 2026-05-15
-
+    resolution_2026_07_04: |
+      CLOSED as OBE (operator 7/4): the 7/1 monthly sweep's own verdict stands (EOD-TRIGGERED is post-hoc, structural NO-GO); HTF Phase-3 rides the #94 intraday break instead.
   - review_id: breadth_cluster_view_ideation
     title: "Breadth cluster-matrix view + missing Stockbee secondaries"
     question: |
@@ -6494,9 +6500,10 @@ reviews:
     # will be accurate. Cohort grows organically. Re-run cross-check
     # against SIP at 2026-06-15 review ripening.
 
-    status: pending
+    status: done
     added_on: 2026-05-28
-
+    resolution_2026_07_04: |
+      CLOSED (operator 7/4): the 6/3 resolution stands (entry-side fill-rate class, order-record-grounded; exit-side activation is broker-identical paper/live + covered by #123 + never-naked). Successor = PLAN #414 (gated entry-tuning: widen limit vs stop-market-with-chase-cap, CHANGE_PROCESS, composes with #180).
   - review_id: orb_entry_stuck_pending_new
     title: "P0 — ORB entry stuck in `pending_new` (missed RDW 2026-05-26)"
     closed_on: 2026-05-28
