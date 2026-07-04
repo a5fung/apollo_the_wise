@@ -132,6 +132,13 @@ _SKIP_TICKERS = SKIP_TICKERS
 # `_post_grade_filters` — it re-runs the (time-sensitive) filters against the
 # cached grade fields every tick with zero LLM calls.
 # Resets automatically when the calendar date changes.
+# The classify-failure sentinel (7/4 review F4): PROSE-COUPLED control flow —
+# the producer (_classify_catalyst_claude's failure return) and BOTH #347 checks
+# (the flip's APOG fallback + the repoll validity gate) key off this literal.
+# Reword ONLY here.
+_CLASSIFY_FAIL_SENTINEL = "Classification failed"
+
+
 class CachedGrade(NamedTuple):
     """Catalyst-cache value shape (simplify GROUP 1, 2026-07-03) — was a
     positional 6-tuple; named fields + `_replace()` for the single-field
@@ -144,6 +151,12 @@ class CachedGrade(NamedTuple):
     claude_analysis: "str | None"
     pplx_quality: "str | None"
     filters_cleared: bool
+    # 7/4 review (Finding-2): the grade-time corpus rides the cache so a
+    # cached-path-fired alert no longer inserts grounded_text=NULL (15/43 of
+    # 30d alerts had an empty corpus — the judge graded them blind and the
+    # #367 attribution read was contaminated). Default None keeps every
+    # existing positional construction/_replace valid.
+    grounded_text: "str | None" = None
 
 
 _catalyst_cache: dict[str, CachedGrade] = {}
@@ -956,7 +969,7 @@ catalyst, say so explicitly."""
         except Exception:
             pass
         logger.error(f"Claude catalyst classification failed for {ticker}: {e}")
-        return "routine", "Classification failed — treating as routine."
+        return "routine", f"{_CLASSIFY_FAIL_SENTINEL} — treating as routine."
 
 
 async def _validate_catalyst_perplexity(ticker: str, news_summary: str) -> Optional[str]:
@@ -1912,6 +1925,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             claude_analysis = cached.claude_analysis
             pplx_quality = cached.pplx_quality
             filters_cleared = cached.filters_cleared
+            grounded_text = cached.grounded_text  # 7/4: cached-path alerts carry the grade-time corpus (was NULL)
             upgrades_30d = 0  # ratings don't change scan-to-scan; skip re-fetch
 
             if not filters_cleared:
@@ -1984,9 +1998,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "live_enriched_corpus", "LIVE_ENRICHED_CORPUS")
                         _valid_upgrade = (
                             _rq != catalyst_quality
-                            and "Classification failed" not in (_ran or "")
+                            and _CLASSIFY_FAIL_SENTINEL not in (_ran or "")
                         )
                         if _repoll_live and _valid_upgrade:
+                            # CACHE-ONLY apply (7/4 review fix): the upgrade takes
+                            # effect on the NEXT tick (<=5 min), where the
+                            # filters_cleared=False path re-runs _post_grade_filters
+                            # against the NEW quality before anything can alert or
+                            # enter. Applying to THIS tick's local would skip that
+                            # re-filter (an upgraded 'mna' would dodge the M&A
+                            # filter this tick) — the deferred-tick delay IS the
+                            # designed safety semantic.
                             _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
                                 catalyst_quality=_rq,
                                 claude_analysis=_ran,
@@ -1994,7 +2016,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 pplx_quality=None,
                                 filters_cleared=False,
                             )
-                            catalyst_quality = _rq  # this tick's view too
                         await log_audit_event(
                             "catalyst_repoll_regraded_live" if (_repoll_live and _valid_upgrade)
                             else "ep_repoll_shadow",
@@ -2091,7 +2112,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         news_for_classify=all_news,
                         state_sink=_enr_sink,
                     )
-                    if "Classification failed" in (_ea or ""):
+                    if _CLASSIFY_FAIL_SENTINEL in (_ea or ""):
                         raise RuntimeError("enriched classify returned the fail-routine sentinel")
                     catalyst_quality, claude_analysis = _eq, _ea
                 except Exception as _ee:  # loud-ok: audited + legacy fallback below — never a silent degrade
@@ -2263,6 +2284,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _catalyst_cache[ticker] = CachedGrade(
                 catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
                 pplx_quality, skip_reason is None,
+                grounded_text=grounded_text,
             )
 
             if skip_reason:
@@ -3236,10 +3258,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # label/tier (THE LINE — the flip to load-bearing is a separate
                     # CHANGE_PROCESS gate, never on agent authority). Same gate/placement
                     # as the STEP-0 shadow — final settled tier, low blast radius.
-                    from agents.market_intelligence.catalyst_rubric_runtime import (
-                        log_theme_axis_adjusted_shadow,
-                    )
-                    await log_theme_axis_adjusted_shadow(r)
+                    # 7/4 review: once/ticker/day like the sibling shadows —
+                    # _judge_shadow re-runs per 5-min tick; without this guard the
+                    # credit shadow re-paid the rubric recompute AND wrote ~36
+                    # duplicate audit rows/day into the very telemetry #368 counts.
+                    if _audit_dedupe_check(r["ticker"], today, "theme_axis_shadow_adjusted"):
+                        from agents.market_intelligence.catalyst_rubric_runtime import (
+                            log_theme_axis_adjusted_shadow,
+                        )
+                        await log_theme_axis_adjusted_shadow(r)
             except Exception as _je:
                 logger.warning(f"judge shadow failed for {r.get('ticker')}: {_je}")
 

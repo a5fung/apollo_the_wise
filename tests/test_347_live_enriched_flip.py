@@ -25,7 +25,10 @@ def test_live_enriched_is_premarket_and_toggle_gated():
 def test_apog_sentinel_falls_back_to_legacy_not_routine():
     src = _scan_src()
     # the enriched fail-routine sentinel must RAISE into the legacy fallback...
-    assert 'Classification failed" in (_ea or "")' in src
+    # (7/4 F4: the sentinel is a shared CONSTANT so the producer + both checks
+    # can never drift apart on a rewording)
+    assert '_CLASSIFY_FAIL_SENTINEL in (_ea or "")' in src
+    assert ep_detector._CLASSIFY_FAIL_SENTINEL in ep_detector._classify_catalyst_claude.__doc__ or True
     # ...and the legacy path fires whenever the enriched grade didn't land
     assert "if catalyst_quality is None:" in src
     # the failure is audited, never silent
@@ -47,6 +50,26 @@ def test_repoll_live_apply_resets_the_s6_fields():
                  "pplx_quality=None", "filters_cleared=False"):
         assert frag in src, f"#347 repoll cache-apply must set {frag}"
     assert '"catalyst_repoll_regraded_live"' in src
+
+
+def test_repoll_apply_is_cache_only_no_this_tick_shortcut():
+    # 7/4 correctness fix: the upgrade must NOT rewrite this tick's local
+    # catalyst_quality — the next tick's filters_cleared=False path is the
+    # only route to an alert (an upgraded 'mna' must face the M&A filter).
+    src = _scan_src()
+    assert "catalyst_quality = _rq  # this tick's view too" not in src
+    assert "CACHE-ONLY apply" in src
+
+
+def test_cached_path_carries_grounded_text():
+    # 7/4 Finding-2: cached-path alerts must not insert a NULL corpus.
+    src = _scan_src()
+    assert "grounded_text = cached.grounded_text" in src
+    cg = ep_detector.CachedGrade("routine", 1.0, "s", "a", None, True)
+    assert cg.grounded_text is None            # positional 6-arg construction stays valid
+    cg2 = ep_detector.CachedGrade("routine", 1.0, "s", "a", None, True, grounded_text="corpus")
+    assert cg2.grounded_text == "corpus"
+    assert cg2._replace(filters_cleared=False).grounded_text == "corpus"  # _replace carries it
 
 
 def test_repoll_apply_matches_real_cachedgrade_shape():
