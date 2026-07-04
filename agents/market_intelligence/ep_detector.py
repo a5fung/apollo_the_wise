@@ -1962,21 +1962,49 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                             _st["logged"], _in_window):
                         _st["logged"] = True  # exactly once
                         # Trigger fired (once/ticker/day) — pay for the content-bearing
-                        # corpus build here; reuse the enrichment shadow's 400d filings /
-                        # dilution fetch when it already ran today (no second EDGAR hit).
+                        # corpus build here; reuse the grade-time 400d filings / dilution
+                        # fetch when available (no second EDGAR hit).
                         _rq, _ran, _ext, _dilution, _prior_agr, _recent_earn = await _build_enriched_corpus(
                             ticker, today, profile,
                             ext_filings=_st.get("ext_filings"),
                             dilution=_st.get("dilution"),
                             dilution_computed="dilution" in _st,
                         )
+                        # #347 (operator-approved 2026-07-04): the re-poll acts LIVE —
+                        # the BFLY mechanism. A VALID upgrade (no fail-routine sentinel,
+                        # quality actually changed) rewrites the grade cache: new quality
+                        # + analysis, confidence_multiplier reset to 1.0 (no stale boost,
+                        # the #320 lesson), pplx_quality=None (no fresh validation ran),
+                        # filters_cleared=False → the NEXT tick re-runs the filters and,
+                        # if they pass, proceeds exactly as a fresh survivor (the S6
+                        # machinery alerts/enters naturally). Toggle-gated with the same
+                        # 'live_enriched_corpus' instant-revert; toggle off = the old
+                        # shadow-only telemetry.
+                        _repoll_live = await get_runtime_toggle(
+                            "live_enriched_corpus", "LIVE_ENRICHED_CORPUS")
+                        _valid_upgrade = (
+                            _rq != catalyst_quality
+                            and "Classification failed" not in (_ran or "")
+                        )
+                        if _repoll_live and _valid_upgrade:
+                            _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                                catalyst_quality=_rq,
+                                claude_analysis=_ran,
+                                confidence_multiplier=1.0,
+                                pplx_quality=None,
+                                filters_cleared=False,
+                            )
+                            catalyst_quality = _rq  # this tick's view too
                         await log_audit_event(
-                            "ep_repoll_shadow",
-                            f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)",
+                            "catalyst_repoll_regraded_live" if (_repoll_live and _valid_upgrade)
+                            else "ep_repoll_shadow",
+                            f"{ticker} re-poll routine → {_rq} (+{_cur - _st['count']} src)"
+                            + (" [LIVE cache updated]" if (_repoll_live and _valid_upgrade) else ""),
                             json.dumps({
                                 "ticker": ticker, "alert_date": today.isoformat(),
-                                "cached_quality": catalyst_quality, "repoll_quality": _rq,
-                                "would_change": _rq != catalyst_quality,
+                                "cached_quality": _st["quality"], "repoll_quality": _rq,
+                                "would_change": _rq != _st["quality"],
+                                "applied_live": bool(_repoll_live and _valid_upgrade),
                                 "grade_src_count": _st["count"], "current_src_count": _cur,
                                 "has_prior_agreement": _prior_agr is not None,
                                 "has_dilution": _dilution is not None,
@@ -2032,20 +2060,55 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                                 + news_summary)[:600]
             grounded_text = build_grounded_text(sec_filing, benzinga_items, perplexity_answer)
 
-            # Claude + Perplexity in parallel — BOTH always awaited now (S6/#405).
-            # The grade must be COMPLETE (Claude classification + Perplexity
-            # agreement + hedge-downgrade) before the post-grade filters run, so
-            # a filtered ticker's cached grade is fully reusable on a later tick
-            # with zero further LLM calls. Pre-#405 this cancelled pplx_task on
-            # a filter fail to save the call; that per-call saving is gone, but
-            # grading is now capped at ONE full evaluation per ticker per day
-            # (see the comment above) instead of the up-to-36x/day re-grade the
-            # bug produced — a large net cost win.
-            claude_task = asyncio.create_task(
-                _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text))
+            # Perplexity validation runs regardless of corpus branch (S6: both always
+            # awaited; the agreement/hedge machinery below applies to whichever grade
+            # wins). Grading stays capped at ONE full evaluation per ticker per day.
             pplx_task = asyncio.create_task(_validate_catalyst_perplexity(ticker, news_summary))
 
-            catalyst_quality, claude_analysis = await claude_task
+            # ── #347 LIVE ENRICHED CORPUS (operator-approved flip 2026-07-04; CHANGE_PROCESS
+            # entry in docs/setups/magna53_ep.md, same commit). 10-day shadow verified
+            # net-correctness (183 grades; the 5 distinct change-events all correct-direction
+            # in the 7/4 walkthrough; dilution suppression 10/10; re-poll once, clean).
+            # VALIDATED SHAPE ONLY: premarket grades use the enriched pipeline (the shadow
+            # never graded in-window); a 9:30+ first-seen name keeps the legacy corpus.
+            # Instant revert: runtime toggle 'live_enriched_corpus' (#400 pattern — a
+            # mi_safeguard_state row overrides, <=60s, no redeploy; LIVE_ENRICHED_CORPUS env
+            # fallback). APOG guard: _classify fail-defaults to routine — LIVE treats that
+            # sentinel as a FAILURE and falls back to the LEGACY grade (audited, never a
+            # silent fail-to-routine).
+            _use_enriched = (
+                _is_premarket(now_et)
+                and await get_runtime_toggle("live_enriched_corpus", "LIVE_ENRICHED_CORPUS")
+            )
+            _enr_sink: dict = {}
+            catalyst_quality = None
+            if _use_enriched:
+                try:
+                    _eq, _ea, _enr_ext, _enr_dil, _enr_prior, _enr_earn = await _build_enriched_corpus(
+                        ticker, today, profile,
+                        sec_filing_fallback=sec_filing,
+                        perplexity_answer=perplexity_answer,
+                        news_for_classify=all_news,
+                        state_sink=_enr_sink,
+                    )
+                    if "Classification failed" in (_ea or ""):
+                        raise RuntimeError("enriched classify returned the fail-routine sentinel")
+                    catalyst_quality, claude_analysis = _eq, _ea
+                except Exception as _ee:  # loud-ok: audited + legacy fallback below — never a silent degrade
+                    logger.error(
+                        f"{ticker}: live enriched grade failed — legacy-corpus fallback: {_ee}")
+                    try:
+                        await log_audit_event(
+                            "live_enriched_grade_failed",
+                            f"{ticker}: {type(_ee).__name__}: {str(_ee)[:200]}",
+                            json.dumps({"ticker": ticker, "alert_date": today.isoformat()}),
+                        )
+                    except Exception:  # loud-ok: the logger.error above already carries it
+                        pass
+            if catalyst_quality is None:
+                claude_task = asyncio.create_task(
+                    _classify_catalyst_claude(ticker, all_news, profile, grounded_text=grounded_text))
+                catalyst_quality, claude_analysis = await claude_task
 
             # #210 Wave B — record source-class provenance of the grounded corpus that
             # produced this grade (telemetry-only; once per ticker/day on the uncached
@@ -2083,7 +2146,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             )
             _repoll_shadow_state[ticker] = {
                 "count": _grade_src_count, "quality": catalyst_quality, "logged": False,
-                "ext_filings": None,
+                # reuse the live-enriched fetches when they ran (no second EDGAR hit)
+                "ext_filings": _enr_sink.get("ext_filings"),
+                **({"dilution": _enr_sink["dilution"]} if "dilution" in _enr_sink else {}),
             }
             # PREMARKET-ONLY guard (advisor 6/19): the shadow does extra SEC GETs + a Sonnet
             # call SYNCHRONOUSLY on run_ep_scan — the order-submission path. Confining it to
@@ -2091,7 +2156,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # latency where orders submit; no EDGAR-budget contention with the live grade
             # fetch during entries). The motivating case (BFLY's PR, 8:12 ET) is premarket, so
             # coverage is preserved; only open-driven gappers are skipped.
-            if (_is_premarket(now_et)
+            # #347: with the LIVE path already grading enriched, this shadow would compare
+            # enriched-vs-enriched (pure noise + double LLM cost) — it runs only in
+            # REVERSION mode (toggle off), where it resumes validating exactly as before.
+            if (not _use_enriched
+                    and _is_premarket(now_et)
                     and os.environ.get("ENRICH_SHADOW_ENABLED", "true").lower() == "true"):
                 try:
                     import time as _time

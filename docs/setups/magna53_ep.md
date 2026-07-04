@@ -82,6 +82,28 @@ HIGH alerts trigger ORB submission only when `now_et.hour == 9 AND now_et.minute
 
 ## Change log (newest first)
 
+### 2026-07-04 — #347: LIVE enriched grade corpus + acting re-poll (operator-approved flip)
+
+- **What changed:** premarket EP grades now use the ENRICHED corpus (SEC 400d filings
+  + content-bearing primary-subject Benzinga + Perplexity, graded at the 12k window)
+  instead of the legacy 6k grounded_text; the catalyst-cache re-poll now ACTS — a valid
+  late-source upgrade (the BFLY class) rewrites the grade cache (quality+analysis, boost
+  reset to 1.0, filters_cleared=False → the S6 machinery re-filters and proceeds as a
+  fresh survivor). In-window (9:30+) first-seen names keep the legacy corpus (the shadow
+  never validated in-window grading — latency + fidelity to evidence).
+- **Evidence:** 10-day prod shadow — 183 grades; the 32 raw changes collapse to 5 distinct
+  events, ALL correct-direction in the operator walkthrough (CMCSA spin-off un-mna'd;
+  ZSQR deflated; LBRDK caught; RKLB un-suppressed; APOG = the fail-routine case, see
+  guard); dilution suppression 10/10; re-poll fired exactly once, cleanly. Operator
+  sign-off 2026-07-04 AM ("flip approved").
+- **Guards:** APOG-class — the enriched classify's fail-routine sentinel triggers a
+  LEGACY-corpus fallback + `live_enriched_grade_failed` audit (never a silent
+  fail-to-routine). The enrichment shadow auto-resumes in reversion mode.
+- **Reversion:** runtime toggle `live_enriched_corpus` (mi_safeguard_state row, ≤60s, no
+  redeploy — the #400 pattern) with `LIVE_ENRICHED_CORPUS` env fallback; flipping it off
+  restores the legacy corpus AND re-arms the validation shadow.
+- **Reversion-flag:** none prior — this is the first corpus change since the shadow began.
+
 ### 2026-06-20 — Live AUTO-ENTRY for the real-money cutover (operator-signed)
 
 MAGNA53 at `phase=live` + `live_real_enabled=True` now **auto-enters real money** through
