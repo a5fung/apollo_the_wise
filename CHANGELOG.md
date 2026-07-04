@@ -11,6 +11,9 @@ When consulted: investigating "why did we change X?", design reviews, retrospect
 ### 2026-06-27 — anticipation rebuild · #381 gate · HTF detection · PDT/ET fix
 - 3 builds verified-live: anticipation #327 coil-finder · #381 swallow-a-failure ratchet gate · HTF #356 detection (90/40 + Stage-2 NCI-catch + flag→HTF rename). Recurring PDT/ET confusion fixed MECHANICALLY: `check_plan`→PT · `scripts/operator_now.py` clock · the ⏰ two-frames rule.
 
+### 2026-07-02 — comprehensive review (23 findings) · 5 ships
+- 6/12→7/1 review: 3 fixed + #412 filed — top = F22 breakeven_active lost-update (#361 regression, careful-path). Ships: #401 naked-live alarm · #400 instant-revert + #149 retire · #384(1) tweet-RVOL · #398 dashboard search + fresh snapshot (was 6/9-stale) · sweep-floor 3500→2200 (#340 evidence). Day-3: no fire; VIX fix clean.
+
 ### 2026-07-01 — MAGNA53 launch days 1-2 · read-layer fixes · monthly-sweep move
 - Day-1 (6/30): FIRST auto-entry (AVAV) — armed clean (stop attached), declined the non-breakout, cancelled clean; arm VERIFIED-LIVE, first FILL ahead (#305). Day-2: no fire. VIX I:VIX-403 + /htf read-fixes live; monthly backward-check sweep moved 8AM→6PM ET (a9752b5).
 

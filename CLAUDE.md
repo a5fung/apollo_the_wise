@@ -399,13 +399,13 @@ REVENUE_STAGE_MIN_USD=0.01  # is_revenue_stage threshold; PROVISIONAL OPERATOR P
 
 ## Changes Made — Recent
 
-### 2026-07-02 — comprehensive review (23 findings) · 5 ships
+### 2026-07-03 — sprint day 1: 12 Sonnet cards + careful-path trio · 2 deploys · /simplify
 
-- **6/12→7/1 review**: 3 fixed + **#412** filed — top = F22 breakeven_active lost-update (#361 regression, careful-path). Ships: **#401** naked-live alarm · **#400** instant-revert + #149 retire · #384(1) tweet-RVOL · **#398** dashboard search + fresh snapshot (was 6/9-stale) · sweep-floor 3500→2200 (#340 evidence). Day-3: no fire; VIX fix clean. Deploy batch = 7/3.
+- **Fable/Sonnet split's first full day**: 12/12 executor cards (S1-S12) + careful-path **F22/F16/F18 + F16-sibling** + **#364 removed** (F17). 2 deploys verified. /simplify → 7 fix groups + the F16-sibling SAFETY catch. **Burndown 113→101.** Operator: #305 closed-as-launched (→#413) · pacing policy (spec-pack §Pacing).
 
 ### Older entries graduated to CHANGELOG.md
 
-- 2026-07-02 graduated 7/01 (launch days 1-2) — older in `CHANGELOG.md`; search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
+- 2026-07-03 graduated 7/02 (review + 5 ships) — older in `CHANGELOG.md`; search any concept (drawdown breaker · partial-exit · dual-account · Gate 5).
 
 ---
 
