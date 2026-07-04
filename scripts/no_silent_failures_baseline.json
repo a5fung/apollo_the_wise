@@ -18,7 +18,6 @@
     "agents/market_intelligence/health_checks.py": 1,
     "agents/market_intelligence/judge_transport.py": 1,
     "agents/market_intelligence/kill_scale_bands.py": 3,
-    "agents/market_intelligence/llm_health.py": 8,
     "agents/market_intelligence/ma_filter.py": 2,
     "agents/market_intelligence/minute_volume.py": 1,
     "agents/market_intelligence/news_source_quality.py": 2,
@@ -38,5 +37,5 @@
     "core/router.py": 2,
     "core/spend.py": 1
   },
-  "total": 139
+  "total": 131
 }

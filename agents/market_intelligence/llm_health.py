@@ -131,7 +131,10 @@ def is_credit_error(exc: BaseException) -> bool:
             return True
 
         return False
-    except Exception:  # never let the classifier itself raise into a fail-open path
+    except Exception:  # loud-ok: pure classifier over an arbitrary exception object —
+        # attribute access (getattr-guarded above) is the only thing that can raise
+        # here, and "not a credit error" is the correct safe default, not a swallowed
+        # failure. Never let the classifier itself raise into a fail-open path.
         return False
 
 
@@ -167,10 +170,11 @@ async def alert_credit_exhausted(context: str, exc: BaseException,
         if recent:
             _last_alert_ts[provider] = now  # keep the pre-gate honest
             return
-    except Exception:
+    except Exception as e:
         # DB unavailable — fall through and alert (better a possible dup than a
         # silently-swallowed credit outage, which is the whole bug class #273).
-        pass
+        logger.warning("alert_credit_exhausted dedup lookback failed for %s "
+                        "(falling through to alert): %s", provider, e)
 
     # Claim the window in-process before any await that could interleave.
     _last_alert_ts[provider] = now
@@ -185,8 +189,9 @@ async def alert_credit_exhausted(context: str, exc: BaseException,
             f"grading/synthesis/validation degraded until refilled",
             str(exc)[:400],
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("alert_credit_exhausted audit-row write failed for %s: %s",
+                        provider, e)
 
     # Then the operator Telegram (terminal + actionable). "CREDITS / AUTH"
     # because a 401 is a revoked/invalid-key state as much as a no-credits one.
@@ -202,8 +207,11 @@ async def alert_credit_exhausted(context: str, exc: BaseException,
             f"Check billing + the API key, then verify the next scan's grade rows.",
             parse_mode="HTML",
         )
-    except Exception:
-        pass
+    except Exception as e:
+        # Last step, nothing above can handle it further — the audit row (if it
+        # landed) is still the durable record even if this Telegram send failed.
+        logger.warning("alert_credit_exhausted Telegram send failed for %s: %s",
+                        provider, e)
 
 
 async def maybe_alert_credit_exhausted(context: str, exc: BaseException,
@@ -342,7 +350,10 @@ def classify_api_failure(exc: BaseException) -> str | None:
         ):
             return "transport"
         return None
-    except Exception:  # classifier must never raise into a fail-open path
+    except Exception:  # loud-ok: pure classifier over an arbitrary exception object —
+        # attribute access (getattr-guarded above) is the only thing that can raise
+        # here, and "not a network/HTTP failure" is the correct safe default, not a
+        # swallowed failure. Classifier must never raise into a fail-open path.
         return None
 
 
@@ -387,10 +398,11 @@ async def alert_api_failure(provider: str, exc: BaseException,
                 if f"class={cls}" in (row.get("summary") or ""):
                     _last_api_alert_ts[key] = now  # keep the pre-gate honest
                     return
-        except Exception:
+        except Exception as e:
             # DB unavailable — fall through and alert (better a possible dup than
             # a silently-swallowed API outage, the whole bug class #380/#370).
-            pass
+            logger.warning("alert_api_failure dedup lookback failed for %s/%s "
+                            "(falling through to alert): %s", provider, cls, e)
 
         # Claim the window in-process before any await that could interleave.
         _last_api_alert_ts[key] = now
@@ -412,8 +424,9 @@ async def alert_api_failure(provider: str, exc: BaseException,
                 + (f" — {context}" if context else ""),
                 str(exc)[:400],
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("alert_api_failure audit-row write failed for %s/%s: %s",
+                            provider, cls, e)
 
         # Then the operator Telegram — a source going dark IS actionable.
         # Consequence copy is provider-CLASS-specific (#406): a data source
@@ -433,8 +446,11 @@ async def alert_api_failure(provider: str, exc: BaseException,
                 + "next scan's data.",
                 parse_mode="HTML",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            # Last step, nothing above can handle it further — the audit row (if
+            # it landed) is still the durable record even if this send failed.
+            logger.warning("alert_api_failure Telegram send failed for %s/%s: %s",
+                            provider, cls, e)
     except Exception as _e:  # absolute belt-and-suspenders — never raise upward
         logger.debug("alert_api_failure swallowed for %s: %s", provider, _e)
 
