@@ -512,7 +512,8 @@ async def _nightly_data_pull():
                         info = await loop.run_in_executor(None, lambda: yf.Ticker(ticker).info)
                         qt = info.get("quoteType", "EQUITY")
                         qt_map[ticker] = qt
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"quote-type lookup failed for {ticker}, defaulting to EQUITY: {e}")
                         qt_map[ticker] = "EQUITY"  # assume equity if lookup fails
             await asyncio.gather(*[_fetch_qt(tk) for tk in missing_qt])
             if qt_map:
@@ -583,7 +584,7 @@ async def _nightly_data_pull():
                 summary="Theme discovery shadow raised (non-fatal)",
                 detail=f"{type(e).__name__}: {e}",
             )
-        except Exception:
+        except Exception:  # loud-ok: audit-of-audit best-effort; outer logger.warning above already surfaced the real error
             pass
 
     # 5c. #167 NARRATIVE-theme discovery (C2/C3 rung-1, shadow) — groups same-day EP
@@ -630,8 +631,11 @@ async def _nightly_data_pull():
             for t in active_themes:
                 for tk in (t.get("tickers") or []):
                     fund_tickers.add(tk)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                f"fundamental flags: active-themes fetch failed, falling back to "
+                f"RS-leaders-only ticker set: {e}"
+            )
         fund_list = list(fund_tickers)[:80]
         if fund_list:
             flag_records = await compute_fundamental_flags(fund_list, _today)
@@ -2421,8 +2425,8 @@ async def _judge_delta_digest_job():
     authority_on = False
     try:
         authority_on = await get_holistic_judge_enabled()
-    except Exception:
-        pass  # display-only; default to the safe "advisory" framing
+    except Exception:  # loud-ok: display-only; default to the safe "advisory" framing, no state change
+        pass
 
     msg = _build_judge_delta_message(rows, authority_on, now_et.strftime("%b %d"))
     try:
@@ -3419,7 +3423,7 @@ async def _run_chart_axis_shadow(today):
         if client is not None:
             try:
                 await client.close()
-            except Exception:
+            except Exception:  # loud-ok: best-effort HTTP client cleanup on job exit, nothing to remediate
                 pass
 
 
