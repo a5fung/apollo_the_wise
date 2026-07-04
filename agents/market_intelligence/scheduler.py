@@ -3011,22 +3011,20 @@ async def _consolidation_readiness_job():
                 # pullback — CRWD read a 24% "base"). It finds the TRUE coil + its peak; the
                 # carry-forward key's anchor_date is just the candidate SEED now. A name with no held
                 # coil (runup gate / hold-≤50% gate) is simply not a candidate — skip, same as today.
-                cons = de.evaluate_coil_consolidation(bars)
+                cons, pin_reason = de.evaluate_coil_consolidation(bars)
                 if cons is None:
                     # #410 buyout/deal-pin shape guard (NUVL 6/30 FP): evaluate_coil_consolidation
-                    # already applies coil_pin_reject_reason internally and returns None on a hit —
-                    # re-derive here ONLY to audit WHY (not silently dropped). Reject-path-only (pure,
-                    # no I/O) — never runs on the common accept path below.
-                    coil = de.find_coil_setup(bars, len(bars) - 1)
-                    if coil is not None and coil["retrace"] <= de.COIL_HOLD_LIMIT:
-                        pin_reason = de.coil_pin_reject_reason(bars, coil)
-                        if pin_reason:
-                            await log_audit_event(
-                                ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
-                                f"{ticker} coil rejected — {pin_reason} "
-                                f"(peak {coil['peak_date']}, retrace {coil['retrace']:.2%})",
-                                detail=str({"ticker": ticker, "reason": pin_reason, **coil})[:500],
-                            )
+                    # now RETURNS the reject reason directly (simplify GROUP 2, 2026-07-03) instead
+                    # of bare None — no re-derivation (no second find_coil_setup / hold-check /
+                    # coil_pin_reject_reason call). pin_reason is only set for the #410 pin guard
+                    # ('stop_floor' | 'gap_to_flat'); a plain non-candidate (no runup→coil, or hold
+                    # exceeded) leaves it None and is silently skipped, same as before.
+                    if pin_reason:
+                        await log_audit_event(
+                            ANTICIPATION_COIL_BUYOUT_PIN_REJECTED,
+                            f"{ticker} coil rejected — {pin_reason}",
+                            detail=str({"ticker": ticker, "reason": pin_reason})[:500],
+                        )
                     continue
 
                 # #387 M&A exclusion (operator-filed 6/30 post-NUVL FP): a coil-shaped candidate whose

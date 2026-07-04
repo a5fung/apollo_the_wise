@@ -56,8 +56,9 @@ def test_no_runup_flat_series_is_none():
 
 def test_evaluate_coil_consolidation_held_coil_returns_row_anchored_on_peak():
     bars = _series(125.0)                              # shallow hold of the 100->130 leg
-    row = evaluate_coil_consolidation(bars)
+    row, reject_reason = evaluate_coil_consolidation(bars)
     assert row is not None
+    assert reject_reason is None
     assert row["anchor_date"] == bars[39]["date"]      # anchored on the runup PEAK, not a coil bar
     assert row["runup_ratio"] > 1.15
     assert row["state"] in ("coiled", "post_runup", "aged")
@@ -70,11 +71,15 @@ def test_evaluate_coil_consolidation_held_coil_returns_row_anchored_on_peak():
 
 def test_evaluate_coil_consolidation_deep_pullback_is_none():
     bars = _series(108.0)                              # gave back > half the leg -> hold gate drops it
-    assert evaluate_coil_consolidation(bars) is None
+    row, reject_reason = evaluate_coil_consolidation(bars)
+    assert row is None
+    assert reject_reason is None                       # plain miss, not a pin-guard reject
 
 
 def test_evaluate_coil_consolidation_no_runup_is_none():
-    assert evaluate_coil_consolidation(_bars([100.0] * 55)) is None
+    row, reject_reason = evaluate_coil_consolidation(_bars([100.0] * 55))
+    assert row is None
+    assert reject_reason is None
 
 
 # ── #410 buyout/deal-PIN shape guard — NUVL 6/30 FP: gapped ~37% to the acquisition price and
@@ -88,7 +93,9 @@ def test_normal_coil_is_not_pin_rejected():
     coil = find_coil_setup(bars, len(bars) - 1)
     assert coil is not None
     assert coil_pin_reject_reason(bars, coil) is None
-    assert evaluate_coil_consolidation(bars) is not None   # unaffected — still a valid candidate
+    row, reject_reason = evaluate_coil_consolidation(bars)
+    assert row is not None   # unaffected — still a valid candidate
+    assert reject_reason is None
 
 
 def _nuvl_series():
@@ -106,10 +113,13 @@ def test_buyout_pin_gap_to_flat_rejected():
     assert coil is not None                       # a real runup->coil STRUCTURE is found...
     assert coil["retrace"] <= COIL_HOLD_LIMIT      # ...and it "held" — deceptively: it's the deal pin
     assert coil_pin_reject_reason(bars, coil) == "gap_to_flat"
-    # the qualifier rejects it outright — NOT a silent drop; the job layer (scheduler.
-    # _consolidation_readiness_job) re-derives this exact reason and audits it
-    # (anticipation_coil_buyout_pin_rejected) rather than letting it surface as a false coil.
-    assert evaluate_coil_consolidation(bars) is None
+    # the qualifier rejects it outright — NOT a silent drop; evaluate_coil_consolidation now
+    # RETURNS this exact reason (no re-derivation) so the job layer (scheduler.
+    # _consolidation_readiness_job) can audit it (anticipation_coil_buyout_pin_rejected) rather
+    # than letting it surface as a false coil.
+    row, reject_reason = evaluate_coil_consolidation(bars)
+    assert row is None
+    assert reject_reason == "gap_to_flat"
 
 
 def test_buyout_pin_stop_floor_rejected_without_single_bar_gap():
@@ -123,4 +133,6 @@ def test_buyout_pin_stop_floor_rejected_without_single_bar_gap():
     assert coil is not None
     assert coil["retrace"] <= COIL_HOLD_LIMIT
     assert coil_pin_reject_reason(bars, coil) == "stop_floor"
-    assert evaluate_coil_consolidation(bars) is None
+    row, reject_reason = evaluate_coil_consolidation(bars)
+    assert row is None
+    assert reject_reason == "stop_floor"

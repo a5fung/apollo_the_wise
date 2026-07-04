@@ -801,14 +801,21 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
     the runup is negated, NOT basing, regardless of tightness). The SAME tightness telemetry +
     lifecycle state (coiled/post_runup/aged) are then recorded against the CORRECTED anchor (the
     coil's runup peak), so upsert_consolidation + the board + the entry signals are unchanged.
-    Returns the evaluate_consolidation-shaped dict (anchor_date = the coil peak) or None when there
-    is no runup→coil OR it gave back > hold_limit. SHADOW recorder: NO entry/stop/settlement here."""
+
+    Returns (result, reject_reason) (simplify GROUP 2, 2026-07-03 — was bare None on any reject,
+    which forced the caller, scheduler._consolidation_readiness_job, to re-run find_coil_setup +
+    the hold check + coil_pin_reject_reason itself just to audit WHY). `result` is the
+    evaluate_consolidation-shaped dict (anchor_date = the coil peak), or None on any reject.
+    `reject_reason` is None for a plain miss (no runup→coil, or gave back > hold_limit) and
+    'stop_floor' / 'gap_to_flat' specifically for the #410 buyout/deal-pin guard — the only case
+    the caller needs to distinguish (audit-worthy) from a normal non-candidate (silent skip).
+    SHADOW recorder: NO entry/stop/settlement here."""
     coil = find_coil_setup(bars, len(bars) - 1)
     if coil is None or coil["retrace"] > hold_limit:
-        return None                                  # no runup→coil, or gave back > ~50% (negated)
-    if coil_pin_reject_reason(bars, coil):
-        return None                                  # #410 buyout/deal-pin shape (NUVL-class FP) —
-                                                       # the job layer re-derives + audits the reason
+        return None, None                            # no runup→coil, or gave back > ~50% (negated)
+    pin_reason = coil_pin_reject_reason(bars, coil)
+    if pin_reason:
+        return None, pin_reason                       # #410 buyout/deal-pin shape (NUVL-class FP)
     anchor_date = coil["peak_date"]
     anchor_idx = coil["peak_idx"]            # from find_coil_setup — provably in-bars, no re-scan
     last_idx = len(bars) - 1
@@ -834,7 +841,7 @@ def evaluate_coil_consolidation(bars, *, hold_limit=COIL_HOLD_LIMIT):
         "rmv_15d": compute_rmv(bars, last_idx, lookback=15),
         "hold_retrace": round(coil["retrace"], 4),    # NEW: give-back of the runup leg (the hold gate)
         **tel,
-    }
+    }, None
 
 
 # ═════════════════════════════════════════════════════════════════════════════
