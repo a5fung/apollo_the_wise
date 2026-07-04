@@ -113,12 +113,31 @@ real design pass anyway (the wedge ordering too). Removal = burndown + kills a H
   exercise before deploy.
 - **#184/#225:** advance per their task lines; the F22 exercise shares the same harness session.
 
-## E. Suggested sprint flow (model-tagged)
+## E. Sprint flow — REFLOWED 7/3 eve (Fri finished Sat's original build list; both days expanded)
 
-- **Fri AM:** [You] briefs B · [Fable] deploy batch A + verifies · [Sonnet ×3 parallel] S1, S2, S7.
-- **Fri PM:** [Fable] F22 design→implement→paper-exercise (D) · [Sonnet] S4, S5, S6, S12.
-- **Sat:** [Fable] #328 theme-axis design + shadow build (Track 2, deep-focus) · [Sonnet] S3, S8,
-  S9, S10, S11 · [Together] Track-6 reviews (the 3 investigations + cutover gates).
-- **Sun:** [Fable] F16/F18 + hardening lane · [Sonnet] burndown remainder · [Together] triage-the-38
-  cleanup · CLOSE with honest re-dates.
-- Every Sonnet diff: Fable review → commit; deploys batch to windows; verify-lists per §A.
+**Fri (done):** all 12 S-cards + F22/F16/F18/F16-sibling + #364 + 2 verified deploys + /simplify
+(7 groups + F14 + F7) + #328 ADR+STEP-0 + #396 + CI fix + Track-6 evidence pack + #385/#381-b1
+dispatched. Burndown 113→101.
+
+**Sat 7/4:**
+- **AM [Operator+Fable] — the decision stack (~1 hr, all evidence-attached):** ① ADR 0015 table
+  sign-off + the Mainstream question → the #328 shadow build dispatches the moment it's signed ·
+  ② Tier-1 review dispositions (GATE-1/GATE-3/stop-trigger propose-close; allocator → comparison
+  card) · ③ Tier-3 flag-review OBE batch call · ④ #335 + #347 flip decisions · ⑤ M&A-debounce
+  option · ⑥ #299 eval-spend (~$170/$50) · ⑦ #398 page eyeball · ⑧ the FYI-tier note (no action).
+- **[Fable] after:** #329 composition anchor (stacking caps across #328/330/331) + #330
+  structure-axis design (the #328 ADR pattern) + #211 news-gap job design.
+- **[Sonnet, ≤2 concurrent]:** #328 shadow build → allocator FCFS-comparison (read-only cohort
+  study) → #381 batch 2 → #211 build (post-design).
+- **PM [Together]:** the Tier-2 labeling sitting (M&A FP/TP on the n=48 + judge `/why` demotes).
+- **EOD:** the Saturday deploy batch (~17 items accrued: simplify groups, F14/F7/F16-sibling,
+  #396 schema+job, #385, #381 batches, CI fix) + verify list + CLOSE.
+
+**Sun 7/5:**
+- **[Fable]:** Track 8 v1.1 kickoff (PART I → filed #-tasks) · the hardening lane #184/#225/#256 ·
+  F10 (AsyncClient reuse + staging exercise).
+- **[Sonnet]:** #381 batches 3-4 (target baseline ≤100) · #176 · #330/#331 builds if designs signed.
+- **[Together]:** decision-stack leftovers · sprint CLOSE: honest re-dates, weekend retro, the
+  Sonnet-5 eval notes → the 8/1 model review, Tue-7/7 watch list (day-4 launch · #405 scan verify ·
+  first `nightly_data_pull` success since 6/15).
+- Every Sonnet diff: Fable review → commit; deploys batch to windows; §Pacing throughout.
